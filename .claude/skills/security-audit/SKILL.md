@@ -106,3 +106,14 @@ These are the mistakes that make security audits useless:
 8. **Constructing exploits from incorrect parser/runtime assumptions.** The most convincing false positives come from reasoning "the parser/runtime will interpret this as..." without verifying. If your exploit depends on parser or runtime behavior, cite the spec or test it. Don't assume.
 9. **Skipping business logic and creative attacks.** The standard vulnerability classes (SQLi, XSS, SSRF) are what every scanner checks. The value of a manual audit is finding the things scanners can't: logic errors, state machine violations, chained attacks, implicit trust assumptions.
 10. **Giving up too easily.** "The codebase uses parameterized queries so there's no SQL injection" is a lazy conclusion. Check EVERY use of sql.raw(). Check dynamic identifiers. Check search/FTS. Check if there's a code path that bypasses the query builder. Push.
+
+## Bex repository — accepted postures (do not remediate away)
+
+When auditing **this repository**, treat the following as deliberate architectural decisions. Do not report them as findings whose fix is to revert the decision; disposition is **accepted residual** and CI may enforce the posture.
+
+| Anchor | Decision | Where recorded | Wrong remediation |
+| --- | --- | --- | --- |
+| `#CI-RUNNERS` | All CI on self-hosted ARM64 runners (`[self-hosted, Linux, ARM64]`) | [ADR083](../../../docs/ADR083-security-review-round20.md), [ADR019](../../../docs/ADR019-infra-credentials.md) §Decision 5, `.pm/DO_NOT_DO.md` `#CI-RUNNERS`, `scripts/github-actions-validate.sh` | Revert workflows to `ubuntu-latest` |
+| `#PSL` | `onbex.co` not on browser PSL yet | [ADR080](../../../docs/ADR080-security-review-round19.md) #8, `.pm/DO_NOT_DO.md` `#PSL`, `scripts/gitops-validate.sh` | Unset `BEX_BASE_DOMAIN` |
+
+Legitimate optional hardening for `#CI-RUNNERS`: fork-PR blocking, split `ci`/`production` runner pools, ephemeral self-hosted runners — see ADR083 follow-ups.

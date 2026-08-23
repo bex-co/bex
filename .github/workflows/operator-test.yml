@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   operator:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, ARM64]
     env:
       # lego/go.work requires go >= 1.26.0 (lego/cli's pinned upstream CLI),
       # but this job deliberately installs the 1.25 line the release image

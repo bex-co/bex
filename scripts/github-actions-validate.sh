@@ -11,6 +11,9 @@
 #     tree so a new/changed action can't slip in unreviewed.
 #  3. No end-of-life Node 20 runtime; deploy.yml keeps its checksum-pinned
 #     Gitleaks scan and its w1/m59 supersession wiring.
+#  5. Self-hosted runner custody (ADR083, `.pm/DO_NOT_DO.md` #CI-RUNNERS): every
+#     job `runs-on` must target self-hosted labels — reverting to GitHub-hosted
+#     `ubuntu-*` is a rejected security-scan "remediation", not a fix.
 #
 # Setting WORKFLOWS_DIR overrides the scanned tree; the self-test
 # (github-actions-validate.test.sh) points it at fixtures to exercise the
@@ -74,10 +77,44 @@ if [ -n "$unpinned_fetchers" ]; then
   exit 1
 fi
 
+# 5. Self-hosted runner custody (ADR083, .pm/DO_NOT_DO.md #CI-RUNNERS). All CI
+# jobs run on operator-custodied self-hosted runners; a security scan that
+# "remediates" by reverting to GitHub-hosted ubuntu-* is the wrong fix.
+collect_workflow_files() {
+  if [ "$canonical_tree" -eq 1 ]; then
+    find .github/workflows lego/operator/.github/workflows -name '*.yml' 2>/dev/null | LC_ALL=C sort
+  else
+    find "$WORKFLOWS_DIR" -name '*.yml' 2>/dev/null | LC_ALL=C sort
+  fi
+}
+hosted_runners=""
+missing_self_hosted=""
+for wf in $(collect_workflow_files); do
+  if grep -E '^[[:space:]]*runs-on:[[:space:]]+ubuntu' "$wf" >/dev/null 2>&1; then
+    hosted_runners="$hosted_runners $wf"
+  fi
+  while IFS= read -r line; do
+    if ! printf '%s' "$line" | grep -q 'self-hosted'; then
+      missing_self_hosted="$missing_self_hosted ${wf}:${line}"
+    fi
+  done < <(grep -E '^[[:space:]]*runs-on:' "$wf" 2>/dev/null || true)
+done
+if [ -n "$hosted_runners" ]; then
+  echo "FAIL: workflows must not use GitHub-hosted ubuntu runners — bex CI is self-hosted (ADR083, .pm/DO_NOT_DO.md #CI-RUNNERS):" >&2
+  printf '  %s\n' $hosted_runners >&2
+  echo "      Reverting to ubuntu-latest is a rejected remediation; split runner pools or add ephemeral self-hosted runners instead." >&2
+  exit 1
+fi
+if [ -n "$missing_self_hosted" ]; then
+  echo "FAIL: every job runs-on must include the self-hosted label (ADR083, .pm/DO_NOT_DO.md #CI-RUNNERS):" >&2
+  printf '  %s\n' $missing_self_hosted >&2
+  exit 1
+fi
+
 # The remaining checks pin the canonical tree's reviewed inventory + deploy.yml
 # wiring; they don't apply to a fixture dir, so stop here under an override.
 if [ "$canonical_tree" -eq 0 ]; then
-  echo "PASS: third-party refs SHA-pinned and Node 20 absent (fixture: $WORKFLOWS_DIR)"
+  echo "PASS: third-party refs SHA-pinned, Node 20 absent, self-hosted runner custody intact (fixture: $WORKFLOWS_DIR)"
   exit 0
 fi
 
@@ -105,7 +142,8 @@ if ! diff -u <(printf '%s\n' "$expected_actions") <(third_party_refs); then
 fi
 
 if ! grep -Fq 'GITLEAKS_VERSION: 8.30.1' .github/workflows/deploy.yml \
-  || ! grep -Fq 'GITLEAKS_LINUX_X64_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' .github/workflows/deploy.yml \
+  || ! grep -Fq 'GITLEAKS_LINUX_ARM64_SHA256: e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080' .github/workflows/deploy.yml \
+  || ! grep -Fq 'gitleaks_${GITLEAKS_VERSION}_linux_arm64.tar.gz' .github/workflows/deploy.yml \
   || ! grep -Fq 'gitleaks git --no-banner --redact --exit-code 1 --log-opts="$log_opts" .' .github/workflows/deploy.yml; then
   echo "FAIL: deploy must checksum-pin and execute the reviewed Gitleaks CLI scanner" >&2
   exit 1
@@ -133,4 +171,9 @@ if [ "$(admin_conf_fetchers | wc -l | tr -d ' ')" -lt 3 ]; then
   exit 1
 fi
 
-echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned"
+if [ "$(grep -Rh 'self-hosted' .github/workflows lego/operator/.github/workflows 2>/dev/null | wc -l | tr -d ' ')" -lt 20 ]; then
+  echo "FAIL: expected self-hosted runs-on across the workflow tree — the custody check (5) has gone vacuous" >&2
+  exit 1
+fi
+
+echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned, self-hosted runner custody intact"

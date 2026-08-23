@@ -37,7 +37,7 @@ env:
   POD_CIDR: 10.244.0.0/16 # must match the overlay's clusterNetwork.pods.cidrBlocks
   CAPH_VERSION: v1.1.7 # v1.0.x webhook had a stale server-type enum (rejected cx33); v1.1.x dropped it
   CLUSTERCTL_VERSION: v1.13.2
-  CLUSTERCTL_LINUX_AMD64_SHA256: ae1d0a60e7101eb6c5cea650740b3d8d3b50cd8c724a2a375ddd5744df6ea544
+  CLUSTERCTL_LINUX_ARM64_SHA256: d1b97f0a31180accf73a20112a5e746c6cadcd58324b38bc8438a591ef9ecaa1
 
 jobs:
   bootstrap-app-cluster:
@@ -47,7 +47,7 @@ jobs:
     # skipped before any secret is touched. Defense in depth alongside GitHub-side
     # protected environments (see infra.yml).
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, ARM64]
     # codex-security round-19 #1: this job's own comments named "GitHub-side
     # protected environments (see infra.yml)" as the authoritative control, but
     # unlike infra.yml's `terraform` job it carried no `environment:` — so the
@@ -97,14 +97,14 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/clusterctl
-          key: clusterctl-${{ env.CLUSTERCTL_VERSION }}-linux-amd64
+          key: clusterctl-${{ env.CLUSTERCTL_VERSION }}-linux-arm64
       - name: install clusterctl
         run: |
           if [ ! -x /tmp/clusterctl ]; then
             curl -fsSL -o /tmp/clusterctl \
-              "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CLUSTERCTL_VERSION}/clusterctl-linux-amd64"
+              "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CLUSTERCTL_VERSION}/clusterctl-linux-arm64"
           fi
-          printf '%s  %s\n' "$CLUSTERCTL_LINUX_AMD64_SHA256" /tmp/clusterctl | sha256sum --check --strict
+          printf '%s  %s\n' "$CLUSTERCTL_LINUX_ARM64_SHA256" /tmp/clusterctl | sha256sum --check --strict
           sudo install -m755 /tmp/clusterctl /usr/local/bin/clusterctl
           clusterctl version
 

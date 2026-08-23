@@ -107,7 +107,7 @@ As of this writing, `:22` (SSH, gated by `bex`) and `:6443`/`:443` (kube-API, ga
 
 ### 5. Production CI runs on self-hosted GitHub Actions runners — accepted
 
-All workflows target self-hosted runners (`[self-hosted, Linux, X64]`; `egress-meter-live` uses `[self-hosted, Linux, ARM64]`). That trades GitHub-hosted ephemeral VMs for operator-custodied hosts with a larger compromise blast radius (production secrets land on the same machines that also run PR tests unless runner pools are split). **Accepted** by operator decision 2026-08-23; residual risks, mandatory repository settings (fork PRs off self-hosted), and follow-ups (split pools, ephemeral runners) are recorded in [ADR083-security-review-round20.md](ADR083-security-review-round20.md). ADR080's protected-environment gates (`production-deploy`, `production-cluster`, `production-restore`, etc.) remain load-bearing workflow-side controls.
+All workflows target self-hosted runners (`[self-hosted, Linux, ARM64]`). That trades GitHub-hosted ephemeral VMs for operator-custodied hosts with a larger compromise blast radius (production secrets land on the same machines that also run PR tests unless runner pools are split). **Accepted** by operator decision 2026-08-23; residual risks, mandatory repository settings (fork PRs off self-hosted), and follow-ups (split pools, ephemeral runners) are recorded in [ADR083-security-review-round20.md](ADR083-security-review-round20.md). ADR080's protected-environment gates (`production-deploy`, `production-cluster`, `production-restore`, etc.) remain load-bearing workflow-side controls. `scripts/github-actions-validate.sh` and `.pm/DO_NOT_DO.md` `#CI-RUNNERS` fail closed on any revert to GitHub-hosted `ubuntu-*`.
 
 ## Consequences & known gaps
 

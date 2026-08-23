@@ -42,3 +42,5 @@ The docs-format job's explicitly installed Node runtime also moved from 20 to 24
 - [Gitleaks v8.30.1](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1) and the [Gitleaks Action organization-license requirement](https://github.com/gitleaks/gitleaks-action#readme)
 
 `scripts/github-actions-validate.sh` freezes this reviewed set. Any new action or major now fails the scripts workflow until its runtime, release notes, inputs, permissions, and nested composite actions are reviewed and the inventory is deliberately updated.
+
+**2026-08-23 (ADR083):** all workflows now run on self-hosted ARM64 runners (`[self-hosted, Linux, ARM64]`), not GitHub-hosted `ubuntu-*`. The validator also enforces that custody (`.pm/DO_NOT_DO.md` `#CI-RUNNERS`); reverting to `ubuntu-latest` is a rejected security-scan remediation.

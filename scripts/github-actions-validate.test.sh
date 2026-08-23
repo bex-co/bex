@@ -64,6 +64,14 @@ assert "node 20 fails" 1 "$(body "      - uses: $PINNED
         with:
           node-version: '20'")"
 
+# --- ADR083 / #CI-RUNNERS: self-hosted runner custody -----------------------
+job_body() { printf 'jobs:\n  x:\n    runs-on: %s\n    steps:\n%s' "$1" "$2"; }
+# RED: GitHub-hosted ubuntu-latest is a rejected remediation.
+assert "ubuntu-latest fails" 1 "$(job_body "ubuntu-latest" "      - uses: $PINNED")" \
+  "GitHub-hosted ubuntu runners"
+# GREEN: the canonical self-hosted label passes.
+assert "self-hosted label passes" 0 "$(job_body "[self-hosted, Linux, ARM64]" "      - uses: $PINNED")"
+
 # --- w1/m68 F3: host-key pin coverage for admin.conf fetchers ---------------
 # RED: a workflow that fetches admin.conf over SSH without wiring the pin. This
 # is exactly the shape openbao-restore-drill.yml had — the whole reason m66's

@@ -171,6 +171,17 @@ Consequently:
 - Model diversity is obtained by **swapping the model slot within the chosen harness** — codex-security via `--provider`/`--codex`, or the bex harness via the `bex glm` provider catalog (`kimi`, `deepseek` are one flag away).
 - A single **one-time bake-off** at a fixed revision decides which harness to standardize on. That comparison is a deliberate human read of two reports, not an automated fingerprint reconciliation, and it is explicitly not a recurring cadence.
 
+### Accepted architectural dispositions (do not remediate away)
+
+Some findings are **real risks that are accepted by operator decision**, not open defects. A scan that recommends reverting them is dispositioned **accepted residual**; CI and `.pm/DO_NOT_DO.md` may enforce the chosen posture. Before filing a finding that contradicts one of these, read the cited ADR and check whether the recommendation is already listed as a legitimate optional hardening path.
+
+| Anchor | Topic | Record | Rejected "remediation" |
+| --- | --- | --- | --- |
+| `#CI-RUNNERS` | Self-hosted GitHub Actions runners | [ADR083](ADR083-security-review-round20.md), [ADR019](ADR019-infra-credentials.md) §Decision 5, `scripts/github-actions-validate.sh` | Revert `runs-on` to `ubuntu-latest` / GitHub-hosted |
+| `#PSL` | `onbex.co` absent from browser PSL | ADR080 #8, `.pm/DO_NOT_DO.md` `#PSL`, `scripts/gitops-validate.sh` | Unset `BEX_BASE_DOMAIN` or submit PSL prematurely |
+
+Round-20 lineage re-confirms both anchors unchanged.
+
 ## Consequences
 
 - **Gained (if Option A passes):** model diversity for the price of a flag, no rebuild, no ownership of 26k lines of ported logic. Cost: no `--max-cost`, and exposure to upstream changes.

@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   mobile:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, ARM64]
     env:
       # Same workspace/toolchain split as backend-test.yml/operator-test.yml:
       # lego/go.work requires go >= 1.26.0 (lego/cli) while this job installs

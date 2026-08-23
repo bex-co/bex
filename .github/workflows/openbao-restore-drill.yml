@@ -32,7 +32,7 @@ jobs:
     # same-repo branch is skipped before any secret is touched. Defense in depth
     # alongside GitHub-side protected environments (see infra.yml).
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, ARM64]
     timeout-minutes: 30
     # codex-security round-19 #4: this job's own comments named "GitHub-side
     # protected environments (see infra.yml)" as the authoritative control, but

@@ -73,7 +73,7 @@ jobs:
   # Dependabot (w1/006 — dependency CVEs): this catches secrets in the repo itself.
   secret-scan:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, ARM64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -84,12 +84,12 @@ jobs:
       - name: install Gitleaks CLI
         env:
           GITLEAKS_VERSION: 8.30.1
-          GITLEAKS_LINUX_X64_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+          GITLEAKS_LINUX_ARM64_SHA256: e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080
         run: |
           archive="$RUNNER_TEMP/gitleaks.tar.gz"
           curl -fsSLo "$archive" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          echo "$GITLEAKS_LINUX_X64_SHA256  $archive" | sha256sum -c -
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_arm64.tar.gz"
+          echo "$GITLEAKS_LINUX_ARM64_SHA256  $archive" | sha256sum -c -
           tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
           chmod +x "$RUNNER_TEMP/gitleaks"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
@@ -121,7 +121,7 @@ jobs:
   # never cancelled; only a not-yet-started one is skipped. ---
   check-supersession:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, ARM64]
     outputs:
       superseded: ${{ steps.check.outputs.superseded }}
     steps:
@@ -152,7 +152,7 @@ jobs:
     # environments + branch policies (the infra.yml `production-infra` pattern),
     # which are the authoritative control but live in repo settings, not YAML.
     if: needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, ARM64]
     # codex-security round-19 #2: the comment above named the infra.yml
     # `production-infra` pattern as authoritative but this job never actually
     # carried an `environment:` — unlike infra.yml/snapshot.yml/cli-release.yml,
