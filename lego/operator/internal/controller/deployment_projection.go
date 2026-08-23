@@ -330,9 +330,12 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	// "<name>-files" + each linked env group's files).
 	dep.Spec.Template.Spec.Volumes = nil
 	if vol, mount := secretFileMounts(app); vol != nil {
-		container.VolumeMounts = []corev1.VolumeMount{*mount}
-		dep.Spec.Template.Spec.Volumes = []corev1.Volume{*vol}
+		container.VolumeMounts = append(container.VolumeMounts, *mount)
+		dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, *vol)
 	}
+	// The persistent disk, when one is attached: its volume and mount, plus the
+	// Recreate strategy and eviction guard a shared volume forces (see disk.go).
+	applyDiskProjection(dep, &container, app)
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
 	// Render's maxShutdownDelaySeconds is Kubernetes' native pod termination
 	// grace period. Left nil when unset, so applyPodSpecServerDefaults below

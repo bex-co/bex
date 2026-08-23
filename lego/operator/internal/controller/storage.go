@@ -16,7 +16,71 @@ limitations under the License.
 
 package controller
 
-import "k8s.io/apimachinery/pkg/api/resource"
+import (
+	"context"
+	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// pvcExpandOutcome is why a volume grow did or did not happen. The gates are
+// shared because they encode one rule — when is it safe to ask Kubernetes to
+// grow a volume — and two copies of that rule drift. The outcomes stay abstract
+// so each caller keeps its own resource's vocabulary in its own conditions.
+type pvcExpandOutcome int
+
+const (
+	pvcExpanded pvcExpandOutcome = iota
+	pvcExpandWaitingForBinding
+	pvcExpandStorageClassMissing
+	pvcExpandStorageClassNotFound
+	pvcExpandNotExpandable
+	pvcExpandQuotaBlocked
+)
+
+// expandPVCTo raises pvc's storage request to desiredGB, after checking every
+// precondition Kubernetes needs for an online grow. Callers translate the
+// outcome into their own status; only a genuine API failure comes back as err.
+//
+// A quota rejection is an outcome rather than an error on purpose: the operator
+// patches these claims itself, so a namespace requests.storage ceiling arrives
+// here as a Forbidden, and returning it bare would hot-loop the reconcile
+// instead of backing off until headroom returns (ADR045 Finding 4, w7/m59).
+func expandPVCTo(ctx context.Context, c client.Client, pvc *corev1.PersistentVolumeClaim, desiredGB int32) (pvcExpandOutcome, error) {
+	if pvc.Status.Phase != corev1.ClaimBound {
+		return pvcExpandWaitingForBinding, nil
+	}
+	if pvc.Spec.StorageClassName == nil || *pvc.Spec.StorageClassName == "" {
+		return pvcExpandStorageClassMissing, nil
+	}
+	var storageClass storagev1.StorageClass
+	if err := c.Get(ctx, client.ObjectKey{Name: *pvc.Spec.StorageClassName}, &storageClass); err != nil {
+		if apierrors.IsNotFound(err) {
+			return pvcExpandStorageClassNotFound, nil
+		}
+		return pvcExpanded, err
+	}
+	if !ptr.Deref(storageClass.AllowVolumeExpansion, false) {
+		return pvcExpandNotExpandable, nil
+	}
+	before := pvc.DeepCopy()
+	if pvc.Spec.Resources.Requests == nil {
+		pvc.Spec.Resources.Requests = corev1.ResourceList{}
+	}
+	pvc.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(fmt.Sprintf("%dGi", desiredGB))
+	if err := c.Patch(ctx, pvc, client.MergeFrom(before)); err != nil {
+		if isQuotaExceeded(err) {
+			return pvcExpandQuotaBlocked, nil
+		}
+		return pvcExpanded, err
+	}
+	return pvcExpanded, nil
+}
 
 const bytesPerGi = int64(1024 * 1024 * 1024)
 

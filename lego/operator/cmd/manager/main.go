@@ -353,6 +353,7 @@ func setupAppReconciler(
 		MaintenanceService:      envOr("BEX_ACTIVATOR_SERVICE", "bex-activator"),
 		MaintenanceNamespace:    envOr("POD_NAMESPACE", "bex-system"),
 		MaintenancePort:         activatorPort,
+		DiskStorageClass:        os.Getenv("BEX_DISK_STORAGE_CLASS"),
 		MaxConcurrentBuilds:     envInt("BEX_MAX_CONCURRENT_BUILDS", 0),
 		MaxActiveBuilds:         envInt("BEX_MAX_ACTIVE_BUILDS", 0),
 		MaxConcurrentReconciles: positiveEnvInt("BEX_APP_RECONCILE_WORKERS", 1),

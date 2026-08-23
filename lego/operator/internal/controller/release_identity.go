@@ -86,17 +86,23 @@ var appSpecIdentityClasses = map[string]appSpecIdentityClass{
 	"RestartedAt":                identityArtifact | identityRelease,
 	"Suspended":                  identityOperational,
 	"Autoscaling":                identityOperational,
-	"Tier":                       identityRelease,
-	"Host":                       identityOperational,
-	"Expose":                     identityOperational,
-	"Subdomain":                  identityOperational,
-	"Hosts":                      identityOperational,
-	"HostRedirects":              identityOperational,
-	"SubdomainPolicy":            identityOperational,
-	"IPAllowList":                identityOperational,
-	"IPAllowListEntries":         identityOperational,
-	"EnvironmentIPAllowList":     identityOperational,
-	"MaintenanceMode":            identityOperational,
+	// A disk is a release input because attaching, detaching, or remounting one
+	// rewrites the pod template — Render redeploys the service for exactly that
+	// reason. Its SIZE deliberately is not: a grow is applied to the live volume
+	// online, and rolling the pod for it would turn Render's no-downtime resize
+	// into an outage. See the projection in desiredAppReleaseIdentity.
+	"Disk":                   identityRelease,
+	"Tier":                   identityRelease,
+	"Host":                   identityOperational,
+	"Expose":                 identityOperational,
+	"Subdomain":              identityOperational,
+	"Hosts":                  identityOperational,
+	"HostRedirects":          identityOperational,
+	"SubdomainPolicy":        identityOperational,
+	"IPAllowList":            identityOperational,
+	"IPAllowListEntries":     identityOperational,
+	"EnvironmentIPAllowList": identityOperational,
+	"MaintenanceMode":        identityOperational,
 }
 
 type appReleaseIdentity struct {
@@ -144,6 +150,14 @@ type releaseIdentityInput struct {
 	PreDeployCommand           string               `json:"preDeployCommand,omitempty"`
 	RestartedAt                string               `json:"restartedAt,omitempty"`
 	Tier                       string               `json:"tier,omitempty"`
+	Disk                       *releaseDiskIdentity `json:"disk,omitempty"`
+}
+
+// releaseDiskIdentity is the part of a persistent disk that shapes the pod:
+// whether there is one at all, and where it is mounted. Size is excluded on
+// purpose — see the "Disk" entry in appSpecIdentityClasses.
+type releaseDiskIdentity struct {
+	MountPath string `json:"mountPath"`
 }
 
 func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
@@ -208,8 +222,16 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 		PreDeployCommand:           spec.PreDeployCommand,
 		RestartedAt:                spec.RestartedAt,
 		Tier:                       spec.Tier,
+		Disk:                       releaseDisk(spec.Disk),
 	})
 	return appReleaseIdentity{artifact: artifact, release: release}
+}
+
+func releaseDisk(disk *appv1alpha1.DiskSpec) *releaseDiskIdentity {
+	if disk == nil {
+		return nil
+	}
+	return &releaseDiskIdentity{MountPath: disk.MountPath}
 }
 
 func identityFingerprint(version string, value any) string {

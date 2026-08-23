@@ -31,7 +31,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -964,44 +963,32 @@ func (r *KeyValueReconciler) expandKeyValuePVC(ctx context.Context, kv *appv1alp
 		setKeyValueStorageCondition(kv, state)
 		return &state, nil
 	}
-	if pvc.Status.Phase != corev1.ClaimBound {
+	className := ""
+	if pvc.Spec.StorageClassName != nil {
+		className = *pvc.Spec.StorageClassName
+	}
+	outcome, err := expandPVCTo(ctx, r.Client, pvc, desiredGB)
+	if err != nil {
+		return nil, err
+	}
+	switch outcome {
+	case pvcExpanded:
+		return nil, nil
+	case pvcExpandWaitingForBinding:
 		return block(keyValueStorageState{reason: "WaitingForPVCBinding", message: "waiting for the Valkey PVC to bind before requesting expansion", requeue: kvStorageRequeue})
-	}
-	if pvc.Spec.StorageClassName == nil || *pvc.Spec.StorageClassName == "" {
+	case pvcExpandStorageClassMissing:
 		return block(keyValueStorageState{failed: true, reason: "StorageClassMissing", message: "Valkey PVC has no StorageClass; online expansion is unavailable", requeue: kvStorageFailureRequeue})
-	}
-	var storageClass storagev1.StorageClass
-	if err := r.Get(ctx, client.ObjectKey{Name: *pvc.Spec.StorageClassName}, &storageClass); err != nil {
-		if apierrors.IsNotFound(err) {
-			return block(keyValueStorageState{failed: true, reason: "StorageClassNotFound", message: fmt.Sprintf("StorageClass %q was not found; cannot expand Valkey PVC", *pvc.Spec.StorageClassName), requeue: kvStorageFailureRequeue})
-		}
-		return nil, err
-	}
-	if storageClass.AllowVolumeExpansion == nil || !*storageClass.AllowVolumeExpansion {
-		return block(keyValueStorageState{failed: true, reason: "StorageClassNotExpandable", message: fmt.Sprintf("StorageClass %q does not allow volume expansion", storageClass.Name), requeue: kvStorageFailureRequeue})
-	}
-	before := pvc.DeepCopy()
-	if pvc.Spec.Resources.Requests == nil {
-		pvc.Spec.Resources.Requests = corev1.ResourceList{}
-	}
-	pvc.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(fmt.Sprintf("%dGi", desiredGB))
-	if err := r.Patch(ctx, pvc, client.MergeFrom(before)); err != nil {
-		// Unlike Postgres (whose PVC CNPG owns, so the operator pre-flights the
-		// quota), the KeyValue reconciler patches the PVC itself — a namespace
-		// requests.storage quota rejection therefore reaches us directly as a
-		// Forbidden. Surface it and back off instead of hot-looping a bare error
-		// (ADR045 Finding 4, w7/m59); the resize resumes once quota headroom
-		// returns. This grow seam is user-initiated (a plan/storage change), not
-		// an autoscale loop, so there is no periodic-retry storm to debounce.
-		if isQuotaExceeded(err) {
-			return block(keyValueStorageState{
-				failed:  true,
-				reason:  "StorageBlockedByQuota",
-				message: fmt.Sprintf("Valkey PVC expansion to %d GB is blocked by the namespace storage quota; growth resumes when quota headroom is available", desiredGB),
-				requeue: kvStorageFailureRequeue,
-			})
-		}
-		return nil, err
+	case pvcExpandStorageClassNotFound:
+		return block(keyValueStorageState{failed: true, reason: "StorageClassNotFound", message: fmt.Sprintf("StorageClass %q was not found; cannot expand Valkey PVC", className), requeue: kvStorageFailureRequeue})
+	case pvcExpandNotExpandable:
+		return block(keyValueStorageState{failed: true, reason: "StorageClassNotExpandable", message: fmt.Sprintf("StorageClass %q does not allow volume expansion", className), requeue: kvStorageFailureRequeue})
+	case pvcExpandQuotaBlocked:
+		return block(keyValueStorageState{
+			failed:  true,
+			reason:  "StorageBlockedByQuota",
+			message: fmt.Sprintf("Valkey PVC expansion to %d GB is blocked by the namespace storage quota; growth resumes when quota headroom is available", desiredGB),
+			requeue: kvStorageFailureRequeue,
+		})
 	}
 	return nil, nil
 }

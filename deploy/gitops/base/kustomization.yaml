@@ -46,6 +46,7 @@ resources:
   - operator-apps-rbac.yaml       # operator's apps-namespace-scoped secrets grants (w7/m7)
   - operator-registry-rbac.yaml  # operator's bex-registry-namespace secrets grants for per-App pull creds (w7/m36)
   - operator-daytoday-rbac.yaml  # scoped (non-system:masters) operator SA + ClusterRole for day-to-day ops (w7/m37, docs/ADR019-infra-credentials.md)
+  - disk-storageclass.yaml       # opt-in LUKS-encrypted class for persistent service disks (ADR082); inert until BEX_DISK_STORAGE_CLASS names it
   - tenant-namespace-clusterroles.yaml  # per-tenant-namespace ClusterRoles bound per-<ws> by the NamespaceReconciler (w3/m31 t003, ADR043)
   - bex-api-namespace-rbac.yaml  # cluster authority for bex-api's NamespaceReconciler to create/prune <ws> namespaces + quota/policy/rolebinding (w3/m31 t001-t003); namespace mgmt only, no secrets
   - bex-api-namespace-admission.yaml # API-server CEL guard: confine the reconciler SA's cluster verbs to canonical managed tenant namespaces/bindings (w3/m35)

@@ -232,6 +232,12 @@ type AppReconciler struct {
 	MaintenanceService   string                  // shared public maintenance responder Service (default bex-activator)
 	MaintenanceNamespace string                  // namespace of the shared responder Service (default bex-system)
 	MaintenancePort      int                     // maintenance responder Service port (default 8888)
+	// DiskStorageClass is the StorageClass persistent service disks are
+	// provisioned from (BEX_DISK_STORAGE_CLASS; production sets the encrypted
+	// hcloud class). Empty leaves the claim's class unset, which selects the
+	// cluster's default — what lets the local CAPD cluster back disks with
+	// local-path instead of pretending to have Hetzner volumes.
+	DiskStorageClass string
 	// StaticStore is the object-store target for static_site publishing
 	// (BEX_STATIC_S3_ENDPOINT/BUCKET + BEX_STATIC_PUBLISH_S3_SECRET).
 	// Unconfigured => static_site Apps are rejected with a clear status, the way
@@ -319,6 +325,12 @@ type AppReconciler struct {
 // rewrite the namespace field to bex-system).
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// Persistent service disks (docs/ADR082-persistent-disks.md): the App controller
+// creates and grows the per-App PVC itself, and deletes it when the disk is
+// detached. The pre-existing cluster-wide PVC grant carries no create/delete —
+// it was minted by the KeyValue expander, whose claims a StatefulSet creates.
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
@@ -1110,10 +1122,15 @@ func guaranteedResources(cpu, memory string) corev1.ResourceRequirements {
 	return corev1.ResourceRequirements{Requests: list, Limits: list}
 }
 
+// tierFree is the free plan's ID as it appears in AppSpec.Tier; an empty tier
+// means the same plan. Named because the mechanism layer keys several policies
+// on it — auto-hibernation here, persistent-disk eligibility in the CRD rules.
+const tierFree = "free"
+
 // isFreeApp reports whether the app is on the free tier (empty or "free").
 // Paid tiers are always-on and never auto-hibernate.
 func isFreeApp(app *appv1alpha1.App) bool {
-	return app.Spec.Tier == "" || app.Spec.Tier == "free"
+	return app.Spec.Tier == "" || app.Spec.Tier == tierFree
 }
 
 // buildNamespace is where an App's in-cluster build Job runs: the configured
@@ -1512,6 +1529,15 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}
 
 	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, app, worker)
+
+	// The disk converges before the Deployment that mounts it, so a pod is never
+	// rolled at a claim that does not exist yet. Suspension deliberately does not
+	// skip this: a parked App keeps its volume (that is the whole point of
+	// suspend), and a grow requested while parked is applied to the free volume
+	// rather than waiting for a resume.
+	if err := r.reconcileDisk(ctx, app); err != nil {
+		return r.fail(ctx, app, "DiskFailed", err)
+	}
 
 	// Pre-deploy gate (w1/m33): run spec.preDeployCommand to completion against
 	// the new revision's image before rolling the Deployment to it. A non-zero
