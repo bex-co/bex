@@ -492,3 +492,153 @@ var _ = Describe("Persistent disk snapshots", func() {
 		Expect(snapshotPrefixFor(c)).To(HavePrefix("tea-b/"))
 	})
 })
+
+// The restore sequence is forced by the volume: a ReadWriteOnce disk cannot be
+// rewritten under a running service, and a half-restored filesystem must never
+// be served. These pin that order, and pin that a failure leaves the service
+// DOWN with the request still pending rather than serving partial data.
+var _ = Describe("Persistent disk restore", func() {
+	store := DiskSnapshotStore{
+		Endpoint: "https://s3.example.invalid", Bucket: "bex-disk-snapshots",
+		S3Secret: "bex-disk-snapshot-s3", AgeSecret: "bex-disk-snapshot-age",
+		AgePublicKey: "age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqsxfa9d",
+	}
+	const snapshot = "tea-r/app/2026-08-23T02:00:00Z.tar.gz.age"
+
+	newRestoreApp := func(name string) (*AppReconciler, *appv1alpha1.App) {
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name, Namespace: "default",
+				Labels: map[string]string{"app.bex.co/workspace": "tea-r"},
+			},
+			Spec: appv1alpha1.AppSpec{
+				Image: "nginx:1", Tier: "starter",
+				Disk: &appv1alpha1.DiskSpec{
+					Name: "data", MountPath: "/var/data", SizeGB: 10, RestoreSnapshot: snapshot,
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		return &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(),
+			DiskSnapshots: store, BackupHelperImage: "ghcr.io/bex-co/bex:test",
+		}, app
+	}
+
+	getRestoreJob := func(app *appv1alpha1.App) (*batchv1.Job, error) {
+		job := &batchv1.Job{}
+		key := client.ObjectKey{Namespace: app.Namespace, Name: diskRestoreName(app.Name)}
+		return job, k8sClient.Get(ctx, key, job)
+	}
+
+	It("stops the service, then restores the freed volume", func() {
+		reconciler, app := newRestoreApp("restore-flow")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+
+		restoring, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeTrue(), "the rest of the reconcile must not run during a restore")
+
+		job, err := getRestoreJob(app)
+		Expect(err).NotTo(HaveOccurred())
+		container := job.Spec.Template.Spec.Containers[0]
+		Expect(container.Args).To(Equal([]string{"restore"}))
+
+		env := map[string]string{}
+		for _, e := range container.Env {
+			env[e.Name] = e.Value
+		}
+		Expect(env).To(HaveKeyWithValue("BEX_DISK_SNAPSHOT_KEY", snapshot))
+
+		// The decrypt half reaches the Job by reference, never as a value on the
+		// pod spec, and only this Job gets it.
+		var identity *corev1.EnvVarSource
+		for _, e := range container.Env {
+			if e.Name == "AGE_PRIVATE_KEY" {
+				identity = e.ValueFrom
+			}
+		}
+		Expect(identity).NotTo(BeNil(), "restore needs the decrypt key")
+		Expect(identity.SecretKeyRef.Name).To(Equal(store.AgeSecret))
+
+		// The volume is mounted WRITABLE here — unlike a backup, this rewrites it.
+		Expect(container.VolumeMounts).To(HaveLen(1))
+		Expect(container.VolumeMounts[0].ReadOnly).To(BeFalse())
+		// One attempt: re-running a destructive restore automatically would
+		// repeat the wipe.
+		Expect(*job.Spec.BackoffLimit).To(BeEquivalentTo(0))
+	})
+
+	It("keeps the service down and the request pending when a restore fails", func() {
+		reconciler, app := newRestoreApp("restore-failed")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		_, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+
+		job, err := getRestoreJob(app)
+		Expect(err).NotTo(HaveOccurred())
+		job.Status.Failed = 1
+		Expect(k8sClient.Status().Update(ctx, job)).To(Succeed())
+
+		restoring, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeTrue(), "a failed restore must not bring the service back on partial data")
+		Expect(app.Annotations).NotTo(HaveKey(annotDiskRestored), "the request must stay pending")
+
+		condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+		Expect(condition).NotTo(BeNil())
+		Expect(condition.Reason).To(Equal("DiskRestoreFailed"))
+	})
+
+	It("records the snapshot and releases the service once the restore succeeds", func() {
+		reconciler, app := newRestoreApp("restore-done")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		_, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+
+		job, err := getRestoreJob(app)
+		Expect(err).NotTo(HaveOccurred())
+		job.Status.Succeeded = 1
+		Expect(k8sClient.Status().Update(ctx, job)).To(Succeed())
+
+		restoring, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeFalse(), "the service may come back on the restored volume")
+		Expect(app.Annotations).To(HaveKeyWithValue(annotDiskRestored, snapshot))
+
+		// Edge-triggered: the same request must not restore again on the next pass.
+		restoring, err = reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeFalse())
+	})
+
+	It("does nothing when no restore is requested", func() {
+		reconciler, app := newRestoreApp("restore-none")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		app.Spec.Disk.RestoreSnapshot = ""
+
+		restoring, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeFalse())
+		_, err = getRestoreJob(app)
+		Expect(apierrors.IsNotFound(err)).To(BeTrue())
+	})
+
+	// Without a decrypt key the Job could only fail after wiping the volume, so
+	// the restore must never start.
+	It("refuses to start a restore it cannot decrypt", func() {
+		reconciler, app := newRestoreApp("restore-nokey")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		reconciler.DiskSnapshots.AgeSecret = ""
+
+		restoring, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeFalse())
+		_, err = getRestoreJob(app)
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "no Job may exist that would wipe the volume and then fail")
+
+		condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+		Expect(condition).NotTo(BeNil())
+		Expect(condition.Reason).To(Equal("SnapshotStoreUnavailable"))
+	})
+})

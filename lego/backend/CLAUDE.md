@@ -74,6 +74,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_STRIPE_SECRET_KEY` | restricted Stripe key; unset → no Stripe client/emitter/webhook, estimate-only |
 | bex-api | `BEX_REQUIRE_PAYMENT_METHOD` `1`/`all` | paid-intent gate (needs Stripe+store); `all` includes free + agent-sessions |
 | bex-api | `BEX_STRIPE_API_URL`, `…_SEAL_HOURS` `48`, `…_EPOCH`, `…_WEBHOOK_SECRET`, `…_COMP_COUPON_ID` `bex-comp-100`, `…_PORTAL_CONFIGURATION_ID`, `…_TAX_CODE/_BEHAVIOR` | Stripe overrides, seal horizon, billing epoch, webhook/coupon/portal/tax |
+| bex-api | `BEX_DISK_SNAPSHOT_ENDPOINT`/`_BUCKET`/`_PREFIX`/`_REGION`/`_ACCESS_KEY`/`_SECRET_KEY` | read-only view of the operator's disk-snapshot bucket (docs/ADR082-persistent-disks.md D5) for `GET /v1/disks/{diskId}/snapshots`; unset → snapshot list/restore 503, disks otherwise unaffected. bex-api only LISTS: it never writes or decrypts a snapshot, and never holds the age key. The 24h `snapshotKey` is signed with `BEX_SHELL_TICKET_SECRET` (a reference to an object, not its contents) |
 | bex-api | `BEX_LOKI_URL` | Loki durable logs; set → history+filters, unset → live pod logs |
 | bex-api | `BEX_OPENBAO_URL`, `BEX_OPENBAO_JWT_PATH` | OpenBao env-vars store; JWT path default pod token |
 | bex-api | `BEX_CP_DB_URI`, `BEX_CP_APPS_NAMESPACE`, `BEX_CP_ADDR` `:8091`, `BEX_CP_RESYNC`, `BEX_CP_TOKEN`, `BEX_CP_IDENTITY` | store URI (opt-in) + projection ns/addr/resync/token + instance identity (`production` default, per-dev `dev-N`) |

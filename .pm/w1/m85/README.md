@@ -1,17 +1,17 @@
 # w1 · m85 — Persistent disks 3/4: daily snapshots + restore
 
-**Worker:** worker1 **Goal:** Render's disk-snapshot semantics on a substrate with no block snapshots — nightly file-level age-encrypted backups to object storage with 7-day retention, a Render-shaped snapshot list with 24 h keys, and a full-disk restore verb that restarts the service — ADR082 D5. **Status:** todo (t001 done — backup half shipped; list/restore APIs remain)
+**Worker:** worker1 **Goal:** Render's disk-snapshot semantics on a substrate with no block snapshots — nightly file-level age-encrypted backups to object storage with 7-day retention, a Render-shaped snapshot list with 24 h keys, and a full-disk restore verb that restarts the service — ADR082 D5. **Status:** todo (t001–t006 done; t007 closeout holds on the in-cluster drill)
 
 ## Tasks (in order)
 
 | id   | title                                                    | est | depends_on |
 | ---- | -------------------------------------------------------- | --- | ---------- |
 | t001 | Nightly per-disk backup CronJob → object storage — **DONE** | 1h  | —          |
-| t002 | Snapshot list API + HMAC-signed 24 h `snapshotKey`       | 45m | t001       |
-| t003 | Restore verb: scale-0 → wipe+extract Job → redeploy      | 1h  | t002       |
-| t004 | Render parity check (snapshot routes/shapes/warnings)    | 30m | t003       |
-| t005 | Simplify pass over the changed code                      | 30m | t004       |
-| t006 | Test coverage: backup/restore round-trip + key expiry    | 45m | t005       |
+| t002 | Snapshot list API + HMAC-signed 24 h `snapshotKey` — **DONE** | 45m | t001       |
+| t003 | Restore verb: scale-0 → wipe+extract Job → redeploy — **DONE** | 1h  | t002       |
+| t004 | Render parity check (snapshot routes/shapes/warnings) — **DONE** | 30m | t003       |
+| t005 | Simplify pass over the changed code — **DONE** | 30m | t004       |
+| t006 | Test coverage: backup/restore round-trip + key expiry — **DONE** | 45m | t005       |
 | t007 | Closeout                                                 | 15m | t006       |
 
 ## Definition of done
@@ -25,10 +25,16 @@ A disk-bearing App gets a nightly backup Job (same-node when the pod is live) th
 - **Encryption is mandatory here, not opt-in.** `DiskSnapshotStore.configured()` requires the age recipient: a disk snapshot is a full copy of a tenant filesystem going to a third-party bucket, so bex takes no snapshot rather than an unencrypted one. The pair is **dedicated to disks** rather than the ADR050 platform pair, because restore needs the decrypt half in-cluster — and the data that key protects is already on the volume in that same cluster, whereas reusing the platform key would put etcd/OpenBao backups within reach of a cluster compromise.
 - **Inert until configured.** With `BEX_DISK_SNAPSHOT_*` unset (everywhere today) no CronJob and no purge Job are created, so this stage is a no-op at runtime.
 
+## Progress notes (t002–t006, 2026-08-23)
+
+- **The data path is now verified against a REAL object store, not a mock.** `store_integration_test.go` runs the whole pipeline against MinIO: a directory becomes an encrypted object through a multipart upload of unknown length, comes back out byte-for-byte, retention deletes the three oldest of ten and keeps the newest, a purge removes one disk's objects while its neighbour keeps all of its own, and a non-snapshot object in the same prefix is never offered for restore. Gated on `BEX_TEST_S3_ENDPOINT` so `go test ./...` stays hermetic; the header documents the one-line `docker run` to reproduce.
+- **Restore is gated so a bad key can never stop a service.** Verification (signature, 24 h expiry, and that the key names *this* disk) happens before anything is touched — proven by a table asserting that an expired, forged, cross-disk, empty, or garbage key leaves `spec.disk.restoreSnapshot` untouched. A well-signed key for another disk is refused here rather than range-checked in the Job.
+- **The operator's restore order is forced by the volume and pinned in envtest**: scale to zero → wait for the pods to go → Job mounts the freed volume *writable* → only a SUCCEEDED Job records the snapshot and releases the service. A FAILED restore deliberately leaves the service down with the request still pending, because the alternative is serving a half-extracted filesystem. `backoffLimit: 0` — re-running a destructive restore automatically would repeat the wipe. With no decrypt key configured the Job is never created at all, since it could only fail *after* wiping.
+- **The decrypt key never reaches bex-api.** It is mounted by reference into the restore Job alone. bex-api only lists objects and signs a 24-hour *reference* to one with the shell-ticket secret — it cannot read a snapshot's contents.
+
 ## Remaining
 
-- t002 snapshot list API + HMAC-signed 24 h keys; t003 restore verb (CRD intent + restore Job + the verb on three surfaces); t004–t007.
-- **The DoD's live round-trip is still blocked**: local dev has no S3-compatible store (the backup store is production-only, configured from `.env`), so write→snapshot→mutate→restore cannot be exercised here. Standing up MinIO for the CAPD cluster, or supplying staging bucket credentials, unblocks it.
+- **t007 only: the in-cluster drill.** Everything m85 builds is implemented, unit/envtest/real-S3 verified, and lint-clean. What has not been demonstrated is the orchestration on a live cluster: operator deployed, a real PVC, a real pod scale-down, a real Job run — i.e. the DoD's literal `write file A → snapshot → write file B → restore → A present, B gone, service back up`. That needs the mock cluster running the operator against a reachable S3 endpoint. The MinIO container this run used (`bex-test-minio`, port 59000) plus `BEX_DISK_SNAPSHOT_*` on the operator Deployment is the shortest path to it.
 
 ## Source + Goal linkage
 

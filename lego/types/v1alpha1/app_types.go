@@ -862,6 +862,20 @@ type DiskSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=10000
 	SizeGB int32 `json:"sizeGB,omitempty"`
+
+	// RestoreSnapshot requests that the volume be replaced with a stored
+	// snapshot — a verb-as-value like RestartedAt, holding the object key the
+	// control plane verified. Setting it makes the operator stop the service,
+	// restore the freed volume, and bring it back; the operator clears it once
+	// the restore has run, so re-setting the same key requests a fresh restore
+	// rather than being a no-op.
+	//
+	// This DISCARDS everything written after the snapshot, which is Render's
+	// documented behavior. Empty means no restore is pending, which is the
+	// normal state.
+	// +optional
+	// +kubebuilder:validation:MaxLength=1024
+	RestoreSnapshot string `json:"restoreSnapshot,omitempty"`
 }
 
 // MaintenanceModeSpec declares whether a web service is taking itself offline

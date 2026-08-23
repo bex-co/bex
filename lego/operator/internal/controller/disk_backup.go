@@ -22,12 +22,14 @@ import (
 	"fmt"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/operator/internal/disksnapshot"
@@ -55,6 +57,9 @@ const (
 	// deliberately not the App's own mountPath: what is captured is the
 	// volume's contents, wherever the service happens to mount them.
 	diskSnapshotMountPath = "/disk"
+	// diskAgePrivateKeyKey is the data key the restore Job reads its identity
+	// from, inside the namespace-local Secret DiskSnapshots.AgeSecret names.
+	diskAgePrivateKeyKey = "private"
 	// backupTimeZone pins every backup schedule to UTC so a cluster's local
 	// zone cannot silently move the window.
 	backupTimeZone = "Etc/UTC"
@@ -125,24 +130,24 @@ func (r *AppReconciler) reconcileDiskBackup(ctx context.Context, app *appv1alpha
 	}
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cron, func() error {
-		cron.Labels = diskBackupLabels(app, diskBackupComponent)
+		cron.Labels = diskBackupLabels(app)
 		cron.Spec = r.diskBackupCronJobSpec(app)
 		return controllerutil.SetControllerReference(app, cron, r.Scheme)
 	})
 	return err
 }
 
-func diskBackupLabels(app *appv1alpha1.App, component string) map[string]string {
+func diskBackupLabels(app *appv1alpha1.App) map[string]string {
 	return map[string]string{
 		labelApp:                     app.Name,
-		"app.kubernetes.io/name":     component,
+		"app.kubernetes.io/name":     diskBackupComponent,
 		"app.kubernetes.io/instance": app.Name,
 	}
 }
 
 func (r *AppReconciler) diskBackupCronJobSpec(app *appv1alpha1.App) batchv1.CronJobSpec {
 	timeZone := backupTimeZone
-	labels := diskBackupLabels(app, diskBackupComponent)
+	labels := diskBackupLabels(app)
 	spec := batchv1.CronJobSpec{
 		Schedule:                diskBackupSchedule(app.Name),
 		TimeZone:                &timeZone,
@@ -273,7 +278,7 @@ func (r *AppReconciler) purgeDiskSnapshots(ctx context.Context, app *appv1alpha1
 	if !r.DiskSnapshots.configured() {
 		return nil
 	}
-	labels := diskBackupLabels(app, diskBackupComponent)
+	labels := diskBackupLabels(app)
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 		Name: diskPurgeName(app.Name), Namespace: app.Namespace, Labels: labels,
 	}}
@@ -301,4 +306,154 @@ func (r *AppReconciler) deleteDiskSnapshotChildren(ctx context.Context, app *app
 // shared with the backend so a listing and a Job agree on where to look.
 func snapshotPrefixFor(app *appv1alpha1.App) string {
 	return disksnapshot.DiskPrefix(diskSnapshotWorkspace(app), app.Name)
+}
+
+// --- Restore (ADR082 D5) ---
+
+const (
+	diskRestorePrefix = "dskrst-"
+	// annotDiskRestored records the snapshot the last completed restore used.
+	// It is what makes the intent edge-triggered: the operator acts when
+	// spec.disk.restoreSnapshot differs from this, so a finished restore does
+	// not loop, and re-requesting the SAME snapshot deliberately runs again.
+	annotDiskRestored = "app.bex.co/disk-restored"
+	// diskRestorePoll is how often a mid-restore App is re-checked. A restore
+	// streams a whole volume back, so this is a progress poll, not a timeout.
+	diskRestorePoll = 15 * time.Second
+)
+
+func diskRestoreName(appName string) string {
+	return derivedDiskName(diskRestorePrefix, appName, "")
+}
+
+// reconcileDiskRestore runs a requested restore to completion.
+//
+// The sequence is forced by the volume: a ReadWriteOnce disk cannot be rewritten
+// underneath a running service, and a half-restored filesystem must never be
+// served. So the service is scaled to zero first, the Job gets the freed volume
+// to itself, and only a SUCCEEDED Job clears the request — a failed one leaves
+// the intent in place, visible, and retryable, rather than quietly bringing the
+// service back up on partially-restored data.
+//
+// It reports whether the App is mid-restore, which halts the rest of the
+// reconcile so nothing scales the service back up while the Job is running.
+func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	if app.Spec.Disk == nil || app.Spec.Disk.RestoreSnapshot == "" {
+		return false, nil
+	}
+	requested := app.Spec.Disk.RestoreSnapshot
+	if app.Annotations[annotDiskRestored] == requested {
+		return false, nil // already served this request
+	}
+	if !r.DiskSnapshots.restorable() {
+		setDiskCondition(app, false, "SnapshotStoreUnavailable",
+			"a snapshot restore was requested but no snapshot store (or decrypt key) is configured")
+		return false, nil
+	}
+
+	job := &batchv1.Job{}
+	key := client.ObjectKey{Namespace: app.Namespace, Name: diskRestoreName(app.Name)}
+	switch err := r.Get(ctx, key, job); {
+	case apierrors.IsNotFound(err):
+		// Scale to zero BEFORE the Job exists: the restore container mounts the
+		// same claim, and starting it while the service still holds the volume
+		// would either block on attach or, worse, rewrite files under a live
+		// process.
+		if err := r.scaleDownForRestore(ctx, app); err != nil {
+			return true, err
+		}
+		if ready, err := r.diskDetachedFromService(ctx, app); err != nil || !ready {
+			setDiskCondition(app, false, "DiskRestorePending", "stopping the service before restoring its disk")
+			return true, err
+		}
+		return true, r.createDiskRestoreJob(ctx, app, requested)
+	case err != nil:
+		return true, err
+	}
+
+	switch {
+	case job.Status.Succeeded > 0:
+		// Record what was restored, delete the Job, and let the normal reconcile
+		// bring the service back on the restored volume.
+		base := app.DeepCopy()
+		metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotDiskRestored, requested)
+		if err := r.Patch(ctx, app, client.MergeFrom(base)); err != nil {
+			return true, err
+		}
+		if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil &&
+			!apierrors.IsNotFound(err) {
+			return true, err
+		}
+		setDiskCondition(app, true, "DiskRestored", fmt.Sprintf("restored the disk from %s", requested))
+		return false, nil
+	case job.Status.Failed > 0:
+		// Deliberately terminal: the volume may hold a partial extraction, so
+		// the service stays down and the request stays pending until an owner
+		// retries or clears it. Bringing it up here would serve half a disk.
+		setDiskCondition(app, false, "DiskRestoreFailed",
+			fmt.Sprintf("restoring the disk from %s failed; the service is stopped and the request is still pending", requested))
+		return true, nil
+	default:
+		setDiskCondition(app, false, "DiskRestoreRunning", fmt.Sprintf("restoring the disk from %s", requested))
+		return true, nil
+	}
+}
+
+// scaleDownForRestore takes the service to zero without touching spec.replicas,
+// so the owner's own instance count is what it comes back to.
+func (r *AppReconciler) scaleDownForRestore(ctx context.Context, app *appv1alpha1.App) error {
+	dep := &appsv1.Deployment{}
+	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
+	if err := r.Get(ctx, key, dep); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil // nothing running; the volume is already free
+		}
+		return err
+	}
+	if dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0 {
+		return nil
+	}
+	base := dep.DeepCopy()
+	dep.Spec.Replicas = ptr.To(int32(0))
+	return r.Patch(ctx, dep, client.MergeFrom(base))
+}
+
+// diskDetachedFromService reports whether the service's pods are gone, which is
+// what frees a ReadWriteOnce volume for the restore Job to mount.
+func (r *AppReconciler) diskDetachedFromService(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(app.Namespace),
+		client.MatchingLabels{labelApp: app.Name}); err != nil {
+		return false, err
+	}
+	for i := range pods.Items {
+		if pods.Items[i].DeletionTimestamp == nil {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (r *AppReconciler) createDiskRestoreJob(ctx context.Context, app *appv1alpha1.App, object string) error {
+	labels := diskBackupLabels(app)
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: diskRestoreName(app.Name), Namespace: app.Namespace, Labels: labels,
+	}}
+	job.Spec = r.diskSnapshotJobSpec(app, labels, "restore", []corev1.EnvVar{
+		{Name: "BEX_DISK_SNAPSHOT_KEY", Value: object},
+		{Name: "AGE_PRIVATE_KEY", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: r.DiskSnapshots.AgeSecret},
+			Key:                  diskAgePrivateKeyKey,
+		}}},
+	})
+	// One attempt. A restore is destructive and re-running it automatically
+	// would repeat the wipe; an owner decides whether to try again.
+	job.Spec.BackoffLimit = ptr.To(int32(0))
+	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
+		return err
+	}
+	if err := r.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
 }

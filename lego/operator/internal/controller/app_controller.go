@@ -1556,6 +1556,17 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if err := r.reconcileDiskBackup(ctx, app); err != nil {
 		logf.FromContext(ctx).Error(err, "disk snapshot schedule not converged", "app", app.Name)
 	}
+	// A requested restore owns the volume until it finishes. While it does, the
+	// rest of this reconcile must not run: it would scale the service back up
+	// onto a filesystem the Job is still rewriting.
+	if restoring, err := r.reconcileDiskRestore(ctx, app); err != nil {
+		return r.fail(ctx, app, "DiskRestoreFailed", err)
+	} else if restoring {
+		if r.statusSettled(ctx, app) {
+			return ctrl.Result{RequeueAfter: diskRestorePoll}, nil
+		}
+		return ctrl.Result{RequeueAfter: diskRestorePoll}, r.Status().Update(ctx, app)
+	}
 
 	// Pre-deploy gate (w1/m33): run spec.preDeployCommand to completion against
 	// the new revision's image before rolling the Deployment to it. A non-zero
