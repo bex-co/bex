@@ -32,6 +32,7 @@ The price sheet therefore lives in the backend module only: `lego/backend/intern
 | Key Value | per instance-month | Render × 0.70 | 30% off |
 | Build minutes | $0.005/min | $0.0035/min | 30% off |
 | Postgres storage | $0.30/GB-month | $0.21/GB-month | 30% off |
+| Service disk | $0.25/GB-month | $0.175/GB-month | 30% off |
 | Bandwidth | $0.15/GB | $0.015/GiB | 90% off |
 
 Workspace plan fees are **licensed monthly SKUs**, not usage meters. They appear on the dashboard plan picker and in `pricing.yaml`; they are **not** in `BillableMeterNames` and the Stripe setup script does not provision them as metered Prices. Enterprise remains custom (no catalog rate). Resource-tier usage is billed on top of the workspace fee.
@@ -39,6 +40,8 @@ Workspace plan fees are **licensed monthly SKUs**, not usage meters. They appear
 Source: `docs/render-artifacts/pricing.md` (captured 2026-07-13; bandwidth re-verified 2026-07-15 after Render's new workspace-plan rollout).
 
 The storage estimate prices `storage_gb_seconds`, using a 730-hour pricing month. Render bills provisioned Postgres capacity; bex's collector measures actual used PVC bytes. Render does not list a separate Key Value storage charge, so applying this same used-storage rate to Valkey is a deliberate bex extension rather than a claim of exact Render shape.
+
+**Service disk (`disk_gb_seconds`, [ADR082](ADR082-persistent-disks.md) D8/D9) is the exception, and deliberately so.** It is the one storage meter billed on **provisioned** GB rather than used bytes, because that is what the underlying Hetzner volume actually costs: a 100 GB volume is billed at 100 GB whether the tenant wrote one byte or ninety. Metering used bytes would put bex on the wrong side of the margin on every under-filled disk, and — more importantly — would make the number the tenant sees on the Disk tab ("100 GB") disagree with the number on the invoice. Two consequences follow, both intentional: a disk bills from attach to delete regardless of whether the service is running (deleting the service releases the disk; stopping it does not), and the Blueprint/pricing **estimate equals the invoice** for this SKU — the only one where it does, since every other storage line estimates provisioned floor while metering used bytes. The rate is Render's $0.25/GB-month at the standard 30% discount; bex's cost is Hetzner's €0.0440/GB-month list price for cloud volumes, so the margin absorbs the snapshot object storage and its egress.
 
 Bandwidth is discounted 90% rather than 30% because:
 

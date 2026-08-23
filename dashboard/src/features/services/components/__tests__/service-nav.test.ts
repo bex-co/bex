@@ -34,6 +34,7 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
       ["services.navEvents", "services.navLogs", "services.navMetrics"],
       [
         "services.navEnvironment",
+        "services.navDisk",
         "services.navShell",
         "services.navScaling",
         "services.navPlan",

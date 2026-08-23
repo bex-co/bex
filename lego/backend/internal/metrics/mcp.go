@@ -108,9 +108,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 // list_postgres_instances/get_postgres_instance MCP shape rather than
 // get_metrics' multi-resource array).
 type getDatastoreMetricsArgs struct {
-	Resource          string   `json:"resource" jsonschema:"the Database or KeyValue id (dpg-…/red-…) — the CR name, not the display name"`
-	Kind              string   `json:"kind,omitempty" jsonschema:"database|keyvalue (default database)"`
-	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database or KeyValue) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22) | kv_memory|kv_connections (KeyValue only)"`
+	Resource          string   `json:"resource" jsonschema:"the Database, KeyValue, or service id (dpg-…/red-…/srv-…) — the CR name, not the display name"`
+	Kind              string   `json:"kind,omitempty" jsonschema:"database|keyvalue|service (default database); service reads the disk attached to a service (ADR082)"`
+	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database, KeyValue, or a service with an attached disk) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22) | kv_memory|kv_connections (KeyValue only)"`
 	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window"`
 	EndTime           string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window"`
 	ResolutionSeconds int64    `json:"resolutionSeconds,omitempty" jsonschema:"step in seconds"`
@@ -122,7 +122,7 @@ type getDatastoreMetricsArgs struct {
 func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_datastore_metrics",
-		Description: "Get disk usage, active-connections, replication-lag (Postgres), and memory/connections (Key Value) metrics for one managed Postgres or Key Value instance, as Render-shaped time-series. bex extension (no Render equivalent).",
+		Description: "Get disk usage, active-connections, replication-lag (Postgres), and memory/connections (Key Value) metrics for one managed Postgres or Key Value instance — or, with kind=service, the used/capacity bytes of the persistent disk attached to a service (ADR082) — as Render-shaped time-series. bex extension (no Render equivalent).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDatastoreMetricsArgs) (*mcp.CallToolResult, getMetricsResult, error) {
 		kind := in.Kind
 		if kind == "" {

@@ -118,6 +118,16 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	// Bex's dashboard carries its selected workspace explicitly. Render's event
 	// route has no owner selector, so this remains a labeled query extension.
 	"retrieve-event": {"ownerId": {}},
+
+	// Render's disk-capacity series covers only its own service disks, so its
+	// schema has no `kind`. Bex reads capacity for three resource kinds through
+	// one verb — a managed Postgres, a managed Key Value, and (since ADR082) a
+	// service's attached disk — and selects between them with `kind`. Without
+	// this entry the strict-query gate 400s the parameter, which left REST able
+	// to read a disk's USED bytes (that route is bex-native, so ungated) but not
+	// its capacity, while GraphQL and MCP could read both. Found by the w1/m86
+	// parity audit.
+	"get-disk-capacity": {"kind": {}},
 }
 
 func loadRenderOpenAPIContract() (*renderOpenAPIContract, error) {

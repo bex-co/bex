@@ -618,3 +618,51 @@ func diskResult(d DiskView, err error) (*mcp.CallToolResult, DiskView, error) {
 	}
 	return nil, d, nil
 }
+
+// blueprintDisk converts render.yaml's `disk` block into the neutral view the
+// create path takes, applying Render's documented default of 10 GB.
+func blueprintDisk(d *bexDisk) *ServiceDiskView {
+	if d == nil {
+		return nil
+	}
+	size := d.SizeGB
+	if size == 0 {
+		size = diskDefaultSizeGB
+	}
+	return &ServiceDiskView{
+		Name:      strings.TrimSpace(d.Name),
+		MountPath: strings.TrimSpace(d.MountPath),
+		SizeGB:    size,
+	}
+}
+
+// validateCreateDisk applies the same eligibility rules AddDisk does, at create
+// time. It exists because a Blueprint declares a disk inline with its service:
+// there is no moment when the service exists without one, so the rules have to
+// be enforced on the way in rather than on a later attach.
+//
+// The messages deliberately match AddDisk's, so a `render.yaml` refused here
+// reads the same as the equivalent API call refused there.
+func validateCreateDisk(svcType, tier string, replicas int32, disk *ServiceDiskView) (*appv1alpha1.DiskSpec, error) {
+	if disk == nil {
+		return nil, nil
+	}
+	probe := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: svcType, Tier: tier, Replicas: replicas}}
+	name, mountPath, sizeGB, err := validateDisk(probe, disk.Name, disk.MountPath, disk.SizeGB)
+	if err != nil {
+		return nil, err
+	}
+	return &appv1alpha1.DiskSpec{Name: name, MountPath: mountPath, SizeGB: sizeGB}, nil
+}
+
+// blueprintDiskSizeGB is the provisioned size a declared disk contributes to a
+// Blueprint's estimated monthly cost; 0 when the service declares none.
+func blueprintDiskSizeGB(disk *ServiceDiskView) int32 {
+	if disk == nil {
+		return 0
+	}
+	if disk.SizeGB == 0 {
+		return diskDefaultSizeGB
+	}
+	return disk.SizeGB
+}

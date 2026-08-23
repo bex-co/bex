@@ -19,7 +19,6 @@ import {
   sessionTitleShort,
 } from "@/features/agent-sessions/lib/mapper";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
-import { cn } from "@/common/lib/utils/utils";
 
 /** Substring match for prose titles — avoids the mention picker's subsequence fallback. */
 function sessionSearchMatch(query: string, candidate: string): boolean {

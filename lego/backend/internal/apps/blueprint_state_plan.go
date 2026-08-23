@@ -162,7 +162,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 			return BlueprintPlanAction{}, err
 		}
 		probe := r.services[resource.Name].Spec
-		if ApplyBlueprintServiceSpec(&probe, want, svc.fields) {
+		changed, err := ApplyBlueprintServiceSpec(&probe, want, svc.fields)
+		if err != nil {
+			return BlueprintPlanAction{}, err
+		}
+		if changed {
 			action.Operation = BlueprintPlanUpdate
 			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields)
 			return action, nil

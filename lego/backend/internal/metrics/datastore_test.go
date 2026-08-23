@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -407,5 +408,91 @@ func TestPrometheusKeyValueStatsRoundTrip(t *testing.T) {
 	}
 	if !strings.Contains(gotQuery, "redis_memory_used_bytes") || !strings.Contains(gotQuery, `pod=~"cache-[0-9]+"`) {
 		t.Errorf("unexpected query: %q", gotQuery)
+	}
+}
+
+// --- w1/m86: a service's attached persistent disk (ADR082 D6) ---
+
+func sampleAppWithDisk(name string, disk *appv1alpha1.DiskSpec) *appv1alpha1.App {
+	a := sampleApp(name)
+	a.Spec.Disk = disk
+	return a
+}
+
+// The claim a service's disk graph reads must be the claim the operator
+// created. Both sides derive it from appv1alpha1.DiskPVCName, so this asserts
+// the pattern the source actually receives — including for a name long enough
+// to be truncated, which is where a hand-copied second spelling of the rule
+// would silently return an empty graph instead of an error.
+func TestDatastoreServiceDiskQueriesTheOperatorsClaimName(t *testing.T) {
+	for _, name := range []string{"web", strings.Repeat("a", 70)} {
+		var got DiskUsageRequest
+		svc := newService(nil, nil, sampleAppWithDisk(name, &appv1alpha1.DiskSpec{
+			Name: "data", MountPath: "/var/data", SizeGB: 10,
+		}))
+		svc.DiskUsage = func(_ context.Context, req DiskUsageRequest) ([]MetricSeries, error) {
+			got = req
+			return []MetricSeries{{Labels: map[string]string{"instance": req.PVCPattern}, Unit: unitBytes, Points: []MetricPoint{{Value: 2048}}}}, nil
+		}
+
+		series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+			Kind: DatastoreService, Resource: name, Metric: MetricDisk,
+		})
+		if err != nil || len(series) != 1 || series[0].Points[0].Value != 2048 {
+			t.Fatalf("service disk: %v %+v", err, series)
+		}
+		want := `^` + regexp.QuoteMeta(appv1alpha1.DiskPVCName(name)) + `$`
+		if got.PVCPattern != want {
+			t.Errorf("pattern for %q: got %q, want %q", name, got.PVCPattern, want)
+		}
+		// No ordinal suffix: a disk-bearing service is capped at one instance,
+		// so there is exactly one claim (unlike a datastore's `-\d+`).
+		if strings.Contains(got.PVCPattern, `\d`) {
+			t.Errorf("service disk pattern should name one claim, got %q", got.PVCPattern)
+		}
+		if got.Resource != name {
+			t.Errorf("source should receive the app name, got %q", got.Resource)
+		}
+	}
+}
+
+// A diskless service is not an error — the Disk tab asks for the graph before
+// it knows whether a disk exists, and a 4xx there would render as a failure
+// rather than "no disk yet".
+func TestDatastoreServiceWithoutADiskReportsNoSeries(t *testing.T) {
+	svc := newService(nil, nil, sampleAppWithDisk("web", nil))
+	svc.DiskUsage = func(context.Context, DiskUsageRequest) ([]MetricSeries, error) {
+		t.Fatal("a service with no disk should never reach the PVC source")
+		return nil, nil
+	}
+	series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+		Kind: DatastoreService, Resource: "web", Metric: MetricDisk,
+	})
+	if err != nil || series != nil {
+		t.Fatalf("diskless service => (nil, nil), got %v %+v", err, series)
+	}
+}
+
+// A service has no datastore process, so the datastore-process metrics are a
+// caller error rather than an empty answer.
+func TestDatastoreServiceRejectsNonDiskMetrics(t *testing.T) {
+	svc := newService(nil, nil, sampleAppWithDisk("web", &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}))
+	for _, m := range []string{MetricDBConnections, MetricReplicationLag, MetricKVMemory, MetricKVConnections} {
+		if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+			Kind: DatastoreService, Resource: "web", Metric: m,
+		}); err == nil {
+			t.Errorf("%s on a service resource should error", m)
+		}
+	}
+}
+
+// An unknown service is NotFound, not an empty graph — the same shape the
+// Database path returns, so the dashboard's error handling is uniform.
+func TestDatastoreServiceUnknownResourceIsNotFound(t *testing.T) {
+	svc := newService(nil, nil, sampleAppWithDisk("web", nil))
+	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+		Kind: DatastoreService, Resource: "nope", Metric: MetricDisk,
+	}); err != core.ErrNotFound {
+		t.Errorf("unknown service => ErrNotFound, got %v", err)
 	}
 }

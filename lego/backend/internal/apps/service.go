@@ -1450,6 +1450,12 @@ func readyCurrentAppPod(pod *corev1.Pod, activeImage, activeRevision string) boo
 // first canonical (spec.host); only a web_service is additionally exposed at the
 // platform hostname <name>.<BEX_BASE_DOMAIN>.
 type CreateRequest struct {
+	// Disk attaches a persistent volume at create time — the Blueprint path's
+	// only way in, since render.yaml declares a disk inline with its service.
+	// nil means no disk is being declared, which on a sync PRESERVES whatever
+	// the service already has (ADR082 D7).
+	Disk *ServiceDiskView `json:"disk,omitempty"`
+
 	// OwnerID is the workspace to create the service IN — Render's `ownerId`
 	// (w6/m14). Empty means the caller's default workspace (their oldest
 	// membership), so a single-workspace client never has to say it; a workspace
@@ -2141,6 +2147,13 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	// A Blueprint declares a disk inline with its service, so eligibility is
+	// checked here rather than on a later attach — there is no moment when the
+	// service exists without it.
+	disk, err := validateCreateDisk(svcType, tier, replicas, req.Disk)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
 	runtime, builder, err := resolveBuildStrategy(req)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -2192,6 +2205,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Replicas:        replicas,
 		Tier:            tier,
 		HealthCheckPath: req.HealthCheckPath,
+		Disk:            disk,
 		MaxShutdownDelaySeconds: clonePtr(
 			req.MaxShutdownDelaySeconds,
 		),

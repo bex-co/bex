@@ -71,7 +71,7 @@ var datastoreMetricNames = map[string]string{
 var datastoreMetricsQueryInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "DatastoreMetricsQueryInput",
 	Fields: graphql.InputObjectConfigFieldMap{
-		"kind":       &graphql.InputObjectFieldConfig{Type: graphql.String}, // DATABASE | KEYVALUE; default DATABASE
+		"kind":       &graphql.InputObjectFieldConfig{Type: graphql.String}, // DATABASE | KEYVALUE | SERVICE; default DATABASE
 		"resource":   &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 		"name":       &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 		"start":      &graphql.InputObjectFieldConfig{Type: graphql.String},

@@ -48,7 +48,10 @@ export const DATASTORE_METRIC_IDS = [
 
 export type DatastoreMetricId = (typeof DATASTORE_METRIC_IDS)[number];
 
-export type DatastoreKind = "database" | "keyvalue";
+// "service" reads the persistent disk attached to a service (ADR082 D6) —
+// only `disk`/`disk_capacity` apply to it, since a service has no datastore
+// process. It rides the datastore verb because what it measures is a PVC.
+export type DatastoreKind = "database" | "keyvalue" | "service";
 
 // Mirrors lego/backend/internal/metrics/graphql.go's datastoreMetricNames.
 export const RENDER_DATASTORE_METRIC_NAMES: Record<DatastoreMetricId, string> =

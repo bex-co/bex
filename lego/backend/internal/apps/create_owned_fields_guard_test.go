@@ -60,6 +60,13 @@ func TestCreateOwnedSpecFieldParity(t *testing.T) {
 			// time; applyCreateToSpec leaves spec.autoscaling alone (later
 			// changes belong to SetAutoscaling / the Blueprint scaling policy).
 			"Autoscaling": "set at create only, preserved on the upsert path",
+			// Same shape, and for a sharper reason: applyCreateToSpec is the
+			// blunt fields-less upsert, so propagating a disk there would let a
+			// re-apply that simply omitted the block detach a live volume, or
+			// silently resize one. The field-aware Blueprint path
+			// (ApplyBlueprintServiceSpec) owns later changes and refuses a
+			// shrink explicitly — docs/ADR082-persistent-disks.md D7.
+			"Disk": "set at create only, preserved on the upsert path (detaching a volume must never be implicit)",
 		})
 
 	assertFieldSetsMatch(t, "specFromCreate", fromCreate,
@@ -172,6 +179,18 @@ func createProbeRequests() []CreateRequest {
 			PublishPath: "dist",
 			Routes:      []StaticRouteView{{Type: "redirect", Source: "/old", Destination: "/new"}},
 			Headers:     []StaticHeaderView{{Path: "/", Name: "X-Probe", Value: "1"}},
+		},
+		{
+			// A disk cannot ride the maximal web probe: it forbids more than
+			// one instance, which that request deliberately exercises. Its own
+			// probe keeps the field covered on both surfaces
+			// (docs/ADR082-persistent-disks.md D7).
+			Name:     "probe-disk",
+			Type:     appv1alpha1.TypeWebService,
+			Image:    "nginx:1.27",
+			Plan:     "starter",
+			Replicas: 1,
+			Disk:     &ServiceDiskView{Name: "data", MountPath: "/var/data", SizeGB: 25},
 		},
 	}
 }

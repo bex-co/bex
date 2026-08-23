@@ -226,3 +226,42 @@ func TestServiceViewCarriesTheDisk(t *testing.T) {
 		t.Fatalf("service view disk = %+v, want the attached disk", view.Disk)
 	}
 }
+
+// Render's schema nests the attached disk inside serviceDetails (its
+// `serviceDisk`), so a Render client reads serviceDetails.disk. bex exposed it
+// only on the GraphQL sibling view until the w1/m86 parity audit: REST and MCP
+// both render through renderService, which knew nothing about disks, so every
+// Render-shaped client saw a diskless service no matter what was attached.
+func TestRenderedServiceDetailsCarryTheDisk(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	if _, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10); err != nil {
+		t.Fatalf("AddDisk: %v", err)
+	}
+	view, err := svc.Get(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	details := toRenderService(view).ServiceDetails
+	disk, ok := details["disk"].(map[string]any)
+	if !ok {
+		t.Fatalf("serviceDetails.disk absent; a Render client reads it there. got keys %v", details)
+	}
+	if disk["mountPath"] != "/var/data" || disk["sizeGB"] != int32(10) || disk["name"] != "data" {
+		t.Errorf("serviceDetails.disk = %+v, want the attached disk's three Render fields", disk)
+	}
+}
+
+// A diskless service must OMIT the key rather than carry a null or a zero
+// disk — every other optional serviceDetails field behaves that way, and a
+// present-but-empty disk would read as "there is one, sized 0".
+func TestRenderedServiceDetailsOmitDiskWhenThereIsNone(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	view, err := svc.Get(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if _, present := toRenderService(view).ServiceDetails["disk"]; present {
+		t.Error("serviceDetails.disk present on a diskless service")
+	}
+}
