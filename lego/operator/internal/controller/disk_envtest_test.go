@@ -19,6 +19,7 @@ package controller
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -612,6 +613,61 @@ var _ = Describe("Persistent disk restore", func() {
 		Expect(restoring).To(BeFalse())
 	})
 
+	// Found by the w1/m85 cluster drill: the snapshot Jobs' pods carry the same
+	// app label as the service's own, and a completed backup pod lingers for
+	// history — so a "are the pods gone?" check by label reported the service as
+	// still running forever, and the restore never started.
+	It("is not blocked by a finished backup pod wearing the app's label", func() {
+		reconciler, app := newRestoreApp("restore-jobpod")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+
+		leftover := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "dskbak-" + app.Name + "-leftover", Namespace: app.Namespace,
+				Labels: diskBackupLabels(app),
+			},
+			Spec: corev1.PodSpec{
+				RestartPolicy: corev1.RestartPolicyNever,
+				Containers:    []corev1.Container{{Name: "snapshot", Image: "bex:test"}},
+			},
+		}
+		Expect(k8sClient.Create(ctx, leftover)).To(Succeed())
+		defer func() { Expect(k8sClient.Delete(ctx, leftover)).To(Succeed()) }()
+
+		free, err := reconciler.diskDetachedFromService(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(free).To(BeTrue(), "a finished snapshot pod must not count as the service holding its volume")
+
+		_, err = reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		_, err = getRestoreJob(app)
+		Expect(err).NotTo(HaveOccurred(), "the restore must start")
+	})
+
+	It("waits while the service still has pods", func() {
+		reconciler, app := newRestoreApp("restore-waits")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{labelApp: app.Name}},
+					Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "nginx:1"}}},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, dep)).To(Succeed())
+		defer func() { Expect(k8sClient.Delete(ctx, dep)).To(Succeed()) }()
+		dep.Status.Replicas = 1
+		Expect(k8sClient.Status().Update(ctx, dep)).To(Succeed())
+
+		free, err := reconciler.diskDetachedFromService(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(free).To(BeFalse(), "the volume is still attached to a running service")
+	})
+
 	It("does nothing when no restore is requested", func() {
 		reconciler, app := newRestoreApp("restore-none")
 		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
@@ -640,5 +696,46 @@ var _ = Describe("Persistent disk restore", func() {
 		condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
 		Expect(condition).NotTo(BeNil())
 		Expect(condition.Reason).To(Equal("SnapshotStoreUnavailable"))
+	})
+})
+
+// The Job runs bex's own image, resolved from the operator's Pod. When that
+// cannot be resolved the CronJob would be rejected on every pass — an error
+// loop that never says snapshots are not running. Found by the w1/m85 drill on
+// a cluster whose operator Deployment predates POD_NAME.
+var _ = Describe("Persistent disk snapshots without a resolvable image", func() {
+	It("says snapshots are not scheduled instead of looping on an invalid CronJob", func() {
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "snap-noimage", Namespace: "default",
+				Labels:      map[string]string{"app.bex.co/workspace": "tea-snap"},
+				Annotations: map[string]string{annotDiskProvisioned: diskProvisionedMarker},
+			},
+			Spec: appv1alpha1.AppSpec{
+				Image: "nginx:1", Tier: "starter",
+				Disk: &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10},
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+
+		reconciler := &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(),
+			DiskSnapshots: DiskSnapshotStore{
+				Endpoint: "https://s3.example.invalid", Bucket: "b", S3Secret: "s",
+				AgePublicKey: "age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqsxfa9d",
+			},
+			BackupHelperImage: "", // unresolvable
+		}
+		Expect(reconciler.reconcileDiskBackup(ctx, app)).To(Succeed())
+
+		err := k8sClient.Get(ctx, client.ObjectKey{
+			Namespace: app.Namespace, Name: diskBackupName(app.Name),
+		}, &batchv1.CronJob{})
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "an imageless CronJob would be rejected forever")
+
+		condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+		Expect(condition).NotTo(BeNil())
+		Expect(condition.Reason).To(Equal("SnapshotImageUnresolved"))
 	})
 })

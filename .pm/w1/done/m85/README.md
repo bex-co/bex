@@ -1,6 +1,6 @@
 # w1 · m85 — Persistent disks 3/4: daily snapshots + restore
 
-**Worker:** worker1 **Goal:** Render's disk-snapshot semantics on a substrate with no block snapshots — nightly file-level age-encrypted backups to object storage with 7-day retention, a Render-shaped snapshot list with 24 h keys, and a full-disk restore verb that restarts the service — ADR082 D5. **Status:** todo (t001–t006 done; t007 closeout holds on the in-cluster drill)
+**Worker:** worker1 **Goal:** Render's disk-snapshot semantics on a substrate with no block snapshots — nightly file-level age-encrypted backups to object storage with 7-day retention, a Render-shaped snapshot list with 24 h keys, and a full-disk restore verb that restarts the service — ADR082 D5. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity check (snapshot routes/shapes/warnings) — **DONE** | 30m | t003       |
 | t005 | Simplify pass over the changed code — **DONE** | 30m | t004       |
 | t006 | Test coverage: backup/restore round-trip + key expiry — **DONE** | 45m | t005       |
-| t007 | Closeout                                                 | 15m | t006       |
+| t007 | Closeout — **DONE**                                      | 15m | t006       |
 
 ## Definition of done
 
@@ -32,9 +32,47 @@ A disk-bearing App gets a nightly backup Job (same-node when the pod is live) th
 - **The operator's restore order is forced by the volume and pinned in envtest**: scale to zero → wait for the pods to go → Job mounts the freed volume *writable* → only a SUCCEEDED Job records the snapshot and releases the service. A FAILED restore deliberately leaves the service down with the request still pending, because the alternative is serving a half-extracted filesystem. `backoffLimit: 0` — re-running a destructive restore automatically would repeat the wipe. With no decrypt key configured the Job is never created at all, since it could only fail *after* wiping.
 - **The decrypt key never reaches bex-api.** It is mounted by reference into the restore Job alone. bex-api only lists objects and signs a 24-hour *reference* to one with the shell-ticket secret — it cannot read a snapshot's contents.
 
-## Remaining
+## The drill (t007, 2026-08-23) — RUN, and it found three bugs
 
-- **t007 only: the in-cluster drill.** Everything m85 builds is implemented, unit/envtest/real-S3 verified, and lint-clean. What has not been demonstrated is the orchestration on a live cluster: operator deployed, a real PVC, a real pod scale-down, a real Job run — i.e. the DoD's literal `write file A → snapshot → write file B → restore → A present, B gone, service back up`. That needs the mock cluster running the operator against a reachable S3 endpoint. The MinIO container this run used (`bex-test-minio`, port 59000) plus `BEX_DISK_SNAPSHOT_*` on the operator Deployment is the shortest path to it.
+Run on the CAPD mock cluster with the operator built from this branch, MinIO
+deployed in-cluster as the object store, and a `background_worker` App carrying
+a 1 GB `local-path` disk. The DoD's exact sequence:
+
+```
+write /var/data/a.txt + nested/deep.txt   → CronJob-triggered backup Job
+  → "disk-snapshot: wrote tea-drill/disk-drill/2026-08-23T21:40:34Z.tar.gz.age"
+write /var/data/b.txt, delete a.txt and nested/
+  → spec.disk.restoreSnapshot = <that object>
+  → DiskRestorePending (stopping the service) → DiskRestoreRunning → Job gone, annotation recorded
+  → service back up, DiskReady: "1GB disk mounted at /var/data"
+RESULT: a.txt restored with its content, nested/deep.txt restored, b.txt ABSENT.
+```
+
+Also verified live: the PVC binds RWO at the requested size, the Deployment is
+`Recreate`, and deleting the App garbage-collects the PVC through its owner
+reference.
+
+**Three real bugs the drill found that no unit or envtest had:**
+
+1. **PVC create/delete RBAC was never applied to a running cluster.** The
+   deployed ClusterRole had exactly `get/list/patch/update/watch` — the
+   m83 regeneration added `create`/`delete`, and the first reconcile failed with
+   `persistentvolumeclaims is forbidden`. Nothing in code to fix; it confirms the
+   m83 RBAC change is load-bearing and must ship before any cluster gets disks.
+2. **An unresolvable helper image produced an invalid CronJob forever.** With
+   `BackupHelperImage` empty (the cluster's operator Deployment predates
+   `POD_NAME`), the operator built a CronJob with no image, the API server
+   rejected it, and the reconcile error-looped while never saying snapshots were
+   not running. Now fails closed with `SnapshotImageUnresolved`, and restore
+   refuses to start at all — it could only fail *after* wiping the volume.
+3. **A finished backup pod blocked every restore.** The "is the volume free?"
+   check listed pods by app label, but the snapshot Jobs' pods carry that same
+   label and linger for history — so once any backup had run, the check reported
+   the service as still running and the restore never started. It now reads the
+   Deployment's own `status.replicas`.
+
+Each is pinned by a regression test (`SnapshotImageUnresolved`; the leftover
+snapshot pod; and a Deployment with live replicas still blocking).
 
 ## Source + Goal linkage
 
