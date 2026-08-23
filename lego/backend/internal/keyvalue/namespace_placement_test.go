@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -63,5 +64,37 @@ func TestCreateKeyValueWithoutAWorkspaceStaysInTheSharedNamespace(t *testing.T) 
 	var kv appv1alpha1.KeyValue
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: svc.Namespace, Name: view.ID}, &kv); err != nil {
 		t.Fatalf("unbound create did not land in the shared namespace %q: %v", svc.Namespace, err)
+	}
+}
+
+// TestListKeyValuesCollapsesCutoverTwins is the Key Value sibling of
+// postgres.TestListPostgresCollapsesCutoverTwins — same ADR043 D8 cutover
+// window, same contract: the label-scoped list returns both copies of a
+// mid-cutover twin, and the view must show the id once, from the live `<ws>`
+// copy.
+func TestListKeyValuesCollapsesCutoverTwins(t *testing.T) {
+	twin := func(namespace, plan string) *appv1alpha1.KeyValue {
+		return &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "red-x",
+				Namespace: namespace,
+				Labels:    map[string]string{core.LabelTenant: "tea-a", core.LabelWorkspace: "tea-a"},
+			},
+			Spec: appv1alpha1.KeyValueSpec{Name: "forumkv", Plan: plan},
+		}
+	}
+	svc, _ := newService(twin("default", "free"), twin("tea-a", "standard"))
+	svc.Authz = &fakeChecker{allow: true}
+
+	list, err := svc.ListKeyValues(ctxAs("user-a"), "tea-a")
+	if err != nil {
+		t.Fatalf("ListKeyValues: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("ListKeyValues returned %d rows, want 1 — the stale shared-namespace twin leaked into the view", len(list))
+	}
+	if list[0].ID != "red-x" || list[0].Plan != "standard" {
+		t.Errorf("ListKeyValues kept id %q with plan %q, want red-x with the live tea-a copy's plan (standard)",
+			list[0].ID, list[0].Plan)
 	}
 }

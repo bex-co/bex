@@ -322,9 +322,13 @@ func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValue
 	if err := s.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
-	out := make([]KeyValueView, 0, len(list.Items))
-	for i := range list.Items {
-		out = append(out, s.view(&list.Items[i]))
+	// The cluster-wide label list returns BOTH copies of a mid-cutover key-value
+	// store (the live `<ws>` one and its stale shared-namespace twin); collapse
+	// them so the id appears once, from the live copy.
+	items := core.DedupKeyValueTwins(list.Items)
+	out := make([]KeyValueView, 0, len(items))
+	for i := range items {
+		out = append(out, s.view(&items[i]))
 	}
 	return out, nil
 }
