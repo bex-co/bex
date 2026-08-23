@@ -517,6 +517,17 @@ export const en = {
     logoutConfirmMessage:
       "You will need to sign in again to supervise your workspaces.",
   },
+  settings: {
+    title: "Settings",
+    open: "Open settings",
+    close: "Close settings",
+    colorScheme: "Color scheme",
+    themeSystem: "System",
+    themeLight: "Light",
+    themeDark: "Dark",
+    language: "Language",
+    version: "Version %{version}",
+  },
   deepLink: {
     invalidTitle: "Invalid bex link",
     invalidBody: "This link does not contain a valid bex resource identifier.",

@@ -279,7 +279,7 @@ export function AppDrawer({ open, onOpen, onClose, children }: AppDrawerProps) {
             <Text style={styles.brandText}>bex</Text>
           </View>
           <WorkspaceList onSelected={requestClose} />
-          <PersonalFooter onRequestClose={requestClose} />
+          <PersonalFooter />
         </View>
       ) : null}
 
