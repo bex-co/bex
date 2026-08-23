@@ -22,7 +22,7 @@ function NotificationsBellButton() {
       accessibilityRole="button"
       accessibilityLabel={t("notifications.title")}
       onPress={() => router.navigate("/notifications")}
-      hitSlop={8}
+      hitSlop={12}
       activeOpacity={0.7}
     >
       <View>
@@ -80,10 +80,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: gutter,
-    paddingVertical: space.xs,
+    paddingVertical: space.sm,
+    minHeight: 48,
   },
   side: {
-    width: 80,
+    minWidth: 72,
+    maxWidth: 96,
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
   right: { justifyContent: "flex-end" },
   title: {
     flex: 1,
-    fontSize: fontSizes.xl,
+    fontSize: fontSizes.lg,
     fontWeight: fontWeights.medium,
     textAlign: "center",
   },

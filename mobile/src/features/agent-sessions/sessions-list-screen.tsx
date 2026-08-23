@@ -22,13 +22,7 @@ import {
 } from "@/common/hooks/use-recovery";
 import { recoveryAvailable } from "@/common/hooks/recovery-coordinator";
 import { formatTimestamp } from "@/common/format-util";
-import {
-  fontSizes,
-  fontWeights,
-  gutter,
-  space,
-  useTheme,
-} from "@/common/theme";
+import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import { MobileAgentSessionsDocument } from "@/generated-graphql";
 import { orderSessions, sessionPhaseView, type SessionTone } from "./lifecycle";
 import { SessionComposer } from "./composer/session-composer-screen";
@@ -86,7 +80,7 @@ export function SessionsListScreen() {
               accessibilityRole="button"
               accessibilityLabel={t("agentSessions.composer.new")}
               onPress={() => setComposing(true)}
-              hitSlop={8}
+              hitSlop={12}
             >
               <Ionicons name="add" size={24} color={theme.primary} />
             </Pressable>
@@ -185,7 +179,7 @@ export function SessionsListScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  content: { padding: gutter, gap: space.md },
+  content: { gap: space.md },
   notice: { fontSize: fontSizes.sm, lineHeight: fontSizes.sm * 1.5 },
   emptyTitle: { fontSize: fontSizes.md, fontWeight: fontWeights.medium },
   emptyBody: {

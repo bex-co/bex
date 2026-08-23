@@ -13,13 +13,7 @@ import {
 } from "@/components/safe-action";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatTimestamp } from "@/common/format-util";
-import {
-  fontSizes,
-  fontWeights,
-  gutter,
-  space,
-  useTheme,
-} from "@/common/theme";
+import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import {
   MobileAgentSessionDocument,
   MobileCancelAgentSessionDocument,
@@ -167,7 +161,7 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { padding: gutter, gap: space.md },
+  content: { gap: space.md },
   row: {
     flexDirection: "row",
     alignItems: "center",

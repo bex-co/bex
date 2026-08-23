@@ -9,7 +9,7 @@ import {
   type MobileActionOption,
 } from "@/components/safe-action";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { fonts, space, useTheme } from "@/common/theme";
+import { fontSizes, fonts, space, useTheme } from "@/common/theme";
 import { StatusBadge } from "./status-badge";
 
 export function DatastoreDetailLayout({
@@ -100,15 +100,21 @@ export function DatastoreDetailLayout({
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { paddingTop: space.lg, paddingBottom: space.xxl },
+  content: { gap: space.md },
   notice: { borderWidth: 1, borderRadius: space.sm, padding: space.md },
   loading: { minHeight: 120 },
   detail: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     gap: space.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingVertical: space.sm,
   },
-  detailValue: { flex: 1, textAlign: "right" },
+  detailValue: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: fontSizes.sm,
+    flexShrink: 1,
+  },
 });

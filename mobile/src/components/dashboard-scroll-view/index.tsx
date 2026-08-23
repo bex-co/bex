@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ViewStyle,
 } from "react-native";
-import { gutter, useTheme } from "@/common/theme";
+import { gutter, space, useTheme } from "@/common/theme";
 
 const styles = StyleSheet.create({
   content: {
@@ -14,6 +14,9 @@ const styles = StyleSheet.create({
     // Dashboard cards bring their own bottom margin, so spacing between them
     // stays uniform without extra spacers.
     paddingHorizontal: gutter,
+    paddingTop: space.md,
+    paddingBottom: space.xxl,
+    gap: space.md,
     // Fill the frame even when the cards are short, so the whole area stays
     // inside the scrollable content and pull-to-refresh works everywhere.
     flexGrow: 1,
