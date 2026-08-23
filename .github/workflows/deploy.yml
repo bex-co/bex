@@ -73,7 +73,7 @@ jobs:
   # Dependabot (w1/006 — dependency CVEs): this catches secrets in the repo itself.
   secret-scan:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -121,7 +121,7 @@ jobs:
   # never cancelled; only a not-yet-started one is skipped. ---
   check-supersession:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     outputs:
       superseded: ${{ steps.check.outputs.superseded }}
     steps:
@@ -152,7 +152,7 @@ jobs:
     # environments + branch policies (the infra.yml `production-infra` pattern),
     # which are the authoritative control but live in repo settings, not YAML.
     if: needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     # codex-security round-19 #2: the comment above named the infra.yml
     # `production-infra` pattern as authoritative but this job never actually
     # carried an `environment:` — unlike infra.yml/snapshot.yml/cli-release.yml,
@@ -167,6 +167,9 @@ jobs:
     environment: production-deploy
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
 
       # --- 1. build + push the operator image ---
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0

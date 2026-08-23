@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   freshness:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

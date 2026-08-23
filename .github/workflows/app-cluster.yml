@@ -47,7 +47,7 @@ jobs:
     # skipped before any secret is touched. Defense in depth alongside GitHub-side
     # protected environments (see infra.yml).
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     # codex-security round-19 #1: this job's own comments named "GitHub-side
     # protected environments (see infra.yml)" as the authoritative control, but
     # unlike infra.yml's `terraform` job it carried no `environment:` — so the
@@ -58,6 +58,12 @@ jobs:
     environment: production-cluster
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.19.0
 
       # --- fetch the cluster's own kubeconfig via a CP node (self-managed, w1/m19.1) ---
       - name: fetch app cluster kubeconfig (via a CP node)

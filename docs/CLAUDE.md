@@ -6,7 +6,7 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 
 - Each `ADR*.md` is self-contained; read the ADR directly for design + status.
 - Render-parity ledgers ([ADR018](ADR018-render-parity.md), [cli-compatibility-checklist.md](cli-compatibility-checklist.md)) are evidence-backed.
-- Security reviews form a chain ADR028 → ADR080 (see § Security lineage); read the latest for current residual.
+- Security reviews form a chain ADR028 → ADR083 (see § Security lineage); read the latest for current residual.
 
 ## Catalog — by topic
 
@@ -101,7 +101,7 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 
 ### Security review lineage (ADR028 → round 19)
 
-Each entry is a codex-security triage; earlier rounds' residuals are re-confirmed in later ones. Read the latest ([ADR080](ADR080-security-review-round19.md)) for current posture.
+Each entry is a codex-security triage; earlier rounds' residuals are re-confirmed in later ones. Read the latest ([ADR083](ADR083-security-review-round20.md)) for current posture.
 
 - [ADR081-security-review-harness-glm.md](ADR081-security-review-harness-glm.md) — harness architecture (proposed): reuse codex-security with a GLM model if possible, else mirror it on GLM 5.2; one harness at a time
 - [ADR028-security-review.md](ADR028-security-review.md) — round 0 audit (evidence-backed)
@@ -123,5 +123,6 @@ Each entry is a codex-security triage; earlier rounds' residuals are re-confirme
 - [ADR077-security-review-round17.md](ADR077-security-review-round17.md) — round 17: 15 findings, 11 fixed
 - [ADR079-security-review-round18.md](ADR079-security-review-round18.md) — round 18: 10 findings (1 crit), 8 fixed
 - [ADR080-security-review-round19.md](ADR080-security-review-round19.md) — round 19: 8 findings, 7 fixed (CI env gates, secrets CAS, metrics scoping)
+- [ADR083-security-review-round20.md](ADR083-security-review-round20.md) — round 20: self-hosted CI runner risks accepted (persistent hosts, shared pool, fork-PR policy)
 
 Other docs: [PRFAQ001-bex-v1-hosting.md](PRFAQ001-bex-v1-hosting.md), [assets/](assets/) media.
