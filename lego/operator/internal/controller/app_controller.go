@@ -335,6 +335,7 @@ type AppReconciler struct {
 // Role, not this ClusterRole, because the kustomize namePrefix transform would
 // rewrite the namespace field to bex-system).
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 // Persistent service disks (docs/ADR082-persistent-disks.md): the App controller
 // creates and grows the per-App PVC itself, and deletes it when the disk is

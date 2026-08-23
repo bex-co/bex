@@ -74,6 +74,14 @@ var _ = Describe("Namespace-scoped Secret cache", func() {
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
+					// rolloutQuotaBlockMessage uses the shared cache to list
+					// ReplicaSets. Omitting this read grant prevents that informer
+					// from syncing and stalls every App reconcile worker.
+					APIGroups: []string{appsv1.GroupName},
+					Resources: []string{"replicasets"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
 					APIGroups: []string{networkingv1.GroupName},
 					Resources: []string{"ingresses", "networkpolicies"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},

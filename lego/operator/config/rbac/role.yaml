@@ -81,6 +81,14 @@ rules:
   - update
   - watch
 - apiGroups:
+  - apps
+  resources:
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - barmancloud.cnpg.io
   resources:
   - objectstores
