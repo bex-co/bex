@@ -102,7 +102,7 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 
 Each entry is a codex-security triage; earlier rounds' residuals are re-confirmed in later ones. Read the latest ([ADR080](ADR080-security-review-round19.md)) for current posture.
 
-- [ADR081-security-review-harness-glm.md](ADR081-security-review-harness-glm.md) — harness architecture (proposed): codex-security mirrored component-for-component on GLM 5.2
+- [ADR081-security-review-harness-glm.md](ADR081-security-review-harness-glm.md) — harness architecture (proposed): reuse codex-security with a GLM model if possible, else mirror it on GLM 5.2; one harness at a time
 - [ADR028-security-review.md](ADR028-security-review.md) — round 0 audit (evidence-backed)
 - [ADR045-security-review-round3.md](ADR045-security-review-round3.md) — round 3: host-hijack fix
 - [ADR055-security-review-round4.md](ADR055-security-review-round4.md) — round 4: 12 findings, 6 fixed (F1/F4/F5/F8/F11/F12)
