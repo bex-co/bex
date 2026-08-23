@@ -159,7 +159,7 @@ export function DeployLogPanel({
     body = (
       <EmptyState
         iconName="ScrollText"
-        title={t("logs.emptyTitle")}
+        title={t("logs.emptyFilteredTitle")}
         description={t("logs.emptyFilteredBody")}
       />
     );

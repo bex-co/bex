@@ -77,6 +77,28 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     expect(screen.getByText("hello from the app")).toBeInTheDocument();
   });
 
+  it("shows filtered empty-state copy when a filter yields zero results", () => {
+    render(
+      <LogViewer
+        resource="web"
+        initialFilters={{ ...EMPTY_LOG_FILTERS, text: "zzz_no_such_term" }}
+      />,
+    );
+    expect(screen.getByText("No matching logs")).toBeInTheDocument();
+    expect(
+      screen.getByText("No logs match these filters."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+  });
+
+  it("shows unfiltered empty-state copy when there are no logs and no filter", () => {
+    render(<LogViewer resource="web" />);
+    expect(screen.getByText("No logs yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("This service hasn't produced any logs yet."),
+    ).toBeInTheDocument();
+  });
+
   it("passes the selected relative range as concrete history-query bounds", () => {
     const range = RANGE_PRESETS.find((preset) => preset.id === "4h")!;
     render(<LogViewer resource="web" range={range} />);

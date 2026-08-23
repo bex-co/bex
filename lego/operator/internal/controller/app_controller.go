@@ -1613,7 +1613,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}
 
 	if app.Spec.Suspended || autoHibernating {
-		return r.parkKubernetes(ctx, app, image, hosts)
+		return r.parkKubernetes(ctx, app, image, hosts, autoHibernating)
 	}
 
 	if res, halt, err := r.reportKubernetesRunning(ctx, app, dep, image, hosts, replicas, port); halt || err != nil {
@@ -1652,14 +1652,14 @@ func rolloutPending(app *appv1alpha1.App, image string) bool {
 // all kept — resume is just scaling back. Report Hibernated and stop.
 // Auto-hibernated: idle free-tier app scaled to 0, Ingress now points at the
 // activator. The next inbound request will wake it; no further requeue needed.
-func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App, image string, hosts []string) (ctrl.Result, error) {
+func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App, image string, hosts []string, autoHibernating bool) (ctrl.Result, error) {
 	reason, message := "Suspended", "suspended (scaled to 0; config, host and certs kept)"
-	if !app.Spec.Suspended {
+	if autoHibernating {
 		reason = "AutoHibernated"
 		message = fmt.Sprintf("idle ≥%ds on free tier; wakes on next request", app.Spec.IdleTTLSeconds)
 	}
 	res, err := r.hibernated(ctx, app, image, hosts, reason, message)
-	if err == nil && reason == "AutoHibernated" {
+	if err == nil && autoHibernating {
 		logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", app.Spec.IdleTTLSeconds)
 	}
 	return res, err

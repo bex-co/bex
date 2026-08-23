@@ -20,8 +20,7 @@ import {
 import { mergeLogLines } from "../lib/map";
 import {
   EMPTY_LOG_FILTERS,
-  LOG_TYPE_ALL,
-  STRUCTURED_FILTER_KEYS,
+  hasActiveLogFilters,
   usesStoreOnlyFilters,
   type LogFilters,
 } from "../types";
@@ -150,8 +149,7 @@ export function LogViewer({
     [history.lines, stream.lines],
   );
 
-  const filtered =
-    queryFilters.type !== LOG_TYPE_ALL || hasFieldFilter(queryFilters);
+  const filtered = hasActiveLogFilters(queryFilters);
 
   // One body per state (store-unavailable / error / loading-first / empty /
   // list) — resolved to a single node so the render stays flat.
@@ -180,7 +178,9 @@ export function LogViewer({
     body = (
       <EmptyState
         iconName="ScrollText"
-        title={t("logs.emptyTitle")}
+        title={
+          filtered ? t("logs.emptyFilteredTitle") : t("logs.emptyTitle")
+        }
         description={
           filtered ? t("logs.emptyFilteredBody") : t("logs.emptyBody")
         }
@@ -223,12 +223,6 @@ export function LogViewer({
       {body}
     </div>
   );
-}
-
-// Whether any structured/text field filter (beyond the type dropdown) is set —
-// drives the "no logs match this filter" vs "no logs yet" empty-state copy.
-function hasFieldFilter(f: LogFilters): boolean {
-  return f.text !== "" || STRUCTURED_FILTER_KEYS.some((key) => f[key] !== "");
 }
 
 // The footer under the log list: a live pulse while streaming, a paused note

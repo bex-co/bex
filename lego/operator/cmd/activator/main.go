@@ -132,7 +132,7 @@ func main() {
 }
 
 func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler {
-	wk := newWaker(c)
+	var wakeGroup singleflight.Group
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/healthz" {
 			w.WriteHeader(http.StatusOK)
@@ -155,33 +155,19 @@ func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler
 			return
 		}
 
-		wk.wake(logf.IntoContext(ctx, log), app, host)
+		// Coalesce concurrent wake requests per App so a retry flood issues one
+		// last-active patch + scale-up instead of N.
+		key := app.Namespace + "/" + app.Name
+		_, _, _ = wakeGroup.Do(key, func() (any, error) {
+			wakeApp(logf.IntoContext(ctx, log), c, app, host)
+			return nil, nil
+		})
 		writeWakeResponse(w, r)
 	})
 }
 
-// waker coalesces concurrent wake requests for the same App. Every public request
-// to a sleeping service reaches wake; keying the in-flight patch by App means N
-// simultaneous requests to one hibernated service issue a single last-active
-// patch + scale-up instead of N (finding 5 — the unauthenticated flood otherwise
-// stampedes the API server). The cache hands out a private DeepCopy per request
-// (hostCache.lookup), so the leader mutates only its own copy: no shared-map
-// write, no fatal "concurrent map writes" crash of the single replica.
-type waker struct {
-	client client.Client
-	group  singleflight.Group
-}
-
-func newWaker(c client.Client) *waker { return &waker{client: c} }
-
-func (wk *waker) wake(ctx context.Context, app *appv1alpha1.App, host string) {
-	key := app.Namespace + "/" + app.Name
-	_, _, _ = wk.group.Do(key, func() (any, error) {
-		wakeApp(ctx, wk.client, app, host)
-		return nil, nil
-	})
-}
-
+// wakeApp patches last-active and scales the Deployment to 1 so the operator
+// stops auto-hibernating and the workload can come back.
 func wakeApp(ctx context.Context, c client.Client, app *appv1alpha1.App, host string) {
 	log := logf.FromContext(ctx)
 	// Touch last-active so the operator's shouldAutoHibernate returns false on
@@ -197,11 +183,13 @@ func wakeApp(ctx context.Context, c client.Client, app *appv1alpha1.App, host st
 
 	dep := &appsv1.Deployment{}
 	if err := c.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, dep); err == nil {
-		one := int32(1)
-		depBase := dep.DeepCopy()
-		dep.Spec.Replicas = &one
-		if err := c.Patch(ctx, dep, client.MergeFrom(depBase)); err != nil {
-			log.Error(err, "patching deployment replicas", "app", app.Name)
+		if dep.Spec.Replicas == nil || *dep.Spec.Replicas < 1 {
+			one := int32(1)
+			depBase := dep.DeepCopy()
+			dep.Spec.Replicas = &one
+			if err := c.Patch(ctx, dep, client.MergeFrom(depBase)); err != nil {
+				log.Error(err, "patching deployment replicas", "app", app.Name)
+			}
 		}
 	}
 	log.Info("waking app", "app", app.Name, "host", host)

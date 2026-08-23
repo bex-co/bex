@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // ServiceEventFactType is the closed vocabulary persisted outside deploy and
@@ -366,7 +368,7 @@ func (s *PGStore) LastHealthyTransitionAt(ctx context.Context, appID string) (ti
 // this, a polling reconciler that samples Hibernated -> Deploying -> Running
 // forgets the Hibernated baseline and loses the real service_resumed edge.
 func checkpointServicePhase(previous, observed string) string {
-	if previous == "Hibernated" && observed != "Hibernated" && observed != "Running" {
+	if previous == string(appv1alpha1.PhaseHibernated) && observed != string(appv1alpha1.PhaseHibernated) && observed != string(appv1alpha1.PhaseRunning) {
 		return previous
 	}
 	return observed
@@ -386,10 +388,10 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 	var facts []ServiceEventFact
 	if obs.ServicePhase != previousPhase {
 		switch obs.ServicePhase {
-		case "Hibernated":
+		case string(appv1alpha1.PhaseHibernated):
 			facts = append(facts, makeFact("suspended", EventFactServiceSuspended))
-		case "Running":
-			if previousPhase == "Hibernated" {
+		case string(appv1alpha1.PhaseRunning):
+			if previousPhase == string(appv1alpha1.PhaseHibernated) {
 				facts = append(facts, makeFact("resumed", EventFactServiceResumed))
 			}
 		}

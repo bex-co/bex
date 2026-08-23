@@ -140,6 +140,11 @@ const enLogs: Record<string, TranslationEntry> = {
     description:
       "Empty-state body when a type/text/structured filter yields nothing",
   },
+  "logs.emptyFilteredTitle": {
+    message: "No matching logs",
+    description:
+      "Empty-state title when a type/text/structured filter yields nothing",
+  },
   "logs.errorTitle": {
     message: "Couldn't load logs",
     description: "Error-state title when the logs query fails",
