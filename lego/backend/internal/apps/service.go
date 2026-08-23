@@ -895,9 +895,7 @@ func (s *Service) view(a *appv1alpha1.App) AppView {
 // public URL. Returns "" when no public host is derivable (e.g. the platform
 // subdomain is disabled and no custom host is set, or BEX_BASE_DOMAIN is unset).
 func (s *Service) pendingPublicURL(a *appv1alpha1.App) string {
-	switch effectiveType(a.Spec.Type) {
-	case appv1alpha1.TypeWebService, appv1alpha1.TypeStaticSite:
-	default:
+	if !a.Spec.PubliclyRoutable() {
 		return ""
 	}
 	if hosts := a.Spec.EffectiveHosts(a.Name, s.BaseDomain); len(hosts) > 0 {
@@ -1849,8 +1847,12 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 	}
 	if s.Store != nil && tenantID != "" {
 		row, err := s.Store.CreateApp(ctx, store.App{
-			TenantID:             tenantID,
-			Name:                 req.Name,
+			TenantID: tenantID,
+			Name:     req.Name,
+			// The service type the projector needs to derive spec.expose
+			// (w6/m46 t001). Recorded once here — spec.type is immutable, so
+			// no later write path revisits it.
+			Type:                 a.Spec.Type,
 			Repo:                 req.Repo,
 			Image:                req.Image,
 			RegistryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
@@ -1946,6 +1948,12 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 		return AppView{}, rollbackStoreRow(err)
 	}
 	a.Spec.ExternalRegistryPullSecret = pullSecretName
+	// Every other deploy-opening path stamps this; create was the one that left
+	// the operator to infer the release from whatever metadata generation it
+	// read first — so a write racing its first reconcile made it report a
+	// release the deploy row had never heard of, which reads as a supersede and
+	// closed brand-new deploys canceled (w6/m46 t004).
+	stampReleaseGeneration(a, store.FirstDeployGeneration)
 	resourcemeta.Touch(a, s.Now())
 	if err := s.writeNewApp(ctx, req.Name, a, seed); err != nil {
 		return AppView{}, rollbackStoreRow(err)
@@ -1956,6 +1964,15 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 	v := s.view(a)
 	v.LatestDeployID = firstDeployID
 	return v, nil
+}
+
+// stampReleaseGeneration pins an App's open deploy to the release generation
+// whose work it represents, so the operator adopts that identity instead of
+// inferring one from whatever metadata generation it observes first (see
+// AnnotationReleaseGeneration's own contract).
+func stampReleaseGeneration(a *appv1alpha1.App, generation int64) {
+	metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration,
+		strconv.FormatInt(generation, 10))
 }
 
 // mapServiceCapError translates a per-namespace ResourceQuota rejection of an
@@ -2160,8 +2177,10 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		// A web service and a static site are public: expose them at
 		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom
 		// domain. Every other type opts out (private has no platform host;
-		// worker/cron have no HTTP endpoint at all).
-		Expose: svcType == appv1alpha1.TypeWebService || svcType == appv1alpha1.TypeStaticSite,
+		// worker/cron have no HTTP endpoint at all). On the CRD contract's
+		// helper rather than a second copy of the rule — the projector kept its
+		// own copy and got it wrong (w6/m46 t001).
+		Expose: appv1alpha1.TypePubliclyRoutable(svcType),
 	}
 	spec.SetIPAllowListEntries(core.AllowListToSpec(req.IPAllowList))
 	if err := applyOptionalCreateSpec(&spec, svcType, req); err != nil {
@@ -2209,7 +2228,7 @@ func validateCreateSource(req CreateRequest) error {
 
 // validateTypeSpecificCreate enforces the create fields tied to the service
 // type: the shutdown grace window only applies to types that run continuously;
-// a cron_job needs a schedule; a worker/cron has no ingress, so it can't carry
+// a cron_job needs a schedule; a private/worker/cron has no public ingress, so it can't carry
 // custom domains (same rule the deploy manifest enforces for private
 // services); and a static_site's publish/edge fields are required for it and
 // rejected for every other type.
@@ -2226,8 +2245,11 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 			return fmt.Errorf("%w: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", core.ErrBadRequest)
 		}
 	}
-	if (svcType == appv1alpha1.TypeBackgroundWorker || svcType == appv1alpha1.TypeCronJob) && len(req.Hosts) > 0 {
-		return fmt.Errorf("%w: a %s has no ingress and cannot list domains", core.ErrBadRequest, svcType)
+	// Only a type served at a public host can carry custom domains. This named
+	// background_worker and cron_job explicitly and so let a private_service
+	// through, accepting a domain the platform will never serve (w6/m46 t002).
+	if !appv1alpha1.TypePubliclyRoutable(svcType) && len(req.Hosts) > 0 {
+		return errNoPublicIngress(svcType)
 	}
 	// A static_site needs a publish directory, and its edge rules must be valid.
 	if svcType == appv1alpha1.TypeStaticSite {
@@ -2603,7 +2625,7 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 	}
 	previousGeneration := a.Generation
 	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(previousGeneration+1, 10))
+		stampReleaseGeneration(a, previousGeneration+1)
 		if secretName != "" {
 			a.Spec.CloneSecret = secretName
 		}

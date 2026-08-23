@@ -1594,6 +1594,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Ingress, so the ingress controller (traefik today) stays swappable.
 	hosts := effectiveHosts(app, r.BaseDomain)
 
+	// Belt and braces (w6/m46 t002): EffectiveHosts already drops these, repeated
+	// here at the one place that actually creates the Ingress. A private service
+	// keeps the ClusterIP Service above and nothing else.
+	if !app.Spec.PubliclyRoutable() {
+		hosts = nil
+	}
+
 	r.setPublicRoutingCondition(app, hosts)
 
 	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, port, autoHibernating)
@@ -3316,11 +3323,10 @@ func (r *AppReconciler) rolloutQuotaBlockMessage(ctx context.Context, dep *appsv
 // Events expire (default ~1h) and would be gone long before anyone investigated
 // — a condition persists on the CR for exactly as long as the state does.
 func (r *AppReconciler) setPublicRoutingCondition(app *appv1alpha1.App, hosts []string) {
-	// Only the types that carry a public URL at all. A worker or cron job has no
-	// public route by definition and must never report a routing problem.
-	switch app.Spec.Type {
-	case appv1alpha1.TypeWebService, appv1alpha1.TypeStaticSite, "":
-	default:
+	// Only the types that carry a public URL at all. A worker, cron job, or
+	// private service has no public route by definition and must never report a
+	// routing problem.
+	if !app.Spec.PubliclyRoutable() {
 		meta.RemoveStatusCondition(&app.Status.Conditions, appv1alpha1.ConditionPublicRouting)
 		return
 	}

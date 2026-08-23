@@ -624,6 +624,13 @@ func (s *Service) reservedHost(ownPlatformHost, host string) bool {
 	return s.DashboardHost != "" && host == s.DashboardHost
 }
 
+// errNoPublicIngress rejects a custom domain on a service type the platform
+// never routes publicly. Built in one place so the create path, the add-domain
+// verb, and the Blueprint validator word the same refusal identically.
+func errNoPublicIngress(serviceType string) error {
+	return fmt.Errorf("%w: a %s has no ingress and cannot have custom domains", core.ErrBadRequest, serviceType)
+}
+
 // errDomainInUse is the cross-App collision rejection — Render's "this domain
 // already exists on another site" (core.ErrConflict => 409). Built in one place
 // so the service-level guard and the store-race backstop word it identically.
@@ -848,6 +855,12 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
 		return DomainView{}, false, err
+	}
+	// The create path and the Blueprint path both refuse a domain on a type that
+	// is never served at a public host; this verb did not, so the same unusable
+	// claim could be added a second after the service existed (w6/m46 t002).
+	if !app.Spec.PubliclyRoutable() {
+		return DomainView{}, false, errNoPublicIngress(effectiveType(app.Spec.Type))
 	}
 	hostname, err = canonicalHostname(hostname)
 	if err != nil {

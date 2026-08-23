@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 /**
  * Baseline cadence for keeping resource state fresh across the dashboard.
  * Resource lists and detail pages poll at this interval so state changed
@@ -28,6 +30,33 @@ export function eagerRefetch(
 ): void {
   startPolling(CONVERGING_POLL_INTERVAL_MS);
   void refetch();
+}
+
+/**
+ * Poll a resource at the converging cadence while it is still moving, and at
+ * the baseline once it settles — the shape every live-resource hook in the
+ * dashboard wants, so it lives here once rather than being re-derived per
+ * feature. Pass Apollo's `startPolling`/`stopPolling` straight through; both
+ * are stable across renders, so the timer is only ever reset when `converging`
+ * actually flips.
+ *
+ * `enabled: false` registers no timer at all — for a secondary consumer reading
+ * the same document as a designated polling owner, where a second timer would
+ * drift into its own round trips instead of deduplicating.
+ */
+export function useConvergingPoll(
+  startPolling: (intervalMs: number) => void,
+  stopPolling: () => void,
+  converging: boolean,
+  enabled = true,
+): void {
+  useEffect(() => {
+    if (!enabled) return;
+    startPolling(
+      converging ? CONVERGING_POLL_INTERVAL_MS : RESOURCE_POLL_INTERVAL_MS,
+    );
+    return () => stopPolling();
+  }, [enabled, converging, startPolling, stopPolling]);
 }
 
 /**

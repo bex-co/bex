@@ -1,11 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { KeyValueDocument } from "@/graphql/definitions";
-import {
-  CONVERGING_POLL_INTERVAL_MS,
-  RESOURCE_POLL_INTERVAL_MS,
-  eagerRefetch,
-} from "@/common/lib/polling";
+import { eagerRefetch, useConvergingPoll } from "@/common/lib/polling";
 import { toKeyValueView, isConverging } from "@/features/keyvalue/lib/status";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
@@ -38,13 +34,11 @@ export function useKeyValue(id: string): UseKeyValueResult {
   // Poll fast until we know the store is settled: while it hasn't loaded yet,
   // or while it's still creating. Once available/unavailable, fall back to the
   // baseline cadence so out-of-band changes still show up.
-  const converging = keyValue ? isConverging(keyValue) : true;
-  useEffect(() => {
-    startPolling(
-      converging ? CONVERGING_POLL_INTERVAL_MS : RESOURCE_POLL_INTERVAL_MS,
-    );
-    return () => stopPolling();
-  }, [converging, startPolling, stopPolling]);
+  useConvergingPoll(
+    startPolling,
+    stopPolling,
+    keyValue ? isConverging(keyValue) : true,
+  );
 
   return {
     keyValue,

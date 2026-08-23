@@ -1757,3 +1757,194 @@ func TestClassifiedBuildFailureReasonsStayBuildFailures(t *testing.T) {
 		t.Error("IngressFailed must not be classified as a build failure")
 	}
 }
+
+// seedApp writes one app row of the given service type — the shared fixture for
+// the w6/m46 exposure tests, which differ only in that type.
+func seedApp(t *testing.T, store *memStore, tenantID, serviceType string) App {
+	t.Helper()
+	row, err := store.CreateApp(context.Background(), App{
+		TenantID: tenantID, Name: "web", Type: serviceType,
+		Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatalf("create app (type %q): %v", serviceType, err)
+	}
+	return row
+}
+
+// TestReconcileNeverExposesNonPublicServiceTypes is the w6/m46 t001 regression.
+// The projector had no service type to read, so it stamped Expose=true on every
+// App it projected — publishing private services at their platform subdomain
+// with a real, unauthenticated Ingress. Pre-fix this fails for all three
+// non-public types.
+func TestReconcileNeverExposesNonPublicServiceTypes(t *testing.T) {
+	for _, serviceType := range []string{
+		appv1alpha1.TypePrivateService,
+		appv1alpha1.TypeBackgroundWorker,
+		appv1alpha1.TypeCronJob,
+	} {
+		t.Run(serviceType, func(t *testing.T) {
+			ctx := context.Background()
+			rec, store, cl := newTestReconciler(t)
+			ten, _ := store.CreateTenant(ctx, "acme", "free")
+			seedApp(t, store, ten.ID, serviceType)
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("reconcile: %v", err)
+			}
+
+			app := getApp(t, cl)
+			if app.Spec.Expose {
+				t.Errorf("%s projected with spec.expose=true; it must never carry a platform host", serviceType)
+			}
+			if app.Spec.Type != serviceType {
+				t.Errorf("projected type = %q, want %q", app.Spec.Type, serviceType)
+			}
+			if hosts := app.Spec.EffectiveHosts(app.Name, "onbex.co"); len(hosts) != 0 {
+				t.Errorf("effective hosts = %v, want none for %s", hosts, serviceType)
+			}
+		})
+	}
+}
+
+// TestReconcileKeepsPublicServiceTypesExposed is the other half of the same
+// rule: the fix must not quietly unpublish the types that ARE public.
+func TestReconcileKeepsPublicServiceTypesExposed(t *testing.T) {
+	// "" is a pre-migration-0095 row, which the CRD contract reads as
+	// web_service — it must keep serving exactly as it did before the column.
+	for _, serviceType := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypeStaticSite, ""} {
+		t.Run(serviceType, func(t *testing.T) {
+			ctx := context.Background()
+			rec, store, cl := newTestReconciler(t)
+			ten, _ := store.CreateTenant(ctx, "acme", "free")
+			seedApp(t, store, ten.ID, serviceType)
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("reconcile: %v", err)
+			}
+			if app := getApp(t, cl); !app.Spec.Expose {
+				t.Errorf("type %q projected with spec.expose=false; it must serve at its platform host", serviceType)
+			}
+		})
+	}
+}
+
+// TestReconcileDoesNotOverwriteExposeOnResync is the durable half of the t001
+// fix: even when the row and the CR disagree about exposure — a pre-0095 row
+// whose type is still empty resyncing a live private service — the projector must
+// leave the CR's own value alone. Owning a field it cannot derive is what
+// published private services in the first place.
+func TestReconcileDoesNotOverwriteExposeOnResync(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row := seedApp(t, store, ten.ID, "") // a pre-0095 row: no type recorded
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	// bex-api's create path is the authority on exposure; simulate the CR it
+	// wrote for a private service while the row predates the type column.
+	app := getApp(t, cl)
+	app.Spec.Type = appv1alpha1.TypePrivateService
+	app.Spec.Expose = false
+	if err := cl.Update(ctx, app); err != nil {
+		t.Fatalf("seed private CR: %v", err)
+	}
+	// Count spec writes, not metadata.generation: the fake client does not
+	// maintain generation, and the write itself is the causal step — every
+	// projector Update is a generation bump on a real API server (t004).
+	writes := &updateCountingClient{Client: cl}
+	rec.Client = writes
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("resync: %v", err)
+	}
+
+	after := getApp(t, cl)
+	if after.Spec.Expose {
+		t.Fatalf("resync re-exposed a private service (spec.expose=true)")
+	}
+	// And the row healed itself from the CR, so the next projector-create is right.
+	healed, err := store.GetApp(ctx, row.ID)
+	if err != nil {
+		t.Fatalf("get app: %v", err)
+	}
+	if healed.Type != appv1alpha1.TypePrivateService {
+		t.Errorf("row type = %q after resync, want it backfilled to %q", healed.Type, appv1alpha1.TypePrivateService)
+	}
+	// The backfill write is the row's, not the CR's: converging an App that
+	// already matches must touch the CR zero times.
+	if writes.updates != 0 {
+		t.Errorf("resync issued %d App CR update(s); an already-converged app must not be written at all "+
+			"(every write bumps metadata.generation, which reads as a supersede — w6/m46 t004)", writes.updates)
+	}
+}
+
+// updateCountingClient records how many times the projector writes an App CR.
+// A resync that changes nothing must write nothing: on a real API server each
+// Update bumps metadata.generation, and a bump between a deploy row opening and
+// the operator stamping status.releaseGeneration closes that deploy canceled.
+type updateCountingClient struct {
+	client.Client
+	updates int
+}
+
+func (c *updateCountingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	if _, ok := obj.(*appv1alpha1.App); ok {
+		c.updates++
+	}
+	return c.Client.Update(ctx, obj, opts...)
+}
+
+// TestReconcileFirstDeploySurvivesResync is the w6/m46 t004 regression. The
+// projector's Expose overwrite was a spec-mutating Update, so a brand-new App's
+// metadata.generation moved past the generation CreateApp stamped on the deploy
+// row it opened — which supersededDeployStatus reads as "something replaced
+// this release" and closes the app's first-ever deploy canceled. Nothing was
+// ever triggered against this app.
+//
+// The fake client does not maintain metadata.generation, so the App's real
+// generation is modelled from the projector's own writes: a created object
+// starts at 1 and each spec Update adds one. That is exactly what the operator
+// then snapshots as status.releaseGeneration on its first reconcile
+// (release_identity.go), which is where the two numbers diverge.
+func TestReconcileFirstDeploySurvivesResync(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	writes := &updateCountingClient{Client: cl}
+	rec.Client = writes
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row := seedApp(t, store, ten.ID, appv1alpha1.TypeBackgroundWorker)
+	// bex-api's create path writes the CR before the projector ever sees the
+	// row, so the projector's first pass is an UPDATE, not a create — which is
+	// the pass whose write bumped the generation. Land the CR first.
+	if err := cl.Create(ctx, rec.projectApp(ctx, DesiredApp{App: row, TenantName: ten.Name})); err != nil {
+		t.Fatalf("seed created CR: %v", err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	// The operator's first pass adopts the App's current generation as its
+	// release generation. Every projector write so far has moved that number.
+	app := getApp(t, cl)
+	app.Status.ReleaseGeneration = int64(1 + writes.updates)
+	app.Status.Phase = appv1alpha1.PhaseBuilding
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatalf("seed status: %v", err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("resync: %v", err)
+	}
+
+	deploys, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
+	if err != nil {
+		t.Fatalf("list deploys: %v", err)
+	}
+	if len(deploys) != 1 {
+		t.Fatalf("deploy count = %d, want the single create deploy", len(deploys))
+	}
+	if deploys[0].Status == DeployCanceled {
+		t.Fatalf("first-ever deploy closed %q with nothing to supersede it "+
+			"(release generation %d vs deploy row generation %d)",
+			deploys[0].Status, app.Status.ReleaseGeneration, deploys[0].Generation)
+	}
+}

@@ -37,6 +37,7 @@ import {
   isStaticSite,
   isWebService,
   isWorker,
+  publiclyRoutable,
   supportsMaxShutdownDelay,
 } from "@/features/services/lib/service-type";
 
@@ -63,6 +64,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   const cron = service ? isCron(service) : false;
   const staticSite = service ? isStaticSite(service) : false;
   const worker = service ? isWorker(service) : false;
+  const routable = service ? publiclyRoutable(service.type) : false;
   // A Dockerfile build (docker runtime, or the legacy dockerfile builder) builds
   // from a Dockerfile, not a Build Command — Render shows Dockerfile Path there
   // instead. Every other repo-backed build is native and carries a Build Command.
@@ -79,7 +81,12 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   if (service && !service.repo && !staticSite && !cron)
     navigationSections.push("source");
   if (staticSite && service) navigationSections.push("static-site");
-  if (!cron) navigationSections.push("domains", "networking");
+  // Custom domains and the platform subdomain only exist for a type served at
+  // a public host (w6/m46). bex-api refuses a domain on any other type, and the
+  // operator never routes one, so offering the card would be an Add button that
+  // can only fail — and the subdomain toggle folded into it would keep claiming
+  // a `.onbex.co` host a private service does not have.
+  if (routable) navigationSections.push("domains", "networking");
   if (registryCredentialEligible)
     navigationSections.push("registry-credential");
   navigationSections.push("notifications");
@@ -267,26 +274,30 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                 />
               </section>
             )}
-            {/* Custom Domains, with the platform-subdomain toggle folded in at the
-                bottom of the card (Render parity, w5/m52). */}
-            <section id="domains" className="scroll-mt-6">
-              <CustomDomainsSection
-                serviceId={serviceId}
-                subdomain={{
-                  url: service?.url ?? null,
-                  renderSubdomainPolicy: service?.renderSubdomainPolicy,
-                }}
-              />
-            </section>
-            {/* Networking (w7/m32): inbound IP allowlist — web_service and
-                static_site only (both have a public Ingress). */}
-            <section id="networking" className="scroll-mt-6">
-              <ServiceNetworkingPanel
-                serviceId={serviceId}
-                currentAllowList={service?.ipAllowListEntries}
-                onSaved={refetch}
-              />
-            </section>
+            {routable && (
+              <>
+                {/* Custom Domains, with the platform-subdomain toggle folded in
+                    at the bottom of the card (Render parity, w5/m52). */}
+                <section id="domains" className="scroll-mt-6">
+                  <CustomDomainsSection
+                    serviceId={serviceId}
+                    subdomain={{
+                      url: service?.url ?? null,
+                      renderSubdomainPolicy: service?.renderSubdomainPolicy,
+                    }}
+                  />
+                </section>
+                {/* Networking (w7/m32): inbound IP allowlist — both of these
+                    need a public Ingress to mean anything. */}
+                <section id="networking" className="scroll-mt-6">
+                  <ServiceNetworkingPanel
+                    serviceId={serviceId}
+                    currentAllowList={service?.ipAllowListEntries}
+                    onSaved={refetch}
+                  />
+                </section>
+              </>
+            )}
           </>
         )}
 

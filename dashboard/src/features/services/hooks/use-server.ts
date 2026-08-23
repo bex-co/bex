@@ -1,11 +1,11 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { ServerDocument } from "@/graphql/definitions";
+import { skipPollWhenHidden, useConvergingPoll } from "@/common/lib/polling";
 import {
-  RESOURCE_POLL_INTERVAL_MS,
-  skipPollWhenHidden,
-} from "@/common/lib/polling";
-import { toServiceView } from "@/features/services/lib/status";
+  isConvergingPhase,
+  toServiceView,
+} from "@/features/services/lib/status";
 import type { ServiceView } from "@/features/services/types";
 
 export interface UseServerOptions {
@@ -38,20 +38,38 @@ export interface UseServerResult {
  * service) and maps the Render-shaped `Service` onto a normalized ServiceView.
  * Presentation only — the same shared Core read the `services` list uses
  * (docs/ADR006-bex-api.md); mirrors `useServices` for one App.
+ *
+ * Cadence follows the service's own phase — see isConvergingPhase for why the
+ * poll is the only thing that can move this document (w6/m46 t005).
  */
 export function useServer(
   id: string,
   { poll = true }: UseServerOptions = {},
 ): UseServerResult {
-  const { data, loading, error, refetch } = useQuery(ServerDocument, {
-    variables: { id },
-    fetchPolicy: "cache-first",
-    errorPolicy: "all",
-    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
-    skipPollAttempt: skipPollWhenHidden,
-  });
+  const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(
+    ServerDocument,
+    {
+      variables: { id },
+      fetchPolicy: "cache-first",
+      errorPolicy: "all",
+      skipPollAttempt: skipPollWhenHidden,
+    },
+  );
 
-  const service = data?.server ? toServiceView(data.server) : null;
+  const service = useMemo(
+    () => (data?.server ? toServiceView(data.server) : null),
+    [data],
+  );
+
+  // Not yet loaded counts as converging, matching useDatabase: an App whose
+  // first read is still in flight is exactly the one whose phase is about to
+  // move.
+  useConvergingPoll(
+    startPolling,
+    stopPolling,
+    service ? isConvergingPhase(service) : true,
+    poll,
+  );
 
   const refetchViews = useCallback(async () => {
     const res = await refetch();

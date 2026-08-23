@@ -54,13 +54,13 @@ func TestValidateTypeSpecificCreate(t *testing.T) {
 			name:    "background_worker with hosts",
 			svcType: appv1alpha1.TypeBackgroundWorker,
 			req:     CreateRequest{Hosts: []string{"api.example.com"}},
-			wantErr: "bad request: a background_worker has no ingress and cannot list domains",
+			wantErr: "bad request: a background_worker has no ingress and cannot have custom domains",
 		},
 		{
 			name:    "cron_job with hosts",
 			svcType: appv1alpha1.TypeCronJob,
 			req:     CreateRequest{Schedule: "* * * * *", Hosts: []string{"api.example.com"}},
-			wantErr: "bad request: a cron_job has no ingress and cannot list domains",
+			wantErr: "bad request: a cron_job has no ingress and cannot have custom domains",
 		},
 		{
 			name:    "static_site without publishPath",

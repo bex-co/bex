@@ -111,6 +111,24 @@ export function servesHttp(type: string): boolean {
   return type === "web_service" || type === "private_service";
 }
 
+/**
+ * True when this type is served at a public host — so custom domains and the
+ * platform `.onbex.co` subdomain are things it can actually have. Mirrors the
+ * CRD contract's `AppSpec.PubliclyRoutable` (`lego/types/v1alpha1`), which is
+ * what decides whether the operator builds an Ingress at all. Note this is
+ * narrower than `servesHttp`: a private_service serves HTTP, but only inside
+ * the platform network.
+ *
+ * Takes the raw wire value, like `servesHttp` and `deriveServiceType`.
+ */
+export function publiclyRoutable(type: string): boolean {
+  return (
+    type !== "private_service" &&
+    type !== "background_worker" &&
+    type !== "cron_job"
+  );
+}
+
 /** True when the service owns a long-running pod with a SIGTERM grace window. */
 export function supportsMaxShutdownDelay(s: ServiceView): boolean {
   return servesHttp(s.type) || isWorker(s);
