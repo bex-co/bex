@@ -9,7 +9,8 @@
 # enumerated per namespace; the tenant apps namespace (default / BEX_CP_APPS_NAMESPACE)
 # is implicitly blocked because it is not in any allow list.
 #
-# Tenant execution runs only in the dedicated bex-build namespace.
+# Tenant-controlled build/publish execution runs only in the dedicated
+# bex-build namespace; pre-deploy Jobs run co-located with their App (ADR043 D8).
 
 ---
 # auth: Hydra, Kratos, OpenFGA, and their CNPG databases. The admin APIs have no
@@ -293,7 +294,7 @@ spec:
 ---
 # bex-registry: zot OCI registry on :5000
 # Allowed: bex-system (operator registry administration), bex-build (scoped
-#   build/publish/pre-deploy registry access),
+#   build/publish registry access),
 #   and the NODES themselves via the CiliumNetworkPolicy below.
 # Blocked: tenant app pods in the apps namespace (they must not push/pull directly).
 # Auth complements this: anonymous catalog/pull/push are denied; the bootstrap

@@ -1,5 +1,6 @@
 # Dedicated boundary for every short-lived workload that executes tenant source
-# or images: BuildKit/kpack builds, static publish, and pre-deploy commands.
+# or images: BuildKit/kpack builds and static publish. (Pre-deploy commands run
+# in the App's own namespace — ADR043 D8 co-location — not here.)
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -47,7 +48,7 @@ subjects:
     name: bex-controller-manager
     namespace: bex-system
 ---
-# bex-api can cancel build intent and read build/pre-deploy logs, but cannot
+# bex-api can cancel build intent and read build logs, but cannot
 # create workloads or read any execution Secret.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -83,8 +84,9 @@ subjects:
     namespace: bex-system
 ---
 # Namespace-wide zero-trust baseline. Additive policies below expose only DNS,
-# Zot, and public source/object-store endpoints. Same-workspace datastore access
-# for pre-deploy is generated per App by the operator.
+# Zot, and public source/object-store endpoints. (Pre-deploy Jobs no longer run
+# here — they are co-located with their App, ADR043 D8 — so no per-App
+# datastore egress exception is generated in this namespace anymore.)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

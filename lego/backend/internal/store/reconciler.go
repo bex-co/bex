@@ -989,10 +989,10 @@ func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
 // failureReasonFor picks what to stamp as a failing deploy's failure_reason
 // (w9/011): the current generation's Ready-condition message when the operator
 // diagnosed a concrete defect (crash loop, image pull, unresolvable container
-// config, build or pre-deploy failure — their messages are written to be
-// user-actionable), the raw condition message for any other PhaseFailed, and a
-// synthesized timeout line when the condition proves nothing (a pure
-// health-gate-timeout close).
+// config, a quota-blocked rollout, build or pre-deploy failure — their messages
+// are written to be user-actionable), the raw condition message for any other
+// PhaseFailed, and a synthesized timeout line when the condition proves nothing
+// (a pure health-gate-timeout close).
 //
 // CreateContainerConfigError was the gap w7/m79 closed. A pod whose Secret or
 // ConfigMap reference cannot be resolved never starts, so its App stays in
@@ -1002,6 +1002,12 @@ func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
 // operator already knew the exact missing object. That is the 2026-08-08
 // incident's first failure leg: the cause existed, in the right place, and was
 // thrown away one step before the user could see it.
+//
+// RolloutBlockedByQuota is the no-pods-at-all sibling of the same gap: the
+// workspace ResourceQuota rejects the surge pod, so no pod object ever exists
+// and every pod-state diagnosis stays blind — but the ReplicaSet's FailedCreate
+// verdict already names the quota, and the operator stamps it on the App
+// condition (lego/operator reportRolloutProgress).
 func failureReasonFor(app *appv1alpha1.App) (string, string) {
 	for i := range app.Status.Conditions {
 		c := &app.Status.Conditions[i]
@@ -1011,7 +1017,7 @@ func failureReasonFor(app *appv1alpha1.App) (string, string) {
 		switch c.Reason {
 		case "ImagePullBackOff":
 			return c.Message, EventReasonImagePullBackoff
-		case "CrashLoopBackOff", "CreateContainerConfigError", appv1alpha1.ReasonPreDeployFailed:
+		case "CrashLoopBackOff", "CreateContainerConfigError", "RolloutBlockedByQuota", appv1alpha1.ReasonPreDeployFailed:
 			return c.Message, ""
 		default:
 			if appv1alpha1.IsBuildFailureReason(c.Reason) {

@@ -184,10 +184,11 @@ type Service struct {
 	// DefaultRevalidateInterval default; negative disables the watchdog
 	// (admission-only, the pre-watchdog behavior).
 	RevalidateInterval time.Duration
-	// BuildNamespace is BEX_BUILD_NAMESPACE — where the operator runs pre-deploy
-	// (and build) Job pods, so `type=predeploy` reads a migration's logs from the
-	// right namespace (w1/m33). Empty falls back to the API's own namespace, the
-	// operator's default when the env is unset.
+	// BuildNamespace is BEX_BUILD_NAMESPACE — where the operator runs build Job
+	// pods, so `type=build` reads/tails them from the right namespace. Empty
+	// falls back to the API's own namespace, the operator's default when the env
+	// is unset. (Pre-deploy Jobs are co-located with their App, ADR043 D8 — the
+	// predeploy path uses the App CR's namespace, never this one.)
 	BuildNamespace string
 	// BuildPodWaitInterval is the re-list cadence while a type=build tail waits
 	// for a Pending build pod to start (scheduling + image pull take minutes on
@@ -482,11 +483,13 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	}
 	q = q.normalized()
 	// Pre-deploy step logs (w1/m33): a distinct LIVE source (the migration Job's
-	// pod), read directly from the build namespace — never the durable store, which
-	// has no predeploy stream — like the SSE tail always reads pod logs. validate()
-	// guarantees predeploy is requested alone, so it owns the whole response.
+	// pod), read directly from the App's own namespace — the Job is co-located
+	// with the App (ADR043 D8), not in the build namespace — never the durable
+	// store, which has no predeploy stream — like the SSE tail always reads pod
+	// logs. validate() guarantees predeploy is requested alone, so it owns the
+	// whole response.
 	if slices.Contains(q.Types, LogTypePreDeploy) {
-		entries, err := s.collectPreDeployLogs(ctx, q)
+		entries, err := s.collectPreDeployLogs(ctx, appNS, q)
 		return setLogResource(entries, resource), err
 	}
 	if s.History != nil {
@@ -1125,7 +1128,7 @@ func (s *Service) readPodLogs(ctx context.Context, namespace, service, pod strin
 
 // readContainerLogs reads up to tail lines from one pod's container, tagged with
 // service+pod. Generalizes readPodLogs so the pre-deploy path can read the
-// "predeploy" container in the build namespace with the same parsing.
+// "predeploy" container (in the App's own namespace) with the same parsing.
 func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod, container string, tail int64) ([]LogEntry, error) {
 	rc, err := s.PodLogs(ctx, namespace, pod, container, tail)
 	if err != nil {
@@ -1144,25 +1147,23 @@ func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod
 
 // collectPreDeployLogs reads the pre-deploy step's Job-pod logs (w1/m33) for an
 // App, oldest-first and capped at q.Limit, applying the same text/time filters
-// the app pod-log path does. Live-only: a Job pod that has been TTL-reaped is
-// simply gone (an empty read), never an error — the same ephemerality as build
-// logs. Requires PodLogs to be wired (ErrLogsUnavailable otherwise).
-func (s *Service) collectPreDeployLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
+// the app pod-log path does. appNS is the App CR's own namespace — the Job is
+// co-located with the App (ADR043 D8), so its pods live there, NOT in the build
+// namespace. Live-only: a Job pod that has been TTL-reaped is simply gone (an
+// empty read), never an error — the same ephemerality as build logs. Requires
+// PodLogs to be wired (ErrLogsUnavailable otherwise).
+func (s *Service) collectPreDeployLogs(ctx context.Context, appNS string, q LogQuery) ([]LogEntry, error) {
 	if s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
-	pods, err := s.PreDeployPods(ctx, q.App, s.BuildNamespace)
+	pods, err := s.PreDeployPods(ctx, q.App, appNS)
 	if err != nil {
 		return nil, err
-	}
-	ns := s.BuildNamespace
-	if ns == "" {
-		ns = s.Namespace
 	}
 	var out []LogEntry
 	for i := range pods {
 		pod := pods[i].Name
-		entries, err := s.readContainerLogs(ctx, ns, q.App, pod, core.PreDeployContainer, q.Limit)
+		entries, err := s.readContainerLogs(ctx, appNS, q.App, pod, core.PreDeployContainer, q.Limit)
 		if err != nil {
 			// A reaped pod (or a container that never produced logs) drops out of
 			// the read rather than failing the whole query.

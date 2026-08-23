@@ -19,12 +19,16 @@ package logs
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // predeploy_test.go covers the `predeploy` log type (w1/m33): a live read of the
@@ -32,8 +36,12 @@ import (
 // refused), never the durable store.
 
 func preDeployPod(app, name string) *corev1.Pod {
+	return preDeployPodIn(app, name, "default")
+}
+
+func preDeployPodIn(app, name, namespace string) *corev1.Pod {
 	return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-		Name: name, Namespace: "default", Labels: map[string]string{core.PodLabelPreDeploy: app},
+		Name: name, Namespace: namespace, Labels: map[string]string{core.PodLabelPreDeploy: app},
 	}}
 }
 
@@ -69,6 +77,49 @@ func TestPreDeployTypeMustBeRequestedAlone(t *testing.T) {
 	_, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypePreDeploy, LogTypeApp}})
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("mixing predeploy with app should be core.ErrBadRequest, got %v", err)
+	}
+}
+
+// TestPreDeployLogsReadFromAppNamespace pins the ADR043 D8 co-location
+// follow-through: the pre-deploy Job runs in the App's per-workspace namespace,
+// so a type=predeploy read resolves THAT namespace from the App CR — never
+// BEX_BUILD_NAMESPACE, where a stale pre-co-location pod must stay invisible.
+func TestPreDeployLogsReadFromAppNamespace(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "web", Namespace: "tea-ws",
+			Labels: map[string]string{core.LabelAppID: "web"},
+		},
+		Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning},
+	}
+	wsPod := preDeployPodIn("web", "predeploy-web-gen-4", "tea-ws")
+	stale := preDeployPodIn("web", "predeploy-web-gen-1", "bex-build")
+	svc := newService(nil, app, wsPod, stale)
+	svc.BuildNamespace = "bex-build"
+
+	var readNS []string
+	svc.PodLogs = func(_ context.Context, ns, pod, _ string, _ int64) (io.ReadCloser, error) {
+		readNS = append(readNS, ns+"/"+pod)
+		if ns != "tea-ws" {
+			return nil, fmt.Errorf("test: read from wrong namespace %q", ns)
+		}
+		return io.NopCloser(strings.NewReader("2026-08-23T00:00:01Z running migrations")), nil
+	}
+
+	got, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypePreDeploy}})
+	if err != nil {
+		t.Fatalf("QueryLogs(type=predeploy): %v", err)
+	}
+	if len(got) != 1 || got[0].Message != "running migrations" {
+		t.Fatalf("want the workspace pod's line, got %+v", got)
+	}
+	for _, read := range readNS {
+		if !strings.HasPrefix(read, "tea-ws/") {
+			t.Errorf("a log read went outside the App's namespace: %s", read)
+		}
+	}
+	if len(readNS) != 1 {
+		t.Errorf("reads = %v, want exactly the co-located pod — the build-namespace stale pod must be invisible", readNS)
 	}
 }
 

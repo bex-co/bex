@@ -135,6 +135,19 @@ func TestJobOmitsWorkspaceLabelWhenAbsent(t *testing.T) {
 	}
 }
 
+// TestJobCoLocatedOmitsAppNamespaceLabel pins the in-place shape: the Job runs
+// in the App's own namespace (ADR043 D8), so the app-namespace disambiguation
+// label — only meaningful when the two differ — is omitted.
+func TestJobCoLocatedOmitsAppNamespaceLabel(t *testing.T) {
+	j := Job(Options{Name: "api", Namespace: "default", AppNamespace: "default", Command: "echo", Revision: "gen-1"})
+	if j.Namespace != "default" {
+		t.Errorf("job namespace = %q, want the App's own namespace", j.Namespace)
+	}
+	if _, ok := j.Spec.Template.Labels["app.bex.co/app-namespace"]; ok {
+		t.Error("a co-located Job must not carry a separate app-namespace label")
+	}
+}
+
 func TestObserve(t *testing.T) {
 	running := &batchv1.Job{}
 	if s, _ := Observe(running); s != StatePending {
