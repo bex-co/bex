@@ -118,3 +118,52 @@ func TestQuotaBoundsEphemeralStorage(t *testing.T) {
 		t.Errorf("LimitRange max ephemeral-storage %s < largest tier bound %s — top-tier containers would be refused", maxQ.String(), tierQ.String())
 	}
 }
+
+// TestQuotaCarriesRollingUpdateSurgeHeadroom pins the compute-axis surge
+// headroom: App Deployments use the default RollingUpdate strategy (maxSurge
+// 25% → +1 pod at replicas:1, maxUnavailable 25% → 0), so a quota without
+// slack rejects the surge ReplicaSet and hangs the deploy at the health gate
+// (observed live on a Hobby workspace at requests.cpu 1910m/2 whose +500m
+// starter surge was refused). Each plan must admit its steady-state budget
+// plus one surge pod of the largest tier it can reasonably run, on requests
+// AND limits (Guaranteed QoS charges both).
+func TestQuotaCarriesRollingUpdateSurgeHeadroom(t *testing.T) {
+	surgeOf := func(tierID string) (cpu, mem resource.Quantity) {
+		tier, ok := tiers.Compute.ByID(tierID)
+		if !ok {
+			t.Fatalf("compute catalog has no %s rung", tierID)
+		}
+		return resource.MustParse(tier.CPU), resource.MustParse(tier.Memory)
+	}
+	// Steady-state budget each plan's quota is derived from, plus the surge
+	// tier it must absorb on top (hobby: standard; paid: pro-ultra).
+	for _, tc := range []struct {
+		plans                       []string
+		baseCPU, baseMem, surgeTier string
+	}{
+		{[]string{PlanHobby, "free", ""}, "2", "4Gi", "standard"},
+		{[]string{"starter", PlanPro, PlanScale}, "50", "100Gi", "pro-ultra"},
+	} {
+		surgeCPU, surgeMem := surgeOf(tc.surgeTier)
+		wantReqCPU := resource.MustParse(tc.baseCPU)
+		wantReqCPU.Add(surgeCPU)
+		wantReqMem := resource.MustParse(tc.baseMem)
+		wantReqMem.Add(surgeMem)
+		for _, plan := range tc.plans {
+			quota := quotaForPlan(plan)
+			if got := quota[corev1.ResourceRequestsCPU]; got.Cmp(wantReqCPU) != 0 {
+				t.Errorf("plan %q requests.cpu = %s, want %s (base %s + 1 %s surge)", plan, got.String(), wantReqCPU.String(), tc.baseCPU, tc.surgeTier)
+			}
+			if got := quota[corev1.ResourceRequestsMemory]; got.Cmp(wantReqMem) != 0 {
+				t.Errorf("plan %q requests.memory = %s, want %s (base %s + 1 %s surge)", plan, got.String(), wantReqMem.String(), tc.baseMem, tc.surgeTier)
+			}
+			// Limits stay at 2× requests, so the surge fits there too.
+			if got := quota[corev1.ResourceLimitsCPU]; got.Cmp(wantReqCPU) < 0 {
+				t.Errorf("plan %q limits.cpu = %s < requests.cpu %s — a Guaranteed-QoS surge would be refused", plan, got.String(), wantReqCPU.String())
+			}
+			if got := quota[corev1.ResourceLimitsMemory]; got.Cmp(wantReqMem) < 0 {
+				t.Errorf("plan %q limits.memory = %s < requests.memory %s — a Guaranteed-QoS surge would be refused", plan, got.String(), wantReqMem.String())
+			}
+		}
+	}
+}
