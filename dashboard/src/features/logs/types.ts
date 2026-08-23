@@ -117,3 +117,9 @@ export function usesStoreOnlyFilters(f: LogFilters): boolean {
     f.path !== ""
   );
 }
+
+// Whether any filter narrows the visible log set — drives the filtered vs
+// genuinely-empty copy in log-viewer and deploy-log-panel.
+export function hasActiveLogFilters(f: LogFilters): boolean {
+  return f.type !== LOG_TYPE_ALL || f.text !== "" || usesStoreOnlyFilters(f);
+}
