@@ -462,6 +462,18 @@ func (m *memStore) SetAppSource(_ context.Context, id, repo, image, branch strin
 	return nil
 }
 
+func (m *memStore) BackfillAppType(_ context.Context, id, serviceType string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.apps[id]
+	if !ok || a.Type != "" {
+		return false, nil
+	}
+	a.Type = serviceType
+	m.apps[id] = a
+	return true, nil
+}
+
 func (m *memStore) SetAppImage(_ context.Context, id string, image string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

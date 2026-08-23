@@ -36,6 +36,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // TestPGStore exercises migrations + the real Store against a live Postgres.
@@ -3612,5 +3613,115 @@ func TestRedeemingAnInviteNeverRerolesAnExistingMember(t *testing.T) {
 	}
 	if m, err := s.GetTenantMember(ctx, ten.ID, "identity-admin"); err != nil || m.Role != "admin" {
 		t.Errorf("role after token accept = %q (%v), want admin", m.Role, err)
+	}
+}
+
+// TestPGAppServiceTypeRoundTrip covers migration 0095 against a real Postgres:
+// the type a service is created with survives the row, reaches the projector
+// through ListDesiredApps, and a pre-migration row (type still empty) heals
+// from its live CR exactly once. The in-memory fake cannot prove any of this —
+// it never runs the SQL — and this is the column the whole w6/m46 exposure fix
+// rests on.
+func TestPGAppServiceTypeRoundTrip(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+	ten, err := s.CreateTenant(ctx, "acme", PlanPro)
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+
+	private, err := s.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "pserv", Type: appv1alpha1.TypePrivateService,
+		Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatalf("create private service: %v", err)
+	}
+	// A row written before 0095 existed: the column's default.
+	legacy, err := s.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "legacy", Image: "traefik/whoami",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatalf("create legacy app: %v", err)
+	}
+
+	// The other half of the w6/m46 t004 pin: bex-api stamps this same number on
+	// the CR's release-generation annotation, so the row and the operator agree
+	// on which release the first deploy belongs to.
+	firstDeploys, err := s.ListDeploys(ctx, private.ID, DeployFilter{})
+	if err != nil {
+		t.Fatalf("list deploys: %v", err)
+	}
+	if len(firstDeploys) != 1 || firstDeploys[0].Generation != 1 {
+		t.Fatalf("create deploy = %+v, want exactly one at generation 1", firstDeploys)
+	}
+
+	got, err := s.GetApp(ctx, private.ID)
+	if err != nil {
+		t.Fatalf("get app: %v", err)
+	}
+	if got.Type != appv1alpha1.TypePrivateService {
+		t.Errorf("GetApp type = %q, want private_service", got.Type)
+	}
+
+	desired, err := s.ListDesiredApps(ctx)
+	if err != nil {
+		t.Fatalf("list desired: %v", err)
+	}
+	byID := map[string]DesiredApp{}
+	for _, d := range desired {
+		byID[d.ID] = d
+	}
+	if byID[private.ID].Type != appv1alpha1.TypePrivateService {
+		t.Errorf("projector sees type %q for the private service, want private_service",
+			byID[private.ID].Type)
+	}
+	if byID[legacy.ID].Type != "" {
+		t.Errorf("legacy row type = %q, want empty until backfilled", byID[legacy.ID].Type)
+	}
+	// The projected spec is the thing that matters: exposure is derived from
+	// the type, and an empty type still reads as web_service.
+	if projectSpec(byID[private.ID]).Expose {
+		t.Error("projected private service carries spec.expose=true")
+	}
+	if !projectSpec(byID[legacy.ID]).Expose {
+		t.Error("projected legacy (empty-type) row lost its exposure")
+	}
+
+	healed, err := s.BackfillAppType(ctx, legacy.ID, appv1alpha1.TypeBackgroundWorker)
+	if err != nil || !healed {
+		t.Fatalf("backfill legacy type = %v, %v; want healed", healed, err)
+	}
+	// Idempotent, and never a rename: a second call finds a non-empty type and
+	// declines, so two projector passes (or two replicas) cannot fight.
+	again, err := s.BackfillAppType(ctx, legacy.ID, appv1alpha1.TypeWebService)
+	if err != nil {
+		t.Fatalf("re-backfill: %v", err)
+	}
+	if again {
+		t.Error("backfill overwrote an already-recorded type; spec.type is immutable")
+	}
+	after, err := s.GetApp(ctx, legacy.ID)
+	if err != nil {
+		t.Fatalf("get legacy: %v", err)
+	}
+	if after.Type != appv1alpha1.TypeBackgroundWorker {
+		t.Errorf("legacy type = %q after backfill, want background_worker", after.Type)
 	}
 }

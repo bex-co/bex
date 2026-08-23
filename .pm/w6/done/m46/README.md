@@ -1,20 +1,20 @@
 # w6 · m46 — Private services publicly exposed via platform subdomain; first-time deploys wrongly marked Canceled with a stuck status pill
 
-**Worker:** worker6 **Goal:** a Private Service is actually unreachable from the public internet, matching its own advertised guarantee; and a brand-new service's first deploy reports a status the dashboard, the deploy list, and the backend all agree on — never a false `Canceled` with a header pill stuck on a phase the deploy already left. **Status:** todo
+**Worker:** worker6 **Goal:** a Private Service is actually unreachable from the public internet, matching its own advertised guarantee; and a brand-new service's first deploy reports a status the dashboard, the deploy list, and the backend all agree on — never a false `Canceled` with a header pill stuck on a phase the deploy already left. **Status:** done (closed unshipped — the live `curl` / first-deploy probes are owed by whoever runs `/ship`; see Outcome)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                | est | depends_on          |
 | ---- | ----------------------------------------------------------------------------------------------------- | --- | -------------------- |
-| t001 | Root-cause + fix the write path that leaves a private_service's `Expose`/`Host` publicly routable      | 90m | —                     |
-| t002 | Operator defense-in-depth: hard-gate Ingress/host creation for `private_service` regardless of `Expose`| 45m | —                     |
-| t003 | Blast-radius audit: every create/update entrypoint (REST/GraphQL/MCP/blueprint sync) for the same gap  | 90m | [t001, t002]          |
-| t004 | Root-cause + fix a first-time deploy wrongly marked `Canceled` (release-generation init race)          | 60m | —                     |
-| t005 | Fix the Service header status pill staying stale after a server-driven (non-button) deploy closure     | 45m | [t004]                |
-| t006 | Render parity across REST/GraphQL/MCP/UI                                                               | 30m | [t001, t002, t003, t004, t005] |
-| t007 | Simplify the touched code                                                                              | 30m | t006                  |
-| t008 | Test coverage for the fixed behaviors                                                                  | 45m | t006                  |
-| t009 | Closeout                                                                                                | 10m | t008                  |
+| t001 | Root-cause + fix the write path that leaves a private_service's `Expose`/`Host` publicly routable — **DONE**      | 90m | —                     |
+| t002 | Operator defense-in-depth: hard-gate Ingress/host creation for `private_service` regardless of `Expose` — **DONE**| 45m | —                     |
+| t003 | Blast-radius audit: every create/update entrypoint (REST/GraphQL/MCP/blueprint sync) for the same gap — **DONE**  | 90m | [t001, t002]          |
+| t004 | Root-cause + fix a first-time deploy wrongly marked `Canceled` (release-generation init race) — **DONE**          | 60m | —                     |
+| t005 | Fix the Service header status pill staying stale after a server-driven (non-button) deploy closure — **DONE**     | 45m | [t004]                |
+| t006 | Render parity across REST/GraphQL/MCP/UI — **DONE**                                                               | 30m | [t001, t002, t003, t004, t005] |
+| t007 | Simplify the touched code — **DONE**                                                                              | 30m | t006                  |
+| t008 | Test coverage for the fixed behaviors — **DONE**                                                                  | 45m | t006                  |
+| t009 | Closeout — **DONE**                                                                                                | 10m | t008                  |
 
 ## Definition of done
 
@@ -23,6 +23,37 @@
 - A private_service created through each of REST, GraphQL, MCP, and a `render.yaml` blueprint sync never carries a public URL in its create/read response — one regression test per surface.
 - A fresh service's first-ever deploy (nothing else triggered against it) reaches a terminal status that matches reality — `Live` or a genuine build/deploy failure — never `Canceled`; proven via an integration test that is red pre-fix.
 - The dashboard's Service header status pill matches the deploy's actual terminal state within one poll interval after ANY deploy-closing event — a button click (already fixed by `w6/m45` t003) or a server-driven transition (this milestone) — without requiring a manual page reload.
+
+## Outcome
+
+**One write caused both bugs.** `lego/backend/internal/store/reconciler.go`'s `projectSpec` hardcoded `Expose: true` for every App it projected, because the `apps` table carried no service `type` — the projector had no way to tell a `private_service` from a `web_service`. `applyOwnedSpec` then re-stamped that onto the CR on every resync, overwriting the type-aware `Expose=false` the create path had computed (`apps/specFromCreate`, which was correct all along — which is why t001's own trace could not find the divergent write on the create path: it was not there).
+
+- **Exposure (t001):** `spec.Expose=true` → `EffectiveHosts` yields `<slug>.<baseDomain>` → the operator builds a public Ingress. The hunt's `curl` was reading a route the control plane had itself created.
+- **False `Canceled` (t004):** the same overwrite is a spec-mutating `Update`, bumping `metadata.generation` 1→2. `store.CreateApp` opens the first deploy row at generation 1; when the projector's write wins the race against the operator's first reconcile, `release_identity.go` initializes `status.releaseGeneration` from the already-bumped generation, and `supersededDeployStatus` closes the app's first-ever deploy `Canceled`. `Expose` is classified `identityOperational`, so only this *first-read initialization* is affected — which is why the bug was intermittent.
+
+This also explains the affected set exactly: `web_service`/`static_site` agree with the projector on `Expose`, so they never diverge. `private_service`/`background_worker`/`cron_job` diverge on the projector's very first pass — matching the hunt's exposed `private_service` and falsely-canceled `background_worker`.
+
+**What shipped**
+
+- Migration `0095` adds `apps.type`; the create path records it, and `projectSpec` derives exposure from it. `Expose` and `Type` left `applyOwnedSpec`'s owned set — nothing in the row or any lifecycle verb ever changes them, so a converged resync now writes nothing at all (which is what removes the generation bump). Pre-0095 rows self-heal from their own live CR, once.
+- The exposure rule now lives in exactly one place: `AppSpec.PubliclyRoutable` / `TypePubliclyRoutable` on the CRD contract, an **allowlist** so an unrecognized type fails closed. `EffectiveHosts` gates on it (covering the operator's Ingress/status derivation, the static-server resolver, and bex-api's pending-URL projection at once), and `reconcileKubernetes` repeats the check where the Ingress is actually created. `specFromCreate`, `pendingPublicURL`, `setPublicRoutingCondition`, and the Blueprint validator all now call it instead of keeping their own copies.
+- Custom domains follow the same rule everywhere. The Blueprint path already refused them for a non-routable type; create named only `background_worker`/`cron_job` (letting `private_service` through) and the `AddDomain` verb checked nothing at all. Both were aligned onto the shared predicate, and the dashboard stops offering the Custom Domains card and the platform-subdomain toggle to a type that can never have either.
+- `Service.Create` now stamps `app.bex.co/release-generation: 1` — every other deploy-opening path already did; create was the one leaving the operator to infer a release from whatever generation it read first. `store.FirstDeployGeneration` makes the row/annotation agreement a compiler-checked fact instead of two literals and a comment.
+- The header polls honestly (t005). Both header badges were on the flat 30s baseline with nothing to refetch them: a server-driven deploy closure fires no local mutation, so `w6/m45` t003's `refetchQueries` fix (Cancel/Rollback button only) could not reach it. `useServer` and `useLatestDeploy` now use a shared `useConvergingPoll` — 3s while the phase/deploy is still moving, baseline once terminal.
+
+**Verified**
+
+Every regression test was proven red against pre-fix code and green after (ledger in the commit): 3 projector-exposure subtests, the resync no-write assertion, the store-row type subtests, the real-Postgres migration round-trip, 5 operator envtest specs (which write bad `Expose`/`Host`/`Hosts` values directly onto the CR, bypassing bex-api entirely), the 4 domain-gate subtests that were genuinely wrong, the two first-deploy pins, and 7 dashboard poll/gating specs. All four Go suites, the operator envtest suite (108 specs), `make lint` (4 modules), and `dashboard/yarn test` (2542 tests) pass. The migration was applied, rolled back, and re-applied against a real Postgres 17.
+
+**Owed at `/ship`** — these DoD bullets are inherently production checks and cannot be run from a working tree:
+
+- `curl -sSI https://<name>.onbex.co` against a freshly created `private_service`, immediately after it reaches `Live` — must be a routing/TLS failure, never the app's 200.
+- A fresh service's first-ever deploy reaching `Live` (or a genuine build failure), never `Canceled`.
+- The header pill tracking a server-driven deploy closure without a reload.
+
+Also worth doing once deployed: any `private_service` created before this fix keeps its Ingress until the operator reconciles it; the fix removes the route rather than merely stopping new ones (covered by the "removes an Ingress a previously-exposed private service already had" envtest), so confirm the hunt's finding cannot be reproduced against an existing service. A previously-exposed private service's orphaned TLS Secret is left behind inert — no Ingress references it, and the App-deletion prefix sweep collects it — deliberately out of scope here.
+
+**Deliberately not changed:** the recorded `w9/m58` split where REST/MCP omit `serviceDetails.url` for a private service while GraphQL retains `url` as a bex-shaped surface (ADR018 § Internal address). It was re-verified rather than reversed; what all four surfaces now agree on is that none reports a *public* host for a private service. The deploy-status vocabulary is unchanged.
 
 ## Source + Goal linkage
 

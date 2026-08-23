@@ -2001,7 +2001,7 @@ func validateManifestServiceFields(a bexService) error {
 // manifest that lists domains for one is a mistake worth catching here with a
 // manifest-shaped message.
 func validateManifestIngressFields(a bexService, svcType string) error {
-	hasIngress := svcType == appv1alpha1.TypeWebService || svcType == appv1alpha1.TypeStaticSite
+	hasIngress := appv1alpha1.TypePubliclyRoutable(svcType)
 	if !hasIngress && (len(a.Domains) > 0 || a.Domain != "") {
 		return fmt.Errorf("%w: %s has no ingress and cannot list domains", core.ErrBadRequest, a.Name)
 	}

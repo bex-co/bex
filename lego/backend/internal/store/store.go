@@ -98,7 +98,15 @@ type App struct {
 	// platform-wide, or "<name>-<4-char suffix>" when CreateApp had to mint one
 	// to avoid a cross-tenant collision (w4/m19). The operator reads this —
 	// never Name — to derive the platform host.
-	Slug  string `json:"slug"`
+	Slug string `json:"slug"`
+	// Type is the App's service kind (types.AppSpec.Type's vocabulary:
+	// web_service | private_service | background_worker | cron_job |
+	// static_site). The projector derives spec.expose from it, so a row that
+	// does not carry it cannot be projected correctly. Immutable for the app's
+	// whole life, so it is recorded once at create. Empty is a pre-w6/m46 row
+	// and reads as web_service, exactly as the CRD contract defines the empty
+	// type; the projector backfills the real value from the live CR on resync.
+	Type  string `json:"type,omitempty"`
 	Repo  string `json:"repo,omitempty"`
 	Image string `json:"image,omitempty"`
 	// RegistryCredentialID preserves Render's tri-state image credential
@@ -380,6 +388,12 @@ type Store interface {
 	// SetAppSource atomically updates the projector-owned source tuple and its
 	// context-sensitive registry credential binding.
 	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error
+	// BackfillAppType records the service type of a row created before the type
+	// column existed (w6/m46 t001), read off the row's own live App CR. It is a
+	// one-way heal, never a rename: the type is immutable, so it only ever
+	// writes a row whose type is still empty and reports whether it wrote. Not a
+	// lifecycle verb — the projector is its sole caller.
+	BackfillAppType(ctx context.Context, id, serviceType string) (bool, error)
 	// SetAppImage updates the row's image — the single write path for a
 	// rollback's restored image on store-managed Apps (the projector owns
 	// spec.image), same row-first rationale as SetAppReplicas (w2/m10).
@@ -660,6 +674,14 @@ func (s *PGStore) UnbindClient(ctx context.Context, clientID string) error {
 	return nil // idempotent — a key that was never bound is not an error
 }
 
+// FirstDeployGeneration is the release generation a service's create-triggered
+// deploy runs under: a freshly created Kubernetes object always starts at
+// metadata.generation 1, and the reconciler projects this row into exactly such
+// an object. bex-api stamps the same value on the CR's release-generation
+// annotation, and the two MUST agree — a row pinned to a release the operator
+// never reports reads as superseded and closes canceled (w6/m46 t004).
+const FirstDeployGeneration int64 = 1
+
 // maxSlugMintAttempts bounds CreateApp's collision-retry loop for a fresh
 // random slug suffix (w4/m19 t002). Each attempt draws from a 36^4 space, so
 // exhausting this many is a practical impossibility short of a bug — treat it
@@ -713,19 +735,16 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 		deployID := ids.New(ids.Deploy)
 		err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 			if err := tx.QueryRow(ctx,
-				`INSERT INTO apps (id, tenant_id, name, slug, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id)
-				 VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), $7, $8, $9, $10, $11, $12, $13, NULLIF($14,''), NULLIF($15,''))
+				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id)
+				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''))
 				 RETURNING created_at`,
-				a.ID, a.TenantID, a.Name, a.Slug, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID,
+				a.ID, a.TenantID, a.Name, a.Slug, a.Type, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID,
 			).Scan(&a.CreatedAt); err != nil {
 				return err
 			}
-			// generation is always 1: the reconciler projects this row into a
-			// brand-new App CR, and a freshly created Kubernetes object always
-			// starts at metadata.generation 1.
 			_, err := tx.Exec(ctx,
-				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status) VALUES ($1, $2, $3, $4, 1, $5, $6, $7)`,
-				deployID, a.ID, TriggerCreate, a.Image, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated)
+				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+				deployID, a.ID, TriggerCreate, a.Image, FirstDeployGeneration, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated)
 			return err
 		})
 		if err == nil {
@@ -740,13 +759,13 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 	}
 }
 
-const appColumns = `a.id, a.tenant_id, a.name, a.slug, COALESCE(a.repo,''), COALESCE(a.image,''), a.registry_credential_id,
+const appColumns = `a.id, a.tenant_id, a.name, a.slug, a.type, COALESCE(a.repo,''), COALESCE(a.image,''), a.registry_credential_id,
 	a.branch, a.port, a.replicas, a.tier, a.idle_ttl_seconds, a.suspended,
 	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at`
 
 func scanApp(row pgx.Row) (App, error) {
 	var a App
-	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Repo, &a.Image,
+	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Type, &a.Repo, &a.Image,
 		&a.RegistryCredentialID, &a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended,
 		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt)
 	return a, err
@@ -1213,7 +1232,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	for rows.Next() {
 		var d DesiredApp
 		var envRules []byte
-		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Repo, &d.Image,
+		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
 			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.TenantName, &envRules)
 		if err != nil {
@@ -1345,6 +1364,21 @@ func (s *PGStore) SetAppSource(ctx context.Context, id, repo, image, branch stri
 		return fmt.Errorf("app: %w", ErrNotFound)
 	}
 	return nil
+}
+
+// BackfillAppType heals a pre-w6/m46 row that predates the type column. Only
+// matching an empty type is the whole safety story: it makes the write
+// idempotent, race-free between concurrent projector passes, and incapable of
+// changing a type the create path already recorded (spec.type is immutable, so
+// a disagreement would be corruption, not an update).
+func (s *PGStore) BackfillAppType(ctx context.Context, id, serviceType string) (bool, error) {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET type = $2, updated_at = now() WHERE id = $1 AND type = ''`,
+		id, serviceType)
+	if err != nil {
+		return false, classify("app", err)
+	}
+	return tag.RowsAffected() > 0, nil
 }
 
 // SetAppEnvironment atomically assigns an App row to an Environment and its

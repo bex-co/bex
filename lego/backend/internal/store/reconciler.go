@@ -524,6 +524,16 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 			errs = append(errs, fmt.Errorf("App %s belongs to control plane %q, not %q", cur.Name, owner, r.identity()))
 			continue
 		}
+		// A row created before the type column existed (migration 0095) learns
+		// its type from its own live CR, which has carried spec.type all along —
+		// so the projector's create path can rebuild it correctly if the CR ever
+		// goes missing. One write per row, ever: the healed row comes back typed
+		// on the next pass. Failures are logged, not fatal.
+		if d.Type == "" && cur.Spec.Type != "" {
+			if _, err := r.Store.BackfillAppType(ctx, d.ID, cur.Spec.Type); err != nil {
+				log.Printf("controlplane: backfill type for %s: %v", cur.Name, err)
+			}
+		}
 		// Project desired spec only; observed status (phase/url) is read from
 		// the CR by bex-api, never copied back into Postgres. Labels are
 		// re-stamped so a LabelTenant value change migrates without a relabel.
@@ -1242,10 +1252,18 @@ func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.
 }
 
 // projectSpec maps a row to the App.spec fields the control plane owns.
-// Expose is always set so the operator serves the app at the platform
-// hostname (<name>.<BEX_BASE_DOMAIN>) even before a custom domain exists.
+//
+// Expose is derived from the row's service type, never assumed (w6/m46 t001).
+// It used to be a bare `Expose: true` — correct for the web services the
+// projector was written for, and wrong for every other type, because the apps
+// row carried no type at all. On each resync applyOwnedSpec re-stamped that
+// true onto the App CR, overwriting the type-aware false bex-api's create path
+// had computed (apps.specFromCreate), which published private services at their
+// platform subdomain. The type column (migration 0095) is what lets the
+// projector answer this question instead of guessing it.
 func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 	s := appv1alpha1.AppSpec{
+		Type:                 d.Type,
 		Repo:                 d.Repo,
 		Image:                d.Image,
 		RegistryCredentialID: copyStringPtr(d.RegistryCredentialID),
@@ -1255,9 +1273,13 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 		Tier:                 d.Tier,
 		IdleTTLSeconds:       d.IdleTTLSeconds,
 		Suspended:            d.Suspended,
-		Expose:               true,
 		Subdomain:            d.Slug,
 	}
+	// Serve the app at the platform hostname (<slug>.<BEX_BASE_DOMAIN>) before
+	// any custom domain exists — but only for a type that is served publicly at
+	// all. The same contract helper apps.specFromCreate uses, so the create path
+	// and the projector cannot disagree about a service's exposure.
+	s.Expose = s.PubliclyRoutable()
 	s.Host = d.PrimaryHost
 	s.Hosts = slices.Clone(d.Hosts)
 	s.HostRedirects = maps.Clone(d.HostRedirects)
@@ -1279,6 +1301,18 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 // reports whether anything changed. Fields it doesn't own (Builder,
 // HealthCheckPath, AutoDeploy, RestartedAt, …) are left untouched so
 // bex-api's lifecycle verbs and server-side defaulting survive a resync.
+//
+// Expose and Type are deliberately NOT in the owned set (w6/m46 t001), even
+// though projectSpec computes both for the CREATE path. Both are settled once,
+// at create, by bex-api; no row column and no lifecycle verb ever changes
+// either afterwards, so there is nothing here for a resync to converge — only
+// a live CR to get wrong. Two things follow. A pre-0095 row, whose type is
+// still empty, can never downgrade a running web service's exposure while it
+// waits for its backfill. And a resync of an unchanged app writes nothing,
+// which matters beyond exposure: every Update bumps metadata.generation, and a
+// bump between a deploy row opening and the operator first stamping
+// status.releaseGeneration reads as a supersede, closing that deploy canceled
+// (w6/m46 t004 — the same overwrite caused both bugs).
 func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 	changed := false
 	set := func(cur *string, want string) {
@@ -1315,9 +1349,6 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 	}
 	if dst.Suspended != want.Suspended {
 		dst.Suspended, changed = want.Suspended, true
-	}
-	if dst.Expose != want.Expose {
-		dst.Expose, changed = want.Expose, true
 	}
 	if !slices.Equal(dst.Hosts, want.Hosts) {
 		dst.Hosts, changed = slices.Clone(want.Hosts), true

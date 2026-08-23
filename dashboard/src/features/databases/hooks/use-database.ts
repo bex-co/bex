@@ -1,11 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { DatabaseDocument } from "@/graphql/definitions";
-import {
-  CONVERGING_POLL_INTERVAL_MS,
-  RESOURCE_POLL_INTERVAL_MS,
-  eagerRefetch,
-} from "@/common/lib/polling";
+import { eagerRefetch, useConvergingPoll } from "@/common/lib/polling";
 import {
   toDatabaseDetailView,
   isConverging,
@@ -42,13 +38,11 @@ export function useDatabase(id: string): UseDatabaseResult {
   // Poll fast until we know the DB is settled: while it hasn't loaded yet, or
   // while it's still creating. Once available/unavailable, fall back to the
   // baseline cadence so out-of-band changes still show up.
-  const converging = database ? isConverging(database) : true;
-  useEffect(() => {
-    startPolling(
-      converging ? CONVERGING_POLL_INTERVAL_MS : RESOURCE_POLL_INTERVAL_MS,
-    );
-    return () => stopPolling();
-  }, [converging, startPolling, stopPolling]);
+  useConvergingPoll(
+    startPolling,
+    stopPolling,
+    database ? isConverging(database) : true,
+  );
 
   return {
     database,

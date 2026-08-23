@@ -719,6 +719,37 @@ func (s AppSpec) PlatformSubdomain(name string) string {
 	return name
 }
 
+// PubliclyRoutable reports whether this service type is ever served at a public
+// host. web_service (including the empty-type default) and static_site are; a
+// private_service is "accessible only within the platform network" — the
+// product's own advertised guarantee — and a background_worker or cron_job has
+// no HTTP endpoint at all.
+//
+// This is the TYPE half of the public-routing decision, deliberately separate
+// from the intent half (spec.expose / spec.host / spec.hosts /
+// spec.subdomainPolicy): intent is mutable state any writer can get wrong,
+// while the type is immutable for the App's whole life (the XValidation rule on
+// AppSpec). Gating on it is what makes a private_service unpublishable by a bad
+// Expose value, a stray spec.host, or a custom domain.
+func (s AppSpec) PubliclyRoutable() bool {
+	return TypePubliclyRoutable(s.Type)
+}
+
+// TypePubliclyRoutable is PubliclyRoutable for a bare type string — for callers
+// that hold the type before a spec exists (bex-api's create validation, the
+// control-plane projector's row-to-spec derivation).
+//
+// An allowlist, not a denylist: this gates public exposure, so a type it does
+// not recognize must fail closed. The CRD enum keeps that unreachable today.
+func TypePubliclyRoutable(serviceType string) bool {
+	switch serviceType {
+	case "", TypeWebService, TypeStaticSite:
+		return true
+	default:
+		return false
+	}
+}
+
 // EffectiveHosts returns the ordered, deduplicated public hosts the platform
 // serves this App at: spec.host first, then the platform hostname
 // `<PlatformSubdomain>.<baseDomain>` when the App is exposed and the subdomain
@@ -728,8 +759,12 @@ func (s AppSpec) PlatformSubdomain(name string) string {
 // identically, so it lives here once instead of being hand-copied at each call
 // site (the same contract-level rationale as PlatformSubdomain above). name is
 // the App CR's Name (the PlatformSubdomain fallback); an empty baseDomain
-// yields no platform host.
+// yields no platform host. A type that is not PubliclyRoutable yields no hosts
+// at all, regardless of Expose/Host/Hosts.
 func (s AppSpec) EffectiveHosts(name, baseDomain string) []string {
+	if !s.PubliclyRoutable() {
+		return nil
+	}
 	var hosts []string
 	seen := map[string]bool{}
 	add := func(h string) {

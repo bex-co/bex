@@ -340,6 +340,15 @@ function renderSettings(serviceId = "app") {
   return render(<RouterProvider router={router} />);
 }
 
+async function sectionHrefs(): Promise<Array<string | null>> {
+  const navigation = await screen.findByRole("navigation", {
+    name: "Settings sections",
+  });
+  return within(navigation)
+    .getAllByRole("link")
+    .map((link) => link.getAttribute("href"));
+}
+
 beforeEach(() => {
   serverState.service = null;
   serverState.loading = false;
@@ -355,11 +364,7 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    const navigation = await screen.findByRole("navigation", {
-      name: "Settings sections",
-    });
-    const links = within(navigation).getAllByRole("link");
-    const hrefs = links.map((link) => link.getAttribute("href"));
+    const hrefs = await sectionHrefs();
 
     expect(hrefs).toEqual([
       "#general",
@@ -377,6 +382,39 @@ describe("ServiceSettingsPage", () => {
     }
   });
 
+  // w6/m46 t002/t006. A private service (and a worker) is never served at a
+  // public host: bex-api refuses a custom domain on one and the operator never
+  // builds it an Ingress. Offering the card would be an Add button that can
+  // only fail, and the platform-subdomain toggle folded into it read "Enabled"
+  // with a live `.onbex.co` link — the UI agreeing with the very bug this
+  // milestone fixed.
+  it.each(["private_service", "background_worker"])(
+    "offers no custom-domain or platform-subdomain settings to a %s",
+    async (type) => {
+      serverState.service = svc({ type, url: null });
+      renderSettings();
+
+      const hrefs = await sectionHrefs();
+
+      expect(hrefs).not.toContain("#domains");
+      expect(hrefs).not.toContain("#networking");
+      expect(document.getElementById("domains")).toBeNull();
+      expect(
+        screen.queryByText("Platform Subdomain", { exact: false }),
+      ).toBeNull();
+    },
+  );
+
+  // static_site is the other publicly-routed type and has no coverage of this
+  // gate; web_service's is the full-href-list assertion above.
+  it("still offers custom domains to a static site", async () => {
+    serverState.service = svc({ type: "static_site", repo: null });
+    renderSettings();
+
+    expect(await sectionHrefs()).toContain("#domains");
+    expect(document.getElementById("domains")).toBeInTheDocument();
+  });
+
   it("keeps the section navigation free of unavailable cron-service links", async () => {
     serverState.service = svc({
       type: "cron_job",
@@ -387,12 +425,7 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    const navigation = await screen.findByRole("navigation", {
-      name: "Settings sections",
-    });
-    const hrefs = within(navigation)
-      .getAllByRole("link")
-      .map((link) => link.getAttribute("href"));
+    const hrefs = await sectionHrefs();
 
     expect(hrefs).toEqual([
       "#general",

@@ -208,6 +208,28 @@ export function deriveStatus(s: ServiceView): ServiceStatus {
 }
 
 /**
+ * True while the service is mid-transition — the operator is building a release
+ * or rolling one out, so its phase will change again shortly without anyone
+ * touching the page. The detail header polls on this (w6/m46 t005): nothing in
+ * the client re-reads `server(id)` when a deploy closes server-side, because
+ * that fires no local mutation to hang a refetch off (w6/m45 t003 fixed only
+ * the Cancel/Rollback BUTTON, which has one). An empty phase counts — a first
+ * reconcile that has not landed is the start of the same transition.
+ *
+ * Deliberately keyed on the raw phase rather than on `deriveStatus`'s key, the
+ * way the databases/keyvalue siblings are: `deriveStatus` folds a hibernated
+ * non-HTTP service into "pending", and an auto-slept worker sitting at the
+ * 3-second cadence forever is exactly what this must not do.
+ */
+export function isConvergingPhase(s: Pick<ServiceView, "phase">): boolean {
+  return CONVERGING_PHASES.has(s.phase.toLowerCase());
+}
+
+// The App phases that are still moving, in the same lower-cased vocabulary
+// PHASE_STATUS above is keyed on.
+const CONVERGING_PHASES = new Set(["", "pending", "building", "deploying"]);
+
+/**
  * True when the App is auto-sleeping (free-tier, idle past its TTL) rather than
  * manually suspended — the state that gets the "wakes on the next request" hint.
  * Never true for a type that serves no HTTP, which cannot be woken by a request.
