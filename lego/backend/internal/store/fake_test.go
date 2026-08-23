@@ -35,6 +35,7 @@ type memStore struct {
 	tenants map[string]Tenant
 	apps    map[string]App
 	domains map[string]Domain
+	disks   map[string]Disk
 	// Tenancy mapping keys (mirrors 0002_workspaces + owner_identity_id):
 	// members maps a (tenant, subject) tenant_members row to its role — subject
 	// covers both Kratos identity ids and Hydra client ids, so one map serves
@@ -58,6 +59,7 @@ func newMemStore() *memStore {
 		tenants:          map[string]Tenant{},
 		apps:             map[string]App{},
 		domains:          map[string]Domain{},
+		disks:            map[string]Disk{},
 		members:          map[memberKey]string{},
 		ownerOf:          map[string]string{},
 		usage:            map[usageKey]HourlyRow{},
@@ -367,6 +369,12 @@ func (m *memStore) ListDesiredApps(context.Context) ([]DesiredApp, error) {
 	out := make([]DesiredApp, 0, len(m.apps))
 	for _, a := range m.apps {
 		d := DesiredApp{App: a, TenantName: m.tenants[a.TenantID].Name}
+		for _, disk := range m.disks {
+			if disk.AppID == a.ID && disk.DeletedAt == nil {
+				d.Disk = &disk
+				break
+			}
+		}
 		var hosts []Domain
 		for _, dom := range m.domains {
 			if dom.AppID == a.ID && dom.ClaimState == "verified" {
@@ -893,4 +901,149 @@ func (m *memStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceE
 		}
 	}
 	return nil
+}
+
+// Persistent service disks (ADR082). The fake keeps the same invariants the
+// migration enforces — one live disk per app, grow-only — so a test that
+// passes here is not passing on a laxer contract than production's.
+func (m *memStore) CreateDisk(_ context.Context, tenantID, appID, name, mountPath string, sizeGB int32) (Disk, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.apps[appID]; !ok {
+		return Disk{}, fmt.Errorf("disk reference: %w", ErrNotFound)
+	}
+	for _, d := range m.disks {
+		if d.AppID == appID && d.DeletedAt == nil {
+			return Disk{}, fmt.Errorf("disk: %w", ErrConflict)
+		}
+	}
+	now := time.Now().UTC()
+	d := Disk{
+		ID: ids.New(ids.Disk), TenantID: tenantID, AppID: appID, Name: name,
+		MountPath: mountPath, SizeGB: sizeGB, CreatedAt: now, UpdatedAt: now,
+	}
+	m.disks[d.ID] = d
+	return d, nil
+}
+
+func (m *memStore) GetDisk(_ context.Context, id string) (Disk, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if d, ok := m.disks[id]; ok && d.DeletedAt == nil {
+		return d, nil
+	}
+	return Disk{}, fmt.Errorf("disk: %w", ErrNotFound)
+}
+
+func (m *memStore) ListDisks(_ context.Context, tenantID, appID string) ([]Disk, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := []Disk{}
+	for _, d := range m.disks {
+		if d.TenantID != tenantID || d.DeletedAt != nil {
+			continue
+		}
+		if appID != "" && d.AppID != appID {
+			continue
+		}
+		out = append(out, d)
+	}
+	slices.SortFunc(out, func(x, y Disk) int {
+		if c := y.CreatedAt.Compare(x.CreatedAt); c != 0 {
+			return c
+		}
+		return strings.Compare(x.ID, y.ID)
+	})
+	return out, nil
+}
+
+func (m *memStore) UpdateDisk(_ context.Context, id string, name, mountPath *string, sizeGB *int32) (Disk, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.disks[id]
+	if !ok || d.DeletedAt != nil {
+		return Disk{}, fmt.Errorf("disk: %w", ErrNotFound)
+	}
+	if sizeGB != nil && *sizeGB < d.SizeGB {
+		return Disk{}, fmt.Errorf("disk: %w: size can only grow (current %dGB, requested %dGB)",
+			ErrInvalid, d.SizeGB, *sizeGB)
+	}
+	if name != nil {
+		d.Name = *name
+	}
+	if mountPath != nil {
+		d.MountPath = *mountPath
+	}
+	if sizeGB != nil && *sizeGB > d.SizeGB {
+		d.SizeGB = *sizeGB
+	}
+	d.UpdatedAt = time.Now().UTC()
+	m.disks[id] = d
+	return d, nil
+}
+
+func (m *memStore) DeleteDisk(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.disks[id]
+	if !ok || d.DeletedAt != nil {
+		return fmt.Errorf("disk: %w", ErrNotFound)
+	}
+	now := time.Now().UTC()
+	d.DeletedAt = &now
+	d.UpdatedAt = now
+	m.disks[id] = d
+	return nil
+}
+
+// DiskUsageForWindow mirrors the SQL integration: the fake keeps no size
+// history, so it integrates the current size over the disk's own lifetime
+// clipped to the window. That is exact for the create/delete cases tests
+// exercise and conservative for a mid-window grow.
+func (m *memStore) DiskUsageForWindow(_ context.Context, from, to time.Time) ([]DiskUsageRow, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	totals := map[string]*DiskUsageRow{}
+	for _, d := range m.disks {
+		start := d.CreatedAt
+		if start.Before(from) {
+			start = from
+		}
+		end := to
+		if d.DeletedAt != nil && d.DeletedAt.Before(end) {
+			end = *d.DeletedAt
+		}
+		if !end.After(start) {
+			continue
+		}
+		seconds := int64(end.Sub(start).Seconds())
+		row, ok := totals[d.AppID]
+		if !ok {
+			row = &DiskUsageRow{TenantID: d.TenantID, AppID: d.AppID}
+			totals[d.AppID] = row
+		}
+		row.GBSeconds += int64(d.SizeGB) * seconds
+	}
+	out := make([]DiskUsageRow, 0, len(totals))
+	for _, row := range totals {
+		out = append(out, *row)
+	}
+	slices.SortFunc(out, func(x, y DiskUsageRow) int { return strings.Compare(x.AppID, y.AppID) })
+	return out, nil
+}
+
+func (m *memStore) LatestUsageWindowForKind(_ context.Context, kind string) (time.Time, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var latest time.Time
+	found := false
+	for key := range m.usage {
+		if key.kind != kind {
+			continue
+		}
+		if !found || key.windowStart.After(latest) {
+			latest, found = key.windowStart, true
+		}
+	}
+	return latest, found, nil
 }

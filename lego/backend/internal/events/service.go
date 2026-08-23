@@ -208,6 +208,9 @@ const (
 	TypePublishPathChanged        = "publish_path_changed"
 	TypeRoutesChanged             = "routes_changed"
 	TypeHeadersChanged            = "headers_changed"
+	TypeDiskAttached              = "disk_attached"
+	TypeDiskUpdated               = "disk_updated"
+	TypeDiskDetached              = "disk_detached"
 	TypeCustomDomainAdded         = "custom_domain_added"
 	TypeCustomDomainRemoved       = "custom_domain_removed"
 	TypeCustomDomainVerified      = "custom_domain_verified"
@@ -263,6 +266,9 @@ var eventTypes = map[string]string{
 	"apps.SetPublishPath":                   TypePublishPathChanged,
 	"apps.SetRoutes":                        TypeRoutesChanged,
 	"apps.SetHeaders":                       TypeHeadersChanged,
+	"apps.AddDisk":                          TypeDiskAttached,
+	"apps.UpdateDisk":                       TypeDiskUpdated,
+	"apps.DeleteDisk":                       TypeDiskDetached,
 	"apps.AddDomain":                        TypeCustomDomainAdded,
 	"apps.DeleteDomain":                     TypeCustomDomainRemoved,
 	"apps.VerifyDomain":                     TypeCustomDomainVerified,

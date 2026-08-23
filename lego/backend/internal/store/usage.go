@@ -38,6 +38,13 @@ const (
 	// seconds. Memory is folded into the weight at the AgentCore reference
 	// ratio ($0.00945/GB-hour ÷ $0.0895/vCPU-hour); see ADR047 D6.
 	UsageKindSandboxComputeSeconds = "sandbox_compute_seconds"
+	// UsageKindDiskGBSeconds is a service disk's PROVISIONED capacity in GB
+	// multiplied by the seconds it was provisioned for — deliberately a
+	// different dimension from UsageKindStorageGBSeconds, which averages USED
+	// bytes on a datastore volume. Disks bill on what was reserved, running or
+	// not, because that is what Render charges for and what Hetzner charges
+	// bex for; see docs/ADR082-persistent-disks.md D8/D9.
+	UsageKindDiskGBSeconds = "disk_gb_seconds"
 )
 
 // Usage source-health vocabulary. Keep this closed and presentation-safe: the
@@ -57,6 +64,11 @@ const (
 	// observations, so any current-month sandbox total conservatively degrades
 	// otherwise-known workspace coverage.
 	UsageSourceSandbox = "sandbox"
+	// UsageSourceDisk covers the provisioned-disk meter. Unlike every source
+	// above it, it reads the control-plane's own disk lifecycle rows rather
+	// than the cluster, so it is the one source that stays healthy while
+	// Prometheus or the app cluster is unreachable.
+	UsageSourceDisk = "disk"
 
 	UsageSourceHealthy     = "healthy"
 	UsageSourceDegraded    = "degraded"
@@ -218,7 +230,8 @@ func upsertUsageSourceObservation(ctx context.Context, exec usageSourceExecer, r
 func validUsageSource(source string) bool {
 	switch source {
 	case UsageSourceInstance, UsageSourceBuild, UsageSourceStorage, UsageSourceHTTP,
-		UsageSourceWebSocket, UsageSourceDirect, UsageSourcePostgres, UsageSourceKeyValue:
+		UsageSourceWebSocket, UsageSourceDirect, UsageSourcePostgres, UsageSourceKeyValue,
+		UsageSourceDisk:
 		return true
 	default:
 		return false

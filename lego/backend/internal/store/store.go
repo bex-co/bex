@@ -289,8 +289,37 @@ type DomainDeclaration struct {
 // DesiredApp is an apps row joined with everything projection needs: the
 // owning tenant's name (part of the CR name) and the app's domains,
 // primary first.
+// Disk is a persistent volume attached to one service
+// (docs/ADR082-persistent-disks.md). Size is PROVISIONED capacity: it is what
+// the tenant is billed for whether the service is running, suspended, or
+// scaled to zero, exactly as Render bills its disks and as Hetzner bills the
+// volume underneath.
+type Disk struct {
+	ID        string     `json:"id"`
+	TenantID  string     `json:"tenantId"`
+	AppID     string     `json:"appId"`
+	Name      string     `json:"name"`
+	MountPath string     `json:"mountPath"`
+	SizeGB    int32      `json:"sizeGB"`
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+}
+
+// DiskUsageRow is one service's provisioned disk GB-seconds within a metering
+// window, attributed to the owning service (ADR082 D9 — the disk is a property
+// of its service, so the meter keys on srv-, not dsk-).
+type DiskUsageRow struct {
+	TenantID  string
+	AppID     string
+	GBSeconds int64
+}
+
 type DesiredApp struct {
 	App
+	// Disk is the service's live disk, nil when it has none. The projector
+	// turns it into spec.disk; clearing it detaches the volume.
+	Disk          *Disk
 	TenantName    string
 	PrimaryHost   string
 	Hosts         []string
@@ -367,6 +396,30 @@ type Store interface {
 	ReplaceDomains(ctx context.Context, appID, primary string, hosts []string) error
 	// DeleteDomain removes a custom domain row. Not-found is ErrNotFound.
 	DeleteDomain(ctx context.Context, appID, host string) error
+	// Persistent service disks (docs/ADR082-persistent-disks.md). The row is
+	// the source of truth for both the projected spec.disk and the provisioned
+	// GB-seconds meter, which is why every write also closes or opens a size
+	// period — see service_disk_sizes in migration 0096.
+	//
+	// CreateDisk returns ErrConflict when the service already has a live disk:
+	// a service can carry at most one, and the unique index enforces it even
+	// against a racing second create.
+	CreateDisk(ctx context.Context, tenantID, appID, name, mountPath string, sizeGB int32) (Disk, error)
+	GetDisk(ctx context.Context, id string) (Disk, error)
+	// ListDisks returns the workspace's live disks, newest first. An empty
+	// appID lists them all; a non-empty one narrows to a single service.
+	ListDisks(ctx context.Context, tenantID, appID string) ([]Disk, error)
+	// UpdateDisk applies a grow and/or a rename/remount. sizeGB below the
+	// current size is ErrInvalid — a disk never shrinks (ADR082 D2).
+	UpdateDisk(ctx context.Context, id string, name, mountPath *string, sizeGB *int32) (Disk, error)
+	// DeleteDisk soft-deletes the row, which both detaches the volume (the
+	// projector clears spec.disk) and stops the meter by closing the open size
+	// period. The row is retained so an already-billed period stays auditable.
+	DeleteDisk(ctx context.Context, id string) error
+	// DiskUsageForWindow integrates provisioned disk GB-seconds per service
+	// over [from, to); LatestUsageWindowForKind is that meter's cursor.
+	DiskUsageForWindow(ctx context.Context, from, to time.Time) ([]DiskUsageRow, error)
+	LatestUsageWindowForKind(ctx context.Context, kind string) (time.Time, bool, error)
 	ListDesiredApps(ctx context.Context) ([]DesiredApp, error)
 	// SetAppSuspended flips the row's suspended flag — the single write path
 	// for suspend/resume on store-managed Apps. bex-api's lifecycle verbs call
@@ -1287,7 +1340,233 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 			}
 		}
 	}
-	return out, drows.Err()
+	if err := drows.Err(); err != nil {
+		return nil, err
+	}
+	// Attach each service's live disk (ADR082). Only live rows are selected, so
+	// a soft-deleted disk projects as absent, which is what detaches the volume.
+	krows, err := s.Pool.Query(ctx,
+		`SELECT `+diskColumns+` FROM service_disks WHERE deleted_at IS NULL`)
+	if err != nil {
+		return nil, err
+	}
+	defer krows.Close()
+	for krows.Next() {
+		disk, err := scanDisk(krows)
+		if err != nil {
+			return nil, err
+		}
+		if i, ok := index[disk.AppID]; ok {
+			out[i].Disk = &disk
+		}
+	}
+	return out, krows.Err()
+}
+
+const diskColumns = `id, tenant_id, app_id, name, mount_path, size_gb, created_at, updated_at, deleted_at`
+
+func scanDisk(row rowScanner) (Disk, error) {
+	var d Disk
+	err := row.Scan(&d.ID, &d.TenantID, &d.AppID, &d.Name, &d.MountPath, &d.SizeGB,
+		&d.CreatedAt, &d.UpdatedAt, &d.DeletedAt)
+	return d, err
+}
+
+// CreateDisk inserts the disk and opens its first size period in one
+// transaction, so a disk can never exist unmetered or be metered before it
+// exists.
+func (s *PGStore) CreateDisk(ctx context.Context, tenantID, appID, name, mountPath string, sizeGB int32) (Disk, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return Disk{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	diskID := ids.New(ids.Disk)
+	row := tx.QueryRow(ctx,
+		`INSERT INTO service_disks (id, tenant_id, app_id, name, mount_path, size_gb)
+		 VALUES ($1, $2, $3, $4, $5, $6) RETURNING `+diskColumns,
+		diskID, tenantID, appID, name, mountPath, sizeGB)
+	disk, err := scanDisk(row)
+	if err != nil {
+		// The partial unique index on a live disk per app surfaces a second
+		// disk as a duplicate-key violation, which classify maps to conflict.
+		return Disk{}, classify("disk", err)
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO service_disk_sizes (disk_id, size_gb, from_ts) VALUES ($1, $2, $3)`,
+		disk.ID, sizeGB, disk.CreatedAt); err != nil {
+		// from_ts is the row's own created_at (also the DB clock), so the first
+		// period starts exactly when the disk starts existing.
+		return Disk{}, classify("disk", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Disk{}, err
+	}
+	return disk, nil
+}
+
+func (s *PGStore) GetDisk(ctx context.Context, id string) (Disk, error) {
+	disk, err := scanDisk(s.Pool.QueryRow(ctx,
+		`SELECT `+diskColumns+` FROM service_disks WHERE id = $1 AND deleted_at IS NULL`, id))
+	if err != nil {
+		return Disk{}, classify("disk", err)
+	}
+	return disk, nil
+}
+
+func (s *PGStore) ListDisks(ctx context.Context, tenantID, appID string) ([]Disk, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+diskColumns+` FROM service_disks
+		 WHERE tenant_id = $1 AND ($2 = '' OR app_id = $2) AND deleted_at IS NULL
+		 ORDER BY created_at DESC, id`, tenantID, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Disk{}
+	for rows.Next() {
+		disk, err := scanDisk(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, disk)
+	}
+	return out, rows.Err()
+}
+
+// UpdateDisk applies the mutable fields. A size change closes the current
+// period and opens a new one at the same instant, so the meter integrates the
+// old size right up to the grow and the new size from it — a disk grown
+// mid-hour bills both, which is what makes the invoice reproducible.
+func (s *PGStore) UpdateDisk(ctx context.Context, id string, name, mountPath *string, sizeGB *int32) (Disk, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return Disk{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	current, err := scanDisk(tx.QueryRow(ctx,
+		`SELECT `+diskColumns+` FROM service_disks WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, id))
+	if err != nil {
+		return Disk{}, classify("disk", err)
+	}
+	if sizeGB != nil && *sizeGB < current.SizeGB {
+		return Disk{}, fmt.Errorf("disk: %w: size can only grow (current %dGB, requested %dGB)",
+			ErrInvalid, current.SizeGB, *sizeGB)
+	}
+
+	// Every period boundary comes from the DATABASE clock, never Go's. The two
+	// clocks can disagree by more than the gap between a create and a grow, and
+	// a to_ts behind its own from_ts is both a constraint violation and, worse,
+	// negative billed time. Inside one transaction now() is the transaction
+	// timestamp, so the close and the open land on the same instant exactly.
+	if sizeGB != nil && *sizeGB > current.SizeGB {
+		if _, err := tx.Exec(ctx,
+			`UPDATE service_disk_sizes SET to_ts = now() WHERE disk_id = $1 AND to_ts IS NULL`,
+			id); err != nil {
+			return Disk{}, err
+		}
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO service_disk_sizes (disk_id, size_gb, from_ts) VALUES ($1, $2, now())`,
+			id, *sizeGB); err != nil {
+			return Disk{}, err
+		}
+	}
+	updated, err := scanDisk(tx.QueryRow(ctx,
+		`UPDATE service_disks
+		    SET name = COALESCE($2, name),
+		        mount_path = COALESCE($3, mount_path),
+		        size_gb = GREATEST(size_gb, COALESCE($4, size_gb)),
+		        updated_at = now()
+		  WHERE id = $1 AND deleted_at IS NULL
+		 RETURNING `+diskColumns, id, name, mountPath, sizeGB))
+	if err != nil {
+		return Disk{}, classify("disk", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Disk{}, err
+	}
+	return updated, nil
+}
+
+// DeleteDisk soft-deletes and closes the open size period in one transaction:
+// the instant billing stops is the same instant the volume is released.
+func (s *PGStore) DeleteDisk(ctx context.Context, id string) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	tag, err := tx.Exec(ctx,
+		`UPDATE service_disks SET deleted_at = now(), updated_at = now() WHERE id = $1 AND deleted_at IS NULL`,
+		id)
+	if err != nil {
+		return classify("disk", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("disk: %w", ErrNotFound)
+	}
+	// Same transaction clock as the deletion above, so the moment billing stops
+	// is exactly the moment the volume is released.
+	if _, err := tx.Exec(ctx,
+		`UPDATE service_disk_sizes SET to_ts = now() WHERE disk_id = $1 AND to_ts IS NULL`, id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// DiskUsageForWindow returns provisioned disk GB-seconds per service for the
+// half-open window [from, to).
+//
+// It integrates the size periods rather than sampling a current size, so a
+// disk grown mid-window contributes its old size up to the change and its new
+// size after it, and a disk deleted mid-window contributes only up to the
+// deletion. Because it reads committed control-plane rows, the same window
+// recomputed later yields the same number — which is what lets the invoice be
+// re-derived, and what makes the meter independent of the app cluster.
+func (s *PGStore) DiskUsageForWindow(ctx context.Context, from, to time.Time) ([]DiskUsageRow, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT d.tenant_id, d.app_id,
+		        SUM(s.size_gb * EXTRACT(EPOCH FROM (
+		            LEAST(COALESCE(s.to_ts, $2), $2) - GREATEST(s.from_ts, $1)
+		        )))::bigint
+		   FROM service_disk_sizes s
+		   JOIN service_disks d ON d.id = s.disk_id
+		  WHERE s.from_ts < $2 AND (s.to_ts IS NULL OR s.to_ts > $1)
+		  GROUP BY d.tenant_id, d.app_id`, from.UTC(), to.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []DiskUsageRow{}
+	for rows.Next() {
+		var r DiskUsageRow
+		if err := rows.Scan(&r.TenantID, &r.AppID, &r.GBSeconds); err != nil {
+			return nil, err
+		}
+		if r.GBSeconds < 0 {
+			r.GBSeconds = 0
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// LatestUsageWindowForKind is the newest window any resource has recorded for
+// one meter kind — the cursor for a meter whose rows are computed for every
+// resource at once rather than resource by resource.
+func (s *PGStore) LatestUsageWindowForKind(ctx context.Context, kind string) (time.Time, bool, error) {
+	var window *time.Time
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT MAX(window_start) FROM usage_hourly WHERE kind = $1`, kind).Scan(&window); err != nil {
+		return time.Time{}, false, err
+	}
+	if window == nil {
+		return time.Time{}, false, nil
+	}
+	return window.UTC(), true, nil
 }
 
 func (s *PGStore) SetAppSuspended(ctx context.Context, id string, suspended bool) error {

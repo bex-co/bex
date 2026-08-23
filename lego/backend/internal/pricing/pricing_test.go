@@ -85,6 +85,7 @@ workspace:
 func TestBillableMeterNamesMatchesStripeCatalog(t *testing.T) {
 	want := []string{
 		"build_seconds",
+		"disk_gb_hours",
 		"egress_gib",
 		"instance_seconds.key_value.standard",
 		"instance_seconds.key_value.starter",
@@ -114,6 +115,51 @@ func TestEstimateSandboxComputeUsesWeightedSecondRate(t *testing.T) {
 	}})
 	if est.TotalUSD != "0.05" || len(est.Meters) != 1 || est.Meters[0].Kind != store.UsageKindSandboxComputeSeconds {
 		t.Fatalf("sandbox estimate = %+v, want one $0.05 meter", est)
+	}
+}
+
+// A 10 GB disk for one 730-hour pricing month is Render's $2.50 at 30% off.
+// This is the one SKU whose estimate equals its invoice, since both sides bill
+// provisioned capacity (ADR082 D8) — so the arithmetic is worth pinning.
+func TestEstimateDiskUsesProvisionedGBMonthRate(t *testing.T) {
+	const gbSecondsIn730Hours = 10 * 730 * 3600 // 10 GB held for a pricing month
+	est := Default.Estimate([]store.UsageSummaryRow{{
+		Kind: store.UsageKindDiskGBSeconds, ResourceKind: store.ResourceKindService,
+		Total: gbSecondsIn730Hours,
+	}})
+	if est.TotalUSD != "1.75" || len(est.Meters) != 1 || est.Meters[0].Kind != store.UsageKindDiskGBSeconds {
+		t.Fatalf("disk estimate = %+v, want one $1.75 meter (10GB × $0.175/GB-month)", est)
+	}
+}
+
+// The datastore storage meter and the disk meter must not collapse into one
+// rate: they bill different things (used bytes vs provisioned capacity) at
+// different prices, and folding them would make one of the two invoice lines
+// impossible to re-derive.
+func TestDiskAndStorageRatesStayDistinct(t *testing.T) {
+	const gbMonth = 730 * 3600
+	disk := Default.Estimate([]store.UsageSummaryRow{{
+		Kind: store.UsageKindDiskGBSeconds, ResourceKind: store.ResourceKindService, Total: gbMonth,
+	}})
+	storage := Default.Estimate([]store.UsageSummaryRow{{
+		Kind: store.UsageKindStorageGBSeconds, ResourceKind: store.ResourceKindPostgres, Total: gbMonth,
+	}})
+	if disk.TotalUSD == storage.TotalUSD {
+		t.Fatalf("disk and storage both priced %s; they must stay separate rates", disk.TotalUSD)
+	}
+	if disk.TotalUSD != "0.18" || storage.TotalUSD != "0.21" {
+		t.Fatalf("disk=%s storage=%s, want 0.18 ($0.175 rounded to the cent) and 0.21", disk.TotalUSD, storage.TotalUSD)
+	}
+}
+
+// A disk meter attributed to anything but a service prices at zero rather than
+// silently charging the service rate for an unknown resource kind.
+func TestDiskRateAppliesOnlyToServices(t *testing.T) {
+	est := Default.Estimate([]store.UsageSummaryRow{{
+		Kind: store.UsageKindDiskGBSeconds, ResourceKind: store.ResourceKindPostgres, Total: 10 * 730 * 3600,
+	}})
+	if est.TotalUSD != "0.00" {
+		t.Fatalf("disk on a postgres resource priced %s, want 0.00", est.TotalUSD)
 	}
 }
 

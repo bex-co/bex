@@ -136,19 +136,22 @@ var publicRoutes = map[string]bool{
 // a classification decision rather than silent omission.
 var callerScopedRoutes = map[string]bool{
 	// Collection lists — scoped to the caller's own workspace (or identity).
-	"GET /v1/services":                                true,
-	"GET /v1/postgres":                                true,
-	"GET /v1/key-value":                               true,
-	"GET /v1/env-groups":                              true,
-	"GET /v1/environments":                            true,
-	"GET /v1/projects":                                true,
-	"GET /v1/registrycredentials":                     true,
-	"GET /v1/ssh-keys":                                true,
-	"GET /v1/api-keys":                                true,
-	"GET /v1/webhooks":                                true,
-	"GET /v1/webhooks/event-types":                    true,
-	"GET /v1/sandboxes":                               true,
-	"GET /v1/agent-sessions":                          true,
+	"GET /v1/services":             true,
+	"GET /v1/postgres":             true,
+	"GET /v1/key-value":            true,
+	"GET /v1/env-groups":           true,
+	"GET /v1/environments":         true,
+	"GET /v1/projects":             true,
+	"GET /v1/registrycredentials":  true,
+	"GET /v1/ssh-keys":             true,
+	"GET /v1/api-keys":             true,
+	"GET /v1/webhooks":             true,
+	"GET /v1/webhooks/event-types": true,
+	// Disks list the caller's own workspace; a serviceId filter is authorized
+	// against that service's own workspace, not the caller's (ADR082 D6).
+	"GET /v1/disks":          true,
+	"GET /v1/sandboxes":      true,
+	"GET /v1/agent-sessions": true,
 	// Caller/workspace-scoped readiness projection (w11/m6 t001): scoped by
 	// ownerId like the list route, addresses no session by path; its own
 	// Authorize denies non-member callers (TestCapabilitiesProjection).
@@ -156,7 +159,7 @@ var callerScopedRoutes = map[string]bool{
 	// The caller's OWN effective permissions (w9/m84): scoped by the ownerId
 	// query param, addresses no resource by path; its own can_view gate denies
 	// an ownerId naming a workspace the caller isn't in.
-	"GET /v1/viewer/capabilities": true,
+	"GET /v1/viewer/capabilities":                     true,
 	"GET /v1/owners":                                  true,
 	"GET /v1/blueprints":                              true,
 	"GET /v1/usage":                                   true,
@@ -177,22 +180,25 @@ var callerScopedRoutes = map[string]bool{
 	// Creates — the new resource's workspace comes from the request context
 	// (ownerId / caller default), not a path; a create naming a non-member
 	// workspace is refused in the t004 E2E.
-	"POST /v1/services":                            true,
-	"POST /v1/postgres":                            true,
-	"POST /v1/key-value":                           true,
-	"POST /v1/env-groups":                          true,
-	"POST /v1/environments":                        true,
-	"POST /v1/projects":                            true,
-	"POST /v1/registrycredentials":                 true,
-	"POST /v1/api-keys":                            true,
-	"POST /v1/webhooks":                            true,
-	"POST /v1/ssh-keys":                            true,
-	"POST /v1/sandboxes":                           true,
-	"POST /v1/agent-sessions":                      true,
-	"POST /v1/git/connect":                         true,
+	"POST /v1/services":            true,
+	"POST /v1/postgres":            true,
+	"POST /v1/key-value":           true,
+	"POST /v1/env-groups":          true,
+	"POST /v1/environments":        true,
+	"POST /v1/projects":            true,
+	"POST /v1/registrycredentials": true,
+	"POST /v1/api-keys":            true,
+	"POST /v1/webhooks":            true,
+	"POST /v1/ssh-keys":            true,
+	// Create names its service in the BODY, which AddDisk authorizes against
+	// that service's own workspace before any row is written.
+	"POST /v1/disks":          true,
+	"POST /v1/sandboxes":      true,
+	"POST /v1/agent-sessions": true,
+	"POST /v1/git/connect":    true,
 	// The ADR075 §3a claim start — same ownerId/body scoping as connect; its
 	// cross-workspace path is the verb's own can_manage gate.
-	"POST /v1/git/claim": true,
+	"POST /v1/git/claim":                           true,
 	"POST /v1/invites/accept":                      true, // redeems by the CALLER's own identity
 	"POST /v1/notification-device-subscriptions":   true, // registers only the caller's own device capability
 	"POST /v1/notification-webpush-subscriptions":  true, // registers only the caller's own browser subscription

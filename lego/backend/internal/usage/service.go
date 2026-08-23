@@ -57,6 +57,10 @@ type UsageStore interface {
 	ReconcileUsageSourceStreams(ctx context.Context, active []store.UsageResourceRef, through time.Time) error
 	CurrentUsageCoverage(ctx context.Context, workspaceID string, now time.Time) (store.UsageCoverage, error)
 	LatestUsageWindow(ctx context.Context, resourceKind, serviceID, kind string) (time.Time, error)
+	// The provisioned-disk meter reads control-plane rows rather than the
+	// cluster, so it needs its own window integration and its own cursor.
+	DiskUsageForWindow(ctx context.Context, from, to time.Time) ([]store.DiskUsageRow, error)
+	LatestUsageWindowForKind(ctx context.Context, kind string) (time.Time, bool, error)
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error)
 	CompactUsage(ctx context.Context, before time.Time) (store.UsageCompaction, error)
 }
@@ -406,15 +410,17 @@ func (s *Service) Run(ctx context.Context) {
 
 // RunWithIntervals is like Run but with explicit cadences — for tests.
 func (s *Service) RunWithIntervals(ctx context.Context, rollup, compact time.Duration) {
-	// Without Prometheus the metering side is structurally off: rollupC stays
-	// nil (a receive on a nil channel never fires) and only compaction ticks.
-	var rollupC <-chan time.Time
-	if s.PromBase != "" {
-		rollupTicker := time.NewTicker(rollup)
-		defer rollupTicker.Stop()
-		rollupC = rollupTicker.C
-		s.catchUp(ctx)
-	}
+	// The rollup tick runs whenever anything is meterable. Prometheus-backed
+	// meters (instance, egress, build, datastore storage) stay structurally off
+	// without a Prometheus base — catchUp and rollup skip them — but the
+	// provisioned-disk meter is derived from control-plane rows alone, so it
+	// has to keep billing while the cluster or Prometheus is unreachable
+	// (docs/ADR082-persistent-disks.md D9). Gating the whole loop on
+	// Prometheus would silently stop charging for volumes that still exist.
+	rollupTicker := time.NewTicker(rollup)
+	defer rollupTicker.Stop()
+	rollupC := rollupTicker.C
+	s.catchUp(ctx)
 	compactTicker := time.NewTicker(compact)
 	defer compactTicker.Stop()
 	s.compact(ctx) // once at startup so restarts don't defer compaction a day
@@ -634,13 +640,17 @@ func (s *Service) catchUpDatastoreMeterThrough(ctx context.Context, ds datastore
 // catchUp finds the latest recorded window per service and fills any gap since
 // then (bounded to catchupLimit so a long-dead service doesn't sweep months).
 func (s *Service) catchUp(ctx context.Context) {
+	now := time.Now().UTC()
+	last := now.Truncate(time.Hour).Add(-time.Hour)
+	s.catchUpDisksThrough(ctx, last)
+	if s.PromBase == "" {
+		return
+	}
 	apps, err := s.Store.ListApps(ctx)
 	if err != nil {
 		log.Printf("usage: catch-up: list apps: %v", err)
 		return
 	}
-	now := time.Now().UTC()
-	last := now.Truncate(time.Hour).Add(-time.Hour)
 	for _, app := range apps {
 		s.catchUpAppThrough(ctx, app, last)
 	}
@@ -658,6 +668,10 @@ func (s *Service) catchUp(ctx context.Context) {
 // rollup processes the window that just closed (the hour ending at t).
 func (s *Service) rollup(ctx context.Context, t time.Time) {
 	window := t.UTC().Truncate(time.Hour).Add(-time.Hour)
+	s.catchUpDisksThrough(ctx, window)
+	if s.PromBase == "" {
+		return
+	}
 	apps, err := s.Store.ListApps(ctx)
 	if err != nil {
 		log.Printf("usage: rollup: list apps: %v", err)
@@ -1117,4 +1131,76 @@ func (s *Service) queryBuildSeconds(ctx context.Context, appName string, window,
 		}
 	}
 	return total, true
+}
+
+// catchUpDisksThrough meters provisioned disk capacity for every closed hour
+// window from the meter's cursor through `through` (docs/ADR082-persistent-disks.md D9).
+//
+// Unlike the Prometheus meters, this one is computed for every service at once
+// rather than service by service: the size periods it integrates already carry
+// each disk's whole lifetime, so one query per window covers live disks,
+// disks deleted mid-window, and disks grown mid-window alike — including a
+// disk whose service has since been suspended, which still owes for the
+// volume it is holding.
+//
+// Because the arithmetic is over committed rows, re-running a window is
+// idempotent and a restart backfills losslessly (bounded by catchupLimit, the
+// same horizon inside which usage_hourly stays rewritable).
+func (s *Service) catchUpDisksThrough(ctx context.Context, through time.Time) {
+	if s.Store == nil {
+		return
+	}
+	through = through.UTC().Truncate(time.Hour)
+	floor := through.Add(-catchupLimit)
+	window := through
+	if cursor, ok, err := s.Store.LatestUsageWindowForKind(ctx, store.UsageKindDiskGBSeconds); err != nil {
+		log.Printf("usage: disk meter cursor: %v", err)
+		return
+	} else if ok {
+		window = cursor.UTC().Truncate(time.Hour).Add(time.Hour)
+	}
+	if window.Before(floor) {
+		window = floor
+	}
+	for ; !window.After(through); window = window.Add(time.Hour) {
+		if err := s.meterDiskWindow(ctx, window); err != nil {
+			// Stop at the first failure so the gap is retried oldest-first on
+			// the next tick rather than leaving a hole behind a newer row.
+			log.Printf("usage: disk meter window %s: %v", window.Format(time.RFC3339), err)
+			return
+		}
+	}
+}
+
+func (s *Service) meterDiskWindow(ctx context.Context, window time.Time) error {
+	rows, err := s.Store.DiskUsageForWindow(ctx, window, window.Add(time.Hour))
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if row.GBSeconds <= 0 {
+			continue
+		}
+		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
+			WorkspaceID:  row.TenantID,
+			ResourceKind: store.ResourceKindService,
+			ServiceID:    row.AppID,
+			Kind:         store.UsageKindDiskGBSeconds,
+			// Disks price at one flat rate per GB regardless of the service's
+			// plan, so the tier dimension stays empty rather than carrying a
+			// value nothing prices on.
+			Tier:        "",
+			WindowStart: window,
+			Quantity:    row.GBSeconds,
+			// The evidence is a committed control-plane row, so this source is
+			// healthy by construction — there is no upstream that could be down.
+			SourceHealth: []store.UsageSourceObservation{{
+				Source: store.UsageSourceDisk,
+				State:  store.UsageSourceHealthy,
+			}},
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
