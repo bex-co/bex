@@ -21,11 +21,13 @@ Run this release gate against a disposable, non-production workspace on one phys
 - Switch to another workspace: confirm the previous workspace's resource/usage data never flashes — the switching state shows, the boundary resets, then the new workspace renders — and the drawer closes only after the switch settles. Verify the selection persists across app relaunch for the same login session.
 - Pull-to-refresh the list; force an offline state and confirm the offline note plus a reachable retry, with no other workspace's cached tenant data shown.
 
-## Personal status and logout
+## Personal status, settings, and logout
 
-- Confirm the footer shows the signed-in name with email beneath (or email-only / an honest "Signed in" when the server returns a partial identity), pinned below the scrolling workspace list.
-- Force the current-user read offline/unavailable and confirm the footer shows the distinct offline/unavailable status with an explicit retry, while workspace supervision stays usable.
-- Tap Log out: confirm a native confirmation appears. Cancel it — nothing happens. Confirm it — exactly one sign-out runs, the drawer closes, and the auth guard returns to sign-in. Double-tap Log out and the confirmation control; confirm at most one sign-out sequence and no second dialog.
+- Confirm the footer shows the signed-in name with email beneath (or email-only / an honest "Signed in" when the server returns a partial identity), pinned below the scrolling workspace list, with a chevron indicating it opens Settings.
+- Force the current-user read offline/unavailable and confirm the footer shows the distinct offline/unavailable status with an explicit retry (a separate row, not nested in the Settings target), while workspace supervision stays usable.
+- Tap the identity row: confirm the full-screen Settings sheet opens with the signed-in identity, a Color scheme selector (System/Light/Dark), a Language selector (English/中文), Log out, and the app version. Close it and confirm the drawer is still open behind.
+- Change the color scheme and language: confirm both apply immediately and survive an app relaunch (persisted on device only; never in the auth store). Color scheme "System" tracks the OS setting.
+- Tap Log out in Settings: confirm a native confirmation appears. Cancel it — nothing happens. Confirm it — exactly one sign-out runs, the sheet closes, and the auth guard returns to sign-in. Double-tap Log out and the confirmation control; confirm at most one sign-out sequence and no second dialog.
 - Log out while offline: confirm local credentials and identity-bound state are cleared even though remote revocation cannot complete (no false failure surfaced).
 
 ## Accessibility, safe areas, and responsiveness
@@ -36,5 +38,5 @@ Run this release gate against a disposable, non-production workspace on one phys
 ## Gesture ownership and negative scope
 
 - On a screen with a horizontal chart/pager, swipe horizontally inside it: confirm the chart/pager keeps the gesture and the drawer does not open. Confirm vertical scrolls and tab presses are never captured as a drawer drag, and the drawer remains fully usable by button alone.
-- Verify the drawer adds no route or control for service creation, settings, billing, deletion, or any other desktop/destructive surface — only workspace switching, the identity read, and logout. Confirm the old Status-page workspace picker and logout icon are gone.
+- Verify the drawer adds no route or control for service creation, desktop/service configuration, billing, deletion, or any other destructive surface. The only surfaces are workspace switching, the identity read, and the personal Settings sheet (device-local color scheme, language, and logout) — Settings is a Modal, not a new `app/` route. Confirm the old Status-page workspace picker and logout icon are gone.
 - Verify dashboard workspace names/plans/roles and the account name/email match what the phone shows for the same caller.

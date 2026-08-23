@@ -487,6 +487,17 @@ export const zh = {
     logoutConfirmTitle: "退出登录？",
     logoutConfirmMessage: "退出后需要重新登录才能监督你的工作区。",
   },
+  settings: {
+    title: "设置",
+    open: "打开设置",
+    close: "关闭设置",
+    colorScheme: "配色方案",
+    themeSystem: "跟随系统",
+    themeLight: "浅色",
+    themeDark: "深色",
+    language: "语言",
+    version: "版本 %{version}",
+  },
   deepLink: {
     invalidTitle: "无效的 bex 链接",
     invalidBody: "此链接不包含有效的 bex 资源标识符。",
