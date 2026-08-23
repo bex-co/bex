@@ -573,12 +573,15 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 
 // listWorkspaceDatabases fetches the workspace-scoped Database snapshot the
 // Blueprint flows share (deployParsedStack, the existing-reference resolver,
-// and the action-plan resolver).
+// and the action-plan resolver). Mid-cutover twins (the live `<ws>` CR and its
+// stale shared-namespace copy, same metadata.name) are collapsed here so every
+// consumer — including the duplicate-display-name guards — sees one CR per id.
 func (s *Service) listWorkspaceDatabases(ctx context.Context, tenantID string) (*appv1alpha1.DatabaseList, error) {
 	list := &appv1alpha1.DatabaseList{}
 	if err := s.Client.List(ctx, list, s.DatastoreListOptions(tenantID)...); err != nil {
 		return nil, err
 	}
+	list.Items = core.DedupDatabaseTwins(list.Items)
 	return list, nil
 }
 
@@ -588,6 +591,7 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 	if err := s.Client.List(ctx, list, s.DatastoreListOptions(tenantID)...); err != nil {
 		return nil, err
 	}
+	list.Items = core.DedupKeyValueTwins(list.Items)
 	return list, nil
 }
 

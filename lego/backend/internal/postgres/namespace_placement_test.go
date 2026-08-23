@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -66,5 +67,40 @@ func TestCreatePostgresWithoutAWorkspaceStaysInTheSharedNamespace(t *testing.T) 
 	var db appv1alpha1.Database
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: svc.Namespace, Name: view.ID}, &db); err != nil {
 		t.Fatalf("unbound create did not land in the shared namespace %q: %v", svc.Namespace, err)
+	}
+}
+
+// TestListPostgresCollapsesCutoverTwins pins the read side of the ADR043 D8
+// cutover window: between Step 5 and Step 9 of
+// docs/runbooks/datastore-namespace-cutover.md a workspace legitimately has TWO
+// Database CRs with the same metadata.name — the live one in its own namespace,
+// the stale one in the shared namespace — and the label-scoped list returns
+// both. GET /v1/postgres must show the id once, carrying the LIVE copy's
+// fields (the same which-twin rule the App projector's indexManagedApps
+// applies).
+func TestListPostgresCollapsesCutoverTwins(t *testing.T) {
+	twin := func(namespace, plan string) *appv1alpha1.Database {
+		return &appv1alpha1.Database{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dpg-x",
+				Namespace: namespace,
+				Labels:    map[string]string{core.LabelTenant: "tea-a", core.LabelWorkspace: "tea-a"},
+			},
+			Spec: appv1alpha1.DatabaseSpec{Name: "forumdb", Plan: plan},
+		}
+	}
+	svc, _ := newService(twin("default", "free"), twin("tea-a", "standard"))
+	svc.Authz = &fakeChecker{allow: true}
+
+	list, err := svc.ListPostgres(ctxAs("user-a"), "tea-a")
+	if err != nil {
+		t.Fatalf("ListPostgres: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("ListPostgres returned %d rows, want 1 — the stale shared-namespace twin leaked into the view", len(list))
+	}
+	if list[0].ID != "dpg-x" || list[0].Plan != "standard" {
+		t.Errorf("ListPostgres kept id %q with plan %q, want dpg-x with the live tea-a copy's plan (standard)",
+			list[0].ID, list[0].Plan)
 	}
 }

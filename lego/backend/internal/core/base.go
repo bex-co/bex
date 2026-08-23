@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"slices"
 	"strings"
 	"time"
@@ -375,6 +376,63 @@ func (b *Base) DatastoreNamespaces(tenantID string) []string {
 		return []string{b.Namespace}
 	}
 	return []string{own, b.Namespace}
+}
+
+// DatastoreInOwnWorkspaceNamespace is the datastore twin of
+// AppInOwnWorkspaceNamespace: a labeled Database/KeyValue CR is in its canonical
+// ADR043 D8 placement when its namespace IS its workspace id (the non-default
+// branch of TenantNamespace). A CR that carries a workspace label but sits
+// elsewhere is a stray — the cutover (docs/runbooks/datastore-namespace-cutover.md)
+// deliberately leaves such a twin behind in the shared namespace between its
+// Step 5 and Step 9. An unlabeled CR (hand-applied, store-off) has no canonical
+// namespace and is never demoted.
+func DatastoreInOwnWorkspaceNamespace(obj client.Object) bool {
+	ws := obj.GetLabels()[LabelTenant]
+	return ws == "" || obj.GetNamespace() == ws
+}
+
+// DedupDatabaseTwins collapses the same-name Database duplicates the ADR043 D8
+// cutover leaves behind: between Step 5 and Step 9 of the cutover runbook a
+// workspace legitimately has TWO Database CRs with the same metadata.name — the
+// live one in its own `<ws>` namespace, the stale one in the shared namespace —
+// and every label-scoped List (DatastoreListOptions) returns both. Keep one
+// item per metadata.name, preferring the copy in its own workspace namespace,
+// first-seen otherwise, and log the stray (the nag is the point — the loser
+// needs the runbook's manual removal). The same policy store's indexManagedApps
+// applies to App CRs; both sides must agree on which twin is live.
+func DedupDatabaseTwins(items []appv1alpha1.Database) []appv1alpha1.Database {
+	return dedupDatastoreTwins("Database", items)
+}
+
+// DedupKeyValueTwins is DedupDatabaseTwins' KeyValue twin.
+func DedupKeyValueTwins(items []appv1alpha1.KeyValue) []appv1alpha1.KeyValue {
+	return dedupDatastoreTwins("KeyValue", items)
+}
+
+func dedupDatastoreTwins[T any, PT interface {
+	*T
+	client.Object
+}](kind string, items []T) []T {
+	byName := make(map[string]int, len(items))
+	out := make([]T, 0, len(items))
+	for i := range items {
+		candidate := PT(&items[i])
+		prev, dup := byName[candidate.GetName()]
+		if !dup {
+			byName[candidate.GetName()] = len(out)
+			out = append(out, items[i])
+			continue
+		}
+		keep, drop := PT(&out[prev]), candidate
+		if !DatastoreInOwnWorkspaceNamespace(keep) && DatastoreInOwnWorkspaceNamespace(drop) {
+			keep, drop = drop, keep
+		}
+		log.Printf("core: duplicate %s CRs named %s: keeping %s/%s, ignoring stray %s/%s — "+
+			"an ADR043 D8 cutover leftover; remove it per docs/runbooks/datastore-namespace-cutover.md",
+			kind, candidate.GetName(), keep.GetNamespace(), keep.GetName(), drop.GetNamespace(), drop.GetName())
+		out[prev] = *keep
+	}
+	return out
 }
 
 // An App List that must reach ANY workspace (an exact srv-id, a service-name

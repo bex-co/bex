@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -242,4 +243,44 @@ func hostResolvableFrom(host, serviceNamespace, fromNamespace string) bool {
 		return true
 	}
 	return serviceNamespace == fromNamespace
+}
+
+// TestBlueprintApplyToleratesCutoverTwins pins the read side of the cutover
+// window the legs above create: between Step 5 and Step 9 of
+// docs/runbooks/datastore-namespace-cutover.md a workspace has TWO Database CRs
+// with the same metadata.name and Spec.Name — live in its own namespace, stale
+// in the shared one. The label-scoped snapshot the action-plan resolver builds
+// its index from (listWorkspaceDatabases) returns both, and an un-deduped index
+// rejects the pair with ErrConflict ("already used more than once in this
+// workspace"), 409ing every Blueprint apply for the duration of the cutover.
+func TestBlueprintApplyToleratesCutoverTwins(t *testing.T) {
+	const tenantID = "tea-twin"
+	twin := func(ns string) *appv1alpha1.Database {
+		return &appv1alpha1.Database{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dpg-x",
+				Namespace: ns,
+				Labels:    map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID},
+			},
+			Spec: appv1alpha1.DatabaseSpec{Name: "forumdb"},
+		}
+	}
+	cl := fakeClient(twin("default"), twin(tenantID))
+	svc := &Service{Base: &core.Base{
+		Client:    cl,
+		Namespace: "default",
+		Workspace: fakeWorkspace{"id-a": tenantID},
+	}}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+
+	const manifest = `
+services:
+  - name: twinapp
+    type: web
+    runtime: image
+    image: {url: twinapp:1}
+`
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack during the cutover window: %v — the stale shared-namespace twin must not read as a name conflict", err)
+	}
 }
