@@ -72,6 +72,7 @@ Develop against `.pm/w6/dev-6/`, this worker's own isolated stack on the shared 
 - `032.md` — `config/rbac` grants no `replicasets` though the operator lists them through its cached client, so any `make deploy` operator fails informer cache sync and reconciles nothing (production's gitops RBAC is unaffected); found while running m47's live leg, which it blocked; sub-hour
 - `033.md` — deleting a Project silently cascade-deletes its Environments (and their IP-allowlist config), but the delete confirmation copy claims "nothing is deleted" — UX-copy fix only, the CASCADE itself is structurally required; verified live 2026-08-23
 - `034.md` — an invalid `?type=` query param on `/services/new` crashes the whole page ("Something went wrong") instead of falling back to the default service type — `serviceTypeCreateCopy`'s unguarded lookup in `head()`, one call site bypassing the route's own sanitizer; sub-hour, verified live 2026-08-23
+- `035.md` — Events feed's `build_started` fact fires at deploy-row creation, not actual BuildKit Job dispatch — wrong by the full queue-wait duration whenever a deploy is queued behind another (live-reproduced 2m17s gap); regression against w7/m66's own shipped DoD; sub-hour, verified live 2026-08-23
 
 _(`021.md` implemented 2026-08-18 (inert `usage_threshold` event dropped from the notification vocabulary); `022.md` + `023.md` retired 2026-08-18 as already-resolved board hygiene — all three moved to `done/`)_
 
