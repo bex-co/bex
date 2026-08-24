@@ -70,7 +70,15 @@ export function useDisk(serviceId: string): UseDiskResult {
           serviceId: first.serviceId ?? "",
         }
       : null,
-    loading,
+    // Only the FIRST load counts as loading. This query is cache-and-network and
+    // polls, so Apollo raises `loading` again on every background refetch — and
+    // a diskless service has nothing else to render, so the caller would swap
+    // its add form for a skeleton every few seconds and destroy the mount path
+    // the tenant was halfway through typing. Verified against production
+    // 2026-08-24: the form vanished ~2s after opening, and the skeleton
+    // appeared in the same frame. Once `data` has arrived, an empty list is a
+    // real answer ("no disk"), not a pending one.
+    loading: loading && data === undefined,
     error,
     refetch: refetchDisk,
   };
@@ -105,7 +113,9 @@ export function useDiskSnapshots(diskId: string | null): UseDiskSnapshotsResult 
         ? [{ createdAt: s.createdAt ?? "", snapshotKey: s.snapshotKey, instanceId: s.instanceId ?? "" }]
         : [],
     ),
-    loading,
+    // First load only, for the same reason as useDisk above: otherwise the
+    // snapshots card flashes a skeleton over the list on every refetch.
+    loading: loading && data === undefined,
     error,
     refetch: refetchSnapshots,
   };
