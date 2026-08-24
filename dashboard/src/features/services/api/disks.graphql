@@ -39,5 +39,11 @@ mutation DeleteDisk($id: String!) {
 }
 
 mutation RestoreDiskSnapshot($id: String!, $snapshotKey: String!) {
-  restoreDiskSnapshot(id: $id, snapshotKey: $snapshotKey)
+  restoreDiskSnapshot(id: $id, snapshotKey: $snapshotKey) {
+    id
+    name
+    mountPath
+    sizeGB
+    serviceId
+  }
 }

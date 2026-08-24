@@ -114,7 +114,7 @@ func TestRestoreRequestsTheSnapshotOnTheSpec(t *testing.T) {
 		t.Fatalf("list: %v", err)
 	}
 
-	if err := svc.RestoreDiskSnapshot(context.Background(), diskID, views[0].SnapshotKey); err != nil {
+	if _, err := svc.RestoreDiskSnapshot(context.Background(), diskID, views[0].SnapshotKey); err != nil {
 		t.Fatalf("RestoreDiskSnapshot: %v", err)
 	}
 	stored := &appv1alpha1.App{}
@@ -149,7 +149,7 @@ func TestRestoreRefusesBadKeysWithoutTouchingTheService(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			svc, _, diskID := newSnapshotService(snapshotObject(1))
 
-			err := svc.RestoreDiskSnapshot(context.Background(), diskID, key)
+			_, err := svc.RestoreDiskSnapshot(context.Background(), diskID, key)
 			if !errors.Is(err, core.ErrBadRequest) {
 				t.Fatalf("RestoreDiskSnapshot(%s) = %v, want bad request", name, err)
 			}
@@ -177,7 +177,7 @@ func TestSnapshotVerbsReportUnavailableWithoutAStore(t *testing.T) {
 	if _, err := svc.ListDiskSnapshots(context.Background(), view.ID); !errors.Is(err, core.ErrUnavailable) {
 		t.Fatalf("ListDiskSnapshots = %v, want unavailable", err)
 	}
-	if err := svc.RestoreDiskSnapshot(context.Background(), view.ID, "any"); !errors.Is(err, core.ErrUnavailable) {
+	if _, err := svc.RestoreDiskSnapshot(context.Background(), view.ID, "any"); !errors.Is(err, core.ErrUnavailable) {
 		t.Fatalf("RestoreDiskSnapshot = %v, want unavailable", err)
 	}
 }
@@ -197,7 +197,7 @@ func TestSnapshotVerbsReportNotConfiguredWithAStableCode(t *testing.T) {
 	// svc has no DiskSnapshots store wired — the production default today.
 
 	_, listErr := svc.ListDiskSnapshots(context.Background(), disk.ID)
-	restoreErr := svc.RestoreDiskSnapshot(context.Background(), disk.ID, "any-key")
+	_, restoreErr := svc.RestoreDiskSnapshot(context.Background(), disk.ID, "any-key")
 
 	for name, err := range map[string]error{"list": listErr, "restore": restoreErr} {
 		if err == nil {

@@ -250,6 +250,24 @@ type serviceDetailsReq struct {
 	Previews         json.RawMessage `json:"previews"`
 	MaintenanceMode  json.RawMessage `json:"maintenanceMode"`
 	IPAllowList      json.RawMessage `json:"ipAllowList"`
+	// Disk is Render's serviceDetails.disk (schema `serviceDisk`) on the
+	// web/private/worker POST bodies — how a Render client attaches a disk at
+	// create time. Before w1/m88/t001 bex had no such field, and because
+	// Render-matched routes decode strictly, a Render-shaped create carrying it
+	// failed with `unknown field "disk"` rather than being honored or ignored.
+	//
+	// Render requires only name + mountPath here (sizeGB is optional and
+	// defaults), which is why the standalone POST /v1/disks still requires
+	// sizeGB while this path does not — that asymmetry is Render's, and bex
+	// reproduces it rather than smoothing it out.
+	Disk *serviceDiskReq `json:"disk"`
+}
+
+// serviceDiskReq is Render's `serviceDisk` create schema.
+type serviceDiskReq struct {
+	Name      string `json:"name"`
+	MountPath string `json:"mountPath"`
+	SizeGB    int32  `json:"sizeGB"`
 }
 
 // decodeMaintenanceMode preserves Render's required-key semantics: when the
@@ -415,6 +433,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	var replicas int32
 	var maxShutdownDelaySeconds *int32
 	var maintenanceMode *MaintenanceModeView
+	var disk *ServiceDiskView
 	if r.ServiceDetails != nil {
 		var err error
 		if maintenanceMode, err = decodeMaintenanceMode(ctx, r.ServiceDetails.MaintenanceMode); err != nil {
@@ -456,6 +475,12 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		}
 		publishPath = preferTopLevel(publishPath, r.ServiceDetails.PublishPath)
 		preDeploy = preferTopLevel(preDeploy, r.ServiceDetails.PreDeployCommand)
+		if d := r.ServiceDetails.Disk; d != nil {
+			// specFromCreate runs this through the same validateCreateDisk the
+			// Blueprint path uses, so eligibility, tier, replica count and the
+			// mount-path denylist cannot drift between the two ways in.
+			disk = &ServiceDiskView{Name: d.Name, MountPath: d.MountPath, SizeGB: d.SizeGB}
+		}
 	}
 	image := ""
 	var imageRegistryCredentialID json.RawMessage
@@ -518,6 +543,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		NotifyOnFail:            r.NotifyOnFail,
 		SubdomainPolicy:         r.RenderSubdomainPolicy,
 		PreDeployCommand:        preDeploy,
+		Disk:                    disk,
 		PublishPath:             publishPath,
 		Routes:                  r.Routes,
 		Headers:                 r.Headers,
