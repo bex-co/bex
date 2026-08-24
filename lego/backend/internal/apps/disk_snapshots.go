@@ -74,6 +74,26 @@ type DiskSnapshotLister interface {
 	ListSnapshots(ctx context.Context, prefix string) ([]DiskSnapshotObject, error)
 }
 
+// DiskSnapshotsNotConfiguredCode marks the one 503 this feature can return that
+// is not a failure: the deployment never wired an object store for disk
+// snapshots (BEX_DISK_SNAPSHOT_*, ADR082 D5), so there is nothing to list and
+// nothing to restore from.
+//
+// It is a CODE rather than a message because that is the only thing a client
+// can branch on safely. A dashboard matching on prose has to guess, and a
+// message that gets sanitized in transit degrades to "internal error" — which
+// tells a tenant their service is broken when in fact an operator simply has
+// not turned the feature on.
+const DiskSnapshotsNotConfiguredCode = "DISK_SNAPSHOTS_NOT_CONFIGURED"
+
+func errDiskSnapshotsNotConfigured() error {
+	return core.NewUnavailableError(
+		DiskSnapshotsNotConfiguredCode,
+		"disk snapshots are not configured for this deployment",
+		nil,
+	)
+}
+
 // DiskSnapshotObject is one object as the store reports it.
 type DiskSnapshotObject struct {
 	Key       string
@@ -88,7 +108,7 @@ func (s *Service) ListDiskSnapshots(ctx context.Context, diskID string) ([]DiskS
 		return nil, err
 	}
 	if s.DiskSnapshots == nil || len(s.SnapshotSecret) == 0 {
-		return nil, fmt.Errorf("%w: disk snapshots are not configured", core.ErrUnavailable)
+		return nil, errDiskSnapshotsNotConfigured()
 	}
 	objects, err := s.DiskSnapshots.ListSnapshots(ctx, diskSnapshotPrefix(a))
 	if err != nil {
@@ -153,7 +173,7 @@ func (s *Service) RestoreDiskSnapshot(ctx context.Context, diskID, snapshotKey s
 		return err
 	}
 	if len(s.SnapshotSecret) == 0 {
-		return fmt.Errorf("%w: disk snapshots are not configured", core.ErrUnavailable)
+		return errDiskSnapshotsNotConfigured()
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return err

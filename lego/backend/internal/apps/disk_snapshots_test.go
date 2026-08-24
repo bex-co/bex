@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -178,5 +179,44 @@ func TestSnapshotVerbsReportUnavailableWithoutAStore(t *testing.T) {
 	}
 	if err := svc.RestoreDiskSnapshot(context.Background(), view.ID, "any"); !errors.Is(err, core.ErrUnavailable) {
 		t.Fatalf("RestoreDiskSnapshot = %v, want unavailable", err)
+	}
+}
+
+// An unwired snapshot store is not a failure — it is a deployment that never
+// turned the feature on. It must reach clients as a MACHINE-READABLE code, not
+// as prose: a dashboard matching on message text has to guess, and a message
+// sanitized in transit degrades to "internal error", which tells a tenant their
+// service is broken when nothing is. Observed on production 2026-08-24
+// (w1/m87/t005).
+func TestSnapshotVerbsReportNotConfiguredWithAStableCode(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	disk, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10)
+	if err != nil {
+		t.Fatalf("AddDisk: %v", err)
+	}
+	// svc has no DiskSnapshots store wired — the production default today.
+
+	_, listErr := svc.ListDiskSnapshots(context.Background(), disk.ID)
+	restoreErr := svc.RestoreDiskSnapshot(context.Background(), disk.ID, "any-key")
+
+	for name, err := range map[string]error{"list": listErr, "restore": restoreErr} {
+		if err == nil {
+			t.Fatalf("%s: expected an error with no store configured", name)
+		}
+		// 503-class, so every transport keeps the shared status mapping.
+		if !errors.Is(err, core.ErrUnavailable) {
+			t.Errorf("%s: want ErrUnavailable class, got %v", name, err)
+		}
+		// Public, so the GraphQL sanitizer keeps it instead of flattening it.
+		if !core.IsPublicError(err) {
+			t.Errorf("%s: error must be public or it is sanitized to \"internal error\": %v", name, err)
+		}
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != DiskSnapshotsNotConfiguredCode {
+			t.Errorf("%s: want code %s, got %v", name, DiskSnapshotsNotConfiguredCode, err)
+		}
+		if strings.Contains(err.Error(), "internal error") {
+			t.Errorf("%s: message must not read as an internal failure: %q", name, err.Error())
+		}
 	}
 }

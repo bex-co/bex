@@ -32,6 +32,10 @@ import {
 } from "@/features/services/hooks/use-disks";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
+
+/** Mirrors apps.DiskSnapshotsNotConfiguredCode (lego/backend/internal/apps/disk_snapshots.go). */
+const DISK_SNAPSHOTS_NOT_CONFIGURED = "DISK_SNAPSHOTS_NOT_CONFIGURED";
 
 /**
  * The Disk tab (docs/ADR082-persistent-disks.md D6).
@@ -606,6 +610,10 @@ function SnapshotsCard({
 }) {
   const { t } = useTranslations();
   const { snapshots, loading, error } = useDiskSnapshots(disk.id);
+  // Branch on the server's code, never on its prose: the message can be
+  // sanitized in transit, and "not configured" must stay distinguishable from a
+  // real outage no matter what words survive.
+  const notConfigured = hasGraphQLErrorCode(error, DISK_SNAPSHOTS_NOT_CONFIGURED);
   const [pending, setPending] = useState<string | null>(null);
 
   return (
@@ -621,6 +629,16 @@ function SnapshotsCard({
         </p>
         {loading && snapshots.length === 0 ? (
           <CardSkeleton />
+        ) : notConfigured ? (
+          // Not a failure: this deployment never wired an object store for disk
+          // snapshots (ADR082 D5). Say so plainly and name whose job it is —
+          // rendering the raw server message here is what put "internal error"
+          // in front of tenants whose services were perfectly healthy.
+          <PanelCenteredState
+            icon={<HardDrive className="size-6" />}
+            title={t("services.diskSnapshotsNotConfiguredTitle")}
+            body={t("services.diskSnapshotsNotConfiguredBody")}
+          />
         ) : error ? (
           <PanelCenteredState
             icon={<HardDrive className="size-6" />}

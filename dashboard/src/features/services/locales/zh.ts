@@ -3120,6 +3120,14 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "A snapshot of this disk is taken daily and kept for at least seven days.",
     description: "Snapshots card description",
   },
+  "services.diskSnapshotsNotConfiguredTitle": {
+    message: "尚未启用快照",
+    description: "Snapshots card heading when the deployment has no snapshot object store configured (not a failure).",
+  },
+  "services.diskSnapshotsNotConfiguredBody": {
+    message: "此 bex 部署尚未配置用于磁盘快照的对象存储，因此不会生成快照。你的数据不受影响 — 请联系运维人员启用。",
+    description: "Explains that snapshots are unconfigured rather than broken, and that an operator enables them.",
+  },
   "services.diskSnapshotsEmptyTitle": {
     message: "No snapshots yet",
     description: "Snapshots empty state title",

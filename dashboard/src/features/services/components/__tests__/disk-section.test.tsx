@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -299,5 +300,43 @@ describe("DiskSection", () => {
       screen.getByText(/need a long-running instance to mount on/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/paid instance type/i)).not.toBeInTheDocument();
+  });
+
+  // "Not configured" is an operator's job and nothing the tenant can act on.
+  // Rendering the raw server message here is what put "internal error" in front
+  // of tenants whose services were perfectly healthy (production, 2026-08-24).
+  it("says snapshots are not set up, rather than reporting an error", () => {
+    mockUseDisk.mockReturnValue(attached);
+    mockUseDiskSnapshots.mockReturnValue({
+      ...noSnapshots,
+      error: new CombinedGraphQLErrors({
+        errors: [
+          { message: "internal error", extensions: { code: "DISK_SNAPSHOTS_NOT_CONFIGURED" } },
+        ],
+      } as never),
+    });
+    render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+
+    expect(screen.getByText(/snapshots aren't set up/i)).toBeInTheDocument();
+    expect(screen.getByText(/ask an operator to enable them/i)).toBeInTheDocument();
+    // The sanitized server prose must not reach the tenant.
+    expect(screen.queryByText(/internal error/i)).not.toBeInTheDocument();
+  });
+
+  // A genuine outage must stay visibly an outage — the calm not-configured copy
+  // would be a lie about a store that exists and is failing.
+  it("still reports a real snapshot failure as an error", () => {
+    mockUseDisk.mockReturnValue(attached);
+    mockUseDiskSnapshots.mockReturnValue({
+      ...noSnapshots,
+      error: new CombinedGraphQLErrors({
+        errors: [{ message: "connection refused", extensions: { code: "INTERNAL" } }],
+      } as never),
+    });
+    render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+
+    expect(screen.getByText(/snapshots are unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/connection refused/i)).toBeInTheDocument();
+    expect(screen.queryByText(/aren't set up/i)).not.toBeInTheDocument();
   });
 });
