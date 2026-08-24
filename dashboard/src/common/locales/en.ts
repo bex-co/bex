@@ -17,6 +17,10 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Prompt naming the server-issued protected environment confirmation phrase",
   },
+  "common.confirmPhrasePrompt": {
+    message: "To continue, type {phrase}",
+    description: "Label above the typed-confirmation input in a phrase-gated confirm dialog.",
+  },
   "common.cancel": {
     message: "Cancel",
     description: "Generic Cancel button — dismisses a dialog or an inline form without saving.",
