@@ -295,6 +295,20 @@ func NewConflictError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrConflict, msg: msg}
 }
 
+// NewUnavailableError returns a machine-readable 503 for a verb whose backing
+// dependency is not wired — the deployment never configured it, as opposed to
+// it having failed.
+//
+// The distinction matters to whoever is reading the screen. "Not configured" is
+// an operator's job and nothing the tenant can act on; a genuine outage is
+// neither. Without a code a client can only match on message text, and a
+// sanitized message ("internal error") tells the tenant their service is broken
+// when nothing is (w1/m87/t005 — this is exactly what the Disk tab's Snapshots
+// card did on production, 2026-08-24).
+func NewUnavailableError(code, msg string, params map[string]any) *CodedError {
+	return &CodedError{Code: code, Params: params, sentinel: ErrUnavailable, msg: msg}
+}
+
 const PaymentRequiredMessage = "Payment information is required for paid plans. Call create_billing_checkout_session to add a payment method, then retry."
 
 // PaymentRequiredCode is the machine-readable code the paid-intent gate returns

@@ -1,6 +1,6 @@
 # w1 · m87 — Persistent disks: make the running system match its records
 
-**Worker:** worker1 **Goal:** every claim ADR018 and ADR082 make about persistent disks becomes true of production, not just of the code. **Status:** todo
+**Worker:** worker1 **Goal:** every claim ADR018 and ADR082 make about persistent disks becomes true of production, not just of the code. **Status:** todo (t005, t006 done; t001-t004 blocked on infra credentials)
 
 ## Tasks (in order)
 
@@ -10,12 +10,18 @@
 | t002 | Wire `BEX_DISK_SNAPSHOT_*` into the operator and bex-api manifests | 45m | t001 |
 | t003 | Mirror the new variable names into `.env.example` | 15m | t002 |
 | t004 | Verify a real snapshot end to end on a live disk | 1h | t002 |
-| t005 | Say "not configured" instead of "internal error" on the Snapshots card | 30m | — |
-| t006 | Verify the disk usage series against real Prometheus | 45m | — |
+| t005 | Say "not configured" instead of "internal error" on the Snapshots card | 30m | — | — **DONE**
+| t006 | Verify the disk usage series against real Prometheus | 45m | — | — **DONE**
 | t007 | Render parity check | 30m | t004, t005, t006 |
 | t008 | Simplify pass | 30m | t007 |
 | t009 | Test coverage | 45m | t007 |
 | t010 | Closeout | 30m | t009 |
+
+## Progress notes
+
+**t006 answered, no code change needed (2026-08-24).** The "No data in range" chart was kubelet volume-stats warm-up on a freshly attached disk, not a broken matcher — the task named both possibilities and required evidence rather than an assumption. Queried the live API for the same metric on a database disk and the service disk: both return real series, and the service series carries `instance=disk-tea-da2isimlm39c739m4ofg-beancount-ledger`, i.e. exactly the claim `appv1alpha1.DiskPVCName` derives. The chart now renders. The `kind="service"` path is correct.
+
+That diagnostic surfaced a **pricing defect filed as [078](../078.md)**: the live 1 GB disk sits on a ~10 GiB volume because Hetzner's volume minimum is 10 GB — which ADR082's own context section records — while `diskMinSizeGB = 1` and the UI ships 1 GB and 5 GB chips. bex charges $0.175 and pays ~$0.50 for a 1 GB disk. It needs a product decision, so it is a separate note rather than folded in here.
 
 ## Definition of done
 

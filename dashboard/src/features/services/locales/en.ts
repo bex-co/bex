@@ -3176,6 +3176,14 @@ const enServices: Record<string, TranslationEntry> = {
     message: "A snapshot of this disk is taken daily and kept for at least seven days.",
     description: "Snapshots card description",
   },
+  "services.diskSnapshotsNotConfiguredTitle": {
+    message: "Snapshots aren't set up",
+    description: "Snapshots card heading when the deployment has no snapshot object store configured (not a failure).",
+  },
+  "services.diskSnapshotsNotConfiguredBody": {
+    message: "This bex deployment hasn't been configured with an object store for disk snapshots, so none are being taken. Your data is unaffected — ask an operator to enable them.",
+    description: "Explains that snapshots are unconfigured rather than broken, and that an operator enables them.",
+  },
   "services.diskSnapshotsEmptyTitle": {
     message: "No snapshots yet",
     description: "Snapshots empty state title",
