@@ -90,6 +90,21 @@ Three corrections to the earlier design, each forced by the source:
 
 **3. Language for the contract layer is an architecture decision, not a distribution detail.** codex-security's contract layer requires a probed Python interpreter (`dist/api.js:1436`, `README.md:447`). bex is a Go shop with everything in `lego/`. Adopting the Python as-is is the fastest path and preserves byte-identical sealing; reimplementing it in Go is ~20k lines of the most correctness-critical code in the system. **Decide this before implementation starts**, not at packaging time.
 
+### Replaceable non-interactive agents through ACP
+
+The direct `claude -p` design is sufficient when the only replaceable dimension is the model endpoint. If bex also makes the **agent implementation** replaceable — Claude Code, Codex, Gemini CLI, or another reviewed agent — the harness uses ACP over stdio as its agent-facing boundary. ACP is a process protocol here, not the scheduler: the harness still fixes worker counts and packet assignments, spawns one isolated process per worker, sends one non-interactive prompt turn, awaits it, and owns timeout, cancellation, and process-tree cleanup.
+
+Each supported agent is a release-locked profile containing its executable, arguments, bootstrap environment, capability expectations, and telemetry source. The initial profiles reuse the same adapters already shipped by the agent-session image (`claude-code-acp`, `codex-acp`, and `gemini --acp`) rather than building another Claude wrapper merely to translate `claude -p`. A profile is admitted only after contract tests prove initialization, one-shot prompting, tool/update delivery, cancellation, crash propagation, read-only execution, and deterministic terminal status. Unsupported capabilities fail closed; standard scans do not depend on optional `session/load`.
+
+ACP deliberately does **not** become the whole runtime contract. It currently has no portable token-usage accounting, does not enforce the filesystem or network sandbox, and adapters can differ in how faithfully they surface provider failures. The harness therefore retains out-of-band authority for:
+
+- usage and cost, sourced from the metering model proxy when available or from a profile-specific native event collector;
+- filesystem and egress confinement, enforced by the worker sandbox rather than an ACP permission response;
+- process exit, deadlines, output bounds, and redaction;
+- schema validation, finding identity, coverage, sealing, and projection in the provider-independent contract layer.
+
+This produces a narrow internal interface — prompt in; ACP events, terminal result, and independently measured usage out — while keeping agent selection declarative. Native runtime adapters remain an allowed escape hatch when an agent's ACP adapter cannot meet the admission contract, especially for trustworthy usage or failure telemetry. Model diversity remains the preferred controlled experiment because it changes one variable; agent diversity is a broader, intentionally confounded bake-off and its reports require human comparison.
+
 | Layer | codex-security | bex harness (GLM 5.2) |
 | --- | --- | --- |
 | CLI / SDK (orchestration, no security logic) | `codex-security` CLI + TS SDK — `scan`, `bulk-scan`, `scans {list,show,logs,rerun,match,compare}`, `findings {list,false-positive}`, `export`, `validate`, `install-hook`, `login` | Same command tree, same semantics; same exit codes — `0` pass, `1` policy violation, `2` invalid input, incomplete coverage, **or runtime/export error**, `130`/`143` signals (`README.md:763`) |
