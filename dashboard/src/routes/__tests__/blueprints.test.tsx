@@ -91,8 +91,13 @@ vi.mock("@/features/blueprints/hooks/use-blueprint-preview", () => ({
   useBlueprintPreview: () => syncPreviewState,
 }));
 
+const blueprintSyncsState: {
+  syncs: import("@/features/blueprints/types").BlueprintSyncView[];
+  loading: boolean;
+  error: Error | undefined;
+} = { syncs: [], loading: false, error: undefined };
 vi.mock("@/features/blueprints/hooks/use-blueprint-syncs", () => ({
-  useBlueprintSyncs: () => ({ syncs: [], loading: false, error: undefined }),
+  useBlueprintSyncs: () => blueprintSyncsState,
 }));
 
 function bp(overrides: Partial<BlueprintView> = {}): BlueprintView {
@@ -165,6 +170,9 @@ beforeEach(() => {
   blueprintDetailState.loading = false;
   blueprintDetailState.error = undefined;
   blueprintDetailState.refetch = vi.fn();
+  blueprintSyncsState.syncs = [];
+  blueprintSyncsState.loading = false;
+  blueprintSyncsState.error = undefined;
   sync.mockReset();
   sync.mockResolvedValue({ status: "success", result: null });
 });
@@ -228,6 +236,41 @@ describe("BlueprintDetailPage", () => {
     expect(
       screen.getByText("https://github.com/example/hello-go"),
     ).toBeInTheDocument();
+  });
+
+  it("shows the failure reason for an error-state sync row and nothing extraneous for a success row (w6/m50)", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncsState.syncs = [
+      {
+        id: "bsr-1",
+        commitId: "deadbeef",
+        state: "error",
+        startedAt: "2026-08-20T00:00:00Z",
+        completedAt: "2026-08-20T00:01:00Z",
+        errorMessage: "quota exceeded: workspace at service limit",
+      },
+      {
+        id: "bsr-2",
+        commitId: "cafef00d",
+        state: "success",
+        startedAt: "2026-08-21T00:00:00Z",
+        completedAt: "2026-08-21T00:01:00Z",
+        errorMessage: null,
+      },
+    ];
+    renderDetailPage();
+
+    expect(
+      await screen.findByText("quota exceeded: workspace at service limit"),
+    ).toBeInTheDocument();
+
+    const successRow = screen
+      .getAllByRole("row")
+      .find((row) => row.textContent?.includes("cafef00d"));
+    expect(successRow).toBeDefined();
+    expect(
+      within(successRow as HTMLElement).getAllByText("—").length,
+    ).toBeGreaterThan(0);
   });
 
   it("redirects a dead blueprint id home (w9/m55)", async () => {

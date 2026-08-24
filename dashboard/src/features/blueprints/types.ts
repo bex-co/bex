@@ -25,6 +25,7 @@ export interface BlueprintSyncView {
   state: string;
   startedAt: string | null;
   completedAt: string | null;
+  errorMessage: string | null;
 }
 
 export interface BlueprintValidationResult {

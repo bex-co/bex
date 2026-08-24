@@ -46,13 +46,14 @@ type Blueprint struct {
 // BlueprintSync is a row of `blueprint_syncs` — one recorded sync run.
 // State machine: created → running → success | error.
 type BlueprintSync struct {
-	ID          string     `json:"id"`
-	BlueprintID string     `json:"blueprintId"`
-	CommitID    string     `json:"commitId"`
-	State       string     `json:"state"`
-	StartedAt   time.Time  `json:"startedAt"`
-	CompletedAt *time.Time `json:"completedAt"`
-	CreatedAt   time.Time  `json:"createdAt"`
+	ID           string     `json:"id"`
+	BlueprintID  string     `json:"blueprintId"`
+	CommitID     string     `json:"commitId"`
+	State        string     `json:"state"`
+	StartedAt    time.Time  `json:"startedAt"`
+	CompletedAt  *time.Time `json:"completedAt"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	ErrorMessage *string    `json:"errorMessage"`
 }
 
 // Blueprint sync state constants (Render's vocabulary).
@@ -215,26 +216,27 @@ func (s *PGStore) InsertBlueprintSync(ctx context.Context, run BlueprintSync) (B
 	err := s.Pool.QueryRow(ctx,
 		`INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at)
 		 VALUES ($1, $2, $3, $4, $5)
-		 RETURNING id, blueprint_id, commit_id, state, started_at, completed_at, created_at`,
+		 RETURNING id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message`,
 		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt,
 	).Scan(&out.ID, &out.BlueprintID, &out.CommitID, &out.State,
-		&out.StartedAt, &out.CompletedAt, &out.CreatedAt)
+		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage)
 	if err != nil {
 		return BlueprintSync{}, classify("blueprint_sync", err)
 	}
 	return out, nil
 }
 
-// UpdateBlueprintSync updates a sync run's state and completion timestamp.
-func (s *PGStore) UpdateBlueprintSync(ctx context.Context, id, state string, completedAt *time.Time) (BlueprintSync, error) {
+// UpdateBlueprintSync updates a sync run's state, completion timestamp, and
+// error reason (nil on success, the failure's message on error).
+func (s *PGStore) UpdateBlueprintSync(ctx context.Context, id, state string, completedAt *time.Time, errMsg *string) (BlueprintSync, error) {
 	var out BlueprintSync
 	err := s.Pool.QueryRow(ctx,
-		`UPDATE blueprint_syncs SET state = $2, completed_at = $3
+		`UPDATE blueprint_syncs SET state = $2, completed_at = $3, error_message = $4
 		 WHERE id = $1
-		 RETURNING id, blueprint_id, commit_id, state, started_at, completed_at, created_at`,
-		id, state, completedAt,
+		 RETURNING id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message`,
+		id, state, completedAt, errMsg,
 	).Scan(&out.ID, &out.BlueprintID, &out.CommitID, &out.State,
-		&out.StartedAt, &out.CompletedAt, &out.CreatedAt)
+		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage)
 	if err != nil {
 		return BlueprintSync{}, classify("blueprint_sync", err)
 	}
@@ -260,14 +262,14 @@ func (s *PGStore) ListBlueprintSyncs(ctx context.Context, blueprintID, cursor st
 	var err error
 	if cursor == "" {
 		rows, err = s.Pool.Query(ctx,
-			`SELECT id, blueprint_id, commit_id, state, started_at, completed_at, created_at
+			`SELECT id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message
 			 FROM blueprint_syncs WHERE blueprint_id = $1
 			 ORDER BY started_at DESC, id DESC LIMIT $2`,
 			blueprintID, limit)
 	} else {
 		// Resume after cursor: find the cursor row's (started_at, id) then page past it.
 		rows, err = s.Pool.Query(ctx,
-			`SELECT bs.id, bs.blueprint_id, bs.commit_id, bs.state, bs.started_at, bs.completed_at, bs.created_at
+			`SELECT bs.id, bs.blueprint_id, bs.commit_id, bs.state, bs.started_at, bs.completed_at, bs.created_at, bs.error_message
 			 FROM blueprint_syncs bs
 			 WHERE bs.blueprint_id = $1
 			   AND (bs.started_at, bs.id) < (
@@ -284,7 +286,7 @@ func (s *PGStore) ListBlueprintSyncs(ctx context.Context, blueprintID, cursor st
 	for rows.Next() {
 		var r BlueprintSync
 		if err := rows.Scan(&r.ID, &r.BlueprintID, &r.CommitID, &r.State,
-			&r.StartedAt, &r.CompletedAt, &r.CreatedAt); err != nil {
+			&r.StartedAt, &r.CompletedAt, &r.CreatedAt, &r.ErrorMessage); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

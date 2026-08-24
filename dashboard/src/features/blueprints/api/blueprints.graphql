@@ -41,13 +41,19 @@ query Blueprint($id: String!, $ownerId: String) {
   }
 }
 
-query BlueprintSyncs($id: String!, $ownerId: String, $cursor: String, $limit: Int) {
+query BlueprintSyncs(
+  $id: String!
+  $ownerId: String
+  $cursor: String
+  $limit: Int
+) {
   blueprintSyncs(id: $id, ownerId: $ownerId, cursor: $cursor, limit: $limit) {
     id
     commitId
     state
     startedAt
     completedAt
+    errorMessage
   }
 }
 
@@ -64,7 +70,12 @@ query BlueprintPreview(
   $path: String
   $ownerId: String
 ) {
-  blueprintPreview(repo: $repo, branch: $branch, path: $path, ownerId: $ownerId) {
+  blueprintPreview(
+    repo: $repo
+    branch: $branch
+    path: $path
+    ownerId: $ownerId
+  ) {
     found
     commitId
     error
@@ -196,7 +207,12 @@ mutation SyncBlueprint(
   $bexYaml: String
   $confirm: String
 ) {
-  syncBlueprint(id: $id, ownerId: $ownerId, bexYaml: $bexYaml, confirm: $confirm) {
+  syncBlueprint(
+    id: $id
+    ownerId: $ownerId
+    bexYaml: $bexYaml
+    confirm: $confirm
+  ) {
     blueprint {
       id
       name

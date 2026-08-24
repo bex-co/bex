@@ -1,18 +1,18 @@
 # w6 · m50 — Blueprint sync failures vanish; global search fuzzy-matches noise from resource IDs
 
-**Worker:** worker1 **Goal:** a blueprint sync failure leaves a diagnosable trail instead of a bare `error` state, and the workspace-wide search box actually narrows results for realistic short queries **Status:** todo
+**Worker:** worker1 **Goal:** a blueprint sync failure leaves a diagnosable trail instead of a bare `error` state, and the workspace-wide search box actually narrows results for realistic short queries **Status:** code complete (t001–t007 done); pending live verification against production post-`/ship` before t008 closeout
 
 ## Tasks (in order)
 
 | id   | title                                                                            | est | depends_on             |
 | ---- | --------------------------------------------------------------------------------- | --- | ----------------------- |
-| t001 | Persist the blueprint sync failure reason (schema + store)                        | 30m | —                        |
-| t002 | Thread the persisted error through REST/GraphQL/MCP                               | 30m | t001                     |
-| t003 | Surface the error in the dashboard's Sync History table                           | 20m | t002                     |
-| t004 | Global search: replace cmdk's default fuzzy filter with literal substring matching | 20m | —                        |
-| t005 | Render parity                                                                      | 20m | t002, t003, t004         |
-| t006 | Simplify                                                                           | 20m | t005                     |
-| t007 | Test coverage                                                                      | 30m | t005                     |
+| t001 | Persist the blueprint sync failure reason (schema + store)                        | 30m | —                        | — **DONE**
+| t002 | Thread the persisted error through REST/GraphQL/MCP                               | 30m | t001                     | — **DONE**
+| t003 | Surface the error in the dashboard's Sync History table                           | 20m | t002                     | — **DONE**
+| t004 | Global search: replace cmdk's default fuzzy filter with literal substring matching | 20m | —                        | — **DONE**
+| t005 | Render parity                                                                      | 20m | t002, t003, t004         | — **DONE**
+| t006 | Simplify                                                                           | 20m | t005                     | — **DONE**
+| t007 | Test coverage                                                                      | 30m | t005                     | — **DONE**
 | t008 | Closeout                                                                           | 10m | t006, t007               |
 
 ## Definition of done

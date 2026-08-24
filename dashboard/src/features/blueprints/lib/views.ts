@@ -88,6 +88,7 @@ export function toBlueprintSyncView(row: SyncRow): BlueprintSyncView {
     state: row.state ?? "",
     startedAt: row.startedAt ?? null,
     completedAt: row.completedAt ?? null,
+    errorMessage: row.errorMessage ?? null,
   };
 }
 

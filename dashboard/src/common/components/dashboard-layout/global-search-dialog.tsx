@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bell,
@@ -42,24 +43,55 @@ export function GlobalSearchDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslations();
+  const [search, setSearch] = useState("");
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
+    <CommandDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setSearch("");
+        onOpenChange(next);
+      }}
+      shouldFilter={false}
+    >
       <DialogTitle className="sr-only">{t("common.topbarSearch")}</DialogTitle>
       <DialogDescription className="sr-only">
         {t("common.topbarSearchDescription")}
       </DialogDescription>
-      <CommandInput placeholder={t("common.topbarSearchPlaceholder")} />
+      <CommandInput
+        placeholder={t("common.topbarSearchPlaceholder")}
+        value={search}
+        onValueChange={setSearch}
+      />
       <CommandList>
         <CommandEmpty>{t("common.topbarSearchEmpty")}</CommandEmpty>
-        {open ? <SearchResults close={() => onOpenChange(false)} /> : null}
+        {open ? (
+          <SearchResults search={search} close={() => onOpenChange(false)} />
+        ) : null}
       </CommandList>
     </CommandDialog>
   );
 }
 
-function SearchResults({ close }: { close: () => void }) {
+// cmdk's bundled fuzzy scorer treats a subsequence match against a resource's
+// ~20-char near-random id as relevant, so a short query like "db" or "cms"
+// used to return most of the workspace. shouldFilter={false} above hands
+// filtering to this literal, case-insensitive substring match instead —
+// mirrors combobox.tsx's precedent — while still matching against the same
+// composite name/id/type text so pasting a raw id fragment still finds it.
+function matchesQuery(haystack: string, query: string): boolean {
+  return query === "" || haystack.toLowerCase().includes(query);
+}
+
+function SearchResults({
+  search,
+  close,
+}: {
+  search: string;
+  close: () => void;
+}) {
   const { t } = useTranslations();
+  const query = search.trim().toLowerCase();
   const navigate = useNavigate();
   const { services, loading: servicesLoading } = useServices();
   const { databases, loading: databasesLoading } = useDatabases();
@@ -128,10 +160,33 @@ function SearchResults({ close }: { close: () => void }) {
     projects.length +
     envGroups.length;
 
+  const filteredPages = pages.filter((page) => matchesQuery(page.label, query));
+  const filteredProjects = projects.filter((r) =>
+    matchesQuery(
+      `${r.name} ${r.id} ${t("common.topbarProjectResource")}`,
+      query,
+    ),
+  );
+  const filteredServices = services.filter((r) =>
+    matchesQuery(
+      `${r.name} ${r.id} ${t("common.topbarServiceResource")}`,
+      query,
+    ),
+  );
+  const filteredDatabases = databases.filter((r) =>
+    matchesQuery(`${r.name} ${r.id} ${t("databases.resourceType")}`, query),
+  );
+  const filteredKeyValues = keyValues.filter((r) =>
+    matchesQuery(`${r.name} ${r.id} ${t("keyvalue.resourceType")}`, query),
+  );
+  const filteredEnvGroups = envGroups.filter((r) =>
+    matchesQuery(`${r.name} ${r.id} ${t("envGroups.resourceType")}`, query),
+  );
+
   return (
     <>
       <CommandGroup heading={t("common.topbarNavigation")}>
-        {pages.map((page) => (
+        {filteredPages.map((page) => (
           <CommandItem
             key={page.label}
             value={page.label}
@@ -147,7 +202,7 @@ function SearchResults({ close }: { close: () => void }) {
         {loading && resourceCount === 0 ? (
           <CommandItem disabled>{t("common.loading")}</CommandItem>
         ) : null}
-        {projects.map((project) => (
+        {filteredProjects.map((project) => (
           <CommandItem
             key={`project:${project.id}`}
             value={`${project.name} ${project.id} ${t("common.topbarProjectResource")}`}
@@ -167,7 +222,7 @@ function SearchResults({ close }: { close: () => void }) {
             />
           </CommandItem>
         ))}
-        {services.map((service) => (
+        {filteredServices.map((service) => (
           <CommandItem
             key={`service:${service.id}`}
             value={`${service.name} ${service.id} ${t("common.topbarServiceResource")}`}
@@ -196,7 +251,7 @@ function SearchResults({ close }: { close: () => void }) {
             />
           </CommandItem>
         ))}
-        {databases.map((database) => (
+        {filteredDatabases.map((database) => (
           <CommandItem
             key={`database:${database.id}`}
             value={`${database.name} ${database.id} ${t("databases.resourceType")}`}
@@ -216,7 +271,7 @@ function SearchResults({ close }: { close: () => void }) {
             />
           </CommandItem>
         ))}
-        {keyValues.map((keyValue) => (
+        {filteredKeyValues.map((keyValue) => (
           <CommandItem
             key={`keyvalue:${keyValue.id}`}
             value={`${keyValue.name} ${keyValue.id} ${t("keyvalue.resourceType")}`}
@@ -236,7 +291,7 @@ function SearchResults({ close }: { close: () => void }) {
             />
           </CommandItem>
         ))}
-        {envGroups.map((group) => (
+        {filteredEnvGroups.map((group) => (
           <CommandItem
             key={`env-group:${group.id}`}
             value={`${group.name} ${group.id} ${t("envGroups.resourceType")}`}

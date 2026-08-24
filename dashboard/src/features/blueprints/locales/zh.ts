@@ -179,7 +179,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "sync:false prompt section helper text",
   },
   "blueprints.promptEmptyWarning": {
-    message: "留空的值将不会设置——服务可能启动失败，可稍后在其 Environment 页补填。",
+    message:
+      "留空的值将不会设置——服务可能启动失败，可稍后在其 Environment 页补填。",
     description:
       "Warning below the sync:false inputs when at least one is blank",
   },
@@ -291,7 +292,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Generate dialog — download the manifest file",
   },
   "blueprints.generateSecretsNote": {
-    message: "机密值绝不导出——机密变量以 sync: false 形式出现，首次创建蓝图时会提示填写。",
+    message:
+      "机密值绝不导出——机密变量以 sync: false 形式出现，首次创建蓝图时会提示填写。",
     description: "Generate dialog note under the yaml preview",
   },
   "blueprints.generateError": {
@@ -416,6 +418,11 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "完成时间",
     description: "Sync history table column — sync run completion time",
   },
+  "blueprints.syncColError": {
+    message: "错误",
+    description:
+      "Sync history table column — failure reason for an error-state run",
+  },
   "blueprints.manifestTitle": {
     message: "render.yaml 清单",
     description: "Blueprint detail section heading for the stored manifest",
@@ -447,12 +454,14 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Pre-sync dialog — loading line while blueprintPreview runs",
   },
   "blueprints.syncPreviewInvalid": {
-    message: "分支上当前的蓝图文件存在问题——现在同步可能失败或回退到已存储的清单：",
+    message:
+      "分支上当前的蓝图文件存在问题——现在同步可能失败或回退到已存储的清单：",
     description:
       "Pre-sync dialog — heading above validation errors from the fetched manifest",
   },
   "blueprints.syncPreviewUnavailable": {
-    message: "无法计算同步计划（预览不可用）。仍可同步——后端会在应用前重新校验。",
+    message:
+      "无法计算同步计划（预览不可用）。仍可同步——后端会在应用前重新校验。",
     description:
       "Pre-sync dialog — graceful-degrade warning when the preview query fails",
   },
@@ -478,7 +487,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Aria label for the inline-edit cancel button",
   },
   "blueprints.pathInvalid": {
-    message: "必须是干净的仓库相对 .yaml/.yml 路径（不能以 / 开头，不能包含 ..）。",
+    message:
+      "必须是干净的仓库相对 .yaml/.yml 路径（不能以 / 开头，不能包含 ..）。",
     description: "Inline path editor client-side validation message",
   },
   "blueprints.updateSuccess": {
