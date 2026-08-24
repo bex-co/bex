@@ -129,15 +129,60 @@ describe("DiskSection", () => {
     );
   });
 
-  it("cannot express a shrink on an attached disk", async () => {
+  // Render keeps the size field inert until you press Edit, so a page opened to
+  // read cannot be nudged into an irreversible grow (live capture 2026-08-24:
+  // its size input ships `disabled`, with an Edit button beside it).
+  it("keeps the size field locked until Edit is pressed", async () => {
+    const user = userEvent.setup();
     mockUseDisk.mockReturnValue(attached);
     render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
 
-    const grow = screen.getByLabelText(/increase size/i);
+    const size = screen.getByLabelText(/^size$/i);
+    expect(size).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /increase size/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    expect(size).toBeEnabled();
+  });
+
+  it("cannot express a shrink on an attached disk", async () => {
+    const user = userEvent.setup();
+    mockUseDisk.mockReturnValue(attached);
+    render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+
     // The control's floor is the current size: shrinking is refused by the API,
     // the store and the CRD, so the UI must not even offer it.
-    expect(grow).toHaveAttribute("min", "10");
+    const size = screen.getByLabelText(/^size$/i);
+    expect(size).toHaveAttribute("min", "10");
+    // Still at the current size, so there is nothing to apply yet.
     expect(screen.getByRole("button", { name: /increase size/i })).toBeDisabled();
+  });
+
+  // The mount path is baked into the running pod's volume mount — changing it
+  // is a detach and re-attach, not an edit — so it is never writable here.
+  it("shows the mount path as a read-only field", () => {
+    mockUseDisk.mockReturnValue(attached);
+    render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+
+    const mountPath = screen.getByDisplayValue("/var/data");
+    expect(mountPath).toHaveAttribute("readonly");
+  });
+
+  // Render's order: Recent Metrics, Disk Configuration, Snapshots, Delete Disk.
+  // Delete trails in its own card rather than sitting a mis-click from the size
+  // field.
+  it("orders the cards the way Render orders them", () => {
+    mockUseDisk.mockReturnValue(attached);
+    const { container } = render(
+      <DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />,
+    );
+
+    const titles = [...container.querySelectorAll('[data-slot="card-title"]')].map((el) =>
+      el.textContent?.trim(),
+    );
+    expect(titles).toEqual(["Disk usage", "Disk Configuration", "Snapshots", "Delete disk"]);
   });
 
   it("warns that deleting destroys the data", async () => {

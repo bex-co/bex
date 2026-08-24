@@ -1,6 +1,6 @@
 # Render persistent disks capture
 
-Captured 2026-08-23 from a live authenticated walk of the Render dashboard's **Disk** tab on a real paid web service (`srv-d2rnr3jipnbc73deuvgg`, Node runtime, Starter instance, no disk attached), cross-checked against Render's public docs (render.com/docs/disks, blueprint-spec) and API reference (api-docs.render.com), both captured 2026-08-22. This record pins the product copy and form contract that [ADR082](../ADR082-persistent-disks.md) replicates. The with-disk page state (usage graph, resize, snapshot list/restore) was **not** walked: reaching it requires creating a billable disk and taking a downtime deploy on a production service — those behaviors are pinned from the docs/API rows below instead.
+Captured 2026-08-23 from a live authenticated walk of the Render dashboard's **Disk** tab on a real paid web service (`srv-d2rnr3jipnbc73deuvgg`, Node runtime, Starter instance, no disk attached), cross-checked against Render's public docs (render.com/docs/disks, blueprint-spec) and API reference (api-docs.render.com), both captured 2026-08-22. This record pins the product copy and form contract that [ADR082](../ADR082-persistent-disks.md) replicates. The with-disk page state was **walked separately on 2026-08-24** once a real disk existed on that service — see § Live walk, with a disk attached below. The 2026-08-23 pass could not reach it (it needs a billable disk and a downtime deploy), so the original record pinned those behaviors from the docs/API rows instead; the newer walk supersedes that guess where the two disagree.
 
 ## Live dashboard walk (2026-08-23)
 
@@ -16,6 +16,27 @@ Captured 2026-08-23 from a live authenticated walk of the Render dashboard's **D
 | No name field | The dashboard form has **no disk name input** — mount path + size only. `name` exists only in the Blueprint/API contract ("not currently displayed in the Render Dashboard"). | Same form; blueprint-spec |
 | Form actions | Cancel / Add Disk. (Not submitted — see header note.) | Same form |
 | Scaling tab interplay | On this disk-less service, Scaling shows the Autoscaling toggle + Manual Scaling slider (1–100) with **no disk mention**; the disk↔scaling constraint is surfaced on the Add Disk form (and per docs blocks scaling once a disk exists). | Live snapshot of `/web/srv-…/scaling` |
+
+## Live walk, with a disk attached (2026-08-24)
+
+Same service (`srv-d2rnr3jipnbc73deuvgg`), after a 1 GB disk was attached at `/var/data`. This is the state the 2026-08-23 pass could not reach.
+
+**The page is four separate cards, in this order:**
+
+| # | Card | Contents |
+| --- | --- | --- |
+| 1 | **Recent Metrics** | "Showing metrics for the past 48 hours. [View all metrics.]" — then a **Disk Usage** sub-heading, a `Size 1 GB` line, and the chart. Empty state is a clock icon over "No data captured in the the past 48 hours" (Render's own duplicated "the"). |
+| 2 | **Disk Configuration** | "Configure specifications for your [disk]." Two-column rows: label + explanation on the left, control on the right. **Mount path** → `readOnly` input showing `/var/data`, help "The absolute path to mount this disk. Cannot be the root (/) directory." **Size** → **`disabled`** input showing `1` with a `GB` suffix, help "You can increase the size later, but you can't decrease it. We recommend starting with the lowest value that serves your use case.", and a **✎ Edit** button below-right that unlocks it. |
+| 3 | **Snapshots** | "Restore a disk to a previously captured state. Render captures a [snapshot] of each disk once every 24 hours. Snapshots are available for seven days after capture. **All changes to your disk that occurred after the selected snapshot will be lost!**" (that last clause bold in Render's own markup) — then an info banner: ⓘ "Disk snapshots are taken every 24 hours." |
+| 4 | **Delete Disk** | "Disk will be removed from the associated instance and all disk data will be deleted." — then a red **Delete Disk** button. |
+
+**The three load-bearing observations**, all adopted by bex in w1/m86:
+
+1. **Metrics lead the page.** "Is it filling up?" is the question a tenant opens this tab to answer, so it is answered before any control is offered.
+2. **Both configuration fields are inert by default** — mount path permanently (`readOnly`), size until Edit is pressed (`disabled`). A page opened to read cannot be nudged into an irreversible grow.
+3. **Deletion gets its own card at the bottom, with a sentence saying what is lost** — not an icon button in a header. Both the distance and the explanation are deliberate.
+
+DOM evidence: headings `["Recent Metrics", "Disk Usage", "Disk Configuration", "Snapshots", "Delete Disk"]`; inputs `[{value:"/var/data", readOnly:true}, {value:"1", disabled:true}]`; buttons `["Edit", "Delete Disk"]`.
 
 ## Docs/API contract (captured 2026-08-22, pinned for ADR082)
 

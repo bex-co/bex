@@ -3160,6 +3160,34 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "若要继续，请输入 {phrase}",
     description: "Label above the typed-confirmation input for an irreversible disk action.",
   },
+  "services.diskConfigTitle": {
+    message: "磁盘配置",
+    description: "Heading of the card holding the disk's mount path and size settings.",
+  },
+  "services.diskConfigDescription": {
+    message: "配置此磁盘的挂载路径和容量。",
+    description: "Subtitle of the disk configuration card.",
+  },
+  "services.diskSizeUnit": {
+    message: "GB",
+    description: "Unit suffix shown beside the disk size input.",
+  },
+  "services.diskEditAction": {
+    message: "编辑",
+    description: "Button that unlocks the disk size field for editing.",
+  },
+  "services.diskProvisionedLabel": {
+    message: "已预配 {size} GB",
+    description: "Provisioned disk size shown beside the usage chart heading; this is the size billing meters.",
+  },
+  "services.diskDeleteCardTitle": {
+    message: "删除磁盘",
+    description: "Heading of the delete-disk card. Distinct from diskDeleteTitle, which is the confirmation dialog's question.",
+  },
+  "services.diskDeleteCardDescription": {
+    message: "磁盘将从此服务分离，其上所有数据将被永久删除。",
+    description: "Subtitle of the delete-disk card, stating what is lost.",
+  },
   "services.diskUsageTitle": {
     message: "磁盘用量",
     description: "Heading of the disk usage chart on a service's Disk tab.",
