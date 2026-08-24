@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mockUseMutation = vi.fn();
 vi.mock("@apollo/client/react", () => ({
@@ -136,6 +137,48 @@ describe("useCreateDatabase", () => {
 
     expect(id).toBeNull();
     expect(toastSuccess).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't create db. Please try again.",
+    );
+  });
+
+  // w6/m49: a duplicate-name conflict shows the backend's specific reason
+  // instead of the generic "Please try again" toast.
+  it("shows the backend's specific reason on a name conflict", async () => {
+    const mutate = vi.fn().mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message: 'a Postgres database named "db" already exists in this workspace',
+            extensions: { code: "CONFLICT" },
+          },
+        ],
+      }),
+    );
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateDatabase());
+    await act(async () => {
+      await result.current.create(input);
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      'A Postgres database named "db" already exists in this workspace',
+    );
+  });
+
+  // The conflict branch must be additive: a non-conflict, non-cap-limit error
+  // still falls through to the generic toast unchanged.
+  it("falls through to the generic toast for a non-conflict error", async () => {
+    const mutate = vi.fn().mockRejectedValue(new Error("network error"));
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateDatabase());
+    await act(async () => {
+      await result.current.create(input);
+    });
+
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't create db. Please try again.",
     );

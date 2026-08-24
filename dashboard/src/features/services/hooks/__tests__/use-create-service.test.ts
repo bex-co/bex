@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mockUseMutation = vi.fn();
 vi.mock("@apollo/client/react", () => ({
@@ -161,6 +162,48 @@ describe("useCreateService", () => {
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't create friendly-web. Please try again.",
+    );
+  });
+
+  // w6/m49 regression: services is the control case — its name-conflict
+  // detection moved from message-matching ("already in use") onto the shared
+  // extensions.code mechanism (w6/m49/t001), and this must not change the
+  // outward behavior: nameConflict still flips true, inline, no toast.
+  it("still sets nameConflict inline on a name-conflict error (control case, w6/m49)", async () => {
+    const mutate = vi.fn().mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message: 'name "web" is already in use',
+            extensions: { code: "CONFLICT" },
+          },
+        ],
+      }),
+    );
+    mockUseMutation.mockReturnValue([mutate, { loading: false }]);
+
+    const { result } = renderHook(() => useCreateService());
+    await act(async () => {
+      await result.current.create({ name: "web" });
+    });
+
+    expect(result.current.nameConflict).toBe(true);
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("falls through to the generic toast for a non-conflict error (control case, w6/m49)", async () => {
+    const mutate = vi.fn().mockRejectedValue(new Error("network error"));
+    mockUseMutation.mockReturnValue([mutate, { loading: false }]);
+
+    const { result } = renderHook(() => useCreateService());
+    await act(async () => {
+      await result.current.create({ name: "web" });
+    });
+
+    expect(result.current.nameConflict).toBe(false);
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't create web. Please try again.",
     );
   });
 });

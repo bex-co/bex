@@ -1,21 +1,21 @@
 # w6 · m49 — Duplicate-name creation errors discard the backend's specific conflict reason (extend w4/m19's services-only fix)
 
-**Worker:** worker6 **Goal:** every resource-creation flow that enforces a workspace-unique name gives the user the backend's actual, specific conflict reason on a duplicate — matching the standard `w4/m19` already built and proved for services — instead of a generic "Please try again" toast that tells the user nothing and invites a retry that can never succeed. **Status:** todo (t006 done)
+**Worker:** worker6 **Goal:** every resource-creation flow that enforces a workspace-unique name gives the user the backend's actual, specific conflict reason on a duplicate — matching the standard `w4/m19` already built and proved for services — instead of a generic "Please try again" toast that tells the user nothing and invites a retry that can never succeed. **Status:** done 2026-08-24 — all 10 tasks complete, every DoD bullet live-verified against dev-7 (see `done/t010.md`'s re-verification), full gates green.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                       | est | depends_on                          |
 | ---- | ------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------ |
-| t001 | Design + implement a stable, backend-copy-independent conflict signal shared by every create-\* consumer      | 45m | —                                    |
-| t002 | Key Value: surface the conflict reason instead of the generic toast                                            | 20m | t001                                 |
-| t003 | Postgres: surface the conflict reason instead of the generic toast                                             | 20m | t001                                 |
-| t004 | Project: surface the conflict reason; decide whether the backend message needs the attempted name added        | 25m | t001                                 |
-| t005 | Environments: confirm live whether duplicate names are rejected the same way, then fix if so                   | 30m | t001                                 |
+| t001 | Design + implement a stable, backend-copy-independent conflict signal shared by every create-\* consumer — **DONE** | 45m | —                                    |
+| t002 | Key Value: surface the conflict reason instead of the generic toast — **DONE**                                  | 20m | t001                                 |
+| t003 | Postgres: surface the conflict reason instead of the generic toast — **DONE**                                   | 20m | t001                                 |
+| t004 | Project: surface the conflict reason; decide whether the backend message needs the attempted name added — **DONE** | 25m | t001                                 |
+| t005 | Environments: confirm live whether duplicate names are rejected the same way, then fix if so — **DONE**         | 30m | t001                                 |
 | t006 | API keys / registry credentials: confirm live whether name uniqueness is enforced at all; fix only if it is — **DONE** | 30m | t001                                 |
-| t007 | Render parity across REST/GraphQL/MCP/UI                                                                        | 30m | [t002, t003, t004, t005, t006]       |
-| t008 | Simplify the touched code                                                                                       | 25m | t007                                 |
-| t009 | Test coverage for the fixed behaviors + regression tests for the already-correct control cases                 | 40m | t007                                 |
-| t010 | Closeout                                                                                                        | 10m | t009                                 |
+| t007 | Render parity across REST/GraphQL/MCP/UI — **DONE**                                                             | 30m | [t002, t003, t004, t005, t006]       |
+| t008 | Simplify the touched code — **DONE**                                                                            | 25m | t007                                 |
+| t009 | Test coverage for the fixed behaviors + regression tests for the already-correct control cases — **DONE**       | 40m | t007                                 |
+| t010 | Closeout — **DONE**                                                                                              | 10m | t009                                 |
 
 ## Definition of done
 

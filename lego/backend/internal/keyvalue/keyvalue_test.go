@@ -1054,6 +1054,56 @@ func TestMCPCreateIPAllowList(t *testing.T) {
 	}
 }
 
+// TestMCPCreateDuplicateNameErrors is w6/m49/t007's MCP-parity leg: a
+// duplicate-name create_key_value must fail as a tool error carrying the
+// stable CONFLICT code (core.MCPError has no structured extensions like
+// GraphQL, so the code travels as a text prefix) and name the attempted
+// value, mirroring create_web_service's sibling contract.
+func TestMCPCreateDuplicateNameErrors(t *testing.T) {
+	svc, _ := newService()
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	ctx := context.Background()
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	if res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name: "create_key_value", Arguments: map[string]any{"name": "mcp-dup"},
+	}); err != nil || res.IsError {
+		t.Fatalf("first create: err=%v isErr=%v", err, res.IsError)
+	}
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name: "create_key_value", Arguments: map[string]any{"name": "mcp-dup"},
+	})
+	if err != nil {
+		t.Fatalf("create_key_value duplicate: transport error %v", err)
+	}
+	if !res.IsError {
+		t.Fatal("create_key_value duplicate: want a tool error, got a normal result")
+	}
+	var msg string
+	for _, c := range res.Content {
+		if tc, ok := c.(*mcp.TextContent); ok {
+			msg += tc.Text
+		}
+	}
+	if !strings.HasPrefix(msg, "CONFLICT: ") {
+		t.Errorf("tool error = %q, want the CONFLICT: code prefix (core.MCPError)", msg)
+	}
+	if !strings.Contains(msg, `"mcp-dup"`) {
+		t.Errorf("tool error = %q, want it to name the attempted name", msg)
+	}
+}
+
 func TestKVInstanceTypesCatalog(t *testing.T) {
 	svc, _ := newService()
 	tt, err := svc.InstanceTypes(context.Background())

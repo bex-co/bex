@@ -4,7 +4,10 @@ import { toast } from "sonner";
 import { CreateDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import {
+  conflictOrGenericMessage,
+  graphQLErrorMessage,
+} from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
@@ -87,7 +90,12 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
         if (msg.toLowerCase().includes("workspace is limited")) {
           setCapLimit(msg);
         } else {
-          toast.error(t("databases.createError", { name: input.name }));
+          toast.error(
+            conflictOrGenericMessage(
+              err,
+              t("databases.createError", { name: input.name }),
+            ),
+          );
         }
         return null;
       } finally {

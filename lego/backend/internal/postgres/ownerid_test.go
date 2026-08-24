@@ -249,8 +249,15 @@ func TestCreatePostgresAllowsSameDisplayNameInDifferentWorkspaces(t *testing.T) 
 	if a.ID == b.ID || a.Name != b.Name || a.OwnerID == b.OwnerID {
 		t.Fatalf("workspace-scoped names = a:%+v b:%+v", a, b)
 	}
-	if _, err := svc.CreatePostgres(ctxAs("alice"), CreatePostgresRequest{Name: "shared-name", Plan: "free"}); !errors.Is(err, core.ErrConflict) {
+	_, err = svc.CreatePostgres(ctxAs("alice"), CreatePostgresRequest{Name: "shared-name", Plan: "free"})
+	if !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("duplicate display name in tea-a: got %v, want ErrConflict", err)
+	}
+	// w6/m49: a stable code, not just message text, so a dashboard hook can
+	// detect the conflict without matching backend copy.
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "CONFLICT" {
+		t.Fatalf("duplicate display name in tea-a: got %v, want *core.CodedError{Code: CONFLICT}", err)
 	}
 }
 

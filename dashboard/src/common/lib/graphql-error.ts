@@ -44,6 +44,29 @@ export function hasGraphQLErrorCode(err: unknown, code: string): boolean {
 }
 
 /**
+ * True when a create mutation failed because the name is already taken in
+ * scope (a workspace, a project, …) — keyed on the backend's stable
+ * `extensions.code: "CONFLICT"` (`core.NewConflictError`, w6/m49) rather than
+ * matching message text per resource type, so a backend copy change can't
+ * silently stop a create-form's conflict handling from firing. Pair with
+ * `refusalReason(err)` for the specific, resource-named text to show.
+ */
+export function isNameConflictError(err: unknown): boolean {
+  return hasGraphQLErrorCode(err, "CONFLICT");
+}
+
+/**
+ * The toast message for a create-mutation failure that might be a name
+ * conflict: the backend's specific reason when it is, otherwise the caller's
+ * own generic copy. w6/m49 graduated this here after four `use-create-*`
+ * hooks (keyvalue, postgres, project, environment) each wrote the identical
+ * `isNameConflictError(err) ? refusalReason(err) : generic` branch.
+ */
+export function conflictOrGenericMessage(err: unknown, generic: string): string {
+  return isNameConflictError(err) ? refusalReason(err) : generic;
+}
+
+/**
  * Extracts PLAN_LIMIT error params from a GraphQL error's extensions field.
  * Returns the structured params when the first error carries code "PLAN_LIMIT";
  * returns null for any other error type or code so callers fall through to a

@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mutate = vi.fn();
 vi.mock("@apollo/client/react", () => ({
@@ -58,5 +59,45 @@ describe("useCreateProject", () => {
     expect(id).toBeNull();
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(toastError).toHaveBeenCalled();
+  });
+
+  // w6/m49: use-create-project.ts's original bare `catch {}` bound no error
+  // variable at all — every failure got the identical generic toast. This
+  // pins the fix: a duplicate-name conflict shows the backend's specific
+  // reason instead.
+  it("shows the backend's specific reason on a name conflict", async () => {
+    mutate.mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message: 'a project named "friendly-name" already exists in this workspace',
+            extensions: { code: "CONFLICT" },
+          },
+        ],
+      }),
+    );
+    const { result } = renderHook(() => useCreateProject());
+
+    await act(async () => {
+      await result.current.create("friendly-name");
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      'A project named "friendly-name" already exists in this workspace',
+    );
+  });
+
+  it("falls through to the generic toast for a non-conflict error", async () => {
+    mutate.mockRejectedValue(new Error("network error"));
+    const { result } = renderHook(() => useCreateProject());
+
+    await act(async () => {
+      await result.current.create("friendly-name");
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      expect.stringContaining("friendly-name"),
+    );
   });
 });

@@ -349,7 +349,8 @@ func (s *Service) ensureKeyValueNameAvailable(ctx context.Context, tenantID, nam
 			continue
 		}
 		if kv.Spec.Name == name {
-			return fmt.Errorf("%w: a key-value store named %q already exists in this workspace", core.ErrConflict, name)
+			return core.NewConflictError("CONFLICT",
+				fmt.Sprintf("a key-value store named %q already exists in this workspace", name), nil)
 		}
 	}
 	return nil

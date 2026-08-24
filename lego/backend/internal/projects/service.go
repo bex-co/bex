@@ -22,6 +22,7 @@ package projects
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -355,15 +356,26 @@ func (s *Service) Create(ctx context.Context, workspaceID, name string) (Project
 			return err
 		})
 		if err != nil {
-			return ProjectView{}, store.MapError(err)
+			return ProjectView{}, conflictOrMapError(err, name)
 		}
 		return toView(p, nil, nil, nil), nil
 	}
 	p, err := s.Store.CreateProject(ctx, workspaceID, name)
 	if err != nil {
-		return ProjectView{}, store.MapError(err)
+		return ProjectView{}, conflictOrMapError(err, name)
 	}
 	return toView(p, nil, nil, nil), nil
+}
+
+// conflictOrMapError names the attempted project name on a duplicate-name
+// conflict — the store's own classify() has no name to put in "project:
+// already exists" (w6/m49) — and otherwise falls through to store.MapError.
+func conflictOrMapError(err error, name string) error {
+	if errors.Is(err, store.ErrConflict) {
+		return core.NewConflictError("CONFLICT",
+			fmt.Sprintf("a project named %q already exists in this workspace", name), nil)
+	}
+	return store.MapError(err)
 }
 
 // Rename renames a project.

@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { CreateEnvironmentDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { conflictOrGenericMessage } from "@/common/lib/graphql-error";
 
 export interface UseCreateEnvironmentResult {
   /** Fires createEnvironment; resolves the new id on success, null on failure. */
@@ -37,8 +38,13 @@ export function useCreateEnvironment(
         if (!id) throw new Error("createEnvironment returned no id");
         toast.success(t("environments.createSuccess", { name }));
         return id;
-      } catch {
-        toast.error(t("environments.createError", { name }));
+      } catch (err) {
+        toast.error(
+          conflictOrGenericMessage(
+            err,
+            t("environments.createError", { name }),
+          ),
+        );
         return null;
       } finally {
         setBusy(false);
