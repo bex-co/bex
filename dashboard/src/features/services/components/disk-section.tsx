@@ -1,16 +1,6 @@
 import { HardDrive, Pencil } from "lucide-react";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
@@ -30,6 +20,7 @@ import {
   useDiskMutations,
   useDiskSnapshots,
 } from "@/features/services/hooks/use-disks";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
@@ -514,7 +505,7 @@ function DeleteDiskButton({
       <Button variant="destructive" size="sm" onClick={() => setOpen(true)} disabled={busy}>
         {t("services.diskDeleteAction")}
       </Button>
-      <SudoConfirmDialog
+      <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
         title={t("services.diskDeleteTitle")}
@@ -522,82 +513,12 @@ function DeleteDiskButton({
         phrase={phrase}
         confirmLabel={t("services.diskDeleteConfirm")}
         onConfirm={() => void onDelete(disk.id)}
+        pending={busy}
       />
     </>
   );
 }
 
-/**
- * An AlertDialog whose confirm stays disabled until the exact phrase is typed.
- * Local to the disk tab rather than shared: the dashboard's 27 other confirm
- * dialogs are plain AlertDialogs and folding them all into one primitive is
- * its own piece of work (.pm/w1/075.md), so this converges the two dialogs
- * that need a phrase without forking a house-wide pattern for the rest.
- */
-function SudoConfirmDialog({
-  open,
-  onOpenChange,
-  title,
-  description,
-  phrase,
-  confirmLabel,
-  onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (next: boolean) => void;
-  title: string;
-  description: string;
-  phrase: string;
-  confirmLabel: string;
-  onConfirm: () => void;
-}) {
-  const { t } = useTranslations();
-  const [typed, setTyped] = useState("");
-  const matches = typed === phrase;
-
-  // Clearing on close means reopening never starts pre-armed with a phrase the
-  // tenant typed for a previous, possibly different, disk.
-  const setOpenAndReset = (next: boolean) => {
-    if (!next) setTyped("");
-    onOpenChange(next);
-  };
-
-  return (
-    <AlertDialog open={open} onOpenChange={setOpenAndReset}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="disk-sudo-phrase">
-            {t("services.diskSudoPrompt", { phrase })}
-          </Label>
-          <Input
-            id="disk-sudo-phrase"
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-            className="font-mono"
-          />
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={!matches}
-            onClick={() => {
-              onConfirm();
-              setTyped("");
-            }}
-          >
-            {confirmLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
 
 function SnapshotsCard({
   disk,
@@ -671,7 +592,7 @@ function SnapshotsCard({
           </ul>
         )}
       </CardContent>
-      <SudoConfirmDialog
+      <ConfirmDialog
         open={pending !== null}
         onOpenChange={(next) => !next && setPending(null)}
         title={t("services.diskRestoreTitle")}

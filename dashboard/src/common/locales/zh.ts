@@ -16,6 +16,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Prompt naming the server-issued protected environment confirmation phrase",
   },
+  "common.confirmPhrasePrompt": {
+    message: "若要继续，请输入 {phrase}",
+    description: "Label above the typed-confirmation input in a phrase-gated confirm dialog.",
+  },
   "common.cancel": {
     message: "取消",
     description: "Generic Cancel button — dismisses a dialog or an inline form without saving.",

@@ -9,16 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Table,
@@ -245,59 +236,29 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
         </CardContent>
       </Card>
 
-      <AlertDialog
+      <ConfirmDialog
         open={confirmRun !== null}
         onOpenChange={(open) => !open && setConfirmRun(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("services.cronRunCancelConfirmTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("services.cronRunCancelConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("services.eventsConfirmCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={confirmRun ? cancelingId === confirmRun.id : false}
-              onClick={() => void handleCancel()}
-            >
-              {t("services.eventsConfirmProceed")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={t("services.cronRunCancelConfirmTitle")}
+        description={t("services.cronRunCancelConfirmBody")}
+        cancelLabel={t("services.eventsConfirmCancel")}
+        confirmLabel={t("services.eventsConfirmProceed")}
+        pending={confirmRun ? cancelingId === confirmRun.id : false}
+        onConfirm={() => void handleCancel()}
+      />
 
-      <AlertDialog
+      <ConfirmDialog
         open={confirmTrigger}
         onOpenChange={(open) => !open && setConfirmTrigger(false)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("services.cronTriggerConfirmTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("services.cronTriggerConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("services.eventsConfirmCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={triggering}
-              onClick={() => void handleTrigger()}
-            >
-              {t("services.cronTriggerRun")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={t("services.cronTriggerConfirmTitle")}
+        description={t("services.cronTriggerConfirmBody")}
+        cancelLabel={t("services.eventsConfirmCancel")}
+        confirmLabel={t("services.cronTriggerRun")}
+        // Triggering a run is not destructive — it is the primary action here.
+        destructive={false}
+        pending={triggering}
+        onConfirm={() => void handleTrigger()}
+      />
     </>
   );
 }
