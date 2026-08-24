@@ -21,6 +21,20 @@ jobs:
   controller:
     runs-on: [self-hosted, Linux, ARM64]
     steps:
+      # A self-hosted runner REUSES its _work directory between runs, unlike an
+      # ephemeral hosted one. This job's envtest step downloads the Kubernetes
+      # control-plane binaries into .opensandbox-upstream/kubernetes/bin/k8s/…
+      # and setup-envtest marks those directories read-only (0555) — so on the
+      # NEXT run actions/checkout cannot clean the workspace and the job dies at
+      # step 2 with `EACCES: permission denied, unlink '…/bin/k8s/…/etcd'`,
+      # before a single test runs. Restore write permission and drop the tree
+      # before checkout looks at it. Idempotent, and a no-op on a clean runner.
+      - name: reclaim the persistent runner workspace
+        run: |
+          stale="${GITHUB_WORKSPACE}/.opensandbox-upstream"
+          [ -e "$stale" ] || exit 0
+          chmod -R u+w "$stale" 2>/dev/null || true
+          rm -rf "$stale"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: upstream
         name: Apply carried patches to the pinned upstream controller

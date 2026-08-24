@@ -33,3 +33,7 @@ projects-to-deploy
 # Python bytecode caches
 __pycache__/
 *.py[cod]
+
+# Upstream OpenSandbox checkout created by the controller-patch CI job; on a
+# self-hosted runner this lands inside the reused workspace (never committed).
+.opensandbox-upstream/
