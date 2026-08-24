@@ -1,4 +1,4 @@
-import { HardDrive } from "lucide-react";
+import { HardDrive, Pencil } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -14,7 +14,6 @@ import {
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -89,59 +88,99 @@ export function DiskSection({
     ? t("services.diskUnsupportedType")
     : t("services.diskPaidOnly");
 
+  // Render's Disk tab is FOUR cards in a fixed order — Recent Metrics, Disk
+  // Configuration, Snapshots, Delete Disk (live capture 2026-08-24, the
+  // with-disk state docs/render-artifacts/disks.md could not walk before a disk
+  // existed). Metrics lead because "is it filling up?" is the question a tenant
+  // opens this tab to answer; delete trails in its own card because it destroys
+  // data and should not sit one mis-click from the size field.
+  //
+  // A diskless service collapses to the single add card: there is no usage to
+  // chart, nothing to snapshot, and nothing to delete.
+  if (loading && !disk) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("services.diskTitle")}</CardTitle>
+            <CardDescription>{t("services.diskDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CardSkeleton />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!disk) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("services.diskTitle")}</CardTitle>
+            <CardDescription>{t("services.diskDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error ? (
+              <PanelCenteredState
+                icon={<HardDrive className="size-6" />}
+                title={t("services.diskLoadErrorTitle")}
+                body={error.message}
+              />
+            ) : (
+              <AddDiskForm
+                eligible={eligible}
+                ineligibleReason={ineligibleReason}
+                canCreate={canCreate}
+                busy={mutations.busy}
+                addError={mutations.addError}
+                clearAddError={mutations.clearAddError}
+                onAdd={mutations.addDisk}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("services.diskTitle")}</CardTitle>
-          <CardDescription>{t("services.diskDescription")}</CardDescription>
-          {disk && canCreate ? (
-            <CardAction>
-              <DeleteDiskButton disk={disk} onDelete={mutations.deleteDisk} busy={mutations.busy} />
-            </CardAction>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          {loading && !disk ? (
-            <CardSkeleton />
-          ) : error && !disk ? (
-            <PanelCenteredState
-              icon={<HardDrive className="size-6" />}
-              title={t("services.diskLoadErrorTitle")}
-              body={error.message}
-            />
-          ) : disk ? (
-            <AttachedDisk disk={disk} mutations={mutations} canCreate={canCreate} />
-          ) : (
-            <AddDiskForm
-              eligible={eligible}
-              ineligibleReason={ineligibleReason}
-              canCreate={canCreate}
-              busy={mutations.busy}
-              addError={mutations.addError}
-              clearAddError={mutations.clearAddError}
-              onAdd={mutations.addDisk}
-            />
-          )}
-        </CardContent>
-      </Card>
-      {disk ? (
+      {(
         <>
-          {/* Render's Disk tab shows used-vs-capacity on the disk itself. The
-              series is the same kubelet volume-stats pair a managed datastore's
-              disk chart reads, so it reuses that panel rather than growing a
-              second chart stack (ADR082 D6). Usage here is observability only —
-              billing meters PROVISIONED GB (D9), which is the number in the
-              size control above. */}
+          {/* The series is the same kubelet volume-stats pair a managed
+              datastore's disk chart reads, so it reuses that panel rather than
+              growing a second chart stack (ADR082 D6). Usage is observability
+              only — billing meters PROVISIONED GB (D9), which is why the
+              provisioned size rides in the header beside the chart, exactly as
+              Render prints "Size 1 GB" above its own. */}
           <DatastoreMetricsPanel
             kind="service"
             resource={serviceId}
             title={t("services.diskUsageTitle")}
             description={t("services.diskUsageDescription")}
+            diskHeaderExtra={
+              <span className="text-xs text-muted-foreground">
+                {t("services.diskProvisionedLabel", { size: String(disk.sizeGB) })}
+              </span>
+            }
           />
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("services.diskConfigTitle")}</CardTitle>
+              <CardDescription>{t("services.diskConfigDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AttachedDisk disk={disk} mutations={mutations} canCreate={canCreate} />
+            </CardContent>
+          </Card>
           <SnapshotsCard disk={disk} mutations={mutations} canCreate={canCreate} />
+          {canCreate ? (
+            <DeleteDiskCard disk={disk} onDelete={mutations.deleteDisk} busy={mutations.busy} />
+          ) : null}
         </>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -319,45 +358,138 @@ function AttachedDisk({
 }) {
   const { t } = useTranslations();
   const [size, setSize] = useState(disk.sizeGB);
+  // Render keeps both fields inert until you press Edit, so the size box is
+  // never a live control you can nudge by accident on a page you opened to read.
+  // Growing a volume is irreversible — you cannot shrink it back — so the extra
+  // click is the point, not friction to design away.
+  const [editing, setEditing] = useState(false);
+
+  const cancelEdit = () => {
+    setSize(disk.sizeGB);
+    setEditing(false);
+  };
 
   return (
-    <div className="space-y-4">
-      <dl className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <dt className="text-sm text-muted-foreground">{t("services.diskMountPathLabel")}</dt>
-          <dd className="font-mono text-sm">{disk.mountPath}</dd>
+    <div className="space-y-6">
+      <ConfigRow
+        label={t("services.diskMountPathLabel")}
+        help={t("services.diskMountPathHint")}
+        htmlFor="disk-mount-path-value"
+      >
+        {/* Read-only, like Render's: the mount path is baked into the running
+            pod's volume mount, so changing it is a detach and re-attach, not an
+            edit. Rendering it as a disabled field rather than plain text says
+            "this is a setting, and it is fixed" in one glance. */}
+        <Input id="disk-mount-path-value" value={disk.mountPath} readOnly className="font-mono" />
+      </ConfigRow>
+
+      <ConfigRow
+        label={t("services.diskSizeLabel")}
+        help={t("services.diskSizeHint")}
+        htmlFor="disk-grow"
+      >
+        <div className="flex items-center gap-2">
+          <Input
+            id="disk-grow"
+            type="number"
+            // Grow-only: the control cannot even express a shrink, which the
+            // API, the store, and the CRD would each refuse anyway.
+            min={disk.sizeGB}
+            max={MAX_SIZE_GB}
+            disabled={!editing || mutations.busy}
+            value={size}
+            onChange={(e) => setSize(Number(e.target.value))}
+          />
+          <span className="text-sm text-muted-foreground">{t("services.diskSizeUnit")}</span>
         </div>
-        <div>
-          <dt className="text-sm text-muted-foreground">{t("services.diskSizeLabel")}</dt>
-          <dd className="text-sm">{t("services.diskSizeChip", { size: String(disk.sizeGB) })}</dd>
-        </div>
-      </dl>
-      {canCreate ? (
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="space-y-2">
-            <Label htmlFor="disk-grow">{t("services.diskGrowLabel")}</Label>
-            <Input
-              id="disk-grow"
-              type="number"
-              // Grow-only: the control cannot even express a shrink, which the
-              // API, the store, and the CRD would each refuse anyway.
-              min={disk.sizeGB}
-              max={MAX_SIZE_GB}
-              className="w-32"
-              value={size}
-              onChange={(e) => setSize(Number(e.target.value))}
-            />
+        {canCreate ? (
+          <div className="mt-2 flex justify-end gap-2">
+            {editing ? (
+              <>
+                <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={mutations.busy}>
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    if (await mutations.growDisk(disk.id, size)) setEditing(false);
+                  }}
+                  disabled={mutations.busy || size <= disk.sizeGB}
+                >
+                  {t("services.diskGrowAction")}
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="size-3.5" />
+                {t("services.diskEditAction")}
+              </Button>
+            )}
           </div>
-          <Button
-            onClick={() => void mutations.growDisk(disk.id, size)}
-            disabled={mutations.busy || size <= disk.sizeGB}
-          >
-            {t("services.diskGrowAction")}
-          </Button>
-        </div>
-      ) : null}
+        ) : null}
+      </ConfigRow>
+
       <p className="text-sm text-muted-foreground">{t("services.diskGrowHint")}</p>
     </div>
+  );
+}
+
+/**
+ * Render's settings row: the label and its explanation sit in a left column,
+ * the control in a wider right one. Reading down the left column tells you what
+ * the page can configure without your eye crossing into the values — which is
+ * why Render uses it for settings and a plain dl for read-only facts.
+ */
+function ConfigRow({
+  label,
+  help,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  help: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-[minmax(0,18rem)_1fr] sm:gap-6">
+      <div>
+        <Label htmlFor={htmlFor} className="font-medium">
+          {label}
+        </Label>
+        <p className="mt-1 text-sm text-muted-foreground">{help}</p>
+      </div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Render gives deletion its own card at the bottom of the page, with a sentence
+ * saying what is lost, rather than an icon button in a header. Both the
+ * distance and the explanation are deliberate: this button destroys a volume
+ * and every byte on it.
+ */
+function DeleteDiskCard({
+  disk,
+  onDelete,
+  busy,
+}: {
+  disk: DiskView;
+  onDelete: (id: string) => Promise<boolean>;
+  busy: boolean;
+}) {
+  const { t } = useTranslations();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("services.diskDeleteCardTitle")}</CardTitle>
+        <CardDescription>{t("services.diskDeleteCardDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <DeleteDiskButton disk={disk} onDelete={onDelete} busy={busy} />
+      </CardContent>
+    </Card>
   );
 }
 

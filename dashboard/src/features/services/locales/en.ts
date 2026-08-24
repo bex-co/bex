@@ -3216,6 +3216,34 @@ const enServices: Record<string, TranslationEntry> = {
     message: "To continue, type {phrase}",
     description: "Label above the typed-confirmation input for an irreversible disk action.",
   },
+  "services.diskConfigTitle": {
+    message: "Disk Configuration",
+    description: "Heading of the card holding the disk's mount path and size settings.",
+  },
+  "services.diskConfigDescription": {
+    message: "Configure this disk's mount path and size.",
+    description: "Subtitle of the disk configuration card.",
+  },
+  "services.diskSizeUnit": {
+    message: "GB",
+    description: "Unit suffix shown beside the disk size input.",
+  },
+  "services.diskEditAction": {
+    message: "Edit",
+    description: "Button that unlocks the disk size field for editing.",
+  },
+  "services.diskProvisionedLabel": {
+    message: "Provisioned {size} GB",
+    description: "Provisioned disk size shown beside the usage chart heading; this is the size billing meters.",
+  },
+  "services.diskDeleteCardTitle": {
+    message: "Delete disk",
+    description: "Heading of the delete-disk card. Distinct from diskDeleteTitle, which is the confirmation dialog's question.",
+  },
+  "services.diskDeleteCardDescription": {
+    message: "The disk will be detached from this service and all data on it will be permanently deleted.",
+    description: "Subtitle of the delete-disk card, stating what is lost.",
+  },
   "services.diskUsageTitle": {
     message: "Disk usage",
     description: "Heading of the disk usage chart on a service's Disk tab.",
