@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -49,6 +50,12 @@ type fakeBlueprintStore struct {
 	// gotSyncLimit records the limit ListBlueprintSyncs was called with, so the
 	// service's clamp is asserted where it is applied rather than re-derived.
 	gotSyncLimit int
+	// lastSyncUpdate records the most recent UpdateBlueprintSync call, so tests
+	// can assert what error (if any) a sync run persisted.
+	lastSyncUpdate store.BlueprintSync
+	// syncsToReturn, when set, is what ListBlueprintSyncs returns — the wire
+	// round-trip tests need a canned row rather than a live-recorded one.
+	syncsToReturn []store.BlueprintSync
 }
 
 func newFakeBlueprintStore(bs ...store.Blueprint) *fakeBlueprintStore {
@@ -145,14 +152,16 @@ func (f *fakeBlueprintStore) InsertBlueprintSync(_ context.Context, run store.Bl
 	return run, nil
 }
 
-func (f *fakeBlueprintStore) UpdateBlueprintSync(_ context.Context, id, state string, completedAt *time.Time) (store.BlueprintSync, error) {
-	return store.BlueprintSync{ID: id, State: state, CompletedAt: completedAt}, nil
+func (f *fakeBlueprintStore) UpdateBlueprintSync(_ context.Context, id, state string, completedAt *time.Time, errMsg *string) (store.BlueprintSync, error) {
+	out := store.BlueprintSync{ID: id, State: state, CompletedAt: completedAt, ErrorMessage: errMsg}
+	f.lastSyncUpdate = out
+	return out, nil
 }
 
 func (f *fakeBlueprintStore) ListBlueprintSyncs(_ context.Context, blueprintID, _ string, limit int) ([]store.BlueprintSync, error) {
 	_ = blueprintID
 	f.gotSyncLimit = limit
-	return nil, nil
+	return f.syncsToReturn, nil
 }
 
 // --- helpers ---
@@ -1026,6 +1035,77 @@ services:
 	}
 }
 
+// w6/m50 t001/t007: runSync (shared by manual SyncBlueprint and the
+// webhook-triggered auto-sync) used to compute the real apply error and then
+// discard it before UpdateBlueprintSync. groupedManifest compiles and passes
+// the dry-run action plan cleanly (proven by TestBlueprintGroupingQuotaRefusesWithCodedError)
+// but fails inside deployParsedStack's real grouping-apply step because no
+// BlueprintGroups store is wired here — an error that only surfaces after the
+// running sync row has already been inserted, exactly like a real quota hit
+// or datastore-rename failure would.
+func TestSyncBlueprintPersistsFailureReason(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID:       "blp-1",
+		TenantID: "tea-a",
+		Repo:     "https://github.com/a/app",
+		Branch:   "main",
+		Manifest: stackManifest,
+		Status:   "active",
+		Name:     "app",
+	})
+	svc := &Service{
+		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:      fs,
+		DomainOwnership: allowDomainOwnership{},
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", groupedManifest, ""); !errors.Is(err, core.ErrWorkspacesUnavailable) {
+		t.Fatalf("SyncBlueprint grouped manifest without BlueprintGroups: want ErrWorkspacesUnavailable, got %v", err)
+	}
+	if fs.lastSyncUpdate.State != store.BlueprintSyncStateError {
+		t.Fatalf("failed sync run state = %q, want %q", fs.lastSyncUpdate.State, store.BlueprintSyncStateError)
+	}
+	if fs.lastSyncUpdate.ErrorMessage == nil || *fs.lastSyncUpdate.ErrorMessage == "" {
+		t.Fatalf("failed sync run ErrorMessage = %v, want a non-empty reason", fs.lastSyncUpdate.ErrorMessage)
+	}
+
+	// A successful sync leaves the run's error message nil.
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, ""); err != nil {
+		t.Fatalf("SyncBlueprint valid manifest: %v", err)
+	}
+	if fs.lastSyncUpdate.State != store.BlueprintSyncStateSuccess || fs.lastSyncUpdate.ErrorMessage != nil {
+		t.Fatalf("successful sync run = %+v, want success state with nil error", fs.lastSyncUpdate)
+	}
+}
+
+// CreateBlueprint's own initial-sync path (a separate call site from runSync)
+// gets the identical treatment: the Git-fetched manifest passes compile +
+// action-plan preflight, then fails for real inside deployParsedStack once a
+// sync run row already exists.
+func TestCreateBlueprintPersistsFailureReason(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore()
+	svc := &Service{
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints: fs,
+		GitFetcher: fakeBlueprintFetcher{contents: groupedManifest, sha: "deadbeef"},
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	_, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/a/app", Branch: "main"})
+	if !errors.Is(err, core.ErrWorkspacesUnavailable) {
+		t.Fatalf("CreateBlueprint grouped manifest without BlueprintGroups: want ErrWorkspacesUnavailable, got %v", err)
+	}
+	if fs.lastSyncUpdate.State != store.BlueprintSyncStateError {
+		t.Fatalf("initial sync run state = %q, want %q", fs.lastSyncUpdate.State, store.BlueprintSyncStateError)
+	}
+	if fs.lastSyncUpdate.ErrorMessage == nil || *fs.lastSyncUpdate.ErrorMessage == "" {
+		t.Fatalf("initial sync run ErrorMessage = %v, want a non-empty reason", fs.lastSyncUpdate.ErrorMessage)
+	}
+}
+
 // --- upsertBlueprint (auto-registration) ---
 
 func TestUpsertBlueprintAutoRegistersOnDeploy(t *testing.T) {
@@ -1276,6 +1356,122 @@ func TestRESTListBlueprints(t *testing.T) {
 	}
 	if len(out) != 1 || out[0].ID != "blp-1" {
 		t.Errorf("list blueprints: want [blp-1], got %+v", out)
+	}
+}
+
+// w6/m50 t002/t007: the error_message a failed sync now persists must reach
+// every read surface that already serves sync history — REST, GraphQL, MCP —
+// with the same value for the same failed run.
+func TestRESTListBlueprintSyncsIncludesErrorMessage(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	errMsg := "quota exceeded: workspace at service limit"
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Status: "active", Name: "app",
+	})
+	fs.syncsToReturn = []store.BlueprintSync{
+		{ID: "bsr-1", BlueprintID: "blp-1", State: store.BlueprintSyncStateError, ErrorMessage: &errMsg},
+		{ID: "bsr-2", BlueprintID: "blp-1", State: store.BlueprintSyncStateSuccess},
+	}
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	req := httptest.NewRequest("GET", "/v1/blueprints/blp-1/syncs?ownerId=tea-a", nil)
+	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list blueprint syncs => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	var out []BlueprintSyncView
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(out) != 2 {
+		t.Fatalf("list blueprint syncs: want 2 rows, got %d", len(out))
+	}
+	if out[0].ErrorMessage == nil || *out[0].ErrorMessage != errMsg {
+		t.Errorf("REST errored row ErrorMessage = %v, want %q", out[0].ErrorMessage, errMsg)
+	}
+	if out[1].ErrorMessage != nil {
+		t.Errorf("REST successful row ErrorMessage = %v, want nil", *out[1].ErrorMessage)
+	}
+}
+
+func TestGraphQLBlueprintSyncsIncludesErrorMessage(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	errMsg := "quota exceeded: workspace at service limit"
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Status: "active", Name: "app",
+	})
+	fs.syncsToReturn = []store.BlueprintSync{
+		{ID: "bsr-1", BlueprintID: "blp-1", State: store.BlueprintSyncStateError, ErrorMessage: &errMsg},
+	}
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	schema := blueprintSchema(t, svc)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ blueprintSyncs(id: "blp-1", ownerId: "tea-a") { id state errorMessage } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("blueprintSyncs query: %v", res.Errors)
+	}
+	list := res.Data.(map[string]any)["blueprintSyncs"].([]any)
+	if len(list) != 1 {
+		t.Fatalf("blueprintSyncs query: want 1, got %d", len(list))
+	}
+	row := list[0].(map[string]any)
+	if row["errorMessage"] != errMsg {
+		t.Errorf("blueprintSyncs[0].errorMessage = %v, want %q", row["errorMessage"], errMsg)
+	}
+}
+
+func TestMCPListBlueprintSyncsIncludesErrorMessage(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	errMsg := "quota exceeded: workspace at service limit"
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Status: "active", Name: "app",
+	})
+	fs.syncsToReturn = []store.BlueprintSync{
+		{ID: "bsr-1", BlueprintID: "blp-1", State: store.BlueprintSyncStateError, ErrorMessage: &errMsg},
+	}
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	ctx := core.WithWorkspace(core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"}), "tea-a")
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "list_blueprint_syncs",
+		Arguments: map[string]any{"id": "blp-1"},
+	})
+	if err != nil {
+		t.Fatalf("transport error: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("list_blueprint_syncs tool error: %#v", res)
+	}
+	var out listBlueprintSyncsResult
+	b, _ := json.Marshal(res.StructuredContent)
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatalf("unmarshal tool result: %v", err)
+	}
+	if len(out.Syncs) != 1 {
+		t.Fatalf("list_blueprint_syncs: want 1 sync, got %d", len(out.Syncs))
+	}
+	if out.Syncs[0].ErrorMessage == nil || *out.Syncs[0].ErrorMessage != errMsg {
+		t.Errorf("MCP sync ErrorMessage = %v, want %q", out.Syncs[0].ErrorMessage, errMsg)
 	}
 }
 

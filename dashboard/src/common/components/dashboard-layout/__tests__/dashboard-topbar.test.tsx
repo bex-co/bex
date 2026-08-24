@@ -268,4 +268,60 @@ describe("dashboard topbar navigation", () => {
     await user.click(screen.getByText("storefront-api"));
     expect(router.state.location.pathname).toBe("/services/srv-api");
   });
+
+  // w6/m50: cmdk's bundled fuzzy scorer treated a subsequence match against a
+  // resource's ~20-char id as relevant, so a short realistic query like "db"
+  // returned most of the workspace instead of narrowing it. These pin the
+  // fixed literal-substring behavior.
+  it("narrows to only resources whose name/id/type contain the query, dropping unrelated ones (w6/m50)", async () => {
+    const user = userEvent.setup();
+    const router = buildRouter("/", GlobalSearch);
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole("button", { name: "Search" });
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    await screen.findByPlaceholderText("Search pages and resources…");
+    // None of storefront-api / queue-worker / billing-api / the projects /
+    // key value / env group contain "db" — only the "primary-db" database does.
+    await user.type(screen.getByRole("combobox"), "db");
+
+    expect(await screen.findByText("primary-db")).toBeInTheDocument();
+    expect(screen.queryByText("storefront-api")).not.toBeInTheDocument();
+    expect(screen.queryByText("queue-worker")).not.toBeInTheDocument();
+    expect(screen.queryByText("billing-api")).not.toBeInTheDocument();
+    expect(screen.queryByText("Storefront")).not.toBeInTheDocument();
+    expect(screen.queryByText("Billing")).not.toBeInTheDocument();
+    expect(screen.queryByText("session-cache")).not.toBeInTheDocument();
+  });
+
+  it("still finds a resource by a raw id fragment (w6/m50)", async () => {
+    const user = userEvent.setup();
+    const router = buildRouter("/", GlobalSearch);
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole("button", { name: "Search" });
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    await screen.findByPlaceholderText("Search pages and resources…");
+    // "dpg-ma" only appears in the database's id (dpg-main), not its name
+    // (primary-db) or type — a pure id-fragment paste.
+    await user.type(screen.getByRole("combobox"), "dpg-ma");
+
+    expect(await screen.findByText("primary-db")).toBeInTheDocument();
+    expect(screen.queryByText("session-cache")).not.toBeInTheDocument();
+  });
+
+  it("shows the empty state when the query matches nothing (w6/m50)", async () => {
+    const user = userEvent.setup();
+    const router = buildRouter("/", GlobalSearch);
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole("button", { name: "Search" });
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    await screen.findByPlaceholderText("Search pages and resources…");
+    await user.type(screen.getByRole("combobox"), "zzznonexistentxyz999");
+
+    expect(
+      await screen.findByText("No matching pages or resources."),
+    ).toBeInTheDocument();
+  });
 });

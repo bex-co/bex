@@ -423,6 +423,11 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Completed",
     description: "Sync history table column — sync run completion time",
   },
+  "blueprints.syncColError": {
+    message: "Error",
+    description:
+      "Sync history table column — failure reason for an error-state run",
+  },
   "blueprints.manifestTitle": {
     message: "render.yaml manifest",
     description: "Blueprint detail section heading for the stored manifest",

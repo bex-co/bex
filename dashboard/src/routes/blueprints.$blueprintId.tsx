@@ -429,6 +429,7 @@ export function BlueprintDetailPage() {
                           <TableHead>
                             {t("blueprints.syncColCompleted")}
                           </TableHead>
+                          <TableHead>{t("blueprints.syncColError")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -449,6 +450,12 @@ export function BlueprintDetailPage() {
                               {run.completedAt
                                 ? formatRelativeAge(run.completedAt)
                                 : "—"}
+                            </TableCell>
+                            <TableCell
+                              className="max-w-xs truncate text-muted-foreground"
+                              title={run.errorMessage ?? undefined}
+                            >
+                              {run.errorMessage ?? "—"}
                             </TableCell>
                           </TableRow>
                         ))}

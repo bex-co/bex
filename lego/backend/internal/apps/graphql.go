@@ -710,11 +710,12 @@ var blueprintResourceGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintSyncGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintSync",
 	Fields: graphql.Fields{
-		"id":          gqlutil.StrField(func(r BlueprintSyncView) any { return r.ID }),
-		"commitId":    gqlutil.StrField(func(r BlueprintSyncView) any { return r.CommitID }),
-		"state":       gqlutil.StrField(func(r BlueprintSyncView) any { return r.State }),
-		"startedAt":   gqlutil.StrField(func(r BlueprintSyncView) any { return r.StartedAt }),
-		"completedAt": gqlutil.StrField(func(r BlueprintSyncView) any { return r.CompletedAt }),
+		"id":           gqlutil.StrField(func(r BlueprintSyncView) any { return r.ID }),
+		"commitId":     gqlutil.StrField(func(r BlueprintSyncView) any { return r.CommitID }),
+		"state":        gqlutil.StrField(func(r BlueprintSyncView) any { return r.State }),
+		"startedAt":    gqlutil.StrField(func(r BlueprintSyncView) any { return r.StartedAt }),
+		"completedAt":  gqlutil.StrField(func(r BlueprintSyncView) any { return r.CompletedAt }),
+		"errorMessage": gqlutil.StrField(func(r BlueprintSyncView) any { return r.ErrorMessage }),
 	},
 })
 

@@ -49,7 +49,7 @@ type BlueprintStore interface {
 	UpdateBlueprint(ctx context.Context, id, tenantID string, name *string, autoSync *bool, path *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error)
 	DisconnectBlueprint(ctx context.Context, id, tenantID string) error
 	InsertBlueprintSync(ctx context.Context, run store.BlueprintSync) (store.BlueprintSync, error)
-	UpdateBlueprintSync(ctx context.Context, id, state string, completedAt *time.Time) (store.BlueprintSync, error)
+	UpdateBlueprintSync(ctx context.Context, id, state string, completedAt *time.Time, errMsg *string) (store.BlueprintSync, error)
 	ListBlueprintSyncs(ctx context.Context, blueprintID, cursor string, limit int) ([]store.BlueprintSync, error)
 }
 
@@ -157,11 +157,12 @@ type BlueprintResource struct {
 
 // BlueprintSyncView is the API shape for a sync run.
 type BlueprintSyncView struct {
-	ID          string  `json:"id"`
-	CommitID    string  `json:"commitId,omitempty"`
-	State       string  `json:"state"`
-	StartedAt   string  `json:"startedAt"`
-	CompletedAt *string `json:"completedAt,omitempty"`
+	ID           string  `json:"id"`
+	CommitID     string  `json:"commitId,omitempty"`
+	State        string  `json:"state"`
+	StartedAt    string  `json:"startedAt"`
+	CompletedAt  *string `json:"completedAt,omitempty"`
+	ErrorMessage *string `json:"errorMessage,omitempty"`
 }
 
 // BlueprintValidationError is Render's validation-error shape.
@@ -456,7 +457,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		b = updated
 	}
 	if run.ID != "" {
-		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt)
+		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt, errMsgPtr(applyErr))
 	}
 	if applyErr != nil {
 		return BlueprintView{}, applyErr
@@ -673,7 +674,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		b = updated
 	}
 	if run.ID != "" {
-		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt)
+		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt, errMsgPtr(applyErr))
 	}
 	if applyErr != nil {
 		return SyncBlueprintResult{}, applyErr
@@ -1173,14 +1174,25 @@ func toBlueprintView(b store.Blueprint) BlueprintView {
 
 func toBlueprintSyncView(r store.BlueprintSync) BlueprintSyncView {
 	v := BlueprintSyncView{
-		ID:        r.ID,
-		CommitID:  r.CommitID,
-		State:     r.State,
-		StartedAt: r.StartedAt.UTC().Format(time.RFC3339),
+		ID:           r.ID,
+		CommitID:     r.CommitID,
+		State:        r.State,
+		StartedAt:    r.StartedAt.UTC().Format(time.RFC3339),
+		ErrorMessage: r.ErrorMessage,
 	}
 	if r.CompletedAt != nil {
 		s := r.CompletedAt.UTC().Format(time.RFC3339)
 		v.CompletedAt = &s
 	}
 	return v
+}
+
+// errMsgPtr is nil on success, or err's message on failure — the shape
+// UpdateBlueprintSync persists into blueprint_syncs.error_message.
+func errMsgPtr(err error) *string {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	return &msg
 }
