@@ -112,6 +112,19 @@ describe("environment-group queries", () => {
     ]);
   });
 
+  it("treats an empty-string environmentId as null (w6/m48 defensive normalization)", () => {
+    mockUseQuery.mockReturnValue({
+      data: { envGroups: [{ ...wireGroup, environmentId: "" }] },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useEnvGroups());
+
+    expect(result.current.groups[0]?.environmentId).toBeNull();
+  });
+
   it("returns an empty list instead of crashing on a null list", () => {
     mockUseQuery.mockReturnValue({
       data: { envGroups: null },

@@ -76,7 +76,7 @@ export function EnvGroupActions({
   >(null);
   const [name, setName] = useState(group.name);
   const [moveTarget, setMoveTarget] = useState(
-    group.environmentId ?? WORKSPACE_SCOPE,
+    group.environmentId || WORKSPACE_SCOPE,
   );
   const [cloneOwnerId, setCloneOwnerId] = useState(currentWorkspaceId ?? "");
   const [cloneEnvironmentId, setCloneEnvironmentId] = useState(WORKSPACE_SCOPE);
@@ -92,7 +92,7 @@ export function EnvGroupActions({
 
   function open(next: NonNullable<typeof dialog>) {
     setName(next === "clone" ? `${group.name}-copy` : group.name);
-    setMoveTarget(group.environmentId ?? WORKSPACE_SCOPE);
+    setMoveTarget(group.environmentId || WORKSPACE_SCOPE);
     setCloneOwnerId(currentWorkspaceId ?? group.ownerId ?? "");
     setCloneEnvironmentId(WORKSPACE_SCOPE);
     setConfirmation("");
@@ -105,7 +105,7 @@ export function EnvGroupActions({
   }
 
   async function handleMove() {
-    if (busy || moveTarget === (group.environmentId ?? WORKSPACE_SCOPE)) return;
+    if (busy || moveTarget === (group.environmentId || WORKSPACE_SCOPE)) return;
     if (
       await moveGroup(
         group.id,
@@ -216,7 +216,7 @@ export function EnvGroupActions({
             <Button
               onClick={() => void handleMove()}
               disabled={
-                busy || moveTarget === (group.environmentId ?? WORKSPACE_SCOPE)
+                busy || moveTarget === (group.environmentId || WORKSPACE_SCOPE)
               }
             >
               {busy ? <Loader2 className="animate-spin" /> : <MoveRight />}

@@ -48,8 +48,8 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"maxmemoryPolicy":    gqlutil.StrField(func(v KeyValueView) any { return v.MaxmemoryPolicy }),
 		"persistenceMode":    gqlutil.StrField(func(v KeyValueView) any { return v.PersistenceMode }),
 		"ownerId":            gqlutil.StrField(func(v KeyValueView) any { return v.OwnerID }),
-		"projectId":          gqlutil.StrField(func(v KeyValueView) any { return v.ProjectID }),
-		"environmentId":      gqlutil.StrField(func(v KeyValueView) any { return v.EnvironmentID }),
+		"projectId":          gqlutil.OptionalStrField(func(v KeyValueView) any { return v.ProjectID }),
+		"environmentId":      gqlutil.OptionalStrField(func(v KeyValueView) any { return v.EnvironmentID }),
 	},
 })
 

@@ -48,7 +48,7 @@ export function mapEnvGroup(
     id: raw.id,
     name: raw.name,
     ownerId: raw.ownerId ?? null,
-    environmentId: raw.environmentId ?? null,
+    environmentId: raw.environmentId || null,
     createdAt: raw.createdAt ?? null,
     updatedAt: raw.updatedAt ?? null,
     revision: raw.revision ?? null,
