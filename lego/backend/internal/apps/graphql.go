@@ -378,8 +378,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"nextRunAt": gqlutil.StrField(func(a AppView) any { return a.NextRunAt }),
 		// ownerId mirrors Render's REST/MCP workspace-scoping field (w6/m2/t004).
 		"ownerId":       gqlutil.StrField(func(a AppView) any { return a.OwnerID }),
-		"projectId":     gqlutil.StrField(func(a AppView) any { return a.ProjectID }),
-		"environmentId": gqlutil.StrField(func(a AppView) any { return a.EnvironmentID }),
+		"projectId":     gqlutil.OptionalStrField(func(a AppView) any { return a.ProjectID }),
+		"environmentId": gqlutil.OptionalStrField(func(a AppView) any { return a.EnvironmentID }),
 		// rootDir is the subdirectory of the repo this App builds from (Render's
 		// Root Directory setting, monorepo support); empty is the repo root.
 		"rootDir":      gqlutil.StrField(func(a AppView) any { return a.RootDir }),

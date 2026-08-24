@@ -318,7 +318,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.assignmentHint": {
     message:
-      "Optional. Selecting an environment also adds the resource to its project.",
+      "A resource joins a Project only through an Environment. Selecting a Project alone narrows the list below — pick or create an Environment to actually add this resource to it.",
     description: "Shared create-form Environment-assignment hint",
   },
 };

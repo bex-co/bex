@@ -62,6 +62,21 @@ func IntField[T any](f func(T) any) *graphql.Field   { return Typed(graphql.Int,
 func BoolField[T any](f func(T) any) *graphql.Field  { return Typed(graphql.Boolean, f) }
 func FloatField[T any](f func(T) any) *graphql.Field { return Typed(graphql.Float, f) }
 
+// OptionalStrField is StrField for a string whose Go zero value ("") means
+// "no relationship" (an optional foreign key: ProjectID, EnvironmentID, …) —
+// it resolves "" to nil instead of the empty string, so GraphQL agrees with
+// REST's `omitempty` omission of the same field instead of leaking the raw Go
+// zero value as if it were real data (w6/m48).
+func OptionalStrField[T any](f func(T) any) *graphql.Field {
+	return Typed(graphql.String, func(v T) any {
+		s, _ := f(v).(string)
+		if s == "" {
+			return nil
+		}
+		return s
+	})
+}
+
 // ReqStrField and ReqBoolField are the non-null spellings, StrsField the
 // `[String]` one — the three composed types common enough to name.
 func ReqStrField[T any](f func(T) any) *graphql.Field {

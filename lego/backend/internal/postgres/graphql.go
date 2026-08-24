@@ -58,8 +58,8 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"poolerEnabled":           gqlutil.BoolField(func(v PostgresView) any { return v.PoolerEnabled }),
 		"backupsEnabled":          gqlutil.BoolField(func(v PostgresView) any { return v.BackupsEnabled }),
 		"ownerId":                 gqlutil.StrField(func(v PostgresView) any { return v.OwnerID }),
-		"projectId":               gqlutil.StrField(func(v PostgresView) any { return v.ProjectID }),
-		"environmentId":           gqlutil.StrField(func(v PostgresView) any { return v.EnvironmentID }),
+		"projectId":               gqlutil.OptionalStrField(func(v PostgresView) any { return v.ProjectID }),
+		"environmentId":           gqlutil.OptionalStrField(func(v PostgresView) any { return v.EnvironmentID }),
 	},
 })
 

@@ -50,7 +50,7 @@ var envGroupGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":            gqlutil.StrField(func(g EnvGroupView) any { return g.ID }),
 		"name":          gqlutil.StrField(func(g EnvGroupView) any { return g.Name }),
 		"ownerId":       gqlutil.StrField(func(g EnvGroupView) any { return g.OwnerID }),
-		"environmentId": gqlutil.StrField(func(g EnvGroupView) any { return g.EnvironmentID }),
+		"environmentId": gqlutil.OptionalStrField(func(g EnvGroupView) any { return g.EnvironmentID }),
 		"serviceLinks":  gqlutil.StrsField(func(g EnvGroupView) any { return g.ServiceLinks }),
 		"envVars":       gqlutil.Typed(graphql.NewList(envGroupVarGQLType), func(g EnvGroupView) any { return g.EnvVars }),
 		"secretFiles":   gqlutil.Typed(graphql.NewList(envGroupFileGQLType), func(g EnvGroupView) any { return g.SecretFiles }),
