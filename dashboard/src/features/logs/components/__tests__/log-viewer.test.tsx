@@ -91,6 +91,20 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
   });
 
+  it("shows filtered empty-state copy when an instance filter yields zero results", () => {
+    render(
+      <LogViewer
+        resource="web"
+        initialFilters={{
+          ...EMPTY_LOG_FILTERS,
+          instance: "zzz-no-such-pod",
+        }}
+      />,
+    );
+    expect(screen.getByText("No matching logs")).toBeInTheDocument();
+    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+  });
+
   it("shows unfiltered empty-state copy when there are no logs and no filter", () => {
     render(<LogViewer resource="web" />);
     expect(screen.getByText("No logs yet")).toBeInTheDocument();

@@ -102,24 +102,30 @@ export const EMPTY_LOG_FILTERS: LogFilters = {
   path: "",
 };
 
+// Structured filters the live tail cannot honor — everything in
+// STRUCTURED_FILTER_KEYS except `instance` (a pod name is a pod name).
+const STORE_ONLY_STRUCTURED_KEYS = STRUCTURED_FILTER_KEYS.filter(
+  (key) => key !== "instance",
+);
+
 // The structured filters only the durable store can honor. The live tail reads
 // pod stdout, so it structurally cannot serve request logs or these
 // label/request filters (bex-api answers them 400, not silently) — the viewer
 // disables live tail while any is active (docs/ADR010-observability.md § The tail
-// reads pod logs). `instance` is NOT here: a pod name is a pod name, so the tail
-// honors it.
+// reads pod logs).
 export function usesStoreOnlyFilters(f: LogFilters): boolean {
   return (
     f.type === LOG_TYPE_REQUEST ||
-    f.level !== "" ||
-    f.method !== "" ||
-    f.statusCode !== "" ||
-    f.path !== ""
+    STORE_ONLY_STRUCTURED_KEYS.some((key) => f[key] !== "")
   );
 }
 
 // Whether any filter narrows the visible log set — drives the filtered vs
-// genuinely-empty copy in log-viewer and deploy-log-panel.
+// genuinely-empty copy in log-viewer.
 export function hasActiveLogFilters(f: LogFilters): boolean {
-  return f.type !== LOG_TYPE_ALL || f.text !== "" || usesStoreOnlyFilters(f);
+  return (
+    f.type !== LOG_TYPE_ALL ||
+    f.text !== "" ||
+    STRUCTURED_FILTER_KEYS.some((key) => f[key] !== "")
+  );
 }
