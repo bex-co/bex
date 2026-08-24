@@ -592,15 +592,26 @@ func (s *Service) create(ctx context.Context, projectID, name string) (store.Env
 			return err
 		})
 		if err != nil {
-			return store.Environment{}, store.MapError(err)
+			return store.Environment{}, conflictOrMapError(err, name)
 		}
 		return e, nil
 	}
 	e, err := s.Store.CreateEnvironment(ctx, p.ID, p.TenantID, name)
 	if err != nil {
-		return store.Environment{}, store.MapError(err)
+		return store.Environment{}, conflictOrMapError(err, name)
 	}
 	return e, nil
+}
+
+// conflictOrMapError names the attempted environment name on a duplicate-name
+// conflict — the store's own classify() has no name to put in "environment:
+// already exists" (w6/m49) — and otherwise falls through to store.MapError.
+func conflictOrMapError(err error, name string) error {
+	if errors.Is(err, store.ErrConflict) {
+		return core.NewConflictError("CONFLICT",
+			fmt.Sprintf("an environment named %q already exists in this project", name), nil)
+	}
+	return store.MapError(err)
 }
 
 // Rename renames an environment.

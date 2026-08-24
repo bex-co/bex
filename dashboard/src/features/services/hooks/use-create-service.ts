@@ -4,7 +4,10 @@ import { toast } from "sonner";
 import { CreateServiceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import {
+  graphQLErrorMessage,
+  isNameConflictError,
+} from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
@@ -126,12 +129,13 @@ export function useCreateService(): UseCreateServiceResult {
         if (isPaymentOnboardingCancelled(err)) return null;
         // "workspace is limited to N services" — surface inline with upgrade CTA
         // rather than a toast that leaves the user with nowhere to go (w7/m9).
-        // "name ... is already in use" (w4/m19) — a raced duplicate the
-        // debounced check missed; same inline treatment, not a toast.
+        // A name conflict (w4/m19; w6/m49 moved the detection off message
+        // text) — a raced duplicate the debounced check missed; same inline
+        // treatment, not a toast.
         const msg = graphQLErrorMessage(err) ?? "";
         if (msg.toLowerCase().includes("workspace is limited")) {
           setCapLimit(msg);
-        } else if (msg.toLowerCase().includes("already in use")) {
+        } else if (isNameConflictError(err)) {
           setNameConflict(true);
         } else {
           toast.error(t("services.createError", { name: input.name }));

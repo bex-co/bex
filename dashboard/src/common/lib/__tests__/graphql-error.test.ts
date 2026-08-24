@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import {
+  conflictOrGenericMessage,
   hasGraphQLErrorCode,
+  isNameConflictError,
   planLimitExtensions,
   refusalReason,
 } from "@/common/lib/graphql-error";
@@ -68,6 +70,56 @@ describe("hasGraphQLErrorCode", () => {
     expect(
       hasGraphQLErrorCode(gqlError({ code: "FORBIDDEN" }), "PAYMENT_REQUIRED"),
     ).toBe(false);
+  });
+});
+
+// w6/m49: a duplicate-name create conflict is keyed on extensions.code
+// (core.NewConflictError, "CONFLICT") — not per-type message matching, so a
+// backend copy change (or a third resource type's differently-worded message)
+// can't silently stop a create-form's conflict handling from firing.
+describe("isNameConflictError", () => {
+  it("matches the CONFLICT code regardless of message wording", () => {
+    expect(
+      isNameConflictError(
+        gqlError({ code: "CONFLICT" /* keyvalue's wording */ }),
+      ),
+    ).toBe(true);
+    expect(isNameConflictError(gqlError({ code: "CONFLICT" }))).toBe(true);
+  });
+
+  it("does not match a different code, even one containing conflict-like text", () => {
+    expect(isNameConflictError(gqlError({ code: "PLAN_LIMIT" }))).toBe(false);
+    expect(isNameConflictError(new Error("already exists"))).toBe(false);
+  });
+
+  it("returns false for non-error values", () => {
+    expect(isNameConflictError(null)).toBe(false);
+    expect(isNameConflictError(undefined)).toBe(false);
+  });
+});
+
+// w6/m49/t008: the four `use-create-*` hooks each wrote the identical
+// isNameConflictError/refusalReason branch, so it graduated here.
+describe("conflictOrGenericMessage", () => {
+  it("returns the backend's specific reason on a name conflict", () => {
+    const err = new CombinedGraphQLErrors({
+      data: null,
+      errors: [
+        {
+          message: 'a project named "acme" already exists in this workspace',
+          extensions: { code: "CONFLICT" },
+        },
+      ],
+    });
+    expect(conflictOrGenericMessage(err, "generic fallback")).toBe(
+      'A project named "acme" already exists in this workspace',
+    );
+  });
+
+  it("returns the caller's generic message for a non-conflict error", () => {
+    expect(
+      conflictOrGenericMessage(new Error("network error"), "generic fallback"),
+    ).toBe("generic fallback");
   });
 });
 

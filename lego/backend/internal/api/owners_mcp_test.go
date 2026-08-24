@@ -192,6 +192,12 @@ func TestMCP_CreateDuplicateNameErrors(t *testing.T) {
 	if !strings.Contains(strings.ToLower(msg), "already in use") {
 		t.Errorf("tool error = %q, want it to say the name is already in use", msg)
 	}
+	// w6/m49/t007: MCP has no structured extensions like GraphQL, so the
+	// stable code has to travel in the text (core.MCPError) or an agent
+	// cannot tell a conflict from a validation failure by message alone.
+	if !strings.HasPrefix(msg, "CONFLICT: ") {
+		t.Errorf("tool error = %q, want the CONFLICT: code prefix (core.MCPError)", msg)
+	}
 }
 
 // appWithOwnerLabel builds an App CR carrying the tenant-id label the ownerId

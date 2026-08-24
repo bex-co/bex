@@ -50,12 +50,20 @@ func TestREST_CreateDuplicateNameIs409(t *testing.T) {
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("POST /v1/services duplicate name: %d body=%s, want 409", rec.Code, rec.Body.String())
 	}
-	var out struct{ Error string }
+	var out struct {
+		Error string
+		Code  string
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if !strings.Contains(out.Error, "already in use") {
 		t.Errorf("error message = %q, want it to say the name is already in use", out.Error)
+	}
+	// w6/m49: a stable machine-readable code, not just message text, so a
+	// dashboard hook can detect this without matching backend copy.
+	if out.Code != "CONFLICT" {
+		t.Errorf("code = %q, want CONFLICT", out.Code)
 	}
 }
 
@@ -79,6 +87,11 @@ func TestGraphQL_CreateServiceDuplicateNameErrors(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(res.Errors[0].Message), "already in use") {
 		t.Errorf("error = %q, want it to say the name is already in use", res.Errors[0].Message)
+	}
+	// w6/m49: extensions.code lets a client detect the conflict without
+	// matching message text (mirrors PLAN_LIMIT/RATE_LIMITED).
+	if code, _ := res.Errors[0].Extensions["code"].(string); code != "CONFLICT" {
+		t.Errorf("extensions.code = %q, want CONFLICT", code)
 	}
 }
 

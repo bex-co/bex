@@ -19,6 +19,7 @@ package keyvalue
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -140,6 +141,30 @@ func TestCreateKeyValue_StampsBothLabels(t *testing.T) {
 	}
 	if kv.Labels[core.LabelTenant] != "tea-a" || kv.Labels[core.LabelWorkspace] != "tea-a" {
 		t.Fatalf("KeyValue labels = %+v, want both LabelTenant and LabelWorkspace = tea-a", kv.Labels)
+	}
+}
+
+// TestCreateKeyValueDuplicateNameIsConflict is w6/m49's regression: a
+// duplicate name in the same workspace must be a coded 409, naming the
+// attempted name, not just message text a dashboard hook has to string-match.
+func TestCreateKeyValueDuplicateNameIsConflict(t *testing.T) {
+	svc, _ := newService()
+	svc.Authz = &fakeChecker{allow: true}
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+
+	if _, err := svc.CreateKeyValue(ctxAs("user-a"), CreateKeyValueRequest{Name: "dup"}); err != nil {
+		t.Fatalf("first create: %v", err)
+	}
+	_, err := svc.CreateKeyValue(ctxAs("user-a"), CreateKeyValueRequest{Name: "dup"})
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("duplicate name: got %v, want ErrConflict", err)
+	}
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "CONFLICT" {
+		t.Fatalf("duplicate name: got %v, want *core.CodedError{Code: CONFLICT}", err)
+	}
+	if !strings.Contains(err.Error(), `"dup"`) {
+		t.Errorf("message = %q, want it to name the attempted name", err.Error())
 	}
 }
 

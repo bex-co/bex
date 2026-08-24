@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { CreateProjectDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { conflictOrGenericMessage } from "@/common/lib/graphql-error";
 
 export interface UseCreateProjectResult {
   /** Fires createProject; resolves the new id on success, null on failure. */
@@ -37,8 +38,10 @@ export function useCreateProject(): UseCreateProjectResult {
         if (!id) throw new Error("createProject returned no id");
         toast.success(t("projects.createSuccess", { name }));
         return id;
-      } catch {
-        toast.error(t("projects.createError", { name }));
+      } catch (err) {
+        toast.error(
+          conflictOrGenericMessage(err, t("projects.createError", { name })),
+        );
         return null;
       } finally {
         setBusy(false);

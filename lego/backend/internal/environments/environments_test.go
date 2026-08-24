@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -313,8 +314,19 @@ func TestCreateEnvironment_DuplicateNameConflict(t *testing.T) {
 	if _, err := svc.Create(ctxAs("user-a"), "prj-1", "staging"); err != nil {
 		t.Fatalf("first create: %v", err)
 	}
-	if _, err := svc.Create(ctxAs("user-a"), "prj-1", "staging"); !errors.Is(err, core.ErrConflict) {
+	_, err := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("want ErrConflict on name collision, got %v", err)
+	}
+	// w6/m49: a stable code and the attempted name, not just "environment:
+	// already exists" — a dashboard hook can detect it without matching
+	// backend copy, and the message is actually useful.
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "CONFLICT" {
+		t.Fatalf("name collision: got %v, want *core.CodedError{Code: CONFLICT}", err)
+	}
+	if !strings.Contains(err.Error(), `"staging"`) {
+		t.Errorf("message = %q, want it to name the attempted name", err.Error())
 	}
 }
 

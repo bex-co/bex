@@ -448,7 +448,8 @@ func (s *Service) ensureDatabaseNameAvailable(ctx context.Context, tenantID, nam
 			continue
 		}
 		if d.Spec.Name == name {
-			return fmt.Errorf("%w: a Postgres database named %q already exists in this workspace", core.ErrConflict, name)
+			return core.NewConflictError("CONFLICT",
+				fmt.Sprintf("a Postgres database named %q already exists in this workspace", name), nil)
 		}
 	}
 	return nil

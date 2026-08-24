@@ -1689,7 +1689,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		return AppView{}, err
 	}
 	if taken {
-		return AppView{}, fmt.Errorf("%w: name %q is already in use", core.ErrConflict, req.Name)
+		return AppView{}, core.NewConflictError("CONFLICT", fmt.Sprintf("name %q is already in use", req.Name), nil)
 	}
 
 	a := &appv1alpha1.App{}
@@ -1900,7 +1900,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 		})
 		if err != nil {
 			if errors.Is(err, store.ErrConflict) {
-				return "", "", fmt.Errorf("%w: name %q is already in use", core.ErrConflict, req.Name)
+				return "", "", core.NewConflictError("CONFLICT", fmt.Sprintf("name %q is already in use", req.Name), nil)
 			}
 			return "", "", fmt.Errorf("creating service record: %w", err)
 		}

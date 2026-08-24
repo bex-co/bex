@@ -60,6 +60,13 @@ func (f *fakeProjectStore) withEnv(names ...string) *fakeProjectStore {
 }
 
 func (f *fakeProjectStore) CreateProject(_ context.Context, tenantID, name string) (store.Project, error) {
+	for _, existing := range f.projects {
+		if existing.TenantID == tenantID && existing.Name == name {
+			// Mirrors the real store's classify() on a UNIQUE(tenant_id, name)
+			// violation (w6/m49).
+			return store.Project{}, fmt.Errorf("project: %w", store.ErrConflict)
+		}
+	}
 	p := store.Project{ID: "prj-created", TenantID: tenantID, Name: name}
 	f.projects[p.ID] = p
 	return p, nil
@@ -236,6 +243,31 @@ func TestCreateEnforcesGroupingQuota(t *testing.T) {
 	svc.MaxGroupings = 3 // workspace now holds 2 projects — one more fits
 	if _, err := svc.Create(ctx, "tea-a", "another"); err != nil {
 		t.Fatalf("below-cap create through the tx path: %v", err)
+	}
+}
+
+// TestCreateDuplicateNameIsConflict is w6/m49's regression: a duplicate
+// project name in the same workspace must be a coded 409 that names the
+// attempted name — the pre-fix message ("project: already exists") named
+// neither.
+func TestCreateDuplicateNameIsConflict(t *testing.T) {
+	st := newFakeProjectStore()
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
+	ctx := ctxAs("user-a")
+
+	if _, err := svc.Create(ctx, "tea-a", "dup"); err != nil {
+		t.Fatalf("first create: %v", err)
+	}
+	_, err := svc.Create(ctx, "tea-a", "dup")
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("duplicate name: got %v, want ErrConflict", err)
+	}
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "CONFLICT" {
+		t.Fatalf("duplicate name: got %v, want *core.CodedError{Code: CONFLICT}", err)
+	}
+	if !strings.Contains(err.Error(), `"dup"`) {
+		t.Errorf("message = %q, want it to name the attempted name", err.Error())
 	}
 }
 
