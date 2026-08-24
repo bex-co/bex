@@ -18,7 +18,10 @@ package apps
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -263,5 +266,151 @@ func TestRenderedServiceDetailsOmitDiskWhenThereIsNone(t *testing.T) {
 	}
 	if _, present := toRenderService(view).ServiceDetails["disk"]; present {
 		t.Error("serviceDetails.disk present on a diskless service")
+	}
+}
+
+// --- w1/m88: Render REST parity ---
+
+func diskRESTMux(t *testing.T, svc *Service) *http.ServeMux {
+	t.Helper()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	return mux
+}
+
+func listDisksREST(t *testing.T, mux *http.ServeMux, query string) []DiskView {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	// The workspace-wide branch (no serviceId, or several) reads the caller's
+	// workspace, so the request has to carry the one the fixture App belongs to
+	// — otherwise it lists a different tenant's disks, which is correctly none.
+	req := httptest.NewRequest("GET", "/v1/disks?"+query, nil)
+	req = req.WithContext(core.WithWorkspace(req.Context(), "tea-disks"))
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /v1/disks?%s => 200, got %d: %s", query, rec.Code, rec.Body)
+	}
+	var out []struct {
+		Disk DiskView `json:"disk"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode list: %v (%s)", err, rec.Body)
+	}
+	disks := make([]DiskView, 0, len(out))
+	for _, row := range out {
+		disks = append(disks, row.Disk)
+	}
+	return disks
+}
+
+// Render documents diskId, name and two time windows on list-disks, and the
+// pinned spec declares them — so before w1/m88 they passed the OpenAPI gate and
+// were then silently dropped, handing the caller an UNFILTERED list with no
+// error and no way to tell. A wrong answer delivered confidently is worse than
+// a refusal; these assertions fail the moment a filter stops filtering.
+func TestListDisksHonorsRendersDocumentedFilters(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	disk, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10)
+	if err != nil {
+		t.Fatalf("AddDisk: %v", err)
+	}
+	mux := diskRESTMux(t, svc)
+
+	if got := listDisksREST(t, mux, "serviceId=srv-web"); len(got) != 1 {
+		t.Fatalf("service-scoped list => 1 disk, got %d", len(got))
+	}
+	// A filter that matches keeps the disk; one that does not must exclude it.
+	for _, tc := range []struct {
+		query string
+		want  int
+	}{
+		{"serviceId=srv-web&diskId=" + disk.ID, 1},
+		{"serviceId=srv-web&diskId=dsk-nope", 0},
+		{"serviceId=srv-web&name=data", 1},
+		{"serviceId=srv-web&name=other", 0},
+		{"serviceId=srv-web", 1},
+		{"serviceId=srv-web&createdBefore=2000-01-01T00:00:00Z", 0},
+		{"serviceId=srv-web&createdAfter=2000-01-01T00:00:00Z", 1},
+		{"serviceId=srv-web&updatedBefore=2000-01-01T00:00:00Z", 0},
+	} {
+		if got := listDisksREST(t, mux, tc.query); len(got) != tc.want {
+			t.Errorf("?%s => %d disks, want %d", tc.query, len(got), tc.want)
+		}
+	}
+}
+
+// Render types serviceId as an ARRAY. Reading only the first value silently
+// narrows a two-service query to one service's disks.
+func TestListDisksUnionsRepeatedServiceID(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	if _, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10); err != nil {
+		t.Fatalf("AddDisk: %v", err)
+	}
+	mux := diskRESTMux(t, svc)
+
+	// The real service plus one that does not exist: the union must still
+	// return the real one rather than resolving only the first value.
+	if got := listDisksREST(t, mux, "serviceId=srv-nope&serviceId=srv-web"); len(got) != 1 {
+		t.Errorf("repeated serviceId => 1 disk, got %d (only the first value was honored?)", len(got))
+	}
+}
+
+// Render's create bodies carry serviceDetails.disk. Because Render-matched
+// routes decode strictly, the field's absence was not "ignored" — it was a 400
+// on `unknown field "disk"`, so a Render client could not create a
+// disk-bearing service at all.
+func TestCreateServiceAcceptsRendersServiceDetailsDisk(t *testing.T) {
+	svc, _ := newService(nil)
+	mux := diskRESTMux(t, svc)
+
+	body := `{"name":"web","type":"web_service","repo":"https://github.com/o/r","serviceDetails":{"plan":"starter","disk":{"name":"data","mountPath":"/var/data","sizeGB":25}}}`
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create with serviceDetails.disk => 201, got %d: %s", rec.Code, rec.Body)
+	}
+
+	var out struct {
+		Service struct {
+			ServiceDetails struct {
+				Disk *ServiceDiskView `json:"disk"`
+			} `json:"serviceDetails"`
+		} `json:"service"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode create: %v (%s)", err, rec.Body)
+	}
+	got := out.Service.ServiceDetails.Disk
+	if got == nil || got.MountPath != "/var/data" || got.SizeGB != 25 {
+		t.Fatalf("created service's disk = %+v, want the declared disk", got)
+	}
+}
+
+// Render's serviceDisk requires only name + mountPath at create — sizeGB is
+// optional there, while the standalone POST /v1/disks requires it. That
+// asymmetry is Render's; bex reproduces it rather than smoothing it out, so the
+// create path must fill the default instead of refusing.
+func TestCreateServiceDiskDefaultsSizeWhenOmitted(t *testing.T) {
+	svc, _ := newService(nil)
+	mux := diskRESTMux(t, svc)
+
+	body := `{"name":"web","type":"web_service","repo":"https://github.com/o/r","serviceDetails":{"plan":"starter","disk":{"name":"data","mountPath":"/var/data"}}}`
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create with sizeGB omitted => 201, got %d: %s", rec.Code, rec.Body)
+	}
+	var out struct {
+		Service struct {
+			ServiceDetails struct {
+				Disk *ServiceDiskView `json:"disk"`
+			} `json:"serviceDetails"`
+		} `json:"service"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.Service.ServiceDetails.Disk == nil || out.Service.ServiceDetails.Disk.SizeGB != diskDefaultSizeGB {
+		t.Fatalf("omitted sizeGB => default %d, got %+v", diskDefaultSizeGB, out.Service.ServiceDetails.Disk)
 	}
 }

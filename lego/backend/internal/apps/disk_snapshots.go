@@ -160,56 +160,70 @@ func diskSnapshotPrefix(a *appv1alpha1.App) string {
 	return workspace + "/" + a.Name + "/"
 }
 
-// RestoreDiskSnapshot replaces a disk's contents with one of its snapshots.
+// RestoreDiskSnapshot replaces a disk's contents with one of its snapshots and
+// returns the disk it accepted the restore for.
 //
 // Render's words, which the surfaces repeat: "This operation is irreversible" —
-// everything written after the snapshot is lost, and the service restarts. It
-// is accepted (202-class) rather than completed inline: the operator scales the
-// service down, runs the restore Job against the freed volume, and brings it
-// back, which takes far longer than a request.
-func (s *Service) RestoreDiskSnapshot(ctx context.Context, diskID, snapshotKey string) error {
+// everything written after the snapshot is lost, and the service restarts.
+//
+// The work is asynchronous: the operator scales the service down, runs the
+// restore Job against the freed volume, and brings it back, which takes far
+// longer than a request. bex nonetheless answers Render's documented **200 with
+// the disk** rather than a bare 202 (w1/m88/t002). Returning the resource does
+// not claim the restore finished — it names what is being restored, which is
+// the only thing a caller can act on — and a Render client's generated code
+// decodes a disk here, so a bodyless 202 leaves it holding nothing.
+func (s *Service) RestoreDiskSnapshot(ctx context.Context, diskID, snapshotKey string) (DiskView, error) {
 	disk, a, err := s.authorizeDisk(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, diskID)
 	if err != nil {
-		return err
+		return DiskView{}, err
 	}
 	if len(s.SnapshotSecret) == 0 {
-		return errDiskSnapshotsNotConfigured()
+		return DiskView{}, errDiskSnapshotsNotConfigured()
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
-		return err
+		return DiskView{}, err
 	}
 	claims, err := snapshotticket.Verify(s.SnapshotSecret, strings.TrimSpace(snapshotKey), s.Now())
 	if err != nil {
 		// Expired, forged, or tampered — all the same answer, and crucially the
 		// service has not been touched: nothing scales down before the key is
 		// known good.
-		return fmt.Errorf("%w: snapshotKey is not valid (keys expire after 24 hours; list the disk's snapshots again)", core.ErrBadRequest)
+		return DiskView{}, fmt.Errorf("%w: snapshotKey is not valid (keys expire after 24 hours; list the disk's snapshots again)", core.ErrBadRequest)
 	}
 	if claims.DiskID != disk.ID {
 		// A well-signed key for a DIFFERENT disk. Refused here rather than
 		// range-checked in the Job, so a mis-issued key can never cross disks.
-		return fmt.Errorf("%w: that snapshot belongs to another disk", core.ErrBadRequest)
+		return DiskView{}, fmt.Errorf("%w: that snapshot belongs to another disk", core.ErrBadRequest)
 	}
 	if _, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		// The intent is a verb-as-value on the spec, like restartedAt: the
 		// operator sees a request it has not served yet and runs the restore.
 		a.Spec.Disk.RestoreSnapshot = claims.Object
 	}); err != nil {
-		return fmt.Errorf("request restore: %w", err)
+		return DiskView{}, fmt.Errorf("request restore: %w", err)
 	}
-	return nil
+	return diskView(disk), nil
 }
 
 // --- REST ---
 
 func (s *Service) registerDiskSnapshotRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /v1/disks/{diskId}/snapshots", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	// Both status codes are Render's, taken from the pinned contract rather
+	// than from what reads best (w1/m88/t002). list-snapshots is documented
+	// **201** even though it is a GET that creates nothing — that is Render's
+	// own spec, and a generated client switches on the code, so answering a
+	// tidier 200 would leave its 201 branch nil and its result empty.
+	mux.HandleFunc("GET /v1/disks/{diskId}/snapshots", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		return s.ListDiskSnapshots(r.Context(), r.PathValue("diskId"))
 	}))
-	mux.HandleFunc("POST /v1/disks/{diskId}/snapshots/restore", core.HandleNoBody(http.StatusAccepted, func(r *http.Request) error {
+	// restore-snapshot is documented 200 with the disk object. The work stays
+	// asynchronous; returning the resource names what is being restored rather
+	// than claiming it finished.
+	mux.HandleFunc("POST /v1/disks/{diskId}/snapshots/restore", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[restoreSnapshotRequest](r)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		return s.RestoreDiskSnapshot(r.Context(), r.PathValue("diskId"), req.SnapshotKey)
 	}))
@@ -248,14 +262,15 @@ func (s *Service) diskSnapshotGQLQueryFields() graphql.Fields {
 func (s *Service) diskSnapshotGQLMutationFields() graphql.Fields {
 	return graphql.Fields{
 		"restoreDiskSnapshot": &graphql.Field{
-			Type: graphql.Boolean,
+			// Returns the disk, matching REST and MCP. A bare Boolean told the
+			// caller only that nothing threw (w1/m88/t002).
+			Type: diskGQLType,
 			Args: graphql.FieldConfigArgument{
 				"id":          gqlutil.ReqArg(graphql.String),
 				"snapshotKey": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.RestoreDiskSnapshot(p.Context, p.Args["id"].(string), p.Args["snapshotKey"].(string))
-				return err == nil, err
+				return s.RestoreDiskSnapshot(p.Context, p.Args["id"].(string), p.Args["snapshotKey"].(string))
 			},
 		},
 	}
@@ -274,6 +289,10 @@ type listSnapshotsResult struct {
 
 type restoreSnapshotResult struct {
 	Restoring bool `json:"restoring"`
+	// Disk is the disk the restore was accepted for — the same object REST and
+	// GraphQL hand back, so an agent reading this tool's result sees what the
+	// other two surfaces show rather than a bare flag.
+	Disk *DiskView `json:"disk,omitempty"`
 }
 
 func (s *Service) registerDiskSnapshotTools(srv *mcp.Server) {
@@ -295,10 +314,11 @@ func (s *Service) registerDiskSnapshotTools(srv *mcp.Server) {
 			"running on the disk — a file-level restore of live database files can produce a corrupted " +
 			"state; use that database's own dump/restore instead.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in restoreSnapshotArgs) (*mcp.CallToolResult, restoreSnapshotResult, error) {
-		if err := s.RestoreDiskSnapshot(ctx, in.DiskID, in.SnapshotKey); err != nil {
+		disk, err := s.RestoreDiskSnapshot(ctx, in.DiskID, in.SnapshotKey)
+		if err != nil {
 			return nil, restoreSnapshotResult{}, err
 		}
-		return nil, restoreSnapshotResult{Restoring: true}, nil
+		return nil, restoreSnapshotResult{Restoring: true, Disk: &disk}, nil
 	})
 }
 

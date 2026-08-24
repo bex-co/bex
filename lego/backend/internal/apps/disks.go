@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -361,10 +362,74 @@ func validateDiskSize(sizeGB int32) error {
 func (s *Service) registerDiskRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/disks", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		disks, err := s.ListDisks(r.Context(), q.Get("serviceId"))
+		// Render documents serviceId as an ARRAY, plus diskId, name, and two
+		// time windows. Every one of them passes the OpenAPI gate because the
+		// pinned spec declares it — so a filter this handler does not implement
+		// is not refused, it is silently ignored, and the caller gets an
+		// unfiltered list back believing it was filtered. A wrong answer
+		// delivered confidently is worse than a refusal, which is why these are
+		// implemented rather than rejected (w1/m88/t003).
+		//
+		// Same filter family, same helpers, same order as the Key Value list
+		// (internal/keyvalue/rest.go) — one pattern for the estate, not two.
+		serviceIDs := core.QueryList(q, "serviceId")
+		diskIDs := core.QueryList(q, "diskId")
+		names := core.QueryList(q, "name")
+		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
 		if err != nil {
 			return nil, err
 		}
+		updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
+		if err != nil {
+			return nil, err
+		}
+
+		// serviceId stays in the verb rather than becoming a post-hoc predicate:
+		// it is an authorization boundary — ListDisks resolves the App and
+		// checks the caller may view it. Render types it as an array, so
+		// several are unioned by asking the verb once per service and merging.
+		// Each element is therefore authorized on its own, and naming more
+		// services can only ever narrow to what the caller may already read —
+		// never widen it, which is what a fall-back to a workspace-wide list
+		// would risk.
+		var disks []DiskView
+		if len(serviceIDs) == 0 {
+			var err error
+			if disks, err = s.ListDisks(r.Context(), ""); err != nil {
+				return nil, err
+			}
+		} else {
+			seen := make(map[string]struct{}, len(serviceIDs))
+			for _, id := range serviceIDs {
+				found, err := s.ListDisks(r.Context(), id)
+				if err != nil {
+					// One id names a service that is gone or not visible. With a
+					// SINGLE id that is the answer to the question asked, and it
+					// stays a 404 — the caller asked about one service. Inside a
+					// multi-value FILTER it is not: refusing the whole list
+					// because one of five ids is stale would make the filter
+					// unusable, so that id simply matches nothing.
+					if len(serviceIDs) > 1 && (errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden)) {
+						continue
+					}
+					return nil, err
+				}
+				for _, d := range found {
+					// A repeated serviceId must not duplicate rows.
+					if _, dup := seen[d.ID]; dup {
+						continue
+					}
+					seen[d.ID] = struct{}{}
+					disks = append(disks, d)
+				}
+			}
+		}
+		disks = core.Filter(disks, func(d DiskView) bool {
+			return (len(diskIDs) == 0 || slices.Contains(diskIDs, d.ID)) &&
+				(len(names) == 0 || slices.Contains(names, d.Name)) &&
+				created.ContainsTime(d.CreatedAt) && updated.ContainsTime(d.UpdatedAt)
+		})
+
 		after, limit := core.PageParams(q)
 		disks = core.StablePage(disks, after, limit, q.Has("cursor") || q.Has("limit"),
 			func(d DiskView) string { return d.ID })

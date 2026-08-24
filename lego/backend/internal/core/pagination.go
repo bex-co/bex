@@ -115,6 +115,14 @@ func (w TimeWindow) Contains(raw string) bool {
 	if err != nil {
 		return true
 	}
+	return w.ContainsTime(value)
+}
+
+// ContainsTime is Contains for a view that already holds a time.Time rather
+// than Render's wire string. Same window, same exclusive bounds — formatting a
+// timestamp only to parse it straight back would be the only alternative, and
+// would quietly admit anything that failed to round-trip.
+func (w TimeWindow) ContainsTime(value time.Time) bool {
 	return (w.Before.IsZero() || value.Before(w.Before)) && (w.After.IsZero() || value.After(w.After))
 }
 
