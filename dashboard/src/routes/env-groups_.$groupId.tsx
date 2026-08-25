@@ -8,6 +8,7 @@ import {
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { EnvGroupDetailContentSkeleton } from "@/common/components/route-skeletons";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -125,7 +126,10 @@ export function EnvGroupDetailPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
+      <div
+        data-skeleton-region={!group ? "page-header" : undefined}
+        className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6"
+      >
         <div className="flex min-w-0 items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
             <Link to="/env-groups" aria-label={t("envGroups.backToList")}>
@@ -133,12 +137,22 @@ export function EnvGroupDetailPage() {
             </Link>
           </Button>
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-semibold">
-              {group?.name ?? groupId}
-            </h1>
-            <p className="truncate font-mono text-xs text-muted-foreground">
-              {groupId}
-            </p>
+            {group ? (
+              <>
+                <h1 className="truncate text-xl font-semibold">{group.name}</h1>
+                <p className="truncate font-mono text-xs text-muted-foreground">
+                  {groupId}
+                </p>
+              </>
+            ) : (
+              <div
+                data-skeleton-region="resource-title"
+                className="space-y-1.5"
+              >
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            )}
           </div>
         </div>
         {group ? (
@@ -160,16 +174,17 @@ export function EnvGroupDetailPage() {
               })
             }
           />
-        ) : null}
+        ) : (
+          <div data-skeleton-region="resource-actions">
+            <Skeleton className="h-9 w-24" />
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-5xl space-y-6">
           {(loading || notFound || !errorKind) && !group ? (
-            <>
-              <Skeleton className="h-64" />
-              <Skeleton className="h-64" />
-            </>
+            <EnvGroupDetailContentSkeleton />
           ) : errorKind && !group ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <AlertTriangle className="size-8 text-destructive" />

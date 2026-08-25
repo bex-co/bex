@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ListPageSkeleton } from "@/common/components/detail-skeletons";
+import {
+  EnvGroupsContentSkeleton,
+  EnvGroupsListPageSkeleton,
+} from "@/common/components/route-skeletons";
 import { AlertTriangle, Layers3, Search, X } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import {
@@ -15,7 +18,6 @@ import {
 } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import {
@@ -39,7 +41,7 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 export const Route = createFileRoute("/env-groups")({
   staticData: { chrome: true },
   component: EnvGroupsPage,
-  pendingComponent: ListPageSkeleton,
+  pendingComponent: EnvGroupsListPageSkeleton,
   beforeLoad: requireAuth(),
   // Warm the list + the scope index + services the create dialog needs so
   // hover-intent navigation skips the post-click skeleton waterfall.
@@ -137,10 +139,7 @@ export function EnvGroupsPage() {
               </p>
             </div>
           ) : initialLoading ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <Skeleton className="h-44" />
-              <Skeleton className="h-44" />
-            </div>
+            <EnvGroupsContentSkeleton />
           ) : groups.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <Layers3 className="size-8 text-muted-foreground" />

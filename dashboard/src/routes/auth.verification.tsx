@@ -2,9 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { oryThemeStyle } from "@/common/lib/ory/theme-styles";
 import VerificationPage from "@/features/auth/pages/verification-page";
+import { VerificationRouteSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/auth/verification")({
   component: VerificationPage,
+  pendingComponent: VerificationRouteSkeleton,
   validateSearch: (search: Record<string, unknown>) => ({
     flow: typeof search.flow === "string" ? search.flow : undefined,
     // Deep-link continuity (ADR075 D3, w6/m42): verification success continues

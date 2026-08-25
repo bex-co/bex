@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { InviteFallbackPage } from "@/features/invites/invite-fallback-page";
 import { translatedTitleHead } from "@/common/lib/document-head";
+import { InviteRouteSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/invite")({
   component: InviteRoute,
+  pendingComponent: InviteRouteSkeleton,
   head: ({ match }) => {
     const translated = translatedTitleHead("invites.openingTitle", match);
     return {

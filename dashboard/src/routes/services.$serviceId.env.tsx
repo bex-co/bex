@@ -5,9 +5,11 @@ import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ServiceEnvironmentEditor } from "@/features/services/components/service-environment-editor";
 import { EnvGroupsPanel } from "@/features/services/components/env-groups-panel";
+import { ServiceEnvironmentSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/env")({
   component: RouteComponent,
+  pendingComponent: ServiceEnvironmentSkeleton,
 });
 
 function RouteComponent() {

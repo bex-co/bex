@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FormPageSkeleton } from "@/common/components/detail-skeletons";
+import { BlueprintCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { Loader2, RefreshCw } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
@@ -39,11 +39,10 @@ import { protectedServiceName } from "@/features/services/lib/protected-confirma
 export const Route = createFileRoute("/blueprints/new")({
   staticData: { chrome: true },
   component: NewBlueprintPage,
-  pendingComponent: FormPageSkeleton,
+  pendingComponent: BlueprintCreatePageSkeleton,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("blueprints.createTitle", match),
 });
-
 
 export function NewBlueprintPage() {
   const { t } = useTranslations();
@@ -138,7 +137,6 @@ export function NewBlueprintPage() {
     }
   }
 
-
   const plan = preview?.validation?.plan;
   const validationErrors = (preview?.validation?.errors ?? []).filter(
     (e): e is string => !!e,
@@ -175,7 +173,6 @@ export function NewBlueprintPage() {
                 gitUrl={gitUrl}
                 onGitUrlChange={setGitUrl}
               />
-
 
               {/* Settings */}
               <div className="space-y-4">

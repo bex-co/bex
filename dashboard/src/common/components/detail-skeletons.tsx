@@ -41,15 +41,31 @@ export function ListPageSkeleton() {
 export function AgentsPageSkeleton() {
   return (
     <div
-      className="flex-1 overflow-auto p-4 sm:p-6"
+      aria-hidden="true"
+      className="min-h-0 min-w-0 flex-1 overflow-auto"
+      data-route-skeleton="agents-list"
       data-testid="agents-page-skeleton"
     >
-      <div className="mx-auto w-full max-w-[40rem] space-y-8">
-        <Skeleton className="h-40 w-full rounded-xl" />
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-lg" />
-          ))}
+      <div className="mx-auto w-full max-w-5xl space-y-8 p-4 sm:p-6">
+        <div
+          className="mx-auto w-full max-w-[40rem]"
+          data-skeleton-region="composer"
+        >
+          <Skeleton className="h-40 w-full rounded-xl" />
+        </div>
+        <div
+          className="mx-auto w-full max-w-[40rem] space-y-3"
+          data-skeleton-region="session-list"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-8 w-56 max-w-full rounded-lg" />
+          </div>
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-lg" />
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -137,11 +153,33 @@ export function FieldRowsSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-4">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="space-y-2">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-9 w-full" />
-        </div>
+        <FieldRowSkeleton key={i} />
       ))}
+    </div>
+  );
+}
+
+export function FieldRowSkeleton({
+  hint = false,
+  hintLines = 1,
+}: {
+  hint?: boolean;
+  hintLines?: number;
+}) {
+  return (
+    <div className="space-y-2">
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="h-9 w-full" />
+      {hint ? (
+        <div className="space-y-1">
+          {Array.from({ length: hintLines }, (_, index) => (
+            <Skeleton
+              key={index}
+              className={index === 0 ? "h-4 w-4/5" : "h-4 w-2/3"}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

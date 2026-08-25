@@ -5,7 +5,7 @@ import {
   redirectPreservingSuffix,
   splatParts,
 } from "@/common/lib/render-alias";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { WorkspaceAliasSkeleton } from "@/common/components/route-skeletons";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
@@ -23,6 +23,7 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
  * fallback to the caller's own workspace.
  */
 export const Route = createFileRoute("/w/$")({
+  staticData: { chrome: true },
   beforeLoad: (args) => {
     // No-arg requireAuth: `next` is the requested href, so after login the
     // browser comes back through the alias and the named workspace still gets
@@ -76,11 +77,10 @@ function WorkspaceAliasPage() {
     navigate,
   ]);
 
-  // Skeleton throughout: while the membership list resolves, while a member
-  // selection lands, and while the unknown-id redirect home is in flight.
-  return (
-    <div className="p-6">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  );
+  // Preserve the exact destination geometry throughout: while membership
+  // resolves, while a member selection lands, and while an unknown-id
+  // redirect home is in flight.
+  const destination =
+    sub === "billing" ? "billing" : sub === undefined ? "overview" : "settings";
+  return <WorkspaceAliasSkeleton destination={destination} />;
 }

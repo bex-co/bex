@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DeployDetailPage } from "@/features/deploys/components/deploy-detail-page";
 import { parseLogRange, type LogRange } from "@/features/deploys/lib/log-range";
+import { DeployDetailSkeleton } from "@/common/components/route-skeletons";
 
 /**
  * Static-site per-deploy page under the /static base (w5/m57) — the twin of
@@ -9,6 +10,7 @@ import { parseLogRange, type LogRange } from "@/features/deploys/lib/log-range";
  */
 export const Route = createFileRoute("/static/$serviceId/deploys/$deployId")({
   component: RouteComponent,
+  pendingComponent: DeployDetailSkeleton,
   validateSearch: (search: Record<string, unknown>): { r?: LogRange } => {
     const r = parseLogRange(search.r);
     return r ? { r } : {};

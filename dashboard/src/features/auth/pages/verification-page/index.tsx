@@ -6,7 +6,7 @@ import { useOryConfig } from "@/common/lib/ory/config";
 import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { safeNext } from "@/common/lib/safe-next";
 import { takeAuthNext } from "@/features/auth/lib/auth-next";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { AuthWidgetSkeleton } from "@/common/components/route-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 
@@ -65,10 +65,7 @@ export default function VerificationPage() {
           }}
         />
       ) : (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
+        <AuthWidgetSkeleton fields={2} />
       )}
     </AuthPageShell>
   );

@@ -474,19 +474,44 @@ function HeaderFacts({ service }: { service: ServiceView }) {
 }
 
 /** Placeholder header shown while `server(id)` is still loading. */
-export function ServiceDetailHeaderSkeleton({ name }: { name: string }) {
+export function ServiceDetailHeaderSkeleton() {
   return (
-    <div className="space-y-3 border-b px-4 py-4 sm:px-6">
-      <Skeleton className="h-3 w-24" />
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-muted-foreground truncate text-xl font-semibold">
-          {name}
-        </h1>
-        <Skeleton className="size-8 rounded-md" />
+    <div
+      aria-hidden="true"
+      className="space-y-2 border-b px-4 py-3 sm:px-6"
+      data-skeleton-region="service-header"
+    >
+      <Skeleton className="h-4 w-24" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Skeleton className="h-6 w-48 max-w-[50vw]" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-8 w-28" />
+        </div>
       </div>
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-64" />
-        <Skeleton className="h-4 w-48" />
+      <div className="space-y-0.5">
+        <div className="flex h-7 items-center gap-1.5">
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="size-7" />
+        </div>
+        <div className="flex h-7 items-center gap-1.5">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+        </div>
+        <div className="flex h-7 items-center gap-1.5">
+          <Skeleton className="h-4 w-56" />
+          <Skeleton className="size-7" />
+        </div>
+      </div>
+      <div className="flex h-9 flex-wrap gap-x-4 gap-y-1 sm:h-4">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-16" />
       </div>
     </div>
   );

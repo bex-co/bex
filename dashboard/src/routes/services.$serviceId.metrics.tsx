@@ -14,9 +14,11 @@ import type { EventTimelineFilter } from "@/features/events/lib/timeline";
 import { useServiceEvents } from "@/features/events/hooks/use-service-events";
 import { useServer } from "@/features/services/hooks/use-server";
 import { isStaticSite } from "@/features/services/lib/service-type";
+import { ServiceMetricsSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/metrics")({
   component: RouteComponent,
+  pendingComponent: ServiceMetricsSkeleton,
 });
 
 function RouteComponent() {

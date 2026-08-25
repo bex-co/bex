@@ -4,6 +4,9 @@ import {
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
 
+export const CREATE_PLAN_CARD_GRID_CLASS =
+  "grid grid-cols-1 gap-3 sm:grid-cols-3";
+
 /** The subset of a catalog tier the cards render — services and Key Value both satisfy it. */
 export interface PlanCardTier {
   id: string;
@@ -40,7 +43,7 @@ export function PlanCardGrid({
       role="radiogroup"
       aria-label={ariaLabel}
       aria-disabled={disabled || undefined}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+      className={CREATE_PLAN_CARD_GRID_CLASS}
     >
       {instanceTypes.map((it) => {
         const selected = it.id === value;

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DeploysListPage } from "@/features/deploys/components/deploys-list-page";
+import { DeploysListSkeleton } from "@/common/components/route-skeletons";
 
 /**
  * A static_site has no Deploys tab in its sidebar (Render parity, w5/m57), but
@@ -9,6 +10,7 @@ import { DeploysListPage } from "@/features/deploys/components/deploys-list-page
  */
 export const Route = createFileRoute("/static/$serviceId/deploys/")({
   component: RouteComponent,
+  pendingComponent: DeploysListSkeleton,
 });
 
 function RouteComponent() {

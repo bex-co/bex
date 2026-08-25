@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { ProjectEnvironmentCardSkeleton } from "@/common/components/route-skeletons";
 import {
   Select,
   SelectContent,
@@ -192,7 +192,7 @@ export function EnvironmentsPanel({
       </div>
 
       {loading ? (
-        <Skeleton className="h-48 w-full rounded-xl" />
+        <ProjectEnvironmentCardSkeleton />
       ) : error ? (
         <p className="text-sm text-muted-foreground">
           {t("environments.errorBody")}

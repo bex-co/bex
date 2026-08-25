@@ -13,6 +13,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { PanelCenteredState } from "@/common/components/panel-states";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   type DiskView,
@@ -109,8 +110,14 @@ export function DiskSection({
             <CardTitle>{t("services.diskTitle")}</CardTitle>
             <CardDescription>{t("services.diskDescription")}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <CardSkeleton />
+          <CardContent className="flex flex-col items-center gap-4 py-8">
+            <Skeleton className="size-10 rounded-full" />
+            <div className="w-full max-w-md space-y-2">
+              <Skeleton className="mx-auto h-5 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="mx-auto h-4 w-4/5" />
+            </div>
+            <Skeleton className="h-9 w-24" />
           </CardContent>
         </Card>
       </div>

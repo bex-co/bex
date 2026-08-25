@@ -26,9 +26,11 @@ import {
   parseProjectResourceSearch,
   type ProjectResourceFilterState,
 } from "@/features/projects/lib/resource-filter";
+import { ProjectOverviewPageSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/project/$projectId/")({
   component: ProjectPage,
+  pendingComponent: ProjectOverviewPageSkeleton,
   validateSearch: parseProjectResourceSearch,
 });
 

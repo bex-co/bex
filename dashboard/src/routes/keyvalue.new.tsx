@@ -38,6 +38,7 @@ import {
 } from "@/features/keyvalue/lib/labels";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
+import { KeyValueCreatePageSkeleton } from "@/common/components/route-skeletons";
 
 // Valkey major versions bex offers, matching the KeyValue CRD's authoritative
 // enum (lego/types/v1alpha1/keyvalue_types.go, spec.version
@@ -68,6 +69,7 @@ const FREE_PLAN = "free";
 export const Route = createFileRoute("/keyvalue/new")({
   staticData: { chrome: true },
   component: NewKeyValuePage,
+  pendingComponent: KeyValueCreatePageSkeleton,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("keyvalue.createTitle", match),
 });

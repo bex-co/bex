@@ -5,6 +5,11 @@ import {
 } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import {
+  DatastoreLogsSkeleton,
+  DatastoreMetricsSkeleton,
+  KeyValueOverviewSkeleton,
+} from "@/common/components/route-skeletons";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import {
@@ -14,10 +19,7 @@ import {
 } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MetadataList } from "@/common/components/metadata-list";
-import {
-  CardSkeleton,
-  MetadataListSkeleton,
-} from "@/common/components/detail-skeletons";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
@@ -40,6 +42,7 @@ import {
   titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
+import { SECTION_NAVIGATION_STICKY_CLASS } from "@/common/components/section-navigation";
 
 export const Route = createFileRoute("/keyvalue/$keyValueId")({
   staticData: { chrome: true },
@@ -95,124 +98,142 @@ export function KeyValueDetailPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-wrap items-center gap-3 border-b px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-2">
-          <h1
-            className={cn(
-              "truncate text-xl font-semibold",
-              !keyValue && "text-muted-foreground",
-            )}
-          >
-            {keyValue?.name ?? keyValueId}
-          </h1>
-          {keyValue ? <KeyValueStatusBadge keyValue={keyValue} /> : null}
-        </div>
-      </div>
-
-      <nav
-        aria-label={t("keyvalue.detailNavLabel")}
-        className="flex gap-1 border-b px-4 sm:px-6"
+      <div
+        className="contents"
+        data-route-skeleton={!keyValue ? "keyvalue-detail" : undefined}
       >
-        <button
-          type="button"
-          className={cn(
-            "border-b-2 px-3 py-2 text-sm",
-            !tab
-              ? "border-foreground text-foreground"
-              : "border-transparent text-muted-foreground",
-          )}
-          onClick={() => void navigate({ to: ".", search: {} })}
+        <div
+          data-skeleton-region={!keyValue ? "resource-header" : undefined}
+          className="flex flex-wrap items-center gap-3 border-b px-4 py-4 sm:px-6"
         >
-          {t("keyvalue.overviewTab")}
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "border-b-2 px-3 py-2 text-sm",
-            tab === "metrics"
-              ? "border-foreground text-foreground"
-              : "border-transparent text-muted-foreground",
-          )}
-          onClick={() =>
-            void navigate({ to: ".", search: { tab: "metrics" } })
-          }
-        >
-          {t("keyvalue.metricsTab")}
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "border-b-2 px-3 py-2 text-sm",
-            tab === "logs"
-              ? "border-foreground text-foreground"
-              : "border-transparent text-muted-foreground",
-          )}
-          onClick={() => void navigate({ to: ".", search: { tab: "logs" } })}
-        >
-          {t("keyvalue.logsTab")}
-        </button>
-      </nav>
-
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        {showError ? (
-          <div className="mx-auto w-full max-w-4xl space-y-6">
-            <ResourceLoadError onRetry={() => void refetch()} />
-          </div>
-        ) : keyValue && tab === "logs" ? (
-          <div className="mx-auto w-full max-w-4xl space-y-6">
-            <KeyValueLogViewer resource={keyValue.id} />
-          </div>
-        ) : keyValue && tab === "metrics" ? (
-          <div className="mx-auto w-full max-w-4xl space-y-6">
-            <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.id} />
-          </div>
-        ) : keyValue ? (
-          <div className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-            {/* Same right-rail quick nav as the service settings page. */}
-            <KeyValueDetailNavigation className="sticky top-0 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-6 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none" />
-
-            <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
-              <section id="metadata" className="scroll-mt-6">
-                <MetadataCard
-                  keyValue={keyValue}
-                  onRenamed={() => void router.invalidate()}
-                />
-              </section>
-              <section id="connection" className="scroll-mt-6">
-                <ConnectionInfoPanel id={keyValue.id} />
-              </section>
-              <section id="networking" className="scroll-mt-6">
-                <KeyValueNetworkingPanel
-                  id={keyValue.id}
-                  isPublic={keyValue.public}
-                />
-              </section>
-              <section id="plan" className="scroll-mt-6">
-                <KeyValuePlanSection
-                  keyValue={keyValue}
-                  onChanged={() => void refetch()}
-                />
-              </section>
-              <section id="maxmemory-policy" className="scroll-mt-6">
-                <KeyValueMaxmemoryPolicySection id={keyValue.id} />
-              </section>
-              <section id="danger-zone" className="scroll-mt-6">
-                <KeyValueDangerActions
-                  keyValue={keyValue}
-                  onDeleted={() => void navigate({ to: "/", replace: true })}
-                  onChanged={() => void refetch()}
-                />
-              </section>
+          {keyValue ? (
+            <div className="flex items-center gap-2">
+              <h1 className="truncate text-xl font-semibold">
+                {keyValue.name}
+              </h1>
+              <KeyValueStatusBadge keyValue={keyValue} />
             </div>
-          </div>
-        ) : (
-          <div className="mx-auto w-full max-w-4xl space-y-6">
-            <MetadataListSkeleton rows={8} />
-            <CardSkeleton rows={3} />
-            <CardSkeleton rows={2} />
-            <CardSkeleton rows={4} />
-          </div>
-        )}
+          ) : (
+            <div
+              data-skeleton-region="resource-title"
+              className="flex items-center gap-2"
+            >
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          )}
+        </div>
+
+        <nav
+          data-skeleton-region={!keyValue ? "tabs" : undefined}
+          aria-label={t("keyvalue.detailNavLabel")}
+          className="flex gap-1 border-b px-4 sm:px-6"
+        >
+          <button
+            type="button"
+            className={cn(
+              "border-b-2 px-3 py-2 text-sm",
+              !tab
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted-foreground",
+            )}
+            onClick={() => void navigate({ to: ".", search: {} })}
+          >
+            {t("keyvalue.overviewTab")}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "border-b-2 px-3 py-2 text-sm",
+              tab === "metrics"
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted-foreground",
+            )}
+            onClick={() =>
+              void navigate({ to: ".", search: { tab: "metrics" } })
+            }
+          >
+            {t("keyvalue.metricsTab")}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "border-b-2 px-3 py-2 text-sm",
+              tab === "logs"
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted-foreground",
+            )}
+            onClick={() => void navigate({ to: ".", search: { tab: "logs" } })}
+          >
+            {t("keyvalue.logsTab")}
+          </button>
+        </nav>
+
+        <div
+          data-skeleton-region={!keyValue ? "active-tab" : undefined}
+          className="flex-1 overflow-auto p-4 sm:p-6"
+        >
+          {showError ? (
+            <div className="mx-auto w-full max-w-4xl space-y-6">
+              <ResourceLoadError onRetry={() => void refetch()} />
+            </div>
+          ) : keyValue && tab === "logs" ? (
+            <div className="mx-auto w-full max-w-4xl space-y-6">
+              <KeyValueLogViewer resource={keyValue.id} />
+            </div>
+          ) : keyValue && tab === "metrics" ? (
+            <div className="mx-auto w-full max-w-4xl space-y-6">
+              <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.id} />
+            </div>
+          ) : keyValue ? (
+            <div className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
+              {/* Same right-rail quick nav as the service settings page. */}
+              <KeyValueDetailNavigation
+                className={SECTION_NAVIGATION_STICKY_CLASS}
+              />
+
+              <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+                <section id="metadata" className="scroll-mt-6">
+                  <MetadataCard
+                    keyValue={keyValue}
+                    onRenamed={() => void router.invalidate()}
+                  />
+                </section>
+                <section id="connection" className="scroll-mt-6">
+                  <ConnectionInfoPanel id={keyValue.id} />
+                </section>
+                <section id="networking" className="scroll-mt-6">
+                  <KeyValueNetworkingPanel
+                    id={keyValue.id}
+                    isPublic={keyValue.public}
+                  />
+                </section>
+                <section id="plan" className="scroll-mt-6">
+                  <KeyValuePlanSection
+                    keyValue={keyValue}
+                    onChanged={() => void refetch()}
+                  />
+                </section>
+                <section id="maxmemory-policy" className="scroll-mt-6">
+                  <KeyValueMaxmemoryPolicySection id={keyValue.id} />
+                </section>
+                <section id="danger-zone" className="scroll-mt-6">
+                  <KeyValueDangerActions
+                    keyValue={keyValue}
+                    onDeleted={() => void navigate({ to: "/", replace: true })}
+                    onChanged={() => void refetch()}
+                  />
+                </section>
+              </div>
+            </div>
+          ) : tab === "logs" ? (
+            <DatastoreLogsSkeleton />
+          ) : tab === "metrics" ? (
+            <DatastoreMetricsSkeleton kind="keyvalue" />
+          ) : (
+            <KeyValueOverviewSkeleton />
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ListPageSkeleton } from "@/common/components/detail-skeletons";
+import { BillingPageSkeleton } from "@/common/components/route-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
 import {
   translatedTitleHead,
@@ -12,7 +12,7 @@ import { UsagePage } from "@/features/usage/components/usage-page";
 export const Route = createFileRoute("/billing")({
   staticData: { chrome: true },
   component: UsagePage,
-  pendingComponent: ListPageSkeleton,
+  pendingComponent: BillingPageSkeleton,
   beforeLoad: requireAuth(),
   // Match `useUsage()` with no period arg — current-month cache key.
   loader: ({ context, cause }) => {

@@ -21,6 +21,7 @@ import {
   ServiceDetailHeader,
   ServiceDetailHeaderSkeleton,
 } from "@/features/services/components/service-detail-header";
+import { ServiceRouteContentSkeleton } from "@/common/components/route-skeletons";
 
 /**
  * Shared chrome for every per-service page (Render's service-detail shape): the
@@ -91,8 +92,17 @@ export function ServiceDetailLayout({
     // fixed stub also guards against), so the `<Outlet/>` stays unmounted.
     content = (
       <DashboardLayout>
-        <div className="min-h-0 flex-1 overflow-auto">
-          <ServiceDetailHeaderSkeleton name={serviceId} />
+        <div
+          className="min-h-0 flex-1 overflow-auto"
+          data-route-skeleton={
+            !service
+              ? base === "/static"
+                ? "static-active-tab"
+                : "service-active-tab"
+              : undefined
+          }
+        >
+          <ServiceDetailHeaderSkeleton />
         </div>
       </DashboardLayout>
     );
@@ -107,14 +117,21 @@ export function ServiceDetailLayout({
               pending={pending?.id === service.id ? pending.action : null}
             />
           ) : (
-            <ServiceDetailHeaderSkeleton name={serviceId} />
+            <ServiceDetailHeaderSkeleton />
           )}
           <div className="p-4 sm:p-6">
             {/* Detail tabs stay at the established 4xl width; the long Settings
                 page opts into a 6xl shell so its right rail doesn't compress
                 the existing form cards. */}
-            <div className="mx-auto w-full max-w-4xl space-y-6 has-[>.service-settings-layout]:max-w-6xl">
-              <Outlet />
+            <div
+              data-skeleton-region={!service ? "active-tab" : undefined}
+              className="mx-auto w-full max-w-4xl space-y-6 has-[>.service-settings-layout]:max-w-6xl"
+            >
+              {service ? (
+                <Outlet />
+              ) : (
+                <ServiceRouteContentSkeleton base={base} />
+              )}
             </div>
           </div>
         </div>

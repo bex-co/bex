@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { StaticEdgeRulePage } from "@/features/services/components/static-edge-rule-page";
 import { RoutesEditor } from "@/features/services/components/static-site-section";
+import { StaticEdgeRulesSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/redirects")({
   component: RouteComponent,
+  pendingComponent: StaticEdgeRulesSkeleton,
 });
 
 function RouteComponent() {

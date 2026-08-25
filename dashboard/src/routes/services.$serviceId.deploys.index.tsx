@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DeploysListPage } from "@/features/deploys/components/deploys-list-page";
+import { DeploysListSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/deploys/")({
   component: RouteComponent,
+  pendingComponent: DeploysListSkeleton,
 });
 
 // The dedicated Deploys tab (w9/002): Render's standalone deploy-history

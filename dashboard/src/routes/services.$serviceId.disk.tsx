@@ -3,9 +3,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DiskSection } from "@/features/services/components/disk-section";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import { useServer } from "@/features/services/hooks/use-server";
+import { ServiceDiskSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/disk")({
   component: RouteComponent,
+  pendingComponent: ServiceDiskSkeleton,
 });
 
 function RouteComponent() {

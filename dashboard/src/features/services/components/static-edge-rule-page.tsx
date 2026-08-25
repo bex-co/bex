@@ -6,7 +6,7 @@ import {
   CardTitle,
   CardContent,
 } from "@/common/components/ui/card";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { StaticEdgeRulesEditorSkeleton } from "@/common/components/route-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import {
@@ -61,7 +61,7 @@ export function StaticEdgeRulePage({
       </CardHeader>
       <CardContent>
         {!service && loading ? (
-          <Skeleton className="h-24 w-full" />
+          <StaticEdgeRulesEditorSkeleton />
         ) : service ? (
           renderEditor(service, mutations)
         ) : null}

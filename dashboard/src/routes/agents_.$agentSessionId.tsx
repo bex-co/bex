@@ -54,10 +54,7 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
     search: Record<string, unknown>,
   ): AgentSessionDetailSearch => {
     const out: AgentSessionDetailSearch = {};
-    if (
-      search.fromArchived === "archived" ||
-      search.fromArchived === "all"
-    ) {
+    if (search.fromArchived === "archived" || search.fromArchived === "all") {
       out.fromArchived = search.fromArchived as AgentSessionArchivedFilter;
     } else if (search.fromArchived === "true") {
       out.fromArchived = "archived";
@@ -123,12 +120,16 @@ function DetailSkeleton() {
     <div
       aria-hidden="true"
       className="flex min-h-0 flex-1 flex-col"
+      data-route-skeleton="agent-session-detail"
       data-testid="agent-session-detail-skeleton"
     >
       {/* Keep this frame aligned with SessionDetailHeader's spacing: compact
           two-line metadata at the left, actions at the right, and the
           mobile-only back control. */}
-      <div className="bg-background/95 supports-backdrop-filter:bg-background/60 flex shrink-0 items-center gap-3 border-b px-4 py-2 backdrop-blur">
+      <div
+        data-skeleton-region="session-header"
+        className="bg-background/95 supports-backdrop-filter:bg-background/60 flex shrink-0 items-center gap-3 border-b px-4 py-2 backdrop-blur"
+      >
         <Skeleton className="size-9 shrink-0 rounded-md lg:hidden" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -147,7 +148,10 @@ function DetailSkeleton() {
       {/* The same ConversationSkeleton every transient state between here and
           the real transcript reuses (session-conversation.tsx,
           session-chat-column.tsx, session-conversation-impl.tsx). */}
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div
+        data-skeleton-region="conversation"
+        className="min-h-0 flex-1 overflow-hidden"
+      >
         <div className="mx-auto w-full max-w-3xl px-4 py-3">
           <ConversationSkeleton />
         </div>
@@ -155,7 +159,10 @@ function DetailSkeleton() {
 
       {/* Match SteeringComposer's dock, including the bordered input shell,
           send button, and the hint line beneath it. */}
-      <div className="bg-background shrink-0 border-t">
+      <div
+        data-skeleton-region="composer"
+        className="bg-background shrink-0 border-t"
+      >
         <div className="mx-auto w-full max-w-3xl space-y-1.5 px-4 py-2">
           <div className="border-input bg-background flex items-end gap-2 rounded-xl border px-2.5 py-1.5 shadow-xs">
             <Skeleton className="my-1.5 h-4 flex-1" />
