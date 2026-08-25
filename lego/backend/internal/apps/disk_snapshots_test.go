@@ -220,3 +220,38 @@ func TestSnapshotVerbsReportNotConfiguredWithAStableCode(t *testing.T) {
 		}
 	}
 }
+
+// The not-configured answer must be the SAME on every surface, and it must
+// survive each one's error handling. REST maps the ErrUnavailable class to 503;
+// GraphQL puts Code into extensions but FLATTENS anything IsPublicError rejects
+// into "internal error"; MCP carries the coded error through. All three read
+// the one CodedError the verb returns, so this pins that both snapshot verbs
+// produce it — not just the one that happened to be looked at (w1/m87/t007).
+func TestSnapshotNotConfiguredIsOneAnswerForEverySurface(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	disk, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10)
+	if err != nil {
+		t.Fatalf("AddDisk: %v", err)
+	}
+	_, listErr := svc.ListDiskSnapshots(context.Background(), disk.ID)
+	_, restoreErr := svc.RestoreDiskSnapshot(context.Background(), disk.ID, "any-key")
+
+	for name, e := range map[string]error{"list": listErr, "restore": restoreErr} {
+		var coded *core.CodedError
+		if !errors.As(e, &coded) || coded.Code != DiskSnapshotsNotConfiguredCode {
+			t.Fatalf("%s: want a %s CodedError, got %v", name, DiskSnapshotsNotConfiguredCode, e)
+		}
+		if coded.Extensions()["code"] != DiskSnapshotsNotConfiguredCode {
+			t.Errorf("%s: GraphQL extensions would not carry the code", name)
+		}
+		if !errors.Is(e, core.ErrUnavailable) {
+			t.Errorf("%s: REST would not map this to 503", name)
+		}
+		if !core.IsPublicError(e) {
+			t.Errorf("%s: GraphQL would sanitize this to \"internal error\"", name)
+		}
+		if strings.Contains(strings.ToLower(e.Error()), "internal") {
+			t.Errorf("%s: message reads as an internal failure: %q", name, e.Error())
+		}
+	}
+}
