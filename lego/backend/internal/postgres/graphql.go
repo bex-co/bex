@@ -56,6 +56,7 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"ipAllowList":             gqlutil.StrsField(func(v PostgresView) any { return core.AllowListCIDRs(v.IPAllowList) }),
 		"ipAllowListEntries":      gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(v PostgresView) any { return v.IPAllowList }),
 		"poolerEnabled":           gqlutil.BoolField(func(v PostgresView) any { return v.PoolerEnabled }),
+		"connectionPool":          gqlutil.StrField(func(v PostgresView) any { return v.ConnectionPool }),
 		"backupsEnabled":          gqlutil.BoolField(func(v PostgresView) any { return v.BackupsEnabled }),
 		"ownerId":                 gqlutil.StrField(func(v PostgresView) any { return v.OwnerID }),
 		"projectId":               gqlutil.OptionalStrField(func(v PostgresView) any { return v.ProjectID }),

@@ -788,3 +788,40 @@ func TestDefaultIdentityDoesNotPruneAnotherIdentitysNamespace(t *testing.T) {
 		t.Error("production pruned a dev-N harness's namespace")
 	}
 }
+
+// EnsureWorkspace is the synchronous, single-workspace twin of ReconcileOnce
+// the create path calls when a freshly minted workspace's namespace is missing
+// (w2/026): it must provision BOTH regimes for that workspace and leave every
+// other workspace to the level-triggered loop.
+func TestEnsureWorkspaceProvisionsOneWorkspaceSynchronously(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t)
+	mine, err := store.CreateTenant(ctx, "mine", "free")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := store.CreateTenant(ctx, "other", "free")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.EnsureWorkspace(ctx, mine.ID); err != nil {
+		t.Fatalf("EnsureWorkspace: %v", err)
+	}
+	for _, name := range []string{WorkspaceNamespace(mine.ID), SandboxNamespace(mine.ID)} {
+		var ns corev1.Namespace
+		if err := cl.Get(ctx, client.ObjectKey{Name: name}, &ns); err != nil {
+			t.Fatalf("namespace %s not provisioned: %v", name, err)
+		}
+	}
+	var ns corev1.Namespace
+	if err := cl.Get(ctx, client.ObjectKey{Name: WorkspaceNamespace(other.ID)}, &ns); !apierrors.IsNotFound(err) {
+		t.Fatalf("EnsureWorkspace must not provision other workspaces, got err=%v", err)
+	}
+}
+
+func TestEnsureWorkspaceUnknownWorkspaceErrors(t *testing.T) {
+	r, _, _ := newTestNamespaceReconciler(t)
+	if err := r.EnsureWorkspace(context.Background(), "tea-missing"); err == nil {
+		t.Fatal("EnsureWorkspace on an unknown workspace must error, got nil")
+	}
+}

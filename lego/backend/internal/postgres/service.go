@@ -125,6 +125,10 @@ type PostgresView struct {
 	// PoolerEnabled reports whether a PgBouncer pooler is provisioned (its pooled
 	// connection strings appear in connection-info).
 	PoolerEnabled bool `json:"poolerEnabled"`
+	// ConnectionPool is Render's read-side enum form of PoolerEnabled
+	// ("pgbouncer" when pooled, "none" otherwise) — Render's postgres and
+	// postgresDetail schemas require it (w2/024).
+	ConnectionPool string `json:"connectionPool"`
 	// BackupsEnabled reports whether continuous backups (and so recovery/PITR)
 	// are active for this instance — surfaced by the controller once projected.
 	BackupsEnabled bool `json:"backupsEnabled"`
@@ -226,8 +230,13 @@ type CreatePostgresRequest struct {
 	// Render's wire shape ({cidrBlock, description} entries) — see
 	// core.IPAllowListEntry; both fields persist on the CR (w4/m24).
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
-	// Pooler optionally provisions a PgBouncer pooler at create.
-	Pooler bool `json:"pooler,omitempty"`
+	// Pooler optionally provisions a PgBouncer pooler at create. A pointer so an
+	// explicit false can be told apart from absent when the connectionPool alias
+	// is also sent (a contradiction is a named 400 — see resolvePooler).
+	Pooler *bool `json:"pooler,omitempty"`
+	// ConnectionPool is Render's enum alias for Pooler (w2/024, changelog
+	// 2026-07-01): "pgbouncer" maps to true, "none" to false.
+	ConnectionPool string `json:"connectionPool,omitempty"`
 	// EnableHighAvailability provisions a replicated CNPG cluster (primary +
 	// standby with pod anti-affinity). Render's enableHighAvailability create field.
 	// Independent of ReadReplicas.
@@ -268,6 +277,54 @@ func unsupportedDatadogError() error {
 		"Postgres Datadog monitoring is not supported; remove datadogAPIKey and datadogSite",
 		nil,
 	)
+}
+
+// Render's connectionPool enum — the wire form of the pooler bool on
+// create/PATCH /v1/postgres and the postgres read object (w2/024).
+const (
+	ConnectionPoolPGBouncer = "pgbouncer"
+	ConnectionPoolNone      = "none"
+)
+
+// connectionPoolEnum renders the pooler bool as Render's connectionPool string.
+func connectionPoolEnum(pooler bool) string {
+	if pooler {
+		return ConnectionPoolPGBouncer
+	}
+	return ConnectionPoolNone
+}
+
+// resolvePooler folds the connectionPool enum alias onto the pooler bool
+// (either field optional; an empty enum string means absent). Identical
+// intent passes; contradictory values are a named 400 — the codebase's
+// "sets both X and Y" rule (secrets' resolveValue) — and an unknown enum
+// value is a named 400. A nil result means neither field was supplied
+// (create: no pooler; PATCH: leave unchanged).
+func resolvePooler(pooler *bool, connectionPool string) (*bool, error) {
+	var enumPooler *bool
+	switch connectionPool {
+	case "":
+	case ConnectionPoolPGBouncer, ConnectionPoolNone:
+		v := connectionPool == ConnectionPoolPGBouncer
+		enumPooler = &v
+	default:
+		return nil, core.NewBadRequestError(
+			"POSTGRES_CONNECTION_POOL_UNKNOWN",
+			fmt.Sprintf("connectionPool must be one of %s|%s, got %q", ConnectionPoolPGBouncer, ConnectionPoolNone, connectionPool),
+			map[string]any{"connectionPool": connectionPool},
+		)
+	}
+	if enumPooler == nil {
+		return pooler, nil
+	}
+	if pooler != nil && *pooler != *enumPooler {
+		return nil, core.NewBadRequestError(
+			"POSTGRES_CONNECTION_POOL_CONFLICT",
+			"pooler and connectionPool disagree — set only one, or send matching values",
+			map[string]any{"pooler": *pooler, "connectionPool": connectionPool},
+		)
+	}
+	return enumPooler, nil
 }
 
 func (req CreatePostgresRequest) validatePhysicalIdentifiers() error {
@@ -339,6 +396,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		Public:                  d.Spec.Public,
 		IPAllowList:             core.AllowListFromSpec(d.Spec.IPAllowList),
 		PoolerEnabled:           d.Spec.Pooler,
+		ConnectionPool:          connectionPoolEnum(d.Spec.Pooler),
 		BackupsEnabled:          d.Status.BackupsEnabled,
 		OwnerID:                 d.Labels[core.LabelTenant],
 		ProjectID:               d.Labels[core.LabelProject],
@@ -469,6 +527,10 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := req.validatePhysicalIdentifiers(); err != nil {
 		return PostgresView{}, err
 	}
+	pooler, err := resolvePooler(req.Pooler, req.ConnectionPool)
+	if err != nil {
+		return PostgresView{}, err
+	}
 	tenantID, tenantOK := s.Tenant(ctx)
 	if err := s.ensureDatabaseNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
 		return PostgresView{}, err
@@ -499,7 +561,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			DiskAutoscaling:  req.EnableDiskAutoscaling,
 			Public:           req.Public,
 			IPAllowList:      core.AllowListToSpec(req.IPAllowList),
-			Pooler:           req.Pooler,
+			Pooler:           pooler != nil && *pooler,
 			HighAvailability: req.EnableHighAvailability,
 			ReadReplicas:     crReplicas,
 		},
@@ -519,6 +581,12 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		return s.view(d), nil
 	}
 	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
+		return PostgresView{}, err
+	}
+	// A freshly minted workspace's tea-* namespace may not exist yet (the
+	// NamespaceReconciler only converges it on its resync tick) — ensure it
+	// before the CR create lands there (w2/026).
+	if err := s.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
 		return PostgresView{}, err
 	}
 	resourcemeta.Touch(d, s.Now())
@@ -690,8 +758,12 @@ type PostgresPatch struct {
 	DiskSizeGB             *int32
 	EnableDiskAutoscaling  *bool
 	EnableHighAvailability *bool
-	IPAllowList            *[]core.IPAllowListEntry // nil = unchanged; non-nil empty slice clears it
-	ParameterOverrides     *map[string]string       // nil = unchanged; non-nil empty map clears it
+	// Pooler toggles the PgBouncer pooler (the CNPG Pooler mechanism reconciles
+	// both directions). REST's PATCH accepts it directly and via Render's
+	// connectionPool enum alias, already folded by resolvePooler (w2/024).
+	Pooler             *bool
+	IPAllowList        *[]core.IPAllowListEntry // nil = unchanged; non-nil empty slice clears it
+	ParameterOverrides *map[string]string       // nil = unchanged; non-nil empty map clears it
 }
 
 // validate checks every field present in the patch (plan enum, CIDR syntax)
@@ -766,6 +838,9 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 	}
 	if patch.EnableHighAvailability != nil {
 		d.Spec.HighAvailability = *patch.EnableHighAvailability
+	}
+	if patch.Pooler != nil {
+		d.Spec.Pooler = *patch.Pooler
 	}
 	if patch.IPAllowList != nil {
 		d.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)

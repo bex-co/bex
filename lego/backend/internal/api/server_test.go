@@ -607,7 +607,7 @@ func TestMCP_ExposesRenderConsistentAndBexExtensionTools(t *testing.T) {
 			t.Errorf("missing Render-consistent tool %q (have %v)", want, got)
 		}
 	}
-	for _, want := range []string{"list_webhook_deliveries", "resend_webhook_delivery"} {
+	for _, want := range []string{"list_webhook_deliveries", "resend_webhook_delivery", "get_service_outbound_ips"} {
 		if !got[want] {
 			t.Errorf("missing bex webhook extension tool %q (have %v)", want, got)
 		}

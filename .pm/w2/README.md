@@ -92,15 +92,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w2/dev-2/` keeps onl
 
 ## Inbox
 
-- `020.md` — Live-verification sweep: execute ~8 existing code-complete-but-blocked closeout tasks in place across w1/w3/w5 (each credits its own milestone; report back anything needing user-held credentials) ← `/pm-brainstorm for w2` 2026-08-18 round 2
-- `022.md` — Two narrow ADR057 #4 residuals: day-to-day identity VAP `matchConditions` coverage + exact BuildKit-shape modeling in `bex-build` (both sub-hour) ← w10/m9 t004 design note, 2026-08-19
-- `023.md` — Service outbound IPs (`GET /services/{id}/outbound-ips`) parity gap ← w2/m79 re-baseline, 2026-08-19
-- `024.md` — Postgres REST `connectionPool` enum vs bex `pooler` bool wire alignment ← w2/m79, 2026-08-19
-- `025.md` — Managed OIDC for AI/cloud providers: build vs document the ADR062 alternative ← w2/m79, 2026-08-19
-- `026.md` — CAPD/dev-N: `EnsureTenant` 500s — `tea-*` namespace not provisioned before create ← w2/m79 `cli-compat.sh` on dev-2, 2026-08-19
-- `027.md` — Stale legacy `default/beancount-forum` App: doomed clone re-runs each operator roll; delete or repair ← prod k9s/log inspection, 2026-08-20
-- `028.md` — Tenant restart loop: eden-cms-v2 liveness-killed 33×/16h at its CPU limit; verify ADR052 notice, weigh tier-aware probe timing ← prod inspection, 2026-08-20
-- `029.md` — bex-api rollout FailedScheduling noise: required anti-affinity + surge on 3 platform nodes; pick maxSurge:0 or preferred affinity ← prod inspection, 2026-08-20
+_(none open — 2026-08-23 triage: `020` sweep executed, blockers reported back; `022`/`023`/`024`/`026` implemented; `027` resolved + legacy App deleted; `028` investigated, decisions recorded; `029` shipped; `025` deferred to `.pm/FUTURE-MAYBE.md` by user direction — all in `done/`)_
 
 _(previous state: none open — 2026-08-15 board cleanup: `017.md` resolved and moved to `done/` — the w3/m44 `session-sidebar.tsx` no longer exists after the agents-page restructure, nothing left to unify; `018.md` (bound the background-dispatch fan-out) deleted — mitigated by m67's `BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE` dispatch-time cap, remaining global-semaphore hardening judged not worth carrying; `019.md` (deploy idempotently applies ssh-gateway `dbrole.sql` grants) deleted per cleanup — the grant surface still applies only via `scripts/ssh-gateway-db-role.sh`, so re-run it whenever `dbrole.sql` gains a grant)_
 

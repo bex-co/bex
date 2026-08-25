@@ -325,19 +325,33 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // against a live bex-api: every one of those failed end to end.
 func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name                   *string                  `json:"name,omitempty"`
-		DatadogAPIKey          *string                  `json:"datadogAPIKey,omitempty"`
-		DatadogSite            *string                  `json:"datadogSite,omitempty"`
-		Plan                   *string                  `json:"plan,omitempty"`
-		Version                *string                  `json:"version,omitempty"`
-		DiskSizeGB             *int32                   `json:"diskSizeGB,omitempty"`
-		EnableDiskAutoscaling  *bool                    `json:"enableDiskAutoscaling,omitempty"`
-		EnableHighAvailability *bool                    `json:"enableHighAvailability,omitempty"`
-		IPAllowList            *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
-		ParameterOverrides     *map[string]string       `json:"parameterOverrides,omitempty"`
-		DryRun                 bool                     `json:"dryRun,omitempty"`
+		Name                   *string `json:"name,omitempty"`
+		DatadogAPIKey          *string `json:"datadogAPIKey,omitempty"`
+		DatadogSite            *string `json:"datadogSite,omitempty"`
+		Plan                   *string `json:"plan,omitempty"`
+		Version                *string `json:"version,omitempty"`
+		DiskSizeGB             *int32  `json:"diskSizeGB,omitempty"`
+		EnableDiskAutoscaling  *bool   `json:"enableDiskAutoscaling,omitempty"`
+		EnableHighAvailability *bool   `json:"enableHighAvailability,omitempty"`
+		// Pooler is bex's native bool form; ConnectionPool is Render's enum
+		// alias (w2/024). Both optional; resolvePooler folds them (identical
+		// intent fine, contradiction or unknown enum a named 400).
+		Pooler             *bool                    `json:"pooler,omitempty"`
+		ConnectionPool     *string                  `json:"connectionPool,omitempty"`
+		IPAllowList        *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+		ParameterOverrides *map[string]string       `json:"parameterOverrides,omitempty"`
+		DryRun             bool                     `json:"dryRun,omitempty"`
 	}
 	if !decodeOr400(w, r, &req) {
+		return
+	}
+	connectionPool := ""
+	if req.ConnectionPool != nil {
+		connectionPool = *req.ConnectionPool
+	}
+	pooler, err := resolvePooler(req.Pooler, connectionPool)
+	if err != nil {
+		core.WriteErr(w, err)
 		return
 	}
 	id := r.PathValue("id")
@@ -345,6 +359,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		Name: req.Name, DatadogAPIKey: req.DatadogAPIKey, DatadogSite: req.DatadogSite,
 		Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB,
 		EnableDiskAutoscaling: req.EnableDiskAutoscaling, EnableHighAvailability: req.EnableHighAvailability,
+		Pooler:             pooler,
 		IPAllowList:        req.IPAllowList,
 		ParameterOverrides: req.ParameterOverrides,
 	}

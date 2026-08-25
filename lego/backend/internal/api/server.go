@@ -1225,6 +1225,11 @@ func (s *Server) graphqlHandler() http.Handler {
 			ctx = core.WithEnvVars(ctx, s.Secrets)
 			ctx = core.WithSecretFiles(ctx, s.Secrets)
 		}
+		// The outboundIps field nests the apps Service's own outbound-IPs verb
+		// under the same stateless type through the matching reader seam.
+		if s.Apps != nil {
+			ctx = core.WithOutboundIPs(ctx, s.Apps)
+		}
 		// Bound execution time so a single expensive document can't tie up a
 		// resolver goroutine indefinitely (F9).
 		ctx, cancel := context.WithTimeout(ctx, gqlExecTimeout)

@@ -579,6 +579,17 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	}, s.serviceTool(s.Get))
 
 	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "get_service_outbound_ips",
+		Description: "Get the IP addresses a service's outbound traffic originates from ({type, ips}), tracking Render's REST retrieve-service-outbound-ips read. bex answers with the shared tenant node pool's current external IPs: there is no NAT gateway, so pod egress sources from whatever pool node it runs on, and the set changes as the autoscaler adds or removes nodes — re-read before relying on it. type is always \"shared\"; bex offers no dedicated outbound IP sets. bex extension over Render's MCP, named after the REST verb.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, core.OutboundIPs, error) {
+		out, err := s.OutboundIPs(ctx, in.ServiceID)
+		if err != nil {
+			return nil, core.OutboundIPs{}, err
+		}
+		return nil, out, nil
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_web_service",
 		Description: "Create a web service from a repo or a prebuilt image and get back the service to poll until its url is live. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {

@@ -6,12 +6,18 @@ replicaCount: 2
 deployment:
   affinity:
     podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: kratos
-              app.kubernetes.io/name: kratos
-          topologyKey: kubernetes.io/hostname
+      # w2/029: preferred, not required — required anti-affinity left every
+      # rollout's surge pod Pending (FailedScheduling) on the 3-node platform
+      # pool until an old pod finished terminating. Steady-state spreading is
+      # unchanged; the scheduler still prefers separate nodes.
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: kratos
+                app.kubernetes.io/name: kratos
+            topologyKey: kubernetes.io/hostname
 
 pdb:
   enabled: true

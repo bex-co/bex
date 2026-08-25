@@ -492,7 +492,7 @@ func main() {
 		go stripeLifecycleReconciler.Run(ctx)
 	}
 
-	wireReconcilers(ctx, srv, rec, st, cl)
+	wireReconcilers(ctx, srv, rec, st, cl, base)
 	startDeliveryWorkers(ctx, srv, st, deps.Mailer, mobilePush, webPush, pushMetrics, webhookMetrics)
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL
@@ -1196,7 +1196,7 @@ func snapshotStoreEgressDomains() []string {
 	return []string{host}
 }
 
-func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.Client) {
+func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.Client, base *core.Base) {
 	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
 	// - CloneSecrets: the projector mints clone Secrets for private-repo rows
 	//   created via the internal CP API (store/api.go POST /v1/apps).
@@ -1236,6 +1236,11 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 		nsRec := store.NewNamespaceReconciler(cl, st)
 		nsRec.Identity = cpIdentity
 		rec.Identity = cpIdentity
+		// w2/026: the reconciler only learns about a freshly minted workspace on
+		// its next resync (nothing kicks it on mint), so a first create within
+		// that window used to 500 on a namespace NotFound. The create paths now
+		// ensure the workspace's namespaces synchronously when they are missing.
+		base.EnsureNamespaces = nsRec.EnsureWorkspace
 		// Kick BOTH reconcilers on workspace create/delete for the same
 		// low-latency reason the projector is kicked on app writes: the
 		// projector prunes the deleted workspace's orphaned App CRs, the

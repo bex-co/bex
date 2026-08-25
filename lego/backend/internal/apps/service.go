@@ -1927,6 +1927,12 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 }
 
 func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment, seed createSeed) (AppView, error) {
+	// A freshly minted workspace's tea-* namespace may not exist yet (the
+	// NamespaceReconciler only converges it on its resync tick) — ensure it
+	// before any write below (projection Secrets included) lands there (w2/026).
+	if err := s.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
+		return AppView{}, err
+	}
 	var createdRowID string
 	rollbackStoreRow := func(cause error) error {
 		if createdRowID == "" || s.Store == nil {

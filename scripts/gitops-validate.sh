@@ -878,16 +878,21 @@ done
 
 check_request_path_ha() {
   local label="$1" manifest="$2" deployment="$3" pdb_manifest="$4" pdb="$5"
-  local replicas required min_available
+  local replicas required preferred min_available
   replicas="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | .spec.replicas" "$manifest" | tr -d '\n')"
+  # w2/029: node-spread may be required OR preferred (weight >= 1, hostname
+  # topologyKey). Required left rollout surge pods Pending (FailedScheduling)
+  # on the 3-node platform pool; hydra/kratos/bex-api moved to preferred,
+  # openfga/traefik keep required.
   required="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | .spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution | length" "$manifest" | tr -d '\n')"
+  preferred="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | [.spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[]? | select(.weight >= 1 and .podAffinityTerm.topologyKey == \"kubernetes.io/hostname\")] | length" "$manifest" | tr -d '\n')"
   min_available="$(yq -N "select(.kind == \"PodDisruptionBudget\" and .metadata.name == \"$pdb\") | .spec.minAvailable" "$pdb_manifest" | tr -d '\n')"
   if ! [[ "$replicas" =~ ^[0-9]+$ ]] || (( replicas < 2 )); then
     echo "FAIL: $label renders replicas '$replicas', want >=2" >&2
     fail=1
   fi
-  if ! [[ "$required" =~ ^[0-9]+$ ]] || (( required < 1 )); then
-    echo "FAIL: $label has no required hostname pod anti-affinity" >&2
+  if { ! [[ "$required" =~ ^[0-9]+$ ]] || (( required < 1 )); } && { ! [[ "$preferred" =~ ^[0-9]+$ ]] || (( preferred < 1 )); }; then
+    echo "FAIL: $label has no hostname pod anti-affinity (required or preferred)" >&2
     fail=1
   fi
   if [ "$min_available" != "1" ]; then
@@ -1933,19 +1938,23 @@ operator_workload_admission_objects="$(yq -N '
   select((.kind == "ValidatingAdmissionPolicy" or .kind == "ValidatingAdmissionPolicyBinding") and
     (.metadata.name == "bex-operator-workloads" or
      .metadata.name == "bex-operator-service-namespaces" or
-     .metadata.name == "bex-operator-object-namespaces")) |
+     .metadata.name == "bex-operator-object-namespaces" or
+     .metadata.name == "bex-operator-daytoday-workloads" or
+     .metadata.name == "bex-build-job-shape")) |
   [.kind, .metadata.name,
    .metadata.annotations."argocd.argoproj.io/sync-wave",
    (.spec.failurePolicy // ""),
    ((.spec.validationActions // []) | sort | join(","))] | join(":")' \
   - <<<"$BASE_RENDER" | sed '/^[[:space:]]*$/d' | sort)"
-expected_operator_workload_admission_objects=$'ValidatingAdmissionPolicy:bex-operator-object-namespaces:-3:Fail:\nValidatingAdmissionPolicy:bex-operator-service-namespaces:-3:Fail:\nValidatingAdmissionPolicy:bex-operator-workloads:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-operator-object-namespaces:-2::Audit,Deny\nValidatingAdmissionPolicyBinding:bex-operator-service-namespaces:-2::Audit,Deny\nValidatingAdmissionPolicyBinding:bex-operator-workloads:-2::Audit,Deny'
+expected_operator_workload_admission_objects=$'ValidatingAdmissionPolicy:bex-build-job-shape:-3:Fail:\nValidatingAdmissionPolicy:bex-operator-daytoday-workloads:-3:Fail:\nValidatingAdmissionPolicy:bex-operator-object-namespaces:-3:Fail:\nValidatingAdmissionPolicy:bex-operator-service-namespaces:-3:Fail:\nValidatingAdmissionPolicy:bex-operator-workloads:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-build-job-shape:-2::Audit,Deny\nValidatingAdmissionPolicyBinding:bex-operator-daytoday-workloads:-2::Audit,Deny\nValidatingAdmissionPolicyBinding:bex-operator-object-namespaces:-2::Audit,Deny\nValidatingAdmissionPolicyBinding:bex-operator-service-namespaces:-2::Audit,Deny\nValidatingAdmissionPolicyBinding:bex-operator-workloads:-2::Audit,Deny'
 [ "$operator_workload_admission_objects" = "$expected_operator_workload_admission_objects" ] || {
   echo "FAIL: operator workload admission policy/binding shape drifted" >&2
   fail=1
 }
 for required_operator_workload_guard in \
   "system:serviceaccount:bex-system:bex-controller-manager" \
+  "system:serviceaccount:kube-system:bex-operator" \
+  "kubernetes.io/metadata.name: bex-build" \
   "app.bex.co/execution-boundary" \
   "app.bex.co/regime'].orValue('') == 'hosting'" \
   "automountServiceAccountToken == false" \
