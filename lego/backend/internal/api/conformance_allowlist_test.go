@@ -78,7 +78,6 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`version: property "version" is missing`,
 		`suspenders: property "suspenders" is missing`,
 		`dashboardUrl: property "dashboardUrl" is missing`,
-		`connectionPool: property "connectionPool" is missing`,
 	),
 	"retrieve-postgres": knownConformanceDivergences(
 		"ADR018 §Managed Postgres / §Resource metadata contract: omitted unknown metadata and unsupported advanced provider fields",
@@ -92,7 +91,6 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`/role: property "role" is missing`,
 		`/version: property "version" is missing`,
 		`/suspenders: property "suspenders" is missing`,
-		`/connectionPool: property "connectionPool" is missing`,
 	),
 	"retrieve-redis": knownConformanceDivergences(
 		// `version` was dropped from this list once the Key Value read began

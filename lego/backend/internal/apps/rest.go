@@ -627,7 +627,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 // registerServiceRoutes mounts the /v1/services core: list · create · get ·
 // patch · delete · the lifecycle verbs (suspend/resume/restart) · scale ·
-// instances · shell tickets.
+// instances · outbound IPs · shell tickets.
 func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 	list := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
@@ -710,6 +710,9 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+servicesBase+"/{id}", s.getService)
 	// Render's official CLI uses /services.
 	mux.HandleFunc("GET "+servicesBase+"/{id}/instances", listInstances)
+	// Render's retrieve-service-outbound-ips (w2/023): the shared tenant
+	// pool's current node ExternalIPs — see Service.OutboundIPs.
+	mux.HandleFunc("GET "+servicesBase+"/{id}/outbound-ips", core.HandleByID(s.OutboundIPs))
 	mux.HandleFunc("POST "+servicesBase+"/{id}/shell-ticket", shellTicket)
 	mux.HandleFunc("PATCH "+servicesBase+"/{id}", s.patchService)
 	mux.HandleFunc("DELETE "+servicesBase+"/{id}", deleteSvc) // Render: delete => 204

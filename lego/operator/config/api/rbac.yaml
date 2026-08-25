@@ -38,6 +38,14 @@ rules:
   - apiGroups: ["app.bex.co"]
     resources: ["keyvalues/status"]
     verbs: ["get"]
+  # Outbound-IPs read (w2/023): GET /v1/services/{id}/outbound-ips answers with
+  # the tenant node pool's (bex.co/pool=tenant) ExternalIPs — there is no NAT
+  # gateway, so a pod's egress sources from the public IP of the node it runs
+  # on. Nodes are cluster-scoped, so this grant cannot live in the
+  # namespace-scoped bex-api-apps Role; get/list only, nothing mutates.
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

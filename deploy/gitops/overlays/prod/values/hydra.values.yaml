@@ -4,12 +4,16 @@ replicaCount: 2
 
 affinity:
   podAntiAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchLabels:
-            app.kubernetes.io/instance: hydra
-            app.kubernetes.io/name: hydra
-        topologyKey: kubernetes.io/hostname
+    # w2/029: preferred, not required — same surge-pod FailedScheduling noise
+    # as kratos/bex-api on the 3-node platform pool.
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: hydra
+              app.kubernetes.io/name: hydra
+          topologyKey: kubernetes.io/hostname
 
 pdb:
   enabled: true

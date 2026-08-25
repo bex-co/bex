@@ -429,6 +429,12 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return KeyValueView{}, err
 	}
+	// A freshly minted workspace's tea-* namespace may not exist yet (the
+	// NamespaceReconciler only converges it on its resync tick) — ensure it
+	// before the CR create lands there (w2/026).
+	if err := s.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
+		return KeyValueView{}, err
+	}
 	resourcemeta.Touch(kv, s.Now())
 	if err := s.Client.Create(ctx, kv); err != nil {
 		if apierrors.IsAlreadyExists(err) {

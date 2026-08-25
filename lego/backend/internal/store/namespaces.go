@@ -161,6 +161,28 @@ func (r *NamespaceReconciler) ReconcileOnce(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
+// EnsureWorkspace synchronously converges one workspace's hosting and sandbox
+// namespaces — the on-demand twin of the level-triggered ReconcileOnce. The
+// create path calls it when a freshly minted workspace's tea-* namespace does
+// not exist yet: nothing kicks this reconciler on workspace mint, so without
+// it a first create within one resync period of onboarding fails with a
+// namespace NotFound (w2/026). Failures here are NOT collected per-object the
+// way ReconcileOnce collects per-workspace — the caller is a request waiting
+// on this one workspace, so the first error returns immediately.
+func (r *NamespaceReconciler) EnsureWorkspace(ctx context.Context, workspaceID string) error {
+	t, err := r.Store.GetTenant(ctx, workspaceID)
+	if err != nil {
+		return fmt.Errorf("get workspace %s: %w", workspaceID, err)
+	}
+	if err := r.ensureNamespace(ctx, t, RegimeHosting); err != nil {
+		return fmt.Errorf("workspace %s hosting namespace: %w", workspaceID, err)
+	}
+	if err := r.ensureNamespace(ctx, t, RegimeSandbox); err != nil {
+		return fmt.Errorf("workspace %s sandbox namespace: %w", workspaceID, err)
+	}
+	return nil
+}
+
 // namespaceName returns the namespace name for a workspace under a regime.
 func namespaceName(workspaceID, regime string) string {
 	if regime == RegimeSandbox {

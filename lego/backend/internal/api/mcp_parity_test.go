@@ -257,15 +257,17 @@ func TestMCPParityInventory(t *testing.T) {
 	// remaining per-field `update_*`/`rename_*` tools into those same tools
 	// (187 → 175), keeping only what REST puts behind its own route. w3/m46
 	// wired `clearCache` into trigger_deploy, moving it from Divergent (8 → 7)
-	// to Superset (1 → 2). Update this table and ADR018's MCP inventory together
+	// to Superset (1 → 2). w2/023 added get_service_outbound_ips (Extension
+	// 164 → 165), the Render-shaped outbound-IPs read Render's own MCP does
+	// not ship. Update this table and ADR018's MCP inventory together
 	// — that pairing is the point.
 	want := map[mcpParityClass]int{
 		mcpParity1to1:      10,
-		mcpParitySuperset:  2, // +trigger_deploy (clearCache wired, w3/m46)
-		mcpParityDivergent: 7, // -trigger_deploy (clearCache wired, w3/m46)
-		mcpParityExtension: 164, // +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74)
+		mcpParitySuperset:  2,   // +trigger_deploy (clearCache wired, w3/m46)
+		mcpParityDivergent: 7,   // -trigger_deploy (clearCache wired, w3/m46)
+		mcpParityExtension: 165, // +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023)
 	}
-	const wantTotal = 183
+	const wantTotal = 184
 
 	if len(tools) != wantTotal {
 		t.Errorf("bex registers %d MCP tools, expected %d — update this test AND ADR018's MCP inventory together",

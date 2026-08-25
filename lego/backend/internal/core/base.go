@@ -316,6 +316,36 @@ type Base struct {
 	// AuthorizeMintClass; nil => a delegated (OAuth) caller can never pass that
 	// gate — fail closed (codex round-7 F3).
 	PlatformClients PlatformClientResolver
+	// EnsureNamespaces synchronously provisions one workspace's per-tenant
+	// namespaces (hosting + sandbox, ADR043) on demand; the composition root
+	// wires it to store.NamespaceReconciler.EnsureWorkspace. Consumed by
+	// EnsureWorkspaceNamespace; nil => creates race the async reconciler
+	// (pre-w2/026 behavior).
+	EnsureNamespaces NamespaceEnsurer
+}
+
+// NamespaceEnsurer provisions one workspace's per-tenant namespaces
+// synchronously — the on-demand twin of the NamespaceReconciler's resync loop.
+type NamespaceEnsurer func(ctx context.Context, workspaceID string) error
+
+// EnsureWorkspaceNamespace guarantees a workspace's hosting namespace exists
+// before a create writes into it. The NamespaceReconciler is level-triggered
+// on a resync period and nothing kicks it on workspace mint, so a first
+// service/postgres/keyvalue create within one resync of onboarding otherwise
+// fails with a namespace NotFound from the API server, surfacing as a 500
+// (w2/026). One cheap GET fast-paths the steady state; only a missing
+// namespace pays for the synchronous ensure. A nil ensurer (store off, tests)
+// or an empty/default tenant is a no-op, and a non-NotFound GET error is
+// ignored so the create itself surfaces the real failure exactly as before.
+func (b *Base) EnsureWorkspaceNamespace(ctx context.Context, tenantID string) error {
+	if b.EnsureNamespaces == nil || tenantID == "" || tenantID == DefaultTenant {
+		return nil
+	}
+	err := b.Client.Get(ctx, client.ObjectKey{Name: b.TenantNamespace(tenantID)}, &corev1.Namespace{})
+	if err == nil || !apierrors.IsNotFound(err) {
+		return nil
+	}
+	return b.EnsureNamespaces(ctx, tenantID)
 }
 
 // TenantNamespace returns the namespace a workspace's hosting workloads live

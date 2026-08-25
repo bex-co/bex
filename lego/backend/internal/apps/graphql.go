@@ -503,6 +503,16 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Type:    graphql.String,
 			Resolve: gqlutil.Field(func(a AppView) any { return a.LatestDeployID }),
 		},
+		// outboundIps is Render's retrieve-service-outbound-ips read nested under
+		// the Service (w2/023; a bex extension — Render publishes no GraphQL
+		// contract): {type, ips} of the shared tenant node pool's current
+		// ExternalIPs. Resolved through the core.OutboundIPReader the root
+		// injects — the same context seam env vars use, so this shared type
+		// stays stateless.
+		"outboundIps": &graphql.Field{
+			Type:    outboundIPsGQLType,
+			Resolve: outboundIPsResolve,
+		},
 	},
 })
 
@@ -694,6 +704,37 @@ func secretFileContentResolve(p graphql.ResolveParams) (any, error) {
 		return nil, core.ErrSecretsUnavailable
 	}
 	return r.SecretFileContent(p.Context, a.Name, p.Args["name"].(string))
+}
+
+// outboundIPsGQLType renders the kernel's neutral core.OutboundIPs — Render's
+// outboundIps schema — nested under a Service like env vars.
+var outboundIPsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "OutboundIPs",
+	Fields: graphql.Fields{
+		"type": gqlutil.StrField(func(o core.OutboundIPs) any { return o.Type }),
+		// dedicatedIpId is null in bex — always "shared" (dedicated egress IP
+		// sets are a recorded non-goal), and Render emits the id only for
+		// type=dedicated.
+		"dedicatedIpId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(o core.OutboundIPs) any {
+			if o.DedicatedIPID == "" {
+				return nil
+			}
+			return o.DedicatedIPID
+		})},
+		"ips": gqlutil.StrsField(func(o core.OutboundIPs) any { return o.IPs }),
+	},
+})
+
+func outboundIPsResolve(p graphql.ResolveParams) (any, error) {
+	a, ok := p.Source.(AppView)
+	if !ok {
+		return nil, nil
+	}
+	r, ok := core.OutboundIPsFrom(p.Context)
+	if !ok {
+		return nil, core.ErrUnavailable
+	}
+	return r.OutboundIPs(p.Context, a.ID)
 }
 
 // blueprintResourceGQLType is the GraphQL shape for a BlueprintResource (w2/m62).

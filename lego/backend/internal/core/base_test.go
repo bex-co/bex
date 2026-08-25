@@ -21,6 +21,7 @@ import (
 	"errors"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -251,4 +252,72 @@ func TestTenantHelperMirrorsWorkspaceResolver(t *testing.T) {
 	if _, ok := b.Tenant(context.Background()); ok {
 		t.Error("no identity in context: Tenant must report ok=false")
 	}
+}
+
+// w2/026: a first create within one NamespaceReconciler resync of onboarding
+// used to 500 on a namespace NotFound. EnsureWorkspaceNamespace is the create
+// path's guarantee: a missing tea-* namespace triggers the synchronous ensure,
+// everything else is a no-op.
+func TestEnsureWorkspaceNamespace(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("missing namespace triggers the synchronous ensure", func(t *testing.T) {
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		var ensured []string
+		b := &Base{Client: cl, Namespace: "default", EnsureNamespaces: func(_ context.Context, ws string) error {
+			ensured = append(ensured, ws)
+			return cl.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ws}})
+		}}
+		if err := b.EnsureWorkspaceNamespace(ctx, "tea-a"); err != nil {
+			t.Fatal(err)
+		}
+		if len(ensured) != 1 || ensured[0] != "tea-a" {
+			t.Fatalf("ensured = %v, want [tea-a]", ensured)
+		}
+	})
+
+	t.Run("existing namespace skips the ensure", func(t *testing.T) {
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "tea-a"}}).Build()
+		b := &Base{Client: cl, Namespace: "default", EnsureNamespaces: func(context.Context, string) error {
+			t.Error("ensurer must not run when the namespace already exists")
+			return nil
+		}}
+		if err := b.EnsureWorkspaceNamespace(ctx, "tea-a"); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("nil ensurer is a no-op", func(t *testing.T) {
+		b := &Base{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), Namespace: "default"}
+		if err := b.EnsureWorkspaceNamespace(ctx, "tea-a"); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("empty and default tenants are a no-op", func(t *testing.T) {
+		b := &Base{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), Namespace: "default",
+			EnsureNamespaces: func(context.Context, string) error {
+				t.Error("ensurer must not run for the shared/default workspace")
+				return nil
+			}}
+		for _, tid := range []string{"", DefaultTenant} {
+			if err := b.EnsureWorkspaceNamespace(ctx, tid); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+
+	t.Run("ensure error propagates", func(t *testing.T) {
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		boom := errors.New("boom")
+		b := &Base{Client: cl, Namespace: "default", EnsureNamespaces: func(context.Context, string) error { return boom }}
+		if err := b.EnsureWorkspaceNamespace(ctx, "tea-a"); !errors.Is(err, boom) {
+			t.Fatalf("got %v, want the ensurer's error", err)
+		}
+	})
 }

@@ -20,9 +20,11 @@ patches:
       - op: add
         path: /spec/source/helm/valueFiles/-
         value: ../../overlays/prod/values/opensandbox-controller.values.yaml
-  # Auth servers: two required-anti-affinity replicas keep the public and admin
-  # Services available while one platform node drains. Local keeps the charts'
-  # single-replica defaults so the one-worker CAPD mock remains schedulable.
+  # Auth servers: two preferred-anti-affinity replicas keep the public and admin
+  # Services available while one platform node drains (preferred since w2/029:
+  # required left rollout surge pods Pending on the 3-node platform pool).
+  # Local keeps the charts' single-replica defaults so the one-worker CAPD mock
+  # remains schedulable.
   - target:
       group: argoproj.io
       version: v1alpha1
