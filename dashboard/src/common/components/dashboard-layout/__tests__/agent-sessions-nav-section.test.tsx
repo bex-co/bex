@@ -13,6 +13,10 @@ import { DashboardSidebar } from "../dashboard-sidebar";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import { agentSessionView } from "@/test/mocks/agent-session";
 
+vi.mock("@/config/use-growthbook", () => ({
+  useAgentsFeatureEnabled: () => true,
+}));
+
 const sessionsState: { sessions: AgentSessionView[]; loading: boolean } = {
   sessions: [],
   loading: false,

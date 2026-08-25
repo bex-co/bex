@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AgentsPageSkeleton } from "@/common/components/detail-skeletons";
 import { Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { requireAgentsFeature } from "@/common/lib/growthbook/require-agents-feature";
 import {
   translatedTitleHead,
   titleLoaderFetchPolicy,
@@ -30,7 +31,10 @@ export const Route = createFileRoute("/agents")({
   staticData: { chrome: true },
   component: AgentSessionsPage,
   pendingComponent: AgentsPageSkeleton,
-  beforeLoad: requireAuth(),
+  beforeLoad: ({ context, location }) => {
+    requireAuth()( { context, location });
+    requireAgentsFeature()({ context });
+  },
   // Prefetch the working-set list on hover-intent so `/agents` mounts warm
   // (same pattern as `/` and `/blueprints`). Variables match `useAgentSessions`
   // defaults (unarchived, no phase/repo/limit filters).

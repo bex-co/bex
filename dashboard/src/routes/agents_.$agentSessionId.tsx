@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { requireAgentsFeature } from "@/common/lib/growthbook/require-agents-feature";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import {
@@ -45,7 +46,10 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
   // real), firing two resume stream GETs and doubling the transcript (w3/m44).
   pendingComponent: AgentSessionDetailPending,
   pendingMs: 0,
-  beforeLoad: requireAuth(),
+  beforeLoad: ({ context, location }) => {
+    requireAuth()( { context, location });
+    requireAgentsFeature()({ context });
+  },
   validateSearch: (
     search: Record<string, unknown>,
   ): AgentSessionDetailSearch => {
