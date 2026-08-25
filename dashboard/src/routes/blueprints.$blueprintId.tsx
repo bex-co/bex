@@ -28,7 +28,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/common/components/ui/table";
-import { CardSkeleton } from "@/common/components/detail-skeletons";
+import { BlueprintDetailContentSkeleton } from "@/common/components/route-skeletons";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
 import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
@@ -241,14 +242,21 @@ export function BlueprintDetailPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-2">
-          <h1 className="truncate text-xl font-semibold">
-            {blueprint?.name ?? blueprintId}
-          </h1>
-          {blueprint ? (
+        {blueprint ? (
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-xl font-semibold">{blueprint.name}</h1>
             <BlueprintStatusBadge status={blueprint.status} />
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex items-center gap-2"
+            data-skeleton-region="page-header"
+          >
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+        )}
         {blueprint ? (
           <div className="flex items-center gap-2">
             <Button
@@ -267,7 +275,12 @@ export function BlueprintDetailPage() {
               {t("blueprints.disconnectButton")}
             </Button>
           </div>
-        ) : null}
+        ) : (
+          <div aria-hidden="true" className="flex items-center gap-2">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -476,13 +489,7 @@ export function BlueprintDetailPage() {
               <ValidatePanel manifest={blueprint.manifest} />
             </>
           ) : (
-            <>
-              <CardSkeleton rows={4} />
-              <CardSkeleton rows={3} />
-              <CardSkeleton rows={3} />
-              <CardSkeleton rows={6} />
-              <CardSkeleton rows={2} />
-            </>
+            <BlueprintDetailContentSkeleton />
           )}
         </div>
       </div>

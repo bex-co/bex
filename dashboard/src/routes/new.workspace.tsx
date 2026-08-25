@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FormPageSkeleton } from "@/common/components/detail-skeletons";
+import { WorkspaceCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -30,7 +30,7 @@ import {
 export const Route = createFileRoute("/new/workspace")({
   staticData: { chrome: true },
   component: NewWorkspacePage,
-  pendingComponent: FormPageSkeleton,
+  pendingComponent: WorkspaceCreatePageSkeleton,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("workspaces.newTitle", match),
 });
@@ -89,9 +89,7 @@ export function NewWorkspacePage() {
           </header>
 
           <div className="space-y-2">
-            <Label htmlFor="workspace-name">
-              {t("workspaces.fieldSlug")}
-            </Label>
+            <Label htmlFor="workspace-name">{t("workspaces.fieldSlug")}</Label>
             <Input
               id="workspace-name"
               value={name}
@@ -105,7 +103,10 @@ export function NewWorkspacePage() {
                 if (e.key === "Enter") void handleSubmit();
               }}
             />
-            <p id="workspace-slug-help" className="text-muted-foreground text-sm">
+            <p
+              id="workspace-slug-help"
+              className="text-muted-foreground text-sm"
+            >
               {t("workspaces.fieldSlugHelp")}
             </p>
             {showNameError ? (

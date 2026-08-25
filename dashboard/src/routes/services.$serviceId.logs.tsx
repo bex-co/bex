@@ -16,9 +16,11 @@ import {
   type LogSearch,
 } from "@/features/logs/lib/log-search";
 import type { LogFilters } from "@/features/logs/types";
+import { ServiceLogsSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/logs")({
   component: RouteComponent,
+  pendingComponent: ServiceLogsSkeleton,
   validateSearch: parseLogSearch,
   // NOTE: no `search.middlewares` alias-strip here, deliberately — a
   // middleware rewrites the URL during hydration for alias-carrying deep

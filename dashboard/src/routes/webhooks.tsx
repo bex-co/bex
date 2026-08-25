@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ListPageSkeleton } from "@/common/components/detail-skeletons";
+import { WebhooksListPageSkeleton } from "@/common/components/route-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
 import {
   translatedTitleHead,
@@ -19,7 +19,7 @@ import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
 export const Route = createFileRoute("/webhooks")({
   staticData: { chrome: true },
   component: WebhooksPage,
-  pendingComponent: ListPageSkeleton,
+  pendingComponent: WebhooksListPageSkeleton,
   beforeLoad: requireAuth(),
   loader: ({ context, cause }) => {
     const ownerId = context.workspaceId;

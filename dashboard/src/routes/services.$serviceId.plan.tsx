@@ -5,9 +5,11 @@ import { PlanPickerGridSkeleton } from "@/common/components/detail-skeletons";
 import { InstanceTypePicker } from "@/features/services/components/instance-type-picker";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import { useServer } from "@/features/services/hooks/use-server";
+import { ServicePlanSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/plan")({
   component: ServicePlanPage,
+  pendingComponent: ServicePlanSkeleton,
 });
 
 /**

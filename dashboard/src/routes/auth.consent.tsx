@@ -5,6 +5,7 @@ import type {
   ConsentView,
 } from "@/common/server-fn/hydra-consent";
 import ConsentPage from "@/features/auth/pages/consent-page";
+import { ConsentRouteSkeleton } from "@/common/components/route-skeletons";
 
 // OAuth2 consent endpoint (docs/ADR012-auth.md §7, w4/m9 + w4/m16): Hydra's
 // `urls.consent` points here. The GET handler runs first and answers headlessly
@@ -90,5 +91,6 @@ export const Route = createFileRoute("/auth/consent")({
     };
   },
   component: ConsentPage,
+  pendingComponent: ConsentRouteSkeleton,
   head: ({ match }) => translatedTitleHead("auth.consentTitle", match),
 });

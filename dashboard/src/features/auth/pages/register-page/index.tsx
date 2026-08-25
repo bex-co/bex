@@ -4,7 +4,7 @@ import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig } from "@/common/lib/ory/config";
 import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { stashAuthNext } from "@/features/auth/lib/auth-next";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { AuthWidgetSkeleton } from "@/common/components/route-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import { useAuthFeatures } from "@/features/auth/components/auth-page-shell/auth-features";
@@ -46,11 +46,7 @@ export default function RegisterPage() {
           }}
         />
       ) : (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
+        <AuthWidgetSkeleton fields={3} />
       )}
     </AuthPageShell>
   );

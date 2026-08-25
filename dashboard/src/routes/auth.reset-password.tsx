@@ -3,6 +3,7 @@ import { translatedTitleHead } from "@/common/lib/document-head";
 import { oryThemeStyle } from "@/common/lib/ory/theme-styles";
 import { requireAuth } from "@/common/lib/auth/auth";
 import SettingsPage from "@/features/auth/pages/settings-page";
+import { AccountSettingsPageSkeleton } from "@/common/components/route-skeletons";
 
 /**
  * Alias for /settings — Kratos's recovery flow redirects here once its code
@@ -11,7 +12,9 @@ import SettingsPage from "@/features/auth/pages/settings-page";
  * Kratos is configured to send recovered users to.
  */
 export const Route = createFileRoute("/auth/reset-password")({
+  staticData: { chrome: true },
   component: SettingsPage,
+  pendingComponent: AccountSettingsPageSkeleton,
   beforeLoad: requireAuth(),
   head: ({ match }) => ({
     ...translatedTitleHead("auth.resetPasswordTitle", match),

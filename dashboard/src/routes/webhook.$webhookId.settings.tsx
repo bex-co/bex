@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { WebhookSettingsCard } from "@/features/webhooks/components/webhook-settings-card";
 import { useWebhookDetail } from "@/features/webhooks/components/webhook-detail-context";
+import { WebhookSettingsSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/webhook/$webhookId/settings")({
   component: WebhookSettingsTab,
+  pendingComponent: WebhookSettingsSkeleton,
 });
 
 /**

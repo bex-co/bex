@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { ServiceShellCardsSkeleton } from "@/common/components/route-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
@@ -41,7 +41,7 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
         </p>
       </div>
 
-      {loading && !service ? <Skeleton className="h-96 w-full" /> : null}
+      {loading && !service ? <ServiceShellCardsSkeleton /> : null}
 
       {eligible ? (
         <Card>

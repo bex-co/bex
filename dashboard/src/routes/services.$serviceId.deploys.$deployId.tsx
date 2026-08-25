@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DeployDetailPage } from "@/features/deploys/components/deploy-detail-page";
 import { parseLogRange, type LogRange } from "@/features/deploys/lib/log-range";
+import { DeployDetailSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/deploys/$deployId")({
   component: RouteComponent,
+  pendingComponent: DeployDetailSkeleton,
   // `?r=<range>` (w9/003) is the log viewer's shareable relative time window
   // (Render's own deploy-page param): absent => the deploy's own
   // createdAt..finishedAt window. Optional, not `r: undefined`, so other

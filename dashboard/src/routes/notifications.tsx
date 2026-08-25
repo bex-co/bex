@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ListPageSkeleton } from "@/common/components/detail-skeletons";
+import { NotificationsPageSkeleton } from "@/common/components/route-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
 import {
   translatedTitleHead,
@@ -23,7 +23,7 @@ import { WebPushSettingsPanel } from "@/features/notifications/components/web-pu
 export const Route = createFileRoute("/notifications")({
   staticData: { chrome: true },
   component: NotificationsPage,
-  pendingComponent: ListPageSkeleton,
+  pendingComponent: NotificationsPageSkeleton,
   beforeLoad: requireAuth(),
   loader: ({ context, cause }) => {
     const fetchPolicy = titleLoaderFetchPolicy(cause);

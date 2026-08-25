@@ -39,9 +39,11 @@ import {
   SERVICE_EVENT_TYPES,
   serviceEventLabelKey,
 } from "@/features/events/service-event-catalog";
+import { ServiceEventsSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
   component: RouteComponent,
+  pendingComponent: ServiceEventsSkeleton,
 });
 
 function RouteComponent() {

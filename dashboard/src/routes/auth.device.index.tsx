@@ -4,6 +4,7 @@ import type {
   DeviceView,
 } from "@/common/server-fn/hydra-device";
 import DeviceConfirmPage from "@/features/auth/pages/device-confirm-page";
+import { DeviceConfirmRouteSkeleton } from "@/common/components/route-skeletons";
 
 // The index route for the /auth/device layout (auth.device.tsx) — matches
 // the exact `/auth/device` URL (no further path segment) and renders inside
@@ -70,4 +71,5 @@ export const Route = createFileRoute("/auth/device/")({
     };
   },
   component: DeviceConfirmPage,
+  pendingComponent: DeviceConfirmRouteSkeleton,
 });

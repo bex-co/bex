@@ -6,7 +6,10 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
-import { ListPageSkeleton } from "@/common/components/detail-skeletons";
+import {
+  BlueprintsListPageSkeleton,
+  BlueprintsTableSkeleton,
+} from "@/common/components/route-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
 import {
   translatedTitleHead,
@@ -24,7 +27,6 @@ import {
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
 import { GenerateBlueprintDialog } from "@/features/blueprints/components/generate-blueprint-dialog";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -40,7 +42,7 @@ import { formatRelativeAge } from "@/features/services/lib/format";
 export const Route = createFileRoute("/blueprints")({
   staticData: { chrome: true },
   component: BlueprintsPage,
-  pendingComponent: ListPageSkeleton,
+  pendingComponent: BlueprintsListPageSkeleton,
   beforeLoad: requireAuth(),
   // Prefetch the list on hover-intent so it renders warm on mount (w9/m68);
   // `useBlueprints` is cache-first, so it reads this loader's result. The loader
@@ -108,7 +110,7 @@ function BlueprintsListPage() {
               <p className="font-medium">{t("blueprints.errorTitle")}</p>
             </div>
           ) : showSkeleton ? (
-            <Skeleton className="h-40 w-full" />
+            <BlueprintsTableSkeleton />
           ) : blueprints.length === 0 ? (
             <div className="py-8 text-center">
               <p className="font-medium">{t("blueprints.emptyTitle")}</p>

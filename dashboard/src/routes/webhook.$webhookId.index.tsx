@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { WebhookDeliveriesCard } from "@/features/webhooks/components/webhook-deliveries-card";
 import { useWebhookDetail } from "@/features/webhooks/components/webhook-detail-context";
+import { WebhookActivitySkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/webhook/$webhookId/")({
   component: WebhookActivityTab,
+  pendingComponent: WebhookActivitySkeleton,
 });
 
 /**

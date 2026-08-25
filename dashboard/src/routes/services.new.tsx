@@ -50,10 +50,12 @@ import {
   parseNewServiceSearch,
   serviceTypeCreateCopy,
 } from "@/features/services/lib/create-context";
+import { ServiceCreatePageSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/new")({
   staticData: { chrome: true },
   component: NewServicePage,
+  pendingComponent: ServiceCreatePageSkeleton,
   beforeLoad: requireAuth(),
   validateSearch: parseNewServiceSearch,
   // Same resolver as the on-page heading, so tab title and <h1> always agree —

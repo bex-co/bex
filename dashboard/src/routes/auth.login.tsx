@@ -2,9 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { oryThemeStyle } from "@/common/lib/ory/theme-styles";
 import LoginPage from "@/features/auth/pages/login-page";
+import { LoginRouteSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/auth/login")({
   component: LoginPage,
+  pendingComponent: LoginRouteSkeleton,
   validateSearch: (search: Record<string, unknown>) => ({
     next: typeof search.next === "string" ? search.next : undefined,
     flow: typeof search.flow === "string" ? search.flow : undefined,

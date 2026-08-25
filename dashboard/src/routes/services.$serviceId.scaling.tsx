@@ -7,9 +7,11 @@ import { ScalingRecentMetrics } from "@/features/services/components/scaling-rec
 import { useAutoscaling } from "@/features/services/hooks/use-autoscaling";
 import { useServer } from "@/features/services/hooks/use-server";
 import { isCron, isStaticSite } from "@/features/services/lib/service-type";
+import { ServiceScalingSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/scaling")({
   component: RouteComponent,
+  pendingComponent: ServiceScalingSkeleton,
 });
 
 function RouteComponent() {

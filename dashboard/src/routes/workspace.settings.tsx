@@ -9,10 +9,13 @@ import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace
 import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-workspace-card";
 import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/workspace-settings-navigation";
 import { TeamPanel } from "@/features/team/components/team-panel";
+import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
+import { SECTION_NAVIGATION_STICKY_CLASS } from "@/common/components/section-navigation";
 
 export const Route = createFileRoute("/workspace/settings")({
   staticData: { chrome: true },
   component: WorkspaceSettingsPage,
+  pendingComponent: WorkspaceSettingsPageSkeleton,
   // No-arg requireAuth (w1/m45): `next` keeps the full href so the
   // `?plan=change` deep link (blocked-invite CTA, /billing/update-plan alias)
   // survives the SSR login bounce.
@@ -56,7 +59,9 @@ function WorkspaceSettingsPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto grid w-full max-w-4xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
           {/* Same right-rail quick nav as the service settings page. */}
-          <WorkspaceSettingsNavigation className="sticky top-0 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-6 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none" />
+          <WorkspaceSettingsNavigation
+            className={SECTION_NAVIGATION_STICKY_CLASS}
+          />
 
           <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
             <div>
@@ -69,8 +74,15 @@ function WorkspaceSettingsPage() {
             </div>
             {!currentWorkspace && loading ? (
               <>
-                <CardSkeleton rows={5} />
-                <CardSkeleton rows={3} />
+                <section data-skeleton-region="general">
+                  <CardSkeleton rows={5} />
+                </section>
+                <section data-skeleton-region="team">
+                  <CardSkeleton rows={5} />
+                </section>
+                <section data-skeleton-region="danger-zone">
+                  <CardSkeleton rows={2} />
+                </section>
               </>
             ) : !currentWorkspace ? (
               <p className="text-muted-foreground text-sm">

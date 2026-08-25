@@ -2,7 +2,7 @@ import { useSearch } from "@tanstack/react-router";
 import { Recovery } from "@ory/elements-react/theme";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { AuthWidgetSkeleton } from "@/common/components/route-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 
@@ -26,10 +26,7 @@ export default function ForgotPasswordPage() {
       {flow ? (
         <Recovery flow={flow} config={oryConfig} components={oryHideCardLogo} />
       ) : (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
+        <AuthWidgetSkeleton fields={2} />
       )}
     </AuthPageShell>
   );

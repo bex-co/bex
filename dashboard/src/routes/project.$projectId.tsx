@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
-import RoutePending from "@/common/root-route/route-pending";
+import { ProjectRouteSkeleton } from "@/common/components/route-skeletons";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import {
@@ -22,18 +22,10 @@ import { mapProject } from "@/features/projects/hooks/use-projects";
  * contextual ProjectSidebar off the route params — and put the default
  * spinner where the child page will land.
  */
-function ProjectPending() {
-  return (
-    <DashboardLayout>
-      <RoutePending />
-    </DashboardLayout>
-  );
-}
-
 export const Route = createFileRoute("/project/$projectId")({
   staticData: { chrome: true },
   component: RouteComponent,
-  pendingComponent: ProjectPending,
+  pendingComponent: ProjectRouteSkeleton,
   pendingMs: 0,
   beforeLoad: requireAuth(),
   loader: ({ context, params, cause }) =>

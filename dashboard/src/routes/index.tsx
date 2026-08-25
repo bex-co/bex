@@ -43,10 +43,12 @@ import { ResourceTable } from "@/features/projects/components/resource-table";
 import { NewProjectDialog } from "@/features/projects/components/new-project-dialog";
 import { ProjectCard } from "@/features/projects/components/project-card";
 import { NewProjectCard } from "@/features/projects/components/new-project-card";
+import { OverviewPageSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/")({
   staticData: { chrome: true },
   component: HomePage,
+  pendingComponent: OverviewPageSkeleton,
   // No-arg requireAuth: `next` defaults to the requested href, so
   // `?new=database` — the create-dialog param Render's New-menu aliases land
   // with (w1/m45) — survives the SSR login bounce.

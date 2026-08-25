@@ -3,10 +3,12 @@ import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { oryThemeStyle } from "@/common/lib/ory/theme-styles";
 import SettingsPage from "@/features/auth/pages/settings-page";
+import { AccountSettingsPageSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/settings")({
   staticData: { chrome: true },
   component: SettingsPage,
+  pendingComponent: AccountSettingsPageSkeleton,
   beforeLoad: requireAuth(),
   // GitHub's cross-site install callback redirects failures here with one
   // bounded reason code. Keep it advisory: unknown values render the generic

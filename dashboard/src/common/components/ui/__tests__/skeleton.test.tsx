@@ -16,6 +16,8 @@ describe("Skeleton", () => {
     const el = container.firstChild as HTMLElement;
     expect(el).toHaveClass("bg-accent");
     expect(el).toHaveClass("animate-pulse");
+    expect(el).toHaveClass("motion-reduce:animate-none");
+    expect(el).toHaveClass("group-data-[skeleton-frame=true]:!animate-none");
     expect(el).toHaveClass("rounded-md");
   });
 

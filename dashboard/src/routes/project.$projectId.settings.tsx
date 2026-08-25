@@ -24,9 +24,11 @@ import {
   titleHead,
   translatedText,
 } from "@/common/lib/document-head";
+import { ProjectSettingsPageSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/project/$projectId/settings")({
   component: ProjectSettingsPage,
+  pendingComponent: ProjectSettingsPageSkeleton,
   loader: async ({ parentMatchPromise }) =>
     (await parentMatchPromise).loaderData,
   head: ({ loaderData, match }) =>

@@ -11,12 +11,11 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 - `bash scripts/dev-env.sh 5 down` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
 - `bash scripts/dev-env.sh 5 clean` — reclaim `logs/` and `bin/` (refuses while the environment is up)
 
-`up` prints the dashboard command to point at it once bex-api is running. One shared
-implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only
-`ports.env` (a generated record of the derivation), this README, and `.gitignore`.
+`up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
 ## Milestones
 
+- [x] **m79** — Route-by-route dashboard preloader skeleton completion (28 tasks) ← user request 2026-08-24 after live `dashboard.bex.co` + generated route-tree inventory; relocated from `w10/m12` to w5 by user direction 2026-08-24
 - [x] **m78** — Agent sessions dashboard: QA bug fixes from dev-5 walk (6 tasks) — **DONE 2026-08-22**, moved to `done/m78/`: gate GitHub empty callout to repo-backed create only, remove duplicate Archived sidebar link (list tabs kept), show provisioning fallback during redispatch without sandbox instead of false "stream unavailable"; dashboard suite 2,521 tests green.
 - [ ] **m77** — ACP profile and stream hot-path simplification (7 tasks) ← from user handoff 2026-08-22 after reviewing Vercel `@ai-sdk/harness-acp` compatibility against bex. Follow-on, not duplicate, to m66: retain direct official ACP, OpenSandbox, gateway credential/transcript authority, and AI SDK v6; learn from Vercel's declarative profile shape to consolidate the release-locked runtime catalog, then remove per-part PostgreSQL waits, log opens, and repeated SSE encoding with bounded batching and byte-identical recovery tests.
 - [ ] **m76** — Dashboard "Update Source" card: swap a service's backing repo/branch/image from Settings (6 tasks) ← from ADR026 §8 "Render-parity status & remaining plan" item 1 (2026-08-21, grounded in the live Render-dashboard walk + the deep control-surfaces research). The API half already exists (`PATCH /v1/services/{id}` accepts `repo`/`branch`/`image` since w1/073); this ships the missing Settings UI — Source card + Edit dialog (account-grouped repo picker reuse, branch combobox, repo↔image switch) with Render's no-auto-deploy semantics — after t001 verifies/repairs the repo↔image transition semantics ×3 surfaces. Closes the last functional GitHub-integration parity gap.
