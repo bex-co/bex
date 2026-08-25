@@ -5,16 +5,7 @@ import { Input } from "@/common/components/ui/input";
 import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { Slider } from "@/common/components/ui/slider";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import {
   Card,
   CardHeader,
@@ -422,24 +413,15 @@ export function AutoscalingSection({
         </CardContent>
       )}
 
-      <AlertDialog open={confirmDisable} onOpenChange={setConfirmDisable}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("services.scalingDisableConfirmTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("services.scalingDisableConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("services.scalingCancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleDisableConfirmed()}>
-              {t("services.scalingDisableConfirmAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirmDisable}
+        onOpenChange={setConfirmDisable}
+        title={t("services.scalingDisableConfirmTitle")}
+        description={t("services.scalingDisableConfirmBody")}
+        cancelLabel={t("services.scalingCancel")}
+        confirmLabel={t("services.scalingDisableConfirmAction")}
+        onConfirm={() => void handleDisableConfirmed()}
+      />
     </Card>
   );
 }

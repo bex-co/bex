@@ -31,16 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ResourceTable } from "@/features/projects/components/resource-table";
 import {
@@ -430,33 +421,21 @@ export function EnvironmentCard({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("environments.deleteConfirmTitle", { name: environment.name })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("environments.deleteConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingThis}>
-              {t("environments.cancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void handleDelete();
-              }}
-              disabled={deletingThis}
-            >
-              {deletingThis ? <Loader2 className="animate-spin" /> : null}
-              {t("environments.deleteAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={t("environments.deleteConfirmTitle", { name: environment.name })}
+        description={t("environments.deleteConfirmBody")}
+        cancelLabel={t("environments.cancel")}
+        confirmLabel={
+          <>
+            {deletingThis ? <Loader2 className="animate-spin" /> : null}
+            {t("environments.deleteAction")}
+          </>
+        }
+        pending={deletingThis}
+        onConfirm={() => void handleDelete()}
+      />
 
       <ManageResourcesDialog
         environment={environment}

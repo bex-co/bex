@@ -16,18 +16,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button, buttonVariants } from "@/common/components/ui/button";
+import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -320,80 +311,45 @@ export function SessionDetailHeader({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog
+      <ConfirmDialog
         open={deleteOpen}
         onOpenChange={(open) => !open && !deleting && setDeleteOpen(false)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("agentSessions.deleteConfirmTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("agentSessions.deleteConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>
-              {t("agentSessions.deleteConfirmDismiss")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void handleDelete();
-              }}
-              disabled={deleting}
-              className={buttonVariants({ variant: "destructive" })}
-            >
-              {deleting ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  {t("agentSessions.deleting")}
-                </>
-              ) : (
-                t("agentSessions.deleteConfirmProceed")
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={t("agentSessions.deleteConfirmTitle")}
+        description={t("agentSessions.deleteConfirmBody")}
+        cancelLabel={t("agentSessions.deleteConfirmDismiss")}
+        confirmLabel={
+          deleting ? (
+            <>
+              <Loader2 className="animate-spin" />
+              {t("agentSessions.deleting")}
+            </>
+          ) : (
+            t("agentSessions.deleteConfirmProceed")
+          )
+        }
+        pending={deleting}
+        onConfirm={() => void handleDelete()}
+      />
 
-      <AlertDialog
+      <ConfirmDialog
         open={confirmOpen}
         onOpenChange={(open) => !open && !canceling && setConfirmOpen(false)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("agentSessions.cancelConfirmTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("agentSessions.cancelConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={canceling}>
-              {t("agentSessions.cancelConfirmDismiss")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void handleConfirm();
-              }}
-              disabled={canceling}
-            >
-              {canceling ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  {t("agentSessions.canceling")}
-                </>
-              ) : (
-                t("agentSessions.cancelConfirmProceed")
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={t("agentSessions.cancelConfirmTitle")}
+        description={t("agentSessions.cancelConfirmBody")}
+        cancelLabel={t("agentSessions.cancelConfirmDismiss")}
+        confirmLabel={
+          canceling ? (
+            <>
+              <Loader2 className="animate-spin" />
+              {t("agentSessions.canceling")}
+            </>
+          ) : (
+            t("agentSessions.cancelConfirmProceed")
+          )
+        }
+        pending={canceling}
+        onConfirm={() => void handleConfirm()}
+      />
     </div>
   );
 }

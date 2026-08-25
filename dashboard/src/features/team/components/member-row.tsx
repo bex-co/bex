@@ -10,17 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ROLES, type MemberView, type Role } from "@/features/team/types";
 
@@ -101,8 +91,10 @@ export function MemberRow({
       </TableCell>
       <TableCell className="text-right">
         {canManage ? (
-          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-            <AlertDialogTrigger asChild>
+          <ConfirmDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            trigger={
               <Button
                 variant="ghost"
                 size="icon"
@@ -115,27 +107,16 @@ export function MemberRow({
                   <Trash2 className="text-destructive" />
                 )}
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t("team.removeTitle")}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("team.removeConfirm", { identity })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t("team.removeCancel")}</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    setConfirmOpen(false);
-                    onRemove(member.subject);
-                  }}
-                >
-                  {t("team.remove")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            }
+            title={t("team.removeTitle")}
+            description={t("team.removeConfirm", { identity })}
+            cancelLabel={t("team.removeCancel")}
+            confirmLabel={t("team.remove")}
+            onConfirm={() => {
+              setConfirmOpen(false);
+              onRemove(member.subject);
+            }}
+          />
         ) : null}
       </TableCell>
     </TableRow>

@@ -8,16 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu.tsx";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog.tsx";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
@@ -155,33 +146,20 @@ export function ServiceRowActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog
+      <ConfirmDialog
         open={confirm !== null}
         onOpenChange={(open) => !open && setConfirm(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirm && t(CONFIRM[confirm]!.title, { name: service.name })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirm && t(CONFIRM[confirm]!.body, { name: service.name })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("services.confirmCancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault();
-                if (confirm) void runAction(confirm);
-                setConfirm(null);
-              }}
-            >
-              {confirm && t(ACTION_LABEL[confirm])}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={confirm ? t(CONFIRM[confirm]!.title, { name: service.name }) : ""}
+        description={
+          confirm ? t(CONFIRM[confirm]!.body, { name: service.name }) : ""
+        }
+        cancelLabel={t("services.confirmCancel")}
+        confirmLabel={confirm ? t(ACTION_LABEL[confirm]) : ""}
+        onConfirm={() => {
+          if (confirm) void runAction(confirm);
+          setConfirm(null);
+        }}
+      />
 
       <ProtectedConfirmationDialog
         key={

@@ -46,16 +46,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Separator } from "@/common/components/ui/separator";
 import { CopyButton } from "@/common/components/copy-button";
 import { PanelCenteredState } from "@/common/components/panel-states";
@@ -283,36 +274,20 @@ function CustomDomainRow({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <AlertDialog
+          <ConfirmDialog
             open={confirming}
             onOpenChange={(o) => !o && setConfirming(false)}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {t("services.domainDeleteConfirmTitle", {
-                    name: domain.name,
-                  })}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("services.domainDeleteConfirmBody")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>
-                  {t("services.domainCancel")}
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    void onDelete(domain.name);
-                    setConfirming(false);
-                  }}
-                >
-                  {t("services.domainDelete")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            title={t("services.domainDeleteConfirmTitle", {
+              name: domain.name,
+            })}
+            description={t("services.domainDeleteConfirmBody")}
+            cancelLabel={t("services.domainCancel")}
+            confirmLabel={t("services.domainDelete")}
+            onConfirm={() => {
+              void onDelete(domain.name);
+              setConfirming(false);
+            }}
+          />
         </TableCell>
       </TableRow>
       {open && (

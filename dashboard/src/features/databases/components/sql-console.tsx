@@ -1,15 +1,6 @@
 import { useMemo, useState } from "react";
 import { Clock3, DatabaseZap, Play, Trash2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Alert, AlertDescription } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import {
@@ -273,35 +264,19 @@ export function SQLConsole({ id }: { id: string }) {
         </CardContent>
       </Card>
 
-      <AlertDialog
+      <ConfirmDialog
         open={pendingWrite !== null}
         onOpenChange={(open) => !open && setPendingWrite(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("databases.sqlConfirmTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("databases.sqlConfirmDescription")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("databases.sqlConfirmCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const statement = pendingWrite;
-                setPendingWrite(null);
-                if (statement) void run(statement, true);
-              }}
-            >
-              {t("databases.sqlConfirmRun")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={t("databases.sqlConfirmTitle")}
+        description={t("databases.sqlConfirmDescription")}
+        cancelLabel={t("databases.sqlConfirmCancel")}
+        confirmLabel={t("databases.sqlConfirmRun")}
+        onConfirm={() => {
+          const statement = pendingWrite;
+          setPendingWrite(null);
+          if (statement) void run(statement, true);
+        }}
+      />
     </>
   );
 }

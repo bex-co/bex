@@ -15,16 +15,7 @@ import {
 } from "@/common/components/ui/card.tsx";
 import { Button } from "@/common/components/ui/button.tsx";
 import { Input } from "@/common/components/ui/input.tsx";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog.tsx";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useRenameProject } from "@/features/projects/hooks/use-rename-project";
 import { useDeleteProject } from "@/features/projects/hooks/use-delete-project";
@@ -195,33 +186,21 @@ export function ProjectSettingsPage() {
         </Card>
       </div>
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("projects.deleteConfirmTitle", { name: project?.name ?? "" })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("projects.deleteConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingThis}>
-              {t("projects.createCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void handleDelete();
-              }}
-              disabled={deletingThis}
-            >
-              {deletingThis ? <Loader2 className="animate-spin" /> : null}
-              {t("projects.deleteCardButton")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={t("projects.deleteConfirmTitle", { name: project?.name ?? "" })}
+        description={t("projects.deleteConfirmBody")}
+        cancelLabel={t("projects.createCancel")}
+        confirmLabel={
+          <>
+            {deletingThis ? <Loader2 className="animate-spin" /> : null}
+            {t("projects.deleteCardButton")}
+          </>
+        }
+        pending={deletingThis}
+        onConfirm={() => void handleDelete()}
+      />
     </div>
   );
 }

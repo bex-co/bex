@@ -8,16 +8,7 @@ import {
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
 import { PlanPickerGridSkeleton } from "@/common/components/detail-skeletons";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   useInstanceTypes,
@@ -148,29 +139,21 @@ export function InstanceTypePicker({
         </div>
       </CardContent>
 
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {selectedType &&
-                t("services.planPickerConfirmTitle", {
-                  name: selectedType.name,
-                })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("services.planPickerConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("services.planPickerCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleConfirm()}>
-              {t("services.planPickerSave")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={
+          selectedType
+            ? t("services.planPickerConfirmTitle", { name: selectedType.name })
+            : ""
+        }
+        description={t("services.planPickerConfirmBody")}
+        cancelLabel={t("services.planPickerCancel")}
+        confirmLabel={t("services.planPickerSave")}
+        // Changing plan is the primary action here, not a destructive one.
+        destructive={false}
+        onConfirm={() => void handleConfirm()}
+      />
     </Card>
   );
 }

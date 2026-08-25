@@ -8,16 +8,7 @@ import {
 } from "@/common/components/ui/card";
 import { Switch } from "@/common/components/ui/switch";
 import { Label } from "@/common/components/ui/label";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useMaintenanceMode } from "@/features/services/hooks/use-maintenance-mode";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
@@ -107,31 +98,20 @@ export function MaintenanceModeSection({
         />
       </CardContent>
 
-      <AlertDialog open={confirmEnable} onOpenChange={setConfirmEnable}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("services.confirmMaintenanceModeTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("services.confirmMaintenanceModeBody", {
-                name: serviceName,
-              })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("services.confirmCancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                void setMaintenanceMode(serviceId, true, current);
-                setConfirmEnable(false);
-              }}
-            >
-              {t("services.maintenanceModeEnableAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirmEnable}
+        onOpenChange={setConfirmEnable}
+        title={t("services.confirmMaintenanceModeTitle")}
+        description={t("services.confirmMaintenanceModeBody", {
+          name: serviceName,
+        })}
+        cancelLabel={t("services.confirmCancel")}
+        confirmLabel={t("services.maintenanceModeEnableAction")}
+        onConfirm={() => {
+          void setMaintenanceMode(serviceId, true, current);
+          setConfirmEnable(false);
+        }}
+      />
     </Card>
   );
 }

@@ -10,16 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Combobox, type ComboboxOption } from "@/common/components/ui/combobox";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -306,27 +297,17 @@ export function EditableFieldRow({
       )}
 
       {confirm && (
-        <AlertDialog
+        <ConfirmDialog
           open={confirming}
           onOpenChange={(open) => setConfirming(open)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {confirm.title(normalized || confirm.emptyValue || "")}
-              </AlertDialogTitle>
-              <AlertDialogDescription>{confirm.body}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>
-                {t("services.editRowCancel")}
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={() => void persist()}>
-                {t("services.editRowSave")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          title={confirm.title(normalized || confirm.emptyValue || "")}
+          description={confirm.body}
+          cancelLabel={t("services.editRowCancel")}
+          confirmLabel={t("services.editRowSave")}
+          // Saving an edit is the primary action, not a destructive one.
+          destructive={false}
+          onConfirm={() => void persist()}
+        />
       )}
     </div>
   );

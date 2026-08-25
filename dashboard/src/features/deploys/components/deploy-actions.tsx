@@ -8,16 +8,7 @@ import {
   RollbackServiceDocument,
 } from "@/graphql/definitions";
 import { Button } from "@/common/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { DEPLOY_REFETCH_QUERIES } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServiceBase } from "@/features/services/lib/service-base";
@@ -122,36 +113,23 @@ export function DeployActions({
         ) : null}
       </div>
 
-      <AlertDialog
+      <ConfirmDialog
         open={confirm !== null}
         onOpenChange={(open) => !open && setConfirm(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirm === "cancel"
-                ? t("services.eventsCancelConfirmTitle")
-                : t("services.eventsRollbackConfirmTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirm === "cancel"
-                ? t("services.eventsCancelConfirmBody")
-                : t("services.eventsRollbackConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("services.eventsConfirmCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => void handleConfirm()}
-              disabled={busy}
-            >
-              {t("services.eventsConfirmProceed")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={
+          confirm === "cancel"
+            ? t("services.eventsCancelConfirmTitle")
+            : t("services.eventsRollbackConfirmTitle")
+        }
+        description={
+          confirm === "cancel"
+            ? t("services.eventsCancelConfirmBody")
+            : t("services.eventsRollbackConfirmBody")
+        }
+        cancelLabel={t("services.eventsConfirmCancel")}
+        confirmLabel={t("services.eventsConfirmProceed")}
+        onConfirm={() => void handleConfirm()}
+      />
     </>
   );
 }

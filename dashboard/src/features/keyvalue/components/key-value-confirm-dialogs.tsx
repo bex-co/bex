@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Button, buttonVariants } from "@/common/components/ui/button";
+import { Button } from "@/common/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,16 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/common/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { KeyValueView } from "@/features/keyvalue/types";
@@ -114,37 +105,34 @@ export function SuspendKeyValueDialog({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {t("keyvalue.confirmSuspendTitle")}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            <span className="block">{t("keyvalue.confirmSuspendBody")}</span>
-            <span className="mt-2 block">
-              {t("keyvalue.confirmSuspendDetail", { name: keyValue.name })}
-            </span>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <SudoCommandField
-          id="kv-suspend-confirm"
-          promptKey="keyvalue.confirmSuspendPrompt"
-          phrase={confirmPhrase}
-          value={confirmation}
-          onValueChange={setConfirmation}
-        />
-        <AlertDialogFooter>
-          <AlertDialogCancel>{t("keyvalue.confirmCancel")}</AlertDialogCancel>
-          <AlertDialogAction
-            className={buttonVariants({ variant: "destructive" })}
-            onClick={() => void onConfirm()}
-            disabled={!canSuspend}
-          >
-            {t("keyvalue.actionSuspend")}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={t("keyvalue.confirmSuspendTitle")}
+      description={
+        <>
+          <span className="block">{t("keyvalue.confirmSuspendBody")}</span>
+          <span className="mt-2 block">
+            {t("keyvalue.confirmSuspendDetail", { name: keyValue.name })}
+          </span>
+        </>
+      }
+      cancelLabel={t("keyvalue.confirmCancel")}
+      confirmLabel={t("keyvalue.actionSuspend")}
+      // This dialog keeps the shared SudoCommandField rather than the
+      // primitive's own `phrase` input — it is the house sudo control, used
+      // identically by the datastore suspend flows — so the gate is the
+      // caller's and rides confirmDisabled.
+      confirmDisabled={!canSuspend}
+      onConfirm={() => void onConfirm()}
+    >
+      <SudoCommandField
+        id="kv-suspend-confirm"
+        promptKey="keyvalue.confirmSuspendPrompt"
+        phrase={confirmPhrase}
+        value={confirmation}
+        onValueChange={setConfirmation}
+      />
+    </ConfirmDialog>
   );
 }

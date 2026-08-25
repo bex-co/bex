@@ -34,16 +34,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/common/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -833,31 +824,20 @@ export function EnvironmentEditor({
         />
       ) : null}
 
-      <AlertDialog open={blocker.status === "blocked"}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("services.environmentDiscardTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("services.environmentDiscardBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => blocker.reset?.()}>
-              {t("services.environmentKeepEditing")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setDraft(null);
-                blocker.proceed?.();
-              }}
-            >
-              {t("services.environmentDiscard")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={blocker.status === "blocked"}
+        title={t("services.environmentDiscardTitle")}
+        description={t("services.environmentDiscardBody")}
+        cancelLabel={t("services.environmentKeepEditing")}
+        confirmLabel={t("services.environmentDiscard")}
+        // Cancel must RESET the navigation blocker, not just close the dialog —
+        // leaving it blocked would strand the user on the page.
+        onCancel={() => blocker.reset?.()}
+        onConfirm={() => {
+          setDraft(null);
+          blocker.proceed?.();
+        }}
+      />
     </div>
   );
 }
