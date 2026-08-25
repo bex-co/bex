@@ -89,15 +89,26 @@ describe("DiskSection", () => {
     }
   });
 
-  it("defaults to 10GB and offers Render's quick-select sizes", async () => {
+  it("defaults to 10GB and offers only sizes at or above Hetzner's volume floor", async () => {
     const user = userEvent.setup();
     render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
     await user.click(screen.getByRole("button", { name: /add disk/i }));
 
-    for (const size of [1, 5, 10, 50, 100]) {
+    for (const size of [10, 50, 100]) {
       expect(screen.getByRole("button", { name: `${size} GB` })).toBeInTheDocument();
     }
-    expect(screen.getByLabelText(/^size$/i)).toHaveValue(10);
+    // Render offers 1 and 5 GB; bex cannot. Hetzner's minimum volume is 10 GB,
+    // so those chips billed for less than the disk actually provisioned and
+    // cost bex more than it charged (.pm/w1/078.md).
+    for (const belowFloor of [1, 5]) {
+      expect(
+        screen.queryByRole("button", { name: `${belowFloor} GB` }),
+      ).not.toBeInTheDocument();
+    }
+    const size = screen.getByLabelText(/^size$/i);
+    expect(size).toHaveValue(10);
+    // The free-text box honors the same floor as the chips.
+    expect(size).toHaveAttribute("min", "10");
   });
 
   // These are the mistakes a mount path invites; catching them here means the
