@@ -21,7 +21,7 @@ Syntax gotchas that break rendering: quote labels containing `(`, `)`, `[`, `{`,
 
 ## Verify (mandatory, before answering)
 
-1. Write the diagram body (no ` ```mermaid ` fence) to a `.mmd` file in the scratchpad.
+1. Write the diagram body (no ` ```mermaid ` fence) to a `.mmd` file in the scratchpad (e.g. `/tmp/diagram.mmd` or the current workspace).
 2. Run: `npx -y @mermaid-js/mermaid-cli@11.16.0 -i <file>.mmd -o <file>.svg` — exit 0 means the syntax is valid. (First run downloads a headless browser; that's expected.) The version is pinned deliberately (supply-chain: codex-security #17) — bump it consciously, don't revert to floating.
 3. On failure, read the parse error, fix the diagram, and re-verify. Never output a diagram that hasn't passed.
 

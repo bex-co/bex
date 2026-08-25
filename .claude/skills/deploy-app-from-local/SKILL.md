@@ -9,7 +9,7 @@ allowed-tools: Bash(git:*), Bash(docker:*), Bash(ssh:*), Bash(scp:*), Bash(curl:
 
 # Task: deploy a local checkout to prod Hetzner (manual image-import runbook)
 
-**There is no build-from-git-in-cluster shortcut.** `App.spec.repo` + the operator's `build.Build()` (`lego/operator/internal/build/build.go`) is unimplemented in prod: the deployed operator image is `distroless/static:nonroot` (`lego/Dockerfile`) with no `git`/`docker`/`pack` binaries and no volumes (`lego/operator/config/manager/manager.yaml`). `.pm/w1/m5/README.md` (status: `todo`, never shipped) says this outright: _"the demo built locally and `ctr`-imported by hand."_ So this skill runs `docs/ADR004-app-deployment.md`'s manual runbook end-to-end. Do **not** use the `restart` verb as a substitute for a deploy — it only rolls pods on the App's existing cached `spec.image` (see `app_controller.go:120`); it never rebuilds anything.
+**There is no build-from-git-in-cluster shortcut.** `App.spec.repo` + the operator's `build.Build()` (`lego/operator/internal/build/build.go`) is unimplemented in prod: the deployed operator image is `distroless/static:nonroot` (`lego/Dockerfile`) with no `git`/`docker`/`pack` binaries and no volumes (`lego/operator/config/manager/manager.yaml`). The original demo built locally and `ctr`-imported by hand (see `docs/ADR004-app-deployment.md`). So this skill runs `docs/ADR004-app-deployment.md`'s manual runbook end-to-end. Do **not** use the `restart` verb as a substitute for a deploy — it only rolls pods on the App's existing cached `spec.image` (see `app_controller.go:120`); it never rebuilds anything.
 
 This _is_ a genuine build-from-local-disk flow (unlike the old, wrong version of this skill): the image is built from whatever is on disk in `$ARGUMENTS`'s repo path right now, not from `origin/main`. If you want "latest remote main" instead, `git pull --ff-only` first.
 
@@ -61,7 +61,7 @@ Use a **fresh tag** (git sha, never `:latest`) — the operator sets no `imagePu
 ## Step 4 — Import into the app node's containerd — _laptop → app node_ (confirm with user first, see Step 0)
 
 ```bash
-docker save <app-name>:$SHA | ssh -i ~/.ssh/bex "root@${APP_NODE_IP}" \
+docker save <app-name>:$SHA | ssh -i ~/.ssh/id_bex "root@${APP_NODE_IP}" \
   'ctr -n k8s.io images import -'
 ```
 

@@ -1,6 +1,9 @@
 ---
 name: release
 description: Cut a versioned release of a bex component (today: cli) — compute/confirm the version, push the tag, watch the release workflow to green, and verify every distribution channel. Use when the user asks to release, publish, or bump the CLI (or a future component). /ship lands code; /release mints versions.
+
+
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cosign:*), Bash(brew:*), Bash(scripts/install-bex.sh:*), Bash(curl:*), AskUserQuestion
 ---
 
 # Task: Release a bex component

@@ -1,6 +1,8 @@
 ---
 name: upgrade-stripe
 description: Guide for upgrading Stripe API versions and SDKs
+
+allowed-tools: Bash(stripe:*), Bash(npm:*), Bash(go:*), Bash(git:*), Read
 ---
 
 The latest Stripe API version is 2026-06-24.dahlia - use this version when upgrading unless the user specifies a different target version.

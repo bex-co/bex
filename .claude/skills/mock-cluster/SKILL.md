@@ -4,7 +4,7 @@ description: >-
   Stand up or scale the local CAPD mock cluster and deploy the bex operator into it. Use when the user asks to create, inspect, or resize the repository's local development cluster. Optional argument: scale N.
 
 
-allowed-tools: Bash(bash scripts/mock-cluster.sh:*), Bash(kubectl:*), Bash(docker:*), Bash(make:*), Bash(kind:*), Bash(clusterctl:*)
+allowed-tools: Bash(bash scripts/mock-cluster.sh:*), Bash(kubectl:*), Bash(docker:*), Bash(make:*), Bash(kind:*), Bash(clusterctl:*), Bash(cut:*)
 ---
 
 Bring up the local mock of the Hetzner substrate and deploy the bex operator into it.

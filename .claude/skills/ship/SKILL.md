@@ -4,7 +4,7 @@ description: >-
   Safely bring main up to date, commit intended pending changes, and push to origin/main. Use when the user explicitly asks to ship the current main branch or invokes the repository's ship workflow.
 
 
-allowed-tools: Bash(git status:*), Bash(git pull:*), Bash(git fetch:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git rev-parse:*)
+allowed-tools: Bash(git status:*), Bash(git pull:*), Bash(git fetch:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git rebase:*), Bash(git show:*), Bash(git checkout:*), Bash(git reset:*)
 ---
 
 # Task: Ship the current main branch
@@ -24,7 +24,7 @@ Only when the working tree contains changes you didn't make (fresh session, exte
 ## Step 1 — Verify branch
 
 ```bash
-!git branch --show-current
+git branch --show-current
 ```
 
 If not on `main`, **STOP** and ask the user whether to switch or abort. Do not silently switch branches.
@@ -32,7 +32,7 @@ If not on `main`, **STOP** and ask the user whether to switch or abort. Do not s
 ## Step 2 — Inspect state
 
 ```bash
-!git status
+git status
 ```
 
 **Session-aware:** if every change listed by `git status` is one you made this session, stop here — no diff commands needed.
@@ -40,11 +40,11 @@ If not on `main`, **STOP** and ask the user whether to switch or abort. Do not s
 Otherwise, inspect the unfamiliar changes:
 
 ```bash
-!git diff --stat
+git diff --stat
 ```
 
 ```bash
-!git diff --cached --stat
+git diff --cached --stat
 ```
 
 If the working tree is clean and there's nothing to commit, skip Step 4: still do Step 3 (pull) and Step 5 (push).
