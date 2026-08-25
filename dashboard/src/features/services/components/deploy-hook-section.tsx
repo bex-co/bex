@@ -11,17 +11,7 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { CopyButton } from "@/common/components/copy-button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeployHook } from "@/features/services/hooks/use-deploy-hook";
 
@@ -117,8 +107,8 @@ export function DeployHookRows({ serviceId }: DeployHookSectionProps) {
         {t("services.deployHookSecretHint")}
       </p>
 
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
+      <ConfirmDialog
+        trigger={
           <Button
             type="button"
             variant="outline"
@@ -127,26 +117,13 @@ export function DeployHookRows({ serviceId }: DeployHookSectionProps) {
             <RotateCw />
             {t("services.deployHookRegenerate")}
           </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("services.deployHookRegenerateTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("services.deployHookRegenerateWarning")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("services.deployHookCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleRegenerate()}>
-              {t("services.deployHookRegenerateConfirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        }
+        title={t("services.deployHookRegenerateTitle")}
+        description={t("services.deployHookRegenerateWarning")}
+        cancelLabel={t("services.deployHookCancel")}
+        confirmLabel={t("services.deployHookRegenerateConfirm")}
+        onConfirm={() => void handleRegenerate()}
+      />
     </>
   );
 }

@@ -7,16 +7,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/common/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
@@ -97,24 +88,15 @@ export function SuspendServiceCard({
         )}
       </CardContent>
 
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("services.confirmSuspendTitle", { name: service.name })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("services.confirmSuspendBody", { name: service.name })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("services.confirmCancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleSuspendConfirm()}>
-              {t("services.actionSuspend")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={t("services.confirmSuspendTitle", { name: service.name })}
+        description={t("services.confirmSuspendBody", { name: service.name })}
+        cancelLabel={t("services.confirmCancel")}
+        confirmLabel={t("services.actionSuspend")}
+        onConfirm={() => void handleSuspendConfirm()}
+      />
     </Card>
   );
 }

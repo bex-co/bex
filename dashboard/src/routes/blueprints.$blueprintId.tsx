@@ -29,16 +29,7 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
 import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
@@ -496,17 +487,21 @@ export function BlueprintDetailPage() {
         </div>
       </div>
 
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("blueprints.syncConfirmTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("blueprints.syncConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {syncPreviewLoading ? (
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        contentClassName="max-h-[85vh] overflow-y-auto sm:max-w-xl"
+        title={t("blueprints.syncConfirmTitle")}
+        description={t("blueprints.syncConfirmBody")}
+        cancelLabel={t("blueprints.syncCancel")}
+        confirmLabel={t("blueprints.syncConfirmAction")}
+        // Syncing is the primary action, and it is gated on the preview having
+        // loaded so nobody applies a plan they have not seen.
+        destructive={false}
+        confirmDisabled={syncPreviewLoading}
+        onConfirm={() => void handleSync()}
+      >
+        {syncPreviewLoading ? (
             <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
               {t("blueprints.syncPreviewLoading")}
@@ -536,41 +531,17 @@ export function BlueprintDetailPage() {
               {t("blueprints.syncPreviewUnavailable")}
             </p>
           ) : null}
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("blueprints.syncCancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => void handleSync()}
-              disabled={syncPreviewLoading}
-            >
-              {t("blueprints.syncConfirmAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      </ConfirmDialog>
 
-      <AlertDialog open={disconnecting} onOpenChange={setDisconnecting}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("blueprints.disconnectTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("blueprints.disconnectBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("blueprints.disconnectCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => void handleDisconnect()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t("blueprints.disconnectAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={disconnecting}
+        onOpenChange={setDisconnecting}
+        title={t("blueprints.disconnectTitle")}
+        description={t("blueprints.disconnectBody")}
+        cancelLabel={t("blueprints.disconnectCancel")}
+        confirmLabel={t("blueprints.disconnectAction")}
+        onConfirm={() => void handleDisconnect()}
+      />
 
       <ProtectedConfirmationDialog
         key={protectedConfirmation ? `open:${protectedConfirmation}` : "closed"}

@@ -15,17 +15,7 @@ import {
   TableHead,
 } from "@/common/components/ui/table";
 import { Button } from "@/common/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import {
   PanelCenteredState,
   PanelTableSkeleton,
@@ -61,8 +51,8 @@ export function ActiveSessionsPanel() {
         <CardTitle>{t("activeSessions.title")}</CardTitle>
         <CardDescription>{t("activeSessions.description")}</CardDescription>
         <CardAction>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+          <ConfirmDialog
+            trigger={
               <Button
                 variant="outline"
                 size="sm"
@@ -71,26 +61,13 @@ export function ActiveSessionsPanel() {
                 {signingOutOthers ? <Loader2 className="animate-spin" /> : null}
                 {t("activeSessions.signOutOthers")}
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {t("activeSessions.signOutOthersConfirmTitle")}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("activeSessions.signOutOthersConfirmBody")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>
-                  {t("activeSessions.revokeCancel")}
-                </AlertDialogCancel>
-                <AlertDialogAction onClick={() => void signOutOthers()}>
-                  {t("activeSessions.signOutOthers")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            }
+            title={t("activeSessions.signOutOthersConfirmTitle")}
+            description={t("activeSessions.signOutOthersConfirmBody")}
+            cancelLabel={t("activeSessions.revokeCancel")}
+            confirmLabel={t("activeSessions.signOutOthers")}
+            onConfirm={() => void signOutOthers()}
+          />
         </CardAction>
       </CardHeader>
       <CardContent>

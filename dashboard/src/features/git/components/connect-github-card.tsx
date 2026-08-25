@@ -10,17 +10,7 @@ import {
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { PanelCenteredState } from "@/common/components/panel-states";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
@@ -296,34 +286,24 @@ function ConnectionRow({
             </a>
           </Button>
         )}
-        <AlertDialog open={open} onOpenChange={setOpen}>
-          <AlertDialogTrigger asChild>
+        <ConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          trigger={
             <Button variant="destructive" size="sm" disabled={disconnecting}>
               {t("git.disconnectButton")}
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("git.disconnectConfirmTitle")}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("git.disconnectConfirmBody")}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t("git.cancel")}</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  setOpen(false);
-                  onDisconnect();
-                }}
-              >
-                {t("git.disconnectButton")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          }
+          title={t("git.disconnectConfirmTitle")}
+          description={t("git.disconnectConfirmBody")}
+          cancelLabel={t("git.cancel")}
+          confirmLabel={t("git.disconnectButton")}
+          pending={disconnecting}
+          onConfirm={() => {
+            setOpen(false);
+            onDisconnect();
+          }}
+        />
       </div>
     </div>
   );

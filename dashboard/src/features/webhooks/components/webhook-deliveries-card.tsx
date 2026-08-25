@@ -9,17 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import {
   Card,
   CardAction,
@@ -334,39 +324,29 @@ function DeliveryRow({
         </TableCell>
         <TableCell className="text-right">
           {canResend && delivery.status === "failed" ? (
-            <AlertDialog open={resendOpen} onOpenChange={setResendOpen}>
-              <AlertDialogTrigger asChild>
+            <ConfirmDialog
+              open={resendOpen}
+              onOpenChange={setResendOpen}
+              trigger={
                 <Button variant="outline" size="sm" disabled={resending}>
                   {resending ? <Loader2 className="animate-spin" /> : null}
                   {t(resending ? "webhooks.resending" : "webhooks.resend")}
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {t("webhooks.resendConfirmTitle")}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t("webhooks.resendConfirmBody")}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={resending}>
-                    {t("webhooks.resendCancel")}
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    disabled={resending}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      void confirmResend();
-                    }}
-                  >
-                    {resending ? <Loader2 className="animate-spin" /> : null}
-                    {t(resending ? "webhooks.resending" : "webhooks.resend")}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              }
+              title={t("webhooks.resendConfirmTitle")}
+              description={t("webhooks.resendConfirmBody")}
+              cancelLabel={t("webhooks.resendCancel")}
+              confirmLabel={
+                <>
+                  {resending ? <Loader2 className="animate-spin" /> : null}
+                  {t(resending ? "webhooks.resending" : "webhooks.resend")}
+                </>
+              }
+              // Re-sending a delivery is the primary action, not a destructive one.
+              destructive={false}
+              pending={resending}
+              onConfirm={() => void confirmResend()}
+            />
           ) : null}
         </TableCell>
       </TableRow>

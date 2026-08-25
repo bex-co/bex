@@ -12,17 +12,7 @@ import {
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { WebhookEventPickerField } from "@/features/webhooks/components/webhook-event-picker-field";
 import { useDeleteWebhook } from "@/features/webhooks/hooks/use-delete-webhook";
@@ -317,49 +307,25 @@ function DeleteWebhookConfirm({
   onConfirm: () => void;
 }) {
   const { t } = useTranslations();
-  const [confirmText, setConfirmText] = useState("");
   const command = `delete webhook ${name}`;
-  const confirmed = confirmText === command;
 
   return (
-    <AlertDialog onOpenChange={(open) => !open && setConfirmText("")}>
-      <AlertDialogTrigger asChild>
+    <ConfirmDialog
+      trigger={
         <Button variant="destructive" disabled={deleting}>
           {deleting ? <Loader2 className="animate-spin" /> : null}
           {t("webhooks.delete")}
         </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {t("webhooks.deleteConfirmTitle", { name })}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {t("webhooks.deleteConfirmBody")}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <div className="space-y-2">
-          <p className="text-sm">
-            {t("webhooks.deleteTypeToConfirm", { command })}
-          </p>
-          <Label htmlFor="webhook-delete-confirm" className="sr-only">
-            {t("webhooks.deleteCommandLabel")}
-          </Label>
-          <Input
-            id="webhook-delete-confirm"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder={command}
-            autoComplete="off"
-          />
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{t("webhooks.deleteCancel")}</AlertDialogCancel>
-          <AlertDialogAction disabled={!confirmed} onClick={onConfirm}>
-            {t("webhooks.delete")}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      }
+      title={t("webhooks.deleteConfirmTitle", { name })}
+      description={t("webhooks.deleteConfirmBody")}
+      // The typed gate is the primitive's now — this card had hand-rolled it
+      // with its own state and comparison before ConfirmDialog existed.
+      phrase={command}
+      cancelLabel={t("webhooks.deleteCancel")}
+      confirmLabel={t("webhooks.delete")}
+      pending={deleting}
+      onConfirm={onConfirm}
+    />
   );
 }

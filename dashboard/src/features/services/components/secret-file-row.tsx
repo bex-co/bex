@@ -3,17 +3,7 @@ import { Eye, EyeOff, Pencil, Trash2, Check, X, Loader2 } from "lucide-react";
 import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Button } from "@/common/components/ui/button";
 import { Textarea } from "@/common/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { SecretFileName } from "@/features/services/types";
 
@@ -182,8 +172,8 @@ export function SecretFileRow({
             >
               <Pencil />
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
+            <ConfirmDialog
+              trigger={
                 <Button
                   size="icon"
                   variant="ghost"
@@ -192,29 +182,17 @@ export function SecretFileRow({
                 >
                   <Trash2 className="text-destructive" />
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {t("services.secretFileDeleteConfirmTitle", {
-                      name: entry.name,
-                    })}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {deleteConfirmBody ??
-                      t("services.secretFileDeleteConfirmBody")}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>
-                    {t("services.envCancel")}
-                  </AlertDialogCancel>
-                  <AlertDialogAction onClick={() => void onDelete(entry.name)}>
-                    {t("services.envDelete")}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              }
+              title={t("services.secretFileDeleteConfirmTitle", {
+                name: entry.name,
+              })}
+              description={
+                deleteConfirmBody ?? t("services.secretFileDeleteConfirmBody")
+              }
+              cancelLabel={t("services.envCancel")}
+              confirmLabel={t("services.envDelete")}
+              onConfirm={() => void onDelete(entry.name)}
+            />
           </>
         )}
       </TableCell>

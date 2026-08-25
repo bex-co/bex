@@ -3,17 +3,7 @@ import { Eye, EyeOff, Pencil, Trash2, Check, X, Loader2 } from "lucide-react";
 import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import type { EnvVarKey } from "@/features/services/types";
@@ -207,9 +197,12 @@ export function EnvVarRow({
                 <Pencil />
               </Button>
             </PermissionTooltip>
-            <AlertDialog>
-              <PermissionTooltip reason={createReason}>
-                <AlertDialogTrigger asChild>
+            <PermissionTooltip reason={createReason}>
+              {/* The tooltip wraps the DIALOG, not the trigger: it renders its
+                  child inside a <span> rather than forwarding a ref, so nesting
+                  it inside Radix's asChild trigger would break the button. */}
+              <ConfirmDialog
+                trigger={
                   <Button
                     size="icon"
                     variant="ghost"
@@ -218,27 +211,16 @@ export function EnvVarRow({
                   >
                     <Trash2 className="text-destructive" />
                   </Button>
-                </AlertDialogTrigger>
-              </PermissionTooltip>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {t("services.envDeleteConfirmTitle", { key: entry.key })}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {deleteConfirmBody ?? t("services.envDeleteConfirmBody")}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>
-                    {t("services.envCancel")}
-                  </AlertDialogCancel>
-                  <AlertDialogAction onClick={() => void onDelete(entry.key)}>
-                    {t("services.envDelete")}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                }
+                title={t("services.envDeleteConfirmTitle", { key: entry.key })}
+                description={
+                  deleteConfirmBody ?? t("services.envDeleteConfirmBody")
+                }
+                cancelLabel={t("services.envCancel")}
+                confirmLabel={t("services.envDelete")}
+                onConfirm={() => void onDelete(entry.key)}
+              />
+            </PermissionTooltip>
           </>
         )}
       </TableCell>

@@ -7,16 +7,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -100,34 +91,23 @@ export function KeyValuePlanSection({
         </div>
       </CardContent>
 
-      <AlertDialog
+      <ConfirmDialog
         open={confirming && !operateDenied}
         onOpenChange={(open) => {
           if (!operateDenied) setConfirming(open);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {selectedType &&
-                t("keyvalue.planPickerConfirmTitle", {
-                  name: selectedType.name,
-                })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("keyvalue.planPickerConfirmBody")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("keyvalue.planPickerCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleConfirm()}>
-              {t("keyvalue.planPickerSave")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={
+          selectedType
+            ? t("keyvalue.planPickerConfirmTitle", { name: selectedType.name })
+            : ""
+        }
+        description={t("keyvalue.planPickerConfirmBody")}
+        cancelLabel={t("keyvalue.planPickerCancel")}
+        confirmLabel={t("keyvalue.planPickerSave")}
+        // Changing plan is the primary action, not a destructive one.
+        destructive={false}
+        onConfirm={() => void handleConfirm()}
+      />
     </Card>
   );
 }
