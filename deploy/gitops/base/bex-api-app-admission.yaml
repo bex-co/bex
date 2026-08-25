@@ -37,15 +37,33 @@ spec:
         object != null ? object : oldObject
     - name: workspace
       expression: variables.target.metadata.?labels['app.bex.co/workspace'].orValue('')
+    # Apps (codex-security 2026-08 F11): the workspace label must be BOUND — an
+    # App is canonical in the bootstrap namespace only when it carries NO
+    # workspace label (unlabeled legacy) or in exactly its own tea-<id>
+    # namespace. The App projector never writes a labeled App into the
+    # bootstrap namespace, so a labeled App there is a forged artifact
+    # identity: appIdentity() derives the Zot repository, htpasswd username,
+    # static-site prefix, and snapshot prefix from that label verbatim, and a
+    # forged one captures ANOTHER workspace's registry repository ACL.
+    # Databases/KeyValues keep the looser historical rule: the ADR043 D8
+    # cutover runbook deliberately leaves labeled twins in the bootstrap
+    # namespace between its Steps 5 and 9 (retiring one is a DELETE of a
+    # labeled CR there), and no shared-sink identity is derived from their
+    # label.
     - name: canonical
       expression: >-
-        variables.target.metadata.namespace == 'default' ||
-        (variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
-         variables.target.metadata.namespace == variables.workspace)
+        request.resource.resource == 'apps'
+          ? (variables.workspace == '' &&
+             variables.target.metadata.namespace == 'default')
+            || (variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
+                variables.target.metadata.namespace == variables.workspace)
+          : variables.target.metadata.namespace == 'default' ||
+            (variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
+             variables.target.metadata.namespace == variables.workspace)
   validations:
     - expression: variables.canonical
       reason: Forbidden
-      message: bex-api may create, mutate, or delete an App, Database, or KeyValue only in the bootstrap namespace or the resource's own tea-<id> workspace namespace
+      message: bex-api may create, mutate, or delete an App only unlabeled in the bootstrap namespace or in its own tea-<id> workspace namespace; Databases and KeyValues additionally tolerate labeled cutover twins in the bootstrap namespace
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

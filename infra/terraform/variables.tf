@@ -70,9 +70,27 @@ variable "subnet_cidr" {
 }
 
 variable "allowed_ssh_cidrs" {
-  description = "CIDRs allowed to reach SSH (22) and the k3s / kube API (6443) on the infra node. Lock to your CI egress + admin IPs in prod — the default is wide open."
+  description = "CIDRs allowed to reach SSH (22) on the infra node. Key-only SSH from anywhere is the documented accepted baseline (docs/ADR019-infra-credentials.md § single-layer); narrow it to your admin IPs if you want the second layer."
   type        = list(string)
   default     = ["0.0.0.0/0"]
+}
+
+# codex-security 2026-08 F8: the k3s / kube API (6443) previously shared
+# allowed_ssh_cidrs and therefore inherited its wide-open default. The API is
+# only needed by the operator during bring-up / DR (clusterctl init against the
+# bootstrap k3s), never by CI, so it gets its own CLOSED-by-default allowlist:
+# set TF_VAR_allowed_api_cidrs (or a tfvars entry) to your admin CIDRs when you
+# need it, and the validation below refuses the catch-all so the fail-closed
+# state cannot be re-widened by a lazy default.
+variable "allowed_api_cidrs" {
+  description = "CIDRs allowed to reach the k3s / kube API (6443) on the infra node. Default CLOSED — bring-up/DR operators set this to their admin CIDRs explicitly (e.g. TF_VAR_allowed_api_cidrs='[\"203.0.113.4/32\"]')."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = !contains(var.allowed_api_cidrs, "0.0.0.0/0") && !contains(var.allowed_api_cidrs, "::/0")
+    error_message = "allowed_api_cidrs must not contain the catch-all CIDR — list your admin CIDRs explicitly (an internet-wide kube API is what this variable exists to prevent)."
+  }
 }
 
 variable "bootstrap_enabled" {

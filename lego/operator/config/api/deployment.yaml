@@ -141,10 +141,14 @@ spec:
             - name: BEX_LOKI_URL # Loki (log-shipper DaemonSet) => durable log history
               value: http://loki.monitoring.svc:3100
             - name: BEX_API_CORS_ORIGIN # comma-separated origins for the dashboard's credentialed
-              # cross-origin GraphQL calls; localhost:5173 lets a local dashboard
-              # dev server (Vite) hit the deployed API — fine while dev-stage,
-              # drop it when real tenants have sessions worth riding.
-              value: https://dashboard.bex.co,http://localhost:5173
+              # cross-origin GraphQL calls. Only the dashboard origin —
+              # localhost:5173 was dropped (codex-security 2026-08 F10): the
+              # supported "local dev against prod" workflow tunnels through
+              # vite.config.ts's same-origin /graphql proxy (dashboard/.env.example
+              # documents exactly this), so the loopback entry granted credentialed
+              # cross-origin reads to whatever local process binds 5173 first
+              # with nothing that needs it.
+              value: https://dashboard.bex.co
             # Authorization (docs/ADR012-auth.md#authorization): BEX_OPENFGA_URL is the
             # enforcement flip — every verb then requires a tenant permission, and
             # identities without tuples get 403. On since w1/m9: a human's first

@@ -434,6 +434,17 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 	if p.ImageURL != "" && !store.ValidImage(p.ImageURL) {
 		return fmt.Errorf("%w: imageUrl must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
 	}
+	// commitId is the second caller field that becomes a git ref: when commit
+	// resolution fails (guaranteed for an option-shaped value — GitHub cannot
+	// resolve "--upload-pack=..." to a commit), the raw value is written to
+	// spec.buildCommit and reaches the clone phase's `git fetch origin "$REF"`
+	// argv, where a leading dash is parsed as a git OPTION (codex-security
+	// 2026-08 F5). Branch already passes this exact validator; commitId must
+	// too, so a ref can never be read as a git flag — the invariant refRE
+	// states verbatim.
+	if p.CommitID != "" && !store.ValidGitRef(p.CommitID) {
+		return fmt.Errorf("%w: commitId must be a git ref (no whitespace, shell metacharacters, or leading dash)", core.ErrBadRequest)
+	}
 	// commitId is meaningless for a cron_job: a cron runs on a schedule, not
 	// per-commit. Reject early rather than silently ignoring the field.
 	if p.CommitID != "" && a.Spec.Type == appv1alpha1.TypeCronJob {

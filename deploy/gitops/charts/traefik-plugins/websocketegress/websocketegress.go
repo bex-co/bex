@@ -52,7 +52,12 @@ var processState = struct {
 	ready    atomic.Bool
 	count    atomic.Int64
 	counters sync.Map // string app id -> *atomic.Uint64
-	started  int64
+	// handshakeOverflow counts connections whose 101 response header block
+	// exceeded maxHandshakeBytes (codex-security 2026-08 F4). It is a
+	// monotonic per-connection signal: an oversized header is one tenant's
+	// backend behaviour and must never write process-global health state.
+	handshakeOverflow atomic.Uint64
+	started           int64
 }{started: time.Now().Unix()}
 
 type middleware struct {
@@ -128,6 +133,12 @@ type downstreamConn struct {
 	mu       sync.Mutex
 	decided  bool
 	httpHead bool
+	// overflow marks a connection whose response header block exceeded
+	// maxHandshakeBytes. Once set, the buffered prefix is dropped and
+	// subsequent writes are counted as frame bytes directly: the tenant's
+	// egress stays metered (conservatively — header bytes get counted as
+	// frames) instead of silently discarded.
+	overflow bool
 	pending  []byte
 }
 
@@ -159,9 +170,25 @@ func (c *downstreamConn) Write(payload []byte) (int, error) {
 // account excludes a 101 response header if the reverse proxy emits it on the
 // hijacked connection. If net/http flushed the header before Hijack, the first
 // bytes are a WebSocket frame and the entire write is counted.
+//
+// An oversized header block (> maxHandshakeBytes) is a per-connection
+// condition, handled per connection (codex-security 2026-08 F4): the buffered
+// prefix is dropped, the rest of that connection's writes are counted as frame
+// bytes (conservative attribution — the tenant's egress stays metered), and a
+// monotonic overflow counter records the anomaly. It must NOT write the
+// process-global readiness flag: one tenant choosing strange response headers
+// cannot be allowed to zero a fleet-wide health gauge that only sync.Once can
+// ever set true again.
 func (c *downstreamConn) account(payload []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.overflow {
+		// Header parsing is over for this connection; count everything from
+		// here on. Includes any header bytes after the drop — deliberately
+		// conservative rather than unmetered.
+		c.counter.Add(uint64(len(payload)))
+		return
+	}
 	if c.decided && !c.httpHead {
 		c.counter.Add(uint64(len(payload)))
 		return
@@ -180,9 +207,15 @@ func (c *downstreamConn) account(payload []byte) {
 		}
 	}
 	if len(c.pending) > maxHandshakeBytes {
-		// An unbounded/malformed response is not silently treated as frame bytes.
-		processState.ready.Store(false)
+		// An unbounded/malformed response is not silently treated as frame
+		// bytes for the part we could parse, nor allowed to grow the buffer
+		// without bound. Count it as egress (fail toward the tenant, not
+		// toward silence) and stop header-parsing this connection.
+		c.counter.Add(uint64(len(c.pending)))
 		c.pending = nil
+		c.httpHead = false
+		c.overflow = true
+		processState.handshakeOverflow.Add(1)
 		return
 	}
 	if end := bytes.Index(c.pending, []byte("\r\n\r\n")); end >= 0 {
@@ -254,6 +287,9 @@ func metricsBody() string {
 		healthy = 1
 	}
 	body.WriteString("bex_websocket_meter_healthy " + strconv.Itoa(healthy) + "\n")
+	body.WriteString("# HELP bex_websocket_meter_handshake_overflow_total Connections whose 101 response header block exceeded the handshake buffer and switched to conservative whole-write counting.\n")
+	body.WriteString("# TYPE bex_websocket_meter_handshake_overflow_total counter\n")
+	body.WriteString("bex_websocket_meter_handshake_overflow_total " + strconv.FormatUint(processState.handshakeOverflow.Load(), 10) + "\n")
 	body.WriteString("# HELP bex_websocket_meter_process_start_time_seconds Unix time when this process-local WebSocket counter started.\n")
 	body.WriteString("# TYPE bex_websocket_meter_process_start_time_seconds gauge\n")
 	body.WriteString("bex_websocket_meter_process_start_time_seconds " + strconv.FormatInt(processState.started, 10) + "\n")

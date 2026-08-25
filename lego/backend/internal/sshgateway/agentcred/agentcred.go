@@ -51,6 +51,15 @@ const (
 	defaultMaxDuration   = 10 * time.Minute
 	budgetSweepInterval  = 30 * time.Minute
 	budgetIdleTTL        = 24 * time.Hour
+
+	// maxReceivePackPrefixBytes is the total-bytes budget for the receive-pack
+	// preamble validateReceivePack replays upstream (codex-security 2026-08 F3).
+	// The per-packet and per-kind caps above are each individually reasonable
+	// but their product is not: 1024 shallow lines of up-to-64 KiB packets is
+	// ~64 MiB of resident buffer in the shared gateway. A legitimate preamble
+	// (a handful of shallow boundaries plus ≤8 update commands) is kilobytes;
+	// anything past this budget is padding, and padding is the attack.
+	maxReceivePackPrefixBytes = 1 << 20
 )
 
 // Admission bounds used when no limiter is injected; cmd/ssh-gateway supplies
@@ -404,16 +413,31 @@ func validateReceivePack(body io.Reader, branch string) (io.Reader, error) {
 			return nil, err
 		}
 		prefix.Write(packet)
+		// The product of the per-packet cap and the per-kind counts bounds
+		// nothing by itself; the accumulated replay buffer is what the process
+		// pays for, so it gets its own explicit budget (codex-security 2026-08
+		// F3). Fail closed on the padding that would otherwise reach it.
+		if prefix.Len() > maxReceivePackPrefixBytes {
+			return nil, agentsession.ErrForbidden
+		}
 		line := strings.TrimSuffix(string(packet), "\n")
 		fields := strings.Fields(line)
 		// receive-pack permits zero or more `shallow <oid>` declarations
 		// before the command list. They describe clone history boundaries and
 		// do not name a ref, so preserve them while still validating and
 		// bounding their shape. A shallow declaration after a command, or one
-		// carrying a capability suffix, fails closed.
-		if commands == 0 && !strings.ContainsRune(line, 0) && len(fields) == 2 && fields[0] == "shallow" {
+		// carrying a capability suffix, fails closed. The shape test is the
+		// exact single-space git wire form, NOT strings.Fields tolerance:
+		// whitespace padding must not reach the per-packet maximum (2026-08
+		// F3) — "shallow" + N spaces + oid is malformed here even though a
+		// Fields-based two-field check would accept it.
+		if commands == 0 && !strings.ContainsRune(line, 0) && strings.HasPrefix(line, "shallow ") {
+			oid := line[len("shallow "):]
+			if strings.ContainsAny(oid, " \t") {
+				return nil, agentsession.ErrForbidden
+			}
 			shallows++
-			if shallows > maxShallowBoundaries || !validObjectID(fields[1]) {
+			if shallows > maxShallowBoundaries || !validObjectID(oid) {
 				return nil, agentsession.ErrForbidden
 			}
 			continue

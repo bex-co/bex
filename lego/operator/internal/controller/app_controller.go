@@ -430,13 +430,24 @@ func appendIngressHostRoute(ing *networkingv1.Ingress, appName, host string, tls
 // the app.bex.co/workspace label, so for every legitimate App the namespace equals
 // one of those two. Any other namespace is a confused-deputy / cross-tenant write
 // (codex #4).
+//
+// In the bootstrap namespace the workspace label must be EMPTY (codex-security
+// 2026-08 F11): the App projector always writes workspace-scoped Apps into
+// their own <ws> namespace, so a labeled App in the bootstrap namespace is at
+// best an ADR043 cutover stray — and at worst a compromised bex-api forging
+// artifact identity, because appIdentity() derives the Zot repository,
+// htpasswd username, static-site prefix, and snapshot prefix from that label
+// verbatim. In the bootstrap namespace the label is unbound input; treating it
+// as authoritative lets one write capture ANOTHER workspace's registry
+// repository ACL. An unlabeled bootstrap App (hand-applied legacy) stays
+// canonical and reconciles on the legacy identity column.
 func (r *AppReconciler) canonicalNamespace(app *appv1alpha1.App) bool {
 	appsNS := r.AppsNamespace
 	if appsNS == "" {
 		appsNS = defaultAppsNamespace // an unset field never refuses bootstrap Apps
 	}
 	if app.Namespace == appsNS {
-		return true
+		return app.Labels[labelWorkspace] == ""
 	}
 	ws := app.Labels[labelWorkspace]
 	return ws != "" && app.Namespace == ws
@@ -1196,18 +1207,22 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 
 // rejectProtectedSecretRefs fails the reconcile when a tenant App names an
 // operational Secret marked LabelProtectedFromTenantMount in any of its
-// secret-mount fields (codex F1), or names an operator-configured operational
-// Secret directly (round-11 #1). It covers every kubelet-projected reference
-// the App pod (or its pre-deploy Job) would resolve by name: spec.envFromSecret,
+// secret-name fields (codex F1), or names an operator-configured operational
+// Secret directly (round-11 #1). It covers every Secret reference the platform
+// resolves BY NAME on the App's behalf: spec.envFromSecret,
 // spec.envFromSecrets[], spec.filesFromSecrets[], per-variable
-// env[].valueFrom.secretKeyRef, AND the two pending-projection annotations
+// env[].valueFrom.secretKeyRef, the two pending-projection annotations
 // (pending-env-secret, pending-files-secret) — runtimeEnvSecret and
 // secretFileMounts project those names exactly like the spec fields, so leaving
-// them out of the validator was a bypass. Reads use the uncached build-plane
-// client so the lookup is reliable in per-tenant namespaces the manager does
-// not cache; a referenced Secret that does not exist is not our concern here
-// (it resolves to nothing / fails the pod on its own). Zero secret references
-// => no lookups.
+// them out of the validator was a bypass — AND spec.cloneSecret +
+// spec.externalRegistryPullSecret (codex-security 2026-08 F7): the copier and
+// the kubelet resolve those by name too, so a tenant naming a protected Secret
+// there must be refused by the same denylist, not silently relocated into the
+// shared build namespace with its marker stripped. Reads use the uncached
+// build-plane client so the lookup is reliable in per-tenant namespaces the
+// manager does not cache; a referenced Secret that does not exist is not our
+// concern here (it resolves to nothing / fails the pod on its own). Zero
+// secret references => no lookups.
 func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv1alpha1.App) error {
 	names := make(map[string]bool)
 	add := func(n string) {
@@ -1222,6 +1237,8 @@ func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv
 		add(n)
 	}
 	add(app.Spec.EnvFromSecret)
+	add(app.Spec.CloneSecret)
+	add(app.Spec.ExternalRegistryPullSecret)
 	for _, e := range app.Spec.Env {
 		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
 			add(e.ValueFrom.SecretKeyRef.Name)
@@ -1415,11 +1432,23 @@ func localObjectReferencesEqual(a, b []corev1.LocalObjectReference) bool {
 // Secret is created by bex-api in the App's namespace). Idempotent: overwritten
 // on every build, so the token stays fresh. Mechanism-only — the operator never
 // reads the token, only copies the bytes.
+//
+// A source carrying LabelProtectedFromTenantMount is refused outright
+// (codex-security 2026-08 F7): the denylist exists to keep operator-projected
+// Secrets (backup credentials, and anything else stamped protected) out of
+// tenant-reachable positions, and relocating one into the shared build
+// namespace would sidestep it. For the Secrets that ARE copyable, the
+// protective marker is preserved on the copy rather than replaced — a copy
+// that drops the label would present itself as an ordinary artifact to any
+// later check.
 func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.App, srcNS, dstNS, name string) error {
 	buildClient := r.buildPlaneClient()
 	var src corev1.Secret
 	if err := buildClient.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
 		return err
+	}
+	if src.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
+		return fmt.Errorf("refusing to relocate protected operator Secret %s/%s (codex-security 2026-08 F7)", srcNS, name)
 	}
 	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
 		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
@@ -1437,6 +1466,11 @@ func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.Ap
 		dst.Type = src.Type
 		dst.Data = src.Data
 		dst.Labels = artifactLabels(app, "copied-secret")
+		if src.Labels[execution.LabelProtectedFromTenantMount] != "" {
+			// Unreachable today (protected sources are refused above), kept so a
+			// future relaxation cannot silently strip the marker again.
+			dst.Labels[execution.LabelProtectedFromTenantMount] = src.Labels[execution.LabelProtectedFromTenantMount]
+		}
 		return nil
 	})
 	return err

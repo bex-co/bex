@@ -172,10 +172,15 @@ var _ = Describe("reconciling a static_site App", func() {
 	It("keeps an already-published labeled site on the empty/legacy prefix across reconcile", func() {
 		const name = "site-upgrade-prefix"
 		const ws = "tea-aaaaaaaaaaaaaaaaaaaa"
-		nn := types.NamespacedName{Name: name, Namespace: ns}
+		// Canonical ADR043 placement: namespace == workspace (a labeled App in
+		// the shared namespace is refused since codex-security 2026-08 F11).
+		_ = k8sClient.Create(ctx, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: ws},
+		}) // AlreadyExists is fine: two specs share this workspace id
+		nn := types.NamespacedName{Name: name, Namespace: ws}
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: name, Namespace: ns,
+				Name: name, Namespace: ws,
 				Labels: map[string]string{labelWorkspace: ws},
 			},
 			Spec: appv1alpha1.AppSpec{
@@ -281,10 +286,14 @@ var _ = Describe("reconciling a static_site App", func() {
 	It("records a workspace-scoped staticPrefix after a completed labeled publish", func() {
 		const name = "site-labeled-publish"
 		const ws = "tea-aaaaaaaaaaaaaaaaaaaa"
-		nn := types.NamespacedName{Name: name, Namespace: ns}
+		// Canonical ADR043 placement (see the site-upgrade-prefix spec above).
+		_ = k8sClient.Create(ctx, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: ws},
+		}) // AlreadyExists is fine: two specs share this workspace id
+		nn := types.NamespacedName{Name: name, Namespace: ws}
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: name, Namespace: ns,
+				Name: name, Namespace: ws,
 				Labels: map[string]string{labelWorkspace: ws},
 			},
 			Spec: appv1alpha1.AppSpec{
@@ -297,7 +306,7 @@ var _ = Describe("reconciling a static_site App", func() {
 		}
 		Expect(k8sClient.Create(ctx, app)).To(Succeed())
 		credential := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "static-s3-labeled", Namespace: ns},
+			ObjectMeta: metav1.ObjectMeta{Name: "static-s3-labeled", Namespace: ws},
 			Data: map[string][]byte{
 				"AWS_ACCESS_KEY_ID":     []byte("test-access"),
 				"AWS_SECRET_ACCESS_KEY": []byte("test-secret"),
@@ -317,7 +326,7 @@ var _ = Describe("reconciling a static_site App", func() {
 			}
 		}()
 		var job batchv1.Job
-		jobNN := types.NamespacedName{Name: "pub-" + name + "-rev-1", Namespace: ns}
+		jobNN := types.NamespacedName{Name: "pub-" + name + "-rev-1", Namespace: ws}
 		Eventually(func() error { return k8sClient.Get(ctx, jobNN, &job) }, "30s", "250ms").Should(Succeed())
 		Eventually(done, "30s").Should(BeClosed())
 		now := metav1.Now()

@@ -41,10 +41,15 @@ import (
 // are schema-visible changes, and a spec the server prunes or rejects would
 // stop every build from dispatching.
 var _ = Describe("build cache dispatch", func() {
-	const ns = "default"
+	// Canonical ADR043 placement: namespace == workspace label (a labeled App
+	// in the shared namespace is refused since codex-security 2026-08 F11).
+	const ns = "tea-w1"
 
 	dispatch := func(name string, cache bool) *batchv1.Job {
 		ctx := context.Background()
+		_ = k8sClient.Create(ctx, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: ns},
+		}) // AlreadyExists is fine across specs
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name, Namespace: ns,

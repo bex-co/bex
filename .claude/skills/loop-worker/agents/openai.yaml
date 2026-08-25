@@ -1,0 +1,4 @@
+interface:
+  display_name: "Loop Worker"
+  short_description: "Drain a PM workstream milestone by milestone"
+  default_prompt: "Use $loop-worker to drain a PM workstream to completion."

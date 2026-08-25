@@ -43,7 +43,6 @@ import (
 // leaving it unset changes nothing.
 var _ = Describe("Cluster-wide build admission ceiling (ADR060 D6)", func() {
 	ctx := context.Background()
-	const ns = "default"
 
 	// A build namespace of this spec's own. The cluster-wide count is exactly
 	// that — cluster-wide — so sharing the suite's default namespace would count
@@ -58,15 +57,23 @@ var _ = Describe("Cluster-wide build admission ceiling (ADR060 D6)", func() {
 		})).To(Succeed())
 	})
 
-	nn := func(name string) types.NamespacedName {
-		return types.NamespacedName{Name: name, Namespace: ns}
+	// App namespace == workspace namespace (canonicalNamespace binding).
+	nn := func(name, workspace string) types.NamespacedName {
+		return types.NamespacedName{Name: name, Namespace: workspace}
 	}
 	// Two Apps in DIFFERENT workspaces: the per-workspace cap can never be what
 	// holds the second one back, so anything observed here is the global ceiling.
+	// Each App lives in its OWN workspace namespace — the canonical ADR043
+	// placement (a labeled App in the shared namespace is refused by
+	// canonicalNamespace since codex-security 2026-08 F11, so this suite must
+	// model what production actually writes).
 	createApp := func(name, workspace string) {
+		_ = k8sClient.Create(ctx, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: workspace},
+		}) // AlreadyExists is fine across specs
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: name, Namespace: ns,
+				Name: name, Namespace: workspace,
 				Labels: map[string]string{labelWorkspace: workspace},
 			},
 			Spec: appv1alpha1.AppSpec{
@@ -76,28 +83,28 @@ var _ = Describe("Cluster-wide build admission ceiling (ADR060 D6)", func() {
 		}
 		Expect(k8sClient.Create(ctx, app)).To(Succeed())
 	}
-	getApp := func(name string) *appv1alpha1.App {
+	getApp := func(name, workspace string) *appv1alpha1.App {
 		a := &appv1alpha1.App{}
-		Expect(k8sClient.Get(ctx, nn(name), a)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn(name, workspace), a)).To(Succeed())
 		return a
 	}
 	// The reason/message a tenant sees ride the Ready condition, not bare status
 	// fields — so that is where the ceiling's explanation has to land.
-	readyCondition := func(name string) *metav1.Condition {
-		c := meta.FindStatusCondition(getApp(name).Status.Conditions, appv1alpha1.ConditionReady)
+	readyCondition := func(name, workspace string) *metav1.Condition {
+		c := meta.FindStatusCondition(getApp(name, workspace).Status.Conditions, appv1alpha1.ConditionReady)
 		Expect(c).NotTo(BeNil(), "the App must carry a Ready condition")
 		return c
 	}
-	jobExists := func(name string) bool {
-		a := getApp(name)
+	jobExists := func(name, workspace string) bool {
+		a := getApp(name, workspace)
 		j := &batchv1.Job{}
 		return k8sClient.Get(ctx, client.ObjectKey{
 			Namespace: buildNS, Name: build.JobName(name, releaseBuildRevision(a)),
 		}, j) == nil
 	}
-	reconcileN := func(r *AppReconciler, name string, n int) {
+	reconcileN := func(r *AppReconciler, name, workspace string, n int) {
 		for range n {
-			_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn(name)})
+			_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn(name, workspace)})
 			Expect(err).NotTo(HaveOccurred())
 		}
 	}
@@ -108,15 +115,16 @@ var _ = Describe("Cluster-wide build admission ceiling (ADR060 D6)", func() {
 			MaxActiveBuilds: ceiling,
 		}
 	}
-	cleanup := func(names ...string) {
-		for _, name := range names {
+	cleanup := func(apps ...[2]string) {
+		for _, pair := range apps {
+			name, workspace := pair[0], pair[1]
 			a := &appv1alpha1.App{}
-			if k8sClient.Get(ctx, nn(name), a) == nil {
+			if k8sClient.Get(ctx, nn(name, workspace), a) == nil {
 				Expect(k8sClient.Delete(ctx, a)).To(Succeed())
 				r := newReconciler(0)
 				r.Registry = "" // no registry server in this suite
 				for range 3 {
-					_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn(name)})
+					_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn(name, workspace)})
 				}
 			}
 			for _, rev := range []string{"gen-1", "gen-2"} {
@@ -127,51 +135,51 @@ var _ = Describe("Cluster-wide build admission ceiling (ADR060 D6)", func() {
 	}
 
 	It("holds the second workspace's build when the cluster is at the ceiling", func() {
-		defer cleanup("ceiling-a", "ceiling-b")
+		defer cleanup([2]string{"ceiling-a", "tea-aaa"}, [2]string{"ceiling-b", "tea-bbb"})
 		r := newReconciler(1)
 
 		createApp("ceiling-a", "tea-aaa")
-		reconcileN(r, "ceiling-a", 3)
-		Expect(jobExists("ceiling-a")).To(BeTrue(), "the first build must dispatch normally")
+		reconcileN(r, "ceiling-a", "tea-aaa", 3)
+		Expect(jobExists("ceiling-a", "tea-aaa")).To(BeTrue(), "the first build must dispatch normally")
 
 		createApp("ceiling-b", "tea-bbb")
-		reconcileN(r, "ceiling-b", 3)
-		Expect(jobExists("ceiling-b")).To(BeFalse(),
+		reconcileN(r, "ceiling-b", "tea-bbb", 3)
+		Expect(jobExists("ceiling-b", "tea-bbb")).To(BeFalse(),
 			"a second workspace's build must not dispatch past the cluster-wide ceiling")
 
-		Expect(getApp("ceiling-b").Status.Phase).To(Equal(appv1alpha1.PhaseBuilding))
-		cond := readyCondition("ceiling-b")
+		Expect(getApp("ceiling-b", "tea-bbb").Status.Phase).To(Equal(appv1alpha1.PhaseBuilding))
+		cond := readyCondition("ceiling-b", "tea-bbb")
 		Expect(cond.Reason).To(Equal(reasonBuildQueued))
 		Expect(cond.Message).To(ContainSubstring("cluster has 1/1"),
 			"the tenant-visible message must say the CLUSTER is full, not their workspace")
 	})
 
 	It("is byte-identical when unset: both builds dispatch", func() {
-		defer cleanup("uncapped-a", "uncapped-b")
+		defer cleanup([2]string{"uncapped-a", "tea-aaa"}, [2]string{"uncapped-b", "tea-bbb"})
 		r := newReconciler(0)
 
 		createApp("uncapped-a", "tea-aaa")
-		reconcileN(r, "uncapped-a", 3)
+		reconcileN(r, "uncapped-a", "tea-aaa", 3)
 		createApp("uncapped-b", "tea-bbb")
-		reconcileN(r, "uncapped-b", 3)
+		reconcileN(r, "uncapped-b", "tea-bbb", 3)
 
-		Expect(jobExists("uncapped-a")).To(BeTrue())
-		Expect(jobExists("uncapped-b")).To(BeTrue(),
+		Expect(jobExists("uncapped-a", "tea-aaa")).To(BeTrue())
+		Expect(jobExists("uncapped-b", "tea-bbb")).To(BeTrue(),
 			"an unset ceiling must not gate anything — 0 means unlimited")
 	})
 
 	It("never stalls an App that is already building (it would deadlock on itself)", func() {
-		defer cleanup("selfgate-a")
+		defer cleanup([2]string{"selfgate-a", "tea-aaa"})
 		r := newReconciler(1)
 
 		createApp("selfgate-a", "tea-aaa")
-		reconcileN(r, "selfgate-a", 3)
-		Expect(jobExists("selfgate-a")).To(BeTrue())
+		reconcileN(r, "selfgate-a", "tea-aaa", 3)
+		Expect(jobExists("selfgate-a", "tea-aaa")).To(BeTrue())
 
 		// Its own build now occupies the only slot. Observing it must keep working:
 		// the cap gates a NEW dispatch, never an App's observation of its own build.
-		reconcileN(r, "selfgate-a", 3)
-		Expect(readyCondition("selfgate-a").Reason).NotTo(Equal(reasonBuildQueued),
+		reconcileN(r, "selfgate-a", "tea-aaa", 3)
+		Expect(readyCondition("selfgate-a", "tea-aaa").Reason).NotTo(Equal(reasonBuildQueued),
 			"the cap must not report an App as queued behind its own running build")
 	})
 })
@@ -184,7 +192,9 @@ var _ = Describe("Cluster-wide build admission ceiling (ADR060 D6)", func() {
 // single slow-queued failure and a percentile that reports it twenty times.
 var _ = Describe("Build metering is once per build, not once per reconcile (ADR060 D5)", func() {
 	ctx := context.Background()
-	const ns = "default"
+	// Canonical ADR043 placement: the App lives in its own workspace namespace
+	// (a labeled App in the shared namespace is refused since 2026-08 F11).
+	const ns = "tea-meter"
 
 	var buildNS string
 	meterNSSeq := 0
@@ -194,6 +204,9 @@ var _ = Describe("Build metering is once per build, not once per reconcile (ADR0
 		Expect(k8sClient.Create(ctx, &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: buildNS},
 		})).To(Succeed())
+		_ = k8sClient.Create(ctx, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: ns},
+		}) // AlreadyExists is fine across specs
 	})
 
 	nn := func(name string) types.NamespacedName {
@@ -259,7 +272,7 @@ var _ = Describe("Build metering is once per build, not once per reconcile (ADR0
 	createApp := func(name string) {
 		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns,
-				Labels: map[string]string{labelWorkspace: "tea-aaa"}},
+				Labels: map[string]string{labelWorkspace: ns}},
 			Spec: appv1alpha1.AppSpec{
 				Repo: "https://github.com/bex-co/hello", Branch: "main",
 				Builder: "dockerfile", Port: 3000,

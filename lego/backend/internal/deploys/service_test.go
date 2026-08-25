@@ -517,6 +517,38 @@ func TestTriggerRejectsCommitIDForCronJob(t *testing.T) {
 	}
 }
 
+// TestTriggerValidatesCommitIDAsGitRef is the codex-security 2026-08 F5
+// regression: commitId is the second caller field that becomes a git ref
+// (spec.buildCommit → the clone phase's `git fetch origin "$REF"` argv), so it
+// must pass the same validator Branch passes. An option-shaped value cannot
+// resolve to a commit, which means the resolver-failure branch writes it RAW —
+// the exact path that put attacker-chosen git options into the
+// credential-holding clone container.
+func TestTriggerValidatesCommitIDAsGitRef(t *testing.T) {
+	for name, commitID := range map[string]string{
+		"upload-pack option":  "--upload-pack=/bin/sh",
+		"exec option":         "--exec=evil",
+		"leading dash":        "-d",
+		"shell metacharacter": "main; rm -rf /",
+		"newline":             "main\n--upload-pack=x",
+	} {
+		t.Run(name, func(t *testing.T) {
+			ds := newFakeStore()
+			svc, _ := newService(ds, sampleApp("svc", "srv-ref"))
+			_, err := svc.Trigger(context.Background(), "svc", TriggerParams{CommitID: commitID})
+			if !errors.Is(err, core.ErrBadRequest) {
+				t.Fatalf("commitId %q: want core.ErrBadRequest, got %v", commitID, err)
+			}
+		})
+	}
+	// A well-formed ref (SHA or branch) still passes.
+	ds := newFakeStore()
+	svc, _ := newService(ds, sampleApp("svc", "srv-ref-ok"))
+	if _, err := svc.Trigger(context.Background(), "svc", TriggerParams{CommitID: "abcdef1234567890abcdef1234567890abcdef12"}); err != nil {
+		t.Fatalf("valid SHA commitId rejected: %v", err)
+	}
+}
+
 // --- clearCache enum validation (w3/m46) --------------------------------------
 
 func TestTriggerRejectsUnknownClearCache(t *testing.T) {

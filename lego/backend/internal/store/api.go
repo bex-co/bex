@@ -646,13 +646,22 @@ func ValidAppName(v string) bool { return nameRE.MatchString(v) }
 // is a password-less ssh:// username (ssh://git@host/…): the SSH user selects
 // the account server-side and is not a bearer secret; the SCP form (git@host:…)
 // has no password syntax at all.
+//
+// A colon-less git@ value is refused (codex-security 2026-08 F5): git treats a
+// URL with no scheme AND no colon as a LOCAL path, which selects the local
+// transport — the one transport where a fetch-injected --upload-pack=<cmd>
+// option executes <cmd> locally in the credential-holding clone container.
+// The colon is what makes "git@host:path" an SCP remote; without it the value
+// was never a remote URL at all.
 func ValidRepo(v string) bool {
 	if len(v) > 2048 || !repoRE.MatchString(v) {
 		return false
 	}
 	scheme, _, hasScheme := strings.Cut(v, "://")
 	if !hasScheme {
-		return true // SCP form (git@host:path)
+		// SCP form (git@host:path): the colon is mandatory. Without one git
+		// classifies the value as a local path (see godoc).
+		return strings.Contains(v, ":")
 	}
 	u, err := url.Parse(v)
 	if err != nil {

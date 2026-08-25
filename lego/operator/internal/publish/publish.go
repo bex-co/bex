@@ -388,7 +388,7 @@ func cloneContainer(o Options) corev1.Container {
 mkdir -p /work && cd /work
 git init -q .
 git remote add origin "$REPO"
-git -c ` + execution.GitHubCredentialHelper + ` fetch -q --depth 1 origin "$REF"
+git -c ` + execution.GitHubCredentialHelper + ` fetch -q --depth 1 origin -- "$REF"
 git checkout -q FETCH_HEAD
 cd "/work/$SRC_DIR"
 cp -a . ` + outMount + `/`

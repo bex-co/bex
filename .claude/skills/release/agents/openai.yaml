@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release"
+  short_description: "Cut a versioned release (CLI today)"
+  default_prompt: "Use $release to cut a versioned release."

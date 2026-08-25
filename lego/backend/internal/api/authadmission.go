@@ -122,15 +122,22 @@ func NewAuthAdmission(failuresPerMin float64, burst, maxInflight int) *AuthAdmis
 // credential. It spends the per-credential request budget and reserves both
 // per-credential and global in-flight slots. The returned release func MUST be
 // called when the upstream call completes.
+//
+// ORDER (codex-security 2026-08 F1): the per-source failure budget is read
+// BEFORE the per-credential bucket is created or spent. Bucket() lazily
+// allocates a map entry per fingerprint, so consulting it first would let an
+// anonymous caller convert each correctly-shed request (one distinct random
+// bearer) into a permanent allocation. A shed request must perform no
+// allocation.
 func (a *AuthAdmission) admit(r *http.Request) (release func(), err error) {
 	if a == nil {
 		return func() {}, nil
 	}
-	credential := a.credentialFingerprint(r)
-	if a.credentials != nil && !a.credentials.Bucket(credential).Allow() {
+	if a.failures != nil && a.failures.Bucket(a.TrustedProxies.ClientIP(r)).Tokens() < 1 {
 		return nil, errAuthOverloaded
 	}
-	if a.failures != nil && a.failures.Bucket(a.TrustedProxies.ClientIP(r)).Tokens() < 1 {
+	credential := a.credentialFingerprint(r)
+	if a.credentials != nil && !a.credentials.Bucket(credential).Allow() {
 		return nil, errAuthOverloaded
 	}
 	releaseCredential, ok := a.acquireCredential(credential)

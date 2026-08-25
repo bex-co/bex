@@ -1137,9 +1137,9 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 git init -q .
 git remote add origin "$REPO"
 if [ -n "${GIT_AUTH_TOKEN:-}" ]; then
-  bex_run git -c ` + execution.GitHubCredentialHelper + ` fetch --depth 1 origin "$REF"
+  bex_run git -c ` + execution.GitHubCredentialHelper + ` fetch --depth 1 origin -- "$REF"
 else
-  bex_run git fetch --depth 1 origin "$REF"
+  bex_run git fetch --depth 1 origin -- "$REF"
 fi
 git checkout -q FETCH_HEAD
 if [ -n "${EXPECTED_COMMIT:-}" ]; then

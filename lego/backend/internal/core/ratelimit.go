@@ -36,6 +36,15 @@ import (
 // subject, IP address, SHA-256 digest of a credential) and their own response
 // dialect (REST error, OAuth slow_down, deploy-hook JSON).
 //
+// Bounded memory (codex-security 2026-08 F1): keys on the unauthenticated path
+// include an HMAC of whatever bearer the caller presented, so an anonymous
+// flood of distinct tokens maps one-to-one onto map entries. The idle sweep
+// alone cannot bound that — sustained traffic keeps every entry live — so
+// Bucket enforces maxKeyedRateLimitEntries exactly like TTLCache enforces
+// CacheMax: at the cap the idle are swept first, then the map is reset
+// wholesale. An attacker who drives the limiter to the cap trades their
+// budgets for a fresh burst, never for unbounded heap.
+//
 // NOTE: This is a single-replica implementation. In a multi-replica deployment
 // each replica maintains its own per-key map, so the effective per-key budget
 // is rpm×replicas. Acceptable today; a distributed counter (Redis token bucket)
@@ -54,6 +63,12 @@ type keyedRateLimitEntry struct {
 	lim  *rate.Limiter
 	last time.Time
 }
+
+// maxKeyedRateLimitEntries bounds the per-key map of every KeyedRateLimiter,
+// mirroring TTLCache's CacheMax. Sized so a full reset costs a legitimate
+// deployment nothing (real callers number in the thousands) while an
+// unauthenticated key-space flood stalls at a fixed heap cost.
+const maxKeyedRateLimitEntries = 65536
 
 // NewKeyedRateLimiter returns a per-key token-bucket limiter at rpm
 // requests/minute with the given burst depth. Zero or negative rpm returns nil
@@ -76,9 +91,9 @@ func NewKeyedRateLimiter[K comparable](rpm float64, burst int, idle, sweepEvery 
 }
 
 // Bucket returns (and lazily creates) the per-key limiter, sweeping idle
-// entries periodically to bound memory use. A nil limiter returns nil so
-// callers that disable the limiter (rpm=0) can still call Bucket without a
-// guard.
+// entries periodically and capping the entry count to bound memory use. A nil
+// limiter returns nil so callers that disable the limiter (rpm=0) can still
+// call Bucket without a guard.
 func (rl *KeyedRateLimiter[K]) Bucket(key K) *rate.Limiter {
 	if rl == nil {
 		return nil
@@ -96,9 +111,33 @@ func (rl *KeyedRateLimiter[K]) Bucket(key K) *rate.Limiter {
 	}
 	e, ok := rl.entries[key]
 	if !ok {
+		// TTLCache's CacheMax discipline: at the cap sweep the idle first, then
+		// reset wholesale. A key-space flood (distinct random bearers) pays for
+		// a fresh burst per reset, never for unbounded resident entries.
+		if len(rl.entries) >= maxKeyedRateLimitEntries {
+			for k, e := range rl.entries {
+				if now.Sub(e.last) > rl.idle {
+					delete(rl.entries, k)
+				}
+			}
+			if len(rl.entries) >= maxKeyedRateLimitEntries {
+				rl.entries = make(map[K]*keyedRateLimitEntry)
+			}
+		}
 		e = &keyedRateLimitEntry{lim: rate.NewLimiter(rl.rps, rl.burst)}
 		rl.entries[key] = e
 	}
 	e.last = now
 	return e.lim
+}
+
+// Entries reports the number of live per-key buckets. Test-only observation of
+// the bound enforced in Bucket.
+func (rl *KeyedRateLimiter[K]) Entries() int {
+	if rl == nil {
+		return 0
+	}
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	return len(rl.entries)
 }

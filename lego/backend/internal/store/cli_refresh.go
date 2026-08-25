@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -28,6 +29,37 @@ import (
 )
 
 const cliRefreshSweepLimit = 1000
+
+// cliRefreshTTLCache is the process-local half of the CLI refresh idempotency
+// boundary (codex-security 2026-08 F2). The durable row in
+// cli_refresh_idempotency now records ONLY that a mint happened (the inbound
+// token digest + expiry): Hydra's verbatim response — which for the CLI's
+// offline_access grant contains the newly issued access token AND the rotated
+// refresh token — must never sit in Postgres or its backups as plaintext. The
+// response bytes live in this replica-local map for the idempotency TTL, which
+// is what actually deduplicates: the advisory lock serializes concurrent
+// refreshes onto one mint, and a duplicate arriving on THIS replica within the
+// TTL is served the cached bytes. A duplicate arriving on a DIFFERENT replica
+// re-mints from Hydra — one extra upstream round trip, which the 60s rotation
+// grace period (hydra.values.yaml) explicitly tolerates for exactly this
+// near-simultaneous-refresh shape.
+type cliRefreshTTLCache struct {
+	mu      sync.Mutex
+	entries map[[sha256.Size]byte]cliRefreshResponse
+}
+
+func (c *cliRefreshTTLCache) put(key [sha256.Size]byte, resp cliRefreshResponse) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries[key] = resp
+}
+
+func (c *cliRefreshTTLCache) get(key [sha256.Size]byte) (cliRefreshResponse, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	r, ok := c.entries[key]
+	return r, ok
+}
 
 // cliRefreshResponse is the exact successful OAuth response cached for one
 // inbound refresh-token digest. Body deliberately remains opaque: Hydra owns
@@ -46,44 +78,59 @@ type cliRefreshExecer interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
-// getCLIRefresh returns a live cached response for tokenHash. Expired rows are
-// logical misses even before the bounded opportunistic sweep physically
-// removes them.
-func getCLIRefresh(ctx context.Context, q cliRefreshQuerier, tokenHash [sha256.Size]byte) (cliRefreshResponse, bool, error) {
-	var out cliRefreshResponse
+// getCLIRefresh reports whether a live mint marker exists for tokenHash.
+// Expired rows are logical misses even before the bounded opportunistic sweep
+// physically removes them. It returns no response bytes — none are stored
+// (codex-security 2026-08 F2).
+func getCLIRefresh(ctx context.Context, q cliRefreshQuerier, tokenHash [sha256.Size]byte) (bool, error) {
+	var one int
 	err := q.QueryRow(ctx, `
-		SELECT response_body, response_status
+		SELECT 1
 		FROM cli_refresh_idempotency
 		WHERE token_hash = $1 AND expires_at > clock_timestamp()`, tokenHash[:],
-	).Scan(&out.Body, &out.Status)
+	).Scan(&one)
 	if err == nil {
-		return out, true, nil
+		return true, nil
 	}
 	if err == pgx.ErrNoRows {
-		return cliRefreshResponse{}, false, nil
+		return false, nil
 	}
-	return cliRefreshResponse{}, false, err
+	return false, err
 }
 
-func putCLIRefresh(ctx context.Context, q cliRefreshExecer, tokenHash [sha256.Size]byte, response cliRefreshResponse, ttl time.Duration) error {
+// putCLIRefresh records that a successful mint happened for tokenHash. The row
+// is a MARKER, not a cache of the response: it carries no token material (F2).
+func putCLIRefresh(ctx context.Context, q cliRefreshExecer, tokenHash [sha256.Size]byte, ttl time.Duration) error {
 	_, err := q.Exec(ctx, `
 		INSERT INTO cli_refresh_idempotency
 			(token_hash, response_body, response_status, expires_at)
-		VALUES ($1, $2, $3, clock_timestamp() + ($4::bigint * interval '1 microsecond'))
+		VALUES ($1, ''::bytea, 200, clock_timestamp() + ($2::bigint * interval '1 microsecond'))
 		ON CONFLICT (token_hash) DO UPDATE SET
 			response_body = EXCLUDED.response_body,
 			response_status = EXCLUDED.response_status,
 			expires_at = EXCLUDED.expires_at,
 			created_at = clock_timestamp()`,
-		tokenHash[:], response.Body, response.Status, ttl.Microseconds())
+		tokenHash[:], ttl.Microseconds())
 	return err
 }
 
 // IdempotentCLIRefresh serializes one refresh-token digest across every API
 // replica. The transaction-scoped advisory lock is acquired before the cache
-// lookup and held until a fresh Hydra response has been persisted, so only one
-// caller can mint from a rotating refresh token. Non-2xx OAuth responses and
-// transport failures are returned but never cached.
+// lookup and held until the mint marker has been persisted, so only one caller
+// can mint from a rotating refresh token. Non-2xx OAuth responses and transport
+// failures are returned but never cached.
+//
+// Split storage (codex-security 2026-08 F2): the DURABLE row records only that
+// a successful mint happened for this digest (plus its expiry — the marker is
+// what makes a duplicate re-mint safe to allow, because the 60s rotation grace
+// window is still open); the RESPONSE BYTES stay in this process only. Before
+// this, Hydra's verbatim token response — access token + rotated refresh
+// token, i.e. live credentials carrying bex.read/write/sensitive — was
+// persisted as plaintext bytea, readable by anyone with database or backup
+// access. A duplicate on another replica re-mints (one extra Hydra round trip
+// inside the grace window); a duplicate on this replica within the TTL gets
+// the exact cached bytes, preserving the byte-identical-response contract for
+// the CLI.
 func (s *PGStore) IdempotentCLIRefresh(
 	ctx context.Context,
 	tokenHash [sha256.Size]byte,
@@ -93,6 +140,10 @@ func (s *PGStore) IdempotentCLIRefresh(
 	if ttl <= 0 {
 		return nil, 0, fmt.Errorf("CLI refresh cache TTL must be positive")
 	}
+
+	s.cliRefreshOnce.Do(func() {
+		s.cliRefreshLocal = &cliRefreshTTLCache{entries: map[[sha256.Size]byte]cliRefreshResponse{}}
+	})
 
 	var body []byte
 	var status int
@@ -104,12 +155,25 @@ func (s *PGStore) IdempotentCLIRefresh(
 			return err
 		}
 
-		cached, ok, err := getCLIRefresh(ctx, tx, tokenHash)
+		// Replica-local hit: serve the exact bytes the first caller saw.
+		if cached, ok := s.cliRefreshLocal.get(tokenHash); ok {
+			body, status = cached.Body, cached.Status
+			return nil
+		}
+
+		// Durable hit (minted on another replica, or a prior local process):
+		// re-mint rather than return stored bytes — nothing sensitive is
+		// persisted to re-serve. The rotation grace window makes this safe.
+		durableHit, err := getCLIRefresh(ctx, tx, tokenHash)
 		if err != nil {
 			return err
 		}
-		if ok {
-			body, status = cached.Body, cached.Status
+		if durableHit {
+			body, status, err = mint(ctx)
+			if err != nil || status < 200 || status >= 300 {
+				return err
+			}
+			s.cliRefreshLocal.put(tokenHash, cliRefreshResponse{Body: body, Status: status})
 			return nil
 		}
 
@@ -120,10 +184,9 @@ func (s *PGStore) IdempotentCLIRefresh(
 		if err != nil || status < 200 || status >= 300 {
 			return err
 		}
+		s.cliRefreshLocal.put(tokenHash, cliRefreshResponse{Body: body, Status: status})
 
-		return putCLIRefresh(ctx, tx, tokenHash, cliRefreshResponse{
-			Body: body, Status: status,
-		}, ttl)
+		return putCLIRefresh(ctx, tx, tokenHash, ttl)
 	})
 	return body, status, err
 }

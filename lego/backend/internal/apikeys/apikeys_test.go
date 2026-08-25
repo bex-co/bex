@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -687,6 +688,28 @@ func TestHydraAPIKeysStore(t *testing.T) {
 	}
 	if err := store.Delete(ctx, created.ID); !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("Delete of missing => ErrNotFound, got %v", err)
+	}
+}
+
+// TestHydraClientPathEscapesStructuralCharacters is the codex-security
+// 2026-08 F9 regression: the caller-supplied id must be percent-encoded into
+// the Hydra admin path, never concatenated raw — '/', '?', or '#' in an id
+// would change WHICH admin resource is addressed (a second path segment, a
+// query, a fragment) rather than name a client. Unreachable in the multi-tenant
+// configuration (the tenant binding rejects such ids first), but the store
+// must not depend on that guard alone.
+func TestHydraClientPathEscapesStructuralCharacters(t *testing.T) {
+	for _, id := range []string{"a/b", "a?b=c", "a#frag", "../admin/clients", "plain-id"} {
+		path := hydraClientPath(id)
+		// The path is exactly one segment deep: /admin/clients/<encoded-id>,
+		// with no second raw slash, no '?', no '#'.
+		rest := strings.TrimPrefix(path, "/admin/clients/")
+		if strings.ContainsAny(rest, "/?#") {
+			t.Errorf("hydraClientPath(%q) = %q: raw structural character survived escaping", id, path)
+		}
+		if unescaped, err := url.PathUnescape(rest); err != nil || unescaped != id {
+			t.Errorf("hydraClientPath(%q): decoded segment = %q (err %v), want the id back", id, unescaped, err)
+		}
 	}
 }
 

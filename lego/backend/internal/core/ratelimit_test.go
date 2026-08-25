@@ -17,6 +17,7 @@ limitations under the License.
 package core
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -127,5 +128,24 @@ func TestKeyedRateLimiterPreservesRateAndBurst(t *testing.T) {
 	}
 	if rl.burst != 5 {
 		t.Errorf("burst = %d, want 5", rl.burst)
+	}
+}
+
+// TestKeyedRateLimiterCapsEntries is the codex-security 2026-08 F1 bound: a
+// key-space flood (one distinct key per request — the shape of an anonymous
+// caller rotating bearer tokens) must never grow the map past
+// maxKeyedRateLimitEntries. At the cap the idle are swept first, then the map
+// is reset wholesale, mirroring TTLCache's CacheMax discipline.
+func TestKeyedRateLimiterCapsEntries(t *testing.T) {
+	rl := NewKeyedRateLimiter[string](60, 1, time.Hour, time.Hour) // idle entries never swept mid-test
+	if rl == nil {
+		t.Fatal("want non-nil limiter")
+	}
+	for i := 0; i < maxKeyedRateLimitEntries*2; i++ {
+		_ = rl.Bucket(fmt.Sprintf("flood-key-%d", i))
+	}
+	if got := rl.Entries(); got > maxKeyedRateLimitEntries {
+		t.Errorf("entries = %d after %d distinct keys; want ≤ %d — the map must be capped, not unbounded",
+			got, maxKeyedRateLimitEntries*2, maxKeyedRateLimitEntries)
 	}
 }

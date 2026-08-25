@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +34,9 @@ import (
 )
 
 var _ = Describe("Tenant isolation (w7/m1)", func() {
-	const namespace = "default"
+	// Canonical ADR043 placement: namespace == workspace label (a labeled App
+	// in the shared namespace is refused since codex-security 2026-08 F11).
+	const namespace = "tea-testworkspace0001"
 	ctx := context.Background()
 
 	reconcileApp := func(r *AppReconciler, name string) {
@@ -55,6 +58,9 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 				Client: k8sClient, Scheme: k8sClient.Scheme(),
 				Mode: ModeKubernetes,
 			}
+			_ = k8sClient.Create(ctx, &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: namespace},
+			}) // AlreadyExists is fine across specs
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -127,7 +133,19 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 
 	Context("legacy App without workspace label", func() {
 		const name = "isolation-legacy"
+		// The unlabeled legacy shape is canonical in the BOOTSTRAP namespace
+		// only (codex-security 2026-08 F11); in a workspace namespace an
+		// unlabeled App is a stray and is refused.
+		const legacyNS = "default"
 
+		reconcileLegacy := func(r *AppReconciler, name string) {
+			for range 3 {
+				_, err := r.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{Name: name, Namespace: legacyNS},
+				})
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}
 		var r *AppReconciler
 		BeforeEach(func() {
 			r = &AppReconciler{
@@ -135,32 +153,32 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 				Mode: ModeKubernetes,
 			}
 			app := &appv1alpha1.App{
-				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: legacyNS},
 				Spec:       appv1alpha1.AppSpec{Image: "traefik/whoami", Port: 80},
 			}
 			Expect(k8sClient.Create(ctx, app)).To(Succeed())
 		})
 		AfterEach(func() {
 			app := &appv1alpha1.App{}
-			if err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, app); err == nil {
+			if err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: legacyNS}, app); err == nil {
 				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
-				reconcileApp(r, name)
+				reconcileLegacy(r, name)
 			}
 		})
 
 		It("reconciles without error and creates no NetworkPolicy", func() {
-			reconcileApp(r, name)
+			reconcileLegacy(r, name)
 
 			np := &networkingv1.NetworkPolicy{}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: legacyNS}, np)
 			Expect(errors.IsNotFound(err)).To(BeTrue(), "legacy App must not get a NetworkPolicy")
 		})
 
 		It("does not carry the workspace label in the pod template", func() {
-			reconcileApp(r, name)
+			reconcileLegacy(r, name)
 
 			dep := &appsv1.Deployment{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, dep)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: legacyNS}, dep)).To(Succeed())
 			Expect(dep.Spec.Template.Labels).NotTo(HaveKey(labelWorkspace))
 		})
 	})
@@ -169,17 +187,30 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 		const name = "isolation-env-scoped"
 		const workspace = "tea-testworkspace0002"
 		const environment = "env-testenv0001"
+		// Canonical placement for THIS workspace (namespace == label).
+		const envNS = workspace
 
+		reconcileEnv := func(r *AppReconciler, name string) {
+			for range 3 {
+				_, err := r.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{Name: name, Namespace: envNS},
+				})
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}
 		var r *AppReconciler
 		BeforeEach(func() {
 			r = &AppReconciler{
 				Client: k8sClient, Scheme: k8sClient.Scheme(),
 				Mode: ModeKubernetes,
 			}
+			_ = k8sClient.Create(ctx, &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: envNS},
+			}) // AlreadyExists is fine across specs
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
-					Namespace: namespace,
+					Namespace: envNS,
 					Labels:    map[string]string{labelWorkspace: workspace, labelNetworkIsolation: environment},
 				},
 				Spec: appv1alpha1.AppSpec{Image: "traefik/whoami", Port: 80},
@@ -188,41 +219,41 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 		})
 		AfterEach(func() {
 			app := &appv1alpha1.App{}
-			if err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, app); err == nil {
+			if err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, app); err == nil {
 				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
-				reconcileApp(r, name)
+				reconcileEnv(r, name)
 			}
 		})
 
 		It("propagates the environment label to the Deployment pod template", func() {
-			reconcileApp(r, name)
+			reconcileEnv(r, name)
 
 			dep := &appsv1.Deployment{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, dep)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, dep)).To(Succeed())
 			Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelNetworkIsolation, environment))
 			Expect(dep.Spec.Selector.MatchLabels).NotTo(HaveKey(labelNetworkIsolation),
 				"selector must remain stable, same rationale as labelWorkspace")
 		})
 
 		It("removing the environment label clears it from the pod template", func() {
-			reconcileApp(r, name)
+			reconcileEnv(r, name)
 
 			app := &appv1alpha1.App{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, app)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, app)).To(Succeed())
 			delete(app.Labels, labelNetworkIsolation)
 			Expect(k8sClient.Update(ctx, app)).To(Succeed())
-			reconcileApp(r, name)
+			reconcileEnv(r, name)
 
 			dep := &appsv1.Deployment{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, dep)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, dep)).To(Succeed())
 			Expect(dep.Spec.Template.Labels).NotTo(HaveKey(labelNetworkIsolation))
 		})
 
 		It("allows only same-environment peers for a protected App", func() {
-			reconcileApp(r, name)
+			reconcileEnv(r, name)
 
 			np := &networkingv1.NetworkPolicy{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, np)).To(Succeed())
 			Expect(np.Spec.PodSelector.MatchLabels).To(HaveKeyWithValue(labelApp, name))
 			Expect(np.Spec.PolicyTypes).To(ConsistOf(networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress))
 			Expect(np.Spec.Ingress).To(HaveLen(1))
@@ -240,16 +271,16 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 		})
 
 		It("removes the protected policy when isolation is disabled", func() {
-			reconcileApp(r, name)
+			reconcileEnv(r, name)
 
 			app := &appv1alpha1.App{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, app)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, app)).To(Succeed())
 			delete(app.Labels, labelNetworkIsolation)
 			Expect(k8sClient.Update(ctx, app)).To(Succeed())
-			reconcileApp(r, name)
+			reconcileEnv(r, name)
 
 			np := &networkingv1.NetworkPolicy{}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, np)
 			Expect(errors.IsNotFound(err)).To(BeTrue())
 		})
 	})

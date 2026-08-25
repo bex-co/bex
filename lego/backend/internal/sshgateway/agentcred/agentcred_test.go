@@ -269,6 +269,64 @@ func TestValidateReceivePackAcceptsBoundedShallowMetadata(t *testing.T) {
 	}
 }
 
+// TestValidateReceivePackRejectsWhitespacePaddedShallow is the codex-security
+// 2026-08 F3 shape regression: the shallow-line check must be the exact
+// single-space git wire form, not a strings.Fields two-field test — "shallow"
+// plus ~65,400 spaces plus a valid oid passed every prior check at the maximum
+// packet size, letting padding reach the replay buffer.
+func TestValidateReceivePackRejectsWhitespacePaddedShallow(t *testing.T) {
+	pkt := func(line string) string {
+		return fmt.Sprintf("%04x%s", len(line)+4, line)
+	}
+	old := strings.Repeat("1", 40)
+	next := strings.Repeat("2", 40)
+	command := old + " " + next + " refs/heads/bex-agent/task-1\x00report-status\n"
+	for name, padded := range map[string]string{
+		// Multiple interior spaces: a two-field line to strings.Fields, malformed on the wire.
+		"interior spaces": pkt("shallow  " + strings.Repeat("a", 40) + "\n") + pkt(command) + "0000",
+		// Maximal padding sized to the per-packet cap — the shape the buffer
+		// budget must never see.
+		"padding to packet cap": pkt("shallow " + strings.Repeat(" ", maxPacketBytes-4-8-41-len("\n")) + strings.Repeat("a", 40) + "\n") + pkt(command) + "0000",
+		// Tab separator — same class.
+		"tab separator": pkt("shallow\t" + strings.Repeat("a", 40) + "\n") + pkt(command) + "0000",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := validateReceivePack(strings.NewReader(padded), "bex-agent/task-1"); !errors.Is(err, agentsession.ErrForbidden) {
+				t.Fatalf("padded shallow line accepted: err=%v, want forbidden", err)
+			}
+		})
+	}
+}
+
+// TestValidateReceivePackBoundsReplayBuffer is the codex-security 2026-08 F3
+// budget regression: per-packet (64 KiB) and per-kind (1024 shallows) caps
+// bound nothing until their product is checked, and the product is ~64 MiB of
+// resident buffer in the shared gateway. The accumulated prefix must fail
+// closed at maxReceivePackPrefixBytes even when every individual line is valid.
+func TestValidateReceivePackBoundsReplayBuffer(t *testing.T) {
+	pkt := func(line string) string {
+		return fmt.Sprintf("%04x%s", len(line)+4, line)
+	}
+	var body strings.Builder
+	// Distinct oids so no two packets are identical (nothing dedupes; this is
+	// purely about volume). ~65 bytes/packet × ~16k packets ≈ 1 MiB budget.
+	for i := 0; body.Len() <= maxReceivePackPrefixBytes+4096; i++ {
+		oid := fmt.Sprintf("%040x", i)
+		body.WriteString(pkt("shallow " + oid + "\n"))
+	}
+	// Every line so far is individually valid: if the budget check were
+	// missing, validation would keep accepting until the 1024-shallow cap —
+	// but 1024 × 64 KiB of *padded* lines is the OOM shape this bounds.
+	if _, err := validateReceivePack(strings.NewReader(body.String()), "bex-agent/task-1"); !errors.Is(err, agentsession.ErrForbidden) {
+		t.Fatal("volume of individually-valid shallow lines exceeded the byte budget but was accepted")
+	}
+	// Sanity: the budget is what fired, not the shallow-count cap.
+	if strings.Count(body.String(), "shallow") <= maxShallowBoundaries {
+		t.Fatalf("test bug: only %d shallow lines built; need > %d to prove the byte budget fires",
+			strings.Count(body.String(), "shallow"), maxShallowBoundaries)
+	}
+}
+
 func TestAgentCredentialInternalMintRejectsUnsignedRequest(t *testing.T) {
 	handler := &agentsession.Handler{Secret: []byte("secret"), Minter: &agentsession.Minter{}}
 	recorder := httptest.NewRecorder()

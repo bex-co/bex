@@ -53,6 +53,12 @@ func TestCanonicalNamespaceGuard(t *testing.T) {
 		{"platform namespace", withWorkspace("kube-system", "tea-a"), false},
 		{"cross-tenant: label A but namespace B", withWorkspace("tea-b", "tea-a"), false},
 		{"foreign namespace, no workspace label", &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Namespace: "tea-x"}}, false},
+		// codex-security 2026-08 F11: a workspace label in the bootstrap
+		// namespace is unbound input — appIdentity() derives Zot repository,
+		// htpasswd username, static-site prefix, and snapshot prefix from it
+		// verbatim, and the projector never writes a labeled App there. A
+		// forged label captures another workspace's registry repository ACL.
+		{"labeled App in bootstrap namespace (forged identity)", withWorkspace("default", "tea-victim"), false},
 	} {
 		if got := r.canonicalNamespace(c.app); got != c.want {
 			t.Errorf("%s: canonicalNamespace = %v, want %v", c.name, got, c.want)

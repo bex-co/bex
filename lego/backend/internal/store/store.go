@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	mathrand "math/rand/v2"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -553,6 +554,13 @@ type Store interface {
 // errors happens here.
 type PGStore struct {
 	Pool *pgxpool.Pool
+
+	// cliRefreshOnce/cliRefreshLocal back IdempotentCLIRefresh's replica-local
+	// response cache (codex-security 2026-08 F2): token responses are never
+	// persisted, so the bytes a duplicate caller must receive byte-identically
+	// live only in the process that minted them.
+	cliRefreshOnce  sync.Once
+	cliRefreshLocal *cliRefreshTTLCache
 }
 
 func NewPGStore(pool *pgxpool.Pool) *PGStore { return &PGStore{Pool: pool} }

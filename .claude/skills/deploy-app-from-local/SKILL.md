@@ -24,7 +24,8 @@ Since the w1/m19.1 pivot there is no mgmt cluster — `scripts/fetch-app-kubecon
 ```bash
 # from the bex repo root (where this command runs)
 set -a; source ./.env; set +a
-BEX_SSH_KEY_PATH=~/.ssh/bex bash scripts/fetch-app-kubeconfig.sh /tmp/bex-app.kubeconfig
+# default key is ~/.ssh/id_bex (see scripts/fetch-app-kubeconfig.sh); override only if your key is elsewhere
+BEX_SSH_KEY_PATH=~/.ssh/id_bex bash scripts/fetch-app-kubeconfig.sh /tmp/bex-app.kubeconfig
 export KUBECONFIG=/tmp/bex-app.kubeconfig
 kubectl get app <app-name> -o yaml   # baseline: current image, port, generation, revision
 ```
