@@ -1017,14 +1017,24 @@ func TestObservedDeployStatusCancelsOrphanedRowAfterTimeout(t *testing.T) {
 		t.Errorf("orphaned row after timeout => %q, want %q", got, DeployCanceled)
 	}
 
-	// A legacy operator (no status.releaseGeneration) still keeps the conservative
-	// wait even when timed out: its metadata generation moves for operational
-	// churn, so a mismatch is not trustworthy evidence of an orphaned release.
+	// A legacy operator (no status.releaseGeneration) must still not be reported
+	// CANCELED on a metadata-generation mismatch: that generation also moves for
+	// operational churn (manual scale), so it is not trustworthy evidence that
+	// this release was superseded. But it is not evidence of a healthy build
+	// either, and before w6/m95 this branch answered "settled, no status" — which
+	// left the row open forever, the exact stranding the branch above exists to
+	// prevent. Past the gate timeout it now fails out in its last observed phase.
 	legacy := &appv1alpha1.App{}
 	legacy.Generation = 1
 	legacy.Status.Phase = appv1alpha1.PhaseRunning
-	if got := observedDeployStatus(open, legacy, true); got != "" {
-		t.Errorf("legacy orphaned row after timeout => %q, want no transition", got)
+	if got := observedDeployStatus(open, legacy, false); got != "" {
+		t.Errorf("legacy orphaned row before timeout => %q, want no transition", got)
+	}
+	if got := observedDeployStatus(open, legacy, true); got != DeployBuildFailed {
+		t.Errorf("legacy orphaned row after timeout => %q, want %q — never left open forever", got, DeployBuildFailed)
+	}
+	if got := observedDeployStatus(open, legacy, true); got == DeployCanceled {
+		t.Error("a legacy operator's metadata-generation churn must never be reported as a supersede")
 	}
 }
 
@@ -1293,20 +1303,20 @@ func TestFailureReasonFor(t *testing.T) {
 		return app
 	}
 	crash := "container exited shortly after start and is restarting repeatedly (last exit code 1) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (3000), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped)."
-	if got, _ := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "CrashLoopBackOff", crash)); got != crash {
+	if got, _ := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "CrashLoopBackOff", crash), DeployUpdateFailed); got != crash {
 		t.Errorf("CrashLoopBackOff reason = %q, want the condition message", got)
 	}
-	if got, code := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "ImagePullBackOff", "image pull is failing: 401")); got != "image pull is failing: 401" || code != EventReasonImagePullBackoff {
+	if got, code := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "ImagePullBackOff", "image pull is failing: 401"), DeployUpdateFailed); got != "image pull is failing: 401" || code != EventReasonImagePullBackoff {
 		t.Errorf("ImagePullBackOff reason = %q, want the condition message", got)
 	}
 	// A bland in-progress condition proves nothing — synthesize the timeout line.
-	if got, _ := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for img")); got == "" || got == "Reconciling Deployment for img" {
+	if got, _ := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for img"), DeployUpdateFailed); got == "" || got == "Reconciling Deployment for img" {
 		t.Errorf("bland Deploying condition reason = %q, want the synthesized timeout line", got)
 	}
 	// A stale-generation condition proves nothing either.
 	stale := mk(appv1alpha1.PhaseDeploying, "CrashLoopBackOff", crash)
 	stale.Status.Conditions[0].ObservedGeneration = 2
-	if got, _ := failureReasonFor(stale); got == crash {
+	if got, _ := failureReasonFor(stale, DeployUpdateFailed); got == crash {
 		t.Error("stale-generation condition message must not be stamped")
 	}
 }
@@ -1332,7 +1342,7 @@ func TestFailureReasonCarriesTheQuotaBlock(t *testing.T) {
 		Message: msg, ObservedGeneration: 4,
 	}}
 
-	reason, code := failureReasonFor(app)
+	reason, code := failureReasonFor(app, DeployUpdateFailed)
 	if reason != msg {
 		t.Errorf("failure_reason = %q\nwant the operator's quota diagnosis naming the quota and its headroom", reason)
 	}
@@ -1791,7 +1801,7 @@ func TestClassifiedBuildFailureReasonsStayBuildFailures(t *testing.T) {
 		}
 		// The operator's message must survive too: it is the only place the
 		// tenant learns which class it was and what actually broke.
-		if msg, _ := failureReasonFor(app(reason)); msg != "the build said why" {
+		if msg, _ := failureReasonFor(app(reason), DeployBuildFailed); msg != "the build said why" {
 			t.Errorf("reason %q => failure_reason %q, want the operator's message", reason, msg)
 		}
 	}

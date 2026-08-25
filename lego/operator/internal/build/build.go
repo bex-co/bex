@@ -598,22 +598,37 @@ const pushContainer = "push"
 // buildQueued reports whether the Job's build is still waiting for capacity
 // rather than doing work, and the scheduler's reason when it is.
 //
-// Errors and the no-pods-yet window are reported as NOT queued: this only gates
-// a status nicety, and guessing "queued" on a failed List would stall the
-// caller's clock on evidence it does not have. (The census gauges make the
-// opposite choice for the no-pods window — see CountBuilds — because there the
-// gap between a Job's creation and its first pod is exactly the cold
-// scale-from-zero wait the gauge exists to show.)
+// A failed List is reported as NOT queued: guessing "queued" on evidence the
+// caller does not have would stall its clock. A List that SUCCEEDS and returns
+// nothing is the opposite — positive proof that the Job has not materialised a
+// pod yet — and is reported queued (w6/m95). Before that split the no-pods
+// window fell in with the error case and surfaced as PhaseBuilding, which
+// contradicts PhaseBuilding's own definition ("a pod is placed on a node") and
+// let the control plane report a deploy as build_in_progress with nothing
+// running underneath it. (The census gauges already made this call the same
+// way for the no-pods window — see CountBuilds — because the gap between a
+// Job's creation and its first pod is exactly the cold scale-from-zero wait
+// the gauge exists to show.)
 func buildQueued(ctx context.Context, o Options, jobName string) (bool, string) {
 	pods, err := listJobPods(ctx, o.Client, o.Namespace, jobName)
-	if err != nil || len(pods) == 0 {
+	if err != nil {
 		return false, ""
+	}
+	if len(pods) == 0 {
+		return true, noBuildPodReason
 	}
 	if podsPlaced(pods) {
 		return false, ""
 	}
 	return true, unschedulableReason(pods)
 }
+
+// noBuildPodReason explains the window this milestone made visible: the Job
+// object exists but its controller has not created a pod for it — normally
+// sub-second, indefinite when pod creation is being rejected (a namespace
+// ResourceQuota, an admission webhook, a LimitRange the pod template violates).
+// Worded for a tenant reading it on their deploy, since it reaches them.
+const noBuildPodReason = "build job dispatched; waiting for its build pod to be created"
 
 // listJobPods returns the pods one Job has created, across all of its attempts.
 func listJobPods(ctx context.Context, cl client.Client, namespace, jobName string) ([]corev1.Pod, error) {

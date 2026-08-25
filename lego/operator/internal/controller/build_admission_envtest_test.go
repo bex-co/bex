@@ -178,9 +178,17 @@ var _ = Describe("Cluster-wide build admission ceiling (ADR060 D6)", func() {
 
 		// Its own build now occupies the only slot. Observing it must keep working:
 		// the cap gates a NEW dispatch, never an App's observation of its own build.
+		//
+		// Asserted on the MESSAGE, not the reason: envtest runs no Job controller,
+		// so this Job never gets a pod, and since w6/m95 a dispatched Job with no
+		// pod honestly reports BuildQueued in its own right. What must never
+		// appear is the CAP's verdict — that is the self-deadlock this guards.
 		reconcileN(r, "selfgate-a", "tea-aaa", 3)
-		Expect(readyCondition("selfgate-a", "tea-aaa").Reason).NotTo(Equal(reasonBuildQueued),
+		cond := readyCondition("selfgate-a", "tea-aaa")
+		Expect(cond.Message).NotTo(ContainSubstring("concurrent builds active"),
 			"the cap must not report an App as queued behind its own running build")
+		Expect(cond.Message).NotTo(ContainSubstring("cluster has"),
+			"the cluster-wide ceiling must not gate an App's own in-flight build either")
 	})
 })
 

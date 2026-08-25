@@ -129,6 +129,43 @@ func IsBuildFailureReason(reason string) bool {
 	return false
 }
 
+// Build-progress condition reasons, the PhaseBuilding half of the same
+// contract. The operator writes them, bex-api reads them to decide whether a
+// deploy row is queued or building — which is the difference between "a
+// BuildKit pod is compiling your code right now" and "nothing is running yet".
+//
+// They live here for the reason above: before w6/m95 each side spelled them as
+// its own string literal, and the DEFAULT on the reading side was "building" —
+// so every reason the operator invented for a pre-dispatch wait (today
+// RegistryCredsPending, while zot has not yet accepted a fresh App's push
+// credential and no build Job exists at all) silently reported the deploy as
+// build_in_progress with no build behind it.
+const (
+	// ReasonBuilding is written ONLY once a build pod is placed and running, so
+	// it is the one reason that licenses the build_in_progress deploy status.
+	ReasonBuilding = "Building"
+	// ReasonBuildQueued covers every dispatched-but-not-running wait: a
+	// concurrency cap, a Job whose pod the scheduler cannot place, and the
+	// window between the Job's creation and its first pod.
+	ReasonBuildQueued = "BuildQueued"
+	// ReasonRegistryCredsPending parks an App before its build Job is created
+	// at all, while zot is re-read for a freshly written per-App credential
+	// (lego/operator/internal/registry/verify.go).
+	ReasonRegistryCredsPending = "RegistryCredsPending"
+)
+
+// BuildIsRunningReason reports whether a PhaseBuilding Ready-condition reason
+// proves a build is actually executing, as opposed to waiting to start.
+//
+// Deliberately an allow-list, not a deny-list: a reader that defaults an
+// unrecognised reason to "running" claims backing infrastructure it has no
+// evidence for, which is the exact shape of the w6/m95 hang. An operator newer
+// than its control plane can add a wait reason; it can never add a running one
+// without changing this contract.
+func BuildIsRunningReason(reason string) bool {
+	return reason == ReasonBuilding
+}
+
 // DefaultBranch is the git branch a repo-backed App tracks when none is
 // specified. It lives on the CRD contract because both sides default to it
 // independently — the backend when validating a source patch or projecting a

@@ -508,11 +508,13 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	seen := make(map[string]bool, len(desired))
 	for _, d := range desired {
 		seen[d.ID] = true
+		open := openByApp[d.ID]
 		cur, ok := byID[d.ID]
 		if !ok {
 			if err := r.Client.Create(ctx, r.projectApp(ctx, d)); err != nil {
 				errs = append(errs, fmt.Errorf("create App %s/%s: %w", d.TenantName, d.Name, err))
 			}
+			r.settleAbandonedDeploys(ctx, d, open)
 			continue
 		}
 		// Never converge another control plane's App (w6/m39): re-stamping it to
@@ -522,6 +524,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		// CR gains its label), while only the default identity may prune one.
 		if owner := cur.Labels[ControlPlaneLabel]; owner != "" && owner != r.identity() {
 			errs = append(errs, fmt.Errorf("App %s belongs to control plane %q, not %q", cur.Name, owner, r.identity()))
+			r.settleAbandonedDeploys(ctx, d, open)
 			continue
 		}
 		// A row created before the type column existed (migration 0095) learns
@@ -542,10 +545,11 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		if specChanged || labelsChanged {
 			if err := r.Client.Update(ctx, cur); err != nil {
 				errs = append(errs, fmt.Errorf("update App %s: %w", cur.Name, err))
+				r.settleAbandonedDeploys(ctx, d, open)
 				continue
 			}
 		}
-		r.recordObservations(ctx, d, cur, openByApp[d.ID])
+		r.recordObservations(ctx, d, cur, open)
 	}
 	// Rows deleted from Postgres → delete their projected CR. The List above is
 	// CLUSTER-scoped and app ids are per-database xids, so another control
@@ -563,6 +567,56 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// settleAbandonedDeploys closes an app's open deploy rows that are past their
+// gate timeout when this pass could not observe the App CR at all (w6/m95).
+//
+// Every OTHER path to a terminal state runs inside recordDeploy, which
+// ReconcileOnce reaches only after the CR is found, owned, and converged. Three
+// `continue`s skip it: the CR is missing from the List, it belongs to another
+// control plane, or the spec Update failed. Each is normally transient and the
+// next pass observes the row — but none of them is GUARANTEED to clear, and
+// while one persists the deploy row is not merely un-advanced, it is
+// unevaluated: the gate timeout that is supposed to be the last backstop never
+// runs. That is how a build_in_progress row becomes permanent rather than
+// 35-minutes-wrong, which is the difference this milestone exists to close.
+//
+// Deliberately only the timeout close, never a phase advance: with no CR read
+// this pass there is no live evidence to project, and the deploy's own last
+// observed phase is the only thing to be honest about. Sub-timeout rows are
+// left exactly as they were, so a brief transient costs nothing.
+func (r *Reconciler) settleAbandonedDeploys(ctx context.Context, d DesiredApp, open []Deploy) {
+	for _, deploy := range open {
+		if !r.deployTimedOut(d, deploy) {
+			continue
+		}
+		status := timedOutDeployStatus(deploy)
+		reason := abandonedDeployReason(status)
+		ok, err := r.Store.TransitionDeploy(ctx, deploy.ID, status, "", reason, "")
+		if err != nil {
+			log.Printf("controlplane: settle abandoned deploy %s to %s: %v", deploy.ID, status, err)
+			continue
+		}
+		// A failure the tenant is never told about is barely better than a row
+		// that never closes, so this close notifies on the same terms as
+		// recordDeploy's. The App CR is what carries the per-service override,
+		// and not being able to read it is why we are here — so the policy
+		// fields go out empty, which the notifier already reads as "default"
+		// (the value an App created before those fields existed carries).
+		if ok && r.DeployNotifier != nil {
+			go r.DeployNotifier.NotifyDeploy(context.WithoutCancel(ctx), DeployNotification{
+				TenantID:      d.TenantID,
+				AppName:       d.Name,
+				Status:        status,
+				DeployID:      deploy.ID,
+				CommitMessage: deploy.CommitMessage,
+				CommitSHA:     deploy.Commit,
+				RepoURL:       d.Repo,
+				FailureReason: reason,
+			})
+		}
+	}
 }
 
 // recordDeploy projects the current generation's observable App/Job facts onto
@@ -629,7 +683,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	if matchesObservedRelease {
 		switch status {
 		case DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed:
-			failureReason, failureCode = failureReasonFor(cur)
+			failureReason, failureCode = failureReasonFor(cur, status)
 		}
 	}
 	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode)
@@ -931,10 +985,19 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 			switch {
 			case timedOut:
 				return DeployBuildFailed
-			case reason == "BuildQueued":
-				return DeployQueued
-			default:
+			// build_in_progress is a claim about infrastructure — it puts a live
+			// build behind the row, and the log stream promises to follow it. So
+			// it is granted only on the operator's positive proof that a build
+			// pod is running, and every other PhaseBuilding reason reports the
+			// honest queued (w6/m95: RegistryCredsPending parks an App in
+			// PhaseBuilding BEFORE its build Job is created at all, and the old
+			// default-to-building reading turned that into a deploy that claimed
+			// to be building with no Job, no pod, and a build-log subscribe that
+			// answered "no running build is available to follow").
+			case appv1alpha1.BuildIsRunningReason(reason):
 				return DeployBuildInProgress
+			default:
+				return DeployQueued
 			}
 		}
 	case appv1alpha1.PhaseDeploying:
@@ -1007,11 +1070,22 @@ func supersededDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) (s
 	// superseded case above already uses — but only for a release-generation-
 	// aware operator (status.releaseGeneration > 0); a legacy operator's
 	// metadata generation also moves for operational churn (manual scale), so
-	// it keeps the conservative wait rather than risk canceling a live rollout.
-	if timedOut && app.Status.ReleaseGeneration > 0 {
+	// canceled is the wrong verdict to reach on its evidence.
+	if !timedOut {
+		return "", true
+	}
+	if app.Status.ReleaseGeneration > 0 {
 		return DeployCanceled, true
 	}
-	return "", true
+	// Legacy operator, past the gate timeout. The guard above is about which
+	// TERMINAL to pick, not about whether to pick one (w6/m95 t003): metadata
+	// generation is untrustworthy evidence that this row was SUPERSEDED, so it
+	// must not be reported canceled — but it is not evidence of anything else
+	// either, and returning settled-with-no-status here left the row open
+	// forever, the very stranding this whole branch exists to prevent. Fail it
+	// out in its last observed phase instead, exactly as an unmatched row with
+	// no generation mismatch at all already does.
+	return timedOutDeployStatus(open), true
 }
 
 // timedOutDeployStatus fails an open row out in the phase it was last known to
@@ -1064,7 +1138,15 @@ func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
 // and every pod-state diagnosis stays blind — but the ReplicaSet's FailedCreate
 // verdict already names the quota, and the operator stamps it on the App
 // condition (lego/operator reportRolloutProgress).
-func failureReasonFor(app *appv1alpha1.App) (string, string) {
+//
+// RegistryCredsPending and BuildQueued are the third instance of the same gap
+// (w6/m95). Both park an App in PhaseBuilding with a message that already names
+// what the build is waiting on — a registry credential the running zot has not
+// re-read, a concurrency cap, a node the scheduler cannot find, a Job whose pod
+// was never created. A row that times out in one of those waits used to close
+// with the health-gate line, which is wrong twice over: no health gate ran, and
+// it points at service logs that do not exist because the service never built.
+func failureReasonFor(app *appv1alpha1.App, status string) (string, string) {
 	for i := range app.Status.Conditions {
 		c := &app.Status.Conditions[i]
 		if c.Type != appv1alpha1.ConditionReady || c.ObservedGeneration != app.Generation {
@@ -1075,6 +1157,10 @@ func failureReasonFor(app *appv1alpha1.App) (string, string) {
 			return c.Message, EventReasonImagePullBackoff
 		case "CrashLoopBackOff", "CreateContainerConfigError", "RolloutBlockedByQuota", appv1alpha1.ReasonPreDeployFailed:
 			return c.Message, ""
+		case appv1alpha1.ReasonBuildQueued, appv1alpha1.ReasonRegistryCredsPending:
+			if c.Message != "" {
+				return "the build never started: " + c.Message, ""
+			}
 		default:
 			if appv1alpha1.IsBuildFailureReason(c.Reason) {
 				return c.Message, ""
@@ -1084,7 +1170,34 @@ func failureReasonFor(app *appv1alpha1.App) (string, string) {
 			return c.Message, ""
 		}
 	}
-	return "the deploy did not become healthy within the health-gate window; check the service logs", ""
+	return timedOutDeployReason(status), ""
+}
+
+// timedOutDeployReason names the budget that actually expired when nothing else
+// diagnosed the failure. One line per gate, because "did not become healthy
+// within the health-gate window; check the service logs" is only true of the
+// rollout gate — told to someone whose build never produced an image it sends
+// them to logs that were never written.
+func timedOutDeployReason(status string) string {
+	switch status {
+	case DeployBuildFailed:
+		return "the build did not finish within the build window; check the build logs"
+	case DeployPreDeployFailed:
+		return "the pre-deploy command did not finish within its window; check the pre-deploy logs"
+	default:
+		return "the deploy did not become healthy within the health-gate window; check the service logs"
+	}
+}
+
+// abandonedDeployReason is timedOutDeployReason's sibling for the rows
+// settleAbandonedDeploys closes: same expired budget, but the control plane
+// could not read the App CR at all this pass, so it says so rather than
+// implying it observed a build or a rollout that failed.
+func abandonedDeployReason(status string) string {
+	if status == DeployBuildFailed {
+		return "the build did not finish within the build window, and this service's App record could not be read to explain why"
+	}
+	return "the deploy did not finish within its window, and this service's App record could not be read to explain why"
 }
 
 // concreteContainerFailure reports whether a Ready=False reason names a defect

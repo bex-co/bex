@@ -292,3 +292,49 @@ func TestPollKeepsRunningOnItsOwnTicker(t *testing.T) {
 		t.Fatal("Poll did not return after its context was canceled")
 	}
 }
+
+// A panicking step is one failed pass, not the end of the process (w6/m95).
+// These workers each sweep EVERY row in a table, so an unrecovered nil
+// dereference on one malformed row takes bex-api down and stops the store
+// reconciler's deploy gate timeouts — the backstop that keeps a deploy row from
+// sitting in a non-terminal status forever — for every app, not just that one.
+func TestPollTicksSurvivesAPanickingStep(t *testing.T) {
+	logged := captureLog(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ticks := make(chan time.Time)
+	calls := make(chan struct{}, 8)
+	done := make(chan struct{})
+	panics := 0
+	go func() {
+		defer close(done)
+		PollTicks(ctx, "test worker", ticks, func(context.Context) error {
+			calls <- struct{}{}
+			panics++
+			if panics == 1 {
+				panic("nil deploy row")
+			}
+			return nil
+		})
+	}()
+
+	awaitCall(t, calls)
+	ticks <- time.Now()
+	awaitCall(t, calls) // the next tick still ran: one bad row is not fatal
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("PollTicks did not return after its context was canceled")
+	}
+	got := logged()
+	if !strings.Contains(got, "nil deploy row") {
+		t.Errorf("log = %q, want the panic value", got)
+	}
+	if !strings.Contains(got, "poll.go") {
+		t.Errorf("log = %q, want a stack trace — the panic value alone will not identify the row", got)
+	}
+	if !strings.Contains(got, "test worker") {
+		t.Errorf("log = %q, want the worker named", got)
+	}
+}

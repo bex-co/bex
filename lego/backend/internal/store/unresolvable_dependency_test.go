@@ -53,7 +53,7 @@ const missingSecretMessage = `container configuration cannot be resolved: secret
 func TestFailureReasonCarriesTheUnresolvableDependency(t *testing.T) {
 	app := readyCondition("CreateContainerConfigError", missingSecretMessage, 7)
 
-	reason, code := failureReasonFor(&app)
+	reason, code := failureReasonFor(&app, DeployUpdateFailed)
 	if reason != missingSecretMessage {
 		t.Errorf("failure_reason = %q\nwant the operator's diagnosis naming the missing object", reason)
 	}
@@ -75,7 +75,7 @@ func TestFailureReasonCarriesTheUnresolvableDependency(t *testing.T) {
 func TestFailureReasonStillFallsBackWhenNothingWasDiagnosed(t *testing.T) {
 	app := readyCondition("RolloutProgressing", "waiting for the current Deployment revision", 3)
 
-	reason, _ := failureReasonFor(&app)
+	reason, _ := failureReasonFor(&app, DeployUpdateFailed)
 	if !strings.Contains(reason, "health-gate window") {
 		t.Errorf("failure_reason = %q, want the generic health-gate line", reason)
 	}
