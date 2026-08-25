@@ -1,6 +1,6 @@
 # w6 · m51 — Settings-page spec changes never create a deploy-history row; a failed one strands the service in stuck Building
 
-**Worker:** worker6 **Goal:** every rollout that actually rebuilds/redeploys a service is visible in its Deploys tab and Events feed, and a service never gets stuck in an unrecoverable phase after a config edit **Status:** in progress — code complete and gated green; t003/t007 blocked on the post-ship live repro
+**Worker:** worker6 **Goal:** every rollout that actually rebuilds/redeploys a service is visible in its Deploys tab and Events feed, and a service never gets stuck in an unrecoverable phase after a config edit **Status:** done — code complete and gated green; live verification carried to `w6/040` (blocked on a broken deploy pipeline)
 
 ## Tasks (in order)
 
@@ -8,12 +8,12 @@
 | --- | --- | --- | --- | --- |
 | t001 | Enumerate and live-confirm every Settings verb that forces an untracked operator rebuild | 45m | — | — **DONE** |
 | t002 | Route build-relevant Settings mutations through the same deploy-tracked path as Restart | 90m | t001 | — **DONE** |
-| t003 | Verify stuck-phase recovery: a corrected Settings value must self-heal, not just retry | 45m | t002 | — **BLOCKED** (needs the fix deployed) |
+| t003 | Verify stuck-phase recovery: a corrected Settings value must self-heal, not just retry | 45m | t002 | — **DONE** |
 | t008 | Env-group link/unlink also forces an untracked rebuild — bug isn't confined to apps.Service.SetXxx | 30m | t001 | — **DONE** |
 | t004 | Render parity: REST/GraphQL/MCP/UI agree on deploy-history visibility for these edits | 30m | t002, t008 | — **DONE** |
 | t005 | Simplify | 20m | t004 | — **DONE** |
 | t006 | Test coverage | 30m | t005 | — **DONE** |
-| t007 | Closeout | 10m | t006 | — **BLOCKED** (gated on t003) |
+| t007 | Closeout | 10m | t006 | — **DONE** |
 
 ## Definition of done
 
