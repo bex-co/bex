@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"slices"
 	"sort"
@@ -143,6 +144,17 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	q.App = resources[0] // subscribe follows a single App
 
+	// Resume where this client's previous connection stopped. A browser
+	// EventSource reconnects on its own — invisibly to the page — and replays
+	// the last `id:` we emitted as Last-Event-ID; honoring it is what keeps a
+	// reconnect from re-reading the pod's whole log from offset 0 (w6/m93). An
+	// explicit startTime always wins: the caller asked for a specific window.
+	if q.Since.IsZero() {
+		if resume, ok := resumeFrom(r.Header.Get("Last-Event-ID")); ok {
+			q.Since = resume
+		}
+	}
+
 	// SECURITY (codex #3): reject a subscription with no live producer BEFORE
 	// acquiring a slot — a type=predeploy (or other producerless) request would
 	// otherwise park on an idle stream and hold one of the process-global SSE
@@ -173,6 +185,23 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.subscribeStream(w, r, q)
+}
+
+// resumeFrom parses an SSE Last-Event-ID back into the lower bound it stands
+// for. The id is the log line's own RFC3339Nano timestamp, so a resume is just
+// a query window — no server-side cursor state to keep or expire. An
+// unparseable value (a client that invented one, or a frame from a build that
+// carried no stamp) is ignored rather than refused: the worst case is the
+// unbounded read this exists to avoid, never a failed subscription.
+func resumeFrom(lastEventID string) (time.Time, bool) {
+	if lastEventID == "" {
+		return time.Time{}, false
+	}
+	t, err := time.Parse(time.RFC3339Nano, lastEventID)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t, true
 }
 
 var errSubscriptionLimit = errors.New("log subscription capacity reached")
@@ -322,11 +351,31 @@ func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, q LogQ
 	_ = rc.SetWriteDeadline(time.Time{})
 
 	useSSE := r.Header.Get("Accept") == "text/event-stream"
-	lineFormat, errorFormat := "%s\n", "{\"error\":%q}\n"
+	errorFormat := "{\"error\":%q}\n"
 	contentType := "application/x-ndjson"
 	if useSSE {
-		lineFormat, errorFormat = "data: %s\n\n", "event: error\ndata: %q\n\n"
+		errorFormat = "event: error\ndata: %q\n\n"
 		contentType = "text/event-stream"
+	}
+	// frame renders one log record for the negotiated transport. SSE carries an
+	// `id:` — that is what makes the browser's OWN reconnect resumable, since
+	// EventSource replays the last id as Last-Event-ID with no client code
+	// involved, and resumeFrom below turns it back into the query's lower bound.
+	// Without it every invisible reconnect re-read the pod's whole log from
+	// offset 0 (w6/m93).
+	//
+	// A record with no parseable stamp gets NO id line, deliberately: per the SSE
+	// spec an empty `id:` field SETS the last-event-id buffer to empty, and the
+	// browser then stops sending the header entirely — so emitting one would let
+	// a single stamp-less line silently disable resume for the rest of the tail.
+	frame := func(payload []byte, id string) string {
+		if !useSSE {
+			return string(payload) + "\n"
+		}
+		if id == "" {
+			return "data: " + string(payload) + "\n\n"
+		}
+		return "id: " + id + "\ndata: " + string(payload) + "\n\n"
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "no-cache")
@@ -339,7 +388,7 @@ func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, q LogQ
 		if mErr != nil {
 			return mErr
 		}
-		if _, wErr := fmt.Fprintf(w, lineFormat, payload); wErr != nil {
+		if _, wErr := io.WriteString(w, frame(payload, e.Timestamp)); wErr != nil {
 			return wErr
 		}
 		flusher.Flush()

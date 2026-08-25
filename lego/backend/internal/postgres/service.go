@@ -644,7 +644,20 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	user := string(sec.Data["username"])
 	pass := string(sec.Data["password"])
 	dbn := string(sec.Data["dbname"])
-	internal := string(sec.Data["uri"]) // CNPG's ready-made internal URI
+	// Build the internal URI from the operator's canonical host rather than
+	// reusing CNPG's ready-made "uri", which spells the host 2-label
+	// ("<cluster>-rw.<ns>") while every other host on this same response —
+	// PSQLCommand below, the pooler strings, the per-replica strings — is the
+	// 3-label ".svc" form status carries. Both resolve inside the cluster, so
+	// this is not a broken string; it is the same panel telling a user two
+	// different canonical hosts for one database (w6/m93). Key Value already
+	// derives its connection string from Status.Host for exactly this reason.
+	// An unreconciled Database with no Status.Host yet keeps CNPG's value, so a
+	// pre-reconcile read degrades to today's behavior instead of a hostless URI.
+	internal := string(sec.Data["uri"])
+	if d.Status.Host != "" {
+		internal = fmt.Sprintf("postgresql://%s:%s@%s:5432/%s", user, pass, d.Status.Host, dbn)
+	}
 
 	info := PostgresConnectionInfo{
 		Password:                 pass,

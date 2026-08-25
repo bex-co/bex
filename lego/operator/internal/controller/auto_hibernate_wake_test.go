@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -164,7 +165,9 @@ func TestAutoHibernateInActivatorNamespaceUsesActivatorDirectly(t *testing.T) {
 }
 
 // Waking restores the App's own Service as the public backend: the alias is a
-// sleeping-state detail, not a permanent indirection.
+// sleeping-state detail, not a permanent indirection. w6/m94 added the
+// precondition — the swap back waits until a pod is actually ready, so the
+// route is never handed to a Service that has no endpoint to serve it.
 func TestWakeRestoresAppServiceAsIngressBackend(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
@@ -192,6 +195,25 @@ func TestWakeRestoresAppServiceAsIngressBackend(t *testing.T) {
 	}
 	reconcileTwice(t, r, nn)
 
+	// Still waking: replicas are restored but no pod is ready yet, so the
+	// activator keeps the route. Handing it back here is what made a client
+	// retrying at the advertised Retry-After hit Traefik's raw "no available
+	// server" instead of the wake interstitial (w6/m94).
+	var waking networkingv1.Ingress
+	if err := cl.Get(ctx, nn, &waking); err != nil {
+		t.Fatal(err)
+	}
+	if backend := waking.Spec.Rules[0].HTTP.Paths[0].Backend.Service; backend.Name == app.Name {
+		t.Fatalf("backend swapped to %q before any pod was ready", backend.Name)
+	}
+
+	// The Deployment reports a ready pod — what the deployment controller does
+	// once the workload is actually up, and what the operator watches for
+	// (Owns(Deployment) uses ResourceVersionChangedPredicate precisely so a
+	// status-only change like this re-reconciles).
+	markDeploymentReady(t, cl, nn)
+	reconcileTwice(t, r, nn)
+
 	var ing networkingv1.Ingress
 	if err := cl.Get(ctx, nn, &ing); err != nil {
 		t.Fatal(err)
@@ -205,5 +227,151 @@ func TestWakeRestoresAppServiceAsIngressBackend(t *testing.T) {
 	}
 	if dep.Spec.Replicas == nil || *dep.Spec.Replicas != 1 {
 		t.Fatalf("woken replicas = %v, want 1", dep.Spec.Replicas)
+	}
+}
+
+// markDeploymentReady reports one ready replica on the App's Deployment, the
+// state the deployment controller writes once a pod passes its probes. The fake
+// client runs no controllers, so a test that depends on readiness must say so.
+func markDeploymentReady(t *testing.T, cl client.Client, nn types.NamespacedName) {
+	t.Helper()
+	var dep appsv1.Deployment
+	if err := cl.Get(context.Background(), nn, &dep); err != nil {
+		t.Fatal(err)
+	}
+	dep.Status.ReadyReplicas = 1
+	dep.Status.AvailableReplicas = 1
+	dep.Status.Replicas = 1
+	if err := cl.Status().Update(context.Background(), &dep); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// activeApp is hibernatingApp's awake sibling: same free-tier, auto-sleep
+// eligible service, but last seen just now, so it is serving rather than idle.
+func activeApp(namespace string) *appv1alpha1.App {
+	app := hibernatingApp(namespace)
+	app.Annotations[annotLastActive] = time.Now().UTC().Format(time.RFC3339)
+	app.Spec.IdleTTLSeconds = 300
+	return app
+}
+
+func wakeReconciler(cl client.Client, scheme *runtime.Scheme) *AppReconciler {
+	return &AppReconciler{
+		Client: cl, Scheme: scheme, Mode: ModeKubernetes, BaseDomain: "onbex.co",
+		ActivatorService: "bex-activator", ActivatorNamespace: "bex-system", ActivatorPort: 8888,
+	}
+}
+
+func wakeScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	return scheme
+}
+
+func ingressBackendName(t *testing.T, cl client.Client, nn types.NamespacedName) string {
+	t.Helper()
+	var ing networkingv1.Ingress
+	if err := cl.Get(context.Background(), nn, &ing); err != nil {
+		t.Fatal(err)
+	}
+	return ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name
+}
+
+func deploymentReplicas(t *testing.T, cl client.Client, nn types.NamespacedName) int32 {
+	t.Helper()
+	var dep appsv1.Deployment
+	if err := cl.Get(context.Background(), nn, &dep); err != nil {
+		t.Fatal(err)
+	}
+	if dep.Spec.Replicas == nil {
+		return 1
+	}
+	return *dep.Spec.Replicas
+}
+
+// TestHibernateSwapsRouteBeforeDrainingPods is w6/m94's hibernate-direction
+// fix. Scaling to 0 and swapping the Ingress to the activator are two separate,
+// non-atomic API writes, and Traefik ingests them independently — so doing both
+// in one pass leaves a window where the route still names the App's Service
+// while its last endpoint is going away, and a request in that window gets
+// Traefik's own "no available server" instead of bex's interstitial.
+//
+// The operator cannot observe Traefik's config propagation, so it buys time
+// instead: write the route, keep the pods, come back. The App is already idle
+// for its whole TTL, so the wait costs nothing.
+func TestHibernateSwapsRouteBeforeDrainingPods(t *testing.T) {
+	scheme := wakeScheme()
+	app := activeApp("tea-abc123")
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
+	r := wakeReconciler(cl, scheme)
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+
+	// Serving normally: the route is the App's own Service.
+	reconcileTwice(t, r, nn)
+	markDeploymentReady(t, cl, nn)
+	reconcileTwice(t, r, nn)
+	if got := ingressBackendName(t, cl, nn); got != app.Name {
+		t.Fatalf("serving backend = %q, want the App's own Service %q", got, app.Name)
+	}
+
+	// Now it goes idle past its TTL.
+	var live appv1alpha1.App
+	if err := cl.Get(context.Background(), nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	live.Annotations[annotLastActive] = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+	if err := cl.Update(context.Background(), &live); err != nil {
+		t.Fatal(err)
+	}
+
+	// The hibernate pass moves the route and NOTHING else: the pods that are
+	// still serving must outlive the route change, not disappear beside it.
+	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nn})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if got := ingressBackendName(t, cl, nn); got != activatorAliasName(app.Name) {
+		t.Fatalf("backend = %q, want the activator alias — the route must move first", got)
+	}
+	if got := deploymentReplicas(t, cl, nn); got != 1 {
+		t.Fatalf("replicas = %d, want the pods kept until the route has propagated", got)
+	}
+	if res.RequeueAfter != hibernateRoutingGrace {
+		t.Fatalf("requeueAfter = %v, want the routing grace %v", res.RequeueAfter, hibernateRoutingGrace)
+	}
+
+	// The grace has passed (the requeue fires): now it is safe to drain.
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("replicas = %d, want 0 once the activator route is live", got)
+	}
+	if got := ingressBackendName(t, cl, nn); got != activatorAliasName(app.Name) {
+		t.Fatalf("backend = %q, want the activator alias to stay", got)
+	}
+}
+
+// TestMaintenanceHibernatesWithoutRoutingHold: maintenance owns the public
+// route, so the App's Service is not what a visitor reaches and draining it
+// cannot surface a raw 503. Holding there would also never resolve — the
+// Ingress will never name the activator while maintenance owns it — so the
+// workload would stop hibernating entirely, breaking the independence of
+// routing and replica policy that ingressBackend documents.
+func TestMaintenanceHibernatesWithoutRoutingHold(t *testing.T) {
+	scheme := wakeScheme()
+	app := hibernatingApp("tea-abc123")
+	app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
+	r := wakeReconciler(cl, scheme)
+	r.MaintenanceService, r.MaintenanceNamespace, r.MaintenancePort = "bex-maintenance", "bex-system", 8080
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+
+	reconcileTwice(t, r, nn)
+
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("replicas = %d, want 0 — maintenance routing must not block auto-sleep", got)
 	}
 }

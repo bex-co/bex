@@ -118,7 +118,10 @@ type PodLogSource = core.PodLogSource
 // PodLogStream streams a pod container's logs live (Follow:true) until ctx is
 // cancelled. PodLogSource's tail-follow sibling — kept separate so the domain
 // stays clientset-free. nil => FollowLogs reports core.ErrLogsUnavailable.
-type PodLogStream func(ctx context.Context, namespace, pod, container string) (io.ReadCloser, error)
+// since bounds where the follow starts (zero == from the beginning); it is the
+// query's lower bound pushed down to kubelet instead of being applied only
+// after the whole log has already crossed the wire.
+type PodLogStream func(ctx context.Context, namespace, pod, container string, since time.Time) (io.ReadCloser, error)
 
 // LogHistorySource reads durable log history for one App from a log store (Loki),
 // applying the resolved LogQuery filters (label selector, time range, text, limit)
@@ -809,7 +812,7 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 			defer wg.Done()
 			// app.Namespace: the pods stream from their `<ws>` namespace under
 			// ADR043, the same namespace appPodNames selected them in.
-			s.streamPodLogs(ctx, app.Namespace, q.App, pod, ch)
+			s.streamPodLogs(ctx, app.Namespace, q.App, pod, q.Since, ch)
 		}(pods[i])
 	}
 	go func() { wg.Wait(); close(ch) }()
@@ -898,7 +901,7 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource, rep
 		wg.Add(1)
 		go func(container string) {
 			defer wg.Done()
-			s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, ch, &opened)
+			s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.Since, ch, &opened)
 		}(container)
 	}
 	go func() { wg.Wait(); close(ch) }()
@@ -1177,12 +1180,12 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, appNS string, q LogQ
 
 // streamPodLogs follows one pod's log into ch until ctx ends or the stream
 // closes. A replica going away ends its stream without failing the subscription.
-func (s *Service) streamPodLogs(ctx context.Context, namespace, service, pod string, ch chan<- LogEntry) {
-	s.streamContainerLogs(ctx, namespace, service, pod, core.AppContainer, LogTypeApp, ch, nil)
+func (s *Service) streamPodLogs(ctx context.Context, namespace, service, pod string, since time.Time, ch chan<- LogEntry) {
+	s.streamContainerLogs(ctx, namespace, service, pod, core.AppContainer, LogTypeApp, since, ch, nil)
 }
 
-func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, pod, container, logType string, ch chan<- LogEntry, opened *atomic.Bool) {
-	rc, err := s.PodLogsFollow(ctx, namespace, pod, container)
+func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, pod, container, logType string, since time.Time, ch chan<- LogEntry, opened *atomic.Bool) {
+	rc, err := s.PodLogsFollow(ctx, namespace, pod, container, since)
 	if err != nil {
 		return
 	}
