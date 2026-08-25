@@ -683,18 +683,23 @@ func (r *Reconciler) recordLifecycleFacts(ctx context.Context, d DesiredApp, ope
 }
 
 // buildLifecycleFacts derives a repo-backed deploy's build_started and (once the
-// build is over) build_ended facts from the deploy row's phase. The BuildKit Job
-// is dispatched when the deploy row opens, so build_started rides open.CreatedAt;
-// build_ended's outcome is read from where the deploy has reached — a build phase
-// means still building (no ended fact yet), any later phase means the build
-// succeeded, build_failed means it failed, and a cancel while still building
-// means it was canceled.
+// build is over) build_ended facts from the deploy row's phase. build_started
+// rides the deploy's real BuildKit dispatch (see buildStartedAt) and is withheld
+// entirely while the deploy is still queued behind another build — there is no
+// build to report yet, so neither fact is emitted. build_ended's outcome is read
+// from where the deploy has reached — a build phase means still building (no
+// ended fact yet), any later phase means the build succeeded, build_failed means
+// it failed, and a cancel while still building means it was canceled.
 func buildLifecycleFacts(open Deploy, newStatus string) []ServiceEventFact {
+	at, dispatched := buildStartedAt(open, newStatus)
+	if !dispatched {
+		return nil
+	}
 	facts := []ServiceEventFact{{
 		SourceKey: "deploy:" + open.ID + ":build_started",
 		AppID:     open.AppID,
 		Type:      EventFactBuildStarted,
-		At:        open.CreatedAt,
+		At:        at,
 		DeployID:  open.ID,
 		Image:     open.Image,
 	}}
@@ -710,6 +715,47 @@ func buildLifecycleFacts(open Deploy, newStatus string) []ServiceEventFact {
 		})
 	}
 	return facts
+}
+
+// buildStartedAt is when the deploy's BuildKit Job actually got dispatched, and
+// whether it has been dispatched at all.
+//
+// The row's creation time is NOT that moment (w6/035): a deploy triggered while
+// another one is mid-build opens immediately but sits in DeployQueued —
+// observedDeployStatus maps that straight from the operator's own BuildQueued
+// reason — until the earlier build clears, which live measured at 2m17s. Dating
+// build_started from open.CreatedAt reported the build as having begun for that
+// entire wait, on the Events timeline, the build_started webhook payload, and
+// the metrics build marker alike.
+//
+// started_at is stamped by TransitionDeploy on the first executing phase, which
+// IS the dispatch point, so it wins whenever the row already carries one. A
+// never-queued deploy keeps riding CreatedAt: it is dispatched as the row opens,
+// and that path must keep emitting the fact even when a fast build reaches a
+// terminal status before any pass observes it mid-build.
+func buildStartedAt(open Deploy, newStatus string) (time.Time, bool) {
+	if open.StartedAt != nil {
+		return *open.StartedAt, true
+	}
+	eff := newStatus
+	if eff == "" {
+		eff = open.Status
+	}
+	if open.Status == DeployQueued {
+		// Never dispatched yet, so whether there is a build to report is
+		// exactly whether this status would stamp started_at.
+		if !DeployStatusStartsExecution(eff) {
+			return time.Time{}, false
+		}
+		// Leaving the queue on THIS pass. recordLifecycleFacts runs before the
+		// TransitionDeploy that stamps started_at from clock_timestamp(), so
+		// now is that same instant — CreatedAt is the stale queued-at time.
+		return time.Now().UTC(), true
+	}
+	if eff == DeployQueued {
+		return time.Time{}, false
+	}
+	return open.CreatedAt, true
 }
 
 // buildEndedStatus reports the outcome to stamp on a repo-backed deploy's

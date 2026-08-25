@@ -27,6 +27,21 @@ export function refusalReason(err: unknown): string {
 }
 
 /**
+ * The server's own refusal reason, but only when the server actually answered.
+ * Narrower than `refusalReason`, which also unwraps a plain `Error` — a
+ * transport failure's "Failed to fetch" names nothing the user can act on, so
+ * it must fall through to the caller's generic copy. Returns "" in that case.
+ *
+ * This is what a single-field edit wants (`useFieldMutation`, w6/037): those
+ * mutations have no one stable error code to key on the way a create's
+ * CONFLICT does, and "health check path must start with /" is the whole value
+ * of showing a message at all.
+ */
+export function serverRefusalReason(err: unknown): string {
+  return CombinedGraphQLErrors.is(err) ? refusalReason(err) : "";
+}
+
+/**
  * True when an error message names an authorization denial. The backend has no
  * stable error code for these yet, so every caller has to match the message —
  * this is the one place that does, so the case-insensitivity can't drift.

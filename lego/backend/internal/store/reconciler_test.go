@@ -118,6 +118,51 @@ func TestBuildLifecycleFacts(t *testing.T) {
 	}
 }
 
+// TestBuildStartedRidesRealDispatchNotRowCreation is w6/035: a deploy triggered
+// while another build holds the queue opens its row immediately but is not
+// dispatched until the earlier build clears (live: 2m17s later). build_started
+// used to be stamped at open.CreatedAt for that whole wait.
+func TestBuildStartedRidesRealDispatchNotRowCreation(t *testing.T) {
+	created := time.Date(2026, 8, 24, 2, 44, 40, 0, time.UTC)
+	dispatched := time.Date(2026, 8, 24, 2, 46, 57, 0, time.UTC)
+
+	// Queued behind another build: nothing has been dispatched, so neither
+	// fact is emitted — not a build_started dated to the queue-entry time.
+	queued := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployQueued, CreatedAt: created}
+	if facts := buildLifecycleFacts(queued, ""); facts != nil {
+		t.Fatalf("queued deploy emitted %+v, want no facts", facts)
+	}
+	if facts := buildLifecycleFacts(queued, DeployQueued); facts != nil {
+		t.Fatalf("deploy observed queued emitted %+v, want no facts", facts)
+	}
+
+	// Canceled while it was still waiting: it never built, so it gets no
+	// build_started and no build_ended either.
+	if facts := buildLifecycleFacts(queued, DeployCanceled); facts != nil {
+		t.Fatalf("canceled-while-queued deploy emitted %+v, want no facts", facts)
+	}
+
+	// Leaving the queue: started_at has not been stamped yet (the transition
+	// runs after this), so the fact carries now — never the stale CreatedAt.
+	leaving := buildLifecycleFacts(queued, DeployBuildInProgress)
+	if len(leaving) != 1 || leaving[0].Type != EventFactBuildStarted {
+		t.Fatalf("dequeued facts = %+v, want a single build_started", leaving)
+	}
+	if leaving[0].At.Equal(created) {
+		t.Fatal("build_started still dated to the deploy row's creation time")
+	}
+
+	// Once the row carries started_at, that is authoritative.
+	started := Deploy{
+		ID: "dep-1", AppID: "srv-1", Status: DeployBuildInProgress,
+		CreatedAt: created, StartedAt: &dispatched,
+	}
+	facts := buildLifecycleFacts(started, "")
+	if len(facts) != 1 || !facts[0].At.Equal(dispatched) {
+		t.Fatalf("facts = %+v, want one build_started at %s", facts, dispatched)
+	}
+}
+
 // TestPreDeployLifecycleFacts proves the pair rides status.preDeploy: nothing
 // without a step, started+ended (with the CR's stamps and outcome) with one.
 func TestPreDeployLifecycleFacts(t *testing.T) {

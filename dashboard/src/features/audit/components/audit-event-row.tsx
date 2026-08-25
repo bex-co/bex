@@ -19,7 +19,10 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
       {/* Full date + time (an audit trail spans days, unlike the logs
           viewer's time-only clock) — null renders blank, never "Invalid
           Date". */}
-      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+      <TableCell
+        className="text-muted-foreground text-sm whitespace-nowrap"
+        suppressHydrationWarning
+      >
         {formatDateTime(event.timestamp)}
       </TableCell>
       <TableCell className="max-w-[16rem] truncate font-mono text-sm">

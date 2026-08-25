@@ -369,6 +369,13 @@ func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, e
 // projects to a single-instance Valkey StatefulSet + Service + Secret).
 func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest) (KeyValueView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
+	// Defer the allowed-write row to after the CR actually lands, exactly as
+	// CreatePostgres does. Auditing at authorize time recorded a successful
+	// "CreateKeyValue" for every create that then failed validation, the plan
+	// billing gate, the namespace quota cap, or the API-server write — an audit
+	// log claiming a store exists that never did (w6/031). Denials still record
+	// either way.
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return KeyValueView{}, err
 	}
@@ -447,6 +454,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		}
 		return KeyValueView{}, err
 	}
+	s.RecordKeyValueEffect(ctx, kv, core.KeyValueCreated)
 	return s.view(kv), nil
 }
 

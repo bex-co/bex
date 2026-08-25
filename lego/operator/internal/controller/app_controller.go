@@ -2883,6 +2883,25 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	}
 	suspended := app.Spec.Suspended
 
+	cancelPending, err := r.cancelRequestedCronRun(ctx, app)
+	if err != nil {
+		return r.fail(ctx, app, "CronRunCancelFailed", err)
+	}
+	// A manual run is a one-off Job this controller creates directly, owned by
+	// the App rather than by the CronJob — so ConcurrencyPolicy, which only ever
+	// inspects the Jobs a CronJob's own controller made, cannot see it. Without
+	// this, a schedule tick landing during an active Trigger Run starts a second,
+	// genuinely concurrent execution, breaking the single-concurrent-execution
+	// guarantee docs/render-artifacts/cron-runs.md states (w6/039). Pausing the
+	// schedule for the duration is the same mechanism the user-facing Suspend
+	// already uses, and it skips the tick rather than queueing it, matching what
+	// ForbidConcurrent does for a scheduled-vs-scheduled overlap.
+	manualRunActive, err := r.manualCronRunActive(ctx, app, cancelPending)
+	if err != nil {
+		return r.fail(ctx, app, "CronRunFailed", err)
+	}
+	scheduleSuspended := suspended || manualRunActive
+
 	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cj, func() error {
 		cj.Spec.Schedule = app.Spec.Schedule
@@ -2890,18 +2909,14 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		// skipped; a manual trigger explicitly cancels the active Job before its
 		// replacement is created below.
 		cj.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
-		// Suspend pauses scheduling without losing history — resume just clears it.
-		cj.Spec.Suspend = &suspended
+		// Suspend pauses scheduling without losing history — resume just clears
+		// it. Set for a user Suspend AND for the span of a manual run.
+		cj.Spec.Suspend = &scheduleSuspended
 		cj.Spec.JobTemplate.Labels = labels // so the Jobs it creates carry labelApp
 		cj.Spec.JobTemplate.Spec.Template = r.cronPodSpec(app, image, port, labels)
 		return controllerutil.SetControllerReference(app, cj, r.Scheme)
 	}); err != nil {
 		return r.fail(ctx, app, "CronJobFailed", err)
-	}
-
-	cancelPending, err := r.cancelRequestedCronRun(ctx, app)
-	if err != nil {
-		return r.fail(ctx, app, "CronRunCancelFailed", err)
 	}
 
 	// One-off run trigger (spec.runAt, from the API's cron run verb): materialize a
@@ -2947,6 +2962,12 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if cancelPending {
 		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
+	if manualRunActive {
+		// The schedule is paused for this run's duration, so converge back
+		// faster than the 1-minute history poll — otherwise a finished manual
+		// run could keep a once-a-minute schedule suspended past its next tick.
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
 	return ctrl.Result{RequeueAfter: time.Minute}, nil
 }
 
@@ -2975,6 +2996,46 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 		return false, err
 	}
 	return true, nil
+}
+
+// manualCronRunActive reports whether spec.runAt names a one-off run that is
+// still executing, or is about to be created later in this same reconcile.
+//
+// It is the gate that pauses the recurring schedule for a manual run's duration
+// (w6/039). A NotFound Job reads as active rather than finished because
+// ensureManualRun creates it further down this pass — treating it as finished
+// would leave the schedule live across exactly the window the run occupies. Once
+// the Job reports Complete or Failed the run is over and the schedule resumes;
+// nothing garbage-collects a manual run Job before then (no
+// ttlSecondsAfterFinished), so the NotFound branch cannot mean "finished and
+// swept". A suspended App has no schedule to pause, and a cancellation in flight
+// means no manual run will be running once it lands.
+func (r *AppReconciler) manualCronRunActive(ctx context.Context, app *appv1alpha1.App, cancelPending bool) (bool, error) {
+	if app.Spec.RunAt == "" || app.Spec.Suspended || cancelPending || cancelsManualRun(app) {
+		return false, nil
+	}
+	job := &batchv1.Job{}
+	key := client.ObjectKey{Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace}
+	if err := r.Get(ctx, key, job); err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	return !jobSettled(job), nil
+}
+
+// jobSettled reports whether a Job has reached a terminal condition.
+func jobSettled(job *batchv1.Job) bool {
+	for _, c := range job.Status.Conditions {
+		if c.Status != corev1.ConditionTrue {
+			continue
+		}
+		if c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed {
+			return true
+		}
+	}
+	return false
 }
 
 // cancelsManualRun prevents the stable spec.runAt value from recreating the

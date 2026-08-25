@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/eventvocab"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -32,6 +33,73 @@ type webhookAuditSink struct{ events []core.AuditEvent }
 func (s *webhookAuditSink) Record(_ context.Context, event core.AuditEvent) error {
 	s.events = append(s.events, event)
 	return nil
+}
+
+// w6/031: CreateKeyValue audited at authorize time, so a create that then
+// failed the plan gate, the billing gate, or the API-server write still left a
+// successful "keyvalue.CreateKeyValue" row behind — an audit log naming a store
+// that never existed. The row is now deferred to after the CR actually lands,
+// matching CreatePostgres.
+func TestKeyValueCreateAuditsOnlyAfterTheStoreExists(t *testing.T) {
+	t.Run("successful create records one typed row", func(t *testing.T) {
+		svc, _ := newService()
+		svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+		sink := &webhookAuditSink{}
+		svc.Audit = sink
+
+		view, err := svc.CreateKeyValue(ctxAs("user-a"), CreateKeyValueRequest{Name: "cache", Plan: "free"})
+		if err != nil {
+			t.Fatalf("CreateKeyValue: %v", err)
+		}
+		if len(sink.events) != 1 {
+			t.Fatalf("events = %d, want 1: %+v", len(sink.events), sink.events)
+		}
+		event := sink.events[0]
+		if event.Verb != core.AuditVerbKeyValueCreated ||
+			event.Target != core.KeyValueTarget(view.ID) ||
+			event.TargetName != "cache" {
+			t.Fatalf("create event = %+v", event)
+		}
+	})
+
+	t.Run("refused create records nothing", func(t *testing.T) {
+		svc, _ := newService()
+		svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+		svc.Payment = &rejectingPaymentGate{}
+		sink := &webhookAuditSink{}
+		svc.Audit = sink
+
+		if _, err := svc.CreateKeyValue(ctxAs("user-a"), CreateKeyValueRequest{Name: "cache", Plan: "starter"}); !errors.Is(err, core.ErrPaymentRequired) {
+			t.Fatalf("err = %v, want ErrPaymentRequired", err)
+		}
+		if len(sink.events) != 0 {
+			t.Fatalf("a refused create recorded %d event(s): %+v", len(sink.events), sink.events)
+		}
+	})
+
+	t.Run("dry run records nothing", func(t *testing.T) {
+		svc, _ := newService()
+		svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+		sink := &webhookAuditSink{}
+		svc.Audit = sink
+
+		if _, err := svc.CreateKeyValue(ctxAs("user-a"), CreateKeyValueRequest{Name: "cache", Plan: "free", DryRun: true}); err != nil {
+			t.Fatalf("dry-run CreateKeyValue: %v", err)
+		}
+		if len(sink.events) != 0 {
+			t.Fatalf("a dry run recorded %d event(s): %+v", len(sink.events), sink.events)
+		}
+	})
+}
+
+// Render publishes no Key Value create event type, and bex does not invent
+// names for lifecycle writes it documents as unsupported
+// (docs/render-artifacts/datastore-webhook-events.md) — so the new audit verb
+// must stay out of the outbound webhook vocabulary.
+func TestKeyValueCreatedIsAuditOnlyAndNotAWebhookEvent(t *testing.T) {
+	if _, ok := eventvocab.DatastoreAuditTypes()[core.AuditVerbKeyValueCreated]; ok {
+		t.Fatal("keyvalue.CreateKeyValue projects to a webhook event; Render has no key_value_created type")
+	}
 }
 
 func TestKeyValuePlanEffectIsSuccessfulAndTyped(t *testing.T) {

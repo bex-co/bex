@@ -232,7 +232,12 @@ export function EnvGroupsPage() {
                           <TableCell className="text-right tabular-nums">
                             {group.secretFileNames.length}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap text-right text-muted-foreground">
+                          {/* Local-timezone text: SSR and the browser disagree
+                              by design, so the mismatch is expected (w6/030). */}
+                          <TableCell
+                            className="whitespace-nowrap text-right text-muted-foreground"
+                            suppressHydrationWarning
+                          >
                             {formatDateTime(group.updatedAt) ?? "—"}
                           </TableCell>
                         </TableRow>

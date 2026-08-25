@@ -21,6 +21,7 @@ import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteService } from "@/features/services/hooks/use-delete-service";
 import {
+  publiclyRoutable,
   serviceSudoPhrase,
   sudoServiceTypeWords,
 } from "@/features/services/lib/service-type";
@@ -83,7 +84,16 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
         <CardTitle className="text-destructive">
           {t("services.dangerZoneTitle")}
         </CardTitle>
-        <CardDescription>{t("services.dangerZoneDescription")}</CardDescription>
+        <CardDescription>
+          {/* Only a publicly routable type actually has a URL to remove — a
+              private service has an internal address and a worker/cron job has
+              none at all, so the URL clause would be untrue for them (w6/029). */}
+          {t(
+            publiclyRoutable(service.type)
+              ? "services.dangerZoneDescription"
+              : "services.dangerZoneDescriptionNoUrl",
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Button variant="destructive" onClick={() => setOpen(true)}>

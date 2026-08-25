@@ -48,7 +48,15 @@ function MetadataItem({
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="truncate font-mono text-xs" title={value ?? undefined}>
         {timestamp && value ? (
-          <time dateTime={value}>{formatDateTime(value) ?? value}</time>
+          // formatDateTime renders in the RUNTIME's timezone, so the SSR pass
+          // (UTC container) and the browser produce different text for the same
+          // instant — an uncaught React #418 on every visit to this page
+          // (w6/030). The machine-readable instant stays exact in dateTime; only
+          // the human rendering is allowed to differ, the same treatment
+          // MetadataList already gives its timestamp rows.
+          <time dateTime={value} suppressHydrationWarning>
+            {formatDateTime(value) ?? value}
+          </time>
         ) : (
           (value ?? "—")
         )}

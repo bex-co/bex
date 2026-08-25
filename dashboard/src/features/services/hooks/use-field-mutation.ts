@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { serverRefusalReason } from "@/common/lib/graphql-error";
 
 /**
  * The shape every single-field service setting shares: fire one mutation, toast
@@ -18,6 +19,12 @@ import { useTranslations } from "@/common/hooks/use-translations";
  * maintenance mode, a cleared-vs-set credential) deliberately keep their own
  * bodies: forcing them through here would mean passing a key-picking callback,
  * which is longer than the code it replaces.
+ *
+ * `keys.error` is the fallback, not the message: when the server refused with a
+ * reason of its own ("health check path must start with /") that reason is what
+ * the user sees, since it is the only thing that says what to fix. The generic
+ * copy is for a transport failure, where there is nothing specific to relay
+ * (w6/037).
  */
 export function useFieldMutation<
   TData,
@@ -39,8 +46,8 @@ export function useFieldMutation<
         await mutate({ variables: toVariables(...args) });
         toast.success(t(keys.success));
         return true;
-      } catch {
-        toast.error(t(keys.error));
+      } catch (err) {
+        toast.error(serverRefusalReason(err) || t(keys.error));
         return false;
       } finally {
         setBusy(false);

@@ -36,8 +36,8 @@ import {
   isCron,
   isStaticSite,
   isWebService,
-  isWorker,
   publiclyRoutable,
+  servesHttp,
   supportsMaxShutdownDelay,
 } from "@/features/services/lib/service-type";
 
@@ -63,8 +63,16 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const cron = service ? isCron(service) : false;
   const staticSite = service ? isStaticSite(service) : false;
-  const worker = service ? isWorker(service) : false;
   const routable = service ? publiclyRoutable(service.type) : false;
+  // Health checks are a web_service/private_service thing — the two types that
+  // bind an HTTP port, which is exactly `servesHttp`; bex-api refuses
+  // SetHealthCheckPath for the rest. This defaults to `true` while the service
+  // is still loading, preserving what the old
+  // `!cron && !worker && !staticSite` spelling did by accident (all three read
+  // false before the type is known, so the section rendered). Showing a section
+  // that may turn out not to apply beats a section that pops in late, and the
+  // rows inside are disabled until the service arrives anyway (w6/027).
+  const healthChecks = service ? servesHttp(service.type) : true;
   // A Dockerfile build (docker runtime, or the legacy dockerfile builder) builds
   // from a Dockerfile, not a Build Command — Render shows Dockerfile Path there
   // instead. Every other repo-backed build is native and carries a Build Command.
@@ -90,7 +98,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   if (registryCredentialEligible)
     navigationSections.push("registry-credential");
   navigationSections.push("notifications");
-  if (!cron && !worker && !staticSite) navigationSections.push("health-checks");
+  if (healthChecks) navigationSections.push("health-checks");
   if (service && isWebService(service)) navigationSections.push("maintenance");
   if (cron || !service?.repo) navigationSections.push("deploy-hook");
   if (service) {
@@ -335,7 +343,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
         {/* Health Checks (Render places this section after Notifications, w5/m52):
             the HTTP path bex polls before routing traffic. web_service /
             private_service only — never cron/worker/static (no HTTP readiness). */}
-        {!cron && !worker && !staticSite && (
+        {healthChecks && (
           <section id="health-checks" className="scroll-mt-6">
             <Card>
               <CardHeader>

@@ -158,6 +158,11 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Percentile dropdown option that overlays p50/p90/p99 on one chart",
   },
+  "metrics.requestCount": {
+    message: "{count} request",
+    description:
+      "Aggregate request count beside the Total Requests section title (singular)",
+  },
   "metrics.requestsCount": {
     message: "{count} requests",
     description:
