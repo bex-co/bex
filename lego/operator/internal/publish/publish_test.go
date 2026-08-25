@@ -24,6 +24,7 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -410,5 +411,107 @@ func TestEnsureNeverBlocks(t *testing.T) {
 	}
 	if obs.Phase != PhaseFailed || !strings.Contains(obs.Message, "deadline") {
 		t.Fatalf("failed Job = %+v, want PhaseFailed with the deadline message", obs)
+	}
+}
+
+// w6/038: a Publish Directory that does not exist in the built image is the most
+// common first-time-setup mistake on this surface, and the only thing shown for
+// it was Kubernetes' own "BackoffLimitExceeded: Job has reached the specified
+// backoff limit" — while the extract step's `cp` had already printed exactly
+// what was wrong. The failing container's words now win over the Job's.
+func TestFailedPublishReportsTheFailingContainerNotTheJobBackoff(t *testing.T) {
+	ctx := context.Background()
+	o := testOptions()
+	cl := fake.NewClientBuilder().Build()
+	o.Client = cl
+
+	if _, err := Ensure(ctx, o); err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+	job := &batchv1.Job{}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(PublishJob(o)), job); err != nil {
+		t.Fatalf("get dispatched Job: %v", err)
+	}
+	job.Status.Conditions = []batchv1.JobCondition{{
+		Type: batchv1.JobFailed, Status: corev1.ConditionTrue,
+		Reason:  "BackoffLimitExceeded",
+		Message: "Job has reached the specified backoff limit",
+	}}
+	if err := cl.Status().Update(ctx, job); err != nil {
+		t.Fatalf("fail Job: %v", err)
+	}
+
+	// Without a pod to read, the Job-level reason is still the fallback.
+	obs, err := Ensure(ctx, o)
+	if err != nil {
+		t.Fatalf("Ensure on failed Job: %v", err)
+	}
+	if !strings.Contains(obs.Message, "BackoffLimitExceeded") {
+		t.Fatalf("no-pod message = %q, want the Job-level reason as fallback", obs.Message)
+	}
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      job.Name + "-abcde",
+			Namespace: job.Namespace,
+			Labels:    map[string]string{jobNameLabel: job.Name},
+		},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "upload", Image: "x"}}},
+	}
+	if err := cl.Create(ctx, pod); err != nil {
+		t.Fatalf("create pod: %v", err)
+	}
+	pod.Status.InitContainerStatuses = []corev1.ContainerStatus{{
+		Name: "extract",
+		State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+			ExitCode: 1,
+			Message:  "cp: can't stat '/totally-nonexistent-output-dir-xyz/.': No such file or directory" + "\n",
+		}},
+	}}
+	if err := cl.Status().Update(ctx, pod); err != nil {
+		t.Fatalf("set pod status: %v", err)
+	}
+
+	obs, err = Ensure(ctx, o)
+	if err != nil {
+		t.Fatalf("Ensure on failed Job with pod: %v", err)
+	}
+	if obs.Phase != PhaseFailed {
+		t.Fatalf("phase = %q, want %q", obs.Phase, PhaseFailed)
+	}
+	for _, want := range []string{"extract", "No such file or directory", "exit 1"} {
+		if !strings.Contains(obs.Message, want) {
+			t.Fatalf("message = %q, want it to contain %q", obs.Message, want)
+		}
+	}
+	if strings.Contains(obs.Message, "BackoffLimitExceeded") {
+		t.Fatalf("message = %q, want the container's reason INSTEAD of the Job's", obs.Message)
+	}
+}
+
+// The extract step must be able to report its own stderr; the two containers
+// that hold credentials must not (w6/038).
+func TestOnlyTheCredentialFreeStagingContainerEchoesItsLogs(t *testing.T) {
+	job := PublishJob(testOptions())
+	pod := job.Spec.Template.Spec
+	for _, c := range pod.InitContainers {
+		if c.Name == "extract" && c.TerminationMessagePolicy != corev1.TerminationMessageFallbackToLogsOnError {
+			t.Fatalf("extract policy = %q, want FallbackToLogsOnError", c.TerminationMessagePolicy)
+		}
+	}
+	for _, c := range pod.Containers {
+		if c.TerminationMessagePolicy == corev1.TerminationMessageFallbackToLogsOnError {
+			t.Fatalf("%s echoes its logs; it carries the object-store credentials", c.Name)
+		}
+	}
+
+	clone := testOptions()
+	clone.Image = ""
+	clone.Repo = "https://github.com/bex-co/site"
+	clone.CloneSecret = "clone-token"
+	for _, c := range PublishJob(clone).Spec.Template.Spec.InitContainers {
+		if c.TerminationMessagePolicy == corev1.TerminationMessageFallbackToLogsOnError {
+			t.Fatalf("%s echoes its logs; it carries GIT_AUTH_TOKEN", c.Name)
+		}
 	}
 }

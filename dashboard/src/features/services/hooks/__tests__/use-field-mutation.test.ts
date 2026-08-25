@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mockUseMutation = vi.fn();
 vi.mock("@apollo/client/react", () => ({
@@ -74,6 +75,42 @@ describe("useFieldMutation", () => {
     expect(ok).toBe(false);
     expect(toastError).toHaveBeenCalledTimes(1);
     expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  // w6/037: the backend answers a bad Health Check Path with "bad request:
+  // health check path must start with /" — the only text that says what to
+  // fix. Every one of these hooks used to discard it for its own generic copy.
+  it("shows the server's own reason when the server refused", async () => {
+    const mutate = vi.fn().mockRejectedValue(
+      new CombinedGraphQLErrors(
+        { errors: [{ message: "bad request: health check path must start with /" }] },
+        [{ message: "bad request: health check path must start with /" }],
+      ),
+    );
+    const { result } = setup(mutate);
+
+    await act(async () => {
+      await result.current.run("srv-1", "main");
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      "Health check path must start with /",
+    );
+  });
+
+  // A transport failure names nothing actionable ("Failed to fetch"), so the
+  // generic copy is still the right thing to show.
+  it("falls back to the generic copy when the failure is not a server answer", async () => {
+    const mutate = vi.fn().mockRejectedValue(new Error("Failed to fetch"));
+    const { result } = setup(mutate);
+
+    await act(async () => {
+      await result.current.run("srv-1", "main");
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't update the Root Directory. Please try again.",
+    );
   });
 
   // The `finally` is the point: a failed write must not leave the control

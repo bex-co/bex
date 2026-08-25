@@ -275,7 +275,7 @@ const enProjects: Record<string, TranslationEntry> = {
   },
   "projects.deleteCardDescription": {
     message:
-      "Only the project grouping is deleted — its services, databases, and key value stores become unassigned, not deleted. This action cannot be undone.",
+      "Its environments and their configuration are deleted with it. Its services, databases, and key value stores are not deleted — they become unassigned. This action cannot be undone.",
     description: "Project settings page's danger-zone card description",
   },
   "projects.deleteCardButton": {
@@ -289,7 +289,7 @@ const enProjects: Record<string, TranslationEntry> = {
   },
   "projects.deleteConfirmBody": {
     message:
-      "Its services, databases, and key value stores become unassigned — nothing is deleted.",
+      "Its environments and their configuration are deleted. Its services, databases, and key value stores become unassigned, not deleted.",
     description: "Delete-project confirmation dialog body",
   },
   "projects.deleteSuccess": {

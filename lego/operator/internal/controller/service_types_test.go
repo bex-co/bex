@@ -189,5 +189,71 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			cancelGetErr = k8sClient.Get(ctx, cancelJobNN, terminating)
 			Expect(errors.IsNotFound(cancelGetErr) || !terminating.DeletionTimestamp.IsZero()).To(BeTrue())
 		})
+
+		// w6/039: ConcurrencyPolicy only governs the Jobs a CronJob's own
+		// controller creates, so it never saw a manual run — a schedule tick
+		// during an active Trigger Run started a genuinely concurrent second
+		// execution, which docs/render-artifacts/cron-runs.md promises cannot
+		// happen. The schedule is now paused for the run's duration.
+		It("pauses the recurring schedule while a manual run is in flight", func() {
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Type:     appv1alpha1.TypeCronJob,
+					Schedule: "*/5 * * * *",
+					Image:    "busybox:latest", Port: 3000,
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN(r, nn)
+
+			By("an untriggered cron schedules normally")
+			cj := &batchv1.CronJob{}
+			Expect(k8sClient.Get(ctx, nn, cj)).To(Succeed())
+			Expect(cj.Spec.Suspend).To(HaveValue(BeFalse()))
+
+			By("triggering a run suspends the schedule on the same pass that creates the Job")
+			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+			app.Spec.RunAt = "2026-08-24T02:44:40Z"
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN(r, nn)
+
+			jobNN := types.NamespacedName{
+				Name: manualRunJobName(name, "2026-08-24T02:44:40Z"), Namespace: "default",
+			}
+			job := &batchv1.Job{}
+			Expect(k8sClient.Get(ctx, jobNN, job)).To(Succeed())
+			Expect(k8sClient.Get(ctx, nn, cj)).To(Succeed())
+			Expect(cj.Spec.Suspend).To(HaveValue(BeTrue()),
+				"a scheduled tick during the manual run would be a second concurrent execution")
+
+			By("the schedule stays paused while the run is still executing")
+			now := metav1.Now()
+			job.Status.StartTime = &now
+			Expect(k8sClient.Status().Update(ctx, job)).To(Succeed())
+			reconcileN(r, nn)
+			Expect(k8sClient.Get(ctx, nn, cj)).To(Succeed())
+			Expect(cj.Spec.Suspend).To(HaveValue(BeTrue()))
+
+			By("the schedule resumes once the run reaches a terminal condition")
+			Expect(k8sClient.Get(ctx, jobNN, job)).To(Succeed())
+			job.Status.CompletionTime = &now
+			job.Status.Conditions = []batchv1.JobCondition{
+				{Type: batchv1.JobSuccessCriteriaMet, Status: corev1.ConditionTrue, LastTransitionTime: now},
+				{Type: batchv1.JobComplete, Status: corev1.ConditionTrue, LastTransitionTime: now},
+			}
+			Expect(k8sClient.Status().Update(ctx, job)).To(Succeed())
+			reconcileN(r, nn)
+			Expect(k8sClient.Get(ctx, nn, cj)).To(Succeed())
+			Expect(cj.Spec.Suspend).To(HaveValue(BeFalse()))
+
+			By("a user Suspend still pauses it regardless of any manual run")
+			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+			app.Spec.Suspended = true
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN(r, nn)
+			Expect(k8sClient.Get(ctx, nn, cj)).To(Succeed())
+			Expect(cj.Spec.Suspend).To(HaveValue(BeTrue()))
+		})
 	})
 })

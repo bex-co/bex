@@ -27,7 +27,7 @@ export interface UseMoveToProjectResult {
   projects: ProjectView[];
   /** The project currently holding resourceId, or null when ungrouped. */
   currentProjectId: (resourceId: string) => string | null;
-  /** Assign resourceId to targetProjectId, unassigning it from any prior project first. */
+  /** Assign resourceId to targetProjectId; the server unassigns it from any prior project. */
   moveTo: (
     resourceId: string,
     resourceName: string,
@@ -46,10 +46,10 @@ export interface UseMoveToProjectResult {
  * Drives the "Move to project" row action shared by services/databases/key-value
  * (w1/m31 extension — databases/key-value grouping added alongside the unified
  * dashboard Projects page). A project's membership per resource kind is a
- * full-replace list (setProjectServices/Databases/KeyValues), so moving a
- * resource computes the old and new project's full member lists client-side
- * and fires up to two mutations, mirroring how the backend's own
- * SetServices/SetDatabases/SetKeyValues diff against a wanted set.
+ * full-replace list (setProjectServices/Databases/KeyValues), so a move computes
+ * the target project's full member list client-side, mirroring how the
+ * backend's own SetServices/SetDatabases/SetKeyValues diff against a wanted
+ * set.
  */
 export function useMoveToProject(
   kind: ProjectResourceKind,
@@ -117,12 +117,15 @@ export function useMoveToProject(
       if (!to || from?.id === to.id) return false;
       setBusyId(resourceId);
       try {
-        if (from) {
-          await runSet(
-            from.id,
-            idsOf(kind, from).filter((id) => id !== resourceId),
-          );
-        }
+        // One mutation, not two. Membership is single-valued on the server —
+        // a service's apps.project_id column, a database/key-value's single
+        // core.LabelProject label — so assigning the resource to the target
+        // already unassigns it from its old project; a second call clearing
+        // the source is pure redundancy. It was also the bug: the pair ran
+        // remove-then-add with no rollback, so a failure on the add left the
+        // resource in NEITHER project while the toast said the move failed
+        // (w6/036). With one call the move is all-or-nothing, and the stale
+        // source list is reconciled by refreshProjects below.
         await runSet(to.id, [...idsOf(kind, to), resourceId]);
       } catch {
         toast.error(t("projects.moveError", { name: resourceName }));

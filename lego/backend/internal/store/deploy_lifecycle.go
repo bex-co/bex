@@ -52,6 +52,16 @@ func DeployStatuses() []string { return slices.Clone(deployStatusVocabulary) }
 // IsOpenDeployStatus reports whether status may still advance or be canceled.
 func IsOpenDeployStatus(status string) bool { return slices.Contains(openDeployStatuses, status) }
 
+// DeployStatusStartsExecution reports whether reaching status means the deploy's
+// work has actually begun — the condition TransitionDeploy stamps started_at on.
+// A queued deploy is waiting behind another build and has dispatched nothing;
+// canceled/deactivated are exits that can be reached without ever executing.
+// Shared with the build_started event fact so the timeline cannot disagree with
+// the deploy row about when a build began (w6/035).
+func DeployStatusStartsExecution(status string) bool {
+	return status != DeployQueued && status != DeployCanceled && status != DeployDeactivated
+}
+
 // IsTerminalDeployStatus reports whether status is a known terminal state.
 func IsTerminalDeployStatus(status string) bool {
 	return slices.Contains(deployStatusVocabulary, status) && !IsOpenDeployStatus(status)

@@ -1992,7 +1992,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			return nil
 		}
 
-		starts := status != DeployQueued && status != DeployCanceled && status != DeployDeactivated
+		starts := DeployStatusStartsExecution(status)
 		terminal := IsTerminalDeployStatus(status)
 		if _, err := tx.Exec(ctx,
 			`UPDATE deploys

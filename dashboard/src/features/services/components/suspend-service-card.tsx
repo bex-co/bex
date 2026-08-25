@@ -10,6 +10,7 @@ import {
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { publiclyRoutable } from "@/features/services/lib/service-type";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 
@@ -38,6 +39,10 @@ export function SuspendServiceCard({
   const [open, setOpen] = useState(false);
   const busy = pending !== null;
   const isSuspended = service.suspended;
+  // "Its URL and certificates are kept" only means something for a type served
+  // at a public host; a private service, worker, or cron job has neither, so
+  // both the card and its dialog drop that clause for them (w6/041).
+  const hasUrl = publiclyRoutable(service.type);
 
   async function handleResume() {
     await onRun("resume", service);
@@ -62,7 +67,9 @@ export function SuspendServiceCard({
           {t(
             isSuspended
               ? "services.resumeCardDescription"
-              : "services.suspendCardDescription",
+              : hasUrl
+                ? "services.suspendCardDescription"
+                : "services.suspendCardDescriptionNoUrl",
           )}
         </CardDescription>
       </CardHeader>
@@ -92,7 +99,12 @@ export function SuspendServiceCard({
         open={open}
         onOpenChange={setOpen}
         title={t("services.confirmSuspendTitle", { name: service.name })}
-        description={t("services.confirmSuspendBody", { name: service.name })}
+        description={t(
+          hasUrl
+            ? "services.confirmSuspendBody"
+            : "services.confirmSuspendBodyNoUrl",
+          { name: service.name },
+        )}
         cancelLabel={t("services.confirmCancel")}
         confirmLabel={t("services.actionSuspend")}
         onConfirm={() => void handleSuspendConfirm()}

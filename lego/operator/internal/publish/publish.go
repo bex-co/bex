@@ -213,9 +213,76 @@ func Ensure(ctx context.Context, o Options) (Observation, error) {
 	case execution.JobHasCondition(cur, batchv1.JobComplete):
 		return Observation{Phase: PhaseSucceeded}, nil
 	case execution.JobHasCondition(cur, batchv1.JobFailed):
-		return Observation{Phase: PhaseFailed, Message: execution.JobFailureMessage(cur, "unknown publish failure")}, nil
+		return Observation{Phase: PhaseFailed, Message: failureMessage(ctx, o.Client, cur)}, nil
 	}
 	return Observation{Phase: PhasePublishing}, nil
+}
+
+// jobNameLabel is the label the Job controller stamps on every pod it creates.
+const jobNameLabel = "job-name"
+
+// maxFailureDetail bounds what a container's own error contributes to the App's
+// status. A termination message can be 4 KiB; a status field is read by a human
+// in a dashboard panel.
+const maxFailureDetail = 512
+
+// failureMessage explains a failed publish in the failing container's own words.
+//
+// The Job's own JobFailed condition only ever says "BackoffLimitExceeded: Job
+// has reached the specified backoff limit" — true, and useless: the actual
+// first-time-setup mistake on this surface is a Publish Directory that does not
+// exist in the built image, where the extract step's `cp` already printed
+// "can't stat '<path>/.': No such file or directory" and exited non-zero. That
+// detail used to be discarded (w6/039's sibling, w6/038), leaving the user with
+// nothing to fix. It is read back off the container's terminated state, which
+// FallbackToLogsOnError populates from the log tail.
+//
+// The Job-level reason remains the fallback: a Job reaped by
+// activeDeadlineSeconds has no failed container to quote.
+func failureMessage(ctx context.Context, cl client.Client, job *batchv1.Job) string {
+	if detail := failedContainerDetail(ctx, cl, job); detail != "" {
+		return detail
+	}
+	return execution.JobFailureMessage(job, "unknown publish failure")
+}
+
+// failedContainerDetail returns "<container>: <what it printed> (exit N)" for
+// the first container of the Job's pods that terminated non-zero, or "" when
+// nothing usable is recorded. Best effort by construction: a listing error or a
+// pod already swept leaves the caller on the Job-level reason rather than
+// failing the observation.
+func failedContainerDetail(ctx context.Context, cl client.Client, job *batchv1.Job) string {
+	var pods corev1.PodList
+	if err := cl.List(ctx, &pods,
+		client.InNamespace(job.Namespace),
+		client.MatchingLabels{jobNameLabel: job.Name},
+	); err != nil {
+		return ""
+	}
+	for i := range pods.Items {
+		statuses := append(
+			append([]corev1.ContainerStatus{}, pods.Items[i].Status.InitContainerStatuses...),
+			pods.Items[i].Status.ContainerStatuses...,
+		)
+		for _, cs := range statuses {
+			term := cs.State.Terminated
+			if term == nil || term.ExitCode == 0 {
+				continue
+			}
+			said := strings.TrimSpace(term.Message)
+			if said == "" {
+				said = term.Reason
+			}
+			if said == "" {
+				return fmt.Sprintf("%s exited %d", cs.Name, term.ExitCode)
+			}
+			if len(said) > maxFailureDetail {
+				said = said[:maxFailureDetail] + "…"
+			}
+			return fmt.Sprintf("%s: %s (exit %d)", cs.Name, said, term.ExitCode)
+		}
+	}
+	return ""
 }
 
 // validate holds Ensure's input rules (formerly Publish's prologue).
@@ -360,9 +427,23 @@ func extractContainer(o Options) corev1.Container {
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: outVolume, MountPath: outMount},
 		},
-		Resources: modestResources(),
+		Resources:                modestResources(),
+		TerminationMessagePolicy: extractTerminationPolicy,
 	}
 }
+
+// extractTerminationPolicy makes the extract step's own stderr readable back off
+// the container status when it fails, which is what lets failureMessage tell a
+// user their Publish Directory does not exist instead of quoting Kubernetes'
+// generic backoff reason (w6/038).
+//
+// Deliberately applied to `extract` alone. It runs one `cp` and holds no
+// credential, so its output is safe to echo verbatim. The other two containers
+// both do: `upload` takes the object-store keys via envFrom, and `clone` carries
+// GIT_AUTH_TOKEN for the credential helper — a log tail is the wrong place to
+// bet on what a third-party CLI prints on an error path, so they keep the
+// default policy and fall back to the Job-level reason.
+const extractTerminationPolicy = corev1.TerminationMessageFallbackToLogsOnError
 
 // cloneContainer stages the site straight from the repository — the direct,
 // no-Dockerfile publish path (w9/010): shallow-fetch Repo@Ref, then copy

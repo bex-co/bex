@@ -126,6 +126,7 @@ const (
 	AuditVerbPostgresBackupStarted      = "postgres.CreateExport"
 	AuditVerbPostgresPlanChanged        = "postgres.SetPlan"
 	AuditVerbPostgresUpdated            = "postgres.UpdatePostgres"
+	AuditVerbKeyValueCreated            = "keyvalue.CreateKeyValue"
 	AuditVerbKeyValuePlanChanged        = "keyvalue.SetPlan"
 	AuditVerbKeyValueUpdated            = "keyvalue.UpdateKeyValue"
 	// Team-membership effects (w1/m33). Invite and ChangeRole are spelled exactly
@@ -182,11 +183,13 @@ type KeyValueAuditEffect int
 const (
 	KeyValuePlanChanged KeyValueAuditEffect = iota
 	KeyValueUpdated
+	KeyValueCreated
 )
 
 var keyValueAuditVerbs = map[KeyValueAuditEffect]string{
 	KeyValuePlanChanged: AuditVerbKeyValuePlanChanged,
 	KeyValueUpdated:     AuditVerbKeyValueUpdated,
+	KeyValueCreated:     AuditVerbKeyValueCreated,
 }
 
 // WithAuditMaintenanceModeTo attaches Render's one typed maintenance-toggle
@@ -464,6 +467,10 @@ func (b *Base) databaseEffectEvent(ctx context.Context, d *appv1alpha1.Database,
 // RecordKeyValueEffect records a successful Key Value mutation. Plan changes
 // project to Render's plan_changed webhook; the generic update effect preserves
 // the ordinary audit row when a deferred PATCH changes other fields only.
+// KeyValueCreated is audit-only by design — Render publishes no Key Value
+// create event type, and bex does not invent names for lifecycle writes it
+// documents as unsupported (docs/render-artifacts/datastore-webhook-events.md),
+// so it is deliberately absent from eventvocab.DatastoreAuditTypes.
 func (b *Base) RecordKeyValueEffect(ctx context.Context, kv *appv1alpha1.KeyValue, effect KeyValueAuditEffect) {
 	ev, ok := b.keyValueEffectEvent(ctx, kv, effect)
 	if !ok {

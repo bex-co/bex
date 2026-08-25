@@ -14,6 +14,7 @@ import type { en } from "@/i18n";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
+import { publiclyRoutable } from "@/features/services/lib/service-type";
 
 const ACTION_LABEL: Record<LifecycleAction, keyof typeof en> = {
   suspend: "services.actionSuspend",
@@ -37,6 +38,23 @@ const CONFIRM: Partial<
     body: "services.confirmRestartBody",
   },
 };
+
+/**
+ * The confirm body for a verb, dropping the "Its URL and certificates are kept"
+ * clause for the types that never had either — a private service has only an
+ * internal address, and a worker or cron job has no address at all (w6/041).
+ * Restart's copy makes no URL claim, so it is type-independent.
+ */
+function confirmBodyKey(
+  action: LifecycleAction,
+  service: ServiceView,
+): keyof typeof en {
+  const body = CONFIRM[action]!.body;
+  return body === "services.confirmSuspendBody" &&
+    !publiclyRoutable(service.type)
+    ? "services.confirmSuspendBodyNoUrl"
+    : body;
+}
 
 export interface ServiceRowActionsProps {
   service: ServiceView;
@@ -151,7 +169,9 @@ export function ServiceRowActions({
         onOpenChange={(open) => !open && setConfirm(null)}
         title={confirm ? t(CONFIRM[confirm]!.title, { name: service.name }) : ""}
         description={
-          confirm ? t(CONFIRM[confirm]!.body, { name: service.name }) : ""
+          confirm
+            ? t(confirmBodyKey(confirm, service), { name: service.name })
+            : ""
         }
         cancelLabel={t("services.confirmCancel")}
         confirmLabel={confirm ? t(ACTION_LABEL[confirm]) : ""}

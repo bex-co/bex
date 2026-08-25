@@ -286,7 +286,13 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.confirmSuspendBody": {
     message:
       "服务将缩容至零并停止处理流量。其 URL 与证书会保留，你可以随时恢复。",
-    description: "Suspend confirmation dialog body",
+    description:
+      "Suspend confirmation dialog body, for the types served at a public host",
+  },
+  "services.confirmSuspendBodyNoUrl": {
+    message: "服务将缩容至零并停止运行，你可以随时恢复。",
+    description:
+      "Suspend confirmation dialog body, for private services, background workers and cron jobs — none of which have a public URL or certificates to keep",
   },
   "services.confirmRestartTitle": {
     message: "重启 {name}？",
@@ -2416,7 +2422,14 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.suspendCardDescription": {
     message:
       "暂停服务将关闭它并停止流量服务。服务的 URL 和证书将保留，您可以随时恢复。",
-    description: "Settings tab suspend section description",
+    description:
+      "Settings tab suspend section description, for the types served at a public host",
+  },
+  "services.suspendCardDescriptionNoUrl": {
+    message:
+      "暂停服务将关闭它并停止运行，您可以随时恢复。",
+    description:
+      "Settings tab suspend section description, for private services, background workers and cron jobs — none of which have a public URL or certificates to keep",
   },
   "services.resumeCardTitle": {
     message: "恢复服务",
@@ -2433,7 +2446,13 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.dangerZoneDescription": {
     message: "删除服务将永久移除该服务、其部署及其 URL，且无法撤销。",
-    description: "Settings tab delete section description",
+    description:
+      "Settings tab delete section description, for the types served at a public host",
+  },
+  "services.dangerZoneDescriptionNoUrl": {
+    message: "删除服务将永久移除该服务及其部署，且无法撤销。",
+    description:
+      "Settings tab delete section description, for private services, background workers and cron jobs — none of which have a URL to remove",
   },
   "services.deleteButton": {
     message: "删除服务",

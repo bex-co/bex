@@ -132,7 +132,11 @@ export function WorkspaceDetailsCard({
             <dt className="text-muted-foreground">
               {t("workspaces.fieldCreatedAt")}
             </dt>
-            <dd>{formatDateLong(workspace.createdAt) ?? "—"}</dd>
+            {/* Local-timezone text: SSR and the browser disagree by
+                design, so the mismatch is expected (w6/030). */}
+            <dd suppressHydrationWarning>
+              {formatDateLong(workspace.createdAt) ?? "—"}
+            </dd>
           </div>
         </dl>
       </CardContent>

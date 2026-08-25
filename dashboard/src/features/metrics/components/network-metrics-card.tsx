@@ -268,9 +268,12 @@ export function NetworkMetricsCard({
             <div className="flex items-center gap-2">
               {requestCount > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  {t("metrics.requestsCount", {
-                    count: requestCount.toLocaleString(),
-                  })}
+                  {t(
+                    requestCount === 1
+                      ? "metrics.requestCount"
+                      : "metrics.requestsCount",
+                    { count: requestCount.toLocaleString() },
+                  )}
                 </span>
               )}
               <Select

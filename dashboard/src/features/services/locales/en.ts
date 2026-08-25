@@ -290,7 +290,14 @@ const enServices: Record<string, TranslationEntry> = {
   "services.confirmSuspendBody": {
     message:
       "The service scales to zero and stops serving traffic. Its URL and certificates are kept, and you can resume it at any time.",
-    description: "Suspend confirmation dialog body",
+    description:
+      "Suspend confirmation dialog body, for the types served at a public host",
+  },
+  "services.confirmSuspendBodyNoUrl": {
+    message:
+      "The service scales to zero and stops running. You can resume it at any time.",
+    description:
+      "Suspend confirmation dialog body, for private services, background workers and cron jobs — none of which have a public URL or certificates to keep",
   },
   "services.confirmRestartTitle": {
     message: "Restart {name}?",
@@ -2461,7 +2468,14 @@ const enServices: Record<string, TranslationEntry> = {
   "services.suspendCardDescription": {
     message:
       "Suspending your service will shut it down and stop it from serving traffic. Its URL and certificates are kept, and you can resume it at any time.",
-    description: "Settings tab suspend section description",
+    description:
+      "Settings tab suspend section description, for the types served at a public host",
+  },
+  "services.suspendCardDescriptionNoUrl": {
+    message:
+      "Suspending your service will shut it down and stop it from running. You can resume it at any time.",
+    description:
+      "Settings tab suspend section description, for private services, background workers and cron jobs — none of which have a public URL or certificates to keep",
   },
   "services.resumeCardTitle": {
     message: "Resume Service",
@@ -2480,7 +2494,14 @@ const enServices: Record<string, TranslationEntry> = {
   "services.dangerZoneDescription": {
     message:
       "Deleting a service permanently removes it, its deployment, and its URL. This can't be undone.",
-    description: "Settings tab delete section description",
+    description:
+      "Settings tab delete section description, for the types served at a public host",
+  },
+  "services.dangerZoneDescriptionNoUrl": {
+    message:
+      "Deleting a service permanently removes it and its deployment. This can't be undone.",
+    description:
+      "Settings tab delete section description, for private services, background workers and cron jobs — none of which have a URL to remove",
   },
   "services.deleteButton": {
     message: "Delete Service",

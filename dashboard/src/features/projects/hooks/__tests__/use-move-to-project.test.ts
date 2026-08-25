@@ -103,7 +103,12 @@ describe("useMoveToProject", () => {
     expect(mockInvalidate).toHaveBeenCalledTimes(1);
   });
 
-  it("moves a service between projects with two full-replace writes", async () => {
+  it("moves a service between projects with one write to the target", async () => {
+    // w6/036: the move used to write the SOURCE project first (dropping the
+    // resource) and only then the target. Membership is single-valued on the
+    // server, so the target write alone completes the move — and a single
+    // write is all-or-nothing, which is what keeps a mid-move failure from
+    // orphaning the resource (see the next test).
     mockUseProjects.mockReturnValue({
       projects: [
         project("prj-a", "Alpha", ["srv-1", "srv-2"]),
@@ -119,13 +124,41 @@ describe("useMoveToProject", () => {
     });
 
     expect(ok).toBe(true);
-    expect(setServices).toHaveBeenNthCalledWith(1, {
-      variables: { id: "prj-a", serviceIds: ["srv-2"] },
-    });
-    expect(setServices).toHaveBeenNthCalledWith(2, {
+    expect(setServices).toHaveBeenCalledTimes(1);
+    expect(setServices).toHaveBeenCalledWith({
       variables: { id: "prj-b", serviceIds: ["srv-3", "srv-1"] },
     });
     expect(toastSuccess).toHaveBeenCalledWith('"web" moved to "Beta".');
+  });
+
+  it("never detaches the resource from its source project when the move fails", async () => {
+    // w6/036 regression, live-reproduced: with a source-then-target pair, a
+    // failure on the target write left the resource in NEITHER project while
+    // the toast said the move had failed. A failed move must write nothing.
+    mockUseProjects.mockReturnValue({
+      projects: [
+        project("prj-a", "Alpha", ["srv-1", "srv-2"]),
+        project("prj-b", "Beta", ["srv-3"]),
+      ],
+      refetch: vi.fn(),
+    });
+    setServices.mockRejectedValue(new Error("boom"));
+    const { result } = renderHook(() => useMoveToProject("service"));
+
+    let ok = true;
+    await act(async () => {
+      ok = await result.current.moveTo("srv-1", "web", "prj-b");
+    });
+
+    expect(ok).toBe(false);
+    // The only write attempted is the target one; the source project is never
+    // cleared, so srv-1 is still in Alpha.
+    expect(setServices).toHaveBeenCalledTimes(1);
+    expect(setServices).toHaveBeenCalledWith({
+      variables: { id: "prj-b", serviceIds: ["srv-3", "srv-1"] },
+    });
+    expect(toastError).toHaveBeenCalledWith('Failed to move "web".');
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 
   it("reports success even when the post-move refresh fails", async () => {

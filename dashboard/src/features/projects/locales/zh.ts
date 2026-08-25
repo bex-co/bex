@@ -274,7 +274,7 @@ const zhProjects: Record<string, TranslationEntry> = {
   },
   "projects.deleteCardDescription": {
     message:
-      "仅删除项目分组——其服务、数据库和键值存储将变为未分组状态，不会被删除。此操作无法撤销。",
+      "项目下的环境及其配置将一并删除。其服务、数据库和键值存储不会被删除，只会变为未分组状态。此操作无法撤销。",
     description: "Project settings page's danger-zone card description",
   },
   "projects.deleteCardButton": {
@@ -287,7 +287,7 @@ const zhProjects: Record<string, TranslationEntry> = {
     description: "Delete-project confirmation dialog title",
   },
   "projects.deleteConfirmBody": {
-    message: "其服务、数据库和键值存储将变为未分组状态——不会被删除。",
+    message: "项目下的环境及其配置将被删除。其服务、数据库和键值存储将变为未分组状态，不会被删除。",
     description: "Delete-project confirmation dialog body",
   },
   "projects.deleteSuccess": {
