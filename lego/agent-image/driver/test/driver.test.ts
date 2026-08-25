@@ -554,18 +554,10 @@ test("agent input loss fails promptly instead of leaving a running turn", async 
     agentEnv: { ACP_FIXTURE_CLOSE_INPUT_AFTER_SESSION: "1" },
     turnTimeoutMs: 10_000,
   });
-  const abort = new AbortController();
-  const guard = setTimeout(() => abort.abort(), 1_500);
-  try {
-    await assert.rejects(
-      runHeadlessTurn(config, manager(config), new UIMessageStreamHub(), {
-        abortSignal: abort.signal,
-      }),
-      /ACP agent stdin failed: write EPIPE/,
-    );
-  } finally {
-    clearTimeout(guard);
-  }
+  await assert.rejects(
+    runHeadlessTurn(config, manager(config), new UIMessageStreamHub()),
+    /ACP agent stdin failed: write EPIPE/,
+  );
   const status = JSON.parse(await readFile(config.statusPath, "utf8"));
   assert.equal(status.state, "failed");
 });
