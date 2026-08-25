@@ -30,80 +30,17 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// appSpecIdentityClass is the exhaustive policy for deciding what an AppSpec
-// mutation means. Artifact fields can require source access/a build. Release
-// fields can require pre-deploy and a workload rollout. Operational fields are
-// reconciled against the current release and must do neither.
-type appSpecIdentityClass uint8
-
+// The AppSpec deploy-semantics policy — which fields are artifact identity,
+// which are release identity, and which are purely operational — lives in the
+// CRD contract module (appv1alpha1.AppSpecIdentityClasses) so bex-api gates its
+// deploy-history writes on the same table this fingerprint is built from
+// (w6/m51). These aliases keep the operator's own spelling.
 const (
-	identityOperational appSpecIdentityClass = 0
-	identityArtifact    appSpecIdentityClass = 1 << 0
-	identityRelease     appSpecIdentityClass = 1 << 1
+	identityArtifact = appv1alpha1.IdentityArtifact
+	identityRelease  = appv1alpha1.IdentityRelease
 )
 
-// appSpecIdentityClasses deliberately names every AppSpec field. The guard test
-// in release_identity_test.go fails when the CRD contract gains a field without
-// a deploy-semantics decision here.
-var appSpecIdentityClasses = map[string]appSpecIdentityClass{
-	"DisplayName":                identityOperational,
-	"Type":                       identityRelease,
-	"Schedule":                   identityOperational,
-	"Command":                    identityRelease,
-	"RunAt":                      identityOperational,
-	"CancelRun":                  identityOperational,
-	"PublishPath":                identityRelease,
-	"Routes":                     identityOperational,
-	"Headers":                    identityOperational,
-	"Repo":                       identityArtifact | identityRelease,
-	"Image":                      identityArtifact | identityRelease,
-	"RootDir":                    identityArtifact | identityRelease,
-	"BuildFilter":                identityOperational,
-	"DockerfilePath":             identityArtifact | identityRelease,
-	"DockerContext":              identityArtifact | identityRelease,
-	"Branch":                     identityArtifact | identityRelease,
-	"BuildCommit":                identityArtifact | identityRelease,
-	"CloneSecret":                identityOperational,
-	"ExternalRegistryPullSecret": identityArtifact | identityRelease,
-	"RegistryCredentialID":       identityArtifact | identityRelease,
-	"Runtime":                    identityArtifact | identityRelease,
-	"BuildCommand":               identityArtifact | identityRelease,
-	"StartCommand":               identityArtifact | identityRelease,
-	"Builder":                    identityArtifact | identityRelease,
-	"Replicas":                   identityOperational,
-	"Port":                       identityRelease,
-	"Env":                        identityArtifact | identityRelease,
-	"EnvFromSecret":              identityArtifact | identityRelease,
-	"EnvFromSecrets":             identityRelease,
-	"FilesFromSecrets":           identityRelease,
-	"HealthCheckPath":            identityRelease,
-	"MaxShutdownDelaySeconds":    identityRelease,
-	"AutoDeploy":                 identityOperational,
-	"NotifyOnFail":               identityOperational,
-	"NotificationsToSend":        identityOperational,
-	"PreDeployCommand":           identityRelease,
-	"IdleTTLSeconds":             identityOperational,
-	"RestartedAt":                identityArtifact | identityRelease,
-	"Suspended":                  identityOperational,
-	"Autoscaling":                identityOperational,
-	// A disk is a release input because attaching, detaching, or remounting one
-	// rewrites the pod template — Render redeploys the service for exactly that
-	// reason. Its SIZE deliberately is not: a grow is applied to the live volume
-	// online, and rolling the pod for it would turn Render's no-downtime resize
-	// into an outage. See the projection in desiredAppReleaseIdentity.
-	"Disk":                   identityRelease,
-	"Tier":                   identityRelease,
-	"Host":                   identityOperational,
-	"Expose":                 identityOperational,
-	"Subdomain":              identityOperational,
-	"Hosts":                  identityOperational,
-	"HostRedirects":          identityOperational,
-	"SubdomainPolicy":        identityOperational,
-	"IPAllowList":            identityOperational,
-	"IPAllowListEntries":     identityOperational,
-	"EnvironmentIPAllowList": identityOperational,
-	"MaintenanceMode":        identityOperational,
-}
+var appSpecIdentityClasses = appv1alpha1.AppSpecIdentityClasses
 
 type appReleaseIdentity struct {
 	artifact string

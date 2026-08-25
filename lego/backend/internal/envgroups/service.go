@@ -44,7 +44,9 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -74,6 +76,13 @@ type Service struct {
 	// composition root wires deploys.Service.Trigger; nil makes only the explicit
 	// rebuild save mode unavailable while save_only/deploy continue to work.
 	RebuildService func(ctx context.Context, serviceID string) error
+
+	// Rollout records the deploy-history row every linked-service patch below
+	// owes the user: linking, unlinking, and changing a group's values all roll
+	// a new release on each linked service, and until w6/m51 that rollout was
+	// invisible in the Deploys tab and Events feed. The composition root wires
+	// the control-plane store; nil leaves the patches untracked (CR-only mode).
+	Rollout *rollout.Tracker
 
 	// MaxEnvGroups caps how many groups ONE workspace may own (round-11 #3,
 	// BEX_MAX_ENV_GROUPS_PER_WORKSPACE, default 100; 0 disables). w2/m80: the
@@ -596,11 +605,11 @@ func (s *Service) persistCreate(
 	}
 	for _, a := range services {
 		before := a.DeepCopy()
-		base := client.MergeFrom(before)
-		a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
-		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
-		a.Spec.RestartedAt = m.updatedAt
-		if err := s.Client.Patch(ctx, a, base); err != nil {
+		if err := s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+			a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
+			a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
+			a.Spec.RestartedAt = m.updatedAt
+		}); err != nil {
 			return rollback(err)
 		}
 		patched = append(patched, before)
@@ -949,16 +958,29 @@ func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1
 	if err := validateGroupServiceEnvironment(m.environment, service, a.Labels); err != nil {
 		return err
 	}
-	base := client.MergeFrom(a.DeepCopy())
-	a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
-	a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
-	a.Spec.RestartedAt = s.now()
-	if err := s.Client.Patch(ctx, a, base); err != nil {
+	if err := s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
+		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
+		a.Spec.RestartedAt = s.now()
+	}); err != nil {
 		return err
 	}
 	m.links = addString(m.links, service)
 	_, err = s.touch(ctx, gid, m)
 	return err
+}
+
+// rollLinkedService applies mutate to an already-fetched linked service and
+// merge-patches it, opening a deploy row when the change rolls a new release
+// (w6/m51). Every env-group write that reaches a service's App CR goes through
+// here: the group's Secret refs and spec.restartedAt are release identity, so
+// the operator rebuilds and redeploys for them exactly as it does for a
+// Settings-page edit — and the user is owed the same visible deploy.
+func (s *Service) rollLinkedService(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) error {
+	return s.Rollout.Patch(ctx, s.Client, a, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+		mutate(a)
+		return nil
+	})
 }
 
 // UnlinkService reverses LinkService: drop the group's Secret refs from the
@@ -1002,11 +1024,11 @@ func (s *Service) detach(ctx context.Context, gid, service string) error {
 // already holds the App it authorized — reusing it rather than fetching (and
 // authorizing, and auditing) a second time.
 func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.App) error {
-	base := client.MergeFrom(a.DeepCopy())
-	a.Spec.EnvFromSecrets = removeString(a.Spec.EnvFromSecrets, envSecretName(gid))
-	a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, filesSecretName(gid))
-	a.Spec.RestartedAt = s.now()
-	return s.Client.Patch(ctx, a, base)
+	return s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.EnvFromSecrets = removeString(a.Spec.EnvFromSecrets, envSecretName(gid))
+		a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, filesSecretName(gid))
+		a.Spec.RestartedAt = s.now()
+	})
 }
 
 // rollLinked bumps spec.restartedAt on every linked service so it picks up the
@@ -1030,9 +1052,9 @@ func (s *Service) rollOne(ctx context.Context, service, stamp string) error {
 	if err != nil {
 		return err
 	}
-	base := client.MergeFrom(a.DeepCopy())
-	a.Spec.RestartedAt = stamp
-	return s.Client.Patch(ctx, a, base)
+	return s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.RestartedAt = stamp
+	})
 }
 
 func validateGroupServiceEnvironment(groupEnvironment, serviceID string, labels map[string]string) error {

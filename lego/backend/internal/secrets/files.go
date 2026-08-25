@@ -454,12 +454,13 @@ func (s *Service) SecretFileContent(ctx context.Context, service, name string) (
 // lingers. The operator merges this Secret with any linked env-group file Secrets
 // into the single /etc/secrets projected volume (docs/ADR013-secrets.md).
 func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string) error {
-	base := client.MergeFrom(a.DeepCopy())
-	if err := s.projectFiles(ctx, a, files); err != nil {
-		return err
-	}
-	s.bumpRestart(a)
-	return s.Client.Patch(ctx, a, base)
+	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+		if err := s.projectFiles(ctx, a, files); err != nil {
+			return err
+		}
+		s.bumpRestart(a)
+		return nil
+	})
 }
 
 // projectFiles updates the derived Kubernetes Secret and App reference without

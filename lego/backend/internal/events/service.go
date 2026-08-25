@@ -638,6 +638,11 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Type = TypeDeployStarted
 			ev.Details.Trigger = &Trigger{
 				FirstBuild: r.Trigger == store.TriggerCreate,
+				// Render's envUpdated is "a configuration write caused this
+				// rollout" — the nearest flag in its vocabulary for the deploys
+				// a Settings field, env var, secret file, or env-group link now
+				// opens (w6/m51). Manual stays false: nobody clicked Deploy.
+				EnvUpdated: r.Trigger == store.TriggerConfigChange,
 				Manual:     r.Trigger == store.TriggerAPI || r.Trigger == store.TriggerDeployHook,
 				Rollback:   r.Trigger == store.TriggerRollback,
 			}

@@ -193,6 +193,13 @@ const (
 	TriggerDeployHook = "deploy_hook" // the App's unauthenticated secret-URL trigger
 	TriggerRollback   = "rollback"    // a deploy created by Rollback (w2/m10), restoring an earlier image
 	TriggerNewCommit  = "new_commit"  // a git-push redeploy via the HMAC webhook (Render's spelling)
+	// TriggerConfigChange is a rollout a configuration write forced rather than
+	// an explicit deploy verb: a Settings-page field, an env var or secret file,
+	// an env-group link/unlink. bex cannot apply any of these without rolling a
+	// new release, so each is a real deploy the user must be able to see, retry,
+	// and roll back — spelled distinctly so the history still tells a settings
+	// save apart from a manual deploy (w6/m51).
+	TriggerConfigChange = "config_change"
 )
 
 // CommitInfo is the git commit a build-from-git deploy runs — the resolved

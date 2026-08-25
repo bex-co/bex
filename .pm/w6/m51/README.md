@@ -1,19 +1,19 @@
 # w6 · m51 — Settings-page spec changes never create a deploy-history row; a failed one strands the service in stuck Building
 
-**Worker:** worker6 **Goal:** every rollout that actually rebuilds/redeploys a service is visible in its Deploys tab and Events feed, and a service never gets stuck in an unrecoverable phase after a config edit **Status:** todo
+**Worker:** worker6 **Goal:** every rollout that actually rebuilds/redeploys a service is visible in its Deploys tab and Events feed, and a service never gets stuck in an unrecoverable phase after a config edit **Status:** in progress — code complete and gated green; t003/t007 blocked on the post-ship live repro
 
 ## Tasks (in order)
 
-| id   | title                                                                                   | est | depends_on |
-| ---- | ---------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Enumerate and live-confirm every Settings verb that forces an untracked operator rebuild | 45m | —          |
-| t002 | Route build-relevant Settings mutations through the same deploy-tracked path as Restart  | 90m | t001       |
-| t003 | Verify stuck-phase recovery: a corrected Settings value must self-heal, not just retry   | 45m | t002       |
-| t008 | Env-group link/unlink also forces an untracked rebuild — bug isn't confined to apps.Service.SetXxx | 30m | t001 |
-| t004 | Render parity: REST/GraphQL/MCP/UI agree on deploy-history visibility for these edits    | 30m | t002, t008 |
-| t005 | Simplify                                                                                  | 20m | t004       |
-| t006 | Test coverage                                                                             | 30m | t005       |
-| t007 | Closeout                                                                                  | 10m | t006       |
+| id | title | est | depends_on | status |
+| --- | --- | --- | --- | --- |
+| t001 | Enumerate and live-confirm every Settings verb that forces an untracked operator rebuild | 45m | — | — **DONE** |
+| t002 | Route build-relevant Settings mutations through the same deploy-tracked path as Restart | 90m | t001 | — **DONE** |
+| t003 | Verify stuck-phase recovery: a corrected Settings value must self-heal, not just retry | 45m | t002 | — **BLOCKED** (needs the fix deployed) |
+| t008 | Env-group link/unlink also forces an untracked rebuild — bug isn't confined to apps.Service.SetXxx | 30m | t001 | — **DONE** |
+| t004 | Render parity: REST/GraphQL/MCP/UI agree on deploy-history visibility for these edits | 30m | t002, t008 | — **DONE** |
+| t005 | Simplify | 20m | t004 | — **DONE** |
+| t006 | Test coverage | 30m | t005 | — **DONE** |
+| t007 | Closeout | 10m | t006 | — **BLOCKED** (gated on t003) |
 
 ## Definition of done
 
@@ -23,6 +23,21 @@
 - Live-verified recovery path: after the failure above, correct the Start Command back to a valid value and Save. Confirm this alone (no separate "Manual Deploy"/"Restart" click required) produces a new tracked deploy that reaches `Live`, and the service header reflects it without manual intervention.
 - The same DoD holds for every build-relevant Settings verb enumerated in t001 (not just Start Command) — or each excluded verb has a stated, verified reason it doesn't force a rebuild.
 - The same DoD holds for every build-relevant App-CR-patch call site enumerated in t008 (env-group link/unlink and the rest of the 16-site blast radius), not just the `apps.Service.SetXxx` family — or each excluded site has a stated, verified reason it doesn't force a rebuild.
+
+## Implementation (2026-08-24)
+
+**The fix.** The operator already publishes an exhaustive, test-guarded answer to "does this spec change force a rebuild or redeploy": `appSpecIdentityClasses` in `release_identity.go`, which names every `AppSpec` field artifact / release / operational. That table moved into the CRD contract module as `appv1alpha1.AppSpecIdentityClasses` + `SpecRollsRelease(before, after)` (`lego/types/v1alpha1/app_identity.go`), so bex-api gates its deploy-history writes on the same policy the operator fingerprints with — one table, one guard test, no second copy to drift.
+
+`lego/backend/internal/rollout` is the shared seam every App-spec writer outside the deploy verbs now patches through: snapshot the spec, apply the mutation, ask `SpecRollsRelease`, stamp the release generation, merge-patch, and open a `deploys` row with trigger `config_change`. Wired at `apps.patchFetched` (the chokepoint all `SetXxx` and disk verbs share), `envgroups` link/unlink/roll/group-value-change, and `secrets` env-var/secret-file/batch writes. Once the row exists, the existing reconciler drives it to a terminal status; no new lifecycle machinery was needed.
+
+**Two corrections to this milestone's premise, both load-bearing:**
+
+1. `manual-deploy-button.tsx`'s "any spec change … unconditionally re-enters the build path" is Restart-context-specific and **not literally true**. Roughly half the `SetXxx` family is operational (scale, rename, autoDeploy, IP allow-list, maintenance mode, autoscaling, custom domains). A blanket gate on `patchFetched` would have minted a phantom deploy for every rename. The fix is correct in both directions, and `TestOperationalVerbsOpenNoDeploy` is the guard.
+2. The "stuck `Building`" phase was **unbounded only in appearance**. The operator caps a rollout at `progressDeadlineSeconds = 900s` and bex-api observes it with an 18-minute `DeployGateTimeout`; the 2-minute observation window was mid-rollout. What was genuinely broken was that the rollout was _unobservable_ — no row to inspect, cancel, or retry, and no terminal status surfaced anywhere. That is what the fix closes.
+
+**Scope beyond the filed blast radius.** All 16 App-CR patch sites from t008 are classified (table in `done/t008.md`); five needed tracking, eleven are genuinely operational or already correct. A multi-field REST/MCP `PATCH` is coalesced into one deploy row rather than one per field (`rollout.Batch`), which the store's overlap handling would otherwise have turned into one live row plus N-1 canceled ones.
+
+**Remaining.** The DoD's live repro against `dashboard.bex.co` cannot run until the fix is shipped and deployed — the live control plane is still the pre-fix binary. t003 records the deterministic equivalent (`TestConfigChangeFailsTerminallyThenSelfHeals` replays the exact journey: broken edit → terminal `update_failed`, correction alone → new row → `live`) and what to re-run post-deploy. t007 closes once that lands.
 
 ## Source + Goal linkage
 

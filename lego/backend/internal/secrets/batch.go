@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -242,6 +244,7 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 // and persists at most one App patch, staging or activating the projection
 // references per saveMode. Any failure compensates through txn.
 func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.App, txn envPatchTxn, saveMode SaveMode, env, files map[string]string, result EnvironmentPatchResult) (EnvironmentPatchResult, error) {
+	before := rollout.Before(a)
 	base := client.MergeFrom(txn.originalApp)
 	if txn.envChanged {
 		var err error
@@ -269,8 +272,15 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 	if apiequality.Semantic.DeepEqual(txn.originalApp, a) {
 		return result, nil
 	}
+	tracked := before.Stamp(a)
 	if err := s.Client.Patch(ctx, a, base); err != nil {
 		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
+	}
+	// save_only stages the projection references without touching release
+	// identity, so only the deploying mode opens a row — exactly the rollout the
+	// user just asked for, and nothing for the save they explicitly deferred.
+	if tracked {
+		s.Rollout.Open(ctx, before, a, store.TriggerConfigChange)
 	}
 	result.RolledOut = rolledOut
 	return result, nil

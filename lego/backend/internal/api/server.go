@@ -63,6 +63,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/sshkeys"
@@ -331,8 +332,8 @@ type Deps struct {
 	// report unavailable; disks themselves are unaffected.
 	DiskSnapshots      apps.DiskSnapshotLister
 	DiskSnapshotSecret []byte
-	ShellWSURL        string
-	Store             apps.IntentStore
+	ShellWSURL         string
+	Store              apps.IntentStore
 	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
 	// feature and the env-groups feature read/write through (docs/ADR013-secrets.md). One
 	// instance, wired into both services below. nil => those verbs 503.
@@ -631,8 +632,12 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// honest "unavailable" signal the stack pre-flight rejects against (a bex.yml
 	// using envVarGroups/fromGroup/sync:false/generateValue then fails before any
 	// write, never silently drops the var).
-	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets}
-	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, MaxEnvGroups: d.MaxEnvGroupsPerWorkspace}
+	// One recorder shared by every writer that patches an App CR outside the
+	// deploy verbs (w6/m51): a config write that rolls a new release opens the
+	// same deploy-history row an explicit deploy does.
+	rollouts := &rollout.Tracker{Store: d.DeployStore}
+	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets, Rollout: rollouts}
+	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, Rollout: rollouts, MaxEnvGroups: d.MaxEnvGroupsPerWorkspace}
 	var envSeeder apps.EnvSeeder
 	var envNames apps.EnvNameSource
 	var createSecrets apps.CreateSecretsSeeder

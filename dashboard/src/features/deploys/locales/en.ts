@@ -121,6 +121,11 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "new commit",
     description: "Deploy row: trigger=new_commit label (git push redeploy)",
   },
+  "deploys.triggerConfigChange": {
+    message: "config change",
+    description:
+      "Deploy row: trigger=config_change label (a Settings, env var, or env-group edit that forced a rebuild)",
+  },
   "deploys.logSearchPlaceholder": {
     message: "Search logs…",
     description: "Deploy detail page: log search input placeholder",

@@ -280,3 +280,68 @@ func mutateIdentityTestField(value reflect.Value) {
 		panic("unsupported AppSpec test field kind: " + value.Kind().String())
 	}
 }
+
+// TestSpecRollsReleaseMatchesReleaseFingerprint is the cross-plane guard for
+// w6/m51: bex-api decides whether a spec patch owes the user a deploy-history
+// row by calling appv1alpha1.SpecRollsRelease, while the operator decides
+// whether to actually roll by comparing release fingerprints. If those two ever
+// disagree, a real rollout goes unrecorded (the original bug) or a no-op patch
+// mints a phantom deploy. Assert they agree field by field.
+func TestSpecRollsReleaseMatchesReleaseFingerprint(t *testing.T) {
+	base := appv1alpha1.AppSpec{
+		Repo:         "https://github.com/bex-co/bex.git",
+		Branch:       "main",
+		Runtime:      "go",
+		Builder:      "native",
+		BuildCommand: "go build -o app .",
+		StartCommand: "./app",
+		Port:         3000,
+	}
+	fields := make([]string, 0, len(appSpecIdentityClasses))
+	for field := range appSpecIdentityClasses {
+		fields = append(fields, field)
+	}
+	sort.Strings(fields)
+	for _, field := range fields {
+		t.Run(field, func(t *testing.T) {
+			baseline := base
+			if field == "Builder" {
+				baseline.Runtime = ""
+			}
+			changed := baseline
+			mutateIdentityTestField(reflect.ValueOf(&changed).Elem().FieldByName(field))
+
+			operatorRolls := desiredAppReleaseIdentity(changed).release != desiredAppReleaseIdentity(baseline).release
+			backendRolls := appv1alpha1.SpecRollsRelease(baseline, changed)
+			if operatorRolls != backendRolls {
+				t.Fatalf("operator rolls=%v but SpecRollsRelease=%v for %s", operatorRolls, backendRolls, field)
+			}
+		})
+	}
+}
+
+// TestSpecRollsReleaseIgnoresNoOpChanges pins the two cases a naive field-wise
+// comparison gets wrong: an unchanged spec, and a list rewritten from nil to
+// empty (what removing the last linked env group produces).
+func TestSpecRollsReleaseIgnoresNoOpChanges(t *testing.T) {
+	spec := appv1alpha1.AppSpec{Repo: "https://github.com/bex-co/bex.git", StartCommand: "./app"}
+	if appv1alpha1.SpecRollsRelease(spec, spec) {
+		t.Fatal("an unchanged spec must not roll a release")
+	}
+	emptied := spec
+	emptied.EnvFromSecrets = []string{}
+	emptied.FilesFromSecrets = []string{}
+	if appv1alpha1.SpecRollsRelease(spec, emptied) {
+		t.Fatal("nil -> empty list must not roll a release")
+	}
+	grown := spec
+	grown.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/data", SizeGB: 10}
+	resized := spec
+	resized.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/data", SizeGB: 20}
+	if !appv1alpha1.SpecRollsRelease(spec, grown) {
+		t.Fatal("attaching a disk must roll a release")
+	}
+	if appv1alpha1.SpecRollsRelease(grown, resized) {
+		t.Fatal("growing a disk online must not roll a release")
+	}
+}
