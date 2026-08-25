@@ -445,6 +445,55 @@ spec:
             # (default 10) stay the m68 defaults on purpose. The Secret can
             # land before this env is live; Argo applying this block is what
             # arms the process.
+            # Disk-snapshot LISTING (ADR082 D5/D6). bex-api only ever LISTS:
+            # it never writes, never decrypts, and never holds the age key —
+            # which is why these come from a separate, READ-ONLY identity
+            # (bex-disk-snapshot-read) rather than the operator's write
+            # credential. Installed by scripts/disk-snapshot-secret.sh.
+            #
+            # Optional throughout: with no Secret, GET /v1/disks/{diskId}/
+            # snapshots and the restore verb answer a coded
+            # DISK_SNAPSHOTS_NOT_CONFIGURED 503 and the dashboard says so
+            # plainly. Disks themselves are unaffected.
+            #
+            # The 24h snapshotKey is signed with BEX_SHELL_TICKET_SECRET — a
+            # reference to an object, not its contents.
+            - name: BEX_DISK_SNAPSHOT_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: bex-disk-snapshot-read
+                  key: BEX_DISK_SNAPSHOT_ENDPOINT
+                  optional: true
+            - name: BEX_DISK_SNAPSHOT_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-disk-snapshot-read
+                  key: BEX_DISK_SNAPSHOT_BUCKET
+                  optional: true
+            - name: BEX_DISK_SNAPSHOT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: bex-disk-snapshot-read
+                  key: BEX_DISK_SNAPSHOT_REGION
+                  optional: true
+            - name: BEX_DISK_SNAPSHOT_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: bex-disk-snapshot-read
+                  key: BEX_DISK_SNAPSHOT_PREFIX
+                  optional: true
+            - name: BEX_DISK_SNAPSHOT_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-disk-snapshot-read
+                  key: BEX_DISK_SNAPSHOT_ACCESS_KEY
+                  optional: true
+            - name: BEX_DISK_SNAPSHOT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-disk-snapshot-read
+                  key: BEX_DISK_SNAPSHOT_SECRET_KEY
+                  optional: true
             - name: BEX_AGENT_SNAPSHOT_S3_ENDPOINT
               valueFrom:
                 secretKeyRef:

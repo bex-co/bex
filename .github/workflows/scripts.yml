@@ -114,5 +114,12 @@ jobs:
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
           scripts/image-pin-validate.sh scripts/image-pin-validate.test.sh
           scripts/lib/image-digest-exists.sh
+          scripts/disk-snapshot-secret.sh scripts/disk-snapshot-secret.test.sh
       - name: Restore script hermetic safety tests
         run: bash scripts/restore.test.sh
+      # ADR082 D5: the disk-snapshot provisioner's refusals — a shared bucket, a
+      # bucket the committed IAM policies do not cover, an unpinned aws-cli
+      # image, and any policy edit that would let bex-api write or delete a
+      # tenant's backups.
+      - name: Disk snapshot provisioner guards
+        run: bash scripts/disk-snapshot-secret.test.sh

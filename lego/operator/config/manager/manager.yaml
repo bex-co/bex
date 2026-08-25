@@ -257,6 +257,46 @@ spec:
           # class file records them.
           # - name: BEX_DISK_STORAGE_CLASS
           #   value: hcloud-volumes-luks
+          # Nightly disk snapshots (ADR082 D5). Hetzner has no volume snapshots
+          # at any level, so each disk-bearing App gets a CronJob that streams
+          # its volume (tar | gzip | age, one pass, nothing staged) into a
+          # DEDICATED bucket — never bex-tfstate — with 7-day retention, plus a
+          # purge Job when the disk is detached.
+          #
+          # The non-secret coordinates sit here like BEX_STATIC_S3_*; the
+          # write/delete credential and the age RECIPIENT key arrive together in
+          # the out-of-band bex-disk-snapshot Secret installed by
+          # scripts/disk-snapshot-secret.sh. The age public key is safe in clear
+          # but is sourced from the Secret anyway, so no environment's key
+          # material or identity lands in Git.
+          #
+          # FAIL-CLOSED, deliberately: endpoint + bucket + S3 secret + age
+          # public key must ALL resolve or the operator takes NO snapshot. A
+          # disk snapshot is a full copy of a tenant filesystem leaving the
+          # cluster, so bex takes none rather than an unencrypted one. Every
+          # reference is optional, so a cluster without the Secret is
+          # byte-identical to before the feature existed.
+          - name: BEX_DISK_SNAPSHOT_ENDPOINT
+            value: https://s3.eu-central-2.wasabisys.com
+          - name: BEX_DISK_SNAPSHOT_BUCKET
+            value: bex-disk-snapshots
+          - name: BEX_DISK_SNAPSHOT_REGION
+            value: eu-central-2
+          - name: BEX_DISK_SNAPSHOT_PREFIX
+            value: disks
+          - name: BEX_DISK_SNAPSHOT_S3_SECRET
+            value: bex-disk-snapshot
+          # The age keypair is DEDICATED to disks, not ADR050's platform key: a
+          # restore has to decrypt inside the cluster, and ADR050's whole point
+          # is that the platform key never goes there.
+          - name: BEX_DISK_SNAPSHOT_AGE_SECRET
+            value: bex-disk-snapshot-age
+          - name: BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY
+            valueFrom:
+              secretKeyRef:
+                name: bex-disk-snapshot
+                key: BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY
+                optional: true
         ports:
         - containerPort: 8081
           name: health

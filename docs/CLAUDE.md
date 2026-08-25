@@ -49,7 +49,7 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 - [ADR060-build-worker-reliability-and-performance.md](ADR060-build-worker-reliability-and-performance.md) — D1–D8 reliability/perf
 - [ADR009-postgresql-management.md](ADR009-postgresql-management.md) — `Database` CR → CNPG
 - [ADR021-keyvalue-management.md](ADR021-keyvalue-management.md) — `KeyValue` CR → Valkey
-- [ADR082-persistent-disks.md](ADR082-persistent-disks.md) — `spec.disk` → Hetzner volume PVC, $0.175/GB-mo (reverses the stateless-first non-goal)
+- [ADR082-persistent-disks.md](ADR082-persistent-disks.md) — `spec.disk` → Hetzner volume PVC, $0.175/GB-mo, min 10 GB (reverses the stateless-first non-goal); arm its snapshots with [runbooks/disk-snapshot-setup.md](runbooks/disk-snapshot-setup.md)
 
 ### Sandboxes, agents, mobile, SSH
 
