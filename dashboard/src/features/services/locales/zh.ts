@@ -250,6 +250,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "部署中",
     description: "Services table status badge",
   },
+  "services.statusCanceled": {
+    message: "已取消",
+    description:
+      "Services table status badge for a service whose first-ever deploy the user canceled",
+  },
   "services.statusFailed": {
     message: "失败",
     description: "Services table status badge",

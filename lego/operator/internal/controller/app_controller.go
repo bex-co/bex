@@ -564,7 +564,12 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 	if app.Status.Image != "" {
 		return r.dispatchRuntime(ctx, app, app.Status.Image, port)
 	}
-	app.Status.Phase = appv1alpha1.PhaseFailed
+	// Canceled, not Failed: the Condition below has always said "BuildCanceled",
+	// but the coarse phase reused PhaseFailed, so the service reported an error
+	// for something the user did on purpose — contradicting its own deploy row,
+	// which reads "canceled" (w6/m52). Nothing here failed; there is simply no
+	// release yet.
+	app.Status.Phase = appv1alpha1.PhaseCanceled
 	app.Status.ObservedGeneration = app.Generation
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "BuildCanceled",

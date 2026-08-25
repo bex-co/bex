@@ -341,6 +341,23 @@ describe("deriveStatus", () => {
     expect(deriveStatus(svc({ phase: "Pending" })).key).toBe("pending");
   });
 
+  // w6/m52: canceling a service's very first deploy used to report phase Failed
+  // — a red error badge for something the user did on purpose, contradicting the
+  // deploy's own "canceled" status. It is its own non-destructive state now.
+  it("shows a canceled first-ever deploy as Canceled, not the red Failed badge", () => {
+    expect(deriveStatus(svc({ phase: "Canceled" }))).toEqual({
+      key: "canceled",
+      variant: "secondary",
+    });
+  });
+
+  it("keeps a genuine failure on the destructive Failed badge", () => {
+    expect(deriveStatus(svc({ phase: "Failed" }))).toEqual({
+      key: "failed",
+      variant: "destructive",
+    });
+  });
+
   it("is case-insensitive so an operator casing change won't fall through", () => {
     expect(deriveStatus(svc({ phase: "running" })).key).toBe("running");
   });

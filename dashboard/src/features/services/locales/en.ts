@@ -254,6 +254,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Deploying",
     description: "Services table status badge",
   },
+  "services.statusCanceled": {
+    message: "Canceled",
+    description:
+      "Services table status badge for a service whose first-ever deploy the user canceled",
+  },
   "services.statusFailed": {
     message: "Failed",
     description: "Services table status badge",

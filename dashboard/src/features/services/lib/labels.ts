@@ -13,6 +13,7 @@ export const STATUS_LABEL: Record<ServiceStatusKey, keyof typeof en> = {
   pending: "services.statusPending",
   building: "services.statusBuilding",
   deploying: "services.statusDeploying",
+  canceled: "services.statusCanceled",
   failed: "services.statusFailed",
   unknown: "services.statusUnknown",
 };
