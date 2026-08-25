@@ -557,8 +557,8 @@ type PGStore struct {
 
 	// cliRefreshOnce/cliRefreshLocal back IdempotentCLIRefresh's replica-local
 	// response cache (codex-security 2026-08 F2): token responses are never
-	// persisted, so the bytes a duplicate caller must receive byte-identically
-	// live only in the process that minted them.
+	// persisted, so only a same-replica duplicate can receive the minting
+	// process's response bytes byte-identically.
 	cliRefreshOnce  sync.Once
 	cliRefreshLocal *cliRefreshTTLCache
 }

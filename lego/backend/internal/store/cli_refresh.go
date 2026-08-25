@@ -36,13 +36,12 @@ const cliRefreshSweepLimit = 1000
 // token digest + expiry): Hydra's verbatim response — which for the CLI's
 // offline_access grant contains the newly issued access token AND the rotated
 // refresh token — must never sit in Postgres or its backups as plaintext. The
-// response bytes live in this replica-local map for the idempotency TTL, which
-// is what actually deduplicates: the advisory lock serializes concurrent
-// refreshes onto one mint, and a duplicate arriving on THIS replica within the
-// TTL is served the cached bytes. A duplicate arriving on a DIFFERENT replica
-// re-mints from Hydra — one extra upstream round trip, which the 60s rotation
-// grace period (hydra.values.yaml) explicitly tolerates for exactly this
-// near-simultaneous-refresh shape.
+// response bytes live in this replica-local map for the idempotency TTL. The
+// advisory lock serializes concurrent refreshes; a duplicate arriving on THIS
+// replica within the TTL is served the cached bytes. A duplicate arriving on a
+// DIFFERENT replica re-mints from Hydra — one extra upstream round trip, which
+// the 60s rotation grace period (hydra.values.yaml) explicitly tolerates for
+// exactly this near-simultaneous-refresh shape.
 type cliRefreshTTLCache struct {
 	mu      sync.Mutex
 	entries map[[sha256.Size]byte]cliRefreshResponse
@@ -63,8 +62,8 @@ func (c *cliRefreshTTLCache) get(key [sha256.Size]byte) (cliRefreshResponse, boo
 
 // cliRefreshResponse is the exact successful OAuth response cached for one
 // inbound refresh-token digest. Body deliberately remains opaque: Hydra owns
-// the token schema, and the official CLI must receive byte-identical JSON on a
-// duplicate request.
+// the token schema, and same-replica duplicates must receive byte-identical
+// JSON.
 type cliRefreshResponse struct {
 	Body   []byte
 	Status int
@@ -116,8 +115,8 @@ func putCLIRefresh(ctx context.Context, q cliRefreshExecer, tokenHash [sha256.Si
 
 // IdempotentCLIRefresh serializes one refresh-token digest across every API
 // replica. The transaction-scoped advisory lock is acquired before the cache
-// lookup and held until the mint marker has been persisted, so only one caller
-// can mint from a rotating refresh token. Non-2xx OAuth responses and transport
+// lookup and held until the mint marker has been persisted, so concurrent
+// callers never mint simultaneously. Non-2xx OAuth responses and transport
 // failures are returned but never cached.
 //
 // Split storage (codex-security 2026-08 F2): the DURABLE row records only that
