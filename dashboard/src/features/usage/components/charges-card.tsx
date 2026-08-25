@@ -226,9 +226,20 @@ export function ChargesCard({
       <CardHeader>
         <CardTitle>{t("usage.chargesTitle")}</CardTitle>
         <CardDescription>
-          {invoiced == null
-            ? t("usage.chargesDescriptionEstimate")
-            : t("usage.chargesDescriptionInvoiced")}
+          {/* Say nothing rather than the wrong thing. `invoiced == null` means
+              two different things — "this workspace has no Stripe pricing" and
+              "the number has not arrived yet" — and the card used to read the
+              second as the first, asserting "An estimate, not an invoice."
+              before swapping to "The total is the amount Stripe will invoice."
+              a moment later. On a page about real money, committing to a claim
+              and then contradicting it is worse than a beat of silence, so
+              while the figure is still resolving the description is neutral
+              and settles on exactly one answer (w10/m11/t001). */}
+          {loading && invoicedUsd == null
+            ? t("usage.chargesDescriptionPending")
+            : invoiced == null
+              ? t("usage.chargesDescriptionEstimate")
+              : t("usage.chargesDescriptionInvoiced")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

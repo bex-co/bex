@@ -347,6 +347,10 @@ const enUsage: Record<string, TranslationEntry> = {
     description:
       "Credit applied to the current period and the remaining amount due",
   },
+  "usage.chargesDescriptionPending": {
+    message: "Accrued so far this period, priced from the bex rate sheet.",
+    description: "Charges card description while the invoiced total is still loading; deliberately states only what is already true, without claiming the figure is or is not a Stripe invoice.",
+  },
 };
 
 export default enUsage;

@@ -278,4 +278,54 @@ describe("ChargesCard", () => {
     expect(screen.getByText("No usage in this period.")).toBeInTheDocument();
     expect(screen.getByText("$0.00 USD")).toBeInTheDocument();
   });
+
+  // The Charges card is the trust surface for real money, so it must never
+  // assert one claim about a dollar figure and then contradict it. Before
+  // w10/m11/t001, `invoicedUsd == null` conflated "this workspace has no Stripe
+  // pricing" with "the number has not arrived yet", so the first paint read
+  // "An estimate, not an invoice." and then swapped to "the amount Stripe will
+  // invoice." moments later.
+  it("does not claim estimate-or-invoice while the invoiced total is still loading", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource()])}
+        invoicedUsd={null}
+        loading
+        period=""
+        now={MID_JULY}
+      />,
+    );
+
+    expect(screen.queryByText(/an estimate, not an invoice/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/amount Stripe will invoice/i)).not.toBeInTheDocument();
+    // It still says the one thing that is already true.
+    expect(screen.getByText(/accrued so far this period/i)).toBeInTheDocument();
+  });
+
+  it("settles on the estimate wording once loading finishes with no invoiced total", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource()])}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    expect(screen.getByText(/an estimate, not an invoice/i)).toBeInTheDocument();
+  });
+
+  it("settles on the invoiced wording once an invoiced total resolves", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource()])}
+        invoicedUsd="12.34"
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    expect(screen.getByText(/amount Stripe will invoice/i)).toBeInTheDocument();
+    expect(screen.queryByText(/an estimate, not an invoice/i)).not.toBeInTheDocument();
+  });
 });

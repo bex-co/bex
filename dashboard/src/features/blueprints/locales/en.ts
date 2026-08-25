@@ -557,6 +557,18 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "No result yet.",
     description: "Validate panel placeholder before first run",
   },
+  "blueprints.stateCreated": {
+    message: "Queued",
+    description: "Sync-run state: the run has been created but has not started.",
+  },
+  "blueprints.stateRunning": {
+    message: "Running",
+    description: "Sync-run state: the run is in progress.",
+  },
+  "blueprints.stateSuccess": {
+    message: "Success",
+    description: "Sync-run state: the run completed successfully.",
+  },
 };
 
 export default enBlueprints;
