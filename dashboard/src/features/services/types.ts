@@ -369,6 +369,10 @@ export type ServiceStatusKey =
   | "pending"
   | "building"
   | "deploying"
+  // "canceled" = the user stopped the release that was rolling and no earlier
+  // one ever succeeded. Deliberately not folded into "failed" — see PHASE_STATUS
+  // in lib/status.ts (w6/m52).
+  | "canceled"
   | "failed"
   | "unknown";
 

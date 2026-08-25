@@ -1008,7 +1008,7 @@ type StaticHeader struct {
 }
 
 // AppPhase mirrors the lifecycle state machine (211.09 §Agent Lifecycle).
-// +kubebuilder:validation:Enum=Pending;Building;Deploying;Running;Hibernated;Failed
+// +kubebuilder:validation:Enum=Pending;Building;Deploying;Running;Hibernated;Canceled;Failed
 type AppPhase string
 
 const (
@@ -1017,7 +1017,16 @@ const (
 	PhaseDeploying  AppPhase = "Deploying"
 	PhaseRunning    AppPhase = "Running"
 	PhaseHibernated AppPhase = "Hibernated"
-	PhaseFailed     AppPhase = "Failed"
+	// PhaseCanceled: the user canceled the release that was rolling and no
+	// earlier release ever succeeded, so nothing is running and nothing failed.
+	// Reusing PhaseFailed here made a service contradict its own deploy history
+	// — the deploy read "canceled" while the service header read "Failed", and a
+	// user who deliberately stopped their own first deploy had no way to tell
+	// whether they had broken something (w6/m52). A cancel with an earlier
+	// healthy release never reaches this state: that release keeps serving and
+	// the phase stays Running.
+	PhaseCanceled AppPhase = "Canceled"
+	PhaseFailed   AppPhase = "Failed"
 )
 
 // CronRun is one execution of a cron_job — a Kubernetes Job spawned either by the

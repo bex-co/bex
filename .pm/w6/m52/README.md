@@ -1,19 +1,19 @@
 # w6 · m52 — Canceling a first-ever deploy misreports the service as Failed, not Canceled
 
-**Worker:** worker6 **Goal:** a service's own status always agrees with its deploy history — a user-initiated cancel never reads as an error **Status:** todo
+**Worker:** worker6 **Goal:** a service's own status always agrees with its deploy history — a user-initiated cancel never reads as an error **Status:** in progress — code complete and gated green; t008 blocked on the post-ship live repro
 
 ## Tasks (in order)
 
-| id   | title                                                                                          | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Decide and name the target behavior for a canceled first-ever deploy (check Render parity first) | 20m | —          |
-| t002 | Add the CRD/type-level signal needed to carry the distinction through to GraphQL                 | 30m | t001       |
-| t003 | Update `settleCanceledRelease` to set the new signal instead of reusing `PhaseFailed`             | 30m | t002       |
-| t004 | Update the dashboard's status derivation/labels to render the new state distinctly (en + zh)      | 30m | t002       |
-| t005 | Render parity: REST/GraphQL/MCP/UI agree on the new status; render.com behavior confirmed          | 20m | t003, t004 |
-| t006 | Simplify                                                                                          | 15m | t005       |
-| t007 | Test coverage                                                                                     | 30m | t006       |
-| t008 | Closeout                                                                                          | 10m | t007       |
+| id   | title                                                                                          | est | depends_on | status |
+| ---- | ------------------------------------------------------------------------------------------------ | --- | ---------- | ------ |
+| t001 | Decide and name the target behavior for a canceled first-ever deploy (check Render parity first) | 20m | —          | — **DONE** |
+| t002 | Add the CRD/type-level signal needed to carry the distinction through to GraphQL                 | 30m | t001       | — **DONE** |
+| t003 | Update `settleCanceledRelease` to set the new signal instead of reusing `PhaseFailed`             | 30m | t002       | — **DONE** |
+| t004 | Update the dashboard's status derivation/labels to render the new state distinctly (en + zh)      | 30m | t002       | — **DONE** |
+| t005 | Render parity: REST/GraphQL/MCP/UI agree on the new status; render.com behavior confirmed          | 20m | t003, t004 | — **DONE** |
+| t006 | Simplify                                                                                          | 15m | t005       | — **DONE** |
+| t007 | Test coverage                                                                                     | 30m | t006       | — **DONE** |
+| t008 | Closeout                                                                                          | 10m | t007       | — **BLOCKED** (needs the fix deployed) |
 
 ## Definition of done
 
@@ -21,6 +21,20 @@
 - A service reaching `PhaseFailed` through a genuine build error (a real crash/nonzero exit, or any deploy where the operator sets Failed via an actual error path, not a user cancel) still shows "Failed" — verified live as the explicit control case, not assumed.
 - The distinction is verified live for at least two of the five App-typed service kinds (web service and cron job) — the mechanism is one shared reconcile path, so this is a spot-check of the fix's reach, not five separate investigations.
 - Render-parity closing task applies: this changes a GraphQL-exposed field's semantics and the dashboard UI that reads it (`docs/ADR018-render-parity.md` ledger).
+
+## Implementation (2026-08-24)
+
+**The fix is one line, and finding the right one line was the work.** `settleCanceledRelease` now sets a new `appv1alpha1.PhaseCanceled` instead of reusing `PhaseFailed`. The operator's Ready condition already said `BuildCanceled` — only the coarse phase lied.
+
+**Render parity turned out to be decisive, not incidental.** Render has no service-level status field at all: its dashboard header renders the *latest deploy's* status, so canceling a first deploy reads "Canceled" there. bex's `phase` is a documented bex-only extra (`ADR018` line 54, "superset Render clients ignore") — which is exactly why it was free to drift out of agreement with its own deploy record, with nothing on the Render side pinning it. So this is a genuine parity gap, and adding a value to a bex-only field cannot break a Render client. Recorded in `docs/ADR018-render-parity.md`.
+
+**Scope held to the branch that was actually wrong.** Only `app.Status.Image == ""` — a cancel with a live prior release keeps serving it and stays `Running`, which is what the Cancel dialog already promises. Both directions have their own control test.
+
+**Downstream readers checked rather than assumed.** No operator code reads `PhaseFailed`. On the backend, `failureReasonFor` correctly stops stamping a failure reason for a cancel, and `observedDeployStatus` deliberately gains no `PhaseCanceled` case — `deploys.Cancel` closes the row synchronously, so a case could only ever affect an unrelated open row. That absence is also a strict improvement: under `PhaseFailed`, a queued overlap row behind the canceled one could be closed `update_failed` (`BuildCanceled` is not in `IsBuildFailureReason`, so it fell to `default:`); it now correctly keeps waiting.
+
+**Dashboard:** new `canceled` status key with a `secondary` (non-destructive) badge, en "Canceled" / zh "已取消". `deriveStatus` needed no new branch — its existing special cases are for states derived from several fields at once, and `Canceled` is a plain phase. `CONVERGING_PHASES` correctly excludes it, so the header stops polling. An older dashboard degrades to "unknown" rather than crashing, since `PHASE_STATUS` already falls back.
+
+**Remaining.** The DoD's live repro on `dashboard.bex.co` across two App types cannot run until the fix is shipped and deployed. t008 closes once that lands.
 
 ## Source + Goal linkage
 

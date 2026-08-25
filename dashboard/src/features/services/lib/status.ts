@@ -186,6 +186,11 @@ const PHASE_STATUS: Record<string, ServiceStatus> = {
   // Hibernated App that is NOT suspended is a free-tier sleeper — shown as
   // "sleeping" with the wake-on-request hint, a bex extension over Render.
   hibernated: { key: "sleeping", variant: "secondary" },
+  // Phase Canceled means the user stopped the release that was rolling before
+  // any release had ever succeeded — so there is nothing running, but nothing
+  // failed either. Non-destructive on purpose (w6/m52): the red "Failed" badge
+  // it used to share told the user their own Cancel had broken something.
+  canceled: { key: "canceled", variant: "secondary" },
   failed: { key: "failed", variant: "destructive" },
 };
 
