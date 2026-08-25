@@ -414,3 +414,57 @@ func TestCreateServiceDiskDefaultsSizeWhenOmitted(t *testing.T) {
 		t.Fatalf("omitted sizeGB => default %d, got %+v", diskDefaultSizeGB, out.Service.ServiceDetails.Disk)
 	}
 }
+
+// Hetzner's minimum Cloud Volume is 10 GB, so a smaller request does not
+// produce a smaller volume — it produces a 10 GB one. bex sold 1 GB disks for
+// $0.175 against a ~$0.50 cost until w1/078, while ADR082 D8 advertised ~71%
+// margin. The floor is what makes displayed size, provisioned size and billed
+// size the same number again.
+func TestDiskSizeFloorMatchesHetznersMinimumVolume(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+
+	for _, size := range []int32{1, 5, 9} {
+		_, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", size)
+		if err == nil {
+			t.Fatalf("sizeGB=%d was accepted; Hetzner would provision 10 GB and bex would bill %d", size, size)
+		}
+		if !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("sizeGB=%d: want ErrBadRequest, got %v", size, err)
+		}
+		// The message must tell a migrating Render user what to change, not
+		// merely that they are wrong.
+		if !strings.Contains(err.Error(), "at least 10") || !strings.Contains(err.Error(), "set sizeGB to 10") {
+			t.Errorf("sizeGB=%d: message should name the fix, got %q", size, err.Error())
+		}
+	}
+
+	if _, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10); err != nil {
+		t.Fatalf("the floor itself must be accepted: %v", err)
+	}
+}
+
+// The floor is API policy, not a CRD rule: raising the CRD's own Minimum would
+// make every already-provisioned sub-10 GB disk fail validation on its next
+// write, and the grow-only rule leaves no way back into compliance. A disk that
+// predates the floor must therefore still accept a metadata edit.
+func TestExistingSubFloorDiskStillAcceptsMetadataEdits(t *testing.T) {
+	svc, _, st := newDiskService(diskEligibleApp("web"))
+	disk, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10)
+	if err != nil {
+		t.Fatalf("AddDisk: %v", err)
+	}
+	// Backdate the row to a size the floor would now refuse, as a disk created
+	// before w1/078 would be.
+	row := st.disks[disk.ID]
+	row.SizeGB = 1
+	st.disks[disk.ID] = row
+
+	mountPath := "/var/data2"
+	updated, err := svc.UpdateDisk(context.Background(), disk.ID, nil, &mountPath, nil)
+	if err != nil {
+		t.Fatalf("a pre-floor disk must still accept a metadata edit: %v", err)
+	}
+	if updated.SizeGB != 1 {
+		t.Errorf("the edit must not resize the disk: got %d, want 1", updated.SizeGB)
+	}
+}

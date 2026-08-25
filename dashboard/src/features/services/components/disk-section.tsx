@@ -52,9 +52,18 @@ function diskSudoPhrase(verb: "restore" | "delete", disk: DiskView): string {
   return `sudo ${verb} disk ${disk.mountPath}`;
 }
 
-/** Render's quick-select sizes, in the order its form shows them. */
-const SIZE_CHIPS = [1, 5, 10, 50, 100] as const;
+/**
+ * Render's quick-select sizes, minus the two below bex's floor.
+ *
+ * Render offers 1 and 5 GB; bex cannot, because Hetzner's minimum Cloud Volume
+ * is 10 GB — a smaller request produces a 10 GB volume, so those chips billed a
+ * tenant for less than the disk they actually received, and cost bex more than
+ * it charged (.pm/w1/078.md). A documented deliberate divergence from Render's
+ * captured form, like the price and the file-level snapshots.
+ */
+const SIZE_CHIPS = [10, 50, 100] as const;
 const DEFAULT_SIZE_GB = 10;
+const MIN_SIZE_GB = 10;
 const MAX_SIZE_GB = 10000;
 
 /** The service types validateDisk accepts (lego/backend/internal/apps/disks.go). */
@@ -300,7 +309,10 @@ function AddDiskForm({
           <Input
             id="disk-size"
             type="number"
-            min={1}
+            // The free-text box honors the same floor as the chips; the API
+            // refuses below it anyway, and saying so up front beats a failed
+            // submit.
+            min={MIN_SIZE_GB}
             max={MAX_SIZE_GB}
             className="w-28"
             value={sizeGB}
