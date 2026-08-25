@@ -99,6 +99,17 @@ func TestEncryptRoundTripsThroughTheAgeFormat(t *testing.T) {
 	if _, err := os.Stat(in); !os.IsNotExist(err) {
 		t.Fatalf("plaintext RDB survived the encrypt stage: %v", err)
 	}
+
+	// The upload stage runs as a different uid with DAC_OVERRIDE dropped, so an
+	// owner-only object is invisible to it and the backup silently fails (the
+	// 2026-08-23 production kvbak outage). The ciphertext must be world-readable.
+	info, err := os.Stat(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm()&0o044 != 0o044 {
+		t.Fatalf("ciphertext mode %v is not readable by the upload stage's uid", info.Mode().Perm())
+	}
 }
 
 // TestEncryptIsNotArmored guards the object's shape against a silently doubled

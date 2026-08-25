@@ -189,6 +189,15 @@ Only after the tenant has served correctly for an agreed soak period. Delete the
 > kubectl -n <ws>    get database.app.bex.co <id> -o jsonpath='{.status.backupServerName}{"\n"}'
 > ```
 
+> **KeyValue is different — its backup prefix NEVER differs across a cutover.** `keyvalue/<id>/` is keyed by the CR name alone (ids are globally unique, so namespaces never collide — but a migration reuses the id by design), and the 2026-08-21/22 cutover's unguarded deletes purged the recreated instances' recovery points along with the retired CRs' (see [2026-08-25-backup-verification.md](../drills/2026-08-25-backup-verification.md)). **Annotate the old KeyValue CR before deleting it** so the finalizer skips the prefix purge; every other teardown (CronJob, Jobs, StatefulSet, PVCs, Secrets) still runs:
+>
+> ```
+> kubectl -n default annotate keyvalue.app.bex.co <id> app.bex.co/preserve-backups-on-delete=true
+> kubectl -n default delete keyvalue.app.bex.co <id>
+> ```
+>
+> Never carry this annotation on a real tenant delete — purge-on-delete is the ADR021/ADR031 privacy contract.
+
 **Rollback:** none — this is irreversible. The Step 1 restore point is the only remaining recourse, so do not run this step until the soak has passed.
 
 ### Step 10 — Record it

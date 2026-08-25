@@ -45,6 +45,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w8/dev-8/` keeps onl
 - [x] **m27** — Granular OAuth capability scopes and authorization-decision audit (9 tasks) ← proposal 1 from `/pm-brainstorm for w8`, selected by user 2026-08-18
 - [x] **m28** — Polish `/agents` as a prompt-first workspace (8 tasks) ← designer review of `dashboard.bex.co/agents` 2026-08-18, user handoff to w8
 - [x] **m29** — bex CLI help chrome: strip Render branding without forking (7 tasks) ← from CLI branding research handoff 2026-08-19; Layer-1 `RootCmd` overlay only — DO_NOT_DO no-fork honored
+- [ ] **m30** — Restore paid KeyValue backup protection (9 tasks) ← from the 2026-08-25 backup verification (`docs/drills/2026-08-25-backup-verification.md`), user handoff to w8 2026-08-25; supersedes `w5/049`
 
 ## Inbox
 

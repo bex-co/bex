@@ -92,6 +92,25 @@ assert "pinned admin.conf fetcher passes" 0 "$(body "      - uses: $PINNED
 assert "non-fetcher unaffected" 0 "$(body "      - uses: $PINNED
       - run: make test")"
 
+# --- w8/m30 t005 / ADR050: restore workflows must carry the age decrypt key --
+# RED: a restore workflow that disables dotenv but never passes the key. This is
+# exactly what failed run 32814333448 — the drill's env list predated Tier A
+# encryption — so it is the case that must be proven red.
+assert "keyless restore workflow fails" 1 "$(body "      - uses: $PINNED
+      - env:
+          RESTORE_SKIP_DOTENV: \"1\"
+        run: bash scripts/restore-openbao.sh --target-namespace restore-x --verify-path p")" \
+  "AGE_BACKUP_PRIVATE_KEY"
+# GREEN: wiring the secret satisfies it.
+assert "keyed restore workflow passes" 0 "$(body "      - uses: $PINNED
+      - env:
+          RESTORE_SKIP_DOTENV: \"1\"
+          AGE_BACKUP_PRIVATE_KEY: \${{ secrets.AGE_BACKUP_PRIVATE_KEY }}
+        run: bash scripts/restore-openbao.sh --target-namespace restore-x --verify-path p")"
+# GREEN: a restore invocation that keeps dotenv loading gets the key from .env.
+assert "dotenv restore unaffected" 0 "$(body "      - uses: $PINNED
+      - run: bash scripts/restore-etcd.sh")"
+
 # GREEN: the real canonical tree passes end-to-end (inventory + deploy wiring).
 if "$SCRIPT" >/dev/null 2>&1; then
   echo "ok: real tree passes"
