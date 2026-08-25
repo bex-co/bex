@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback } from "react";
+import { lazy, Suspense, useCallback, useMemo } from "react";
 import { useParams, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
@@ -15,6 +15,7 @@ import {
   SidebarContent,
   SidebarHeader,
 } from "@/common/components/ui/sidebar.tsx";
+import { useAgentsFeatureEnabled } from "@/config/use-growthbook";
 import { isNavItemActive } from "./nav-active";
 import { SidebarBrand } from "./sidebar-brand";
 import { SidebarNavGroups, type SidebarNavGroup } from "./sidebar-nav-groups";
@@ -84,6 +85,17 @@ const NAV_GROUPS: SidebarNavGroup[] = [
 export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { projectId, serviceId } = useParams({ strict: false });
+  const agentsEnabled = useAgentsFeatureEnabled();
+  const navGroups = useMemo(
+    () =>
+      NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) => item.to !== "/agents" || agentsEnabled,
+        ),
+      })).filter((group) => group.items.length > 0),
+    [agentsEnabled],
+  );
   const isItemActive = useCallback(
     (to: string) => isNavItemActive(pathname, to),
     [pathname],
@@ -110,14 +122,14 @@ export function DashboardSidebar() {
         <SidebarBrand />
       </SidebarHeader>
       <SidebarContent className="gap-0">
-        <SidebarNavGroups groups={NAV_GROUPS} isItemActive={isItemActive} />
+        <SidebarNavGroups groups={navGroups} isItemActive={isItemActive} />
         {/* The contextual list slot (w5/m64). Unlike ProjectSidebar and
             ServiceSidebar above — which REPLACE the rail for a deep hierarchy
             and offer a back link — an agents-context section AUGMENTS the nav,
             Devin's own shape: global nav on top, the section's working set
             beneath. Section-scoped on purpose: sessions never follow you onto
             Projects/Services/Settings. See ADR047 D9. */}
-        {isNavItemActive(pathname, "/agents") ? (
+        {agentsEnabled && isNavItemActive(pathname, "/agents") ? (
           <Suspense fallback={null}>
             <AgentSessionsNavSection />
           </Suspense>
