@@ -1003,14 +1003,42 @@ func TestBuildQueuedSeparatesWaitingForCapacityFromBuilding(t *testing.T) {
 		}
 	})
 
-	// Fail toward "building": guessing queued on absent evidence would stall the
-	// caller's clock on something it does not actually know.
-	t.Run("no pods yet is not reported as queued", func(t *testing.T) {
+	// A Job with no pod at all is queued, not building (w6/m95). The window is
+	// normally sub-second, but it does not close on its own when pod creation is
+	// being rejected — and calling it "building" is what let a deploy row claim
+	// build_in_progress while the build-log subscribe answered "no running build
+	// is available to follow", with no BuildKit pod ever created.
+	t.Run("a job with no pod yet is queued, not building", func(t *testing.T) {
 		o.Client = fakeClient(job)
-		if queued, _ := buildQueued(context.Background(), o, job.Name); queued {
-			t.Error("the no-pod-yet window must not be reported as queued")
+		queued, reason := buildQueued(context.Background(), o, job.Name)
+		if !queued {
+			t.Error("a Job whose controller has not created a pod has nothing running: that is queued")
+		}
+		if !strings.Contains(reason, "build pod") {
+			t.Errorf("reason = %q, want it to name the missing build pod", reason)
 		}
 	})
+
+	// The other half of the split: a FAILED List is absent evidence, not proof
+	// of an absent pod. Guessing queued there would stall the caller's clock on
+	// something it does not actually know.
+	t.Run("a failed pod list is not reported as queued", func(t *testing.T) {
+		o.Client = listErrorClient{Client: fakeClient(job), err: errors.New("apiserver unavailable")}
+		if queued, _ := buildQueued(context.Background(), o, job.Name); queued {
+			t.Error("a List error must not be read as evidence that no pod exists")
+		}
+	})
+}
+
+// listErrorClient fails every List so a caller's no-evidence path can be tested
+// apart from its genuinely-empty-result path.
+type listErrorClient struct {
+	client.Client
+	err error
+}
+
+func (c listErrorClient) List(context.Context, client.ObjectList, ...client.ListOption) error {
+	return c.err
 }
 
 func TestBuildJobDockerContextMovesOnlyTheContext(t *testing.T) {
@@ -1422,5 +1450,43 @@ func TestClassifyBufferIsBounded(t *testing.T) {
 	var ee *exec.ExitError
 	if !errors.As(err, &ee) || ee.ExitCode() != ExitTransient {
 		t.Errorf("classification over a large log = %v, want exit %d from the retained tail", err, ExitTransient)
+	}
+}
+
+// TestDispatchedJobWithNoPodObservesAsWaitingNotBuilding is the w6/m95
+// regression at the Observation boundary. PhaseBuilding's contract is "a pod is
+// placed on a node" — the control plane maps it to a deploy row's
+// build_in_progress, which promises a live build the log stream can follow.
+// A Job whose controller has not created a pod satisfies none of that, and
+// reporting it as Building is what let a first deploy claim to be building
+// while `logs/subscribe?type=build` answered "no running build is available to
+// follow". The window is normally sub-second; it does not close on its own when
+// pod creation is being rejected (ResourceQuota, admission webhook, LimitRange).
+func TestDispatchedJobWithNoPodObservesAsWaitingNotBuilding(t *testing.T) {
+	o := opts()
+	o.AppUID = "uid-hello"
+	o.Client = fakeClient()
+
+	// First pass dispatches the Job. No pod exists yet.
+	obs, err := EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
+	}
+	if obs.Phase != PhaseWaiting {
+		t.Fatalf("phase = %v, want PhaseWaiting — the Job exists but nothing is running", obs.Phase)
+	}
+	if !strings.Contains(obs.Message, "build pod") {
+		t.Errorf("message = %q, want it to name the missing build pod", obs.Message)
+	}
+
+	// Once the Job's pod is placed, the same App observes as Building.
+	job := BuildJob(o, o.ImageRef())
+	o.Client = fakeClient(job, buildPod(o, "b-1", "node-a", nil))
+	obs, err = EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
+	}
+	if obs.Phase != PhaseBuilding {
+		t.Fatalf("phase = %v, want PhaseBuilding once a pod is placed", obs.Phase)
 	}
 }

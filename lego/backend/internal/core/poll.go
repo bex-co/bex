@@ -18,7 +18,9 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"runtime/debug"
 	"time"
 )
 
@@ -78,7 +80,7 @@ func pollLoop(ctx context.Context, name string, ticks <-chan time.Time, wake <-c
 		if ctx.Err() != nil {
 			return
 		}
-		if err := step(ctx); err != nil && ctx.Err() == nil {
+		if err := runStep(ctx, name, step); err != nil && ctx.Err() == nil {
 			log.Printf("%s: %v", name, err)
 		}
 		select {
@@ -88,4 +90,24 @@ func pollLoop(ctx context.Context, name string, ticks <-chan time.Time, wake <-c
 		case <-wake:
 		}
 	}
+}
+
+// runStep runs one pass and converts a panic into that pass's error (w6/m95).
+//
+// These workers each sweep EVERY row in a table, so a nil dereference on one
+// malformed row is not one broken app's problem: unrecovered it takes down
+// bex-api, and the store reconciler's deploy gate timeouts — the last backstop
+// that stops a deploy row from sitting in a non-terminal status forever — stop
+// running for every app until the process is back. The loop's whole contract is
+// already "a failed pass is never fatal, the next tick retries"; a panic is
+// simply a failed pass that had not been spelled that way. The stack is logged
+// because the error alone will not identify the row that caused it.
+func runStep(ctx context.Context, name string, step func(context.Context) error) (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			log.Printf("%s: recovered panic: %v\n%s", name, p, debug.Stack())
+			err = fmt.Errorf("panic: %v", p)
+		}
+	}()
+	return step(ctx)
 }

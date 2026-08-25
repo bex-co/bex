@@ -83,10 +83,12 @@ const (
 	// shared vocabulary, not local strings: the control plane keys on them to
 	// tell "waiting for capacity" from "building" and gives each its own phase
 	// budget (lego/backend/internal/store/reconciler.go observedDeployStatus).
-	// Changing either value silently re-times deploys, so they live here rather
-	// than being written out at each call site.
-	reasonBuildQueued = "BuildQueued"
-	reasonBuilding    = "Building"
+	// Changing either value silently re-times deploys, so both sides now read
+	// ONE definition on the CRD contract (w6/m95) instead of a matched pair of
+	// literals that could drift apart unnoticed.
+	reasonBuildQueued          = appv1alpha1.ReasonBuildQueued
+	reasonBuilding             = appv1alpha1.ReasonBuilding
+	reasonRegistryCredsPending = appv1alpha1.ReasonRegistryCredsPending
 )
 
 // generationOrDeletionPredicate adds App's explicit registry-credential
@@ -3674,7 +3676,7 @@ func (r *AppReconciler) awaitRegistryCredActive(ctx context.Context, app *appv1a
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, true
 	}
 	if !active {
-		r.setPhase(ctx, app, phase, "RegistryCredsPending", waitMsg)
+		r.setPhase(ctx, app, phase, reasonRegistryCredsPending, waitMsg)
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, true
 	}
 	return ctrl.Result{}, false

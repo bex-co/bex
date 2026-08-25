@@ -1,19 +1,19 @@
 # w6 · m95 — A fresh service's first deploy can hang at `build_in_progress` forever with no backing build job
 
-**Worker:** worker6 **Goal:** a deploy row's `build_in_progress` status always implies a real, currently-scheduled BuildKit build job/pod backs it — never a permanently frozen row with nothing running underneath it, discoverable only by a human clicking Cancel. **Status:** todo
+**Worker:** worker6 **Goal:** a deploy row's `build_in_progress` status always implies a real, currently-scheduled BuildKit build job/pod backs it — never a permanently frozen row with nothing running underneath it, discoverable only by a human clicking Cancel. **Status:** done — both live mechanisms fixed at source and the gate-timeout backstop made unconditional; gated green. Live re-repro carried to `w6/040` (blocked on the deploy pipeline)
 
 ## Tasks (in order)
 
-| id   | title                                                                                            | est | depends_on           |
-| ---- | -------------------------------------------------------------------------------------------------- | --- | --------------------- |
-| t001 | Root-cause, with cluster/operator-log access, why the App CR stays `PhaseBuilding` with no backing build pod | 90m | —                     |
-| t002 | Fix the confirmed mechanism so a `build_in_progress` row with no backing build reaches a terminal state within the gate timeout | 90m | t001                  |
-| t003 | Close (or explicitly rule out) the `supersededDeployStatus` orphan-timeout gap guarded on `ReleaseGeneration > 0` | 45m | t001                  |
-| t004 | Add `recover()` around the reconciler's `ReconcileOnce` pass in `core.PollWake`/`pollLoop` so one bad row can't silently halt the gate-timeout sweep for every app | 30m | t001                  |
-| t005 | Render parity across REST/GraphQL/MCP/UI                                                          | 30m | t002, t003, t004      |
-| t006 | Simplify the touched code                                                                          | 30m | t005                  |
-| t007 | Test coverage for the fixed behavior                                                               | 45m | t005                  |
-| t008 | Closeout                                                                                            | 10m | t007                  |
+| id | title | est | depends_on | status |
+| --- | --- | --- | --- | --- |
+| t001 | Root-cause, with cluster/operator-log access, why the App CR stays `PhaseBuilding` with no backing build pod | 90m | — | — **DONE** |
+| t002 | Fix the confirmed mechanism so a `build_in_progress` row with no backing build reaches a terminal state within the gate timeout | 90m | t001 | — **DONE** |
+| t003 | Close (or explicitly rule out) the `supersededDeployStatus` orphan-timeout gap guarded on `ReleaseGeneration > 0` | 45m | t001 | — **DONE** |
+| t004 | Add `recover()` around the reconciler's `ReconcileOnce` pass in `core.PollWake`/`pollLoop` so one bad row can't silently halt the gate-timeout sweep for every app | 30m | t001 | — **DONE** |
+| t005 | Render parity across REST/GraphQL/MCP/UI                                                          | 30m | t002, t003, t004 | — **DONE** |
+| t006 | Simplify the touched code                                                                          | 30m | t005 | — **DONE** |
+| t007 | Test coverage for the fixed behavior                                                               | 45m | t005 | — **DONE** |
+| t008 | Closeout                                                                                            | 10m | t007 | — **DONE** |
 
 ## Definition of done
 
