@@ -35,10 +35,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -76,6 +77,22 @@ type EnvVarWrite struct {
 type Service struct {
 	*core.Base
 	Store core.SecretKV
+	// Rollout records the deploy-history row an env/secret-file write owes the
+	// user. Materializing a changed env map rewrites the projection Secret and
+	// bumps spec.restartedAt, which is release identity — the operator rebuilds
+	// and redeploys, so it is a real deploy and must be visible in the Deploys
+	// tab and Events feed (w6/m51). The composition root wires the control-plane
+	// store; nil leaves the patch untracked (CR-only mode).
+	Rollout *rollout.Tracker
+}
+
+// rollApp applies mutate to an already-fetched App and merge-patches it,
+// opening a deploy row when the change rolls a new release. The single App
+// write path for every env/secret-file materialization — the staged
+// (save_only) mode changes no release-identity field and correctly records
+// nothing until the caller later deploys.
+func (s *Service) rollApp(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App) error) error {
+	return s.Rollout.Patch(ctx, s.Client, a, store.TriggerConfigChange, mutate)
 }
 
 // envPath is a service's env-map key in the store (docs/ADR013-secrets.md §4 layout,
@@ -629,12 +646,13 @@ func envSecretName(service string) string { return service + "-env" }
 // the Deployment; bumping spec.restartedAt rolls the pods, since envFrom is read
 // only at pod creation — the same no-downtime mechanism as the restart verb.
 func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string) error {
-	base := client.MergeFrom(a.DeepCopy())
-	if err := s.projectEnv(ctx, a, env); err != nil {
-		return err
-	}
-	s.bumpRestart(a)
-	return s.Client.Patch(ctx, a, base)
+	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+		if err := s.projectEnv(ctx, a, env); err != nil {
+			return err
+		}
+		s.bumpRestart(a)
+		return nil
+	})
 }
 
 // projectEnv updates the derived Kubernetes Secret and App reference without

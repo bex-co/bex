@@ -45,6 +45,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/shellticket"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -2664,7 +2665,9 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 		return AppView{}, err
 	}
 	previousGeneration := a.Generation
-	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	// Untracked patch: this path opens its OWN deploy row below, with the pushed
+	// commit's provenance patchTracked's generic config_change row cannot carry.
+	v, err := s.patchTracked(ctx, a, "", func(a *appv1alpha1.App) {
 		stampReleaseGeneration(a, previousGeneration+1)
 		if secretName != "" {
 			a.Spec.CloneSecret = secretName
@@ -3654,14 +3657,46 @@ func (s *Service) patch(ctx context.Context, relation, name string, mutate func(
 // patchFetched applies mutate to an already-fetched App and merge-patches —
 // only spec fields change; the operator reconciles the rest. The single write
 // path every lifecycle verb ultimately shares.
+//
+// It is also the deploy-history gate (w6/m51). bex cannot apply a build- or
+// release-relevant spec change without rolling a new release, so any mutation
+// that moves the operator's release identity is a real rollout and gets its own
+// deploys row — the same guarantee w2/m30 gave Restart, now covering the
+// Settings-page verbs (start/build command, root dir, Dockerfile path,
+// pre-deploy command, source, health check path, plan, disks) that used to
+// rebuild invisibly. A purely operational mutation (scale, autoDeploy, custom
+// domains, notification policy) changes nothing the operator rebuilds for and
+// deliberately mints no row.
 func (s *Service) patchFetched(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) (AppView, error) {
-	base := client.MergeFrom(a.DeepCopy())
-	mutate(a)
-	resourcemeta.Touch(a, s.Now())
-	if err := s.Client.Patch(ctx, a, base); err != nil {
+	return s.patchTracked(ctx, a, store.TriggerConfigChange, mutate)
+}
+
+// patchTracked is patchFetched with an explicit deploy-history trigger. An
+// empty trigger opts out of tracking entirely — for a caller that opens its own
+// row with richer provenance (redeployFetched, which carries the pushed commit).
+func (s *Service) patchTracked(ctx context.Context, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App)) (AppView, error) {
+	err := s.rollouts(trigger).Patch(ctx, s.Client, a, trigger, func(a *appv1alpha1.App) error {
+		mutate(a)
+		resourcemeta.Touch(a, s.Now())
+		return nil
+	})
+	if err != nil {
 		return AppView{}, err
 	}
 	return s.view(a), nil
+}
+
+// rollouts adapts the service's own store slice to the deploy-row recorder.
+// Deriving it from Store rather than wiring a separate field is what keeps a
+// second composition root (cmd/ssh-gateway, the workspace purger) from silently
+// building an untracked Service. A nil Store (CR-only mode) — or the empty
+// trigger a caller that opens its own row passes — yields a tracker that
+// records nothing.
+func (s *Service) rollouts(trigger string) *rollout.Tracker {
+	if s.Store == nil || trigger == "" {
+		return nil
+	}
+	return &rollout.Tracker{Store: s.Store}
 }
 
 // routesFromViews / headersFromViews convert surface input (neutral views) into

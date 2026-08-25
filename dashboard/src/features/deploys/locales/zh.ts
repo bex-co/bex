@@ -121,6 +121,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "新提交",
     description: "Deploy row: trigger=new_commit label (git push redeploy)",
   },
+  "deploys.triggerConfigChange": {
+    message: "配置变更",
+    description:
+      "Deploy row: trigger=config_change label (a Settings, env var, or env-group edit that forced a rebuild)",
+  },
   "deploys.logSearchPlaceholder": {
     message: "搜索日志…",
     description: "Deploy detail page: log search input placeholder",

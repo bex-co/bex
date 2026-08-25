@@ -126,6 +126,8 @@ export function deployTriggerKey(trigger: string): string | null {
       return "deploys.triggerBlueprint";
     case "new_commit":
       return "deploys.triggerNewCommit";
+    case "config_change":
+      return "deploys.triggerConfigChange";
     default:
       return null;
   }

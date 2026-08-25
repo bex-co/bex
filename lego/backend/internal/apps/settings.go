@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 )
 
 // ServicePatch is the neutral, presence-aware value behind the two
@@ -309,6 +310,14 @@ var servicePatchTable = []servicePatchOp{
 // success. Authorization stays where it always was: each queued verb starts
 // with its own AuthorizeApp.
 func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePatch) (AppView, error) {
+	// One PATCH is one rollout. The table below applies each present field as
+	// its own setter, and every build-relevant setter opens a deploy row
+	// (w6/m51) — so without this a four-field save would read back as four
+	// deploys, three of them immediately canceled. Deferred rather than run on
+	// success only: a table that fails partway has still rolled the service for
+	// the fields it did apply, and that rollout is still owed its row.
+	ctx, flushRollout := rollout.Batch(ctx)
+	defer flushRollout()
 	var ops core.PatchOps[AppView]
 	for _, row := range servicePatchTable {
 		if !row.present(p) {
