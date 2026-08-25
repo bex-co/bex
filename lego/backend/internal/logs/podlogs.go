@@ -19,8 +19,10 @@ package logs
 import (
 	"context"
 	"io"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -40,11 +42,26 @@ func NewPodLogSource(cs kubernetes.Interface) PodLogSource {
 }
 
 // NewPodLogStream returns the production PodLogStream — the live-tail sibling of
-// NewPodLogSource (Follow:true, no tail). Same rationale for living here: keep
-// the typed clientset out of the domain layer.
+// NewPodLogSource (Follow:true). Same rationale for living here: keep the typed
+// clientset out of the domain layer.
+//
+// since bounds where the follow starts. Without it kubelet replays the pod's
+// ENTIRE log from offset 0 on every subscribe — and a browser EventSource
+// reconnects on its own, invisibly to the client code, so a long-lived tail on a
+// chatty pod re-read its whole history repeatedly. The lines were already
+// filtered by LogQuery.keep before reaching the viewer, so this changes no
+// output; it stops doing the work of shipping them from kubelet only to drop
+// them here (w6/m93).
 func NewPodLogStream(cs kubernetes.Interface) PodLogStream {
-	return func(ctx context.Context, namespace, pod, container string) (io.ReadCloser, error) {
+	return func(ctx context.Context, namespace, pod, container string, since time.Time) (io.ReadCloser, error) {
 		opts := &corev1.PodLogOptions{Container: container, Timestamps: true, Follow: true}
+		if !since.IsZero() {
+			// Exclusive on the kubelet side is not guaranteed — SinceTime has
+			// second granularity — so the boundary second can still replay. The
+			// viewer's key-based dedupe absorbs that; this only has to stop the
+			// unbounded replay, not be exact.
+			opts.SinceTime = &metav1.Time{Time: since}
+		}
 		return cs.CoreV1().Pods(namespace).GetLogs(pod, opts).Stream(ctx)
 	}
 }

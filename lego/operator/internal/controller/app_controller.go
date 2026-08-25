@@ -1519,14 +1519,18 @@ func lastActiveTime(app *appv1alpha1.App) time.Time {
 // shouldAutoHibernate reports whether the app should scale to zero now:
 // free tier, idleTTLSeconds > 0, not manually suspended, and last-active
 // timestamp is older than the TTL.
+// autoSleepEligible reports whether the activator is this App's wake path at
+// all — every condition shouldAutoHibernate checks EXCEPT "has it been idle
+// long enough". Split out because the routing question ("can the activator
+// serve for this App right now?") and the scheduling question ("should it sleep
+// yet?") have different answers while an App is waking: replicas are back but no
+// pod is ready, so the activator must still hold the route (w6/m94).
+func autoSleepEligible(app *appv1alpha1.App) bool {
+	return !app.Spec.Suspended && app.Spec.IdleTTLSeconds > 0 && isFreeApp(app)
+}
+
 func shouldAutoHibernate(app *appv1alpha1.App) bool {
-	if app.Spec.Suspended {
-		return false
-	}
-	if app.Spec.IdleTTLSeconds <= 0 {
-		return false
-	}
-	if !isFreeApp(app) {
+	if !autoSleepEligible(app) {
 		return false
 	}
 	last := lastActiveTime(app)
@@ -1602,30 +1606,24 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 
 	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, app, worker)
 
-	// The disk converges before the Deployment that mounts it, so a pod is never
-	// rolled at a claim that does not exist yet. Suspension deliberately does not
-	// skip this: a parked App keeps its volume (that is the whole point of
-	// suspend), and a grow requested while parked is applied to the free volume
-	// rather than waiting for a resume.
-	if err := r.reconcileDisk(ctx, app); err != nil {
-		return r.fail(ctx, app, "DiskFailed", err)
+	// Hibernating drains the App's own Service. Let the public Ingress move to
+	// the activator FIRST and give Traefik a pass to ingest it, because the two
+	// are separate, non-atomic API writes: scaling to 0 in the same pass that
+	// swaps the route means Traefik can still be pointing at the App's Service
+	// when its last endpoint disappears, and the next request gets Traefik's own
+	// "no available server" rather than bex's interstitial (w6/m94).
+	//
+	// The cost is one extra reconcile on a service that has already been idle
+	// for its whole TTL, and a request landing inside the grace gets the wake
+	// interstitial from an App that is still up — a second early, and the same
+	// answer it would have got a second later anyway.
+	replicas, hibernateHold, err := r.holdHibernateForRouting(ctx, app, worker, autoHibernating, replicas)
+	if err != nil {
+		return r.fail(ctx, app, "IngressFailed", err)
 	}
-	// The nightly snapshot rides beside the volume, not the rollout: a failure
-	// to converge the CronJob must not stop the service from deploying, so it
-	// is logged rather than failing the App.
-	if err := r.reconcileDiskBackup(ctx, app); err != nil {
-		logf.FromContext(ctx).Error(err, "disk snapshot schedule not converged", "app", app.Name)
-	}
-	// A requested restore owns the volume until it finishes. While it does, the
-	// rest of this reconcile must not run: it would scale the service back up
-	// onto a filesystem the Job is still rewriting.
-	if restoring, err := r.reconcileDiskRestore(ctx, app); err != nil {
-		return r.fail(ctx, app, "DiskRestoreFailed", err)
-	} else if restoring {
-		if r.statusSettled(ctx, app) {
-			return ctrl.Result{RequeueAfter: diskRestorePoll}, nil
-		}
-		return ctrl.Result{RequeueAfter: diskRestorePoll}, r.Status().Update(ctx, app)
+
+	if res, halt, err := r.reconcileDiskLifecycle(ctx, app); halt || err != nil {
+		return res, err
 	}
 
 	// Pre-deploy gate (w1/m33): run spec.preDeployCommand to completion against
@@ -1692,7 +1690,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 
 	r.setPublicRoutingCondition(app, hosts)
 
-	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, port, autoHibernating)
+	// dep carries the live status CreateOrUpdate read before it wrote, so this is
+	// the App's own readiness as Kubernetes last observed it — no extra API call.
+	serving := dep.Status.ReadyReplicas > 0
+	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, port, autoHibernating, serving)
 	if err != nil {
 		return r.fail(ctx, app, "MaintenanceRoutingFailed", err)
 	}
@@ -1702,7 +1703,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}
 
 	if app.Spec.Suspended || autoHibernating {
-		return r.parkKubernetes(ctx, app, image, hosts, autoHibernating)
+		return r.parkKubernetes(ctx, app, image, hosts, autoHibernating, hibernateHold)
 	}
 
 	if res, halt, err := r.reportKubernetesRunning(ctx, app, dep, image, hosts, replicas, port); halt || err != nil {
@@ -1741,7 +1742,14 @@ func rolloutPending(app *appv1alpha1.App, image string) bool {
 // all kept — resume is just scaling back. Report Hibernated and stop.
 // Auto-hibernated: idle free-tier app scaled to 0, Ingress now points at the
 // activator. The next inbound request will wake it; no further requeue needed.
-func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App, image string, hosts []string, autoHibernating bool) (ctrl.Result, error) {
+func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App, image string, hosts []string, autoHibernating, routingHold bool) (ctrl.Result, error) {
+	// The activator route was written this pass but Traefik has not observed it
+	// yet. The App is still serving on its own pods; come back after the grace
+	// and park it then, so its last endpoint never disappears while the public
+	// route still points at it (w6/m94).
+	if routingHold {
+		return ctrl.Result{RequeueAfter: hibernateRoutingGrace}, nil
+	}
 	reason, message := "Suspended", "suspended (scaled to 0; config, host and certs kept)"
 	if autoHibernating {
 		reason = "AutoHibernated"
@@ -1752,6 +1760,108 @@ func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App
 		logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", app.Spec.IdleTTLSeconds)
 	}
 	return res, err
+}
+
+// reconcileDiskLifecycle converges the App's persistent disk, its nightly
+// snapshot schedule, and any requested restore — everything that must settle
+// before the Deployment that mounts the volume is rolled. halt=true means the
+// caller must stop this reconcile and return (res, err).
+func (r *AppReconciler) reconcileDiskLifecycle(ctx context.Context, app *appv1alpha1.App) (ctrl.Result, bool, error) {
+	// The disk converges before the Deployment that mounts it, so a pod is never
+	// rolled at a claim that does not exist yet. Suspension deliberately does not
+	// skip this: a parked App keeps its volume (that is the whole point of
+	// suspend), and a grow requested while parked is applied to the free volume
+	// rather than waiting for a resume.
+	if err := r.reconcileDisk(ctx, app); err != nil {
+		res, err := r.fail(ctx, app, "DiskFailed", err)
+		return res, true, err
+	}
+	// The nightly snapshot rides beside the volume, not the rollout: a failure
+	// to converge the CronJob must not stop the service from deploying, so it
+	// is logged rather than failing the App.
+	if err := r.reconcileDiskBackup(ctx, app); err != nil {
+		logf.FromContext(ctx).Error(err, "disk snapshot schedule not converged", "app", app.Name)
+	}
+	// A requested restore owns the volume until it finishes. While it does, the
+	// rest of the reconcile must not run: it would scale the service back up
+	// onto a filesystem the Job is still rewriting.
+	restoring, err := r.reconcileDiskRestore(ctx, app)
+	if err != nil {
+		res, err := r.fail(ctx, app, "DiskRestoreFailed", err)
+		return res, true, err
+	}
+	if !restoring {
+		return ctrl.Result{}, false, nil
+	}
+	if r.statusSettled(ctx, app) {
+		return ctrl.Result{RequeueAfter: diskRestorePoll}, true, nil
+	}
+	return ctrl.Result{RequeueAfter: diskRestorePoll}, true, r.Status().Update(ctx, app)
+}
+
+// holdHibernateForRouting reports whether this pass must keep the App's pods
+// running so the activator route can land first.
+//
+// Maintenance mode is exempt: its own alias owns the public route, so the App's
+// Service is not what a visitor reaches and draining it cannot surface a raw
+// 503. Holding there would also never resolve — the Ingress will never name the
+// activator while maintenance owns it — so the workload would stop hibernating
+// entirely, breaking the independence ingressBackend documents (routing and
+// replica policy are separate).
+// It returns the replica count this pass should roll: the App's normal count
+// while holding (the pods keep serving), otherwise the caller's own.
+func (r *AppReconciler) holdHibernateForRouting(ctx context.Context, app *appv1alpha1.App, worker, autoHibernating bool, replicas int32) (int32, bool, error) {
+	if !autoHibernating || worker || maintenanceEnabled(app) {
+		return replicas, false, nil
+	}
+	routed, err := r.ingressRoutesToActivator(ctx, app)
+	if err != nil {
+		return replicas, false, err
+	}
+	if routed {
+		return replicas, false, nil
+	}
+	return clampReplicas(effectiveReplicas(app)), true, nil
+}
+
+// hibernateRoutingGrace is how long the operator waits, after pointing the
+// public Ingress at the activator, before scaling an auto-hibernating App to 0.
+// It exists to cover the ingress controller's config propagation, which the
+// operator cannot observe — Traefik reports no readiness for "I have ingested
+// this Ingress". Generous on purpose: the App is already idle, so waiting costs
+// nothing, while being too short reintroduces the raw-503 window it closes.
+const hibernateRoutingGrace = 10 * time.Second
+
+// ingressRoutesToActivator reports whether the App's public Ingress ALREADY
+// names the activator as the backend for every rule — i.e. whether a previous
+// pass has written the wake route. An App with no Ingress (private service, no
+// resolvable host) has no public route to protect and answers true, so it
+// hibernates without the extra pass.
+func (r *AppReconciler) ingressRoutesToActivator(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	var ing networkingv1.Ingress
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &ing); err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	activator := activatorAliasName(app.Name)
+	if app.Namespace == r.activatorNamespace() {
+		activator = r.ActivatorService
+	}
+	rules := 0
+	for _, rule := range ing.Spec.Rules {
+		if rule.HTTP == nil {
+			continue
+		}
+		for _, path := range rule.HTTP.Paths {
+			rules++
+			if path.Backend.Service == nil || path.Backend.Service.Name != activator {
+				return false, nil
+			}
+		}
+	}
+	return rules > 0, nil
 }
 
 // desiredReplicas resolves the replica count reconcileKubernetes rolls the
@@ -1786,7 +1896,7 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 // Maintenance has public-routing precedence over both auto-hibernation and
 // manual suspension. It changes only the public Ingress backend; the workload
 // follows its independent replica/suspension policy.
-func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App, port int, autoHibernating bool) (string, int32, error) {
+func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App, port int, autoHibernating, serving bool) (string, int32, error) {
 	if maintenanceEnabled(app) {
 		maintenanceSvc, err := r.reconcileMaintenanceAlias(ctx, app)
 		if err != nil {
@@ -1794,7 +1904,22 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 		}
 		return maintenanceSvc, int32(r.maintenancePort()), nil
 	}
-	if autoHibernating {
+	// Route through the activator whenever the App's own Service has no ready
+	// endpoint AND the activator is this App's wake path — not only once the
+	// idle TTL has elapsed. Pointing the public Ingress at an endpoint-less
+	// Service is exactly what makes Traefik answer with its own raw
+	// "no available server" instead of bex's documented wake interstitial.
+	//
+	// The waking direction is the one this catches, and it was the more
+	// reliable failure: the activator answers a sleeping App with
+	// "Retry-After: 5", but the request that woke it also stamps lastActive, so
+	// the very next reconcile used to hand the route straight back to a
+	// Deployment whose pods were still starting. The client then retried at
+	// exactly the second bex told it to and got raw infrastructure text
+	// (w6/m94). Holding the route until a pod is actually ready means that
+	// retry gets the interstitial again, and the swap back happens when it can
+	// actually be served.
+	if autoHibernating || (!serving && r.ActivatorService != "" && autoSleepEligible(app)) {
 		activatorSvc, err := r.reconcileActivatorAlias(ctx, app)
 		if err != nil {
 			return "", 0, err

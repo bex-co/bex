@@ -123,7 +123,7 @@ func staticLogs(lines map[string][]string) PodLogSource {
 }
 
 func staticLogStream(lines map[string][]string) PodLogStream {
-	return func(_ context.Context, _, pod, _ string) (io.ReadCloser, error) {
+	return func(_ context.Context, _, pod, _ string, _ time.Time) (io.ReadCloser, error) {
 		return io.NopCloser(strings.NewReader(strings.Join(lines[pod], "\n"))), nil
 	}
 }
@@ -1226,7 +1226,7 @@ func (s blockingStream) Read([]byte) (int, error) {
 func (s blockingStream) Close() error { return nil }
 
 func blockingLogStream() PodLogStream {
-	return func(ctx context.Context, _, _, _ string) (io.ReadCloser, error) {
+	return func(ctx context.Context, _, _, _ string, _ time.Time) (io.ReadCloser, error) {
 		return blockingStream{ctx: ctx}, nil
 	}
 }
@@ -1394,7 +1394,7 @@ func TestLogStreamRevalidationEndsTailWhenAppDeleted(t *testing.T) {
 func TestLogStreamRevalidationPreservesHealthyTail(t *testing.T) {
 	checker := &freshGateChecker{cached: true, fresh: true}
 	pr, pw := io.Pipe()
-	stream := func(ctx context.Context, _, _, _ string) (io.ReadCloser, error) {
+	stream := func(ctx context.Context, _, _, _ string, _ time.Time) (io.ReadCloser, error) {
 		go func() { <-ctx.Done(); _ = pr.CloseWithError(ctx.Err()) }()
 		return pr, nil
 	}
@@ -1494,7 +1494,7 @@ func TestLogStreamReconnectStillAuthorizesAtAdmission(t *testing.T) {
 	// admission gate).
 	checker := &freshGateChecker{cached: false, fresh: false}
 	opened := make(chan struct{}, 1)
-	stream := func(ctx context.Context, _, _, _ string) (io.ReadCloser, error) {
+	stream := func(ctx context.Context, _, _, _ string, _ time.Time) (io.ReadCloser, error) {
 		opened <- struct{}{}
 		return blockingStream{ctx: ctx}, nil
 	}
@@ -1534,5 +1534,199 @@ func TestLogStreamRevalidationNegativeIntervalDisables(t *testing.T) {
 	}
 	if got := checker.freshCallCount(); got != 0 {
 		t.Errorf("fresh re-checks with the watchdog disabled = %d, want 0", got)
+	}
+}
+
+// recordingLogStream is staticLogStream plus the `since` bound each follow was
+// opened with — the whole point of w6/m93's fix is that the bound reaches
+// kubelet, and only a fake that records it can prove that.
+func recordingLogStream(lines map[string][]string, seen *[]time.Time) PodLogStream {
+	return func(_ context.Context, _, pod, _ string, since time.Time) (io.ReadCloser, error) {
+		*seen = append(*seen, since)
+		out := make([]string, 0, len(lines[pod]))
+		for _, l := range lines[pod] {
+			// Mimic kubelet's own SinceTime filtering so the test exercises the
+			// bound rather than trusting that it was merely passed along.
+			if !since.IsZero() {
+				if ts, _, ok := strings.Cut(l, " "); ok {
+					if t, err := time.Parse(time.RFC3339Nano, ts); err == nil && t.Before(since) {
+						continue
+					}
+				}
+			}
+			out = append(out, l)
+		}
+		return io.NopCloser(strings.NewReader(strings.Join(out, "\n"))), nil
+	}
+}
+
+// TestSubscribeSSEEmitsResumableFrameIDs: without an `id:` per frame a browser
+// EventSource has nothing to send back as Last-Event-ID on its own invisible
+// reconnect, which is what left every reconnect re-reading the pod's whole log
+// from offset 0 (w6/m93).
+func TestSubscribeSSEEmitsResumableFrameIDs(t *testing.T) {
+	svc := newService(map[string][]string{
+		"web-1": {"2026-07-05T00:00:01Z live one", "2026-07-05T00:00:02Z live two"},
+	}, sampleApp("web"), podFor("web", "web-1"))
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
+	req.Header.Set("Accept", "text/event-stream")
+	mux.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "id: 2026-07-05T00:00:01Z\ndata: ") ||
+		!strings.Contains(body, "id: 2026-07-05T00:00:02Z\ndata: ") {
+		t.Fatalf("every SSE frame needs its line's timestamp as the id: %q", body)
+	}
+}
+
+// TestSubscribeNDJSONHasNoFrameIDArtifact guards the formatting hazard the id
+// change introduced: the emit closure now passes a second argument, and an
+// unindexed %s in the NDJSON format would append %!(EXTRA string=…) to every
+// line — corrupting the JSON for CLI clients while SSE looked fine.
+func TestSubscribeNDJSONHasNoFrameIDArtifact(t *testing.T) {
+	svc := newService(map[string][]string{
+		"web-1": {"2026-07-05T00:00:01Z live one"},
+	}, sampleApp("web"), podFor("web", "web-1"))
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil))
+
+	body := rec.Body.String()
+	if strings.Contains(body, "EXTRA") || strings.Contains(body, "id: ") {
+		t.Fatalf("NDJSON must carry the bare JSON line and no SSE framing: %q", body)
+	}
+	var line map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(body)), &line); err != nil {
+		t.Fatalf("NDJSON line is not valid JSON (%v): %q", err, body)
+	}
+}
+
+// TestSubscribeResumesFromLastEventID is the fix itself: a reconnect carrying
+// Last-Event-ID must push that bound down to the pod stream instead of
+// re-reading from offset 0. The lines were always filtered before reaching the
+// viewer — this is about not shipping them from kubelet only to drop them.
+func TestSubscribeResumesFromLastEventID(t *testing.T) {
+	var since []time.Time
+	lines := map[string][]string{
+		"web-1": {
+			"2026-07-05T00:00:01Z live one",
+			"2026-07-05T00:00:02Z live two",
+			"2026-07-05T00:00:03Z live three",
+		},
+	}
+	svc := &Service{
+		Base:          &core.Base{Client: fakeClientWith(sampleApp("web"), podFor("web", "web-1")), Namespace: "default"},
+		PodLogs:       staticLogs(lines),
+		PodLogsFollow: recordingLogStream(lines, &since),
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Last-Event-ID", "2026-07-05T00:00:02Z")
+	mux.ServeHTTP(rec, req)
+
+	if len(since) != 1 || !since[0].Equal(time.Date(2026, 7, 5, 0, 0, 2, 0, time.UTC)) {
+		t.Fatalf("follow opened with since=%v, want the Last-Event-ID bound", since)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, "live one") {
+		t.Errorf("a resumed stream must not replay lines before the cursor: %q", body)
+	}
+	if !strings.Contains(body, "live three") {
+		t.Errorf("a resumed stream must still deliver lines after the cursor: %q", body)
+	}
+}
+
+// TestSubscribeIgnoresUnparseableLastEventID: a client-invented cursor must
+// degrade to the unbounded read, never fail the subscription.
+func TestSubscribeIgnoresUnparseableLastEventID(t *testing.T) {
+	var since []time.Time
+	lines := map[string][]string{"web-1": {"2026-07-05T00:00:01Z live one"}}
+	svc := &Service{
+		Base:          &core.Base{Client: fakeClientWith(sampleApp("web"), podFor("web", "web-1")), Namespace: "default"},
+		PodLogs:       staticLogs(lines),
+		PodLogsFollow: recordingLogStream(lines, &since),
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Last-Event-ID", "not-a-timestamp")
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("subscribe => %d, want 200 — a bad cursor is ignored, not refused", rec.Code)
+	}
+	if len(since) != 1 || !since[0].IsZero() {
+		t.Fatalf("follow opened with since=%v, want the unbounded zero value", since)
+	}
+	if !strings.Contains(rec.Body.String(), "live one") {
+		t.Errorf("the stream must still deliver: %q", rec.Body.String())
+	}
+}
+
+// TestExplicitStartTimeWinsOverLastEventID: the caller asked for a window.
+func TestExplicitStartTimeWinsOverLastEventID(t *testing.T) {
+	var since []time.Time
+	lines := map[string][]string{"web-1": {"2026-07-05T00:00:01Z live one"}}
+	svc := &Service{
+		Base:          &core.Base{Client: fakeClientWith(sampleApp("web"), podFor("web", "web-1")), Namespace: "default"},
+		PodLogs:       staticLogs(lines),
+		PodLogsFollow: recordingLogStream(lines, &since),
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet,
+		"/v1/logs/subscribe?resource=web&startTime=2026-07-05T00:00:05Z", nil)
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Last-Event-ID", "2026-07-05T00:00:02Z")
+	mux.ServeHTTP(rec, req)
+
+	want := time.Date(2026, 7, 5, 0, 0, 5, 0, time.UTC)
+	if len(since) != 1 || !since[0].Equal(want) {
+		t.Fatalf("follow opened with since=%v, want the explicit startTime %v", since, want)
+	}
+}
+
+// TestSubscribeSSEOmitsIDForStamplessLine guards a spec-level trap in the
+// resume design: per the SSE spec an empty `id:` field SETS the client's
+// last-event-id buffer to empty, after which the browser stops sending the
+// Last-Event-ID header at all. So a single log line with no parseable timestamp
+// must emit no id line rather than an empty one — otherwise one stray line
+// silently disables resume for the rest of the tail (w6/m93).
+func TestSubscribeSSEOmitsIDForStamplessLine(t *testing.T) {
+	svc := newService(map[string][]string{
+		"web-1": {"no-timestamp-here just a message", "2026-07-05T00:00:02Z stamped"},
+	}, sampleApp("web"), podFor("web", "web-1"))
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
+	req.Header.Set("Accept", "text/event-stream")
+	mux.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if strings.Contains(body, "id: \n") {
+		t.Fatalf("an empty id resets the client's cursor and must never be emitted: %q", body)
+	}
+	if !strings.Contains(body, "id: 2026-07-05T00:00:02Z\ndata: ") {
+		t.Errorf("the stamped line must still carry its id: %q", body)
+	}
+	if !strings.Contains(body, "just a message") {
+		t.Errorf("the stampless line must still be delivered: %q", body)
 	}
 }

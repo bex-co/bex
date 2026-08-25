@@ -457,7 +457,7 @@ func TestSSEConnCapRejectsExcess(t *testing.T) {
 	streamReady := make(chan struct{})
 	var streamReadyOnce sync.Once
 
-	podLogsFollow := func(ctx context.Context, _, _, _ string) (io.ReadCloser, error) {
+	podLogsFollow := func(ctx context.Context, _, _, _ string, _ time.Time) (io.ReadCloser, error) {
 		var isFirst bool
 		streamReadyOnce.Do(func() {
 			isFirst = true

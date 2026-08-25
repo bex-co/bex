@@ -492,9 +492,14 @@ func TestRESTPostgresConnectionInfo(t *testing.T) {
 	if ci.Password != "s3cret" {
 		t.Errorf("password = %q", ci.Password)
 	}
-	if ci.InternalConnectionString != "postgresql://conn_db_user:s3cret@conn-db-rw.default:5432/conn_db" {
+	// w6/m93: the internal string's host must be the operator's canonical
+	// ".svc"-qualified Status.Host — the same host PSQLCommand prints — not
+	// CNPG's 2-label "uri" spelling. The seeded fixture deliberately carries
+	// both forms so this asserts the divergence is gone.
+	if ci.InternalConnectionString != "postgresql://conn_db_user:s3cret@conn-db-rw.default.svc:5432/conn_db" {
 		t.Errorf("internal = %q", ci.InternalConnectionString)
 	}
+
 	want := "postgresql://conn_db_user:s3cret@conn-db.db.bex.co:5432/conn_db?sslmode=verify-full"
 	if ci.ExternalConnectionString != want {
 		t.Errorf("external = %q", ci.ExternalConnectionString)
@@ -1004,5 +1009,54 @@ func TestMCPSetPostgresPlan(t *testing.T) {
 	})
 	if !bad.IsError {
 		t.Error("invalid plan must yield tool error")
+	}
+}
+
+// TestPrivatePostgresInternalAndPSQLHostsAgree is w6/m93's regression: with
+// public access off, the connection-info panel shows an internal connection
+// string and a psql command side by side, and they used to name the same
+// database by two different hosts — CNPG's 2-label "uri" spelling
+// ("<cluster>-rw.<ns>") versus the operator's canonical ".svc"-qualified
+// Status.Host. Both resolve in-cluster, so nothing was broken; the panel simply
+// contradicted itself about which host is canonical.
+//
+// A public database deliberately does NOT hold this property: psql switches to
+// the external host, because that is the endpoint a human copy-pasting it can
+// actually reach. TestRESTPostgresConnectionInfo covers that shape.
+func TestPrivatePostgresInternalAndPSQLHostsAgree(t *testing.T) {
+	// Public access off: no Status.ExternalHost, so psql keeps the internal host.
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "priv-db", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "free"},
+		Status: appv1alpha1.DatabaseStatus{
+			Phase: appv1alpha1.DBPhaseReady, Host: "priv-db-rw.default.svc", Port: 5432,
+			SecretName: "priv-db-app",
+		},
+	}
+	dbn := appv1alpha1.DefaultPostgresDatabaseName("priv-db")
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "priv-db-app", Namespace: "default"},
+		Data: map[string][]byte{
+			"username": []byte(dbn + "_user"),
+			"password": []byte("s3cret"),
+			"dbname":   []byte(dbn),
+			// CNPG's own 2-label spelling — the value this fix must stop echoing.
+			"uri": []byte("postgresql://" + dbn + "_user:s3cret@priv-db-rw.default:5432/" + dbn),
+		},
+	}
+	svc, _ := newService(db, sec)
+
+	var ci PostgresConnectionInfo
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/postgres/priv-db/connection-info", "").Body.Bytes(), &ci)
+
+	const host = "priv-db-rw.default.svc"
+	if !strings.Contains(ci.InternalConnectionString, "@"+host+":5432/") {
+		t.Errorf("internal string does not use the canonical host %q: %q", host, ci.InternalConnectionString)
+	}
+	if !strings.Contains(ci.PSQLCommand, "-h "+host+" ") {
+		t.Errorf("psql command does not use the canonical host %q: %q", host, ci.PSQLCommand)
+	}
+	if ci.ExternalConnectionString != "" {
+		t.Errorf("public access is off, so there must be no external string: %q", ci.ExternalConnectionString)
 	}
 }
