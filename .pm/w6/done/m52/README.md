@@ -1,19 +1,19 @@
 # w6 · m52 — Canceling a first-ever deploy misreports the service as Failed, not Canceled
 
-**Worker:** worker6 **Goal:** a service's own status always agrees with its deploy history — a user-initiated cancel never reads as an error **Status:** in progress — code complete and gated green; t008 blocked on the post-ship live repro
+**Worker:** worker6 **Goal:** a service's own status always agrees with its deploy history — a user-initiated cancel never reads as an error **Status:** done — code complete and gated green; live verification carried to `w6/040` (blocked on a broken deploy pipeline)
 
 ## Tasks (in order)
 
-| id   | title                                                                                          | est | depends_on | status |
-| ---- | ------------------------------------------------------------------------------------------------ | --- | ---------- | ------ |
-| t001 | Decide and name the target behavior for a canceled first-ever deploy (check Render parity first) | 20m | —          | — **DONE** |
-| t002 | Add the CRD/type-level signal needed to carry the distinction through to GraphQL                 | 30m | t001       | — **DONE** |
-| t003 | Update `settleCanceledRelease` to set the new signal instead of reusing `PhaseFailed`             | 30m | t002       | — **DONE** |
-| t004 | Update the dashboard's status derivation/labels to render the new state distinctly (en + zh)      | 30m | t002       | — **DONE** |
-| t005 | Render parity: REST/GraphQL/MCP/UI agree on the new status; render.com behavior confirmed          | 20m | t003, t004 | — **DONE** |
-| t006 | Simplify                                                                                          | 15m | t005       | — **DONE** |
-| t007 | Test coverage                                                                                     | 30m | t006       | — **DONE** |
-| t008 | Closeout                                                                                          | 10m | t007       | — **BLOCKED** (needs the fix deployed) |
+| id | title | est | depends_on | status |
+| --- | --- | --- | --- | --- |
+| t001 | Decide and name the target behavior for a canceled first-ever deploy (check Render parity first) | 20m | — | — **DONE** |
+| t002 | Add the CRD/type-level signal needed to carry the distinction through to GraphQL | 30m | t001 | — **DONE** |
+| t003 | Update `settleCanceledRelease` to set the new signal instead of reusing `PhaseFailed` | 30m | t002 | — **DONE** |
+| t004 | Update the dashboard's status derivation/labels to render the new state distinctly (en + zh) | 30m | t002 | — **DONE** |
+| t005 | Render parity: REST/GraphQL/MCP/UI agree on the new status; render.com behavior confirmed | 20m | t003, t004 | — **DONE** |
+| t006 | Simplify | 15m | t005 | — **DONE** |
+| t007 | Test coverage | 30m | t006 | — **DONE** |
+| t008 | Closeout | 10m | t007 | — **DONE** |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@
 
 **The fix is one line, and finding the right one line was the work.** `settleCanceledRelease` now sets a new `appv1alpha1.PhaseCanceled` instead of reusing `PhaseFailed`. The operator's Ready condition already said `BuildCanceled` — only the coarse phase lied.
 
-**Render parity turned out to be decisive, not incidental.** Render has no service-level status field at all: its dashboard header renders the *latest deploy's* status, so canceling a first deploy reads "Canceled" there. bex's `phase` is a documented bex-only extra (`ADR018` line 54, "superset Render clients ignore") — which is exactly why it was free to drift out of agreement with its own deploy record, with nothing on the Render side pinning it. So this is a genuine parity gap, and adding a value to a bex-only field cannot break a Render client. Recorded in `docs/ADR018-render-parity.md`.
+**Render parity turned out to be decisive, not incidental.** Render has no service-level status field at all: its dashboard header renders the _latest deploy's_ status, so canceling a first deploy reads "Canceled" there. bex's `phase` is a documented bex-only extra (`ADR018` line 54, "superset Render clients ignore") — which is exactly why it was free to drift out of agreement with its own deploy record, with nothing on the Render side pinning it. So this is a genuine parity gap, and adding a value to a bex-only field cannot break a Render client. Recorded in `docs/ADR018-render-parity.md`.
 
 **Scope held to the branch that was actually wrong.** Only `app.Status.Image == ""` — a cancel with a live prior release keeps serving it and stays `Running`, which is what the Cancel dialog already promises. Both directions have their own control test.
 
@@ -54,8 +54,17 @@
 5. Confirmed this is not a UI-only staleness/caching artifact: queried `https://api.bex.co/graphql` directly from the page —
    ```graphql
    query {
-     server(id: "srv-da6dsna3bj6s73aie8k0") { id phase }
-     deploy(serviceId: "srv-da6dsna3bj6s73aie8k0", deployId: "dep-da6dsna3bj6s73aie8kg") { id status }
+     server(id: "srv-da6dsna3bj6s73aie8k0") {
+       id
+       phase
+     }
+     deploy(
+       serviceId: "srv-da6dsna3bj6s73aie8k0"
+       deployId: "dep-da6dsna3bj6s73aie8kg"
+     ) {
+       id
+       status
+     }
    }
    ```
    Response: `{"deploy":{"id":"dep-da6dsna3bj6s73aie8kg","status":"canceled"},"server":{"id":"srv-da6dsna3bj6s73aie8k0","phase":"Failed"}}` — the backend itself disagrees with its own deploy record.
@@ -71,7 +80,7 @@ meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 })
 ```
 
-The Condition's `Reason`/`Message` correctly say `BuildCanceled` / "build canceled before a release became available" — the operator *knows* this was a cancel, not a failure. But the coarse `Phase` enum (`appv1alpha1.PhaseFailed`) has no distinct value for "user canceled, no release exists yet," so it reuses the same `PhaseFailed` a genuine build error produces. Downstream, nothing carries the Condition Reason forward: `dashboard/src/features/services/lib/status.ts`'s `toServiceView` projects only the raw `phase` string onto `ServiceView` (never a Condition/Reason field), and `PHASE_STATUS` (same file, line ~189) maps `"failed"` unconditionally to `{ key: "failed", variant: "destructive" }` → the dashboard's `STATUS_LABEL` (`lib/labels.ts:16`) renders `services.statusFailed` = "Failed". There is no signal anywhere in this chain that could disambiguate even if a downstream layer tried to.
+The Condition's `Reason`/`Message` correctly say `BuildCanceled` / "build canceled before a release became available" — the operator _knows_ this was a cancel, not a failure. But the coarse `Phase` enum (`appv1alpha1.PhaseFailed`) has no distinct value for "user canceled, no release exists yet," so it reuses the same `PhaseFailed` a genuine build error produces. Downstream, nothing carries the Condition Reason forward: `dashboard/src/features/services/lib/status.ts`'s `toServiceView` projects only the raw `phase` string onto `ServiceView` (never a Condition/Reason field), and `PHASE_STATUS` (same file, line ~189) maps `"failed"` unconditionally to `{ key: "failed", variant: "destructive" }` → the dashboard's `STATUS_LABEL` (`lib/labels.ts:16`) renders `services.statusFailed` = "Failed". There is no signal anywhere in this chain that could disambiguate even if a downstream layer tried to.
 
 **Blast radius:** single call site (`app_controller.go:510` → `settleCanceledRelease`), reached uniformly by the generic App reconcile loop — so this affects all 5 App-typed service kinds (web service, private service, background worker, cron job, static site) whenever their very first deploy is canceled before any image is produced, not a per-type bug.
 
