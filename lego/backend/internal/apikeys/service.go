@@ -527,6 +527,14 @@ func nextLink(values []string) string {
 	return ""
 }
 
+// hydraClientPath builds the Hydra admin path for one client id. The id is
+// caller-supplied (path value / GraphQL input / MCP tool arg), so it MUST be
+// path-escaped: a raw "/admin/clients/"+id concatenation lets '/', '?', and
+// '#' in the id change WHICH admin resource is addressed rather than encode a
+// literal segment (codex-security 2026-08 F9 — the same construction in
+// oryAuth.platformClientFresh already escapes, so this makes the two agree).
+func hydraClientPath(id string) string { return "/admin/clients/" + url.PathEscape(id) }
+
 // getAPIKey fetches one Hydra client and gates on the bex API-key marker — the
 // shared preamble of every verb that reads or acts on an existing key. A
 // non-API-key client (platform/OIDC) is core.ErrNotFound, indistinguishable
@@ -534,7 +542,7 @@ func nextLink(values []string) string {
 // client bex didn't mint.
 func (h *hydraAPIKeys) getAPIKey(ctx context.Context, id string) (hydraClient, error) {
 	var c hydraClient
-	if err := h.do(ctx, http.MethodGet, "/admin/clients/"+id, nil, http.StatusOK, &c); err != nil {
+	if err := h.do(ctx, http.MethodGet, hydraClientPath(id), nil, http.StatusOK, &c); err != nil {
 		return hydraClient{}, err
 	}
 	if !isAPIKey(c) {
@@ -549,7 +557,7 @@ func (h *hydraAPIKeys) Delete(ctx context.Context, id string) error {
 	if _, err := h.getAPIKey(ctx, id); err != nil {
 		return err
 	}
-	return h.do(ctx, http.MethodDelete, "/admin/clients/"+id, nil, http.StatusNoContent, nil)
+	return h.do(ctx, http.MethodDelete, hydraClientPath(id), nil, http.StatusNoContent, nil)
 }
 
 // Touch stamps the key's last-used metadata. It first reads the client to confirm
@@ -571,7 +579,7 @@ func (h *hydraAPIKeys) Touch(ctx context.Context, id string, at time.Time) error
 		"path":  "/metadata/" + jsonPointerEscape(lastUsedKey),
 		"value": at.UTC().Format(time.RFC3339),
 	}})
-	return h.do(ctx, http.MethodPatch, "/admin/clients/"+id, patch, http.StatusOK, nil)
+	return h.do(ctx, http.MethodPatch, hydraClientPath(id), patch, http.StatusOK, nil)
 }
 
 // KeyOwner reads back the client's created-by stamp. Any failure (unknown

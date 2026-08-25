@@ -57,9 +57,13 @@ jobs:
           # the repo's standing injection-safety convention for secrets.
           BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
         run: |
-          install -m700 -d ~/.ssh
-          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" >~/.ssh/id_bex
-          chmod 600 ~/.ssh/id_bex
+          # codex-security 2026-08 F6: stage under $RUNNER_TEMP (auto-deleted
+          # at job end, scrubbed again below) — never ~/.ssh, which persists on
+          # the shared self-hosted runner.
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
           # Authenticate the control-plane host key when the operator has
           # provisioned it (w1/m66 F7, wired here by w1/m68 F3 — this workflow
           # was the one admin.conf fetcher m66 missed, and the next step hands
@@ -71,12 +75,18 @@ jobs:
           # scope. Re-capture on control-plane template rotation (ADR053).
           export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
           if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
-            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > ~/.ssh/bex_known_hosts
-            chmod 600 ~/.ssh/bex_known_hosts
-            export BEX_SSH_KNOWN_HOSTS_FILE=~/.ssh/bex_known_hosts
+            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
           fi
           bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
           echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >>"$GITHUB_ENV"
+
+      - name: scrub job credentials
+        if: always()
+        run: |
+          rm -rf -- "$RUNNER_TEMP/bex-ssh"
+          rm -f -- "$RUNNER_TEMP/app.kubeconfig"
 
       - name: Fresh snapshot, scripted restore, verification, teardown
         env:

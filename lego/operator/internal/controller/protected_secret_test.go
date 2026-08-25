@@ -85,6 +85,16 @@ func TestRejectProtectedSecretRefs(t *testing.T) {
 		"pending-files annotation": func(a *appv1alpha1.App) {
 			a.Annotations = map[string]string{appv1alpha1.PendingFilesSecretAnnotation: "bex-tenant-postgres"}
 		},
+		// codex-security 2026-08 F7: the two remaining tenant-settable
+		// Secret-name fields. copyCloneSecret resolves spec.cloneSecret by name
+		// and relocates the Secret into the shared build namespace (stripping its
+		// labels on the old code); the kubelet resolves
+		// spec.externalRegistryPullSecret by name. Both belong in the same
+		// denylist as the mount fields.
+		"cloneSecret": func(a *appv1alpha1.App) { a.Spec.CloneSecret = "bex-tenant-postgres" },
+		"externalRegistryPullSecret": func(a *appv1alpha1.App) {
+			a.Spec.ExternalRegistryPullSecret = "bex-tenant-postgres"
+		},
 	} {
 		t.Run("rejects "+name, func(t *testing.T) {
 			app := base()

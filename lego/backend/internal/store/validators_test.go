@@ -56,6 +56,12 @@ func TestValidRepo(t *testing.T) {
 		{"https-token-as-user-rejected", "https://ghp_token@github.com/x/y.git", false},
 		{"http-userinfo-rejected", "http://user:pw@gitea.internal:3000/x/y", false},
 		{"ssh-password-rejected", "ssh://git:secret@github.com/x/y.git", false},
+		// Colon-less git@ values are LOCAL paths to git (2026-08 F5): the local
+		// transport is where a fetch-injected --upload-pack option would execute
+		// in the credential-holding clone container. The colon is what makes an
+		// SCP form a remote.
+		{"colonless-git-host-rejected", "git@x", false},
+		{"colonless-git-host-path-rejected", "git@x/y", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -307,6 +307,15 @@ func barmanCloudPlugin(serverName string, walArchiver bool) map[string]any {
 // per-workspace namespace (namespace == workspace label). Any other namespace is
 // a confused-deputy / cross-tenant write (codex #11). Shared by the Database and
 // KeyValue reconcilers.
+//
+// DELIBERATELY looser than the App reconciler's twin (which refuses a labeled
+// object in the bootstrap namespace, codex-security 2026-08 F11): Database and
+// KeyValue CRs are still legitimately created labeled in the shared namespace
+// (cmd/api logs it: "Databases/KeyValues stay in <appsNS>"), and the ADR043 D8
+// cutover runbook leaves labeled twins there between its Steps 5 and 9. No
+// shared-sink identity (Zot repo, htpasswd user, static prefix) is derived
+// from a Database/KeyValue label, so the forged-identity class F11 closes for
+// Apps does not exist here.
 func canonicalNamespace(objMeta *metav1.ObjectMeta) bool {
 	if objMeta.Namespace == defaultAppsNamespace {
 		return true

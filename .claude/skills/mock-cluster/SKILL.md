@@ -18,7 +18,12 @@ Otherwise, run the full bring-up:
 3. Build and load the operator image (CAPD nodes can't pull local-only images):
    - `( cd lego/operator && make docker-build IMG=bex-operator:dev )`
    - `docker save bex-operator:dev -o /tmp/bex-op.tar`
-   - For each node in `kubectl get nodes -o name`: `docker cp /tmp/bex-op.tar <node>:/op.tar && docker exec <node> ctr -n k8s.io images import /op.tar`
+   - For each node (strip the `node/` prefix — `kubectl get nodes -o name` returns `node/<name>` but `docker cp`/`docker exec` need the bare container name):
+     ```bash
+     for n in $(kubectl get nodes -o name | cut -d/ -f2); do
+       docker cp /tmp/bex-op.tar "$n":/op.tar && docker exec "$n" ctr -n k8s.io images import /op.tar
+     done
+     ```
 4. `( cd lego/operator && make deploy IMG=bex-operator:dev )` — deploys to ns `bex-system` with `BEX_RUNTIME=kubernetes`. The `bex-ssh-gateway` IngressRouteTCP fails without Traefik CRDs — expected and harmless on the mock; everything else applies. Then `kubectl apply -f deploy/gitops/base/operator-apps-rbac.yaml` — the apps-namespace `bex-operator-apps` Role/RoleBinding is Argo-managed in prod and absent from the operator's kustomize config; without it the manager crashloops on "failed to wait for … caches to sync" (its namespace-scoped Secret/Job watches in `default` are forbidden; w1/043).
 5. Local-CAPD-only fixes (re-apply all three after **every** `make deploy` — it reverts them; w1/043):
    - Label the control-plane node into the platform pool (the manifest's nodeSelector is `bex.co/pool=platform`, and the operator must sit on the control-plane node because OrbStack/Calico can't route cross-node pod→apiserver; see docs/ADR004-app-deployment.md): `kubectl label node <control-plane-node> bex.co/pool=platform --overwrite`

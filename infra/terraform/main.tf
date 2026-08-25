@@ -29,7 +29,9 @@ resource "hcloud_network_subnet" "bex" {
   ip_range     = var.subnet_cidr
 }
 
-# Firewall for the bootstrap node: SSH + k3s API from allowed CIDRs, ICMP for diag.
+# Firewall for the bootstrap node: SSH from allowed CIDRs, the k3s API only
+# from the explicitly widened allowed_api_cidrs (closed by default — F8), ICMP
+# for diag.
 resource "hcloud_firewall" "bootstrap" {
   name = "bex-bootstrap"
 
@@ -40,11 +42,17 @@ resource "hcloud_firewall" "bootstrap" {
     source_ips = var.allowed_ssh_cidrs
   }
 
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "6443" # k3s / kube API
-    source_ips = var.allowed_ssh_cidrs
+  # k3s / kube API — no rule at all while allowed_api_cidrs is empty (the
+  # default): Hetzner firewalls deny inbound unless a rule allows it, so an
+  # unset variable means the API is unreachable, not reachable from anywhere.
+  dynamic "rule" {
+    for_each = length(var.allowed_api_cidrs) > 0 ? [1] : []
+    content {
+      direction  = "in"
+      protocol   = "tcp"
+      port       = "6443"
+      source_ips = var.allowed_api_cidrs
+    }
   }
 
   rule {

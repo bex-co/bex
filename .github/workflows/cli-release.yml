@@ -112,20 +112,33 @@ jobs:
         env:
           TAP_KEY: ${{ secrets.BEX_TAP_PUSH_KEY }}
         run: |
-          bash scripts/bex-cli-formula.sh dist/checksums.txt > /tmp/bex.rb
+          # codex-security 2026-08 F6: the tap write key stages under
+          # $RUNNER_TEMP (auto-deleted at job end; scrubbed again below) — a
+          # fixed /tmp path persists on the shared self-hosted runner, and this
+          # key can push an arbitrary Formula/bex.rb to the channel
+          # `brew install bex` consumes.
+          bash scripts/bex-cli-formula.sh dist/checksums.txt > "$RUNNER_TEMP/bex.rb"
           umask 077
-          printf '%s\n' "$TAP_KEY" > /tmp/tap-key
+          printf '%s\n' "$TAP_KEY" > "$RUNNER_TEMP/tap-key"
           # GitHub's published ed25519 host key (docs.github.com → SSH key
           # fingerprints). If GitHub ever rotates it, this step fails with
           # "Host key verification failed" — update the pin here.
-          printf '%s\n' "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > /tmp/tap-known-hosts
-          export GIT_SSH_COMMAND="ssh -i /tmp/tap-key -o UserKnownHostsFile=/tmp/tap-known-hosts -o IdentitiesOnly=yes"
-          git clone --depth 1 git@github.com:bex-co/homebrew-tap.git /tmp/tap
-          mkdir -p /tmp/tap/Formula
-          cp /tmp/bex.rb /tmp/tap/Formula/bex.rb
-          cd /tmp/tap
+          printf '%s\n' "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$RUNNER_TEMP/tap-known-hosts"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/tap-key -o UserKnownHostsFile=$RUNNER_TEMP/tap-known-hosts -o IdentitiesOnly=yes"
+          git clone --depth 1 git@github.com:bex-co/homebrew-tap.git "$RUNNER_TEMP/tap"
+          mkdir -p "$RUNNER_TEMP/tap/Formula"
+          cp "$RUNNER_TEMP/bex.rb" "$RUNNER_TEMP/tap/Formula/bex.rb"
+          cd "$RUNNER_TEMP/tap"
           git config user.name "bex-release-bot"
           git config user.email "noreply@bex.co"
           git add Formula/bex.rb
           git diff --cached --quiet || git commit -m "bex $VERSION"
           git push origin main || { git pull --rebase origin main && git push origin main; }
+
+      - name: scrub tap credentials
+        # Runs even when the tap push failed, so the write key never survives
+        # the job on the shared self-hosted pool (codex-security 2026-08 F6).
+        if: ${{ always() && env.HAS_TAP_KEY == 'true' }}
+        run: |
+          rm -f -- "$RUNNER_TEMP/tap-key" "$RUNNER_TEMP/tap-known-hosts" "$RUNNER_TEMP/bex.rb"
+          rm -rf -- "$RUNNER_TEMP/tap"

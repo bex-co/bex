@@ -26,9 +26,9 @@ Most requests are **discovery** — find and compare services. That is the core 
    - Angles to cover: vertical → workflow → pain point → adjacent. Two examples:
      - services/trades: vertical (`electrician software`, `electrical contractor`) → workflow (`field service management`, `dispatch invoicing estimates`) → pain point (`job scheduling`, `quote automation`) → adjacent (`home services automation`, `contractor crm`).
      - SaaS/software: vertical (`b2b saas billing`, `developer tools`) → workflow (`subscription management`, `usage-based metering`) → pain point (`failed payment recovery`, `revenue recognition`) → adjacent (`analytics dashboards`, `customer onboarding`).
-   - Hard constraints → filters: `--countries-supported=US`, `--has-stripe-app=true`, `--link-supported=true`, `--stripe-projects-supported=true`.
-   - If the user wants to _use/buy_ a service, also pass `--mpp-supported` in at least one search to find results you can pay for programmatically.
-   - Sparse niche? Raise `--limit` and try the next `--page` before concluding it’s empty.
+   - Hard constraints → try filter flags if available: `--countries-supported=US`, `--has-stripe-app=true`, `--link-supported=true`, `--stripe-projects-supported=true`, `--mpp-supported`. **Note:** as of `directory` v0.3.0 the server ignores filter flags — only `--limit` (max 10) and `--page` affect results (`stripe directory search --help` → “Filter flags have no server-side equivalent yet and are ignored”). Keep queries narrow via the search term itself; re-check `--help` before relying on filters.
+   - If the user wants to _use/buy_ a service, also pass `--mpp-supported` in at least one search to find results you can pay for programmatically (even if currently server-ignored, it documents intent for when the server honors it).
+   - Sparse niche? Raise `--limit` (max 10) and try the next `--page` before concluding it’s empty.
 
 3. **Dedupe & score** using `display_name`, `description`, `url`, `username` as evidence.
 

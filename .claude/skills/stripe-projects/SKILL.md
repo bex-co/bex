@@ -6,6 +6,7 @@ description: >
 
 allowed-tools:
   - Bash(stripe *)
+  - Bash(stripe plugin *)
   - Bash(which stripe)
   - Bash(brew install stripe/stripe-cli/stripe)
   - Bash(brew upgrade stripe/stripe-cli/stripe)

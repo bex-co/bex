@@ -2811,18 +2811,55 @@ func TestCLIRefreshStore(t *testing.T) {
 		Body:   []byte(`{"access_token":"access-a","refresh_token":"refresh-b"}`),
 		Status: http.StatusOK,
 	}
+	mints := 0
 	body, status, err := st.IdempotentCLIRefresh(ctx, hash, time.Minute, func(context.Context) ([]byte, int, error) {
+		mints++
 		return want.Body, want.Status, nil
 	})
 	if err != nil || status != want.Status || string(body) != string(want.Body) {
 		t.Fatalf("mint = status %d body %q err %v, want status %d body %q", status, body, err, want.Status, want.Body)
 	}
-	got, ok, err := getCLIRefresh(ctx, pool, hash)
-	if err != nil || !ok {
-		t.Fatalf("get = (%+v, %v, %v), want hit", got, ok, err)
+	// A duplicate on the SAME replica inside the TTL gets the exact bytes and
+	// mints nothing further.
+	body, status, err = st.IdempotentCLIRefresh(ctx, hash, time.Minute, func(context.Context) ([]byte, int, error) {
+		mints++
+		return want.Body, want.Status, nil
+	})
+	if err != nil || status != want.Status || string(body) != string(want.Body) {
+		t.Fatalf("duplicate = status %d body %q err %v, want status %d body %q", status, body, err, want.Status, want.Body)
 	}
-	if got.Status != want.Status || string(got.Body) != string(want.Body) {
-		t.Fatalf("get = status %d body %q, want status %d body %q", got.Status, got.Body, want.Status, want.Body)
+	if mints != 1 {
+		t.Fatalf("mints = %d, want 1 — the replica-local cache must deduplicate", mints)
+	}
+
+	// codex-security 2026-08 F2: the durable row must carry NO token material.
+	// The minted response contains a live access+refresh pair; none of it may
+	// be recoverable from the database.
+	hit, err := getCLIRefresh(ctx, pool, hash)
+	if err != nil || !hit {
+		t.Fatalf("get = (%v, %v), want hit", hit, err)
+	}
+	var storedBody []byte
+	if err := pool.QueryRow(ctx,
+		`SELECT response_body FROM cli_refresh_idempotency WHERE token_hash = $1`, hash[:],
+	).Scan(&storedBody); err != nil {
+		t.Fatal(err)
+	}
+	if len(storedBody) != 0 {
+		t.Fatalf("response_body holds %d bytes after a mint; the durable row must be a marker only — no token material at rest", len(storedBody))
+	}
+
+	// A NEW process (fresh PGStore → empty local cache) hitting the durable
+	// marker re-mints rather than returning anything stored. The rotation
+	// grace window makes the re-mint safe; this pins that no path tries to
+	// re-serve persisted bytes.
+	fresh := NewPGStore(pool)
+	remint := cliRefreshResponse{Body: []byte(`{"access_token":"access-c","refresh_token":"refresh-d"}`), Status: http.StatusOK}
+	body, status, err = fresh.IdempotentCLIRefresh(ctx, hash, time.Minute, func(context.Context) ([]byte, int, error) {
+		return remint.Body, remint.Status, nil
+	})
+	if err != nil || status != remint.Status || string(body) != string(remint.Body) {
+		t.Fatalf("cross-process duplicate = status %d body %q err %v, want the FRESH mint's bytes", status, body, err)
 	}
 
 	if _, err := pool.Exec(ctx,
@@ -2830,8 +2867,8 @@ func TestCLIRefreshStore(t *testing.T) {
 	); err != nil {
 		t.Fatalf("expire: %v", err)
 	}
-	if got, ok, err := getCLIRefresh(ctx, pool, hash); err != nil || ok {
-		t.Fatalf("get expired = (%+v, %v, %v), want miss", got, ok, err)
+	if got, err := getCLIRefresh(ctx, pool, hash); err != nil || got {
+		t.Fatalf("get expired = (%v, %v), want miss", got, err)
 	}
 
 	// A fresh mint performs the bounded physical sweep. The logical expiry

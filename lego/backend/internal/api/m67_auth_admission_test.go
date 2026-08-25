@@ -294,3 +294,32 @@ func TestAdmissionOffIsUnchangedBehavior(t *testing.T) {
 		t.Errorf("upstream introspections = %d, want 10 (unmetered)", got)
 	}
 }
+
+// TestShedRequestsDoNotAllocateCredentialEntries is the codex-security
+// 2026-08 F1 ordering regression: once a source has spent its failure budget,
+// further requests with distinct bearers must not lazily insert per-credential
+// limiter entries — a shed request performs no allocation. Before the fix,
+// admit() created (and spent) the credential bucket before reading the
+// per-source budget, so an anonymous flood of unique tokens grew the map
+// one entry per request even while being correctly shed.
+func TestShedRequestsDoNotAllocateCredentialEntries(t *testing.T) {
+	adm := NewAuthAdmission(1, 1, 0)
+	// Drain the source's failure budget the way the real path does: one
+	// admitted attempt whose upstream verdict was invalid (penalize).
+	first := bearerRequest("first-token", "203.0.113.70")
+	release, err := adm.admit(first)
+	if err != nil {
+		t.Fatalf("first admit: %v", err)
+	}
+	release()
+	adm.penalize(first)
+	for i := range 10 {
+		r := bearerRequest(fmt.Sprintf("unique-token-%d", i), "203.0.113.70")
+		if _, err := adm.admit(r); !errors.Is(err, errAuthOverloaded) {
+			t.Fatalf("attempt %d after budget exhaustion: err = %v, want errAuthOverloaded", i, err)
+		}
+	}
+	if got := adm.credentials.Entries(); got > 1 {
+		t.Errorf("credentials limiter holds %d entries after an exhausted-source flood; want ≤ 1 — shed requests must not allocate", got)
+	}
+}

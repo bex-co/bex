@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -905,5 +907,39 @@ func TestWithCORS(t *testing.T) {
 	rec = do(list, "http://localhost:5173", http.MethodOptions)
 	if rec.Code != http.StatusNoContent || rec.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5173" {
 		t.Errorf("preflight: code %d origin %q", rec.Code, rec.Header().Get("Access-Control-Allow-Origin"))
+	}
+}
+
+// TestProdCORSAllowlistHasNoLoopbackOrigin is the codex-security 2026-08 F10
+// regression: the deployed BEX_API_CORS_ORIGIN must not carry a loopback (or
+// any non-HTTPS) origin. The middleware echoes any listed origin with
+// Allow-Credentials: true, so a localhost entry grants whatever local process
+// binds that port first credentialed cross-origin reads. The supported
+// "local dev against prod" workflow tunnels through the Vite same-origin
+// proxy and needs no CORS entry.
+func TestProdCORSAllowlistHasNoLoopbackOrigin(t *testing.T) {
+	// lego/backend/internal/api -> repo root is four parents up.
+	const manifest = "../../../../lego/operator/config/api/deployment.yaml"
+	src, err := os.ReadFile(manifest)
+	if err != nil {
+		t.Fatalf("read deployment.yaml: %v", err)
+	}
+	re := regexp.MustCompile(`(?m)^\s*- name: BEX_API_CORS_ORIGIN[^\n]*[\s\S]*?^\s*value:\s*(\S+)`)
+	m := re.FindSubmatch(src)
+	if m == nil {
+		t.Fatal("BEX_API_CORS_ORIGIN block not found in the prod manifest")
+	}
+	for _, origin := range strings.Split(string(m[1]), ",") {
+		origin = strings.TrimSpace(origin)
+		if origin == "" {
+			continue
+		}
+		u, err := url.Parse(origin)
+		if err != nil || u.Scheme != "https" {
+			t.Errorf("CORS allowlist entry %q is not a bare https:// origin — loopback/plaintext origins grant credentialed cross-origin reads to non-platform pages (F10)", origin)
+		}
+		if h := u.Hostname(); h == "localhost" || h == "127.0.0.1" || h == "::1" {
+			t.Errorf("CORS allowlist carries loopback origin %q (F10)", origin)
+		}
 	}
 }

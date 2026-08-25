@@ -4,7 +4,7 @@ description: >-
   Inspect and maintain the repository's .pm workstreams, inbox notes, milestones, and tasks. Use when the user asks for PM board status or requests a supported board mutation such as creating, promoting, adding, or completing work.
 
 
-allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
+allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(npx prettier*:*)
 ---
 
 # Task: Arrange the `.pm` board

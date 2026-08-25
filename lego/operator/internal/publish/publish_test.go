@@ -286,7 +286,7 @@ func TestPublishJobCloneMode(t *testing.T) {
 		t.Errorf("clone image = %q, want %q", clone.Image, DefaultGitImage)
 	}
 	script := clone.Command[len(clone.Command)-1]
-	for _, frag := range []string{"git init", "fetch -q --depth 1 origin \"$REF\"", "checkout -q FETCH_HEAD", `cd "/work/$SRC_DIR"`, "cp -a . /out/"} {
+	for _, frag := range []string{"git init", `fetch -q --depth 1 origin -- "$REF"`, "checkout -q FETCH_HEAD", `cd "/work/$SRC_DIR"`, "cp -a . /out/"} {
 		if !strings.Contains(script, frag) {
 			t.Errorf("clone script missing %q:\n%s", frag, script)
 		}

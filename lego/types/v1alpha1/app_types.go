@@ -318,7 +318,11 @@ type AppSpec struct {
 	// resets it to empty so the next trigger reverts to Branch HEAD. Only
 	// meaningful for repo-backed services; ignored for image-backed ones.
 	// A cron_job rejects commitId at the API layer before this field is set.
+	// The pattern is Branch's own (codex-security 2026-08 F5): this value
+	// reaches the clone phase's `git fetch` argv, so a leading dash must be
+	// schema-refused as an admission backstop, not only at the API boundary.
 	// +optional
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9][A-Za-z0-9._/@+-]*$`
 	// +kubebuilder:validation:MaxLength=512
 	BuildCommit string `json:"buildCommit,omitempty"`
 

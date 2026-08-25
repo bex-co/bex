@@ -506,16 +506,23 @@ jobs:
           fi
 
       # --- 2. fetch the app cluster kubeconfig via a CP node (self-managed, w1/m19.1) ---
+      # codex-security 2026-08 F6: every credential stages under $RUNNER_TEMP
+      # (auto-deleted at job end) — never ~/.ssh, $PWD, or a fixed /tmp path,
+      # which persist on the self-hosted runner and are readable by any later
+      # job running as the same uid (ADR083's shared pool). The key is pointed
+      # at via BEX_SSH_KEY_PATH, which fetch-app-kubeconfig.sh honors.
       - name: get app cluster kubeconfig
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           # Funneled through env rather than interpolated into the script body,
           # the repo's standing injection-safety convention for secrets.
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
           BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
         run: |
-          install -m700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
-          chmod 600 ~/.ssh/id_bex
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
           # Authenticate the control-plane host key (w1/m66 F7): the pin makes
           # the fetch fail closed on an unknown/changed key instead of trusting
           # it on first use and handing every later step an attacker-supplied
@@ -530,12 +537,20 @@ jobs:
           # (ADR053) BEFORE the rotation's first deploy, or that deploy aborts here.
           export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
           if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
-            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > ~/.ssh/bex_known_hosts
-            chmod 600 ~/.ssh/bex_known_hosts
-            export BEX_SSH_KNOWN_HOSTS_FILE=~/.ssh/bex_known_hosts
+            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
           fi
-          bash scripts/fetch-app-kubeconfig.sh "$PWD/app.kubeconfig"
-          echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >> "$GITHUB_ENV"
+
+      # Defense in depth for the F6 class: RUNNER_TEMP is runner-managed, but
+      # scrub explicitly so the guarantee does not rest on the runner version.
+      - name: scrub job credentials
+        if: always()
+        run: |
+          rm -rf -- "$RUNNER_TEMP/bex-ssh"
+          rm -f -- "$RUNNER_TEMP/app.kubeconfig"
 
       # Mirror only archives whose upstream bytes and resulting OCI manifests
       # match deploy/helm-artifacts.lock. Argo consumes these packages by digest,
@@ -875,3 +890,12 @@ jobs:
             || { echo "dashboard not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
           kubectl -n dashboard rollout restart deploy/dashboard
           kubectl -n dashboard rollout status deploy/dashboard --timeout=300s
+
+      # Final F6 scrub: runs even when everything above failed, so no staged
+      # credential survives the job on the shared self-hosted pool.
+      - name: final credential scrub
+        if: ${{ always() }}
+        run: |
+          rm -rf -- "$RUNNER_TEMP/bex-ssh"
+          rm -f -- "$RUNNER_TEMP/app.kubeconfig" "$RUNNER_TEMP/argocd-install.yaml"
+          unset KUBECONFIG || true

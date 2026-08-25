@@ -66,15 +66,20 @@ jobs:
           version: v3.19.0
 
       # --- fetch the cluster's own kubeconfig via a CP node (self-managed, w1/m19.1) ---
+      # codex-security 2026-08 F6: credentials stage under $RUNNER_TEMP
+      # (auto-deleted at job end; scrubbed again by the final step) — never
+      # ~/.ssh or $PWD, which persist on the shared self-hosted runner.
       - name: fetch app cluster kubeconfig (via a CP node)
         env:
           # Funneled through env rather than interpolated into the script body,
           # the repo's standing injection-safety convention for secrets.
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
           BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
         run: |
-          install -m700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
-          chmod 600 ~/.ssh/id_bex
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
           # Authenticate the control-plane host key (w1/m66 F7): the pin makes
           # the fetch fail closed on an unknown/changed key instead of trusting
           # it on first use. w1/m68 t006 captured + provisioned the
@@ -83,12 +88,18 @@ jobs:
           # Re-capture on control-plane template rotation (ADR053).
           export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
           if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
-            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > ~/.ssh/bex_known_hosts
-            chmod 600 ~/.ssh/bex_known_hosts
-            export BEX_SSH_KNOWN_HOSTS_FILE=~/.ssh/bex_known_hosts
+            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
           fi
-          bash scripts/fetch-app-kubeconfig.sh "$PWD/app.kubeconfig"
-          echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >> "$GITHUB_ENV"
+
+      - name: scrub job credentials
+        if: always()
+        run: |
+          rm -rf -- "$RUNNER_TEMP/bex-ssh"
+          rm -f -- "$RUNNER_TEMP/app.kubeconfig"
 
       # --- tools ---
       # Cache the ~65MB clusterctl binary keyed on its version (w1/m36 t004): a
@@ -281,3 +292,10 @@ jobs:
         run: |
           echo "app cluster '$CLUSTER_NAME' is up. Next: deploy bex (operator + registry)"
           echo "via Argo/deploy or 'make deploy', then kubectl apply an App."
+
+      # F6 final scrub: runs regardless of the job's outcome.
+      - name: final credential scrub
+        if: always()
+        run: |
+          rm -rf -- "$RUNNER_TEMP/bex-ssh"
+          rm -f -- "$RUNNER_TEMP/app.kubeconfig"

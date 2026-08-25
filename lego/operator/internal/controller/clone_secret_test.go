@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -72,5 +73,36 @@ func TestCopyCloneSecretAcrossNamespaces(t *testing.T) {
 	_ = buildClient.Get(context.Background(), client.ObjectKey{Namespace: "bex-system", Name: "web-clone"}, &dst)
 	if string(dst.Data["token"]) != "ghs_fresh" {
 		t.Errorf("refresh failed: token = %q, want ghs_fresh", dst.Data["token"])
+	}
+}
+
+// TestCopyCloneSecretRefusesProtectedSource is the codex-security 2026-08 F7
+// relocation guard: a source carrying LabelProtectedFromTenantMount (the shared
+// S3 backup credential the operator projects into every datastore namespace)
+// must not be copied into the shared build namespace under any circumstances —
+// the denylist exists precisely to keep those Secrets out of tenant-named
+// positions, and the old copier relocated them while REPLACING their labels,
+// stripping the very marker other checks rely on.
+func TestCopyCloneSecretRefusesProtectedSource(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	protected := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "bex-tenant-postgres",
+			Namespace: "default",
+			Labels:    map[string]string{execution.LabelProtectedFromTenantMount: execution.ProtectedFromTenantMount},
+		},
+		Data: map[string][]byte{"AWS_SECRET_ACCESS_KEY": []byte("shared")},
+	}
+	buildClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(protected).Build()
+	r := &AppReconciler{Client: buildClient, BuildClient: buildClient}
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", UID: "uid-web"}}
+
+	if err := r.copyCloneSecret(context.Background(), app, "default", "bex-system", "bex-tenant-postgres"); err == nil {
+		t.Fatal("copyCloneSecret ACCEPTED a protected source — the denylist is bypassable via spec.cloneSecret")
+	}
+	var leaked corev1.Secret
+	if err := buildClient.Get(context.Background(), client.ObjectKey{Namespace: "bex-system", Name: "bex-tenant-postgres"}, &leaked); err == nil {
+		t.Fatal("protected Secret was relocated into the shared build namespace")
 	}
 }

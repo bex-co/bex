@@ -168,6 +168,74 @@ func TestAbruptCloseLeavesCompleteFrameCountDeterministic(t *testing.T) {
 	}
 }
 
+// TestOversizedHandshakeStaysPerConnection is the codex-security 2026-08 F4
+// regression: a 101 response whose header block exceeds maxHandshakeBytes is
+// one tenant's backend behaviour. Before the fix that branch stored false into
+// the process-global readiness flag — which only sync.Once can set true again
+// — permanently zeroing bex_websocket_meter_healthy for the fleet, and left
+// the connection in header-buffering mode so its frames were silently
+// discarded from the counter.
+func TestOversizedHandshakeStaysPerConnection(t *testing.T) {
+	// Only New() (once.Do + a successful listen) sets ready in production;
+	// establish the healthy baseline the overflow branch must not disturb.
+	processState.ready.Store(true)
+	defer processState.ready.Store(false)
+
+	conn := &recordingConn{}
+	counter := &atomic.Uint64{}
+	wrapped := &downstreamConn{Conn: conn, counter: counter}
+
+	// A header block past the cap with no terminator in sight.
+	header := append([]byte("HTTP/1.1 101 Switching Protocols\r\nX-Pad: "), bytes.Repeat([]byte("a"), maxHandshakeBytes)...)
+	if _, err := wrapped.Write(header); err != nil {
+		t.Fatal(err)
+	}
+
+	// The health gauge must be untouched by a per-connection overflow...
+	if !processState.ready.Load() {
+		t.Fatal("oversized handshake cleared the process-global health gauge")
+	}
+	// ...and the overflow is surfaced as its own monotonic counter instead.
+	if got := processState.handshakeOverflow.Load(); got != 1 {
+		t.Fatalf("handshakeOverflow = %d, want 1", got)
+	}
+
+	// Subsequent frames on the same connection must still be counted —
+	// conservatively attributed rather than silently dropped.
+	frame := []byte{0x82, 0x04, 1, 2, 3, 4}
+	before := counter.Load()
+	if _, err := wrapped.Write(frame); err != nil {
+		t.Fatal(err)
+	}
+	if counter.Load() != before+uint64(len(frame)) {
+		t.Fatalf("frame after oversized handshake: counter %d → %d; want +%d — egress must stay metered",
+			before, counter.Load(), len(frame))
+	}
+
+	// And the buffered prefix itself was counted, not discarded into a
+	// forever-growing pending slice.
+	if len(wrapped.pending) != 0 {
+		t.Fatalf("pending buffer = %d bytes after overflow; want 0", len(wrapped.pending))
+	}
+	if counter.Load() < uint64(maxHandshakeBytes) {
+		t.Fatalf("counter = %d; the oversized header bytes must be counted conservatively, not silently dropped", counter.Load())
+	}
+
+	// A second, ordinary connection must be entirely unaffected: it parses its
+	// handshake, excludes it, and counts only frames.
+	other := &downstreamConn{Conn: &recordingConn{}, counter: counter}
+	handshake := []byte("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n")
+	otherFrame := []byte{0x81, 0x02, 'o', 'k'}
+	before = counter.Load()
+	if _, err := other.Write(append(handshake, otherFrame...)); err != nil {
+		t.Fatal(err)
+	}
+	if counter.Load() != before+uint64(len(otherFrame)) {
+		t.Fatalf("second connection after another's overflow: counter %d → %d; want +%d",
+			before, counter.Load(), len(otherFrame))
+	}
+}
+
 type recordingConn struct{ bytes.Buffer }
 
 func (c *recordingConn) Close() error                       { return nil }
