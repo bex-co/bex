@@ -40,8 +40,19 @@ import (
 )
 
 const (
-	kvFinalizer                   = "app.bex.co/kv-finalizer"
-	annotKVBackupPurgeComplete    = "app.bex.co/kv-backup-purge-complete"
+	kvFinalizer                = "app.bex.co/kv-finalizer"
+	annotKVBackupPurgeComplete = "app.bex.co/kv-backup-purge-complete"
+	// annotKVPreserveBackups ("true") makes deletion skip the S3 prefix purge.
+	// The prefix is keyed by the CR name alone, so a namespace migration that
+	// deletes the old CR and recreates the same id elsewhere shares one prefix
+	// between both generations — the 2026-08-21/22 cutover's unguarded purge
+	// erased every recovery point of the surviving instances (w8/m30 t003).
+	// Databases don't need this: their archive identity is namespace-scoped
+	// (databaseArchiveBase, w7/040). A normal tenant delete must never carry
+	// this annotation — purge-on-delete is the ADR021/ADR031 privacy contract.
+	annotKVPreserveBackups = "app.bex.co/preserve-backups-on-delete"
+	// kvPreserveBackupsTrue is the only value annotKVPreserveBackups honors.
+	kvPreserveBackupsTrue         = "true"
 	keyValueBackupComponent       = "keyvalue-backup"
 	keyValueBackupPurgeComponent  = "keyvalue-backup-purge"
 	keyValueBackupRetention       = 7
@@ -351,7 +362,7 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 		return ctrl.Result{RequeueAfter: settleRequeue}, nil
 	}
 
-	if r.Backup.configured() {
+	if r.Backup.configured() && kv.Annotations[annotKVPreserveBackups] != kvPreserveBackupsTrue {
 		done, err := reconcileCleanupJob(ctx, r.Client, kv, r.keyValueBackupPurgeJob(kv), annotKVBackupPurgeComplete)
 		if err != nil {
 			return result, err

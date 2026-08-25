@@ -36,7 +36,7 @@ import (
 )
 
 var _ = Describe("KeyValue backup reconciliation events", func() {
-	It("gates CronJobs by plan and completes the delete finalizer after purge", func() {
+	BeforeEach(func() {
 		skipNameValidation := true
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 			Scheme: k8sClient.Scheme(), Metrics: metricsserver.Options{BindAddress: "0"},
@@ -55,7 +55,9 @@ var _ = Describe("KeyValue backup reconciliation events", func() {
 			stop()
 			Eventually(done, 10*time.Second).Should(Receive(BeNil()))
 		})
+	})
 
+	It("gates CronJobs by plan and completes the delete finalizer after purge", func() {
 		freeNN := types.NamespacedName{Name: "backup-event-free", Namespace: "default"}
 		paidNN := types.NamespacedName{Name: "backup-event-paid", Namespace: "default"}
 		free := &appv1alpha1.KeyValue{
@@ -112,5 +114,43 @@ var _ = Describe("KeyValue backup reconciliation events", func() {
 		Eventually(func() bool {
 			return apierrors.IsNotFound(k8sClient.Get(ctx, client.ObjectKeyFromObject(&purge), &batchv1.Job{}))
 		}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
+	})
+
+	It("preserves the backup prefix when the migration annotation is set", func() {
+		// The 2026-08-21/22 cutover deletes purged keyvalue/<id>/ out from under
+		// the recreated instances (w8/m30 t003). A migration delete carries
+		// annotKVPreserveBackups and must finalize WITHOUT ever creating a purge
+		// Job; the unannotated delete case must still purge.
+		nn := types.NamespacedName{Name: "backup-event-preserved", Namespace: "default"}
+		kv := &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: nn.Name, Namespace: nn.Namespace,
+				Annotations: map[string]string{annotKVPreserveBackups: "true"},
+			},
+			Spec: appv1alpha1.KeyValueSpec{Name: "backup-event-preserved", Plan: "starter"},
+		}
+		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
+		DeferCleanup(func() {
+			_ = k8sClient.Delete(context.Background(), &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace}})
+			_ = k8sClient.Delete(context.Background(), &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: keyValueBackupName(nn.Name), Namespace: nn.Namespace}})
+		})
+
+		Eventually(func(g Gomega) {
+			current := &appv1alpha1.KeyValue{}
+			g.Expect(k8sClient.Get(ctx, nn, current)).To(Succeed())
+			g.Expect(current.Finalizers).To(ContainElement(kvFinalizer))
+		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+
+		Expect(k8sClient.Delete(ctx, &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace}})).To(Succeed())
+
+		// The CR must finalize without the purge Job the unannotated path requires.
+		Eventually(func() bool {
+			return apierrors.IsNotFound(k8sClient.Get(ctx, nn, &appv1alpha1.KeyValue{}))
+		}, 15*time.Second, 100*time.Millisecond).Should(BeTrue())
+		var jobs batchv1.JobList
+		Expect(k8sClient.List(ctx, &jobs, client.InNamespace(nn.Namespace), client.MatchingLabels{
+			labelKeyValue: nn.Name, "app.bex.co/component": keyValueBackupPurgeComponent,
+		})).To(Succeed())
+		Expect(jobs.Items).To(BeEmpty(), "a preserve-annotated delete must never create a purge Job")
 	})
 })

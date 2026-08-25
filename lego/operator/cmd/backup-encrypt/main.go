@@ -82,9 +82,12 @@ func run(args []string, recipient string) error {
 }
 
 func encrypt(in io.Reader, outPath string, to age.Recipient) error {
-	// 0600: the volume is shared with the upload stage, and the object is
-	// readable by nothing else in the pod that does not already hold it.
-	out, err := os.OpenFile(outPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	// 0644, not 0600: the upload stage reads this from the shared EmptyDir as a
+	// DIFFERENT uid with every capability (including DAC_OVERRIDE) dropped, so
+	// an owner-only file is unreadable there and the Job fails with nothing
+	// uploaded. The bytes are age ciphertext; pod-internal readability leaks
+	// nothing.
+	out, err := os.OpenFile(outPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}

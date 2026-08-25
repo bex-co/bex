@@ -77,6 +77,28 @@ if [ -n "$unpinned_fetchers" ]; then
   exit 1
 fi
 
+# 4b. ADR050 Tier A decrypt custody (w8/m30 t005). A workflow that runs a
+# scripts/restore-*.sh with dotenv loading disabled supplies the script's whole
+# environment itself — and since 2026-08-04 every Tier A snapshot is
+# age-encrypted, so omitting AGE_BACKUP_PRIVATE_KEY fails the restore at the
+# decrypt step (run 32814333448: the drill's env list predated encryption).
+# Derived from the tree so a future etcd/KeyValue restore workflow is caught
+# the day it is added.
+restore_workflows() {
+  grep -lE 'scripts/restore-[a-z]+\.sh' "$WORKFLOWS_DIR"/*.yml 2>/dev/null || true
+}
+keyless_restores=""
+for wf in $(restore_workflows); do
+  grep -Fq 'RESTORE_SKIP_DOTENV' "$wf" || continue
+  grep -Fq 'AGE_BACKUP_PRIVATE_KEY' "$wf" || keyless_restores="$keyless_restores $wf"
+done
+if [ -n "$keyless_restores" ]; then
+  echo "FAIL: these workflows run a restore script with RESTORE_SKIP_DOTENV but never pass" >&2
+  echo "      AGE_BACKUP_PRIVATE_KEY, so an .age snapshot fails at the decrypt step (ADR050):" >&2
+  printf '  %s\n' $keyless_restores >&2
+  exit 1
+fi
+
 # 5. Self-hosted runner custody (ADR083, .pm/DO_NOT_DO.md #CI-RUNNERS). All CI
 # jobs run on operator-custodied self-hosted runners; a security scan that
 # "remediates" by reverting to GitHub-hosted ubuntu-* is the wrong fix.
@@ -168,6 +190,11 @@ fi
 # openbao-restore-drill). Removing a fetcher is fine; silently having none is not.
 if [ "$(admin_conf_fetchers | wc -l | tr -d ' ')" -lt 3 ]; then
   echo "FAIL: expected at least 3 workflows fetching admin.conf over SSH — the pin-coverage check (4) has gone vacuous" >&2
+  exit 1
+fi
+
+if [ "$(restore_workflows | wc -l | tr -d ' ')" -lt 1 ]; then
+  echo "FAIL: expected at least 1 workflow running scripts/restore-*.sh — the age-key check (4b) has gone vacuous" >&2
   exit 1
 fi
 
