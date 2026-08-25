@@ -68,10 +68,11 @@ type APIKeyRevoker interface {
 	RevokeAPIKey(context.Context, string, string) error
 }
 
-// RefreshIdempotencyStore collapses concurrent refreshes across API replicas.
-// The implementation owns the transaction and advisory lock; mint is invoked
-// exactly once on a cache miss and its successful response is returned
-// byte-for-byte to every duplicate caller.
+// RefreshIdempotencyStore serializes rotating-token refreshes across API
+// replicas. The implementation owns the transaction and advisory lock. A
+// duplicate on the same replica may receive cached response bytes; a duplicate
+// on another replica may re-mint within Hydra's rotation grace period so live
+// credentials never need to be persisted in the control-plane database.
 type RefreshIdempotencyStore interface {
 	IdempotentCLIRefresh(
 		context.Context,

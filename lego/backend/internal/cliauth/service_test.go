@@ -218,7 +218,7 @@ func waitForAdvisoryWaiter(t *testing.T, pool *pgxpool.Pool, token string) {
 	t.Fatal("second refresh never waited on the token's advisory lock")
 }
 
-func TestRefreshIdempotencyAcrossReplicas(t *testing.T) {
+func TestRefreshSerializationAcrossReplicas(t *testing.T) {
 	poolA, uri := openRefreshTestPool(t)
 	poolB, err := pgxpool.New(context.Background(), uri)
 	if err != nil {
@@ -229,18 +229,15 @@ func TestRefreshIdempotencyAcrossReplicas(t *testing.T) {
 
 	token := fmt.Sprintf("refresh-concurrent-%d", time.Now().UnixNano())
 	var calls atomic.Int32
-	var liveAccess atomic.Value
 	entered := make(chan struct{})
 	release := make(chan struct{})
 	var enteredOnce sync.Once
 	var releaseOnce sync.Once
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		n := calls.Add(1)
-		// Model Hydra's rotating-family behavior: every mint replaces the one
-		// access token that remains live. If both requests reached this handler,
-		// the first response would immediately hold a revoked sibling token.
+		// Model Hydra's rotation grace: after serialization, a different replica
+		// may reuse the inbound token and receive a distinct live token pair.
 		access := fmt.Sprintf("access-%d", n)
-		liveAccess.Store(access)
 		enteredOnce.Do(func() { close(entered) })
 		if n == 1 {
 			<-release
@@ -255,35 +252,45 @@ func TestRefreshIdempotencyAcrossReplicas(t *testing.T) {
 
 	muxA := refreshMux(upstream.URL, store.NewPGStore(poolA))
 	muxB := refreshMux(upstream.URL, store.NewPGStore(poolB))
-	results := make(chan refreshResult, 2)
-	go func() { results <- issueRefresh(muxA, token) }()
+	resultA := make(chan refreshResult, 1)
+	resultB := make(chan refreshResult, 1)
+	go func() { resultA <- issueRefresh(muxA, token) }()
 	select {
 	case <-entered: // replica A holds the transaction lock while Hydra is in flight.
 	case <-time.After(5 * time.Second):
 		t.Fatal("first refresh did not reach Hydra")
 	}
-	go func() { results <- issueRefresh(muxB, token) }()
+	go func() { resultB <- issueRefresh(muxB, token) }()
 	waitForAdvisoryWaiter(t, poolA, token)
 	releaseOnce.Do(func() { close(release) })
 
-	first, second := awaitRefreshResult(t, results), awaitRefreshResult(t, results)
+	first, second := awaitRefreshResult(t, resultA), awaitRefreshResult(t, resultB)
 	if first.status != http.StatusOK || second.status != http.StatusOK {
 		t.Fatalf("statuses = %d/%d, want 200/200; bodies %q / %q", first.status, second.status, first.body, second.body)
 	}
-	if first.body != second.body {
-		t.Fatalf("replicas returned different token pairs: %q / %q", first.body, second.body)
+	if first.body == second.body {
+		t.Fatalf("replicas returned the same token pair %q, want a grace-window re-mint", first.body)
 	}
-	if got := calls.Load(); got != 1 {
-		t.Fatalf("Hydra calls = %d, want 1", got)
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("Hydra calls = %d, want 2 serialized cross-replica mints", got)
 	}
-	var pair struct {
-		AccessToken string `json:"access_token"`
+	accessToken := func(name string, result refreshResult) string {
+		t.Helper()
+		var pair struct {
+			AccessToken string `json:"access_token"`
+		}
+		if err := json.Unmarshal([]byte(result.body), &pair); err != nil {
+			t.Fatalf("decode %s response: %v", name, err)
+		}
+		if pair.AccessToken == "" {
+			t.Fatalf("%s response has no access token: %q", name, result.body)
+		}
+		return pair.AccessToken
 	}
-	if err := json.Unmarshal([]byte(first.body), &pair); err != nil {
-		t.Fatal(err)
-	}
-	if pair.AccessToken == "" || liveAccess.Load() != pair.AccessToken {
-		t.Fatalf("returned access token %q is not Hydra's one live token %q", pair.AccessToken, liveAccess.Load())
+	firstAccess := accessToken("replica A", first)
+	secondAccess := accessToken("replica B", second)
+	if firstAccess == secondAccess {
+		t.Fatalf("replicas returned the same access token %q, want distinct grace-window mints", firstAccess)
 	}
 	var storedHash, storedBody []byte
 	tokenHash := sha256.Sum256([]byte(token))
@@ -294,21 +301,32 @@ func TestRefreshIdempotencyAcrossReplicas(t *testing.T) {
 	).Scan(&storedHash, &storedBody); err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(storedHash, tokenHash[:]) || bytes.Contains(storedBody, []byte(token)) {
-		t.Fatalf("stored refresh identity is not hash-only: hash matches=%v raw token in response=%v",
-			bytes.Equal(storedHash, tokenHash[:]), bytes.Contains(storedBody, []byte(token)))
+	if !bytes.Equal(storedHash, tokenHash[:]) || len(storedBody) != 0 {
+		t.Fatalf("stored refresh marker is not hash-only: hash matches=%v response bytes=%d",
+			bytes.Equal(storedHash, tokenHash[:]), len(storedBody))
 	}
 
-	// A fresh service and fresh pool model a bex-api restart: the durable row,
-	// not process memory, must still answer with the identical bytes.
+	// A duplicate on replica B is served from that replica's local cache and
+	// therefore remains byte-identical without another Hydra call.
+	sameReplica := issueRefresh(muxB, token)
+	if sameReplica != second || calls.Load() != 2 {
+		t.Fatalf("same-replica duplicate = %+v calls=%d, want %+v calls=2", sameReplica, calls.Load(), second)
+	}
+
+	// A fresh service and fresh pool model a bex-api restart. Its local cache is
+	// empty, so the durable marker permits one grace-window re-mint without
+	// exposing any prior response bytes from Postgres.
 	poolC, err := pgxpool.New(context.Background(), uri)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer poolC.Close()
 	afterRestart := issueRefresh(refreshMux(upstream.URL, store.NewPGStore(poolC)), token)
-	if afterRestart != first || calls.Load() != 1 {
-		t.Fatalf("after restart = %+v calls=%d, want %+v calls=1", afterRestart, calls.Load(), first)
+	if afterRestart.status != http.StatusOK || afterRestart.body == first.body || afterRestart.body == second.body || calls.Load() != 3 {
+		t.Fatalf("after restart = %+v calls=%d, want a third successful mint", afterRestart, calls.Load())
+	}
+	if restartedAccess := accessToken("restarted replica", afterRestart); restartedAccess == firstAccess || restartedAccess == secondAccess {
+		t.Fatalf("restarted replica returned reused access token %q, want a fresh grace-window mint", restartedAccess)
 	}
 }
 
