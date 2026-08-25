@@ -552,6 +552,18 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "尚无结果。",
     description: "Validate panel placeholder before first run",
   },
+  "blueprints.stateCreated": {
+    message: "已排队",
+    description: "Sync-run state: the run has been created but has not started.",
+  },
+  "blueprints.stateRunning": {
+    message: "进行中",
+    description: "Sync-run state: the run is in progress.",
+  },
+  "blueprints.stateSuccess": {
+    message: "成功",
+    description: "Sync-run state: the run completed successfully.",
+  },
 };
 
 export default zhBlueprints;

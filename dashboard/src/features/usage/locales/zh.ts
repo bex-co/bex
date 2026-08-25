@@ -339,6 +339,10 @@ const zhUsage: Record<string, TranslationEntry> = {
     description:
       "Credit applied to the current period and the remaining amount due",
   },
+  "usage.chargesDescriptionPending": {
+    message: "本期累计用量，按 bex 价目表计价。",
+    description: "Charges card description while the invoiced total is still loading; deliberately states only what is already true, without claiming the figure is or is not a Stripe invoice.",
+  },
 };
 
 export default zhUsage;

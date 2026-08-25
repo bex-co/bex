@@ -1,20 +1,36 @@
 # w10 · m11 — Billing charges honesty + blueprint sync diagnostics
 
-**Worker:** worker10 **Goal:** the Billing and Blueprints dashboard surfaces stop asserting things that aren't true — the Charges card never flashes a contradictory claim about whether a number is an estimate or a real Stripe invoice total, a failed blueprint sync tells the user why it failed instead of a dead-end red badge, and every Blueprint Sync History row renders with consistent badge styling for the state the backend actually emits. **Status:** todo
+**Worker:** worker10 **Goal:** the Billing and Blueprints dashboard surfaces stop asserting things that aren't true — the Charges card never flashes a contradictory claim about whether a number is an estimate or a real Stripe invoice total, a failed blueprint sync tells the user why it failed instead of a dead-end red badge, and every Blueprint Sync History row renders with consistent badge styling for the state the backend actually emits. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                     | est | depends_on           |
 | ---- | -------------------------------------------------------------------------- | --- | --------------------- |
-| t001 | Charges card must not assert Estimate/Invoiced copy before data resolves   | 30m | —                     |
-| t002 | Persist the real error when a blueprint sync fails                         | 40m | —                     |
-| t003 | Expose sync error message via GraphQL, REST, and MCP                       | 30m | t002                  |
-| t004 | Surface the sync error message in the dashboard's Sync History             | 35m | t003                  |
-| t005 | Fix BlueprintStatusBadge's fallback for sync-run states (success/running)  | 25m | —                     |
-| t006 | Render parity check (REST/GraphQL/MCP + dashboard)                         | 30m | t001, t003, t004, t005 |
-| t007 | Simplify                                                                    | 20m | t006                  |
-| t008 | Test coverage                                                               | 40m | t006                  |
-| t009 | Closeout                                                                    | 10m | t008                  |
+| t001 | Charges card must not assert Estimate/Invoiced copy before data resolves   | 30m | — | — **DONE**
+| t002 | Persist the real error when a blueprint sync fails                         | 40m | — | — **DONE**
+| t003 | Expose sync error message via GraphQL, REST, and MCP                       | 30m | t002 | — **DONE**
+| t004 | Surface the sync error message in the dashboard's Sync History             | 35m | t003 | — **DONE**
+| t005 | Fix BlueprintStatusBadge's fallback for sync-run states (success/running)  | 25m | — | — **DONE**
+| t006 | Render parity check (REST/GraphQL/MCP + dashboard)                         | 30m | t001, t003, t004, t005 | — **DONE**
+| t007 | Simplify                                                                    | 20m | t006 | — **DONE**
+| t008 | Test coverage                                                               | 40m | t006 | — **DONE**
+| t009 | Closeout                                                                    | 10m | t008 | — **DONE**
+
+## Closeout (2026-08-25)
+
+**Board/code drift found on pickup, and worth recording: t002–t004 were already implemented** by another session before this milestone was picked up. Migration `0098_blueprint_sync_error`, `BlueprintSync.ErrorMessage`, the widened `UpdateBlueprintSync(…, errMsg *string)`, both discarded-error call sites in `blueprint.go` (now passing `errMsgPtr(applyErr)`), the `BlueprintSyncView.ErrorMessage` field, the GraphQL resolver (`graphql.go:759`), and the dashboard's tooltip (`blueprints.$blueprintId.tsx:447`) all existed and were verified working. The board still listed them `todo`. Nothing was re-implemented; the tasks are marked done because the behavior they specify is real.
+
+**t001 (Charges honesty) — fixed.** `invoicedUsd == null` conflated two different facts: "this workspace has no Stripe pricing" and "the number has not arrived yet". The card read the second as the first, asserting *"An estimate, not an invoice."* and then contradicting itself moments later. It now stays neutral while the figure resolves — saying only what is already true, "Accrued so far this period, priced from the bex rate sheet" — and settles on exactly one claim. On a page about real money, a beat of silence beats a contradiction.
+
+**t005 (badge vocabularies) — fixed.** The badge serves two backend vocabularies and only `Blueprint.Status` was mapped, so `BlueprintSync.State`'s `success`/`running`/`created` fell through to a label whose message is literally `"{status}"` — plain lowercase text beside a styled red "Error" in the same column. All values from both vocabularies now map to an intentional variant and label; `active` was kept deliberately, since other callers may still pass it.
+
+**t006 (parity).** REST, GraphQL and MCP all serialize the *same* `BlueprintSyncView`, so `errorMessage` is consistent across them by construction rather than by three parallel definitions — MCP's `listBlueprintSyncsResult` wraps `[]BlueprintSyncView` directly. Verified, no drift.
+
+**t007 (simplify).** Nothing to extract: the two fixes are a conditional and two map entries. Deliberately did *not* collapse the badge's two vocabularies into one map keyed by union type — they are genuinely two different backend enums that happen to share a renderer, and merging them would hide that.
+
+**t008 (coverage).** Three tests pin the Charges card's three states (loading, settled-estimate, settled-invoiced) and assert the contradictory copy is absent while loading. Nine pin the badge: every value of both vocabularies renders a real label (not the raw value, not blank), failure keeps `bg-destructive` while success does not, and an unknown value still degrades visibly rather than vanishing. The badge assertions are written against the backend's own constant lists, so they fail the moment a real value stops being mapped.
+
+Gates: dashboard 367 files / 2628 tests, typecheck and lint clean, `make lint` 0 issues across all four Go modules.
 
 ## Definition of done
 
