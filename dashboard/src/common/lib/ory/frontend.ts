@@ -1,5 +1,6 @@
 import { Configuration, FrontendApi } from "@ory/client-fetch";
 import { KRATOS_PUBLIC_URL, KRATOS_SSR_URL } from "./config";
+import { sanitizedFlowFetch } from "./sanitize-flow-nodes";
 
 /**
  * Creates a `FrontendApi` client for Kratos's self-service flow API.
@@ -22,6 +23,9 @@ export function createFrontendApi(cookie?: string): FrontendApi {
         Accept: "application/json",
         ...(cookie ? { Cookie: cookie } : {}),
       },
+      // Kratos sometimes answers two-step registration submits with duplicated
+      // ui nodes (→ duplicate buttons) — see sanitize-flow-nodes.ts.
+      fetchApi: sanitizedFlowFetch,
     }),
   );
 }

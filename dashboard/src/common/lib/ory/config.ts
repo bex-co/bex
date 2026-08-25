@@ -4,6 +4,7 @@ import type {
   OryFlowComponentOverrides,
 } from "@ory/elements-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { sanitizedFlowFetch } from "./sanitize-flow-nodes";
 
 /** Ory Kratos public API base URL, reachable from the browser (docs/ADR012-auth.md). */
 export const KRATOS_PUBLIC_URL =
@@ -30,6 +31,9 @@ export const oryConfig: OryClientConfiguration = {
       // Kratos and this dashboard are deployed under different hosts, so
       // cross-origin requests need the session/CSRF cookies forwarded.
       credentials: "include",
+      // Elements' own flow submits (which it re-renders inline) hit the same
+      // duplicate-ui-node Kratos quirk — see sanitize-flow-nodes.ts.
+      fetchApi: sanitizedFlowFetch,
     },
   },
   project: {
