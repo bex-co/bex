@@ -82,6 +82,49 @@ This is a distinct defect from t001's (which only removes one specific rejection
 
 **Deploy-lag note (this run):** t001's fix landed on `origin/main` as `2cae5f3b` ("fix(operator): stop the F7 protected-secret guard rejecting an App's own clone/pull secret (w6/m97)") during this run, with its `deploy.yml` run still `in_progress` at observation time. Not yet live: `beancount-forum`/`beancount-cms-v2`/`tianpan-v4-web`/`eden-cms-v2`/`block-eden-mono` all still read `phase: "Failed"` via REST as of this run (checked read-only, nothing touched).
 
+### Addendum (2026-08-26, 17th `/qa-find-bugs` run): fix still NOT live — re-probed, not just re-read CI
+
+This run's brief was specifically to check whether `2cae5f3b` had reached production since the 16th run flagged its `deploy.yml` as still `in_progress`. It has not, and the CI trail shows why the earlier "still building" read was optimistic — the run for that exact commit went on to **fail**, and no successful, non-superseded deploy has landed since:
+
+- `gh run view 33004188902` (the deploy run **for `2cae5f3b` itself**): `test-dashboard / dashboard` failed at its `typecheck + lint + test` step, so `build-and-deploy` never ran (shows `0s`, skipped). This commit's own CI run never produced an image.
+- The one run that *did* reach `build-and-deploy` and go green after `2cae5f3b` landed (`32940131826`, for the earlier commit `92a1f66d`, `conclusion: success`) carries the annotation `superseded by a newer run — images built but intentionally not pinned; skipping the rollout` — its green checkmark does **not** mean a rollout happened. `check-supersession` intentionally no-ops the pin/rollout step when a newer commit already pushed.
+- Corroborated independently by the `chore(deploy): pin platform images to <sha> [skip ci]` trail (the pipeline's own record of what actually got rolled out): the newest one on `main` is `e15c7d51`, pinning to `34c75ae1` — a commit several pushes **before** `92a1f66d`, `fa7b9993`, and `2cae5f3b`. No pin commit exists for any of them.
+- A fresh `deploy.yml` run for the current tip of `origin/main` (`33007338010`, commit `8bbc8763`, which has `2cae5f3b` as an ancestor) was mid-flight at observation time (`build-and-deploy` in progress, all four test jobs green, `check-supersession` passed) — this is the one to watch; if it completes without being superseded, it would be the first real rollout carrying the fix.
+- Local `main` is behind `origin/main` by 2 commits (`8bbc8763`, `6dec02f9`) as of this run — noted for whoever ships next, not acted on here (no merge/rebase performed).
+
+**Live re-probe (not just CI reading) — bug reproduces byte-for-byte, unchanged:** created a fresh Web Service `qa-20260826-m97` (`srv-da7km9apjh2s73adlve0`) from `bex-co/bex-hello-go-live` (GitHub-connection-covered repo, same repro shape as the original filing). First deploy `dep-da7km9apjh2s73adlveg` failed in ~2.7s:
+
+```
+GraphQL: query { deploy(serviceId:"srv-da7km9apjh2s73adlve0", deployId:"dep-da7km9apjh2s73adlveg") { id status failureReason commitId createdAt finishedAt } }
+=> {"data":{"deploy":{"commitId":"7ad20c989b805b440a88ce2d61b7c283bd44bf2c","createdAt":"2026-08-26T20:23:01.605795Z",
+    "failureReason":"app references protected operator Secret \"tea-d98210cbbpdc73dcrkvg-qa-20260826-m97-clone\" which tenant workloads may not mount (codex F1)",
+    "finishedAt":"2026-08-26T20:23:04.301946Z","id":"dep-da7km9apjh2s73adlveg","status":"update_failed"}}}
+
+REST: GET /v1/services/srv-da7km9apjh2s73adlve0/deploys/dep-da7km9apjh2s73adlveg
+=> byte-identical failureReason — REST and GraphQL still agree post-(un-deployed)-fix.
+```
+
+Evidence: `.playwright-mcp/qa-m97-verify-1-still-failing.png`. Cleaned up: service deleted (`phase: "Deleting"` confirmed via REST immediately after; standard async teardown, not re-checked to terminal state).
+
+**5 standing services re-checked, read-only, nothing touched:**
+
+| service | id | phase | latest deploy on record | note |
+| --- | --- | --- | --- | --- |
+| beancount-forum | `srv-d9nqg9dcavls73fp8m2g` | `Failed` (unchanged) | `live`, 2026-08-21T21:39:44Z, no new deploy | exact original signature persists — expected, fix not deployed |
+| beancount-cms-v2 | `srv-d9bj8s3eg85c7390eb9g` | `Failed` (unchanged) | new: `dep-da7k9qfkh5kc73fbqu3g` created 2026-08-26T19:56:25Z, status **`created`**, still unresolved ~27min old at observation | a new redeploy attempt appeared since the 15th/16th run's snapshot (that one was `live`, 2026-08-25T21:05:19Z) and is stuck **before even reaching `queued`** — a status value t008's write-up didn't discuss; too fresh (<35min) to compare against the `BuildGateTimeout` prediction; **flagged Unverified, not folded into t008's traced mechanism** |
+| tianpan-v4-web | `srv-da40m1qii7bs73drbqlg` | `Failed` (unchanged) | `live`, 2026-08-24T07:33:19Z, no new deploy | unchanged from prior runs — expected |
+| eden-cms-v2 | `srv-d9e40ei9086p3l1jri30` | `Failed` (unchanged) | `dep-da74dkb7o1fc73av6org`, status **still `queued`**, now ~18.5h old (created 2026-08-26T01:52:17Z, first seen by the 15th run) | **contradicts t008's own timing prediction** — t008 traced this exact stuck-`queued` mechanism as resolving to `canceled` once `BuildGateTimeout` (35min) trips, but this row has sat `queued` for ~18.5h without flipping. Either the timeout only fires on active reconcile traffic this App isn't getting, or there's a second mechanism keeping it `queued` indefinitely that t008 hasn't captured. **Flagged Unverified — do not assume t008's fix (once written) automatically covers this without re-checking against this specific row** |
+| block-eden-mono | `srv-d9ndt8hmcglc739fkp50` | `Failed` (unchanged) | prior redeploy `dep-da79a5hgoibs73ah0c20` did resolve `canceled` after ~35m (07:26:14Z→08:01:20Z, matches t008's prediction exactly) — but a **further new** redeploy attempt `dep-da7kh8vkh5kc73fbquqg` (created 2026-08-26T20:12:19Z) is now stuck at `created`, ~11min old at observation | this service keeps auto-redeploying (repo pushes) and re-tripping the guard each time; the newest attempt is too fresh to compare against the timeout; also shown as "eden-dash-v3" in the workspace's Ungrouped Resources list — same `srv-` id, display name differs from the milestone's original naming (not investigated further this run, not folded into this bug) |
+
+None of the 5 self-healed — expected, since the fix is confirmed not yet deployed. No service was restarted, redeployed, or otherwise touched to produce or observe these states; all data is from `GET`/`query` reads.
+
+**t007 and t008 re-confirmed unimplemented in code (matches their `status: todo` frontmatter, nothing to correct):**
+
+- t008: `lego/operator/internal/controller/app_controller.go:499` (`rejectProtectedSecretRefs` call) still returns before `prepareAppReleaseDecision` at line 521 — the exact ordering t008.md traces as the root cause. `lego/backend/internal/store/reconciler.go:1036-1089` (`supersededDeployStatus`) is byte-identical to what t008.md quotes. No fix landed.
+- t007: `lego/backend/internal/store/reconciler.go:1255-1280` (`observedServiceStateFor`'s `ConditionFalse` branch) still unconditionally sets `obs.ReasonCode = EventReasonReadinessFailed` for any `condition.Reason` not in the three-item exclusion list (`Suspended`, `AutoHibernated`, `RolloutSettling`) — `ProtectedSecretReference` still collapses into the generic readiness-failed story. No fix landed.
+
+**Bottom line for this run: no task's status changes.** t001-t005 remain done (code-correct); t006/t007/t008 remain open/blocked exactly as before. The only new fact is confirmation — via live re-probe, not just reading CI — that the fix genuinely has not reached production yet, plus two new "stuck at `created`" data points (`beancount-cms-v2`, a fresh `block-eden-mono` attempt) and one timing anomaly (`eden-cms-v2`'s 18.5h-old `queued` row outliving the 35-minute timeout t008 predicts) worth a look when t008 is implemented.
+
 ## Tasks (in order)
 
 | id | title | est | depends_on | status |
