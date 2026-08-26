@@ -1,0 +1,67 @@
+# w6 · m97 — Stop the codex-security F7 protected-secret guard from self-rejecting every App's own clone/pull secret
+
+**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** todo
+
+## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 5th run of the day)
+
+Creating a Web Service in the QA workspace from `bex-co/bex` (picked from the dashboard's "GitHub" tab, the default/primary source method) failed its very first deploy in under a second:
+
+```
+GraphQL: query { deploy(serviceId:"srv-da73vbj7o1fc73av6na0", deployId:"dep-da73vbj7o1fc73av6nag") { id status failureReason commitId createdAt finishedAt } }
+=> {"data":{"deploy":{"commitId":"b2809a232297f58dc29a549feb3e55eff5edeea1","createdAt":"2026-08-26T01:21:50.169897Z",
+    "failureReason":"app references protected operator Secret \"tea-d98210cbbpdc73dcrkvg-qa-20260825-web-clone\" which tenant workloads may not mount (codex F1)",
+    "finishedAt":"2026-08-26T01:21:51.577357Z","id":"dep-da73vbj7o1fc73av6nag","status":"update_failed"}}}
+
+REST: GET /v1/services/srv-da73vbj7o1fc73av6na0/deploys/dep-da73vbj7o1fc73av6nag
+=> byte-identical failureReason — REST and GraphQL agree (not the bug; confirms the two surfaces are consistent).
+```
+
+Evidence: `.playwright-mcp/qa-clonesecret-1-deploy-failed.png` (deploy detail showing the instant failure, 0s duration, no real build ever ran).
+
+**Root cause.** `lego/operator/internal/controller/app_controller.go:1279`'s `rejectProtectedSecretRefs` (the codex F1 guard, extended by `9b942c46` "codex-security 2026-08 F7" to also cover `spec.CloneSecret`/`spec.ExternalRegistryPullSecret`) refuses any App whose secret-name fields resolve to a Secret carrying `LabelProtectedFromTenantMount`. But the platform's **own** deploy pipeline mints and sets `spec.CloneSecret` to a Secret it creates for exactly this purpose: `lego/backend/internal/apps/clonesecret.go:52` `cloneSecretName(app) = app + "-clone"`, written by `writeCloneSecret` (`clonesecret.go:85`) which **always** stamps `LabelProtectedFromTenantMount` on it (by design — Round-11 #1, so no *other* App in the namespace can mount it). The F7 guard cannot distinguish "an App naming its own deterministically-derived clone Secret" from "an App naming some other protected Secret to exfiltrate it," so it now rejects both — the operator refuses to build any workload for an App that carries the exact Secret reference the backend put there on purpose.
+
+**Confirmed live, not deploy-lag.** The prior three hunts' working assumption ("production is stuck on `717143ae`, `deploy.yml` red since 2026-08-24 21:43Z") does not mean nothing newer ever reached prod: this deploy's own commit message — `"chore(deploy): pin platform images to 032263963de5 [skip ci]"` (`032263963de5` = `03226396`) — is the pipeline's own auto-generated pin, proof the operator/backend images were rebuilt and pushed past that commit even though the **overall** `deploy.yml` run for later commits shows `cancelled`/`failure` (a later, unrelated stage — the opensandbox-controller build, tracked in `w6/040` — fails after the platform images already synced). `git merge-base --is-ancestor 9b942c46 03226396` confirms the F7 commit is an ancestor of the pinned commit, and `717143ae`'s own `rejectProtectedSecretRefs` (pre-F7) provably lacks the `CloneSecret`/`ExternalRegistryPullSecret` checks — so this is a genuine live production regression introduced by `9b942c46`, not something waiting on a deploy.
+
+**Control case, live-verified.** A second service built from `https://github.com/octocat/Hello-World` (a repo the workspace's GitHub App connection does **not** cover) reached `build_in_progress` with no rejection at all — `mintCloneSecret` only fires when `GitHub.CloneToken` reports the repo belongs to the connection, so `spec.CloneSecret` stays empty and the guard never trips. This isolates the defect to `spec.CloneSecret`/`spec.ExternalRegistryPullSecret` specifically, not the guard's other fields (`envFromSecret(s)`, `filesFromSecrets`, per-var `secretKeyRef`, the two pending annotations), which remain correctly protective. Evidence: `.playwright-mcp/qa-clonesecret-2-control-build-in-progress.png`.
+
+**Exhaustive blast radius — every call site that sets `spec.CloneSecret`, all four found by grep, all hit by the same bug:**
+
+| call site | trigger |
+| --- | --- |
+| `lego/backend/internal/apps/service.go:1979` | `CreateApp` (first create) |
+| `lego/backend/internal/apps/service.go:2665` (`redeployFetched`) | signed-webhook push redeploy |
+| `lego/backend/internal/apps/deploy.go:2652` | blueprint-sync-triggered redeploy |
+| `lego/backend/internal/deploys/service.go:477` (`triggerFetched`) | manual deploy, deploy hook, rollback trigger |
+
+`triggerFetched`/`rejectProtectedSecretRefs` are shared by every resource `Type` that can carry `spec.Repo` (web, private, background worker, cron job, static site) — this is not a web-service-only bug. **Every** create/redeploy/manual-deploy/deploy-hook/rollback/blueprint-sync of **any** resource type, from **any** repo the workspace's GitHub App covers, fails 100% of the time (not intermittently — the guard runs before any build attempt).
+
+**A sibling manifestation exists, reasoned from code but not live-reproduced this run (no registry credential was configured in the QA workspace — flagged Unverified):** `lego/backend/internal/registrycreds/pullsecret.go:48` `pullSecretName(appName) = appName + "-registry-pull"`, stamped with the same `LabelProtectedFromTenantMount` at line 153, set into `spec.ExternalRegistryPullSecret` by `lego/backend/internal/apps/pullsecret.go:65` `ensureExternalRegistryPullSecret` — the exact same self-reference pattern, guarded by the exact same denylist entry the F7 commit added. Any App with an image-backed source or a Dockerfile build bound to a stored registry credential should reproduce an analogous instant `update_failed`.
+
+**No existing test caught this.** `lego/operator/internal/controller/protected_secret_test.go`'s `TestRejectProtectedSecretRefs` only exercises the malicious case (`a.Spec.CloneSecret = "bex-tenant-postgres"`, an unrelated pre-existing protected Secret) — it never constructs the legitimate self-referential case (`a.Spec.CloneSecret = cloneSecretName(a.Name)`) and asserts it is accepted. The control case was never verified as hard as the failing one.
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Fix `rejectProtectedSecretRefs`: allow an App's own deterministic `<app>-clone`/`<app>-registry-pull` self-reference, keep every other protected-Secret reference (including another App's own clone/pull secret in the same namespace) refused | 30m | — |
+| t002 | Regression tests: self-reference accepted for both `CloneSecret` and `ExternalRegistryPullSecret`; the existing malicious-case tests (arbitrary protected Secret, and — new — a *different* App's own `<other>-clone` name) still refused; exercise via the 4 enumerated call sites' shared code path | 40m | t001 |
+| t003 | Render parity | 20m | t002 |
+| t004 | Simplify | 15m | t003 |
+| t005 | Test coverage | 20m | t004 |
+| t006 | Closeout | 10m | t005 |
+
+## Definition of done
+
+- A fresh App (any of web/private/background-worker/cron/static-site) created from a repo covered by the workspace's GitHub connection reaches `build_in_progress` (never an instant `update_failed` naming its own `-clone` Secret) — live-verifiable with the exact GraphQL query used in this hunt: `deploy(serviceId, deployId) { status failureReason }`.
+- The same live check for a service bound to a stored registry credential (image-backed or Dockerfile-build) does not fail purely for carrying its own `<app>-registry-pull` Secret name in `spec.externalRegistryPullSecret`.
+- `TestRejectProtectedSecretRefs` and `TestRejectConfiguredOperationalSecretNames` (`lego/operator/internal/controller/protected_secret_test.go`) pass, extended with: (a) an App's own clone-secret self-reference is accepted, (b) an App's own pull-secret self-reference is accepted, (c) App `web` naming App `other`'s clone secret (`other-clone`) in the **same** namespace is still refused — the fix must not become "any name ending in `-clone` is fine."
+- REST (`GET /v1/services/{id}/deploys/{id}`) and GraphQL (`deploy(...).failureReason`) continue to agree byte-for-byte post-fix (already confirmed identical pre-fix this hunt — the bug is not a REST/GraphQL divergence, don't introduce one).
+- The dashboard's Deploy detail page and Events feed stop showing a permanent "Failed" badge / "codex F1" reason for these legitimate deploys.
+
+## Source + Goal linkage
+
+- **Source:** live `/qa-find-bugs` hunt of `dashboard.bex.co`, 5th run of the day, 2026-08-25/26. Evidence: `.playwright-mcp/qa-clonesecret-1-deploy-failed.png`, `.playwright-mcp/qa-clonesecret-2-control-build-in-progress.png`, plus the exact GraphQL/REST request-response pairs quoted above (workspace `tea-d98210cbbpdc73dcrkvg`, services `srv-da73vbj7o1fc73av6na0` and `srv-da74220f0ecs73914dj0`, both deleted during cleanup).
+- **Goal linkage:** [ADR004](../../../docs/ADR004-app-deployment.md) (deploy is the platform's single most fundamental promise) and [ADR019](../../../docs/ADR019-infra-credentials.md) (governs exactly the clone-token and registry-credential Secrets this guard misfires on). This restores the codex-security 2026-08 F1-F11 round's (`9b942c46`) own intended guarantee without reopening the exfiltration hole F7 closed.
+- **Expected outcome:** creating, redeploying, manually deploying, using a deploy hook on, rolling back, or blueprint-syncing a Web Service/Private Service/Background Worker/Cron Job/Static Site from any GitHub-connection-covered repo — or any service bound to a stored registry credential — succeeds instead of failing instantly and unconditionally.
+- **Why now:** live, currently-reproducing **blocker** on production affecting the single most common "create/redeploy a service" journey for every repo the workspace's GitHub App covers (including bex-co's own dogfood repos), with zero user-facing workaround (Public Git URL only sidesteps it for repos the connection does *not* cover) and a 100% failure rate (not intermittent — the guard runs before any build attempt, so no retry ever succeeds). Self-inflicted: the backend's own deploy pipeline creates the exact Secret reference the operator then refuses.
+- **Render parity task included:** yes (t003) — the failure already surfaces identically over REST and GraphQL (confirmed byte-for-byte this hunt); the fix must preserve that agreement, and the dashboard's Deploy/Events views must stop misreporting a legitimate deploy as permanently Failed.
