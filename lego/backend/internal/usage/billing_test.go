@@ -45,9 +45,12 @@ func (f *fakeBillingReader) BillingFor(_ context.Context, customerID string, _, 
 
 func sampleBilling() *billing.Billing {
 	return &billing.Billing{
-		CurrentCost: &billing.Amount{AmountUSD: "12.34", Currency: "USD", PeriodStart: "2026-07-01T00:00:00Z", PeriodEnd: "2026-07-20T00:00:00Z"},
+		// A period where credit absorbed part of the charge — the shape that
+		// broke when one field had to be both the charge and the amount due
+		// (w6/m98), so every surface test carries it.
+		CurrentCost: &billing.Amount{AmountUSD: "12.34", CreditsAppliedUSD: "10.00", AmountDueUSD: "2.34", Currency: "USD", PeriodStart: "2026-07-01T00:00:00Z", PeriodEnd: "2026-07-20T00:00:00Z"},
 		Invoices: []billing.Invoice{
-			{ID: "inv_1", Status: "FINALIZED", AmountUSD: "40.00", Currency: "USD", PeriodStart: "2026-06-01T00:00:00Z", PeriodEnd: "2026-07-01T00:00:00Z"},
+			{ID: "inv_1", Status: "FINALIZED", AmountUSD: "40.00", CreditsAppliedUSD: "25.00", AmountDueUSD: "15.00", Currency: "USD", PeriodStart: "2026-06-01T00:00:00Z", PeriodEnd: "2026-07-01T00:00:00Z"},
 		},
 		Credits: &billing.Credits{
 			AvailableUSD: "25.00", Currency: "USD",
@@ -289,8 +292,17 @@ func TestBillingCrossSurfaceParity(t *testing.T) {
 	if rest.Billing == nil || rest.Billing.CurrentCost.AmountUSD != "12.34" || len(rest.Billing.Invoices) != 1 {
 		t.Fatalf("REST billing = %+v", rest.Billing)
 	}
+	// Value correctness, not just agreement: three surfaces reporting the same
+	// wrong number is exactly how the netted-to-zero total went unnoticed. The
+	// gross charge less the credit applied must be what is actually due.
+	if cur := rest.Billing.CurrentCost; cur.CreditsAppliedUSD != "10.00" || cur.AmountDueUSD != "2.34" {
+		t.Fatalf("REST currentCost = %+v, want the credit and due figures carried separately", cur)
+	}
 	if rest.Billing.Invoices[0].Status != "FINALIZED" || rest.Billing.Invoices[0].AmountUSD != "40.00" {
 		t.Fatalf("REST invoice = %+v", rest.Billing.Invoices[0])
+	}
+	if inv := rest.Billing.Invoices[0]; inv.CreditsAppliedUSD != "25.00" || inv.AmountDueUSD != "15.00" {
+		t.Fatalf("REST invoice = %+v, want the credit and due figures carried separately", inv)
 	}
 	if rest.Billing.Credits == nil || rest.Billing.Credits.AvailableUSD != "25.00" || len(rest.Billing.Credits.Grants) != 1 {
 		t.Fatalf("REST credits = %+v", rest.Billing.Credits)
@@ -304,22 +316,26 @@ func TestBillingCrossSurfaceParity(t *testing.T) {
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
 		Context:       ctx,
-		RequestString: `{ usage { billing { currentCost { amountUsd currency } invoices { id status amountUsd } credits { availableUsd currency grants { name remainingUsd expiresAt } } } } }`,
+		RequestString: `{ usage { billing { currentCost { amountUsd creditsAppliedUsd amountDueUsd currency } invoices { id status amountUsd creditsAppliedUsd amountDueUsd } credits { availableUsd currency grants { name remainingUsd expiresAt } } } } }`,
 	})
 	if len(res.Errors) > 0 {
 		t.Fatalf("graphql errors: %v", res.Errors)
 	}
 	gqlBilling := res.Data.(map[string]any)["usage"].(map[string]any)["billing"].(map[string]any)
 	gqlCurrent := gqlBilling["currentCost"].(map[string]any)
-	if gqlCurrent["amountUsd"] != rest.Billing.CurrentCost.AmountUSD {
-		t.Errorf("GraphQL currentCost.amountUsd = %v, REST = %v (surfaces disagree)", gqlCurrent["amountUsd"], rest.Billing.CurrentCost.AmountUSD)
+	if gqlCurrent["amountUsd"] != rest.Billing.CurrentCost.AmountUSD ||
+		gqlCurrent["creditsAppliedUsd"] != rest.Billing.CurrentCost.CreditsAppliedUSD ||
+		gqlCurrent["amountDueUsd"] != rest.Billing.CurrentCost.AmountDueUSD {
+		t.Errorf("GraphQL currentCost = %v, REST = %+v (surfaces disagree)", gqlCurrent, rest.Billing.CurrentCost)
 	}
 	gqlInvoices := gqlBilling["invoices"].([]any)
 	if len(gqlInvoices) != len(rest.Billing.Invoices) {
 		t.Fatalf("GraphQL invoices %d, REST %d", len(gqlInvoices), len(rest.Billing.Invoices))
 	}
 	gqlInv0 := gqlInvoices[0].(map[string]any)
-	if gqlInv0["status"] != rest.Billing.Invoices[0].Status || gqlInv0["amountUsd"] != rest.Billing.Invoices[0].AmountUSD {
+	if gqlInv0["status"] != rest.Billing.Invoices[0].Status || gqlInv0["amountUsd"] != rest.Billing.Invoices[0].AmountUSD ||
+		gqlInv0["creditsAppliedUsd"] != rest.Billing.Invoices[0].CreditsAppliedUSD ||
+		gqlInv0["amountDueUsd"] != rest.Billing.Invoices[0].AmountDueUSD {
 		t.Errorf("GraphQL invoice %v vs REST %+v (surfaces disagree)", gqlInv0, rest.Billing.Invoices[0])
 	}
 	gqlCredits := gqlBilling["credits"].(map[string]any)

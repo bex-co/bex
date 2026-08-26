@@ -137,6 +137,8 @@ describe("useUsage", () => {
           billing: {
             currentCost: {
               amountUsd: "12.34",
+              creditsAppliedUsd: "10.00",
+              amountDueUsd: "2.34",
               currency: "USD",
               periodStart: "2026-07-01T00:00:00Z",
               periodEnd: "2026-07-20T00:00:00Z",
@@ -146,6 +148,8 @@ describe("useUsage", () => {
                 id: "inv_1",
                 status: "FINALIZED",
                 amountUsd: "40.00",
+                // The credit figures are deliberately absent here: a server
+                // that predates them must map to "0.00", never undefined.
                 currency: "USD",
                 periodStart: "2026-06-01T00:00:00Z",
                 periodEnd: "2026-07-01T00:00:00Z",
@@ -173,6 +177,8 @@ describe("useUsage", () => {
     expect(result.current.summary?.billing).toEqual({
       currentCost: {
         amountUsd: "12.34",
+        creditsAppliedUsd: "10.00",
+        amountDueUsd: "2.34",
         currency: "USD",
         periodStart: "2026-07-01T00:00:00Z",
         periodEnd: "2026-07-20T00:00:00Z",
@@ -182,6 +188,8 @@ describe("useUsage", () => {
           id: "inv_1",
           status: "FINALIZED",
           amountUsd: "40.00",
+          creditsAppliedUsd: "0.00",
+          amountDueUsd: "0.00",
           currency: "USD",
           periodStart: "2026-06-01T00:00:00Z",
           periodEnd: "2026-07-01T00:00:00Z",

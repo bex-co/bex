@@ -131,6 +131,7 @@ export function UsagePage() {
               <ChargesCard
                 estimatedCost={summary?.estimatedCost ?? null}
                 invoicedUsd={billing?.currentCost?.amountUsd ?? null}
+                amountDueUsd={billing?.currentCost?.amountDueUsd ?? null}
                 loading={loading}
                 period={period ?? ""}
               />

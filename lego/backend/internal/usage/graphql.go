@@ -128,22 +128,29 @@ var usageCoverageGQLType = graphql.NewObject(graphql.ObjectConfig{
 var billingAmountGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BillingAmount",
 	Fields: graphql.Fields{
-		"amountUsd":   gqlutil.StrField(func(a billing.Amount) any { return a.AmountUSD }),
-		"currency":    gqlutil.StrField(func(a billing.Amount) any { return a.Currency }),
-		"periodStart": gqlutil.StrField(func(a billing.Amount) any { return a.PeriodStart }),
-		"periodEnd":   gqlutil.StrField(func(a billing.Amount) any { return a.PeriodEnd }),
+		// amountUsd is the gross rated charge; creditsAppliedUsd and
+		// amountDueUsd are what credit took off it and what is actually
+		// collected (w6/m98 — one netted field could not say all three).
+		"amountUsd":         gqlutil.StrField(func(a billing.Amount) any { return a.AmountUSD }),
+		"creditsAppliedUsd": gqlutil.StrField(func(a billing.Amount) any { return a.CreditsAppliedUSD }),
+		"amountDueUsd":      gqlutil.StrField(func(a billing.Amount) any { return a.AmountDueUSD }),
+		"currency":          gqlutil.StrField(func(a billing.Amount) any { return a.Currency }),
+		"periodStart":       gqlutil.StrField(func(a billing.Amount) any { return a.PeriodStart }),
+		"periodEnd":         gqlutil.StrField(func(a billing.Amount) any { return a.PeriodEnd }),
 	},
 })
 
 var billingInvoiceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BillingInvoice",
 	Fields: graphql.Fields{
-		"id":          gqlutil.StrField(func(i billing.Invoice) any { return i.ID }),
-		"status":      gqlutil.StrField(func(i billing.Invoice) any { return i.Status }),
-		"amountUsd":   gqlutil.StrField(func(i billing.Invoice) any { return i.AmountUSD }),
-		"currency":    gqlutil.StrField(func(i billing.Invoice) any { return i.Currency }),
-		"periodStart": gqlutil.StrField(func(i billing.Invoice) any { return i.PeriodStart }),
-		"periodEnd":   gqlutil.StrField(func(i billing.Invoice) any { return i.PeriodEnd }),
+		"id":                gqlutil.StrField(func(i billing.Invoice) any { return i.ID }),
+		"status":            gqlutil.StrField(func(i billing.Invoice) any { return i.Status }),
+		"amountUsd":         gqlutil.StrField(func(i billing.Invoice) any { return i.AmountUSD }),
+		"creditsAppliedUsd": gqlutil.StrField(func(i billing.Invoice) any { return i.CreditsAppliedUSD }),
+		"amountDueUsd":      gqlutil.StrField(func(i billing.Invoice) any { return i.AmountDueUSD }),
+		"currency":          gqlutil.StrField(func(i billing.Invoice) any { return i.Currency }),
+		"periodStart":       gqlutil.StrField(func(i billing.Invoice) any { return i.PeriodStart }),
+		"periodEnd":         gqlutil.StrField(func(i billing.Invoice) any { return i.PeriodEnd }),
 	},
 })
 

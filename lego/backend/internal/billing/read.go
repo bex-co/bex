@@ -58,22 +58,45 @@ type CreditGrant struct {
 	ExpiresAt    string `json:"expiresAt,omitempty"`
 }
 
-// Amount is a normalized USD major-unit value over Stripe's invoice period.
+// Amount is a normalized USD major-unit view of one Stripe invoice period.
+//
+// The three money figures are deliberately separate. Under ADR071 credit
+// grants, Stripe's invoice total is already net of credit consumption, so a
+// single field cannot say both what the period cost and what is owed — a
+// workspace whose usage a grant fully covered read "$0.00 month to date"
+// beside a charge tree summing to $74 (w6/m98):
+//
+//   - AmountUSD is the gross rated charge for the period: Stripe's invoice
+//     subtotal, before invoice-level discounts (ADR040 Mode B comps), before
+//     billing credit, and before tax. This is what the charge tree adds up to.
+//   - CreditsAppliedUSD is the billing-credit consumption Stripe applied to
+//     this invoice. Zero for a workspace with no grant.
+//   - AmountDueUSD is what Stripe actually collects, after discounts, credit,
+//     and tax.
+//
+// On the current-period preview these are provisional: Stripe applies credit
+// only at finalization, and the credit shown on a preview or draft invoice can
+// change before then.
 type Amount struct {
-	AmountUSD   string `json:"amountUsd"`
-	Currency    string `json:"currency"`
-	PeriodStart string `json:"periodStart"`
-	PeriodEnd   string `json:"periodEnd"`
+	AmountUSD         string `json:"amountUsd"`
+	CreditsAppliedUSD string `json:"creditsAppliedUsd"`
+	AmountDueUSD      string `json:"amountDueUsd"`
+	Currency          string `json:"currency"`
+	PeriodStart       string `json:"periodStart"`
+	PeriodEnd         string `json:"periodEnd"`
 }
 
-// Invoice is one normalized non-draft Stripe invoice.
+// Invoice is one normalized non-draft Stripe invoice. Its money fields carry
+// the same gross/credit/due split as Amount, for the same reason.
 type Invoice struct {
-	ID          string `json:"id"`
-	Status      string `json:"status"`
-	AmountUSD   string `json:"amountUsd"`
-	Currency    string `json:"currency"`
-	PeriodStart string `json:"periodStart"`
-	PeriodEnd   string `json:"periodEnd"`
+	ID                string `json:"id"`
+	Status            string `json:"status"`
+	AmountUSD         string `json:"amountUsd"`
+	CreditsAppliedUSD string `json:"creditsAppliedUsd"`
+	AmountDueUSD      string `json:"amountDueUsd"`
+	Currency          string `json:"currency"`
+	PeriodStart       string `json:"periodStart"`
+	PeriodEnd         string `json:"periodEnd"`
 }
 
 // BillingFor resolves (without creating) the workspace's Customer and bex
@@ -156,7 +179,7 @@ func (c *StripeClient) creditsFor(ctx context.Context, customerID string) (*Cred
 	if total <= 0 {
 		return nil, nil
 	}
-	available, err := normalizedStripeAmount(total, stripe.CurrencyUSD)
+	available, err := normalizedStripeUSD(total, stripe.CurrencyUSD)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +187,7 @@ func (c *StripeClient) creditsFor(ctx context.Context, customerID string) (*Cred
 	if err != nil {
 		return nil, err
 	}
-	return &Credits{AvailableUSD: available.AmountUSD, Currency: available.Currency, Grants: grants}, nil
+	return &Credits{AvailableUSD: available, Currency: "USD", Grants: grants}, nil
 }
 
 // sumAvailableCreditBalances totals a balance summary's available amounts.
@@ -227,13 +250,13 @@ func (c *StripeClient) activeGrantRemainders(ctx context.Context, customerID str
 		if remaining <= 0 {
 			continue
 		}
-		amount, err := normalizedStripeAmount(remaining, stripe.CurrencyUSD)
+		amount, err := normalizedStripeUSD(remaining, stripe.CurrencyUSD)
 		if err != nil {
 			return nil, fmt.Errorf("stripe: credit grant %s: %w", g.ID, err)
 		}
 		out = append(out, CreditGrant{
 			Name:         g.Name,
-			RemainingUSD: amount.AmountUSD,
+			RemainingUSD: amount,
 			ExpiresAt:    unixOrFallback(g.ExpiresAt, time.Time{}),
 		})
 	}
@@ -262,13 +285,18 @@ func (c *StripeClient) currentInvoice(ctx context.Context, customerID, subscript
 	if err != nil {
 		return nil, fmt.Errorf("stripe: preview invoice for customer %s: %w", customerID, err)
 	}
-	amount, err := normalizedStripeAmount(inv.Total, inv.Currency)
+	gross, creditsApplied, due, err := invoiceFigures(inv)
 	if err != nil {
 		return nil, fmt.Errorf("stripe: preview invoice %s: %w", inv.ID, err)
 	}
-	amount.PeriodStart = unixOrFallback(inv.PeriodStart, fallbackStart)
-	amount.PeriodEnd = unixOrFallback(inv.PeriodEnd, fallbackEnd)
-	return &amount, nil
+	return &Amount{
+		AmountUSD:         gross,
+		CreditsAppliedUSD: creditsApplied,
+		AmountDueUSD:      due,
+		Currency:          "USD",
+		PeriodStart:       unixOrFallback(inv.PeriodStart, fallbackStart),
+		PeriodEnd:         unixOrFallback(inv.PeriodEnd, fallbackEnd),
+	}, nil
 }
 
 func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscriptionID string) ([]Invoice, error) {
@@ -285,17 +313,19 @@ func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscr
 		if inv.Status == stripe.InvoiceStatusDraft {
 			continue
 		}
-		amount, err := normalizedStripeAmount(inv.Total, inv.Currency)
+		gross, creditsApplied, due, err := invoiceFigures(inv)
 		if err != nil {
 			return nil, fmt.Errorf("stripe: invoice %s: %w", inv.ID, err)
 		}
 		out = append(out, Invoice{
-			ID:          inv.ID,
-			Status:      strings.ToUpper(string(inv.Status)),
-			AmountUSD:   amount.AmountUSD,
-			Currency:    amount.Currency,
-			PeriodStart: unixOrFallback(inv.PeriodStart, time.Time{}),
-			PeriodEnd:   unixOrFallback(inv.PeriodEnd, time.Time{}),
+			ID:                inv.ID,
+			Status:            strings.ToUpper(string(inv.Status)),
+			AmountUSD:         gross,
+			CreditsAppliedUSD: creditsApplied,
+			AmountDueUSD:      due,
+			Currency:          "USD",
+			PeriodStart:       unixOrFallback(inv.PeriodStart, time.Time{}),
+			PeriodEnd:         unixOrFallback(inv.PeriodEnd, time.Time{}),
 		})
 	}
 	if err := iter.Err(); err != nil {
@@ -305,15 +335,59 @@ func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscr
 	return out, nil
 }
 
-func normalizedStripeAmount(total int64, currency stripe.Currency) (Amount, error) {
-	if currency != stripe.CurrencyUSD {
-		return Amount{}, fmt.Errorf("unsupported invoice currency %q (bex catalog is USD)", currency)
+// invoiceFigures splits one Stripe invoice into the three figures the billing
+// page needs, all in major-unit USD strings.
+//
+// The gross charge is the invoice subtotal, not its total: Stripe applies
+// billing credit after discounts and before tax, so it never reaches the
+// subtotal, while the total is already net of it. Reading the total as "the
+// current cost" is what made a fully-credited period render as $0.00 (w6/m98).
+// The credit that did the netting is reported beside it rather than folded in,
+// and the due figure is Stripe's own amount_due — no arithmetic of ours sits
+// between Stripe's rating and what the workspace is told it owes.
+func invoiceFigures(inv *stripe.Invoice) (gross, creditsApplied, due string, err error) {
+	if inv.Currency != stripe.CurrencyUSD {
+		return "", "", "", fmt.Errorf("unsupported invoice currency %q (bex catalog is USD)", inv.Currency)
 	}
+	return usdString(inv.Subtotal),
+		usdString(appliedCreditGrants(inv.TotalPretaxCreditAmounts)),
+		usdString(inv.AmountDue),
+		nil
+}
+
+// appliedCreditGrants totals the billing-credit consumption on an invoice.
+// Stripe's pretax credit list also carries discount entries (ADR040 Mode B
+// comps land there); only credit-balance-transaction entries are grant
+// consumption, and folding a comp discount in would misreport it as credit.
+func appliedCreditGrants(amounts []*stripe.InvoiceTotalPretaxCreditAmount) int64 {
+	var total int64
+	for _, a := range amounts {
+		if a == nil || a.Type != stripe.InvoiceTotalPretaxCreditAmountTypeCreditBalanceTransaction {
+			continue
+		}
+		total += a.Amount
+	}
+	return total
+}
+
+// normalizedStripeUSD renders Stripe minor units as a major-unit string. bex's
+// catalog is USD-only, so any other currency is an error rather than a
+// silently mislabeled number.
+func normalizedStripeUSD(minor int64, currency stripe.Currency) (string, error) {
+	if currency != stripe.CurrencyUSD {
+		return "", fmt.Errorf("unsupported invoice currency %q (bex catalog is USD)", currency)
+	}
+	return usdString(minor), nil
+}
+
+// usdString renders minor units as major units. A sub-dollar negative keeps
+// its sign, which integer division alone would drop.
+func usdString(minor int64) string {
 	prefix := ""
-	if total < 0 && total > -100 {
+	if minor < 0 && minor > -100 {
 		prefix = "-"
 	}
-	return Amount{AmountUSD: fmt.Sprintf("%s%d.%02d", prefix, total/100, abs(total%100)), Currency: "USD"}, nil
+	return fmt.Sprintf("%s%d.%02d", prefix, minor/100, abs(minor%100))
 }
 
 func unixOrFallback(unix int64, fallback time.Time) string {

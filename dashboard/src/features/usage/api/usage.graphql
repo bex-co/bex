@@ -39,8 +39,12 @@ query Usage($period: String, $ownerId: String) {
     # billing: real Stripe invoice preview + finalized invoices (m48/m50). null
     # when no subscription exists, Mode-A excluded, billing off, or degraded.
     billing {
+      # amountUsd is the gross rated charge; creditsAppliedUsd is what credit
+      # took off it and amountDueUsd what Stripe actually collects (w6/m98).
       currentCost {
         amountUsd
+        creditsAppliedUsd
+        amountDueUsd
         currency
         periodStart
         periodEnd
@@ -49,6 +53,8 @@ query Usage($period: String, $ownerId: String) {
         id
         status
         amountUsd
+        creditsAppliedUsd
+        amountDueUsd
         currency
         periodStart
         periodEnd
