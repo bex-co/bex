@@ -1,6 +1,6 @@
 # w6 · m97 — Stop the codex-security F7 protected-secret guard from self-rejecting every App's own clone/pull secret
 
-**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** in progress (t001-t005 done; t007 open — its reconcile-cause leg is fixed by t001, its Events-feed leg is not; t006 closeout blocked on t007 + deploying the fix)
+**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** in progress (t001-t005 done; t007 open — its reconcile-cause leg is fixed by t001, its Events-feed leg is not; t008 newly filed and open — a distinct redeploy-path bug, not fixed by t001; t006 closeout blocked on t007 + t008 + deploying the fix)
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 5th run of the day)
 
@@ -72,6 +72,16 @@ Striking pattern: `beancount-forum`, `beancount-cms-v2`, and `tianpan-v4-web` al
 
 **Bottom line for scoping the fix's urgency:** this is a live, currently-reproducing **majority-fleet** condition, not a one-off — over half (5/9, 56%) of every GitHub-connected service visible to this account is misreporting its phase right now, spanning both workspaces, with 3 confirmed via the milestone's exact clean signature and 2 more showing the same symptom family. t001/t007's fix priority should reflect fleet-wide impact, not a single-service anecdote.
 
+### Addendum (2026-08-26, 16th `/qa-find-bugs` run): the redeploy-path race is a real, distinct second bug — confirmed to file:line, filed as t008
+
+Traced the divergence the 15th run flagged **Unverified** (`eden-cms-v2` stuck `queued`, `block-eden-mono` `canceled` after ~35m, instead of the create-path's instant `update_failed`) via a dedicated code-research pass this run — a confirmed mechanism, not a guess, and not re-probed live against those two standing services (read-only caution still applies to both).
+
+`rejectProtectedSecretRefs`'s rejection (`app_controller.go:499-501`) calls `r.fail` (`app_controller.go:3811-3814`), which returns **before** `prepareAppReleaseDecision` (`app_controller.go:521`) ever runs. For a brand-new App this is harmless — `Status.ReleaseGeneration` was never set, so `appReleaseGeneration()` (`lego/backend/internal/store/reconciler.go:1104-1109`) falls back to `app.Generation` (its first generation), which trivially matches the Deploy row's `Generation`, and `observedDeployStatus` resolves straight to `DeployUpdateFailed` (`reconciler.go:1014-1024`). But `redeployFetched`/blueprint `patchChangedStackService`/`triggerFetched` all bump the release generation to `G+1` on an App whose `Status.ReleaseGeneration` is already pinned at its last successful release `G` — and the guard's early return never lets it advance. `supersededDeployStatus` (`reconciler.go:1036-1089`) then sees a generation mismatch that isn't the queued-overlap case and no-ops (`reconciler.go:1074-1076`) until the 35-minute `BuildGateTimeout` (`reconciler.go:84,942-960`) trips and resolves it to `DeployCanceled` (`reconciler.go:1077-1079`) — exactly the `queued`-forever / `canceled`-after-35m split observed live.
+
+This is a distinct defect from t001's (which only removes one specific rejection trigger) layered on the same call site — filed as **t008** rather than assumed-fixed by t001, with its own DoD bullet below.
+
+**Deploy-lag note (this run):** t001's fix landed on `origin/main` as `2cae5f3b` ("fix(operator): stop the F7 protected-secret guard rejecting an App's own clone/pull secret (w6/m97)") during this run, with its `deploy.yml` run still `in_progress` at observation time. Not yet live: `beancount-forum`/`beancount-cms-v2`/`tianpan-v4-web`/`eden-cms-v2`/`block-eden-mono` all still read `phase: "Failed"` via REST as of this run (checked read-only, nothing touched).
+
 ## Tasks (in order)
 
 | id | title | est | depends_on | status |
@@ -79,10 +89,11 @@ Striking pattern: `beancount-forum`, `beancount-cms-v2`, and `tianpan-v4-web` al
 | t001 | Fix `rejectProtectedSecretRefs`: allow an App's own deterministic `<app>-clone`/`<app>-registry-pull` self-reference, keep every other protected-Secret reference (including another App's own clone/pull secret in the same namespace) refused | 30m | — | — **DONE** |
 | t002 | Regression tests: self-reference accepted for both `CloneSecret` and `ExternalRegistryPullSecret`; the existing malicious-case tests (arbitrary protected Secret, and — new — a *different* App's own `<other>-clone` name) still refused; exercise via the 4 enumerated call sites' shared code path | 40m | t001 | — **DONE** |
 | t007 | Prove already-Live services get bounced to Failed on ordinary reconcile (live-confirmed on `beancount-forum`), and fix the Events feed misreporting the cause as a readiness-check failure | 30m | t002 | todo |
-| t003 | Render parity | 20m | t002, t007 | — **DONE** for the t001/t002 change; t007's Events-feed leg still open |
+| t008 | Fix redeploy-path `Status.ReleaseGeneration` staleness so a guard-rejected redeploy reaches `update_failed` instead of stuck `queued`/eventually `canceled` | 40m | t001 | todo |
+| t003 | Render parity | 20m | t002, t007, t008 | — **DONE** for the t001/t002 change; t007's Events-feed leg and t008 still open |
 | t004 | Simplify | 15m | t003 | — **DONE** |
 | t005 | Test coverage | 20m | t004 | — **DONE** |
-| t006 | Closeout | 10m | t005, t007 | blocked on t007 + deploy |
+| t006 | Closeout | 10m | t005, t007, t008 | blocked on t007 + t008 + deploy |
 
 ## Definition of done
 
@@ -93,6 +104,7 @@ Striking pattern: `beancount-forum`, `beancount-cms-v2`, and `tianpan-v4-web` al
 - The dashboard's Deploy detail page and Events feed stop showing a permanent "Failed" badge / "codex F1" reason for these legitimate deploys.
 - An already-Live, standing service (no new deploy triggered) survives a fresh unrelated reconcile without its `phase` flipping to `Failed` — live-verified against `beancount-forum` (`srv-d9nqg9dcavls73fp8m2g`): `phase` agrees with "Latest deploy: Live" post-fix.
 - `observedServiceStateFor` (`lego/backend/internal/store/reconciler.go:1232-1281`) no longer labels a pre-pod-evaluation `r.fail` reason (`ProtectedSecretReference` at minimum) as `readiness_failed`, while a genuine `CrashLoopBackOff`/`ImagePullBackOff` still produces the existing "Instance failed" event unchanged.
+- A redeploy (manual deploy, deploy hook, rollback, signed webhook push, or blueprint sync) of an already-Live App that trips a guard rejection reaches Deploy status `update_failed` within the same near-instant window `CreateApp` already gets — never stuck `queued` indefinitely, and never resolved only via the 35-minute `BuildGateTimeout` to `canceled` (t008; live-verifiable against a fresh `qa-` fixture using a non-self-secret rejection reason, without touching `eden-cms-v2`/`block-eden-mono` directly).
 
 ## Source + Goal linkage
 
