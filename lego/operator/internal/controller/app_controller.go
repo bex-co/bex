@@ -1231,11 +1231,33 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 // manager does not cache; a referenced Secret that does not exist is not our
 // concern here (it resolves to nothing / fails the pod on its own). Zero
 // secret references => no lookups.
+//
+// Those two fields carry ONE carve-out (w6/m97): bex-api mints this App's own
+// clone token and registry-pull credential under names derived from the App's
+// own name (appv1alpha1.CloneSecretName / ExternalRegistryPullSecretName) and
+// writes them straight into these two fields itself, so refusing them failed
+// every GitHub-connected deploy before any build ran. An exact match on the
+// name derived for the field that mints it is therefore accepted. Everything
+// else stays refused: another App's <other>-clone, an unrelated protected
+// Secret, an operator-configured operational Secret (the by-name check below
+// runs over the full set, carve-out included), the wrong one of the two
+// self-names, and this App's own clone Secret named through any mount field —
+// the copier reads spec.cloneSecret at build time, but a mount field would
+// hand the same token to tenant code at runtime.
 func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv1alpha1.App) error {
+	// names holds every Secret this App references; guarded drops the single
+	// exempted reference shape — this App's own build-plane Secret named
+	// through the field that mints it. Two sets rather than one because the
+	// name-based operational denylist below must still see the full set, and
+	// because exemption is a property of the REFERENCE, not of the name: a
+	// Secret reached through both an exempt and a non-exempt reference stays
+	// guarded regardless of which the App declared first.
 	names := make(map[string]bool)
+	guarded := make(map[string]bool)
 	add := func(n string) {
 		if n != "" {
 			names[n] = true
+			guarded[n] = true
 		}
 	}
 	for _, n := range app.Spec.EnvFromSecrets {
@@ -1245,8 +1267,6 @@ func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv
 		add(n)
 	}
 	add(app.Spec.EnvFromSecret)
-	add(app.Spec.CloneSecret)
-	add(app.Spec.ExternalRegistryPullSecret)
 	for _, e := range app.Spec.Env {
 		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
 			add(e.ValueFrom.SecretKeyRef.Name)
@@ -1256,6 +1276,23 @@ func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv
 	// they join the validated set so neither can smuggle a protected name.
 	add(app.Annotations[appv1alpha1.PendingEnvSecretAnnotation])
 	add(app.Annotations[appv1alpha1.PendingFilesSecretAnnotation])
+	// The two build-plane fields join the same set, exempt from the protected
+	// -label lookup only when the reference is exact-equal to the name derived
+	// from THIS App's own name for THIS field (see the godoc's w6/m97
+	// paragraph). Anything else — another App's Secret, the wrong one of the
+	// two self-names, the same Secret also named through a mount field — stays
+	// guarded.
+	addBuildRef := func(ref, self string) {
+		if ref == "" {
+			return
+		}
+		names[ref] = true
+		if ref != self {
+			guarded[ref] = true
+		}
+	}
+	addBuildRef(app.Spec.CloneSecret, appv1alpha1.CloneSecretName(app.Name))
+	addBuildRef(app.Spec.ExternalRegistryPullSecret, appv1alpha1.ExternalRegistryPullSecretName(app.Name))
 	if len(names) == 0 {
 		return nil
 	}
@@ -1273,7 +1310,7 @@ func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv
 		}
 	}
 	cl := r.buildPlaneClient()
-	for name := range names {
+	for name := range guarded {
 		var sec corev1.Secret
 		if err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &sec); err != nil {
 			if apierrors.IsNotFound(err) {
@@ -1449,13 +1486,36 @@ func localObjectReferencesEqual(a, b []corev1.LocalObjectReference) bool {
 // protective marker is preserved on the copy rather than replaced — a copy
 // that drops the label would present itself as an ordinary artifact to any
 // later check.
+// ownBuildPlaneSecret reports whether name is one of the two Secrets bex-api
+// mints for THIS App under a name derived from the App's own name — its git
+// clone token and its external-registry pull credential. Both carry
+// LabelProtectedFromTenantMount by design (so no other App can mount them),
+// which is why the two places that enforce that label need to recognize an
+// App's own pair: rejectProtectedSecretRefs (per-field, stricter — it knows
+// which field the reference came from) and copyCloneSecret (no field context,
+// so either name qualifies).
+func ownBuildPlaneSecret(app *appv1alpha1.App, name string) bool {
+	return name == appv1alpha1.CloneSecretName(app.Name) ||
+		name == appv1alpha1.ExternalRegistryPullSecretName(app.Name)
+}
+
 func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.App, srcNS, dstNS, name string) error {
 	buildClient := r.buildPlaneClient()
 	var src corev1.Secret
 	if err := buildClient.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
 		return err
 	}
-	if src.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
+	// F7's relocation half of the same rule rejectProtectedSecretRefs enforces
+	// on the spec fields, with the same w6/m97 carve-out: bex-api stamps the
+	// protected label on the very Secrets it mints FOR this App's build (its
+	// clone token, its registry-pull credential), and relocating those into the
+	// build namespace is the whole reason this function exists — refusing them
+	// left every GitHub-connected App failing here the moment the guard let it
+	// through. Any OTHER protected Secret stays unrelocatable, and the copy
+	// below preserves the marker so the relocated Secret is no more mountable
+	// in bex-build than it was in the tenant namespace.
+	if src.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount &&
+		!ownBuildPlaneSecret(app, name) {
 		return fmt.Errorf("refusing to relocate protected operator Secret %s/%s (codex-security 2026-08 F7)", srcNS, name)
 	}
 	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
@@ -1475,8 +1535,9 @@ func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.Ap
 		dst.Data = src.Data
 		dst.Labels = artifactLabels(app, "copied-secret")
 		if src.Labels[execution.LabelProtectedFromTenantMount] != "" {
-			// Unreachable today (protected sources are refused above), kept so a
-			// future relaxation cannot silently strip the marker again.
+			// Reached by the w6/m97 carve-out above: this App's own clone /
+			// registry-pull Secret is relocatable, but the marker rides along
+			// so no App in the build namespace can mount the copy either.
 			dst.Labels[execution.LabelProtectedFromTenantMount] = src.Labels[execution.LabelProtectedFromTenantMount]
 		}
 		return nil

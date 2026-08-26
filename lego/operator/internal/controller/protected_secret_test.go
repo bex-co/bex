@@ -186,3 +186,158 @@ func TestRejectConfiguredOperationalSecretNames(t *testing.T) {
 		})
 	}
 }
+
+// TestAllowsOwnBuildPlaneSecretRefs covers the w6/m97 carve-out: bex-api mints
+// an App's clone token and external-registry pull credential under names
+// derived from that App's own name, stamps the protected label on them so no
+// OTHER App can mount them, and writes those names into spec.cloneSecret /
+// spec.externalRegistryPullSecret itself — so the guard refusing them failed
+// every GitHub-connected deploy on the platform before any build ran. The
+// carve-out is exact self-name equality on exactly those two fields; every
+// sibling case in this test proves it is no wider than that.
+func TestAllowsOwnBuildPlaneSecretRefs(t *testing.T) {
+	scheme := protectedSecretScheme(t)
+	protectedSecret := func(name string) *corev1.Secret {
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name: name, Namespace: "tea-a",
+			Labels: map[string]string{execution.LabelProtectedFromTenantMount: execution.ProtectedFromTenantMount},
+		}}
+	}
+	webClone := appv1alpha1.CloneSecretName("web")               // "web-clone"
+	webPull := appv1alpha1.ExternalRegistryPullSecretName("web") // "web-registry-pull"
+	buildClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		protectedSecret(webClone),
+		protectedSecret(webPull),
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "web-env", Namespace: "tea-a"}},
+	).Build()
+	r := &AppReconciler{Client: buildClient, BuildClient: buildClient}
+	app := func(name string, mutate func(*appv1alpha1.App)) *appv1alpha1.App {
+		a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "tea-a"}}
+		mutate(a)
+		return a
+	}
+
+	for name, mutate := range map[string]func(*appv1alpha1.App){
+		"own clone secret": func(a *appv1alpha1.App) { a.Spec.CloneSecret = webClone },
+		"own registry-pull secret": func(a *appv1alpha1.App) {
+			a.Spec.ExternalRegistryPullSecret = webPull
+		},
+		"both own build-plane secrets": func(a *appv1alpha1.App) {
+			a.Spec.CloneSecret = webClone
+			a.Spec.ExternalRegistryPullSecret = webPull
+		},
+		// The two carve-out fields coexisting with a legitimate ordinary
+		// reference: the rest of the set is still validated as usual.
+		"own secrets alongside an ordinary env secret": func(a *appv1alpha1.App) {
+			a.Spec.CloneSecret = webClone
+			a.Spec.ExternalRegistryPullSecret = webPull
+			a.Spec.EnvFromSecret = "web-env"
+		},
+	} {
+		t.Run("accepts "+name, func(t *testing.T) {
+			if err := r.rejectProtectedSecretRefs(context.Background(), app("web", mutate)); err != nil {
+				t.Fatalf("App's own build-plane Secret was REFUSED — every connected deploy fails: %v", err)
+			}
+		})
+	}
+
+	// The carve-out is self-name equality, not a "<x>-clone looks fine" suffix
+	// rule: these names match the convention exactly, but belong to App "web",
+	// and App "other" naming them is still exfiltration.
+	for name, mutate := range map[string]func(*appv1alpha1.App){
+		"another App's clone secret via cloneSecret": func(a *appv1alpha1.App) {
+			a.Spec.CloneSecret = webClone
+		},
+		"another App's pull secret via externalRegistryPullSecret": func(a *appv1alpha1.App) {
+			a.Spec.ExternalRegistryPullSecret = webPull
+		},
+	} {
+		t.Run("refuses "+name, func(t *testing.T) {
+			if err := r.rejectProtectedSecretRefs(context.Background(), app("other", mutate)); err == nil {
+				t.Fatalf("%s was ACCEPTED — clone-token/registry-credential exfil across Apps", name)
+			}
+		})
+	}
+
+	// Each field is exempt only for ITS OWN derived name: naming the clone
+	// Secret through externalRegistryPullSecret (or vice versa) is not a
+	// self-reference, and must not be laundered into acceptance by the other
+	// field legitimately naming the same Secret. Both declaration orders,
+	// because exemption is a property of the reference, not of the name.
+	for name, mutate := range map[string]func(*appv1alpha1.App){
+		"clone secret named through externalRegistryPullSecret": func(a *appv1alpha1.App) {
+			a.Spec.ExternalRegistryPullSecret = webClone
+		},
+		"pull secret named through cloneSecret": func(a *appv1alpha1.App) {
+			a.Spec.CloneSecret = webPull
+		},
+		"clone secret named through BOTH fields": func(a *appv1alpha1.App) {
+			a.Spec.CloneSecret = webClone
+			a.Spec.ExternalRegistryPullSecret = webClone
+		},
+		"pull secret named through BOTH fields": func(a *appv1alpha1.App) {
+			a.Spec.CloneSecret = webPull
+			a.Spec.ExternalRegistryPullSecret = webPull
+		},
+	} {
+		t.Run("refuses "+name, func(t *testing.T) {
+			if err := r.rejectProtectedSecretRefs(context.Background(), app("web", mutate)); err == nil {
+				t.Fatalf("%s was ACCEPTED — the wrong field's self-name is not a self-reference", name)
+			}
+		})
+	}
+
+	// The mount fields keep their full strictness against the App's OWN build
+	// -plane Secrets: spec.cloneSecret is read by the operator's copier at
+	// build time, but envFrom/files/secretKeyRef/pending would hand the same
+	// GitHub installation token and registry password to tenant code at
+	// runtime. Every field the validator covers, both self-names.
+	for _, self := range []string{webClone, webPull} {
+		for field, mutate := range map[string]func(*appv1alpha1.App, string){
+			"envFromSecret":  func(a *appv1alpha1.App, n string) { a.Spec.EnvFromSecret = n },
+			"envFromSecrets": func(a *appv1alpha1.App, n string) { a.Spec.EnvFromSecrets = []string{n} },
+			"filesFromSecrets": func(a *appv1alpha1.App, n string) {
+				a.Spec.FilesFromSecrets = []string{n}
+			},
+			"env secretKeyRef": func(a *appv1alpha1.App, n string) {
+				a.Spec.Env = []appv1alpha1.EnvVar{{Name: "TOKEN", ValueFrom: &appv1alpha1.EnvVarSource{
+					SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: n, Key: "token"}}}}
+			},
+			"pending-env annotation": func(a *appv1alpha1.App, n string) {
+				a.Annotations = map[string]string{appv1alpha1.PendingEnvSecretAnnotation: n}
+			},
+			"pending-files annotation": func(a *appv1alpha1.App, n string) {
+				a.Annotations = map[string]string{appv1alpha1.PendingFilesSecretAnnotation: n}
+			},
+			// The build-plane field AND a mount field naming the same
+			// self-secret: the mount reference must still sink it, or the
+			// carve-out becomes a laundering channel for the token.
+			"cloneSecret + envFromSecret": func(a *appv1alpha1.App, n string) {
+				a.Spec.CloneSecret = n
+				a.Spec.EnvFromSecret = n
+			},
+			"externalRegistryPullSecret + filesFromSecrets": func(a *appv1alpha1.App, n string) {
+				a.Spec.ExternalRegistryPullSecret = n
+				a.Spec.FilesFromSecrets = []string{n}
+			},
+		} {
+			t.Run("refuses own "+self+" mounted via "+field, func(t *testing.T) {
+				a := app("web", func(a *appv1alpha1.App) { mutate(a, self) })
+				if err := r.rejectProtectedSecretRefs(context.Background(), a); err == nil {
+					t.Fatalf("App's own %s via %s was ACCEPTED — tenant code would read the credential at runtime", self, field)
+				}
+			})
+		}
+	}
+
+	// The out-of-band operational denylist runs over the full reference set,
+	// carve-out included: a configured operational Secret that happens to
+	// collide with an App's self-name is still refused by name.
+	t.Run("refuses a configured operational Secret colliding with the self-name", func(t *testing.T) {
+		rc := &AppReconciler{Client: buildClient, BuildClient: buildClient, RegistryPushSecret: webClone}
+		a := app("web", func(a *appv1alpha1.App) { a.Spec.CloneSecret = webClone })
+		if err := rc.rejectProtectedSecretRefs(context.Background(), a); err == nil {
+			t.Fatal("configured operational Secret named via cloneSecret was ACCEPTED")
+		}
+	})
+}

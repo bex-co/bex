@@ -133,12 +133,6 @@ func isDockerfileBuild(spec appv1alpha1.AppSpec) bool {
 	return builder == "" || builder == "auto" || builder == "dockerfile"
 }
 
-// externalRegistryPullSecretName is the deterministic name of an App's
-// materialized registry-pull Secret — MUST match registrycreds' own
-// pullSecretName (unexported to that package; apps can't import it, so this
-// mirrors the exact same "<app>-registry-pull" convention).
-func externalRegistryPullSecretName(app string) string { return app + "-registry-pull" }
-
 // deployPullSecretBridge gives deploys.Service the deploy-time materialization
 // path without exposing an unauthenticated public Service verb.
 type deployPullSecretBridge struct{ svc *Service }
@@ -157,6 +151,6 @@ func (s *Service) DeployPullSecretPreparer() deployPullSecretBridge {
 // because the Secret carries no ownerRef (see registrycreds.materializePullSecret's
 // doc comment) — the App CR's delete cascade wouldn't reach it otherwise.
 func (s *Service) deleteExternalRegistryPullSecret(ctx context.Context, namespace, app string) error {
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: externalRegistryPullSecretName(app), Namespace: namespace}}
+	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ExternalRegistryPullSecretName(app), Namespace: namespace}}
 	return client.IgnoreNotFound(s.Client.Delete(ctx, sec))
 }
