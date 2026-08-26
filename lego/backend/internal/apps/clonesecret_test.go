@@ -38,11 +38,13 @@ type fakeCloneTokens struct {
 	err           error
 	calls         int
 	lastWorkspace string
+	lastRepo      string
 }
 
-func (f *fakeCloneTokens) CloneToken(_ context.Context, workspaceID, _ string) (string, bool, error) {
+func (f *fakeCloneTokens) CloneToken(_ context.Context, workspaceID, repo string) (string, bool, error) {
 	f.calls++
 	f.lastWorkspace = workspaceID
+	f.lastRepo = repo
 	return f.token, f.ok, f.err
 }
 
@@ -177,6 +179,52 @@ func TestRedeployResolvesWorkspaceFromAppTenantLabel(t *testing.T) {
 	}
 	if gh.lastWorkspace != "tea-xyz" {
 		t.Errorf("clone token resolved workspace %q, want the App's tenant tea-xyz", gh.lastWorkspace)
+	}
+}
+
+func TestSourceSwapDefersCloneSecretUntilNextDeploy(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "web",
+			Namespace: "default",
+			Labels:    map[string]string{core.LabelTenant: "tea-acme"},
+		},
+		Spec: appv1alpha1.AppSpec{
+			Repo:        "https://github.com/old/app",
+			Branch:      "main",
+			AutoDeploy:  true,
+			CloneSecret: "web-clone",
+		},
+	}
+	stale := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "web-clone", Namespace: "default"},
+		StringData: map[string]string{"token": "ghs_old"},
+	}
+	gh := &fakeCloneTokens{token: "ghs_new", ok: true}
+	svc, cl := ghService(gh, app)
+	if err := cl.Create(context.Background(), stale); err != nil {
+		t.Fatal(err)
+	}
+
+	repo := "https://github.com/acme/new"
+	if _, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", sourcePatch{Repo: &repo}); err != nil {
+		t.Fatal(err)
+	}
+	if gh.calls != 0 {
+		t.Fatalf("source edit minted %d clone tokens before a deploy", gh.calls)
+	}
+	if _, ok := cloneSecretValue(t, cl, "web-clone"); ok {
+		t.Fatal("source edit retained the old repository's clone secret")
+	}
+
+	if _, err := svc.redeploy(context.Background(), "web", store.CommitInfo{}); err != nil {
+		t.Fatal(err)
+	}
+	if gh.calls != 1 || gh.lastWorkspace != "tea-acme" || gh.lastRepo != repo {
+		t.Fatalf("next deploy clone lookup: calls=%d workspace=%q repo=%q", gh.calls, gh.lastWorkspace, gh.lastRepo)
+	}
+	if token, ok := cloneSecretValue(t, cl, "web-clone"); !ok || token != "ghs_new" {
+		t.Fatalf("next deploy clone secret = %q ok=%v", token, ok)
 	}
 }
 

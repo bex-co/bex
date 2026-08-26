@@ -1672,10 +1672,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "将源代码切换为 {value}？",
     description: "Build & Deploy: Source-change confirm dialog title",
   },
-  "services.buildDeploySourceConfirmBody": {
-    message: "下次部署将从新仓库构建。请确认其分支和构建设置仍然适用。",
-    description: "Build & Deploy: Source-change confirm dialog body",
-  },
   "services.buildDeployBranchLabel": {
     message: "分支",
     description: "Build & Deploy: branch field label",
@@ -1700,11 +1696,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.buildDeployBranchConfirmTitle": {
     message: "将分支改为“{value}”？",
     description: "Build & Deploy: branch confirm-dialog title",
-  },
-  "services.buildDeployBranchConfirmBody": {
-    message:
-      "下次部署将构建该分支，推送到该分支会触发自动部署；推送到旧分支将不再部署。",
-    description: "Build & Deploy: branch confirm-dialog body",
   },
   "services.buildDeployRootDirLabel": {
     message: "根目录",
@@ -1756,7 +1747,11 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.sourceTitle": {
     message: "源",
-    description: "Source card title (image-backed service, w5/m76)",
+    description: "Source card title",
+  },
+  "services.sourceRepoDescription": {
+    message: "此服务构建所用的 Git 仓库和分支。",
+    description: "Source card description for a repository-backed service",
   },
   "services.sourceImageDescription": {
     message: "此服务部署的预构建容器镜像。",
@@ -1766,50 +1761,38 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "镜像",
     description: "Source card: container image path field label",
   },
-  "services.sourceImageHint": {
-    message: "要部署的镜像的仓库路径和标签。",
-    description: "Source card: image field hint",
-  },
-  "services.sourceImagePlaceholder": {
-    message: "docker.io/library/nginx:stable",
-    description: "Source card: image field placeholder",
-  },
-  "services.sourceImageEdit": {
-    message: "编辑镜像",
-    description: "Source card: image field edit-button label",
-  },
-  "services.sourceImageConfirmTitle": {
-    message: "从 {value} 部署？",
-    description: "Source card: confirm switching the image",
-  },
   "services.sourceNoAutoDeploy": {
     message: "更改不会自动部署——下次部署时将使用新的源。",
     description:
       "Shared note (Render parity): a source change doesn't trigger a deploy",
   },
-  "services.sourceSwitchLabel": {
-    message: "更改源类型",
-    description: "Source switch section label (repo↔image)",
+  "services.sourceMissing": {
+    message: "未配置",
+    description: "Source card fallback when no source value is available",
   },
-  "services.sourceSwitchToImageHint": {
-    message: "部署预构建的容器镜像，而不是从 Git 构建。",
-    description: "Hint for the switch-to-image action",
+  "services.sourceEdit": {
+    message: "编辑",
+    description: "Button opening the Update Source dialog",
   },
-  "services.sourceSwitchToImageButton": {
-    message: "切换到容器镜像",
-    description: "Button that opens the repo→image switch dialog",
-  },
-  "services.sourceSwitchToRepoHint": {
-    message: "从 Git 仓库构建和部署，而不是使用镜像。",
-    description: "Hint for the switch-to-repo action",
-  },
-  "services.sourceSwitchToRepoButton": {
-    message: "切换到 Git 仓库",
-    description: "Button that opens the image→repo switch dialog",
-  },
-  "services.sourceSwitchSave": {
+  "services.sourceDialogTitle": {
     message: "更新源",
-    description: "Save button in the source-switch dialogs",
+    description: "Update Source dialog title",
+  },
+  "services.sourcePickerLabel": {
+    message: "选择源",
+    description: "Label above the source kind picker in Update Source",
+  },
+  "services.sourceBranchHint": {
+    message: "选择分支，或输入列表中没有的分支。",
+    description: "Branch picker free-text fallback hint",
+  },
+  "services.sourceBranchEmpty": {
+    message: "没有匹配的分支，请输入分支名称。",
+    description: "Empty state for the Update Source branch picker",
+  },
+  "services.sourceUpdateSave": {
+    message: "更新源",
+    description: "Save button in the Update Source dialog",
   },
   "services.startCommandLabel": {
     message: "启动命令",

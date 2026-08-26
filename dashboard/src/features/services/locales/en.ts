@@ -1705,11 +1705,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Switch source to {value}?",
     description: "Build & Deploy: Source-change confirm dialog title",
   },
-  "services.buildDeploySourceConfirmBody": {
-    message:
-      "The next deploy builds from the new repository. Make sure its branch and build settings still apply.",
-    description: "Build & Deploy: Source-change confirm dialog body",
-  },
   "services.buildDeployBranchLabel": {
     message: "Branch",
     description: "Build & Deploy: branch field label",
@@ -1734,11 +1729,6 @@ const enServices: Record<string, TranslationEntry> = {
   "services.buildDeployBranchConfirmTitle": {
     message: 'Change branch to "{value}"?',
     description: "Build & Deploy: branch confirm-dialog title",
-  },
-  "services.buildDeployBranchConfirmBody": {
-    message:
-      "The next deploy builds this branch, and pushes to it trigger auto-deploys. Pushes to the old branch stop deploying.",
-    description: "Build & Deploy: branch confirm-dialog body",
   },
   "services.buildDeployRootDirLabel": {
     message: "Root Directory",
@@ -1790,7 +1780,11 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.sourceTitle": {
     message: "Source",
-    description: "Source card title (image-backed service, w5/m76)",
+    description: "Source card title",
+  },
+  "services.sourceRepoDescription": {
+    message: "The Git repository and branch this service builds from.",
+    description: "Source card description for a repository-backed service",
   },
   "services.sourceImageDescription": {
     message: "The prebuilt container image this service deploys.",
@@ -1800,51 +1794,39 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Image",
     description: "Source card: container image path field label",
   },
-  "services.sourceImageHint": {
-    message: "The registry path and tag of the image to deploy.",
-    description: "Source card: image field hint",
-  },
-  "services.sourceImagePlaceholder": {
-    message: "docker.io/library/nginx:stable",
-    description: "Source card: image field placeholder",
-  },
-  "services.sourceImageEdit": {
-    message: "Edit image",
-    description: "Source card: image field edit-button label",
-  },
-  "services.sourceImageConfirmTitle": {
-    message: "Deploy from {value}?",
-    description: "Source card: confirm switching the image",
-  },
   "services.sourceNoAutoDeploy": {
     message:
       "Changes aren't deployed automatically — your next deploy will use the new source.",
     description:
       "Shared note (Render parity): a source change doesn't trigger a deploy",
   },
-  "services.sourceSwitchLabel": {
-    message: "Change source type",
-    description: "Source switch section label (repo↔image)",
+  "services.sourceMissing": {
+    message: "Not configured",
+    description: "Source card fallback when no source value is available",
   },
-  "services.sourceSwitchToImageHint": {
-    message: "Deploy a prebuilt container image instead of building from Git.",
-    description: "Hint for the switch-to-image action",
+  "services.sourceEdit": {
+    message: "Edit",
+    description: "Button opening the Update Source dialog",
   },
-  "services.sourceSwitchToImageButton": {
-    message: "Switch to a container image",
-    description: "Button that opens the repo→image switch dialog",
+  "services.sourceDialogTitle": {
+    message: "Update Source",
+    description: "Update Source dialog title",
   },
-  "services.sourceSwitchToRepoHint": {
-    message: "Build and deploy from a Git repository instead of an image.",
-    description: "Hint for the switch-to-repo action",
+  "services.sourcePickerLabel": {
+    message: "Choose a source",
+    description: "Label above the source kind picker in Update Source",
   },
-  "services.sourceSwitchToRepoButton": {
-    message: "Switch to a Git repository",
-    description: "Button that opens the image→repo switch dialog",
+  "services.sourceBranchHint": {
+    message: "Choose a branch or enter one that isn't listed.",
+    description: "Branch picker free-text fallback hint",
   },
-  "services.sourceSwitchSave": {
+  "services.sourceBranchEmpty": {
+    message: "No matching branches. Enter a branch name.",
+    description: "Empty state for the Update Source branch picker",
+  },
+  "services.sourceUpdateSave": {
     message: "Update source",
-    description: "Save button in the source-switch dialogs",
+    description: "Save button in the Update Source dialog",
   },
   "services.startCommandLabel": {
     message: "Start Command",

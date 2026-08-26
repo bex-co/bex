@@ -12,7 +12,7 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { InstanceTypeRow } from "@/features/services/components/instance-type-row";
 import { IdleTimeoutRow } from "@/features/services/components/idle-timeout-row";
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
-import { ImageSourceCard } from "@/features/services/components/service-source-card";
+import { ServiceSourceCard } from "@/features/services/components/service-source-card";
 import { CustomDomainsSection } from "@/features/services/components/custom-domains-section";
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
 import { DeleteServiceCard } from "@/features/services/components/delete-service-card";
@@ -86,11 +86,8 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
     service != null && !staticSite && (!service.repo || dockerBuild);
   const navigationSections: ServiceSettingsSection[] = ["general"];
   if (cron) navigationSections.push("deploy");
+  if (service && !staticSite && !cron) navigationSections.push("source");
   if (service?.repo) navigationSections.push("build");
-  // Image-backed (no repo, non-static, non-cron) services get a Source card
-  // to view/edit their image + switch to a repo (w5/m76).
-  if (service && !service.repo && !staticSite && !cron)
-    navigationSections.push("source");
   if (staticSite && service) navigationSections.push("static-site");
   // Custom domains and the platform subdomain only exist for a type served at
   // a public host (w6/m46). bex-api refuses a domain on any other type, and the
@@ -235,6 +232,17 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
           </>
         ) : (
           <>
+            {service && !staticSite && (
+              <section id="source" className="scroll-mt-6">
+                <ServiceSourceCard
+                  serviceId={serviceId}
+                  repo={service.repo ?? null}
+                  branch={service.branch ?? null}
+                  imagePath={service.imagePath ?? null}
+                  registryCredentialId={service.registryCredentialId ?? null}
+                />
+              </section>
+            )}
             {service?.repo && (
               <section id="build" className="scroll-mt-6 space-y-6">
                 <BuildDeploySection
@@ -259,20 +267,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                   showBuildCommand={!dockerBuild}
                   showStartCommand={!staticSite}
                   showDockerfilePath={!staticSite}
-                />
-              </section>
-            )}
-            {/* Image-backed services (no repo, non-static) get a Source card so
-                their configured image is visible/editable and they can switch to
-                a Git repository — the image half of Render's Update Source
-                (w5/m76). A repo-backed service's source lives in the Build
-                section above instead. */}
-            {service && !service.repo && !staticSite && (
-              <section id="source" className="scroll-mt-6">
-                <ImageSourceCard
-                  serviceId={serviceId}
-                  imagePath={service.imagePath ?? ""}
-                  registryCredentialId={service.registryCredentialId ?? null}
+                  showSourceFields={false}
                 />
               </section>
             )}

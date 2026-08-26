@@ -79,6 +79,12 @@ type CommitResolver interface {
 	ResolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error)
 }
 
+// PullSecretPreparer materializes the source credential selected in Settings
+// only when a deploy actually starts. apps.Service's bridge satisfies it.
+type PullSecretPreparer interface {
+	EnsurePullSecret(ctx context.Context, app *appv1alpha1.App) (string, error)
+}
+
 // DeployStartedNotifier is the request-time notification seam. The
 // notifications service satisfies it structurally; keeping the interface here
 // avoids a feature-package dependency while letting Trigger fire only after
@@ -179,6 +185,10 @@ type Service struct {
 	// clone while webhook-triggered siblings built fine). nil ⇒ no refresh
 	// (GitHub integration off), prior behavior.
 	CloneSecrets store.CloneSecreter
+	// PullSecrets resolves the pending image/Dockerfile credential at trigger
+	// time. Source-save validation is deliberately read-only so it cannot replace
+	// the active release's deterministic pull Secret before this point.
+	PullSecrets PullSecretPreparer
 }
 
 // deployWorkspace resolves the workspace whose GitHub connection owns this
@@ -480,6 +490,14 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		}
 		cloneSecret = name
 	}
+	pullSecret := a.Spec.ExternalRegistryPullSecret
+	if s.PullSecrets != nil {
+		name, err := s.PullSecrets.EnsurePullSecret(ctx, a)
+		if err != nil {
+			return DeployView{}, err
+		}
+		pullSecret = name
+	}
 	// Resolve the triggering ref to its exact commit BEFORE the CR patch that
 	// starts the rollout (w9/001) — best-effort provenance: the deploy row
 	// opens either way, so a GitHub hiccup can never block a deploy.
@@ -508,6 +526,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		if cloneSecret != "" {
 			a.Spec.CloneSecret = cloneSecret
 		}
+		a.Spec.ExternalRegistryPullSecret = pullSecret
 		// Always write BuildCommit — when the commit resolver succeeds the
 		// immutable SHA becomes the build input so the clone job can verify it
 		// via EXPECTED_COMMIT (finding-1 TOCTOU). Otherwise the original ref

@@ -185,6 +185,7 @@ type appReleaseDecision struct {
 	artifactChanged bool
 	releaseChanged  bool
 	canceled        bool
+	sourcePending   bool
 }
 
 // buildRunning reports whether a repo-backed source build for the pinned release
@@ -207,15 +208,22 @@ func buildRunning(app *appv1alpha1.App) bool {
 // changed fingerprints always request normal artifact/release reconciliation;
 // every retained App has been normalized to the canonical status shape.
 func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
-	desired := desiredAppReleaseIdentity(app.Spec)
 	if generation, ok := canceledReleaseGeneration(app); ok && generation == requestedReleaseGeneration(app) {
 		// Cancel deletes the deterministic build artifact, but reconciliation is
 		// level-triggered. Keep the last successful generation active so this
 		// pass cannot recreate the canceled build or falsely promote its release.
 		app.Status.ReleaseGeneration = successfulReleaseGeneration(app)
 		app.Status.PendingReleaseGeneration = 0
-		return appReleaseDecision{desired: desired, canceled: true}
+		return appReleaseDecision{canceled: true}
 	}
+	if sourceUpdatePending(app) {
+		pinned := appReleaseIdentity{
+			artifact: app.Status.ArtifactFingerprint,
+			release:  app.Status.ReleaseFingerprint,
+		}
+		return appReleaseDecision{desired: pinned, sourcePending: true}
+	}
+	desired := desiredAppReleaseIdentity(app.Spec)
 
 	// ADR060 §D1a run-to-completion + latest-pending slot: while a source build is
 	// actively running and the spec has since moved to a newer release, do NOT
@@ -290,6 +298,9 @@ func successfulReleaseGeneration(app *appv1alpha1.App) int64 {
 // several pre-deploy reconciles while Status.Image intentionally remains the
 // previous healthy release.
 func reusableArtifactImage(app *appv1alpha1.App, decision appReleaseDecision) (string, bool) {
+	if decision.sourcePending && app.Status.Image != "" {
+		return app.Status.Image, true
+	}
 	if app.Spec.Image != "" {
 		return app.Spec.Image, true
 	}
@@ -300,6 +311,19 @@ func reusableArtifactImage(app *appv1alpha1.App, decision appReleaseDecision) (s
 		return app.Status.Image, false
 	}
 	return "", false
+}
+
+// sourceUpdatePending is true only while the latest configured source has not
+// been followed by a real deploy request. Operational generations (scale,
+// notification settings, etc.) do not consume it: deploy verbs alone advance
+// AnnotationReleaseGeneration to the pending generation or newer.
+func sourceUpdatePending(app *appv1alpha1.App) bool {
+	pending, err := strconv.ParseInt(app.Annotations[appv1alpha1.AnnotationPendingSourceGeneration], 10, 64)
+	if err != nil || pending <= 0 {
+		return false
+	}
+	release, _ := strconv.ParseInt(app.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
+	return release < pending
 }
 
 // requestedReleaseGeneration consumes the identity stamped by backend deploy

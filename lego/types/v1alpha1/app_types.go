@@ -38,6 +38,13 @@ const (
 // stable identity.
 const AnnotationReleaseGeneration = "app.bex.co/release-generation"
 
+// AnnotationPendingSourceGeneration marks a generation that only changes the
+// configured repo/branch/image. The operator keeps the active release serving
+// until a later deploy verb stamps AnnotationReleaseGeneration at this or a
+// newer generation. This is Render's Update Source contract: configuration is
+// saved now; the next deploy consumes it.
+const AnnotationPendingSourceGeneration = "app.bex.co/pending-source-generation"
+
 // AnnotationCanceledReleaseGeneration records a repo-backed release whose
 // build was explicitly canceled. The operator keeps the previous healthy
 // release serving and must not recreate build artifacts for this generation;

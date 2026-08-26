@@ -1456,6 +1456,7 @@ export function ServiceSettingsSkeleton({
       ]
     : [
         "general",
+        "source",
         "build",
         "domains",
         "networking",
@@ -1480,11 +1481,39 @@ export function ServiceSettingsSkeleton({
             className={staticSite ? undefined : "min-h-[698px] sm:min-h-0"}
           />
         </Region>
+        {!staticSite ? (
+          <Region name="source">
+            <Card>
+              <CardHeader className="flex-row items-start justify-between gap-4">
+                <div className="space-y-1.5">
+                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-4 w-72 max-w-full" />
+                </div>
+                <Skeleton className="h-8 w-16" />
+              </CardHeader>
+              <CardContent>
+                <div
+                  className="grid gap-4 text-sm sm:grid-cols-2"
+                  data-skeleton-region="source-fields"
+                >
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-5 w-4/5" />
+                  </div>
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-14" />
+                    <Skeleton className="h-5 w-2/5" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Region>
+        ) : null}
         <Region
           name="build"
           className={`space-y-6 ${staticSite ? "" : "min-h-[2018px] sm:min-h-0"}`}
         >
-          <SettingsFormCardSkeleton fields={staticSite ? 7 : 10} />
+          <SettingsFormCardSkeleton fields={staticSite ? 7 : 8} />
           <SettingsFormCardSkeleton fields={staticSite ? 3 : 6} />
         </Region>
         {staticSite ? (

@@ -150,7 +150,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 6],
     [<WorkspaceSettingsPageSkeleton key="workspace" />, 3],
-    [<ServiceSettingsSkeleton key="service" />, 10],
+    [<ServiceSettingsSkeleton key="service" />, 11],
   ])(
     "keeps long-page section navigation at narrow and wide breakpoints",
     (component, count) => {
@@ -170,6 +170,22 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       unmount();
     },
   );
+
+  it("matches the compact ready-state Source card instead of an editable form", () => {
+    const { container } = render(<ServiceSettingsSkeleton />);
+    const source = container.querySelector<HTMLElement>(
+      '[data-skeleton-region="source"]',
+    );
+    const fields = source?.querySelector<HTMLElement>(
+      '[data-skeleton-region="source-fields"]',
+    );
+
+    expect(fields).not.toBeNull();
+    expect(fields).toHaveClass("grid", "sm:grid-cols-2", "text-sm");
+    expect(fields?.children).toHaveLength(2);
+    expect(fields?.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(4);
+    expect(fields?.querySelector(".h-9")).toBeNull();
+  });
 
   it("keeps account settings mobile navigation and desktop rail together", () => {
     const { container } = render(<AccountSettingsPageSkeleton />);

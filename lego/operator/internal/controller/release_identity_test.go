@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"reflect"
 	"sort"
 	"testing"
@@ -182,6 +183,69 @@ func TestReleaseGenerationSurvivesOperationalMutationBeforeReconcile(t *testing.
 	decision = prepareAppReleaseDecision(app)
 	if !decision.releaseChanged || app.Status.ReleaseGeneration != 4 {
 		t.Fatalf("stale annotation decision=%+v releaseGeneration=%d, want direct generation 4", decision, app.Status.ReleaseGeneration)
+	}
+}
+
+func TestPendingSourceWaitsForADeployGeneration(t *testing.T) {
+	previousSpec := appv1alpha1.AppSpec{Repo: "https://github.com/acme/old", Branch: "main"}
+	previous := desiredAppReleaseIdentity(previousSpec)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation: 2,
+			Annotations: map[string]string{
+				appv1alpha1.AnnotationPendingSourceGeneration: "2",
+				appv1alpha1.AnnotationReleaseGeneration:       "1",
+			},
+		},
+		Spec: appv1alpha1.AppSpec{Image: "nginx:stable"},
+		Status: appv1alpha1.AppStatus{
+			Image:               "registry.example/acme/old@sha256:active",
+			ArtifactImage:       "registry.example/acme/old@sha256:active",
+			ArtifactFingerprint: previous.artifact,
+			ReleaseFingerprint:  previous.release,
+			ReleaseGeneration:   1,
+			ActiveRevision:      "rev-1",
+		},
+	}
+
+	decision := prepareAppReleaseDecision(app)
+	image, resolved := reusableArtifactImage(app, decision)
+	if !decision.sourcePending || decision.artifactChanged || decision.releaseChanged {
+		t.Fatalf("pending source decision = %+v, want no release", decision)
+	}
+	if !resolved || image != app.Status.Image {
+		t.Fatalf("pending source image=%q resolved=%v, want active %q", image, resolved, app.Status.Image)
+	}
+
+	// A later operational spec generation must not accidentally consume the
+	// pending source; only a deploy-generation annotation does.
+	app.Generation = 3
+	decision = prepareAppReleaseDecision(app)
+	if !decision.sourcePending {
+		t.Fatalf("operational generation consumed pending source: %+v", decision)
+	}
+
+	app.Generation = 4
+	app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "4"
+	decision = prepareAppReleaseDecision(app)
+	if decision.sourcePending || !decision.artifactChanged || !decision.releaseChanged {
+		t.Fatalf("deploy generation did not consume source: %+v", decision)
+	}
+	image, resolved = reusableArtifactImage(app, decision)
+	if !resolved || image != "nginx:stable" {
+		t.Fatalf("deployed source image=%q resolved=%v, want nginx:stable", image, resolved)
+	}
+}
+
+func TestPendingSourceWithoutImageHaltsBeforeBuildOrStaticPublish(t *testing.T) {
+	app := &appv1alpha1.App{
+		Spec: appv1alpha1.AppSpec{Repo: "https://example.invalid/new.git"},
+	}
+	_, _, halted, err := (&AppReconciler{}).resolveDeployImage(
+		context.Background(), app, appReleaseDecision{sourcePending: true}, 10000,
+	)
+	if err != nil || !halted {
+		t.Fatalf("pending source resolve: halted=%v err=%v, want halted without error", halted, err)
 	}
 }
 

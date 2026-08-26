@@ -97,6 +97,8 @@ type updateServiceArgs struct {
 	PublishPath             *string                  `json:"publishPath,omitempty" jsonschema:"static sites only: the built output directory served as the site root, e.g. dist, build, or public"`
 	Schedule                *string                  `json:"schedule,omitempty" jsonschema:"cron jobs only: the 5-field crontab expression, e.g. '0 0 * * *'"`
 	Command                 *string                  `json:"command,omitempty" jsonschema:"cron jobs only: the command each run executes, overriding the image entrypoint; empty clears the override"`
+	Repo                    *string                  `json:"repo,omitempty" jsonschema:"Git repository URL to build from. Setting it switches an image-backed service to Git and clears the image"`
+	Image                   *string                  `json:"image,omitempty" jsonschema:"prebuilt OCI image to deploy. Setting it switches a Git-backed service to an image and clears the repository"`
 	Branch                  *string                  `json:"branch,omitempty" jsonschema:"the Git branch to build and deploy; empty restores the default main"`
 	RegistryCredentialID    *string                  `json:"registryCredentialId,omitempty" jsonschema:"stored private-registry credential id to bind to an image-backed service or Dockerfile build; empty clears the binding"`
 	RootDir                 *string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from (monorepo support); empty builds from the repo root. Triggers a fresh build scoped to that subdirectory"`
@@ -704,7 +706,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_service",
-		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). rootDir and dockerfilePath trigger a fresh build. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to preview it (valid alone or with plan only). Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
+		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (repo, image, branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). Setting repo or image switches source kind without deploying; the next deploy uses the new source. rootDir and dockerfilePath trigger a fresh build. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to preview it (valid alone or with plan only). Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateServiceArgs) (*mcp.CallToolResult, renderService, error) {
 		return renderServiceResult(s.applyServicePatch(ctx, in))
 	})
@@ -716,6 +718,8 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 func (in updateServiceArgs) nonPlanFields() string {
 	present := map[string]bool{
 		"displayName":             in.DisplayName != nil,
+		"repo":                    in.Repo != nil,
+		"image":                   in.Image != nil,
 		"branch":                  in.Branch != nil,
 		"registryCredentialId":    in.RegistryCredentialID != nil,
 		"rootDir":                 in.RootDir != nil,
@@ -775,11 +779,9 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 	}
 
 	p := ServicePatch{
-		DisplayName: in.DisplayName,
-		// REST-only (w1/073 routing): Repo/Image/ImageOwnerID — Render's
-		// PATCH source object. update_service has no repo/image argument;
-		// rest.go's toServicePatch fills them. Branch + registryCredentialId
-		// still apply here.
+		DisplayName:          in.DisplayName,
+		Repo:                 in.Repo,
+		Image:                in.Image,
 		Branch:               in.Branch,
 		RegistryCredentialID: in.RegistryCredentialID,
 		// Same reorder REST arms: disable-maintenance + free downgrade must

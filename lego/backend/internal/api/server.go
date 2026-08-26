@@ -814,6 +814,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// tokens live an hour, so every deploy-initiating seam must remint, never
 	// build with the previous deploy's token.
 	srv.Deploys.CloneSecrets = srv.Apps.ReconcilerCloneSecreter()
+	srv.Deploys.PullSecrets = srv.Apps.DeployPullSecretPreparer()
 	return srv
 }
 

@@ -21,15 +21,16 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // m76_source_swap_test.go pins the "Update Source" transition matrix (ADR026 §8
 // / w5/m76) through the GraphQL surface the dashboard drives — setRepo /
 // setImage / setBranch all delegate to SetSourceAndRegistryCredential, so these
 // guarantee the source-kind switch clears the other kind, autoDeploy is never
-// touched, and no deploy is triggered (the store harness has no deploy plane —
-// the source change is a pure spec patch, Render's "changes are not deployed
-// automatically" semantics).
+// touched, and no deploy row is opened. The pending-source generation marker
+// tells the operator to retain the active artifact until the next deploy.
 
 func sourceSwapSchema(t *testing.T, svc *Service) graphql.Schema {
 	t.Helper()
@@ -54,7 +55,12 @@ func mustMutate(t *testing.T, schema graphql.Schema, query string) {
 // TestGraphQLSetImageSwitchesRepoToImage: setImage on a repo-backed service
 // clears the repo/branch source and leaves autoDeploy untouched.
 func TestGraphQLSetImageSwitchesRepoToImage(t *testing.T) {
-	svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "release"))
+	st := &recordingStore{}
+	app := managedRepoApp("web")
+	app.Spec.Repo = "https://github.com/x/mono"
+	app.Spec.Branch = "release"
+	app.Spec.AutoDeploy = true
+	svc, cl := newService(st, app)
 	schema := sourceSwapSchema(t, svc)
 
 	mustMutate(t, schema, `mutation { setImage(id: "web", image: "nginx:stable") { imagePath repo } }`)
@@ -65,6 +71,16 @@ func TestGraphQLSetImageSwitchesRepoToImage(t *testing.T) {
 	}
 	if !spec.AutoDeploy {
 		t.Error("setImage must not touch autoDeploy")
+	}
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("setImage opened deploy rows: %+v", st.deployCalls)
+	}
+	got := getApp(t, cl, "web")
+	if got.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] == "" {
+		t.Fatal("setImage did not mark the source as pending for the next deploy")
+	}
+	if got.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "" {
+		t.Fatal("setImage stamped a release generation and would deploy immediately")
 	}
 }
 
@@ -101,16 +117,16 @@ func TestGraphQLSetImageRejectsInvalidRef(t *testing.T) {
 	}
 }
 
-// TestGraphQLSetRepoThenBranchIsRepoRepoThenBranchOnly: two repo-backed edits in
-// a row — re-point the repo (default branch), then change only the branch —
-// each preserving the other field, with autoDeploy intact throughout.
+// TestGraphQLSetRepoThenBranchIsRepoRepoThenBranchOnly: setRepo atomically
+// carries the dialog's repo+branch pair, then setBranch can still change only
+// the branch while preserving the repository.
 func TestGraphQLSetRepoThenBranchOnly(t *testing.T) {
 	svc, cl := newService(nil, repoApp("web", "https://github.com/x/one", "main"))
 	schema := sourceSwapSchema(t, svc)
 
-	mustMutate(t, schema, `mutation { setRepo(id: "web", repo: "https://github.com/x/two") { repo } }`)
-	if spec := getApp(t, cl, "web").Spec; spec.Repo != "https://github.com/x/two" {
-		t.Fatalf("repo re-point: repo=%q", spec.Repo)
+	mustMutate(t, schema, `mutation { setRepo(id: "web", repo: "https://github.com/x/two", branch: "release") { repo branch } }`)
+	if spec := getApp(t, cl, "web").Spec; spec.Repo != "https://github.com/x/two" || spec.Branch != "release" {
+		t.Fatalf("repo re-point: repo=%q branch=%q", spec.Repo, spec.Branch)
 	}
 
 	mustMutate(t, schema, `mutation { setBranch(id: "web", branch: "develop") { branch } }`)
@@ -120,5 +136,39 @@ func TestGraphQLSetRepoThenBranchOnly(t *testing.T) {
 	}
 	if !spec.AutoDeploy {
 		t.Error("autoDeploy dropped across the source edits")
+	}
+}
+
+func TestGraphQLSetRepoNoOpDoesNotMarkSourcePending(t *testing.T) {
+	app := repoApp("web", "https://github.com/x/one", "main")
+	svc, cl := newService(nil, app)
+	schema := sourceSwapSchema(t, svc)
+
+	mustMutate(t, schema, `mutation { setRepo(id: "web", repo: "https://github.com/x/one", branch: "main") { repo branch } }`)
+	got := getApp(t, cl, "web")
+	if got.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] != "" {
+		t.Fatal("re-saving the current source marked a deploy pending")
+	}
+}
+
+func TestMCPUpdateServiceSwitchesSourceWithoutDeploying(t *testing.T) {
+	st := &recordingStore{}
+	app := managedRepoApp("web")
+	app.Spec.AutoDeploy = true
+	svc, _ := newService(st, app)
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+
+	call("update_service", map[string]any{
+		"serviceId": "web",
+		"image":     "nginx:stable",
+	})
+
+	spec := getApp(t, svc.Client, "web").Spec
+	if spec.Image != "nginx:stable" || spec.Repo != "" || !spec.AutoDeploy {
+		t.Fatalf("MCP source swap = image %q repo %q autoDeploy %v", spec.Image, spec.Repo, spec.AutoDeploy)
+	}
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("MCP source swap opened deploy rows: %+v", st.deployCalls)
 	}
 }

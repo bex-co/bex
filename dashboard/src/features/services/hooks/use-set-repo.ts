@@ -3,20 +3,28 @@ import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 
 export interface UseSetRepoResult {
   /** Fires setRepo; resolves true on success (toasted either way). */
-  setRepo: (id: string, repo: string) => Promise<boolean>;
+  setRepo: (id: string, source: RepoSourceUpdate) => Promise<boolean>;
   busy: boolean;
 }
 
+export interface RepoSourceUpdate {
+  repo: string;
+  branch?: string;
+}
+
 /**
- * Wires the Settings Build section's Source control to bex-api's `setRepo`
- * (w5/m54) — Render's editable Source field. Switching the repository patches
- * `spec.repo` through the shared source verb (the same one setBranch uses), so
- * the change validates and triggers the documented rebuild path.
+ * Wires Settings source controls to bex-api's `setRepo` (w5/m54, w5/m76).
+ * Repository and branch travel as one source update; saving only changes the
+ * configured source, and the next deploy consumes it.
  */
 export function useSetRepo(): UseSetRepoResult {
   const { run, busy } = useFieldMutation(
     SetRepoDocument,
-    (id: string, repo: string) => ({ id, repo }),
+    (id: string, { repo, branch }: RepoSourceUpdate) => ({
+      id,
+      repo,
+      branch: branch ?? null,
+    }),
     {
       success: "services.buildDeploySuccess",
       error: "services.buildDeployError",

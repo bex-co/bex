@@ -34,6 +34,11 @@ import (
 // Dockerfile build (registrycreds.Service satisfies it — w2/m14, w6/m34). nil
 // on the apps Service => registry credentials are off, unchanged.
 type PullSecretSource interface {
+	// ValidatePullSecret resolves the same workspace/host binding and stored
+	// password as MaterializePullSecret without writing a Kubernetes Secret.
+	// Update Source uses this read-only path so saving future source intent cannot
+	// alter credentials used by the active release.
+	ValidatePullSecret(ctx context.Context, workspaceID, image string, credentialID *string) error
 	// MaterializePullSecret upserts (and returns the name of) a dockerconfigjson
 	// Secret in a's namespace. Image-backed services resolve the registry host
 	// from image; Dockerfile builds pass an empty image and require an explicit
@@ -54,6 +59,29 @@ type PullSecretSource interface {
 	// use (fromRegistryCreds: {name}). found=false (nil err) means no such
 	// name; an ambiguous name (two credentials sharing it) is an error.
 	FindCredentialIDByName(ctx context.Context, workspaceID, name string) (id string, found bool, err error)
+}
+
+// validateExternalRegistryCredential performs the same applicability checks as
+// ensureExternalRegistryPullSecret, but leaves the active release's deterministic
+// pull Secret untouched. The next deploy materializes the validated binding.
+func (s *Service) validateExternalRegistryCredential(ctx context.Context, a *appv1alpha1.App) error {
+	credentialSet := a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) != ""
+	if a.Spec.Image == "" && !credentialSet {
+		return nil
+	}
+	if a.Spec.Image == "" && !isDockerfileBuild(a.Spec) {
+		return fmt.Errorf("%w: registryCredentialId only applies to an image-backed or Dockerfile-built service", core.ErrBadRequest)
+	}
+	if s.RegistryCreds == nil {
+		if credentialSet {
+			return core.ErrRegistryCredentialsUnavailable
+		}
+		return nil
+	}
+	if err := s.RegistryCreds.ValidatePullSecret(ctx, s.AppWorkspace(ctx, a), a.Spec.Image, a.Spec.RegistryCredentialID); err != nil {
+		return fmt.Errorf("validating registry pull secret for %s: %w", a.Spec.Image, err)
+	}
+	return nil
 }
 
 // ensureExternalRegistryPullSecret resolves and materializes the docker-config
@@ -110,6 +138,18 @@ func isDockerfileBuild(spec appv1alpha1.AppSpec) bool {
 // pullSecretName (unexported to that package; apps can't import it, so this
 // mirrors the exact same "<app>-registry-pull" convention).
 func externalRegistryPullSecretName(app string) string { return app + "-registry-pull" }
+
+// deployPullSecretBridge gives deploys.Service the deploy-time materialization
+// path without exposing an unauthenticated public Service verb.
+type deployPullSecretBridge struct{ svc *Service }
+
+func (b deployPullSecretBridge) EnsurePullSecret(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	return b.svc.ensureExternalRegistryPullSecret(ctx, a)
+}
+
+func (s *Service) DeployPullSecretPreparer() deployPullSecretBridge {
+	return deployPullSecretBridge{s}
+}
 
 // deleteExternalRegistryPullSecret removes an App's registry-pull Secret on
 // service delete. Best-effort: an absent Secret (no credential ever matched

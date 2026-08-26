@@ -36,6 +36,7 @@ type fakePullSecrets struct {
 	ok             bool
 	err            error
 	calls          int
+	validateCalls  int
 	lastImage      string
 	lastWorkspace  string
 	lastID         *string
@@ -48,6 +49,14 @@ type fakePullSecrets struct {
 	// scoped to (proves render enrichment stays within the App's own tenant).
 	lastResolveWorkspace string
 	credentialIDsByName  map[string]string
+}
+
+func (f *fakePullSecrets) ValidatePullSecret(_ context.Context, workspaceID, image string, credentialID *string) error {
+	f.validateCalls++
+	f.lastWorkspace = workspaceID
+	f.lastImage = image
+	f.lastID = clonePtr(credentialID)
+	return f.err
 }
 
 func (f *fakePullSecrets) FindCredentialIDByName(_ context.Context, _, name string) (string, bool, error) {

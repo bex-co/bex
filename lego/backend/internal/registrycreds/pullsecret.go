@@ -76,60 +76,66 @@ func registryHost(image string) string {
 // an Authorize call, so exposing it as a public Service verb would (rightly)
 // trip TestAuthzGuardsEveryVerb — the same reason github.Service's cloneToken
 // is unexported behind tokenSource.
-func (s *Service) materializePullSecret(ctx context.Context, workspaceID string, app *appv1alpha1.App, image string, credentialID *string) (secretName string, ok bool, err error) {
+func (s *Service) resolvePullCredential(ctx context.Context, workspaceID, image string, credentialID *string) (host string, cred store.RegistryCredential, password string, ok bool, err error) {
 	if credentialID != nil && strings.TrimSpace(*credentialID) == "" {
-		return "", false, nil // explicit clear: do not fall back to host matching
+		return "", store.RegistryCredential{}, "", false, nil // explicit clear: do not fall back to host matching
 	}
 	if !s.configured() {
 		if credentialID != nil {
-			return "", false, core.ErrRegistryCredentialsUnavailable
+			return "", store.RegistryCredential{}, "", false, core.ErrRegistryCredentialsUnavailable
 		}
-		return "", false, nil // legacy auto-match remains optional when unwired
+		return "", store.RegistryCredential{}, "", false, nil // legacy auto-match remains optional when unwired
 	}
-	host := ""
 	if strings.TrimSpace(image) != "" {
 		host = registryHost(image)
 	}
-	var cred store.RegistryCredential
 	var lookupErr error
 	if credentialID != nil {
 		id := strings.TrimSpace(*credentialID)
 		cred, lookupErr = s.Store.GetRegistryCredentialByID(ctx, id)
 		if lookupErr == nil && cred.WorkspaceID != workspaceID {
-			return "", false, fmt.Errorf("%w: registry credential %q does not belong to the target workspace", core.ErrForbidden, id)
+			return "", store.RegistryCredential{}, "", false, fmt.Errorf("%w: registry credential %q does not belong to the target workspace", core.ErrForbidden, id)
 		}
 		if lookupErr == nil && host != "" && !strings.EqualFold(cred.Host, host) {
-			return "", false, fmt.Errorf("%w: registry credential %q is for %s, not %s", core.ErrBadRequest, id, cred.Host, host)
+			return "", store.RegistryCredential{}, "", false, fmt.Errorf("%w: registry credential %q is for %s, not %s", core.ErrBadRequest, id, cred.Host, host)
 		}
 		if lookupErr == nil && host == "" {
 			host = cred.Host // explicit Docker-build binding: FROM host is not known at create time
 		}
 	} else {
 		if host == "" {
-			return "", false, nil // repo builds never guess which private FROM registry to use
+			return "", store.RegistryCredential{}, "", false, nil // repo builds never guess which private FROM registry to use
 		}
 		cred, lookupErr = s.Store.GetRegistryCredentialByHost(ctx, workspaceID, host)
 	}
 	if lookupErr != nil {
 		if errors.Is(lookupErr, store.ErrNotFound) {
 			if credentialID != nil {
-				return "", false, core.ErrNotFound
+				return "", store.RegistryCredential{}, "", false, core.ErrNotFound
 			}
-			return "", false, nil
+			return "", store.RegistryCredential{}, "", false, nil
 		}
-		return "", false, lookupErr
+		return "", store.RegistryCredential{}, "", false, lookupErr
 	}
 	secretMap, err := s.Secret.Get(ctx, secretPath(workspaceID, cred.ID))
 	if err != nil {
-		return "", false, err
+		return "", store.RegistryCredential{}, "", false, err
 	}
-	password, ok := secretMap["password"]
+	password, ok = secretMap["password"]
 	if !ok {
 		// The metadata row exists but its OpenBao secret is gone (deleted
 		// out-of-band, or a prior create's secret write rolled back after this
 		// read raced it) — refuse rather than materialize a Secret with an empty
 		// password that would just fail every pull.
-		return "", false, core.Err("registry credential " + cred.ID + " has no stored secret")
+		return "", store.RegistryCredential{}, "", false, core.Err("registry credential " + cred.ID + " has no stored secret")
+	}
+	return host, cred, password, true, nil
+}
+
+func (s *Service) materializePullSecret(ctx context.Context, workspaceID string, app *appv1alpha1.App, image string, credentialID *string) (secretName string, ok bool, err error) {
+	host, cred, password, ok, err := s.resolvePullCredential(ctx, workspaceID, image, credentialID)
+	if err != nil || !ok {
+		return "", ok, err
 	}
 	name := pullSecretName(app.Name)
 	auths := dockerConfigJSON(host, cred.Username, password)
@@ -184,6 +190,13 @@ func dockerConfigJSON(host, username, password string) []byte {
 // authz-swept Service verb — the interface method itself must be exported for
 // cross-package satisfaction, but the wrapper type is not a Service verb.
 type pullSecretSource struct{ s *Service }
+
+// ValidatePullSecret satisfies apps.PullSecretSource without mutating the
+// deterministic per-App Secret used by the active release.
+func (p pullSecretSource) ValidatePullSecret(ctx context.Context, workspaceID, image string, credentialID *string) error {
+	_, _, _, _, err := p.s.resolvePullCredential(ctx, workspaceID, image, credentialID)
+	return err
+}
 
 // MaterializePullSecret satisfies apps.PullSecretSource.
 func (p pullSecretSource) MaterializePullSecret(ctx context.Context, workspaceID string, app *appv1alpha1.App, image string, credentialID *string) (string, bool, error) {
