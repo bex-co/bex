@@ -2076,13 +2076,19 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "A push to the tracked branch redeploys automatically via the GitHub app.",
     description:
-      "Build & Deploy: source indicator when the repo is on the connected GitHub account",
+      "Build & Deploy: source indicator when the connected GitHub App installation grants THIS repo (pushDeliveryMethod github_app)",
   },
   "services.autoDeployViaWebhook": {
     message:
       "A push redeploys only if the repo's manual git webhook is configured with your BEX_WEBHOOK_SECRET.",
     description:
-      "Build & Deploy: source indicator when the repo is not on the connected GitHub account",
+      "Build & Deploy: source indicator when the GitHub App cannot deliver a push for this repo — no connection, another git host, or a repo the installation does not grant (pushDeliveryMethod manual_webhook)",
+  },
+  "services.autoDeployDeliveryUnknown": {
+    message:
+      "Checking how a push to the tracked branch reaches bex… If this persists, GitHub is unreachable and the delivery method can't be confirmed.",
+    description:
+      "Build & Deploy: source indicator while the per-repo push-delivery check is loading or returned unknown (GitHub unreachable) — states the uncertainty instead of naming a mechanism (w6/m99)",
   },
   "services.autoDeployOnSuccess": {
     message: "Auto-Deploy turned on.",

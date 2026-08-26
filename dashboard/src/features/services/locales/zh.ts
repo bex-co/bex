@@ -2034,13 +2034,19 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.autoDeployViaGitHub": {
     message: "向跟踪分支推送将通过 GitHub 应用自动重新部署。",
     description:
-      "Build & Deploy: source indicator when the repo is on the connected GitHub account",
+      "Build & Deploy: source indicator when the connected GitHub App installation grants THIS repo (pushDeliveryMethod github_app)",
   },
   "services.autoDeployViaWebhook": {
     message:
       "只有在仓库配置了使用 BEX_WEBHOOK_SECRET 的手动 git webhook 时，推送才会重新部署。",
     description:
-      "Build & Deploy: source indicator when the repo is not on the connected GitHub account",
+      "Build & Deploy: source indicator when the GitHub App cannot deliver a push for this repo — no connection, another git host, or a repo the installation does not grant (pushDeliveryMethod manual_webhook)",
+  },
+  "services.autoDeployDeliveryUnknown": {
+    message:
+      "正在检查推送如何送达 bex… 若持续如此，则表示无法连接 GitHub，暂时无法确认送达方式。",
+    description:
+      "Build & Deploy: source indicator while the per-repo push-delivery check is loading or returned unknown (GitHub unreachable) — states the uncertainty instead of naming a mechanism (w6/m99)",
   },
   "services.autoDeployOnSuccess": {
     message: "已开启自动部署。",

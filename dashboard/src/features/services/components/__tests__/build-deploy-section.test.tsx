@@ -75,16 +75,6 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
   useRepos: () => ({ repos: [], loading: false, error: undefined }),
 }));
 
-const connectionState: {
-  connection:
-    | { connected: boolean; accountLogin: string; installUrl: string }
-    | undefined;
-} = { connection: undefined };
-
-vi.mock("@/features/git/hooks/use-git-connection", () => ({
-  useGitConnection: () => connectionState,
-}));
-
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   setRootDir.mockClear();
@@ -105,7 +95,6 @@ beforeEach(() => {
   setRepo.mockClear();
   setRepo.mockResolvedValue(true);
   setDockerfilePath.mockResolvedValue(true);
-  connectionState.connection = undefined;
 });
 
 /** Confirm a rebuild-affecting save through the row's AlertDialog. */
@@ -567,12 +556,17 @@ describe("BuildDeploySection", () => {
     ).toHaveTextContent("On Commit");
   });
 
-  it("names the GitHub app as the push source when the repo is on the connected account", () => {
-    connectionState.connection = {
-      connected: true,
-      accountLogin: "acme",
-      installUrl: "",
-    };
+  // Auto-Deploy push-source hint (w2/m9, corrected w6/m99). The hint states a
+  // MECHANISM, so it may only ever come from the server's per-repo grant answer
+  // (pushDeliveryMethod) — never from "the workspace has a connection and the
+  // URL says github.com", which promised the GitHub app for repos the
+  // installation does not grant and where no push ever arrives. The prop is the
+  // whole input: workspace connection state and the picker's granted-repo list
+  // reach the hint only through the server's answer, so neither is mocked here.
+
+  // The w2/m9 control case, now asserted rather than assumed: a repo the
+  // installation really grants keeps the GitHub-app claim.
+  it("names the GitHub app as the push source for a repo the installation grants", () => {
     render(
       <BuildDeploySection
         serviceId="app"
@@ -580,6 +574,7 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={true}
+        pushDeliveryMethod="github_app"
         preDeployCommand={null}
         showPreDeployCommand={false}
       />,
@@ -587,6 +582,27 @@ describe("BuildDeploySection", () => {
     expect(
       screen.getByText(/redeploys automatically via the GitHub app/),
     ).toBeInTheDocument();
+  });
+
+  // The live-found regression (w6/m99): connection is live AND the repo is a
+  // github.com URL — the two conditions the old heuristic checked — but the
+  // installation does not grant this repo, so GitHub never delivers a push
+  // event for it. The old code claimed the GitHub app here.
+  it("names the manual webhook for a github.com repo the live connection does not grant", () => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/someone-else/side-project"
+        branch="main"
+        rootDir={null}
+        autoDeploy={true}
+        pushDeliveryMethod="manual_webhook"
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(screen.getByText(/manual git webhook/)).toBeInTheDocument();
+    expect(screen.queryByText(/via the GitHub app/)).not.toBeInTheDocument();
   });
 
   it("names the manual webhook as the push source when GitHub is not connected", () => {
@@ -597,11 +613,37 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={true}
+        pushDeliveryMethod="manual_webhook"
         preDeployCommand={null}
         showPreDeployCommand={false}
       />,
     );
     expect(screen.getByText(/manual git webhook/)).toBeInTheDocument();
+  });
+
+  // GitHub unreachable, and the not-yet-loaded first render: name no mechanism
+  // at all rather than pick one and be wrong in whichever direction.
+  it.each([
+    ["unknown", "unknown" as string | undefined],
+    ["not yet loaded", undefined],
+  ])("states the uncertainty when delivery is %s", (_label, method) => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/acme/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={true}
+        pushDeliveryMethod={method}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(
+      screen.getByText(/Checking how a push to the tracked branch reaches bex/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/via the GitHub app/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/manual git webhook/)).not.toBeInTheDocument();
   });
 
   // Pre-Deploy Command field (w1/m33).

@@ -25,7 +25,6 @@ import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
 import { useRepos } from "@/features/services/hooks/use-repos";
-import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { commandPromptPrefix } from "@/features/services/lib/format";
 import type { BuildFilterView } from "@/features/services/types";
 
@@ -53,6 +52,8 @@ export interface BuildDeploySectionProps {
   buildFilter?: BuildFilterView | null;
   /** spec.autoDeploy — whether a signed git push redeploys this App. */
   autoDeploy: boolean;
+  /** Server-computed push deliverability for THIS repo — see autoDeployHintKey. */
+  pushDeliveryMethod?: string | null;
   /** spec.preDeployCommand; empty/null means no pre-deploy step (w1/m33). */
   preDeployCommand: string | null;
   /**
@@ -85,6 +86,30 @@ export interface BuildDeploySectionProps {
 }
 
 /**
+ * The translation key for the Auto-Deploy row's source line, chosen by the
+ * server's per-repo push-deliverability answer — the same predicate a deploy
+ * trigger applies (lego/backend/internal/apps/pushdelivery.go). It replaces a
+ * `connection.connected && /github\.com/` heuristic that promised "via the
+ * GitHub app" for any github.com URL whenever the workspace had a connection at
+ * all, including repos the installation does not grant, where GitHub never
+ * sends a push event and no deploy ever fires (w6/m99).
+ *
+ * Everything else — `unknown` (GitHub unreachable), `none`, and the not-yet-
+ * loaded first render — states the uncertainty rather than asserting a
+ * mechanism in whichever direction happens to be wrong.
+ */
+function autoDeployHintKey(pushDeliveryMethod: string | null) {
+  switch (pushDeliveryMethod) {
+    case "github_app":
+      return "services.autoDeployViaGitHub" as const;
+    case "manual_webhook":
+      return "services.autoDeployViaWebhook" as const;
+    default:
+      return "services.autoDeployDeliveryUnknown" as const;
+  }
+}
+
+/**
  * The Settings tab's Build and Deploy cards (w5/m13). Ordinary services put
  * source in the unified ServiceSourceCard; cron/static variants retain the
  * legacy inline Source/Branch fields here. Source changes are saved for the
@@ -101,6 +126,7 @@ export function BuildDeploySection({
   dockerfilePath = null,
   buildFilter,
   autoDeploy,
+  pushDeliveryMethod = null,
   preDeployCommand,
   showPreDeployCommand,
   showStartCommand = false,
@@ -126,14 +152,10 @@ export function BuildDeploySection({
   const { setDockerfilePath, busy: dockerfilePathBusy } = useDockerfilePath();
   const { setPreDeployCommand, busy: preDeployBusy } = usePreDeployCommand();
   const { setAutoDeploy, busy: autoDeployBusy } = useAutoDeploy();
-  const { connection } = useGitConnection();
   // Optimistic switch state — reverted on a failed mutation.
   const [autoDeployOn, setAutoDeployOn] = useState(autoDeploy);
 
-  // A repo hosted on the connected GitHub account auto-deploys hands-free via
-  // the app's app-wide webhook; otherwise a push needs the manual HMAC webhook.
-  // (The backend does the precise repo-grant match; this is the UI hint.)
-  const viaGitHub = !!connection?.connected && /github\.com[/:]/i.test(repo);
+  const autoDeployHint = t(autoDeployHintKey(pushDeliveryMethod));
 
   // Render presents Auto-Deploy as a select ("On Commit" | "Off"), not a switch
   // (w5/m53). bex has only two states — its boolean spec.autoDeploy maps to
@@ -158,11 +180,7 @@ export function BuildDeploySection({
   const autoDeployRow = (
     <EditableFieldRow
       label={t("services.autoDeployLabel")}
-      hint={
-        viaGitHub
-          ? t("services.autoDeployViaGitHub")
-          : t("services.autoDeployViaWebhook")
-      }
+      hint={autoDeployHint}
       value={autoDeployOn ? "commit" : "off"}
       editLabel={t("services.autoDeployEdit")}
       busy={autoDeployBusy}

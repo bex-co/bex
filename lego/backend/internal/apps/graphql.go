@@ -421,6 +421,10 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// the dashboard's Auto-Deploy select reads it. bex never emits
 		// "checksPass" (documented divergence).
 		"autoDeployTrigger": gqlutil.StrField(func(a AppView) any { return triggerEnum(a.AutoDeploy) }),
+		// pushDeliveryMethod is whether a push can REACH bex for this repo, the
+		// signal the autoDeploy setting alone cannot express (w6/m99). Populated
+		// on server(id)/service(id), empty on the list — see pushdelivery.go.
+		"pushDeliveryMethod": gqlutil.StrField(func(a AppView) any { return a.PushDeliveryMethod }),
 		// notifyOnFail is Render's per-service deploy-failure notification
 		// override (default | notify | ignore, docs/render-artifacts/
 		// notify-on-fail.md); the Settings → Notifications section reads it and

@@ -37,6 +37,14 @@ type CloneTokenSource interface {
 	// connected repo (leave cloneSecret alone). A non-nil err is a GitHub failure
 	// the caller must not swallow into a public-clone of a private repo.
 	CloneToken(ctx context.Context, workspaceID, repoURL string) (token string, ok bool, err error)
+	// RepoGranted answers CloneToken's `ok` alone — "does repoURL belong to
+	// workspaceID's GitHub connection" — for the READ path, which reports
+	// push-deliverability (pushdelivery.go, w6/m99) and has no use for a deploy
+	// credential. Same call, same verdict, minus the token: nothing is written
+	// and nothing is handed back for a caller to leak. Answering it still costs
+	// the installation-token mint the grant check authenticates with, which is
+	// why the read path memoizes it.
+	RepoGranted(ctx context.Context, workspaceID, repoURL string) (granted bool, err error)
 }
 
 // deployWorkspace resolves the workspace whose GitHub connection owns this App's

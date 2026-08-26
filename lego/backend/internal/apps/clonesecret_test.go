@@ -31,12 +31,16 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// fakeCloneTokens is a stub CloneTokenSource.
+// fakeCloneTokens is a stub CloneTokenSource. calls counts the deploy-path
+// CloneToken only; grantCalls counts the read-path RepoGranted separately, so a
+// test asserting how many tokens a deploy minted stays honest now that every
+// service read also consults the same grant (w6/m99).
 type fakeCloneTokens struct {
 	token         string
 	ok            bool
 	err           error
 	calls         int
+	grantCalls    int
 	lastWorkspace string
 	lastRepo      string
 }
@@ -46,6 +50,11 @@ func (f *fakeCloneTokens) CloneToken(_ context.Context, workspaceID, repo string
 	f.lastWorkspace = workspaceID
 	f.lastRepo = repo
 	return f.token, f.ok, f.err
+}
+
+func (f *fakeCloneTokens) RepoGranted(_ context.Context, _, _ string) (bool, error) {
+	f.grantCalls++
+	return f.ok, f.err
 }
 
 func ghService(gh CloneTokenSource, apps ...*appv1alpha1.App) (*Service, client.Client) {
