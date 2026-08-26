@@ -94,11 +94,6 @@ func TestSettingsVerbsOpenDeployHistory(t *testing.T) {
 			_, err := svc.SetPlan(ctx, "web", "standard")
 			return err
 		}},
-		{"source", func(svc *Service) error {
-			repo := "https://github.com/bex-co/other.git"
-			_, err := svc.SetSourceAndRegistryCredential(ctx, "web", sourcePatch{Repo: &repo})
-			return err
-		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -175,6 +170,26 @@ func TestOperationalVerbsOpenNoDeploy(t *testing.T) {
 				t.Fatalf("deploy rows = %d, want none for an operational change", len(st.deployCalls))
 			}
 		})
+	}
+}
+
+// TestSourceUpdateDefersDeploy covers the exceptional release-field contract:
+// Update Source changes future release intent but does not itself deploy. The
+// pending marker lets the operator preserve the active release until a deploy
+// verb consumes the new source.
+func TestSourceUpdateDefersDeploy(t *testing.T) {
+	st := &recordingStore{}
+	svc, cl := newService(st, managedRepoApp("web"))
+	repo := "https://github.com/bex-co/other.git"
+	if _, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", sourcePatch{Repo: &repo}); err != nil {
+		t.Fatalf("SetSourceAndRegistryCredential: %v", err)
+	}
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("deploy rows = %d, want none for a deferred source update", len(st.deployCalls))
+	}
+	app := getApp(t, cl, "web")
+	if app.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] == "" {
+		t.Fatal("source update did not mark its generation pending")
 	}
 }
 

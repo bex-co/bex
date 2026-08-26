@@ -600,6 +600,39 @@ func TestTriggerDeployOnlyAcceptsImageBacked(t *testing.T) {
 	}
 }
 
+type fakePullSecretPreparer struct {
+	calls int
+	name  string
+}
+
+func (f *fakePullSecretPreparer) EnsurePullSecret(_ context.Context, _ *appv1alpha1.App) (string, error) {
+	f.calls++
+	return f.name, nil
+}
+
+func TestTriggerMaterializesPendingSourcePullSecret(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("svc", "srv-pull")
+	app.Spec.ExternalRegistryPullSecret = "active-release-pull"
+	svc, cl := newService(ds, app)
+	preparer := &fakePullSecretPreparer{name: "svc-registry-pull"}
+	svc.PullSecrets = preparer
+
+	if _, err := svc.Trigger(context.Background(), "svc", TriggerParams{}); err != nil {
+		t.Fatalf("Trigger: %v", err)
+	}
+	if preparer.calls != 1 {
+		t.Fatalf("pull-secret preparations = %d, want 1", preparer.calls)
+	}
+	var got appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &got); err != nil {
+		t.Fatalf("get App: %v", err)
+	}
+	if got.Spec.ExternalRegistryPullSecret != "svc-registry-pull" {
+		t.Fatalf("deploy pull secret = %q, want svc-registry-pull", got.Spec.ExternalRegistryPullSecret)
+	}
+}
+
 // --- imageUrl accept/reject paths (w2/m44) ------------------------------------
 
 func TestTriggerImageURLRejectsRepoBacked(t *testing.T) {

@@ -340,6 +340,8 @@ func TestUpdateServiceMatchesRESTPatchFieldForField(t *testing.T) {
 		restBody string
 	}{
 		{"displayName", map[string]any{"displayName": "Customer API"}, `{"name":"Customer API"}`},
+		{"repo", map[string]any{"repo": "https://github.com/acme/next", "branch": "release"}, `{"repo":"https://github.com/acme/next","branch":"release"}`},
+		{"image", map[string]any{"image": "nginx:stable"}, `{"image":{"imagePath":"nginx:stable"}}`},
 		{"rootDir", map[string]any{"rootDir": "services/web"}, `{"rootDir":"services/web"}`},
 		{"buildCommand", map[string]any{"buildCommand": "npm run build"}, `{"serviceDetails":{"envSpecificDetails":{"buildCommand":"npm run build"}}}`},
 		{"startCommand", map[string]any{"startCommand": "bin/server"}, `{"serviceDetails":{"envSpecificDetails":{"dockerCommand":"bin/server"}}}`},

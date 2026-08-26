@@ -2671,9 +2671,9 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 		return AppView{}, err
 	}
 	previousGeneration := a.Generation
-	// Untracked patch: this path opens its OWN deploy row below, with the pushed
-	// commit's provenance patchTracked's generic config_change row cannot carry.
-	v, err := s.patchTracked(ctx, a, "", func(a *appv1alpha1.App) {
+	// Untracked patch: this path opens its OWN deploy row below, with pushed-
+	// commit provenance that a generic config_change row cannot carry.
+	v, err := s.patchUntracked(ctx, a, func(a *appv1alpha1.App) {
 		stampReleaseGeneration(a, previousGeneration+1)
 		if secretName != "" {
 			a.Spec.CloneSecret = secretName
@@ -3213,13 +3213,30 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	if err != nil {
 		return AppView{}, err
 	}
+	if next.repo == a.Spec.Repo &&
+		next.image == a.Spec.Image &&
+		next.branch == a.Spec.Branch &&
+		sameStringPtr(next.registryCredentialID, a.Spec.RegistryCredentialID) {
+		return s.view(a), nil
+	}
 	probe := a.DeepCopy()
 	probe.Spec.Repo = next.repo
 	probe.Spec.Image = next.image
 	probe.Spec.Branch = next.branch
 	probe.Spec.RegistryCredentialID = clonePtr(next.registryCredentialID)
-	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, probe)
-	if err != nil {
+	if err := s.validateExternalRegistryCredential(ctx, probe); err != nil {
+		return AppView{}, err
+	}
+	// Stamp the pending generation before writing the projector-owned source
+	// row. If the following CR patch loses a race or the API becomes unavailable,
+	// a later projector resync still cannot deploy the new source accidentally.
+	markerBase := client.MergeFrom(a.DeepCopy())
+	metav1.SetMetaDataAnnotation(
+		&a.ObjectMeta,
+		appv1alpha1.AnnotationPendingSourceGeneration,
+		strconv.FormatInt(a.Generation+1, 10),
+	)
+	if err := s.Client.Patch(ctx, a, markerBase); err != nil {
 		return AppView{}, err
 	}
 	if s.Store != nil {
@@ -3230,7 +3247,6 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		}
 	}
 	previousBranch := a.Spec.Branch
-	oldPullSecret := a.Spec.ExternalRegistryPullSecret
 	// SECURITY (codex #5): when the repository origin changes, the retained GitHub
 	// clone token is scoped to the OLD origin. Static publisher and kpack would send
 	// it to the new (possibly attacker-controlled) origin. Atomically clear the old
@@ -3238,12 +3254,15 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	// connected private one) is minted on the next deploy.
 	repoChanged := next.repo != a.Spec.Repo
 	oldCloneSecret := a.Spec.CloneSecret
-	updated, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	// Render saves Update Source without deploying it. Deliberately bypass
+	// patchFetched's rollout tracker; the pending marker above tells the operator
+	// to keep the active artifact until a later deploy verb stamps
+	// AnnotationReleaseGeneration at this generation or newer.
+	updated, err := s.patchUntracked(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Repo = next.repo
 		a.Spec.Image = next.image
 		a.Spec.Branch = next.branch
 		a.Spec.RegistryCredentialID = clonePtr(next.registryCredentialID)
-		a.Spec.ExternalRegistryPullSecret = pullSecretName
 		if repoChanged {
 			a.Spec.CloneSecret = "" // clear stale token; reminted on next deploy
 		}
@@ -3256,15 +3275,14 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 			log.Printf("apps: clear stale clone secret for %s after repo change: %v", a.Name, err)
 		}
 	}
-	if oldPullSecret != "" && pullSecretName == "" {
-		if err := s.deleteExternalRegistryPullSecret(ctx, a.Namespace, a.Name); err != nil {
-			return AppView{}, fmt.Errorf("delete cleared registry pull secret: %w", err)
-		}
-	}
 	if previousBranch != "" && previousBranch != next.branch {
 		s.recordBranchChangedFact(ctx, a, previousBranch, next.branch, updated.UpdatedAt)
 	}
 	return updated, nil
+}
+
+func sameStringPtr(a, b *string) bool {
+	return (a == nil && b == nil) || (a != nil && b != nil && *a == *b)
 }
 
 // sourceFields is the validated source a sourcePatch resolves to — the four
@@ -3669,19 +3687,19 @@ func (s *Service) patch(ctx context.Context, relation, name string, mutate func(
 // that moves the operator's release identity is a real rollout and gets its own
 // deploys row — the same guarantee w2/m30 gave Restart, now covering the
 // Settings-page verbs (start/build command, root dir, Dockerfile path,
-// pre-deploy command, source, health check path, plan, disks) that used to
+// pre-deploy command, health check path, plan, disks) that used to
 // rebuild invisibly. A purely operational mutation (scale, autoDeploy, custom
 // domains, notification policy) changes nothing the operator rebuilds for and
-// deliberately mints no row.
+// deliberately mints no row. Update Source is the exception among release
+// fields: SetSourceAndRegistryCredential marks it pending and bypasses this
+// path so Render's "next deploy uses it" contract remains true.
 func (s *Service) patchFetched(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) (AppView, error) {
 	return s.patchTracked(ctx, a, store.TriggerConfigChange, mutate)
 }
 
-// patchTracked is patchFetched with an explicit deploy-history trigger. An
-// empty trigger opts out of tracking entirely — for a caller that opens its own
-// row with richer provenance (redeployFetched, which carries the pushed commit).
+// patchTracked is patchFetched with an explicit deploy-history trigger.
 func (s *Service) patchTracked(ctx context.Context, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App)) (AppView, error) {
-	err := s.rollouts(trigger).Patch(ctx, s.Client, a, trigger, func(a *appv1alpha1.App) error {
+	err := s.rollouts().Patch(ctx, s.Client, a, trigger, func(a *appv1alpha1.App) error {
 		mutate(a)
 		resourcemeta.Touch(a, s.Now())
 		return nil
@@ -3692,14 +3710,27 @@ func (s *Service) patchTracked(ctx context.Context, a *appv1alpha1.App, trigger 
 	return s.view(a), nil
 }
 
+// patchUntracked applies a CR-only mutation without opening a generic deploy
+// row or stamping a release generation. Source updates use it because they are
+// deferred until the next deploy; redeployFetched uses it because that caller
+// records a richer deploy row itself.
+func (s *Service) patchUntracked(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) (AppView, error) {
+	base := client.MergeFrom(a.DeepCopy())
+	mutate(a)
+	resourcemeta.Touch(a, s.Now())
+	if err := s.Client.Patch(ctx, a, base); err != nil {
+		return AppView{}, err
+	}
+	return s.view(a), nil
+}
+
 // rollouts adapts the service's own store slice to the deploy-row recorder.
 // Deriving it from Store rather than wiring a separate field is what keeps a
 // second composition root (cmd/ssh-gateway, the workspace purger) from silently
-// building an untracked Service. A nil Store (CR-only mode) — or the empty
-// trigger a caller that opens its own row passes — yields a tracker that
-// records nothing.
-func (s *Service) rollouts(trigger string) *rollout.Tracker {
-	if s.Store == nil || trigger == "" {
+// building an untracked Service. A nil Store (CR-only mode) yields a tracker
+// that records nothing.
+func (s *Service) rollouts() *rollout.Tracker {
+	if s.Store == nil {
 		return nil
 	}
 	return &rollout.Tracker{Store: s.Store}

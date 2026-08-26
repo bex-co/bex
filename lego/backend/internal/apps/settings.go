@@ -37,12 +37,11 @@ import (
 // exactly its value, including the empty value, which is how a caller clears
 // a field.
 //
-// Three fields are deliberately single-surface — routing that matches Render,
+// Two settings are deliberately single-surface — routing that matches Render,
 // not accidental drift (w1/073):
 //
-//   - Repo, Image, ImageOwnerID — REST-only (Render's PATCH source object);
-//     update_service has no repo/image argument (source-kind switches stay
-//     on REST; MCP still carries branch + registryCredentialId).
+//   - ImageOwnerID — REST-only because it validates Render's nested image
+//     owner object; MCP's request-scoped workspace already supplies the owner.
 //   - NotificationsToSend, Autoscaling — MCP-only convenience folds; REST
 //     keeps Render's dedicated routes (PATCH …/notification-settings/
 //     overrides/services/{id} and PUT …/autoscaling).
@@ -53,7 +52,7 @@ import (
 // difference; it only exists so the table row has a field to own.
 type ServicePatch struct {
 	DisplayName *string
-	// Repo/Image/ImageOwnerID: REST-only today (divergence — see type comment).
+	// ImageOwnerID is REST-only; Repo/Image/Branch are shared with MCP.
 	Repo                 *string
 	Image                *string
 	ImageOwnerID         *string

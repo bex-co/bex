@@ -597,6 +597,12 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 // terminal outcome (a direct static publish, or a build that halted the pass),
 // so the caller must return (res, err) instead of dispatching.
 func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1.App, decision appReleaseDecision, port int) (image string, res ctrl.Result, halted bool, err error) {
+	// A direct-static release has no image to reuse, and a never-deployed service
+	// has no active artifact yet. In both cases Update Source must simply wait;
+	// the next deploy annotation re-enters with sourcePending=false.
+	if decision.sourcePending && app.Status.Image == "" {
+		return "", ctrl.Result{}, true, nil
+	}
 	image, artifactResolved := reusableArtifactImage(app, decision)
 	// Direct static publish (w9/010): a repo-backed static_site with no
 	// Dockerfile path, no build command, and no native runtime has nothing to

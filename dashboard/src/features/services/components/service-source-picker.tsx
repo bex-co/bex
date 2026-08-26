@@ -36,9 +36,9 @@ export type ImageSourceOption = {
 };
 
 /**
- * Source selection shared by the create-service and create-Blueprint forms: a
- * connected GitHub repo, a public git URL, and — for services — a prebuilt
- * image.
+ * Source selection shared by create-service, create-Blueprint, and Update
+ * Source: a connected GitHub repo, a public git URL, and — for services — a
+ * prebuilt image.
  *
  * The repo search box, the repo list, and the GitHub connection state live
  * here because no caller reads them. The selection itself stays lifted: both

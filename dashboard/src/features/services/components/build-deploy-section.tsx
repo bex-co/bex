@@ -25,7 +25,6 @@ import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
 import { useRepos } from "@/features/services/hooks/use-repos";
-import { SwitchToImageRow } from "@/features/services/components/service-source-card";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { commandPromptPrefix } from "@/features/services/lib/format";
 import type { BuildFilterView } from "@/features/services/types";
@@ -78,16 +77,18 @@ export interface BuildDeploySectionProps {
    * the Deploy Hook stays a standalone card.
    */
   showDeployCard?: boolean;
+  /**
+   * Keep the legacy inline Source/Branch rows for source-specialized variants
+   * (cron/static). Ordinary services render the unified ServiceSourceCard.
+   */
+  showSourceFields?: boolean;
 }
 
 /**
- * The Settings tab's "Build & Deploy" section (w5/m13, Render parity — layout
- * captured live from Render's own Settings → Build panel): Source (repo) and
- * Branch editable inline (combobox from the connected account's repos/branches,
- * free-text fallback; confirm-on-change since a switch rebuilds), Root Directory
- * editable, and — w5/m76 — a "switch to a container image" affordance for the
- * repo→image half of Render's Update Source. Only rendered for a build-from-git
- * App; an image-backed App's source lives in ImageSourceCard instead.
+ * The Settings tab's Build and Deploy cards (w5/m13). Ordinary services put
+ * source in the unified ServiceSourceCard; cron/static variants retain the
+ * legacy inline Source/Branch fields here. Source changes are saved for the
+ * next deploy rather than triggering one immediately.
  */
 export function BuildDeploySection({
   serviceId,
@@ -107,6 +108,7 @@ export function BuildDeploySection({
   buildCommand = null,
   showBuildCommand = false,
   showDeployCard = true,
+  showSourceFields = true,
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
   // Choosing what a service builds and runs (source, branch, root dir, commands,
@@ -119,7 +121,6 @@ export function BuildDeploySection({
     ? t("capabilities.reasonCanCreate")
     : undefined;
   const { setRootDir, busy } = useRootDir();
-  const { setBranch, busy: branchBusy } = useBranch();
   const { setStartCommand, busy: startCommandBusy } = useStartCommand();
   const { setBuildCommand, busy: buildCommandBusy } = useBuildCommand();
   const { setDockerfilePath, busy: dockerfilePathBusy } = useDockerfilePath();
@@ -133,24 +134,6 @@ export function BuildDeploySection({
   // the app's app-wide webhook; otherwise a push needs the manual HMAC webhook.
   // (The backend does the precise repo-grant match; this is the UI hint.)
   const viaGitHub = !!connection?.connected && /github\.com[/:]/i.test(repo);
-
-  // Branch combobox options: the connected GitHub repo's real branches (w5/m54),
-  // empty for a non-GitHub repo / no App connection — then the combobox is just
-  // free-text entry (allowCustom), matching today's behavior.
-  const { branches } = useRepoBranches(repo);
-  const branchOptions = useMemo(
-    () => branches.map((b) => ({ value: b, label: b })),
-    [branches],
-  );
-
-  // Source combobox options: the connected account's repositories (w5/m54).
-  // Empty without a connection — then Source is free-text (allowCustom).
-  const { setRepo, busy: repoBusy } = useSetRepo();
-  const { repos } = useRepos();
-  const repoOptions = useMemo(
-    () => repos.map((r) => ({ value: r.htmlUrl, label: r.fullName })),
-    [repos],
-  );
 
   // Render presents Auto-Deploy as a select ("On Commit" | "Off"), not a switch
   // (w5/m53). bex has only two states — its boolean spec.autoDeploy maps to
@@ -202,52 +185,15 @@ export function BuildDeploySection({
           <CardDescription>{t("services.buildDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Source is editable (w5/m54, Render parity): switch the connected
-              repository via the account's repo list (free-text for a pasted
-              URL). A switch rebuilds, so it confirms first. */}
-          <EditableFieldRow
-            label={t("services.buildDeploySourceLabel")}
-            hint={t("services.buildDeploySourceHint")}
-            value={repo}
-            placeholder={t("services.buildDeploySourcePlaceholder")}
-            editLabel={t("services.buildDeploySourceEdit")}
-            mono
-            busy={repoBusy}
-            comboboxOptions={repoOptions}
-            confirm={{
-              title: (value) =>
-                t("services.buildDeploySourceConfirmTitle", { value }),
-              body: t("services.buildDeploySourceConfirmBody"),
-            }}
-            disabled={createDisabled}
-                disabledReason={createReason}
-                onSave={(value) => setRepo(serviceId, value)}
-          />
-          {/* Branch is editable (w5/m48/t005, Render parity — Render offers a
-              searchable branch picker; bex edits it inline like Root Directory).
-              An emptied input restores the backend default ("back to main"); the
-              confirm dialog names it via the empty stand-in. */}
-          <EditableFieldRow
-            label={t("services.buildDeployBranchLabel")}
-            hint={t("services.buildDeployBranchHint")}
-            value={branch ?? ""}
-            placeholder={t("services.buildDeployBranchPlaceholder")}
-            editLabel={t("services.buildDeployBranchEdit")}
-            mono
-            busy={branchBusy}
-            // Render's searchable branch picker (w5/m54) when the repo's branches
-            // are known; free-text otherwise (allowCustom).
-            comboboxOptions={branchOptions}
-            confirm={{
-              title: (value) =>
-                t("services.buildDeployBranchConfirmTitle", { value }),
-              body: t("services.buildDeployBranchConfirmBody"),
-              emptyValue: t("services.buildDeployBranchEmpty"),
-            }}
-            disabled={createDisabled}
-                disabledReason={createReason}
-                onSave={(value) => setBranch(serviceId, value)}
-          />
+          {showSourceFields && (
+            <LegacySourceFields
+              serviceId={serviceId}
+              repo={repo}
+              branch={branch}
+              disabled={createDisabled}
+              disabledReason={createReason}
+            />
+          )}
           <EditableFieldRow
             label={t("services.buildDeployRootDirLabel")}
             hint={t("services.buildDeployRootDirHint")}
@@ -264,8 +210,8 @@ export function BuildDeploySection({
               emptyValue: t("services.buildDeployConfirmRoot"),
             }}
             disabled={createDisabled}
-                disabledReason={createReason}
-                onSave={(value) => setRootDir(serviceId, value)}
+            disabledReason={createReason}
+            onSave={(value) => setRootDir(serviceId, value)}
           />
 
           {showBuildCommand && (
@@ -289,8 +235,8 @@ export function BuildDeploySection({
                 emptyValue: t("services.buildCommandConfirmEmpty"),
               }}
               disabled={createDisabled}
-                disabledReason={createReason}
-                onSave={(value) => setBuildCommand(serviceId, value)}
+              disabledReason={createReason}
+              onSave={(value) => setBuildCommand(serviceId, value)}
             />
           )}
 
@@ -311,8 +257,8 @@ export function BuildDeploySection({
                 emptyValue: t("services.dockerfilePathConfirmEmpty"),
               }}
               disabled={createDisabled}
-                disabledReason={createReason}
-                onSave={(value) => setDockerfilePath(serviceId, value)}
+              disabledReason={createReason}
+              onSave={(value) => setDockerfilePath(serviceId, value)}
             />
           )}
 
@@ -320,14 +266,6 @@ export function BuildDeploySection({
             serviceId={serviceId}
             buildFilter={buildFilter ?? null}
             canOperate={canOperate}
-          />
-
-          {/* repo→image half of Render's Update Source (w5/m76): switch this
-              build-from-git service to a prebuilt container image. */}
-          <SwitchToImageRow
-            serviceId={serviceId}
-            disabled={createDisabled}
-            disabledReason={createReason}
           />
 
           {/* A cron_job has no Deploy card (its Deploy section holds the
@@ -429,6 +367,81 @@ export function BuildDeploySection({
           </CardContent>
         </Card>
       )}
+    </>
+  );
+}
+
+/** Legacy source rows retained only by cron/static settings variants. */
+function LegacySourceFields({
+  serviceId,
+  repo,
+  branch,
+  disabled,
+  disabledReason,
+}: {
+  serviceId: string;
+  repo: string;
+  branch: string | null;
+  disabled: boolean;
+  disabledReason?: string;
+}) {
+  const { t } = useTranslations();
+  const { setBranch, busy: branchBusy } = useBranch();
+  const { branches } = useRepoBranches(repo);
+  const branchOptions = useMemo(
+    () => branches.map((value) => ({ value, label: value })),
+    [branches],
+  );
+  const { setRepo, busy: repoBusy } = useSetRepo();
+  const { repos } = useRepos();
+  const repoOptions = useMemo(
+    () =>
+      repos.map((candidate) => ({
+        value: candidate.htmlUrl,
+        label: candidate.fullName,
+      })),
+    [repos],
+  );
+
+  return (
+    <>
+      <EditableFieldRow
+        label={t("services.buildDeploySourceLabel")}
+        hint={t("services.buildDeploySourceHint")}
+        value={repo}
+        placeholder={t("services.buildDeploySourcePlaceholder")}
+        editLabel={t("services.buildDeploySourceEdit")}
+        mono
+        busy={repoBusy}
+        comboboxOptions={repoOptions}
+        confirm={{
+          title: (value) =>
+            t("services.buildDeploySourceConfirmTitle", { value }),
+          body: t("services.sourceNoAutoDeploy"),
+        }}
+        disabled={disabled}
+        disabledReason={disabledReason}
+        onSave={(value) => setRepo(serviceId, { repo: value })}
+      />
+      <EditableFieldRow
+        label={t("services.buildDeployBranchLabel")}
+        hint={t("services.buildDeployBranchHint")}
+        value={branch ?? ""}
+        placeholder={t("services.buildDeployBranchPlaceholder")}
+        editLabel={t("services.buildDeployBranchEdit")}
+        mono
+        busy={branchBusy}
+        comboboxOptions={branchOptions}
+        confirm={{
+          title: (value) =>
+            t("services.buildDeployBranchConfirmTitle", { value }),
+          body: t("services.sourceNoAutoDeploy"),
+          emptyValue: t("services.buildDeployBranchEmpty"),
+        }}
+        disabled={disabled}
+        disabledReason={disabledReason}
+        onSave={(value) => setBranch(serviceId, value)}
+      />
     </>
   );
 }

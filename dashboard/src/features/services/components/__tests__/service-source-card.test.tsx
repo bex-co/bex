@@ -1,17 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {
-  ImageSourceCard,
-  SwitchToImageRow,
-} from "@/features/services/components/service-source-card";
-
-// w5/m76: the Source card + repo↔image switch is the dashboard half of
-// Render's Update Source. These pin that the mutations fire with the right
-// arguments and that the no-auto-deploy note is shown.
+import { ServiceSourceCard } from "@/features/services/components/service-source-card";
 
 const setImage = vi.fn(async () => true);
 const setRepo = vi.fn(async () => true);
+
+const repos = [
+  {
+    id: 1,
+    fullName: "acme/api",
+    htmlUrl: "https://github.com/acme/api",
+    cloneUrl: "https://github.com/acme/api.git",
+    accountLogin: "acme",
+    private: true,
+    defaultBranch: "main",
+  },
+  {
+    id: 2,
+    fullName: "puncsky/site",
+    htmlUrl: "https://github.com/puncsky/site",
+    cloneUrl: "https://github.com/puncsky/site.git",
+    accountLogin: "puncsky",
+    private: false,
+    defaultBranch: "trunk",
+  },
+];
 
 vi.mock("@/features/services/hooks/use-set-image", () => ({
   useSetImage: () => ({ setImage, busy: false }),
@@ -20,24 +34,22 @@ vi.mock("@/features/services/hooks/use-set-repo", () => ({
   useSetRepo: () => ({ setRepo, busy: false }),
 }));
 vi.mock("@/features/services/hooks/use-repos", () => ({
-  useRepos: () => ({
-    repos: [
-      {
-        id: 1,
-        fullName: "puncsky/site",
-        htmlUrl: "https://github.com/puncsky/site",
-        accountLogin: "puncsky",
-        private: false,
-        defaultBranch: "main",
-        cloneUrl: "",
-      },
-    ],
+  useRepos: () => ({ repos, loading: false, error: undefined }),
+}));
+vi.mock("@/features/services/hooks/use-repo-branches", () => ({
+  useRepoBranches: () => ({ branches: ["main", "release"], loading: false }),
+}));
+vi.mock("@/features/git/hooks/use-git-connection", () => ({
+  useGitConnection: () => ({
+    connection: { connected: true },
     loading: false,
-    error: undefined,
   }),
 }));
+vi.mock("@/features/git/hooks/use-connect-git", () => ({
+  useConnectGit: () => ({ connect: vi.fn(), busy: false }),
+}));
 vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
-  useCapabilities: () => ({ canCreate: true, canOperate: true }),
+  useCapabilities: () => ({ canCreate: true }),
 }));
 vi.mock("@/features/services/components/registry-credential-select", () => ({
   RegistryCredentialSelect: () => null,
@@ -48,96 +60,94 @@ beforeEach(() => {
   setRepo.mockClear();
 });
 
-describe("ImageSourceCard", () => {
-  it("shows the configured image and switches to a repo via setRepo", async () => {
+describe("ServiceSourceCard", () => {
+  it("shows a repo and branch, then atomically repoints both from the grouped picker", async () => {
     const user = userEvent.setup();
     render(
-      <ImageSourceCard
+      <ServiceSourceCard
         serviceId="srv-1"
+        repo="https://github.com/acme/api"
+        branch="main"
+        imagePath={null}
+        registryCredentialId={null}
+      />,
+    );
+
+    expect(screen.getByText("acme / api")).toBeInTheDocument();
+    expect(screen.getByText("main")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(
+      screen.getByText(/changes aren't deployed automatically/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Update source" }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("tab", { name: "GitHub" }));
+    expect(screen.getByText("acme")).toBeInTheDocument();
+    expect(screen.getByText("puncsky")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /puncsky\/site/i }));
+
+    const branch = screen.getByRole("combobox", { name: "Branch" });
+    expect(branch).toHaveValue("trunk");
+    await user.clear(branch);
+    await user.type(branch, "release");
+    await user.click(screen.getByRole("button", { name: "Update source" }));
+
+    await waitFor(() =>
+      expect(setRepo).toHaveBeenCalledWith("srv-1", {
+        repo: "https://github.com/puncsky/site",
+        branch: "release",
+      }),
+    );
+  });
+
+  it("repoints an image and forwards its registry credential", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-2"
+        repo={null}
+        branch={null}
+        imagePath="nginx:stable"
+        registryCredentialId="rgc-1"
+      />,
+    );
+
+    expect(screen.getByText("nginx:stable")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const input = screen.getByDisplayValue("nginx:stable");
+    await user.clear(input);
+    await user.type(input, "nginx:1.27");
+    await user.click(screen.getByRole("button", { name: "Update source" }));
+
+    await waitFor(() =>
+      expect(setImage).toHaveBeenCalledWith("srv-2", "nginx:1.27", "rgc-1"),
+    );
+  });
+
+  it("switches an image-backed service to a connected repo and its default branch", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-3"
+        repo={null}
+        branch={null}
         imagePath="nginx:stable"
         registryCredentialId={null}
       />,
     );
 
-    // The image row is present (its Edit affordance).
-    expect(
-      screen.getByRole("button", { name: "Edit image" }),
-    ).toBeInTheDocument();
-
-    // Open the switch-to-repo dialog and pick a connected-account repo.
-    await user.click(
-      screen.getByRole("button", { name: /switch to a git repository/i }),
-    );
-    await user.click(screen.getByRole("button", { name: /puncsky\/site/i }));
-    await user.click(screen.getByRole("button", { name: /update source/i }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "GitHub" }));
+    await user.click(screen.getByRole("button", { name: /acme\/api/i }));
+    await user.click(screen.getByRole("button", { name: "Update source" }));
 
     await waitFor(() =>
-      expect(setRepo).toHaveBeenCalledWith(
-        "srv-1",
-        "https://github.com/puncsky/site",
-      ),
+      expect(setRepo).toHaveBeenCalledWith("srv-3", {
+        repo: "https://github.com/acme/api",
+        branch: "main",
+      }),
     );
-  });
-
-  it("edits the image inline via setImage (confirm-gated, credential forwarded)", async () => {
-    const user = userEvent.setup();
-    render(
-      <ImageSourceCard
-        serviceId="srv-1"
-        imagePath="nginx:stable"
-        registryCredentialId="rc-1"
-      />,
-    );
-    await user.click(screen.getByRole("button", { name: "Edit image" }));
-    const input = screen.getByDisplayValue("nginx:stable");
-    await user.clear(input);
-    await user.type(input, "nginx:1.27");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-
-    // Source edits are confirm-gated; the note names the new value.
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Save changes" }),
-    );
-
-    await waitFor(() =>
-      expect(setImage).toHaveBeenCalledWith("srv-1", "nginx:1.27", "rc-1"),
-    );
-  });
-});
-
-describe("SwitchToImageRow", () => {
-  it("switches a repo-backed service to an image via setImage", async () => {
-    const user = userEvent.setup();
-    render(<SwitchToImageRow serviceId="srv-2" disabled={false} />);
-
-    await user.click(
-      screen.getByRole("button", { name: /switch to a container image/i }),
-    );
-    const input = screen.getByPlaceholderText(/nginx/i);
-    await user.type(input, "ghcr.io/acme/app:v1");
-    await user.click(screen.getByRole("button", { name: /update source/i }));
-
-    await waitFor(() =>
-      expect(setImage).toHaveBeenCalledWith(
-        "srv-2",
-        "ghcr.io/acme/app:v1",
-        undefined,
-      ),
-    );
-  });
-
-  it("is disabled with no dialog when the caller lacks can_create", () => {
-    render(
-      <SwitchToImageRow
-        serviceId="srv-2"
-        disabled
-        disabledReason="need can_create"
-      />,
-    );
-    expect(
-      screen.getByRole("button", { name: /switch to a container image/i }),
-    ).toBeDisabled();
-    expect(screen.getByText("need can_create")).toBeInTheDocument();
   });
 });

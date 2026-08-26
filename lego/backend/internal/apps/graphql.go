@@ -1383,17 +1383,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		// setRepo switches the Git repository a service builds from (Render's
 		// editable Source field, w5/m54). Delegates to the same shared source
-		// verb as setBranch/REST PATCH `repo`, so validation (ValidRepo) and the
-		// explicit-switch rebuild semantics stay identical across surfaces.
+		// verb as setBranch/REST PATCH `repo`, so validation and deferred-until-
+		// next-deploy semantics stay identical across surfaces.
 		"setRepo": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":   gqlutil.ReqArg(graphql.String),
-				"repo": gqlutil.ReqArg(graphql.String),
+				"id":     gqlutil.ReqArg(graphql.String),
+				"repo":   gqlutil.ReqArg(graphql.String),
+				"branch": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				repo := p.Args["repo"].(string)
-				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), sourcePatch{Repo: &repo})
+				patch := sourcePatch{Repo: &repo, Branch: gqlutil.StrPtr(p.Args, "branch")}
+				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), patch)
 			},
 		},
 		// setImage switches a service to a prebuilt container image (Render's

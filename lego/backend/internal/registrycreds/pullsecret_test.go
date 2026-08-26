@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -147,6 +148,23 @@ func TestMaterializePullSecretMissingOpenBaoValueErrors(t *testing.T) {
 
 	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", nil); err == nil {
 		t.Fatal("want an error when the credential's OpenBao secret is missing")
+	}
+}
+
+func TestValidatePullSecretDoesNotWriteKubernetesSecret(t *testing.T) {
+	ctx := context.Background()
+	cl := fakeK8sClient()
+	s := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, Store: newFakeStore(), Secret: newFakeSecretKV()}
+	if _, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "hunter2"}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := s.DeployPullSecretSource().ValidatePullSecret(ctx, core.DefaultTenant, "ghcr.io/acme/private:1", nil); err != nil {
+		t.Fatalf("ValidatePullSecret: %v", err)
+	}
+	var sec corev1.Secret
+	err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-registry-pull"}, &sec)
+	if !apierrors.IsNotFound(err) {
+		t.Fatalf("validation wrote a Kubernetes Secret: err=%v secret=%+v", err, sec)
 	}
 }
 

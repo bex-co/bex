@@ -368,6 +368,7 @@ describe("ServiceSettingsPage", () => {
 
     expect(hrefs).toEqual([
       "#general",
+      "#source",
       "#build",
       "#domains",
       "#networking",

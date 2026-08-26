@@ -1953,6 +1953,7 @@ export type MutationSetRegistryCredentialArgs = {
 
 
 export type MutationSetRepoArgs = {
+  branch?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   repo: Scalars['String']['input'];
 };

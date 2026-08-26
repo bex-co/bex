@@ -194,7 +194,9 @@ describe("BuildDeploySection", () => {
       }),
     );
 
-    expect(setRepo).toHaveBeenCalledWith("app", "https://github.com/x/next");
+    expect(setRepo).toHaveBeenCalledWith("app", {
+      repo: "https://github.com/x/next",
+    });
   });
 
   it("edits the branch through the confirm dialog via setBranch (w5/m48)", async () => {
