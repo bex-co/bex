@@ -446,6 +446,13 @@ type Store interface {
 	// idle-timeout verb on store-managed Apps (the projector owns
 	// spec.idleTTLSeconds), same row-first rationale as SetAppReplicas.
 	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
+	// SetAppDisplayName mirrors the App CR's mutable human label onto the row.
+	// Unlike its neighbours here the row is NOT the writer of truth: the CR's
+	// spec.displayName is, and this is only its read projection, kept so a
+	// store-side query can resolve the label without a per-row k8s read
+	// (w6/m101 — the workspace-wide event feed, webhook and push dispatch
+	// alike, is its only reader).
+	SetAppDisplayName(ctx context.Context, id string, displayName string) error
 	// SetAppSource atomically updates the projector-owned source tuple and its
 	// context-sensitive registry credential binding.
 	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error
@@ -1636,6 +1643,21 @@ func (s *PGStore) SetAppIdleTTL(ctx context.Context, id string, seconds int32) e
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE apps SET idle_ttl_seconds = $2, updated_at = now() WHERE id = $1`,
 		id, seconds)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	return nil
+}
+
+// SetAppDisplayName mirrors spec.displayName onto the row. Empty means never
+// renamed, and readers fall back to apps.name.
+func (s *PGStore) SetAppDisplayName(ctx context.Context, id string, displayName string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET display_name = $2, updated_at = now() WHERE id = $1`,
+		id, displayName)
 	if err != nil {
 		return classify("app", err)
 	}

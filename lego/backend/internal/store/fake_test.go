@@ -457,6 +457,18 @@ func (m *memStore) SetAppIdleTTL(_ context.Context, id string, seconds int32) er
 	return nil
 }
 
+// SetAppDisplayName has nothing to store: display_name is read only by the
+// composed event feed's SQL, which this fake does not implement. It rejects an
+// unknown app the way PGStore does.
+func (m *memStore) SetAppDisplayName(_ context.Context, id string, _ string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.apps[id]; !ok {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	return nil
+}
+
 func (m *memStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

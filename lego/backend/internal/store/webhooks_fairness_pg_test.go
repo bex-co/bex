@@ -29,7 +29,7 @@ import (
 
 func TestWebhookDeliveryAdmissionIsBoundedPerWorkspace(t *testing.T) {
 	ctx := context.Background()
-	s, pool := webhookFairnessStore(t, ctx)
+	s, pool := webhookPGStore(t, ctx)
 	defer pool.Close()
 
 	const tenantName = "webhook-admission-bound"
@@ -101,7 +101,7 @@ func TestWebhookDeliveryAdmissionIsBoundedPerWorkspace(t *testing.T) {
 
 func TestWebhookAttemptClaimIsFairAndDisjointAcrossReplicas(t *testing.T) {
 	ctx := context.Background()
-	s, pool := webhookFairnessStore(t, ctx)
+	s, pool := webhookPGStore(t, ctx)
 	defer pool.Close()
 
 	const noisyName = "webhook-fair-noisy"
@@ -193,7 +193,9 @@ func TestWebhookAttemptClaimIsFairAndDisjointAcrossReplicas(t *testing.T) {
 	}
 }
 
-func webhookFairnessStore(t *testing.T, ctx context.Context) (*PGStore, *pgxpool.Pool) {
+// webhookPGStore is the skip/migrate/connect preamble every webhook pg test
+// shares.
+func webhookPGStore(t *testing.T, ctx context.Context) (*PGStore, *pgxpool.Pool) {
 	t.Helper()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {

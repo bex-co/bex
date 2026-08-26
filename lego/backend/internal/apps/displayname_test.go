@@ -74,6 +74,79 @@ func TestSetDisplayNameSetClearAndIdentityInvariant(t *testing.T) {
 	}
 }
 
+// The rename has to reach the control-plane row, not just the CR: the
+// workspace-wide event feed joins apps at dispatch time and has no CR to read,
+// so a CR-only rename left every webhook and push notification reporting the
+// creation-time name (w6/m101).
+func TestSetDisplayNameManagedAppWritesRowThenCR(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, manage(displayNameApp("immutable-id"), "srv-1"))
+
+	if _, err := svc.SetDisplayName(context.Background(), "immutable-id", "  Friendly API  "); err != nil {
+		t.Fatalf("SetDisplayName: %v", err)
+	}
+	if len(rec.displayNameCalls) != 1 || rec.displayNameCalls[0].id != "srv-1" || rec.displayNameCalls[0].displayName != "Friendly API" {
+		t.Fatalf("row write = %v, want [srv-1 \"Friendly API\"] (trimmed, same as the CR)", rec.displayNameCalls)
+	}
+	if got := getApp(t, cl, "immutable-id").Spec.DisplayName; got != "Friendly API" {
+		t.Errorf("CR spec.displayName = %q, want the trimmed label", got)
+	}
+
+	// A whitespace-only value IS a clear: the trim happens before either write,
+	// so the row never holds a value the feed's fallback would fail to catch.
+	if _, err := svc.SetDisplayName(context.Background(), "immutable-id", "   "); err != nil {
+		t.Fatalf("clear SetDisplayName: %v", err)
+	}
+	if len(rec.displayNameCalls) != 2 || rec.displayNameCalls[1].displayName != "" {
+		t.Fatalf("clear row write = %v, want a trailing empty write", rec.displayNameCalls)
+	}
+	if got := getApp(t, cl, "immutable-id").Spec.DisplayName; got != "" {
+		t.Errorf("CR spec.displayName = %q, want cleared", got)
+	}
+}
+
+func TestSetDisplayNameUnmanagedAppSkipsStore(t *testing.T) {
+	rec := &recordingStore{}
+	app := displayNameApp("hand")
+	app.Labels = map[string]string{core.LabelAppID: "srv-direct"} // an id alone is not store-managed
+	svc, cl := newService(rec, app)
+
+	if _, err := svc.SetDisplayName(context.Background(), "hand", "Hand rolled"); err != nil {
+		t.Fatalf("SetDisplayName: %v", err)
+	}
+	if len(rec.displayNameCalls) != 0 {
+		t.Errorf("unmanaged App wrote rows: %v", rec.displayNameCalls)
+	}
+	if got := getApp(t, cl, "hand").Spec.DisplayName; got != "Hand rolled" {
+		t.Errorf("CR spec.displayName = %q, want the new label", got)
+	}
+}
+
+func TestSetDisplayNameWithoutStorePatchesCR(t *testing.T) {
+	svc, cl := newService(nil, displayNameApp("web"))
+
+	if _, err := svc.SetDisplayName(context.Background(), "web", "Store-less"); err != nil {
+		t.Fatalf("SetDisplayName: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.DisplayName; got != "Store-less" {
+		t.Errorf("CR spec.displayName = %q, want the new label", got)
+	}
+}
+
+// Half-applying the rename is what produced the wrong-serviceName bug, so a
+// failed row write must surface rather than leave a CR the feed disagrees with.
+func TestSetDisplayNameRowWriteFailureLeavesCRUntouched(t *testing.T) {
+	rec := &recordingStore{err: errors.New("row write failed")}
+	svc, cl := newService(rec, manage(displayNameApp("immutable-id"), "srv-1"))
+
+	if _, err := svc.SetDisplayName(context.Background(), "immutable-id", "Friendly API"); err == nil {
+		t.Fatal("SetDisplayName succeeded despite a failing row write")
+	}
+	if got := getApp(t, cl, "immutable-id").Spec.DisplayName; got != "Original label" {
+		t.Errorf("CR spec.displayName = %q, want the untouched original", got)
+	}
+}
+
 func TestSetDisplayNameRejectsNonMemberWithoutMutation(t *testing.T) {
 	app := displayNameApp("other")
 	app.Labels = map[string]string{core.LabelTenant: "tea-b", core.LabelServiceName: "other"}
