@@ -11,6 +11,8 @@
 #     tree so a new/changed action can't slip in unreviewed.
 #  3. No end-of-life Node 20 runtime; deploy.yml keeps its checksum-pinned
 #     Gitleaks scan and its w1/m59 supersession wiring.
+#  4. Workflows fetching admin.conf pin the SSH host and keep the fetched
+#     kubeconfig alive until their last cluster command.
 #  5. Self-hosted runner custody (ADR083, `.pm/DO_NOT_DO.md` #CI-RUNNERS): every
 #     job `runs-on` must target self-hosted labels — reverting to GitHub-hosted
 #     `ubuntu-*` is a rejected security-scan "remediation", not a fix.
@@ -74,6 +76,30 @@ if [ -n "$unpinned_fetchers" ]; then
   echo "FAIL: these workflows fetch admin.conf over SSH without wiring the BEX_SSH_KNOWN_HOSTS pin," >&2
   echo "      so they trust the control-plane host key on first use:" >&2
   printf '  %s\n' $unpinned_fetchers >&2
+  exit 1
+fi
+
+# 4a. Kubeconfig credential lifetime. The SSH key can and should be scrubbed as
+# soon as admin.conf has been fetched, but deleting app.kubeconfig in that same
+# step leaves KUBECONFIG pointing at a missing file. kubectl then falls back to
+# localhost:8080 and every real cluster operation fails. Derived from the same
+# fetcher inventory as the host-key check so new credentialed workflows inherit
+# the guard automatically.
+invalid_kubeconfig_lifetimes=""
+for wf in $(admin_conf_fetchers); do
+  cleanup_count="$(grep -cF 'rm -f -- "$RUNNER_TEMP/app.kubeconfig"' "$wf" || true)"
+  cleanup_line="$(grep -nF 'rm -f -- "$RUNNER_TEMP/app.kubeconfig"' "$wf" \
+    | tail -n 1 | cut -d: -f1 || true)"
+  last_cluster_line="$(grep -nE '(^|[^[:alnum:]_-])(kubectl|helm|clusterctl)([^[:alnum:]_-]|$)' "$wf" \
+    | grep -vE '^[0-9]+:[[:space:]]*#' | tail -n 1 | cut -d: -f1 || true)"
+  if [ "$cleanup_count" -ne 1 ] \
+    || { [ -n "$last_cluster_line" ] && [ "${cleanup_line:-0}" -le "$last_cluster_line" ]; }; then
+    invalid_kubeconfig_lifetimes="$invalid_kubeconfig_lifetimes $wf"
+  fi
+done
+if [ -n "$invalid_kubeconfig_lifetimes" ]; then
+  echo "FAIL: these workflows delete app.kubeconfig before their last cluster command (or do not scrub it exactly once):" >&2
+  printf '  %s\n' $invalid_kubeconfig_lifetimes >&2
   exit 1
 fi
 
@@ -184,6 +210,10 @@ if [ "$(grep -cF "env.SUPERSEDED != 'true'" .github/workflows/deploy.yml)" -lt 4
   echo "FAIL: deploy.yml rollout steps must gate on env.SUPERSEDED so a mid-build supersession concludes neutral (w1/m59)" >&2
   exit 1
 fi
+if [ "$(grep -cF "steps.app_kubeconfig.outcome == 'success'" .github/workflows/deploy.yml)" -lt 4 ]; then
+  echo "FAIL: deploy.yml always-run rollout checks must require a successfully fetched app kubeconfig" >&2
+  exit 1
+fi
 
 # Anti-vacuity for check 4: the pin-coverage loop passes trivially over a tree
 # with no admin.conf fetchers, so pin the known three (deploy, app-cluster,
@@ -203,4 +233,4 @@ if [ "$(grep -Rh 'self-hosted' .github/workflows lego/operator/.github/workflows
   exit 1
 fi
 
-echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned, self-hosted runner custody intact"
+echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, self-hosted runner custody intact"

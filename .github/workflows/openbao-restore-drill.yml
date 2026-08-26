@@ -82,11 +82,11 @@ jobs:
           bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
           echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >>"$GITHUB_ENV"
 
-      - name: scrub job credentials
+      # The SSH key is needed only for the fetch. Keep app.kubeconfig through
+      # the drill; the final scrub removes it even when the drill fails.
+      - name: scrub SSH credentials
         if: always()
-        run: |
-          rm -rf -- "$RUNNER_TEMP/bex-ssh"
-          rm -f -- "$RUNNER_TEMP/app.kubeconfig"
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
 
       - name: Fresh snapshot, scripted restore, verification, teardown
         env:
@@ -174,3 +174,10 @@ jobs:
 
           kubectl -n secrets get statefulset openbao \
             -o custom-columns=NAME:.metadata.name,READY:.status.readyReplicas,REPLICAS:.status.replicas
+
+      - name: final credential scrub
+        if: always()
+        run: |
+          rm -rf -- "$RUNNER_TEMP/bex-ssh"
+          rm -f -- "$RUNNER_TEMP/app.kubeconfig"
+          unset KUBECONFIG || true

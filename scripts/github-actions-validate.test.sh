@@ -87,10 +87,34 @@ assert "unpinned verify-substrate fails" 1 "$(body "      - uses: $PINNED
 assert "pinned admin.conf fetcher passes" 0 "$(body "      - uses: $PINNED
       - env:
           BEX_SSH_KNOWN_HOSTS: \${{ secrets.BEX_SSH_KNOWN_HOSTS }}
-        run: bash scripts/fetch-app-kubeconfig.sh \"\$RUNNER_TEMP/app.kubeconfig\"")"
+        run: |
+          bash scripts/fetch-app-kubeconfig.sh \"\$RUNNER_TEMP/app.kubeconfig\"
+          kubectl get nodes
+          rm -f -- \"\$RUNNER_TEMP/app.kubeconfig\"")"
 # GREEN: a workflow that never fetches admin.conf is unaffected.
 assert "non-fetcher unaffected" 0 "$(body "      - uses: $PINNED
       - run: make test")"
+
+# RED: scrubbing the fetched kubeconfig before cluster work reproduces deploy
+# run 32913749053's localhost:8080 failure.
+assert "premature kubeconfig scrub fails" 1 "$(body "      - uses: $PINNED
+      - env:
+          BEX_SSH_KNOWN_HOSTS: \${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          bash scripts/fetch-app-kubeconfig.sh \"\$RUNNER_TEMP/app.kubeconfig\"
+          rm -f -- \"\$RUNNER_TEMP/app.kubeconfig\"
+      - run: kubectl get nodes")" \
+  "delete app.kubeconfig before their last cluster command"
+# RED: an early scrub plus a final scrub is still broken during the workload.
+assert "duplicate kubeconfig scrub fails" 1 "$(body "      - uses: $PINNED
+      - env:
+          BEX_SSH_KNOWN_HOSTS: \${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          bash scripts/fetch-app-kubeconfig.sh \"\$RUNNER_TEMP/app.kubeconfig\"
+          rm -f -- \"\$RUNNER_TEMP/app.kubeconfig\"
+      - run: kubectl get nodes
+      - run: rm -f -- \"\$RUNNER_TEMP/app.kubeconfig\"")" \
+  "do not scrub it exactly once"
 
 # --- w8/m30 t005 / ADR050: restore workflows must carry the age decrypt key --
 # RED: a restore workflow that disables dotenv but never passes the key. This is
