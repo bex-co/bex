@@ -9,7 +9,7 @@ import {
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServiceBase } from "@/features/services/lib/service-base";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { useServiceEvents } from "@/features/events/hooks/use-service-events";
 import {
   filterTimelineEvents,
@@ -90,12 +90,10 @@ export function EventTimeline({
                     </span>
                   </div>
                   {event.timestamp ? (
-                    <time
+                    <RelativeAge
+                      value={event.timestamp}
                       className="mt-1 block text-xs text-muted-foreground"
-                      dateTime={event.timestamp}
-                    >
-                      {formatRelativeAge(event.timestamp)}
-                    </time>
+                    />
                   ) : null}
                 </div>
               );

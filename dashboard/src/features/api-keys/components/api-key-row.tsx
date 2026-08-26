@@ -1,7 +1,7 @@
 import { TableRow, TableCell } from "@/common/components/ui/table";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import type { ApiKeyView } from "@/features/api-keys/types";
 
 export interface ApiKeyRowProps {
@@ -21,15 +21,16 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
         {entry.name}
       </TableCell>
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-        {formatRelativeAge(entry.createdAt)}
+        <RelativeAge value={entry.createdAt} />
       </TableCell>
       <TableCell className="text-muted-foreground max-w-[12rem] truncate font-mono text-sm">
         {entry.createdBy ?? "—"}
       </TableCell>
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-        {entry.lastUsedAt
-          ? formatRelativeAge(entry.lastUsedAt)
-          : t("apiKeys.neverUsed")}
+        <RelativeAge
+          value={entry.lastUsedAt}
+          fallback={t("apiKeys.neverUsed")}
+        />
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
         <RevokeIconButton

@@ -22,7 +22,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCronRuns } from "@/features/services/hooks/use-cron-runs";
 import { useCronRun } from "@/features/services/hooks/use-cron-run";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import type {
   CronRunView,
   ServiceBadgeVariant,
@@ -182,7 +182,7 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                               ) : (
                                 <ChevronRight className="h-3.5 w-3.5" />
                               )}
-                              {formatRelativeAge(run.startedAt)}
+                              <RelativeAge value={run.startedAt} />
                             </button>
                           </TableCell>
                           <TableCell className="tabular-nums text-muted-foreground">

@@ -20,7 +20,7 @@ import {
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import type {
   AgentSessionArchivedFilter,
   AgentSessionPhase,
@@ -239,7 +239,7 @@ export function SessionList({
                 {" · "}
                 {s.repo}
                 {" · "}
-                {formatRelativeAge(s.createdAt)}
+                <RelativeAge value={s.createdAt} />
               </span>
             </Link>
             <div className="flex shrink-0 items-center gap-1 py-3 pr-1">
@@ -314,7 +314,7 @@ export function SessionList({
                   <PrBadge session={s} />
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden text-sm sm:table-cell">
-                  {formatRelativeAge(s.createdAt)}
+                  <RelativeAge value={s.createdAt} />
                 </TableCell>
                 <TableCell className="text-right">
                   <ArchiveRowAction

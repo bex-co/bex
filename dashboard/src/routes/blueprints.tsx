@@ -37,7 +37,7 @@ import {
 } from "@/common/components/ui/table";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
 import { useBlueprints } from "@/features/blueprints/hooks/use-blueprints";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 
 export const Route = createFileRoute("/blueprints")({
   staticData: { chrome: true },
@@ -154,7 +154,7 @@ function BlueprintsListPage() {
                           <BlueprintStatusBadge status={bp.status} />
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {bp.updatedAt ? formatRelativeAge(bp.updatedAt) : "—"}
+                          <RelativeAge value={bp.updatedAt} />
                         </TableCell>
                       </TableRow>
                     ))}

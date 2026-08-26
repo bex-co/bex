@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -23,16 +24,13 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { CopyButton } from "@/common/components/copy-button";
+import { RelativeAge, RelativeUntil } from "@/common/components/relative-time";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
-import {
-  formatRelativeAge,
-  formatRelativeUntil,
-} from "@/features/services/lib/format";
 import { formatRepoLabel, repoBrowseUrl } from "@/features/services/lib/repo";
 import {
   deriveServiceType,
@@ -209,17 +207,19 @@ export function ServiceDetailHeader({
             {service.lastSuccessfulRunAt ? (
               <div className="text-muted-foreground flex items-center gap-1.5">
                 <span>{t("services.headerLastRun")}</span>
-                <span className="text-foreground text-xs">
-                  {formatRelativeAge(service.lastSuccessfulRunAt)}
-                </span>
+                <RelativeAge
+                  value={service.lastSuccessfulRunAt}
+                  className="text-foreground text-xs"
+                />
               </div>
             ) : null}
             {service.nextRunAt ? (
               <div className="text-muted-foreground flex items-center gap-1.5">
                 <span>{t("services.headerNextRun")}</span>
-                <span className="text-foreground text-xs">
-                  {formatRelativeUntil(service.nextRunAt)}
-                </span>
+                <RelativeUntil
+                  value={service.nextRunAt}
+                  className="text-foreground text-xs"
+                />
               </div>
             ) : null}
           </>
@@ -438,7 +438,7 @@ function ConnectCodeRow({
 function HeaderFacts({ service }: { service: ServiceView }) {
   const { t } = useTranslations();
 
-  const facts: { label: string; value: string }[] = [
+  const facts: { label: string; value: ReactNode }[] = [
     { label: t("services.colSlug"), value: service.slug || "—" },
     ...(isStaticSite(service)
       ? []
@@ -451,7 +451,7 @@ function HeaderFacts({ service }: { service: ServiceView }) {
     { label: t("services.colRevision"), value: service.revision || "—" },
     {
       label: t("services.colCreated"),
-      value: formatRelativeAge(service.createdAt),
+      value: <RelativeAge value={service.createdAt} />,
     },
   ];
 
@@ -461,10 +461,7 @@ function HeaderFacts({ service }: { service: ServiceView }) {
         <div key={fact.label} className="flex items-center gap-1.5">
           {i > 0 ? <span aria-hidden="true">·</span> : null}
           <dt>{fact.label}</dt>
-          <dd
-            className="text-foreground font-medium tabular-nums"
-            suppressHydrationWarning
-          >
+          <dd className="text-foreground font-medium tabular-nums">
             {fact.value}
           </dd>
         </div>

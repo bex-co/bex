@@ -21,7 +21,7 @@ import {
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { formatDateTime } from "@/common/lib/format";
 import {
   useRecovery,
@@ -224,9 +224,10 @@ function ExportList({
                     <code className="block truncate font-mono text-xs">
                       {item.filename ?? item.id}
                     </code>
-                    <span className="text-xs text-muted-foreground">
-                      {formatRelativeAge(item.createdAt)}
-                    </span>
+                    <RelativeAge
+                      value={item.createdAt}
+                      className="text-xs text-muted-foreground"
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">
@@ -346,9 +347,10 @@ function BackupList({
             >
               <code className="truncate font-mono text-xs">{b.id}</code>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {formatRelativeAge(b.createdAt)}
-                </span>
+                <RelativeAge
+                  value={b.createdAt}
+                  className="text-xs text-muted-foreground"
+                />
                 <Badge variant="outline">{b.status}</Badge>
               </div>
             </li>

@@ -323,6 +323,32 @@ describe("ServiceDetailHeader", () => {
     expect(screen.getByText(/^in \d+m$/)).toBeInTheDocument();
   });
 
+  // w6/m102: the cron header's ages go through RelativeAge/RelativeUntil, whose
+  // <time dateTime> carries the SSR/hydration guard (relative-time.test.tsx owns
+  // the mismatch proof). This pins the migration to this block — a plain <span>
+  // here would mean the guard was dropped.
+  it("renders the cron ages as machine-readable, hydration-guarded <time>", async () => {
+    const lastRun = "2020-01-01T00:00:00Z";
+    const nextRun = new Date(Date.now() + 5 * 60_000).toISOString();
+    const { container } = renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "*/5 * * * *",
+        plan: null,
+        lastSuccessfulRunAt: lastRun,
+        nextRunAt: nextRun,
+      }),
+    );
+
+    await screen.findByText("Last run:");
+    const instants = Array.from(container.querySelectorAll("time")).map((el) =>
+      el.getAttribute("dateTime"),
+    );
+    expect(instants).toContain(lastRun);
+    expect(instants).toContain(nextRun);
+  });
+
   it("omits last/next run rows when the cron has never run and has no next time", async () => {
     renderHeader(
       svc({

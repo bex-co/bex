@@ -7,7 +7,7 @@ import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { WebhookEventChips } from "@/features/webhooks/components/webhook-event-chips";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { formatDateTime } from "@/common/lib/format";
 
 export interface WebhookRowProps {
@@ -77,7 +77,7 @@ export function WebhookRow({
               title={exactLatest ?? entry.latestSentAt}
               className="text-muted-foreground flex flex-col text-xs"
             >
-              <span>{formatRelativeAge(entry.latestSentAt)}</span>
+              <RelativeAge value={entry.latestSentAt} as="span" />
               <span>{exactLatest ?? entry.latestSentAt}</span>
             </time>
           ) : null}
