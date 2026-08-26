@@ -1,6 +1,6 @@
 # w6 · m98 — Fix billing "Total month to date" collapsing to $0.00 when Stripe credit grants absorb real usage charges
 
-**Worker:** worker6 **Goal:** the Billing page's headline total always shows the real current-period usage charge — never silently netted to zero by Stripe credit-grant consumption — with credit consumption itself shown as its own honest figure. **Status:** todo
+**Worker:** worker6 **Goal:** the Billing page's headline total always shows the real current-period usage charge — never silently netted to zero by Stripe credit-grant consumption — with credit consumption itself shown as its own honest figure. **Status:** in-progress — t001–t006 done; t007 (live verification) blocked on deploy
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 6th run of the day)
 
@@ -64,12 +64,12 @@ Not applicable — this is a value-correctness bug in a billing computation, not
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Spike: determine Stripe's real gross-vs-net-of-credit invoice-preview semantics under Billing Credit Grants | 30m | — |
-| t002 | Backend: `currentInvoice`/`finalizedInvoices` report the gross current-period charge; expose credit consumed this period as its own figure | 45m | t001 |
-| t003 | Dashboard: reconcile `ChargesCard` total + `CreditBalanceCard` applied/due math with the corrected backend shape | 30m | t002 |
-| t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 30m | t004 |
+| t001 | Spike: determine Stripe's real gross-vs-net-of-credit invoice-preview semantics under Billing Credit Grants — **DONE** | 30m | — |
+| t002 | Backend: `currentInvoice`/`finalizedInvoices` report the gross current-period charge; expose credit consumed this period as its own figure — **DONE** | 45m | t001 |
+| t003 | Dashboard: reconcile `ChargesCard` total + `CreditBalanceCard` applied/due math with the corrected backend shape — **DONE** | 30m | t002 |
+| t004 | Render parity — **DONE** | 20m | t003 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 30m | t004 |
 | t007 | Closeout | 10m | t005, t006 |
 
 ## Definition of done

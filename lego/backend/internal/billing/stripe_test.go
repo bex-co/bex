@@ -417,9 +417,9 @@ func TestStripeBillingForReadsPreviewAndFinalizedInvoices(t *testing.T) {
 		case method == http.MethodGet && path == "/v1/subscriptions":
 			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		case method == http.MethodPost && path == "/v1/invoices/create_preview":
-			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","total":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","subtotal":1234,"total":1234,"amount_due":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
 		case method == http.MethodGet && path == "/v1/invoices":
-			return 200, `{"object":"list","data":[{"id":"in_draft","object":"invoice","currency":"usd","total":999,"period_start":1780272000,"period_end":1782864000,"status":"draft"},{"id":"in_paid","object":"invoice","currency":"usd","total":4000,"period_start":1780272000,"period_end":1782864000,"status":"paid"}],"has_more":false,"url":"/v1/invoices"}`
+			return 200, `{"object":"list","data":[{"id":"in_draft","object":"invoice","currency":"usd","subtotal":999,"total":999,"amount_due":999,"period_start":1780272000,"period_end":1782864000,"status":"draft"},{"id":"in_paid","object":"invoice","currency":"usd","subtotal":4000,"total":4000,"amount_due":4000,"period_start":1780272000,"period_end":1782864000,"status":"paid"}],"has_more":false,"url":"/v1/invoices"}`
 		default:
 			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
 		}
@@ -434,6 +434,84 @@ func TestStripeBillingForReadsPreviewAndFinalizedInvoices(t *testing.T) {
 	}
 	if len(b.Invoices) != 1 || b.Invoices[0].ID != "in_paid" || b.Invoices[0].Status != "PAID" || b.Invoices[0].AmountUSD != "40.00" {
 		t.Fatalf("invoices = %+v", b.Invoices)
+	}
+}
+
+// TestStripeBillingForReportsGrossChargeWhenCreditAbsorbsTheInvoice is the
+// w6/m98 regression: a $1,000 grant covering the period's whole $74.78 of
+// metered usage zeroes Stripe's invoice total, and reading that total as the
+// current cost rendered "$0.00 month to date" beside a charge tree summing to
+// $74.78. The gross charge, the credit that absorbed it, and the $0.00 due are
+// three separate figures now.
+func TestStripeBillingForReportsGrossChargeWhenCreditAbsorbsTheInvoice(t *testing.T) {
+	const credited = `"subtotal":7478,"total":0,"amount_due":0,` +
+		`"total_pretax_credit_amounts":[{"amount":7478,"type":"credit_balance_transaction"}],`
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/invoices/create_preview":
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd",` + credited + `"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+		case method == http.MethodGet && path == "/v1/invoices":
+			return 200, `{"object":"list","data":[{"id":"in_paid","object":"invoice","currency":"usd",` + credited + `"period_start":1780272000,"period_end":1782864000,"status":"paid"}],"has_more":false,"url":"/v1/invoices"}`
+		case method == http.MethodGet && path == "/v1/billing/credit_balance_summary":
+			return 200, creditSummaryBody
+		case method == http.MethodGet && path == "/v1/billing/credit_grants":
+			return 200, creditGrantsBody
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	b, err := c.BillingFor(context.Background(), "tea-a", time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("BillingFor: %v", err)
+	}
+	if b == nil || b.CurrentCost == nil {
+		t.Fatalf("billing = %+v, want a current cost", b)
+	}
+	if got := *b.CurrentCost; got.AmountUSD != "74.78" || got.CreditsAppliedUSD != "74.78" || got.AmountDueUSD != "0.00" {
+		t.Fatalf("current cost = %+v, want gross 74.78 / credit 74.78 / due 0.00", got)
+	}
+	// finalizedInvoices reads the same three figures, not just the netted total.
+	if len(b.Invoices) != 1 {
+		t.Fatalf("invoices = %+v, want 1", b.Invoices)
+	}
+	if got := b.Invoices[0]; got.AmountUSD != "74.78" || got.CreditsAppliedUSD != "74.78" || got.AmountDueUSD != "0.00" {
+		t.Fatalf("invoice = %+v, want gross 74.78 / credit 74.78 / due 0.00", got)
+	}
+}
+
+// TestStripeBillingForDoesNotReportCompDiscountAsCredit guards the other half
+// of the split: an ADR040 Mode B comp also zeroes the invoice and also lands in
+// Stripe's pretax credit list, but it is a discount, not grant consumption.
+// Counting it as credit would tell a comped workspace it had spent credit it
+// never held.
+func TestStripeBillingForDoesNotReportCompDiscountAsCredit(t *testing.T) {
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/invoices/create_preview":
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","subtotal":7474,"total":0,"amount_due":0,` +
+				`"total_pretax_credit_amounts":[{"amount":7474,"type":"discount"}],` +
+				`"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+		case method == http.MethodGet && path == "/v1/invoices":
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/invoices"}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	b, err := c.BillingFor(context.Background(), "tea-a", time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("BillingFor: %v", err)
+	}
+	if b == nil || b.CurrentCost == nil {
+		t.Fatalf("billing = %+v, want a current cost", b)
+	}
+	if got := *b.CurrentCost; got.AmountUSD != "74.74" || got.CreditsAppliedUSD != "0.00" || got.AmountDueUSD != "0.00" {
+		t.Fatalf("current cost = %+v, want gross 74.74 / credit 0.00 / due 0.00", got)
 	}
 }
 
@@ -456,7 +534,7 @@ func TestStripeBillingForIncludesCreditBalance(t *testing.T) {
 		case method == http.MethodGet && path == "/v1/subscriptions":
 			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		case method == http.MethodPost && path == "/v1/invoices/create_preview":
-			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","total":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","subtotal":1234,"total":1234,"amount_due":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
 		case method == http.MethodGet && path == "/v1/invoices":
 			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/invoices"}`
 		case method == http.MethodGet && path == "/v1/billing/credit_balance_summary":
@@ -500,7 +578,7 @@ func TestStripeBillingForZeroCreditBalanceOmitsCredits(t *testing.T) {
 		case method == http.MethodGet && path == "/v1/subscriptions":
 			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		case method == http.MethodPost && path == "/v1/invoices/create_preview":
-			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","total":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","subtotal":1234,"total":1234,"amount_due":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
 		case method == http.MethodGet && path == "/v1/invoices":
 			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/invoices"}`
 		case method == http.MethodGet && path == "/v1/billing/credit_balance_summary":
@@ -531,7 +609,7 @@ func TestStripeBillingForCreditReadFailureDegradesToOmitted(t *testing.T) {
 		case method == http.MethodGet && path == "/v1/subscriptions":
 			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		case method == http.MethodPost && path == "/v1/invoices/create_preview":
-			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","total":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","subtotal":1234,"total":1234,"amount_due":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
 		case method == http.MethodGet && path == "/v1/invoices":
 			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/invoices"}`
 		case method == http.MethodGet && path == "/v1/billing/credit_balance_summary":

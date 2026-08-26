@@ -177,8 +177,10 @@ function CategoryRow({
 
 export interface ChargesCardProps {
   estimatedCost: EstimatedCost | null;
-  /** Stripe's real current-period amount; shown as the total when present. */
+  /** Stripe's gross rated charge for the period; the total once Stripe has rated anything. */
   invoicedUsd: string | null;
+  /** What Stripe actually collects after credits and comp discounts; shown when it differs. */
+  amountDueUsd?: string | null;
   loading: boolean;
   /** The period on screen, "YYYY-MM". Projection only applies to the current one. */
   period: string;
@@ -196,6 +198,7 @@ export interface ChargesCardProps {
 export function ChargesCard({
   estimatedCost,
   invoicedUsd,
+  amountDueUsd = null,
   loading,
   period,
   now = new Date(),
@@ -209,14 +212,26 @@ export function ChargesCard({
   );
 
   const invoiced = invoicedUsd == null ? null : usd(invoicedUsd);
+  // Zero is not a rating. Stripe prices the period from meter events that land
+  // asynchronously, so a workspace can hold a real charge tree while Stripe's
+  // gross charge is still 0 — and "$0.00 month to date" above a tree summing to
+  // $74 is the contradiction this card exists to avoid (w6/m98). The estimate
+  // carries the total until Stripe has a figure of its own.
+  const rated = invoiced != null && invoiced > 0 ? invoiced : null;
   // The estimate total is summed from the categories on screen rather than
   // taken from `estimatedCost.totalUsd`. The two differ by a cent or so — the
   // backend rounds the raw total once, the tree rounds every resource — and a
   // page whose parts visibly fail to add up to its own total reads as a bug
-  // even when both numbers are defensible. An invoiced amount is Stripe's
+  // even when both numbers are defensible. A rated amount is Stripe's own
   // rating, not ours, so it is shown verbatim; the tree explains it rather
   // than deriving it.
-  const total = invoiced ?? categories.reduce((sum, c) => sum + c.totalUsd, 0);
+  const total = rated ?? categories.reduce((sum, c) => sum + c.totalUsd, 0);
+  // Credit grants and Mode B comps sit between the charge and the bill. The
+  // charge stays the headline — it is what the tree adds up to — and the
+  // amount actually collected gets its own line, but only when the two differ.
+  const due = amountDueUsd == null ? null : usd(amountDueUsd);
+  const dueAfterCredit =
+    rated != null && due != null && due !== rated ? due : null;
 
   const isCurrentMonth = period === "" || period === currentPeriod(now);
   const projected = isCurrentMonth ? projectMonthEnd(total, now) : null;
@@ -237,7 +252,7 @@ export function ChargesCard({
               and settles on exactly one answer (w10/m11/t001). */}
           {loading && invoicedUsd == null
             ? t("usage.chargesDescriptionPending")
-            : invoiced == null
+            : rated == null
               ? t("usage.chargesDescriptionEstimate")
               : t("usage.chargesDescriptionInvoiced")}
         </CardDescription>
@@ -281,6 +296,14 @@ export function ChargesCard({
               {money(total)} USD
             </dd>
           </div>
+          {dueAfterCredit != null && (
+            <div className="flex items-baseline justify-between gap-4 text-sm text-muted-foreground">
+              <dt>{t("usage.amountDueAfterCredits")}</dt>
+              <dd className="font-mono tabular-nums">
+                {money(dueAfterCredit)} USD
+              </dd>
+            </div>
+          )}
           {projected != null && (
             <div className="flex items-baseline justify-between gap-4 text-sm text-muted-foreground">
               <dt>

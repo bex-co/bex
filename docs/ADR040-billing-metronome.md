@@ -76,6 +76,7 @@ The existing public `billing` shape does not change:
 - `currentCost` comes from Stripe's current Subscription invoice preview;
 - `invoices` comes from non-draft invoices for that Customer and Subscription;
 - Stripe minor-unit USD totals are normalized to the existing major-unit strings;
+- each amount is reported as three figures rather than one net number (w6/m98): `amountUsd` is the **gross** rated charge (Stripe's invoice `subtotal` — before invoice-level discounts, before billing credit, before tax), `creditsAppliedUsd` is the [ADR071](ADR071-tenant-billing-credits.md) credit-grant consumption Stripe applied to that invoice, and `amountDueUsd` is Stripe's own `amount_due`. Reading the invoice `total` as the current cost made a period whose usage a credit grant fully covered render as `$0.00` beside a nonzero charge tree; credit consumption is reported beside the charge, never folded into it. Mode B comps stay netted out of `amountDueUsd` and are **not** counted as credit — Stripe lists both in `total_pretax_credit_amounts`, and only `credit_balance_transaction` entries are grant consumption;
 - failures degrade to estimate-only rather than turning the usage endpoint into a 500.
 
 REST `GET /v1/usage`, GraphQL `usage`, MCP `get_usage`, and the dashboard continue to share the same service result. The requested calendar usage period still controls the quantities and estimate; Stripe's own invoice period is returned inside each billing amount.

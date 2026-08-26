@@ -261,10 +261,14 @@ const enUsage: Record<string, TranslationEntry> = {
       "Charge-tree description when no Stripe subscription prices the period",
   },
   "usage.chargesDescriptionInvoiced": {
-    message:
-      "Accrued so far this period. The total is the amount Stripe will invoice.",
+    message: "Accrued so far this period, as rated by Stripe.",
     description:
-      "Charge-tree description when a real Stripe amount is available",
+      "Charge-tree description when a real Stripe amount is available. Says the total is Stripe's rating rather than the amount it will invoice: credits and comp discounts can sit between the two, and the amount actually due gets its own line (w6/m98).",
+  },
+  "usage.amountDueAfterCredits": {
+    message: "Amount due after credits",
+    description:
+      "Label for the charge-tree line showing what Stripe actually collects once credits and discounts are applied to the charge above it",
   },
   "usage.chargesEmpty": {
     message: "No usage in this period.",
@@ -349,7 +353,8 @@ const enUsage: Record<string, TranslationEntry> = {
   },
   "usage.chargesDescriptionPending": {
     message: "Accrued so far this period, priced from the bex rate sheet.",
-    description: "Charges card description while the invoiced total is still loading; deliberately states only what is already true, without claiming the figure is or is not a Stripe invoice.",
+    description:
+      "Charges card description while the invoiced total is still loading; deliberately states only what is already true, without claiming the figure is or is not a Stripe invoice.",
   },
 };
 

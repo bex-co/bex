@@ -49,19 +49,33 @@ export interface EstimatedCost {
   resources: ResourceEstimate[];
 }
 
-/** A normalized Stripe invoice amount over a period (m48/m50). */
+/**
+ * A normalized Stripe invoice amount over a period (m48/m50).
+ *
+ * Three figures, not one: under a credit grant Stripe's invoice total is
+ * already net of the credit, so a single number could not say both what the
+ * period cost and what is owed — a fully-credited period read "$0.00 month to
+ * date" beside a nonzero charge tree (w6/m98).
+ */
 export interface BillingAmount {
+  /** Gross rated charge, before discounts, credit, and tax. */
   amountUsd: string;
+  /** Billing credit Stripe applied to this period; "0.00" without a grant. */
+  creditsAppliedUsd: string;
+  /** What Stripe actually collects, after discounts, credit, and tax. */
+  amountDueUsd: string;
   currency: string;
   periodStart: string; // RFC3339
   periodEnd: string; // RFC3339
 }
 
-/** One finalized Stripe invoice (m48/m50). */
+/** One finalized Stripe invoice (m48/m50); same three-figure split. */
 export interface BillingInvoice {
   id: string;
   status: string;
   amountUsd: string;
+  creditsAppliedUsd: string;
+  amountDueUsd: string;
   currency: string;
   periodStart: string;
   periodEnd: string;
@@ -161,6 +175,10 @@ export function useUsage(period?: string): UseUsageResult {
                   currentCost: raw.billing.currentCost
                     ? {
                         amountUsd: raw.billing.currentCost.amountUsd ?? "0.00",
+                        creditsAppliedUsd:
+                          raw.billing.currentCost.creditsAppliedUsd ?? "0.00",
+                        amountDueUsd:
+                          raw.billing.currentCost.amountDueUsd ?? "0.00",
                         currency: raw.billing.currentCost.currency ?? "USD",
                         periodStart: raw.billing.currentCost.periodStart ?? "",
                         periodEnd: raw.billing.currentCost.periodEnd ?? "",
@@ -172,6 +190,8 @@ export function useUsage(period?: string): UseUsageResult {
                       id: i!.id ?? "",
                       status: i!.status ?? "",
                       amountUsd: i!.amountUsd ?? "0.00",
+                      creditsAppliedUsd: i!.creditsAppliedUsd ?? "0.00",
+                      amountDueUsd: i!.amountDueUsd ?? "0.00",
                       currency: i!.currency ?? "USD",
                       periodStart: i!.periodStart ?? "",
                       periodEnd: i!.periodEnd ?? "",

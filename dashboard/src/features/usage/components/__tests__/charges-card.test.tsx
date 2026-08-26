@@ -246,7 +246,67 @@ describe("ChargesCard", () => {
 
     expect(screen.getByText("$12.34 USD")).toBeInTheDocument();
     expect(screen.queryByText("$10.00 USD")).not.toBeInTheDocument();
-    expect(screen.getByText(/Stripe will invoice/)).toBeInTheDocument();
+    expect(screen.getByText(/as rated by Stripe/)).toBeInTheDocument();
+  });
+
+  // w6/m98: the production shape. A $1,000 credit grant absorbed the whole
+  // period, so Stripe's invoice total was $0.00 while the tree summed to
+  // $74.78 — and the headline reported the $0.00.
+  it("shows the gross charge as the total and the credited amount due beneath it", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource({ costUsd: "74.74" })], "74.74")}
+        invoicedUsd="74.78"
+        amountDueUsd="0.00"
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+
+    expect(screen.getByText("$74.78 USD")).toBeInTheDocument();
+    expect(screen.getByText("Amount due after credits")).toBeInTheDocument();
+    expect(screen.getByText("$0.00 USD")).toBeInTheDocument();
+  });
+
+  it("does not repeat the total as an amount due when nothing was credited", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource()], "4.90")}
+        invoicedUsd="12.34"
+        amountDueUsd="12.34"
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+
+    expect(screen.getByText("$12.34 USD")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Amount due after credits"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the estimate as the total while Stripe has rated nothing", () => {
+    // A zero from Stripe means its meter events have not landed yet, not that
+    // the period was free. Printing that zero over a nonzero tree is the
+    // contradiction the page must never show.
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource({ costUsd: "74.74" })], "74.74")}
+        invoicedUsd="0.00"
+        amountDueUsd="0.00"
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+
+    expect(screen.getByText("$74.74 USD")).toBeInTheDocument();
+    expect(screen.queryByText("$0.00 USD")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/priced from the bex rate sheet/),
+    ).toBeInTheDocument();
   });
 
   it("does not project a month that has already ended", () => {
@@ -296,8 +356,10 @@ describe("ChargesCard", () => {
       />,
     );
 
-    expect(screen.queryByText(/an estimate, not an invoice/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/amount Stripe will invoice/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/an estimate, not an invoice/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/as rated by Stripe/i)).not.toBeInTheDocument();
     // It still says the one thing that is already true.
     expect(screen.getByText(/accrued so far this period/i)).toBeInTheDocument();
   });
@@ -312,7 +374,9 @@ describe("ChargesCard", () => {
         now={MID_JULY}
       />,
     );
-    expect(screen.getByText(/an estimate, not an invoice/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/an estimate, not an invoice/i),
+    ).toBeInTheDocument();
   });
 
   it("settles on the invoiced wording once an invoiced total resolves", () => {
@@ -325,7 +389,9 @@ describe("ChargesCard", () => {
         now={MID_JULY}
       />,
     );
-    expect(screen.getByText(/amount Stripe will invoice/i)).toBeInTheDocument();
-    expect(screen.queryByText(/an estimate, not an invoice/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/as rated by Stripe/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/an estimate, not an invoice/i),
+    ).not.toBeInTheDocument();
   });
 });

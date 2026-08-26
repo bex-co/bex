@@ -153,6 +153,8 @@ describe("UsagePage", () => {
               id: "inv_1",
               status: "paid",
               amountUsd: "75.48",
+              creditsAppliedUsd: "0.00",
+              amountDueUsd: "75.48",
               currency: "USD",
               periodStart: "2026-07-01T00:00:00Z",
               periodEnd: "2026-08-01T00:00:00Z",
@@ -177,11 +179,18 @@ describe("credits (w5/m70)", () => {
   function creditState(overrides?: {
     availableUsd?: string;
     expiresAt?: string;
+    creditsAppliedUsd?: string;
+    amountDueUsd?: string;
   }) {
     return state({
       billing: {
+        // Applied and due are Stripe's figures, not min/max arithmetic over
+        // the balance: a grant applies at invoice time, and the page reports
+        // what it did rather than what it might do (w6/m98).
         currentCost: {
           amountUsd: "12.34",
+          creditsAppliedUsd: overrides?.creditsAppliedUsd ?? "12.34",
+          amountDueUsd: overrides?.amountDueUsd ?? "0.00",
           currency: "USD",
           periodStart: "2026-08-16T00:00:00Z",
           periodEnd: "2026-09-16T00:00:00Z",
@@ -221,7 +230,6 @@ describe("credits (w5/m70)", () => {
     expect(
       screen.getByText(/\$20\.00 of it expires 2026-11-15/),
     ).toBeInTheDocument();
-    // Applied = min(available, current cost); due = remainder, floored at 0.
     expect(
       screen.getByText(/Credits applied −\$12\.34 → amount due \$0\.00/),
     ).toBeInTheDocument();
@@ -232,7 +240,13 @@ describe("credits (w5/m70)", () => {
   });
 
   it("shows a positive amount due when credit only partially covers the period", () => {
-    mockUseUsage.mockReturnValue(creditState({ availableUsd: "10.00" }));
+    mockUseUsage.mockReturnValue(
+      creditState({
+        availableUsd: "10.00",
+        creditsAppliedUsd: "10.00",
+        amountDueUsd: "2.34",
+      }),
+    );
 
     render(<UsagePage />);
 

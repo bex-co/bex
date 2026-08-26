@@ -51,8 +51,11 @@ export function CreditBalanceCard({ billing }: { billing: Billing | null }) {
   const credits: BillingCredits | null = billing?.credits ?? null;
   if (!credits) return null;
   const expiring = credits.grants.find((g) => g.expiresAt !== "");
-  const cost = billing?.currentCost ? usd(billing.currentCost.amountUsd) : null;
-  const available = usd(credits.availableUsd);
+  // Both figures come from Stripe's own invoice rather than being re-derived
+  // here as min(balance, cost) / max(0, cost - balance): that arithmetic was
+  // only ever a guess at what Stripe would do, and it reported "$0.00 applied"
+  // for the very period a grant absorbed the whole charge (w6/m98).
+  const current = billing?.currentCost ?? null;
   return (
     <Card>
       <CardHeader>
@@ -66,11 +69,11 @@ export function CreditBalanceCard({ billing }: { billing: Billing | null }) {
         <p className="font-mono text-3xl font-semibold tabular-nums">
           ${credits.availableUsd}
         </p>
-        {cost != null && (
+        {current != null && (
           <p className="mt-1 text-sm text-muted-foreground tabular-nums">
             {t("usage.creditsAppliedLine", {
-              applied: Math.min(available, cost).toFixed(2),
-              due: Math.max(0, cost - available).toFixed(2),
+              applied: usd(current.creditsAppliedUsd).toFixed(2),
+              due: usd(current.amountDueUsd).toFixed(2),
             })}
           </p>
         )}
@@ -143,7 +146,10 @@ export function InvoiceHistoryCard({ billing }: { billing: Billing | null }) {
                   </Badge>
                 </td>
                 <td className="py-2.5 text-right font-mono tabular-nums">
-                  ${usd(inv.amountUsd).toFixed(2)}
+                  {/* What Stripe collected, not the gross charge: `amountUsd`
+                      is now pre-credit, and a credited invoice would otherwise
+                      read as money the workspace never paid (w6/m98). */}
+                  ${usd(inv.amountDueUsd).toFixed(2)}
                 </td>
               </tr>
             ))}
