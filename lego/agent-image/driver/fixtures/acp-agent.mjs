@@ -101,9 +101,20 @@ lines.on("line", async (line) => {
       result(message.id, { sessionId: "fixture-session" });
       if (process.env.ACP_FIXTURE_CLOSE_INPUT_AFTER_SESSION === "1") {
         // Reproduce an adapter that loses its ACP input while staying alive.
-        // The parent's next JSON-RPC write gets EPIPE, but no child exit exists
-        // to wake a prompt-only lifecycle watcher.
-        closeSync(0);
+        // fd 0 alone leaves libuv's already-open Pipe handle writable on Linux,
+        // so close every view there. On macOS, readline and libuv already close
+        // the descriptor after closeSync(0); closing those views too aborts the
+        // fixture as a double close. In both cases the next JSON-RPC write fails
+        // while the child remains alive, exercising the input-error lifecycle.
+        if (process.platform === "linux") {
+          const inputHandle = process.stdin._handle;
+          lines.close();
+          closeSync(0);
+          process.stdin.destroy();
+          inputHandle?.close();
+        } else {
+          closeSync(0);
+        }
         setInterval(() => {}, 1_000);
       }
       break;
