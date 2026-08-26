@@ -24,10 +24,8 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
@@ -68,29 +66,12 @@ var _ = Describe("Build supersede semantics (ADR060 D1a)", func() {
 		Expect(k8sClient.Get(ctx, nn, a)).To(Succeed())
 		return a
 	}
-	buildJob := func(rev string) (*batchv1.Job, error) {
-		j := &batchv1.Job{}
-		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: build.JobName(name, rev)}, j)
-		return j, err
-	}
+	buildJob := func(rev string) (*batchv1.Job, error) { return buildJobFor(name, rev) }
 	jobExists := func(rev string) bool {
 		_, err := buildJob(rev)
 		return err == nil
 	}
-	// completeBuild marks the already-dispatched build Job for rev as Complete,
-	// the envtest stand-in for a finished in-cluster build (no kubelet runs it).
-	completeBuild := func(rev string) {
-		j, err := buildJob(rev)
-		Expect(err).NotTo(HaveOccurred(), "build Job for %s must have been dispatched", rev)
-		now := metav1.Now()
-		j.Status.StartTime = &now
-		j.Status.CompletionTime = &now
-		j.Status.Conditions = []batchv1.JobCondition{
-			{Type: batchv1.JobSuccessCriteriaMet, Status: corev1.ConditionTrue},
-			{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
-		}
-		Expect(k8sClient.Status().Update(ctx, j)).To(Succeed())
-	}
+	completeBuild := func(rev string) { completeBuildJob(name, rev) }
 	// push simulates a git push / redeploy: a fresh restartedAt bumps the release
 	// identity (and metadata.generation), exactly like a webhook redeploy.
 	push := func(minute int) {

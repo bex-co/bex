@@ -1,6 +1,6 @@
 # w6 · m100 — Fix App CR generation bookkeeping so a deploy queued behind a build-failed sibling is never permanently stranded at `queued`
 
-**Worker:** worker6 **Goal:** when a service's second deploy is triggered while its first deploy is still `queued`/`build_in_progress`, and the first deploy later fails its build, the second (queued) deploy always advances to a real terminal state (`build_in_progress` → `live`/`build_failed`/`canceled`) within the same normal build-pickup window a solo deploy gets — never stuck at `status: "queued"` with empty `startedAt`/`finishedAt`/`failureReason` forever, recoverable only by a human noticing and clicking Cancel. **Status:** todo
+**Worker:** worker6 **Goal:** when a service's second deploy is triggered while its first deploy is still `queued`/`build_in_progress`, and the first deploy later fails its build, the second (queued) deploy always advances to a real terminal state (`build_in_progress` → `live`/`build_failed`/`canceled`) within the same normal build-pickup window a solo deploy gets — never stuck at `status: "queued"` with empty `startedAt`/`finishedAt`/`failureReason` forever, recoverable only by a human noticing and clicking Cancel. **Status:** done
 
 ## Background (found live, 2026-08-26 `/qa-find-bugs` hunt, 9th run of the day)
 
@@ -93,12 +93,12 @@ Plus `apps.Service.SetRootDir`/`SetDockerfilePath`/`SetPublishPath` (`apps/servi
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Fix the generation-mis-attribution in `setNotReadyCondition`/`r.fail` (or the `terminalBuildFailureRecorded` gate) so a pending/queued release generation can advance once the blocking generation's build failure is durably recorded — without reopening the w2/m82 double-metering/infinite-refail loop that gate exists to prevent | 60m | — |
-| t002 | Regression tests: live-shaped repro (two deploys, first fails via build failure, second must reach a terminal state within the normal build-pickup window); the w2/m82 anti-regression (a recorded generation's failure is never re-failed/re-metered); at least one more call site sharing the identical `patchApp`/`stampReleaseGeneration` shape (Rollback) proven not to hit the same stuck-queue bug | 45m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 20m | t003 |
-| t006 | Closeout | 10m | t005 |
+| t001 | Fix the generation-mis-attribution in `setNotReadyCondition`/`r.fail` (or the `terminalBuildFailureRecorded` gate) so a pending/queued release generation can advance once the blocking generation's build failure is durably recorded — without reopening the w2/m82 double-metering/infinite-refail loop that gate exists to prevent | 60m | — | — **DONE**
+| t002 | Regression tests: live-shaped repro (two deploys, first fails via build failure, second must reach a terminal state within the normal build-pickup window); the w2/m82 anti-regression (a recorded generation's failure is never re-failed/re-metered); at least one more call site sharing the identical `patchApp`/`stampReleaseGeneration` shape (Rollback) proven not to hit the same stuck-queue bug | 45m | t001 | — **DONE**
+| t003 | Render parity | 20m | t002 | — **DONE**
+| t004 | Simplify | 15m | t003 | — **DONE**
+| t005 | Test coverage | 20m | t003 | — **DONE**
+| t006 | Closeout | 10m | t005 | — **DONE**
 
 ## Definition of done
 

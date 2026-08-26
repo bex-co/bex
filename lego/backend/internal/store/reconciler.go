@@ -26,6 +26,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -680,10 +681,22 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// opaque terminal state.
 	failureReason := ""
 	failureCode := ""
-	if matchesObservedRelease {
+	switch {
+	case matchesObservedRelease:
 		switch status {
 		case DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed:
 			failureReason, failureCode = failureReasonFor(cur, status)
+		}
+	case status == DeployBuildFailed:
+		// The release has already moved past this row, so failureReasonFor's
+		// current-generation conditions describe someone else's build. The
+		// durable Build condition still names this row's own (w6/m100); with no
+		// message to carry, fall back to the same build-window line
+		// failureReasonFor would have reached.
+		if msg, _ := recordedBuildFailure(cur, open.Generation); msg != "" {
+			failureReason = msg
+		} else {
+			failureReason = timedOutDeployReason(status)
 		}
 	}
 	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode)
@@ -1034,6 +1047,20 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 // generation no longer matches it. settled=false means the generations agree and
 // the caller should read live phase evidence instead.
 func supersededDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) (string, bool) {
+	// A build failure the operator durably recorded against THIS row's release
+	// generation is the row's own verdict, and it outranks every generation
+	// comparison below (w6/m100). Without this the failure is invisible within
+	// one resync: the operator advances status.releaseGeneration to the deploy
+	// that was queued behind this one milliseconds after recording the failure,
+	// so by the time this pass reads the CR the row looks merely superseded and
+	// would close canceled — losing both the build_failed terminal and the
+	// build error the tenant needs. status.conditions[Build] survives that
+	// advance precisely so this stays readable.
+	if isBuildPhase(open.Status) {
+		if _, ok := recordedBuildFailure(app, open.Generation); ok {
+			return DeployBuildFailed, true
+		}
+	}
 	// A reported release generation PAST the open row's means this row's release
 	// was superseded before it could finish — a git-push redeploy, env-var
 	// change, or restart minted a newer release identity without adopting the
@@ -1099,6 +1126,19 @@ func timedOutDeployStatus(open Deploy) string {
 	default:
 		return DeployUpdateFailed
 	}
+}
+
+// recordedBuildFailure reads the operator's durable build verdict
+// (status.conditions[Build], w6/m100) for one deploy row's release generation,
+// returning the build error message it carries. See supersededDeployStatus for
+// why that verdict outranks the generation comparison there.
+func recordedBuildFailure(app *appv1alpha1.App, generation int64) (string, bool) {
+	cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionBuild)
+	if generation == 0 || cond == nil || cond.ObservedGeneration != generation ||
+		!appv1alpha1.IsBuildFailureReason(cond.Reason) {
+		return "", false
+	}
+	return cond.Message, true
 }
 
 func appReleaseGeneration(app *appv1alpha1.App) int64 {
