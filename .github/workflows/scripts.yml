@@ -91,6 +91,8 @@ jobs:
         run: bash scripts/deploy-superseded.test.sh
       - name: Packer plugin pin/verify unit tests
         run: bash scripts/packer-plugin-install.test.sh
+      - name: Terraform rootless installer unit tests
+        run: bash scripts/terraform-install.test.sh
       - name: SSH host-key policy unit tests
         run: bash scripts/ssh-hostkey.test.sh
       - name: SSH gateway grant reconciliation unit tests
@@ -122,6 +124,7 @@ jobs:
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
           scripts/image-pin-validate.sh scripts/image-pin-validate.test.sh
+          scripts/terraform-install.sh scripts/terraform-install.test.sh
           scripts/lib/image-digest-exists.sh
           scripts/disk-snapshot-secret.sh scripts/disk-snapshot-secret.test.sh
       - name: Restore script hermetic safety tests

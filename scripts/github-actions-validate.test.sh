@@ -128,11 +128,19 @@ assert "keyless restore workflow fails" 1 "$(body "      - uses: $PINNED
           RESTORE_SKIP_DOTENV: \"1\"
         run: bash scripts/restore-openbao.sh --target-namespace restore-x --verify-path p")" \
   "AGE_BACKUP_PRIVATE_KEY"
-# GREEN: wiring the secret satisfies it.
-assert "keyed restore workflow passes" 0 "$(body "      - uses: $PINNED
+# RED: the key alone is insufficient when the runner has no age executable.
+assert "keyed restore without age runtime fails" 1 "$(body "      - uses: $PINNED
       - env:
           RESTORE_SKIP_DOTENV: \"1\"
           AGE_BACKUP_PRIVATE_KEY: \${{ secrets.AGE_BACKUP_PRIVATE_KEY }}
+        run: bash scripts/restore-openbao.sh --target-namespace restore-x --verify-path p")" \
+  "RESTORE_AGE_IMAGE"
+# GREEN: a digest-pinned fallback image gives the restore helper an age runtime.
+assert "keyed restore with pinned age runtime passes" 0 "$(body "      - uses: $PINNED
+      - env:
+          RESTORE_SKIP_DOTENV: \"1\"
+          AGE_BACKUP_PRIVATE_KEY: \${{ secrets.AGE_BACKUP_PRIVATE_KEY }}
+          RESTORE_AGE_IMAGE: example.invalid/age@sha256:0000000000000000000000000000000000000000000000000000000000000000
         run: bash scripts/restore-openbao.sh --target-namespace restore-x --verify-path p")"
 # GREEN: a restore invocation that keeps dotenv loading gets the key from .env.
 assert "dotenv restore unaffected" 0 "$(body "      - uses: $PINNED
