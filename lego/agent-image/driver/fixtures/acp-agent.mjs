@@ -98,7 +98,6 @@ lines.on("line", async (line) => {
       break;
     }
     case "session/new":
-      result(message.id, { sessionId: "fixture-session" });
       if (process.env.ACP_FIXTURE_CLOSE_INPUT_AFTER_SESSION === "1") {
         // Reproduce an adapter that loses its ACP input while staying alive.
         // fd 0 alone leaves libuv's already-open Pipe handle writable on Linux,
@@ -117,6 +116,10 @@ lines.on("line", async (line) => {
         }
         setInterval(() => {}, 1_000);
       }
+      // A response makes the parent issue session/prompt immediately. Send it
+      // only after the fixture has closed every stdin view so the prompt write
+      // deterministically observes EPIPE instead of racing into the pipe buffer.
+      result(message.id, { sessionId: "fixture-session" });
       break;
     case "session/load":
       result(message.id, {});

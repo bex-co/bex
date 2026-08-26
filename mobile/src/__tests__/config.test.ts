@@ -6,7 +6,10 @@ describe("mobile configuration", () => {
     expect(appConfig.expo.ios.bundleIdentifier).toBe("co.bex.mobile");
     expect(appConfig.expo.android.package).toBe("co.bex.mobile");
     expect(appConfig.expo.android.permissions).toEqual([]);
-    expect(JSON.stringify(appConfig)).not.toContain("projectId");
+    expect(appConfig.expo.owner).toBe("puncsky");
+    expect(appConfig.expo.extra.eas.projectId).toBe(
+      "dba70c4b-4aae-4bf9-a461-a19bcae69b3a",
+    );
     expect(JSON.stringify(appConfig)).not.toContain("updates");
   });
 
