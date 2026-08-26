@@ -22,11 +22,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -60,29 +58,8 @@ var _ = Describe("Terminal build failure quiescence (w2/m82 t002)", func() {
 		Expect(k8sClient.Get(ctx, nn, a)).To(Succeed())
 		return a
 	}
-	buildJob := func(rev string) (*batchv1.Job, error) {
-		j := &batchv1.Job{}
-		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: build.JobName(name, rev)}, j)
-		return j, err
-	}
-	// failBuild marks the dispatched build Job Failed with the tenant-classified
-	// reason (exit 90 → PodFailurePolicy), the envtest stand-in for a real broken
-	// tenant build. That classification is what faultFromJob keys on. The API
-	// server's Job status grammar requires FailureTarget before Failed and no
-	// completionTime on a failed Job.
-	failBuild := func(rev string) {
-		j, err := buildJob(rev)
-		Expect(err).NotTo(HaveOccurred(), "build Job for %s must have been dispatched", rev)
-		now := metav1.Now()
-		j.Status.StartTime = &now
-		j.Status.Conditions = []batchv1.JobCondition{
-			{Type: batchv1.JobFailureTarget, Status: corev1.ConditionTrue,
-				Reason: batchv1.JobReasonPodFailurePolicy, Message: "container exit code 90"},
-			{Type: batchv1.JobFailed, Status: corev1.ConditionTrue,
-				Reason: batchv1.JobReasonPodFailurePolicy, Message: "container exit code 90"},
-		}
-		Expect(k8sClient.Status().Update(ctx, j)).To(Succeed())
-	}
+	buildJob := func(rev string) (*batchv1.Job, error) { return buildJobFor(name, rev) }
+	failBuild := func(rev string) { failBuildJob(name, rev) }
 	readyCond := func(a *appv1alpha1.App) *metav1.Condition {
 		return meta.FindStatusCondition(a.Status.Conditions, appv1alpha1.ConditionReady)
 	}

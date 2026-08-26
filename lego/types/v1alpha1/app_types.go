@@ -109,6 +109,42 @@ const ConditionReady = "Ready"
 // expansion, so the last step can land on the next restart.
 const ConditionDiskReady = "DiskReady"
 
+// ConditionBuild is the durable record of a source build's terminal outcome,
+// stamped with the RELEASE generation that was built (status.releaseGeneration)
+// rather than metadata.generation (w6/m100). Present and False with a
+// build-failure reason means "that release generation's build is settled and
+// failed"; absent means no build failure has been recorded for any generation.
+//
+// It exists because Ready cannot carry this fact unambiguously (w6/m100):
+//
+//   - Ready is stamped with metadata.generation, which a SECOND deploy's spec
+//     patch can already have bumped past the generation whose build is failing.
+//     The operator's re-dispatch gate then reads the failure as belonging to the
+//     newer, still-queued generation and halts before ever building it — the
+//     deploy stranded at queued forever this condition exists to prevent.
+//   - Ready is overwritten within milliseconds by the next release's
+//     Building/Deploying reason, so it cannot still explain, on bex-api's next
+//     30s resync, why the previous release's deploy row ended. This condition is
+//     written only on a terminal build failure, so it survives that advance and
+//     keeps the failed row closing build_failed (with its message) instead of
+//     the canceled a bare generation comparison would infer.
+//
+// Both sides key on it, so it belongs on the CRD contract: the operator writes
+// it in the same status update as Ready, and bex-api reads it to close the
+// matching deploy row. It is written ONLY as False, only for a terminal build
+// failure — a True Build condition is not part of this contract, and every
+// reader guards on IsBuildFailureReason rather than assuming one.
+//
+// Bounded like status.preDeploy, and for the same reason: one slot, keyed by
+// type, so a LATER generation's failure replaces an earlier one's. The earlier
+// verdict is therefore readable for as long as the next build runs, which is
+// minutes for a real build but can be seconds for one that fails on clone. A
+// deploy row still open across two consecutive sub-resync build failures loses
+// its own verdict and falls back to the superseded-row inference (canceled) —
+// the same bound status.preDeploy has always carried, and still strictly better
+// than the permanent strand this condition replaced.
+const ConditionBuild = "Build"
+
 // Build-failure condition reasons. These are part of the CR contract, not an
 // operator-internal detail: the operator writes them onto the Ready condition
 // and bex-api reads them to classify a deploy, so they live here where both

@@ -672,18 +672,21 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if app.Spec.Repo == "" {
 		return halt(r.fail(ctx, app, "BadSpec", fmt.Errorf("one of spec.image or spec.repo is required")))
 	}
-	// A terminally failed build for THIS generation is settled (w2/m82 t006): the
-	// Ready condition r.fail wrote is the durable marker. Everything below this
-	// gate dispatches or observes a build Job — and EnsureBuild is
+	// A terminally failed build for THIS RELEASE generation is settled (w2/m82
+	// t006): the Build condition r.fail wrote is the durable marker. Everything
+	// below this gate dispatches or observes a build Job — and EnsureBuild is
 	// create-if-absent, so once the failed Job is TTL-reaped (or an operator
 	// restart resyncs the App), re-entering would re-create the Job and re-run
 	// the whole doomed build (2026-08-20 evidence: market-size re-ran npm
 	// install 3 days after its failure; beancount-forum re-ran a failing clone
 	// for 18 days). Halting here also keeps setPhase(PhaseBuilding) from
 	// overwriting the Failed marker, which is what double-metered the outcome
-	// through the recorded-gate below. A tenant deploy bumps the generation and
-	// the condition's ObservedGeneration no longer matches, so this gate opens
-	// again — the predeploy analogue's terminal bookkeeping is the same pattern.
+	// through the recorded-gate below. A tenant deploy advances the release
+	// generation and the condition's ObservedGeneration no longer matches, so
+	// this gate opens again — including for a deploy that was already queued
+	// behind THIS build when it failed (w6/m100), which is the case the old
+	// metadata.generation comparison stranded. The predeploy analogue's terminal
+	// bookkeeping is the same pattern.
 	if terminalBuildFailureRecorded(app) {
 		return halt(ctrl.Result{}, nil)
 	}
@@ -822,9 +825,9 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		// The failure branch needs a DIFFERENT marker: r.fail deliberately never
 		// stamps Status.ObservedGeneration (successfulReleaseGeneration derives the
 		// last good release from it, so a failed build must not advance it). The
-		// Ready condition r.fail itself writes is the durable marker: reason plus
-		// the generation it was observed at, already persisted in status, so it
-		// survives a manager restart without a new field or an extra write.
+		// Build condition r.fail itself writes is the durable marker: reason plus
+		// the RELEASE generation that actually built (w6/m100), already persisted
+		// in status, so it survives a manager restart without an extra write.
 		//
 		// Once that condition is recorded, do NOT call r.fail again: it returns an
 		// error, so controller-runtime logs Reconciler ERROR and requeues ~20×/h
@@ -870,25 +873,62 @@ func expectedGitObjectID(value string) string {
 	return value
 }
 
-// buildOutcomeAlreadyRecorded reports whether this generation's build has
-// already been metered with this terminal reason, read off the Ready condition
-// r.fail persists.
-func buildOutcomeAlreadyRecorded(app *appv1alpha1.App, reason string) bool {
+// recordedBuildVerdict returns the terminal build-failure reason already
+// recorded for the release generation this pass is about to build, and whether
+// one exists. Both build gates read it, so they can never disagree about which
+// generation a verdict belongs to.
+//
+// It compares against the RELEASE generation, not metadata.generation (w6/m100).
+// Those coincide for a solo deploy, but diverge exactly where this used to
+// strand a service: a second deploy patched the spec (bumping metadata.generation
+// to G2) while G1's build was still running, prepareAppReleaseDecision pinned the
+// release to G1 (ADR060 §D1a), and G1's build then failed. Reading
+// metadata.generation took a G1 failure for G2's verdict, so buildFromSource's
+// gate halted forever — G2's build was never dispatched, Status.ReleaseGeneration
+// never left G1 (the in-memory advance was discarded with the halted pass), and
+// bex-api's queued deploy row waited on that advance until a human clicked
+// Cancel. Reading the release generation lets the pending generation through
+// while keeping the failed one settled: a generation whose failure is recorded
+// still matches its own record.
+//
+// A present Build condition decides on its own — the fallback below is for an
+// App that failed under a pre-w6/m100 operator and therefore has no Build
+// condition until its next build failure writes one. Without that fallback,
+// every currently-failed App in the estate would re-dispatch its doomed build
+// once on operator rollout, the exact re-run w2/m82 t006 exists to prevent. It
+// can be deleted once no App in the estate still carries a Ready-only
+// build-failure marker (i.e. every failed App has re-failed under this
+// operator); until then it must stay, and it must NOT be folded into the Build
+// branch — a Build condition stamped with a different generation has to report
+// "no verdict", not fall through to a Ready marker that (post-fix) names the
+// queued generation instead.
+func recordedBuildVerdict(app *appv1alpha1.App) (string, bool) {
+	if cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionBuild); cond != nil {
+		return cond.Reason, cond.ObservedGeneration == releaseGeneration(app)
+	}
 	cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
-	return cond != nil && cond.Reason == reason && cond.ObservedGeneration == app.Generation
+	if cond == nil || !appv1alpha1.IsBuildFailureReason(cond.Reason) || cond.ObservedGeneration != app.Generation {
+		return "", false
+	}
+	return cond.Reason, true
 }
 
-// terminalBuildFailureRecorded reports whether this generation's build already
-// failed terminally (any build-failure class), read off the same Ready
-// condition. It gates re-DISPATCH (buildFromSource's entry), where the exact
-// reason doesn't matter — only that this generation's verdict is in — while
+// buildOutcomeAlreadyRecorded reports whether the release generation now being
+// built has already been metered with this terminal reason.
+func buildOutcomeAlreadyRecorded(app *appv1alpha1.App, reason string) bool {
+	recorded, ok := recordedBuildVerdict(app)
+	return ok && recorded == reason
+}
+
+// terminalBuildFailureRecorded reports whether the release generation this pass
+// is about to build already failed terminally (any build-failure class). It
+// gates re-DISPATCH (buildFromSource's entry), where the exact reason doesn't
+// matter — only that this generation's verdict is in — while
 // buildOutcomeAlreadyRecorded gates METERING, where the reason must match so a
 // reclassified fault (infra → tenant) still meters its own outcome once.
 func terminalBuildFailureRecorded(app *appv1alpha1.App) bool {
-	cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
-	return cond != nil &&
-		appv1alpha1.IsBuildFailureReason(cond.Reason) &&
-		cond.ObservedGeneration == app.Generation
+	recorded, ok := recordedBuildVerdict(app)
+	return ok && appv1alpha1.IsBuildFailureReason(recorded)
 }
 
 // meterBuildSignals records the pod-derived build series (queue wait, push
@@ -3871,6 +3911,19 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 
 func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason string, err error) (ctrl.Result, error) {
 	app.Status.Phase = appv1alpha1.PhaseFailed
+	// A build failure additionally gets appv1alpha1.ConditionBuild, the durable
+	// record attributed to the RELEASE generation that actually built rather than
+	// to metadata.generation (w6/m100 — see that constant for why Ready cannot
+	// carry it). Set here rather than in setNotReadyCondition so it rides the
+	// SAME status update as Ready: the two halves can never be observed apart,
+	// and the conflict retry re-applies both together.
+	if appv1alpha1.IsBuildFailureReason(reason) {
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionBuild, Status: metav1.ConditionFalse, Reason: reason,
+			Message:            err.Error(),
+			ObservedGeneration: releaseGeneration(app),
+		})
+	}
 	setNotReadyCondition(ctx, r.Client, app, &app.Status.Conditions, reason, err)
 	return ctrl.Result{}, err
 }
