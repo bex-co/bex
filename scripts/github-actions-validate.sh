@@ -114,14 +114,29 @@ restore_workflows() {
   grep -lE 'scripts/restore-[a-z]+\.sh' "$WORKFLOWS_DIR"/*.yml 2>/dev/null || true
 }
 keyless_restores=""
+ageless_restores=""
 for wf in $(restore_workflows); do
   grep -Fq 'RESTORE_SKIP_DOTENV' "$wf" || continue
   grep -Fq 'AGE_BACKUP_PRIVATE_KEY' "$wf" || keyless_restores="$keyless_restores $wf"
+  if ! grep -Eq '^[[:space:]]+RESTORE_AGE_IMAGE:[[:space:]]+[^[:space:]#]+@sha256:[0-9a-f]{64}([[:space:]#]|$)' "$wf"; then
+    if ! grep -Fq 'AGE_LINUX_ARM64_SHA256: c6878a324421b69e3e20b00ba17c04bc5c6dab0030cfe55bf8f68fa8d9e9093a' "$wf" \
+      || ! grep -Fq 'age-v${AGE_VERSION}-linux-arm64.tar.gz' "$wf" \
+      || ! grep -Fq 'sha256sum --check --strict' "$wf" \
+      || ! grep -Fq '>>"$GITHUB_PATH"' "$wf"; then
+      ageless_restores="$ageless_restores $wf"
+    fi
+  fi
 done
 if [ -n "$keyless_restores" ]; then
   echo "FAIL: these workflows run a restore script with RESTORE_SKIP_DOTENV but never pass" >&2
   echo "      AGE_BACKUP_PRIVATE_KEY, so an .age snapshot fails at the decrypt step (ADR050):" >&2
   printf '  %s\n' $keyless_restores >&2
+  exit 1
+fi
+if [ -n "$ageless_restores" ]; then
+  echo "FAIL: these workflows can receive an encrypted restore but provide neither" >&2
+  echo "      a digest-pinned RESTORE_AGE_IMAGE nor a checksum-pinned age CLI:" >&2
+  printf '  %s\n' $ageless_restores >&2
   exit 1
 fi
 
@@ -186,7 +201,6 @@ docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
 docker/login-action@dbcb813823bdd20940b903addbd779551569679f
 docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c
 hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789
-hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
 oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d
 sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6'
 
@@ -206,6 +220,12 @@ if ! grep -Fq 'SHELLCHECK_VERSION=0.10.0' .github/workflows/scripts.yml \
   || ! grep -Fq 'SHELLCHECK_LINUX_ARM64_SHA256=324a7e89de8fa2aed0d0c28f3dab59cf84c6d74264022c00c22af665ed1a09bb' .github/workflows/scripts.yml \
   || ! grep -Fq 'shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz' .github/workflows/scripts.yml; then
   echo "FAIL: scripts workflow must checksum-pin its rootless ShellCheck install" >&2
+  exit 1
+fi
+if grep -Fq 'hashicorp/setup-terraform@' .github/workflows/infra.yml \
+  || [ "$(grep -cF 'bash scripts/terraform-install.sh "$TERRAFORM_VERSION" "$TERRAFORM_LINUX_ARM64_SHA256"' .github/workflows/infra.yml)" -ne 2 ] \
+  || ! grep -Fq 'TERRAFORM_LINUX_ARM64_SHA256: 0ca5d6977c7c46bfa4bbe030030b911e897cf0cb72bff5525fb76c10f1c3409a' .github/workflows/infra.yml; then
+  echo "FAIL: infra must install checksum-pinned Terraform without setup-terraform's host unzip dependency" >&2
   exit 1
 fi
 

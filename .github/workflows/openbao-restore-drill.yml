@@ -49,6 +49,26 @@ jobs:
         with:
           version: v1.36.1
 
+      # Tier-A snapshots are age-encrypted. The minimal self-hosted runner has
+      # no age package and no sudo; install the reviewed upstream release under
+      # RUNNER_TEMP, verifying it before extraction or execution.
+      - name: install age (checksum-pinned, rootless)
+        env:
+          AGE_VERSION: "1.3.1"
+          AGE_LINUX_ARM64_SHA256: c6878a324421b69e3e20b00ba17c04bc5c6dab0030cfe55bf8f68fa8d9e9093a
+        run: |
+          archive="$RUNNER_TEMP/age-v${AGE_VERSION}-linux-arm64.tar.gz"
+          install_dir="$RUNNER_TEMP/age-bin"
+          curl -fsSLo "$archive" \
+            "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-arm64.tar.gz"
+          printf '%s  %s\n' "$AGE_LINUX_ARM64_SHA256" "$archive" \
+            | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" age/age
+          install -d "$install_dir"
+          install -m755 "$RUNNER_TEMP/age/age" "$install_dir/age"
+          echo "$install_dir" >>"$GITHUB_PATH"
+          "$install_dir/age" --version
+
       - name: Fetch production kubeconfig
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}

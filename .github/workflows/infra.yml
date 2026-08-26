@@ -37,6 +37,8 @@ permissions:
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
+  TERRAFORM_VERSION: "1.10.5"
+  TERRAFORM_LINUX_ARM64_SHA256: 0ca5d6977c7c46bfa4bbe030030b911e897cf0cb72bff5525fb76c10f1c3409a
 
 defaults:
   run:
@@ -54,9 +56,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
-        with:
-          terraform_version: "1.10.5"
+      - name: install Terraform (checksum-pinned, rootless)
+        working-directory: .
+        run: bash scripts/terraform-install.sh "$TERRAFORM_VERSION" "$TERRAFORM_LINUX_ARM64_SHA256"
 
       - name: fmt
         run: terraform fmt -check -recursive
@@ -88,9 +90,9 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
-        with:
-          terraform_version: "1.10.5"
+      - name: install Terraform (checksum-pinned, rootless)
+        working-directory: .
+        run: bash scripts/terraform-install.sh "$TERRAFORM_VERSION" "$TERRAFORM_LINUX_ARM64_SHA256"
 
       - name: fmt
         run: terraform fmt -check -recursive
