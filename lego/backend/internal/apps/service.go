@@ -31,10 +31,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/http/httpguts"
+	"golang.org/x/sync/singleflight"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -197,6 +199,14 @@ type Service struct {
 	// unknown-versus-foreign classification and project lookup for all resource
 	// kinds, so service/Postgres/Key Value creates cannot drift.
 	Environments core.EnvironmentResolver
+	// pushDelivery memoizes the per-repo GitHub-grant answer behind
+	// AppView.PushDeliveryMethod (w6/m99) so projecting a whole workspace's
+	// services doesn't cost a GitHub round-trip per service. Unexported and
+	// built on first use (pushDeliveryMemo): it is a read-path cache, never
+	// configuration, so no Service literal has to construct it.
+	pushDeliveryOnce   sync.Once
+	pushDelivery       *core.TTLCache[string]
+	pushDeliveryFlight singleflight.Group
 }
 
 // managedAppID distinguishes a projected control-plane App from a direct CR.
@@ -461,6 +471,17 @@ type AppView struct {
 	// (spec.autoDeploy, Render's Auto-Deploy toggle). The Settings → Build &
 	// Deploy section reads it to render the toggle and writes it via SetAutoDeploy.
 	AutoDeploy bool `json:"autoDeploy"`
+	// PushDeliveryMethod is how a push to Branch can REACH bex for this specific
+	// repo — github_app | manual_webhook | none | unknown (see pushdelivery.go).
+	// AutoDeploy above is the on/off setting; this is whether the setting has a
+	// delivery path at all, which the setting alone cannot express (w6/m99).
+	//
+	// Answering it costs GitHub round-trips, so only Get computes it — the one
+	// verb REST's by-id GET, GraphQL server(id)/service(id) and MCP get_service
+	// all route through. It is EMPTY on every other projection (List, and the
+	// views mutations and previews return): absent means "not computed on this
+	// projection", never "no" — read the service by id for the answer.
+	PushDeliveryMethod string `json:"pushDeliveryMethod,omitempty"`
 	// NotifyOnFail is Render's per-service deploy-failure notification override
 	// (spec.notifyOnFail): default | notify | ignore (docs/render-artifacts/
 	// notify-on-fail.md). Empty is reported as "default". The Settings →
@@ -1161,7 +1182,14 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	if err != nil {
 		return AppView{}, err
 	}
-	return s.view(a), nil
+	v := s.view(a)
+	// Push deliverability is computed HERE and nowhere else (w6/m99): this one
+	// verb backs REST GET /v1/services/{id}, GraphQL server(id)/service(id), and
+	// MCP get_service, so all three agree — while List and the projections
+	// mutations and previews return, which the field is no part of the contract
+	// for, keep paying nothing for a lookup that costs GitHub round-trips.
+	v.PushDeliveryMethod = s.pushDeliveryMethod(ctx, a)
+	return v, nil
 }
 
 // ListInstances projects a long-running App's live replica Pods into Render's

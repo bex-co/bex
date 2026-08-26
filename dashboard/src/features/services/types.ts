@@ -145,6 +145,13 @@ export interface ServiceView {
    */
   autoDeploy: boolean | null;
   /**
+   * How a push to the tracked branch can actually REACH bex for this specific
+   * repo (w6/m99): "github_app" | "manual_webhook" | "none" | "unknown" —
+   * what the autoDeploy on/off setting above cannot express. null on the list
+   * query, which does not select it, and on an older API.
+   */
+  pushDeliveryMethod?: string | null;
+  /**
    * Deploy-failure notification override (`spec.notifyOnFail`, w4/m21, Render's
    * exact field name/enum — docs/render-artifacts/notify-on-fail.md):
    * "default" | "notify" | "ignore". null when not selected (list query);

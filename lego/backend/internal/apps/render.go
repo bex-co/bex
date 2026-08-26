@@ -139,6 +139,11 @@ type renderService struct {
 	// "checksPass" (a documented divergence — bex has no CI-gated deploy). Emitted
 	// alongside the legacy string enum so both Render API generations read it.
 	AutoDeployTrigger string `json:"autoDeployTrigger"`
+	// PushDeliveryMethod is a bex extension (no Render counterpart): whether a
+	// push can actually reach bex for THIS repo, which the AutoDeploy setting
+	// above cannot express. Omitted on projections that don't compute it — see
+	// pushdelivery.go.
+	PushDeliveryMethod string `json:"pushDeliveryMethod,omitempty"`
 	// NotifyOnFail is Render's per-service deploy-failure notification override
 	// (spec.notifyOnFail): default | notify | ignore. Required on Render's
 	// service object (never omitted) — docs/render-artifacts/notify-on-fail.md.
@@ -279,6 +284,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		Autoscaling:           toRenderAutoscaling(a.Autoscaling),
 		AutoDeploy:            yesNoEnum(a.AutoDeploy),
 		AutoDeployTrigger:     triggerEnum(a.AutoDeploy),
+		PushDeliveryMethod:    a.PushDeliveryMethod,
 		NotifyOnFail:          a.NotifyOnFail,
 		NotificationsToSend:   a.NotificationsToSend,
 		RenderSubdomainPolicy: a.RenderSubdomainPolicy,

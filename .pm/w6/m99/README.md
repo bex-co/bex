@@ -1,6 +1,6 @@
 # w6 · m99 — Auto-Deploy hint and reported state lie about push-deliverability for a repo the connected GitHub App doesn't grant
 
-**Worker:** worker6 **Goal:** the Auto-Deploy hint text (dashboard) and the `autoDeploy`/`autoDeployTrigger` state (REST/GraphQL/MCP) for a repo-backed service only claim "redeploys automatically via the GitHub app" when THIS service's specific repo is actually covered by the workspace's connected GitHub App installation grant — never merely because the workspace has some GitHub connection and the repo string looks like a github.com URL. **Status:** todo
+**Worker:** worker6 **Goal:** the Auto-Deploy hint text (dashboard) and the `autoDeploy`/`autoDeployTrigger` state (REST/GraphQL/MCP) for a repo-backed service only claim "redeploys automatically via the GitHub app" when THIS service's specific repo is actually covered by the workspace's connected GitHub App installation grant — never merely because the workspace has some GitHub connection and the repo string looks like a github.com URL. **Status:** in progress — t001–t006 done (code, tests, docs landed and green); t007 (live DoD verification + closeout) blocked until this change is deployed to production
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 7th run of the day)
 
@@ -75,13 +75,26 @@ autoDeploy = req.Repo != ""
 
 | id   | title                                                                                                                                                      | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Backend: surface the existing per-repo GitHub-grant-match signal (`GitHub.CloneToken`'s `ok`) as an explicit, checkable field so REST/GraphQL/MCP can report push-deliverability truthfully instead of the unconditional stored `autoDeploy` boolean alone | 45m | —          |
-| t002 | Dashboard: fix `viaGitHub` (`build-deploy-section.tsx:135`) to derive from the per-repo grant signal (t001's field, normalized against `useRepos()`'s union list) instead of `connection.connected && /github\.com/.test(repo)`; update hint copy/props | 30m | t001       |
-| t003 | Regression tests: an ungranted github.com repo + live connection → manual-webhook hint and non-"yes via GitHub" reporting; the `w2/m9` control case (granted repo) unchanged; REST/GraphQL/MCP agree on both cases | 40m | t002       |
-| t004 | Render parity                                                                                                                                              | 20m | t003       |
-| t005 | Simplify                                                                                                                                                   | 15m | t004       |
-| t006 | Test coverage                                                                                                                                              | 20m | t004       |
+| t001 | Backend: surface the existing per-repo GitHub-grant-match signal (`GitHub.CloneToken`'s `ok`) as an explicit, checkable field so REST/GraphQL/MCP can report push-deliverability truthfully instead of the unconditional stored `autoDeploy` boolean alone | 45m | —          | — **DONE** |
+| t002 | Dashboard: fix `viaGitHub` (`build-deploy-section.tsx:135`) to derive from the per-repo grant signal (t001's field, normalized against `useRepos()`'s union list) instead of `connection.connected && /github\.com/.test(repo)`; update hint copy/props | 30m | t001       | — **DONE** |
+| t003 | Regression tests: an ungranted github.com repo + live connection → manual-webhook hint and non-"yes via GitHub" reporting; the `w2/m9` control case (granted repo) unchanged; REST/GraphQL/MCP agree on both cases | 40m | t002       | — **DONE** |
+| t004 | Render parity                                                                                                                                              | 20m | t003       | — **DONE** |
+| t005 | Simplify                                                                                                                                                   | 15m | t004       | — **DONE** |
+| t006 | Test coverage                                                                                                                                              | 20m | t004       | — **DONE** |
 | t007 | Closeout                                                                                                                                                   | 10m | t006       |
+
+## Implementation status (t001–t006 landed)
+
+Code, tests and docs are in the working tree and green (`cd lego/backend && go test ./...`, `cd dashboard && yarn test`, `make lint` × 4 modules — all pass):
+
+- **Backend** — `lego/backend/internal/apps/pushdelivery.go` adds `pushDeliveryMethod` (`github_app` | `manual_webhook` | `none` | `unknown`), computed by the by-id service read (`Service.Get`) that REST `GET /v1/services/{id}`, GraphQL `server(id)`/`service(id)` and MCP `get_service` all route through. It reaches all three through the one shared `renderService` mapper plus a GraphQL field. The grant test is `CloneTokenSource.RepoGranted` → `github.Service.cloneToken` — the same call `mintCloneSecret` makes on every deploy trigger, with the token dropped — so the reported claim cannot drift from what a deploy does. Answers are memoized in `core.TTLCache` (1 min; 5 s for `unknown`) and coalesced with `singleflight`. `spec.autoDeploy`'s default-on behavior is untouched.
+- **Dashboard** — `build-deploy-section.tsx`'s `viaGitHub` heuristic is gone; the hint now reads `pushDeliveryMethod` (`autoDeployHintKey`), with a new `services.autoDeployDeliveryUnknown` string (en + zh) for the unreachable-GitHub and not-yet-loaded states. `server.graphql` selects the field; `definitions.ts` was hand-spliced and reconciled against offline codegen with **zero drift**.
+- **Tests** — `internal/apps/pushdelivery_test.go` (five branches; REST/GraphQL/MCP parity asserted together for both the granted and ungranted case; read path mints no clone token; memoization; List omission), `internal/github/repogrant_test.go` (RepoGranted never diverges from cloneToken across URL forms; multi-installation grant union — the README's two "Unverified this run" items), and dashboard cases for granted / ungranted / unconnected / unknown / not-loaded plus the `status.ts` mapping.
+- **Docs** — [ADR026 §7a](../../../docs/ADR026-github-integration.md) and the "bex ahead of Render" section of [ADR018](../../../docs/ADR018-render-parity.md).
+
+`/simplify` findings applied: reuse `core.TTLCache` + `singleflight` instead of a hand-rolled cache; collapse the extracted `repoGrant` back into `cloneToken` (one function, not two identically-shaped ones); compute the field in `Get` only rather than in every `view()` projection (this removed an N+1 GitHub round-trip from `List` and from every mutation/preview response); drop test scaffolding that influenced no assertion; de-duplicate the field's rationale across seven declaration sites. Declined, with reasons: caching installation tokens in `internal/github` (contradicts ADR026's "each build starts with a token minted seconds ago"), and pre-checking the repo host inside `apps` (would duplicate `githubOwnerRepo`'s origin validation — the exact drift this milestone exists to prevent).
+
+**t007 remains open**: the Definition of done below is live-verification against production, which needs this change deployed. Nothing further is known to be missing from the code.
 
 ## Definition of done
 
@@ -89,6 +102,16 @@ autoDeploy = req.Repo != ""
 - The same service's REST `GET /v1/services/{id}`, GraphQL `server(id){autoDeploy autoDeployTrigger}`, and MCP `get_service` structured content all agree with that same per-repo signal — live-verifiable with the exact MCP JSON-RPC call this hunt used (`tools/call` → `get_service` → inspect `autoDeploy`/`autoDeployTrigger` alongside the new field).
 - The `w2/m9` control case (a repo actually covered by the connection) is unchanged: still shows "via GitHub app," still reports `autoDeploy: "yes"` / `autoDeployTrigger: "commit"`, and a real signed push to it still redeploys — regression-tested, not just reasoned about.
 - A real push to an ungranted repo's tracked branch still produces zero auto-triggered deploys (mechanics unchanged; only the product's claim about them changes).
+
+## Render comparison (t004)
+
+Recorded rather than closed: Render has no equivalent scenario. A Render service can only be created from a repo its connected credential already covers, so "auto-deploy is on and no push can ever be delivered" is unreachable there and Render's API has no field for it. bex's **Public Git URL** tab is what creates the state (and `w6/m97`'s workaround steers users into it), so bex owes the disclosure — shipped as the read-only `pushDeliveryMethod` field (`github_app` | `manual_webhook` | `none` | `unknown`).
+
+The parity requirement here is therefore **internal**, not upstream: REST, GraphQL, MCP, and the dashboard hint must all report the one server-computed value. That is asserted together in `lego/backend/internal/apps/pushdelivery_test.go` (`TestPushDeliveryAgreesAcrossRESTGraphQLAndMCP`, both the granted and ungranted branches) rather than in three per-surface tests free to drift. Written up in [ADR026 §7a](../../../docs/ADR026-github-integration.md) and the "bex ahead of Render" section of [ADR018](../../../docs/ADR018-render-parity.md).
+
+`autoDeploy`/`autoDeployTrigger` keep reporting Render's own on/off setting unchanged on both branches — the default-on behavior for a repo-backed create was never the defect.
+
+Scope note: the field is computed by the by-id service read only (the one verb all three surfaces route through), memoized per (workspace, repo) and coalesced across concurrent readers. The service **list** omits it rather than pay a GitHub round-trip per distinct repo on a polled path; absent means "not computed on this projection", never "no" (`TestPushDeliveryIsNotComputedByList`).
 
 ## Source + Goal linkage
 

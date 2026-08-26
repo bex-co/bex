@@ -736,6 +736,16 @@ func (t tokenSource) CloneToken(ctx context.Context, workspaceID, repoURL string
 	return t.s.cloneToken(ctx, workspaceID, repoURL)
 }
 
+// RepoGranted satisfies apps.CloneTokenSource's read-path half: whether the repo
+// belongs to the workspace's connection, with no token handed back. It is
+// cloneToken with the credential dropped — literally the same call, so the
+// deliverability the product REPORTS can never disagree with what a real deploy
+// trigger DOES (w6/m99).
+func (t tokenSource) RepoGranted(ctx context.Context, workspaceID, repoURL string) (bool, error) {
+	_, granted, err := t.s.cloneToken(ctx, workspaceID, repoURL)
+	return granted, err
+}
+
 // DeployTokenSource returns the deploy path's clone-token seam (wired onto
 // apps.Service in the composition root).
 func (s *Service) DeployTokenSource() tokenSource { return tokenSource{s} }
@@ -749,6 +759,11 @@ func (s *Service) DeployTokenSource() tokenSource { return tokenSource{s} }
 //     grant — the caller keeps today's public-clone behavior.
 //   - non-nil err: a GitHub failure — the caller must fail the deploy, never
 //     silently public-clone what might be a private repo.
+//
+// The read path's grant test is this same call, via RepoGranted (w6/m99): a
+// second grant-check implementation would be free to drift from what a deploy
+// actually does, which is the gap that let the product claim GitHub-app
+// delivery for a repo the installation never granted.
 func (s *Service) cloneToken(ctx context.Context, workspaceID, repoURL string) (string, bool, error) {
 	if !s.configured() {
 		return "", false, nil

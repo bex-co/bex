@@ -114,6 +114,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     dockerfilePath: null,
     registryCredentialId: null,
     autoDeploy: null,
+    pushDeliveryMethod: null,
     notifyOnFail: null,
     notificationsToSend: null,
     renderSubdomainPolicy: null,
@@ -185,6 +186,9 @@ describe("toServiceView", () => {
       registryCredentialId: null,
       buildFilter: null,
       autoDeploy: null,
+      // The list node doesn't select push deliverability, so the mapper reports
+      // null rather than guessing a delivery mechanism (w6/m99).
+      pushDeliveryMethod: null,
       notifyOnFail: null,
       renderSubdomainPolicy: null,
       notificationsToSend: null,
@@ -223,6 +227,17 @@ describe("toServiceView", () => {
       toServiceView(server({ sshAddress: "srv-example@ssh.bex.co" }))
         .sshAddress,
     ).toBe("srv-example@ssh.bex.co");
+  });
+
+  // w6/m99: only the detail query computes push deliverability. A list row must
+  // report null — "not computed on this projection" — rather than let the
+  // Auto-Deploy hint read an absent field as a mechanism it can name.
+  it("carries push deliverability only from the detail query", () => {
+    expect(
+      toServiceView(server({ pushDeliveryMethod: "manual_webhook" }))
+        .pushDeliveryMethod,
+    ).toBe("manual_webhook");
+    expect(toServiceView(node()).pushDeliveryMethod).toBeNull();
   });
 
   it("falls back to id for a missing name and null for a missing url", () => {

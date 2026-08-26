@@ -216,6 +216,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                   dockerfilePath={service.dockerfilePath}
                   buildFilter={service.buildFilter}
                   autoDeploy={service.autoDeploy ?? false}
+                  pushDeliveryMethod={service.pushDeliveryMethod}
                   preDeployCommand={service.preDeployCommand}
                   // A cron_job runs its own Command; the pre-deploy step doesn't
                   // apply (the backend rejects it), so hide the field here.
@@ -257,6 +258,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                   dockerfilePath={service.dockerfilePath}
                   buildFilter={service.buildFilter}
                   autoDeploy={service.autoDeploy ?? false}
+                  pushDeliveryMethod={service.pushDeliveryMethod}
                   preDeployCommand={service.preDeployCommand}
                   // Pre-Deploy Command applies to web/private/worker; a static_site
                   // has no running container, so hide the field for it (w1/m33).

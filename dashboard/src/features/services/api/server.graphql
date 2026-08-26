@@ -72,6 +72,12 @@ query Server($id: String!) {
     }
     # Auto-Deploy toggle (w2/m9) — whether a signed git push redeploys the App.
     autoDeploy
+    # pushDeliveryMethod (w6/m99) is whether a push can REACH bex for THIS repo:
+    # github_app | manual_webhook | none | unknown. autoDeploy above is only the
+    # on/off setting, so it cannot tell a granted repo from an ungranted one; the
+    # Build & Deploy card's Auto-Deploy hint reads this instead of a host regex.
+    # Only the by-id read computes it (the list query has no such field).
+    pushDeliveryMethod
     # notifyOnFail is Render's per-service deploy-failure notification override
     # (w4/m21, docs/render-artifacts/notify-on-fail.md): default | notify | ignore.
     notifyOnFail
