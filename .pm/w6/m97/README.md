@@ -39,13 +39,21 @@ Evidence: `.playwright-mcp/qa-clonesecret-1-deploy-failed.png` (deploy detail sh
 
 **No existing test caught this.** `lego/operator/internal/controller/protected_secret_test.go`'s `TestRejectProtectedSecretRefs` only exercises the malicious case (`a.Spec.CloneSecret = "bex-tenant-postgres"`, an unrelated pre-existing protected Secret) — it never constructs the legitimate self-referential case (`a.Spec.CloneSecret = cloneSecretName(a.Name)`) and asserts it is accepted. The control case was never verified as hard as the failing one.
 
+### Addendum (2026-08-26, 14th `/qa-find-bugs` run): this also strikes already-Live services, and the Events feed hides why
+
+Independently rediscovered this bug via the same repro (fresh service `qa-20260826-w6040b` from `bex-co/bex-hello-go-live`, identical `"app references protected operator Secret … (codex F1)"` failureReason) before finding this milestone already open — good confirmation the bug is still live and this filing is accurate. Two additional findings, folded into this milestone as **t007** rather than re-filed:
+
+1. **This is not only a new-deploy problem.** `beancount-forum` (`srv-d9nqg9dcavls73fp8m2g`) — a real, already-stable service whose most recent deploy is `"Live"` (deployed 2026-08-21, no new deploy since) — shows `phase: "Failed"` right now, confirmed via both `GET /v1/services/srv-d9nqg9dcavls73fp8m2g` (REST) and the dashboard header. `spec.CloneSecret` is never cleared after a successful build (only on a repo change, `apps/service.go:3267`), and `rejectProtectedSecretRefs` runs on **every** reconcile unconditionally (`app_controller.go:499`, no generation gate) — so an already-working service gets bounced to Failed the next time anything triggers an unrelated reconcile, with no new deploy and no user action at all.
+2. **The Events feed actively misreports the cause.** The one Events-feed entry for this ("Instance failed" / "A running instance stopped passing readiness checks", 9h old) is wrong — nothing about pod readiness was ever evaluated. Traced to `lego/backend/internal/store/reconciler.go:1232-1281` (`observedServiceStateFor`): it maps **any** Ready=False condition (when no deploy is open) to the generic `readiness_failed` reason code unless the Reason is one of exactly three excluded values — it never distinguishes a genuine pod-health failure from a pre-pod-evaluation refusal like `ProtectedSecretReference` (or the sibling `PerAppRegistryCredsFailed`/`RegistryPullSecretFailed`).
+
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Fix `rejectProtectedSecretRefs`: allow an App's own deterministic `<app>-clone`/`<app>-registry-pull` self-reference, keep every other protected-Secret reference (including another App's own clone/pull secret in the same namespace) refused | 30m | — |
 | t002 | Regression tests: self-reference accepted for both `CloneSecret` and `ExternalRegistryPullSecret`; the existing malicious-case tests (arbitrary protected Secret, and — new — a *different* App's own `<other>-clone` name) still refused; exercise via the 4 enumerated call sites' shared code path | 40m | t001 |
-| t003 | Render parity | 20m | t002 |
+| t007 | Prove already-Live services get bounced to Failed on ordinary reconcile (live-confirmed on `beancount-forum`), and fix the Events feed misreporting the cause as a readiness-check failure | 30m | t002 |
+| t003 | Render parity | 20m | t002, t007 |
 | t004 | Simplify | 15m | t003 |
 | t005 | Test coverage | 20m | t004 |
 | t006 | Closeout | 10m | t005 |
@@ -57,6 +65,8 @@ Evidence: `.playwright-mcp/qa-clonesecret-1-deploy-failed.png` (deploy detail sh
 - `TestRejectProtectedSecretRefs` and `TestRejectConfiguredOperationalSecretNames` (`lego/operator/internal/controller/protected_secret_test.go`) pass, extended with: (a) an App's own clone-secret self-reference is accepted, (b) an App's own pull-secret self-reference is accepted, (c) App `web` naming App `other`'s clone secret (`other-clone`) in the **same** namespace is still refused — the fix must not become "any name ending in `-clone` is fine."
 - REST (`GET /v1/services/{id}/deploys/{id}`) and GraphQL (`deploy(...).failureReason`) continue to agree byte-for-byte post-fix (already confirmed identical pre-fix this hunt — the bug is not a REST/GraphQL divergence, don't introduce one).
 - The dashboard's Deploy detail page and Events feed stop showing a permanent "Failed" badge / "codex F1" reason for these legitimate deploys.
+- An already-Live, standing service (no new deploy triggered) survives a fresh unrelated reconcile without its `phase` flipping to `Failed` — live-verified against `beancount-forum` (`srv-d9nqg9dcavls73fp8m2g`): `phase` agrees with "Latest deploy: Live" post-fix.
+- `observedServiceStateFor` (`lego/backend/internal/store/reconciler.go:1232-1281`) no longer labels a pre-pod-evaluation `r.fail` reason (`ProtectedSecretReference` at minimum) as `readiness_failed`, while a genuine `CrashLoopBackOff`/`ImagePullBackOff` still produces the existing "Instance failed" event unchanged.
 
 ## Source + Goal linkage
 
