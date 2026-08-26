@@ -82,6 +82,41 @@ var renderOptionalParameterCompatibility = map[string][]string{
 	"subscribe-logs":   {"ownerId"},
 }
 
+// renderPathParameterPatternCompatibility widens a path parameter's id-shape
+// regex to also accept the prefix bex actually mints (w6/m96). Keyed
+// operationId → parameter name → replacement pattern, the same
+// one-concession-per-line shape as the three maps above.
+//
+// Render pins each id path parameter to its own historical prefix, and bex
+// deliberately mints the SAME prefix for every kind these routes address —
+// dsk-, whk-, evt-, job- — so ids are drop-in for Render-shaped clients
+// (docs/ADR020-identifiers.md). Blueprint is the one exception: it predates
+// this gate and was minted blp- against Render's exs-, which meant the
+// validator rejected every REST call to a blueprint-id route with
+// `invalid path parameter "blueprintId"` BEFORE authz or lookup ever ran. No
+// bex id has ever matched exs- and none can: id.Kind is a closed compile-time
+// registry.
+//
+// Every override here must be a strict SUPERSET of the pattern it replaces —
+// enforced by TestRenderPathParameterOverridesOnlyWiden. That is the invariant
+// the whole file already keeps (each of the other three maps only relaxes),
+// and it is what makes this a compatibility concession rather than a quiet
+// narrowing of Render's contract: a client holding a real Render-shaped id
+// still gets it through the gate and gets an honest 404 from the store, not a
+// syntax error about an id shape Render itself documents.
+var renderPathParameterPatternCompatibility = map[string]map[string]string{
+	"retrieve-blueprint":   {"blueprintId": renderBlueprintIDPattern},
+	"update-blueprint":     {"blueprintId": renderBlueprintIDPattern},
+	"disconnect-blueprint": {"blueprintId": renderBlueprintIDPattern},
+	"list-blueprint-syncs": {"blueprintId": renderBlueprintIDPattern},
+}
+
+// renderBlueprintIDPattern accepts bex's blp- alongside Render's exs-. The
+// character class stays Render's [0-9a-z] rather than narrowing to xid's own
+// base32-hex [0-9a-v]: a real bex id satisfies both, and widening is the only
+// direction this layer is allowed to move.
+const renderBlueprintIDPattern = `^(?:blp|exs)-[0-9a-z]{20}$`
+
 // These are deliberate bex query extensions on otherwise Render-shaped
 // operations. All other query names must come from the matched OpenAPI
 // operation (including its path-level parameters).
@@ -118,6 +153,18 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	// Bex's dashboard carries its selected workspace explicitly. Render's event
 	// route has no owner selector, so this remains a labeled query extension.
 	"retrieve-event": {"ownerId": {}},
+
+	// The same concession the webhook and event routes above already make, for
+	// the blueprint-id routes it was never extended to (w6/m96). All four bex
+	// handlers read ownerId (internal/apps/rest.go), and none of Render's four
+	// operations declares it, so the strict-query gate 400'd every call that
+	// named a workspace — the second half of the same bug the blueprintId
+	// pattern override fixes, and invisible until a test drove these routes
+	// through the real composed server rather than a bare mux.
+	"retrieve-blueprint":   {"ownerId": {}},
+	"update-blueprint":     {"ownerId": {}},
+	"disconnect-blueprint": {"ownerId": {}},
+	"list-blueprint-syncs": {"ownerId": {}},
 
 	// Render's disk-capacity series covers only its own service disks, so its
 	// schema has no `kind`. Bex reads capacity for three resource kinds through
@@ -199,10 +246,17 @@ func applyRenderCompatibility(doc *openapi3.T) {
 	for _, item := range doc.Paths.Map() {
 		for _, operation := range item.Operations() {
 			optional := renderOptionalParameterCompatibility[operation.OperationID]
+			patterns := renderPathParameterPatternCompatibility[operation.OperationID]
 			for _, parameters := range []openapi3.Parameters{item.Parameters, operation.Parameters} {
 				for _, ref := range parameters {
-					if ref != nil && ref.Value != nil && slices.Contains(optional, ref.Value.Name) {
+					if ref == nil || ref.Value == nil {
+						continue
+					}
+					if slices.Contains(optional, ref.Value.Name) {
 						ref.Value.Required = false
+					}
+					if pattern, ok := patterns[ref.Value.Name]; ok && ref.Value.Schema != nil && ref.Value.Schema.Value != nil {
+						ref.Value.Schema.Value.Pattern = pattern
 					}
 				}
 			}
