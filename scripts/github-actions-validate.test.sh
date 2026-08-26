@@ -71,6 +71,9 @@ assert "ubuntu-latest fails" 1 "$(job_body "ubuntu-latest" "      - uses: $PINNE
   "GitHub-hosted ubuntu runners"
 # GREEN: the canonical self-hosted label passes.
 assert "self-hosted label passes" 0 "$(job_body "[self-hosted, Linux, ARM64]" "      - uses: $PINNED")"
+# RED: the runner account deliberately has no sudo; tools belong in RUNNER_TEMP.
+assert "sudo workflow fails" 1 "$(job_body "[self-hosted, Linux, ARM64]" "      - uses: $PINNED
+      - run: sudo apt-get install shellcheck")" "must not require sudo"
 
 # --- w1/m68 F3: host-key pin coverage for admin.conf fetchers ---------------
 # RED: a workflow that fetches admin.conf over SSH without wiring the pin. This

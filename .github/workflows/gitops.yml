@@ -75,16 +75,23 @@ jobs:
             "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_arm64"
           echo "$YQ_LINUX_ARM64_SHA256  $archive" | sha256sum -c -
           chmod +x "$archive"
-          sudo install -m755 "$archive" /usr/local/bin/yq
+          install -m755 -D "$archive" "$RUNNER_TEMP/bin/yq"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/yq" --version
       - name: install fga CLI # model.fga <-> model.json drift gate
         run: |
+          mkdir -p "$RUNNER_TEMP/bin"
           curl -fsSL https://github.com/openfga/cli/releases/download/v0.7.17/fga_0.7.17_linux_arm64.tar.gz \
-            | sudo tar -xz -C /usr/local/bin fga
+            | tar -xz -C "$RUNNER_TEMP/bin" fga
+          chmod +x "$RUNNER_TEMP/bin/fga"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: install promtool # alerting-rule check + unit tests (w3/m6); matches the pinned chart appVersion
         run: |
           curl -fsSL https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-arm64.tar.gz \
-            | tar -xz -C /tmp prometheus-2.55.1.linux-arm64/promtool
-          sudo install /tmp/prometheus-2.55.1.linux-arm64/promtool /usr/local/bin/promtool
+            | tar -xz -C "$RUNNER_TEMP" prometheus-2.55.1.linux-arm64/promtool
+          install -m755 -D "$RUNNER_TEMP/prometheus-2.55.1.linux-arm64/promtool" \
+            "$RUNNER_TEMP/bin/promtool"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: validate
         run: bash scripts/gitops-validate.sh
       - name: platform-pod hardening guard self-test # w7/m58: proves the guard bites

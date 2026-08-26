@@ -40,7 +40,14 @@ artifact="${binary}.zip"
 mkdir -p "$tmp/release"
 printf '#!/bin/sh\necho fake plugin\n' > "$tmp/release/$binary"
 chmod +x "$tmp/release/$binary"
-(cd "$tmp/release" && zip -q "$tmp/$artifact" "$binary")
+python3 - "$tmp/release/$binary" "$tmp/$artifact" "$binary" <<'PY'
+import sys
+from zipfile import ZIP_DEFLATED, ZipFile
+
+source, artifact, member = sys.argv[1:]
+with ZipFile(artifact, "w", compression=ZIP_DEFLATED) as archive:
+    archive.write(source, member)
+PY
 
 if command -v sha256sum >/dev/null 2>&1; then
   real_sum=$(sha256sum "$tmp/$artifact" | awk '{print $1}')

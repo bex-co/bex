@@ -61,6 +61,8 @@ jobs:
             "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_arm64"
           echo "$YQ_LINUX_ARM64_SHA256  $archive" | sha256sum -c -
           chmod +x "$archive"
-          sudo install -m755 "$archive" /usr/local/bin/yq
+          install -m755 -D "$archive" "$RUNNER_TEMP/bin/yq"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/yq" --version
       - name: validate CAPH overlay shape
         run: bash scripts/clusterapi-validate.sh
