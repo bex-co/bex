@@ -1,6 +1,6 @@
 # w6 · m97 — Stop the codex-security F7 protected-secret guard from self-rejecting every App's own clone/pull secret
 
-**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** todo
+**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** in progress (t001-t005 done; t007 open — its reconcile-cause leg is fixed by t001, its Events-feed leg is not; t006 closeout blocked on t007 + deploying the fix)
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 5th run of the day)
 
@@ -74,15 +74,15 @@ Striking pattern: `beancount-forum`, `beancount-cms-v2`, and `tianpan-v4-web` al
 
 ## Tasks (in order)
 
-| id | title | est | depends_on |
-| --- | --- | --- | --- |
-| t001 | Fix `rejectProtectedSecretRefs`: allow an App's own deterministic `<app>-clone`/`<app>-registry-pull` self-reference, keep every other protected-Secret reference (including another App's own clone/pull secret in the same namespace) refused | 30m | — |
-| t002 | Regression tests: self-reference accepted for both `CloneSecret` and `ExternalRegistryPullSecret`; the existing malicious-case tests (arbitrary protected Secret, and — new — a *different* App's own `<other>-clone` name) still refused; exercise via the 4 enumerated call sites' shared code path | 40m | t001 |
-| t007 | Prove already-Live services get bounced to Failed on ordinary reconcile (live-confirmed on `beancount-forum`), and fix the Events feed misreporting the cause as a readiness-check failure | 30m | t002 |
-| t003 | Render parity | 20m | t002, t007 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 20m | t004 |
-| t006 | Closeout | 10m | t005 |
+| id | title | est | depends_on | status |
+| --- | --- | --- | --- | --- |
+| t001 | Fix `rejectProtectedSecretRefs`: allow an App's own deterministic `<app>-clone`/`<app>-registry-pull` self-reference, keep every other protected-Secret reference (including another App's own clone/pull secret in the same namespace) refused | 30m | — | — **DONE** |
+| t002 | Regression tests: self-reference accepted for both `CloneSecret` and `ExternalRegistryPullSecret`; the existing malicious-case tests (arbitrary protected Secret, and — new — a *different* App's own `<other>-clone` name) still refused; exercise via the 4 enumerated call sites' shared code path | 40m | t001 | — **DONE** |
+| t007 | Prove already-Live services get bounced to Failed on ordinary reconcile (live-confirmed on `beancount-forum`), and fix the Events feed misreporting the cause as a readiness-check failure | 30m | t002 | todo |
+| t003 | Render parity | 20m | t002, t007 | — **DONE** for the t001/t002 change; t007's Events-feed leg still open |
+| t004 | Simplify | 15m | t003 | — **DONE** |
+| t005 | Test coverage | 20m | t004 | — **DONE** |
+| t006 | Closeout | 10m | t005, t007 | blocked on t007 + deploy |
 
 ## Definition of done
 
@@ -101,3 +101,21 @@ Striking pattern: `beancount-forum`, `beancount-cms-v2`, and `tianpan-v4-web` al
 - **Expected outcome:** creating, redeploying, manually deploying, using a deploy hook on, rolling back, or blueprint-syncing a Web Service/Private Service/Background Worker/Cron Job/Static Site from any GitHub-connection-covered repo — or any service bound to a stored registry credential — succeeds instead of failing instantly and unconditionally.
 - **Why now:** live, currently-reproducing **blocker** on production affecting the single most common "create/redeploy a service" journey for every repo the workspace's GitHub App covers (including bex-co's own dogfood repos), with zero user-facing workaround (Public Git URL only sidesteps it for repos the connection does *not* cover) and a 100% failure rate (not intermittent — the guard runs before any build attempt, so no retry ever succeeds). Self-inflicted: the backend's own deploy pipeline creates the exact Secret reference the operator then refuses.
 - **Render parity task included:** yes (t003) — the failure already surfaces identically over REST and GraphQL (confirmed byte-for-byte this hunt); the fix must preserve that agreement, and the dashboard's Deploy/Events views must stop misreporting a legitimate deploy as permanently Failed.
+
+## Implementation notes (2026-08-26, t001–t005 done)
+
+**The filed root cause was correct but only half the outage.** Fixing `rejectProtectedSecretRefs` alone does not meet the Definition of done: `copyCloneSecret` (`lego/operator/internal/controller/app_controller.go`) refuses **any** protected source outright — F7's relocation half — and `relocateBuildSecret` runs it on `spec.CloneSecret` whenever `buildNs != app.Namespace`. Production sets `BEX_BUILD_NAMESPACE=bex-build` (`lego/operator/config/manager/manager.yaml:161`), so every tenant App reaches the copier with the labeled source bex-api always stamps, and would have failed one step past the guard with `relocating clone secret to bex-build: refusing to relocate protected operator Secret … (codex-security 2026-08 F7)` under `ReasonBuildFailed` instead of `ProtectedSecretReference` — same total outage, different status reason. t001's "Out of scope" note (that `copyCloneSecret` was "unchanged, still correct") was wrong on this point. Both enforcement points now share one predicate, `ownBuildPlaneSecret`. The relocated copy keeps its protected marker, so F7's actual guarantee is preserved.
+
+Neither the fake-client tests nor envtest run with `BEX_BUILD_NAMESPACE` set, and the pre-existing happy-path copier test seeded an **unlabeled** `web-clone` — which is why nothing on either side caught it. `TestCopyCloneSecretRelocatesOwnProtectedBuildSecrets` now covers the production shape.
+
+**A hole in the first cut of the carve-out, found and closed during implementation.** Keying the exemption on the Secret *name* let an App launder its own clone token through the wrong field: `cloneSecret: web-clone` (legitimately exempt) plus `externalRegistryPullSecret: web-clone` was accepted, because the name was already exempt by the time the second field was read. Exemption is now a property of the **reference**, not the name — a Secret reached through any non-exempt reference stays guarded regardless of declaration order. Covered by the "named through BOTH fields" / "wrong field's self-name" subtests.
+
+**Consolidation (t004).** The `-clone` / `-registry-pull` conventions were spelled by hand in four production sites across three packages. They now live once in the leaf contract module, `lego/types/v1alpha1/secretnames.go`, alongside `BuildJobName` / `DiskPVCName` for the same reason: both sides of the App CR boundary must derive them identically, and this milestone is what happens when they don't.
+
+**Parity (t003), verified at code level.** GraphQL `deploy(...)`, REST `GET /v1/services/{id}/deploys/{id}` and MCP `get_deploy` all funnel through `deploys.Service.Get` → `view(store.Deploy)` (`lego/backend/internal/deploys/service.go:125`); the REST and MCP surfaces share `toRenderDeploy` (`rest.go:104`) verbatim. No divergence is introduced. The dashboard Deploy detail page reads the same GraphQL field.
+
+## Follow-ups found, NOT fixed here (all pre-existing, none blocking this DoD)
+
+- **Events feed re-derives deploy status and cannot show `failureReason`.** `dashboard/src/routes/services.$serviceId.events.tsx:209-217` hand-maps the backend's lossy 3-value `deployStatus` (`store.RenderDeployStatus`) back into the deploy vocabulary, so `build_failed` / `pre_deploy_failed` are badged `update_failed` there while the Deploy page badges them correctly; `failureReason` is absent from `events.Details` (`lego/backend/internal/events/service.go:397`), from `events.graphql`, and from the route. Unrelated to this fix (status still flows correctly), but it is a real REST/GraphQL/UI divergence.
+- **Deploys list omits `failureReason`.** `dashboard/src/features/deploys/api/deploys.graphql:30-44` stops at `preDeployStatus`, so the list can never show a reason the backend already exposes.
+- **`prepareBuildRegistrySecret` strips the protected marker.** `lego/operator/internal/controller/build_registry_secret.go` reads the protected `<app>-registry-pull` Secret and writes its config into `bld-<app>-registry-auth` in the build namespace with plain `artifactLabels` — the "relocated with its marker stripped" outcome F7's own godoc warns about, on the legitimate path. Low severity (build-namespace Secrets are not mountable by tenant Apps, which run in their own namespace), but it is the last place the marker is dropped.

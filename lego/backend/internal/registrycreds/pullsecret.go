@@ -42,11 +42,6 @@ import (
 // which credential (if any) matches an image, it only wires
 // app.Spec.ExternalRegistryPullSecret into imagePullSecrets when set.
 
-// pullSecretName is the per-app Secret name bex-api materializes and the
-// operator references — deterministic so re-materializing on every
-// create/update upserts the same object rather than accumulating stale ones.
-func pullSecretName(appName string) string { return appName + "-registry-pull" }
-
 // registryHost resolves the registry hostname a plain image reference pulls
 // against, following Docker's own reference-parsing rule: the first "/"-
 // delimited segment is a registry host only if it contains a "." or ":" or is
@@ -137,7 +132,7 @@ func (s *Service) materializePullSecret(ctx context.Context, workspaceID string,
 	if err != nil || !ok {
 		return "", ok, err
 	}
-	name := pullSecretName(app.Name)
+	name := appv1alpha1.ExternalRegistryPullSecretName(app.Name)
 	auths := dockerConfigJSON(host, cred.Username, password)
 	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
 	// No owner reference, deliberately: this can run as part of a brand-new

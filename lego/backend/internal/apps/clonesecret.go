@@ -49,9 +49,6 @@ type CloneTokenSource interface {
 // (and an operator audit) can find them.
 const cloneSecretManagedBy = "bex-api"
 
-// cloneSecretName is the deterministic name of an App's clone-credential Secret.
-func cloneSecretName(app string) string { return app + "-clone" }
-
 // ensureCloneSecret, for an App about to be (re)deployed, mints a fresh
 // installation token when the App's repo belongs to the workspace's GitHub
 // connection, writes/refreshes the <app>-clone Secret in the App's namespace,
@@ -96,7 +93,7 @@ func (s *Service) writeCloneSecret(ctx context.Context, namespace, name, app, to
 // deleteCloneSecret removes an App's clone Secret on service delete. Best-effort:
 // an absent Secret (public app, or already gone) is not an error.
 func (s *Service) deleteCloneSecret(ctx context.Context, namespace, app string) error {
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: cloneSecretName(app), Namespace: namespace}}
+	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.CloneSecretName(app), Namespace: namespace}}
 	return client.IgnoreNotFound(s.Client.Delete(ctx, sec))
 }
 
@@ -114,7 +111,7 @@ func (s *Service) mintCloneSecret(ctx context.Context, namespace, appName, works
 	if !ok {
 		return "", nil
 	}
-	name := cloneSecretName(appName)
+	name := appv1alpha1.CloneSecretName(appName)
 	if err := s.writeCloneSecret(ctx, namespace, name, appName, token); err != nil {
 		return "", fmt.Errorf("writing clone secret %s/%s: %w", namespace, name, err)
 	}

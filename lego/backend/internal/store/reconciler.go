@@ -1456,7 +1456,7 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 		// Explicit credentials materialize to a deterministic Secret name. Keep
 		// this in the desired spec (not only projectApp) so every later resync
 		// preserves the reference instead of treating it as stale owned state.
-		s.ExternalRegistryPullSecret = CRName(d.TenantID, d.Name) + "-registry-pull"
+		s.ExternalRegistryPullSecret = appv1alpha1.ExternalRegistryPullSecretName(CRName(d.TenantID, d.Name))
 	}
 	return s
 }
