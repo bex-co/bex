@@ -646,7 +646,10 @@ const FeedCommitLag = 3 * time.Second
 // feed takes as parameters instead). ServiceID is the PUBLIC service id — the
 // projected CR name "<tenantName>-<appName>" (core.CRName), what
 // GET /v1/services/{id} accepts — so a webhook receiver can turn a payload
-// straight into an API call; ServiceName is the human app name.
+// straight into an API call; ServiceName is the human label that service is
+// shown under everywhere else — its displayName once renamed, else the
+// immutable name (appDisplayLabel), so a payload never reports a stale
+// creation-time name. Datastore rows carry the audit row's own target_name.
 type WebhookEventRow struct {
 	// CursorAt is when the source row became dispatch-visible. It normally equals
 	// At; late-persisted observed facts use service_event_facts.recorded_at so an
@@ -672,6 +675,12 @@ type WebhookEventRow struct {
 	// public composite. Empty on the datastore audit arm, which has no app.
 	AppID string
 }
+
+// appDisplayLabel is the SQL spelling of renderServiceName (internal/apps): the
+// feed joins apps at dispatch time and has no CR to read spec.displayName off,
+// so it resolves the label from apps.display_name, the projection
+// SetDisplayName mirrors there (w6/m101).
+const appDisplayLabel = `COALESCE(NULLIF(a.display_name, ''), a.name)`
 
 // webhookEventsQuery is serviceEventsQuery's workspace-wide, ascending twin
 // (see events.go for the composition's rationale). Differences, each forced
@@ -704,7 +713,7 @@ WITH feed AS (
            d.created_at                        AS at,
            a.tenant_id                         AS tenant_id,
            t.name || '-' || a.name             AS service_id,
-           a.name                              AS service_name,
+           ` + appDisplayLabel + `             AS service_name,
            '` + EventSourceDeploy + `'::text   AS source,
            '` + EventPhaseStarted + `'::text   AS phase,
            d.id                                AS deploy_id,
@@ -723,7 +732,7 @@ WITH feed AS (
            d.finished_at,
            a.tenant_id,
            t.name || '-' || a.name,
-           a.name,
+           ` + appDisplayLabel + `,
            '` + EventSourceDeploy + `'::text,
            '` + EventPhaseEnded + `'::text,
            d.id,
@@ -742,7 +751,7 @@ WITH feed AS (
            e.at,
            a.tenant_id,
            t.name || '-' || a.name,
-           a.name,
+           ` + appDisplayLabel + `,
            '` + EventSourceAudit + `'::text,
            ''::text,
            ''::text,
@@ -787,7 +796,7 @@ WITH feed AS (
            f.at,
            a.tenant_id,
            t.name || '-' || a.name,
-           a.name,
+           ` + appDisplayLabel + `,
            '` + EventSourceFact + `'::text,
            ''::text,
            f.deploy_id,

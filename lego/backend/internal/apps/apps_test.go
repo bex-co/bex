@@ -690,6 +690,10 @@ type recordingStore struct {
 		id      string
 		seconds int32
 	}
+	displayNameCalls []struct {
+		id          string
+		displayName string
+	}
 	domainAdds     []struct{ id, host, redirectForName string }
 	domainRems     []struct{ id, host string }
 	domainReplaces []struct {
@@ -806,6 +810,17 @@ func (r *recordingStore) SetAppIdleTTL(_ context.Context, id string, seconds int
 	return nil
 }
 
+func (r *recordingStore) SetAppDisplayName(_ context.Context, id string, displayName string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.displayNameCalls = append(r.displayNameCalls, struct {
+		id          string
+		displayName string
+	}{id, displayName})
+	return nil
+}
+
 func (r *recordingStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) error {
 	return r.err
 }
@@ -846,8 +861,11 @@ func (r *recordingStore) RemoveDomain(_ context.Context, id, host string) error 
 	return nil
 }
 
-func managedApp(name, appID string) *appv1alpha1.App {
-	a := sampleApp(name)
+func managedApp(name, appID string) *appv1alpha1.App { return manage(sampleApp(name), appID) }
+
+// manage marks an already-built App as store-managed, for the tests whose
+// fixture is not sampleApp.
+func manage(a *appv1alpha1.App, appID string) *appv1alpha1.App {
 	a.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: appID}
 	return a
 }

@@ -1,18 +1,18 @@
 # w6 · m101 — Webhook payload `serviceName` ignores `displayName` after a service rename
 
-**Worker:** worker6 **Goal:** every webhook delivery's `data.serviceName` reflects the same human-facing label the dashboard/REST/GraphQL already show for that service (`displayName` when set, else the immutable `name`) — never the frozen creation-time name **Status:** todo
+**Worker:** worker6 **Goal:** every webhook delivery's `data.serviceName` reflects the same human-facing label the dashboard/REST/GraphQL already show for that service (`displayName` when set, else the immutable `name`) — never the frozen creation-time name **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                          | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Project `displayName` into the control-plane store so it's queryable outside a live k8s read      | 45m | —          |
-| t002 | Fix `webhookEventsQuery`'s 4 affected UNION arms to resolve the display label, not raw `apps.name` | 30m | t001       |
-| t003 | Regression test: rename a service, assert the next dispatched webhook payload uses the new label  | 30m | t002       |
-| t004 | Render parity — confirm no REST/GraphQL/MCP wire-shape drift; webhooks stay the only surface fixed | 20m | t003       |
-| t005 | Simplify                                                                                          | 20m | t004       |
-| t006 | Test coverage                                                                                     | 30m | t004       |
-| t007 | Closeout                                                                                          | 10m | t005, t006 |
+| t001 | Project `displayName` into the control-plane store so it's queryable outside a live k8s read | 45m | — | — **DONE**
+| t002 | Fix `webhookEventsQuery`'s 4 affected UNION arms to resolve the display label, not raw `apps.name` | 30m | t001 | — **DONE**
+| t003 | Regression test: rename a service, assert the next dispatched webhook payload uses the new label | 30m | t002 | — **DONE**
+| t004 | Render parity — confirm no REST/GraphQL/MCP wire-shape drift; webhooks stay the only surface fixed | 20m | t003 | — **DONE**
+| t005 | Simplify | 20m | t004 | — **DONE**
+| t006 | Test coverage | 30m | t004 | — **DONE**
+| t007 | Closeout | 10m | t005, t006 | — **DONE**
 
 ## Definition of done
 

@@ -275,6 +275,11 @@ type IntentStore interface {
 	// idle-timeout verb on store-managed Apps, same row-first rationale as
 	// SetAppReplicas (the projector owns spec.idleTTLSeconds).
 	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
+	// SetAppDisplayName mirrors spec.displayName onto the row. The CR stays the
+	// writer of truth (the projector doesn't own the field) — this is the read
+	// projection the workspace-wide webhook feed joins, so a renamed service's
+	// deliveries carry the same label the dashboard shows (w6/m101).
+	SetAppDisplayName(ctx context.Context, id string, displayName string) error
 	// SetAppSource updates the projector-owned repo/image/branch tuple in one
 	// row write so a source PATCH cannot be reverted on the next resync.
 	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error
@@ -3633,14 +3638,25 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 
 // SetDisplayName changes the human-facing label for an App without changing
 // its immutable Kubernetes object name or any identity derived from that name
-// (including platform hostnames and TLS secret names). It is a direct CR patch:
-// displayName is not owned by the control-plane row projector. Whitespace at
-// the edges is presentation noise and is trimmed; an empty value clears the
-// label so clients fall back to the immutable Name.
+// (including platform hostnames and TLS secret names). Whitespace at the edges
+// is presentation noise and is trimmed; an empty value clears the label so
+// clients fall back to the immutable Name.
+//
+// The CR remains the writer of truth — displayName is not projector-owned, so
+// unlike suspend/scale/plan a resync will never revert the patch. The row write
+// alongside it is a read projection (w6/m101): the workspace-wide event feed
+// joins apps at dispatch time and has no CR to read, so without the mirror
+// every webhook and push notification for a renamed service reports the
+// immutable creation-time name.
 func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) (AppView, error) {
-	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
-		a.Spec.DisplayName = strings.TrimSpace(displayName)
-	})
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	trimmed := strings.TrimSpace(displayName)
+	return s.writeThroughStoreFetched(ctx, a,
+		func(ctx context.Context, id string) error { return s.Store.SetAppDisplayName(ctx, id, trimmed) },
+		func(a *appv1alpha1.App) { a.Spec.DisplayName = trimmed })
 }
 
 // setSuspended flips suspension with the row as the single writer of intent.
@@ -3672,7 +3688,10 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 // patch after it makes the change converge immediately; if the row write
 // fails, the CR is left untouched (the row is already wrong, so retrying is
 // safe). Unmanaged (bare-CR) Apps skip the row entirely and go straight to
-// the CR patch. Every caller (setSuspended, SetPlan, Scale, SetIdleTTL, …)
+// the CR patch. SetDisplayName reuses it for the opposite ownership — its row
+// is a read projection, not intent — because the ordering matters there too: a
+// half-applied rename is exactly the drift it closes. Every caller
+// (setSuspended, SetPlan, Scale, SetIdleTTL, …)
 // authorizes+fetches its own App first via AuthorizeApp (against the App's
 // own workspace, w6/m17) — some validate the request or run a guard (e.g.
 // setSuspended's requireUnprotected) against it before reaching here — then
