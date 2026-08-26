@@ -481,7 +481,7 @@ func (s *Service) GetBlueprintByID(ctx context.Context, bpID, ownerID string) (B
 	tenantID := s.resolveTenantID(ctx)
 	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)
 	if err != nil {
-		return BlueprintView{}, err
+		return BlueprintView{}, store.MapError(err)
 	}
 	v := toBlueprintView(b)
 	if !s.canReadManifest(ctx) {
@@ -549,7 +549,7 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 	tenantID := s.resolveTenantID(ctx)
 	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)
 	if err != nil {
-		return SyncBlueprintResult{}, err
+		return SyncBlueprintResult{}, store.MapError(err)
 	}
 	return s.runSync(ctx, b, bexYAML, confirm)
 }
@@ -714,11 +714,11 @@ func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor 
 	}
 	tenantID := s.resolveTenantID(ctx)
 	if _, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID); err != nil {
-		return nil, err
+		return nil, store.MapError(err)
 	}
 	runs, err := s.Blueprints.ListBlueprintSyncs(ctx, bpID, cursor, core.PageLimitOrAbsent(limit))
 	if err != nil {
-		return nil, err
+		return nil, store.MapError(err)
 	}
 	out := make([]BlueprintSyncView, len(runs))
 	for i, r := range runs {
@@ -762,7 +762,7 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 	tenantID := s.resolveTenantID(ctx)
 	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)
 	if err != nil {
-		return BlueprintView{}, err
+		return BlueprintView{}, store.MapError(err)
 	}
 	var newStatus *string
 	if req.AutoSync != nil && !*req.AutoSync && b.Status != store.BlueprintStatusPaused {
@@ -775,7 +775,7 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 	}
 	updated, err := s.Blueprints.UpdateBlueprint(ctx, bpID, tenantID, req.Name, req.AutoSync, req.Path, newStatus, nil)
 	if err != nil {
-		return BlueprintView{}, err
+		return BlueprintView{}, store.MapError(err)
 	}
 	return toBlueprintView(updated), nil
 }
@@ -801,7 +801,7 @@ func (s *Service) DisconnectBlueprint(ctx context.Context, bpID, ownerID string)
 		manifest = b.Manifest
 	}
 	if err := s.Blueprints.DisconnectBlueprint(ctx, bpID, tenantID); err != nil {
-		return err
+		return store.MapError(err)
 	}
 	s.reclaimBlueprintGroupings(ctx, tenantID, manifest)
 	s.clearBlueprintOwnership(ctx, tenantID, bpID)

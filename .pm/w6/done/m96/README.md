@@ -1,6 +1,6 @@
 # w6 · m96 — Fix Render OpenAPI compat gate rejecting every REST Blueprint-id route (blueprintId pattern mismatch)
 
-**Worker:** worker6 **Goal:** `GET/PATCH/DELETE /v1/blueprints/{id}` and `GET /v1/blueprints/{id}/syncs` return real data (or a real 403/404) for a caller using bex's own `blp-…` Blueprint id — the id shape bex actually mints and the only one that will ever exist — instead of unconditionally 400ing every request before authz or lookup ever runs. **Status:** todo
+**Worker:** worker6 **Goal:** `GET/PATCH/DELETE /v1/blueprints/{id}` and `GET /v1/blueprints/{id}/syncs` return real data (or a real 403/404) for a caller using bex's own `blp-…` Blueprint id — the id shape bex actually mints and the only one that will ever exist — instead of unconditionally 400ing every request before authz or lookup ever runs. **Status:** done — three defects on these routes, not one; all fixed and gated green. Live REST verification carried to `w6/040` (blocked on the deploy pipeline)
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt)
 
@@ -19,7 +19,7 @@ GET https://api.bex.co/v1/blueprints                                  -> 200 (li
 **Exhaustive blast-radius check (not an estimate):** cross-referencing `TestRenderRouteIntersectionInventory`'s full operation-id list (`internal/api/render_openapi_test.go:192`, every operation where a bex route matches Render's spec) against every `pattern`-constrained path parameter in the embedded spec found exactly **5** id-shaped path parameters with a hard regex, and checked each against the matching `id.Kind` prefix in `internal/id/id.go`:
 
 | path parameter | Render pattern | bex prefix | match? |
-| --- | --- | --- | --- |
+| --- | --- | --- | --- | --- |
 | `diskId` (`delete-disk`) | `^dsk-[0-9a-z]{20}$` | `dsk` | yes |
 | `webhookId` (`delete-webhook`, `retrieve/update-webhook`, …) | `^whk-[0-9a-z]{20}$` | `whk` | yes |
 | `eventId` (`retrieve-event`) | `^evt-[0-9a-z]{20}$` | `evt` | yes |
@@ -32,15 +32,15 @@ GET https://api.bex.co/v1/blueprints                                  -> 200 (li
 
 ## Tasks (in order)
 
-| id | title | est | depends_on |
-| --- | --- | --- | --- |
-| t001 | Compatibility fix: stop rejecting bex's own `blp-…` Blueprint id at the Render OpenAPI gate | 30m | — |
-| t002 | Regression tests through the real composed server (not the bare-mux shortcut) for all 4 blueprint-id routes + a table test locking in the other 4 already-correct id/pattern pairs | 40m | t001 |
-| t003 | Correct ADR020 (record the deviation) and ADR018's Blueprint parity row | 15m | t001 |
-| t004 | Render parity | 20m | t002, t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 20m | t005 |
-| t007 | Closeout | 10m | t006 |
+| id | title | est | depends_on | status |
+| --- | --- | --- | --- | --- |
+| t001 | Compatibility fix: stop rejecting bex's own `blp-…` Blueprint id at the Render OpenAPI gate | 30m | — | — **DONE** |
+| t002 | Regression tests through the real composed server (not the bare-mux shortcut) for all 4 blueprint-id routes + a table test locking in the other 4 already-correct id/pattern pairs | 40m | t001 | — **DONE** |
+| t003 | Correct ADR020 (record the deviation) and ADR018's Blueprint parity row | 15m | t001 | — **DONE** |
+| t004 | Render parity | 20m | t002, t003 | — **DONE** |
+| t005 | Simplify | 15m | t004 | — **DONE** |
+| t006 | Test coverage | 20m | t005 | — **DONE** |
+| t007 | Closeout | 10m | t006 | — **DONE** |
 
 ## Definition of done
 

@@ -824,8 +824,13 @@ func TestSyncBlueprintNotFound(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	if _, err := svc.SyncBlueprint(ctx, "blp-missing", "tea-a", "", ""); !errors.Is(err, store.ErrNotFound) {
-		t.Errorf("SyncBlueprint missing id: want ErrNotFound, got %v", err)
+	// core.ErrNotFound, not store.ErrNotFound: since w6/m96 every blueprint verb
+	// runs its store error through store.MapError, which is what turns a missing
+	// row into a 404 on REST/GraphQL/MCP instead of a 500 "internal error".
+	// MapError deliberately keeps the store error in the message (%v) rather
+	// than the chain, so the core sentinel is the one callers match on.
+	if _, err := svc.SyncBlueprint(ctx, "blp-missing", "tea-a", "", ""); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("SyncBlueprint missing id: want core.ErrNotFound, got %v", err)
 	}
 }
 
@@ -2027,5 +2032,114 @@ func TestApprovedBlueprintPathCustomFilenames(t *testing.T) {
 		if _, err := approvedBlueprintPath(bad); err == nil {
 			t.Errorf("approvedBlueprintPath(%q) must be rejected", bad)
 		}
+	}
+}
+
+// TestBlueprintByIDNotFoundIsIdenticalAcrossSurfaces is w6/m96's parity check.
+// REST, GraphQL and MCP all call the same by-id verbs, so a missing blueprint
+// must read the same on all three. Before this milestone every one of them
+// returned the raw store error, which no surface classifies — REST answered
+// `500 internal error`, and the other two answered their equivalent generic
+// failure — so the id that does not exist and the id the caller may not see
+// were indistinguishable from a genuine server fault. The REST validator fix is
+// what made this reachable at all; without the mapping, "no longer 400" would
+// merely have become "500 instead".
+func TestBlueprintByIDNotFoundIsIdenticalAcrossSurfaces(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Status: "active", Name: "app",
+	})
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	ctx := core.WithWorkspace(core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"}), "tea-a")
+
+	// The service layer all three share.
+	for name, call := range map[string]func() error{
+		"GetBlueprintByID": func() error {
+			_, err := svc.GetBlueprintByID(ctx, "blp-absent", "tea-a")
+			return err
+		},
+		"ListBlueprintSyncs": func() error {
+			_, err := svc.ListBlueprintSyncs(ctx, "blp-absent", "tea-a", "", 0)
+			return err
+		},
+		"UpdateBlueprint": func() error {
+			// A real field: an empty patch is rejected as a bad request before
+			// the lookup ever runs, which would prove nothing here.
+			name := "renamed"
+			_, err := svc.UpdateBlueprint(ctx, "blp-absent", "tea-a", UpdateBlueprintRequest{Name: &name})
+			return err
+		},
+		"DisconnectBlueprint": func() error {
+			return svc.DisconnectBlueprint(ctx, "blp-absent", "tea-a")
+		},
+		"SyncBlueprint": func() error {
+			_, err := svc.SyncBlueprint(ctx, "blp-absent", "tea-a", "", "")
+			return err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := call()
+			if !errors.Is(err, core.ErrNotFound) {
+				t.Errorf("%s on a missing id = %v, want core.ErrNotFound — anything else surfaces as a 500", name, err)
+			}
+			// A classified error keeps its message on every surface; an
+			// unclassified one is redacted to "internal error", which is exactly
+			// what made this indistinguishable from a server fault.
+			if !core.IsPublicError(err) {
+				t.Errorf("%s error %v is redacted rather than reported as not-found", name, err)
+			}
+		})
+	}
+
+	// REST: 404 with a body, not 500.
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	restReq := httptest.NewRequest("GET", "/v1/blueprints/blp-absent?ownerId=tea-a", nil)
+	restReq = restReq.WithContext(ctx)
+	restRec := httptest.NewRecorder()
+	mux.ServeHTTP(restRec, restReq)
+	if restRec.Code != http.StatusNotFound {
+		t.Errorf("REST GET missing blueprint = %d %s, want 404", restRec.Code, restRec.Body)
+	}
+
+	// GraphQL: an error naming not-found, not a redacted internal failure.
+	schema := blueprintSchema(t, svc)
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ blueprint(id: "blp-absent", ownerId: "tea-a") { id } }`})
+	if len(res.Errors) != 1 {
+		t.Fatalf("GraphQL blueprint(missing) errors = %v, want exactly one", res.Errors)
+	}
+	if strings.Contains(res.Errors[0].Message, "internal error") {
+		t.Errorf("GraphQL error = %q, want the not-found message rather than a redacted internal error", res.Errors[0].Message)
+	}
+
+	// MCP: a tool error carrying the same classification.
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+	toolRes, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "get_blueprint",
+		Arguments: map[string]any{"id": "blp-absent"},
+	})
+	if err != nil {
+		t.Fatalf("transport error: %v", err)
+	}
+	if !toolRes.IsError {
+		t.Fatalf("get_blueprint on a missing id succeeded: %#v", toolRes)
+	}
+
+	// Control: the blueprint that DOES exist still reads identically on all
+	// three, so the mapping above did not turn a working read into a failure.
+	if _, err := svc.GetBlueprintByID(ctx, "blp-1", "tea-a"); err != nil {
+		t.Errorf("GetBlueprintByID on the real row = %v, want success", err)
 	}
 }
