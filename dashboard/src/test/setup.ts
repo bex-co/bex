@@ -1,5 +1,22 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach, vi } from "vitest";
+
+// React Testing Library unmounts rendered trees after each test, but Radix
+// FocusScope dispatches its unmount autofocus event from a zero-delay timer.
+// Drain that timer while this test file's jsdom realm is still alive; otherwise
+// the event can be constructed in the next realm and rejected by the old DOM's
+// dispatchEvent during worker/file teardown.
+afterEach(async () => {
+  cleanup();
+
+  if (vi.isFakeTimers()) {
+    await vi.advanceTimersByTimeAsync(0);
+    return;
+  }
+
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+});
 
 // Replace the server-biased createIsomorphicFn runtime with a client-biased
 // one before anything imports it (hoisted above the imports below) — tests

@@ -8,12 +8,6 @@ const updateVersion = vi.fn();
 const clearError = vi.fn();
 let mockError: string | null = null;
 
-async function flushDialogFocusCleanup() {
-  // Radix defers FocusScope's unmount event by one macrotask. Keep that event
-  // inside this test's jsdom lifetime instead of leaking it past teardown.
-  await new Promise((resolve) => setTimeout(resolve, 0));
-}
-
 vi.mock("@/features/databases/hooks/use-update-database-version", () => ({
   useUpdateDatabaseVersion: () => ({
     updateVersion,
@@ -75,7 +69,6 @@ describe("DatabaseVersionControl", () => {
     expect(updateVersion).toHaveBeenCalledWith("orders-db", "18");
     expect(onChanged).toHaveBeenCalledOnce();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    await flushDialogFocusCleanup();
   });
 
   it("renders a backup guard refusal inline", async () => {
@@ -89,6 +82,5 @@ describe("DatabaseVersionControl", () => {
     expect(screen.getByText(mockError)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    await flushDialogFocusCleanup();
   });
 });
