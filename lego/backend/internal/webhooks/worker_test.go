@@ -559,6 +559,22 @@ func TestProjectServiceEventUsesCanonicalAppID(t *testing.T) {
 	}
 }
 
+// A renamed service's events must project the label the dashboard shows, not
+// the immutable name it was created under (w6/m101). The feed resolves the
+// label in SQL; what this pins is that the projection keeps the two apart —
+// serviceName carries the row's label, serviceId the immutable id a receiver
+// calls the API back with.
+func TestProjectRenamedServiceKeepsLabelAndIDApart(t *testing.T) {
+	_, data, ok := project(store.WebhookEventRow{
+		Key: "dep-renamed:started", ServiceID: "acme-block-eden-mono", ServiceName: "eden-dash-v3",
+		AppID: "srv-d9ndt8hmcglc739fkp50", Source: store.EventSourceDeploy,
+		Phase: store.EventPhaseStarted,
+	})
+	if !ok || data.ServiceName != "eden-dash-v3" || data.ServiceID != "srv-d9ndt8hmcglc739fkp50" {
+		t.Fatalf("project = (%+v, %v), want the display label with the immutable id", data, ok)
+	}
+}
+
 func TestProjectExistingLifecycleFactsCarriesOnlyTerminalStatus(t *testing.T) {
 	tests := []struct {
 		factType store.ServiceEventFactType
