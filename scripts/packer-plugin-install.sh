@@ -89,7 +89,23 @@ if [ "$GOT" != "$WANT" ]; then
 fi
 echo "checksum OK (${WANT})"
 
-unzip -q -o "$TMP/$ARTIFACT" -d "$TMP"
+if ! python3 - "$TMP/$ARTIFACT" "$TMP/$BINARY" "$BINARY" <<'PY'
+import shutil
+import sys
+from zipfile import ZipFile
+
+artifact, target, member = sys.argv[1:]
+try:
+    with ZipFile(artifact) as archive:
+        with archive.open(member) as source, open(target, "wb") as output:
+            shutil.copyfileobj(source, output)
+except (KeyError, OSError):
+    raise SystemExit(1)
+PY
+then
+  echo "::error::archive did not contain the expected binary ${BINARY}" >&2
+  exit 1
+fi
 if [ ! -f "$TMP/$BINARY" ]; then
   echo "::error::archive did not contain the expected binary ${BINARY}" >&2
   ls -la "$TMP" >&2

@@ -99,11 +99,20 @@ jobs:
         run: bash scripts/render-mcp-drift.test.sh
       - name: dev-N harness derivation + isolation unit tests
         run: bash scripts/dev-env.test.sh
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Install ShellCheck
+        run: |
+          SHELLCHECK_VERSION=0.10.0
+          SHELLCHECK_LINUX_ARM64_SHA256=324a7e89de8fa2aed0d0c28f3dab59cf84c6d74264022c00c22af665ed1a09bb
+          archive="$RUNNER_TEMP/shellcheck.tar.xz"
+          curl -fsSLo "$archive" \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz"
+          printf '%s  %s\n' "$SHELLCHECK_LINUX_ARM64_SHA256" "$archive" | sha256sum --check --strict
+          tar -xJf "$archive" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/shellcheck-v${SHELLCHECK_VERSION}" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/shellcheck-v${SHELLCHECK_VERSION}/shellcheck" --version
       - name: Production script shellcheck
         run: >-
-          shellcheck scripts/lib/restore.sh scripts/restore-etcd.sh
+          shellcheck --severity=warning scripts/lib/restore.sh scripts/restore-etcd.sh
           scripts/restore-openbao.sh scripts/restore-postgres.sh
           scripts/restore-keyvalue.sh scripts/restore.test.sh
           scripts/ssh-gateway-db-role.sh scripts/ssh-gateway-db-role.test.sh

@@ -27,7 +27,9 @@ jobs:
         run: |
           curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-$(go env GOARCH)
           chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/kind
+          mkdir -p "$RUNNER_TEMP/bin"
+          mv ./kind "$RUNNER_TEMP/bin/kind"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - name: Verify kind installation
         run: kind version

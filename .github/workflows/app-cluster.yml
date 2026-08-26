@@ -116,8 +116,9 @@ jobs:
               "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CLUSTERCTL_VERSION}/clusterctl-linux-arm64"
           fi
           printf '%s  %s\n' "$CLUSTERCTL_LINUX_ARM64_SHA256" /tmp/clusterctl | sha256sum --check --strict
-          sudo install -m755 /tmp/clusterctl /usr/local/bin/clusterctl
-          clusterctl version
+          install -m755 -D /tmp/clusterctl "$RUNNER_TEMP/bin/clusterctl"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/clusterctl" version
 
       # --- install/upgrade CAPH in the app cluster itself (idempotent across version bumps) ---
       # clusterctl init is one-shot; to change provider version we delete just the
