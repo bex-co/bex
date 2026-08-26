@@ -125,6 +125,28 @@ None of the 5 self-healed — expected, since the fix is confirmed not yet deplo
 
 **Bottom line for this run: no task's status changes.** t001-t005 remain done (code-correct); t006/t007/t008 remain open/blocked exactly as before. The only new fact is confirmation — via live re-probe, not just reading CI — that the fix genuinely has not reached production yet, plus two new "stuck at `created`" data points (`beancount-cms-v2`, a fresh `block-eden-mono` attempt) and one timing anomaly (`eden-cms-v2`'s 18.5h-old `queued` row outliving the 35-minute timeout t008 predicts) worth a look when t008 is implemented.
 
+### Addendum (2026-08-26, 19th `/qa-find-bugs` run): t001's fix is now live, and the fleet self-healed
+
+`2cae5f3b` is a confirmed ancestor of `8bbc87639b24`, the commit `deploy.yml` most recently built and shipped successfully with no supersession (`gh run view 33007338010`: `build-and-deploy` succeeded), which the production pin (`991530f9`) points at.
+
+**Fresh-deploy leg re-confirmed clean.** Created a new `qa-20260826-verify` Web Service from `bex-co/bex-hello-go-live` (GitHub-connection-covered, same repro shape as the original filing): no instant `update_failed`, no "codex F1" failure string — the deploy queued, built with a real backing pod, and reached `Live` in ~2.5 minutes. Full detail in `w6/040.md`'s matching addendum (shared with this run's `m95`/`m51` re-verification).
+
+**Standing-service leg: 4 of 5 previously-Failed services self-healed with no manual action.** Re-read the same 5 services this milestone's 15th/17th-run addenda tracked:
+
+| service | phase (17th run) | phase (this run) |
+| --- | --- | --- |
+| beancount-forum | Failed | **Running** |
+| beancount-cms-v2 | Failed | **Running** |
+| tianpan-v4-web | Failed | **Running** |
+| block-eden-mono | Failed | **Running** |
+| eden-cms-v2 | Failed | Failed (different cause — see below) |
+
+This directly satisfies the milestone's own DoD bullet ("An already-Live, standing service … survives a fresh unrelated reconcile without its `phase` flipping to `Failed`") for 4 of the 5 tracked instances, with zero intervention from this or any run — the fix reaching production was sufficient on its own, exactly as t007's design predicted (the guard stops firing on the next ordinary reconcile).
+
+**`eden-cms-v2` is not a counter-example — it moved to a different, unrelated failure.** Its stuck-`queued` redeploy row (`dep-da74dkb7o1fc73av6org`, the data point `t008` is keyed on) is no longer stuck: `updatedAt` advanced from `2026-08-26T01:52:17Z` to `2026-08-26T20:52:03Z` and the row now reads `status: "build_failed"` with a genuine, specific reason — `"build failed: PodFailurePolicy: Container clone for pod bex-build/bld-tea-d98210cbbpdc73dcrkvg-eden-cms-v2-gen-163-97vcq failed with exit code 90 matching FailJob rule at index 1"` — not the protected-secret guard's string at all. This is consistent with t001's fix unblocking `Status.ReleaseGeneration` from the stuck state (letting the reconcile finally re-evaluate this App), which then hit a real, separate clone failure (exit code 90) unrelated to this milestone. **Not investigated further and not touched** — `eden-cms-v2` is a real production service outside the QA sandbox, per the standing read-only caution repeated across this milestone's addenda. Whether this is a new bug worth its own filing is left to whoever next has cause to look at this service; it is flagged here only so it isn't mistaken for t001's fix failing to hold.
+
+**t007 and t008 remain open/`todo` in code, unchanged by this run** — this addendum only reconfirms t001 itself; the Events-feed mislabeling (t007) and the redeploy-generation-staleness mechanism (t008) still need their own fixes, independent of t001 now being live.
+
 ## Tasks (in order)
 
 | id | title | est | depends_on | status |

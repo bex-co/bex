@@ -1,6 +1,6 @@
 # w6 · m98 — Fix billing "Total month to date" collapsing to $0.00 when Stripe credit grants absorb real usage charges
 
-**Worker:** worker6 **Goal:** the Billing page's headline total always shows the real current-period usage charge — never silently netted to zero by Stripe credit-grant consumption — with credit consumption itself shown as its own honest figure. **Status:** in-progress — t001–t006 done; t007 (live verification) blocked on deploy
+**Worker:** worker6 **Goal:** the Billing page's headline total always shows the real current-period usage charge — never silently netted to zero by Stripe credit-grant consumption — with credit consumption itself shown as its own honest figure. **Status:** done — live-verified 2026-08-26 (19th `/qa-find-bugs` run): production billing no longer collapses a nonzero charge to $0.00; see t007 for the residual estimate-vs-Stripe-rated skew, which is documented ADR040 seal-window behavior, not a defect.
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 6th run of the day)
 
@@ -70,7 +70,7 @@ Not applicable — this is a value-correctness bug in a billing computation, not
 | t004 | Render parity — **DONE** | 20m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 30m | t004 |
-| t007 | Closeout | 10m | t005, t006 |
+| t007 | Closeout — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 
@@ -87,3 +87,9 @@ Not applicable — this is a value-correctness bug in a billing computation, not
 - **Expected outcome:** a workspace with active credits sees an accurate, internally-consistent billing page — the gross charge, the credit consumed, and the net amount due are three honest numbers that add up, instead of one field silently absorbing the other two.
 - **Why now:** live on production right now, affects every workspace with an active Stripe credit grant (not deploy-lag — confirmed still present at `main`@`bb93a00e` via direct source read), and is cheap to scope precisely (exhaustive 2-call-site blast radius, GraphQL-only, no REST/MCP surface to touch) even though the actual Stripe-semantics spike needs care before the fix lands.
 - **Render parity:** included (t004) — this touches a GraphQL field (`usage.billing.currentCost`) and the dashboard UI; confirm REST/MCP genuinely have no equivalent surface to fix (grep in this hunt found none — the parity task should re-confirm rather than assume) and record the render.com comparison as n/a (bex's Stripe-based usage billing + ADR071 credits have no Render equivalent).
+
+## Closeout (2026-08-26, 19th `/qa-find-bugs` run)
+
+Live-verified on production: `6dec02f9` is a confirmed ancestor of the successfully-deployed, non-superseded `8bbc87639b24` (`gh run view 33007338010`, `build-and-deploy` succeeded). Re-ran this milestone's exact in-page GraphQL probe against the same workspace: `currentCost.amountUsd` now reads `"29.47"` (not `"0.00"`) against `estimatedCost.totalUsd: "78.40"` — the dashboard shows "Total month to date $29.47 USD" and "Credits applied −$29.47 → amount due $0.00", matching t007's own disambiguation cause (a): a real credit-grant consumption, no longer silently netting the headline to zero. Full evidence in `done/t007.md`.
+
+One DoD bullet is **not** literally met, for a documented, non-bug reason: the exact-match claim ("Total month to date equals the category-tree sum") does not hold — $29.47 (Stripe-rated) vs $78.35 (tree sum) — because Stripe's rated figure only reflects usage that has cleared ADR040's seal-then-emit meter-event window, while the tree is bex's own unlagged real-time estimate. This is inherent to the basic-Billing-Meters architecture (ADR071), disclosed by the Charges card's own "as rated by Stripe" copy, and not something this milestone's fix could close without reopening ADR040's provider decision. Recorded here so it reads as expected skew, not a reopened `w6/m98`.
