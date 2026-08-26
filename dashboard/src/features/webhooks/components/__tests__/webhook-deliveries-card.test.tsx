@@ -5,6 +5,7 @@ import { config } from "@/config/config";
 import { formatDateTime } from "@/common/lib/format";
 import { WebhookDeliveriesCard } from "@/features/webhooks/components/webhook-deliveries-card";
 import type { WebhookDeliveryView } from "@/features/webhooks/types";
+import { hydrateAcrossBoundary } from "@/test/hydration";
 
 const deliveries: WebhookDeliveryView[] = [
   {
@@ -168,6 +169,38 @@ describe("WebhookDeliveriesCard", () => {
       expect(resend).toHaveBeenCalledWith("whk-1", "whd-failed"),
     );
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  // w6/m102 regression: the live repro. A delivery that landed ~55s before the
+  // page loaded crosses the "now" → "1m" bucket boundary between the blocking
+  // SSR render and client hydration, so the same node renders different text on
+  // each side — React error #418. RelativeAge carries the guard. (The exact
+  // timestamp beside it diverges by timezone instead, a different mechanism
+  // this probe can't see — same process, same TZ on both passes — and a
+  // different owner: w6/m107.)
+  it("hydrates a just-sent delivery across an age boundary without a React #418", () => {
+    const sentAt = "2026-08-26T12:00:00.000Z";
+    const serverNow = Date.parse(sentAt) + 55_000; // renders "now"
+    const clientNow = Date.parse(sentAt) + 61_000; // renders "1m"
+    useWebhookDeliveries.mockReturnValue({
+      deliveries: [{ ...deliveries[0], sentAt }],
+      loading: false,
+      loadingMore: false,
+      error: undefined,
+      hasMore: false,
+      loadMore,
+      refresh,
+    });
+
+    const { html, recovered } = hydrateAcrossBoundary(
+      <WebhookDeliveriesCard endpointId="whk-1" endpointEnabled />,
+      { serverNow, clientNow },
+    );
+
+    // The delivery age really is rendered in the blocking SSR pass — the
+    // precondition for a hydration mismatch to be possible here at all.
+    expect(html).toContain(">now<");
+    expect(recovered).toEqual([]);
   });
 
   it("does not expose Resend to a read-only workspace member", () => {

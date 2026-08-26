@@ -21,7 +21,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { MetadataList } from "@/common/components/metadata-list";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
 import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-status-badge";
 import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
@@ -282,7 +282,7 @@ function MetadataCard({
           : []),
         {
           label: t("keyvalue.metaCreated"),
-          value: formatRelativeAge(keyValue.createdAt),
+          value: <RelativeAge value={keyValue.createdAt} />,
         },
       ]}
     />

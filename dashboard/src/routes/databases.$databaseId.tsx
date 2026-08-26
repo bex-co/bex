@@ -22,7 +22,7 @@ import { MetadataList } from "@/common/components/metadata-list";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
@@ -377,7 +377,7 @@ function MetadataCard({
           : []),
         {
           label: t("databases.metaCreated"),
-          value: formatRelativeAge(database.createdAt),
+          value: <RelativeAge value={database.createdAt} />,
         },
       ]}
     />

@@ -2,7 +2,7 @@ import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { formatDateLong } from "@/common/lib/format";
 import { EditRegistryCredentialDialog } from "@/features/registry-credentials/components/edit-registry-credential-dialog";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
@@ -41,7 +41,7 @@ export function RegistryCredentialRow({
         <StatusBadge status={entry.status} expiresAt={entry.expiresAt} />
       </TableCell>
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-        {entry.createdAt ? formatRelativeAge(entry.createdAt) : "—"}
+        <RelativeAge value={entry.createdAt} />
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
         <EditRegistryCredentialDialog entry={entry} />

@@ -40,7 +40,7 @@ import { useSyncBlueprint } from "@/features/blueprints/hooks/use-sync-blueprint
 import { useUpdateBlueprint } from "@/features/blueprints/hooks/use-update-blueprint";
 import { useDisconnectBlueprint } from "@/features/blueprints/hooks/use-disconnect-blueprint";
 import { useBlueprintSyncs } from "@/features/blueprints/hooks/use-blueprint-syncs";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 import { BlueprintDocument } from "@/graphql/definitions";
@@ -359,9 +359,7 @@ export function BlueprintDetailPage() {
                         {t("blueprints.metaCreated")}
                       </dt>
                       <dd className="font-medium">
-                        {blueprint.createdAt
-                          ? formatRelativeAge(blueprint.createdAt)
-                          : "—"}
+                        <RelativeAge value={blueprint.createdAt} />
                       </dd>
                     </div>
                     <div>
@@ -369,9 +367,7 @@ export function BlueprintDetailPage() {
                         {t("blueprints.metaUpdated")}
                       </dt>
                       <dd className="font-medium">
-                        {blueprint.lastSync
-                          ? formatRelativeAge(blueprint.lastSync)
-                          : "—"}
+                        <RelativeAge value={blueprint.lastSync} />
                       </dd>
                     </div>
                   </dl>
@@ -446,14 +442,10 @@ export function BlueprintDetailPage() {
                               <BlueprintStatusBadge status={run.state} />
                             </TableCell>
                             <TableCell className="text-muted-foreground">
-                              {run.startedAt
-                                ? formatRelativeAge(run.startedAt)
-                                : "—"}
+                              <RelativeAge value={run.startedAt} />
                             </TableCell>
                             <TableCell className="text-muted-foreground">
-                              {run.completedAt
-                                ? formatRelativeAge(run.completedAt)
-                                : "—"}
+                              <RelativeAge value={run.completedAt} />
                             </TableCell>
                             <TableCell
                               className="max-w-xs truncate text-muted-foreground"

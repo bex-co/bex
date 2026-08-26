@@ -38,7 +38,7 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { useSSHKeys } from "@/features/ssh-keys/hooks/use-ssh-keys";
 
 const publicKeyPattern =
@@ -183,7 +183,7 @@ export function SSHKeysPanel() {
                     {key.fingerprint}
                   </TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">
-                    {formatRelativeAge(key.createdAt)}
+                    <RelativeAge value={key.createdAt} />
                   </TableCell>
                   <TableCell className="text-right">
                     <RevokeIconButton

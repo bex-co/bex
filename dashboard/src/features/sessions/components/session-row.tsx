@@ -2,7 +2,7 @@ import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import type { SessionView } from "@/features/sessions/types";
 
 export interface SessionRowProps {
@@ -30,7 +30,7 @@ export function SessionRow({ session, onRevoke, revoking }: SessionRowProps) {
         {session.location ?? session.ipAddress ?? "—"}
       </TableCell>
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-        {formatRelativeAge(session.authenticatedAt)}
+        <RelativeAge value={session.authenticatedAt} />
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
         {session.current ? null : (

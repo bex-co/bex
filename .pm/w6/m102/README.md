@@ -1,18 +1,18 @@
 # w6 · m102 — Hydration mismatch (#418) in `formatRelativeAge`/`formatRelativeUntil` across 15+ components
 
-**Worker:** worker6 **Goal:** no route that renders a relative-age/until timestamp during its blocking SSR pass can produce a React hydration-mismatch console error, regardless of the timing gap between server render and client hydration **Status:** todo
+**Worker:** worker6 **Goal:** no route that renders a relative-age/until timestamp during its blocking SSR pass can produce a React hydration-mismatch console error, regardless of the timing gap between server render and client hydration **Status:** in progress — code complete and shipped-ready; t003 (live probe) and t007 (closeout) blocked until this deploys
 
 ## Tasks (in order)
 
 | id   | title                                                                                          | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Extract a shared hydration-safe wrapper for `formatRelativeAge`/`formatRelativeUntil` output      | 30m | —          |
-| t002 | Apply the wrapper to every currently-unguarded call site (22 across 15 files)                     | 1h  | t001       |
-| t003 | Live verification: repeat the boundary-crossing repro on 3+ routes, confirm zero #418              | 30m | t002       |
-| t004 | Render parity — confirm no REST/GraphQL/MCP wire-shape or UI-copy change, rendering-only fix        | 15m | t003       |
-| t005 | Simplify                                                                                          | 20m | t004       |
-| t006 | Test coverage                                                                                     | 30m | t004       |
-| t007 | Closeout                                                                                          | 10m | t005, t006 |
+| t001 | Extract a shared hydration-safe wrapper for `formatRelativeAge`/`formatRelativeUntil` output      | 30m | — | — **DONE**
+| t002 | Apply the wrapper to every currently-unguarded call site (22 across 15 files)                     | 1h  | t001 | — **DONE**
+| t003 | Live verification: repeat the boundary-crossing repro on 3+ routes, confirm zero #418              | 30m | t002 | — **BLOCKED** (needs deploy)
+| t004 | Render parity — confirm no REST/GraphQL/MCP wire-shape or UI-copy change, rendering-only fix        | 15m | t003 | — **DONE**
+| t005 | Simplify                                                                                          | 20m | t004 | — **DONE**
+| t006 | Test coverage                                                                                     | 30m | t004 | — **DONE**
+| t007 | Closeout                                                                                          | 10m | t005, t006 | — **BLOCKED** (gated on t003)
 
 ## Definition of done
 
@@ -63,3 +63,17 @@
 - **Render parity:** included (t004) as a quick confirmation only — this is a pure rendering-timing fix with no REST/GraphQL/MCP payload or dashboard-copy change; t004 verifies that stays true.
 - **Adjacent classes:** n/a — rendering-only, no auth/error-taxonomy surface.
 - **Unverified:** only 1 of the 22 unguarded sites (`webhook-deliveries-card.tsx:318`) was independently reproduced live this run; the other 21 are inferred from the identical code shape (an unguarded `Date.now()`-based formatter rendered during a route's initial load) but not individually navigated to and observed this run. It's also unverified whether every one of the 22 sites is actually reached during a route's *blocking* SSR pass (only that path can manifest #418) versus only after client-side interaction (e.g. a dialog opened post-mount, which can't hydration-mismatch since there's no server-rendered counterpart to diverge from) — t002/t003 should confirm SSR-reachability per site before/while applying the guard, and drop any site from the "fixed" count that turns out to be client-only.
+
+## Progress (2026-08-26)
+
+**The class is closed in code.** `formatRelativeAge(`/`formatRelativeUntil(` now appear in exactly one place outside their own module — `dashboard/src/common/components/relative-time.tsx`, which bakes in `suppressHydrationWarning` and the machine-readable `dateTime`. All **27** call sites were migrated, not just the 22 unguarded ones: the 2 incidentally-guarded sites in `resource-table.tsx` and the 3 fact-object sites were folded in too, so no site depends on a guard someone else happened to add. The proximity-check script above now returns zero lines.
+
+- **DoD bullet 3** (zero `guarded=NO`) — **met.**
+- **DoD bullet 4** (`yarn typecheck && yarn lint && yarn test`) — **met**, 372 files / 2692 tests green.
+- **DoD bullets 1–2** (live `/webhook/<id>` + 2 more routes) — **not met, and not meetable pre-deploy**: production serves the pre-fix bundle. See `t003.md`. In their place, `dashboard/src/test/hydration.ts` forces the boundary crossing deterministically (SSR at one clock, hydrate at another) on three surfaces, with a negative control proving the probe still detects an unguarded formatter — permanent CI coverage the one-shot live probe never gave.
+
+**One scope correction worth carrying forward.** This README's blast-radius analysis was written before `w6/m107` was filed. The `formatDateTime`/`formatDateLong` renders that sit *on the same elements* as several of these ages (the webhook detail header's created date, the exact timestamp beside each delivery age) are m107's class, not this one. Guarding them was tried and reverted: m107's own finding is that `suppressHydrationWarning` is the wrong fix there, because it freezes the SSR container's UTC text instead of letting React's mismatch re-render the viewer's local time — it would have traded a console error for a wrong value. Consequence: **`/webhook/<id>` may still log #418 after this deploys, and that residue is m107's.** The two are distinguishable — m107's vanishes when the viewer's timezone is UTC; this one's does not.
+
+**One unavoidable spillover:** `services.$serviceId.events.tsx:389` carried `title={exactTimestamp}` on the same element as its relative age, so the wrapper's guard now covers that attribute too. m107 should re-check that tooltip.
+
+**Unverified item resolved, partially.** `recovery-panel.tsx`'s 2 sites are behind `React.lazy` (`databases.$databaseId.tsx:49`) and never render in the blocking SSR pass, so they could not have been producing #418 — migrated for uniformity, but they should not be counted as fixed live defects. `webhook-deliveries-card.tsx` is confirmed SSR-reached (its test asserts the server HTML contains `>now<`). The remaining sites were not individually probed; the wrapper makes the question moot for them.

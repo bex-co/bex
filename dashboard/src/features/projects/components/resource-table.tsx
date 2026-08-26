@@ -10,7 +10,7 @@ import {
 import { Checkbox } from "@/common/components/ui/checkbox";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
@@ -216,23 +216,13 @@ function ResourceTableRow({
           <TableCell className="hidden text-muted-foreground lg:table-cell">
             {row.region ?? <UnknownValue />}
           </TableCell>
-          <TableCell
-            className="hidden tabular-nums text-muted-foreground sm:table-cell"
-            suppressHydrationWarning
-          >
-            {row.updatedAt ? (
-              formatRelativeAge(row.updatedAt)
-            ) : (
-              <UnknownValue />
-            )}
+          <TableCell className="hidden tabular-nums text-muted-foreground sm:table-cell">
+            <RelativeAge value={row.updatedAt} fallback={<UnknownValue />} />
           </TableCell>
         </>
       ) : (
-        <TableCell
-          className="hidden tabular-nums text-muted-foreground md:table-cell"
-          suppressHydrationWarning
-        >
-          {formatRelativeAge(row.createdAt)}
+        <TableCell className="hidden tabular-nums text-muted-foreground md:table-cell">
+          <RelativeAge value={row.createdAt} />
         </TableCell>
       )}
       <TableCell className="text-right">

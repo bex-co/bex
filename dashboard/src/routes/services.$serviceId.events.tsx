@@ -21,7 +21,7 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import { isCron } from "@/features/services/lib/service-type";
 import { useServiceBase } from "@/features/services/lib/service-base";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { formatDateTime } from "@/common/lib/format";
 import {
   deployStatusVariant as statusVariant,
@@ -387,9 +387,7 @@ function EventSummary({
             </span>
           ) : null}
           {timestamp && exactTimestamp ? (
-            <time dateTime={timestamp} title={exactTimestamp}>
-              {formatRelativeAge(timestamp)}
-            </time>
+            <RelativeAge value={timestamp} title={exactTimestamp} />
           ) : null}
         </div>
         {/* Deploy enrichment (w1/m47): show commit, image, duration for deploy events */}

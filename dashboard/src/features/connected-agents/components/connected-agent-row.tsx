@@ -2,7 +2,7 @@ import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { SCOPE_DESCRIPTION_KEYS, SCOPE_SENSITIVE, SCOPE_WRITE } from "@/common/lib/oauth-scopes";
 import type { ConnectedAgentView } from "@/features/connected-agents/types";
 
@@ -60,7 +60,7 @@ export function ConnectedAgentRow({
         </div>
       </TableCell>
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-        {formatRelativeAge(agent.grantedAt)}
+        <RelativeAge value={agent.grantedAt} />
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
         <RevokeIconButton

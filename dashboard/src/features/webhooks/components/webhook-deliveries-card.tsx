@@ -36,7 +36,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatDateTime } from "@/common/lib/format";
 import { config } from "@/config/config";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import { RelativeAge } from "@/common/components/relative-time";
 import { useWebhookDeliveries } from "@/features/webhooks/hooks/use-webhook-deliveries";
 import { useResendWebhookDelivery } from "@/features/webhooks/hooks/use-resend-webhook-delivery";
 import { eventLabelKey } from "@/features/webhooks/event-catalog";
@@ -315,7 +315,7 @@ function DeliveryRow({
         <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
           {delivery.sentAt ? (
             <time dateTime={delivery.sentAt} className="flex flex-col">
-              <span>{formatRelativeAge(delivery.sentAt)}</span>
+              <RelativeAge value={delivery.sentAt} as="span" />
               <span className="text-xs">{exactSentAt ?? delivery.sentAt}</span>
             </time>
           ) : (
