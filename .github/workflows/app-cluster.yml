@@ -95,11 +95,11 @@ jobs:
           bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
           echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >> "$GITHUB_ENV"
 
-      - name: scrub job credentials
+      # The SSH key is needed only for the fetch. Keep app.kubeconfig through
+      # the cluster operations below; the final scrub removes it on all exits.
+      - name: scrub SSH credentials
         if: always()
-        run: |
-          rm -rf -- "$RUNNER_TEMP/bex-ssh"
-          rm -f -- "$RUNNER_TEMP/app.kubeconfig"
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
 
       # --- tools ---
       # Cache the ~65MB clusterctl binary keyed on its version (w1/m36 t004): a

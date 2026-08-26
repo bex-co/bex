@@ -512,6 +512,7 @@ jobs:
       # job running as the same uid (ADR083's shared pool). The key is pointed
       # at via BEX_SSH_KEY_PATH, which fetch-app-kubeconfig.sh honors.
       - name: get app cluster kubeconfig
+        id: app_kubeconfig
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           # Funneled through env rather than interpolated into the script body,
@@ -544,13 +545,12 @@ jobs:
           bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
           echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >> "$GITHUB_ENV"
 
-      # Defense in depth for the F6 class: RUNNER_TEMP is runner-managed, but
-      # scrub explicitly so the guarantee does not rest on the runner version.
-      - name: scrub job credentials
+      # The SSH key is needed only to fetch admin.conf. Scrub it immediately;
+      # app.kubeconfig must remain until the final step because every rollout
+      # below uses it.
+      - name: scrub SSH credentials
         if: always()
-        run: |
-          rm -rf -- "$RUNNER_TEMP/bex-ssh"
-          rm -f -- "$RUNNER_TEMP/app.kubeconfig"
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
 
       # Mirror only archives whose upstream bytes and resulting OCI manifests
       # match deploy/helm-artifacts.lock. Argo consumes these packages by digest,
@@ -822,7 +822,7 @@ jobs:
           bash scripts/bao-k8s-auth.sh
 
       - name: wait for the bex operator
-        if: ${{ always() && env.SUPERSEDED != 'true' }}
+        if: ${{ always() && steps.app_kubeconfig.outcome == 'success' && env.SUPERSEDED != 'true' }}
         run: |
           kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=600s \
             || { echo "operator not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
@@ -839,7 +839,7 @@ jobs:
       # run even when earlier idempotent steps fail (e.g. kubelet TLS cert expiry
       # blocking exec/port-forward). Argo also deploys via the digest pin (slower).
       - name: roll bex onto the freshly-pushed image
-        if: ${{ always() && env.SUPERSEDED != 'true' }}
+        if: ${{ always() && steps.app_kubeconfig.outcome == 'success' && env.SUPERSEDED != 'true' }}
         run: |
           kubectl -n bex-system rollout status deploy/bex-api --timeout=300s
           kubectl -n bex-system rollout restart deploy/bex-controller-manager deploy/bex-api
@@ -861,7 +861,7 @@ jobs:
       # Ready DaemonSet would return immediately before Argo observes the digest
       # write-back above.
       - name: wait for PROXY-compatible datastore proxies
-        if: ${{ always() && steps.build_operator.outputs.digest != '' && env.SUPERSEDED != 'true' }}
+        if: ${{ always() && steps.app_kubeconfig.outcome == 'success' && steps.build_operator.outputs.digest != '' && env.SUPERSEDED != 'true' }}
         timeout-minutes: 12
         env:
           BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}
@@ -884,7 +884,7 @@ jobs:
       # --- 6. roll the dashboard onto the freshly-pushed image ---
       # Same mutable-:latest caveat as step 5 (deploy/gitops/base/dashboard.yaml).
       - name: roll dashboard onto the freshly-pushed image
-        if: ${{ always() && env.SUPERSEDED != 'true' }}
+        if: ${{ always() && steps.app_kubeconfig.outcome == 'success' && env.SUPERSEDED != 'true' }}
         run: |
           kubectl -n dashboard rollout status deploy/dashboard --timeout=300s \
             || { echo "dashboard not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
