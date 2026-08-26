@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -281,6 +282,91 @@ var _ = Describe("reconciling a static_site App", func() {
 		var ing networkingv1.Ingress
 		Expect(k8sClient.Get(ctx, nn, &ing)).To(Succeed())
 		Expect(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name).To(Equal(staticServerAliasName(name)))
+	})
+
+	// w6/038: a failed publish used to reach the user as "BackoffLimitExceeded:
+	// Job has reached the specified backoff limit" — true and useless, with no
+	// mention anywhere of the wrong Publish Directory that actually caused it.
+	// This pins the whole seam: what the failing container recorded becomes the
+	// App's own Ready-condition message, which is what bex-api stamps on the
+	// deploy row's failureReason and the dashboard renders.
+	It("explains a failed publish in the failing container's own words, not Kubernetes' backoff reason", func() {
+		const name = "site-publish-failed"
+		nn := types.NamespacedName{Name: name, Namespace: ns}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: appv1alpha1.AppSpec{
+				Type:        appv1alpha1.TypeStaticSite,
+				Repo:        "https://github.com/bex-co/bex",
+				PublishPath: "totally-nonexistent-output-dir-xyz",
+				Expose:      true,
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		credential := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "static-s3", Namespace: ns},
+			Data: map[string][]byte{
+				"AWS_ACCESS_KEY_ID":     []byte("test-access"),
+				"AWS_SECRET_ACCESS_KEY": []byte("test-secret"),
+			},
+		}
+		Expect(k8sClient.Create(ctx, credential)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, credential) })
+
+		done := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			r := staticReconciler()
+			for range 3 {
+				_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+			}
+		}()
+		var job batchv1.Job
+		jobNN := types.NamespacedName{Name: "pub-" + name + "-rev-1", Namespace: ns}
+		Eventually(func() error { return k8sClient.Get(ctx, jobNN, &job) }, "30s", "250ms").Should(Succeed())
+		Eventually(done, "30s").Should(BeClosed())
+
+		By("failing the Job the way Kubernetes does, with the container's own words on its pod")
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: job.Name + "-abcde", Namespace: ns,
+				Labels: map[string]string{"job-name": job.Name},
+			},
+			Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "upload", Image: "x"}}},
+		}
+		Expect(k8sClient.Create(ctx, pod)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
+		pod.Status.InitContainerStatuses = []corev1.ContainerStatus{{
+			Name: "clone",
+			State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: 1,
+				Message:  `the publish directory "totally-nonexistent-output-dir-xyz" does not exist in the repository at "HEAD"` + "\n",
+			}},
+		}}
+		Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
+		now := metav1.Now()
+		job.Status.StartTime = &now
+		job.Status.Conditions = append(job.Status.Conditions,
+			batchv1.JobCondition{Type: batchv1.JobFailureTarget, Status: corev1.ConditionTrue,
+				Reason: "BackoffLimitExceeded", Message: "Job has reached the specified backoff limit"},
+			batchv1.JobCondition{Type: batchv1.JobFailed, Status: corev1.ConditionTrue,
+				Reason: "BackoffLimitExceeded", Message: "Job has reached the specified backoff limit"},
+		)
+		Expect(k8sClient.Status().Update(ctx, &job)).To(Succeed())
+
+		r := staticReconciler()
+		_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseFailed))
+		cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+		Expect(cond).NotTo(BeNil())
+		Expect(cond.Reason).To(Equal("PublishFailed"))
+		Expect(cond.Message).To(ContainSubstring("totally-nonexistent-output-dir-xyz"),
+			"the user must learn WHICH directory is missing")
+		Expect(cond.Message).NotTo(ContainSubstring("BackoffLimitExceeded"),
+			"Kubernetes' generic backoff reason must not be what the user is left with")
 	})
 
 	It("records a workspace-scoped staticPrefix after a completed labeled publish", func() {

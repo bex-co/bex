@@ -515,3 +515,127 @@ func TestOnlyTheCredentialFreeStagingContainerEchoesItsLogs(t *testing.T) {
 		}
 	}
 }
+
+// TestCloneStepsExplainTheirOwnFailures is w6/038's direct-publish half. The
+// `clone` step carries GIT_AUTH_TOKEN, so it must never echo its log tail the
+// way `extract` does — but the failures worth explaining are known in advance,
+// so it writes an operator-authored line to /dev/termination-log instead. The
+// one that matters most is the same first-time-setup mistake the note was filed
+// for, on the path that has no built image: a Publish Directory that does not
+// exist in the repository.
+func TestCloneStepsExplainTheirOwnFailures(t *testing.T) {
+	o := testOptions()
+	o.Image = ""
+	o.Repo = "https://github.com/bex-co/site"
+	o.CloneSecret = "web-clone"
+	clone := PublishJob(o).Spec.Template.Spec.InitContainers[0]
+	script := clone.Command[len(clone.Command)-1]
+
+	// Every step that can fail on the tenant's own input routes through fail().
+	for _, frag := range []string{
+		`fail() { printf '%s\n' "$2" > /dev/termination-log; exit "$1"; }`,
+		`fetch -q --depth 1 origin -- "$REF" || fail $?`,
+		`checkout -q FETCH_HEAD || fail $?`,
+		`cd "/work/$SRC_DIR" || fail $?`,
+		`cp -a . /out/ || fail $?`,
+	} {
+		if !strings.Contains(script, frag) {
+			t.Errorf("clone script missing %q:\n%s", frag, script)
+		}
+	}
+	// The publish-directory message must name the directory and the ref, since
+	// "it does not exist" is not actionable without saying where it was looked for.
+	if !strings.Contains(script, `the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\"`) {
+		t.Errorf("clone script does not explain a missing publish directory:\n%s", script)
+	}
+	// And it must stay on the default policy: a self-authored line is exactly
+	// what makes echoing git's output unnecessary here.
+	if clone.TerminationMessagePolicy == corev1.TerminationMessageFallbackToLogsOnError {
+		t.Error("clone must not echo its logs — it holds GIT_AUTH_TOKEN")
+	}
+	// Nothing tenant-controlled is interpolated into the script text itself;
+	// SRC_DIR/REF/REPO reach it only as environment variables.
+	if strings.Contains(script, o.Repo) {
+		t.Errorf("repo URL interpolated into the script instead of passed via env:\n%s", script)
+	}
+}
+
+// TestUnrecordedContainerFailureNamesTheStep covers the case no message can be
+// read at all — an OOM kill or a SIGKILL records none, and Kubernetes' own
+// reason for the ordinary case is the bare word "Error". Quoting that told the
+// user nothing; naming the step at least says which half of the publish broke,
+// and for `upload` says plainly that it is not their fault.
+func TestUnrecordedContainerFailureNamesTheStep(t *testing.T) {
+	for _, tc := range []struct{ container, want string }{
+		{"clone", "repository"},
+		{"extract", "publish directory"},
+		{"upload", "platform fault"},
+		{"something-new", "without recording a reason"},
+	} {
+		t.Run(tc.container, func(t *testing.T) {
+			got := stepFailureFallback(tc.container)
+			if !strings.Contains(got, tc.want) {
+				t.Errorf("fallback for %q = %q, want it to mention %q", tc.container, got, tc.want)
+			}
+			if strings.Contains(got, "Error") {
+				t.Errorf("fallback for %q = %q, want words instead of Kubernetes' bare \"Error\"", tc.container, got)
+			}
+		})
+	}
+}
+
+// TestFailedPublishNeverQuotesKubernetesBareError runs the unrecorded case
+// through the real observation path, where the pre-w6/038 code produced
+// "clone: Error (exit 1)".
+func TestFailedPublishNeverQuotesKubernetesBareError(t *testing.T) {
+	ctx := context.Background()
+	o := testOptions()
+	o.Image = ""
+	o.Repo = "https://github.com/bex-co/site"
+	cl := fake.NewClientBuilder().Build()
+	o.Client = cl
+
+	if _, err := Ensure(ctx, o); err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+	job := &batchv1.Job{}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(PublishJob(o)), job); err != nil {
+		t.Fatalf("get dispatched Job: %v", err)
+	}
+	job.Status.Conditions = []batchv1.JobCondition{{
+		Type: batchv1.JobFailed, Status: corev1.ConditionTrue,
+		Reason: "BackoffLimitExceeded", Message: "Job has reached the specified backoff limit",
+	}}
+	if err := cl.Status().Update(ctx, job); err != nil {
+		t.Fatalf("fail Job: %v", err)
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: job.Name + "-abcde", Namespace: job.Namespace,
+			Labels: map[string]string{jobNameLabel: job.Name},
+		},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "upload", Image: "x"}}},
+	}
+	if err := cl.Create(ctx, pod); err != nil {
+		t.Fatalf("create pod: %v", err)
+	}
+	// No termination Message: the container was killed before it could write one.
+	pod.Status.InitContainerStatuses = []corev1.ContainerStatus{{
+		Name:  "clone",
+		State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 137, Reason: "Error"}},
+	}}
+	if err := cl.Status().Update(ctx, pod); err != nil {
+		t.Fatalf("set pod status: %v", err)
+	}
+
+	obs, err := Ensure(ctx, o)
+	if err != nil {
+		t.Fatalf("Ensure on failed Job: %v", err)
+	}
+	if !strings.Contains(obs.Message, "repository") || !strings.Contains(obs.Message, "exit 137") {
+		t.Errorf("message = %q, want the step named and the exit code kept", obs.Message)
+	}
+	if strings.Contains(obs.Message, "BackoffLimitExceeded") {
+		t.Errorf("message = %q, want the container's step INSTEAD of the Job's backoff reason", obs.Message)
+	}
+}
