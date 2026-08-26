@@ -271,10 +271,7 @@ func failedContainerDetail(ctx context.Context, cl client.Client, job *batchv1.J
 			}
 			said := strings.TrimSpace(term.Message)
 			if said == "" {
-				said = term.Reason
-			}
-			if said == "" {
-				return fmt.Sprintf("%s exited %d", cs.Name, term.ExitCode)
+				said = stepFailureFallback(cs.Name)
 			}
 			if len(said) > maxFailureDetail {
 				said = said[:maxFailureDetail] + "…"
@@ -283,6 +280,29 @@ func failedContainerDetail(ctx context.Context, cl client.Client, job *batchv1.J
 		}
 	}
 	return ""
+}
+
+// stepFailureFallback says which STEP of the publish broke when the container
+// itself recorded nothing usable — a container OOM-killed or SIGKILLed writes
+// no termination message, and Kubernetes' own `term.Reason` for the ordinary
+// case is the bare word "Error".
+//
+// Quoting that word was the shape of the original complaint one level down: a
+// user reading "clone: Error (exit 1)" learns nothing they did not already know
+// from the deploy being marked failed. Naming the step at least tells them
+// which half of the publish to look at, and for `upload` it says plainly that
+// the failure is not on their side of the line.
+func stepFailureFallback(container string) string {
+	switch container {
+	case "clone":
+		return "the site's repository could not be staged for publishing"
+	case "extract":
+		return "the built image's publish directory could not be staged for publishing"
+	case "upload":
+		return "the site was built but could not be uploaded to the static-site store; this is a platform fault, not a problem with your site"
+	default:
+		return "the publish step failed without recording a reason"
+	}
 }
 
 // validate holds Ensure's input rules (formerly Publish's prologue).
@@ -465,14 +485,22 @@ func cloneContainer(o Options) corev1.Container {
 	}
 	// The credential helper is execution.GitHubCredentialHelper — host-bound
 	// to github.com; its SECURITY comment lives on the shared constant.
+	//
+	// Each step that can fail on the tenant's own input reports it in words
+	// this operator wrote (w6/038). `clone` carries GIT_AUTH_TOKEN, so unlike
+	// `extract` it must never echo its log tail — but the failures worth
+	// explaining are all known in advance, so nothing needs to be echoed:
+	// writing a fixed line to /dev/termination-log under the DEFAULT
+	// (ReadFile) policy surfaces exactly this text and nothing git printed.
 	script := `set -e
+fail() { printf '%s\n' "$2" > /dev/termination-log; exit "$1"; }
 mkdir -p /work && cd /work
 git init -q .
 git remote add origin "$REPO"
-git -c ` + execution.GitHubCredentialHelper + ` fetch -q --depth 1 origin -- "$REF"
-git checkout -q FETCH_HEAD
-cd "/work/$SRC_DIR"
-cp -a . ` + outMount + `/`
+git -c ` + execution.GitHubCredentialHelper + ` fetch -q --depth 1 origin -- "$REF" || fail $? "could not fetch \"$REF\" from this service's repository — check that the branch or commit exists and that bex still has access to the repo"
+git checkout -q FETCH_HEAD || fail $? "fetched \"$REF\" but could not check it out"
+cd "/work/$SRC_DIR" || fail $? "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
+cp -a . ` + outMount + `/ || fail $? "the publish directory \"$SRC_DIR\" exists but its contents could not be staged for upload"`
 	env := []corev1.EnvVar{
 		{Name: "REPO", Value: o.Repo},
 		{Name: "REF", Value: ref},
