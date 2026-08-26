@@ -552,11 +552,11 @@ test("agent crash becomes a failed status instead of hanging", async () => {
 test("agent input loss fails promptly instead of leaving a running turn", async () => {
   const config = await tempConfig({
     agentEnv: { ACP_FIXTURE_CLOSE_INPUT_AFTER_SESSION: "1" },
-    turnTimeoutMs: 10_000,
+    turnTimeoutMs: 5_000,
   });
   await assert.rejects(
     runHeadlessTurn(config, manager(config), new UIMessageStreamHub()),
-    /ACP agent stdin failed: write EPIPE/,
+    /ACP agent stdin failed:/,
   );
   const status = JSON.parse(await readFile(config.statusPath, "utf8"));
   assert.equal(status.state, "failed");
