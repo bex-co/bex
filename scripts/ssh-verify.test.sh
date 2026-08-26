@@ -7,9 +7,17 @@ openssh_shim="$repo_root/scripts/ssh-verify-openssh.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# The missing-Render-CLI preflight must not depend on the host carrying the Go
+# toolchain used by the later live PTY probe. Provide only command discovery;
+# this path must fail before the verifier could execute it.
+mkdir -p "$tmp/bin"
+printf '#!/usr/bin/env bash\nexit 99\n' > "$tmp/bin/go"
+chmod +x "$tmp/bin/go"
+
 set +e
 output="$(
-  BEX_API_URL=https://api.example.test \
+  PATH="$tmp/bin:$PATH" \
+    BEX_API_URL=https://api.example.test \
     BEX_API_TOKEN=test-token \
     BEX_SSH_VERIFY_PRIVATE_KEY_FILE="$tmp/not-read" \
     BEX_SSH_EXPECTED_HOST_FINGERPRINT=SHA256:test \
