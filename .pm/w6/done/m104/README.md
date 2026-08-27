@@ -1,21 +1,21 @@
 # w6 · m104 — Cancel on an image-backed service's deploy never reaches the App CR
 
-**Worker:** worker6 **Goal:** Cancel produces the same honest, self-consistent outcome regardless of whether the App is repo-backed or image-backed — extending `w6/m52`'s already-shipped fix (which corrected `settleCanceledRelease`'s VALUE from `PhaseFailed` to `PhaseCanceled`) to a gate that m52 never widened. **Status:** todo
+**Worker:** worker6 **Goal:** Cancel produces the same honest, self-consistent outcome regardless of whether the App is repo-backed or image-backed — extending `w6/m52`'s already-shipped fix (which corrected `settleCanceledRelease`'s VALUE from `PhaseFailed` to `PhaseCanceled`) to a gate that m52 never widened. **Status:** done — fix shipped in `6c43d439` (annotation stamp moved out of the `if a.Spec.Repo != ""` gate; build-artifact deletion stays repo-gated); backend + operator regression tests green; ADR018 parity ledger updated.
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                             | est | depends_on |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Decide and name the target behavior for both branches of canceling an image-backed deploy, checking Render parity first          | 20m | —          |
-| t002 | Extend `deploys.Service.Cancel` to stamp `AnnotationCanceledReleaseGeneration` unconditionally, not just for repo-backed Apps     | 30m | t001       |
-| t003 | Verify the no-prior-release branch: an image-backed App's first-deploy cancel now resolves to `PhaseCanceled`                     | 30m | t002       |
-| t004 | Verify the prior-release-exists branch: canceling a later deploy reverts the running pod to the previous successful image        | 40m | t002       |
-| t005 | Blast radius: regression-test cancel across every image-backed resource type; settle the static_site+Image question              | 40m | t003, t004 |
-| t006 | Confirm REST/GraphQL/MCP show no divergence and the Cancel-dialog copy is accurate for the prior-release branch                   | 20m | t004       |
-| t007 | Render parity                                                                                                                      | 30m | t005, t006 |
-| t008 | Simplify                                                                                                                            | 20m | t007       |
-| t009 | Test coverage                                                                                                                       | 30m | t007       |
-| t010 | Closeout                                                                                                                            | 10m | t009       |
+| id   | title                                                                                                                             | est | depends_on | status      |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- | ----------- |
+| t001 | Decide and name the target behavior for both branches of canceling an image-backed deploy, checking Render parity first          | 20m | —          | — **DONE**  |
+| t002 | Extend `deploys.Service.Cancel` to stamp `AnnotationCanceledReleaseGeneration` unconditionally, not just for repo-backed Apps     | 30m | t001       | — **DONE**  |
+| t003 | Verify the no-prior-release branch: an image-backed App's first-deploy cancel now resolves to `PhaseCanceled`                     | 30m | t002       | — **DONE**  |
+| t004 | Verify the prior-release-exists branch: canceling a later deploy reverts the running pod to the previous successful image        | 40m | t002       | — **DONE**  |
+| t005 | Blast radius: regression-test cancel across every image-backed resource type; settle the static_site+Image question              | 40m | t003, t004 | — **DONE**  |
+| t006 | Confirm REST/GraphQL/MCP show no divergence and the Cancel-dialog copy is accurate for the prior-release branch                   | 20m | t004       | — **DONE**  |
+| t007 | Render parity                                                                                                                      | 30m | t005, t006 | — **DONE**  |
+| t008 | Simplify                                                                                                                            | 20m | t007       | — **DONE**  |
+| t009 | Test coverage                                                                                                                       | 30m | t007       | — **DONE**  |
+| t010 | Closeout                                                                                                                            | 10m | t009       | — **DONE**  |
 
 ## Definition of done
 
