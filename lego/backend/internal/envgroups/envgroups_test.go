@@ -79,6 +79,23 @@ func newService(store core.SecretKV, objs ...client.Object) *Service {
 	}
 }
 
+// rebuildStub emulates the composition root's RebuildService wiring
+// (server.go: deploys.Service.Trigger → AuthorizeApp): a since-deleted service
+// surfaces as core.ErrNotFound, exactly as the real rebuild path does, so a
+// rebuild-mode test is driven by the same client deletion as the deploy path.
+func rebuildStub(cl client.Client) func(context.Context, string) error {
+	return func(ctx context.Context, serviceID string) error {
+		var a appv1alpha1.App
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: serviceID}, &a); err != nil {
+			if apierrors.IsNotFound(err) {
+				return core.ErrNotFound
+			}
+			return err
+		}
+		return nil
+	}
+}
+
 func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 	t.Helper()
 	var a appv1alpha1.App

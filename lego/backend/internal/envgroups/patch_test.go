@@ -248,3 +248,87 @@ func TestPatchEnvironmentReportsPartialRebuildForRolloutOnlyRetry(t *testing.T) 
 		t.Fatalf("retry=%+v calls=%v err=%v", retry, calls, err)
 	}
 }
+
+// A service deleted while still linked to a group must not pin a permanent,
+// un-retryable failure on the group's future save-and-deploy/rebuild results
+// (w6/m108): the deleted service is neither failed nor affected, the surviving
+// services roll out clean, and the group self-heals its stale link.
+func TestPatchEnvironmentTolerantOfSinceDeletedLinkedService(t *testing.T) {
+	ctx := context.Background()
+	for _, mode := range []SaveMode{SaveModeDeploy, SaveModeRebuild} {
+		t.Run(string(mode), func(t *testing.T) {
+			svc := newService(newFakeStore(), sampleApp("web"), sampleApp("worker"))
+			if mode == SaveModeRebuild {
+				svc.RebuildService = rebuildStub(svc.Client)
+			}
+			group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", ServiceIDs: []string{"web", "worker"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			// worker is deleted out from under the group (its own Settings > Delete
+			// Service), leaving a dangling link the group never learned about.
+			if err := svc.Client.Delete(ctx, sampleApp("worker")); err != nil {
+				t.Fatalf("delete worker: %v", err)
+			}
+			result, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+				ExpectedRevision: &group.Revision, SaveMode: mode,
+				EnvVars: []EnvVarPatch{{Key: "A", Value: "secret"}},
+			})
+			if err != nil {
+				t.Fatalf("patch: %v", err)
+			}
+			if !result.RolledOut || len(result.FailedServiceIDs) != 0 ||
+				!slices.Equal(result.AffectedServiceIDs, []string{"web"}) {
+				t.Fatalf("stale-link result = %+v, want RolledOut with only web affected and no failures", result)
+			}
+			// Self-heal: the persisted link set no longer cites the deleted service.
+			got, err := svc.GetEnvGroup(ctx, group.ID)
+			if err != nil || !slices.Equal(got.ServiceLinks, []string{"web"}) {
+				t.Fatalf("serviceLinks after prune = %+v err=%v, want [web]", got.ServiceLinks, err)
+			}
+			if mode == SaveModeDeploy && getApp(t, svc.Client, "web").Spec.RestartedAt == "" {
+				t.Fatal("surviving service was not rolled")
+			}
+		})
+	}
+}
+
+// The tolerance above must not swallow a genuine rollout failure on a service
+// that still exists: a deleted service is pruned, while a real failure on a
+// standing service stays in FailedServiceIDs and retryable (w6/m108).
+func TestPatchEnvironmentDistinguishesDeletedServiceFromGenuineFailure(t *testing.T) {
+	ctx := context.Background()
+	svc := newService(newFakeStore(), sampleApp("web"), sampleApp("worker"))
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", ServiceIDs: []string{"web", "worker"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// web still exists but its rebuild genuinely fails; worker was deleted, so its
+	// rebuild surfaces core.ErrNotFound through the faithful client-consulting stub.
+	rebuild := rebuildStub(svc.Client)
+	svc.RebuildService = func(ctx context.Context, serviceID string) error {
+		if serviceID == "web" {
+			return errors.New("rebuild unavailable")
+		}
+		return rebuild(ctx, serviceID)
+	}
+	if err := svc.Client.Delete(ctx, sampleApp("worker")); err != nil {
+		t.Fatalf("delete worker: %v", err)
+	}
+	result, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+		ExpectedRevision: &group.Revision, SaveMode: SaveModeRebuild,
+		EnvVars: []EnvVarPatch{{Key: "A", Value: "secret"}},
+	})
+	if err != nil {
+		t.Fatalf("patch: %v", err)
+	}
+	if result.RolledOut || !slices.Equal(result.FailedServiceIDs, []string{"web"}) ||
+		!slices.Equal(result.AffectedServiceIDs, []string{"web"}) {
+		t.Fatalf("mixed result = %+v, want web failed+affected, worker pruned", result)
+	}
+	// worker (deleted) is pruned; web (real failure) is kept so a later retry can succeed.
+	got, _ := svc.GetEnvGroup(ctx, group.ID)
+	if !slices.Equal(got.ServiceLinks, []string{"web"}) {
+		t.Fatalf("serviceLinks = %+v, want [web] (worker pruned, web retained)", got.ServiceLinks)
+	}
+}

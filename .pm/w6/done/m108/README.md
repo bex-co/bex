@@ -1,6 +1,6 @@
 # w6 · m108 — Env group Patch rollout permanently reports failure once a linked service is deleted
 
-**Worker:** worker6 **Goal:** an Environment Group's `PatchEnvironment` (REST `PATCH /v1/env-groups/{id}/contents`, GraphQL `patchEnvGroupEnvironment`, MCP `patch_env_group_environment`) never counts a since-deleted linked service against `rolledOut`/`failedServiceIds`, and the group's persisted link list converges back to only real, existing services. **Status:** todo
+**Worker:** worker6 **Goal:** an Environment Group's `PatchEnvironment` (REST `PATCH /v1/env-groups/{id}/contents`, GraphQL `patchEnvGroupEnvironment`, MCP `patch_env_group_environment`) never counts a since-deleted linked service against `rolledOut`/`failedServiceIds`, and the group's persisted link list converges back to only real, existing services. **Status:** done
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 18th run of the day)
 
@@ -29,15 +29,15 @@ This directly breaks the documented guarantee in `docs/ADR006-bex-api.md:533`: "
 
 ## Tasks (in order)
 
-| id   | title                                                                             | est | depends_on |
-| ---- | ---------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Tolerate a since-deleted linked service in `PatchEnvironment`'s rollout loop        | 30m | —          |
-| t002 | Prune a discovered-stale service id from the group's persisted `meta.links`        | 30m | t001       |
-| t003 | Regression tests for the stale-link case, without regressing genuine failures      | 30m | t002       |
-| t004 | Render parity                                                                       | 15m | t003       |
-| t005 | Simplify                                                                            | 15m | t004       |
-| t006 | Test coverage                                                                       | 20m | t005       |
-| t007 | Closeout                                                                            | 10m | t006       |
+| id   | title                                                                             | est | depends_on | status       |
+| ---- | ---------------------------------------------------------------------------------- | --- | ---------- | ------------ |
+| t001 | Tolerate a since-deleted linked service in `PatchEnvironment`'s rollout loop        | 30m | —          | — **DONE**   |
+| t002 | Prune a discovered-stale service id from the group's persisted `meta.links`        | 30m | t001       | — **DONE**   |
+| t003 | Regression tests for the stale-link case, without regressing genuine failures      | 30m | t002       | — **DONE**   |
+| t004 | Render parity                                                                       | 15m | t003       | — **DONE**   |
+| t005 | Simplify                                                                            | 15m | t004       | — **DONE**   |
+| t006 | Test coverage                                                                       | 20m | t005       | — **DONE**   |
+| t007 | Closeout                                                                            | 10m | t006       | — **DONE**   |
 
 ## Definition of done
 
@@ -55,3 +55,14 @@ This directly breaks the documented guarantee in `docs/ADR006-bex-api.md:533`: "
 - **Expected outcome:** deleting a service that is still linked to an environment group no longer permanently pollutes that group's future save-and-deploy/save-and-rebuild results with a false, un-retryable failure.
 - **Why now:** any workspace that deletes a service while it is still linked to an environment group gets a permanently-misleading "rollout incomplete, retry" prompt on every future edit to that group, for real-usage-shaped groups that link more than one service — masking whether the group's OTHER, currently-existing linked services actually rolled out or not, which is the entire purpose of the `failedServiceIds`/`rolledOut` fields.
 - **Render parity task included:** yes (t004) — REST/GraphQL/MCP already share one implementation (confirmed this hunt) and the dashboard reads the same response fields; the fix must preserve that agreement across all three plus the UI.
+
+## Closeout (2026-08-26)
+
+Triaged live against the code: every claim in the Background held. Fixed:
+
+- **t001+t002 — `lego/backend/internal/envgroups/patch.go`:** the rollout loop in `patchEnvironmentAuthorized` now treats a `core.ErrNotFound` from `rollOne` (deploy) or `RebuildService` → `deploys.Trigger` → `AuthorizeApp` (rebuild) as a since-deleted service, not a rollout failure — it is excluded from `FailedServiceIDs`/`AffectedServiceIDs` (so `RolledOut` is true again) and collected for self-heal. New `pruneStaleLinks` removes those ids from the group's persisted `meta.links` (best-effort, post-commit, `context.WithoutCancel`; a prune-write failure never turns a good rollout into an error — the next patch re-prunes). A genuine, non-`NotFound` failure on a still-existing service is unchanged: it stays in `FailedServiceIDs`, keeps `RolledOut` false, and is retryable.
+- **t005 — `lego/backend/internal/envgroups/service.go`:** removed the dead `rollLinked` helper (zero callers; the tolerant behavior now lives on the single live path) and re-doc'd `rollOne`.
+- **t003+t006 — `patch_test.go`:** `TestPatchEnvironmentTolerantOfSinceDeletedLinkedService` (both `deploy` and `rebuild` modes, driven by a real fake-client deletion via the new `rebuildStub` that emulates the composition-root wiring) and `TestPatchEnvironmentDistinguishesDeletedServiceFromGenuineFailure` (deleted service pruned while a real failure on a standing service is retained). `TestPatchEnvironmentReportsPartialRebuildForRolloutOnlyRetry` passes unmodified.
+- **t004 — parity:** REST (`rest.go:115`), GraphQL (`graphql.go:302`), MCP (`mcp.go:203`) all call the one shared `PatchEnvironment`, so the fix reaches all three by construction; the dashboard's alert is gated on `result.rolloutFailed || Boolean(result.failedServiceIds?.length)` (`service-environment-editor.tsx:456`), which is now false for a stale-link-only save, and "Linked Services" reads the pruned `serviceLinks` — no dashboard change required.
+
+**Verification:** `go build ./...` clean; `go test ./internal/envgroups/... ./internal/deploys/... ./internal/apps/...` all pass. The two Root-cause claims about `apps.Service.Delete` never cleaning up group links and `rollLinked` being dead code were both confirmed by direct inspection/grep. **Not run this session:** the live `dashboard.bex.co` / real-cluster repro from the DoD (no cluster + credentials available here) — covered instead by the harness-level tests above, which exercise the exact GraphQL-shaped `PatchEnvironment` result for both save modes. Note the prune is **on-write** (heals on the group's next save-and-deploy/rebuild), a deliberate choice over an on-read sweep to keep view verbs read-only; a group never patched again keeps a cosmetic dead link until its next save.

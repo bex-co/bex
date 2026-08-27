@@ -275,6 +275,17 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	if patch.SaveMode == SaveModeOnly || len(m.links) == 0 {
 		return result, nil
 	}
+	// Roll (or rebuild) every currently-linked service. A service that no longer
+	// exists (core.ErrNotFound from rollOne's GetApp or RebuildService's own
+	// AuthorizeApp) is NOT a rollout failure: it can never be retried into
+	// existence, so counting it against FailedServiceIDs would pin a permanent,
+	// un-retryable failure on the group and make RolledOut false forever —
+	// breaking ADR006's "rollout-only failures are retryable" guarantee. It is
+	// dropped from both the reported affected set and the group's persisted links
+	// (self-heal below), leaving only real, still-existing services — a genuine
+	// failure on one of those stays in FailedServiceIDs and retryable, unchanged.
+	affected := make([]string, 0, len(m.links))
+	var stale []string
 	for _, serviceID := range m.links {
 		var actionErr error
 		if patch.SaveMode == SaveModeRebuild {
@@ -286,12 +297,38 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 		} else {
 			actionErr = s.rollOne(ctx, serviceID, s.now())
 		}
+		if errors.Is(actionErr, core.ErrNotFound) {
+			stale = append(stale, serviceID)
+			continue
+		}
+		affected = append(affected, serviceID)
 		if actionErr != nil {
 			result.FailedServiceIDs = append(result.FailedServiceIDs, serviceID)
 		}
 	}
+	result.AffectedServiceIDs = affected
 	result.RolledOut = len(result.FailedServiceIDs) == 0
+	s.pruneStaleLinks(ctx, gid, m, stale)
 	return result, nil
+}
+
+// pruneStaleLinks removes since-deleted services (surfaced as core.ErrNotFound
+// while rolling) from the group's persisted link set. It runs after the content
+// commit has already succeeded and the revision was released, so it is
+// best-effort self-heal: a failure to persist the pruned set must never turn a
+// successful rollout into an error response (the exact false-failure this
+// milestone removes) — the write error is swallowed and the next patch
+// re-discovers and re-prunes. The updatedAt bump matches every other link
+// mutation (linkFetched / UnlinkService), and context.WithoutCancel lets the
+// heal complete even if the client disconnects right after the rollout.
+func (s *Service) pruneStaleLinks(ctx context.Context, gid string, m meta, stale []string) {
+	if len(stale) == 0 {
+		return
+	}
+	for _, serviceID := range stale {
+		m.links = removeString(m.links, serviceID)
+	}
+	_, _ = s.touch(context.WithoutCancel(ctx), gid, m)
 }
 
 func (s *Service) releaseGroupPatch(ctx context.Context, workspace, gid string, versioned core.VersionedSecretKV, claimVersion, generation uint64, state string) (uint64, error) {

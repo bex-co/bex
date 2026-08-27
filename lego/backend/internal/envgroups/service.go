@@ -1031,22 +1031,10 @@ func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.
 	})
 }
 
-// rollLinked bumps spec.restartedAt on every linked service so it picks up the
+// rollOne bumps spec.restartedAt on one linked service so it picks up the
 // group's changed Secret data (the Secret refs are already on the spec from the
-// link). A since-deleted linked service is skipped.
-func (s *Service) rollLinked(ctx context.Context, links []string) error {
-	stamp := s.now()
-	for _, svc := range links {
-		if err := s.rollOne(ctx, svc, stamp); err != nil {
-			if errors.Is(err, core.ErrNotFound) {
-				continue // a since-deleted linked service is skipped
-			}
-			return err
-		}
-	}
-	return nil
-}
-
+// link). It returns core.ErrNotFound for a since-deleted service, which
+// PatchEnvironment's rollout loop tolerates and self-heals.
 func (s *Service) rollOne(ctx context.Context, service, stamp string) error {
 	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if err != nil {
