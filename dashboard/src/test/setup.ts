@@ -10,6 +10,17 @@ import { afterEach, vi } from "vitest";
 afterEach(async () => {
   cleanup();
 
+  // Reset sessionStorage between tests. `useReauthDraft` (w3/m80 t005) mirrors
+  // an in-progress editor draft there; without this, a test that unmounts
+  // mid-edit would leave a draft that the next test's editor restores on mount,
+  // silently opening it into edit mode. (localStorage is left alone — some
+  // suites seed it once in beforeAll, e.g. i18n/workspace persistence.)
+  try {
+    window.sessionStorage.clear();
+  } catch {
+    // no storage in this environment — nothing to reset
+  }
+
   if (vi.isFakeTimers()) {
     await vi.advanceTimersByTimeAsync(0);
     return;

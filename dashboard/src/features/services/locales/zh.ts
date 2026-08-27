@@ -3797,6 +3797,19 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "未保存的环境更改",
     description: "Combined draft save bar heading",
   },
+  "services.environmentRestoredTitle": {
+    message: "已恢复未保存的更改",
+    description:
+      "Heading of the banner shown when an env draft is recovered after a session-expiry redirect (w3/m80)",
+  },
+  "services.environmentRestoredBody": {
+    message: "已为您找回重新登录前正在编辑的环境变量。请检查后选择保存或放弃。",
+    description: "Body of the restored-draft banner",
+  },
+  "services.environmentRestoredDiscard": {
+    message: "放弃已恢复的更改",
+    description: "Button that throws away a recovered env draft",
+  },
   "services.environmentUnsavedSummary": {
     message: "{variables} 个变量操作 · {files} 个文件操作",
     description: "Combined draft operation count",

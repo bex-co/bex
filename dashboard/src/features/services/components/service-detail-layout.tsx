@@ -1,14 +1,15 @@
 import type { ReactNode } from "react";
 import { Outlet } from "@tanstack/react-router";
-import { TriangleAlert } from "lucide-react";
+import { LogIn, TriangleAlert } from "lucide-react";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Button } from "@/common/components/ui/button";
 import { Card, CardContent } from "@/common/components/ui/card";
 import {
-  resourceFailed,
+  resourceLoadErrorVariant,
   resourceNotFound,
   useNotFoundRedirect,
 } from "@/common/hooks/use-not-found-redirect";
+import { useSignInAgain } from "@/common/lib/auth/sign-in-again";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
@@ -43,6 +44,7 @@ export function ServiceDetailLayout({
   const { deploy: latestDeploy } = useLatestDeploy(serviceId);
   const { pending } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
+  const signInAgain = useSignInAgain();
 
   // Unknown service id: redirect home with a toast (w9/m55) — covering every
   // child tab at once. A genuine query error is excluded; it keeps the inline
@@ -55,30 +57,53 @@ export function ServiceDetailLayout({
   let content: ReactNode;
   // A failed `server(id)` query is not evidence that the service is absent.
   // Keep it distinct from not-found so schema skew, auth failures, and backend
-  // outages never masquerade as a deleted service.
-  if (resourceFailed(service, loading, error)) {
+  // outages never masquerade as a deleted service. And keep an EXPIRED session
+  // distinct from a backend outage (w3/m80 t002): a 401 gets the "your session
+  // has expired — sign in" card (the auth link is usually already redirecting),
+  // never the "The request to bex-api failed" retry card the screenshot showed.
+  const loadErrorVariant = resourceLoadErrorVariant(service, loading, error);
+  const expired = loadErrorVariant === "unauthenticated";
+  if (loadErrorVariant) {
     content = (
       <DashboardLayout>
         <div className="flex-1 overflow-auto p-4 sm:p-6">
           <div className="mx-auto w-full max-w-4xl">
             <Card>
               <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-                <TriangleAlert className="text-destructive h-8 w-8" />
+                {expired ? (
+                  <LogIn className="text-muted-foreground h-8 w-8" />
+                ) : (
+                  <TriangleAlert className="text-destructive h-8 w-8" />
+                )}
                 <div>
                   <p className="mb-1 font-medium">
-                    {t("services.detailErrorTitle")}
+                    {t(
+                      expired
+                        ? "common.sessionExpiredTitle"
+                        : "services.detailErrorTitle",
+                    )}
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    {t("services.detailErrorBody")}
+                    {t(
+                      expired
+                        ? "common.sessionExpiredBody"
+                        : "services.detailErrorBody",
+                    )}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void refetch()}
-                >
-                  {t("common.tryAgain")}
-                </Button>
+                {expired ? (
+                  <Button size="sm" onClick={signInAgain}>
+                    {t("common.signIn")}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void refetch()}
+                  >
+                    {t("common.tryAgain")}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>

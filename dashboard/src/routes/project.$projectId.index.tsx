@@ -27,6 +27,7 @@ import {
   type ProjectResourceFilterState,
 } from "@/features/projects/lib/resource-filter";
 import { ProjectOverviewPageSkeleton } from "@/common/components/route-skeletons";
+import { ResourceLoadError } from "@/common/components/resource-load-error";
 
 export const Route = createFileRoute("/project/$projectId/")({
   component: ProjectPage,
@@ -114,12 +115,15 @@ export function ProjectPage() {
 
   const showNotFound = projectResult.state === "not-found";
   const showError = projectResult.state === "error";
+  const showAuthError = projectResult.state === "unauthenticated";
 
   return (
     <>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="w-full space-y-6">
-          {showError ? (
+          {showAuthError ? (
+            <ResourceLoadError variant="unauthenticated" />
+          ) : showError ? (
             <p className="text-sm text-destructive">
               {t("projects.errorTitle")}
             </p>

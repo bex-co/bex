@@ -274,6 +274,20 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Body text of a detail page's inline error state when the resource query failed",
   },
+  "common.sessionExpiredTitle": {
+    message: "登录已过期",
+    description:
+      "Heading of the inline state shown when a resource query fails with a 401 (expired session)",
+  },
+  "common.sessionExpiredBody": {
+    message: "重新登录即可继续 —— 登录后会自动返回此页面。",
+    description:
+      "Body text of the expired-session inline state, reassuring the user their place is preserved",
+  },
+  "common.signIn": {
+    message: "登录",
+    description: "Button label that sends an expired session back to the login page",
+  },
   "common.colActions": {
     message: "操作",
     description:

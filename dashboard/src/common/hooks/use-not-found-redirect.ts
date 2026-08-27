@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, type NavigateOptions } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { isNotFoundError, translatedText } from "@/common/lib/document-head";
+import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
 
 /**
  * Has this detail query settled on "there is no such resource"? — the one
@@ -27,17 +28,60 @@ export function resourceNotFound(
 }
 
 /**
- * The complement: the query settled empty because it FAILED, not because the
- * resource is gone. Its exact negation over the settled-and-empty case, so a
- * page can never both redirect home and render its inline retry state — the
- * error-vs-not-found distinction w9/m55 shipped, in one place.
+ * The query settled empty because it FAILED with a genuine outage — not
+ * not-found, and not an expired session. An expired session (401) is carved out
+ * so it can never render the "check the API and try again" network card (w3/m80
+ * t002); `resourceUnauthenticated` claims that case and the retry card stays for
+ * real 5xx/transport failures only. Its negation over the settled-and-empty
+ * space keeps a page from ever showing two states at once.
  */
 export function resourceFailed(
   resource: unknown,
   loading: boolean,
   error: Error | undefined,
 ): boolean {
-  return !loading && !resource && !!error && !isNotFoundError(error);
+  return (
+    !loading &&
+    !resource &&
+    !!error &&
+    !isNotFoundError(error) &&
+    !isUnauthenticatedError(error)
+  );
+}
+
+/**
+ * The query settled empty because the session is gone (bex-api answered 401 —
+ * see `isUnauthenticatedError`). The client Apollo auth link is already arranging
+ * a redirect to login (w3/m80 t001); this predicate lets a detail page render an
+ * honest "your session has expired — sign in" state in the meantime instead of a
+ * misleading network error. Mutually exclusive with `resourceFailed` and
+ * `resourceNotFound` over the settled-and-empty case.
+ */
+export function resourceUnauthenticated(
+  resource: unknown,
+  loading: boolean,
+  error: Error | undefined,
+): boolean {
+  return !loading && !resource && !!error && isUnauthenticatedError(error);
+}
+
+/**
+ * Which load-error state a settled-empty detail query is in, or null when it's
+ * in none: `"unauthenticated"` for an expired session (renders Sign in),
+ * `"error"` for a genuine outage (renders Retry). One call at a render site
+ * replaces the mutually exclusive `resourceUnauthenticated`/`resourceFailed`
+ * pair and maps straight onto `<ResourceLoadError variant>`.
+ */
+export function resourceLoadErrorVariant(
+  resource: unknown,
+  loading: boolean,
+  error: Error | undefined,
+): "error" | "unauthenticated" | null {
+  if (resourceUnauthenticated(resource, loading, error)) {
+    return "unauthenticated";
+  }
+  if (resourceFailed(resource, loading, error)) return "error";
+  return null;
 }
 
 /**

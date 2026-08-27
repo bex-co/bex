@@ -6,7 +6,7 @@ import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import {
-  resourceFailed,
+  resourceLoadErrorVariant,
   resourceNotFound,
   useNotFoundRedirect,
 } from "@/common/hooks/use-not-found-redirect";
@@ -211,7 +211,7 @@ export function BlueprintDetailPage() {
 
   useNotFoundRedirect(resourceNotFound(blueprint, loading, error));
   useLoaderErrorRetry(Route.useLoaderData(), blueprintId);
-  const showError = resourceFailed(blueprint, loading, error);
+  const loadErrorVariant = resourceLoadErrorVariant(blueprint, loading, error);
 
   async function handleSync(confirmation?: string) {
     setConfirming(false);
@@ -285,8 +285,8 @@ export function BlueprintDetailPage() {
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-4xl space-y-6">
-          {showError ? (
-            <ResourceLoadError onRetry={refetch} />
+          {loadErrorVariant ? (
+            <ResourceLoadError onRetry={refetch} variant={loadErrorVariant} />
           ) : blueprint ? (
             <>
               <Card>

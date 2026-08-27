@@ -275,6 +275,20 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Body text of a detail page's inline error state when the resource query failed",
   },
+  "common.sessionExpiredTitle": {
+    message: "Your session has expired",
+    description:
+      "Heading of the inline state shown when a resource query fails with a 401 (expired session)",
+  },
+  "common.sessionExpiredBody": {
+    message: "Sign in again to keep going — you'll come right back to this page.",
+    description:
+      "Body text of the expired-session inline state, reassuring the user their place is preserved",
+  },
+  "common.signIn": {
+    message: "Sign in",
+    description: "Button label that sends an expired session back to the login page",
+  },
   "common.colActions": {
     message: "Actions",
     description:
