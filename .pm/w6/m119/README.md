@@ -1,6 +1,6 @@
 # w6 · m119 — A free private service auto-hibernates with no wake path, and Resume silently fails to bring it back
 
-**Worker:** worker6 **Goal:** a private service can never be driven into a state it cannot come back from, and Resume brings back anything that is scaled to zero **Status:** todo
+**Worker:** worker6 **Goal:** a private service can never be driven into a state it cannot come back from, and Resume brings back anything that is scaled to zero **Status:** todo (t009 done — premise confirmed by paired event-feed contrast)
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | Enforce the decision in the operator                                                  | 45m | t001       |
 | t003 | Make Resume recover an auto-hibernated service — broken independently of t001         | 45m | —          |
 | t004 | Stop the dashboard offering an idle timeout that promises a wake it cannot deliver    | 30m | t001       |
-| t009 | Re-verify this milestone's own claims with tight sampling — the original method was too coarse | 30m | —          |
+| t009 | Re-verify this milestone's own claims with tight sampling — the original method was too coarse | 30m | —          | — **DONE** (both claims confirmed; see `done/t009.md`)
 | t005 | Render parity                                                                         | 20m | t002, t003, t004, t009 |
 | t006 | Simplify                                                                              | 20m | t005       |
 | t007 | Test coverage                                                                         | 30m | t005       |
