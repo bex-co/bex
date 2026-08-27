@@ -14,7 +14,7 @@ import {
   type DeployTimelineStepKind,
 } from "@/features/deploys/lib/deploy-timeline";
 import { deployStatusKey } from "@/features/deploys/lib/deploy-status";
-import { formatDeployTimestamp } from "@/features/deploys/lib/deploy-presentation";
+import { LocalDateTime } from "@/common/components/local-time";
 
 const STEP_KEYS: Record<DeployTimelineStepKind, string> = {
   created: "deploys.timelineCreated",
@@ -73,12 +73,10 @@ export function DeployTimeline({ serviceId, deploy }: DeployTimelineProps) {
                 )}
               </p>
               {step.timestamp ? (
-                <time
-                  dateTime={step.timestamp}
+                <LocalDateTime
+                  value={step.timestamp}
                   className="text-xs text-muted-foreground"
-                >
-                  {formatDeployTimestamp(step.timestamp)}
-                </time>
+                />
               ) : null}
             </li>
           ))}

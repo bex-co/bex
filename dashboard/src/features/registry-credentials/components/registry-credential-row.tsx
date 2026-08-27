@@ -3,7 +3,7 @@ import { Badge } from "@/common/components/ui/badge";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
-import { formatDateLong } from "@/common/lib/format";
+import { useLocalDate } from "@/common/hooks/use-local-date";
 import { EditRegistryCredentialDialog } from "@/features/registry-credentials/components/edit-registry-credential-dialog";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
 
@@ -69,6 +69,9 @@ function StatusBadge({
   expiresAt: string | null;
 }) {
   const { t } = useTranslations();
+  // Deferred to a post-hydration render so the expiry date reflects the
+  // viewer's timezone, never the SSR container's UTC clock (w6/m107).
+  const expiresDate = useLocalDate(expiresAt);
   if (status === "expired") {
     return (
       <Badge variant="destructive">{t("registryCredentials.expired")}</Badge>
@@ -85,7 +88,7 @@ function StatusBadge({
     return (
       <span className="text-muted-foreground">
         {t("registryCredentials.expiresOn", {
-          date: formatDateLong(expiresAt) ?? expiresAt,
+          date: expiresDate ?? expiresAt,
         })}
       </span>
     );

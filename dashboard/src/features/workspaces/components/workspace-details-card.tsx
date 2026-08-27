@@ -15,7 +15,7 @@ import {
   AlertDescription,
 } from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatDateLong } from "@/common/lib/format";
+import { LocalDate } from "@/common/components/local-time";
 import { useRenameWorkspace } from "@/features/workspaces/hooks/use-rename-workspace";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { ChangePlanDialog } from "@/features/workspaces/components/change-plan-dialog";
@@ -132,10 +132,8 @@ export function WorkspaceDetailsCard({
             <dt className="text-muted-foreground">
               {t("workspaces.fieldCreatedAt")}
             </dt>
-            {/* Local-timezone text: SSR and the browser disagree by
-                design, so the mismatch is expected (w6/030). */}
-            <dd suppressHydrationWarning>
-              {formatDateLong(workspace.createdAt) ?? "—"}
+            <dd>
+              <LocalDate value={workspace.createdAt} />
             </dd>
           </div>
         </dl>

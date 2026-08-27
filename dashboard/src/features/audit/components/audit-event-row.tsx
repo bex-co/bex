@@ -1,7 +1,7 @@
 import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatDateTime } from "@/common/lib/format";
+import { LocalDateTime } from "@/common/components/local-time";
 import type { AuditEvent } from "@/features/audit/types";
 
 export interface AuditEventRowProps {
@@ -17,13 +17,10 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
   return (
     <TableRow>
       {/* Full date + time (an audit trail spans days, unlike the logs
-          viewer's time-only clock) — null renders blank, never "Invalid
-          Date". */}
-      <TableCell
-        className="text-muted-foreground text-sm whitespace-nowrap"
-        suppressHydrationWarning
-      >
-        {formatDateTime(event.timestamp)}
+          viewer's time-only clock) — a missing/unparseable instant renders
+          blank, never "Invalid Date". */}
+      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+        <LocalDateTime value={event.timestamp} fallback={null} />
       </TableCell>
       <TableCell className="max-w-[16rem] truncate font-mono text-sm">
         {event.actor || t("audit.actorUnknown")}

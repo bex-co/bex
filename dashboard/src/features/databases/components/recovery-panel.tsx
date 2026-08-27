@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Loader2, DatabaseBackup, Download } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -22,7 +22,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
-import { formatDateTime } from "@/common/lib/format";
+import { LocalDateTime } from "@/common/components/local-time";
 import {
   useRecovery,
   type BackupItem,
@@ -93,13 +93,15 @@ export function RecoveryPanel({ id }: { id: string }) {
               <Field
                 label={t("databases.recoveryEarliest")}
                 value={
-                  formatDateTime(info.earliestRecoveryTime) ??
-                  t("databases.recoveryNoBackupYet")
+                  <LocalDateTime
+                    value={info.earliestRecoveryTime}
+                    fallback={t("databases.recoveryNoBackupYet")}
+                  />
                 }
               />
               <Field
                 label={t("databases.recoveryLatest")}
-                value={formatDateTime(info.latestRecoveryTime) ?? "—"}
+                value={<LocalDateTime value={info.latestRecoveryTime} />}
               />
             </dl>
 
@@ -315,7 +317,7 @@ function exportDisabledReason(item: ExportItem, t: Translate): string {
   }
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex justify-between gap-4 border-b pb-2">
       <dt className="text-sm text-muted-foreground">{label}</dt>

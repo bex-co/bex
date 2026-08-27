@@ -22,7 +22,7 @@ import { CronRunsSection } from "@/features/services/components/cron-runs-sectio
 import { isCron } from "@/features/services/lib/service-type";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { RelativeAge } from "@/common/components/relative-time";
-import { formatDateTime } from "@/common/lib/format";
+import { useLocalDateTime } from "@/common/hooks/use-local-date";
 import {
   deployStatusVariant as statusVariant,
   deployStatusKey as statusKey,
@@ -338,7 +338,7 @@ function EventSummary({
   const branchTo = details?.branchTo || null;
   const commitUrl = details?.commitUrl || null;
   const isDeploy = type === "deploy_started" || type === "deploy_ended";
-  const exactTimestamp = formatDateTime(timestamp);
+  const exactTimestamp = useLocalDateTime(timestamp);
   // Compute deploy duration (w1/m47): startedAt → finishedAt
   const deployDuration =
     startedAt && finishedAt
@@ -386,8 +386,8 @@ function EventSummary({
               {t("services.eventsDeployReference", { id: deployId })}
             </span>
           ) : null}
-          {timestamp && exactTimestamp ? (
-            <RelativeAge value={timestamp} title={exactTimestamp} />
+          {timestamp ? (
+            <RelativeAge value={timestamp} title={exactTimestamp ?? undefined} />
           ) : null}
         </div>
         {/* Deploy enrichment (w1/m47): show commit, image, duration for deploy events */}
