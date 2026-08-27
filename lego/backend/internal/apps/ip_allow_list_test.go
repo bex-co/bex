@@ -122,6 +122,42 @@ func TestSetIPAllowListRoundTripsThroughSpec(t *testing.T) {
 	}
 }
 
+// --- serviceDetails nesting + type gate ---
+
+// TestRenderServiceDetailsGatesIPAllowListToIngressTypes proves ipAllowList
+// only ever appears in serviceDetails for the two types Render's schema
+// declares it on (web_service, static_site). private/worker/cron omit the
+// property entirely — matching privateServiceDetails/backgroundWorkerDetails/
+// cronJobDetails, which have no ipAllowList — even when a view somehow carries
+// one. The create/PATCH decode already rejects it on those types
+// (deploy.go); this is the belt-and-suspenders render gate (w6/m106).
+func TestRenderServiceDetailsGatesIPAllowListToIngressTypes(t *testing.T) {
+	view := AppView{IPAllowList: []core.IPAllowListEntry{{CIDRBlock: "203.0.113.0/24", Description: "office"}}}
+
+	for _, svcType := range []string{
+		appv1alpha1.TypePrivateService,
+		appv1alpha1.TypeBackgroundWorker,
+		appv1alpha1.TypeCronJob,
+	} {
+		if _, present := renderServiceDetails(view, svcType, "")["ipAllowList"]; present {
+			t.Errorf("%s serviceDetails carries ipAllowList, want it omitted (no such Render property)", svcType)
+		}
+	}
+
+	for _, svcType := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypeStaticSite} {
+		list, ok := renderServiceDetails(view, svcType, "")["ipAllowList"].([]core.IPAllowListEntry)
+		if !ok || len(list) != 1 || list[0].CIDRBlock != "203.0.113.0/24" || list[0].Description != "office" {
+			t.Errorf("%s serviceDetails.ipAllowList = %#v, want the single {cidrBlock,description} entry", svcType, list)
+		}
+	}
+
+	// Empty allowlist on an ingress type omits the key (open to all = Render's
+	// default), like every other optional serviceDetails field.
+	if _, present := renderServiceDetails(AppView{}, appv1alpha1.TypeWebService, "")["ipAllowList"]; present {
+		t.Error("empty allowlist should omit serviceDetails.ipAllowList entirely")
+	}
+}
+
 // --- REST ---
 
 func TestRESTCreateWithIPAllowListAndReadBack(t *testing.T) {
@@ -130,7 +166,10 @@ func TestRESTCreateWithIPAllowListAndReadBack(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	// Render wire shape: ipAllowList nested under serviceDetails as
-	// [{cidrBlock,description}], with both fields persisted.
+	// [{cidrBlock,description}], with both fields persisted — on the create
+	// response AND a subsequent GET (no create-vs-get divergence), and NEVER at
+	// the JSON root (webServiceDetails owns ipAllowList; the top-level service
+	// schema has no such property — w6/m106).
 	body := `{"name":"web","image":{"imagePath":"nginx:v1"},"serviceDetails":{"ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"office"}]}}`
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
@@ -144,23 +183,48 @@ func TestRESTCreateWithIPAllowListAndReadBack(t *testing.T) {
 	if len(spec.IPAllowListEntries) != 1 || spec.IPAllowListEntries[0] != (appv1alpha1.IPAllowEntry{CIDR: "203.0.113.0/24", Description: "office"}) {
 		t.Fatalf("spec.ipAllowListEntries = %v", spec.IPAllowListEntries)
 	}
+	// The create response (serviceAndDeploy: {service, deployId}) already carries
+	// the nested shape, identical to the GET below.
+	var created struct {
+		Service json.RawMessage `json:"service"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal create envelope: %v", err)
+	}
+	assertNestedIPAllowList(t, "create", created.Service, "203.0.113.0/24", "office")
 
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET => 200, got %d", rec.Code)
 	}
+	assertNestedIPAllowList(t, "get", rec.Body.Bytes(), "203.0.113.0/24", "office")
+}
+
+// assertNestedIPAllowList fails unless the service JSON carries its inbound
+// allowlist at serviceDetails.ipAllowList as [{cidrBlock,description}] and NOT
+// at the JSON root — Render's exact nesting (webServiceDetails owns the field;
+// the top-level service schema has no ipAllowList property).
+func assertNestedIPAllowList(t *testing.T, label string, serviceJSON []byte, wantCIDR, wantDesc string) {
+	t.Helper()
 	var out struct {
-		IPAllowList []struct {
-			CidrBlock   string `json:"cidrBlock"`
-			Description string `json:"description"`
-		} `json:"ipAllowList"`
+		IPAllowList    json.RawMessage `json:"ipAllowList"` // must be absent at the root
+		ServiceDetails struct {
+			IPAllowList []struct {
+				CidrBlock   string `json:"cidrBlock"`
+				Description string `json:"description"`
+			} `json:"ipAllowList"`
+		} `json:"serviceDetails"`
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
-		t.Fatalf("unmarshal: %v", err)
+	if err := json.Unmarshal(serviceJSON, &out); err != nil {
+		t.Fatalf("%s: unmarshal: %v", label, err)
 	}
-	if len(out.IPAllowList) != 1 || out.IPAllowList[0].CidrBlock != "203.0.113.0/24" || out.IPAllowList[0].Description != "office" {
-		t.Errorf("GET ipAllowList = %v, want CIDR + office description", out.IPAllowList)
+	if out.IPAllowList != nil {
+		t.Errorf("%s: ipAllowList present at JSON root (%s), want it only under serviceDetails", label, out.IPAllowList)
+	}
+	got := out.ServiceDetails.IPAllowList
+	if len(got) != 1 || got[0].CidrBlock != wantCIDR || got[0].Description != wantDesc {
+		t.Errorf("%s: serviceDetails.ipAllowList = %v, want [{%s %s}]", label, got, wantCIDR, wantDesc)
 	}
 }
 
@@ -301,6 +365,27 @@ func TestGraphQLServerQueryReturnsIPAllowList(t *testing.T) {
 
 // --- MCP ---
 
+// mcpNestedAllowList extracts serviceDetails.ipAllowList from an MCP service
+// result. get_service, create_*, and update_service all return the shared
+// renderService shape, so — like REST — the allowlist nests under
+// serviceDetails, not at the result root (w6/m106).
+func mcpNestedAllowList(t *testing.T, got map[string]any) []map[string]any {
+	t.Helper()
+	if _, atRoot := got["ipAllowList"]; atRoot {
+		t.Errorf("MCP service result carries ipAllowList at the root: %#v", got["ipAllowList"])
+	}
+	details, ok := got["serviceDetails"].(map[string]any)
+	if !ok {
+		t.Fatalf("MCP result missing serviceDetails object: %#v", got)
+	}
+	raw, _ := details["ipAllowList"].([]any)
+	out := make([]map[string]any, len(raw))
+	for i, e := range raw {
+		out[i], _ = e.(map[string]any)
+	}
+	return out
+}
+
 func TestMCPCreateWebServiceThreadsStructuredIPAllowList(t *testing.T) {
 	svc, cl := newService(nil)
 	call, cleanup := appsMCPClient(t, svc)
@@ -317,10 +402,9 @@ func TestMCPCreateWebServiceThreadsStructuredIPAllowList(t *testing.T) {
 			"description": "office",
 		}},
 	})
-	entries := got["ipAllowList"].([]any)
-	entry := entries[0].(map[string]any)
-	if entry["cidrBlock"] != "203.0.113.0/24" || entry["description"] != "office" {
-		t.Fatalf("create_web_service ipAllowList = %#v", entries)
+	entries := mcpNestedAllowList(t, got)
+	if len(entries) != 1 || entries[0]["cidrBlock"] != "203.0.113.0/24" || entries[0]["description"] != "office" {
+		t.Fatalf("create_web_service serviceDetails.ipAllowList = %#v", entries)
 	}
 	if spec := getApp(t, cl, "mcp-allowlist").Spec; len(spec.IPAllowListEntries) != 1 || spec.IPAllowListEntries[0].Description != "office" {
 		t.Fatalf("spec.ipAllowListEntries = %#v", spec.IPAllowListEntries)
@@ -339,10 +423,9 @@ func TestMCPSetIPAllowListUpdatesSpec(t *testing.T) {
 			"description": "office",
 		}},
 	})
-	entries := got["ipAllowList"].([]any)
-	entry := entries[0].(map[string]any)
-	if entry["cidrBlock"] != "203.0.113.0/24" || entry["description"] != "office" {
-		t.Errorf("update_service ipAllowList = %#v", entries)
+	entries := mcpNestedAllowList(t, got)
+	if len(entries) != 1 || entries[0]["cidrBlock"] != "203.0.113.0/24" || entries[0]["description"] != "office" {
+		t.Errorf("update_service serviceDetails.ipAllowList = %#v", entries)
 	}
 	if spec := getApp(t, cl, "web").Spec.IPAllowListEntries; len(spec) != 1 || spec[0].CIDR != "203.0.113.0/24" || spec[0].Description != "office" {
 		t.Errorf("spec.ipAllowListEntries = %v", spec)
@@ -351,7 +434,7 @@ func TestMCPSetIPAllowListUpdatesSpec(t *testing.T) {
 	// A present list REPLACES; an empty one clears. Both were the retired
 	// setter's contract and both must survive the fold.
 	cleared := call("update_service", map[string]any{"serviceId": "web", "ipAllowList": []map[string]any{}})
-	if list, ok := cleared["ipAllowList"].([]any); ok && len(list) != 0 {
+	if list := mcpNestedAllowList(t, cleared); len(list) != 0 {
 		t.Errorf("update_service ipAllowList=[] = %#v", list)
 	}
 	if spec := getApp(t, cl, "web").Spec.IPAllowListEntries; len(spec) != 0 {
@@ -360,8 +443,8 @@ func TestMCPSetIPAllowListUpdatesSpec(t *testing.T) {
 
 	// The plain-string form reaches the same field.
 	viaCIDRs := call("update_service", map[string]any{"serviceId": "web", "ipAllowListCidrs": []string{"198.51.100.0/24"}})
-	if list, _ := viaCIDRs["ipAllowList"].([]any); len(list) != 1 {
-		t.Errorf("update_service ipAllowListCidrs = %#v", viaCIDRs["ipAllowList"])
+	if list := mcpNestedAllowList(t, viaCIDRs); len(list) != 1 {
+		t.Errorf("update_service ipAllowListCidrs = %#v", list)
 	}
 	if spec := getApp(t, cl, "web").Spec.IPAllowListEntries; len(spec) != 1 || spec[0].CIDR != "198.51.100.0/24" {
 		t.Errorf("spec.ipAllowListEntries via cidrs = %v", spec)
@@ -446,19 +529,22 @@ func TestIPAllowListPresentOnAllThreeSurfaces(t *testing.T) {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}
 			var restBody struct {
-				IPAllowList []struct {
-					CidrBlock string `json:"cidrBlock"`
-				} `json:"ipAllowList"`
+				ServiceDetails struct {
+					IPAllowList []struct {
+						CidrBlock string `json:"cidrBlock"`
+					} `json:"ipAllowList"`
+				} `json:"serviceDetails"`
 			}
 			if err := json.Unmarshal(rec.Body.Bytes(), &restBody); err != nil {
 				t.Fatalf("decode REST body: %v", err)
 			}
-			if len(restBody.IPAllowList) != len(c.cidrs) {
-				t.Errorf("REST ipAllowList len = %d, want %d", len(restBody.IPAllowList), len(c.cidrs))
+			restList := restBody.ServiceDetails.IPAllowList
+			if len(restList) != len(c.cidrs) {
+				t.Errorf("REST serviceDetails.ipAllowList len = %d, want %d", len(restList), len(c.cidrs))
 			}
-			for i, e := range restBody.IPAllowList {
+			for i, e := range restList {
 				if e.CidrBlock != c.cidrs[i] {
-					t.Errorf("REST ipAllowList[%d].cidrBlock = %q, want %q", i, e.CidrBlock, c.cidrs[i])
+					t.Errorf("REST serviceDetails.ipAllowList[%d].cidrBlock = %q, want %q", i, e.CidrBlock, c.cidrs[i])
 				}
 			}
 
@@ -484,18 +570,21 @@ func TestIPAllowListPresentOnAllThreeSurfaces(t *testing.T) {
 				}
 			}
 
-			// MCP (via toRenderService — same path as get_service)
+			// MCP shares REST's rendering (get_service / create_* / list_services
+			// all route through toRenderService), so it carries ipAllowList at the
+			// same serviceDetails.ipAllowList location, not the JSON root.
 			v, err := svc.Get(ctx, "web")
 			if err != nil {
 				t.Fatalf("Get: %v", err)
 			}
 			rendered := toRenderService(v)
-			if len(rendered.IPAllowList) != len(c.cidrs) {
-				t.Errorf("MCP ipAllowList len = %d, want %d", len(rendered.IPAllowList), len(c.cidrs))
+			mcpList, _ := rendered.ServiceDetails["ipAllowList"].([]core.IPAllowListEntry)
+			if len(mcpList) != len(c.cidrs) {
+				t.Errorf("MCP serviceDetails.ipAllowList len = %d, want %d", len(mcpList), len(c.cidrs))
 			}
-			for i, e := range rendered.IPAllowList {
+			for i, e := range mcpList {
 				if e.CIDRBlock != c.cidrs[i] {
-					t.Errorf("MCP ipAllowList[%d].cidrBlock = %q, want %q", i, e.CIDRBlock, c.cidrs[i])
+					t.Errorf("MCP serviceDetails.ipAllowList[%d].cidrBlock = %q, want %q", i, e.CIDRBlock, c.cidrs[i])
 				}
 			}
 		})

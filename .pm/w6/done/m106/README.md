@@ -1,6 +1,6 @@
 # w6 · m106 — Service `ipAllowList` sits at the wrong REST nesting level: root, not `serviceDetails`
 
-**Worker:** worker6 **Goal:** `GET`/`POST`/`PATCH` `/v1/services` place a web service's or static site's inbound `ipAllowList` inside `serviceDetails` exactly where Render's own pinned OpenAPI schema (`webServiceDetails`/`staticSiteDetails`) declares it, matching the fix pattern already shipped for `Disk` (`w1/m86`) in the same file — never at the top level of the service object, where a Render-parity REST client checking the documented location finds nothing. **Status:** todo
+**Worker:** worker6 **Goal:** `GET`/`POST`/`PATCH` `/v1/services` place a web service's or static site's inbound `ipAllowList` inside `serviceDetails` exactly where Render's own pinned OpenAPI schema (`webServiceDetails`/`staticSiteDetails`) declares it, matching the fix pattern already shipped for `Disk` (`w1/m86`) in the same file — never at the top level of the service object, where a Render-parity REST client checking the documented location finds nothing. **Status:** done
 
 ## Background (found live, 2026-08-26, 16th `/qa-find-bugs` hunt)
 
@@ -53,12 +53,22 @@ Render's own contract places `ipAllowList` inside `serviceDetails`, scoped to ex
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Move `ipAllowList` from `renderService`'s top-level field into `renderServiceDetails()`'s map, gated to `web_service`/`static_site` exactly like `disk` and `maintenanceMode`; decide and record whether the legacy root-level field is dropped outright or kept one release as a deprecated alias | 30m | — |
-| t002 | Regression tests: extend `TestRESTCreateWithIPAllowListAndReadBack` to assert the nested `serviceDetails.ipAllowList` location (create, PATCH, get, list); add a negative test that a `private_service`/`background_worker`/`cron_job` never carries `ipAllowList` in `serviceDetails` even if a caller tries to set it | 40m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 20m | t004 |
-| t006 | Closeout | 10m | t005 |
+| t001 | Move `ipAllowList` from `renderService`'s top-level field into `renderServiceDetails()`'s map, gated to `web_service`/`static_site` exactly like `disk` and `maintenanceMode`; decide and record whether the legacy root-level field is dropped outright or kept one release as a deprecated alias — **DONE** | 30m | — |
+| t002 | Regression tests: extend `TestRESTCreateWithIPAllowListAndReadBack` to assert the nested `serviceDetails.ipAllowList` location (create, PATCH, get, list); add a negative test that a `private_service`/`background_worker`/`cron_job` never carries `ipAllowList` in `serviceDetails` even if a caller tries to set it — **DONE** | 40m | t001 |
+| t003 | Render parity — **DONE** | 20m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage — **DONE** | 20m | t004 |
+| t006 | Closeout — **DONE** | 10m | t005 |
+
+## Closeout (2026-08-26)
+
+Triaged **real** and fixed. Verified the diagnosis against Render's pinned OpenAPI spec directly: `ipAllowList` lives on `webServiceDetails`/`staticSiteDetails` only, is absent from `privateServiceDetails`/`backgroundWorkerDetails`/`cronJobDetails`, and — crucially — is **not** a property of the top-level `service` schema at all, so bex was emitting a field Render's contract has no place for.
+
+Fix (`lego/backend/internal/apps/render.go`): dropped the top-level `renderService.IPAllowList` field **outright** (t001 decision — a root-level alias would itself be a parity divergence, since Render's `service` schema has no such property; and no in-repo consumer reads it — dashboard/CLI use GraphQL) and emit `ipAllowList` from `renderServiceDetails()`, gated with `appv1alpha1.TypePubliclyRoutable(svcType)` (the same ingress gate `deploy.go` uses) and omitted when empty, mirroring the `disk` block directly above it.
+
+**Correction to this README's premise:** the claim that "GraphQL and MCP are unaffected — separate code path" is only half right. GraphQL is genuinely separate (`graphql.go` reads `AppView.IPAllowList` into its own fields). But **MCP is not** — `get_service`/`create_*`/`list_services` all render through the shared `toRenderService`/`renderService`, so MCP had the *same* root-nesting bug, and Render's MCP (a REST proxy) nests it under `serviceDetails` too. The single `renderServiceDetails()` change therefore corrects REST **and** MCP together; the referenced `mcp.go:249,481` lines are `toCreateRequest()` *input* mappings, not the output path. ADR018's row was updated to reflect this.
+
+Tests (`ip_allow_list_test.go`): `TestRESTCreateWithIPAllowListAndReadBack` now asserts the nested `serviceDetails.ipAllowList` on both the create response and GET and that the root key is absent; `TestIPAllowListPresentOnAllThreeSurfaces` and the two MCP tests read the nested location; added `TestRenderServiceDetailsGatesIPAllowListToIngressTypes` (private/worker/cron omit the property; empty list on an ingress type omits it). `go test ./internal/api/ ./internal/apps/ ./internal/core/ ./internal/events/` green; gofmt/vet clean; `docs/ADR018-render-parity.md` corrected.
 
 ## Definition of done
 
