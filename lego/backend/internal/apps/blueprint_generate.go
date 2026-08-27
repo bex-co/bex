@@ -174,7 +174,16 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, dbDisplayByID, kvDisplayByID map[string]string) (map[string]any, error) {
 	svcType := effectiveType(a.Spec.Type)
 	entry := map[string]any{
-		"name": a.Name,
+		// The manifest-facing PUBLIC name, never the tenant-prefixed CR object
+		// name: a store-managed App's a.Name is CRName(tenant, name), which
+		// overruns ValidAppName's 30-char cap (so the create boundary
+		// validateBlueprint runs would reject the file this exporter tells the
+		// user to commit) and writes the workspace's tenant id into that repo.
+		// appServiceName reads LabelServiceName, falling back to a.Name only for
+		// the legacy hand-applied App that has no such label (its object name IS
+		// the public name). Datastore entries already emit Spec.Name; this
+		// aligns services with them. (w6/m114)
+		"name": appServiceName(a),
 		"type": blueprintTypeSpelling[svcType],
 	}
 	static := svcType == appv1alpha1.TypeStaticSite

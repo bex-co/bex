@@ -1,6 +1,20 @@
 # w6 · m114 — Generate Blueprint emits the tenant-prefixed CR name, so bex's own exporter produces a `render.yaml` bex's own validator rejects
 
-**Worker:** worker6 **Goal:** the file Generate Blueprint hands you is a file you can commit and apply — carrying each service's public name, not the internal object name that both invalidates the manifest and writes the workspace's tenant id into a repo. **Status:** todo
+**Worker:** worker6 **Goal:** the file Generate Blueprint hands you is a file you can commit and apply — carrying each service's public name, not the internal object name that both invalidates the manifest and writes the workspace's tenant id into a repo. **Status:** done (2026-08-26)
+
+## Resolution (2026-08-26)
+
+Triaged, confirmed real, and fixed. The report reproduces **byte for byte** in a focused unit test: with `"name": a.Name`, `GenerateBlueprint` emits `name: tea-d98210cbbpdc73dcrkvg-qa-20260826-webhook-svc` and `ValidateBlueprint` returns `valid: false` with the exact `name must be a DNS label of 1-30 chars ([a-z0-9-])` error; swapping in the public name flips it to `valid: true`.
+
+**Why the generator's self-check missed it** (the report's open question about the closed loop): `GenerateBlueprint`'s self-check (`blueprint_generate.go:162-170`) runs only `CompileBlueprintIR` + `parseCompiledStack`. The 30-char `ValidAppName` gate lives in `specFromCreate` (`service.go:2166`), reached by `ValidateBlueprint` → `validateBlueprintServices` (`deploy.go:1185`) but **not** by the parser — so a 48-char name passed generation yet failed validation. That gap is why the bad file reached users; recorded here rather than widened, because pulling the full create boundary (with its maintenance-mode/URL-ownership checks) into an *export* path would wrongly reject exporting a service in a maintenance window.
+
+**Fix** — one line at the single producer, `blueprint_generate.go:177`: `"name": a.Name` → `"name": appServiceName(a)`. `appServiceName` (`blueprint_ownership.go:165`, already in-package, doc-labeled "the manifest-facing service name") reads `LabelServiceName` (the public name), falling back to `a.Name` only for a legacy hand-applied App with no such label — exactly the target behavior, including the legacy edge case. The datastore siblings already emitted `Spec.Name`, so this aligns services with them and leaves Postgres/KeyValue output byte-unchanged.
+
+**Caller count (DoD #6):** the generate verb has **three** surfaces — REST `POST /v1/blueprints/generate`, GraphQL `Query.generateBlueprint`, MCP `generate_blueprint` — all routing through the single `s.GenerateBlueprint` → `generateServiceEntry` producer, so the one-line fix covers every surface at once. No per-surface divergence.
+
+**Regression test:** `TestGenerateBlueprintServiceNameIsPublicNotCRName` (`blueprint_generate_test.go`) — the first fixture to model a store-managed (tenant-prefixed) App; asserts the manifest carries the public name, contains no `tea-` tenant id, does not carry the CR object name, and self-validates through `ValidateBlueprint`. Proven to fail without the fix.
+
+**Scope note vs. the original 7-task plan:** the substance (the defect, its class explanation, the caller count, the regression guard) is resolved by the change above. The fix is kind-agnostic — `generateServiceEntry` names all five App kinds uniformly, and the existing `TestGenerateBlueprintDomainsCronAndWorkerScaling` already self-validates web/cron/worker output. No render-parity ADR edit is needed: the change fixes a producer bug against the *existing* `render.yaml` contract (public name), it does not alter the contract. Checks run: `gofmt`, `go build ./internal/apps/`, `go vet ./internal/apps/`, and `go test ./internal/apps/ -run TestGenerateBlueprint` (green).
 
 ## Background (found live, 2026-08-27, 26th `/qa-find-bugs` run)
 
