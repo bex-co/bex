@@ -140,13 +140,21 @@ func TestCancelDeletesInFlightKpackImage(t *testing.T) {
 	}
 }
 
-// TestCancelImageBackedAppIsNoJobNoop covers the image-backed case: there is
-// no build Job to begin with, so Cancel's delete is a harmless not-found
-// no-op and the row still closes canceled.
-func TestCancelImageBackedAppIsNoJobNoop(t *testing.T) {
+// TestCancelImageBackedAppStampsCanceledReleaseNoJob covers the image-backed
+// case (w6/m104): there is no build Job to delete, but Cancel must STILL stamp
+// AnnotationCanceledReleaseGeneration with the deploy row's own generation. That
+// stamp is the only signal that makes the level-triggered operator settle the
+// App CR (settleCanceledRelease) instead of converging the canceled image
+// forever with no terminal phase. Before m104 the stamp sat inside
+// `if a.Spec.Repo != ""`, so an image-backed cancel closed the deploy row but
+// never touched the App, leaving the service stuck Deploying — the regression
+// this asserts against.
+func TestCancelImageBackedAppStampsCanceledReleaseNoJob(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
-	svc, _ := newService(ds, sampleApp("web", "srv-1")) // Repo == "", Image set — no Job ever existed
+	// Deploy generation (4) is deliberately distinct from the App's current
+	// Generation (sampleApp uses 1): Cancel must stamp the row's own, per m52.
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 4, store.CommitInfo{})
+	svc, cl := newService(ds, sampleApp("web", "srv-1")) // Repo == "", Image set — no Job ever existed
 
 	got, err := svc.Cancel(context.Background(), "web", first.ID)
 	if err != nil {
@@ -154,6 +162,10 @@ func TestCancelImageBackedAppIsNoJobNoop(t *testing.T) {
 	}
 	if got.Status != store.DeployCanceled {
 		t.Errorf("canceled deploy = %+v", got)
+	}
+	app := getApp(t, cl, "web")
+	if marker := app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]; marker != "4" {
+		t.Errorf("canceled release marker = %q, want deploy generation 4 — an image-backed cancel must stamp it too", marker)
 	}
 }
 
