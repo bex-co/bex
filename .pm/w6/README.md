@@ -128,6 +128,7 @@ Develop against `.pm/w6/dev-6/`, this worker's own isolated stack on the shared 
 - `064.md` — a blueprint apply creates env groups and reports that it did not; GraphQL’s sync result also drops key values
 - `065.md` — the Metrics time range (and both datastore log viewers') is lost on reload and cannot be shared; the service Logs page persists its own
 - `066.md` — `w6/m111`'s owed live verification is discharged: both Logs defects confirmed fixed on production
+- `067.md` — the Environment page lists a key twice — as a service variable and under a linked env group — with no sign the group's value is shadowed; runtime precedence is correct (`envFromSources`, `app_controller.go:3466-3487`), only the display is silent
 
 > `060.md` promoted to **m121** 2026-08-27 after the 55th `/qa-find-bugs` run reproduced it on a second route family and measured the header list it had left unverified — moved to `done/060.md`.
 
