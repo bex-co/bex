@@ -53,7 +53,9 @@ describe("DeployLogPanel", () => {
         "This dashboard isn't connected to durable log storage. Application logs can still appear for this deploy.",
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No logs in this time range"),
+    ).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText("Search logs…")).toBeInTheDocument();
   });
 
@@ -68,7 +70,9 @@ describe("DeployLogPanel", () => {
       />,
     );
 
-    expect(screen.getByText("No logs yet")).toBeInTheDocument();
+    // The deploy panel shares the Logs tab's window-relative empty copy, so it
+    // is honest by construction rather than by accident (w6/m111).
+    expect(screen.getByText("No logs in this time range")).toBeInTheDocument();
     expect(
       screen.queryByText("Historical build logs are unavailable"),
     ).not.toBeInTheDocument();
@@ -88,7 +92,9 @@ describe("DeployLogPanel", () => {
     );
 
     expect(screen.getByText("logs query unavailable")).toBeInTheDocument();
-    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No logs in this time range"),
+    ).not.toBeInTheDocument();
   });
 
   it("filters to build or application lines via Render's type selector (w1/029)", async () => {
@@ -185,7 +191,9 @@ describe("DeployLogPanel", () => {
       expect(screen.queryByText("unrelated line")).not.toBeInTheDocument();
     });
     expect(screen.getByText("reserve")).toBeInTheDocument();
-    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No logs in this time range"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a short clickable instance and exposes its removable exact filter", async () => {

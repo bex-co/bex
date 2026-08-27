@@ -1,6 +1,29 @@
 # w6 · m111 — The Logs tab's range is a lie in both directions: the live tail ignores it, and the empty state denies logs it excluded
 
-**Worker:** worker6 **Goal:** the Logs tab's range selector means what its own helper text says — the pane shows lines from the selected window and nothing else, and when that window is empty the page says so instead of asserting the service has never logged anything. **Status:** todo
+**Worker:** worker6 **Goal:** the Logs tab's range selector means what its own helper text says — the pane shows lines from the selected window and nothing else, and when that window is empty the page says so instead of asserting the service has never logged anything. **Status:** done
+
+## Resolution (2026-08-26, `/goal` triage of this note)
+
+Both defects reproduced against the code at HEAD, so this was fixed rather than dropped. Code-and-test verified; **not** re-run live on `dashboard.bex.co` this session (no cluster/QA run) — the DoD's click-throughs remain the live acceptance, unchanged.
+
+**Defect A — the live tail now follows the pod from the selected window's edge, not kubelet offset 0.**
+
+- `dashboard/src/features/logs/hooks/use-live-logs.ts` — `subscribeUrl` gained a `startTime` param and `useLiveLogs` a `startTime?` option. It is sent as `?startTime=` on the subscribe URL, so the first connect follows from the window edge instead of replaying the pod's whole log. Critically it is held **out of `subKey`** and read through a ref: the window slides forward every resolution tick (a new value each render), and putting it in the subscription identity would reopen the SSE stream constantly. A real filter change still re-subscribes with the *current* window start.
+- `dashboard/src/features/logs/components/log-viewer.tsx` — passes `historyWindow.startTime` to the tail.
+- `lego/backend/internal/logs/rest.go` — the `Last-Event-ID` resume now takes the **later** of the window `startTime` and the resume cursor (`resume.After(q.Since)`), instead of ignoring the cursor whenever a `startTime` is present. Without this, the browser sending `startTime` on its own invisible reconnects would re-read the whole window every time — reintroducing a bounded version of the exact cost `w6/m93` removed. The window is now a floor, the cursor an advance; `TestExplicitStartTimeWinsOverLastEventID` still passes (its cursor is *earlier* than the window) and `TestReconnectAdvancesPastStartTime` pins the new case.
+- **Deviation from t001's title ("clamped to `BEX_MAX_QUERY_HOURS`"):** no clamp was added. Every preset is ≤ `30d` = 720h and custom ranges are already client-guarded to ≤ 720h (`metrics/lib/range.ts` `MAX_CUSTOM_RANGE_HOURS`), and `logsSubscribe` does **not** call `checkWindow` at all (only `logsQuery`/`logsValues` do), so no value the viewer can send reaches the 720h boundary or a `400`. The layer check in the note conflated the history endpoint's guard with the subscribe endpoint's; DoD #3 ("30d does not 400") holds because subscribe never window-checks.
+
+**Defect B — the empty state no longer claims a service never logged.**
+
+- Resolved by making the copy honest rather than by adding a predicate/state-machine (t002's framing). Since the range is *always* bounded, "this service has never logged" is a claim the page structurally cannot establish — so per target-B's own rule ("if no bounded query can establish it, the string goes away") that state is **removed**, not re-detected. `logs.emptyTitle`/`logs.emptyBody` (en + zh) are now window-relative — "No logs in this time range" / "No log lines fall within this time range." The existing `filtered` branch (filter-miss copy) is unchanged. No change to `hasActiveLogFilters` or `LogFilters` was needed once the unassertable claim was deleted.
+- **Recorded design decision (DoD #5):** a genuinely never-logged service shows the same *window* copy — bex does not assert never-logged anywhere, because no bounded query proves it.
+- **Deploy panel (t003):** `deploy-log-panel.tsx` shares `logs.emptyTitle`/`emptyBody`, so it became honest by construction; its regression test now pins the window copy. `hasActiveLogFilters` caller count (t003's open question): **1** — `log-viewer.tsx` only; the deploy panel uses its own local `narrowed`, which is why it never had a filtered branch.
+
+**Parity (t004):** the live tail is a REST-only surface (SSE/WS `GET /v1/logs/subscribe`); there is no GraphQL/MCP `subscribe` sibling, so the `startTime` contract change needs no GraphQL/MCP mirror. The historical `logs` query already threads `startTime` across REST/GraphQL/MCP. UI copy changed in both `en` and `zh` (DoD #7).
+
+**Tests (t006):** `use-live-logs.test.ts` (+startTime forwarded, +omitted for the build tail, +no reopen on a slide, +re-subscribe picks up the current start); `log-viewer.test.tsx` (range-relative empty copy, tail follows the window start); `deploy-log-panel.test.tsx` (window copy); backend `TestReconnectAdvancesPastStartTime`. All backend `internal/logs` tests, dashboard `yarn lint` (typecheck+eslint), and the three touched suites are green.
+
+The investigation record below is left intact as the durable artifact.
 
 ## Background (found live, 2026-08-27, 22nd `/qa-find-bugs` run)
 
@@ -119,7 +142,7 @@ Six of the nine captured `type: "app"` lines are Kubernetes' own error text — 
 - What `logs.emptyBody`'s replacement should be when a service truly has never logged: whether any bounded query can establish that, or the state should simply not exist.
 - Whether the same range-blind empty state affects the Postgres/Key Value log tabs (`datastore-log-range.ts` exists, suggesting a sibling window path) — not opened this run.
 
-## Tasks (in order)
+## Tasks (in order) — all **DONE**, resolved as one consolidated change (see Resolution above)
 
 | id   | title                                                                                   | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------- | --- | ---------- |

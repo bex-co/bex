@@ -48,11 +48,20 @@ function subscribeUrl(
   type: LogTypeFilter,
   text: string,
   instance: string,
+  startTime: string,
 ): string {
   const params = new URLSearchParams({ resource });
   if (type !== LOG_TYPE_ALL) params.set("type", type);
   if (text) params.set("text", text);
   if (instance) params.set("instance", instance);
+  // The tail's lower bound: the selected history window's start (w6/m111). The
+  // FIRST connect then follows the pod from the window edge instead of replaying
+  // its whole log from kubelet's offset 0 — which is what made a "Last hour"
+  // range show lines hours older than it. The browser EventSource's own
+  // invisible reconnects still resume PAST this via Last-Event-ID (w6/m93); the
+  // server takes the later of the two bounds, so the window is a floor, not a
+  // re-read. Empty for a caller with no window (the deploy page's build tail).
+  if (startTime) params.set("startTime", startTime);
   return `${config.apiBaseUrl}/v1/logs/subscribe?${params.toString()}`;
 }
 
@@ -64,6 +73,16 @@ export interface UseLiveLogsOptions {
   text: string;
   /** Replica filter — the one structured filter the tail honors (a pod name). */
   instance: string;
+  /**
+   * Lower bound for the tail — the selected history window's start (ISO), sent
+   * as `startTime` so kubelet follows the pod from the window edge, not offset 0,
+   * on the first connect (w6/m111). Deliberately NOT part of the subscription
+   * identity: the window slides with wall-clock time, and rebinding the stream
+   * on every slide would reopen it constantly. It is read via a ref when a
+   * (re)subscribe actually happens (a filter change), so a mere slide is ignored
+   * and an established tail keeps streaming. Omitted (build tail) => no bound.
+   */
+  startTime?: string;
   /** Ring-buffer cap on retained live lines; oldest drop first. */
   maxLines?: number;
   /** Reopen a server-terminated stream after this many ms while still enabled —
@@ -104,6 +123,7 @@ export function useLiveLogs({
   type,
   text,
   instance,
+  startTime = "",
   maxLines = DEFAULT_MAX_LINES,
   retryDelayMs = 0,
   createEventSource = defaultCreateEventSource,
@@ -150,6 +170,17 @@ export function useLiveLogs({
     epochRef.current += 1;
   }, [subKey]);
 
+  // Latest window start, held out of subKey so the sliding window (a new value
+  // every resolution tick) never reopens the stream. The subscribe effect reads
+  // this ref only when it actually (re)runs — i.e. on a real filter change — so
+  // each fresh subscription follows the pod from the current window edge while
+  // an established tail streams on undisturbed. Declared before the subscribe
+  // effect so it is current by the time that effect reads it in the same flush.
+  const startTimeRef = useRef(startTime);
+  useEffect(() => {
+    startTimeRef.current = startTime;
+  });
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -158,7 +189,9 @@ export function useLiveLogs({
     // retryTimer below) batches a burst of frames into one state update.
     let pending: LogLine[] = [];
     let flushTimer: ReturnType<typeof setTimeout> | undefined;
-    const es = createEventSource(subscribeUrl(resource, type, text, instance));
+    const es = createEventSource(
+      subscribeUrl(resource, type, text, instance, startTimeRef.current),
+    );
 
     // Flush the pending batch into the ring buffer: dedupe against the key
     // set (O(1) per line), append, and cap oldest-first — the same merge the

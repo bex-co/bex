@@ -298,4 +298,46 @@ describe("useLiveLogs", () => {
     unmount();
     expect(es.closed).toBe(true);
   });
+
+  // The subscribe URL is relative in tests (empty apiBaseUrl), so parse it
+  // against a throwaway base to read its query.
+  const params = (url: string) => new URL(url, "http://test").searchParams;
+
+  // w6/m111: the tail follows the pod from the selected window's start, so the
+  // first connect can't replay lines older than the range from kubelet offset 0.
+  it("sends the window start as the subscribe startTime", () => {
+    renderHook(() =>
+      useLiveLogs(baseOpts({ startTime: "2026-08-27T01:00:00.000Z" })),
+    );
+    expect(params(last!.url).get("startTime")).toBe("2026-08-27T01:00:00.000Z");
+  });
+
+  it("omits startTime entirely when no window is given (the build tail)", () => {
+    renderHook(() => useLiveLogs(baseOpts()));
+    expect(params(last!.url).has("startTime")).toBe(false);
+  });
+
+  // The window slides forward every resolution tick — a new startTime value on
+  // every render. Rebinding the stream on each would reopen the SSE connection
+  // constantly, so a bare slide must leave the established tail untouched.
+  it("does not reopen the stream when only the window start slides", () => {
+    const { rerender } = renderHook((props) => useLiveLogs(props), {
+      initialProps: baseOpts({ startTime: "2026-08-27T01:00:00.000Z" }),
+    });
+    const first = last!;
+    rerender(baseOpts({ startTime: "2026-08-27T01:00:30.000Z" }));
+    expect(first.closed).toBe(false);
+    expect(last).toBe(first); // no new EventSource
+  });
+
+  // A real subscription change (a filter edit) does reopen — and must pick up
+  // the CURRENT window start, not the value captured at first mount.
+  it("re-subscribes with the current window start on a filter change", () => {
+    const { rerender } = renderHook((props) => useLiveLogs(props), {
+      initialProps: baseOpts({ startTime: "2026-08-27T01:00:00.000Z" }),
+    });
+    rerender(baseOpts({ startTime: "2026-08-27T02:00:00.000Z", text: "boom" }));
+    expect(params(last!.url).get("startTime")).toBe("2026-08-27T02:00:00.000Z");
+    expect(params(last!.url).get("text")).toBe("boom");
+  });
 });

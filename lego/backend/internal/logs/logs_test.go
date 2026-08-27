@@ -1701,6 +1701,36 @@ func TestExplicitStartTimeWinsOverLastEventID(t *testing.T) {
 	}
 }
 
+// TestReconnectAdvancesPastStartTime: the browser now sends the window's start
+// as startTime on every connect (w6/m111), and its own invisible reconnects
+// carry that startTime alongside the Last-Event-ID. When the resume cursor is
+// LATER than the window start, it must still win — otherwise every reconnect
+// re-reads the whole window from kubelet, the exact cost w6/m93 removed. The
+// window is a floor, not a competing cursor: the later of the two bounds wins.
+func TestReconnectAdvancesPastStartTime(t *testing.T) {
+	var since []time.Time
+	lines := map[string][]string{"web-1": {"2026-07-05T00:00:09Z live nine"}}
+	svc := &Service{
+		Base:          &core.Base{Client: fakeClientWith(sampleApp("web"), podFor("web", "web-1")), Namespace: "default"},
+		PodLogs:       staticLogs(lines),
+		PodLogsFollow: recordingLogStream(lines, &since),
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet,
+		"/v1/logs/subscribe?resource=web&startTime=2026-07-05T00:00:01Z", nil)
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Last-Event-ID", "2026-07-05T00:00:08Z")
+	mux.ServeHTTP(rec, req)
+
+	want := time.Date(2026, 7, 5, 0, 0, 8, 0, time.UTC)
+	if len(since) != 1 || !since[0].Equal(want) {
+		t.Fatalf("follow opened with since=%v, want the later Last-Event-ID %v (the window is a floor, not a re-read)", since, want)
+	}
+}
+
 // TestSubscribeSSEOmitsIDForStamplessLine guards a spec-level trap in the
 // resume design: per the SSE spec an empty `id:` field SETS the client's
 // last-event-id buffer to empty, after which the browser stops sending the

@@ -126,12 +126,14 @@ const zhLogs: Record<string, TranslationEntry> = {
     description: "Banner when the SSE stream drops",
   },
   "logs.emptyTitle": {
-    message: "暂无日志",
-    description: "Empty-state title when the service has produced no logs",
+    message: "此时间范围内暂无日志",
+    description:
+      "Empty-state title when the selected (always-bounded) history range holds no lines. Never claims the service has never logged — the range can't establish that (w6/m111)",
   },
   "logs.emptyBody": {
-    message: "该服务尚未产生任何日志。",
-    description: "Empty-state body with no filters applied",
+    message: "所选时间范围内没有日志。",
+    description:
+      "Empty-state body with no filters applied — honest about the bounded window, not the service's whole history (w6/m111)",
   },
   "logs.emptyFilteredBody": {
     message: "没有匹配这些筛选条件的日志。",
