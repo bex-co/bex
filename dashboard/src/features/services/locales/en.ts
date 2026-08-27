@@ -3856,6 +3856,20 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Unsaved environment changes",
     description: "Combined draft save bar heading",
   },
+  "services.environmentRestoredTitle": {
+    message: "Restored unsaved changes",
+    description:
+      "Heading of the banner shown when an env draft is recovered after a session-expiry redirect (w3/m80)",
+  },
+  "services.environmentRestoredBody": {
+    message:
+      "We brought back the environment edits you were making before signing in again. Review them, then save or discard.",
+    description: "Body of the restored-draft banner",
+  },
+  "services.environmentRestoredDiscard": {
+    message: "Discard restored changes",
+    description: "Button that throws away a recovered env draft",
+  },
   "services.environmentUnsavedSummary": {
     message: "{variables} variable operations · {files} file operations",
     description: "Combined draft operation count",

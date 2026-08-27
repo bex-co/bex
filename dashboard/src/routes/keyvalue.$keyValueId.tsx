@@ -13,7 +13,7 @@ import {
 import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import {
-  resourceFailed,
+  resourceLoadErrorVariant,
   resourceNotFound,
   useNotFoundRedirect,
 } from "@/common/hooks/use-not-found-redirect";
@@ -94,7 +94,7 @@ export function KeyValueDetailPage() {
   // roll-window loader failure re-runs once (w1/m52) so the title recovers.
   useNotFoundRedirect(resourceNotFound(keyValue, loading, error));
   useLoaderErrorRetry(Route.useLoaderData(), keyValueId);
-  const showError = resourceFailed(keyValue, loading, error);
+  const loadErrorVariant = resourceLoadErrorVariant(keyValue, loading, error);
 
   return (
     <DashboardLayout>
@@ -173,9 +173,12 @@ export function KeyValueDetailPage() {
           data-skeleton-region={!keyValue ? "active-tab" : undefined}
           className="flex-1 overflow-auto p-4 sm:p-6"
         >
-          {showError ? (
+          {loadErrorVariant ? (
             <div className="mx-auto w-full max-w-4xl space-y-6">
-              <ResourceLoadError onRetry={() => void refetch()} />
+              <ResourceLoadError
+                onRetry={() => void refetch()}
+                variant={loadErrorVariant}
+              />
             </div>
           ) : keyValue && tab === "logs" ? (
             <div className="mx-auto w-full max-w-4xl space-y-6">

@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useBlocker } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -44,6 +44,7 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useReauthDraft } from "@/common/hooks/use-reauth-draft";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
@@ -206,6 +207,18 @@ export function EnvironmentEditor({
   const nextID = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<EnvironmentDraft | null>(null);
+  // Preserve an in-progress draft across a session-expiry redirect (w3/m80
+  // t005): if the session lapses mid-edit, the Apollo auth link hard-navigates
+  // to login and this component unmounts — the draft is mirrored to
+  // sessionStorage so sign-in returns the user to their exact unsaved edits.
+  // Destructured so the stable callbacks (not the fresh wrapper object) drive
+  // the effects below.
+  const {
+    save: persistDraft,
+    clear: clearPersistedDraft,
+    consumeRestored,
+  } = useReauthDraft<EnvironmentDraft>(`env:${resourceId}`);
+  const [restoredDraft, setRestoredDraft] = useState(false);
   const reveals = useSensitiveReveals(
     { env: revealEnv, file: revealFile },
     (kind) =>
@@ -244,6 +257,25 @@ export function EnvironmentEditor({
     withResolver: true,
   });
 
+  // Restore a draft stranded by a prior session expiry — once, in an effect
+  // (not a render initializer) so the client's first render still matches the
+  // draft-less SSR output and there's no hydration mismatch.
+  useEffect(() => {
+    const saved = consumeRestored();
+    if (saved) {
+      setDraft((current) => current ?? saved);
+      setRestoredDraft(true);
+    }
+  }, [consumeRestored]);
+
+  // Mirror the live draft to sessionStorage while it holds unsaved changes, and
+  // drop it the moment there's nothing to preserve (saved, cancelled, or clean).
+  // Reuses the render-scope `dirty` rather than rebuilding the patch here.
+  useEffect(() => {
+    if (draft && dirty) persistDraft(draft);
+    else clearPersistedDraft();
+  }, [draft, dirty, persistDraft, clearPersistedDraft]);
+
   function beginEdit() {
     if (createDenied) return;
     setDraft(
@@ -254,6 +286,7 @@ export function EnvironmentEditor({
     );
     setSaveError(false);
     setUploadError(null);
+    setRestoredDraft(false); // a fresh edit, not one recovered from a redirect
   }
 
   // Deleting a row that was never on the server drops it outright; deleting a
@@ -524,6 +557,26 @@ export function EnvironmentEditor({
           <AlertTitle>{t(ENV_ERROR_COPY[errorKind].title)}</AlertTitle>
           <AlertDescription>
             {t(ENV_ERROR_COPY[errorKind].body)}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {restoredDraft && draft ? (
+        <Alert>
+          <Undo2 />
+          <AlertTitle>{t("services.environmentRestoredTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("services.environmentRestoredBody")}</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setDraft(null);
+                setRestoredDraft(false);
+              }}
+            >
+              {t("services.environmentRestoredDiscard")}
+            </Button>
           </AlertDescription>
         </Alert>
       ) : null}

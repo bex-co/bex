@@ -10,8 +10,10 @@ import {
 import {
   resourceFailed,
   resourceNotFound,
+  resourceUnauthenticated,
   useNotFoundRedirect,
 } from "../use-not-found-redirect";
+import { ServerError } from "@apollo/client/errors";
 
 const toastError = vi.fn();
 vi.mock("sonner", () => ({
@@ -115,5 +117,42 @@ describe("resourceNotFound / resourceFailed (w6/m44)", () => {
         !resourceFailed(null, false, err),
       );
     }
+  });
+});
+
+// w3/m80 t002: an expired session (bex-api 401) must never wear the network
+// error's "check the API and try again" card — it gets its own predicate so the
+// detail page can offer Sign in instead, while genuine 5xx/transport failures
+// keep the retry card.
+describe("resourceUnauthenticated (w3/m80)", () => {
+  const unauthorized = new ServerError("status 401", {
+    response: new Response("no", { status: 401 }),
+    bodyText: "no",
+  });
+  const outage = new ServerError("status 502", {
+    response: new Response("no", { status: 502 }),
+    bodyText: "no",
+  });
+  const notFoundErr = new Error("app not found");
+
+  it("claims a 401 and takes it away from resourceFailed", () => {
+    expect(resourceUnauthenticated(null, false, unauthorized)).toBe(true);
+    expect(resourceFailed(null, false, unauthorized)).toBe(false);
+  });
+
+  it("leaves a real outage with the network error card", () => {
+    expect(resourceUnauthenticated(null, false, outage)).toBe(false);
+    expect(resourceFailed(null, false, outage)).toBe(true);
+  });
+
+  it("does not claim a not-found or a still-loading query", () => {
+    expect(resourceUnauthenticated(null, false, notFoundErr)).toBe(false);
+    expect(resourceUnauthenticated(null, true, unauthorized)).toBe(false);
+  });
+
+  it("is inert once the resource resolved", () => {
+    expect(resourceUnauthenticated({ id: "srv-1" }, false, unauthorized)).toBe(
+      false,
+    );
   });
 });

@@ -32,6 +32,15 @@ export type SessionState = {
   session: Session | null;
   /** A live aal1 session owing its second factor: challenge, don't sign in. */
   aal2Required: boolean;
+  /**
+   * When the live session expires, as epoch ms (Kratos's `expires_at`), or
+   * undefined when there is no session or Kratos omits it. Used to evict a
+   * lapsed session from the browser memo the instant it passes, so the app
+   * never reports "authenticated" for a session that has actually expired
+   * (w3/m80 t004) — the sliding-session config (docs/ADR012-auth.md § Sessions)
+   * keeps this moving forward for an active user.
+   */
+  expiresAt?: number;
 };
 
 /**
@@ -44,7 +53,14 @@ export type SessionState = {
  */
 const SESSION_CACHE_TTL_MS = 60_000;
 
-let sessionCache: { at: number; state: Promise<SessionState> } | null = null;
+type SessionCacheEntry = {
+  at: number;
+  state: Promise<SessionState>;
+  /** Filled once the promise resolves; drives early eviction on expiry. */
+  expiresAt?: number;
+};
+
+let sessionCache: SessionCacheEntry | null = null;
 
 /**
  * Drop the memoized browser session so the next `fetchSession()` asks Kratos.
@@ -61,11 +77,39 @@ async function fetchSessionUncached(cookie?: string): Promise<SessionState> {
     const session = await createFrontendApi(
       cookie ?? (await getRequestCookie()),
     ).toSession();
-    return { session, aal2Required: false };
+    return {
+      session,
+      aal2Required: false,
+      expiresAt: parseExpiry(session.expires_at),
+    };
   } catch (err) {
     const { id } = await oryErrorInfo(err);
     return { session: null, aal2Required: id === "session_aal2_required" };
   }
+}
+
+/** Kratos's `expires_at` as epoch ms, or undefined when absent/unparseable. The
+ *  Ory SDK types it as a `Date`, but tolerate an ISO string too for safety. */
+function parseExpiry(expiresAt: Date | string | undefined): number | undefined {
+  if (!expiresAt) return undefined;
+  const ms =
+    expiresAt instanceof Date ? expiresAt.getTime() : Date.parse(expiresAt);
+  return Number.isNaN(ms) ? undefined : ms;
+}
+
+/**
+ * Whether the memo can answer for `now`: present, within the dedup TTL, and not
+ * already past its own `expires_at`. The expiry check is what stops a session
+ * that lapsed mid-TTL from being reported "authenticated" for up to a minute —
+ * the next read re-consults Kratos, which 401s, and the auth guard redirects.
+ */
+function isCacheUsable(now: number): boolean {
+  if (!sessionCache) return false;
+  if (now - sessionCache.at > SESSION_CACHE_TTL_MS) return false;
+  if (sessionCache.expiresAt != null && sessionCache.expiresAt <= now) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -84,8 +128,15 @@ export async function fetchSession(cookie?: string): Promise<SessionState> {
     return fetchSessionUncached(cookie);
   }
   const now = Date.now();
-  if (!sessionCache || now - sessionCache.at > SESSION_CACHE_TTL_MS) {
-    sessionCache = { at: now, state: fetchSessionUncached() };
+  if (!isCacheUsable(now)) {
+    const entry: SessionCacheEntry = { at: now, state: fetchSessionUncached() };
+    // Record the resolved expiry so `isCacheUsable` can evict a lapsed session
+    // on the very next read (the fetch never rejects — it resolves a
+    // null-session state on failure).
+    void entry.state.then((s) => {
+      entry.expiresAt = s.expiresAt;
+    });
+    sessionCache = entry;
   }
-  return sessionCache.state;
+  return sessionCache!.state;
 }

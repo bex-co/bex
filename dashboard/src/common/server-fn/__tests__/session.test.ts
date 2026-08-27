@@ -120,3 +120,56 @@ describe("fetchSession browser memo", () => {
     expect(toSession).toHaveBeenCalledTimes(2);
   });
 });
+
+// w3/m80 t004: the memo dedups whoami, but it must never keep reporting
+// "authenticated" for a session that has actually lapsed within the TTL window
+// — the expiry check evicts it early so the next read re-consults Kratos.
+describe("fetchSession expiry eviction", () => {
+  const base = { id: "session-1", identity: { id: "user-1" } };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    invalidateSessionCache();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("surfaces the session's expires_at as epoch ms", async () => {
+    const exp = new Date("2026-01-01T01:00:00Z");
+    toSession.mockResolvedValue({ ...base, expires_at: exp });
+
+    const state = await fetchSession("ory_session=live");
+    expect(state.expiresAt).toBe(exp.getTime());
+  });
+
+  it("re-consults Kratos once a memoized session passes its expires_at", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    // Expires 30s out — inside the 60s dedup TTL, so only the expiry check can
+    // evict it.
+    toSession.mockResolvedValue({
+      ...base,
+      expires_at: new Date("2026-01-01T00:00:30Z"),
+    });
+
+    await fetchSession();
+    vi.advanceTimersByTime(31_000);
+    await fetchSession();
+
+    expect(toSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("still serves a session whose expiry is safely in the future", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    toSession.mockResolvedValue({
+      ...base,
+      expires_at: new Date("2026-01-01T01:00:00Z"),
+    });
+
+    await fetchSession();
+    vi.advanceTimersByTime(30_000);
+    await fetchSession();
+
+    expect(toSession).toHaveBeenCalledTimes(1);
+  });
+});

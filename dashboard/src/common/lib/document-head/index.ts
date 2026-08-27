@@ -1,6 +1,7 @@
 import type { TOptions } from "i18next";
 import i18n from "@/i18n/init";
 import type { SupportedLanguage } from "@/i18n";
+import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
 
 export { DashboardDocumentTitle } from "./document-title";
 export { getDashboardOrigin } from "./origin";
@@ -25,6 +26,7 @@ export interface DashboardHeadMatch {
 export type RouteResource<T> =
   | { state: "ready"; resource: T }
   | { state: "not-found" }
+  | { state: "unauthenticated" }
   | { state: "error" };
 
 /** One Render-shaped formatter for every static and resource title. */
@@ -84,6 +86,9 @@ export function stateTitle(
   if (resource.state === "not-found") {
     return translatedTitle("common.notFoundTitle");
   }
+  if (resource.state === "unauthenticated") {
+    return translatedTitle("common.sessionExpiredTitle");
+  }
   if (resource.state === "error") return translatedTitle("common.errorTitle");
   return formatDashboardTitle();
 }
@@ -112,10 +117,16 @@ export async function loadRouteResource<TData, TResource>(
     const result = await query();
     const resource = select(result.data);
     if (resource) return { state: "ready", resource };
+    // An expired session (bex-api 401) is not a missing row and not an outage —
+    // it gets its own state so the title + body read "session expired", not
+    // "not found" or "couldn't load" (w3/m80 t002).
+    if (result.error && isUnauthenticatedError(result.error))
+      return { state: "unauthenticated" };
     if (!result.error || isNotFound(result.error))
       return { state: "not-found" };
     return { state: "error" };
   } catch (error) {
+    if (isUnauthenticatedError(error)) return { state: "unauthenticated" };
     return isNotFound(error) ? { state: "not-found" } : { state: "error" };
   }
 }

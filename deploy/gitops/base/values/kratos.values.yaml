@@ -200,6 +200,18 @@ kratos:
         error:
           ui_url: https://dashboard.bex.co/auth/error
     session:
+      # Sliding idle window (w3/m80, docs/ADR012-auth.md § Sessions): a session
+      # stays valid for `lifespan` of INACTIVITY, and Kratos slides expiry
+      # forward by another `lifespan` whenever a request lands within
+      # `earliest_possible_extend` of expiry — /sessions/whoami auto-extends, and
+      # the dashboard calls it on every navigation (root beforeLoad), so an
+      # active user's session never hits the mid-work logout the old unset 24h
+      # Kratos default caused (a page open past 24h just started 401ing). OSS
+      # Kratos has no separate absolute cap (Enterprise-only), so the idle window
+      # IS the bound; extension is server-side, and a session stays instantly
+      # revocable from the Settings devices panel regardless.
+      lifespan: 168h # 7 days idle → logout (OWASP low-risk band)
+      earliest_possible_extend: 24h # slide the window when <24h remains
       # `highest_available` (w4/m11): a session is only "fully authenticated"
       # (whoami 200) at the highest AAL the identity CAN reach — so a user who
       # enrolled a second factor must complete it (aal2), while a password-only

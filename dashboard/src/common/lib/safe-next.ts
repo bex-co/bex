@@ -52,6 +52,17 @@ export function safeNext(
 }
 
 /**
+ * The current location as a root-relative href (`pathname + search + hash`) —
+ * the value handed to a login `?next=` so sign-in returns the user to exactly
+ * where they were. Browser-only; empty string on the server (no `window`).
+ */
+export function currentHref(): string {
+  if (typeof window === "undefined") return "";
+  const { pathname, search, hash } = window.location;
+  return pathname + search + hash;
+}
+
+/**
  * The origin to resolve against. In the browser this is the real app origin; on
  * the server (SSR render of the login page) `window` is absent, but a
  * placeholder is safe because only the relative `pathname+search+hash` is ever
