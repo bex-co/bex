@@ -1,6 +1,6 @@
 # w3 · m46 — Static-site Render-parity fixes (suspend page · delete-row projection · clear-cache deploy · SPA-fallback reconciliation)
 
-**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** implementation complete + locally verified (t001–t007 done); t008 awaits deploy + live `onbex.co` E2E to close.
+**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** implementation complete + locally verified (t001–t007 done); **t009 reopened from a live probe** — the 31st `/qa-find-bugs` run (2026-08-27) ran the E2E t008 was waiting on and DoD item 2 does not hold: the list row goes (t002 works) and the URL is torn down, but every by-id surface still returns 200 with `phase: "Deleting"` 26+ minutes later and the dashboard renders the exact `Unknown` page the DoD names. t008 now awaits t009.
 
 ## Tasks (in order)
 
@@ -13,7 +13,8 @@
 | t005 | Render parity sweep across REST/GraphQL/MCP/UI                           | 30m | t001, t002, t003, t004       — **DONE** |
 | t006 | Simplify the changed code                                                | 20m | t005                         — **DONE** |
 | t007 | Test coverage for the shipped behavior                                   | 40m | t005                         — **DONE** |
-| t008 | Closeout                                                                 | 10m | t007                         |
+| t009 | Deleted static site's by-id detail never 404s, so the "Unknown" page persists | 45m | t002                         |
+| t008 | Closeout                                                                 | 10m | t007, t009                   |
 
 ## Implementation summary (t001–t007 done 2026-08-21, uncommitted pending `/ship`)
 
