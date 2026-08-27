@@ -79,6 +79,18 @@ func AllowListFromSpec(list []appv1alpha1.IPAllowEntry) []IPAllowListEntry {
 	return out
 }
 
+// AllowListOrEmpty is the read-side guard for a field Render's schema marks
+// required: a nil slice (no restriction configured) must serialize as [], not
+// be dropped by encoding/json's omitempty — a strict generated client treats
+// a missing required property as a decode failure (w6/m109). Applied wherever
+// a response view builds ipAllowList.
+func AllowListOrEmpty(entries []IPAllowListEntry) []IPAllowListEntry {
+	if entries == nil {
+		return []IPAllowListEntry{}
+	}
+	return entries
+}
+
 // AllowListCIDRs projects entries down to their CIDR strings — the
 // product-neutral string-list shape GraphQL/MCP's legacy arguments and the
 // bex-native {"cidrs"} REST routes keep speaking.

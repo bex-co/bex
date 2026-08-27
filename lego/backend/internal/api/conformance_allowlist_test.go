@@ -67,13 +67,15 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 
 	// The datastore rows document bex's intentionally truthful omission of
 	// provider/configuration metadata and the partial advanced-detail surface.
+	// `ipAllowList` (all three) and `readReplicas` (postgres) were dropped from
+	// these lists by w6/m109: the views now nil-coalesce and serialize the
+	// Render-required arrays as [] instead of omitting the key; the guard test
+	// fails an allowlist entry that no longer matches a real divergence.
 	"list-postgres": knownConformanceDivergences(
 		"ADR018 §Managed Postgres / §Resource metadata contract: omitted unknown metadata and unsupported advanced provider fields",
-		`ipAllowList: property "ipAllowList" is missing`,
 		`updatedAt: property "updatedAt" is missing`,
 		`owner: property "owner" is missing`,
 		`region: property "region" is missing`,
-		`readReplicas: property "readReplicas" is missing`,
 		`role: property "role" is missing`,
 		`version: property "version" is missing`,
 		`suspenders: property "suspenders" is missing`,
@@ -81,13 +83,11 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 	),
 	"retrieve-postgres": knownConformanceDivergences(
 		"ADR018 §Managed Postgres / §Resource metadata contract: omitted unknown metadata and unsupported advanced provider fields",
-		`/ipAllowList: property "ipAllowList" is missing`,
 		`/updatedAt: property "updatedAt" is missing`,
 		`/dashboardUrl: property "dashboardUrl" is missing`,
 		`/owner: property "owner" is missing`,
 		`/project: property "project" is missing`,
 		`/region: property "region" is missing`,
-		`/readReplicas: property "readReplicas" is missing`,
 		`/role: property "role" is missing`,
 		`/version: property "version" is missing`,
 		`/suspenders: property "suspenders" is missing`,
@@ -100,7 +100,6 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`/updatedAt: property "updatedAt" is missing`,
 		`/region: property "region" is missing`,
 		`/owner: property "owner" is missing`,
-		`/ipAllowList: property "ipAllowList" is missing`,
 	),
 
 	// Secret-file list values are intentionally redacted; custom-domain status

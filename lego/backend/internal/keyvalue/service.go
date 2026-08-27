@@ -91,8 +91,10 @@ type KeyValueView struct {
 
 	// IPAllowList is the allowlist gating the EXTERNAL endpoint (Render's
 	// ipAllowList, {cidrBlock, description} entries — descriptions persist on
-	// the CR since w4/m24). Empty => the external route is open to all source IPs.
-	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+	// the CR since w4/m24). Empty => the external route is open to all source
+	// IPs. Required in Render's keyValue schema — always serialized, as []
+	// when empty (w6/m109).
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
 
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
@@ -226,6 +228,8 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	if !kv.DeletionTimestamp.IsZero() {
 		status = "deleting"
 	}
+	// ipAllowList is required in Render's schema — an unrestricted instance
+	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
 	return KeyValueView{
 		ID:              kv.Name,
 		Name:            kv.Spec.Name,
@@ -235,7 +239,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		Suspended:       core.SuspendedEnum(kv.Spec.Suspended),
 		CreatedAt:       created,
 		UpdatedAt:       resourcemeta.UpdatedAt(kv),
-		IPAllowList:     core.AllowListFromSpec(kv.Spec.IPAllowList),
+		IPAllowList:     core.AllowListOrEmpty(core.AllowListFromSpec(kv.Spec.IPAllowList)),
 		MaxmemoryPolicy: crdToRender(kv.Spec.MaxmemoryPolicy),
 		PersistenceMode: crdToRender(kv.Spec.PersistenceMode),
 		ExternalHost:    kv.Status.ExternalHost,

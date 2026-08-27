@@ -103,8 +103,9 @@ type PostgresView struct {
 	HighAvailabilityEnabled bool `json:"highAvailabilityEnabled"`
 	// ReadReplicas is the named replica array — each with its host info.
 	// Password is not included here; use PostgresConnectionInfo for credentials.
-	// Render's readReplicas: [{name, connectionInfo}].
-	ReadReplicas []ReadReplicaView `json:"readReplicas,omitempty"`
+	// Render's readReplicas: [{name, connectionInfo}]. Required in Render's
+	// postgres schema — always serialized, as [] when there are none (w6/m109).
+	ReadReplicas []ReadReplicaView `json:"readReplicas"`
 
 	Suspended string `json:"suspended"` // string enum, like services
 	CreatedAt string `json:"createdAt,omitempty"`
@@ -121,7 +122,9 @@ type PostgresView struct {
 
 	// IPAllowList is the CIDR allowlist gating the EXTERNAL endpoint (Render's
 	// ipAllowList). Empty => the external route is open to all source IPs.
-	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+	// Required in Render's postgres schema — always serialized, as [] when
+	// empty (w6/m109).
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
 	// PoolerEnabled reports whether a PgBouncer pooler is provisioned (its pooled
 	// connection strings appear in connection-info).
 	PoolerEnabled bool `json:"poolerEnabled"`
@@ -377,6 +380,8 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	if !d.DeletionTimestamp.IsZero() {
 		status = "deleting"
 	}
+	// ipAllowList is required in Render's schema — an unrestricted database
+	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
 	return PostgresView{
 		ID:                      d.Name,
 		Name:                    d.Spec.Name,
@@ -394,7 +399,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		UpdatedAt:               resourcemeta.UpdatedAt(d),
 		ExternalHost:            d.Status.ExternalHost,
 		Public:                  d.Spec.Public,
-		IPAllowList:             core.AllowListFromSpec(d.Spec.IPAllowList),
+		IPAllowList:             core.AllowListOrEmpty(core.AllowListFromSpec(d.Spec.IPAllowList)),
 		PoolerEnabled:           d.Spec.Pooler,
 		ConnectionPool:          connectionPoolEnum(d.Spec.Pooler),
 		BackupsEnabled:          d.Status.BackupsEnabled,
