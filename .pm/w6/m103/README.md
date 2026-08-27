@@ -1,6 +1,6 @@
 # w6 · m103 — Fix i18n language-switch regression and the SSR i18n singleton race causing hydration mismatches for non-English sessions
 
-**Worker:** worker6 **Goal:** switching the dashboard's UI language actually renders in that language on the very next interaction, and every full page load for a non-English session serializes SSR HTML in that session's own language — never another concurrent request's — so hydration never mismatches on language. **Status:** todo
+**Worker:** worker6 **Goal:** switching the dashboard's UI language actually renders in that language on the very next interaction, and every full page load for a non-English session serializes SSR HTML in that session's own language — never another concurrent request's — so hydration never mismatches on language. **Status:** in progress (Bug A fixed + regression-tested via triage 2026-08-26; Bug B / SSR per-request isolation still open — see Triage update)
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 11th run)
 
@@ -67,13 +67,21 @@ The comment directly above this claims: *"Applied before this route's component 
 - `w6/030` (open inbox note) — an unroot-caused #418 on `/env-groups/<id>`, guessed (not confirmed) to be a timestamp-formatting cause. **Unverified whether it's actually this milestone's Bug B** (an env-group page rendered during a language-mismatched request would show the identical symptom) — t002/t003 below should re-check `/env-groups/<id>` specifically once Bug B is fixed, but this milestone does not claim to fix `w6/030` sight unseen.
 - `w1/done/m81/done/t002.md` — already-fixed sitewide #418 from `global-search.tsx` reading `navigator.platform` ungated during render. Confirmed still fixed and present in the current tree (checked live via `w6/030`'s own note); unrelated to this milestone.
 
+## Triage update (2026-08-26)
+
+Both bugs were re-verified against the live tree by direct reads (not taken on trust from the research pass); the milestone is **real, not deleted**. State after triage:
+
+- **Bug A — confirmed and fixed.** `changeLanguage(` still has exactly 4 call sites and `user-nav.tsx` was the lone one skipping `ensureLanguage`. Fixed by making `handleLanguage` `await ensureLanguage(lang)` before `i18n.changeLanguage(lang)`, matching `language-switcher.tsx` verbatim (`dashboard/src/common/components/user-nav.tsx`). t003(a) landed: `dashboard/src/common/components/__tests__/user-nav.test.tsx` now has a switch test that strips `test/setup.ts`'s blanket zh preload first, so it **fails against the pre-fix component and passes after** (verified both directions) — a non-tautological regression guard. `yarn typecheck` / `eslint` / `prettier` / the file's `vitest run` are green.
+- **Bug B — confirmed real, still open.** No `createInstance`/`cloneInstance` anywhere and no custom SSR entry (default TanStack Start handler): the shared module-level `i18n` is genuinely process-wide, so the concurrency race is a real latent defect worth the request-scoped-instance fix in t002.
+- **Root-cause refinement for t002 (important — don't fix the wrong thing).** The _deterministic, every-single-reload_ #418 in steps 3–5 is **not** the concurrency race (a race would be intermittent). Its actual mechanism: `<html lang>` is threaded correctly through router context (`shell-component.tsx` reads `useRootContext().language`, which is dehydrated → correct on both sides), but the visible **text** comes from the global `i18n` singleton whose language is set as a _side effect_ of `beforeLoad`'s `changeLanguage`. That side effect runs on the server but is not reproduced on the client's initial hydration (dehydrated-context restore doesn't re-run it), and non-default catalogs are lazy `import()`s, so the client cannot render the zh catalog synchronously on first paint → whole-tree mismatch for any non-default session. t002 must therefore cover **both** (i) request-scoped SSR isolation (the concurrency race) and (ii) getting the client's first hydration render into the detected language synchronously — e.g. inline the detected non-default catalog into the SSR payload so it's available before hydrate — not just clone the server instance.
+
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Fix Bug A: `user-nav.tsx`'s `handleLanguage` must `await ensureLanguage(lang)` before `i18n.changeLanguage(lang)`, matching the contract the other 3 call sites already follow | 20m | — |
+| t001 | **✅ done (2026-08-26)** — Fix Bug A: `user-nav.tsx`'s `handleLanguage` must `await ensureLanguage(lang)` before `i18n.changeLanguage(lang)`, matching the contract the other 3 call sites already follow | 20m | — |
 | t002 | Fix Bug B: give SSR per-request i18n isolation (e.g. an `i18next.cloneInstance()`/request-scoped instance threaded through `beforeLoad`/render instead of mutating the shared module-level `i18n` singleton) so one request's rendered language can never be clobbered by a concurrent request's `changeLanguage` call | 60m | — |
-| t003 | Regression tests: (a) a `user-nav.tsx` test that does NOT rely on `test/setup.ts`'s global zh-bundle preload, proving the switch actually awaits the catalog load before changing language; (b) a concurrency-shaped test simulating two overlapping SSR requests for different languages and asserting neither request's rendered HTML reflects the other's language | 40m | t001, t002 |
+| t003 | Regression tests: **(a) ✅ done (2026-08-26)** — a `user-nav.tsx` test that does NOT rely on `test/setup.ts`'s global zh-bundle preload, proving the switch actually awaits the catalog load before changing language (fails pre-fix, passes post-fix); (b) still open — a concurrency-shaped test simulating two overlapping SSR requests for different languages and asserting neither request's rendered HTML reflects the other's language | 40m | t001, t002 |
 | t004 | Render parity | 20m | t003 |
 | t005 | Simplify | 15m | t004 |
 | t006 | Test coverage | 20m | t004 |
