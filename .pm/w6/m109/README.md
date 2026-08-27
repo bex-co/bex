@@ -77,7 +77,8 @@ All probes run from inside the authenticated browser session (`page.evaluate` + 
 | t004 | Render parity — confirm GraphQL is unaffected (still `[]`) and REST/MCP now agree with it; correct any doc claim about this shape — **DONE** | 20m | t003       |
 | t005 | Simplify — **DONE**                                                                                          | 15m | t004       |
 | t006 | Test coverage — **DONE**                                                                                     | 20m | t004       |
-| t007 | Closeout                                                                                                    | 10m | t005, t006 |
+| t008 | Connection-info responses omit Render-required `externalConnectionString` when the datastore is not public | 30m | —          |
+| t007 | Closeout                                                                                                    | 10m | t005, t006, t008 |
 
 ## Definition of done
 
