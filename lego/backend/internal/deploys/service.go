@@ -622,9 +622,12 @@ func (s *Service) resolveCommit(ctx context.Context, a *appv1alpha1.App, ref str
 }
 
 // Cancel kills a still-open deploy (Render's POST .../deploys/{id}/cancel,
-// w2/m10): best-effort terminates the in-flight build Job for a repo-backed
-// service (an image-backed service has no build Job — the delete is a
-// harmless not-found no-op for it), computing the Job's identity from the
+// w2/m10). It stamps AnnotationCanceledReleaseGeneration on the App for BOTH
+// repo- and image-backed sources so the level-triggered operator settles the
+// release (settleCanceledRelease): revert to the last successful image, or
+// PhaseCanceled when none exists (w6/m104). For a repo-backed service it also
+// best-effort terminates the in-flight build Job/kpack Image — an image-backed
+// service has none to interrupt — computing the artifact's identity from the
 // deploy row's OWN stored Generation rather than the App's current one — a
 // later, unrelated spec write (a scale, an env change, another trigger) bumps
 // metadata.generation independently of this deploy, and would otherwise make
@@ -632,10 +635,8 @@ func (s *Service) resolveCommit(ctx context.Context, a *appv1alpha1.App, ref str
 // It then closes the row canceled with the same CAS-guarded CloseDeploy the
 // reconciler's write-back uses — whichever of Cancel and a genuinely-
 // converging rollout gets there first wins, so a race can never leave the
-// row half-canceled. Canceling the k8s rollout itself is out of scope
-// (matches Render: an image-backed deploy has no build to interrupt in the
-// first place). A deploy that already reached any terminal status is past the
-// cancelable window: Render's 409, never a silent no-op.
+// row half-canceled. A deploy that already reached any terminal status is past
+// the cancelable window: Render's 409, never a silent no-op.
 func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
 	if err != nil {
@@ -658,20 +659,29 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if d.FinishedAt != nil {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
 	}
+	// Mark the release canceled for BOTH source kinds before touching any build
+	// artifact. The operator is level-triggered and only this stamp makes
+	// prepareAppReleaseDecision take its canceled branch and settle the App CR
+	// (settleCanceledRelease): revert to the last successful image, or
+	// PhaseCanceled when none exists. A repo-backed App would otherwise recreate
+	// the deterministic build Job/kpack Image on its next pass; an image-backed
+	// App — which reaches none of the deletion below — would otherwise never
+	// settle at all, leaving the rollout converging the canceled image forever
+	// with no terminal phase (w6/m104, extending w6/m52 whose settle fix only the
+	// repo-backed path ever reached). A newer deploy stamps a newer
+	// release-generation and naturally supersedes this marker.
+	base := a.DeepCopy()
+	if a.Annotations == nil {
+		a.Annotations = map[string]string{}
+	}
+	a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = strconv.FormatInt(d.Generation, 10)
+	if err := s.Client.Patch(ctx, a, client.MergeFrom(base)); err != nil {
+		return DeployView{}, fmt.Errorf("mark canceled release: %w", err)
+	}
 	if a.Spec.Repo != "" {
-		// Mark the release before deleting its artifact. The operator is
-		// level-triggered and would otherwise recreate the deterministic build
-		// Job/kpack Image on its next pass because the App generation still asks
-		// for this release. A newer deploy stamps a newer release-generation and
-		// naturally supersedes this marker.
-		base := a.DeepCopy()
-		if a.Annotations == nil {
-			a.Annotations = map[string]string{}
-		}
-		a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = strconv.FormatInt(d.Generation, 10)
-		if err := s.Client.Patch(ctx, a, client.MergeFrom(base)); err != nil {
-			return DeployView{}, fmt.Errorf("mark canceled release: %w", err)
-		}
+		// Only a repo-backed deploy has a build artifact to tear down; an
+		// image-backed deploy has none to interrupt, so it skips this block — its
+		// cancel is fully expressed by the stamp above.
 		buildNS := a.Namespace
 		if s.BuildNamespace != "" {
 			buildNS = s.BuildNamespace

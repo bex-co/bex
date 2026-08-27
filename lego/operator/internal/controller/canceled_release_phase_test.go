@@ -132,3 +132,66 @@ func TestGenuineFailureStillReportsFailed(t *testing.T) {
 		t.Fatalf("phase = %q, want %q — a genuine failure is still a failure", stored.Status.Phase, appv1alpha1.PhaseFailed)
 	}
 }
+
+// TestImageBackedCancelSettlesToCanceled is the w6/m104 regression on the
+// no-prior-release branch for an IMAGE-backed App — the exact shape that stayed
+// stuck. Nothing in the canceled-release path is repo-gated: given the stamp the
+// backend now writes for image sources too, prepareAppReleaseDecision must reach
+// the canceled branch and settleCanceledRelease must then report PhaseCanceled,
+// not leave the service Deploying against a crash-looping image forever.
+func TestImageBackedCancelSettlesToCanceled(t *testing.T) {
+	ctx := context.Background()
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "worker", Namespace: "default", Generation: 2,
+			Annotations: map[string]string{appv1alpha1.AnnotationCanceledReleaseGeneration: "2"},
+		},
+		// Image-backed (Repo == ""): the source kind that never reached settle
+		// before m104. Image "" on Status makes this a first-ever deploy.
+		Spec:   appv1alpha1.AppSpec{Image: "docker.io/library/nginx:alpine"},
+		Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ObservedGeneration: 1},
+	}
+	if decision := prepareAppReleaseDecision(app); !decision.canceled {
+		t.Fatal("image-backed App with a canceled-release stamp must yield a canceled decision — the operator half of the m104 fix")
+	}
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).
+		WithObjects(app).WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if _, err := r.settleCanceledRelease(ctx, app, 3000); err != nil {
+		t.Fatalf("settleCanceledRelease: %v", err)
+	}
+	if app.Status.Phase != appv1alpha1.PhaseCanceled {
+		t.Fatalf("phase = %q, want %q — an image-backed first-deploy cancel must settle Canceled", app.Status.Phase, appv1alpha1.PhaseCanceled)
+	}
+}
+
+// TestImageBackedCancelWithPriorReleaseKeepsServing is the other m104 branch for
+// an image-backed App: a cancel when an earlier release IS live must revert to
+// it, never report Canceled — matching the Cancel dialog's "The last successful
+// deploy remains live." settleCanceledRelease dispatches Status.Image; assert the
+// branch choice (the no-release terminal is NOT written) as the repo-backed
+// control does, since dispatchRuntime needs more cluster than this fixture has.
+func TestImageBackedCancelWithPriorReleaseKeepsServing(t *testing.T) {
+	ctx := context.Background()
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "worker", Namespace: "default", Generation: 3,
+			Annotations: map[string]string{appv1alpha1.AnnotationCanceledReleaseGeneration: "3"},
+		},
+		Spec: appv1alpha1.AppSpec{Image: "docker.io/library/nginx:alpine"}, // image-backed
+		Status: appv1alpha1.AppStatus{
+			Phase: appv1alpha1.PhaseRunning, Image: "docker.io/library/redis:alpine@sha256:live",
+			ActiveRevision: "rev-2", ObservedGeneration: 2,
+		},
+	}
+	if decision := prepareAppReleaseDecision(app); !decision.canceled {
+		t.Fatal("image-backed App with a canceled-release stamp must yield a canceled decision")
+	}
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).
+		WithObjects(app).WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	_, _ = r.settleCanceledRelease(ctx, app, 3000)
+	if app.Status.Phase == appv1alpha1.PhaseCanceled {
+		t.Fatal("an image-backed cancel with a live prior release must keep serving it, not report Canceled")
+	}
+}
