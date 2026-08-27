@@ -129,6 +129,62 @@ func TestGenerateBlueprintRoundTrip(t *testing.T) {
 	}
 }
 
+// TestGenerateBlueprintServiceNameIsPublicNotCRName covers w6/m114: a
+// store-managed App's object name is CRName(tenant, name) — tenant-prefixed and
+// past ValidAppName's 30-char cap — so exporting a.Name produced a render.yaml
+// that bex's own validateBlueprint rejected AND leaked the workspace tenant id
+// into a file the user is told to commit. Every prior fixture used a bare CR
+// name (LabelServiceName absent), the legacy path where a.Name already is the
+// public name, so none of them exercised this. The generator's self-check runs
+// only compile+parse, not the create boundary validateBlueprint runs, which is
+// why the bad name reached users.
+func TestGenerateBlueprintServiceNameIsPublicNotCRName(t *testing.T) {
+	const (
+		publicName = "qa-20260826-webhook-svc"
+		tenantID   = "tea-d98210cbbpdc73dcrkvg"
+		appID      = "srv-da7o6ovvqdcc73bpn9hg"
+		crName     = tenantID + "-" + publicName // 48 chars: past the 30-char cap
+	)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      crName,
+			Namespace: "default",
+			Labels: map[string]string{
+				core.LabelServiceName: publicName,
+				core.LabelTenant:      tenantID,
+				core.LabelAppID:       appID,
+			},
+		},
+		Spec: appv1alpha1.AppSpec{
+			Type:    appv1alpha1.TypeWebService,
+			Repo:    "https://github.com/bex-co/bex-hello-go-live.git",
+			Runtime: "go", BuildCommand: "go build -o app .", StartCommand: "./app",
+		},
+	}
+	cl := fakeClient(app)
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	out, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{ServiceIDs: []string{appID}})
+	if err != nil {
+		t.Fatalf("GenerateBlueprint: %v", err)
+	}
+	// The exporter must emit the public name a user would type to recreate it.
+	if !strings.Contains(out.Manifest, "name: "+publicName) {
+		t.Errorf("manifest must carry the public name %q:\n%s", publicName, out.Manifest)
+	}
+	// Not the tenant-prefixed CR object name, and no tenant id anywhere: this is
+	// a file the user commits to a repo.
+	if strings.Contains(out.Manifest, "tea-") {
+		t.Errorf("manifest leaks the tenant id:\n%s", out.Manifest)
+	}
+	if strings.Contains(out.Manifest, crName) {
+		t.Errorf("manifest carries the CR object name:\n%s", out.Manifest)
+	}
+	// The loop is closed: the platform's own validator accepts what it produced.
+	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest); err != nil || !v.Valid {
+		t.Fatalf("generated manifest must self-validate: %+v err=%v\n%s", v, err, out.Manifest)
+	}
+}
+
 func TestGenerateBlueprintDomainsCronAndWorkerScaling(t *testing.T) {
 	cpu := int32(70)
 	web := &appv1alpha1.App{
