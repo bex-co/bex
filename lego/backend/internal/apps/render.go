@@ -156,10 +156,10 @@ type renderService struct {
 	// (enabled|disabled), controlling whether the platform .onbex.co subdomain
 	// is active for this service (w7/m31). Always present and non-empty.
 	RenderSubdomainPolicy string `json:"renderSubdomainPolicy"`
-	// IPAllowList is Render's inbound IP allowlist for a web_service or
-	// static_site: each entry is {cidrBlock, description}. Nil/omitted when
-	// the allowlist is empty (open to all source IPs, Render's default).
-	IPAllowList []ipAllowEntry `json:"ipAllowList,omitempty"`
+	// NOTE: Render's inbound IP allowlist is NOT a top-level service field. Its
+	// schema places ipAllowList inside serviceDetails (webServiceDetails /
+	// staticSiteDetails only), so it is emitted from renderServiceDetails(), not
+	// here — see the ipAllowList block there (w6/m106).
 }
 
 type renderRegistryCredentialSummary struct {
@@ -289,7 +289,6 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		NotificationsToSend:   a.NotificationsToSend,
 		RenderSubdomainPolicy: a.RenderSubdomainPolicy,
 		HealthCheckPath:       a.HealthCheckPath,
-		IPAllowList:           cloneIPAllowEntries(a.IPAllowList),
 	}
 }
 
@@ -365,6 +364,20 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 			"mountPath": a.Disk.MountPath,
 			"sizeGB":    a.Disk.SizeGB,
 		}
+	}
+	// Render's schema puts the inbound ipAllowList INSIDE serviceDetails — on
+	// webServiceDetails/staticSiteDetails only; private/worker/cron omit the
+	// property entirely (render-public-api-1.json) — as [{cidrBlock,
+	// description}], NOT beside it. A Render REST/MCP client reads
+	// serviceDetails.ipAllowList and finds nothing if the value is only on the
+	// sibling top-level view (the identical nesting-level omission the w1/m86
+	// disk audit caught; w6/m106). The create/PATCH decode already reads this
+	// nested location (rest.go decodeIPAllowList), so emitting it here closes a
+	// read/write asymmetry. Gated to the two ingress types and omitted when
+	// empty (open to all source IPs, Render's default), like every optional
+	// field above.
+	if len(a.IPAllowList) > 0 && appv1alpha1.TypePubliclyRoutable(svcType) {
+		details["ipAllowList"] = cloneIPAllowEntries(a.IPAllowList)
 	}
 	return details
 }
