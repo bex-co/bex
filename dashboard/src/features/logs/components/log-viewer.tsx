@@ -139,6 +139,11 @@ export function LogViewer({
     type: queryFilters.type,
     text: debouncedText,
     instance: queryFilters.instance,
+    // Follow the pod from the selected window's edge, not kubelet offset 0, so a
+    // narrow range no longer surfaces lines older than it on first connect
+    // (w6/m111). The tail freezes this per-subscription — the sliding window
+    // won't reopen the stream.
+    startTime: historyWindow.startTime,
     createEventSource,
   });
 

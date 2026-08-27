@@ -128,12 +128,14 @@ const enLogs: Record<string, TranslationEntry> = {
     description: "Banner when the SSE stream drops",
   },
   "logs.emptyTitle": {
-    message: "No logs yet",
-    description: "Empty-state title when the service has produced no logs",
+    message: "No logs in this time range",
+    description:
+      "Empty-state title when the selected (always-bounded) history range holds no lines. Never claims the service has never logged — the range can't establish that (w6/m111)",
   },
   "logs.emptyBody": {
-    message: "This service hasn't produced any logs yet.",
-    description: "Empty-state body with no filters applied",
+    message: "No log lines fall within this time range.",
+    description:
+      "Empty-state body with no filters applied — honest about the bounded window, not the service's whole history (w6/m111)",
   },
   "logs.emptyFilteredBody": {
     message: "No logs match these filters.",

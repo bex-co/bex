@@ -147,12 +147,17 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// Resume where this client's previous connection stopped. A browser
 	// EventSource reconnects on its own — invisibly to the page — and replays
 	// the last `id:` we emitted as Last-Event-ID; honoring it is what keeps a
-	// reconnect from re-reading the pod's whole log from offset 0 (w6/m93). An
-	// explicit startTime always wins: the caller asked for a specific window.
-	if q.Since.IsZero() {
-		if resume, ok := resumeFrom(r.Header.Get("Last-Event-ID")); ok {
-			q.Since = resume
-		}
+	// reconnect from re-reading the pod's whole log from offset 0 (w6/m93).
+	//
+	// An explicit startTime is the window's LOWER bound, not a competing cursor:
+	// the browser now sends it on every connect (w6/m111), so it rides along on
+	// the invisible reconnects too. Take the LATER of the two — the resume never
+	// re-reads below the caller's window, and a window never re-reads what the
+	// tail already delivered. With no startTime (a CLI/NDJSON client) the resume
+	// is the only bound, exactly as before; with a startTime and no resume (the
+	// first connect) the window is the bound.
+	if resume, ok := resumeFrom(r.Header.Get("Last-Event-ID")); ok && resume.After(q.Since) {
+		q.Since = resume
 	}
 
 	// SECURITY (codex #3): reject a subscription with no live producer BEFORE

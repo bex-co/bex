@@ -21,8 +21,12 @@ vi.mock("../../hooks/use-log-history", () => ({
     return historyState;
   },
 }));
+const useLiveLogsSpy = vi.fn();
 vi.mock("../../hooks/use-live-logs", () => ({
-  useLiveLogs: () => ({ lines: [], status: "idle" }),
+  useLiveLogs: (...args: unknown[]) => {
+    useLiveLogsSpy(...args);
+    return { lines: [], status: "idle" };
+  },
 }));
 vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelValues: () => [],
@@ -38,6 +42,7 @@ beforeEach(() => {
   historyState.error = undefined;
   historyState.storeUnavailable = false;
   useHistorySpy.mockReset();
+  useLiveLogsSpy.mockReset();
 });
 
 describe("LogViewer store-unavailable state (w5/008)", () => {
@@ -88,7 +93,9 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     expect(
       screen.getByText("No logs match these filters."),
     ).toBeInTheDocument();
-    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No logs in this time range"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows filtered empty-state copy when an instance filter yields zero results", () => {
@@ -102,15 +109,36 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
       />,
     );
     expect(screen.getByText("No matching logs")).toBeInTheDocument();
-    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No logs in this time range"),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows unfiltered empty-state copy when there are no logs and no filter", () => {
+  it("shows range-relative empty-state copy when there are no logs and no filter", () => {
     render(<LogViewer resource="web" />);
-    expect(screen.getByText("No logs yet")).toBeInTheDocument();
+    expect(screen.getByText("No logs in this time range")).toBeInTheDocument();
     expect(
-      screen.getByText("This service hasn't produced any logs yet."),
+      screen.getByText("No log lines fall within this time range."),
     ).toBeInTheDocument();
+    // Never the unassertable "this service has never logged" claim — every range
+    // is bounded, so the page structurally can't know that (w6/m111).
+    expect(
+      screen.queryByText("This service hasn't produced any logs yet."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("follows the live tail from the selected window's start, not offset 0 (w6/m111)", () => {
+    const range = RANGE_PRESETS.find((preset) => preset.id === "4h")!;
+    render(<LogViewer resource="web" range={range} />);
+
+    const opts = useLiveLogsSpy.mock.calls.at(-1)?.[0] as { startTime: string };
+    const window = useHistorySpy.mock.calls.at(-1)?.[2] as {
+      startTime: string;
+    };
+    // The tail's lower bound is exactly the history window's start, so the first
+    // SSE connect can't surface lines older than the range.
+    expect(opts.startTime).toBe(window.startTime);
+    expect(Date.parse(opts.startTime)).toBeLessThanOrEqual(Date.now());
   });
 
   it("passes the selected relative range as concrete history-query bounds", () => {
@@ -214,12 +242,11 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
   });
 });
 
-// w6/m47 t003: the empty state used to hardcode "No logs yet" as its title
-// while the body branched on the active filter, so a zero-result search on a
-// service with real log history asserted both "this service has never logged"
-// and "nothing matches your filter" at once.
-describe("LogViewer zero-result empty state (w6/m47)", () => {
-  it("titles a filtered zero-result view as a filter miss, not an empty service", () => {
+// w6/m47 t003 split the title so a filtered miss stops asserting "this service
+// has never logged". w6/m111 finished the job: since every range is bounded, the
+// unfiltered miss can't assert that either — it now reports the empty range.
+describe("LogViewer zero-result empty state (w6/m47, w6/m111)", () => {
+  it("titles a filtered zero-result view as a filter miss, not an empty range", () => {
     render(
       <LogViewer
         resource="web"
@@ -229,15 +256,21 @@ describe("LogViewer zero-result empty state (w6/m47)", () => {
     expect(screen.getByText("No matching logs")).toBeInTheDocument();
     expect(screen.getByText("No logs match these filters.")).toBeInTheDocument();
     // The contradictory pairing is the bug: these two must never co-render.
-    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No logs in this time range"),
+    ).not.toBeInTheDocument();
   });
 
-  it("keeps the unfiltered zero-result view reporting a genuinely empty service", () => {
+  it("reports the unfiltered zero-result view as an empty range, never a never-logged service", () => {
     render(<LogViewer resource="web" />);
-    expect(screen.getByText("No logs yet")).toBeInTheDocument();
+    expect(screen.getByText("No logs in this time range")).toBeInTheDocument();
     expect(
-      screen.getByText("This service hasn't produced any logs yet."),
+      screen.getByText("No log lines fall within this time range."),
     ).toBeInTheDocument();
     expect(screen.queryByText("No matching logs")).not.toBeInTheDocument();
+    // The claim this page can never truthfully make (w6/m111).
+    expect(
+      screen.queryByText("This service hasn't produced any logs yet."),
+    ).not.toBeInTheDocument();
   });
 });
