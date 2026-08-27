@@ -35,7 +35,7 @@ import {
 } from "@/features/env-groups/hooks/use-env-groups";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
-import { formatDateTime } from "@/common/lib/format";
+import { LocalDateTime } from "@/common/components/local-time";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export const Route = createFileRoute("/env-groups")({
@@ -231,13 +231,8 @@ export function EnvGroupsPage() {
                           <TableCell className="text-right tabular-nums">
                             {group.secretFileNames.length}
                           </TableCell>
-                          {/* Local-timezone text: SSR and the browser disagree
-                              by design, so the mismatch is expected (w6/030). */}
-                          <TableCell
-                            className="whitespace-nowrap text-right text-muted-foreground"
-                            suppressHydrationWarning
-                          >
-                            {formatDateTime(group.updatedAt) ?? "—"}
+                          <TableCell className="whitespace-nowrap text-right text-muted-foreground">
+                            <LocalDateTime value={group.updatedAt} />
                           </TableCell>
                         </TableRow>
                       ))}

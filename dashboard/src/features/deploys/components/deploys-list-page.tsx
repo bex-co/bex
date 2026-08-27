@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { EmptyState } from "@/common/components/empty-state";
 import {
   Card,
@@ -99,6 +100,11 @@ function durationLabel(d: DeployRow, t: Translate): string {
  */
 export function DeploysListPage({ serviceId }: DeploysListPageProps) {
   const { t } = useTranslations();
+  // Absolute deploy times are the viewer's local timezone, which the UTC SSR
+  // pod can't know — defer them to a post-hydration render (w6/m107) rather
+  // than freeze the pod's UTC clock on screen. One flag for the whole list;
+  // hooks can't be called inside the per-row map.
+  const hydrated = useIsHydrated();
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const { deploys, loading, loadingMore, error, hasMore, loadMore } =
@@ -165,7 +171,9 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
         <TableBody>
           {visibleDeploys.map((d) => {
             const preDeploy = preDeployStatusKey(d.preDeployStatus);
-            const createdAt = formatDeployTimestamp(d.createdAt);
+            const createdAt = hydrated
+              ? formatDeployTimestamp(d.createdAt)
+              : null;
             const hasListAction =
               isCancelableDeployStatus(d.status) || d.status === "deactivated";
             return (
@@ -204,9 +212,7 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                     ) : null}
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       {createdAt ? (
-                        // formatDeployTimestamp renders in the local timezone,
-                        // which differs between the UTC SSR pod and the browser.
-                        <span suppressHydrationWarning>
+                        <span>
                           {t("deploys.deployedAt", { timestamp: createdAt })}
                         </span>
                       ) : null}

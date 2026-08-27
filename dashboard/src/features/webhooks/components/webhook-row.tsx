@@ -8,7 +8,8 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { WebhookEventChips } from "@/features/webhooks/components/webhook-event-chips";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 import { RelativeAge } from "@/common/components/relative-time";
-import { formatDateTime } from "@/common/lib/format";
+import { LocalDateTime } from "@/common/components/local-time";
+import { useLocalDateTime } from "@/common/hooks/use-local-date";
 
 export interface WebhookRowProps {
   entry: WebhookEndpointView;
@@ -47,7 +48,7 @@ export function WebhookRow({
           entry.latestParentStatus !== "pending"
         ? "destructive"
         : "secondary";
-  const exactLatest = formatDateTime(entry.latestSentAt);
+  const exactLatest = useLocalDateTime(entry.latestSentAt);
 
   return (
     <TableRow>
@@ -78,7 +79,11 @@ export function WebhookRow({
               className="text-muted-foreground flex flex-col text-xs"
             >
               <RelativeAge value={entry.latestSentAt} as="span" />
-              <span>{exactLatest ?? entry.latestSentAt}</span>
+              <LocalDateTime
+                value={entry.latestSentAt}
+                as="span"
+                fallback={entry.latestSentAt}
+              />
             </time>
           ) : null}
         </div>

@@ -1,6 +1,6 @@
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatDateTime } from "@/common/lib/format";
+import { LocalDateTime } from "@/common/components/local-time";
 import type { EnvGroupView } from "@/features/env-groups/types";
 
 export function EnvGroupMetadata({
@@ -48,15 +48,7 @@ function MetadataItem({
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="truncate font-mono text-xs" title={value ?? undefined}>
         {timestamp && value ? (
-          // formatDateTime renders in the RUNTIME's timezone, so the SSR pass
-          // (UTC container) and the browser produce different text for the same
-          // instant — an uncaught React #418 on every visit to this page
-          // (w6/030). The machine-readable instant stays exact in dateTime; only
-          // the human rendering is allowed to differ, the same treatment
-          // MetadataList already gives its timestamp rows.
-          <time dateTime={value} suppressHydrationWarning>
-            {formatDateTime(value) ?? value}
-          </time>
+          <LocalDateTime value={value} fallback={value} />
         ) : (
           (value ?? "—")
         )}

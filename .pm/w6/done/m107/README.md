@@ -1,6 +1,20 @@
 # w6 · m107 — `formatDateTime`/`formatDateLong` display the SSR container's clock, not the viewer's, on every fresh page load
 
-**Worker:** worker6 **Goal:** every dashboard surface that renders an absolute date/time via `formatDateTime`/`formatDateLong` shows the exact text a client-only render in the viewer's own browser timezone would produce — on the very first paint the user can observe, whether the page arrived via full navigation, a bookmark, or a client-side transition — never the SSR container's own (effectively UTC) clock digits mislabeled as local. **Status:** todo
+**Worker:** worker6 **Goal:** every dashboard surface that renders an absolute date/time via `formatDateTime`/`formatDateLong` shows the exact text a client-only render in the viewer's own browser timezone would produce — on the very first paint the user can observe, whether the page arrived via full navigation, a bookmark, or a client-side transition — never the SSR container's own (effectively UTC) clock digits mislabeled as local. **Status:** done (2026-08-26)
+
+## Resolution (2026-08-26)
+
+Confirmed real, then fixed. A throwaway React-19 hydration probe (`hydrateAcrossBoundary` shape) reproduced the exact mechanism: a `<time suppressHydrationWarning>` whose text differs between the SSR and client passes keeps the **server's** value permanently (`afterHydrate === "8:28 PM"`, 0 recovered errors); the identical node **without** the guard self-corrects to the client value (`"1:28 PM"`) but logs one React #418. So the `suppressHydrationWarning` added for `w6/030` was itself what froze the wrong UTC clock on screen.
+
+Fix — a shared client-safe primitive plus a full call-site migration:
+
+- **`common/hooks/use-is-hydrated.ts`** — `useSyncExternalStore(subscribe, () => true, () => false)`: `false` on the SSR pass and the hydrating client render (so both agree byte-for-byte — no #418), `true` after hydration commits. The officially-supported way to defer inherently client-only output.
+- **`common/components/local-time.tsx`** — `LocalDateTime` / `LocalDate`: render the machine-readable instant in `dateTime` always, a reserved-width `Skeleton` until hydrated, then the viewer-local text. No `suppressHydrationWarning` needed (both server passes emit the placeholder). In a pure client-only render (RTL tests, client-only-data routes) the value shows immediately with no placeholder — the deferral engages only on real SSR→hydration.
+- **`common/hooks/use-local-date.ts`** — `useLocalDateTime` / `useLocalDate`: the string form for `title=` attributes, sentence interpolation, and per-row `.map()` bodies where a component's own hook can't be called.
+
+Migrated all 13 documented call sites + 3 additional `formatDeployTimestamp` render consumers the original grep missed (`deploy-timeline.tsx`, `deploys-list-page.tsx` — which carried the same `suppressHydrationWarning` anti-pattern — and `deploy-header.tsx`). Every render-body `suppressHydrationWarning` on a timestamp is gone; the only remaining direct `formatDateTime` call is the `formatDeployTimestamp` pure helper, now called only behind a hydration gate. Corrected the false-invariant doc comment on `format-date-time.ts`.
+
+**Verification:** `common/components/__tests__/local-time.test.tsx` asserts, for both `formatDateTime` and the day-boundary `formatDateLong` case, that the SSR markup carries no AM/PM clock (only the placeholder + exact `dateTime`), that the settled post-hydration text equals the local formatter's output, and that **zero** #418s are recovered — a deterministic reproduction of the exact defect, run under `TZ=America/Los_Angeles`. `yarn typecheck && yarn lint && yarn test` (2697 tests) all green. Live `page.goto` spot-check against production (t005's original method) was not run this session (no prod browser access here); the hydration unit test is a stronger, deterministic substitute for this class of bug and remains re-checkable via `/qa-find-bugs`.
 
 ## Background (found live, 2026-08-26 `/qa-find-bugs` hunt, 17th run of the day)
 
@@ -33,6 +47,8 @@ The `recovery-panel.tsx` instance is the highest-stakes: its own code comment sa
 **Adjacent classes / dedupe.** This is a **third**, independent root cause under the generic React #418 code (after `w1/done/m81/done/t002.md`'s `navigator.platform` read and `w6/m102`'s `formatRelativeAge`/`formatRelativeUntil`), and it **corrects the standing understanding of `w6/030`**: that item's own `suppressHydrationWarning` treatment (confirmed live in `env-group-metadata.tsx`, which carries an explicit `w6/030` comment) does stop the console error `w6/030` was literally filed against, so it is not being reopened or re-filed — but it was never a fix for the underlying wrong-value display, which `w6/030`'s own filing never asserted as in-scope. This milestone is the first to name and fix that broader, higher-severity defect: the value itself, not just the console noise, and across every call site of the shared formatter rather than the one page `w6/030` happened to be filed against.
 
 ## Tasks (in order)
+
+All tasks **t001–t009 DONE** (2026-08-26) — see Resolution above.
 
 | id   | title                                                                                                              | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------------ | --- | ---------- |

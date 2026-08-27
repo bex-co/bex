@@ -6,6 +6,12 @@
 
 import { formatDateTime } from "@/common/lib/format";
 
+/**
+ * Shared so the deploy-history rows and the deploy-detail header render the same
+ * text. Inherits `formatDateTime`'s runtime-timezone caveat: only call it behind
+ * a hydration gate (`useIsHydrated`) so the UTC SSR clock is never frozen on
+ * screen (w6/m107).
+ */
 export function formatDeployTimestamp(iso: string | null): string | null {
   return formatDateTime(iso);
 }

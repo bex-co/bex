@@ -34,7 +34,8 @@ import {
   PanelTableSkeleton,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatDateTime } from "@/common/lib/format";
+import { LocalDateTime } from "@/common/components/local-time";
+import { useLocalDateTime } from "@/common/hooks/use-local-date";
 import { config } from "@/config/config";
 import { RelativeAge } from "@/common/components/relative-time";
 import { useWebhookDeliveries } from "@/features/webhooks/hooks/use-webhook-deliveries";
@@ -244,7 +245,7 @@ function DeliveryRow({
   const eventLabel = labelKey ? t(labelKey) : delivery.eventType;
   const evidence =
     delivery.requestBody || delivery.responseBody || delivery.transportError;
-  const exactSentAt = formatDateTime(delivery.sentAt);
+  const nextAttemptAt = useLocalDateTime(delivery.nextAttemptAt);
   let resultSummary = t("webhooks.noResponseEvidence");
   if (delivery.status === "pending") {
     resultSummary = t("webhooks.status.pending");
@@ -316,7 +317,12 @@ function DeliveryRow({
           {delivery.sentAt ? (
             <time dateTime={delivery.sentAt} className="flex flex-col">
               <RelativeAge value={delivery.sentAt} as="span" />
-              <span className="text-xs">{exactSentAt ?? delivery.sentAt}</span>
+              <LocalDateTime
+                value={delivery.sentAt}
+                as="span"
+                className="text-xs"
+                fallback={delivery.sentAt}
+              />
             </time>
           ) : (
             "—"
@@ -383,9 +389,7 @@ function DeliveryRow({
                 {delivery.nextAttemptAt ? (
                   <p>
                     {t("webhooks.retryScheduled", {
-                      date:
-                        formatDateTime(delivery.nextAttemptAt) ??
-                        delivery.nextAttemptAt,
+                      date: nextAttemptAt ?? delivery.nextAttemptAt,
                     })}
                   </p>
                 ) : null}

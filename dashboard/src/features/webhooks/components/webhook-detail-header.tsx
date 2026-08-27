@@ -4,7 +4,7 @@ import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatDateLong } from "@/common/lib/format";
+import { useLocalDate } from "@/common/hooks/use-local-date";
 import { WebhookEventChips } from "@/features/webhooks/components/webhook-event-chips";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
@@ -22,7 +22,10 @@ export function WebhookDetailHeader({
   creatorIdentity?: string;
 }) {
   const { t } = useTranslations();
-  const createdDate = formatDateLong(endpoint.createdAt);
+  // Deferred to a post-hydration client render (the provenance line simply
+  // appears once the viewer-local date is known) — the SSR container's UTC
+  // clock must never be frozen on screen (w6/m107).
+  const createdDate = useLocalDate(endpoint.createdAt);
   const creator = creatorIdentity ?? endpoint.createdBy;
 
   return (

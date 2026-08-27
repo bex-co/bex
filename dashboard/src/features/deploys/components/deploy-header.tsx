@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import type { ReactNode } from "react";
 type Translate = ReturnType<typeof useTranslations>["t"];
 import {
@@ -41,6 +42,10 @@ export interface DeployHeaderProps {
  */
 export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
   const { t } = useTranslations();
+  // Absolute deploy times are the viewer's local timezone; the UTC SSR pod
+  // can't know it, so defer them to a post-hydration render (w6/m107). Must be
+  // read before the early `!deploy` return so the hook order stays stable.
+  const hydrated = useIsHydrated();
   if (!deploy) {
     return (
       <Card>
@@ -59,25 +64,29 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
     );
   }
   const preDeploy = preDeployStatusKey(deploy.preDeployStatus);
-  const commitCreatedAt = formatDeployTimestamp(deploy.commitCreatedAt);
+  const commitCreatedAt = hydrated
+    ? formatDeployTimestamp(deploy.commitCreatedAt)
+    : null;
   const facts = [
     {
       label: t("deploys.created"),
-      value: formatDeployTimestamp(deploy.createdAt),
+      value: hydrated ? formatDeployTimestamp(deploy.createdAt) : null,
     },
     {
       label: t("deploys.updated"),
-      value: formatDeployTimestamp(deploy.updatedAt),
+      value: hydrated ? formatDeployTimestamp(deploy.updatedAt) : null,
     },
     {
       label: t("deploys.started"),
-      value: formatDeployTimestamp(deploy.startedAt),
+      value: hydrated ? formatDeployTimestamp(deploy.startedAt) : null,
     },
     {
       label: t("deploys.finished"),
-      value: formatDeployTimestamp(deploy.finishedAt),
+      value: hydrated ? formatDeployTimestamp(deploy.finishedAt) : null,
     },
     {
+      // Duration is an elapsed span, not a wall-clock reading — timezone-neutral,
+      // so it renders on the SSR pass too (no hydration gate).
       label: t("deploys.duration"),
       value: formatDeployDuration(deploy.startedAt, deploy.finishedAt),
     },
