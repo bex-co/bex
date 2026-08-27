@@ -63,7 +63,7 @@ type renderKeyValue struct {
 	DashboardURL  string                  `json:"dashboardUrl,omitempty"`
 	Version       string                  `json:"version,omitempty"`
 	Options       keyValueOptionsView     `json:"options"`
-	IPAllowList   []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+	IPAllowList   []core.IPAllowListEntry `json:"ipAllowList"`
 	EnvironmentID string                  `json:"environmentId,omitempty"`
 	ExternalHost  string                  `json:"externalHost,omitempty"`
 	Public        bool                    `json:"public"`
@@ -71,6 +71,10 @@ type renderKeyValue struct {
 }
 
 func toRenderKeyValue(kv KeyValueView) renderKeyValue {
+	// ipAllowList is required in Render's keyValue schema — serialize [] when
+	// empty, never an absent key (core.AllowListOrEmpty, w6/m109). kvView
+	// already coalesces; this REST-only wrapper defends the wire shape on its
+	// own, matching environments' toRenderEnvironment.
 	return renderKeyValue{
 		ID:           kv.ID,
 		Name:         kv.Name,
@@ -86,7 +90,7 @@ func toRenderKeyValue(kv KeyValueView) renderKeyValue {
 			MaxmemoryPolicy: kv.MaxmemoryPolicy,
 			PersistenceMode: kv.PersistenceMode,
 		},
-		IPAllowList:   kv.IPAllowList,
+		IPAllowList:   core.AllowListOrEmpty(kv.IPAllowList),
 		EnvironmentID: kv.EnvironmentID,
 		ExternalHost:  kv.ExternalHost,
 		Public:        kv.Public,

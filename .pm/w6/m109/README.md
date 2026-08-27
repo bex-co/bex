@@ -1,6 +1,6 @@
 # w6 · m109 — Postgres/KeyValue REST+MCP omit Render-required `ipAllowList`/`readReplicas` when empty
 
-**Worker:** worker6 **Goal:** `GET`/list/create/update responses for Postgres (REST `/v1/postgres`, MCP `get_postgres`/`list_postgres_instances`/etc.) and Key Value (REST `/v1/key-value`, MCP `get_key_value`/etc.) always include `ipAllowList` (and, for Postgres, `readReplicas`) as `[]` when there are no entries — matching Render's own pinned OpenAPI schema, which declares both `required` — instead of omitting the key entirely, which is what happens today for the overwhelmingly common case (no CIDR restriction, no read replicas). GraphQL already gets this right; REST and MCP must match it. **Status:** todo
+**Worker:** worker6 **Goal:** `GET`/list/create/update responses for Postgres (REST `/v1/postgres`, MCP `get_postgres`/`list_postgres_instances`/etc.) and Key Value (REST `/v1/key-value`, MCP `get_key_value`/etc.) always include `ipAllowList` (and, for Postgres, `readReplicas`) as `[]` when there are no entries — matching Render's own pinned OpenAPI schema, which declares both `required` — instead of omitting the key entirely, which is what happens today for the overwhelmingly common case (no CIDR restriction, no read replicas). GraphQL already gets this right; REST and MCP must match it. **Status:** in progress — t001–t006 done (fix + tests + ADR018 row + conformance-allowlist cleanup, all gates green); t007 closeout awaits `/ship` + the live `api.bex.co` re-probe
 
 ## Background (found live, 2026-08-26, 20th `/qa-find-bugs` hunt)
 
@@ -71,12 +71,12 @@ All probes run from inside the authenticated browser session (`page.evaluate` + 
 
 | id   | title                                                                                                    | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Fix `PostgresView.IPAllowList`/`ReadReplicas`: drop `omitempty`, nil-coalesce to `[]T{}` at response construction, matching `environments/rest.go`'s pattern | 30m | —          |
-| t002 | Fix `KeyValueView.IPAllowList` and REST's separate `renderKeyValue.IPAllowList`: same drop-omitempty + nil-coalesce treatment in both structs | 30m | —          |
-| t003 | Regression tests: REST GET/list/create/PATCH and MCP `get_postgres`/`get_key_value` on a fixture with zero entries assert the key is present as `[]`, not absent; non-empty case still round-trips correctly (no regression) | 45m | t001, t002 |
-| t004 | Render parity — confirm GraphQL is unaffected (still `[]`) and REST/MCP now agree with it; correct any doc claim about this shape | 20m | t003       |
-| t005 | Simplify                                                                                                    | 15m | t004       |
-| t006 | Test coverage                                                                                               | 20m | t004       |
+| t001 | Fix `PostgresView.IPAllowList`/`ReadReplicas`: drop `omitempty`, nil-coalesce to `[]T{}` at response construction, matching `environments/rest.go`'s pattern — **DONE** | 30m | —          |
+| t002 | Fix `KeyValueView.IPAllowList` and REST's separate `renderKeyValue.IPAllowList`: same drop-omitempty + nil-coalesce treatment in both structs — **DONE** | 30m | —          |
+| t003 | Regression tests: REST GET/list/create/PATCH and MCP `get_postgres`/`get_key_value` on a fixture with zero entries assert the key is present as `[]`, not absent; non-empty case still round-trips correctly (no regression) — **DONE** | 45m | t001, t002 |
+| t004 | Render parity — confirm GraphQL is unaffected (still `[]`) and REST/MCP now agree with it; correct any doc claim about this shape — **DONE** | 20m | t003       |
+| t005 | Simplify — **DONE**                                                                                          | 15m | t004       |
+| t006 | Test coverage — **DONE**                                                                                     | 20m | t004       |
 | t007 | Closeout                                                                                                    | 10m | t005, t006 |
 
 ## Definition of done
