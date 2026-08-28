@@ -38,6 +38,12 @@ compute:
       cpu: 100m
       memory: 512Mi
       ephemeralStorage: 1Gi
+      # Free compute is rated $0.00/second (internal/pricing), so N free
+      # instances would be N× capacity for $0. Pinned to a single instance,
+      # matching Render — its free instance types offer no horizontal scaling
+      # (render.com/docs/scaling, docs/render-artifacts/free-tier-scaling.md).
+      # Paid tiers below omit maxInstances → no plan cap (only MaxReplicas=100).
+      maxInstances: 1
     - id: starter
       renderPlan: starter
       cpu: 500m

@@ -59,6 +59,13 @@ type ComputeTier struct {
 	// disk like it bounds CPU and memory. Applied to every tenant execution
 	// mode that flows through the compute ladder (serving, cron, pre-deploy).
 	EphemeralStorage string `json:"ephemeralStorage"`
+	// MaxInstances is the plan's ceiling on running instances (w6/m118). 0 (the
+	// omitted default) means "no plan-specific cap" — only the platform ceiling
+	// types.MaxReplicas applies. The free tier is rated $0.00/second in
+	// internal/pricing, so N free instances would be N× the capacity for $0;
+	// free therefore pins to 1, matching Render, whose free instance types offer
+	// no horizontal scaling (render.com/docs/scaling, docs/render-artifacts).
+	MaxInstances int32 `json:"maxInstances,omitempty"`
 }
 
 // PostgresTier is one rung of the managed-Postgres ladder (the Database
@@ -163,6 +170,21 @@ func (c ComputeCatalog) RenderPlans() []string {
 		plans[i] = t.RenderPlan
 	}
 	return plans
+}
+
+// InstanceCap returns tier id's plan ceiling on running instances (w6/m118),
+// and ok=false when the tier has no plan-specific cap — in which case only the
+// caller's platform ceiling (types.MaxReplicas) applies. An empty or unknown id
+// also returns ok=false, so an untiered/bare-CR App is never capped by plan.
+// Both the backend (refusing over-cap writes) and the operator (clampReplicas
+// defense-in-depth) read the limit from here rather than testing for the
+// literal "free", so the plan catalog stays the single source of the bound.
+func (c ComputeCatalog) InstanceCap(id string) (int32, bool) {
+	t, found := c.byID[id]
+	if !found || t.MaxInstances <= 0 {
+		return 0, false
+	}
+	return t.MaxInstances, true
 }
 
 // Resources returns the pod requests/limits (as parseable Quantity strings)

@@ -85,7 +85,12 @@ export function isWorker(s: ServiceView): boolean {
  * bex-api, so a legacy App with no explicit type still matches.
  */
 export function isWebService(s: ServiceView): boolean {
-  return s.type === "web_service";
+  return isWebServiceType(s.type);
+}
+
+/** Raw-type form for callers that have not built a ServiceView. */
+export function isWebServiceType(type: string): boolean {
+  return type === "web_service";
 }
 
 /**
@@ -99,10 +104,8 @@ export function isPrivateService(s: ServiceView): boolean {
 
 /**
  * True when this type binds an HTTP port of its own, so port/URL vocabulary
- * applies to it. Free-tier auto-sleep rides on the same fact rather than being
- * a second rule: the operator only hibernates behind an Ingress, because a
- * sleeping service is woken by an inbound request (`app_controller.go` returns
- * early for cron/static and gates hibernation on `!worker`).
+ * applies to it. This deliberately includes private services; public routing
+ * and auto-sleep have narrower predicates.
  *
  * Takes the raw wire value, like `deriveServiceType`, so callers holding an
  * untyped `ServiceView.type` need no cast.

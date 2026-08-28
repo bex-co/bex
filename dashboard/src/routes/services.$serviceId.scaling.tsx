@@ -52,6 +52,7 @@ export function ServiceScalingPage({ serviceId }: { serviceId: string }) {
         <ManualScalingSection
           serviceId={serviceId}
           replicas={service.replicas ?? 1}
+          plan={service.plan}
         />
       )}
       <ScalingRecentMetrics serviceId={serviceId} />

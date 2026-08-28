@@ -399,30 +399,47 @@ describe("deriveStatus", () => {
     expect(deriveStatus(svc({ phase: "WeirdNewPhase" })).key).toBe("unknown");
   });
 
-  // w6/m43 t002. Phase Hibernated used to map to "sleeping" for every service
-  // type, so resuming a suspended Background Worker flashed "Sleeping to save
-  // resources — wakes on the next request." A worker has no Ingress, so no
-  // request can ever reach it to wake it: the operator never auto-hibernates
-  // one, and the only way it reads Hibernated while un-suspended is the
-  // transient window on the way back up from a resume.
+  // Only a free web service has the public activator route that makes Sleeping
+  // and its wake-on-request promise true. Other Hibernated services are either
+  // resuming from manual suspension or stale data from before that eligibility
+  // rule was enforced.
   describe("Hibernated resolves by service type, not by phase alone", () => {
-    it("keeps Sleeping for the HTTP types that really do auto-sleep", () => {
-      for (const type of ["web_service", "private_service"]) {
-        const s = svc({ type, suspended: false, phase: "Hibernated" });
-        expect(deriveStatus(s)).toEqual({
-          key: "sleeping",
-          variant: "secondary",
-        });
-        expect(isSleeping(s)).toBe(true);
-      }
+    it("keeps Sleeping for a free web service", () => {
+      const s = svc({
+        type: "web_service",
+        plan: "free",
+        suspended: false,
+        phase: "Hibernated",
+      });
+      expect(deriveStatus(s)).toEqual({
+        key: "sleeping",
+        variant: "secondary",
+      });
+      expect(isSleeping(s)).toBe(true);
     });
 
-    it("reports a resuming worker/cron/static as pending, never Sleeping", () => {
-      for (const type of ["background_worker", "cron_job", "static_site"]) {
+    it("reports every non-web type as pending, never Sleeping", () => {
+      for (const type of [
+        "private_service",
+        "background_worker",
+        "cron_job",
+        "static_site",
+      ]) {
         const s = svc({ type, suspended: false, phase: "Hibernated" });
         expect(deriveStatus(s)).toEqual({ key: "pending", variant: "outline" });
         expect(isSleeping(s)).toBe(false);
       }
+    });
+
+    it("does not call a paid web service an auto-sleeper", () => {
+      const s = svc({
+        type: "web_service",
+        plan: "starter",
+        suspended: false,
+        phase: "Hibernated",
+      });
+      expect(deriveStatus(s)).toEqual({ key: "pending", variant: "outline" });
+      expect(isSleeping(s)).toBe(false);
     });
 
     it("still lets manual suspension win for a worker", () => {

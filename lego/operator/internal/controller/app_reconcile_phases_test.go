@@ -68,11 +68,25 @@ func TestDesiredReplicas(t *testing.T) {
 			wantAutoHibernating: true,
 		},
 		{
-			name:      "worker never auto-hibernates",
-			app:       mkIdleApp("free", 300, now.Add(-10*time.Minute), false),
+			name: "worker never auto-hibernates",
+			app: func() *appv1alpha1.App {
+				app := mkIdleApp("free", 300, now.Add(-10*time.Minute), false)
+				app.Spec.Type = appv1alpha1.TypeBackgroundWorker
+				return app
+			}(),
 			worker:    true,
 			activator: "bex-activator",
 			// mkIdleApp leaves spec.replicas 0 => default 1.
+			wantReplicas: 1,
+		},
+		{
+			name: "private service never auto-hibernates",
+			app: func() *appv1alpha1.App {
+				app := mkIdleApp("free", 300, now.Add(-10*time.Minute), false)
+				app.Spec.Type = appv1alpha1.TypePrivateService
+				return app
+			}(),
+			activator:    "bex-activator",
 			wantReplicas: 1,
 		},
 		{

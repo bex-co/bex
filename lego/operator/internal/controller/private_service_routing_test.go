@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -145,6 +146,28 @@ var _ = Describe("private_service is never publicly routed", func() {
 		Expect(k8sClient.Update(ctx, got)).To(Succeed())
 		reconcileN(r, nn)
 
+		expectPrivateOnly()
+	})
+
+	It("keeps an idle free private service running because it has no wake path", func() {
+		r.ActivatorService = "bex-activator"
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name, Namespace: "default",
+				Annotations: map[string]string{annotLastActive: "2026-01-01T00:00:00Z"},
+			},
+			Spec: appv1alpha1.AppSpec{
+				Type: appv1alpha1.TypePrivateService, Image: "traefik/whoami", Port: 3000,
+				Tier: "free", IdleTTLSeconds: 60,
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		reconcileN(r, nn)
+
+		deployment := &appsv1.Deployment{}
+		Expect(k8sClient.Get(ctx, nn, deployment)).To(Succeed())
+		Expect(deployment.Spec.Replicas).NotTo(BeNil())
+		Expect(*deployment.Spec.Replicas).To(Equal(int32(1)))
 		expectPrivateOnly()
 	})
 })

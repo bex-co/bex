@@ -60,6 +60,30 @@ func TestIsFreeApp(t *testing.T) {
 	}
 }
 
+func TestAutoSleepEligibleByServiceType(t *testing.T) {
+	cases := []struct {
+		name  string
+		type_ string
+		want  bool
+	}{
+		{name: "legacy empty type", want: true},
+		{name: "web service", type_: appv1alpha1.TypeWebService, want: true},
+		{name: "private service", type_: appv1alpha1.TypePrivateService, want: false},
+		{name: "background worker", type_: appv1alpha1.TypeBackgroundWorker, want: false},
+		{name: "cron job", type_: appv1alpha1.TypeCronJob, want: false},
+		{name: "static site", type_: appv1alpha1.TypeStaticSite, want: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app := mkIdleApp("free", 300, time.Now().Add(-10*time.Minute), false)
+			app.Spec.Type = tc.type_
+			if got := autoSleepEligible(app); got != tc.want {
+				t.Fatalf("autoSleepEligible = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestLastActiveTime(t *testing.T) {
 	t.Run("missing annotation returns zero", func(t *testing.T) {
 		app := &appv1alpha1.App{}
@@ -132,6 +156,15 @@ func TestShouldAutoHibernate(t *testing.T) {
 			"empty tier (free default), TTL elapsed: should hibernate",
 			mkIdleApp("", 300, now.Add(-10*time.Minute), false),
 			true,
+		},
+		{
+			"private service never auto-hibernates without a public wake path",
+			func() *appv1alpha1.App {
+				app := mkIdleApp("free", 300, now.Add(-10*time.Minute), false)
+				app.Spec.Type = appv1alpha1.TypePrivateService
+				return app
+			}(),
+			false,
 		},
 		{
 			"no last-active annotation: never auto-hibernates (operator stamps it)",

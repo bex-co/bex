@@ -403,6 +403,7 @@ describe("ServiceSettingsPage", () => {
       expect(
         screen.queryByText("Platform Subdomain", { exact: false }),
       ).toBeNull();
+      expect(screen.queryByText("Idle timeout")).not.toBeInTheDocument();
     },
   );
 
@@ -537,11 +538,12 @@ describe("ServiceSettingsPage", () => {
     expect(screen.getByText("Platform Subdomain")).toBeInTheDocument();
   });
 
-  it("shows Idle timeout + Max shutdown delay for a background_worker, without the moved instance stepper", async () => {
+  it("shows Max shutdown delay but no Idle timeout for a background_worker", async () => {
     serverState.service = svc({ type: "background_worker" });
     renderSettings();
 
-    expect(await screen.findByText("Idle timeout")).toBeInTheDocument();
+    await screen.findByText("Max shutdown delay");
+    expect(screen.queryByText("Idle timeout")).not.toBeInTheDocument();
     expect(screen.queryByText("Instance count")).not.toBeInTheDocument();
     expect(screen.getByText("Max shutdown delay")).toBeInTheDocument();
     expect(

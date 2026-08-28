@@ -382,6 +382,10 @@ func TestMaintenanceModeCreateRESTRequiresBothKeys(t *testing.T) {
 
 func TestMaintenanceModeRESTPlanTransitions(t *testing.T) {
 	enabled := paidWebApp("web")
+	// Free caps at 1 instance (w6/m118); paidWebApp inherits 2 from sampleApp, so
+	// pin to 1 to isolate the maintenance-mode transition under test from the
+	// separate downgrade-over-cap refusal.
+	enabled.Spec.Replicas = 1
 	enabled.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
 	svc, cl := newService(nil, enabled)
 	mux := http.NewServeMux()
@@ -417,6 +421,9 @@ func TestMaintenanceModeRESTPlanTransitions(t *testing.T) {
 // late table row and 400'd.
 func TestMaintenanceModeMCPPlanTransitions(t *testing.T) {
 	enabled := paidWebApp("web")
+	// Free caps at 1 instance (w6/m118); pin to 1 so the disable+downgrade flow
+	// under test isn't refused by the separate over-cap downgrade guard.
+	enabled.Spec.Replicas = 1
 	enabled.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
 	svc, cl := newService(nil, enabled)
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)

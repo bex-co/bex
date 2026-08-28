@@ -74,6 +74,14 @@ A tier ID not in `pricing.yaml` is priced at $0 (not an error). This means:
 - A new compute/Postgres/KV tier that ships before it has a price entry will produce $0 estimates rather than crashing or returning a 500.
 - Adding the price entry to `pricing.yaml` back-fills immediately; no migration needed.
 
+### 6. The free compute plan is capped at one running instance
+
+The compute `free` tier is rated `usdPerSecond: 0.0` in `pricing.yaml`. A zero rate has an edge no paid tier has: N free instances would deliver N× the capacity for $0, so an uncapped free plan is effectively unlimited free compute. The free plan is therefore capped at **one running instance**.
+
+The cap is a resource-sizing fact, not a price, so — consistent with the "no prices in `tiers.yaml`" invariant of §1 — it lives in the reviewed tier catalog rather than here: `lego/types/tiers/tiers.yaml` gives the compute `free` tier `maxInstances: 1` (paid tiers omit the field, so they carry no plan-specific cap, only the platform ceiling `MaxReplicas = 100`). The backend enforces it on every write path that sets an instance count (`Scale`, service create, autoscaling min/max), refuses a plan downgrade that would leave a service above the new cap ("scale down first", never a silent shrink), and the operator's plan-aware `clampReplicas` is the defense-in-depth backstop. See [ADR018 § Manual scale](ADR018-render-parity.md).
+
+This is exact Render parity: Render's free instance types do not support horizontal scaling — running multiple instances is a paid-only feature, and Render's "billed accordingly" per-instance scaling copy applies only to paid instance types. Source: [render-artifacts/free-tier-scaling.md](render-artifacts/free-tier-scaling.md).
+
 ---
 
 ## Consequences

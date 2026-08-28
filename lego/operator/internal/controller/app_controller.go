@@ -1625,9 +1625,6 @@ func lastActiveTime(app *appv1alpha1.App) time.Time {
 	return t
 }
 
-// shouldAutoHibernate reports whether the app should scale to zero now:
-// free tier, idleTTLSeconds > 0, not manually suspended, and last-active
-// timestamp is older than the TTL.
 // autoSleepEligible reports whether the activator is this App's wake path at
 // all — every condition shouldAutoHibernate checks EXCEPT "has it been idle
 // long enough". Split out because the routing question ("can the activator
@@ -1635,9 +1632,12 @@ func lastActiveTime(app *appv1alpha1.App) time.Time {
 // yet?") have different answers while an App is waking: replicas are back but no
 // pod is ready, so the activator must still hold the route (w6/m94).
 func autoSleepEligible(app *appv1alpha1.App) bool {
-	return !app.Spec.Suspended && app.Spec.IdleTTLSeconds > 0 && isFreeApp(app)
+	web := app.Spec.Type == "" || app.Spec.Type == appv1alpha1.TypeWebService
+	return web && !app.Spec.Suspended && app.Spec.IdleTTLSeconds > 0 && isFreeApp(app)
 }
 
+// shouldAutoHibernate reports whether an auto-sleep-eligible app should scale
+// to zero now: its last-active timestamp is older than the TTL.
 func shouldAutoHibernate(app *appv1alpha1.App) bool {
 	if !autoSleepEligible(app) {
 		return false
@@ -1726,7 +1726,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// for its whole TTL, and a request landing inside the grace gets the wake
 	// interstitial from an App that is still up — a second early, and the same
 	// answer it would have got a second later anyway.
-	replicas, hibernateHold, err := r.holdHibernateForRouting(ctx, app, worker, autoHibernating, replicas)
+	replicas, hibernateHold, err := r.holdHibernateForRouting(ctx, app, autoHibernating, replicas)
 	if err != nil {
 		return r.fail(ctx, app, "IngressFailed", err)
 	}
@@ -1919,8 +1919,8 @@ func (r *AppReconciler) reconcileDiskLifecycle(ctx context.Context, app *appv1al
 // replica policy are separate).
 // It returns the replica count this pass should roll: the App's normal count
 // while holding (the pods keep serving), otherwise the caller's own.
-func (r *AppReconciler) holdHibernateForRouting(ctx context.Context, app *appv1alpha1.App, worker, autoHibernating bool, replicas int32) (int32, bool, error) {
-	if !autoHibernating || worker || maintenanceEnabled(app) {
+func (r *AppReconciler) holdHibernateForRouting(ctx context.Context, app *appv1alpha1.App, autoHibernating bool, replicas int32) (int32, bool, error) {
+	if !autoHibernating || maintenanceEnabled(app) {
 		return replicas, false, nil
 	}
 	routed, err := r.ingressRoutesToActivator(ctx, app)
@@ -1930,7 +1930,7 @@ func (r *AppReconciler) holdHibernateForRouting(ctx context.Context, app *appv1a
 	if routed {
 		return replicas, false, nil
 	}
-	return clampReplicas(effectiveReplicas(app)), true, nil
+	return clampReplicas(app, effectiveReplicas(app)), true, nil
 }
 
 // hibernateRoutingGrace is how long the operator waits, after pointing the
@@ -1943,9 +1943,9 @@ const hibernateRoutingGrace = 10 * time.Second
 
 // ingressRoutesToActivator reports whether the App's public Ingress ALREADY
 // names the activator as the backend for every rule — i.e. whether a previous
-// pass has written the wake route. An App with no Ingress (private service, no
-// resolvable host) has no public route to protect and answers true, so it
-// hibernates without the extra pass.
+// pass has written the wake route. Auto-sleep eligibility guarantees this is a
+// public web service; a missing Ingress therefore means there is no route to
+// protect yet and answers true.
 func (r *AppReconciler) ingressRoutesToActivator(ctx context.Context, app *appv1alpha1.App) (bool, error) {
 	var ing networkingv1.Ingress
 	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &ing); err != nil {
@@ -1977,11 +1977,12 @@ func (r *AppReconciler) ingressRoutesToActivator(ctx context.Context, app *appv1
 // Deployment to, plus the flags for the two policies that can shape it
 // (autoscale polling, auto-hibernation).
 //
-// Auto-hibernate: idle free-tier app past its TTL → scale to 0 without
-// touching spec.suspended, so manual-suspend semantics are preserved. A worker
-// never auto-hibernates — it has no Ingress, so a request could never wake it.
+// Auto-hibernate: idle free-tier web app past its TTL → scale to 0 without
+// touching spec.suspended, so manual-suspend semantics are preserved. Other
+// types never auto-hibernate: they have no public Ingress wake path (private,
+// worker, cron), or no per-App workload to scale (static).
 func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App, worker bool) (replicas int32, autoscaleRequeue, autoHibernating bool) {
-	autoHibernating = !worker && r.ActivatorService != "" && shouldAutoHibernate(app)
+	autoHibernating = r.ActivatorService != "" && shouldAutoHibernate(app)
 
 	replicas = effectiveReplicas(app)
 	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
@@ -1998,7 +1999,7 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 	if autoHibernating {
 		replicas = 0
 	}
-	return clampReplicas(replicas), autoscaleRequeue, autoHibernating
+	return clampReplicas(app, replicas), autoscaleRequeue, autoHibernating
 }
 
 // ingressBackend picks the Service/port the public Ingress routes to.
@@ -2093,9 +2094,9 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 
 // runningRequeue picks the steady-state requeue for a Running app.
 func (r *AppReconciler) runningRequeue(ctx context.Context, app *appv1alpha1.App, autoscaleRequeue bool) (ctrl.Result, error) {
-	// Free-tier apps with an idle TTL: stamp last-active on first Running reconcile
-	// and schedule a re-check after the TTL so the operator can auto-hibernate.
-	if r.ActivatorService != "" && app.Spec.IdleTTLSeconds > 0 && isFreeApp(app) {
+	// Eligible free web services: stamp last-active on first Running reconcile and
+	// schedule a re-check after the TTL so the operator can auto-hibernate.
+	if r.ActivatorService != "" && autoSleepEligible(app) {
 		now := time.Now().UTC()
 		if lastActiveTime(app).IsZero() {
 			base := app.DeepCopy()
@@ -3568,15 +3569,28 @@ func effectiveReplicas(app *appv1alpha1.App) int32 {
 }
 
 // clampReplicas is the operator's last bound on a Deployment replica target:
-// never negative, never above the CRD/API ceiling. Autoscaling min/max on a
+// never negative, never above the ceiling. Autoscaling min/max on a
 // hand-applied App CR are attacker-controlled integers; without this clamp
 // they become spec.replicas on a shared cluster (codex round-15 #1).
-func clampReplicas(n int32) int32 {
+//
+// The ceiling is the plan's instance cap when the App's tier carries one
+// (w6/m118 — free pins to 1), else the platform-wide MaxReplicas. This is the
+// same threat one field over: the API refuses over-cap writes (backend t003),
+// but a hand-applied CR or a projector bug that stamps a larger spec.replicas
+// must still never run more pods than the plan allows. The bound is read from
+// the reviewed tier catalog, not a literal "free" test, so mechanism keeps no
+// second copy of the policy. An untiered/bare CR has no plan cap (only
+// MaxReplicas), matching how such an App also gets no tier resource limits.
+func clampReplicas(app *appv1alpha1.App, n int32) int32 {
 	if n <= 0 {
 		return 0
 	}
-	if n > appv1alpha1.MaxReplicas {
-		return appv1alpha1.MaxReplicas
+	ceiling := appv1alpha1.MaxReplicas
+	if cap, ok := tiers.Compute.InstanceCap(app.Spec.Tier); ok && cap < ceiling {
+		ceiling = cap
+	}
+	if n > ceiling {
+		return ceiling
 	}
 	return n
 }

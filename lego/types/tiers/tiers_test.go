@@ -189,6 +189,31 @@ func TestComputeResourcesOkFalseForEmptyOrUnknownTier(t *testing.T) {
 	}
 }
 
+// TestComputeInstanceCap pins the w6/m118 policy: free is capped at one running
+// instance (the $0.00/second rate would otherwise buy N× capacity for $0), and
+// every paid tier — plus an empty/unknown id — reports no plan cap, so only the
+// platform ceiling applies to them.
+func TestComputeInstanceCap(t *testing.T) {
+	cap, ok := Compute.InstanceCap("free")
+	if !ok || cap != 1 {
+		t.Errorf(`InstanceCap("free") = (%d, %v), want (1, true)`, cap, ok)
+	}
+	for _, id := range Compute.IDs() {
+		if id == "free" {
+			continue
+		}
+		if _, ok := Compute.InstanceCap(id); ok {
+			t.Errorf("InstanceCap(%q) reported a plan cap; only free should be capped", id)
+		}
+	}
+	if _, ok := Compute.InstanceCap(""); ok {
+		t.Error(`InstanceCap("") should report ok=false — an untiered App is not plan-capped`)
+	}
+	if _, ok := Compute.InstanceCap("gold"); ok {
+		t.Error(`InstanceCap("gold") should report ok=false for an unknown tier`)
+	}
+}
+
 // --- parse() validation: every malformed-catalog case fails loudly, never silently ---
 
 // valid is a minimal well-formed catalog the malformed cases below mutate from.
