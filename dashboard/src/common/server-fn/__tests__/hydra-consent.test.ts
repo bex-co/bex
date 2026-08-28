@@ -193,6 +193,41 @@ describe("handleConsent (GET)", () => {
     expect(view).toMatchObject({ retryAfterFailure: true });
   });
 
+  // round-21 finding 5: client_uri is attacker-chosen (Hydra DCR) and rendered
+  // as a live anchor href on the consent screen — beneath an "unverified client"
+  // warning that invites the user to follow it. A non-http(s) scheme must be
+  // dropped so the page renders inert text instead of a hostile link.
+  it("drops a non-http(s) client_uri so the consent link is never live", async () => {
+    mockUpstreams({
+      lookupBody: consentRequest({
+        client: {
+          client_id: "evil-client",
+          client_name: "Evil Agent",
+          client_uri: "javascript:alert(document.domain)",
+        },
+      }),
+    });
+    const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(view).toMatchObject({ clientName: "Evil Agent" });
+    expect((view as { clientUri?: string }).clientUri).toBeUndefined();
+  });
+
+  it("passes an http(s) client_uri through to the consent view", async () => {
+    mockUpstreams({
+      lookupBody: consentRequest({
+        client: {
+          client_id: "good-client",
+          client_name: "Good Agent",
+          client_uri: "https://agent.example",
+        },
+      }),
+    });
+    const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((view as { clientUri?: string }).clientUri).toBe(
+      "https://agent.example",
+    );
+  });
+
   it("falls back to the client_id when the client has no name", async () => {
     mockUpstreams({
       lookupBody: consentRequest({ client: { client_id: "nameless" } }),

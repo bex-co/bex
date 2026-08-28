@@ -80,7 +80,14 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		if scoped && app.Labels[core.LabelTenant] != tenantID {
 			continue
 		}
-		resolver.services[app.Name] = app
+		// Key by the manifest-facing service name, not the Kubernetes object
+		// name: store-managed Apps carry a tenant prefix (CRName), so indexing
+		// by app.Name while ResolveBlueprintResource looks up by the bare
+		// manifest name misses every store-managed service and reports live
+		// resources as fresh creates in the pre-sync plan an approver reviews
+		// (round-21 finding 7). Databases and key-value stores below already key
+		// by their manifest-facing Spec.Name.
+		resolver.services[appServiceName(app)] = app
 	}
 	databases, err := s.listWorkspaceDatabases(ctx, tenantID)
 	if err != nil {

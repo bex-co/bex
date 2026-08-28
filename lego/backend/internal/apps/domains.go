@@ -683,6 +683,47 @@ func (s *Service) checkCustomDomainQuota(ctx context.Context, app *appv1alpha1.A
 	return nil
 }
 
+// checkWorkspaceDomainQuotaForApp applies the per-workspace custom-domain cap to
+// a whole declared host set on the create/Blueprint path — the aggregate
+// AddDomain enforces one host at a time through checkCustomDomainQuota. Without
+// it the declarative paths (service create, Blueprint sync) gated only on the
+// per-service cap in ensureHostsClaimable, so a tenant could mint far more
+// globally-unique pending hostname reservations than the workspace bound allows:
+// cross-tenant hostname squatting (each pending claim reserves the host against
+// every other workspace for 48h) plus control-plane row growth past the quota
+// (round-21 finding 2). The workspace count already includes any claims this App
+// currently holds, and ReplaceDomainClaims swaps that set wholesale, so the net
+// new contribution is the declared count minus what this App already holds — a
+// re-apply that adds no hosts is never rejected for double-counting. Like
+// checkCustomDomainQuota this is a read-then-write abuse bound, not a
+// transaction, and it is skipped storeless/unlabeled where no aggregate exists.
+func (s *Service) checkWorkspaceDomainQuotaForApp(ctx context.Context, app *appv1alpha1.App) error {
+	if s.MaxCustomDomainsPerWorkspace <= 0 {
+		return nil
+	}
+	workspace := app.Labels[core.LabelTenant]
+	counter, ok := s.Store.(workspaceDomainCounter)
+	if !ok || workspace == "" {
+		return nil // storeless or unlabeled: no workspace aggregate to count
+	}
+	count, err := counter.CountWorkspaceDomainClaims(ctx, workspace)
+	if err != nil {
+		return fmt.Errorf("count workspace domain claims: %w", err)
+	}
+	existingForApp := 0
+	if claims, appID, managed := s.managedDomainClaims(app); managed {
+		rows, err := claims.ListDomainClaims(ctx, appID)
+		if err != nil {
+			return fmt.Errorf("list domain claims: %w", err)
+		}
+		existingForApp = len(rows)
+	}
+	if projected := count - existingForApp + claimedHostCount(app); projected > s.MaxCustomDomainsPerWorkspace {
+		return errCustomDomainLimit("this workspace", projected, s.MaxCustomDomainsPerWorkspace)
+	}
+	return nil
+}
+
 // claimedHostCount counts the App's declared custom hosts — spec.host plus the
 // non-empty spec.hosts entries — for the per-service cardinality cap.
 func claimedHostCount(app *appv1alpha1.App) int {
@@ -777,6 +818,11 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 	// MaxItems on spec.hosts/spec.hostRedirects is the admission backstop).
 	if s.MaxCustomDomainsPerService > 0 && claimedHostCount(app) > s.MaxCustomDomainsPerService {
 		return fmt.Errorf("%w: a service may declare at most %d custom domains", core.ErrBadRequest, s.MaxCustomDomainsPerService)
+	}
+	// Per-workspace cap over the whole declared host set — the aggregate AddDomain
+	// enforces per host but the declarative paths bypassed (round-21 finding 2).
+	if err := s.checkWorkspaceDomainQuotaForApp(ctx, app); err != nil {
+		return err
 	}
 	ownHost := s.ownPlatformHost(app)
 	_, _, managedClaims := s.managedDomainClaims(app)

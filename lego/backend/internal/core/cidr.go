@@ -18,7 +18,7 @@ package core
 
 import (
 	"fmt"
-	"net"
+	"net/netip"
 	"slices"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -28,12 +28,20 @@ import (
 // the shared gate for every ipAllowList write path (postgres + keyvalue +
 // environments, create and set alike), so a bad entry is a 400 before anything
 // lands in a CR spec or store row.
+//
+// It parses with netip.ParsePrefix, the exact grammar the pg-sni-proxy /
+// kv-sni-proxy enforcement path uses (internal/sniproxy/allowlist.go). The two
+// parsers must agree: net.ParseCIDR accepts zero-padded prefix lengths like
+// "10.0.0.0/024" that netip.ParsePrefix rejects, so validating with the looser
+// parser would admit a value that is unparseable at enforcement time — which
+// deletes the route and pins the shared proxy health gauge to unhealthy for
+// every tenant (round-21 finding 8).
 func ValidateCIDRs(cidrs []string) error {
 	if len(cidrs) > MaxAllowListEntries {
 		return fmt.Errorf("%w: ipAllowList has %d entries; the limit is %d", ErrBadRequest, len(cidrs), MaxAllowListEntries)
 	}
 	for _, c := range cidrs {
-		if _, _, err := net.ParseCIDR(c); err != nil {
+		if _, err := netip.ParsePrefix(c); err != nil {
 			return fmt.Errorf("%w: %q is not a valid CIDR", ErrBadRequest, c)
 		}
 	}

@@ -251,6 +251,50 @@ func TestValidateBlueprintCurrentStateActionPlan(t *testing.T) {
 	}
 }
 
+// round-21 finding 7: the pre-sync plan must resolve a store-managed service by
+// its manifest-facing name, not its tenant-prefixed Kubernetes object name.
+// Indexing by app.Name (CRName = "<tenant>-<name>") while looking up the bare
+// manifest name missed every store-managed service, so the plan an approver
+// reviews reported live services as fresh creates and skipped their field-change
+// preflight. The existing current-state test seeds a bare-named service, so it
+// cannot catch this; this one seeds a real tenant-prefixed object name.
+func TestValidateBlueprintCurrentStatePlanResolvesStoreManagedService(t *testing.T) {
+	existing := sampleApp(core.CRName("tea-a", "web")) // object name is tenant-prefixed
+	existing.Namespace = "tea-a"
+	existing.Labels = map[string]string{
+		core.LabelTenant:      "tea-a",
+		core.LabelServiceName: "web",
+		store.LabelAppID:      "srv-web",
+		store.LabelManagedBy:  store.ManagedByValue,
+	}
+	existing.Spec.Image = "nginx:1"
+	existing.Spec.Type = appv1alpha1.TypeWebService
+	existing.Spec.Runtime = "image"
+
+	svc, _ := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, &recordingStore{}, existing)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "oauth2"})
+	manifest := `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+`
+	validation, err := svc.ValidateBlueprint(ctx, "tea-a", manifest)
+	if err != nil || !validation.Valid || validation.Plan == nil {
+		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", validation, err)
+	}
+	if len(validation.Plan.Actions) != 1 {
+		t.Fatalf("action plan = %+v, want one action", validation.Plan.Actions)
+	}
+	action := validation.Plan.Actions[0]
+	if action.Operation == BlueprintPlanCreate {
+		t.Fatalf("store-managed live service reported as a create: %+v", action)
+	}
+	if action.ResourceID != "srv-web" {
+		t.Fatalf("resolved resource id = %q, want srv-web (the store-managed app id)", action.ResourceID)
+	}
+}
+
 func TestValidateBlueprintBadYAML(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	const bad = `services:

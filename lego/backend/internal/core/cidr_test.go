@@ -88,6 +88,29 @@ func TestValidateAllowListNamesTheBadEntry(t *testing.T) {
 	}
 }
 
+// round-21 finding 8: the write validator must reject any CIDR the SNI proxies'
+// enforcement parser (netip.ParsePrefix) rejects. net.ParseCIDR accepted a
+// zero-padded prefix length like "10.0.0.0/024" that netip.ParsePrefix refuses,
+// so a value valid at write time became unparseable at enforcement — deleting
+// the tenant's route and pinning the fleet-wide proxy health gauge to unhealthy.
+func TestValidateCIDRsRejectsZeroPaddedPrefixLength(t *testing.T) {
+	for _, bad := range []string{"10.0.0.0/024", "10.0.0.0/08", "192.168.0.0/016"} {
+		if err := ValidateCIDRs([]string{bad}); !errors.Is(err, ErrBadRequest) {
+			t.Fatalf("ValidateCIDRs(%q): want ErrBadRequest, got %v", bad, err)
+		}
+	}
+	// The canonical forms the platform itself emits must still pass.
+	for _, ok := range []string{"0.0.0.0/0", "::/0", "255.255.255.255/32", "10.0.0.0/24", "10.0.0.5/32"} {
+		if err := ValidateCIDRs([]string{ok}); err != nil {
+			t.Fatalf("ValidateCIDRs(%q): want nil, got %v", ok, err)
+		}
+	}
+	// DefaultEnvironmentAllowList seeds the row and must validate.
+	if err := ValidateAllowList(DefaultEnvironmentAllowList()); err != nil {
+		t.Fatalf("DefaultEnvironmentAllowList must validate, got %v", err)
+	}
+}
+
 // round-5 finding 15: an unbounded allowlist is materialized into the shared
 // SNI proxies and scanned per handshake, so both validators cap cardinality.
 func TestValidateAllowListRejectsExcessCardinality(t *testing.T) {

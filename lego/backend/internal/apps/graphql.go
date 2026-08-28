@@ -663,6 +663,26 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// withParentWorkspace rebinds the request context to the parent service's own
+// workspace before a nested resolver re-resolves that service by its
+// workspace-scoped public name (round-21 finding 6). The GraphQL execution
+// context carries no workspace selection, so without this a name lookup falls
+// back to appCandidateNames(caller's-default-workspace, name) and can bind a
+// same-named service in the caller's default workspace instead of the one the
+// parent field selected — serving one workspace's secrets under another
+// workspace's service object. The parent AppView was already resolved by its
+// typed id, so its OwnerID is authoritative; an empty OwnerID (hand-applied App,
+// never store-stamped) leaves the context unchanged, matching the bare-name
+// resolution those Apps already use. The authorization boundary is unaffected —
+// the reader still authorizes (and freshly re-asserts) against whichever
+// workspace it resolves — so a mismatch fails closed rather than leaking.
+func withParentWorkspace(ctx context.Context, a AppView) context.Context {
+	if a.OwnerID == "" {
+		return ctx
+	}
+	return core.WithWorkspace(ctx, a.OwnerID)
+}
+
 func envVarKeysResolve(p graphql.ResolveParams) (any, error) {
 	a, ok := p.Source.(AppView)
 	if !ok {
@@ -672,7 +692,7 @@ func envVarKeysResolve(p graphql.ResolveParams) (any, error) {
 	if !ok {
 		return nil, core.ErrSecretsUnavailable
 	}
-	return r.EnvVarKeys(p.Context, a.Name)
+	return r.EnvVarKeys(withParentWorkspace(p.Context, a), a.Name)
 }
 
 func envVarValueResolve(p graphql.ResolveParams) (any, error) {
@@ -684,7 +704,7 @@ func envVarValueResolve(p graphql.ResolveParams) (any, error) {
 	if !ok {
 		return nil, core.ErrSecretsUnavailable
 	}
-	return r.EnvVarValue(p.Context, a.Name, p.Args["key"].(string))
+	return r.EnvVarValue(withParentWorkspace(p.Context, a), a.Name, p.Args["key"].(string))
 }
 
 // secretFileGQLType renders the kernel's neutral core.SecretFile ({id,name,content}),
@@ -708,7 +728,7 @@ func secretFileNamesResolve(p graphql.ResolveParams) (any, error) {
 	if !ok {
 		return nil, core.ErrSecretsUnavailable
 	}
-	return r.SecretFileNames(p.Context, a.Name)
+	return r.SecretFileNames(withParentWorkspace(p.Context, a), a.Name)
 }
 
 func secretFileContentResolve(p graphql.ResolveParams) (any, error) {
@@ -720,7 +740,7 @@ func secretFileContentResolve(p graphql.ResolveParams) (any, error) {
 	if !ok {
 		return nil, core.ErrSecretsUnavailable
 	}
-	return r.SecretFileContent(p.Context, a.Name, p.Args["name"].(string))
+	return r.SecretFileContent(withParentWorkspace(p.Context, a), a.Name, p.Args["name"].(string))
 }
 
 // outboundIPsGQLType renders the kernel's neutral core.OutboundIPs — Render's
