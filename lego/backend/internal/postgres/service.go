@@ -180,7 +180,7 @@ type ReadReplicaInput struct {
 type PostgresConnectionInfo struct {
 	Password                 string `json:"password"`
 	InternalConnectionString string `json:"internalConnectionString"`
-	ExternalConnectionString string `json:"externalConnectionString,omitempty"`
+	ExternalConnectionString string `json:"externalConnectionString"`
 	// Pooler variants are populated when a PgBouncer Pooler is provisioned
 	// (spec.pooler); empty otherwise. The external variant additionally needs Public.
 	InternalConnectionPoolString string `json:"internalConnectionPoolString,omitempty"`

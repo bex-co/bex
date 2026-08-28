@@ -205,3 +205,45 @@ func TestPostgresReadReplicasNonEmptySerializes(t *testing.T) {
 		t.Errorf("replica = %#v, want name reader-1", replica)
 	}
 }
+
+// TestPostgresConnectionInfoExternalStringAlwaysPresent is w6/m109/t008: Render
+// marks externalConnectionString REQUIRED on postgresConnectionInfo, so a
+// non-public database must serialize it as "" rather than drop the key. The
+// pool strings are deliberately NOT swept with it — Render lists
+// internalConnectionPoolString/externalConnectionPoolString as properties but
+// not as required, so omitempty stays correct there and is asserted as such.
+func TestPostgresConnectionInfoExternalStringAlwaysPresent(t *testing.T) {
+	for _, tc := range []struct {
+		name, external string
+	}{
+		{"non-public serializes empty string", ""},
+		{"public keeps its real value", "postgresql://u:p@pg.example.com:5432/d?sslmode=verify-full"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b, err := json.Marshal(PostgresConnectionInfo{
+				Password:                 "p",
+				InternalConnectionString: "postgresql://u:p@pg-rw.default:5432/d",
+				ExternalConnectionString: tc.external,
+				PSQLCommand:              "PGPASSWORD=p psql -h pg-rw.default.svc -U u d",
+			})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			var got map[string]any
+			if err := json.Unmarshal(b, &got); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			v, ok := got["externalConnectionString"]
+			if !ok {
+				t.Fatalf("externalConnectionString key absent — Render marks it required (w6/m109/t008); got %s", b)
+			}
+			if v != tc.external {
+				t.Errorf("externalConnectionString = %q, want %q", v, tc.external)
+			}
+			// The pool strings are not Render-required: absent when empty is correct.
+			if _, ok := got["internalConnectionPoolString"]; ok {
+				t.Errorf("internalConnectionPoolString present though empty — Render does not require it; got %s", b)
+			}
+		})
+	}
+}

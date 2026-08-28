@@ -163,3 +163,39 @@ func TestKeyValueAllowListRoundTripNonEmpty(t *testing.T) {
 		t.Errorf("get ipAllowList = %#v, want one entry", entries)
 	}
 }
+
+// TestKeyValueConnectionInfoExternalStringAlwaysPresent is w6/m109/t008: Render
+// marks externalConnectionString REQUIRED on keyValueConnectionInfo, so a
+// non-public instance must serialize it as "" rather than drop the key. The
+// populated case is the control — dropping omitempty must not disturb a real
+// external endpoint.
+func TestKeyValueConnectionInfoExternalStringAlwaysPresent(t *testing.T) {
+	for _, tc := range []struct {
+		name, external string
+	}{
+		{"non-public serializes empty string", ""},
+		{"public keeps its real value", "rediss://default:p@kv.example.com:6379"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b, err := json.Marshal(KeyValueConnectionInfo{
+				InternalConnectionString: "redis://default:p@kv.default:6379",
+				ExternalConnectionString: tc.external,
+				CLICommand:               "redis-cli -u redis://default:p@kv.default:6379",
+			})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			var got map[string]any
+			if err := json.Unmarshal(b, &got); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			v, ok := got["externalConnectionString"]
+			if !ok {
+				t.Fatalf("externalConnectionString key absent — Render marks it required (w6/m109/t008); got %s", b)
+			}
+			if v != tc.external {
+				t.Errorf("externalConnectionString = %q, want %q", v, tc.external)
+			}
+		})
+	}
+}
