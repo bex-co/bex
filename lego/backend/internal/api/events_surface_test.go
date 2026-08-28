@@ -524,3 +524,78 @@ func callGetServiceEvent(t *testing.T, srv *Server, eventID string) wireEvent {
 	}](t, mcpSessionAs(t, srv, "user-x"), "get_service_event", map[string]any{"id": eventID})
 	return out.Event
 }
+
+// TestServiceEventSurfaceCarriesDriftedTypes probes the three API surfaces with
+// the exact types w6/m122 found missing from the DASHBOARD catalog. The point is
+// the negative result: the API was never the defect, so this pins that down
+// rather than leaving "REST already returns them" as an inherited assumption.
+// custom_domain_verified was read live out of GET /v1/services/{id}/events on
+// 2026-08-27; the four disk_* types were only ever traced through eventTypes
+// (the QA workspace has no service with a persistent disk), so disk_attached
+// stands in for that family here.
+func TestServiceEventSurfaceCarriesDriftedTypes(t *testing.T) {
+	at := time.Date(2026, 8, 27, 11, 54, 7, 0, time.UTC)
+	fake := &fakeEventStore{rows: []store.ServiceEventRow{
+		{Key: "aud-domain-verified:", At: at, Source: store.EventSourceAudit, Verb: "apps.VerifyDomain", Caller: "user-x"},
+		{Key: "aud-disk-attached:", At: at.Add(-time.Minute), Source: store.EventSourceAudit, Verb: "apps.AddDisk", Caller: "user-x"},
+	}}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake})
+
+	wantTypes := []string{events.TypeCustomDomainVerified, events.TypeDiskAttached}
+
+	res := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z", testToken, "")
+	if res.Code != 200 {
+		t.Fatalf("REST events: %d %s", res.Code, res.Body.String())
+	}
+	var rest []restEvent
+	if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil {
+		t.Fatalf("decode REST: %v", err)
+	}
+	if len(rest) != len(wantTypes) {
+		t.Fatalf("REST events = %d, want %d", len(rest), len(wantTypes))
+	}
+	for i, want := range wantTypes {
+		if rest[i].Event.Type != want {
+			t.Errorf("REST event %d type = %q, want %q", i, rest[i].Event.Type, want)
+		}
+	}
+
+	gqlData := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-08-01T00:00:00Z") { id type serviceId timestamp cursor } }`)
+	gqlList, ok := gqlData["serviceEvents"].([]any)
+	if !ok || len(gqlList) != len(wantTypes) {
+		t.Fatalf("GraphQL serviceEvents = %v, want %d events", gqlData["serviceEvents"], len(wantTypes))
+	}
+
+	mcpEvents := callListServiceEvents(t, srv, map[string]any{"serviceId": "web", "startTime": "2026-08-01T00:00:00Z"})
+	if len(mcpEvents) != len(wantTypes) {
+		t.Fatalf("MCP list_service_events = %d events, want %d", len(mcpEvents), len(wantTypes))
+	}
+	for i, r := range rest {
+		g := gqlList[i].(map[string]any)
+		if r.Event.Type != g["type"] || r.Event.ID != g["id"] {
+			t.Errorf("event %d diverges REST vs GraphQL: %+v vs %+v", i, r.Event, g)
+		}
+		if m := mcpEvents[i]; r.Event.Type != m.Event.Type || r.Event.ID != m.Event.ID {
+			t.Errorf("event %d diverges REST vs MCP: %+v vs %+v", i, r.Event, m.Event)
+		}
+	}
+
+	// The ?type= FILTER is a different question, and its answer is Render's, not
+	// bex's: the pinned Render contract declares `type` as a 39-value enum, so
+	// the request validator refuses any bex-named type before the handler runs.
+	// disk_updated is IN Render's enum and narrows normally; custom_domain_verified
+	// is not, and is refused 400. The control below proves that refusal is the
+	// contract's standing behaviour for every bex-named type rather than anything
+	// specific to the types w6/m122 surfaced.
+	filtered := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z&type="+events.TypeDiskUpdated, testToken, "")
+	if filtered.Code != 200 {
+		t.Fatalf("REST events?type=%s: %d %s", events.TypeDiskUpdated, filtered.Code, filtered.Body.String())
+	}
+	for _, bexNamed := range []string{events.TypeCustomDomainVerified, events.TypeCustomDomainAdded, events.TypeEnvVarsChanged} {
+		refused := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z&type="+bexNamed, testToken, "")
+		if refused.Code != http.StatusBadRequest {
+			t.Errorf("REST events?type=%s = %d, want 400 from the pinned Render enum", bexNamed, refused.Code)
+		}
+	}
+}

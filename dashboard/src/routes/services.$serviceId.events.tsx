@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, AlertCircle, ListFilter, RefreshCcw } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -39,6 +39,7 @@ import {
   SERVICE_EVENT_TYPES,
   serviceEventLabelKey,
 } from "@/features/events/service-event-catalog";
+const CATALOG_TYPES = new Set(SERVICE_EVENT_TYPES);
 import { ServiceEventsSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
@@ -79,9 +80,11 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
   const base = useServiceBase();
   // A cron_job's first-class run history hangs off the same landing tab.
   const { service } = useServer(serviceId, { poll: false });
-  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(
-    () => new Set(SERVICE_EVENT_TYPES),
-  );
+  // Hidden, not selected (w6/m122): seeding from the catalog made the feed render
+  // `events ∩ catalog`, so any type the backend emits that the catalog omits was
+  // invisible AND — the option list being catalog-derived too — unselectable. An
+  // empty exclusion set shows whatever the API returned.
+  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(() => new Set());
   const [historyWindow] = useState(() => {
     const end = Date.now();
     return {
@@ -103,8 +106,24 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
       .map((event) => event.details?.deployId)
       .filter((id): id is string => !!id),
   );
-  const visibleEvents = events.filter((event) =>
-    selectedTypes.has(event.type ?? ""),
+  const visibleEvents = events.filter(
+    (event) => !hiddenTypes.has(event.type ?? ""),
+  );
+  // Types the feed carries that this build's catalog has no entry for. They
+  // already render (the filter is fail-open and serviceEventLabelKey falls back
+  // to the generic label); listing them here also makes them de-selectable. A
+  // row with a missing/empty type stays permanently visible rather than becoming
+  // a nameless checkbox — an absent type is not a vocabulary member to filter on.
+  const uncataloguedTypes = useMemo(
+    () =>
+      [
+        ...new Set(
+          events
+            .map((event) => event.type ?? "")
+            .filter((type) => type !== "" && !CATALOG_TYPES.has(type)),
+        ),
+      ].sort(),
+    [events],
   );
 
   return (
@@ -119,14 +138,17 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
               <div className="min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
                   <CardTitle>{t("services.eventsTitle")}</CardTitle>
-                  {!loading && !error && visibleEvents.length > 0 ? (
+                  {/* Counts what the API returned for the window, not the
+                      post-filter subset: the badge answers "how much happened",
+                      while the list below answers "what am I looking at". */}
+                  {!loading && !error && events.length > 0 ? (
                     <Badge
                       variant="secondary"
                       aria-label={t("services.eventsCount", {
-                        count: visibleEvents.length,
+                        count: events.length,
                       })}
                     >
-                      {visibleEvents.length}
+                      {events.length}
                     </Badge>
                   ) : null}
                 </div>
@@ -136,8 +158,9 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
               </div>
             </div>
             <ServiceEventFilter
-              value={selectedTypes}
-              onChange={setSelectedTypes}
+              hidden={hiddenTypes}
+              onChange={setHiddenTypes}
+              extraTypes={uncataloguedTypes}
             />
           </div>
         </CardHeader>
@@ -387,7 +410,10 @@ function EventSummary({
             </span>
           ) : null}
           {timestamp ? (
-            <RelativeAge value={timestamp} title={exactTimestamp ?? undefined} />
+            <RelativeAge
+              value={timestamp}
+              title={exactTimestamp ?? undefined}
+            />
           ) : null}
         </div>
         {/* Deploy enrichment (w1/m47): show commit, image, duration for deploy events */}

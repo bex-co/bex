@@ -6,6 +6,21 @@ export interface ServiceEventGroup {
 // Render-shaped presentation order for every service-event type bex can emit.
 // The first four groups mirror Render's Events filter; bex-only configuration
 // facts remain available under Configuration instead of becoming unfilterable.
+//
+// This catalog governs GROUPING AND LABELS ONLY, never visibility (w6/m122). The
+// Events tab renders whatever the API returns and uses this to decide how a row
+// is titled and where its checkbox sits, so a type added to the backend
+// vocabulary before it is added here degrades to a generic label rather than
+// disappearing. `backend-vocabulary.test.ts` still fails the build on that gap —
+// fail-open is the runtime behaviour, not permission to drift.
+//
+// The four disk_* types sit under Configuration rather than in a group of their
+// own: all four come from apps.AddDisk / apps.UpdateDisk / apps.DeleteDisk /
+// apps.RestoreDiskSnapshot — accepted user intent against the service's own
+// settings, exactly like every other member of this group — and the 2026-07-18
+// Render filter capture (docs/render-artifacts/service-events.md) has no disk
+// group to mirror, so inventing a sixth group would diverge from the rule that
+// the first four groups track Render and Configuration holds the rest.
 export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
   {
     key: "deploy",
@@ -79,6 +94,11 @@ export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
       "headers_changed",
       "custom_domain_added",
       "custom_domain_removed",
+      "custom_domain_verified",
+      "disk_attached",
+      "disk_updated",
+      "disk_detached",
+      "disk_restored",
       "deploy_hook_regenerated",
       "notify_on_fail_changed",
       "subdomain_policy_changed",
@@ -134,6 +154,11 @@ const LABEL_KEYS: Record<string, string> = {
   display_name_changed: "services.eventsTypeDisplayNameChanged",
   custom_domain_added: "services.eventsTypeCustomDomainAdded",
   custom_domain_removed: "services.eventsTypeCustomDomainRemoved",
+  custom_domain_verified: "services.eventsTypeCustomDomainVerified",
+  disk_attached: "services.eventsTypeDiskAttached",
+  disk_updated: "services.eventsTypeDiskUpdated",
+  disk_detached: "services.eventsTypeDiskDetached",
+  disk_restored: "services.eventsTypeDiskRestored",
   notify_on_fail_changed: "services.eventsTypeNotificationsChanged",
   subdomain_policy_changed: "services.eventsTypeSubdomainPolicyChanged",
   publish_path_changed: "services.eventsTypeStaticSiteChanged",
@@ -152,4 +177,12 @@ const LABEL_KEYS: Record<string, string> = {
 
 export function serviceEventLabelKey(type: string): string {
   return LABEL_KEYS[type] ?? "services.eventsTypeServiceChanged";
+}
+
+// serviceEventHasExplicitLabel distinguishes "catalogued, and deliberately shown
+// under the generic label" (ip_allow_list_changed) from "not catalogued at all",
+// which serviceEventLabelKey's return value cannot: both yield
+// services.eventsTypeServiceChanged. Only the drift guard needs the difference.
+export function serviceEventHasExplicitLabel(type: string): boolean {
+  return Object.hasOwn(LABEL_KEYS, type);
 }

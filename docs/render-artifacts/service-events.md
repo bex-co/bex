@@ -92,7 +92,7 @@ Image-backed services (no build phase) emit no `build_*`; services with no pre-d
 
 ### Still non-goals (honest, not faked)
 
-No durable bex source exists for these, so they are omitted rather than invented: `disk_*` (no persistent disks), `artifact_*`, `server_hardware_failure`, provider `maintenance_started`/`maintenance_ended`, `pipeline_minutes_exhausted` (no pipeline-minute billing), `zero_downtime_redeploy_*`, `initial_deploy_hook_started`/`_ended` (preview-only), and every preview-environment/workflow event (rejected product anti-goals). The tenant-facing `maintenance_mode_*` toggle remains the one maintenance concept bex does record.
+No durable bex source exists for these, so they are omitted rather than invented: `artifact_*`, `server_hardware_failure`, provider `maintenance_started`/`maintenance_ended`, `pipeline_minutes_exhausted` (no pipeline-minute billing), `zero_downtime_redeploy_*`, `initial_deploy_hook_started`/`_ended` (preview-only), and every preview-environment/workflow event (rejected product anti-goals). The tenant-facing `maintenance_mode_*` toggle remains the one maintenance concept bex does record.
 
 ## Verification
 
@@ -102,5 +102,15 @@ No durable bex source exists for these, so they are omitted rather than invented
 - Git decisions: signed-push tests cover skip/build-filter facts, unrelated/auto-deploy-off negatives, and delivery retry idempotency without copying commit messages.
 - Dashboard: explicit-window, cursor accumulation/deduplication, preceding-window, grouped filter, and Metrics range tests.
 - Live harness: `scripts/events-verify.sh` passed against the non-production CAPD cluster on 2026-07-18. Its 24-event feed covered real intent/observed events, image-pull failure and recovery, source decisions, autoscaling start/end, exact cursor reconstruction, REST/GraphQL agreement, retry no-ops, a readable env-value sentinel absent from every event, store-less 503 behavior, and product-path cleanup.
+
+## Disk events, and the dashboard catalog (2026-08-27, w6/m122)
+
+Two corrections to the record above.
+
+**`disk_*` is no longer a non-goal.** The 2026-07-18 capture listed it as omitted for want of persistent disks; bex has had them since [ADR082](../ADR082-persistent-disks.md) and emits four types from the `apps.AddDisk` / `apps.UpdateDisk` / `apps.DeleteDisk` / `apps.RestoreDiskSnapshot` audit verbs. That line has been removed. bex's spelling diverges from Render's for two of the four (`disk_attached`/`disk_detached` against Render's `disk_created`/`disk_deleted`), which is filed as its own open decision in `.pm/w6/068.md` — it is not settled here.
+
+**The API was never the defect; the dashboard was.** w6/m122 found the Events tab rendering `events ∩ dashboard catalog`, so five emitted types (`custom_domain_verified` and the four `disk_*`) were invisible and — the filter's option list coming from that same catalog — unselectable. The three API surfaces were correct throughout, and `TestServiceEventSurfaceCarriesDriftedTypes` now pins that down by probe rather than assertion: REST, GraphQL and MCP all carry `custom_domain_verified` and `disk_attached` for the same fixture. **No ADR018 row is warranted for the tab fix** — making it fail-open restores Render's behaviour (Render's Events page shows the types its API emits) rather than introducing a divergence.
+
+One standing property is worth stating because the probe made it concrete: `?type=` is validated against Render's pinned 39-value enum before the handler runs, so **every bex-named type is refused 400 on that parameter** — `env_vars_changed`, `custom_domain_added`, `custom_domain_verified` alike. That is the pinned contract working as designed, not a regression, and it is why the dashboard filters client-side over the unfiltered feed rather than pushing its type selection into the query.
 
 The official API specification is explicitly unversioned, so this comparison records the capture date and should be refreshed when Render changes its enum.

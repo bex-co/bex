@@ -1,17 +1,17 @@
 # w6 · m122 — The Events tab silently hides five event types the API emits, because "all types" means the dashboard's catalog rather than what the feed returns
 
-**Worker:** worker6 **Goal:** the Activity feed renders every event the API returns, and a future backend vocabulary addition cannot silently vanish from it **Status:** todo
+**Worker:** worker6 **Goal:** the Activity feed renders every event the API returns, and a future backend vocabulary addition cannot silently vanish from it **Status:** in progress — t001–t006 done (code, tests, parity and docs landed; dashboard 379 files/2769 tests, backend `internal/api`+`internal/events`, and `make lint` ×4 all green). t007 closeout is open: its checks are live probes against `dashboard.bex.co` and this session has no QA credentials (`scripts/qa-login.sh` exits 2).
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Make the Events tab fail-open: the catalog governs grouping and labels, not visibility      | 45m | —          |
-| t002 | Catalogue the five missing types — groups, labels, icons, en + zh                           | 45m | t001       |
-| t003 | Cross-boundary drift guard: backend vocabulary ⊆ dashboard catalog, enumerated from Go      | 45m | t002       |
-| t004 | Render parity                                                                               | 20m | t003       |
-| t005 | Simplify                                                                                    | 20m | t004       |
-| t006 | Test coverage                                                                               | 30m | t004       |
+| t001 | Make the Events tab fail-open: the catalog governs grouping and labels, not visibility      | 45m | —          | — **DONE**
+| t002 | Catalogue the five missing types — groups, labels, icons, en + zh                           | 45m | t001       | — **DONE**
+| t003 | Cross-boundary drift guard: backend vocabulary ⊆ dashboard catalog, enumerated from Go      | 45m | t002       | — **DONE**
+| t004 | Render parity                                                                               | 20m | t003       | — **DONE**
+| t005 | Simplify                                                                                    | 20m | t004       | — **DONE**
+| t006 | Test coverage                                                                               | 30m | t004       | — **DONE**
 | t007 | Closeout                                                                                    | 10m | t005, t006 |
 
 ## Definition of done
@@ -103,3 +103,37 @@
 ## Triage note (2026-08-27) — this milestone's fixture is scheduled for deletion by another milestone
 
 `w6/m110/t008` (closeout, open) lists "delete the `qa-20260826-webhook-svc` fixture service" as a step. That is `srv-da7o6ovvqdcc73bpn9hg` — the same service this milestone's first Definition-of-done bullet depends on, for the `custom_domain_verified` event stamped `2026-08-27T11:54:07Z`. A cross-reference has been added to `m110/t008` telling it to hold off, but if that service does disappear before this milestone is verified, the DoD's first bullet needs a rebuilt fixture (a service with a verified custom domain) rather than being quietly dropped.
+
+## Implementation record (2026-08-27)
+
+**t001 — the tab is fail-open.** `services.$serviceId.events.tsx` tracks **hidden** types (`useState(() => new Set())`) instead of selected ones, and renders `!hiddenTypes.has(event.type ?? "")`. The old default enumerated `SERVICE_EVENT_TYPES`, so a type the backend emits but the catalog omits was excluded by the default itself. `ServiceEventFilter` took the matching change: select-all clears the exclusion set outright rather than rebuilding it from the catalog, so it admits a type this build has never heard of. The count badge now reads `events.length` — what the API returned for the window — while the list below reflects the filter.
+
+**An uncatalogued type is controllable, not just visible.** The route passes the feed's own unknown types to the filter as `extraTypes`, rendered in an "Other" group. They are labelled by their **raw wire type** rather than the generic fallback: `ip_allow_list_changed` already maps to `services.eventsTypeServiceChanged` deliberately, so reusing that string would produce two identical checkboxes with no way to tell which was which. The feed row still uses the generic label, per the DoD.
+
+**An event with a missing/empty `type`** stays permanently visible and is offered no checkbox — an absent type is not a vocabulary member to filter on, and a nameless option would be worse than an always-visible row. Recorded here because t001 step 5 asked for the decision.
+
+**t002 — the five, and where they went.** `custom_domain_verified` plus `disk_attached`/`disk_updated`/`disk_detached`/`disk_restored` are catalogued under **Configuration**, with `LABEL_KEYS` entries, icons (`Globe`; `HardDrive`/`Unplug`/`History`) and en + zh strings. Reasoning for the grouping, as t002 required: all five come from `apps.*` audit verbs — accepted user intent against the service's own settings, exactly like every other member of that group — and the 2026-07-18 Render filter capture has no disk group to mirror, so a sixth group would diverge from the rule that the first four track Render and Configuration holds the rest.
+
+**t003 — the guard, and its demonstration.** `dashboard/src/features/events/__tests__/backend-vocabulary.test.ts` reads `internal/events/service.go` **and** `internal/eventvocab/datastore.go` and resolves the vocabulary structurally: string constants, `eventvocab.` aliases, the `eventTypes` map's value set, and `DatastoreAuditTypes()`. The datastore-only exclusion is **derived** (eventvocab's values minus those `eventTypes` also routes), not hand-listed, which is why `plan_changed` survives it while the five `postgres_*` types do not. No event-type string is named anywhere in the test — a restated list would just move the drift one file over. It parses 61 types and asserts a **subset** relation plus an explicit-label check, with a guard against the parser silently matching nothing.
+
+Demonstrated both directions rather than asserted:
+
+- Added `TypeThrowawayDriftProbe = "throwaway_drift_probe"` to `service.go` and wired it into `eventTypes` → **2 tests red**, naming the type and the three files to fix.
+- Deleted `TypeCommitIgnored` from the backend, catalog untouched → **green**, confirming a removal does not break the build.
+
+`service.go` was restored byte-for-byte afterwards (`git diff lego/` clean).
+
+**t004 — the API was never the defect, and one new finding.** `TestServiceEventSurfaceCarriesDriftedTypes` (`lego/backend/internal/api/events_surface_test.go`) probes REST, GraphQL and MCP over one fixture and confirms all three carry `custom_domain_verified` and `disk_attached`. **No ADR018 row is warranted** — making the tab fail-open restores Render's behaviour rather than adding a divergence. Recorded in `docs/render-artifacts/service-events.md`, whose "Still non-goals" line claiming `disk_*` was omitted for want of persistent disks was **stale** and has been corrected.
+
+The probe did surface something the hunt had not: `?type=` is validated against Render's pinned 39-value enum before the handler runs, and Render spells the family `disk_created` / `disk_updated` / `disk_deleted`. Only `disk_updated` matches bex. So `?type=disk_attached` is refused 400 with no spelling that would reach those rows. Filed as **`w6/068.md`** with three options and a recommendation — not fixed here, per t004's instruction that an API change is a new finding rather than a silent fix. The refusal itself is the pinned contract working as designed: every bex-named type (`env_vars_changed`, `custom_domain_added`, …) behaves identically, and the test asserts that control so the property is documented rather than mistaken for a regression.
+
+**t005 — simplify.** Memoized the route's uncatalogued-type list (it was allocating a fresh array each render and busting the filter's own `useMemo`), and hoisted `optionLabel` to module scope so the memoized group list keeps a stable dependency set. `filterTimelineEvents` was **left alone**, as t005 warned: it is a coarse four-way category filter with a time-window check, not a per-type exclusion set. The two share the fail-open *principle* and no mechanism; unifying them would either force the timeline to enumerate types (this bug from the other direction) or force the tab into coarse categories.
+
+**t006 — coverage that fails against the pre-fix code.** Five filter tests and three route tests. None derives "all types" from the catalog it checks — the old harness seeded `useState(new Set(SERVICE_EVENT_TYPES))`, which is why it was structurally blind. Verified non-tautological by reverting the behaviour: with the route filtering `events ∩ catalog`, the unknown-type and count-badge tests go red; with `custom_domain_verified` removed from the catalog, the hidden-event test goes red.
+
+### What t007 still owes
+
+The DoD's remaining bullets are live probes CI cannot run, and this session has no QA credentials (`scripts/qa-login.sh` exits **2** — `QA_EMAIL`/`QA_PASSWORD` absent from `.env`), plus the fix is not deployed. Two things must not be quietly dropped at closeout:
+
+- **The `disk_*` half was never observed live** — the QA workspace has no service with a persistent disk. It is code-verified and test-verified only. Say so plainly rather than implying it was seen.
+- **The fixture conflict** in the triage note below still stands: `w6/m110/t008` plans to delete `srv-da7o6ovvqdcc73bpn9hg`, which carries this milestone's `custom_domain_verified` evidence.

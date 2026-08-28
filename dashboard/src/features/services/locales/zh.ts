@@ -733,7 +733,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.secretFileRevealError": {
     message: "无法加载此密钥文件的内容。请关闭对话框后重试。",
-    description: "Shown in the secret-file dialog when reading the stored contents fails.",
+    description:
+      "Shown in the secret-file dialog when reading the stored contents fails.",
   },
   "services.secretFilesEmptyTitle": {
     message: "暂无密钥文件",
@@ -2420,8 +2421,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Settings tab suspend section description, for the types served at a public host",
   },
   "services.suspendCardDescriptionNoUrl": {
-    message:
-      "暂停服务将关闭它并停止运行，您可以随时恢复。",
+    message: "暂停服务将关闭它并停止运行，您可以随时恢复。",
     description:
       "Settings tab suspend section description, for private services, background workers and cron jobs — none of which have a public URL or certificates to keep",
   },
@@ -3000,26 +3000,31 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.navDisk": {
     message: "Disk",
-    description: "Service-detail nav item (persistent disk page); Render's label is singular",
+    description:
+      "Service-detail nav item (persistent disk page); Render's label is singular",
   },
   "services.diskTitle": {
     message: "Disk",
     description: "Disk tab card title",
   },
   "services.diskDescription": {
-    message: "Attach an SSD to persist your service's filesystem data across deploys. Disks are charged at $0.175/GB per month.",
-    description: "Disk tab card description; bex's rate is 30% below Render's $0.25",
+    message:
+      "Attach an SSD to persist your service's filesystem data across deploys. Disks are charged at $0.175/GB per month.",
+    description:
+      "Disk tab card description; bex's rate is 30% below Render's $0.25",
   },
   "services.diskEmptyTitle": {
     message: "No disk attached",
     description: "Disk tab empty state title",
   },
   "services.diskEmptyBody": {
-    message: "Only files under the disk's mount path are preserved across deploys and restarts.",
+    message:
+      "Only files under the disk's mount path are preserved across deploys and restarts.",
     description: "Disk tab empty state body",
   },
   "services.diskPaidOnly": {
-    message: "Disks require a paid instance type. Upgrade this service's plan to attach one.",
+    message:
+      "Disks require a paid instance type. Upgrade this service's plan to attach one.",
     description: "Shown instead of the add button on a free service",
   },
   "services.diskAddAction": {
@@ -3039,7 +3044,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Add-disk warning 1",
   },
   "services.diskWarningSingleInstance": {
-    message: "Services with an attached disk can't scale to multiple instances.",
+    message:
+      "Services with an attached disk can't scale to multiple instances.",
     description: "Add-disk warning 2",
   },
   "services.diskWarningOnePerService": {
@@ -3059,7 +3065,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Add-disk form field label",
   },
   "services.diskMountPathHint": {
-    message: "The absolute mount path for the disk. Only files under this path are persisted across deploys. Cannot be the root directory (/).",
+    message:
+      "The absolute mount path for the disk. Only files under this path are persisted across deploys. Cannot be the root directory (/).",
     description: "Add-disk mount path helper text",
   },
   "services.diskMountPathRequired": {
@@ -3075,7 +3082,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Client-side validation: root or trailing slash",
   },
   "services.diskMountPathReserved": {
-    message: "That path is reserved by the platform. Mount a subdirectory of it instead.",
+    message:
+      "That path is reserved by the platform. Mount a subdirectory of it instead.",
     description: "Client-side validation: reserved mount path",
   },
   "services.diskSizeLabel": {
@@ -3083,7 +3091,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Add-disk size field label",
   },
   "services.diskSizeHint": {
-    message: "You can increase the size later, but you can't decrease it. We recommend starting with the lowest value that serves your use case.",
+    message:
+      "You can increase the size later, but you can't decrease it. We recommend starting with the lowest value that serves your use case.",
     description: "Add-disk size helper text (Render's wording)",
   },
   "services.diskSizeChip": {
@@ -3103,7 +3112,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Grow button",
   },
   "services.diskGrowHint": {
-    message: "Increasing the size takes effect without downtime; on some volumes the filesystem finishes growing on the next restart. A disk can never be made smaller.",
+    message:
+      "Increasing the size takes effect without downtime; on some volumes the filesystem finishes growing on the next restart. A disk can never be made smaller.",
     description: "Grow helper text, including bex's honest CSI caveat",
   },
   "services.diskResizeSuccess": {
@@ -3119,7 +3129,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Delete confirmation title",
   },
   "services.diskDeleteWarning": {
-    message: "All data on the disk will be lost and the service will immediately lose access to it. Its snapshots are deleted too. This cannot be undone.",
+    message:
+      "All data on the disk will be lost and the service will immediately lose access to it. Its snapshots are deleted too. This cannot be undone.",
     description: "Delete confirmation body",
   },
   "services.diskDeleteConfirm": {
@@ -3135,16 +3146,20 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Snapshots card title",
   },
   "services.diskSnapshotsDescription": {
-    message: "A snapshot of this disk is taken daily and kept for at least seven days.",
+    message:
+      "A snapshot of this disk is taken daily and kept for at least seven days.",
     description: "Snapshots card description",
   },
   "services.diskSnapshotsNotConfiguredTitle": {
     message: "尚未启用快照",
-    description: "Snapshots card heading when the deployment has no snapshot object store configured (not a failure).",
+    description:
+      "Snapshots card heading when the deployment has no snapshot object store configured (not a failure).",
   },
   "services.diskSnapshotsNotConfiguredBody": {
-    message: "此 bex 部署尚未配置用于磁盘快照的对象存储，因此不会生成快照。你的数据不受影响 — 请联系运维人员启用。",
-    description: "Explains that snapshots are unconfigured rather than broken, and that an operator enables them.",
+    message:
+      "此 bex 部署尚未配置用于磁盘快照的对象存储，因此不会生成快照。你的数据不受影响 — 请联系运维人员启用。",
+    description:
+      "Explains that snapshots are unconfigured rather than broken, and that an operator enables them.",
   },
   "services.diskSnapshotsEmptyTitle": {
     message: "No snapshots yet",
@@ -3159,8 +3174,10 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Snapshots error state title",
   },
   "services.diskRestoreDatabaseWarning": {
-    message: "Don't restore a disk to recover a database running on it — restoring files underneath a running database can leave it corrupted. Use that database's own backup and restore instead.",
-    description: "Render's database-recovery warning, carried verbatim in meaning",
+    message:
+      "Don't restore a disk to recover a database running on it — restoring files underneath a running database can leave it corrupted. Use that database's own backup and restore instead.",
+    description:
+      "Render's database-recovery warning, carried verbatim in meaning",
   },
   "services.diskRestoreAction": {
     message: "Restore",
@@ -3171,7 +3188,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Restore confirmation title",
   },
   "services.diskRestoreWarning": {
-    message: "The service stops, the disk is replaced with this snapshot, and the service restarts. Everything written after the snapshot is lost. This cannot be undone.",
+    message:
+      "The service stops, the disk is replaced with this snapshot, and the service restarts. Everything written after the snapshot is lost. This cannot be undone.",
     description: "Restore confirmation body",
   },
   "services.diskRestoreConfirm": {
@@ -3179,16 +3197,20 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Restore confirmation action",
   },
   "services.diskUnsupportedType": {
-    message: "持久磁盘需要挂载到长期运行的实例上，因此仅适用于 Web 服务、私有服务和后台工作进程。",
-    description: "Empty-state body on the Disk tab for a service type that cannot have a disk.",
+    message:
+      "持久磁盘需要挂载到长期运行的实例上，因此仅适用于 Web 服务、私有服务和后台工作进程。",
+    description:
+      "Empty-state body on the Disk tab for a service type that cannot have a disk.",
   },
   "services.diskSudoPrompt": {
     message: "若要继续，请输入 {phrase}",
-    description: "Label above the typed-confirmation input for an irreversible disk action.",
+    description:
+      "Label above the typed-confirmation input for an irreversible disk action.",
   },
   "services.diskConfigTitle": {
     message: "磁盘配置",
-    description: "Heading of the card holding the disk's mount path and size settings.",
+    description:
+      "Heading of the card holding the disk's mount path and size settings.",
   },
   "services.diskConfigDescription": {
     message: "配置此磁盘的挂载路径和容量。",
@@ -3204,11 +3226,13 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.diskProvisionedLabel": {
     message: "已预配 {size} GB",
-    description: "Provisioned disk size shown beside the usage chart heading; this is the size billing meters.",
+    description:
+      "Provisioned disk size shown beside the usage chart heading; this is the size billing meters.",
   },
   "services.diskDeleteCardTitle": {
     message: "删除磁盘",
-    description: "Heading of the delete-disk card. Distinct from diskDeleteTitle, which is the confirmation dialog's question.",
+    description:
+      "Heading of the delete-disk card. Distinct from diskDeleteTitle, which is the confirmation dialog's question.",
   },
   "services.diskDeleteCardDescription": {
     message: "磁盘将从此服务分离，其上所有数据将被永久删除。",
@@ -3219,8 +3243,10 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Heading of the disk usage chart on a service's Disk tab.",
   },
   "services.diskUsageDescription": {
-    message: "已写入挂载卷的字节数，与其预配容量对比。计费按预配容量计算，而非已用字节。",
-    description: "Subtitle of the disk usage chart, stating that billing uses provisioned size.",
+    message:
+      "已写入挂载卷的字节数，与其预配容量对比。计费按预配容量计算，而非已用字节。",
+    description:
+      "Subtitle of the disk usage chart, stating that billing uses provisioned size.",
   },
   "services.diskRestoreStarted": {
     message: "Restoring the disk. The service stops until it finishes.",
@@ -3321,6 +3347,11 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsFilterGroup.configuration": {
     message: "配置",
     description: "bex 配置事件筛选组",
+  },
+  "services.eventsFilterGroup.other": {
+    message: "其他",
+    description:
+      "Event filter group holding types the API returned that the dashboard catalog does not know yet",
   },
   "services.eventsActor": {
     message: "由 {actor} 操作",
@@ -3564,6 +3595,27 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsTypeCustomDomainRemoved": {
     message: "已移除自定义域名",
     description: "Service activity type: custom domain removed",
+  },
+  "services.eventsTypeCustomDomainVerified": {
+    message: "自定义域名已验证",
+    description: "Service activity type: custom domain ownership verified",
+  },
+  "services.eventsTypeDiskAttached": {
+    message: "已挂载磁盘",
+    description: "Service activity type: persistent disk attached",
+  },
+  "services.eventsTypeDiskUpdated": {
+    message: "已更新磁盘",
+    description: "Service activity type: persistent disk updated",
+  },
+  "services.eventsTypeDiskDetached": {
+    message: "已卸载磁盘",
+    description: "Service activity type: persistent disk detached",
+  },
+  "services.eventsTypeDiskRestored": {
+    message: "已从快照恢复磁盘",
+    description:
+      "Service activity type: persistent disk restored from a snapshot",
   },
   "services.eventsTypeNotificationsChanged": {
     message: "失败通知已更新",

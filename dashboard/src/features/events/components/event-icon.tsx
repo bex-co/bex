@@ -2,8 +2,11 @@ import {
   Ban,
   CheckCircle2,
   CircleDot,
+  Globe,
   GitBranch,
+  HardDrive,
   Hammer,
+  History,
   Moon,
   PauseCircle,
   PlayCircle,
@@ -12,6 +15,7 @@ import {
   Rocket,
   Scale,
   Terminal,
+  Unplug,
   XCircle,
 } from "lucide-react";
 
@@ -70,6 +74,16 @@ export function EventIcon({
     return <PlayCircle {...iconProps} />;
   }
   if (type === "server_restarted") return <RefreshCcw {...iconProps} />;
+  // Domain ownership passing its check is the awaited beat of the custom-domain
+  // journey (ADR005), so it reads as a globe rather than a generic settings dot.
+  if (type === "custom_domain_verified") return <Globe {...iconProps} />;
+  // The persistent-disk lifecycle (ADR082): attach/update share the drive glyph,
+  // detach unplugs it, restore is a point-in-time rewind.
+  if (type === "disk_attached" || type === "disk_updated") {
+    return <HardDrive {...iconProps} />;
+  }
+  if (type === "disk_detached") return <Unplug {...iconProps} />;
+  if (type === "disk_restored") return <History {...iconProps} />;
   if (
     type === "instance_count_changed" ||
     type === "autoscaling_config_changed" ||
