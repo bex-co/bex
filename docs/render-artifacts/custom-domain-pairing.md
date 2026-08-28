@@ -1,6 +1,6 @@
 # Capture — Render's www↔apex auto-pairing on custom-domain add/delete (w6/m23 t001)
 
-**Captured:** 2026-07-14 (pairing semantics from Render's public docs), extended 2026-07-15 with live HTTPS probes against public Render-routed custom domains. The live probes pin the previously unresolved status/path/query/TLS behavior in both directions without requiring access to a tenant's Render account.
+**Captured:** 2026-07-14 (pairing semantics from Render's public docs), extended 2026-07-15 with live HTTPS probes against public Render-routed custom domains, and rechecked 2026-08-28 against Render's current custom-domain guide, Blueprint reference, and delete API reference. The live probes pin the previously unresolved status/path/query/TLS behavior in both directions without requiring access to a tenant's Render account.
 
 ## Live redirect evidence (2026-07-15)
 
@@ -66,9 +66,17 @@ Symmetric: "If you add a www subdomain (e.g., `www.example.org`), Render automat
 
 **Rule:** whichever half the tenant explicitly adds becomes the "canonical" (serving) host; the other half is auto-added and redirects to the canonical one. Direction is not configurable after the fact — it's fixed by which half was added first.
 
-### Delete semantics — undocumented, inferred
+### Delete semantics — still undocumented
 
-Render's public docs do not say what happens when a tenant deletes one half of an established pair (does the sibling get deleted too? does the redirect dangle?). No canonical answer found in docs, the API reference, or the community forum (the community thread on domain redirects didn't add detail beyond the docs page — link unreachable at capture time, docs page is the primary source). Rather than invent Render's internals, bex defines its own honest, documented delete semantics (see below) — a **conscious, named divergence**, not a guess dressed as parity.
+Render's public docs and Blueprint reference say which half is automatically added and which direction it redirects. The current delete API reference only says it deletes the named custom domain and returns `204`; none says whether deleting one member cascades the generated sibling. Rechecked 2026-08-28. Rather than invent Render's internals, bex defines its own honest, documented delete semantics (see below) — a **conscious, named divergence**, not a guess dressed as parity.
+
+### Bex pair-deletion rule
+
+- The row with `redirectForName` is the platform-generated half; the direct row it names is the canonical claim the tenant added.
+- Deleting the canonical claim atomically deletes its generated redirecting sibling too. A generated claim never survives by silently becoming directly served.
+- Deleting only the generated redirecting sibling preserves the canonical claim unchanged.
+- Explicitly adding the generated sibling clears `redirectForName`. Both rows are then explicit, independent claims, so deleting either preserves the other.
+- The rule is identical for pending and verified claims and for apex-first and `www`-first adds.
 
 ### Non-www subdomains — no pairing
 
@@ -86,7 +94,7 @@ Not explicitly demonstrated in Render's docs, but implied by the general behavio
 | Add www → auto-add apex | ✅ auto-added, redirects to www | ✅ mirrored: auto-add the apex as a second entry in `spec.hosts[]` |
 | Sibling redirect (3xx) | ✅ 301; HTTPS; path/query preserved | ✅ mirrored by w6/m30: a per-sibling Traefik `RedirectRegex` middleware + dedicated TLS-bearing Ingress redirects to the explicitly added canonical host |
 | Re-adding the already-auto-added sibling | (not documented; Render's UI shows it as already present) | makes the sibling explicit: clears its redirect so both hosts serve directly, without adding a duplicate |
-| Delete one half of a pair | undocumented | **bex-defined:** deletes only the named host; the sibling remains. If the deleted host was the redirect target, the surviving sibling becomes directly served so no redirect can dangle. |
+| Delete one half of a pair | undocumented as of 2026-08-28 | **bex-defined:** deleting the canonical/direct claim also removes its generated redirecting sibling; deleting the generated sibling preserves the canonical claim; two explicitly claimed direct siblings are independent |
 | Non-www subdomain pairing (`app.example.com`) | none | none — mirrored (no sibling, no redirect) |
 | Public-suffix apex (`example.co.uk`) | (inferred) correctly paired via eTLD+1 | mirrored via `golang.org/x/net/publicsuffix` (t002) |
 | Cross-app collision guard covers the sibling | (Render's collision guard is unspecified but the pairing implies the sibling is "claimed" the moment the pair is created) | ✅ mirrored: registering `www.foo.com` on app A reserves `foo.com` against app B too (t004) — closes the blind spot documented in `docs/ADR005-custom-domain.md` § www↔apex sibling pairing and the ADR018 domains row |

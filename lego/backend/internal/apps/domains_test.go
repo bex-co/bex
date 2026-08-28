@@ -259,11 +259,9 @@ func (m *memoryDomainClaimStore) ReplaceDomainClaims(_ context.Context, appID st
 }
 
 func (m *memoryDomainClaimStore) RemoveDomain(_ context.Context, appID, host string) error {
-	delete(m.claims, host)
 	for source, claim := range m.claims {
-		if claim.AppID == appID && claim.RedirectForName == host {
-			claim.RedirectForName = ""
-			m.claims[source] = claim
+		if claim.AppID == appID && (source == host || claim.RedirectForName == host) {
+			delete(m.claims, source)
 		}
 	}
 	return nil
@@ -313,6 +311,83 @@ func TestManagedDomainClaimLifecycleNeverServesPending(t *testing.T) {
 	}
 	if again, err := svc.VerifyDomain(context.Background(), "web", "app.example.com"); err != nil || again.OwnershipStatus != "verified" {
 		t.Fatalf("verified retry = %+v err=%v", again, err)
+	}
+}
+
+func TestManagedDomainPairDeletionMatrix(t *testing.T) {
+	for _, state := range []string{"pending", "verified"} {
+		for _, canonical := range []string{"foo.com", "www.foo.com"} {
+			generated := wwwSibling(canonical)
+			for _, deleted := range []string{canonical, generated} {
+				name := state + "/add-" + canonical + "/delete-" + deleted
+				t.Run(name, func(t *testing.T) {
+					claims := newMemoryDomainClaimStore()
+					svc, cl := newService(claims, managedApp("web", "srv-1"))
+					if _, err := svc.AddDomain(context.Background(), "web", canonical); err != nil {
+						t.Fatalf("AddDomain: %v", err)
+					}
+					if state == "verified" {
+						for _, host := range []string{canonical, generated} {
+							if _, err := svc.VerifyDomain(context.Background(), "web", host); err != nil {
+								t.Fatalf("VerifyDomain(%s): %v", host, err)
+							}
+						}
+					}
+
+					if err := svc.DeleteDomain(context.Background(), "web", deleted); err != nil {
+						t.Fatalf("DeleteDomain: %v", err)
+					}
+					if err := svc.DeleteDomain(context.Background(), "web", deleted); err != nil {
+						t.Fatalf("idempotent DeleteDomain retry: %v", err)
+					}
+
+					rows, err := claims.ListDomainClaims(context.Background(), "srv-1")
+					if err != nil {
+						t.Fatal(err)
+					}
+					if deleted == canonical {
+						if len(rows) != 0 {
+							t.Fatalf("canonical delete left generated claim: %+v", rows)
+						}
+					} else if len(rows) != 1 || rows[0].Host != canonical || rows[0].RedirectForName != "" {
+						t.Fatalf("generated delete changed canonical claim: %+v", rows)
+					}
+					app := getApp(t, cl, "web")
+					if state == "pending" {
+						if len(app.Spec.Hosts) != 0 || len(app.Spec.HostRedirects) != 0 {
+							t.Fatalf("pending delete projected serving intent: %+v", app.Spec)
+						}
+					} else if deleted == canonical {
+						if len(app.Spec.Hosts) != 0 || len(app.Spec.HostRedirects) != 0 {
+							t.Fatalf("verified canonical delete left serving intent: %+v", app.Spec)
+						}
+					} else if !slices.Equal(app.Spec.Hosts, []string{canonical}) || len(app.Spec.HostRedirects) != 0 {
+						t.Fatalf("verified generated delete changed canonical serving intent: %+v", app.Spec)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestManagedDomainPairExplicitSiblingIsIndependent(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	svc, _ := newService(claims, managedApp("web", "srv-1"))
+	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
+		t.Fatalf("add canonical: %v", err)
+	}
+	if _, err := svc.AddDomain(context.Background(), "web", "www.foo.com"); err != nil {
+		t.Fatalf("make sibling explicit: %v", err)
+	}
+	if err := svc.DeleteDomain(context.Background(), "web", "foo.com"); err != nil {
+		t.Fatalf("delete one explicit claim: %v", err)
+	}
+	rows, err := claims.ListDomainClaims(context.Background(), "srv-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Host != "www.foo.com" || rows[0].RedirectForName != "" {
+		t.Fatalf("explicit sibling was cascaded or changed: %+v", rows)
 	}
 }
 
@@ -607,6 +682,12 @@ func TestAddDomainReAddingPairedSiblingMakesBothExplicit(t *testing.T) {
 	if got := getApp(t, cl, "web").Spec.HostRedirects; len(got) != 0 {
 		t.Errorf("explicit-both must clear the sibling redirect, got %v", got)
 	}
+	if err := svc.DeleteDomain(context.Background(), "web", "foo.com"); err != nil {
+		t.Fatalf("delete one explicit claim: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; !slices.Equal(got, []string{"www.foo.com"}) {
+		t.Errorf("explicit sibling must survive independently, got %v", got)
+	}
 }
 
 // TestAddDomainNoAutoPairForNonWwwSubdomain: a deep subdomain (wwwSibling
@@ -672,23 +753,37 @@ func TestAddDomainSiblingReservedIsSkippedNotFailed(t *testing.T) {
 	}
 }
 
-// TestDeleteDomainLeavesSiblingUntouched pins bex's documented delete
-// semantics (docs/render-artifacts/custom-domain-pairing.md, w6/m23 t001):
-// Render doesn't specify sibling-delete behavior, so bex treats each half as
-// an independent spec.hosts[] entry — deleting one never removes the other.
-func TestDeleteDomainLeavesSiblingUntouched(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
-	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
-		t.Fatalf("AddDomain: %v", err)
+// TestDeleteDomainAutoPairSemantics pins the bex-defined rule Render leaves
+// undocumented: deleting the canonical/direct half cascades its generated
+// redirecting sibling, while deleting only the generated half preserves the
+// canonical host and its direct-serving meaning.
+func TestDeleteDomainAutoPairSemantics(t *testing.T) {
+	cases := []struct {
+		name, add, deleted string
+		want               []string
+	}{
+		{name: "apex canonical", add: "foo.com", deleted: "foo.com"},
+		{name: "www generated", add: "foo.com", deleted: "www.foo.com", want: []string{"foo.com"}},
+		{name: "www canonical", add: "www.foo.com", deleted: "www.foo.com"},
+		{name: "apex generated", add: "www.foo.com", deleted: "foo.com", want: []string{"www.foo.com"}},
 	}
-	if err := svc.DeleteDomain(context.Background(), "web", "foo.com"); err != nil {
-		t.Fatalf("DeleteDomain: %v", err)
-	}
-	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "www.foo.com" {
-		t.Errorf("spec.hosts = %v, want [www.foo.com] (sibling survives the delete)", got)
-	}
-	if got := getApp(t, cl, "web").Spec.HostRedirects; len(got) != 0 {
-		t.Errorf("surviving sibling must serve directly after its target is deleted, got redirects %v", got)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl := newService(nil, sampleApp("web"))
+			if _, err := svc.AddDomain(context.Background(), "web", tc.add); err != nil {
+				t.Fatalf("AddDomain: %v", err)
+			}
+			if err := svc.DeleteDomain(context.Background(), "web", tc.deleted); err != nil {
+				t.Fatalf("DeleteDomain: %v", err)
+			}
+			app := getApp(t, cl, "web")
+			if !slices.Equal(app.Spec.Hosts, tc.want) {
+				t.Errorf("spec.hosts = %v, want %v", app.Spec.Hosts, tc.want)
+			}
+			if len(app.Spec.HostRedirects) != 0 {
+				t.Errorf("post-delete redirects = %v, want none", app.Spec.HostRedirects)
+			}
+		})
 	}
 }
 
@@ -1139,6 +1234,17 @@ func TestRESTCustomDomainsPairedAdd(t *testing.T) {
 	if byName["foo.com"].RedirectForName != "" || byName["www.foo.com"].RedirectForName != "foo.com" {
 		t.Errorf("REST redirectForName mismatch: %+v", byName)
 	}
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web/custom-domains/foo.com", nil))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("DELETE canonical => 204, got %d: %s", rec.Code, rec.Body)
+	}
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains", nil))
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 0 {
+		t.Fatalf("REST canonical delete must remove generated pair: %v len=%d", err, len(list))
+	}
 }
 
 // TestRESTCustomDomainsSiblingConflict: registering www.foo.com on one service
@@ -1346,6 +1452,20 @@ func TestGraphQLCustomDomainsPairedAdd(t *testing.T) {
 	if byName["foo.com"]["redirectForName"] != nil || byName["www.foo.com"]["redirectForName"] != "foo.com" {
 		t.Errorf("GraphQL redirectForName mismatch: %v", byName)
 	}
+
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { deleteCustomDomain(id: "web", name: "foo.com") }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("deleteCustomDomain canonical: %v", res.Errors)
+	}
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `{ customDomains(id: "web") { name redirectForName } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("customDomains after delete: %v", res.Errors)
+	}
+	if got := res.Data.(map[string]any)["customDomains"].([]any); len(got) != 0 {
+		t.Fatalf("GraphQL canonical delete must remove generated pair: %v", got)
+	}
 }
 
 // TestGraphQLCustomDomainsSiblingConflict: the sibling collision guard surfaces
@@ -1401,6 +1521,16 @@ func TestMCPCustomDomainsPairedAdd(t *testing.T) {
 	}
 	if byName["www.foo.com"]["redirectForName"] != "foo.com" {
 		t.Errorf("MCP sibling redirectForName = %v, want foo.com", byName["www.foo.com"]["redirectForName"])
+	}
+
+	deleted := call("delete_custom_domain", map[string]any{"serviceId": "web", "name": "foo.com"})
+	if deleted["deleted"] != true {
+		t.Fatalf("delete_custom_domain canonical = %v", deleted)
+	}
+	list = call("list_custom_domains", map[string]any{"serviceId": "web"})
+	domains, _ = list["customDomains"].([]any)
+	if len(domains) != 0 {
+		t.Fatalf("MCP canonical delete must remove generated pair: %v", list)
 	}
 }
 

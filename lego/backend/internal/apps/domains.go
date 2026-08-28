@@ -1019,15 +1019,14 @@ func setHostRedirect(app *appv1alpha1.App, host, target string) {
 	app.Spec.HostRedirects[host] = target
 }
 
-// DeleteDomain removes hostname from App.spec.hosts[]. Idempotent — removing a
-// hostname not in spec.hosts[] is a no-op. For store-managed Apps the row is
-// deleted first (same row-first rationale as the other intent verbs).
-//
-// Deleting one half of an auto-paired www<->apex sibling leaves the other half
-// in spec.hosts[]. If the deleted host was the canonical redirect target, the
-// surviving sibling's redirect is cleared so it serves directly rather than
-// dangling. Render does not document pair-delete semantics; this is bex's
-// explicit per-host rule.
+// DeleteDomain removes hostname from App.spec.hosts[]. If hostname is the
+// canonical target of an auto-generated www<->apex redirect, the redirecting
+// sibling is removed with it. Deleting the generated redirecting sibling alone
+// preserves the canonical host unchanged. Explicitly re-adding the generated
+// sibling clears its redirect, making the two rows independent, so neither is
+// then cascaded. The rule is claim-state agnostic and idempotent. For
+// store-managed Apps the authoritative rows are deleted first (same row-first
+// rationale as the other intent verbs).
 func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) error {
 	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
@@ -1053,9 +1052,15 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 		}
 		return nil
 	}
+	removed := map[string]struct{}{hostname: {}}
+	for source, target := range app.Spec.HostRedirects {
+		if target == hostname {
+			removed[source] = struct{}{}
+		}
+	}
 	var updated []string
 	for _, h := range app.Spec.Hosts {
-		if h != hostname {
+		if _, ok := removed[h]; !ok {
 			updated = append(updated, h)
 		}
 	}
@@ -1064,13 +1069,6 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 	}
 	if s.Store != nil {
 		if id := managedAppID(app); id != "" {
-			for source, target := range app.Spec.HostRedirects {
-				if target == hostname {
-					if err := s.Store.AddDomain(ctx, id, source, ""); err != nil {
-						return fmt.Errorf("clear dependent redirect in source of truth: %w", err)
-					}
-				}
-			}
 			if err := s.Store.RemoveDomain(ctx, id, hostname); err != nil {
 				return fmt.Errorf("update source of truth: %w", err)
 			}
@@ -1078,11 +1076,8 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 	}
 	base := client.MergeFrom(app.DeepCopy())
 	app.Spec.Hosts = updated
-	setHostRedirect(app, hostname, "")
-	for source, target := range app.Spec.HostRedirects {
-		if target == hostname {
-			setHostRedirect(app, source, "")
-		}
+	for host := range removed {
+		setHostRedirect(app, host, "")
 	}
 	resourcemeta.Touch(app, s.Now())
 	return s.Client.Patch(ctx, app, base)

@@ -199,6 +199,20 @@ function CustomDomainRow({
   const [open, setOpen] = useState(
     () => !domain.ownershipVerified || !domain.verified,
   );
+  let deleteDescription = t("services.domainDeleteConfirmBody");
+  if (sibling) {
+    if (domain.redirectForName) {
+      deleteDescription = t("services.domainDeleteGeneratedConfirmBody", {
+        name: domain.name,
+        canonical: sibling.name,
+      });
+    } else {
+      deleteDescription = t("services.domainDeletePairConfirmBody", {
+        name: domain.name,
+        sibling: sibling.name,
+      });
+    }
+  }
 
   return (
     <>
@@ -280,7 +294,7 @@ function CustomDomainRow({
             title={t("services.domainDeleteConfirmTitle", {
               name: domain.name,
             })}
-            description={t("services.domainDeleteConfirmBody")}
+            description={deleteDescription}
             cancelLabel={t("services.domainCancel")}
             confirmLabel={t("services.domainDelete")}
             onConfirm={() => {

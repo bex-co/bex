@@ -53,12 +53,14 @@ Direct add mirrors Render's pairing via the public-suffix list:
 - each row has its own durable challenge and must verify independently;
 - no redirect enters the App spec until both source and target are verified;
 - explicitly adding the sibling clears its redirect without rotating either claim;
-- deleting either pending or verified row is idempotent, and deleting a target clears dependent redirects before reprojection.
+- deleting the canonical/direct claim atomically deletes its generated redirecting sibling, while deleting only the generated sibling preserves the canonical claim unchanged;
+- after the sibling is explicitly added and its redirect cleared, both claims are independent and deleting either preserves the other;
+- the same idempotent rule applies to pending and verified claims in both add directions.
 
 Cross-App collision covers both halves because each sibling is a real globally unique row. Wildcard tenant domains remain rejected: literal uniqueness cannot safely arbitrate a wildcard against every concrete hostname beneath it.
 
 ## Render compatibility
 
-Render's current documented workflow is also Add → configure DNS → Verify, auto-pairs apex/`www`, and begins TLS issuance after verification. Its public REST schema exposes `verificationStatus: unverified | verified`; bex accepts official `unverified` filters and retains `pending` as its established alias. The official Verify endpoint returns `202` with no domain body, while bex returns the fresh domain view so GraphQL, MCP, and the dashboard share one result.
+Render's current documented workflow is also Add → configure DNS → Verify, auto-pairs apex/`www`, and begins TLS issuance after verification. Its public docs and delete API reference still do not specify whether deleting one pair member cascades the generated sibling (rechecked 2026-08-28), so bex's pair-deletion rule above is a named divergence. Render's public REST schema exposes `verificationStatus: unverified | verified`; bex accepts official `unverified` filters and retains `pending` as its established alias. The official Verify endpoint returns `202` with no domain body, while bex returns the fresh domain view so GraphQL, MCP, and the dashboard share one result.
 
 Bex's random ownership TXT, explicit `ownershipStatus` / `ownershipDnsRecord`, synchronous named pending conflicts, and hard non-serving pending invariant are deliberate security extensions. Render ordinarily proves service-domain control through traffic DNS and has additional TXT records only for wildcard machinery. See [the pinned comparison](render-artifacts/custom-domain-dns-instructions.md) and [ADR018](ADR018-render-parity.md).

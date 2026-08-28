@@ -1307,6 +1307,18 @@ const enServices: Record<string, TranslationEntry> = {
       "The service stops serving this domain. Its Ingress rule is removed and the TLS certificate is left to expire. This can't be undone.",
     description: "Custom-domain delete-confirmation dialog body",
   },
+  "services.domainDeletePairConfirmBody": {
+    message:
+      "This removes {name} and its automatically added redirect {sibling}. Both Ingress rules are removed and their TLS certificates are left to expire. This can't be undone.",
+    description:
+      "Custom-domain delete confirmation when deleting a canonical host also removes its generated redirecting sibling",
+  },
+  "services.domainDeleteGeneratedConfirmBody": {
+    message:
+      "This removes only {name}. {canonical} remains the canonical domain and does not redirect. The removed domain's Ingress rule is removed and its TLS certificate is left to expire. This can't be undone.",
+    description:
+      "Custom-domain delete confirmation when deleting only the generated redirecting sibling",
+  },
   "services.domainAdd": {
     message: "Add Custom Domain",
     description: "Custom-domains button to open the add-domain dialog",

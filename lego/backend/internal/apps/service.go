@@ -291,8 +291,10 @@ type IntentStore interface {
 	// for a directly-served host and names the canonical host for an auto-paired
 	// redirect. The projector carries both into the App spec on the next resync.
 	AddDomain(ctx context.Context, appID, host, redirectForName string) error
-	// RemoveDomain removes a custom domain row. Idempotent — not-found silently
-	// ignored.
+	// RemoveDomain removes a custom domain row and any platform-generated row
+	// that redirects to it. A generated redirect row is identified by its
+	// redirectForName; an explicitly re-added sibling has that field cleared and
+	// is therefore preserved. Idempotent — not-found is silently ignored.
 	RemoveDomain(ctx context.Context, appID, host string) error
 	// ReplaceDomains atomically makes the database's globally-unique domain rows
 	// match the requested primary + additional hosts. The unique host constraint

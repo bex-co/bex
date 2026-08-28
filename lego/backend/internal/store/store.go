@@ -1240,17 +1240,16 @@ func (s *PGStore) domainOwner(ctx context.Context, host string) (string, bool, e
 	return appID, true, nil
 }
 
-// RemoveDomain deletes a domain row for apps.IntentStore — idempotent
-// (not-found silently ignored).
+// RemoveDomain deletes a domain row for apps.IntentStore. If host is the
+// canonical target of an auto-generated redirecting sibling, that sibling is
+// deleted in the same statement: preserving it while clearing its redirect
+// would silently turn a generated redirect into a directly served claim.
+// Deleting the redirecting sibling itself leaves the canonical host unchanged.
+// A sibling the tenant explicitly re-added has a NULL redirect_for_name and is
+// therefore independent. The operation is idempotent (not-found is ignored).
 func (s *PGStore) RemoveDomain(ctx context.Context, appID, host string) error {
-	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx,
-			`UPDATE domains SET redirect_for_name = NULL WHERE app_id = $1 AND redirect_for_name = $2`, appID, host); err != nil {
-			return err
-		}
-		_, err := tx.Exec(ctx, `DELETE FROM domains WHERE app_id = $1 AND host = $2`, appID, host)
-		return err
-	})
+	_, err := s.Pool.Exec(ctx,
+		`DELETE FROM domains WHERE app_id = $1 AND (host = $2 OR redirect_for_name = $2)`, appID, host)
 	return classify("domain", err)
 }
 
