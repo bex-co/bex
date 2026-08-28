@@ -52,8 +52,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: install yq
+        # Always download + checksum-verify into the ephemeral $RUNNER_TEMP and
+        # prepend it to PATH — never short-circuit on a yq already in PATH. On a
+        # persistent self-hosted runner a prior (possibly attacker-planted) yq
+        # could otherwise be reused unverified across jobs (codex-security
+        # target #2); $RUNNER_TEMP is per-job, so the verified binary always wins.
         run: |
-          if command -v yq >/dev/null 2>&1; then exit 0; fi
           YQ_VERSION=4.44.6
           YQ_LINUX_ARM64_SHA256=9477ac3cc447b6c083986129e35af8122eb2b938fe55c9c3e40436fb966e5813
           archive="$RUNNER_TEMP/yq"

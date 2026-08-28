@@ -1393,6 +1393,11 @@ func configureRateLimiters(srv *api.Server) {
 		srv.AuthAdmission.TrustedProxies = trustedProxies
 	}
 
+	// The security-header middleware consults the same trusted CIDRs so HSTS is
+	// only emitted for a genuinely-TLS request, never from a spoofed
+	// X-Forwarded-Proto (codex-security target #10).
+	srv.TrustedProxies = trustedProxies
+
 	// Trusted-proxy awareness applies to every IP-keyed budget alike: the
 	// per-caller, device-flow, webhook-intake, and deploy-hook limiters all
 	// derive the client IP through the same trusted CIDRs.

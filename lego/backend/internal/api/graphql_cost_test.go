@@ -104,3 +104,54 @@ func TestGraphQLPerFieldAliasBudget(t *testing.T) {
 		t.Error("per-field alias budget must hold through fragment spreads")
 	}
 }
+
+// TestFragmentSpreadDepthParity pins codex-security target #8 as a NON-issue.
+// A fragment spread does not introduce a nesting level in GraphQL — the fields
+// inside a fragment sit at the same depth as the spread site — and the cost
+// walker models exactly that: depth is charged on Field selection sets, and a
+// spread is walked at the SAME depth. So a document nested through fragments is
+// accepted/rejected at EXACTLY the same depth as the inline form: fragments can
+// neither smuggle extra depth past gqlMaxDepth (a bypass) nor over-count a
+// within-limit query (a false rejection). Incrementing depth on the spread, as
+// the finding proposed, would break the second property.
+func TestFragmentSpreadDepthParity(t *testing.T) {
+	// inlineNest: `{ node { node { … id } } }` with k `node` levels.
+	inlineNest := func(k int) string {
+		inner := "id"
+		for i := 0; i < k; i++ {
+			inner = "node { " + inner + " }"
+		}
+		return "{ " + inner + " }"
+	}
+	// fragmentNest: the SAME k `node` levels, but every child selection set is
+	// reached through a fragment spread (depth-transparent in GraphQL).
+	fragmentNest := func(k int) string {
+		var b strings.Builder
+		b.WriteString("query { ...F0 } ")
+		for i := 0; i < k; i++ {
+			fmt.Fprintf(&b, "fragment F%d on T { node { ...F%d } } ", i, i+1)
+		}
+		fmt.Fprintf(&b, "fragment F%d on T { id } ", k)
+		return b.String()
+	}
+
+	// Sweep across the depth boundary: the inline and fragment forms must agree
+	// on accept/reject at every level.
+	for k := gqlMaxDepth - 2; k <= gqlMaxDepth+2; k++ {
+		inlineOK := validateGraphQLComplexity(inlineNest(k)) == nil
+		fragOK := validateGraphQLComplexity(fragmentNest(k)) == nil
+		if inlineOK != fragOK {
+			t.Errorf("depth k=%d: inline accepted=%v but fragment accepted=%v — fragments must not change the depth verdict",
+				k, inlineOK, fragOK)
+		}
+	}
+
+	// Concretely: a fragment chain deeper than the limit is still rejected.
+	if err := validateGraphQLComplexity(fragmentNest(gqlMaxDepth + 2)); err == nil {
+		t.Error("a fragment-nested query past gqlMaxDepth must still be rejected")
+	}
+	// …and one within the limit still passes (no over-count).
+	if err := validateGraphQLComplexity(fragmentNest(gqlMaxDepth - 2)); err != nil {
+		t.Errorf("a fragment-nested query within gqlMaxDepth must pass, got %v", err)
+	}
+}

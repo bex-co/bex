@@ -26,6 +26,7 @@ import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { CopyButton } from "@/common/components/copy-button";
 import { RelativeAge, RelativeUntil } from "@/common/components/relative-time";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { safeHttpHref } from "@/common/lib/external-url";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
@@ -90,6 +91,8 @@ export function ServiceDetailHeader({
   const repoUrl = service.repo
     ? repoBrowseUrl(service.repo, service.branch)
     : null;
+  // Never place a non-http(s) scheme into an href (codex-security target #4).
+  const safeServiceUrl = safeHttpHref(service.url);
 
   return (
     <div className="space-y-2 border-b px-4 py-3 sm:px-6">
@@ -242,16 +245,28 @@ export function ServiceDetailHeader({
               errorText={t("services.internalCopyError")}
             />
           </div>
-        ) : service.url ? (
+        ) : safeServiceUrl ? (
           <div className="flex min-w-0 items-center gap-1.5">
             <a
-              href={service.url}
+              href={safeServiceUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noreferrer noopener"
               className="text-primary truncate hover:underline"
             >
               {service.url}
             </a>
+            <CopyButton
+              value={service.url ?? ""}
+              label={t("services.headerCopyUrl")}
+              successText={t("services.headerCopied")}
+              errorText={t("services.headerCopyError")}
+            />
+          </div>
+        ) : service.url ? (
+          // URL present but not a safe http(s) scheme: show it as inert,
+          // copyable text rather than a live link (codex-security target #4).
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="text-foreground truncate">{service.url}</span>
             <CopyButton
               value={service.url}
               label={t("services.headerCopyUrl")}

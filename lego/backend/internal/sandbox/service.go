@@ -712,8 +712,11 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 // `If-None-Match: *` must match PrepareUpload's signed precondition so a
 // retained argv URL cannot overwrite an already-written snapshot (round-16 #9).
 // `set -e` + curl `-f` make any failure a non-zero exit the caller treats as
-// "hibernation failed, fall back to Terminate". The URL is single-quoted; a
-// presigned URL is percent-encoded and never contains a single quote.
+// "hibernation failed, fall back to Terminate". The presigned PUT URL is passed
+// as the script's first positional argument ("$1"), NOT interpolated into the
+// script text (codex-security target #6): a real argv element cannot break out
+// of the shell no matter what bytes it carries, so the snapshot pipeline no
+// longer depends on the presigned URL being single-quote-free.
 const hibernateScript = `set -e
 %s
 SNAP=/tmp/bex-hibernate.tgz
@@ -724,7 +727,7 @@ tar czf "$SNAP" --numeric-owner $MEMBERS 2>/dev/null
 sha256sum "$SNAP" | cut -d' ' -f1
 wc -c < "$SNAP"
 if [ -n "$(git -C /workspace status --porcelain 2>/dev/null)" ]; then echo dirty; else echo clean; fi
-curl -sSf -X PUT -H 'If-None-Match: *' --upload-file "$SNAP" %s
+curl -sSf -X PUT -H 'If-None-Match: *' --upload-file "$SNAP" "$1"
 rm -f "$SNAP"`
 
 // HibernateAgentSessionSandbox snapshots the session's mutable state to the
@@ -760,8 +763,11 @@ func (l *AgentSessionLifecycle) HibernateAgentSessionSandbox(ctx context.Context
 	if err != nil {
 		return SnapshotResult{}, err
 	}
-	command := fmt.Sprintf(hibernateScript, snapshotCommand, "'"+putURL+"'")
-	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID, []string{"/bin/sh", "-c", command})
+	command := fmt.Sprintf(hibernateScript, snapshotCommand)
+	// putURL rides as $1 (a real argv element), not interpolated into the script
+	// body — see hibernateScript (codex-security target #6). "$0" is a label.
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID,
+		[]string{"/bin/sh", "-c", command, "bex-hibernate", putURL})
 	if err != nil {
 		return SnapshotResult{}, err
 	}

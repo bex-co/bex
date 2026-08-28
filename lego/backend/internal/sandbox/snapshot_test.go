@@ -18,6 +18,7 @@ package sandbox
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -134,5 +135,29 @@ func TestHibernateScriptShowsCurlErrorsAndSnapshotDetailStripsQueries(t *testing
 	}
 	if snapshotExecDetail(ExecResult{}) != "" {
 		t.Fatal("empty exec result should add no detail")
+	}
+}
+
+// TestHibernateScriptTakesURLFromArgv pins the codex-security target #6 fix: the
+// presigned PUT URL is passed as the script's first positional argument, never
+// interpolated into the script body, so no byte in the URL can break out of the
+// `sh -c` boundary.
+func TestHibernateScriptTakesURLFromArgv(t *testing.T) {
+	if !strings.Contains(hibernateScript, `--upload-file "$SNAP" "$1"`) {
+		t.Fatal(`hibernate script must PUT to "$1" (the argv-supplied URL), not an interpolated value`)
+	}
+	// Exactly one %s remains — the credential-scrub hook. The URL slot is gone.
+	if n := strings.Count(hibernateScript, "%s"); n != 1 {
+		t.Fatalf("hibernate script must have exactly one %%s (the scrub hook), got %d", n)
+	}
+	// A hostile URL never lands in the script text; it stays a verbatim argv tail.
+	hostile := "https://s3.example.com/o'; rm -rf / #"
+	command := fmt.Sprintf(hibernateScript, "SCRUB_HOOK")
+	if strings.Contains(command, hostile) || strings.Contains(command, "rm -rf") {
+		t.Fatal("URL must not be interpolated into the hibernate script body")
+	}
+	argv := []string{"/bin/sh", "-c", command, "bex-hibernate", hostile}
+	if argv[len(argv)-1] != hostile {
+		t.Fatalf("URL must be the final argv element verbatim, got %q", argv[len(argv)-1])
 	}
 }

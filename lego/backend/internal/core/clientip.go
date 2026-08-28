@@ -66,6 +66,16 @@ func (p TrustedProxies) trusted(addr netip.Addr) bool {
 	return false
 }
 
+// TrustsPeer reports whether the request's immediate TCP peer (RemoteAddr) is
+// one of the configured trusted proxies. It is the gate for believing any
+// forwarding header the peer set (e.g. X-Forwarded-Proto): an untrusted peer's
+// forged header must never influence a security decision. Empty/nil proxies
+// trust nobody, so this is always false — matching ClientIP's peer-only path.
+func (p TrustedProxies) TrustsPeer(r *http.Request) bool {
+	addr, err := netip.ParseAddr(PeerIP(r.RemoteAddr))
+	return err == nil && p.trusted(addr)
+}
+
 // ClientIP derives the client IP for rate-limit keying. When the immediate
 // peer (RemoteAddr) is NOT a trusted proxy — or no proxies are configured —
 // the peer IP is returned and the forwarding headers are ignored, so a spoofed

@@ -2,6 +2,7 @@ import { ExternalLink } from "lucide-react";
 import { Switch } from "@/common/components/ui/switch";
 import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { safeHttpHref } from "@/common/lib/external-url";
 import { useSubdomainPolicy } from "@/features/services/hooks/use-subdomain-policy";
 
 /**
@@ -26,6 +27,8 @@ export function PlatformSubdomainRow({
   const { t } = useTranslations();
   const { setSubdomainPolicy, busy } = useSubdomainPolicy();
   const enabled = (renderSubdomainPolicy ?? "enabled") === "enabled";
+  // Never place a non-http(s) scheme into href (codex-security target #4).
+  const safeUrl = safeHttpHref(url);
 
   return (
     <div className="space-y-3">
@@ -41,16 +44,20 @@ export function PlatformSubdomainRow({
       )}
       <div className="flex items-center justify-between gap-4">
         {enabled ? (
-          url ? (
+          safeUrl ? (
             <a
-              href={url}
+              href={safeUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noreferrer noopener"
               className="inline-flex items-center gap-1 font-medium break-all hover:underline"
             >
               {url}
               <ExternalLink className="text-muted-foreground size-3" />
             </a>
+          ) : url ? (
+            <span className="text-muted-foreground text-sm break-all">
+              {url}
+            </span>
           ) : (
             <span className="text-muted-foreground text-sm">
               {t("services.platformSubdomainPending")}

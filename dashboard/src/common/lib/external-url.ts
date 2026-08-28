@@ -46,3 +46,31 @@ export function classifyHref(href: string | undefined): {
   }
   return { safeHref: undefined, isExternal: false };
 }
+
+/**
+ * Guard for rendering a backend-supplied service URL as an anchor `href`.
+ *
+ * A service's `url` is a platform-constructed `https://…` origin, but the
+ * dashboard must not trust a stored URL enough to place a `javascript:` or
+ * `data:` scheme into an `href` (codex-security target #4): a hostile scheme
+ * there executes on click in the dashboard origin. Returns the URL only when it
+ * parses as an absolute http(s) URL (also folding `\` obfuscation and rejecting
+ * protocol-relative `//host` authorities); otherwise `undefined`, so the caller
+ * renders the value as inert text instead of a live link.
+ */
+export function safeHttpHref(
+  url: string | null | undefined,
+): string | undefined {
+  if (!url) return undefined;
+  const normalized = url.replace(/\\/g, "/");
+  if (normalized.startsWith("//")) return undefined; // protocol-relative authority
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    return undefined;
+  }
+  return parsed.protocol === "http:" || parsed.protocol === "https:"
+    ? url
+    : undefined;
+}

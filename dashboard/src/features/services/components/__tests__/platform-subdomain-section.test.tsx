@@ -72,6 +72,23 @@ describe("PlatformSubdomainRow", () => {
     expect(link).toBeInTheDocument();
   });
 
+  // codex-security target #4: a non-http(s) URL must never become a live href.
+  it("renders a non-http(s) URL as inert text, not a link", () => {
+    render(
+      <PlatformSubdomainRow
+        serviceId="my-svc"
+        url="javascript:alert(document.domain)"
+        renderSubdomainPolicy="enabled"
+      />,
+    );
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    // The value is still shown (as escaped text), just not clickable.
+    expect(
+      screen.getByText("javascript:alert(document.domain)"),
+    ).toBeInTheDocument();
+  });
+
   it("calls setSubdomainPolicy when the switch is toggled", async () => {
     const user = userEvent.setup();
     render(
