@@ -1,14 +1,14 @@
 # w6 · m117 — The Recovery card reports "No backups yet" for databases with proven backups, because two failed Kubernetes reads degrade silently to "nothing"
 
-**Worker:** worker6 **Goal:** the disaster-recovery surface distinguishes "there are no backups" from "I could not read the backups", and never renders a restore point it has no evidence for **Status:** todo
+**Worker:** worker6 **Goal:** the disaster-recovery surface distinguishes "there are no backups" from "I could not read the backups", and never renders a restore point it has no evidence for **Status:** in progress (t001+t002 done, landed in `94c0a185`; t003 half-done — the dashboard fallback shipped, the API-side refusal of an unsubstantiated restore has not)
 
 ## Tasks (in order)
 
 | id   | title                                                                                    | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Resolve the fork: do the CNPG Backup objects still exist, or can bex-api not read them?    | 30m | —          |
-| t002 | Stop reporting an unreadable cluster as an empty one — propagate both read failures        | 45m | t001       |
-| t003 | Make the Recovery card honest, and stop offering a restore it cannot substantiate          | 45m | t002       |
+| t001 | Resolve the fork: do the CNPG Backup objects still exist, or can bex-api not read them?    | 30m | —          | — **DONE**
+| t002 | Stop reporting an unreadable cluster as an empty one — propagate both read failures        | 45m | t001       | — **DONE**
+| t003 | Make the Recovery card honest, and stop offering a restore it cannot substantiate          | 45m | t002       | — partially done in `94c0a185` (dashboard "No backup yet" fallback landed); the API-side refusal of an unsubstantiated restore is still open — `Recover` gates only on `Status.BackupsEnabled`, never on `firstRecoverabilityPoint`
 | t004 | Render parity                                                                              | 20m | t003       |
 | t005 | Simplify                                                                                   | 20m | t004       |
 | t006 | Test coverage                                                                              | 30m | t004       |

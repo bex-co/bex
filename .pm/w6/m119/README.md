@@ -1,6 +1,6 @@
 # w6 · m119 — Keep private services out of public-edge auto-sleep
 
-**Worker:** worker6 **Goal:** only services with an observable activity signal and wake path auto-sleep; the dashboard promises wake-on-request only for those services **Status:** todo (implementation complete locally; deployed closeout pending)
+**Worker:** worker6 **Goal:** only services with an observable activity signal and wake path auto-sleep; the dashboard promises wake-on-request only for those services **Status:** in progress — implementation **committed** in `9917191f` (not merely local); t008 closeout blocked on a green `deploy.yml` that includes it (`9917191f` is not an ancestor of the last shipped `050d40e4`)
 
 ## Tasks (in order)
 

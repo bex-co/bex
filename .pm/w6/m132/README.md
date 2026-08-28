@@ -90,6 +90,18 @@ curl telnet://ssh.bex.co:2222  -> connection refused (internal port correctly no
 - Something that runs on its own would now fail while the handshake is dead.
 - The plan-gate path still behaves as it does today (verified live this run, must not regress): a free service's `POST /v1/services/{id}/shell-ticket` returns 409, its `serviceDetails.sshAddress` is absent, and the dashboard Shell tab explains that shell access requires a paid service.
 
+## Triage re-verification (2026-08-27, this session) — still broken, reproduced from outside the cluster
+
+Re-probed `ssh.bex.co:22` with a raw socket (no OpenSSH client involved, so no client-specific quirk is in play):
+
+```
+BANNER: b'SSH-2.0-bex\r\n'          <- server identification string arrives normally
+-> client sends "SSH-2.0-probe\r\n"
+AFTER-CLIENT-BANNER: 0 bytes, EOF   <- no KEXINIT; the server closes the connection
+```
+
+The defect is confirmed live and unchanged: the gateway completes the identification exchange and then hangs up instead of sending its KEXINIT, so no client can negotiate a key exchange. This milestone is real and is the most severe open item on the board — a shipped, advertised surface that is completely dead.
+
 ## Source + Goal linkage
 
 - **Source:** live `/qa-find-bugs` hunt, 71st run, 2026-08-28, journey 8 (Shell / SSH). Workspace `tea-d98210cbbpdc73dcrkvg`. Fixture `qa-20260828-shell` (`srv-da8ffm7m2e9c73ft6t9g`, free web service) created, probed and **deleted** in the same visit (`deleteService: true`, `GET` → 404). `agentmarketcap-1` was used read-only as the paid control — only SSH handshakes were attempted against it; no session was ever established and nothing ran in any container. Every probe above is a complete command + response so it can be re-run.
