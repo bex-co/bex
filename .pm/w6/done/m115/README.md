@@ -1,19 +1,31 @@
 # w6 · m115 — Four read surfaces disagree about what a service's `name` is, and the one REST returns cannot address the service
 
-**Worker:** worker6 **Goal:** one settled answer to "what is a service's `name`?" that REST, GraphQL, MCP and webhooks all give — with the immutable workspace-unique name still reachable, and every name a read surface returns still usable to address the service **Status:** todo
+**Worker:** worker6 **Goal:** one settled answer to "what is a service's `name`?" that REST, GraphQL, MCP and webhooks all give — with the immutable workspace-unique name still reachable, and every name a read surface returns still usable to address the service **Status:** done
+
+**Settled contract (t001, → `docs/ADR006-bex-api.md` § The settled name contract):** `name` = Render's **mutable** `service.name` (the display label when set, else the immutable name), reported identically by REST/GraphQL/MCP and by the webhook `serviceName`. The immutable, workspace-unique, addressable name is exposed as **`immutableName`** on every read surface. Addressing (a bex extension — Render addresses by `id` alone) resolves `id` or the immutable name; the display label is deliberately **not** a resolution key.
+
+**Implemented:**
+
+- **t002 — the one-line divergence:** GraphQL `Service.name` now reads `renderServiceName(a)` (the shared helper REST/MCP/webhooks already use) instead of the raw immutable name, so the four read surfaces agree (`apps/graphql.go`).
+- **t003 — immutable name has a home:** new `immutableName` field on the shared `renderService` struct (REST + MCP) and the GraphQL `Service` type, carrying `a.Name` — distinct from `slug` (which a cross-tenant collision can suffix). The webhook payload stays intentionally thin (its `serviceId` is the addressable identifier and it already agrees on `serviceName` = label); the immutable name is read by following `serviceId` back to the service object, matching the webhook's documented "fetch details via the API" design.
+- **t004 — addressing, the safe alternative the DoD offers:** `displayName` is confirmed **unvalidated and non-unique** (`SetDisplayName` only trims), so making it a `core.Base.GetApp` resolution key would add an ambiguous, unbounded key to the function that gates every App-by-name authorization, plus a display-name existence oracle. Chose the milestone's stated alternative: addressing stays `id` + immutable-name (Render-consistent), and t003's `immutableName` field keeps the address recoverable from any read response. `GET /v1/services?name=` still matches either spelling (unchanged, guarded by a test).
+- **t005 — parity:** `docs/ADR006` + `docs/ADR018` rename row updated with the settled contract, `immutableName`, and the addressing scope.
+- **t007 — coverage:** `apps/name_contract_test.go` asserts REST/GraphQL/MCP return the same `name` (= label) and same `immutableName` (= immutable) for a renamed service **of all five App-CR-backed types**, that the immutable name resolves through `GetApp` while the display label does not, and that the list filter still matches both spellings; `displayname_test.go` updated to the settled contract.
+
+**Conscious deviation from a literal DoD bullet:** bullet 3 ("every `name` a read surface returns addresses the service") is met via the DoD's own offered alternative rather than by making the display label addressable — the label is unvalidated/non-unique and admitting it into the authorization-gating lookup is unsound; `immutableName`/`id` in the same payload provide the recoverable address. Recorded in ADR006.
 
 ## Tasks (in order)
 
-| id   | title                                                                                      | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Settle the contract: what `name`, `slug` and `displayName` each mean on a read surface       | 30m | —          |
-| t002 | Make GraphQL `Service.name` carry the settled label via the one shared helper                | 30m | t001       |
-| t003 | Give the immutable workspace-unique name a home on every read surface                        | 45m | t001       |
-| t004 | Make name-based addressing accept every name a read surface hands back — or stop handing it  | 45m | t002, t003 |
-| t005 | Render parity                                                                                | 20m | t004       |
-| t006 | Simplify                                                                                     | 20m | t005       |
-| t007 | Test coverage                                                                                | 30m | t005       |
-| t008 | Closeout                                                                                     | 10m | t006, t007 |
+| id   | title                                                                                      | est | depends_on | status   |
+| ---- | ------------------------------------------------------------------------------------------ | --- | ---------- | -------- |
+| t001 | Settle the contract: what `name`, `slug` and `displayName` each mean on a read surface       | 30m | —          | **DONE** |
+| t002 | Make GraphQL `Service.name` carry the settled label via the one shared helper                | 30m | t001       | **DONE** |
+| t003 | Give the immutable workspace-unique name a home on every read surface                        | 45m | t001       | **DONE** |
+| t004 | Make name-based addressing accept every name a read surface hands back — or stop handing it  | 45m | t002, t003 | **DONE** |
+| t005 | Render parity                                                                                | 20m | t004       | **DONE** |
+| t006 | Simplify                                                                                     | 20m | t005       | **DONE** |
+| t007 | Test coverage                                                                                | 30m | t005       | **DONE** |
+| t008 | Closeout                                                                                     | 10m | t006, t007 | **DONE** |
 
 ## Definition of done
 
