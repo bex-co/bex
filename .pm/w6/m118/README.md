@@ -6,13 +6,13 @@
 
 | id   | title                                                                              | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Gather the Render parity evidence `w2/m56` asked for, and decide the policy           | 45m | —          |
-| t002 | Fix the Scaling page's "billed accordingly" claim — true regardless of t001           | 30m | —          |
-| t003 | Enforce the decided cap in the API (`Scale`, create, autoscaling min/max)              | 45m | t001       |
-| t004 | Operator defense-in-depth, mirroring `w6/m46/t002`                                     | 45m | t001, t003 |
+| t001 | Gather the Render parity evidence `w2/m56` asked for, and decide the policy           | 45m | —          | — **DONE**
+| t002 | Fix the Scaling page's "billed accordingly" claim — true regardless of t001           | 30m | —          | — **DONE**
+| t003 | Enforce the decided cap in the API (`Scale`, create, autoscaling min/max)              | 45m | t001       | — **DONE**
+| t004 | Operator defense-in-depth, mirroring `w6/m46/t002`                                     | 45m | t001, t003 | — **DONE**
 | t005 | Render parity                                                                          | 20m | t003, t004 |
-| t006 | Simplify                                                                               | 20m | t005       |
-| t007 | Test coverage                                                                          | 30m | t005       |
+| t006 | Simplify                                                                               | 20m | t005       | — **DONE**
+| t007 | Test coverage                                                                          | 30m | t005       | — **DONE**
 | t008 | Closeout                                                                               | 10m | t006, t007 |
 
 ## Definition of done

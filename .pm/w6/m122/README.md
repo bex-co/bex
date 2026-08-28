@@ -99,3 +99,7 @@
 - **Adjacent classes:** an event with a missing/empty type (`event.type ?? ""`) must not become visible-but-unlabelled noise — decide where it lands; an event outside the queried window stays excluded (that is `timeline.ts`'s window check, and it is correct); and a type the backend *removes* must not break the catalog, so the guard asserts backend ⊆ catalog, **not** equality.
 
 - **Unverified this run — carried as work, not presented as observation:** the four `disk_*` types were confirmed *reachable* by reading `eventTypes` (`service.go:275-278`) but **none was observed live**, because the QA workspace has no service with a persistent disk; the count-badge undercount is code-derived only (see the DoD note); and only the `en` locale was grepped — whether `zh` carries any of the five strings was not checked.
+
+## Triage note (2026-08-27) — this milestone's fixture is scheduled for deletion by another milestone
+
+`w6/m110/t008` (closeout, open) lists "delete the `qa-20260826-webhook-svc` fixture service" as a step. That is `srv-da7o6ovvqdcc73bpn9hg` — the same service this milestone's first Definition-of-done bullet depends on, for the `custom_domain_verified` event stamped `2026-08-27T11:54:07Z`. A cross-reference has been added to `m110/t008` telling it to hold off, but if that service does disappear before this milestone is verified, the DoD's first bullet needs a rebuilt fixture (a service with a verified custom domain) rather than being quietly dropped.
