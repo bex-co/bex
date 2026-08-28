@@ -58,3 +58,26 @@ export function agentSessionView({
     ...over,
   };
 }
+
+/**
+ * The repo-less (chat-only) shape — bex-api's `validateCreate` clears `repo` and
+ * `branch` when a session is created without a repository, and the session runs
+ * its prompt in an empty sandbox (no clone, no branch, no PR).
+ *
+ * It exists because every fixture above it had a repo, which is exactly why the
+ * empty `<h1>` / `Working… · ·` bug (w1/m90) was invisible to the suite: the
+ * only shape the tests ever rendered was the one that happened to work.
+ */
+export function repoLessAgentSessionView(
+  over: Omit<Partial<AgentSessionView>, "repo" | "branch"> & {
+    task?: string;
+  } = {},
+): AgentSessionView {
+  return agentSessionView({
+    id: "as-chat",
+    task: "explain the mapper",
+    ...over,
+    repo: "",
+    branch: "",
+  });
+}

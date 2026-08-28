@@ -30,6 +30,7 @@ import { Route as DatabaseRoute } from "@/routes/databases.$databaseId";
 import { Route as KeyValueRoute } from "@/routes/keyvalue.$keyValueId";
 import { Route as EnvGroupRoute } from "@/routes/env-groups_.$groupId";
 import { Route as BlueprintRoute } from "@/routes/blueprints.$blueprintId";
+import { Route as AgentSessionRoute } from "@/routes/agents_.$agentSessionId";
 
 type HeadOwner = {
   options: {
@@ -422,6 +423,73 @@ describe("production route heads", () => {
     }
   });
 
+  // w1/m90 t004: every agent session used to title its tab the constant
+  // "Session", so two open sessions were indistinguishable in the tab strip.
+  it("names an agent-session tab after the session, both shapes", async () => {
+    expect(
+      routeTitle(
+        AgentSessionRoute,
+        ready({
+          repo: "acme/widgets",
+          agentConfig: { task: "fix the parser" },
+        }),
+      ),
+    ).toBe("acme/widgets ・ Session ・ bex Dashboard");
+
+    // Repo-less (chat-only): no repository to name it, so its own prompt does.
+    expect(
+      routeTitle(
+        AgentSessionRoute,
+        ready({ repo: "", agentConfig: { task: "explain the mapper" } }),
+      ),
+    ).toBe("explain the mapper ・ Session ・ bex Dashboard");
+
+    // Neither — a partial cache entry; never an empty or `undefined` title.
+    expect(
+      routeTitle(
+        AgentSessionRoute,
+        ready({ repo: "", agentConfig: { task: "" } }),
+      ),
+    ).toBe("Untitled session ・ Session ・ bex Dashboard");
+
+    // Pending/error states fall back to the shared contract, not to nothing.
+    expect(routeTitle(AgentSessionRoute)).toBe("Loading… ・ bex Dashboard");
+
+    await i18n.changeLanguage("zh");
+    expect(
+      routeTitle(
+        AgentSessionRoute,
+        ready({ repo: "", agentConfig: { task: "" } }),
+      ),
+    ).toBe("未命名会话 ・ 会话 ・ bex Dashboard");
+  });
+
+  it("loads an agent session's name through its own route seam", async () => {
+    const { query, result } = await runRouteLoader(
+      AgentSessionRoute,
+      { agentSessionId: "as-private" },
+      {
+        agentSession: {
+          id: "as-private",
+          repo: "",
+          agentConfig: { task: "explain the mapper" },
+        },
+      },
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[0]).toMatchObject({
+      variables: { id: "as-private" },
+      fetchPolicy: "network-only",
+      errorPolicy: "all",
+    });
+    // Only the two fields the name derives from — a prompt runs to 100k chars
+    // and must not ride the SSR payload for a <title>.
+    expect(result).toEqual({
+      state: "ready",
+      resource: { repo: "", agentConfig: { task: "explain the mapper" } },
+    });
+  });
+
   it.each([
     ["project", ProjectRoute, { projectId: "prj-missing" }, { project: {} }],
     ["service", ServiceRoute, { serviceId: "srv-missing" }, { server: {} }],
@@ -454,6 +522,12 @@ describe("production route heads", () => {
       WebhookRoute,
       { webhookId: "whk-missing" },
       { webhookEndpoint: {} },
+    ],
+    [
+      "agent session",
+      AgentSessionRoute,
+      { agentSessionId: "as-missing" },
+      { agentSession: {} },
     ],
   ] as Array<
     [string, LoaderOwner, Record<string, string>, Record<string, unknown>]

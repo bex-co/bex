@@ -7,6 +7,7 @@ import type {
   AgentSessionMintFieldsFragment,
 } from "@/graphql/definitions";
 import type {
+  AgentSessionConfigView,
   AgentSessionDeliveryMode,
   AgentSessionPhase,
   AgentSessionTicket,
@@ -123,22 +124,119 @@ export function formatSnapshotBytes(bytes: number): string {
   return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
 }
 
-/** A session's display name — its task prompt, falling back to the raw id. */
-export function sessionTitle(
-  view: Pick<AgentSessionView, "id" | "agentConfig">,
-): string {
-  return view.agentConfig.task || view.id;
-}
-
 /** Bounded title for list rows — caps raw task text to avoid DOM/ARIA bloat. */
 export const SESSION_TITLE_MAX = 140;
+
+/**
+ * Cap for the untruncated text a `title`/tooltip attribute carries. A prompt is
+ * validated up to 100k chars and would otherwise ride a DOM attribute (and the
+ * SSR payload) whole; nobody reads a tooltip past a screenful anyway.
+ */
+export const SESSION_TOOLTIP_MAX = 1000;
+
+/**
+ * A boundary is only honored when it sits in the last fifth of the window;
+ * cutting at an earlier space would throw away most of the allowance for the
+ * sake of a whole word.
+ */
+const MIN_WORD_BOUNDARY_RATIO = 0.8;
+
+/**
+ * Caps `raw` at `maxLen`, preferring the last word boundary inside the window so
+ * a truncated prompt ends on a whole word rather than mid-syllable. A single
+ * token longer than the window has no boundary to cut on and falls back to a
+ * hard slice. The one truncation the agent-session surfaces share — row titles,
+ * the detail heading, and the document title all read through it.
+ */
+function truncateForDisplay(raw: string, maxLen: number): string {
+  if (raw.length <= maxLen) return raw;
+  const capped = raw.slice(0, maxLen);
+  const boundary = capped.lastIndexOf(" ");
+  const cut =
+    boundary >= Math.floor(maxLen * MIN_WORD_BOUNDARY_RATIO)
+      ? capped.slice(0, boundary)
+      : capped;
+  return cut.trimEnd() + "…";
+}
+
+/** The subset of a session its name derives from. */
+export type NamedAgentSession = Pick<AgentSessionView, "repo"> & {
+  agentConfig: Pick<AgentSessionConfigView, "task">;
+};
+
+/** A session's row/mention name — its task prompt, falling back to the raw id. */
+export function sessionTitle(
+  view: Pick<AgentSessionView, "id"> & {
+    agentConfig: Pick<AgentSessionConfigView, "task">;
+  },
+): string {
+  return view.agentConfig.task.trim() || view.id;
+}
+
 export function sessionTitleShort(
-  view: Pick<AgentSessionView, "id" | "agentConfig">,
+  view: Pick<AgentSessionView, "id"> & {
+    agentConfig: Pick<AgentSessionConfigView, "task">;
+  },
   maxLen: number = SESSION_TITLE_MAX,
 ): string {
-  const raw = view.agentConfig.task || view.id;
-  if (raw.length <= maxLen) return raw;
-  return raw.slice(0, maxLen).trimEnd() + "…";
+  return truncateForDisplay(sessionTitle(view), maxLen);
+}
+
+/** A session's derived name: bounded text to render plus its source for a tooltip. */
+export interface AgentSessionDisplayName {
+  /** Word-boundary-truncated text — what a heading or a tab title renders. */
+  text: string;
+  /** The same source at tooltip length, for a `title` attribute. */
+  full: string;
+}
+
+/**
+ * The one name every surface that *identifies* a session renders: the detail
+ * heading and the browser tab (t002/t004). A repo-backed session is named by its
+ * repository — the shape those surfaces have always shown; a repo-less
+ * (chat-only) session has no repository to name it, so it falls back to its own
+ * prompt, and finally to the caller's localized "Untitled session" for the
+ * degenerate case where neither is present (a partial cache entry — bex-api's
+ * `validateCreate` requires a task, so a real session always has one).
+ *
+ * Deliberately NOT the same order as `sessionTitleShort`, which names list rows:
+ * a row's job is to tell sibling sessions apart, so the prompt leads there and
+ * the repo never appears in the title. Both read the same truncation, and for a
+ * repo-less session — the shape this exists for — the two agree on the prompt.
+ *
+ * Pure and UI-side on purpose: the display name is presentation, never an API
+ * field (w1/m90 t005), so the fallback string is injected rather than looked up.
+ */
+export function agentSessionDisplayName(
+  session: NamedAgentSession,
+  fallback: string,
+): AgentSessionDisplayName {
+  const source =
+    session.repo.trim() || session.agentConfig.task.trim() || fallback;
+  return {
+    text: truncateForDisplay(source, SESSION_TITLE_MAX),
+    full: truncateForDisplay(source, SESSION_TOOLTIP_MAX),
+  };
+}
+
+/**
+ * The name fields of a wire session, bounded — for a caller that must carry a
+ * session's name somewhere narrow (the route title loader dehydrates its result
+ * into the SSR payload) rather than the whole session. Bounded past the tooltip
+ * cap, so the derivation reads identically to what the full text would give.
+ */
+export function agentSessionNameSource(wire: {
+  repo?: string | null;
+  agentConfig?: { task?: string | null } | null;
+}): NamedAgentSession {
+  return {
+    repo: wire.repo?.trim() ?? "",
+    agentConfig: {
+      task: (wire.agentConfig?.task ?? "")
+        .trim()
+        .slice(0, SESSION_TOOLTIP_MAX + 1),
+    },
+  };
 }
 
 /**
@@ -160,7 +258,11 @@ export function agentSessionFailureReason(
 ): string | null {
   for (const candidate of [view.failureReason, view.status]) {
     const reason = candidate?.trim() ?? "";
-    if (reason === "" || reason === "[object Object]" || reason === view.phase) {
+    if (
+      reason === "" ||
+      reason === "[object Object]" ||
+      reason === view.phase
+    ) {
       continue;
     }
     return reason;
@@ -178,7 +280,8 @@ export function isSandboxCapacityFailure(
   view: Pick<AgentSessionView, "phase" | "failureReason" | "status">,
 ): boolean {
   if (view.phase !== "failed") return false;
-  const reason = `${view.failureReason ?? ""} ${view.status ?? ""}`.toLowerCase();
+  const reason =
+    `${view.failureReason ?? ""} ${view.status ?? ""}`.toLowerCase();
   return reason.includes("sandbox capacity");
 }
 

@@ -333,6 +333,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Session",
     description: "Agent-session detail page document title",
   },
+  "agentSessions.untitled": {
+    message: "Untitled session",
+    description:
+      "Last-resort session name when a session carries neither a repository nor a task prompt",
+  },
   "agentSessions.backToList": {
     message: "All sessions",
     description: "Detail page — back link to the /agents list",

@@ -331,6 +331,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "会话",
     description: "Agent-session detail page document title",
   },
+  "agentSessions.untitled": {
+    message: "未命名会话",
+    description:
+      "Last-resort session name when a session carries neither a repository nor a task prompt",
+  },
   "agentSessions.backToList": {
     message: "所有会话",
     description: "Detail page — back link to the /agents list",

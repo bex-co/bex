@@ -3,7 +3,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
-import { agentSessionView } from "@/test/mocks/agent-session";
+import {
+  agentSessionView,
+  repoLessAgentSessionView,
+} from "@/test/mocks/agent-session";
 
 const navigateMock = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -39,6 +42,17 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
 
 function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
   return agentSessionView({ phase: "completed", turns: 1, ...over });
+}
+
+/** The chat-only shape: bex-api clears repo AND branch when there is no repo. */
+function repoLessView(
+  over: Partial<AgentSessionView> & { task?: string } = {},
+): AgentSessionView {
+  return repoLessAgentSessionView({ phase: "completed", turns: 1, ...over });
+}
+
+function heading(): HTMLElement {
+  return screen.getByRole("heading", { level: 1 });
 }
 
 describe("SessionDetailHeader", () => {
@@ -195,5 +209,49 @@ describe("SessionDetailHeader", () => {
         replace: true,
       }),
     );
+  });
+
+  // w1/m90: a repo-less session rendered `<h1 class="…"></h1>` — the element was
+  // there, so a "the heading mounted" assertion would have passed against the
+  // broken build. Every assertion below reads TEXT.
+  describe("session identity (w1/m90)", () => {
+    it("names a repo-backed session by its repository, branch row intact", () => {
+      const { container } = render(<SessionDetailHeader session={view()} />);
+      expect(heading()).toHaveTextContent("acme/widgets");
+      expect(heading()).toHaveAttribute("title", "acme/widgets");
+      expect(screen.getByText("bex-agent/fix")).toBeInTheDocument();
+      expect(container.querySelector(".lucide-git-branch")).not.toBeNull();
+    });
+
+    it("names a repo-less session by its prompt", () => {
+      render(
+        <SessionDetailHeader
+          session={repoLessView({ task: "explain the mapper" })}
+        />,
+      );
+      expect(heading().textContent).toBe("explain the mapper");
+    });
+
+    it("renders no GitBranch icon at all for a repo-less session", () => {
+      const { container } = render(
+        <SessionDetailHeader session={repoLessView()} />,
+      );
+      expect(container.querySelector(".lucide-git-branch")).toBeNull();
+      // The rest of the meta row is unaffected.
+      expect(screen.getByText("1 turn")).toBeInTheDocument();
+    });
+
+    it("falls back to a localized name when a session has neither", () => {
+      render(<SessionDetailHeader session={repoLessView({ task: "" })} />);
+      expect(heading().textContent).toBe("Untitled session");
+    });
+
+    it("truncates a long prompt but keeps the full text in the title", () => {
+      const task = `${"refactor the mapper ".repeat(20)}end`;
+      render(<SessionDetailHeader session={repoLessView({ task })} />);
+      expect(heading().textContent!.endsWith("…")).toBe(true);
+      expect(heading().textContent!.length).toBeLessThan(task.length);
+      expect(heading()).toHaveAttribute("title", task);
+    });
   });
 });

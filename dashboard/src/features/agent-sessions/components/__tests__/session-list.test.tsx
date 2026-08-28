@@ -6,7 +6,10 @@ import type {
   AgentSessionPhase,
   AgentSessionView,
 } from "@/features/agent-sessions/types";
-import { agentSessionView } from "@/test/mocks/agent-session";
+import {
+  agentSessionView,
+  repoLessAgentSessionView,
+} from "@/test/mocks/agent-session";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -52,6 +55,18 @@ function view(
   over: Partial<AgentSessionView> & { task?: string } = {},
 ): AgentSessionView {
   return agentSessionView({ status: "working", ...over });
+}
+
+/** The chat-only shape: bex-api clears repo AND branch when there is no repo. */
+function repoLessView(
+  over: Partial<AgentSessionView> & { task?: string } = {},
+): AgentSessionView {
+  return repoLessAgentSessionView({ status: "working", ...over });
+}
+
+/** The first row's meta line, read as text. */
+function metaText(): string {
+  return screen.getAllByTestId("agent-session-meta")[0]?.textContent ?? "";
 }
 
 describe("SessionList", () => {
@@ -158,11 +173,7 @@ describe("SessionList", () => {
       view({ id: `as-${i}`, phase, task: `task ${i}` }),
     );
     render(
-      <SessionList
-        sessions={sessions}
-        loading={false}
-        archiveFilter="all"
-      />,
+      <SessionList sessions={sessions} loading={false} archiveFilter="all" />,
     );
     expect(screen.getByText("Phase")).toBeInTheDocument();
     for (const [, label] of cases) {
@@ -303,5 +314,70 @@ describe("SessionList", () => {
     expect(action).toBeDisabled();
     finishRefresh?.();
     await waitFor(() => expect(action).toBeEnabled());
+  });
+
+  // These read the rendered TEXT of the line, so an empty value between two
+  // separators fails (see MetaLine in session-list.tsx).
+  describe("meta line separators (w1/m90)", () => {
+    it("keeps a repo-backed recents row exactly as it was", () => {
+      render(<SessionList loading={false} sessions={[view({ task: "a" })]} />);
+      expect(metaText()).toMatch(/^Working… · acme\/widgets · .+$/);
+    });
+
+    it("drops the separator with the value on a repo-less recents row", () => {
+      render(
+        <SessionList
+          loading={false}
+          sessions={[repoLessView({ task: "a" })]}
+        />,
+      );
+      expect(metaText()).toMatch(/^Working… · .+$/);
+      expect(metaText()).not.toMatch(/·\s*·/);
+      expect(metaText()).not.toMatch(/·\s*$/);
+    });
+
+    it("renders repo · branch · agent on a repo-backed table row", () => {
+      render(
+        <SessionList
+          loading={false}
+          archiveFilter="all"
+          sessions={[view({ task: "a" })]}
+        />,
+      );
+      expect(metaText()).toBe("acme/widgets · bex-agent/fix · claude");
+    });
+
+    it("renders exactly one separator for a repo with no branch", () => {
+      render(
+        <SessionList
+          loading={false}
+          archiveFilter="all"
+          sessions={[view({ task: "a", branch: "" })]}
+        />,
+      );
+      expect(metaText()).toBe("acme/widgets · claude");
+    });
+
+    it("renders no separator at all for a repo-less table row", () => {
+      render(
+        <SessionList
+          loading={false}
+          archiveFilter="all"
+          sessions={[repoLessView({ task: "a" })]}
+        />,
+      );
+      expect(metaText()).toBe("claude");
+      expect(metaText()).not.toContain("·");
+    });
+
+    it("still names a repo-less row by its prompt", () => {
+      render(
+        <SessionList
+          loading={false}
+          sessions={[repoLessView({ task: "explain the mapper" })]}
+        />,
+      );
+      expect(screen.getByText("explain the mapper")).toBeInTheDocument();
+    });
   });
 });
