@@ -68,8 +68,15 @@ const renderPrivateService = appv1alpha1.TypePrivateService
 // renderService mirrors components.schemas.service (the fields bex has a real
 // equivalent for) plus bex-native extras.
 type renderService struct {
-	ID                 string                           `json:"id"` // stable Render-shaped srv- id; legacy hand-applied CRs fall back to their name
-	Name               string                           `json:"name"`
+	ID   string `json:"id"`   // stable Render-shaped srv- id; legacy hand-applied CRs fall back to their name
+	Name string `json:"name"` // Render's MUTABLE service.name: renderServiceName(a) — displayName when set, else the immutable name
+	// ImmutableName is bex's immutable, workspace-unique App name — the stable
+	// key that (with `id`) addresses the service by name (core.GetApp resolves
+	// LabelServiceName). `name` above is the mutable label and may not round-trip
+	// through a by-name read after a rename; this always does. A bex superset
+	// (Render has no mutable/immutable split); distinct from `slug`, which a
+	// cross-tenant collision can push to `<name>-<suffix>` (w6/m115).
+	ImmutableName      string                           `json:"immutableName"`
 	Slug               string                           `json:"slug"` // globally-unique platform-host segment (w4/m19/w4/m20)
 	DisplayName        string                           `json:"displayName"`
 	Type               string                           `json:"type"` // serviceType enum: web_service | private_service | background_worker | cron_job
@@ -250,6 +257,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 	return renderService{
 		ID:                   publicID,
 		Name:                 renderServiceName(a),
+		ImmutableName:        a.Name,
 		Slug:                 a.Slug,
 		DisplayName:          a.DisplayName,
 		Type:                 svcType,

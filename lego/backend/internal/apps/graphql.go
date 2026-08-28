@@ -295,8 +295,15 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// Routing accepts BOTH shapes: every verb funnels through
 		// core.Base.AuthorizeApp/GetApp, which resolve LabelAppID first and fall
 		// back to LabelServiceName, so pre-flip name URLs keep working.
-		"id":   gqlutil.StrField(func(a AppView) any { return a.ID }),
-		"name": gqlutil.StrField(func(a AppView) any { return a.Name }),
+		"id": gqlutil.StrField(func(a AppView) any { return a.ID }),
+		// name is Render's MUTABLE service.name — the human-facing label
+		// (displayName when set, else the immutable name), through the ONE shared
+		// helper REST/MCP/webhooks already use (renderServiceName). Before w6/m115
+		// this read the raw immutable name, so GraphQL disagreed with the other
+		// three read surfaces for any renamed service. The immutable, addressable
+		// name now lives in `immutableName` (below); `id` addresses too.
+		"name":          gqlutil.StrField(func(a AppView) any { return renderServiceName(a) }),
+		"immutableName": gqlutil.StrField(func(a AppView) any { return a.Name }),
 		// slug is the globally-unique platform-host segment (w4/m19/w4/m20/t002) —
 		// distinct from name, which is only workspace-unique.
 		"slug":        gqlutil.StrField(func(a AppView) any { return a.Slug }),

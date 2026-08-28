@@ -221,12 +221,16 @@ func TestGraphQLDisplayNameRoundTrip(t *testing.T) {
 		return res.Data.(map[string]any)
 	}
 
-	set := run(`mutation { setDisplayName(id:"web", displayName:"Customer API") { id name displayName } }`)["setDisplayName"].(map[string]any)
-	if set["id"] != "web" || set["name"] != "web" || set["displayName"] != "Customer API" {
+	// w6/m115: GraphQL `name` is now the MUTABLE label (matching REST/MCP), and
+	// the immutable name moved to `immutableName`. Before the fix, `name` here
+	// read back "web" — the raw immutable name — so GraphQL disagreed with every
+	// other read surface for a renamed service.
+	set := run(`mutation { setDisplayName(id:"web", displayName:"Customer API") { id name immutableName displayName } }`)["setDisplayName"].(map[string]any)
+	if set["id"] != "web" || set["name"] != "Customer API" || set["immutableName"] != "web" || set["displayName"] != "Customer API" {
 		t.Fatalf("setDisplayName = %#v", set)
 	}
-	read := run(`{ server(id:"web") { id name displayName } }`)["server"].(map[string]any)
-	if read["displayName"] != "Customer API" {
+	read := run(`{ server(id:"web") { id name immutableName displayName } }`)["server"].(map[string]any)
+	if read["name"] != "Customer API" || read["immutableName"] != "web" || read["displayName"] != "Customer API" {
 		t.Fatalf("server read = %#v", read)
 	}
 	clear := run(`mutation { setDisplayName(id:"web", displayName:"") { name displayName } }`)["setDisplayName"].(map[string]any)
