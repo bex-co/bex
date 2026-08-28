@@ -674,31 +674,9 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	if matchesObservedRelease && status == DeployLive {
 		resolvedImage = cur.Status.Image
 	}
-	// w9/011: a failing close carries its actionable cause — the generation's
-	// Ready-condition message when the operator surfaced a concrete defect
-	// (crash loop with the $PORT hint, image-pull failure, build error), else a
-	// synthesized health-gate-timeout line — so update_failed stops being an
-	// opaque terminal state.
-	failureReason := ""
-	failureCode := ""
-	switch {
-	case matchesObservedRelease:
-		switch status {
-		case DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed:
-			failureReason, failureCode = failureReasonFor(cur, status)
-		}
-	case status == DeployBuildFailed:
-		// The release has already moved past this row, so failureReasonFor's
-		// current-generation conditions describe someone else's build. The
-		// durable Build condition still names this row's own (w6/m100); with no
-		// message to carry, fall back to the same build-window line
-		// failureReasonFor would have reached.
-		if msg, _ := recordedBuildFailure(cur, open.Generation); msg != "" {
-			failureReason = msg
-		} else {
-			failureReason = timedOutDeployReason(status)
-		}
-	}
+	// w9/011: a failing close carries its actionable cause rather than an opaque
+	// terminal state; deployCloseFailureReason owns the sourcing order.
+	failureReason, failureCode := deployCloseFailureReason(cur, open, status, matchesObservedRelease)
 	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode)
 	if err != nil {
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
@@ -726,6 +704,34 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			NotificationsToSend: cur.Spec.NotificationsToSend,
 		})
 	}
+}
+
+// deployCloseFailureReason picks the failure_reason (+ optional event code)
+// stamped on a failing close. For build_failed the durable Build condition is
+// read first (w6/m100): it names this row's own error via its release-generation
+// attribution, and since w6/m124 it is the only place that error lives when a
+// prior release keeps the service's phase Running — the Ready condition then
+// describes the release that kept serving, not the failed build. The current
+// generation's Ready condition stays the fallback for an App that failed under
+// a pre-m100 operator, then the build-window line. Pre-deploy and rollout
+// failures keep reading the matching generation's Ready condition.
+func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, matchesObservedRelease bool) (string, string) {
+	switch {
+	case status == DeployBuildFailed:
+		if msg, _ := recordedBuildFailure(cur, open.Generation); msg != "" {
+			return msg, ""
+		}
+		if matchesObservedRelease {
+			return failureReasonFor(cur, status)
+		}
+		return timedOutDeployReason(status), ""
+	case matchesObservedRelease:
+		switch status {
+		case DeployPreDeployFailed, DeployUpdateFailed:
+			return failureReasonFor(cur, status)
+		}
+	}
+	return "", ""
 }
 
 // recordLifecycleFacts emits the build and pre-deploy beats Render shows as
@@ -1307,8 +1313,8 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 			// status bookkeeping lags (old-pod reap, KCM catch-up) — the
 			// service is serving, so it is excluded from availability like
 			// Suspended/AutoHibernated (w3/m78 live-leg finding).
-			if app.Status.ActiveRevision != "" && condition.Reason != "Suspended" &&
-				condition.Reason != "AutoHibernated" && condition.Reason != "RolloutSettling" {
+			if app.Status.ActiveRevision != "" && condition.Reason != appv1alpha1.ReasonSuspended &&
+				condition.Reason != appv1alpha1.ReasonAutoHibernated && condition.Reason != appv1alpha1.ReasonRolloutSettling {
 				obs.Availability = "unhealthy"
 				obs.AvailabilityObserved = true
 				obs.ReasonCode = EventReasonReadinessFailed

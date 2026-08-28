@@ -1,18 +1,25 @@
 # w6 · m124 — A service that is serving traffic reports "Failed" because its latest build failed — the coarse phase contradicts the running instance, on every surface
 
-**Worker:** worker6 **Goal:** a service that is serving reports that it is serving, on REST, GraphQL, MCP and the dashboard, while its failed deploy stays visible as a deploy fact **Status:** todo
+**Worker:** worker6 **Goal:** a service that is serving reports that it is serving, on REST, GraphQL, MCP and the dashboard, while its failed deploy stays visible as a deploy fact **Status:** t001–t006 done, fix shipped; t007 (live post-deploy DoD closeout) open
 
 ## Tasks (in order)
 
-| id   | title                                                                                       | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Re-source the deploy row's build verdict from the Build condition, not the coarse phase        | 50m | —          |
-| t002 | Gate the terminal `Failed` phase on whether a prior release is still serving                   | 50m | t001       |
-| t003 | Dashboard: the badge reflects the service; the failed deploy stays its own indicator           | 35m | t002       |
-| t004 | Render parity                                                                                  | 25m | t003       |
-| t005 | Simplify                                                                                       | 20m | t004       |
-| t006 | Test coverage                                                                                  | 40m | t004       |
-| t007 | Closeout                                                                                       | 15m | t005, t006 |
+| id   | title                                                                                   | est | depends_on |
+| ---- | --------------------------------------------------------------------------------------- | --- | ---------- |
+| t001 | Re-source the deploy row's build verdict from the Build condition, not the coarse phase — **DONE** | 50m | —          |
+| t002 | Gate the terminal `Failed` phase on whether a prior release is still serving — **DONE**    | 50m | t001       |
+| t003 | Dashboard: the badge reflects the service; the failed deploy stays its own indicator — **DONE** (fell out of t002: `deriveStatus` maps phase, the latest-deploy link reads the deploy row; no UI change needed) | 35m | t002       |
+| t004 | Render parity — **DONE** (decision recorded on ADR018's "Get service" row: parity restored, no new row) | 25m | t003       |
+| t005 | Simplify — **DONE** (reason vocabulary moved onto the CRD contract in `lego/types`)        | 20m | t004       |
+| t006 | Test coverage — **DONE** (operator: Running/Hibernated/first-failure/non-build cases; backend: verdict + message from the Build condition, stale-condition guard, healthy availability) | 40m | t004       |
+| t007 | Closeout — live DoD re-run on production **after this fix deploys** (fixture, MCP probe, first-deploy-failure case, deploy-row check), then move the milestone to `done/` | 15m | t005, t006 |
+
+## Implementation note (2026-08-28)
+
+- Operator: `r.fail` now records the Build condition first and, when `Status.Image` is set (a prior release exists), settles the phase via `settleFailedBuildOverPriorRelease` — `Running` with `Ready=True/PriorReleaseServing`, or `Hibernated` (reason `AutoHibernated`/`Suspended`) when the Deployment is parked at 0 replicas, probed from the informer cache. No image ⇒ `PhaseFailed` unchanged. The quiesce gate (`terminalBuildFailureRecorded`) keys on the Build condition, not the phase, so the App still quiesces.
+- Backend: the deploy row's `build_failed` verdict was already Build-condition-sourced (`supersededDeployStatus`, w6/m100); the failure **message** now is too (`deployCloseFailureReason` reads the Build condition first, Ready-condition fallback for pre-m100 operators, then the build-window line).
+- **Unhealthy ≠ running — the covering signal:** the phase/Ready stamped here describe the release's last observed state; live instance health remains covered by the rollout observation's own Ready reasons (`CrashLoopBackOff`, `ImagePullBackOff`, readiness) feeding `observedServiceStateFor`'s `unhealthy` availability + events, and by the live pod reads behind `GET .../instances` and metrics. The failed build no longer masquerades as that signal.
+- All four suites green: `make test` (operator, envtest), backend `go test ./...`, `make lint` (4 modules), dashboard `yarn test` (one pre-existing flake in `agent-sessions/new-session-composer` under full-suite load; passes in isolation; unrelated — no dashboard files changed).
 
 ## Definition of done
 

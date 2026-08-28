@@ -89,6 +89,16 @@ const (
 	reasonBuildQueued          = appv1alpha1.ReasonBuildQueued
 	reasonBuilding             = appv1alpha1.ReasonBuilding
 	reasonRegistryCredsPending = appv1alpha1.ReasonRegistryCredsPending
+
+	// Ready-condition reasons for a parked or settling workload and for the
+	// failed-build-over-serving-release terminal (w6/m124) — the same shared
+	// vocabulary, defined once on the CRD contract for the same reason: bex-api's
+	// availability projection keys on them to keep a non-failing service out of
+	// the "unhealthy" verdict.
+	reasonSuspended           = appv1alpha1.ReasonSuspended
+	reasonAutoHibernated      = appv1alpha1.ReasonAutoHibernated
+	reasonRolloutSettling     = appv1alpha1.ReasonRolloutSettling
+	reasonPriorReleaseServing = appv1alpha1.ReasonPriorReleaseServing
 )
 
 // generationOrDeletionPredicate adds App's explicit registry-credential
@@ -1859,9 +1869,9 @@ func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App
 	if routingHold {
 		return ctrl.Result{RequeueAfter: hibernateRoutingGrace}, nil
 	}
-	reason, message := "Suspended", "suspended (scaled to 0; config, host and certs kept)"
+	reason, message := reasonSuspended, "suspended (scaled to 0; config, host and certs kept)"
 	if autoHibernating {
-		reason = "AutoHibernated"
+		reason = reasonAutoHibernated
 		message = fmt.Sprintf("idle ≥%ds on free tier; wakes on next request", app.Spec.IdleTTLSeconds)
 	}
 	res, err := r.hibernated(ctx, app, image, hosts, reason, message)
@@ -2289,7 +2299,7 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	if app.Spec.Suspended {
 		app.Status.Phase = appv1alpha1.PhaseHibernated
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
 			Message: "worker suspended (scaled to 0)", ObservedGeneration: app.Generation,
 		})
 		if err := r.Status().Update(ctx, app); err != nil {
@@ -2327,7 +2337,7 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	notReadyReason := "RolloutProgressing"
 	if r.currentRevisionFullyReady(ctx, dep, replicas) {
-		notReadyReason, notReadyMessage = "RolloutSettling", "current revision fully ready; Deployment status still converging"
+		notReadyReason, notReadyMessage = reasonRolloutSettling, "current revision fully ready; Deployment status still converging"
 	}
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: notReadyReason,
@@ -2771,7 +2781,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		if published {
 			app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
 		}
-		return r.hibernated(ctx, app, image, hosts, "Suspended",
+		return r.hibernated(ctx, app, image, hosts, reasonSuspended,
 			"static site suspended (published content kept; host and certificate retained, serving 404)")
 	}
 
@@ -3052,7 +3062,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if suspended {
 		app.Status.Phase = appv1alpha1.PhaseHibernated
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
 			Message: "cron schedule suspended", ObservedGeneration: app.Generation,
 		})
 	} else {
@@ -3334,7 +3344,7 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 		app.Status.Phase = appv1alpha1.PhaseHibernated
 		app.Status.ObservedGeneration = app.Generation
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
 			Message: "sandbox paused (snapshot kept)", ObservedGeneration: app.Generation,
 		})
 		if err := r.Status().Update(ctx, app); err != nil {
@@ -3924,7 +3934,6 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 }
 
 func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason string, err error) (ctrl.Result, error) {
-	app.Status.Phase = appv1alpha1.PhaseFailed
 	// A build failure additionally gets appv1alpha1.ConditionBuild, the durable
 	// record attributed to the RELEASE generation that actually built rather than
 	// to metadata.generation (w6/m100 — see that constant for why Ready cannot
@@ -3937,9 +3946,60 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 			Message:            err.Error(),
 			ObservedGeneration: releaseGeneration(app),
 		})
+		// A failed build on top of a released image is a deploy fact, not a
+		// service outage: the rollout below this build never ran, so that release
+		// never stopped serving and the coarse phase keeps describing it. This is
+		// the rule PhaseCanceled documents and the cancel path already applies
+		// (w6/m52); w6/m124 extends it to the failure path. The Build condition
+		// above stays the durable verdict bex-api closes the deploy row from.
+		if app.Status.Image != "" {
+			r.settleFailedBuildOverPriorRelease(ctx, app)
+			return ctrl.Result{}, err
+		}
 	}
+	app.Status.Phase = appv1alpha1.PhaseFailed
 	setNotReadyCondition(ctx, r.Client, app, &app.Status.Conditions, reason, err)
 	return ctrl.Result{}, err
+}
+
+// settleFailedBuildOverPriorRelease stamps the terminal status for a build
+// failure whose App still has a released image. The phase returns to the state
+// that truthfully describes that release — Running, or Hibernated when the
+// workload is parked at 0 replicas (manual suspension / free-tier auto-sleep,
+// which must not be swept into "running") — and Ready describes the release
+// the service is actually answering with, so bex-api's availability projection
+// does not read the failed build as an instance that stopped passing readiness
+// checks. The reconcile quiesces after this write (buildFromSource's verdict
+// gate holds every later pass terminal), so nothing comes back to correct it:
+// the stamp must be truthful on this one pass.
+func (r *AppReconciler) settleFailedBuildOverPriorRelease(ctx context.Context, app *appv1alpha1.App) {
+	phase := appv1alpha1.PhaseRunning
+	condition := metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reasonPriorReleaseServing,
+		Message:            "the latest build failed; the previously deployed release keeps serving",
+		ObservedGeneration: app.Generation,
+	}
+	// The Deployment's desired scale is the mechanism's own record of a parked
+	// prior release (the Get is served by the informer cache). Cron jobs and
+	// static sites have no Deployment and stay Running — their release remains
+	// scheduled/served. The opensandbox runtime has no parked marker to probe
+	// and likewise reports the serving default.
+	if r.Mode == ModeKubernetes {
+		var dep appsv1.Deployment
+		if getErr := r.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, &dep); getErr == nil &&
+			dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0 {
+			phase = appv1alpha1.PhaseHibernated
+			condition.Status = metav1.ConditionFalse
+			condition.Reason = reasonAutoHibernated
+			condition.Message = "the latest build failed; the previously deployed release stays parked"
+			if app.Spec.Suspended {
+				condition.Reason = reasonSuspended
+			}
+		}
+	}
+	app.Status.Phase = phase
+	meta.SetStatusCondition(&app.Status.Conditions, condition)
+	r.updateStatusRetrying(ctx, app, "failedBuildOverPriorRelease")
 }
 
 // reconcilePreDeploy runs spec.preDeployCommand to completion against image
