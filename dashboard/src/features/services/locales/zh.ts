@@ -527,6 +527,11 @@ const zhServices: Record<string, TranslationEntry> = {
       "运行多个自动负载均衡的实例。所有实例使用相同的实例类型并按此计费。",
     description: "Scaling page: manual instance-count card description",
   },
+  "services.scalingManualDescriptionFree": {
+    message: "免费服务仅运行单个实例。升级到付费套餐即可运行多个负载均衡实例。",
+    description:
+      "Scaling page: manual instance-count card description on the free plan",
+  },
   "services.scalingManualInstances": {
     message: "实例",
     description: "Scaling page: manual instance-count slider label",

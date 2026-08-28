@@ -306,7 +306,7 @@ func healthCheckHandler(path string, port int) corev1.ProbeHandler {
 // source (a secret file, a start command) drops cleanly out of the pod template
 // rather than lingering from a previous revision.
 func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams) {
-	replicas := clampReplicas(p.replicas)
+	replicas := clampReplicas(app, p.replicas)
 	dep.Spec.Replicas = &replicas
 	dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}}
 	dep.Spec.Template.Labels = appPodLabels(app, p.verifyImage)

@@ -159,29 +159,24 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                       plan={service?.plan ?? null}
                     />
                   )}
-                  {/* Idle timeout only applies to running-container services — a
-                  cron_job has no idle traffic to sleep on, and a static_site
-                  serves from the object store with no pod to hibernate
-                  (Render parity, w5/m11, w1/m21). Manual instance count lives
-                  on the Scaling tab beside autoscaling (w7/m43 — Render's
-                  placement; supersedes the w5/m16 Settings stepper). */}
-                  {!cron && !staticSite && (
-                    <>
-                      <IdleTimeoutRow
-                        serviceId={serviceId}
-                        plan={service?.plan ?? null}
-                        idleTTLSeconds={service?.idleTTLSeconds ?? 0}
-                      />
-                      {service && supportsMaxShutdownDelay(service) && (
-                        <MaxShutdownDelayRow
-                          serviceId={serviceId}
-                          maxShutdownDelaySeconds={
-                            service.maxShutdownDelaySeconds
-                          }
-                          onChanged={() => void refetch()}
-                        />
-                      )}
-                    </>
+                  {/* Auto-sleep is a public-web-only feature: the row owns the
+                  eligibility predicate so every settings caller stays honest.
+                  Manual instance count lives on the Scaling tab beside
+                  autoscaling (w7/m43 — Render's placement). */}
+                  {service && (
+                    <IdleTimeoutRow
+                      serviceId={serviceId}
+                      serviceType={service.type}
+                      plan={service.plan}
+                      idleTTLSeconds={service.idleTTLSeconds ?? 0}
+                    />
+                  )}
+                  {service && supportsMaxShutdownDelay(service) && (
+                    <MaxShutdownDelayRow
+                      serviceId={serviceId}
+                      maxShutdownDelaySeconds={service.maxShutdownDelaySeconds}
+                      onChanged={() => void refetch()}
+                    />
                   )}
                 </div>
               )}

@@ -2200,6 +2200,12 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	// Create sets replicas directly, without going through Scale — gate it by the
+	// same plan cap (w6/m118 t003) so a caller cannot simply create at N instead
+	// of scaling to N. Autoscaling min/max is capped separately in autoscalingSpec.
+	if err := checkInstanceCap(tier, replicas); err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
 	runtime, builder, err := resolveBuildStrategy(req)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -2463,7 +2469,7 @@ func applyOptionalCreateSpec(spec *appv1alpha1.AppSpec, svcType string, req Crea
 		spec.Hosts = hosts[1:]
 	}
 	if req.Autoscaling != nil {
-		as, err := autoscalingSpec(*req.Autoscaling)
+		as, err := autoscalingSpec(*req.Autoscaling, spec.Tier)
 		if err != nil {
 			return err
 		}
@@ -2962,6 +2968,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if tier == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
 		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
 	}
+	if err := planDowngradeError(a, tier, plan); err != nil {
+		return AppView{}, err
+	}
 	fromPlan := ""
 	if ft, ok := tiers.Compute.ByID(a.Spec.Tier); ok {
 		fromPlan = ft.RenderPlan
@@ -2995,9 +3004,61 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppVie
 	if t.ID == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
 		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
 	}
+	if err := planDowngradeError(a, t.ID, plan); err != nil {
+		return AppView{}, err
+	}
 	preview := a.DeepCopy()
 	preview.Spec.Tier = t.ID
 	return s.view(preview), nil
+}
+
+// errInstanceCap rejects an instance count above the plan's ceiling (w6/m118),
+// naming the plan and the limit — the shape errNoPublicIngress established for
+// the sibling plan-type refusal, not a bare 400. plan is the public Render
+// spelling, cap the plan's maximum, requested the count the caller asked for.
+func errInstanceCap(plan string, cap, requested int32) error {
+	return fmt.Errorf("%w: the %s plan is limited to %d instance(s) and cannot scale to %d", core.ErrBadRequest, plan, cap, requested)
+}
+
+// checkInstanceCap returns errInstanceCap when a requested instance count
+// exceeds the plan's ceiling, and nil for no-cap tiers (every paid plan, and an
+// untiered/bare-CR App). The limit lives in the reviewed tier catalog, so every
+// write path that can set an instance count — Scale, create, autoscaling — reads
+// the same bound rather than testing for the literal "free" (see t003).
+func checkInstanceCap(tier string, requested int32) error {
+	cap, ok := tiers.Compute.InstanceCap(tier)
+	if !ok || requested <= cap {
+		return nil
+	}
+	plan := tier
+	if t, found := tiers.Compute.ByID(tier); found {
+		plan = t.RenderPlan
+	}
+	return errInstanceCap(plan, cap, requested)
+}
+
+// planDowngradeError refuses a plan change that would strand a service above the
+// target plan's instance cap (w6/m118 t003) — the same "reduce first" shape as
+// the maintenance-mode guard, telling the caller to scale down rather than
+// silently shrinking a running service (the mutation-succeeds-and-does-nothing
+// shape). It considers the fixed replica count and, when autoscaling is on, its
+// max — either can exceed the cap. plan is the target's public Render spelling.
+func planDowngradeError(a *appv1alpha1.App, tier, plan string) error {
+	cap, ok := tiers.Compute.InstanceCap(tier)
+	if !ok {
+		return nil
+	}
+	current := a.Spec.Replicas
+	if current < 1 {
+		current = 1
+	}
+	if as := a.Spec.Autoscaling; as != nil && as.Enabled && as.MaxReplicas > current {
+		current = as.MaxReplicas
+	}
+	if current > cap {
+		return fmt.Errorf("%w: scale to %d instance(s) or fewer before changing to the %s plan (currently %d)", core.ErrBadRequest, cap, plan, current)
+	}
+	return nil
 }
 
 // Scale sets the App's desired running instance count (Render's manual-scaling
@@ -3023,6 +3084,9 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	}
 	if replicas < 1 || replicas > store.MaxReplicas {
 		return AppView{}, fmt.Errorf("%w: numInstances must be 1-%d", core.ErrBadRequest, store.MaxReplicas)
+	}
+	if err := checkInstanceCap(a.Spec.Tier, replicas); err != nil {
+		return AppView{}, err
 	}
 	fromReplicas := a.Spec.Replicas
 	result, err := s.writeThroughStoreFetched(ctx, a,
@@ -3053,9 +3117,10 @@ const MaxIdleTTLSeconds int32 = 7 * 24 * 60 * 60
 // (spec.idleTTLSeconds; "sleep = free", w1/m4). 0 restores the controller
 // default. A bex extension with no Render counterpart — Render's free spin-down
 // window is fixed — so it writes spec.idleTTLSeconds the same row-first way as
-// Scale (the projector owns the field). Only free-tier Apps ever sleep, but the
-// value is stored regardless so it takes effect if the plan later changes to
-// free; the dashboard is what gates the control per tier.
+// Scale (the projector owns the field). Only free web services ever sleep, but
+// the value is stored for every type and tier for wire compatibility; it takes
+// effect only if the App is both a web service and free. The dashboard gates
+// the control on that same policy and the operator is the final authority.
 func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (AppView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
 	if err != nil {
@@ -4092,8 +4157,10 @@ type SetAutoscalingRequest struct {
 // autoscalingSpec validates a SetAutoscalingRequest and returns the
 // corresponding AutoscalingSpec (Enabled:true). Shared by SetAutoscaling and
 // specFromCreate (the Blueprint scaling: block path, w2/m49) so validation
-// is identical regardless of entry point.
-func autoscalingSpec(req SetAutoscalingRequest) (appv1alpha1.AutoscalingSpec, error) {
+// is identical regardless of entry point. tier is the App's spec.tier: the
+// autoscaler drives replicas up to maxInstances, so an uncapped maxInstances
+// would reintroduce the over-cap outcome by a different door (w6/m118 t003).
+func autoscalingSpec(req SetAutoscalingRequest, tier string) (appv1alpha1.AutoscalingSpec, error) {
 	if req.MinInstances < 0 {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be ≥ 0", core.ErrBadRequest)
 	}
@@ -4108,6 +4175,14 @@ func autoscalingSpec(req SetAutoscalingRequest) (appv1alpha1.AutoscalingSpec, er
 	}
 	if req.MaxInstances > store.MaxReplicas {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: maxInstances must be 1-%d", core.ErrBadRequest, store.MaxReplicas)
+	}
+	// The plan cap bounds the range the autoscaler may drive into: both ends,
+	// since a minInstances above the cap is equally unrunnable.
+	if err := checkInstanceCap(tier, req.MaxInstances); err != nil {
+		return appv1alpha1.AutoscalingSpec{}, err
+	}
+	if err := checkInstanceCap(tier, req.MinInstances); err != nil {
+		return appv1alpha1.AutoscalingSpec{}, err
 	}
 	if req.TargetCPUPercent != nil && (*req.TargetCPUPercent < 1 || *req.TargetCPUPercent > 100) {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: targetCPUPercent must be 1–100", core.ErrBadRequest)
@@ -4162,7 +4237,7 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
-	as, err := autoscalingSpec(req)
+	as, err := autoscalingSpec(req, a.Spec.Tier)
 	if err != nil {
 		return AutoscalingView{}, err
 	}

@@ -1,5 +1,7 @@
-// Idle-timeout (auto-sleep window) helpers for the Settings control — a bex
-// extension over Render (`spec.idleTTLSeconds`; docs/ADR004-app-deployment.md, w1/m4.5).
+// Shared auto-sleep eligibility policy plus idle-window helpers for Settings —
+// a bex extension over Render (`spec.idleTTLSeconds`; ADR004, w1/m4.5).
+
+import { isWebServiceType } from "@/features/services/lib/service-type";
 
 /**
  * Preset windows offered in the Settings select, in seconds. 0 is the platform
@@ -15,6 +17,21 @@ export const IDLE_TIMEOUT_PRESETS = [0, 300, 900, 1800, 3600, 7200] as const;
  */
 export function planSleeps(plan: string | null): boolean {
   return plan === null || plan === "free";
+}
+
+/**
+ * Whether this service has both sides of auto-sleep: a free plan that may be
+ * parked and a public web route through the activator that can wake it again.
+ * Private services serve HTTP only in-cluster, where no activator observes
+ * traffic, so accepting an idle window for them would promise no wake path.
+ */
+export function autoSleepEligibleType(type: string): boolean {
+  return isWebServiceType(type);
+}
+
+/** Whether both the service type and plan participate in auto-sleep. */
+export function autoSleepEligible(type: string, plan: string | null): boolean {
+  return autoSleepEligibleType(type) && planSleeps(plan);
 }
 
 /**

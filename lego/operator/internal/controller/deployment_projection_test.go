@@ -59,6 +59,26 @@ func TestApplyDeploymentSpecCapsOversizedReplicas(t *testing.T) {
 	}
 }
 
+// TestApplyDeploymentSpecCapsFreePlanReplicas is the operator's defense-in-depth
+// for w6/m118: even if a hand-applied CR or an upstream/projector bug stamps
+// spec.replicas above the free plan's cap, the projection clamps the Deployment
+// to the plan's single instance — the same shape as the MaxReplicas cap above,
+// one field over. Red before the plan-aware clampReplicas: a free App at 5 would
+// have projected a 5-replica Deployment. An untiered App keeps only MaxReplicas.
+func TestApplyDeploymentSpecCapsFreePlanReplicas(t *testing.T) {
+	free := projectionApp(func(a *appv1alpha1.App) { a.Spec.Tier = "free" })
+	dep := project(free, deploymentParams{image: "img", port: 8080, replicas: 5})
+	if dep.Spec.Replicas == nil || *dep.Spec.Replicas != 1 {
+		t.Fatalf("free-plan replicas = %v, want the plan cap of 1", dep.Spec.Replicas)
+	}
+
+	paid := projectionApp(func(a *appv1alpha1.App) { a.Spec.Tier = "standard" })
+	dep = project(paid, deploymentParams{image: "img", port: 8080, replicas: 5})
+	if dep.Spec.Replicas == nil || *dep.Spec.Replicas != 5 {
+		t.Fatalf("paid-plan replicas = %v, want 5 (no plan cap)", dep.Spec.Replicas)
+	}
+}
+
 func appContainerOf(t *testing.T, dep *appsv1.Deployment) corev1.Container {
 	t.Helper()
 	if n := len(dep.Spec.Template.Spec.Containers); n != 1 {

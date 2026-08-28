@@ -1,4 +1,4 @@
-import { servesHttp } from "@/features/services/lib/service-type";
+import { autoSleepEligible } from "@/features/services/lib/idle-timeout";
 import type { ServicesQuery, ServerQuery } from "@/graphql/definitions";
 import type {
   ServiceView,
@@ -183,10 +183,8 @@ const PHASE_STATUS: Record<string, ServiceStatus> = {
   deploying: { key: "deploying", variant: "outline" },
   building: { key: "building", variant: "outline" },
   pending: PENDING,
-  // Phase Hibernated reached here means the App auto-slept (idle past its TTL):
-  // manual suspend is caught earlier by deriveStatus (suspension wins), so a
-  // Hibernated App that is NOT suspended is a free-tier sleeper — shown as
-  // "sleeping" with the wake-on-request hint, a bex extension over Render.
+  // deriveStatus admits Hibernated here only for an eligible free web service;
+  // it handles explicit suspension and ineligible service types first.
   hibernated: { key: "sleeping", variant: "secondary" },
   // Phase Canceled means the user stopped the release that was rolling before
   // any release had ever succeeded — so there is nothing running, but nothing
@@ -204,11 +202,11 @@ const PHASE_STATUS: Record<string, ServiceStatus> = {
 export function deriveStatus(s: ServiceView): ServiceStatus {
   if (s.suspended) return { key: "suspended", variant: "secondary" };
   const phase = s.phase.toLowerCase();
-  // A type with no HTTP port never auto-sleeps — no request could reach it to
-  // wake it — so Hibernated there is the transient window of a resume, not a
-  // sleeper. Reporting "wakes on the next request" would be a promise nothing
-  // can keep.
-  if (phase === "hibernated" && !servesHttp(s.type)) return PENDING;
+  // Only a free public web service can be an activator-backed sleeper. For all
+  // other services Hibernated is a manual-resume transition or stale state, so
+  // promising "wakes on the next request" would be false.
+  if (phase === "hibernated" && !autoSleepEligible(s.type, s.plan))
+    return PENDING;
   const status = PHASE_STATUS[phase];
   if (status) return status;
   return { key: "unknown", variant: "outline" };
@@ -224,9 +222,9 @@ export function deriveStatus(s: ServiceView): ServiceStatus {
  * reconcile that has not landed is the start of the same transition.
  *
  * Deliberately keyed on the raw phase rather than on `deriveStatus`'s key, the
- * way the databases/keyvalue siblings are: `deriveStatus` folds a hibernated
- * non-HTTP service into "pending", and an auto-slept worker sitting at the
- * 3-second cadence forever is exactly what this must not do.
+ * way the databases/keyvalue siblings are: `deriveStatus` folds an ineligible
+ * Hibernated service into "pending", but that display fallback is not proof the
+ * operator is actively converging and must not create an endless poll loop.
  */
 export function isConvergingPhase(s: Pick<ServiceView, "phase">): boolean {
   return CONVERGING_PHASES.has(s.phase.toLowerCase());
@@ -237,9 +235,8 @@ export function isConvergingPhase(s: Pick<ServiceView, "phase">): boolean {
 const CONVERGING_PHASES = new Set(["", "pending", "building", "deploying"]);
 
 /**
- * True when the App is auto-sleeping (free-tier, idle past its TTL) rather than
+ * True when an eligible free public web App is auto-sleeping rather than
  * manually suspended — the state that gets the "wakes on the next request" hint.
- * Never true for a type that serves no HTTP, which cannot be woken by a request.
  */
 export function isSleeping(s: ServiceView): boolean {
   return deriveStatus(s).key === "sleeping";

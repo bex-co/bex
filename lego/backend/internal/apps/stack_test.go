@@ -143,6 +143,7 @@ services:
     type: web
     runtime: image
     image: {url: nginx:1}
+    plan: standard
     scaling:
       minInstances: 2
       maxInstances: 10

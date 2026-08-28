@@ -1,9 +1,32 @@
 import { describe, it, expect } from "vitest";
 import {
+  autoSleepEligible,
+  autoSleepEligibleType,
   planSleeps,
   idleTimeoutOptions,
   IDLE_TIMEOUT_PRESETS,
 } from "@/features/services/lib/idle-timeout";
+
+describe("auto-sleep eligibility", () => {
+  it("only gives public web services an activator wake path", () => {
+    expect(autoSleepEligibleType("web_service")).toBe(true);
+    for (const type of [
+      "private_service",
+      "background_worker",
+      "cron_job",
+      "static_site",
+    ]) {
+      expect(autoSleepEligibleType(type)).toBe(false);
+    }
+  });
+
+  it("also requires a free or untiered plan", () => {
+    expect(autoSleepEligible("web_service", null)).toBe(true);
+    expect(autoSleepEligible("web_service", "free")).toBe(true);
+    expect(autoSleepEligible("web_service", "starter")).toBe(false);
+    expect(autoSleepEligible("private_service", "free")).toBe(false);
+  });
+});
 
 describe("planSleeps", () => {
   it("is true only for free/untiered plans (paid tiers stay always-on)", () => {

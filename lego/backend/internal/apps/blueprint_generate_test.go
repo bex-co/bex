@@ -204,7 +204,9 @@ func TestGenerateBlueprintDomainsCronAndWorkerScaling(t *testing.T) {
 	worker := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "crunch", Namespace: "default"},
 		Spec: appv1alpha1.AppSpec{
-			Type: appv1alpha1.TypeBackgroundWorker, Image: "worker:1",
+			// A paid tier: free caps at 1 instance (w6/m118), so autoscaling to 4
+			// is only valid on a plan without the cap.
+			Type: appv1alpha1.TypeBackgroundWorker, Image: "worker:1", Tier: "standard",
 			Autoscaling: &appv1alpha1.AutoscalingSpec{Enabled: true, MinReplicas: 1, MaxReplicas: 4, TargetCPUPercent: &cpu},
 		},
 	}

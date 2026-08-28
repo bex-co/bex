@@ -536,6 +536,12 @@ const enServices: Record<string, TranslationEntry> = {
       "Run multiple instances that are automatically load balanced. All instances use the same instance type and are billed accordingly.",
     description: "Scaling page: manual instance-count card description",
   },
+  "services.scalingManualDescriptionFree": {
+    message:
+      "Free services run a single instance. Upgrade to a paid plan to run multiple load-balanced instances.",
+    description:
+      "Scaling page: manual instance-count card description on the free plan",
+  },
   "services.scalingManualInstances": {
     message: "Instances",
     description: "Scaling page: manual instance-count slider label",

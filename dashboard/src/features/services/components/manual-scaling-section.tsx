@@ -20,6 +20,8 @@ export interface ManualScalingSectionProps {
   serviceId: string;
   /** Current spec.replicas — the parent mounts this card only once loaded. */
   replicas: number;
+  /** Render plan spelling — "free" caps the service at a single instance. */
+  plan?: string | null;
 }
 
 /**
@@ -34,9 +36,14 @@ export interface ManualScalingSectionProps {
 export function ManualScalingSection({
   serviceId,
   replicas,
+  plan,
 }: ManualScalingSectionProps) {
   const { t } = useTranslations();
   const { scaleService, busy } = useScaleService();
+  // Render offers no free horizontal scaling: the free plan caps at a single
+  // running instance, so the copy and the slider ceiling both narrow (w6/m118).
+  const isFree = plan === "free";
+  const maxInstances = isFree ? 1 : INSTANCE_MAX;
   // null = no local edit; fall through to the live count (the same null-draft
   // idiom as the autoscaling card), so an external replica change — another
   // tab, REST, the autoscaler — shows through while the form is pristine.
@@ -59,7 +66,9 @@ export function ManualScalingSection({
       <CardHeader>
         <CardTitle>{t("services.scalingManualTitle")}</CardTitle>
         <CardDescription className="mt-1">
-          {t("services.scalingManualDescription")}
+          {isFree
+            ? t("services.scalingManualDescriptionFree")
+            : t("services.scalingManualDescription")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -71,7 +80,7 @@ export function ManualScalingSection({
             id="manual-instances"
             value={value}
             min={INSTANCE_MIN}
-            max={INSTANCE_MAX}
+            max={maxInstances}
             disabled={busy}
             onChange={setDraft}
           />

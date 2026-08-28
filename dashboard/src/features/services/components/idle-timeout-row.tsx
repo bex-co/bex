@@ -8,6 +8,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useIdleTimeout } from "@/features/services/hooks/use-idle-timeout";
 import {
+  autoSleepEligibleType,
   idleTimeoutOptions,
   planSleeps,
 } from "@/features/services/lib/idle-timeout";
@@ -16,6 +17,7 @@ type TranslateFn = ReturnType<typeof useTranslations>["t"];
 
 export interface IdleTimeoutRowProps {
   serviceId: string;
+  serviceType: string;
   /** Render's plan spelling (e.g. "pro_plus"), or null for an untiered App. */
   plan: string | null;
   /** Current spec.idleTTLSeconds; 0 = platform default. */
@@ -34,17 +36,20 @@ function formatWindow(t: TranslateFn, seconds: number): string {
 
 /**
  * The Settings "Idle timeout" control — a bex extension (Render's free spin-down
- * window is fixed, no user knob). Only free-tier Apps sleep, so a paid plan
- * shows an always-on notice instead of a control; a free/untiered App gets a
+ * window is fixed, no user knob). Only public web services render the row: a
+ * paid web plan shows an always-on notice, while a free/untiered web App gets a
  * preset select that persists to `spec.idleTTLSeconds` via `setIdleTimeout`.
  */
 export function IdleTimeoutRow({
   serviceId,
+  serviceType,
   plan,
   idleTTLSeconds,
 }: IdleTimeoutRowProps) {
   const { t } = useTranslations();
   const { setIdleTimeout, busy } = useIdleTimeout();
+
+  if (!autoSleepEligibleType(serviceType)) return null;
 
   const label = (
     <div className="text-sm text-muted-foreground">
@@ -52,7 +57,7 @@ export function IdleTimeoutRow({
     </div>
   );
 
-  // Paid tiers never sleep (w1/m4) — no control, just the always-on notice.
+  // Paid web services never sleep (w1/m4) — no control, just the always-on notice.
   if (!planSleeps(plan)) {
     return (
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
