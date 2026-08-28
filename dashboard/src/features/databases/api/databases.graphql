@@ -371,6 +371,17 @@ query DatabaseParameterOverrides($id: String!) {
   }
 }
 
+# The DECLARED overrides — what this database sets, and what a write replaces.
+# DatabaseParameterOverrides above is the observed pg_settings config and is
+# mostly the operator's, so it is a read-only diagnostic, never editor state
+# (w6/m133).
+query DatabaseParameterSpec($id: String!) {
+  databaseParameterSpec(id: $id) {
+    name
+    value
+  }
+}
+
 mutation SetDatabaseParameterOverrides(
   $id: String!
   $parameters: [ParameterInput!]

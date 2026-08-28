@@ -30,31 +30,36 @@ interface DraftParameter {
   id: string;
   name: string;
   value: string;
-  source: string;
 }
 
-/** The subset of the generated `DatabaseParameterOverridesQuery` row this
- * editor reads — structural, so the query result flows in unchanged. */
-export interface ParameterOverrideView {
+/** The subset of the generated `DatabaseParameterSpecQuery` row this editor
+ * reads — structural, so the query result flows in unchanged.
+ *
+ * DECLARED parameters, not observed ones. The editor was previously seeded from
+ * `DatabaseParameterOverridesQuery` — the pg_settings view — which reports the
+ * whole effective configuration: a database nobody had touched arrived with ~48
+ * rows including CloudNativePG's archive/restore commands and TLS paths, and
+ * because a save is a full replacement, removing any one row wrote all the rest
+ * in as the tenant's own declared config (w6/m133). There is no `source` here
+ * because there is only one: this database's own spec. */
+export interface ParameterSpecView {
   name: string | null;
-  setting: string | null;
-  source: string | null;
+  value: string | null;
 }
 
 interface ParameterOverridesEditorProps {
-  overrides: ParameterOverrideView[];
+  parameters: ParameterSpecView[];
   saving: boolean;
   onSave: (parameters: ParameterInput[]) => Promise<SaveParametersResult>;
 }
 
-function initialDrafts(overrides: ParameterOverrideView[]): DraftParameter[] {
-  return overrides
-    .filter((override) => Boolean(override.name))
-    .map((override, index) => ({
-      id: `existing-${index}-${override.name}`,
-      name: override.name ?? "",
-      value: override.setting ?? "",
-      source: override.source ?? "",
+function initialDrafts(parameters: ParameterSpecView[]): DraftParameter[] {
+  return parameters
+    .filter((parameter) => Boolean(parameter.name))
+    .map((parameter, index) => ({
+      id: `existing-${index}-${parameter.name}`,
+      name: parameter.name ?? "",
+      value: parameter.value ?? "",
     }));
 }
 
@@ -66,15 +71,16 @@ function signature(rows: DraftParameter[]): string {
   );
 }
 
-/** Replace-style editor for Database.spec.parameters, backed by the live view. */
+/** Replace-style editor for Database.spec.parameters, backed by that same
+ * declared spec — never by the observed pg_settings view (w6/m133). */
 export function ParameterOverridesEditor({
-  overrides,
+  parameters,
   saving,
   onSave,
 }: ParameterOverridesEditorProps) {
   const { t } = useTranslations();
   const { canCreate, canOperate } = useCapabilities();
-  const initial = initialDrafts(overrides);
+  const initial = initialDrafts(parameters);
   const [rows, setRows] = useState(initial);
   const [savedRows, setSavedRows] = useState(initial);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -126,7 +132,6 @@ export function ParameterOverridesEditor({
         id: `new-${nextID.current++}`,
         name: "",
         value: "",
-        source: "",
       },
     ]);
     setSaveError(null);
@@ -157,7 +162,7 @@ export function ParameterOverridesEditor({
     <div className="space-y-3">
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          {t("databases.insightsNoParams")}
+          {t("databases.insightsNoDeclaredParams")}
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -169,9 +174,6 @@ export function ParameterOverridesEditor({
                 </th>
                 <th className="pb-1 pr-3 font-medium">
                   {t("databases.insightsColSetting")}
-                </th>
-                <th className="pb-1 pr-3 font-medium">
-                  {t("databases.insightsColSource")}
                 </th>
                 <th className="w-9 pb-1">
                   <span className="sr-only">
@@ -206,9 +208,6 @@ export function ParameterOverridesEditor({
                         index: index + 1,
                       })}
                     />
-                  </td>
-                  <td className="py-1.5 pr-3 text-muted-foreground">
-                    {row.source || t("databases.insightsParamsPending")}
                   </td>
                   <td className="py-1.5 text-right">
                     <Button

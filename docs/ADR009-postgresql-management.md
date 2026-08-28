@@ -206,6 +206,23 @@ This is deliberately separate from automatic growth below. Manual and plan-drive
 - **PgBouncer pooler** (`spec.pooler`) projects a CNPG `Pooler` (transaction mode) whose `<id>-pooler` Service backs the pooled connection strings `connection-info` now returns (internal always; external when `public`, resolved by the proxy from `<id>-pool.<domain>`). This fills the previously-stubbed `internalConnectionPoolString`/`externalConnectionPoolString`.
 - **Postgres users** (`spec.users`) are additional managed PostgreSQL login roles projected to CNPG `spec.managed.roles`; bex-api generates each role's password into a per-user basic-auth Secret (`<id>-user-<role>`, referenced by CNPG's `passwordSecret`) and reveals it once on creation — never logged. The immutable effective owner role (`spec.databaseUser` or the stable-id-derived default) stays CNPG bootstrap-managed.
 
+### Parameter overrides: two reads, one of them editable (w6/m133)
+
+`Database.spec.parameters` is the tenant's **declared** override set. The operator merges it straight on top of its own CNPG parameter map, so a tenant key of the same name wins and nothing downstream re-asserts the platform's value. Two consequences follow, and both are now enforced.
+
+**Declared and observed are different reads, and only one is editable.**
+
+|  | source | contains | editable |
+| --- | --- | --- | --- |
+| **declared** | `Database.spec.parameters` | what this database sets — empty for a fresh one | yes; a write replaces the whole set |
+| **observed** | `pg_settings` where `source <> 'default'` | the whole effective configuration, ~48 rows on a fresh free database, mostly the operator's | no — diagnostic only |
+
+Until w6/m133 the declared set was reachable on **no** surface: it could be written and never read back. The dashboard's editor was therefore seeded from the observed view, which meant a database nobody had configured opened with ~48 editable rows — CloudNativePG's `archive_command` and `restore_command`, the `ssl_*` paths, the replication settings — and because a save is a full replacement, removing any single row wrote all the rest in as the tenant's declared config. The declared set is now readable on all three surfaces (`GET /v1/postgres/{id}/parameters`, GraphQL `databaseParameterSpec`, MCP `list_postgres_parameters`) and on the Postgres object as `parameterOverrides`, matching Render's own `postgresDetail` schema.
+
+**Platform-owned parameters are refused, not filtered.** `operatorManagedParameterNames` (`lego/backend/internal/postgres/service.go`) rejects the write with a 400 naming what it refused, at `PostgresPatch.validate()` — the single choke point every surface reaches, since `applyPostgresPatch` is the only writer of `spec.parameters`. Four groups: WAL archival and recovery (backups and PITR run on these), TLS material, replication/HA/pod control, and settings that are not tenant configuration at all — log shipping, `allow_alter_system` (which would let a tenant bypass the guard from inside SQL), and `pg_stat_statements.track` (which the merge above would otherwise let a tenant use to blank the query-insights surface below). Whole families are matched by prefix so an unlisted knob cannot slip through.
+
+`shared_preload_libraries` keeps its older, narrower treatment — a silent drop — because that is a published contract (`SetParameterOverrides`' doc and the MCP tool schema) with its own client-side message in the editor. The asymmetry is deliberate: silently dropping the _new_ set would leave a tenant believing they had set `archive_command` when they had not.
+
 ### Legacy query-insights convergence (w8/m16)
 
 Every reconcile projects `pg_stat_statements.track=all` plus CNPG's dedicated `shared_preload_libraries: [pg_stat_statements]`, including onto clusters created before the insights surface. CloudNativePG recognizes the `pg_stat_statements.*` parameter as its managed-extension switch: it performs the required rolling restart for preload changes and runs `CREATE EXTENSION IF NOT EXISTS pg_stat_statements` in each connectable database. The operator does not launch a competing SQL Job. A projection test starts from a legacy CNPG spec with neither setting, proves one reconcile adds both, and proves the next reconcile is byte-identical (no restart churn). Single-instance plans have a brief interruption during the one-time CNPG restart; HA plans roll through replicas.

@@ -284,6 +284,18 @@ var parameterOverrideViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// parameterSpecViewGQLType is the tenant's DECLARED overrides — what a write
+// replaces, and what the editor binds to. Distinct from
+// DatabaseParameterOverride above, which is the observed pg_settings config and
+// is mostly the operator's (w6/m133).
+var parameterSpecViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseParameterSpec",
+	Fields: graphql.Fields{
+		"name":  gqlutil.StrField(func(v ParameterSpecView) any { return v.Name }),
+		"value": gqlutil.StrField(func(v ParameterSpecView) any { return v.Value }),
+	},
+})
+
 type databaseQueryRow struct {
 	Values []any
 }
@@ -395,6 +407,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"databaseSizes":              gqlutil.IDVerb(sizesViewGQLType, s.Sizes),
 		"databaseTableScans":         gqlutil.IDVerb(graphql.NewList(tableScanViewGQLType), s.TableScans),
 		"databaseParameterOverrides": gqlutil.IDVerb(graphql.NewList(parameterOverrideViewGQLType), s.ParameterOverrides),
+		"databaseParameterSpec":      gqlutil.IDVerb(graphql.NewList(parameterSpecViewGQLType), s.ParameterSpec),
 		// --- logs (w3/m28) ---
 		"databaseLogs": &graphql.Field{
 			Type: graphql.NewList(databaseLogGQLType),

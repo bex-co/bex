@@ -300,6 +300,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+base+"/{id}/sizes", core.HandleByID(s.Sizes))
 	mux.HandleFunc("GET "+base+"/{id}/table-scans", core.HandleByID(s.TableScans))
 	mux.HandleFunc("GET "+base+"/{id}/parameter-overrides", core.HandleByID(s.ParameterOverrides))
+	// The DECLARED set — what PUT below replaces. /parameter-overrides above is
+	// the observed pg_settings config and is mostly the operator's (w6/m133).
+	mux.HandleFunc("GET "+base+"/{id}/parameters", core.HandleByID(s.ParameterSpec))
 	mux.HandleFunc("PUT "+base+"/{id}/parameter-overrides", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Parameters map[string]string `json:"parameters"`

@@ -956,12 +956,32 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Insights table-scans empty state",
   },
   "databases.insightsParamsTitle": {
+    message: "参数覆盖",
+    description:
+      "Insights panel — heading for the parameters this database declares (the editable set)",
+  },
+  "databases.insightsParamsDescription": {
+    message: "此数据库声明的 postgresql.conf 设置。保存会替换整组设置。",
+    description:
+      "Explains that the editor holds the tenant's own declared parameters and that a save is a full replacement",
+  },
+  "databases.insightsEffectiveParamsTitle": {
     message: "非默认参数",
     description: "Insights panel — pg_settings sub-section heading",
+  },
+  "databases.insightsEffectiveParamsDescription": {
+    message: "当前生效且非默认的所有设置，包括由平台管理的设置。只读。",
+    description:
+      "Explains that the pg_settings table is observed configuration, mostly platform-owned, and cannot be edited",
   },
   "databases.insightsNoParams": {
     message: "所有参数均为默认值。",
     description: "Insights parameter-overrides empty state",
+  },
+  "databases.insightsNoDeclaredParams": {
+    message: "此数据库未设置任何参数覆盖。",
+    description:
+      "Empty state for the declared-parameter editor on a database nobody has configured",
   },
   "databases.insightsParamsAdd": {
     message: "添加覆盖项",

@@ -26,6 +26,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -87,12 +89,28 @@ type TableScanView struct {
 }
 
 // ParameterOverrideView is one non-default pg_settings row.
+//
+// This is the OBSERVED effective configuration, and most of it belongs to the
+// operator, not the tenant: a database nobody has ever configured reports ~48
+// rows here, CloudNativePG's archive/restore commands, TLS paths and
+// replication settings among them. It is a read-only diagnostic. The tenant's
+// own declared overrides are ParameterSpecView, and only those may be edited
+// (w6/m133 — the editor used to be seeded from THIS view, so a single edit
+// replaced spec.parameters with the operator's own configuration).
 type ParameterOverrideView struct {
 	Name        string `json:"name"`
 	Setting     string `json:"setting"`
 	Unit        string `json:"unit,omitempty"`
 	Source      string `json:"source"`
 	Description string `json:"description,omitempty"`
+}
+
+// ParameterSpecView is one parameter the TENANT declared, from
+// Database.spec.parameters — the editable set, and the only one a write
+// replaces. Empty for a database nobody has configured.
+type ParameterSpecView struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 const (
@@ -384,6 +402,29 @@ func (s *Service) ParameterOverrides(ctx context.Context, dbID string) ([]Parame
 // to include pg_stat_statements); any entry with that key is silently dropped.
 func (s *Service) SetParameterOverrides(ctx context.Context, dbID string, params map[string]string) (PostgresView, error) {
 	return s.UpdatePostgres(ctx, dbID, PostgresPatch{ParameterOverrides: &params})
+}
+
+// ParameterSpec returns the tenant's DECLARED parameter overrides
+// (Database.spec.parameters) as a stable name-sorted list — the read every
+// surface exposes and the editor binds to. GetParameterSpec below returns the
+// same data as a map for callers that want one.
+//
+// A write replaces exactly this set, so this is the only honest thing to seed
+// an editor from: ParameterOverrides is the observed pg_settings config and is
+// mostly the operator's (w6/m133).
+func (s *Service) ParameterSpec(ctx context.Context, dbID string) ([]ParameterSpecView, error) {
+	params, err := s.GetParameterSpec(ctx, dbID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ParameterSpecView, 0, len(params))
+	for name, value := range params {
+		out = append(out, ParameterSpecView{Name: name, Value: value})
+	}
+	slices.SortFunc(out, func(a, b ParameterSpecView) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	return out, nil
 }
 
 // GetParameterSpec returns the currently stored parameter overrides from the
