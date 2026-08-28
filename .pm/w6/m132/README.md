@@ -1,6 +1,6 @@
 # w6 · m132 — REGRESSION of `w2/m39`: the SSH gateway never sends KEXINIT
 
-**Worker:** worker6 **Goal:** `ssh <service-id>@ssh.bex.co` completes a handshake and opens a shell again, and a dead SSH edge cannot go unnoticed for weeks. **Status:** code-complete; post-deploy live re-verification owed (t002/t005/t008)
+**Worker:** worker6 **Goal:** `ssh <service-id>@ssh.bex.co` completes a handshake and opens a shell again, and a dead SSH edge cannot go unnoticed for weeks. **Status:** code complete and deployed (`b2bec3ff` is contained in the production image pinned by `71fe9660`); the credential-free production KEXINIT probe passes as of 2026-08-28; t002/t005/t008 remain for the authenticated SSH/CLI matrix and confirmed scheduled-guard execution
 
 ## Root cause located + fixed (t001, 2026-08-28)
 
@@ -8,7 +8,7 @@
 
 **Reproduced live 2026-08-28** with the milestone's own instrument (now `ProbeKEXINIT`): `github.com`/`gitlab.com` sent `KEXINIT`; `ssh.bex.co` sent its banner then timed out — controls and symptom exactly as filed.
 
-**Fix + guards shipped:** `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS: 10.244.0.0/16` on `config/ssh/deployment.yaml`; a `scripts/gitops-validate.sh` manifest-lockstep check (route sends PROXY ⇒ Deployment must set the trust, == pod CIDR); a `bex_ssh_gateway_handshakes_total{result}` metric (t003: loud, distinguishable pre-auth failure); the always-on `scripts/ssh-kexinit-probe.sh` + `.github/workflows/ssh-edge-liveness.yml` synthetic (t004, shared carrier reconciled with `w6/m131/t004`); protocol-level tests (`nativessh/kexinit_probe_test.go`, `proxyv2_test.go`) and the ADR035/ADR018 records. **Owed:** re-running the raw probe and the full `scripts/ssh-verify.sh` matrix against production **after** the fix deploys — delegated to the deploy pipeline + the new continuous guard, which now fails on its own if the edge is ever dead again.
+**Fix + guards shipped:** `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS: 10.244.0.0/16` on `config/ssh/deployment.yaml`; a `scripts/gitops-validate.sh` manifest-lockstep check (route sends PROXY ⇒ Deployment must set the trust, == pod CIDR); a `bex_ssh_gateway_handshakes_total{result}` metric (t003: loud, distinguishable pre-auth failure); the always-on `scripts/ssh-kexinit-probe.sh` + `.github/workflows/ssh-edge-liveness.yml` synthetic (t004, shared carrier reconciled with `w6/m131/t004`); protocol-level tests (`nativessh/kexinit_probe_test.go`, `proxyv2_test.go`) and the ADR035/ADR018 records. **Verified after deploy:** `bash scripts/ssh-kexinit-probe.sh` passes against `ssh.bex.co:22` on 2026-08-28. **Owed:** the full authenticated `scripts/ssh-verify.sh`/official CLI matrix and evidence from the first scheduled workflow run (`gh run list` currently returns no runs).
 
 ## Tasks (in order)
 
