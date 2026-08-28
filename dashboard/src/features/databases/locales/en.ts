@@ -974,12 +974,34 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Insights table-scans empty state",
   },
   "databases.insightsParamsTitle": {
+    message: "Parameter overrides",
+    description:
+      "Insights panel — heading for the parameters this database declares (the editable set)",
+  },
+  "databases.insightsParamsDescription": {
+    message:
+      "The postgresql.conf settings this database declares. Saving replaces the whole set.",
+    description:
+      "Explains that the editor holds the tenant's own declared parameters and that a save is a full replacement",
+  },
+  "databases.insightsEffectiveParamsTitle": {
     message: "Non-default parameters",
     description: "Insights panel — pg_settings sub-section heading",
+  },
+  "databases.insightsEffectiveParamsDescription": {
+    message:
+      "Every setting currently in effect that is not at its default, including the ones the platform manages. Read-only.",
+    description:
+      "Explains that the pg_settings table is observed configuration, mostly platform-owned, and cannot be edited",
   },
   "databases.insightsNoParams": {
     message: "All parameters are at their defaults.",
     description: "Insights parameter-overrides empty state",
+  },
+  "databases.insightsNoDeclaredParams": {
+    message: "This database sets no parameter overrides.",
+    description:
+      "Empty state for the declared-parameter editor on a database nobody has configured",
   },
   "databases.insightsParamsAdd": {
     message: "Add override",

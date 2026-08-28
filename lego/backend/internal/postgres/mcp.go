@@ -306,7 +306,7 @@ type updatePostgresArgs struct {
 	EnableDiskAutoscaling *bool                    `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatic grow-only storage scaling: at 90% full, storage grows by 50% rounded up to 5 GB, capped, with a 12-hour cooldown"`
 	IPAllowList           *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to open the endpoint to all source IPs"`
 	IPAllowListCidrs      *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
-	ParameterOverrides    *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. Pass {} to clear every override. shared_preload_libraries cannot be overridden"`
+	ParameterOverrides    *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. This REPLACES the declared set, so send every parameter you want to keep — read the current set with list_postgres_parameters first, NOT list_postgres_parameter_overrides (that one is the observed config and is mostly the platform's). Pass {} to clear every override. shared_preload_libraries is silently dropped, and platform-managed settings (WAL archive/restore commands, TLS paths, replication and logging) are refused"`
 	DryRun                bool                     `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
 }
 
@@ -414,6 +414,10 @@ type parameterOverridesResult struct {
 	Overrides []ParameterOverrideView `json:"overrides"`
 }
 
+type parameterSpecResult struct {
+	Parameters []ParameterSpecView `json:"parameters"`
+}
+
 // registerInsightsMCP adds the five observability tools (processes, top-queries,
 // sizes, table-scans, parameter-overrides) to the shared MCP server.
 func (s *Service) registerInsightsMCP(srv *mcp.Server) {
@@ -460,13 +464,24 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_parameter_overrides",
-		Description: "List non-default postgresql.conf parameters for a managed Postgres database (pg_settings where source is not 'default'). Shows name, current setting, unit, and source of each override.",
+		Description: "List non-default postgresql.conf parameters for a managed Postgres database (pg_settings where source is not 'default'). Shows name, current setting, unit, and source of each override. This is the OBSERVED effective configuration and is mostly set by the platform, not by you — a database nobody has configured still returns ~48 rows, including the operator's WAL archive/restore commands and TLS paths. It is read-only diagnostics. To see or change what this database declares, use list_postgres_parameters and update_postgres's parameterOverrides.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, parameterOverridesResult, error) {
 		out, err := s.ParameterOverrides(ctx, in.PostgresID)
 		if err != nil {
 			return nil, parameterOverridesResult{}, err
 		}
 		return nil, parameterOverridesResult{Overrides: out}, nil
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "list_postgres_parameters",
+		Description: "List the postgresql.conf parameters THIS database declares (Database.spec.parameters) — the tenant-owned set that update_postgres's parameterOverrides replaces. Empty for a database nobody has configured. Use this, not list_postgres_parameter_overrides, to read back what was set.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, parameterSpecResult, error) {
+		out, err := s.ParameterSpec(ctx, in.PostgresID)
+		if err != nil {
+			return nil, parameterSpecResult{}, err
+		}
+		return nil, parameterSpecResult{Parameters: out}, nil
 	})
 
 }

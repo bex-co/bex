@@ -466,6 +466,12 @@ export type DatabaseLogEntry = {
   type: Maybe<Scalars['String']['output']>;
 };
 
+export type DatabaseParameterSpec = {
+  __typename: 'DatabaseParameterSpec';
+  name: Maybe<Scalars['String']['output']>;
+  value: Maybe<Scalars['String']['output']>;
+};
+
 export type DatabaseParameterOverride = {
   __typename: 'DatabaseParameterOverride';
   description: Maybe<Scalars['String']['output']>;
@@ -2361,6 +2367,7 @@ export type Query = {
   databaseIpAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   databaseLogs: Maybe<Array<Maybe<DatabaseLogEntry>>>;
   databaseParameterOverrides: Maybe<Array<Maybe<DatabaseParameterOverride>>>;
+  databaseParameterSpec: Maybe<Array<Maybe<DatabaseParameterSpec>>>;
   databaseProcesses: Maybe<Array<Maybe<DatabaseProcess>>>;
   databaseRecoveryInfo: Maybe<DatabaseRecoveryInfo>;
   databaseSizes: Maybe<DatabaseSizes>;
@@ -2579,6 +2586,10 @@ export type QueryDatabaseLogsArgs = {
 
 
 export type QueryDatabaseParameterOverridesArgs = {
+  id: Scalars['String']['input'];
+};
+
+export type QueryDatabaseParameterSpecArgs = {
   id: Scalars['String']['input'];
 };
 

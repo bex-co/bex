@@ -22,6 +22,7 @@ import {
   DatabaseSizesDocument,
   DatabaseTableScansDocument,
   DatabaseParameterOverridesDocument,
+  DatabaseParameterSpecDocument,
   SetDatabaseParameterOverridesDocument,
   type ParameterInput,
 } from "@/graphql/definitions";
@@ -81,6 +82,16 @@ export function useDatabaseInsights(id: string) {
     skipPollAttempt: skipPollWhenHidden,
   });
 
+  // The DECLARED overrides — what this database sets, and what a save replaces.
+  // parameterOverrides above is the observed pg_settings config, most of which
+  // the operator owns; binding the editor to it made a single edit rewrite
+  // spec.parameters with ~48 operator values (w6/m133).
+  const parameterSpec = useQuery(DatabaseParameterSpecDocument, {
+    variables: { id },
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
+  });
+
   const [setParameters, { loading: saving }] = useMutation(
     SetDatabaseParameterOverridesDocument,
   );
@@ -90,6 +101,9 @@ export function useDatabaseInsights(id: string) {
   ): Promise<SaveParametersResult> {
     try {
       await setParameters({ variables: { id, parameters: params } });
+      // Both: the declared set is what the editor shows, and the pg_settings
+      // view moves once the operator has applied the change.
+      void parameterSpec.refetch();
       void parameterOverrides.refetch();
       return { ok: true };
     } catch (err) {
@@ -124,6 +138,11 @@ export function useDatabaseInsights(id: string) {
     () => (tableScansData?.databaseTableScans ?? []).filter(nonNull),
     [tableScansData],
   );
+  const parameterSpecData = parameterSpec.data;
+  const parameterSpecRows = useMemo(
+    () => (parameterSpecData?.databaseParameterSpec ?? []).filter(nonNull),
+    [parameterSpecData],
+  );
   const parameterOverridesData = parameterOverrides.data;
   const parameterOverrideRows = useMemo(
     () =>
@@ -154,6 +173,10 @@ export function useDatabaseInsights(id: string) {
     parameterOverridesLoading: parameterOverrides.loading,
     parameterOverridesError: parameterOverrides.error,
 
+    parameterSpec: parameterSpecRows,
+    parameterSpecLoading: parameterSpec.loading,
+    parameterSpecError: parameterSpec.error,
+
     saving,
     saveParameters,
 
@@ -163,6 +186,7 @@ export function useDatabaseInsights(id: string) {
       void sizes.refetch();
       void tableScans.refetch();
       void parameterOverrides.refetch();
+      void parameterSpec.refetch();
     },
   };
 }

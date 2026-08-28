@@ -1,18 +1,18 @@
 # w6 · m133 — The Postgres parameter editor is seeded from the live `pg_settings` read
 
-**Worker:** worker6 **Goal:** the parameter editor shows and replaces only what the tenant declared, and operator-owned settings — the WAL archive/restore commands, the TLS paths, the replication group — cannot be captured into tenant config. **Status:** todo
+**Worker:** worker6 **Goal:** the parameter editor shows and replaces only what the tenant declared, and operator-owned settings — the WAL archive/restore commands, the TLS paths, the replication group — cannot be captured into tenant config. **Status:** in progress — t001–t007 done (backend, dashboard, docs and tests landed; dashboard 379 files/2773 tests, backend `go test ./...` 60 packages, `make lint` ×4 all green). t008 closeout is open: its checks are live probes against `dashboard.bex.co` and this session has no QA credentials (`scripts/qa-login.sh` exits 2).
 
 ## Tasks (in order)
 
 | id   | title                                                                                | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Expose the declared overrides (`GetParameterSpec`) on GraphQL / REST / MCP             | 40m | —          |
-| t002 | Rebind the editor to declared overrides; decide what "Non-default parameters" is       | 40m | t001       |
-| t003 | Guard operator-managed and non-configuration parameters in the **backend**              | 40m | t001       |
-| t004 | Blast radius: every parameter writer bound by the policy, correct callers regressed      | 40m | t002, t003 |
-| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard)                                        | 30m | t002, t003 |
-| t006 | Simplify                                                                               | 20m | t005       |
-| t007 | Test coverage                                                                          | 30m | t005       |
+| t001 | Expose the declared overrides (`GetParameterSpec`) on GraphQL / REST / MCP             | 40m | —          | — **DONE**
+| t002 | Rebind the editor to declared overrides; decide what "Non-default parameters" is       | 40m | t001       | — **DONE**
+| t003 | Guard operator-managed and non-configuration parameters in the **backend**              | 40m | t001       | — **DONE**
+| t004 | Blast radius: every parameter writer bound by the policy, correct callers regressed      | 40m | t002, t003 | — **DONE**
+| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard)                                        | 30m | t002, t003 | — **DONE**
+| t006 | Simplify                                                                               | 20m | t005       | — **DONE**
+| t007 | Test coverage                                                                          | 30m | t005       | — **DONE**
 | t008 | Closeout                                                                               | 10m | t004, t007 |
 
 ## Background — found live, 2026-08-28, 72nd `/qa-find-bugs` run, journey 11
@@ -117,3 +117,34 @@ const result = await onSave(rows.map(({ name, value }) => ({ name: name.trim(), 
 The rest of journey 11 is honest. Free-tier `backupsEnabled` is `false`, `POST /v1/postgres/{id}/recovery-info` returns `{"enabled":false,"backups":[]}`, and `GET /v1/postgres/{id}/export` returns `[]` — an honest empty, not a fabricated list. Connection info is gated behind an explicit **Reveal connection info** button, with the copy "Connection strings and the database password. Revealed only when you ask — never shown automatically." `externalConnectionString` is correctly omitted for a non-public database (`public: false`) and is populated when `Public` is set (`service.go:680`); the string offered is the cluster-internal `.svc` host, which is right for a non-public database.
 
 One cosmetic nit, not worth its own item: the Details list renders an **"External host"** term with an empty definition for a non-public database, instead of omitting the row or showing a dash.
+
+## Implementation record (2026-08-27)
+
+Every claim in the Background was re-verified against the tree before any code was written — the `pg_settings`/`spec.parameters` split at `insights.go`, the GraphQL binding to the wrong one, the one-name-wide `normalizeParameterOverrides`, and the editor's full-replacement `save()`. All held.
+
+**t001 — the declared set is readable.** `Service.ParameterSpec` returns `spec.parameters` as a name-sorted `[]ParameterSpecView`, exposed as REST `GET /v1/postgres/{id}/parameters`, GraphQL `databaseParameterSpec`, and MCP `list_postgres_parameters`. The scope-matrix guard caught all three as unclassified operations and they were regenerated as `OpClassRead`, matching the sibling `parameter-overrides` read.
+
+**A parity finding changed the shape of t001.** Render's own pinned `postgresDetail` schema carries `parameterOverrides` — a `{name: value}` map of the declared set — and bex's Postgres view omitted it. So the Render-shaped answer was not only a bex-native side route: `PostgresView.ParameterOverrides` now carries the declared set on the Postgres object itself, which is what closes the DoD's "`parameters` is absent from the Postgres view" bullet properly. Render's list schema does not declare the key and neither schema sets `additionalProperties: false`, so the shared view is safe; the conformance gate is green.
+
+**t002 — the editor is rebound.** `ParameterOverridesEditor` now takes `parameters: ParameterSpecView[]` (`{name, value}`) instead of pg_settings rows, and the Insights panel feeds it `insights.parameterSpec`. The **Source** column is gone from the editor — a declared parameter has exactly one source, and the column's presence was part of what made the observed configuration look editable.
+
+"Non-default parameters" is resolved by keeping both, clearly separated, as the DoD required: **Parameter overrides** (declared, editable, "Saving replaces the whole set") and **Non-default parameters** (observed, read-only, "including the ones the platform manages"). The pg_settings read was not deleted — it is a correct diagnostic, and still returns its ~48 rows.
+
+**t003 — the guard, in the backend.** `operatorManagedParameterNames` refuses a write naming any platform-owned parameter, with a 400 listing what was rejected. It sits in `PostgresPatch.validate()`, which is the single choke point: `applyPostgresPatch` is the **only** writer of `d.Spec.Parameters` in the codebase (t004's blast-radius sweep — grep returned exactly one), and every surface reaching it goes through `UpdatePostgres`, which validates before applying anything. Four groups, each justified in the code comment: WAL archival/recovery, TLS material, replication/HA/pod control, and not-configuration. Whole families match by prefix (`archive_`, `ssl`, `recovery_target`, `unix_socket_`, `syslog_`), the same defensive shape `sensitiveLoggingParameterPrefixes` already uses one function away.
+
+**One addition beyond the filed scope, flagged rather than smuggled:** `pg_stat_statements.track` is refused too. The operator projects `track=all` every reconcile (ADR009 § legacy query-insights convergence) but the controller's merge lets a tenant key of the same name **win**, so a tenant could have blanked the top-queries panel with no other sign. Same class as `shared_preload_libraries`, one line in the same map.
+
+`shared_preload_libraries` deliberately keeps its **silent drop** rather than joining the refusal set: that drop is a published contract (its doc comment, the MCP tool schema) with its own client-side message in the editor. Dropping the new set silently would instead leave a tenant believing they had set `archive_command`. The asymmetry is commented at both sites and asserted by a test.
+
+**t005 — Render parity.** Render exposes tenant-settable parameters and does not expose provider archival internals, so refusing the operator-owned set moves bex toward Render's shape rather than away. No ADR018 divergence row; ADR018's MCP inventory went 184 → 185 (`list_postgres_parameters`, `Extension`) with the pinned test updated in the same commit, as that file demands. ADR009 gained a "Parameter overrides: two reads, one of them editable" section with the declared/observed table and the refusal policy.
+
+**t007 — coverage.** Service-level: `ParameterSpec` empty on a fresh database and sorted after a write; 15 refusal cases including prefix families, case and whitespace variants, and a mixed write proving refusal is atomic; 12 legitimate tuning parameters (`work_mem`, `shared_buffers` — ADR009's own example — `max_connections`, `random_page_cost`, …) proving the guard does not over-refuse. API-level, per the DoD's "by calling the API directly rather than through the dashboard": both the dedicated PUT route and PATCH refuse and name the offender, nothing lands, and a legitimate write still succeeds through the same path. Dashboard: empty editor on a database that declares nothing, a removal saving only the declared survivors, and no Source column.
+
+The guard tests were verified non-tautological by disabling the check — all 15 refusal cases go red.
+
+### What t008 still owes
+
+The remaining DoD bullets are live probes and this session has neither QA credentials (`scripts/qa-login.sh` exits 2) nor a deployed build. Two items must be carried honestly into the closeout:
+
+- **Still unverified, and it was unverified when filed:** what CloudNativePG actually does when `spec.parameters` contains an operator-owned key — reject the Cluster patch, silently win, or fight it in a reconcile loop. The guard now makes it unreachable through the API, so the question is about **existing** databases whose `spec.parameters` may already carry captured values from before this fix. Closeout should check the three production databases for captured keys; if any has them, removing them is a data-repair task, not this milestone's.
+- **Key Value was not checked** for the same conflation (the Background flagged it as unverified). It is a separate resource with its own insights surface; if the same shape exists there it deserves its own note.

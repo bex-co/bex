@@ -26,15 +26,10 @@ import { mockCapabilities } from "@/test/mocks/capabilities";
 const CONTRIBUTOR = mockCapabilities({ role: "CONTRIBUTOR", canCreate: false });
 const ADMIN = mockCapabilities();
 
-const OVERRIDES = [
-  {
-    name: "max_connections",
-    setting: "100",
-    unit: "",
-    source: "configuration file",
-    description: "Sets the maximum number of concurrent connections.",
-  },
-];
+// The DECLARED set — {name, value}, no source. The editor used to take
+// pg_settings rows, which is how ~48 operator-owned values became editor state
+// (w6/m133).
+const DECLARED = [{ name: "max_connections", value: "100" }];
 
 describe("ParameterOverridesEditor", () => {
   // Default every test to an admin; the gating cases override per test. Keeps the
@@ -48,14 +43,20 @@ describe("ParameterOverridesEditor", () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue({ ok: true });
     render(
-      <ParameterOverridesEditor overrides={[]} saving={false} onSave={onSave} />,
+      <ParameterOverridesEditor
+        parameters={[]}
+        saving={false}
+        onSave={onSave}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Add override" }));
     await user.type(screen.getByLabelText("Parameter 1 name"), "log_statement");
     await user.type(screen.getByLabelText("Parameter 1 value"), "all");
 
-    expect(screen.getByRole("button", { name: "Save overrides" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save overrides" }),
+    ).toBeDisabled();
   });
 
   it("lets a contributor save a non-logging parameter (can_operate)", async () => {
@@ -63,7 +64,11 @@ describe("ParameterOverridesEditor", () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue({ ok: true });
     render(
-      <ParameterOverridesEditor overrides={[]} saving={false} onSave={onSave} />,
+      <ParameterOverridesEditor
+        parameters={[]}
+        saving={false}
+        onSave={onSave}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Add override" }));
@@ -79,7 +84,7 @@ describe("ParameterOverridesEditor", () => {
     const onSave = vi.fn().mockResolvedValue({ ok: true });
     render(
       <ParameterOverridesEditor
-        overrides={OVERRIDES}
+        parameters={DECLARED}
         saving={false}
         onSave={onSave}
       />,
@@ -106,7 +111,7 @@ describe("ParameterOverridesEditor", () => {
     const onSave = vi.fn().mockResolvedValue({ ok: true });
     render(
       <ParameterOverridesEditor
-        overrides={OVERRIDES}
+        parameters={DECLARED}
         saving={false}
         onSave={onSave}
       />,
@@ -119,7 +124,7 @@ describe("ParameterOverridesEditor", () => {
 
     expect(onSave).toHaveBeenCalledWith([]);
     expect(
-      screen.getByText("All parameters are at their defaults."),
+      screen.getByText("This database sets no parameter overrides."),
     ).toBeInTheDocument();
   });
 
@@ -131,7 +136,7 @@ describe("ParameterOverridesEditor", () => {
     });
     render(
       <ParameterOverridesEditor
-        overrides={OVERRIDES}
+        parameters={DECLARED}
         saving={false}
         onSave={onSave}
       />,
@@ -146,5 +151,73 @@ describe("ParameterOverridesEditor", () => {
       "not allowed to operate this database",
     );
     expect(value).toHaveValue("250");
+  });
+});
+
+describe("ParameterOverridesEditor — bound to the declared set (w6/m133)", () => {
+  beforeEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(ADMIN);
+  });
+
+  it("shows an empty editor for a database that declares nothing", () => {
+    // The live repro: a free database created five minutes earlier and never
+    // configured rendered 48 editable rows, because the editor was seeded from
+    // the pg_settings view instead of spec.parameters.
+    render(
+      <ParameterOverridesEditor
+        parameters={[]}
+        saving={false}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText("This database sets no parameter overrides."),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Parameter 1 name")).not.toBeInTheDocument();
+  });
+
+  it("saves only the declared set, so one edit cannot capture foreign values", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue({ ok: true });
+    render(
+      <ParameterOverridesEditor
+        parameters={[
+          { name: "max_connections", value: "100" },
+          { name: "work_mem", value: "8MB" },
+        ]}
+        saving={false}
+        onSave={onSave}
+      />,
+    );
+
+    // Removing one row used to submit the ~47 survivors — which, seeded from
+    // pg_settings, were the operator's archive_command, restore_command and TLS
+    // paths — as the tenant's own declared config.
+    await user.click(screen.getByRole("button", { name: "Remove work_mem" }));
+    await user.click(screen.getByRole("button", { name: "Save overrides" }));
+
+    expect(onSave).toHaveBeenCalledWith([
+      { name: "max_connections", value: "100" },
+    ]);
+  });
+
+  it("offers no Source column: a declared parameter has only one source", () => {
+    render(
+      <ParameterOverridesEditor
+        parameters={DECLARED}
+        saving={false}
+        onSave={vi.fn()}
+      />,
+    );
+
+    // "Source" is meaningful only for pg_settings rows, and its presence here
+    // was part of what made the observed config look editable.
+    expect(
+      screen.queryByRole("columnheader", { name: "Source" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Parameter" }),
+    ).toBeInTheDocument();
   });
 });

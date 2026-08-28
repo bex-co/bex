@@ -135,6 +135,18 @@ type PostgresView struct {
 	// BackupsEnabled reports whether continuous backups (and so recovery/PITR)
 	// are active for this instance — surfaced by the controller once projected.
 	BackupsEnabled bool `json:"backupsEnabled"`
+	// ParameterOverrides is the DECLARED postgresql.conf override set
+	// (Database.spec.parameters) — what this database sets, and what a PATCH
+	// replaces. Render's own postgresDetail schema carries the same key with the
+	// same name/value map shape, so this is parity, not an extension.
+	//
+	// Before w6/m133 spec.parameters was effectively WRITE-ONLY: no read surface
+	// returned it, so a caller could declare overrides and never read back what
+	// they had declared — which is why the dashboard editor was seeded from the
+	// pg_settings view instead, and a single edit rewrote the tenant's declared
+	// config with the operator's own. Omitted rather than serialized as {} when
+	// empty, matching Render's optional key.
+	ParameterOverrides map[string]string `json:"parameterOverrides,omitempty"`
 
 	// OwnerID is Render's workspace-scoping field (w6/m2/t004), read from the
 	// Database CR's core.LabelTenant label (the same one apps.AppView.OwnerID
@@ -403,6 +415,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		PoolerEnabled:           d.Spec.Pooler,
 		ConnectionPool:          connectionPoolEnum(d.Spec.Pooler),
 		BackupsEnabled:          d.Status.BackupsEnabled,
+		ParameterOverrides:      declaredParameters(d),
 		OwnerID:                 d.Labels[core.LabelTenant],
 		ProjectID:               d.Labels[core.LabelProject],
 		EnvironmentID:           d.Labels[core.LabelEnvironment],
@@ -812,7 +825,27 @@ func (patch PostgresPatch) validate() error {
 			return err
 		}
 	}
+	// Operator-owned settings are refused here rather than filtered, so a caller
+	// is told what was rejected instead of believing it landed (w6/m133).
+	// validate() is the single choke point: applyPostgresPatch is the ONLY writer
+	// of d.Spec.Parameters in the codebase, and every surface that reaches it —
+	// REST PATCH, REST PUT /parameter-overrides, GraphQL
+	// setDatabaseParameterOverrides, MCP update_postgres — goes through
+	// UpdatePostgres, which calls this before applying anything.
+	if patch.ParameterOverrides != nil {
+		if managed := operatorManagedParameterNames(*patch.ParameterOverrides); len(managed) > 0 {
+			return fmt.Errorf("%w: %s %s managed by the platform and cannot be set as a database parameter",
+				core.ErrBadRequest, strings.Join(managed, ", "), pluralIsAre(len(managed)))
+		}
+	}
 	return nil
+}
+
+func pluralIsAre(n int) string {
+	if n == 1 {
+		return "is"
+	}
+	return "are"
 }
 
 // DatabaseStorageHighWater is the floor a storage resize may not go below: the
@@ -929,6 +962,127 @@ func setsSensitiveLoggingParameter(params map[string]string) bool {
 		}
 	}
 	return false
+}
+
+// operatorManagedParameters are postgresql.conf settings the PLATFORM owns.
+// A tenant value for any of them either breaks a platform guarantee or is
+// rejected by CloudNativePG's own admission webhook, which would leave the
+// tenant's Database unreconcilable — so they are refused at the API rather
+// than written to spec.parameters (w6/m133).
+//
+// Why a denylist at all: the operator merges spec.parameters straight on top of
+// its own CNPG parameter map (database_controller.go's pgParams loop), so a
+// tenant key of the same name WINS. Nothing downstream re-asserts the
+// platform's value.
+//
+// The four groups, and what each one costs if a tenant sets it:
+//
+//   - WAL archival and recovery — archive_command / restore_command are
+//     CloudNativePG's own binary invocations, and continuous backup plus PITR
+//     run on them (ADR009 § durability). Overwriting one silently ends
+//     archiving for that database; the Recovery card would keep reporting a
+//     window that is no longer being extended.
+//   - TLS material — ssl and the ssl_* paths point at certificates the operator
+//     mounts. A tenant path either breaks connections or aims the server at a
+//     key the tenant chose.
+//   - Replication, HA and pod control — the operator's control of failover,
+//     the listening socket, and crash restart.
+//   - Not tenant configuration — log shipping (CNPG parses its own JSON log at
+//     a fixed destination), and allow_alter_system, which would let a tenant
+//     bypass this guard entirely via ALTER SYSTEM.
+//
+// This is deliberately NOT the same mechanism as shared_preload_libraries,
+// which stays silently dropped just below: that drop is a documented contract
+// (SetParameterOverrides' doc, the MCP tool schema) with its own client-side
+// message in the editor. These have neither, and dropping them silently would
+// leave a tenant believing they had set archive_command when they had not.
+var operatorManagedParameters = map[string]bool{
+	// WAL archival / recovery — backups and PITR run on these.
+	"archive_mode":             true,
+	"archive_timeout":          true,
+	"wal_level":                true,
+	"wal_log_hints":            true,
+	"wal_keep_size":            true,
+	"recovery_min_apply_delay": true,
+	// Replication / HA / pod control.
+	"hot_standby":                 true,
+	"max_replication_slots":       true,
+	"synchronous_standby_names":   true,
+	"primary_conninfo":            true,
+	"primary_slot_name":           true,
+	"promote_trigger_file":        true,
+	"restart_after_crash":         true,
+	"listen_addresses":            true,
+	"port":                        true,
+	"cluster_name":                true,
+	"unix_socket_directories":     true,
+	"unix_socket_group":           true,
+	"unix_socket_permissions":     true,
+	"data_directory":              true,
+	"config_file":                 true,
+	"hba_file":                    true,
+	"ident_file":                  true,
+	"external_pid_file":           true,
+	"data_sync_retry":             true,
+	"allow_system_table_mods":     true,
+	// Not tenant configuration.
+	"allow_alter_system":         true,
+	"logging_collector":          true,
+	"log_destination":            true,
+	"log_rotation_age":           true,
+	"log_rotation_size":          true,
+	"log_truncate_on_rotation":   true,
+	// The insights surface's own switch: every reconcile projects
+	// pg_stat_statements.track=all (ADR009 § legacy query-insights
+	// convergence), and the merge above lets a tenant value overwrite it —
+	// which would blank the top-queries panel with no other sign.
+	"pg_stat_statements.track": true,
+}
+
+// operatorManagedParameterPrefixes match whole families, so a knob the exact
+// map has not heard of cannot slip under the guard — the same defensive shape
+// sensitiveLoggingParameterPrefixes already uses in this file.
+var operatorManagedParameterPrefixes = []string{
+	"archive_",        // archive_command, archive_cleanup_command, …
+	"restore_command", // and any suffixed variant
+	"ssl",             // ssl, ssl_key_file, ssl_ca_file, ssl_ciphers, …
+	"recovery_target", // recovery_target_timeline/_time/_lsn/_name/_xid/_action
+	"unix_socket_",
+	"syslog_",
+}
+
+// operatorManagedParameterNames returns the sorted operator-owned names present
+// in params, or nil when there are none.
+func operatorManagedParameterNames(params map[string]string) []string {
+	var found []string
+	for name := range params {
+		canonical := strings.ToLower(strings.TrimSpace(name))
+		if operatorManagedParameters[canonical] {
+			found = append(found, canonical)
+			continue
+		}
+		for _, prefix := range operatorManagedParameterPrefixes {
+			if strings.HasPrefix(canonical, prefix) {
+				found = append(found, canonical)
+				break
+			}
+		}
+	}
+	slices.Sort(found)
+	return slices.Compact(found)
+}
+
+// declaredParameters copies spec.parameters for the view. A copy, not the map
+// itself: the view escapes to every surface and must not alias CR state.
+func declaredParameters(d *appv1alpha1.Database) map[string]string {
+	if len(d.Spec.Parameters) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(d.Spec.Parameters))
+	for k, v := range d.Spec.Parameters {
+		out[k] = v
+	}
+	return out
 }
 
 func normalizeParameterOverrides(params map[string]string) map[string]string {

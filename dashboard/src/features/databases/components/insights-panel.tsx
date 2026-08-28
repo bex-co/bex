@@ -284,8 +284,41 @@ export function InsightsPanel({ id }: { id: string }) {
           )}
         </Section>
 
-        {/* Parameter overrides */}
-        <Section title={t("databases.insightsParamsTitle")}>
+        {/* The DECLARED parameters — the editable set. A save replaces exactly
+            this, so it is the only honest thing to seed the editor from
+            (w6/m133). */}
+        <Section
+          title={t("databases.insightsParamsTitle")}
+          description={t("databases.insightsParamsDescription")}
+        >
+          {insights.parameterSpecLoading &&
+          insights.parameterSpec.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t("databases.loading")}
+            </p>
+          ) : insights.parameterSpecError ? (
+            <p className="text-sm text-destructive">
+              {t("databases.insightsUnavailable")}
+            </p>
+          ) : (
+            <ParameterOverridesEditor
+              key={insights.parameterSpec
+                .map((parameter) => [parameter.name, parameter.value].join(":"))
+                .join("|")}
+              parameters={insights.parameterSpec}
+              saving={insights.saving}
+              onSave={insights.saveParameters}
+            />
+          )}
+        </Section>
+
+        {/* The OBSERVED effective config, read-only. Mostly the platform's —
+            a database nobody has configured still lists ~48 rows — so it is a
+            diagnostic, never editor state. */}
+        <Section
+          title={t("databases.insightsEffectiveParamsTitle")}
+          description={t("databases.insightsEffectiveParamsDescription")}
+        >
           {insights.parameterOverridesLoading &&
           insights.parameterOverrides.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -295,19 +328,44 @@ export function InsightsPanel({ id }: { id: string }) {
             <p className="text-sm text-destructive">
               {t("databases.insightsUnavailable")}
             </p>
+          ) : insights.parameterOverrides.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t("databases.insightsNoParams")}
+            </p>
           ) : (
-            <ParameterOverridesEditor
-              key={insights.parameterOverrides
-                .map((parameter) =>
-                  [parameter.name, parameter.setting, parameter.source].join(
-                    ":",
-                  ),
-                )
-                .join("|")}
-              overrides={insights.parameterOverrides}
-              saving={insights.saving}
-              onSave={insights.saveParameters}
-            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-1 pr-3 font-medium">
+                      {t("databases.insightsColParam")}
+                    </th>
+                    <th className="pb-1 pr-3 font-medium">
+                      {t("databases.insightsColSetting")}
+                    </th>
+                    <th className="pb-1 font-medium">
+                      {t("databases.insightsColSource")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {insights.parameterOverrides.map((parameter) => (
+                    <tr key={parameter.name} className="border-b last:border-0">
+                      <td className="py-1 pr-3 font-mono text-muted-foreground">
+                        {parameter.name}
+                      </td>
+                      <td className="py-1 pr-3 font-mono">
+                        {parameter.setting}
+                        {parameter.unit ? ` ${parameter.unit}` : ""}
+                      </td>
+                      <td className="py-1 text-muted-foreground">
+                        {parameter.source}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Section>
       </CardContent>
@@ -317,14 +375,21 @@ export function InsightsPanel({ id }: { id: string }) {
 
 function Section({
   title,
+  description,
   children,
 }: {
   title: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium">{title}</h3>
+      <div className="space-y-0.5">
+        <h3 className="text-sm font-medium">{title}</h3>
+        {description ? (
+          <p className="text-xs text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
       {children}
     </div>
   );
