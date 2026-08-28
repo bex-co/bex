@@ -129,6 +129,13 @@ type Server struct {
 	CLIRefreshes     cliauth.RefreshIdempotencyStore
 	OAuthRevocations RevocationStore
 
+	// TrustedProxies (BEX_TRUSTED_PROXY_CIDRS) are the edge proxies whose
+	// forwarding headers this process may believe. Set by the composition root
+	// alongside the IP-keyed limiters; withSecurityHeaders consults it so HSTS
+	// is only emitted for a genuinely-TLS request and never from a spoofed
+	// X-Forwarded-Proto (codex-security target #10). nil ⇒ trust nobody.
+	TrustedProxies core.TrustedProxies
+
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
 	HydraAdminURL string // Hydra admin base URL (introspection); required
@@ -948,7 +955,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	// final body; it self-exempts streaming (text/event-stream) responses so the
 	// SSE live-tail / agent-session / sandbox-exec proxies still flush per event
 	// (w9/m61).
-	return withGzip(withSecurityHeaders(withCORS(s.CORSOrigin, mux))), nil
+	return withGzip(withSecurityHeaders(s.TrustedProxies, withCORS(s.CORSOrigin, mux))), nil
 }
 
 // rootMux builds the composed top-level mux: the directly-mounted always-public

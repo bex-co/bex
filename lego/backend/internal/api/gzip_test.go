@@ -177,7 +177,7 @@ func TestWithGzip_SSEUntouchedThroughComposedChain(t *testing.T) {
 			fl.Flush()
 		}
 	})
-	handler := withGzip(withSecurityHeaders(withCORS("https://dash.example", sse)))
+	handler := withGzip(withSecurityHeaders(nil, withCORS("https://dash.example", sse)))
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe", nil)
