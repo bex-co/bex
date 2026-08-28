@@ -53,8 +53,9 @@ const VERSIONS = ["8", "7"] as const;
 // (docs/render-artifacts/key-value.md). Persistence modes get i18n labels; the
 // maxmemory (eviction) policy tokens live in the feature's shared lib
 // (MAXMEMORY_POLICIES) so the create wizard and the detail-page editor agree.
-// The Free plan has no persistence, so both are locked (persistence forced Off)
-// when selected.
+// Every bex plan — the Free tier included (tiers.yaml gives it a 1 GB disk) —
+// can persist, so neither dropdown is plan-locked (w6/m127); the default is
+// journal-snapshot, matching the API create path.
 const PERSISTENCE_MODES = ["journal-snapshot", "snapshot", "off"] as const;
 const PERSISTENCE_LABEL_KEYS: Record<
   (typeof PERSISTENCE_MODES)[number],
@@ -64,7 +65,6 @@ const PERSISTENCE_LABEL_KEYS: Record<
   snapshot: "keyvalue.persistenceSnapshot",
   off: "keyvalue.persistenceOff",
 };
-const FREE_PLAN = "free";
 
 export const Route = createFileRoute("/keyvalue/new")({
   staticData: { chrome: true },
@@ -102,10 +102,6 @@ export function NewKeyValuePage() {
   const [environmentId, setEnvironmentId] = useState<string | null>(null);
 
   const plan = planOverride ?? instanceTypes[0]?.id ?? "";
-  // The Free plan has no persistent disk, so persistence is forced Off and both
-  // settings lock — Render's exact behavior (docs/render-artifacts/key-value.md).
-  const isFree = plan === FREE_PLAN;
-  const effectivePersistence = isFree ? "off" : persistenceMode;
 
   const nameValid = isValidDnsLabel(name);
   const showNameError = name.length > 0 && !nameValid;
@@ -119,7 +115,7 @@ export function NewKeyValuePage() {
       version: version === VERSION_DEFAULT ? "" : version,
       public: isPublic,
       maxmemoryPolicy,
-      persistenceMode: effectivePersistence,
+      persistenceMode,
       environmentId: environmentId ?? undefined,
     });
     if (id) {
@@ -198,7 +194,6 @@ export function NewKeyValuePage() {
                 <Select
                   value={maxmemoryPolicy}
                   onValueChange={setMaxmemoryPolicy}
-                  disabled={isFree}
                 >
                   <SelectTrigger id="kv-maxmemory" className="w-full">
                     <SelectValue />
@@ -224,9 +219,8 @@ export function NewKeyValuePage() {
                   {t("keyvalue.fieldPersistenceMode")}
                 </Label>
                 <Select
-                  value={effectivePersistence}
+                  value={persistenceMode}
                   onValueChange={setPersistenceMode}
-                  disabled={isFree}
                 >
                   <SelectTrigger id="kv-persistence" className="w-full">
                     <SelectValue />
@@ -240,9 +234,7 @@ export function NewKeyValuePage() {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  {isFree
-                    ? t("keyvalue.fieldPersistenceFreeHint")
-                    : t("keyvalue.fieldPersistenceModeHint")}
+                  {t("keyvalue.fieldPersistenceModeHint")}
                 </p>
               </div>
 

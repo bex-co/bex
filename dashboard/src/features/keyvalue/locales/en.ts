@@ -186,11 +186,6 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "How data is persisted to disk so it survives a restart.",
     description: "Create-Key-Value persistence mode helper text",
   },
-  "keyvalue.fieldPersistenceFreeHint": {
-    message: "The Free plan has no persistent disk, so persistence is off.",
-    description:
-      "Create-Key-Value persistence helper text when Free plan is selected",
-  },
   "keyvalue.persistenceJournalSnapshot": {
     message: "Journal + Snapshot",
     description: "Persistence mode option: AOF journal plus RDB snapshots",

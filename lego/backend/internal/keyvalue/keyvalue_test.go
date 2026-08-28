@@ -466,6 +466,78 @@ func TestKeyValueUpdateMemoryPolicyAndAllowList(t *testing.T) {
 	}
 }
 
+// TestKeyValueUpdatePersistenceMode is w6/m127: persistenceMode joins the
+// updatable PATCH set, so a store the dashboard once forced onto `off` (a pure
+// in-memory cache whose data does not survive a restart) can reach durable
+// journal_snapshot WITHOUT being recreated. It mirrors the maxmemoryPolicy leg's
+// guards — underscore normalization, unknown-value 400 with no write, and nil =
+// unchanged — the DoD bullet "an existing free store on off can reach
+// journal_snapshot". Run against the pre-fix code, the first PATCH is a silent
+// no-op and the view assertion fails.
+func TestKeyValueUpdatePersistenceMode(t *testing.T) {
+	svc, cl := newService()
+
+	// Seed exactly the state the old free-plan form produced: a free store on off.
+	w := serveREST(svc, "POST", "/v1/key-value", `{"name":"persist-kv","plan":"free","persistenceMode":"off"}`)
+	if w.Code != 201 {
+		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
+	}
+	var created renderKeyValue
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
+	id := created.ID
+	if created.Options.PersistenceMode != "off" {
+		t.Fatalf("seeded store persistenceMode = %q, want off", created.Options.PersistenceMode)
+	}
+
+	patch := func(body string) *httptest.ResponseRecorder {
+		return serveREST(svc, "PATCH", "/v1/key-value/"+id, body)
+	}
+	spec := func() appv1alpha1.KeyValueSpec {
+		var kv appv1alpha1.KeyValue
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: id}, &kv); err != nil {
+			t.Fatalf("get CR: %v", err)
+		}
+		return kv.Spec
+	}
+
+	// The rescue: Render's underscore wire form normalizes to the hyphenated CRD
+	// value and lands on both the view and the spec — durable, in place.
+	w = patch(`{"persistenceMode":"journal_snapshot"}`)
+	if w.Code != 200 {
+		t.Fatalf("update persistenceMode => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var v renderKeyValue
+	_ = json.Unmarshal(w.Body.Bytes(), &v)
+	if v.Options.PersistenceMode != "journal_snapshot" {
+		t.Fatalf("view persistenceMode = %q, want journal_snapshot (silent no-op regression)", v.Options.PersistenceMode)
+	}
+	if got := spec().PersistenceMode; got != "journal-snapshot" {
+		t.Fatalf("spec persistenceMode = %q, want journal-snapshot", got)
+	}
+	// The middle option (RDB only) still works.
+	if w := patch(`{"persistenceMode":"snapshot"}`); w.Code != 200 {
+		t.Fatalf("update snapshot => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := spec().PersistenceMode; got != "snapshot" {
+		t.Fatalf("spec persistenceMode = %q, want snapshot", got)
+	}
+	// Unknown mode => named 400, no write.
+	if w := patch(`{"persistenceMode":"eventually-maybe"}`); w.Code != 400 {
+		t.Fatalf("bad persistenceMode => 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := spec().PersistenceMode; got != "snapshot" {
+		t.Fatalf("rejected persistenceMode must not write, spec = %q", got)
+	}
+	// nil = unchanged: a rename must NOT clear the persistence set above (the
+	// w7/m45 maxmemoryPolicy guarantee, held for its sibling field).
+	if w := patch(`{"name":"persist-kv-renamed"}`); w.Code != 200 {
+		t.Fatalf("rename => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := spec().PersistenceMode; got != "snapshot" {
+		t.Fatalf("rename cleared persistenceMode (nil-pointer regression), spec = %q", got)
+	}
+}
+
 // TestGraphQLSetKeyValueMaxmemoryPolicy pins the GraphQL mirror of the w7/m45
 // PATCH field: setKeyValueMaxmemoryPolicy mutates the policy through the same
 // UpdateKeyValue core, and an unknown value is a named error, not a silent no-op.
@@ -498,6 +570,41 @@ func TestGraphQLSetKeyValueMaxmemoryPolicy(t *testing.T) {
 		RequestString: `mutation { setKeyValueMaxmemoryPolicy(id:"gql-mm", maxmemoryPolicy:"evict-everything") { id } }`})
 	if len(bad.Errors) == 0 {
 		t.Fatal("unknown maxmemoryPolicy should error, not silently succeed")
+	}
+}
+
+// TestGraphQLSetKeyValuePersistenceMode pins the GraphQL mirror of the w6/m127
+// PATCH field: setKeyValuePersistenceMode mutates persistence through the same
+// UpdateKeyValue core, and an unknown value is a named error, not a silent no-op.
+func TestGraphQLSetKeyValuePersistenceMode(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "gql-pm")
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { setKeyValuePersistenceMode(id:"gql-pm", persistenceMode:"snapshot") { id persistenceMode } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("setKeyValuePersistenceMode: %v", res.Errors)
+	}
+	obj := res.Data.(map[string]any)["setKeyValuePersistenceMode"].(map[string]any)
+	if obj["id"] != "gql-pm" || obj["persistenceMode"] != "snapshot" {
+		t.Fatalf("gql view = %v", obj)
+	}
+	var got appv1alpha1.KeyValue
+	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-pm"}, &got)
+	if got.Spec.PersistenceMode != "snapshot" {
+		t.Fatalf("spec persistenceMode = %q, want snapshot", got.Spec.PersistenceMode)
+	}
+	bad := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { setKeyValuePersistenceMode(id:"gql-pm", persistenceMode:"eventually-maybe") { id } }`})
+	if len(bad.Errors) == 0 {
+		t.Fatal("unknown persistenceMode should error, not silently succeed")
 	}
 }
 
@@ -570,6 +677,17 @@ func TestMCPKeyValueUpdateVerbs(t *testing.T) {
 	call("update_key_value", map[string]any{"keyValueId": "mcp-upd", "maxmemoryPolicy": "noeviction", "dryRun": true})
 	if got := spec().MaxmemoryPolicy; got != "allkeys-lru" {
 		t.Fatalf("dryRun update_key_value wrote maxmemoryPolicy = %q", got)
+	}
+	// persistenceMode (w6/m127) mutates through the same tool, and an omitted
+	// argument still leaves the policy set above alone.
+	call("update_key_value", map[string]any{"keyValueId": "mcp-upd", "persistenceMode": "off"})
+	if got := spec(); got.PersistenceMode != "off" || got.MaxmemoryPolicy != "allkeys-lru" {
+		t.Fatalf("MCP persistenceMode spec = %+v, want persistence off + policy unchanged", got)
+	}
+	// Its underscore wire form normalizes like create/REST.
+	call("update_key_value", map[string]any{"keyValueId": "mcp-upd", "persistenceMode": "journal_snapshot"})
+	if got := spec().PersistenceMode; got != "journal-snapshot" {
+		t.Fatalf("MCP persistenceMode spec = %q, want journal-snapshot", got)
 	}
 }
 

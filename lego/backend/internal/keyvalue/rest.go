@@ -337,6 +337,7 @@ func (s *Service) handleUpdateKeyValue(w http.ResponseWriter, r *http.Request) {
 		Name            *string                  `json:"name,omitempty"`
 		Plan            *string                  `json:"plan,omitempty"`
 		MaxmemoryPolicy *string                  `json:"maxmemoryPolicy,omitempty"`
+		PersistenceMode *string                  `json:"persistenceMode,omitempty"`
 		IPAllowList     *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 		DryRun          bool                     `json:"dryRun,omitempty"`
 	}
@@ -345,7 +346,7 @@ func (s *Service) handleUpdateKeyValue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	patch := KeyValuePatch{Name: req.Name, Plan: req.Plan, MaxmemoryPolicy: req.MaxmemoryPolicy, IPAllowList: req.IPAllowList}
+	patch := KeyValuePatch{Name: req.Name, Plan: req.Plan, MaxmemoryPolicy: req.MaxmemoryPolicy, PersistenceMode: req.PersistenceMode, IPAllowList: req.IPAllowList}
 	apply := s.UpdateKeyValue
 	if core.DryRunRequested(r, req.DryRun) {
 		apply = s.PreviewUpdateKeyValue

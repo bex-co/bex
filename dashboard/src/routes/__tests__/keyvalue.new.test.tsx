@@ -163,18 +163,34 @@ describe("NewKeyValuePage", () => {
     );
   });
 
-  it("forces persistence to off on the Free plan (Render parity, w5/011)", async () => {
+  it("does not force persistence off on the Free plan — it defaults durable and stays editable (w6/m127)", async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.type(await screen.findByLabelText("Name"), "cache-free");
     // Free is the default (first) plan, so no plan click needed.
+
+    // The persistence control is NOT locked on Free (bex's free tier has a 1 GB
+    // disk — the old "no persistent disk" premise was false), and the false hint
+    // is gone.
+    expect(
+      screen.getByRole("combobox", { name: "Persistence Mode" }),
+    ).not.toBeDisabled();
+    expect(
+      screen.queryByText(/Free plan has no persistent disk/i),
+    ).not.toBeInTheDocument();
+
     await user.click(
       screen.getByRole("button", { name: "Create Key Value Instance" }),
     );
 
+    // A free store now created through the form matches the API create path,
+    // which yields journal_snapshot — not the silently non-durable `off`.
     expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ plan: "free", persistenceMode: "off" }),
+      expect.objectContaining({
+        plan: "free",
+        persistenceMode: "journal-snapshot",
+      }),
     );
   });
 
