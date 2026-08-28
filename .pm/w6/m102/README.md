@@ -1,6 +1,6 @@
 # w6 · m102 — Hydration mismatch (#418) in `formatRelativeAge`/`formatRelativeUntil` across 15+ components
 
-**Worker:** worker6 **Goal:** no route that renders a relative-age/until timestamp during its blocking SSR pass can produce a React hydration-mismatch console error, regardless of the timing gap between server render and client hydration **Status:** in progress — code complete and **deployed** (`20b68db5` is an ancestor of the shipped `050d40e4`); t003 (live probe) + t007 (closeout) now blocked only on QA credentials (`scripts/qa-login.sh` exits 2 — `QA_EMAIL`/`QA_PASSWORD` absent from `.env`)
+**Worker:** worker6 **Goal:** no route that renders a relative-age/until timestamp during its blocking SSR pass can produce a React hydration-mismatch console error, regardless of the timing gap between server render and client hydration **Status:** in progress — code complete and deployed (`20b68db5` is contained in the production image pinned by `71fe9660`); t003 (live probe) + t007 (closeout) are blocked only on QA credentials (`scripts/qa-login.sh` exits 2 — `QA_EMAIL`/`QA_PASSWORD` absent from `.env`)
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- | --- |
 | t001 | Extract a shared hydration-safe wrapper for `formatRelativeAge`/`formatRelativeUntil` output | 30m | — | — **DONE** |
 | t002 | Apply the wrapper to every currently-unguarded call site (22 across 15 files) | 1h | t001 | — **DONE** |
-| t003 | Live verification: repeat the boundary-crossing repro on 3+ routes, confirm zero #418 | 30m | t002 | — **BLOCKED** (needs deploy) |
+| t003 | Live verification: repeat the boundary-crossing repro on 3+ routes, confirm zero #418 | 30m | t002 | — **BLOCKED** (needs QA credentials) |
 | t004 | Render parity — confirm no REST/GraphQL/MCP wire-shape or UI-copy change, rendering-only fix | 15m | t003 | — **DONE** |
 | t005 | Simplify | 20m | t004 | — **DONE** |
 | t006 | Test coverage | 30m | t004 | — **DONE** |
-| t007 | Closeout | 10m | t005, t006 | — **BLOCKED** (gated on t003) |
+| t007 | Closeout | 10m | t003, t005, t006 | — **BLOCKED** (gated on t003) |
 
 ## Definition of done
 
