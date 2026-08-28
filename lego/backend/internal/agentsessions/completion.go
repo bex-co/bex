@@ -386,6 +386,7 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 	// evidence) but open no PR — there is nothing to review.
 	if !report.Delivery.Pushed || report.Delivery.HeadSHA == "" {
 		if final, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, "", "", 0, evidenceJSON, ""); err == nil {
+			c.Metrics.observeTurn(turnOutcomeCompleted, c.now().Sub(record.UpdatedAt))
 			log.Printf("agent-session completer: completed session=%s (no-op, nothing pushed)", record.ID)
 			c.teardown(ctx, final)
 		} else {
@@ -426,6 +427,7 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		log.Printf("agent-session completer: finalize failed (session=%s pr=%s): %v", record.ID, pr.HTMLURL, err)
 		return // retry next tick; the sandbox stays until the row is finalized
 	}
+	c.Metrics.observeTurn(turnOutcomeCompleted, c.now().Sub(record.UpdatedAt))
 	log.Printf("agent-session completer: completed session=%s pr=%s head=%s", record.ID, pr.HTMLURL, report.Delivery.HeadSHA)
 	// Tear down against the FINALIZED row so the idle clock (record.UpdatedAt) is
 	// the turn-end time, not the stale pre-finalize timestamp; SandboxID survives
@@ -438,6 +440,7 @@ func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason 
 	if !ok {
 		return
 	}
+	c.Metrics.observeTurn(turnOutcomeFailed, c.now().Sub(record.UpdatedAt))
 	log.Printf("agent-session completer: failed session=%s reason=%q", record.ID, reason)
 	c.teardown(ctx, final)
 }
@@ -453,6 +456,7 @@ func (c *Completer) failLostSandbox(ctx context.Context, record store.AgentSessi
 		return
 	}
 	c.Metrics.converged(metricReason)
+	c.Metrics.observeTurn(turnOutcomeLost, c.now().Sub(record.UpdatedAt))
 	c.markTurnTranscript(ctx, final, false, true, reason)
 	log.Printf("agent-session completer: terminal fallback converged session=%s reason=%q", record.ID, reason)
 	c.terminate(ctx, final)
@@ -508,15 +512,21 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 	}
 	// idleSince is the most recent interaction: the turn end (this finalized row's
 	// updated_at) or a later SSH disconnect. IdleTTL=0 reduces this to "reap as
-	// soon as no editor is connected" — byte-identical to ADR054 D6. An ARCHIVED
-	// session skips the grace entirely (ADR065 D1): archive is an explicit
-	// disinterest signal, so its sandbox is reclaimed at this very tick (the
-	// still-open-editor pin above still applies — never kill a live edit).
+	// soon as no editor is connected" — byte-identical to ADR054 D6. Two cases
+	// skip the grace entirely and reclaim at this very tick (the still-open-editor
+	// pin above still applies to both — never kill a live edit):
+	//   - an ARCHIVED session (ADR065 D1): archive is an explicit disinterest signal.
+	//   - a FAILED session (w5/m80 t004): the Active-tier grace exists to let a user
+	//     reopen a SUCCESSFUL result in an editor; a failed turn has no such result,
+	//     so holding its sandbox for the full IdleTTL only pins plan quota (a bad-key
+	//     workspace could wedge itself under the ~2-sandbox hobby cap). A user who
+	//     still wants to debug it keeps it alive with an open SSH via the pin above.
+	skipGrace := record.ArchivedAt != nil || record.Phase == PhaseFailed
 	idleSince := record.UpdatedAt
 	if lastEnded != nil && lastEnded.After(idleSince) {
 		idleSince = *lastEnded
 	}
-	if grace := c.idleTTL(); record.ArchivedAt == nil && grace > 0 && c.now().Sub(idleSince) < grace {
+	if grace := c.idleTTL(); !skipGrace && grace > 0 && c.now().Sub(idleSince) < grace {
 		log.Printf("agent-session completer: deferring teardown, idle grace not elapsed (session=%s)", record.ID)
 		return
 	}

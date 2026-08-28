@@ -381,6 +381,28 @@ func (s *PGStore) SetAgentSessionLifecycle(ctx context.Context, id, sandboxID, p
 	return out, nil
 }
 
+// SetAgentSessionFailure terminalizes a still-active session from a background
+// dispatch/resume/steer failure with a named reason. Unlike
+// SetAgentSessionLifecycle it records the reason in failure_reason (the field the
+// dashboard's failed-session callout reads) and sets status to the terminal
+// 'failed', so a provisioning failure surfaces identically to a driver-reported
+// failure via FinalizeAgentSession (w5/m80 t005, closes w5/048). It preserves
+// SetAgentSessionLifecycle's conditional sandbox_id write so an egress-transition
+// failure still records the just-canceled sandbox for the reaper. The caller
+// (setLifecycleIfActive) guards against clobbering a settled/canceling session.
+func (s *PGStore) SetAgentSessionFailure(ctx context.Context, id, sandboxID, reason string) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
+		    phase='failed', status='failed', failure_reason=$3, updated_at=now()
+		WHERE id=$1
+		RETURNING `+agentSessionColumns, id, sandboxID, reason))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
 // ListAgentSessionsByPhases returns every session across all workspaces in any
 // of the given phases, oldest first. It powers the trusted background Completer
 // loop (ADR047 D4) that finalizes running sessions; it performs no authorization

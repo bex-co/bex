@@ -126,7 +126,10 @@ function positivePort(value: string | undefined): number {
 }
 
 function positiveMilliseconds(value: string | undefined): number {
-  const milliseconds = Number(value || 4 * 60 * 60 * 1000);
+  // bex-api always injects BEX_AGENT_TURN_TIMEOUT_MS (w5/m80 t002). This fallback
+  // is the safety net for a directly-launched driver: 30m — a sane bound, not the
+  // former 4h, so a hung turn converges in tens of minutes rather than hours.
+  const milliseconds = Number(value || 30 * 60 * 1000);
   if (!Number.isInteger(milliseconds) || milliseconds < 1) {
     throw new Error("BEX_AGENT_TURN_TIMEOUT_MS must be a positive integer");
   }

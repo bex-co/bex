@@ -292,6 +292,10 @@ type Deps struct {
 	// finished session's sandbox lives until it has been idle this long. Zero ⇒
 	// no grace (reap as soon as no editor is connected, ADR054 D6 behavior).
 	AgentSandboxIdleTTL time.Duration
+	// AgentTurnTimeout bounds one agent turn (w5/m80 t002, BEX_AGENT_TURN_TIMEOUT).
+	// Injected into the sandbox as BEX_AGENT_TURN_TIMEOUT_MS so a hung turn is
+	// bounded here, not by the driver's 4h fallback. Zero ⇒ the 30m default.
+	AgentTurnTimeout time.Duration
 	// MaxBlueprintGroupings caps a workspace's durable Blueprint project and
 	// environment counts (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000; 0
 	// disables) — the w1/049 #5 abuse bound, refused with
@@ -757,6 +761,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Snapshots:          d.AgentSnapshotStore,
 			MaxPinnedSandboxes: d.AgentMaxPinnedSandboxesPerWorkspace,
 			RetentionTTL:       d.AgentSnapshotRetentionTTL,
+			TurnTimeout:        d.AgentTurnTimeout,
 		},
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,

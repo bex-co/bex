@@ -46,6 +46,12 @@ const (
 	// listener, alongside InternalMintPath. Domain-separated by path; both hops
 	// are authenticated by the same gateway-only HMAC secret.
 	InternalModelMintPath = "/v1/agent-session-model-credentials"
+	// InternalModelAuthFailurePath is the sibling verb the gateway model proxy
+	// calls when the vendor rejects the injected BYO key (HTTP 401/403 on the
+	// gateway→vendor hop). Same :8091 listener, same gateway-only HMAC, path-
+	// domain-separated; it terminalizes the session fast so a bad/expired key does
+	// not ride the agent CLI's full retry/backoff (~3min observed) — w5/m80 t003.
+	InternalModelAuthFailurePath = InternalModelMintPath + "/auth-failure"
 	// ModelProxyPath is the gateway model proxy's listen path prefix. The agent's
 	// base URL is ModelProxyURL(...) and every model API call lands under it; the
 	// gateway strips the prefix and forwards the remainder to the vendor host.
@@ -191,6 +197,25 @@ type ModelMintResponse struct {
 	Scheme       string `json:"scheme"`
 }
 
+// ModelAuthFailureResponse acknowledges a reported vendor auth rejection. The
+// gateway needs only to know the session was terminalized (or was already
+// terminal); it carries no credential and is safe to log.
+type ModelAuthFailureResponse struct {
+	Acknowledged bool `json:"acknowledged"`
+}
+
+// ModelAuthFailureReason is the terminal failureReason recorded when the vendor
+// rejects the workspace's BYO model credential. It is actionable — the fix is to
+// update the key, not to retry — so the dashboard renders a next-step message
+// rather than a blank failure card (w5/m80 t003/t005).
+const ModelAuthFailureReason = "the model provider rejected this workspace's API key (authentication failed); update the model key and start a new session"
+
+// modelFailedPhase is the terminal phase the auth-failure verb CASes a live
+// session into. It matches agentsessions.PhaseFailed and the store's literal;
+// this package cannot import agentsessions (that would cycle), so the value is
+// pinned here with the FinalizeAgentSession CAS as the single writer.
+const modelFailedPhase = "failed"
+
 // AuthorizeSessionPod binds a model-credential request to the source Pod the
 // gateway resolved by TCP source IP. It is the session-scoped subset of
 // AuthorizePod: namespace/workspace and the session label must match, but there
@@ -282,6 +307,79 @@ func (m *ModelMinter) now() time.Time {
 	return time.Now().UTC()
 }
 
+// ModelSessionFailer is the store surface the auth-failure verb needs: resolve
+// the reported session and CAS a live one to failed. *store.PGStore satisfies it.
+type ModelSessionFailer interface {
+	GetAgentSession(context.Context, string) (store.AgentSession, error)
+	FinalizeAgentSession(ctx context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (store.AgentSession, error)
+}
+
+// ModelAuthFailer terminalizes a live session whose workspace BYO model key the
+// vendor rejected (HTTP 401/403 on the gateway→vendor hop). The gateway reports
+// the rejection over the same HMAC channel as the mint; failing the session here
+// turns the agent CLI's full retry/backoff (~3min observed on a bad key) into a
+// seconds-fast terminal failure, and the Completer reaps the now-terminal
+// sandbox on its next tick (w5/m80 t003/t004). It re-checks the same
+// current-sandbox-caller binding the minter enforces, so a stale or cross
+// sandbox — or a replayed report — can never fail another session.
+type ModelAuthFailer struct {
+	Sessions ModelSessionFailer
+	Audit    core.AuditSink
+	Now      func() time.Time
+}
+
+func (f *ModelAuthFailer) Fail(ctx context.Context, req ModelMintRequest) (response ModelAuthFailureResponse, err error) {
+	defer func() {
+		outcome := core.AuditAllowed
+		if err != nil {
+			outcome = core.AuditDenied
+			log.Printf("agent-session model auth-failure report denied (session=%s): %v", req.SessionID, err)
+		}
+		core.RecordAuditEvent(ctx, f.Audit, core.AuditEvent{
+			Caller: req.PodName, CallerMethod: "sandbox", Verb: AuditVerbMintModelCredential,
+			Resource: core.WorkspaceObject(req.Workspace), Target: "agent-session:" + req.SessionID,
+			TargetName: "vendor-auth-rejected", Outcome: outcome, At: f.now(),
+		})
+	}()
+	if f.Sessions == nil {
+		return ModelAuthFailureResponse{}, fmt.Errorf("agent model credentials unavailable")
+	}
+	if req.Workspace == "" || req.SessionID == "" || req.PodName == "" || req.PodUID == "" {
+		return ModelAuthFailureResponse{}, fmt.Errorf("%w: incomplete verified identity", ErrInvalidRequest)
+	}
+	session, sessErr := f.Sessions.GetAgentSession(ctx, req.SessionID)
+	if sessErr != nil {
+		if errors.Is(sessErr, store.ErrNotFound) {
+			return ModelAuthFailureResponse{}, ErrForbidden
+		}
+		return ModelAuthFailureResponse{}, sessErr
+	}
+	if !currentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
+		// A stale/cross sandbox — or a session already terminal (its sandbox reaped,
+		// so the pod triple no longer matches) — is refused here. A repeated report
+		// after the session has failed lands here and 403s harmlessly (the gateway's
+		// report is best-effort and just logs).
+		return ModelAuthFailureResponse{}, ErrForbidden
+	}
+	// CAS the live session to failed. The phase guard handles the concurrent race
+	// where two reports both read `running`: the loser's CAS matches no live row and
+	// returns ErrNotFound, which we acknowledge rather than surface — the desired end
+	// state (failed) already holds.
+	if _, finErr := f.Sessions.FinalizeAgentSession(ctx, req.SessionID, modelFailedPhase, "", "", 0, nil, ModelAuthFailureReason); finErr != nil {
+		if !errors.Is(finErr, store.ErrNotFound) {
+			return ModelAuthFailureResponse{}, finErr
+		}
+	}
+	return ModelAuthFailureResponse{Acknowledged: true}, nil
+}
+
+func (f *ModelAuthFailer) now() time.Time {
+	if f.Now != nil {
+		return f.Now().UTC()
+	}
+	return time.Now().UTC()
+}
+
 // modelEndpointHostOf extracts and re-validates the vendor host from a session's
 // stored AgentConfig. Create/Steer/resume always persist the resolved endpoint
 // (never empty), so a minimal decode suffices; ModelEndpointHost re-applies the
@@ -350,6 +448,31 @@ func (h *ModelHandler) now() time.Time {
 	return time.Now()
 }
 
+// ModelAuthFailureHandler authenticates the gateway→bex-api report that the
+// vendor rejected a session's BYO model key. Same signed envelope, nonce guard,
+// and :8091-only mount as ModelHandler; an unwired Failer reports unavailable.
+type ModelAuthFailureHandler struct {
+	Secret []byte
+	Failer *ModelAuthFailer
+	Nonce  NonceClaimer
+	Now    func() time.Time
+}
+
+func (h *ModelAuthFailureHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var fail func(context.Context, ModelMintRequest) (ModelAuthFailureResponse, error)
+	if h.Failer != nil {
+		fail = h.Failer.Fail
+	}
+	serveSignedMint(w, r, h.Secret, h.now(), h.Nonce, func(req ModelMintRequest) string { return req.Nonce }, fail)
+}
+
+func (h *ModelAuthFailureHandler) now() time.Time {
+	if h.Now != nil {
+		return h.Now()
+	}
+	return time.Now()
+}
+
 // ModelClient is the gateway's HMAC-authenticated caller for bex-api's internal
 // model-mint verb. It never logs or persists the returned credential.
 type ModelClient struct {
@@ -363,6 +486,18 @@ func (c *ModelClient) Mint(ctx context.Context, req ModelMintRequest) (ModelMint
 	req.Nonce = newNonce()
 	return postSignedMint(ctx, c.URL, c.Secret, c.now(), c.HTTP, req,
 		func(out ModelMintResponse) bool { return out.Credential != "" && out.EndpointHost != "" })
+}
+
+// ReportAuthFailure tells bex-api the vendor rejected this session's BYO key so
+// the session is terminalized fast (w5/m80 t003). It posts to the auth-failure
+// sibling of the mint URL with the same signed envelope. Best-effort by contract:
+// the caller relays the vendor's 401/403 to the sandbox regardless of this result.
+func (c *ModelClient) ReportAuthFailure(ctx context.Context, req ModelMintRequest) error {
+	req.Nonce = newNonce()
+	url := strings.TrimRight(c.URL, "/") + "/auth-failure"
+	_, err := postSignedMint(ctx, url, c.Secret, c.now(), c.HTTP, req,
+		func(out ModelAuthFailureResponse) bool { return out.Acknowledged })
+	return err
 }
 
 func (c *ModelClient) now() time.Time {

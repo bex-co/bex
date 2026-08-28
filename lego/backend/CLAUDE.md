@@ -42,6 +42,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_AGENT_GIT_PROXY_URL` | gateway Git proxy override (default `http://bex-ssh-gateway…:8082`) |
 | bex-api | `BEX_AGENT_MODEL_PROXY_URL` | **mandatory** model proxy origin (`http://bex-ssh-gateway…:8084`); unset → agent create/steer/rehydrate disabled (no fallback) |
 | bex-api | `BEX_AGENT_SANDBOX_IDLE_TTL` | finished session keep-alive after last turn/editor disconnect (default `30m`) |
+| bex-api | `BEX_AGENT_TURN_TIMEOUT` | one turn's wall-clock bound → injected as driver `BEX_AGENT_TURN_TIMEOUT_MS` (default `30m`; 0/invalid → 30m, never disabled) |
 | bex-api | `BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE` | live sandbox cap per workspace (default `5`, 409 `AGENT_SESSION_LIVE_LIMIT`) |
 | bex-api | `BEX_AGENT_SNAPSHOT_S3_*` (ENDPOINT/BUCKET/REGION/PREFIX/ACCESS_KEY/SECRET_KEY) | hibernation object store; all set → hibernate/rehydrate, any unset → off (bucket needs SSE) |
 | bex-api | `BEX_AGENT_SNAPSHOT_RETENTION`, `BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE` | retention `168h` (7d, 2× if dirty git) + pin cap `10` (409 `AGENT_SESSION_PIN_LIMIT`) |
