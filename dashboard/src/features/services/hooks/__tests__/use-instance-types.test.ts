@@ -16,6 +16,7 @@ const CATALOG = [
     name: "Free",
     cpu: "100m",
     memory: "512Mi",
+    monthlyUsd: "0.00",
   },
   {
     __typename: "InstanceType" as const,
@@ -23,6 +24,7 @@ const CATALOG = [
     name: "Standard",
     cpu: "1",
     memory: "2Gi",
+    monthlyUsd: "17.50",
   },
 ];
 
@@ -37,8 +39,20 @@ describe("useInstanceTypes", () => {
     const { result } = renderHook(() => useInstanceTypes());
 
     expect(result.current.instanceTypes).toEqual([
-      { id: "free", name: "Free", cpu: "100m", memory: "512Mi" },
-      { id: "standard", name: "Standard", cpu: "1", memory: "2Gi" },
+      {
+        id: "free",
+        name: "Free",
+        cpu: "100m",
+        memory: "512Mi",
+        monthlyUsd: "0.00",
+      },
+      {
+        id: "standard",
+        name: "Standard",
+        cpu: "1",
+        memory: "2Gi",
+        monthlyUsd: "17.50",
+      },
     ]);
   });
 

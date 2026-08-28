@@ -25,6 +25,11 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Cancel",
     description: "Generic Cancel button — dismisses a dialog or an inline form without saving.",
   },
+  "common.pricePerMonth": {
+    message: "${price}/month",
+    description:
+      "Monthly USD price shown on a resource plan card; price is an API-supplied decimal without the currency symbol",
+  },
   "common.protectedConfirmationCancel": {
     message: "Cancel",
     description:

@@ -31,18 +31,21 @@ const FREE: InstanceTypeView = {
   name: "Free",
   cpu: "100m",
   memory: "512Mi",
+  monthlyUsd: "0.00",
 };
 const STANDARD: InstanceTypeView = {
   id: "standard",
   name: "Standard",
   cpu: "1",
   memory: "2Gi",
+  monthlyUsd: "17.50",
 };
 const PRO: InstanceTypeView = {
   id: "pro",
   name: "Pro",
   cpu: "2",
   memory: "4Gi",
+  monthlyUsd: "59.50",
 };
 
 function renderPicker(currentPlan: string | null) {

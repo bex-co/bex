@@ -27,6 +27,7 @@ const STANDARD: InstanceTypeView = {
   name: "Standard",
   cpu: "1",
   memory: "2Gi",
+  monthlyUsd: "17.50",
 };
 
 function renderRow(plan: string | null) {

@@ -787,6 +787,7 @@ export type InstanceType = {
   cpu: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   memory: Maybe<Scalars['String']['output']>;
+  monthlyUsd: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
 };
 

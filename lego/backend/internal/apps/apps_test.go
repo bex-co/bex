@@ -1767,8 +1767,8 @@ func TestInstanceTypesListsTheSharedCatalogInLadderOrder(t *testing.T) {
 	if proPlus == nil {
 		t.Fatal("pro_plus not found in InstanceTypes()")
 	}
-	if proPlus.Name != "Pro Plus" || proPlus.CPU != "4" || proPlus.Memory != "8Gi" {
-		t.Errorf("pro_plus = %+v, want Name=Pro Plus CPU=4 Memory=8Gi", *proPlus)
+	if proPlus.Name != "Pro Plus" || proPlus.CPU != "4" || proPlus.Memory != "8Gi" || proPlus.MonthlyUSD != "122.50" {
+		t.Errorf("pro_plus = %+v, want Name=Pro Plus CPU=4 Memory=8Gi MonthlyUSD=122.50", *proPlus)
 	}
 }
 
@@ -1794,7 +1794,7 @@ func TestGraphQLInstanceTypes(t *testing.T) {
 	}
 
 	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `{ instanceTypes { id name cpu memory } }`})
+		RequestString: `{ instanceTypes { id name cpu memory monthlyUsd } }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("gql: %v", res.Errors)
 	}
@@ -1803,8 +1803,8 @@ func TestGraphQLInstanceTypes(t *testing.T) {
 		t.Fatalf("want %d instance types, got %d", len(tiers.Compute.IDs()), len(list))
 	}
 	first := list[0].(map[string]any)
-	if first["id"] != "free" || first["name"] != "Free" {
-		t.Errorf("first entry = %+v, want id=free name=Free (ladder order)", first)
+	if first["id"] != "free" || first["name"] != "Free" || first["monthlyUsd"] != "0.00" {
+		t.Errorf("first entry = %+v, want id=free name=Free monthlyUsd=0.00 (ladder order)", first)
 	}
 }
 

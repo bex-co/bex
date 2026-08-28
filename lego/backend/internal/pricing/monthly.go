@@ -26,6 +26,31 @@ import (
 // per-second rates were derived from (pricing.yaml).
 const MonthSeconds = 2_628_000
 
+// InstanceMonthlyUSD returns the always-on 730-hour monthly estimate for one
+// catalog instance tier. listed is false for an unknown tier or resource kind;
+// a cataloged free tier returns "0.00", true.
+func (s *Sheet) InstanceMonthlyUSD(tier, resourceKind string) (usd string, listed bool) {
+	if s == nil {
+		return "", false
+	}
+	var catalog map[string]float64
+	switch resourceKind {
+	case store.ResourceKindService:
+		catalog = s.compute
+	case store.ResourceKindPostgres:
+		catalog = s.postgres
+	case store.ResourceKindKeyValue:
+		catalog = s.keyvalue
+	default:
+		return "", false
+	}
+	rate, ok := catalog[tier]
+	if !ok {
+		return "", false
+	}
+	return formatUSD(rate * MonthSeconds), true
+}
+
 // Variable-cost reasons: resources whose real cost depends on runtime behavior
 // are listed but excluded from the monthly total, mirroring Render's blueprint
 // estimate ("Excluding scaling and cron jobs").
