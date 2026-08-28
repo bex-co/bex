@@ -69,12 +69,17 @@ const (
 func PodNameRegex(objectName string) string {
 	escaped := RegexEscape(objectName)
 	twoSegment := fmt.Sprintf(`%s-[a-z0-9]+-[a-z0-9]{%d}`, escaped, podRandomSuffixLength)
-	truncated := maxPodNameLength - len(objectName) - 1
-	if truncated <= 0 || len(objectName) > maxGeneratedNameLength {
-		// No room for a suffix at all: the object name already fills the pod
-		// name, so only the (unreachable) two-segment form is worth emitting.
+	if len(objectName) > maxGeneratedNameLength {
+		// The generateName base is already over the cut, so the truncation lands
+		// inside objectName itself and the pod name is not even prefixed by it —
+		// no anchored regex built from the full name can match. Emit the
+		// (unreachable) two-segment form rather than a wrong alternative.
 		return twoSegment
 	}
+	// A truncated name is always exactly maxPodNameLength, so the tail is
+	// whatever the object name and its separating hyphen leave — necessarily
+	// positive here, since objectName fits within maxGeneratedNameLength.
+	truncated := maxPodNameLength - len(objectName) - 1
 	return fmt.Sprintf(`%s|%s-[a-z0-9]{%d}`, twoSegment, escaped, truncated)
 }
 
