@@ -625,7 +625,10 @@ type AppSpec struct {
 	// +kubebuilder:validation:MaxLength=4096
 	PreDeployCommand string `json:"preDeployCommand,omitempty"`
 
-	// IdleTTLSeconds before the service hibernates ("sleep = free"). 0 = controller default.
+	// IdleTTLSeconds a free web service may idle before it auto-hibernates
+	// ("sleep = free"). 0 or unset means the platform default idle window (15
+	// minutes); a positive value overrides it. Paid tiers never auto-sleep. The
+	// operator interprets 0 as the default, so this field is never rewritten.
 	// +optional
 	IdleTTLSeconds int32 `json:"idleTTLSeconds,omitempty"`
 

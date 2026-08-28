@@ -433,9 +433,10 @@ type AppView struct {
 	DashboardURL string `json:"dashboardUrl,omitempty"`
 	Region       string `json:"region,omitempty"`
 	// IdleTTLSeconds is how long a free-tier App may be idle before it
-	// auto-hibernates ("sleep = free", spec.idleTTLSeconds). 0 = the controller
-	// default. A bex extension with no Render counterpart (Render's spin-down
-	// window is fixed) — the dashboard's Settings tab reads/writes it.
+	// auto-hibernates ("sleep = free", spec.idleTTLSeconds). 0 (or unset) means
+	// the platform default idle window (15 min); a positive value overrides it.
+	// A bex extension with no Render counterpart (Render's spin-down window is
+	// fixed) — the dashboard's Settings tab reads/writes it.
 	IdleTTLSeconds int32 `json:"idleTTLSeconds"`
 	// OwnerID is the workspace (tenant) this App belongs to — Render's `ownerId`
 	// scoping field (w6/m2/t004), read from the App CR's core.LabelTenant label
@@ -3125,15 +3126,19 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 }
 
 // MaxIdleTTLSeconds bounds the idle-timeout a caller may set (7 days). Free-tier
-// Apps auto-hibernate after this many idle seconds; 0 means the controller
-// default. A generous ceiling — the point is "sleep quickly to save money", not
-// an indefinite keep-alive that would defeat the free tier.
+// Apps auto-hibernate after this many idle seconds; 0 (or unset) means the
+// platform default idle window (15 min). A generous ceiling — the point is
+// "sleep quickly to save money", not an indefinite keep-alive that would defeat
+// the free tier.
 const MaxIdleTTLSeconds int32 = 7 * 24 * 60 * 60
 
 // SetIdleTTL sets how long the App may idle before it auto-hibernates
-// (spec.idleTTLSeconds; "sleep = free", w1/m4). 0 restores the controller
-// default. A bex extension with no Render counterpart — Render's free spin-down
-// window is fixed — so it writes spec.idleTTLSeconds the same row-first way as
+// (spec.idleTTLSeconds; "sleep = free", w1/m4). 0 (or unset) selects the
+// platform default idle window (15 min); a positive value overrides it. The
+// literal 0 is stored unchanged — the operator resolves it — so writing 0 never
+// rewrites the field to the default. A bex extension with no Render counterpart
+// — Render's free spin-down window is fixed — so it writes spec.idleTTLSeconds
+// the same row-first way as
 // Scale (the projector owns the field). Only free web services ever sleep, but
 // the value is stored for every type and tier for wire compatibility; it takes
 // effect only if the App is both a web service and free. The dashboard gates

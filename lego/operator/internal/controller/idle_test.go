@@ -60,6 +60,50 @@ func TestIsFreeApp(t *testing.T) {
 	}
 }
 
+func TestAutoSleepWindow(t *testing.T) {
+	cases := []struct {
+		name string
+		tier string
+		ttl  int32
+		want time.Duration
+	}{
+		{"free, no explicit ttl: platform default", "free", 0, defaultIdleTTL},
+		{"empty tier (free default), no ttl: platform default", "", 0, defaultIdleTTL},
+		{"free, explicit ttl overrides the default", "free", 600, 600 * time.Second},
+		{"paid tier: never auto-sleeps, window 0", "starter", 0, 0},
+		{"paid tier with a ttl set: still 0 (never sleeps)", "pro", 600, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app := mkIdleApp(tc.tier, tc.ttl, time.Time{}, false)
+			if got := autoSleepWindow(app); got != tc.want {
+				t.Fatalf("autoSleepWindow = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestAutoSleepEligibleCreatedDefault pins the predicate all three callers gate
+// on for the created-default (idleTTLSeconds:0) free web App — the shape that
+// shipped never-sleeping. It must be eligible now (fails under the pre-w6/m116
+// `IdleTTLSeconds > 0` predicate).
+func TestAutoSleepEligibleCreatedDefault(t *testing.T) {
+	app := mkIdleApp("free", 0, time.Time{}, false)
+	app.Spec.Type = appv1alpha1.TypeWebService
+	if !autoSleepEligible(app) {
+		t.Fatal("a free web App with idleTTLSeconds:0 must be auto-sleep eligible (0 = platform default, not never)")
+	}
+	// Suspension and paid tier still exclude it.
+	suspended := mkIdleApp("free", 0, time.Time{}, true)
+	if autoSleepEligible(suspended) {
+		t.Fatal("a suspended App must never be auto-sleep eligible")
+	}
+	paid := mkIdleApp("starter", 0, time.Time{}, false)
+	if autoSleepEligible(paid) {
+		t.Fatal("a paid App must never be auto-sleep eligible regardless of idleTTLSeconds")
+	}
+}
+
 func TestAutoSleepEligibleByServiceType(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -123,9 +167,20 @@ func TestShouldAutoHibernate(t *testing.T) {
 		wantSleep bool
 	}{
 		{
-			"no TTL configured: never sleeps",
+			// idleTTLSeconds:0 is the shipped create default. It now means the
+			// platform default window (defaultIdleTTL = 15 min), not "never":
+			// 10 min idle is within that window, so not yet — but it IS now
+			// eligible, where before w6/m116 a 0 App never slept at all.
+			"free, idleTTLSeconds:0 (default), within default window: not yet",
 			mkIdleApp("free", 0, now.Add(-10*time.Minute), false),
 			false,
+		},
+		{
+			// The exact bug: a created-default free App idle past the default
+			// window must hibernate. Before w6/m116 this returned false forever.
+			"free, idleTTLSeconds:0 (default), past default window: hibernates",
+			mkIdleApp("free", 0, now.Add(-20*time.Minute), false),
+			true,
 		},
 		{
 			"paid tier: always-on",
@@ -208,6 +263,14 @@ func TestIdleRequeueAfter(t *testing.T) {
 		got := idleRequeueAfter(app, now)
 		if got != ttl {
 			t.Fatalf("got %v, want %v", got, ttl)
+		}
+	})
+
+	t.Run("idleTTLSeconds:0 (default), no annotation: full default window", func(t *testing.T) {
+		app := mkIdleApp("free", 0, time.Time{}, false)
+		got := idleRequeueAfter(app, now)
+		if got != defaultIdleTTL {
+			t.Fatalf("got %v, want the platform default %v (0 must not compute a zero-length window)", got, defaultIdleTTL)
 		}
 	})
 

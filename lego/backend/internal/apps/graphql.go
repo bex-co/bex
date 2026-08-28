@@ -1365,8 +1365,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		// setIdleTimeout: bex extension (no Render counterpart) — sets the free-tier
-		// auto-sleep window (spec.idleTTLSeconds; 0 restores the controller default).
-		// Out-of-range is a GraphQL error (core.ErrBadRequest).
+		// auto-sleep window (spec.idleTTLSeconds; 0 selects the platform default idle
+		// window, 15 min, stored unrewritten). Out-of-range is a GraphQL error
+		// (core.ErrBadRequest).
 		"setIdleTimeout": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{

@@ -93,7 +93,7 @@ type updateServiceArgs struct {
 	// that asked to preview a command change should be told the tool cannot,
 	// not handed back an unchanged object that implies it did.
 	DryRun                  bool                     `json:"dryRun,omitempty" jsonschema:"if true, preview the plan change without any writes (zero side effects). Valid alone or with plan only"`
-	IdleTTLSeconds          *int32                   `json:"idleTTLSeconds,omitempty" jsonschema:"seconds a free-tier service may idle before it auto-sleeps; 0 restores the controller default"`
+	IdleTTLSeconds          *int32                   `json:"idleTTLSeconds,omitempty" jsonschema:"seconds a free-tier service may idle before it auto-sleeps; 0 (or unset) selects the platform default window of 15 minutes, a positive value overrides it"`
 	PublishPath             *string                  `json:"publishPath,omitempty" jsonschema:"static sites only: the built output directory served as the site root, e.g. dist, build, or public"`
 	Schedule                *string                  `json:"schedule,omitempty" jsonschema:"cron jobs only: the 5-field crontab expression, e.g. '0 0 * * *'"`
 	Command                 *string                  `json:"command,omitempty" jsonschema:"cron jobs only: the command each run executes, overriding the image entrypoint; empty clears the override"`

@@ -120,7 +120,7 @@ type renderService struct {
 	Runs                []CronRunView `json:"runs,omitempty"`
 	LastSuccessfulRunAt string        `json:"lastSuccessfulRunAt,omitempty"`
 	NextRunAt           string        `json:"nextRunAt,omitempty"` // bex extension: next scheduled cron run (computed)
-	IdleTTLSeconds      int32         `json:"idleTTLSeconds"`      // free-tier auto-sleep window (bex extension; 0 = default)
+	IdleTTLSeconds      int32         `json:"idleTTLSeconds"`      // free-tier auto-sleep window (bex extension; 0 or unset = platform default, 15 min)
 	// RootDir is the subdirectory of the repo this service builds from (Render's
 	// Root Directory setting, monorepo support). Empty is the repo root.
 	RootDir string `json:"rootDir,omitempty"`

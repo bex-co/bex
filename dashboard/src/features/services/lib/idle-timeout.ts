@@ -4,9 +4,12 @@
 import { isWebServiceType } from "@/features/services/lib/service-type";
 
 /**
- * Preset windows offered in the Settings select, in seconds. 0 is the platform
- * default (the operator's own idle window). Kept small and human — the point is
- * "sleep quickly to save money", not fine-grained tuning.
+ * Preset windows offered in the Settings select, in seconds. 0 means the
+ * platform default idle window, which the operator resolves to a real value
+ * (15 min for free services, w6/m116) — distinct from the explicit "15 min"
+ * preset in that it follows whatever the platform default is, rather than
+ * pinning a number. Kept small and human — the point is "sleep quickly to save
+ * money", not fine-grained tuning.
  */
 export const IDLE_TIMEOUT_PRESETS = [0, 300, 900, 1800, 3600, 7200] as const;
 
