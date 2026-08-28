@@ -5,3 +5,4 @@ bin/
 # Secret dev-instance artifacts rendered by dev-env.sh — never commit.
 *.pem
 .rendered-*.yaml
+.agent/

@@ -1,0 +1,84 @@
+# LOCAL-DEV model stub workload for `dev-env.sh N agent-stub`.
+#
+# See model-stub.py's header for what this is and — more importantly — what it
+# is not. In one line: a test double that lets the ADR047 turn path be exercised
+# without a provider credential. It proves bex's own machinery (driver -> ACP
+# adapter -> gateway model proxy -> credential mint -> upstream hop -> transcript
+# -> attach SSE); it proves nothing about the real provider.
+#
+# It runs in the workstream's own app namespace, so it is per-dev-N and carries
+# no cluster-wide name.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-stub
+  namespace: __DEV_NS__
+  labels:
+    app.kubernetes.io/name: model-stub
+    app.bex.co/dev-env: __DEV_NS__
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: model-stub
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: model-stub
+      annotations:
+        app.bex.co/config-revision: "__CONFIG_REVISION__"
+    spec:
+      # Same OrbStack+Calico apiserver-reachability constraint as the rest of
+      # the dev-N control-plane-pinned workloads.
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      containers:
+        - name: stub
+          image: python:3.12-slim
+          command: ["python3", "/src/model-stub.py"]
+          ports:
+            - name: https
+              containerPort: 8443
+          volumeMounts:
+            - name: src
+              mountPath: /src
+              readOnly: true
+            - name: tls
+              mountPath: /etc/model-stub
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: https
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+      volumes:
+        - name: src
+          configMap:
+            name: model-stub-src
+        - name: tls
+          secret:
+            secretName: model-stub-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-stub
+  namespace: __DEV_NS__
+spec:
+  selector:
+    app.kubernetes.io/name: model-stub
+  ports:
+    - name: https
+      port: 443
+      targetPort: https

@@ -5,3 +5,4 @@ bin/
 cli-*.yaml
 .rendered-*.yaml
 .github-app-dev.pem
+.agent/

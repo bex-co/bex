@@ -1,0 +1,54 @@
+# LOCAL-DEV inert CiliumNetworkPolicy CRD for `dev-env.sh N agent-up`.
+#
+# ⚠️  THIS INSTALLS A SCHEMA, NOT A SECURITY CONTROL. ⚠️
+#
+# bex-api creates one CiliumNetworkPolicy per agent session to carry that
+# session's egress allowlist (ADR047 D5, lego/backend/internal/sessionegress).
+# It is a plain Get -> Create/Update against the API server; nothing waits for
+# enforcement. On the CAPD mock the `cilium.io/v2` CRD does not exist (the
+# cluster runs Calico, and deploy/gitops/overlays/local deletes every Cilium
+# object for exactly that reason), so the call fails with
+#   no matches for kind "CiliumNetworkPolicy" in version "cilium.io/v2"
+# and every session dies in `phase: failed`, `status: sandbox create failed`
+# before a sandbox is ever created. The GitOps overlay cannot fix this: it can
+# only delete the STATIC policies, whereas these are minted per session at run
+# time.
+#
+# Registering the CRD lets the dispatch path run exactly as it does in
+# production. The resulting objects are inert here — no Cilium agent reads them,
+# so the per-session egress allowlist is NOT enforced on this cluster. What does
+# enforce the sandbox's network boundary locally is the portable Calico-compatible
+# set in sandbox-netpol.yaml (DNS + the two gateway broker ports, default-deny
+# for everything else). Treat any egress-policy assertion made on this cluster as
+# unverified; that leg is validated on the real Cilium substrate (ADR042 D6).
+#
+# The schema is deliberately permissive (x-kubernetes-preserve-unknown-fields)
+# rather than a copy of upstream's: bex only needs the kind to resolve and the
+# spec to round-trip, and a partial hand-copy of Cilium's schema would silently
+# reject fields the product legitimately sets.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: ciliumnetworkpolicies.cilium.io
+  labels:
+    app.bex.co/dev-env-shim: "true"
+spec:
+  group: cilium.io
+  scope: Namespaced
+  names:
+    kind: CiliumNetworkPolicy
+    listKind: CiliumNetworkPolicyList
+    plural: ciliumnetworkpolicies
+    singular: ciliumnetworkpolicy
+    shortNames:
+      - cnp
+  versions:
+    - name: v2
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}

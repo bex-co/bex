@@ -1,0 +1,230 @@
+# LOCAL-DEV ssh-gateway for `dev-env.sh N agent-up`.
+#
+# Adapted from lego/operator/config/ssh/{serviceaccount,deployment}.yaml (the
+# reviewed production gateway). The NAME and NAMESPACE are load-bearing and must
+# stay exactly `bex-ssh-gateway` in `bex-system`:
+# lego/backend/internal/store/namespaces.go stamps every `<ws>-sandbox`
+# namespace with a RoleBinding whose subject is that ServiceAccount, and that
+# binding is what grants the gateway pods/get + pods/exec inside the sandbox
+# namespaces. Rename either and the gateway silently loses sandbox access.
+#
+# WHY IN-CLUSTER, when every other dev-N process runs on the host: the agent
+# attach path resolves the sandbox Pod's IP through the Kubernetes API and dials
+# `podIP:8787` directly (agentattach.KubePodIPResolver). Calico Pod IPs are not
+# routable from macOS, so a host-side gateway could never reach the driver. The
+# gateway is the one dev-N component that must live inside the cluster.
+#
+# Local-only differences from production:
+#   - replicas 1, not 2 (single-node mock; the DB-backed nonce store makes
+#     multi-replica correctness a production concern, not a local one);
+#   - no platform-pool nodeSelector; pinned to the control-plane node for the
+#     same OrbStack+Calico apiserver-reachability reason as coredns;
+#   - bex-api runs on the HOST, so the two control-plane callback URLs point at
+#     host.docker.internal rather than the bex-api Service;
+#   - BEX_CP_DB_URI is the full bex-db superuser DSN rather than the scoped
+#     `bex_ssh_gateway` role scripts/ssh-gateway-db-role.sh mints: that role is a
+#     production least-privilege boundary, and dev-N has no separate credential
+#     to scope down from.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bex-ssh-gateway
+  namespace: bex-system
+  labels:
+    app.bex.co/dev-env: __DEV_NS__
+---
+# The gateway lists Apps cluster-wide to resolve SSH targets. Sandbox-namespace
+# pods/exec comes from the per-namespace RoleBindings bex-api stamps, NOT from
+# here — cluster-wide exec would defeat ADR035's confinement.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-ssh-gateway-apps-read
+rules:
+  - apiGroups: ["app.bex.co"]
+    resources: ["apps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: bex-ssh-gateway-apps-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: bex-ssh-gateway-apps-read
+subjects:
+  - kind: ServiceAccount
+    name: bex-ssh-gateway
+    namespace: bex-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bex-ssh-gateway
+  namespace: bex-system
+  labels:
+    app.kubernetes.io/name: bex-ssh-gateway
+    app.bex.co/dev-env: __DEV_NS__
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bex-ssh-gateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bex-ssh-gateway
+        app.bex.co/dev-env: __DEV_NS__
+      annotations:
+        app.bex.co/config-revision: "__CONFIG_REVISION__"
+    spec:
+      serviceAccountName: bex-ssh-gateway
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ssh-gateway
+          image: bex-lego:dev
+          imagePullPolicy: IfNotPresent
+          command: ["/ssh-gateway"]
+          env:
+            - name: BEX_SSH_ADDR
+              value: ":2222"
+            - name: BEX_SSH_METRICS_ADDR
+              value: ":9090"
+            - name: BEX_SSH_HOST_KEY_PATH
+              value: /var/run/bex-ssh-host-key/ssh_host_ed25519_key
+            - name: BEX_API_NAMESPACE
+              value: __DEV_NS__
+            - name: BEX_CP_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: bex-dev-gateway
+                  key: db_uri
+            - name: BEX_OPENFGA_URL
+              value: http://openfga.__DEV_AUTH_NS__.svc:8080
+            - name: BEX_OPENFGA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bex-dev-gateway
+                  key: openfga_token
+            # Shared HMAC keys — every one of these must match the value
+            # dev-env.sh exports to the host bex-api process, or the
+            # corresponding listener rejects every ticket it is handed.
+            - name: BEX_SHELL_WS_ADDR
+              value: ":8080"
+            - name: BEX_SHELL_TICKET_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-dev-gateway
+                  key: shell_ticket_secret
+            - name: BEX_SANDBOX_EXEC_ADDR
+              value: ":8081"
+            - name: BEX_SANDBOX_EXEC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-dev-gateway
+                  key: sandbox_exec_secret
+            # Agent-session Git credential broker (ADR047 D2) and the
+            # credential-injecting model proxy (ADR062). Both HMAC-proxy a mint
+            # to bex-api's control-plane listener, which is a HOST process here.
+            - name: BEX_AGENT_CREDENTIAL_ADDR
+              value: ":8082"
+            - name: BEX_AGENT_CREDENTIAL_API_URL
+              value: http://host.docker.internal:__BEX_CP_PORT__/v1/agent-session-credentials
+            - name: BEX_AGENT_MODEL_PROXY_ADDR
+              value: ":8084"
+            - name: BEX_AGENT_MODEL_CREDENTIAL_API_URL
+              value: http://host.docker.internal:__BEX_CP_PORT__/v1/agent-session-model-credentials
+            # Agent-session conversation transport (ADR047 D9). dev-env.sh
+            # port-forwards this listener to the host so the dashboard's
+            # useChat can reach it; the CORS origin is the dev-N dashboard.
+            - name: BEX_AGENT_ATTACH_ADDR
+              value: ":8083"
+            - name: BEX_AGENT_SESSION_DRIVER_PORT
+              value: "8787"
+            - name: BEX_API_CORS_ORIGIN
+              value: http://localhost:__DASHBOARD_PORT__
+          ports:
+            - name: ssh
+              containerPort: 2222
+            - name: metrics
+              containerPort: 9090
+            - name: shell
+              containerPort: 8080
+            - name: sandbox-exec
+              containerPort: 8081
+            - name: agent-creds
+              containerPort: 8082
+            - name: agent-attach
+              containerPort: 8083
+            - name: agent-model
+              containerPort: 8084
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: host-key
+              mountPath: /var/run/bex-ssh-host-key
+              readOnly: true
+      volumes:
+        - name: host-key
+          secret:
+            secretName: bex-dev-gateway-hostkey
+            defaultMode: 0440
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bex-ssh-gateway
+  namespace: bex-system
+spec:
+  selector:
+    app.kubernetes.io/name: bex-ssh-gateway
+  ports:
+    - name: agent-attach
+      port: 8083
+      targetPort: agent-attach
+    - name: agent-creds
+      port: 8082
+      targetPort: agent-creds
+    - name: agent-model
+      port: 8084
+      targetPort: agent-model
+    - name: sandbox-exec
+      port: 8081
+      targetPort: sandbox-exec
+    - name: shell
+      port: 8080
+      targetPort: shell

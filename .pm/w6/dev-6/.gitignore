@@ -5,3 +5,4 @@ bin/
 .cli-key.env
 .rendered-*.yaml
 .github-app-dev.pem
+.agent/

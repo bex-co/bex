@@ -28,7 +28,8 @@ echo "==> per-N derivation is distinct for N=1..10"
 for key in DEV_NS DEV_AUTH_NS BEX_CP_IDENTITY KUBECONFIG_FILE \
   DASHBOARD_PORT KRATOS_PUBLIC_PORT KRATOS_ADMIN_PORT HYDRA_ADMIN_PORT \
   HYDRA_PUBLIC_PORT MAILPIT_HTTP_PORT MAILPIT_SMTP_PORT BEX_API_PORT \
-  BEX_DB_PORT BEX_CP_PORT LOKI_PORT; do
+  BEX_DB_PORT BEX_CP_PORT LOKI_PORT \
+  OPENSANDBOX_PORT AGENT_ATTACH_PORT OPENFGA_PORT OPENBAO_PORT SANDBOX_EXEC_PORT; do
   values=""
   for n in 1 2 3 4 5 6 7 8 9 10; do values+="$(value_of "$n" "$key")"$'\n'; done
   distinct="$(printf '%s' "$values" | sort -u | wc -l | tr -d ' ')"
