@@ -543,6 +543,9 @@ var instanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"name":   gqlutil.StrField(func(t InstanceType) any { return t.Name }),
 		"cpu":    gqlutil.StrField(func(t InstanceType) any { return t.CPU }),
 		"memory": gqlutil.StrField(func(t InstanceType) any { return t.Memory }),
+		"monthlyUsd": gqlutil.StrField(func(t InstanceType) any {
+			return t.MonthlyUSD
+		}),
 	},
 })
 

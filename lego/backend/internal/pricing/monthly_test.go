@@ -22,6 +22,27 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
+func TestInstanceMonthlyUSD(t *testing.T) {
+	tests := []struct {
+		name, tier, kind, want string
+		listed                 bool
+	}{
+		{name: "free service", tier: "free", kind: store.ResourceKindService, want: "0.00", listed: true},
+		{name: "starter service", tier: "starter", kind: store.ResourceKindService, want: "4.90", listed: true},
+		{name: "standard key value", tier: "standard", kind: store.ResourceKindKeyValue, want: "21.00", listed: true},
+		{name: "unknown tier", tier: "gold", kind: store.ResourceKindService},
+		{name: "unknown kind", tier: "starter", kind: "mystery"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, listed := Default.InstanceMonthlyUSD(tt.tier, tt.kind)
+			if got != tt.want || listed != tt.listed {
+				t.Fatalf("InstanceMonthlyUSD(%q, %q) = (%q, %v), want (%q, %v)", tt.tier, tt.kind, got, listed, tt.want, tt.listed)
+			}
+		})
+	}
+}
+
 func TestMonthlyEstimateTierFamilies(t *testing.T) {
 	got := Default.MonthlyEstimate([]MonthlyResource{
 		{Name: "web", ResourceKind: store.ResourceKindService, Tier: "standard"},

@@ -9,6 +9,8 @@ export interface InstanceTypeView {
   name: string;
   cpu: string;
   memory: string;
+  /** Always-on 730-hour estimate from bex-api's canonical price sheet. */
+  monthlyUsd: string;
 }
 
 export interface UseInstanceTypesResult {
@@ -38,6 +40,7 @@ export function useInstanceTypes(): UseInstanceTypesResult {
           name: t.name ?? t.id!,
           cpu: t.cpu ?? "",
           memory: t.memory ?? "",
+          monthlyUsd: t.monthlyUsd ?? "",
         })),
     [data],
   );

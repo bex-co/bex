@@ -1,4 +1,5 @@
 import { cn } from "@/common/lib/utils/utils.ts";
+import { useTranslations } from "@/common/hooks/use-translations";
 import {
   formatInstanceCPU,
   formatInstanceMemory,
@@ -13,6 +14,7 @@ export interface PlanCardTier {
   name: string;
   cpu: string;
   memory: string;
+  monthlyUsd?: string;
 }
 
 export interface PlanCardGridProps {
@@ -38,6 +40,7 @@ export function PlanCardGrid({
   disabled = false,
   ariaLabel,
 }: PlanCardGridProps) {
+  const { t } = useTranslations();
   return (
     <div
       role="radiogroup"
@@ -62,7 +65,14 @@ export function PlanCardGrid({
                 : "border-border hover:border-muted-foreground/50",
             )}
           >
-            <div className="font-medium">{it.name}</div>
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="font-medium">{it.name}</div>
+              {it.monthlyUsd ? (
+                <div className="shrink-0 text-sm font-semibold tabular-nums">
+                  {t("common.pricePerMonth", { price: it.monthlyUsd })}
+                </div>
+              ) : null}
+            </div>
             <div className="text-sm text-muted-foreground">
               {formatInstanceMemory(it.memory)} RAM ·{" "}
               {formatInstanceCPU(it.cpu)}

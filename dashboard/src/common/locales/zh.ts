@@ -24,6 +24,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "取消",
     description: "Generic Cancel button — dismisses a dialog or an inline form without saving.",
   },
+  "common.pricePerMonth": {
+    message: "${price}/月",
+    description:
+      "Monthly USD price shown on a resource plan card; price is an API-supplied decimal without the currency symbol",
+  },
   "common.protectedConfirmationCancel": {
     message: "取消",
     description:

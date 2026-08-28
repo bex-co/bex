@@ -165,12 +165,14 @@ const FREE: InstanceTypeView = {
   name: "Free",
   cpu: "0.1",
   memory: "512Mi",
+  monthlyUsd: "0.00",
 };
 const STARTER: InstanceTypeView = {
   id: "starter",
   name: "Starter",
   cpu: "0.5",
   memory: "1Gi",
+  monthlyUsd: "4.90",
 };
 
 const REPO: RepoView = {
@@ -440,6 +442,8 @@ describe("NewServicePage", () => {
       await screen.findAllByRole("radiogroup");
       expect(screen.getByText("Free")).toBeInTheDocument();
       expect(screen.getByText("Starter")).toBeInTheDocument();
+      expect(screen.getByText("$0.00/month")).toBeInTheDocument();
+      expect(screen.getByText("$4.90/month")).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: /Free/i })).toHaveAttribute(
         "aria-checked",
         "true",

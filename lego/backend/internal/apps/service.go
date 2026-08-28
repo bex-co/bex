@@ -46,6 +46,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/shellticket"
@@ -1142,10 +1143,11 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]AppView, error) {
 // captured-live shape; ID is Render's plan spelling (what SetPlan accepts),
 // matching the picker's other fields.
 type InstanceType struct {
-	ID     string
-	Name   string
-	CPU    string
-	Memory string
+	ID         string
+	Name       string
+	CPU        string
+	Memory     string
+	MonthlyUSD string
 }
 
 // InstanceTypes lists every tier in the shared compute catalog, in ladder
@@ -1159,7 +1161,11 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]InstanceType, error) {
 	out := make([]InstanceType, len(ids))
 	for i, id := range ids {
 		t, _ := tiers.Compute.ByID(id)
-		out[i] = InstanceType{ID: t.RenderPlan, Name: tierDisplayName(id), CPU: t.CPU, Memory: t.Memory}
+		monthlyUSD, _ := pricing.Default.InstanceMonthlyUSD(id, store.ResourceKindService)
+		out[i] = InstanceType{
+			ID: t.RenderPlan, Name: tierDisplayName(id), CPU: t.CPU,
+			Memory: t.Memory, MonthlyUSD: monthlyUSD,
+		}
 	}
 	return out, nil
 }

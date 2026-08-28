@@ -21,6 +21,7 @@ const STARTER: InstanceTypeView = {
   name: "Starter",
   cpu: "500m",
   memory: "512Mi",
+  monthlyUsd: "4.90",
 };
 vi.mock("@/features/services/hooks/use-instance-types", () => ({
   useInstanceTypes: () => ({
