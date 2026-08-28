@@ -37,6 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
@@ -621,6 +622,17 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 				Spec: corev1.PodSpec{
 					RestartPolicy:    corev1.RestartPolicyNever,
 					ImagePullSecrets: imagePullSecrets(pullSecret),
+					// bex-build's ValidatingAdmissionPolicy bex-build-job-shape
+					// requires every Job in the namespace to declare at least one
+					// emptyDir/non-crown-Secret volume (deploy/gitops/base/
+					// operator-workload-admission.yaml) — a bare Job with no
+					// Volumes field fails that check outright and its finalizer
+					// retries forever. aws-home gives the CLI a writable HOME it
+					// would otherwise get from the image's root filesystem.
+					Volumes: []corev1.Volume{{
+						Name:         "aws-home",
+						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+					}},
 					Containers: []corev1.Container{{
 						Name:    "purge",
 						Image:   awsCLIImage,
@@ -631,6 +643,14 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 								LocalObjectReference: corev1.LocalObjectReference{Name: store.Secret},
 							},
 						}},
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "aws-home", MountPath: "/root/.aws"},
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: ptr.To(false),
+							Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+							SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+						},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceCPU:    resource.MustParse("50m"),
