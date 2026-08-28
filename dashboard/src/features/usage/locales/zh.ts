@@ -30,6 +30,16 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "接近上限",
     description: "Warning shown once a resource count reaches 80 percent",
   },
+  "usage.resourceCapsFinishingDeletion": {
+    message: "{count} 个正在删除",
+    description:
+      "Sub-line on a resource-cap tile: how many of the counted resources are mid-deletion and thus hidden from the resource list but still holding quota (w6/m129)",
+  },
+  "usage.resourceCapsFinishingDeletionHint": {
+    message: "删除完成前仍占用配额",
+    description:
+      "Tooltip explaining why resources finishing deletion are included in the used count",
+  },
   "usage.errorTitle": {
     message: "无法加载用量数据",
     description: "Error state heading on the Usage page",

@@ -1137,9 +1137,14 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]AppView, error) {
 		// teardown (a static site's S3-prefix cleanup Job can run for tens of
 		// seconds) rendered as "Deleting" — which the dashboard shows as the
 		// meaningless "Unknown" status. Trade-off: a delete stuck on a failing
-		// finalizer becomes invisible here (the operator's own alerts/audit
-		// surface it, not the tenant list); the detail view is already 404 in
-		// that state, so hiding the list row keeps the two consistent.
+		// finalizer becomes invisible HERE, but not unaccounted for — an
+		// object-count ResourceQuota keeps holding its quota until finalizers
+		// clear, so the usage surface (workspaces.ResourceLimits / GraphQL
+		// workspaceLimits) reports it under `terminating` and the tenant can
+		// reconcile the shorter list against the quota it consumes (w6/m129);
+		// the operator's own alerts/audit still surface a genuinely stuck one.
+		// The detail view is already 404 in that state, so hiding the list row
+		// keeps the two consistent.
 		if !list.Items[i].DeletionTimestamp.IsZero() {
 			continue
 		}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -39,6 +39,11 @@ function CapTile({ label, cap }: { label: string; cap: ResourceCap }) {
   const ratio = cap.limit > 0 ? cap.used / cap.limit : 0;
   const percent = Math.min(100, Math.max(0, ratio * 100));
   const nearLimit = ratio >= NEAR_LIMIT_RATIO;
+  // `used` counts resources still finishing deletion, which keep holding quota
+  // but are dropped from the resource list. Naming that count here is what lets
+  // a tenant reconcile "used" with the shorter list and see what is consuming
+  // the cap: used - terminating is the number the list shows (w6/m129).
+  const { terminating } = cap;
 
   return (
     <div className="overflow-hidden rounded-lg border">
@@ -56,6 +61,15 @@ function CapTile({ label, cap }: { label: string; cap: ResourceCap }) {
             </span>
           )}
         </p>
+        {terminating > 0 && (
+          <p
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+            title={t("usage.resourceCapsFinishingDeletionHint")}
+          >
+            <Trash2 aria-hidden="true" className="size-3" />
+            {t("usage.resourceCapsFinishingDeletion", { count: terminating })}
+          </p>
+        )}
       </div>
       {/* A hairline along the card's bottom edge rather than a bar competing
           with the number — the count is the fact, the fill is the context. */}

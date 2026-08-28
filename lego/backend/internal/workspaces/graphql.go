@@ -43,12 +43,16 @@ var workspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// resourceCapGQLType is the used/limit pair for one resource kind (w7/m9).
+// resourceCapGQLType is the used/limit pair for one resource kind (w7/m9), plus
+// terminating: how many of `used` are finishing deletion (w6/m129) — the count
+// that reconciles this figure with the resource list, which drops those rows but
+// whose quota they still hold.
 var resourceCapGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ResourceCap",
 	Fields: graphql.Fields{
-		"used":  gqlutil.IntField(func(c ResourceCapView) any { return c.Used }),
-		"limit": gqlutil.IntField(func(c ResourceCapView) any { return c.Limit }),
+		"used":        gqlutil.IntField(func(c ResourceCapView) any { return c.Used }),
+		"terminating": gqlutil.IntField(func(c ResourceCapView) any { return c.Terminating }),
+		"limit":       gqlutil.IntField(func(c ResourceCapView) any { return c.Limit }),
 	},
 })
 

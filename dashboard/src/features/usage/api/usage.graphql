@@ -77,18 +77,25 @@ query Usage($period: String, $ownerId: String) {
 # Creation-count caps are independent of metered usage, but belong on the same
 # workspace Usage page so a human can see both consumption and remaining
 # capacity before a create call is rejected.
+# `used` counts every resource that still holds quota, including ones finishing
+# deletion; `terminating` is how many of `used` are mid-deletion — the count that
+# reconciles this figure with the (shorter) resource list, which drops those rows
+# but whose quota they still consume (w6/m129).
 query WorkspaceLimits($ownerId: String!) {
   workspaceLimits(ownerId: $ownerId) {
     services {
       used
+      terminating
       limit
     }
     postgres {
       used
+      terminating
       limit
     }
     keyValues {
       used
+      terminating
       limit
     }
   }

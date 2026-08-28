@@ -36,12 +36,16 @@ describe("useResourceLimits", () => {
     currentWorkspaceId = "tea-1";
   });
 
-  it("normalizes all three cap counters", () => {
+  it("normalizes all three cap counters including terminating", () => {
     mockUseQuery.mockReturnValue(
       createSuccessQueryResult({
         workspaceLimits: {
-          services: { used: 3, limit: 25 },
-          postgres: { used: 1, limit: 1 },
+          // services carries the m129 case: used counts the terminating ones
+          // that still hold quota; the list would show used - terminating = 6.
+          services: { used: 11, terminating: 5, limit: 100 },
+          postgres: { used: 1, terminating: 0, limit: 1 },
+          // keyValues omits terminating entirely — it must default to 0, never
+          // undefined, so the reconciliation arithmetic stays defined.
           keyValues: { used: 0, limit: 1 },
         },
       }),
@@ -50,9 +54,9 @@ describe("useResourceLimits", () => {
     const { result } = renderHook(() => useResourceLimits());
 
     expect(result.current.limits).toEqual({
-      services: { used: 3, limit: 25 },
-      postgres: { used: 1, limit: 1 },
-      keyValues: { used: 0, limit: 1 },
+      services: { used: 11, terminating: 5, limit: 100 },
+      postgres: { used: 1, terminating: 0, limit: 1 },
+      keyValues: { used: 0, terminating: 0, limit: 1 },
     });
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.anything(),

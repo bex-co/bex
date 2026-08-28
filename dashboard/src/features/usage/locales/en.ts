@@ -30,6 +30,16 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Near limit",
     description: "Warning shown once a resource count reaches 80 percent",
   },
+  "usage.resourceCapsFinishingDeletion": {
+    message: "{count} finishing deletion",
+    description:
+      "Sub-line on a resource-cap tile: how many of the counted resources are mid-deletion and thus hidden from the resource list but still holding quota (w6/m129)",
+  },
+  "usage.resourceCapsFinishingDeletionHint": {
+    message: "Still counts toward your limit until deletion completes",
+    description:
+      "Tooltip explaining why resources finishing deletion are included in the used count",
+  },
   "usage.errorTitle": {
     message: "Could not load usage",
     description: "Error state heading on the Usage page",
