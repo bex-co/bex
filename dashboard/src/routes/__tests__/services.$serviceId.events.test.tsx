@@ -247,3 +247,107 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     expect(router.state.location.pathname).toBe("/services/app/events");
   });
 });
+
+describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
+  // The 2026-08-27 live capture: custom_domain_verified sat between two
+  // custom_domain_added rows that rendered, and it did not — the tab filtered
+  // `events ∩ catalog`, and the filter's own option list came from that same
+  // catalog, so no user action could reveal it.
+  function configEvent(type: string, id: string, timestamp: string) {
+    return {
+      id,
+      type,
+      timestamp,
+      cursor: `cursor-${id}`,
+      details: { actor: "dev@localhost" },
+    };
+  }
+
+  it("renders the event type that used to be filtered away", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          configEvent("custom_domain_added", "evt-1", "2026-08-27T11:54:08Z"),
+          configEvent(
+            "custom_domain_verified",
+            "evt-2",
+            "2026-08-27T11:54:07Z",
+          ),
+          configEvent("custom_domain_added", "evt-3", "2026-08-27T11:52:55Z"),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText("Custom domain verified"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Custom domain added")).toHaveLength(2);
+  });
+
+  it("renders a type absent from the catalog under the generic label", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          configEvent("a_future_backend_type", "evt-9", "2026-08-27T12:00:00Z"),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    // The bullet that separates a real fix from one that merely clears today's
+    // backlog: an uncatalogued type still reaches the reader.
+    expect(
+      await screen.findByText("Service settings changed"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("No events match this filter"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("counts the window's own feed, not the post-filter subset", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          configEvent("custom_domain_added", "evt-1", "2026-08-27T11:54:08Z"),
+          configEvent(
+            "custom_domain_verified",
+            "evt-2",
+            "2026-08-27T11:54:07Z",
+          ),
+          configEvent("a_future_backend_type", "evt-3", "2026-08-27T11:52:55Z"),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("3")).toBeInTheDocument();
+
+    // Hiding a group narrows the list but not the badge: the badge answers
+    // "how much happened", the list answers "what am I looking at".
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Filter events" }));
+    await user.click(screen.getByRole("checkbox", { name: "Configuration" }));
+
+    // Close the popover first: its own option labels would otherwise satisfy a
+    // document-wide text query and hide whether the FEED changed.
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Custom domain verified"),
+    ).not.toBeInTheDocument();
+    // The uncatalogued row survives a catalog-group deselection — it is not a
+    // member of any catalog group, so nothing in the catalog can hide it.
+    expect(screen.getByText("Service settings changed")).toBeInTheDocument();
+  });
+});

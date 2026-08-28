@@ -746,8 +746,10 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Secret-files table column header (file body)",
   },
   "services.secretFileRevealError": {
-    message: "Couldn't load this secret file's contents. Close the dialog and try again.",
-    description: "Shown in the secret-file dialog when reading the stored contents fails.",
+    message:
+      "Couldn't load this secret file's contents. Close the dialog and try again.",
+    description:
+      "Shown in the secret-file dialog when reading the stored contents fails.",
   },
   "services.secretFilesEmptyTitle": {
     message: "No secret files",
@@ -3058,26 +3060,31 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.navDisk": {
     message: "Disk",
-    description: "Service-detail nav item (persistent disk page); Render's label is singular",
+    description:
+      "Service-detail nav item (persistent disk page); Render's label is singular",
   },
   "services.diskTitle": {
     message: "Disk",
     description: "Disk tab card title",
   },
   "services.diskDescription": {
-    message: "Attach an SSD to persist your service's filesystem data across deploys. Disks are charged at $0.175/GB per month.",
-    description: "Disk tab card description; bex's rate is 30% below Render's $0.25",
+    message:
+      "Attach an SSD to persist your service's filesystem data across deploys. Disks are charged at $0.175/GB per month.",
+    description:
+      "Disk tab card description; bex's rate is 30% below Render's $0.25",
   },
   "services.diskEmptyTitle": {
     message: "No disk attached",
     description: "Disk tab empty state title",
   },
   "services.diskEmptyBody": {
-    message: "Only files under the disk's mount path are preserved across deploys and restarts.",
+    message:
+      "Only files under the disk's mount path are preserved across deploys and restarts.",
     description: "Disk tab empty state body",
   },
   "services.diskPaidOnly": {
-    message: "Disks require a paid instance type. Upgrade this service's plan to attach one.",
+    message:
+      "Disks require a paid instance type. Upgrade this service's plan to attach one.",
     description: "Shown instead of the add button on a free service",
   },
   "services.diskAddAction": {
@@ -3097,7 +3104,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Add-disk warning 1",
   },
   "services.diskWarningSingleInstance": {
-    message: "Services with an attached disk can't scale to multiple instances.",
+    message:
+      "Services with an attached disk can't scale to multiple instances.",
     description: "Add-disk warning 2",
   },
   "services.diskWarningOnePerService": {
@@ -3117,7 +3125,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Add-disk form field label",
   },
   "services.diskMountPathHint": {
-    message: "The absolute mount path for the disk. Only files under this path are persisted across deploys. Cannot be the root directory (/).",
+    message:
+      "The absolute mount path for the disk. Only files under this path are persisted across deploys. Cannot be the root directory (/).",
     description: "Add-disk mount path helper text",
   },
   "services.diskMountPathRequired": {
@@ -3133,7 +3142,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Client-side validation: root or trailing slash",
   },
   "services.diskMountPathReserved": {
-    message: "That path is reserved by the platform. Mount a subdirectory of it instead.",
+    message:
+      "That path is reserved by the platform. Mount a subdirectory of it instead.",
     description: "Client-side validation: reserved mount path",
   },
   "services.diskSizeLabel": {
@@ -3141,7 +3151,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Add-disk size field label",
   },
   "services.diskSizeHint": {
-    message: "You can increase the size later, but you can't decrease it. We recommend starting with the lowest value that serves your use case.",
+    message:
+      "You can increase the size later, but you can't decrease it. We recommend starting with the lowest value that serves your use case.",
     description: "Add-disk size helper text (Render's wording)",
   },
   "services.diskSizeChip": {
@@ -3161,7 +3172,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Grow button",
   },
   "services.diskGrowHint": {
-    message: "Increasing the size takes effect without downtime; on some volumes the filesystem finishes growing on the next restart. A disk can never be made smaller.",
+    message:
+      "Increasing the size takes effect without downtime; on some volumes the filesystem finishes growing on the next restart. A disk can never be made smaller.",
     description: "Grow helper text, including bex's honest CSI caveat",
   },
   "services.diskResizeSuccess": {
@@ -3177,7 +3189,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Delete confirmation title",
   },
   "services.diskDeleteWarning": {
-    message: "All data on the disk will be lost and the service will immediately lose access to it. Its snapshots are deleted too. This cannot be undone.",
+    message:
+      "All data on the disk will be lost and the service will immediately lose access to it. Its snapshots are deleted too. This cannot be undone.",
     description: "Delete confirmation body",
   },
   "services.diskDeleteConfirm": {
@@ -3193,16 +3206,20 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Snapshots card title",
   },
   "services.diskSnapshotsDescription": {
-    message: "A snapshot of this disk is taken daily and kept for at least seven days.",
+    message:
+      "A snapshot of this disk is taken daily and kept for at least seven days.",
     description: "Snapshots card description",
   },
   "services.diskSnapshotsNotConfiguredTitle": {
     message: "Snapshots aren't set up",
-    description: "Snapshots card heading when the deployment has no snapshot object store configured (not a failure).",
+    description:
+      "Snapshots card heading when the deployment has no snapshot object store configured (not a failure).",
   },
   "services.diskSnapshotsNotConfiguredBody": {
-    message: "This bex deployment hasn't been configured with an object store for disk snapshots, so none are being taken. Your data is unaffected — ask an operator to enable them.",
-    description: "Explains that snapshots are unconfigured rather than broken, and that an operator enables them.",
+    message:
+      "This bex deployment hasn't been configured with an object store for disk snapshots, so none are being taken. Your data is unaffected — ask an operator to enable them.",
+    description:
+      "Explains that snapshots are unconfigured rather than broken, and that an operator enables them.",
   },
   "services.diskSnapshotsEmptyTitle": {
     message: "No snapshots yet",
@@ -3217,8 +3234,10 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Snapshots error state title",
   },
   "services.diskRestoreDatabaseWarning": {
-    message: "Don't restore a disk to recover a database running on it — restoring files underneath a running database can leave it corrupted. Use that database's own backup and restore instead.",
-    description: "Render's database-recovery warning, carried verbatim in meaning",
+    message:
+      "Don't restore a disk to recover a database running on it — restoring files underneath a running database can leave it corrupted. Use that database's own backup and restore instead.",
+    description:
+      "Render's database-recovery warning, carried verbatim in meaning",
   },
   "services.diskRestoreAction": {
     message: "Restore",
@@ -3229,7 +3248,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Restore confirmation title",
   },
   "services.diskRestoreWarning": {
-    message: "The service stops, the disk is replaced with this snapshot, and the service restarts. Everything written after the snapshot is lost. This cannot be undone.",
+    message:
+      "The service stops, the disk is replaced with this snapshot, and the service restarts. Everything written after the snapshot is lost. This cannot be undone.",
     description: "Restore confirmation body",
   },
   "services.diskRestoreConfirm": {
@@ -3237,16 +3257,20 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Restore confirmation action",
   },
   "services.diskUnsupportedType": {
-    message: "Persistent disks need a long-running instance to mount on, so they are available on web services, private services and background workers.",
-    description: "Empty-state body on the Disk tab for a service type that cannot have a disk.",
+    message:
+      "Persistent disks need a long-running instance to mount on, so they are available on web services, private services and background workers.",
+    description:
+      "Empty-state body on the Disk tab for a service type that cannot have a disk.",
   },
   "services.diskSudoPrompt": {
     message: "To continue, type {phrase}",
-    description: "Label above the typed-confirmation input for an irreversible disk action.",
+    description:
+      "Label above the typed-confirmation input for an irreversible disk action.",
   },
   "services.diskConfigTitle": {
     message: "Disk Configuration",
-    description: "Heading of the card holding the disk's mount path and size settings.",
+    description:
+      "Heading of the card holding the disk's mount path and size settings.",
   },
   "services.diskConfigDescription": {
     message: "Configure this disk's mount path and size.",
@@ -3262,14 +3286,17 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.diskProvisionedLabel": {
     message: "Provisioned {size} GB",
-    description: "Provisioned disk size shown beside the usage chart heading; this is the size billing meters.",
+    description:
+      "Provisioned disk size shown beside the usage chart heading; this is the size billing meters.",
   },
   "services.diskDeleteCardTitle": {
     message: "Delete disk",
-    description: "Heading of the delete-disk card. Distinct from diskDeleteTitle, which is the confirmation dialog's question.",
+    description:
+      "Heading of the delete-disk card. Distinct from diskDeleteTitle, which is the confirmation dialog's question.",
   },
   "services.diskDeleteCardDescription": {
-    message: "The disk will be detached from this service and all data on it will be permanently deleted.",
+    message:
+      "The disk will be detached from this service and all data on it will be permanently deleted.",
     description: "Subtitle of the delete-disk card, stating what is lost.",
   },
   "services.diskUsageTitle": {
@@ -3277,8 +3304,10 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Heading of the disk usage chart on a service's Disk tab.",
   },
   "services.diskUsageDescription": {
-    message: "Bytes written to the mounted volume, against its provisioned capacity. Billing meters provisioned size, not used bytes.",
-    description: "Subtitle of the disk usage chart, stating that billing uses provisioned size.",
+    message:
+      "Bytes written to the mounted volume, against its provisioned capacity. Billing meters provisioned size, not used bytes.",
+    description:
+      "Subtitle of the disk usage chart, stating that billing uses provisioned size.",
   },
   "services.diskRestoreStarted": {
     message: "Restoring the disk. The service stops until it finishes.",
@@ -3379,6 +3408,11 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsFilterGroup.configuration": {
     message: "Configuration",
     description: "bex configuration event filter group",
+  },
+  "services.eventsFilterGroup.other": {
+    message: "Other",
+    description:
+      "Event filter group holding types the API returned that the dashboard catalog does not know yet",
   },
   "services.eventsActor": {
     message: "by {actor}",
@@ -3622,6 +3656,27 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsTypeCustomDomainRemoved": {
     message: "Custom domain removed",
     description: "Service activity type: custom domain removed",
+  },
+  "services.eventsTypeCustomDomainVerified": {
+    message: "Custom domain verified",
+    description: "Service activity type: custom domain ownership verified",
+  },
+  "services.eventsTypeDiskAttached": {
+    message: "Disk attached",
+    description: "Service activity type: persistent disk attached",
+  },
+  "services.eventsTypeDiskUpdated": {
+    message: "Disk updated",
+    description: "Service activity type: persistent disk updated",
+  },
+  "services.eventsTypeDiskDetached": {
+    message: "Disk detached",
+    description: "Service activity type: persistent disk detached",
+  },
+  "services.eventsTypeDiskRestored": {
+    message: "Disk restored",
+    description:
+      "Service activity type: persistent disk restored from a snapshot",
   },
   "services.eventsTypeNotificationsChanged": {
     message: "Failure notifications updated",
