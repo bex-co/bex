@@ -1,6 +1,6 @@
 # w6 · m99 — Auto-Deploy hint and reported state lie about push-deliverability for a repo the connected GitHub App doesn't grant
 
-**Worker:** worker6 **Goal:** the Auto-Deploy hint text (dashboard) and the `autoDeploy`/`autoDeployTrigger` state (REST/GraphQL/MCP) for a repo-backed service only claim "redeploys automatically via the GitHub app" when THIS service's specific repo is actually covered by the workspace's connected GitHub App installation grant — never merely because the workspace has some GitHub connection and the repo string looks like a github.com URL. **Status:** in progress — t001–t006 done (code, tests, docs landed and green); t007 (live DoD verification + closeout) blocked until this change is deployed to production
+**Worker:** worker6 **Goal:** the Auto-Deploy hint text (dashboard) and the `autoDeploy`/`autoDeployTrigger` state (REST/GraphQL/MCP) for a repo-backed service only claim "redeploys automatically via the GitHub app" when THIS service's specific repo is actually covered by the workspace's connected GitHub App installation grant — never merely because the workspace has some GitHub connection and the repo string looks like a github.com URL. **Status:** in progress — t001–t006 done (code, tests, docs landed and green); the fix is now **deployed** (`bfd3a062` is an ancestor of the shipped `050d40e4`), so t007 (live DoD verification + closeout) is blocked only on QA credentials (`scripts/qa-login.sh` exits 2 — `QA_EMAIL`/`QA_PASSWORD` absent from `.env`)
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 7th run of the day)
 
@@ -73,15 +73,15 @@ autoDeploy = req.Repo != ""
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                                                      | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Backend: surface the existing per-repo GitHub-grant-match signal (`GitHub.CloneToken`'s `ok`) as an explicit, checkable field so REST/GraphQL/MCP can report push-deliverability truthfully instead of the unconditional stored `autoDeploy` boolean alone | 45m | —          | — **DONE** |
-| t002 | Dashboard: fix `viaGitHub` (`build-deploy-section.tsx:135`) to derive from the per-repo grant signal (t001's field, normalized against `useRepos()`'s union list) instead of `connection.connected && /github\.com/.test(repo)`; update hint copy/props | 30m | t001       | — **DONE** |
-| t003 | Regression tests: an ungranted github.com repo + live connection → manual-webhook hint and non-"yes via GitHub" reporting; the `w2/m9` control case (granted repo) unchanged; REST/GraphQL/MCP agree on both cases | 40m | t002       | — **DONE** |
-| t004 | Render parity                                                                                                                                              | 20m | t003       | — **DONE** |
-| t005 | Simplify                                                                                                                                                   | 15m | t004       | — **DONE** |
-| t006 | Test coverage                                                                                                                                              | 20m | t004       | — **DONE** |
-| t007 | Closeout                                                                                                                                                   | 10m | t006       |
+| id | title | est | depends_on |
+| --- | --- | --- | --- | --- |
+| t001 | Backend: surface the existing per-repo GitHub-grant-match signal (`GitHub.CloneToken`'s `ok`) as an explicit, checkable field so REST/GraphQL/MCP can report push-deliverability truthfully instead of the unconditional stored `autoDeploy` boolean alone | 45m | — | — **DONE** |
+| t002 | Dashboard: fix `viaGitHub` (`build-deploy-section.tsx:135`) to derive from the per-repo grant signal (t001's field, normalized against `useRepos()`'s union list) instead of `connection.connected && /github\.com/.test(repo)`; update hint copy/props | 30m | t001 | — **DONE** |
+| t003 | Regression tests: an ungranted github.com repo + live connection → manual-webhook hint and non-"yes via GitHub" reporting; the `w2/m9` control case (granted repo) unchanged; REST/GraphQL/MCP agree on both cases | 40m | t002 | — **DONE** |
+| t004 | Render parity | 20m | t003 | — **DONE** |
+| t005 | Simplify | 15m | t004 | — **DONE** |
+| t006 | Test coverage | 20m | t004 | — **DONE** |
+| t007 | Closeout | 10m | t006 |
 
 ## Implementation status (t001–t006 landed)
 

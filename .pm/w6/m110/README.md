@@ -1,6 +1,6 @@
 # w6 · m110 — App compute is never metered, and a service named ≥22 chars loses CPU/memory/instance metrics
 
-**Worker:** worker6 **Goal:** every App's pods are selected by an identity that actually matches them — so App compute is metered and billed like Postgres/Key Value already is, and the Metrics page's Memory/CPU/Total Instances cards stop going blank for services with ordinary-length names. **Status:** code fix landed (t001–t004, t007); live verification + closeout open (t005, t006, t008)
+**Worker:** worker6 **Goal:** every App's pods are selected by an identity that actually matches them — so App compute is metered and billed like Postgres/Key Value already is, and the Metrics page's Memory/CPU/Total Instances cards stop going blank for services with ordinary-length names. **Status:** code complete — t001–t007 done (t005's parity pass found and fixed a second, MCP-only empty-case divergence); t008 closeout open, blocked on the live sweep (needs `23c323f9` in a successful deploy AND production credentials, which this session does not have)
 
 ## Background (found live, 2026-08-27, 21st `/qa-find-bugs` run)
 
@@ -163,8 +163,8 @@ Not an authorization or existence boundary — both defects are identity/selecti
 | t002 | Usage meter: select App pods by the Kubernetes object name, not the workspace-scoped store name — **DONE**             | 45m | t001       |
 | t003 | Make all three cAdvisor pod selectors survive Kubernetes' 58-char generateName truncation — **DONE**                    | 45m | t001       |
 | t004 | Decide and implement the repair for `usage_hourly` instance-seconds rows already persisted as healthy zeros — **DONE**  | 40m | t002       |
-| t005 | Render parity — metrics across REST/GraphQL/MCP + the dashboard charge tree                                  | 30m | t003, t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                                  | 20m | t005       |
+| t005 | Render parity — metrics across REST/GraphQL/MCP + the dashboard charge tree — **DONE** (found + fixed an MCP empty-case divergence: `{"series":null}` vs REST's `[]`; the `/billing` charge-tree bullet carries to t008's live sweep) | 30m | t003, t004 |
+| t006 | Simplify — `/simplify` over the code this milestone changed — **DONE**                                       | 20m | t005       |
 | t007 | Test coverage — **DONE**                                                                                                | 45m | t005       |
 | t008 | Closeout                                                                                                     | 15m | t007       |
 

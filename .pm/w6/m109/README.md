@@ -1,6 +1,6 @@
 # w6 · m109 — Postgres/KeyValue REST+MCP omit Render-required `ipAllowList`/`readReplicas` when empty
 
-**Worker:** worker6 **Goal:** `GET`/list/create/update responses for Postgres (REST `/v1/postgres`, MCP `get_postgres`/`list_postgres_instances`/etc.) and Key Value (REST `/v1/key-value`, MCP `get_key_value`/etc.) always include `ipAllowList` (and, for Postgres, `readReplicas`) as `[]` when there are no entries — matching Render's own pinned OpenAPI schema, which declares both `required` — instead of omitting the key entirely, which is what happens today for the overwhelmingly common case (no CIDR restriction, no read replicas). GraphQL already gets this right; REST and MCP must match it. **Status:** in progress — t001–t006 done (fix + tests + ADR018 row + conformance-allowlist cleanup, all gates green); t007 closeout awaits `/ship` + the live `api.bex.co` re-probe
+**Worker:** worker6 **Goal:** `GET`/list/create/update responses for Postgres (REST `/v1/postgres`, MCP `get_postgres`/`list_postgres_instances`/etc.) and Key Value (REST `/v1/key-value`, MCP `get_key_value`/etc.) always include `ipAllowList` (and, for Postgres, `readReplicas`) as `[]` when there are no entries — matching Render's own pinned OpenAPI schema, which declares both `required` — instead of omitting the key entirely, which is what happens today for the overwhelmingly common case (no CIDR restriction, no read replicas). GraphQL already gets this right; REST and MCP must match it. **Status:** in progress — t001–t006 + t008 done (fix + tests + ADR018 row + conformance-allowlist cleanup, all gates green); `732d0991` is **deployed** (ancestor of the shipped `050d40e4`), so t007 closeout is blocked only on credentials for the live `api.bex.co` re-probe (`BEX_API_TOKEN` 401s; no `QA_EMAIL`/`QA_PASSWORD` in `.env`)
 
 ## Background (found live, 2026-08-26, 20th `/qa-find-bugs` hunt)
 
@@ -45,16 +45,16 @@ All probes run from inside the authenticated browser session (`page.evaluate` + 
 
 **Root cause.** Both resources' response structs declare the required array fields with Go's `omitempty`, which drops the JSON key entirely when the slice is nil/empty (Go's `encoding/json` zero-value rule) — the exact opposite of what `omitempty` should do to a field Render's schema marks `required`:
 
-- `lego/backend/internal/postgres/service.go:107` — `ReadReplicas []ReadReplicaView \`json:"readReplicas,omitempty"\`` on `PostgresView`.
-- `lego/backend/internal/postgres/service.go:124` — `IPAllowList []core.IPAllowListEntry \`json:"ipAllowList,omitempty"\`` on `PostgresView`.
-- `lego/backend/internal/keyvalue/service.go:95` — `IPAllowList []core.IPAllowListEntry \`json:"ipAllowList,omitempty"\`` on `KeyValueView`.
-- `lego/backend/internal/keyvalue/rest.go:66` — `IPAllowList []core.IPAllowListEntry \`json:"ipAllowList,omitempty"\`` on the REST-only `renderKeyValue` wrapper, fed straight from `KeyValueView.IPAllowList` (`rest.go:89`) so it inherits the same nil instead of re-deriving anything.
+- `lego/backend/internal/postgres/service.go:107` — `ReadReplicas []ReadReplicaView \`json:"readReplicas,omitempty"\``on`PostgresView`.
+- `lego/backend/internal/postgres/service.go:124` — `IPAllowList []core.IPAllowListEntry \`json:"ipAllowList,omitempty"\``on`PostgresView`.
+- `lego/backend/internal/keyvalue/service.go:95` — `IPAllowList []core.IPAllowListEntry \`json:"ipAllowList,omitempty"\``on`KeyValueView`.
+- `lego/backend/internal/keyvalue/rest.go:66` — `IPAllowList []core.IPAllowListEntry \`json:"ipAllowList,omitempty"\``on the REST-only`renderKeyValue`wrapper, fed straight from`KeyValueView.IPAllowList` (`rest.go:89`) so it inherits the same nil instead of re-deriving anything.
 
 `PostgresView` is embedded directly into REST's response wrapper (`renderPostgres`, `postgres/rest.go:38-41`) — so every Postgres REST route (create, get, list, PATCH) is covered by fixing this one struct — and is also returned directly by 8 MCP tool handlers (`postgres/mcp.go`: `get_postgres` L106, `list_postgres_instances` L95 via `listPostgresResult{Postgres []PostgresView}`, `create_postgres` L117, `suspend_postgres` L215, the two verbs at L222/L229, `recover_postgres` L262, `update_postgres` L348 — exact grep: `grep -n "CallToolResult, PostgresView" postgres/mcp.go` → 7 hits + the list wrapper). `KeyValueView` is returned directly by 5 MCP handlers (`keyvalue/mcp.go`: `get_key_value` L115, `list_key_values` L104 via `listKeyValueResult{KeyValues []KeyValueView}`, `create_key_value` L126, `suspend_key_value` L150, `update_key_value` L158); `renderKeyValue` is built separately for every KeyValue REST route via `toRenderKeyValue` (`keyvalue/rest.go:73-94`).
 
 **GraphQL is unaffected — confirmed by trace, not assumed.** `postgres/graphql.go`/`keyvalue/graphql.go`'s `ipAllowList`/`ipAllowListEntries`/`readReplicas` fields are typed GraphQL list fields resolved straight off the same underlying Go slices; graphql-go serializes a nil Go slice bound to a `GraphQLList` type as `[]`, not as an omitted key or `null` — there is no `encoding/json` struct-tag layer in that path at all, so `omitempty` never applies to GraphQL's output. This is why GraphQL alone gets it right today.
 
-**The correct fix pattern already ships in this exact codebase, for this exact field, on a sibling resource.** `lego/backend/internal/environments/rest.go:72` declares `IPAllowList []core.IPAllowListEntry \`json:"ipAllowList"\`` — **no** `omitempty` — and `toRenderEnvironment` (`rest.go:80-84`) explicitly nil-coalesces before assigning: `allowList := e.IPAllowList; if allowList == nil { allowList = []core.IPAllowListEntry{} }`. The same two-line pattern (drop `omitempty`, nil-coalesce at construction) is the fix for all three structs here.
+**The correct fix pattern already ships in this exact codebase, for this exact field, on a sibling resource.** `lego/backend/internal/environments/rest.go:72` declares `IPAllowList []core.IPAllowListEntry \`json:"ipAllowList"\``— **no**`omitempty`— and`toRenderEnvironment` (`rest.go:80-84`) explicitly nil-coalesces before assigning: `allowList := e.IPAllowList; if allowList == nil { allowList = []core.IPAllowListEntry{} }`. The same two-line pattern (drop `omitempty`, nil-coalesce at construction) is the fix for all three structs here.
 
 **Exhaustive check of every other `required` field on these two schemas — not estimated, checked field-by-field against the actual struct tags:**
 
@@ -65,20 +65,20 @@ All probes run from inside the authenticated browser session (`page.evaluate` + 
 | `createdAt`, `updatedAt`, `dashboardUrl`, `region` | `omitempty` | same mechanism, but scalar/string and always non-empty on any real provisioned resource — live-verified present (`true`) on the same probed resource that was missing `readReplicas`/`ipAllowList`, so this does not manifest in practice; not part of this fix |
 | `owner` (postgres, via REST's `renderPostgres.Owner *renderOwner \`json:"owner,omitempty"\`\`) | `omitempty` (pointer) | same mechanism, but every real Database has a resolvable owner — live-verified present; not part of this fix |
 | `connectionPool`, `diskAutoscalingEnabled`, `highAvailabilityEnabled`, `options` | no `omitempty` | correct today, unaffected |
-| `role`, `suspenders` (postgres) | *(no Go field exists at all)* | **not this bug** — a distinct, deeper gap (the field is never implemented, not merely omitted when empty); not investigated this run, flagged as Unverified below, explicitly out of scope for this milestone |
+| `role`, `suspenders` (postgres) | _(no Go field exists at all)_ | **not this bug** — a distinct, deeper gap (the field is never implemented, not merely omitted when empty); not investigated this run, flagged as Unverified below, explicitly out of scope for this milestone |
 
 ## Tasks (in order)
 
-| id   | title                                                                                                    | est | depends_on |
-| ---- | ---------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Fix `PostgresView.IPAllowList`/`ReadReplicas`: drop `omitempty`, nil-coalesce to `[]T{}` at response construction, matching `environments/rest.go`'s pattern — **DONE** | 30m | —          |
-| t002 | Fix `KeyValueView.IPAllowList` and REST's separate `renderKeyValue.IPAllowList`: same drop-omitempty + nil-coalesce treatment in both structs — **DONE** | 30m | —          |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Fix `PostgresView.IPAllowList`/`ReadReplicas`: drop `omitempty`, nil-coalesce to `[]T{}` at response construction, matching `environments/rest.go`'s pattern — **DONE** | 30m | — |
+| t002 | Fix `KeyValueView.IPAllowList` and REST's separate `renderKeyValue.IPAllowList`: same drop-omitempty + nil-coalesce treatment in both structs — **DONE** | 30m | — |
 | t003 | Regression tests: REST GET/list/create/PATCH and MCP `get_postgres`/`get_key_value` on a fixture with zero entries assert the key is present as `[]`, not absent; non-empty case still round-trips correctly (no regression) — **DONE** | 45m | t001, t002 |
-| t004 | Render parity — confirm GraphQL is unaffected (still `[]`) and REST/MCP now agree with it; correct any doc claim about this shape — **DONE** | 20m | t003       |
-| t005 | Simplify — **DONE**                                                                                          | 15m | t004       |
-| t006 | Test coverage — **DONE**                                                                                     | 20m | t004       |
-| t008 | Connection-info responses omit Render-required `externalConnectionString` when the datastore is not public | 30m | —          |
-| t007 | Closeout                                                                                                    | 10m | t005, t006, t008 |
+| t004 | Render parity — confirm GraphQL is unaffected (still `[]`) and REST/MCP now agree with it; correct any doc claim about this shape — **DONE** | 20m | t003 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 20m | t004 |
+| t008 | Connection-info responses omit Render-required `externalConnectionString` when the datastore is not public — **DONE** | 30m | — |
+| t007 | Closeout | 10m | t005, t006, t008 |
 
 ## Definition of done
 
