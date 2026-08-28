@@ -385,10 +385,69 @@ describe("CustomDomainsSection", () => {
     expect(
       within(dialog).getByText("Delete www.example.com?"),
     ).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("The service stops serving this domain.");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() =>
       expect(mockDeleteDomain).toHaveBeenCalledWith("www.example.com"),
     );
+  });
+
+  it("names both removals when deleting an auto-pair canonical domain", async () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([apexDomain, wwwSiblingDomain]),
+    );
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Open domain actions menu" })[0],
+    );
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "This removes foo.com and its automatically added redirect www.foo.com.",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(mockDeleteDomain).toHaveBeenCalledWith("foo.com"),
+    );
+  });
+
+  it("discloses the unchanged canonical when deleting only the generated redirect", async () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([apexDomain, wwwSiblingDomain]),
+    );
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Open domain actions menu" })[1],
+    );
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "This removes only www.foo.com. foo.com remains the canonical domain and does not redirect.",
+    );
+  });
+
+  it("treats explicitly claimed www and apex domains as independent", async () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([
+        apexDomain,
+        { ...wwwSiblingDomain, redirectForName: null },
+      ]),
+    );
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Open domain actions menu" })[0],
+    );
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("The service stops serving this domain.");
+    expect(dialog).not.toHaveTextContent("automatically added redirect");
   });
 });

@@ -892,7 +892,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_custom_domain",
-		Description: "Remove a custom domain from a service. The operator will remove the Ingress rule and let the TLS certificate expire.",
+		Description: "Remove a custom domain from a service. Deleting the canonical half of an auto-added www/apex pair also removes its generated redirecting sibling; deleting the generated sibling preserves the canonical domain.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, deletedResult, error) {
 		err := s.DeleteDomain(ctx, in.ServiceID, in.Name)
 		return nil, deletedResult{Deleted: err == nil}, err

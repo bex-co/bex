@@ -1283,6 +1283,18 @@ const zhServices: Record<string, TranslationEntry> = {
       "服务将停止为此域名提供服务。其 Ingress 规则会被移除，TLS 证书将被留待过期。此操作无法撤销。",
     description: "Custom-domain delete-confirmation dialog body",
   },
+  "services.domainDeletePairConfirmBody": {
+    message:
+      "这会同时移除 {name} 及平台自动添加的重定向域名 {sibling}。两个域名的 Ingress 规则都会被移除，TLS 证书将留待过期。此操作无法撤销。",
+    description:
+      "Custom-domain delete confirmation when deleting a canonical host also removes its generated redirecting sibling",
+  },
+  "services.domainDeleteGeneratedConfirmBody": {
+    message:
+      "这只会移除 {name}。{canonical} 会保留为规范域名且不会重定向。被移除域名的 Ingress 规则会被移除，TLS 证书将留待过期。此操作无法撤销。",
+    description:
+      "Custom-domain delete confirmation when deleting only the generated redirecting sibling",
+  },
   "services.domainAdd": {
     message: "添加自定义域名",
     description: "Custom-domains button to open the add-domain dialog",

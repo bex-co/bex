@@ -1953,6 +1953,48 @@ func assertDomainClaimLifecycle(ctx context.Context, t *testing.T, s *PGStore, t
 	if _, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, claim.Challenge, time.Now()); !errors.Is(err, ErrConflict) {
 		t.Fatalf("stale promotion = %v", err)
 	}
+
+	canonical, _, err := s.AddDomainClaim(ctx, a1.ID, "pair-delete.example.com", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, _, err := s.AddDomainClaim(ctx, a1.ID, "www.pair-delete.example.com", canonical.Host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.PromoteDomainClaim(ctx, a1.ID, canonical.ID, canonical.Challenge, time.Now()); err != nil {
+		t.Fatalf("promote pair canonical: %v", err)
+	}
+	if _, err := s.PromoteDomainClaim(ctx, a1.ID, generated.ID, generated.Challenge, time.Now()); err != nil {
+		t.Fatalf("promote pair generated sibling: %v", err)
+	}
+	if err := s.RemoveDomain(ctx, a1.ID, canonical.Host); err != nil {
+		t.Fatalf("remove pair canonical: %v", err)
+	}
+	for _, host := range []string{canonical.Host, generated.Host} {
+		if _, err := s.GetDomainClaim(ctx, a1.ID, host); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("canonical delete left pair claim %q: %v", host, err)
+		}
+	}
+
+	canonical, _, err = s.AddDomainClaim(ctx, a1.ID, canonical.Host, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, _, err = s.AddDomainClaim(ctx, a1.ID, generated.Host, canonical.Host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.AddDomainClaim(ctx, a1.ID, generated.Host, ""); err != nil {
+		t.Fatalf("make generated sibling explicit: %v", err)
+	}
+	if err := s.RemoveDomain(ctx, a1.ID, canonical.Host); err != nil {
+		t.Fatalf("remove one explicit claim: %v", err)
+	}
+	preserved, err := s.GetDomainClaim(ctx, a1.ID, generated.Host)
+	if err != nil || preserved.RedirectForName != "" {
+		t.Fatalf("explicit sibling not preserved independently: %+v err=%v", preserved, err)
+	}
 }
 
 // assertWorkspaceDomainClaimCount pins CountWorkspaceDomainClaims (round 18,
