@@ -10,7 +10,8 @@
 | t002 | Decide how "store up, stream not produced" is represented, vs a genuinely quiet service   | 40m | t001       |
 | t003 | Reconcile `host` discovery — and the dashboard's static fallbacks — with filterability    | 30m | t001       |
 | t004 | Add the guard that would have caught a silently-zero request stream                       | 40m | t002, t003 |
-| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard)                                          | 30m | t002, t003 |
+| t009 | Metrics — a host/path filter zeroes a real request graph, from the same empty stream    | 40m | t001, t002 |
+| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard)                                          | 30m | t002, t003, t009 |
 | t006 | Simplify                                                                                  | 20m | t005       |
 | t007 | Test coverage                                                                             | 30m | t005       |
 | t008 | Closeout                                                                                  | 10m | t004, t007 |
@@ -75,6 +76,7 @@ Since `label=method` returns `[]`, those come from the dashboard's **static fall
 - A `host` value returned by `label=host` discovery, used as a `host` filter, returns rows — or discovery no longer offers values the filter cannot match, per the decision `t003` records.
 - `scripts/logs-verify.sh` has been run against production and its output recorded, discharging the check `w3/m8`'s status line left owed.
 - App logs, build logs and level normalization still work. They do today — 100 app lines on `beancount-cms-v2`, 100 build lines on a fresh service, `level` values `["error","unknown"]` — and a pipeline change must not regress them.
+- On a service with real HTTP traffic, selecting its own hostname in the Metrics tab's Host dropdown **narrows** the Total Requests and Response Times charts rather than emptying them, and `GET /v1/metrics/http-requests?resource=<id>&host=<its hostname>` returns a non-empty series. Today the unfiltered read returns 61 points totalling 24.33 while the host-filtered read returns 0 series / 0 points, and the dashboard shows "38 requests" becoming "No data in range" (`t009`).
 
 ## Source + Goal linkage
 
