@@ -152,14 +152,12 @@ type renderService struct {
 	// HealthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
 	// empty means the default "/". Render's healthCheckPath field.
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
-	// RenderSubdomainPolicy is Render's renderSubdomainPolicy field
-	// (enabled|disabled), controlling whether the platform .onbex.co subdomain
-	// is active for this service (w7/m31). Always present and non-empty.
-	RenderSubdomainPolicy string `json:"renderSubdomainPolicy"`
-	// NOTE: Render's inbound IP allowlist is NOT a top-level service field. Its
-	// schema places ipAllowList inside serviceDetails (webServiceDetails /
-	// staticSiteDetails only), so it is emitted from renderServiceDetails(), not
-	// here — see the ipAllowList block there (w6/m106).
+	// NOTE: neither renderSubdomainPolicy nor the inbound IP allowlist is a
+	// top-level service field. Render's schema declares both inside serviceDetails
+	// (webServiceDetails / staticSiteDetails only) and not on the top-level
+	// service object at all, so both are emitted from renderServiceDetails(), not
+	// here — see the renderSubdomainPolicy and ipAllowList blocks there
+	// (renderSubdomainPolicy w6/m130, ipAllowList w6/m106).
 }
 
 type renderRegistryCredentialSummary struct {
@@ -250,45 +248,44 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		registryCredentialID = *a.RegistryCredentialID
 	}
 	return renderService{
-		ID:                    publicID,
-		Name:                  renderServiceName(a),
-		Slug:                  a.Slug,
-		DisplayName:           a.DisplayName,
-		Type:                  svcType,
-		Suspended:             core.SuspendedEnum(a.Suspended),
-		DashboardURL:          dashboardURL,
-		CreatedAt:             a.CreatedAt,
-		UpdatedAt:             a.UpdatedAt,
-		ServiceDetails:        renderServiceDetails(a, svcType, region),
-		ImagePath:             a.SourceImage,
-		RegistryCredentialID:  registryCredentialID,
-		Suspenders:            suspenders(a.Suspended),
-		OwnerID:               a.OwnerID,
-		ProjectID:             a.ProjectID,
-		EnvironmentID:         a.EnvironmentID,
-		Phase:                 a.Phase,
-		PublicRoutingNotice:   a.PublicRoutingNotice,
-		Replicas:              a.Replicas,
-		Revision:              a.Revision,
-		URLs:                  a.URLs,
-		Schedule:              a.Schedule,
-		Command:               a.Command,
-		Runs:                  a.Runs,
-		LastSuccessfulRunAt:   a.LastSuccessfulRunAt,
-		NextRunAt:             a.NextRunAt,
-		IdleTTLSeconds:        a.IdleTTLSeconds,
-		RootDir:               a.RootDir,
-		BuildFilter:           a.BuildFilter,
-		Repo:                  a.Repo,
-		Branch:                a.Branch,
-		Autoscaling:           toRenderAutoscaling(a.Autoscaling),
-		AutoDeploy:            yesNoEnum(a.AutoDeploy),
-		AutoDeployTrigger:     triggerEnum(a.AutoDeploy),
-		PushDeliveryMethod:    a.PushDeliveryMethod,
-		NotifyOnFail:          a.NotifyOnFail,
-		NotificationsToSend:   a.NotificationsToSend,
-		RenderSubdomainPolicy: a.RenderSubdomainPolicy,
-		HealthCheckPath:       a.HealthCheckPath,
+		ID:                   publicID,
+		Name:                 renderServiceName(a),
+		Slug:                 a.Slug,
+		DisplayName:          a.DisplayName,
+		Type:                 svcType,
+		Suspended:            core.SuspendedEnum(a.Suspended),
+		DashboardURL:         dashboardURL,
+		CreatedAt:            a.CreatedAt,
+		UpdatedAt:            a.UpdatedAt,
+		ServiceDetails:       renderServiceDetails(a, svcType, region),
+		ImagePath:            a.SourceImage,
+		RegistryCredentialID: registryCredentialID,
+		Suspenders:           suspenders(a.Suspended),
+		OwnerID:              a.OwnerID,
+		ProjectID:            a.ProjectID,
+		EnvironmentID:        a.EnvironmentID,
+		Phase:                a.Phase,
+		PublicRoutingNotice:  a.PublicRoutingNotice,
+		Replicas:             a.Replicas,
+		Revision:             a.Revision,
+		URLs:                 a.URLs,
+		Schedule:             a.Schedule,
+		Command:              a.Command,
+		Runs:                 a.Runs,
+		LastSuccessfulRunAt:  a.LastSuccessfulRunAt,
+		NextRunAt:            a.NextRunAt,
+		IdleTTLSeconds:       a.IdleTTLSeconds,
+		RootDir:              a.RootDir,
+		BuildFilter:          a.BuildFilter,
+		Repo:                 a.Repo,
+		Branch:               a.Branch,
+		Autoscaling:          toRenderAutoscaling(a.Autoscaling),
+		AutoDeploy:           yesNoEnum(a.AutoDeploy),
+		AutoDeployTrigger:    triggerEnum(a.AutoDeploy),
+		PushDeliveryMethod:   a.PushDeliveryMethod,
+		NotifyOnFail:         a.NotifyOnFail,
+		NotificationsToSend:  a.NotificationsToSend,
+		HealthCheckPath:      a.HealthCheckPath,
 	}
 }
 
@@ -315,7 +312,6 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 		{"preDeployCommand", a.PreDeployCommand},       // webServiceDetails.preDeployCommand (w1/m33)
 		{"initialDeployHook", a.InitialDeployHook},     // w2/m45: blueprint-only one-time first-deploy command
 		{"healthCheckPath", a.HealthCheckPath},
-		{"renderSubdomainPolicy", a.RenderSubdomainPolicy},
 	} {
 		if field.value != "" {
 			details[field.key] = field.value
@@ -378,6 +374,17 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	// field above.
 	if len(a.IPAllowList) > 0 && appv1alpha1.TypePubliclyRoutable(svcType) {
 		details["ipAllowList"] = cloneIPAllowEntries(a.IPAllowList)
+	}
+	// Render declares renderSubdomainPolicy only on webServiceDetails/
+	// staticSiteDetails — the platform subdomain is a property only a routable
+	// type HAS. private/worker/cron omit it entirely (render-public-api-1.json),
+	// and it is never a top-level service field (the top-level `service` schema
+	// has no such property) — the identical nesting-level omission the w1/m86
+	// disk and w6/m106 ipAllowList audits caught. Gated to the two ingress types
+	// here at the emission site; view() also empties it for the rest so GraphQL's
+	// flat field agrees with this omission (w6/m130).
+	if a.RenderSubdomainPolicy != "" && appv1alpha1.TypePubliclyRoutable(svcType) {
+		details["renderSubdomainPolicy"] = a.RenderSubdomainPolicy
 	}
 	return details
 }

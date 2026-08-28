@@ -434,8 +434,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// renderSubdomainPolicy is Render's field controlling whether the platform
 		// subdomain <slug>.onbex.co is active (enabled|disabled, w7/m31). The
 		// Settings → Custom Domains section reads it and writes it via
-		// setSubdomainPolicy.
-		"renderSubdomainPolicy": gqlutil.StrField(func(a AppView) any { return a.RenderSubdomainPolicy }),
+		// setSubdomainPolicy. OptionalStrField resolves the "" a non-ingress type
+		// carries (view() empties it for private/worker/cron) to null, so GraphQL
+		// agrees with REST's omission instead of reporting a phantom "enabled" for
+		// a service that has no platform subdomain (w6/m130).
+		"renderSubdomainPolicy": gqlutil.OptionalStrField(func(a AppView) any { return a.RenderSubdomainPolicy }),
 		"healthCheckPath":       gqlutil.StrField(func(a AppView) any { return a.HealthCheckPath }),
 		"maxShutdownDelaySeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any {
 			if a.MaxShutdownDelaySeconds == 0 {

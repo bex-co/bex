@@ -1,19 +1,19 @@
 # w6 · m130 — `renderSubdomainPolicy` is the third field in its family at the wrong REST nesting level
 
-**Worker:** worker6 **Goal:** a Render-shaped client can set the platform-subdomain policy where Render's own schema declares it — inside `serviceDetails` — instead of getting `400 unknown field`, and no service type is told its non-existent subdomain is "enabled". **Status:** todo
+**Worker:** worker6 **Goal:** a Render-shaped client can set the platform-subdomain policy where Render's own schema declares it — inside `serviceDetails` — instead of getting `400 unknown field`, and no service type is told its non-existent subdomain is "enabled". **Status:** done — both defects fixed as the third instance of the disk (w1/m86) / ipAllowList (w6/m106) family: create + PATCH decode `serviceDetails.renderSubdomainPolicy` (top level still accepted, top level wins on create / nested wins on PATCH); it is emitted only inside `serviceDetails` and only for `web_service`/`static_site`, gated once in `view()` so REST omits it, MCP omits it, and GraphQL resolves it to `null` (`OptionalStrField`) for `private_service`/`background_worker`/`cron_job`; `setSubdomainPolicy` on a non-routable type is refused with a type-named 400 that does not mention custom domains. Decision recorded in `docs/ADR018-render-parity.md` row 117; covered by `lego/backend/internal/apps/subdomain_policy_test.go` (backend + api suites green, `make lint-backend` 0 issues).
 
 ## Tasks (in order)
 
-| id   | title                                                                                  | est | depends_on |
-| ---- | -------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Accept `serviceDetails.renderSubdomainPolicy` on create + patch (top level still wins)   | 30m | —          |
-| t002 | Decide + implement the REST response placement, and per-type reporting                   | 40m | t001       |
-| t003 | Type-gate `SetSubdomainPolicy` so a non-routable service gets a reason it can act on     | 30m | t002       |
-| t004 | Blast radius: every emission site enumerated, correct-today types regression-tested      | 40m | t002       |
-| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard)                                          | 30m | t003, t004 |
-| t006 | Simplify                                                                                  | 20m | t005       |
-| t007 | Test coverage                                                                             | 30m | t005       |
-| t008 | Closeout                                                                                  | 10m | t007       |
+| id   | title                                                                                  | est | depends_on | status   |
+| ---- | -------------------------------------------------------------------------------------- | --- | ---------- | -------- |
+| t001 | Accept `serviceDetails.renderSubdomainPolicy` on create + patch (top level still wins)   | 30m | —          | **DONE** |
+| t002 | Decide + implement the REST response placement, and per-type reporting                   | 40m | t001       | **DONE** |
+| t003 | Type-gate `SetSubdomainPolicy` so a non-routable service gets a reason it can act on     | 30m | t002       | **DONE** |
+| t004 | Blast radius: every emission site enumerated, correct-today types regression-tested      | 40m | t002       | **DONE** |
+| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard)                                          | 30m | t003, t004 | **DONE** |
+| t006 | Simplify                                                                                  | 20m | t005       | **DONE** |
+| t007 | Test coverage                                                                             | 30m | t005       | **DONE** |
+| t008 | Closeout                                                                                  | 10m | t007       | **DONE** |
 
 ## Background — two defects in one field, one file, one decision
 
