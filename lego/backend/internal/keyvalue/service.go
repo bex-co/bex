@@ -133,7 +133,7 @@ type KeyValueView struct {
 // against the empty-username form on a --requirepass server.
 type KeyValueConnectionInfo struct {
 	InternalConnectionString string `json:"internalConnectionString"`
-	ExternalConnectionString string `json:"externalConnectionString,omitempty"`
+	ExternalConnectionString string `json:"externalConnectionString"`
 	CLICommand               string `json:"cliCommand"`
 }
 

@@ -43,7 +43,20 @@ type getMetricsArgs struct {
 }
 
 type getMetricsResult struct {
+	// Series is nil-coalesced at every success return: a nil slice marshals to
+	// `null`, while REST's toRenderMetrics always emits `[]`, so a resource with
+	// no series in the window would answer differently depending on the surface
+	// the caller happened to use (w6/m110/t005 — the same required-shape class
+	// w6/m109 fixed on the datastore views).
 	Series []MetricSeries `json:"series"`
+}
+
+// metricSeriesOrEmpty keeps MCP's empty case shaped like REST's `[]`.
+func metricSeriesOrEmpty(series []MetricSeries) []MetricSeries {
+	if series == nil {
+		return []MetricSeries{}
+	}
+	return series
 }
 
 // RegisterMCP adds the get_metrics tool to the shared MCP server.
@@ -97,7 +110,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				}
 			}
 		}
-		return nil, getMetricsResult{Series: all}, nil
+		return nil, getMetricsResult{Series: metricSeriesOrEmpty(all)}, nil
 	})
 	RegisterDatastoreMetricsMCP(s, srv)
 }
@@ -153,6 +166,6 @@ func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 			setLabelOnEach(series, LabelMetric, metric)
 			all = append(all, series...)
 		}
-		return nil, getMetricsResult{Series: all}, nil
+		return nil, getMetricsResult{Series: metricSeriesOrEmpty(all)}, nil
 	})
 }

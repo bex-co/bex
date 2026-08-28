@@ -36,6 +36,7 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -156,6 +157,21 @@ func conformKeyValue(name string) *appv1alpha1.KeyValue {
 	}
 }
 
+// conformDatastoreSecret is the connection Secret the connection-info endpoints
+// read: CNPG's "<db>-app" for Postgres, the operator's KeyValue-named one for
+// Key Value. Without it the handlers stop at core.ErrNotFound and the
+// connection-info conformance cases never reach their schema.
+func conformDatastoreSecret(name string, data map[string]string) *corev1.Secret {
+	b := make(map[string][]byte, len(data))
+	for k, v := range data {
+		b[k] = []byte(v)
+	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Data:       b,
+	}
+}
+
 // conformDeploy creates a canned deploy record for conformance fixtures.
 func conformDeploy(id, appID string) store.Deploy {
 	finished := conformEpoch.Add(2 * time.Minute)
@@ -215,6 +231,13 @@ func TestRenderConformance(t *testing.T) {
 				conformAppWithDomains("web-cd", customFQN),
 				conformDatabase(dbName),
 				conformKeyValue(kvName),
+				conformDatastoreSecret(dbName+"-app", map[string]string{
+					"username": "u", "password": "p", "dbname": "d",
+					"uri": "postgresql://u:p@" + dbName + "-rw.default:5432/d",
+				}),
+				conformDatastoreSecret(kvName, map[string]string{
+					"uri": "redis://default:p@" + kvName + ".default:6379",
+				}),
 			),
 			Namespace: "default",
 			Clock:     func() time.Time { return conformEpoch },
@@ -282,6 +305,19 @@ func TestRenderConformance(t *testing.T) {
 
 	t.Run("keyvalue/get", func(t *testing.T) {
 		check(t, "/v1/key-value/"+kvName, "retrieve-redis")
+	})
+
+	// The connection-info endpoints are separate schemas behind separate
+	// operations — outside the postgres/keyValue resource sweep above, which is
+	// how w6/m109/t008's missing required externalConnectionString survived
+	// t001-t006. Validated here so the whole required-field class is gated, not
+	// just the one field that was found live.
+	t.Run("postgres/connection-info", func(t *testing.T) {
+		check(t, "/v1/postgres/"+dbName+"/connection-info", "retrieve-postgres-connection-info")
+	})
+
+	t.Run("keyvalue/connection-info", func(t *testing.T) {
+		check(t, "/v1/key-value/"+kvName+"/connection-info", "retrieve-key-value-connection-info")
 	})
 
 	t.Run("env-vars/list", func(t *testing.T) {
