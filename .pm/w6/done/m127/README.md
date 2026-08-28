@@ -1,18 +1,26 @@
 # w6 · m127 — A free Key Value created in the dashboard is silently non-durable, on a plan that provisions a 1 GB disk — and `persistenceMode` can never be changed afterwards
 
-**Worker:** worker6 **Goal:** a free Key Value is as durable as its plan actually allows, the UI stops asserting a hardware constraint bex does not have, and persistence is changeable after create like every other Key Value setting **Status:** todo
+**Worker:** worker6 **Goal:** a free Key Value is as durable as its plan actually allows, the UI stops asserting a hardware constraint bex does not have, and persistence is changeable after create like every other Key Value setting **Status:** done
+
+## Resolution (2026-08-27)
+
+- **The form no longer forces `off` on Free, and the false claim is gone (t001).** `dashboard/src/routes/keyvalue.new.tsx` dropped the `isFree`/`effectivePersistence` special-casing and both `disabled={isFree}` locks; the persistence default is `journal-snapshot`, matching the API create path (which defaults via the CRD's `+kubebuilder:default=journal-snapshot`, as observed live). The `keyvalue.fieldPersistenceFreeHint` string ("The Free plan has no persistent disk…") is deleted from **en and zh**.
+- **`persistenceMode` is updatable post-create on all three surfaces (t002).** `KeyValuePatch` gained a `PersistenceMode *string` field with `validate`/`apply` mirroring `maxmemoryPolicy` and a shared `persistenceModeKnown` check reused by create; REST `PATCH /v1/key-value/{id}`, GraphQL `setKeyValuePersistenceMode`, and MCP `update_key_value(persistenceMode:)` all route through the shared `UpdateKeyValue`, so create and update can never diverge. `maxmemoryPolicy` post-create update is untouched and still green.
+- **Existing `off` stores are not force-migrated (t003).** The PATCH path is the deliberate remedy — one call reaches `journal_snapshot` with no recreation and no lost id — because a persistence change rolls the pod and `off` is a legitimate deliberate choice on paid plans; a silent fleet-wide durability change is the opposite failure. Recorded in ADR021 §2.
+- **Ledger corrected (t004).** `ADR018` no longer gives "no persistent disk" as the reason and now documents the post-create `persistenceMode` surface + the free-tier divergence; the `:17` re-baseline note is qualified (covered at create, not update, until w6/m127). ADR021 §2 records the whole decision.
+- **Tests (t006):** REST rescue-scenario (`off` free store → `journal_snapshot` in place), GraphQL `setKeyValuePersistenceMode`, MCP `update_key_value(persistenceMode:)`, underscore normalization, unknown-value 400/error, and nil = unchanged; the dashboard create test now asserts Free is durable-by-default and the persistence control is unlocked. Backend `internal/keyvalue` + `internal/api` and dashboard suites pass.
 
 ## Tasks (in order)
 
 | id   | title                                                                                  | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Stop forcing persistence off on bex's free plan, and correct the claim that explains it    | 45m | —          |
-| t002 | Make `persistenceMode` updatable post-create across REST, GraphQL and MCP                  | 55m | —          |
-| t003 | Decide what happens to free stores already created on `off`                                | 35m | t002       |
-| t004 | Render parity                                                                               | 25m | t001, t002, t003 |
-| t005 | Simplify                                                                                    | 20m | t004       |
-| t006 | Test coverage                                                                               | 40m | t004       |
-| t007 | Closeout                                                                                    | 15m | t005, t006 |
+| t001 | Stop forcing persistence off on bex's free plan, and correct the claim that explains it    | 45m | —          | — **DONE** |
+| t002 | Make `persistenceMode` updatable post-create across REST, GraphQL and MCP                  | 55m | —          | — **DONE** |
+| t003 | Decide what happens to free stores already created on `off`                                | 35m | t002       | — **DONE** |
+| t004 | Render parity                                                                               | 25m | t001, t002, t003 | — **DONE** |
+| t005 | Simplify                                                                                    | 20m | t004       | — **DONE** |
+| t006 | Test coverage                                                                               | 40m | t004       | — **DONE** |
+| t007 | Closeout                                                                                    | 15m | t005, t006 | — **DONE** |
 
 ## Definition of done
 

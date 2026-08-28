@@ -197,6 +197,14 @@ func maxmemoryPolicyKnown(render string) bool {
 	return slices.Contains(validMaxmemoryPolicies, renderToCRD(render))
 }
 
+// persistenceModeKnown is maxmemoryPolicyKnown's sibling for persistenceMode
+// (w6/m127, which made persistence updatable post-create): the one check shared
+// by CreateKeyValue and KeyValuePatch.validate, so persistence — like eviction
+// policy — can never accept different values at create and update.
+func persistenceModeKnown(render string) bool {
+	return slices.Contains(validPersistenceModes, renderToCRD(render))
+}
+
 // validateKeyValueName enforces the user-facing display-name shape (the CRD's
 // spec.name markers). Shared by create and rename so the two paths can never
 // accept different names — the same courtesy validateDatabaseName extends.
@@ -399,7 +407,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		return KeyValueView{}, fmt.Errorf("%w: unknown maxmemoryPolicy %q (valid: %v)", core.ErrBadRequest, req.MaxmemoryPolicy, validMaxmemoryPolicies)
 	}
 	persistenceMode := renderToCRD(req.PersistenceMode)
-	if persistenceMode != "" && !slices.Contains(validPersistenceModes, persistenceMode) {
+	if req.PersistenceMode != "" && !persistenceModeKnown(req.PersistenceMode) {
 		return KeyValueView{}, fmt.Errorf("%w: unknown persistenceMode %q (valid: %v)", core.ErrBadRequest, req.PersistenceMode, validPersistenceModes)
 	}
 	tenantID, tenantOK := s.Tenant(ctx)
@@ -686,6 +694,14 @@ type KeyValuePatch struct {
 	// MaxmemoryPolicy is Render's eviction policy (w7/m45): nil = unchanged.
 	// Render-shaped (underscore) or hyphenated values both accepted, like create.
 	MaxmemoryPolicy *string
+	// PersistenceMode is Render's durability setting — journal-snapshot | snapshot
+	// | off (w6/m127): nil = unchanged. Render's KeyValuePATCHInput carries it, so
+	// this closes the create-only gap rather than opening a divergence, and it is
+	// what lets a store the dashboard once forced onto `off` reach durable
+	// persistence without being recreated. Underscore/hyphen forms both accepted,
+	// like create; the operator's valkeyArgs re-derives the AOF/RDB flags and rolls
+	// the pod on the next sync, exactly as a maxmemoryPolicy change already does.
+	PersistenceMode *string
 	// IPAllowList is the external-endpoint allowlist (w7/m45): nil = unchanged;
 	// a non-nil empty slice CLEARS it (what `keyvalues update --clear-ip-allow-list`
 	// sends). Mirrors PostgresPatch.IPAllowList; the same field the dedicated
@@ -710,6 +726,9 @@ func (patch KeyValuePatch) validate() error {
 	if patch.MaxmemoryPolicy != nil && !maxmemoryPolicyKnown(*patch.MaxmemoryPolicy) {
 		return fmt.Errorf("%w: unknown maxmemoryPolicy %q (valid: %v)", core.ErrBadRequest, *patch.MaxmemoryPolicy, validMaxmemoryPolicies)
 	}
+	if patch.PersistenceMode != nil && !persistenceModeKnown(*patch.PersistenceMode) {
+		return fmt.Errorf("%w: unknown persistenceMode %q (valid: %v)", core.ErrBadRequest, *patch.PersistenceMode, validPersistenceModes)
+	}
 	if patch.IPAllowList != nil {
 		if err := core.ValidateAllowList(*patch.IPAllowList); err != nil {
 			return err
@@ -727,6 +746,9 @@ func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
 	}
 	if patch.MaxmemoryPolicy != nil {
 		kv.Spec.MaxmemoryPolicy = renderToCRD(*patch.MaxmemoryPolicy)
+	}
+	if patch.PersistenceMode != nil {
+		kv.Spec.PersistenceMode = renderToCRD(*patch.PersistenceMode)
 	}
 	if patch.IPAllowList != nil {
 		kv.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)

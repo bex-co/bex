@@ -220,6 +220,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setKeyValueMaxmemoryPolicy": gqlutil.PatchMutation(keyValueGQLType, "maxmemoryPolicy",
 			func(policy string) KeyValuePatch { return KeyValuePatch{MaxmemoryPolicy: &policy} },
 			s.UpdateKeyValue, s.PreviewUpdateKeyValue),
+		// setKeyValuePersistenceMode is the sibling of setKeyValueMaxmemoryPolicy
+		// (w6/m127): persistenceMode becomes updatable post-create through the same
+		// shared UpdateKeyValue, so a store created on `off` can reach durable
+		// persistence without being recreated. Render's PATCH input carries it too.
+		"setKeyValuePersistenceMode": gqlutil.PatchMutation(keyValueGQLType, "persistenceMode",
+			func(mode string) KeyValuePatch { return KeyValuePatch{PersistenceMode: &mode} },
+			s.UpdateKeyValue, s.PreviewUpdateKeyValue),
 		"renameKeyValue": gqlutil.PatchMutation(keyValueGQLType, "name",
 			func(name string) KeyValuePatch { return KeyValuePatch{Name: &name} },
 			s.UpdateKeyValue, s.PreviewUpdateKeyValue),

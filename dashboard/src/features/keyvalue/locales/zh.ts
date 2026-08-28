@@ -184,11 +184,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "如何将数据持久化到磁盘，以便在重启后保留。",
     description: "Create-Key-Value persistence mode helper text",
   },
-  "keyvalue.fieldPersistenceFreeHint": {
-    message: "免费套餐没有持久化磁盘，因此持久化处于关闭状态。",
-    description:
-      "Create-Key-Value persistence helper text when Free plan is selected",
-  },
   "keyvalue.persistenceJournalSnapshot": {
     message: "日志 + 快照",
     description: "Persistence mode option: AOF journal plus RDB snapshots",
