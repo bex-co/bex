@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -1091,7 +1092,7 @@ func TestBuildSecondsFromFakeJobs(t *testing.T) {
 		Base: &core.Base{Client: cl, Namespace: "default"},
 	}
 
-	secs, ok := svc.queryBuildSeconds(context.Background(), "myapp", window, end)
+	secs, ok := svc.queryBuildSeconds(context.Background(), "myapp", "default", window, end)
 	if !ok {
 		t.Fatal("build_seconds: expected successful Job listing")
 	}
@@ -1540,5 +1541,265 @@ func TestRollupCoversDatastoreWindow(t *testing.T) {
 	}
 	if kvRows == 0 {
 		t.Error("rollup: no KeyValue rows written")
+	}
+}
+
+// --- w6/m110: App compute is metered against the pods that actually exist ---
+
+// TestAppInstanceSecondsSelectsByKubernetesObjectName is Defect A. The App
+// meter used to build its pod matcher from store.App.Name — the workspace-
+// scoped public service name — while the App's Deployment (and therefore its
+// pods) is named core.CRName(tenant, name). PromQL regexes are fully anchored,
+// so that matcher hit zero pods for every App at every name length: compute was
+// silently metered as a healthy zero for the meter's whole life, which is why
+// only egress_bytes ever appeared on a service's charge tree while Postgres and
+// Key Value — which pass a real CR name — billed correctly.
+func TestAppInstanceSecondsSelectsByKubernetesObjectName(t *testing.T) {
+	var mu sync.Mutex
+	var queries []string
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		queries = append(queries, r.URL.Query().Get("query"))
+		mu.Unlock()
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"2"]}]}}`))
+	}))
+	defer prom.Close()
+
+	app := store.App{ID: "srv-acc-001", TenantID: "tea-acc-001", Name: "hello-go", Tier: "starter"}
+	st := newMemUsageStore()
+	svc := NewService(&core.Base{Client: appMeterClient(t, app), Namespace: "default"}, st, prom.URL, prom.Client())
+
+	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+	if got := svc.processAppMeterWindowResult(context.Background(), app, store.UsageKindInstanceSeconds, window); got != appMeterWindowSuccess {
+		t.Fatalf("instance_seconds window: want success, got %v", got)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(queries) != 1 {
+		t.Fatalf("expected exactly one Prometheus query, got %d: %v", len(queries), queries)
+	}
+	query := queries[0]
+	// The Kubernetes object name, which is what the pods are named after.
+	if !strings.Contains(query, `pod=~"tea-acc-001-hello-go-`) {
+		t.Errorf("instance_seconds query does not select the CR-named pods: %s", query)
+	}
+	// The bare store name must never anchor the matcher: no pod is named that.
+	if strings.Contains(query, `pod=~"hello-go-`) {
+		t.Errorf("instance_seconds query still selects by the workspace-scoped store name: %s", query)
+	}
+	// 2 pods × 3600 s.
+	k := usageKey{store.ResourceKindService, app.ID, store.UsageKindInstanceSeconds, "starter", window}
+	st.mu.Lock()
+	row, ok := st.rows[k]
+	st.mu.Unlock()
+	if !ok || row.Quantity != 7200 {
+		t.Fatalf("instance_seconds row: want 7200, got %+v (present=%v)", row, ok)
+	}
+}
+
+// TestAppInstanceSecondsMatchesTruncatedPodNames is Defect B reached through the
+// meter: a service whose name pushes the generated pod name past Kubernetes'
+// 58-char truncation point loses the hyphen before the random suffix, and the
+// two-segment-only matcher stopped selecting it. 23 characters is the live case
+// (qa-20260826-webhook-svc); the threshold is 22, well inside the 30 characters
+// ValidAppName allows.
+func TestAppInstanceSecondsMatchesTruncatedPodNames(t *testing.T) {
+	app := store.App{ID: "srv-long", TenantID: "tea-d98210cbbpdc73dcrkvg", Name: "qa-20260826-webhook-svc", Tier: "starter"}
+	var query string
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query().Get("query")
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"1"]}]}}`))
+	}))
+	defer prom.Close()
+
+	svc := NewService(&core.Base{Client: appMeterClient(t, app), Namespace: "default"}, newMemUsageStore(), prom.URL, prom.Client())
+	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+	if got := svc.processAppMeterWindowResult(context.Background(), app, store.UsageKindInstanceSeconds, window); got != appMeterWindowSuccess {
+		t.Fatalf("instance_seconds window: want success, got %v", got)
+	}
+
+	matcher := regexp.MustCompile(`pod=~"([^"]+)"`).FindStringSubmatch(query)
+	if matcher == nil {
+		t.Fatalf("no pod matcher in query: %s", query)
+	}
+	// Prometheus anchors label regexes as ^(?:re)$.
+	re := regexp.MustCompile(`^(?:` + matcher[1] + `)$`)
+	// The live pod names for this service, straight from Loki's `instance` label.
+	for _, pod := range []string{
+		"tea-d98210cbbpdc73dcrkvg-qa-20260826-webhook-svc-55d855bcb7sxgd",
+		"tea-d98210cbbpdc73dcrkvg-qa-20260826-webhook-svc-6d6cfb74ddh5dr",
+		"tea-d98210cbbpdc73dcrkvg-qa-20260826-webhook-svc-7c964c469k4w25",
+	} {
+		if !re.MatchString(pod) {
+			t.Errorf("meter does not select live pod %q\nmatcher: %s", pod, matcher[1])
+		}
+	}
+}
+
+// TestAppMeterUnresolvableAppIsUnavailableNotZero keeps a selector that could
+// not identify its App distinguishable from an App genuinely at zero replicas.
+// A healthy zero is a claim that the meter measured something; recording one for
+// an App it could not even name is what let Defect A stay silent. No row means
+// the per-meter cursor retries the window.
+func TestAppMeterUnresolvableAppIsUnavailableNotZero(t *testing.T) {
+	prom := fakeProm(2.0)
+	defer prom.Close()
+
+	st := newMemUsageStore()
+	// No Client and no tenant/name to derive an object name from: identity is
+	// genuinely unknown.
+	svc := NewService(&core.Base{Namespace: "default"}, st, prom.URL, prom.Client())
+	app := store.App{ID: "srv-unknown", Tier: "starter"}
+	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+
+	if got := svc.processAppMeterWindowResult(context.Background(), app, store.UsageKindInstanceSeconds, window); got != appMeterWindowSourceUnavailable {
+		t.Fatalf("unresolvable App: want source-unavailable, got %v", got)
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if len(st.rows) != 0 {
+		t.Errorf("unresolvable App wrote a usage_hourly row: %+v", st.rows)
+	}
+}
+
+// TestInstanceSecondsZeroFromRunningAppIsDegraded is the health half of Defect
+// A. A selector that matches no pods and an App genuinely at zero replicas both
+// arrive as an empty Prometheus vector; recording both as `healthy` is what let
+// a meter that had never measured anything look fine for its whole life. The
+// row is still written — a genuinely-down App must not stall the cursor forever
+// — but the source observation stops asserting the zero is sound.
+func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
+	cases := []struct {
+		name  string
+		spec  appv1alpha1.AppSpec
+		pods  float64
+		want  string
+		quant int64
+	}{{
+		name: "running web App reporting no pods is suspicious",
+		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
+		pods: 0, want: store.UsageSourceDegraded, quant: 0,
+	}, {
+		name: "App scaled to zero has an honest zero",
+		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 0},
+		pods: 0, want: store.UsageSourceHealthy, quant: 0,
+	}, {
+		name: "suspended App has an honest zero",
+		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 3, Suspended: true},
+		pods: 0, want: store.UsageSourceHealthy, quant: 0,
+	}, {
+		name: "cron App has pods only during a run",
+		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
+		pods: 0, want: store.UsageSourceHealthy, quant: 0,
+	}, {
+		name: "running App with pods stays healthy",
+		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
+		pods: 2, want: store.UsageSourceHealthy, quant: 7200,
+	}}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			prom := fakeProm(tc.pods)
+			defer prom.Close()
+
+			scheme := runtime.NewScheme()
+			if err := appv1alpha1.AddToScheme(scheme); err != nil {
+				t.Fatal(err)
+			}
+			app := store.App{ID: "srv-h", TenantID: "tea-h", Name: "web", Tier: "starter"}
+			cr := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tea-h-web",
+					Namespace: "tea-h",
+					Labels:    map[string]string{store.LabelAppID: app.ID},
+				},
+				Spec: tc.spec,
+			}
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(cr).Build()
+
+			st := newMemUsageStore()
+			svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
+			window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+			if got := svc.processAppMeterWindowResult(context.Background(), app, store.UsageKindInstanceSeconds, window); got != appMeterWindowSuccess {
+				t.Fatalf("window: want success, got %v", got)
+			}
+
+			k := usageKey{store.ResourceKindService, app.ID, store.UsageKindInstanceSeconds, "starter", window}
+			st.mu.Lock()
+			row, ok := st.rows[k]
+			st.mu.Unlock()
+			if !ok {
+				t.Fatal("no usage_hourly row written — the cursor would stall on this window")
+			}
+			if row.Quantity != tc.quant {
+				t.Errorf("quantity: want %d, got %d", tc.quant, row.Quantity)
+			}
+			if len(row.SourceHealth) != 1 {
+				t.Fatalf("want exactly one source observation, got %+v", row.SourceHealth)
+			}
+			if row.SourceHealth[0].State != tc.want {
+				t.Errorf("source health: want %q, got %q", tc.want, row.SourceHealth[0].State)
+			}
+		})
+	}
+}
+
+// TestBuildSecondsSelectsCRNameInBuildNamespace is the build_seconds half of
+// Defect A: the operator stamps app.bex.co/build with the App CR's name and runs
+// the Job in BEX_BUILD_NAMESPACE, while the meter listed by the store name in
+// the shared namespace — so build compute was never metered either.
+func TestBuildSecondsSelectsCRNameInBuildNamespace(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := batchv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	app := store.App{ID: "srv-b", TenantID: "tea-b", Name: "myapp"}
+	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+	start := metav1.NewTime(window.Add(10 * time.Minute))
+	done := metav1.NewTime(window.Add(17 * time.Minute))
+
+	real := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "build-tea-b-myapp-abc",
+			Namespace: "bex-build",
+			Labels:    map[string]string{labelBuild: "tea-b-myapp"},
+		},
+		Status: batchv1.JobStatus{StartTime: &start, CompletionTime: &done},
+	}
+	// What the old selector looked for and would have found instead.
+	decoy := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "build-myapp-xyz",
+			Namespace: "default",
+			Labels:    map[string]string{labelBuild: "myapp"},
+		},
+		Status: batchv1.JobStatus{StartTime: &start, CompletionTime: &done},
+	}
+	projected := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name:      "tea-b-myapp",
+		Namespace: "tea-b",
+		Labels:    map[string]string{store.LabelAppID: app.ID},
+	}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(real, decoy, projected).Build()
+
+	st := newMemUsageStore()
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, "", nil)
+	svc.BuildNamespace = "bex-build"
+
+	if got := svc.processAppMeterWindowResult(context.Background(), app, store.UsageKindBuildSeconds, window); got != appMeterWindowSuccess {
+		t.Fatalf("build_seconds window: want success, got %v", got)
+	}
+	k := usageKey{store.ResourceKindService, app.ID, store.UsageKindBuildSeconds, "", window}
+	st.mu.Lock()
+	row, ok := st.rows[k]
+	st.mu.Unlock()
+	if !ok {
+		t.Fatal("no build_seconds row written")
+	}
+	if row.Quantity != 7*60 {
+		t.Errorf("build_seconds: want %d (the CR-named Job in bex-build), got %d", 7*60, row.Quantity)
 	}
 }

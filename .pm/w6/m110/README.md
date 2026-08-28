@@ -1,6 +1,6 @@
 # w6 · m110 — App compute is never metered, and a service named ≥22 chars loses CPU/memory/instance metrics
 
-**Worker:** worker6 **Goal:** every App's pods are selected by an identity that actually matches them — so App compute is metered and billed like Postgres/Key Value already is, and the Metrics page's Memory/CPU/Total Instances cards stop going blank for services with ordinary-length names. **Status:** todo
+**Worker:** worker6 **Goal:** every App's pods are selected by an identity that actually matches them — so App compute is metered and billed like Postgres/Key Value already is, and the Metrics page's Memory/CPU/Total Instances cards stop going blank for services with ordinary-length names. **Status:** code fix landed (t001–t004, t007); live verification + closeout open (t005, t006, t008)
 
 ## Background (found live, 2026-08-27, 21st `/qa-find-bugs` run)
 
@@ -159,14 +159,55 @@ Not an authorization or existence boundary — both defects are identity/selecti
 
 | id   | title                                                                                                     | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Settle the pod-identity selector: name-shape tolerance vs a kube-state-metrics join, and which autoscale reader production runs | 40m | —          |
-| t002 | Usage meter: select App pods by the Kubernetes object name, not the workspace-scoped store name             | 45m | t001       |
-| t003 | Make all three cAdvisor pod selectors survive Kubernetes' 58-char generateName truncation                    | 45m | t001       |
-| t004 | Decide and implement the repair for `usage_hourly` instance-seconds rows already persisted as healthy zeros  | 40m | t002       |
+| t001 | Settle the pod-identity selector: name-shape tolerance vs a kube-state-metrics join, and which autoscale reader production runs — **DONE** | 40m | —          |
+| t002 | Usage meter: select App pods by the Kubernetes object name, not the workspace-scoped store name — **DONE**             | 45m | t001       |
+| t003 | Make all three cAdvisor pod selectors survive Kubernetes' 58-char generateName truncation — **DONE**                    | 45m | t001       |
+| t004 | Decide and implement the repair for `usage_hourly` instance-seconds rows already persisted as healthy zeros — **DONE**  | 40m | t002       |
 | t005 | Render parity — metrics across REST/GraphQL/MCP + the dashboard charge tree                                  | 30m | t003, t004 |
 | t006 | Simplify — `/simplify` over the code this milestone changed                                                  | 20m | t005       |
-| t007 | Test coverage                                                                                                | 45m | t005       |
+| t007 | Test coverage — **DONE**                                                                                                | 45m | t005       |
 | t008 | Closeout                                                                                                     | 15m | t007       |
+
+## Resolution (landed 2026-08-27)
+
+Both filed defects reproduced from the source before anything was changed, and both are real. A **third instance of Defect A** turned up in the same pass and is fixed with it.
+
+### What was wrong, confirmed in-repo
+
+| #   | file:line                  | verified                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A   | `usage/service.go:808`     | `store.App.Name` is written from `req.Name` (`apps/service.go:1917`) — the bare workspace-scoped name — while the CR, and therefore the Deployment, and therefore the pods, are named `core.CRName(tenantID, name)` (`apps/service.go:1735`). The metrics path was already correct for the mirror reason: `metrics/service.go:615` passes `app.Name` off an `*appv1alpha1.App`, which IS the object name. The asymmetry is exactly "which name got passed".        |
+| A′  | `usage/service.go:1103`    | `queryBuildSeconds` had the **same** wrong name **and** the wrong namespace: the operator stamps `app.bex.co/build` with the App CR's name (`app_controller.go:770` → `build/build.go:980`) and runs the Job in `BEX_BUILD_NAMESPACE` (`bex-build`, `config/api/deployment.yaml:329`), while the meter listed by the store name in `s.Namespace`. So `build_seconds` was never metered either — the milestone parked this as a look-alike; it is the same cause.  |
+| B   | 4 lines / 3 files          | `k8s.io/apiserver@v0.35.0/pkg/storage/names/generate.go` reads exactly as filed (`maxNameLength = 63`, `randomLength = 5`, truncate-then-append).                                                                                                                                                                                                                                                                                                               |
+
+### Decisions
+
+**t001 — selector.** Chose **(a) name-shape tolerance**, refined: rather than the filed `(-[a-z0-9]{5})?`, the truncated alternative is pinned to its exact length, `<obj>-[a-z0-9]{62-len(obj)}`. A truncated pod name is always exactly 63 chars (58 kept + 5 appended), so the length is known, and exact-length + a hyphen-free class is what keeps a sibling App out: any other workload whose name starts with `<obj>-` carries a hyphen after its own extra segment and can never fill N alphanumerics. The open `+` form gives that guarantee up in one narrow case (a sibling whose truncated remainder happens to be exactly 5 chars). Rejected **(b) the kube-state-metrics join**: it buys immunity to Kubernetes' generator at the cost of a join on every metrics read and a dependency on kube-state-metrics staying scraped, and it cannot be tested without a live cluster — where (a) is exhaustively testable against the generator itself.
+
+**t001 — shared helper: yes.** `egressquery.PodNameRegex` / `PodNameMatcher` (`lego/backend/internal/egressquery/podname.go`) is the single definition for the backend's two call sites — three copies of one PromQL fragment is what let this drift. The operator imports no backend package, so `controller.podNameRegex` is a deliberate second copy with a comment binding it to the first; a test pins both to the same live pod names.
+
+**t001 — which autoscale reader production runs: metrics-server.** `cmd/manager/main.go:424` constructs `NewMetricsServerReader(cs)` and nothing else; `NewPrometheusMetricsReader` is not wired anywhere in the manager (`BEX_PROM_URL` at `main.go:498` feeds the _database_ disk-usage reader, not autoscaling). So the autoscaling impact was **not** live — the reader is a latent fallback. Fixed anyway, since a cluster without metrics-server would hit it silently.
+
+**t004 — historical `usage_hourly` zeros: (a) leave history as-is.** Prometheus retention is **`3d`** (`deploy/gitops/base/prometheus.yaml:128`), so every window older than 72 hours is unrecoverable at any price — that is essentially the entire affected range. Of the 72 h that survive, `BEX_STRIPE_SEAL_HOURS` defaults to 48 (ADR040 §3), so two thirds of it is already sealed and exported; re-metering it would either double-count against Stripe or need suppression plumbing built for a single day of recovery. The remaining ≤24 h would additionally need a cursor-rewind mechanism that does not exist. The error direction is under-billing, never over-billing, so no customer correction is owed. Recorded here rather than implied, per the task's own instruction.
+
+**DoD bullet 6 — zero vs unmatched.** An empty Prometheus vector cannot, by itself, distinguish "the selector matched nothing" from "the App is genuinely at zero replicas", so the discriminator is the App's own desired state. `instance_seconds` now writes the zero row (a genuinely-down App must not stall the cursor forever) but records the source observation as **`degraded`** instead of `healthy` when the App is not suspended, not a cron job, and has `spec.replicas > 0`. `degraded` already flows into `UsageCoverage.DegradedSources` and clears `Complete` (`store/usage.go`), which is the signal that would have surfaced Defect A on day one. An App that cannot be identified at all is `unavailable` with no row, so the cursor retries the window.
+
+### What changed
+
+- `lego/backend/internal/egressquery/podname.go` (new) — `PodNameRegex` / `PodNameMatcher`, with the generator's constants and the truncation reasoning inline.
+- `lego/backend/internal/metrics/source.go` — `promResourceQueryFor` uses the shared matcher (moves REST, GraphQL and MCP together; they share one funnel).
+- `lego/backend/internal/usage/service.go` — `resolveAppCR` extracted from the egress path and reused; `appPodIdentity` returns the CR's real name + namespace with a `CRName`/`AppNamespace` fallback; `queryInstanceSeconds` and `queryBuildSeconds` take the object name; `expectsRunningPods` + `degradeSourceHealth` implement the suspicious-zero signal; `BuildNamespace` field added.
+- `lego/backend/cmd/api/main.go` — wires `usageSvc.BuildNamespace` from `BEX_BUILD_NAMESPACE`.
+- `lego/operator/internal/controller/autoscale.go` — `podNameRegex` helper, both queries switched to it.
+- `docs/ADR010-observability.md` — the heuristic paragraph and the selector line now describe both shapes and say `<obj>` is the Kubernetes object name.
+- Tests: `egressquery/podname_test.go` (new; includes a sweep that reproduces `SimpleNameGenerator` for every service-name length 1–30 × hash length 6–10 and asserts the selector matches every name it generates), `metrics/range_test.go`, `usage/service_test.go`, `operator/internal/controller/autoscale_podname_test.go`.
+
+`make test`, `cd lego/backend && go test ./...`, and `make lint` (all four modules) pass.
+
+### Still open
+
+- **t005 / DoD bullets 2–5** need the fixed bex-api deployed: they are live assertions against `dashboard.bex.co`. The code-side half of t005 is structural — REST/GraphQL/MCP reach one funnel, so they cannot disagree — but that has not been observed on the live product.
+- **t006** (`/simplify`) and **t008** (closeout) not run.
 
 ## Definition of done
 

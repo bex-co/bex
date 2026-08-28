@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -164,7 +165,11 @@ func TestRangedSourceErrorSurfaces(t *testing.T) {
 
 func TestPromResourceQueryFor(t *testing.T) {
 	req := ResourceMetricsRangeRequest{Namespace: "default", App: "web", Resolution: 60 * time.Second}
-	matchers := `namespace="default",pod=~"web-[a-z0-9]+-[a-z0-9]{5}",container!=""`
+	// Two alternatives: the untruncated two-segment pod name, and the
+	// single-segment name Kubernetes leaves when generateName truncates
+	// (w6/m110). 59 = 63 - len("web") - 1, the exact length a truncated pod
+	// name always has.
+	matchers := `namespace="default",pod=~"web-[a-z0-9]+-[a-z0-9]{5}|web-[a-z0-9]{59}",container!=""`
 
 	req.Metric = MetricCPU
 	if got, want := promResourceQueryFor(req), `sum by (pod) (rate(container_cpu_usage_seconds_total{`+matchers+`}[60s]))`; got != want {
@@ -177,6 +182,40 @@ func TestPromResourceQueryFor(t *testing.T) {
 	req.Metric = MetricInstanceCount
 	if got, want := promResourceQueryFor(req), `count(sum by (pod) (container_memory_working_set_bytes{`+matchers+`}))`; got != want {
 		t.Errorf("instance_count query:\n got %q\nwant %q", got, want)
+	}
+}
+
+// TestPromResourceQuerySelectsTruncatedPodNames is w6/m110 Defect B at the
+// metrics surface: the Metrics page's Memory/CPU/Total Instances cards read
+// "No data in range" for every service whose Kubernetes object name pushed the
+// generated pod name past the 58-char truncation point, while the Network cards
+// beside them — which select by the Traefik service label, not the pod name —
+// had data over the same window for the same service. The pod names below are
+// the live ones for qa-20260826-webhook-svc (23 characters).
+func TestPromResourceQuerySelectsTruncatedPodNames(t *testing.T) {
+	req := ResourceMetricsRangeRequest{
+		Namespace:  "tea-d98210cbbpdc73dcrkvg",
+		App:        "tea-d98210cbbpdc73dcrkvg-qa-20260826-webhook-svc",
+		Metric:     MetricMemory,
+		Resolution: 60 * time.Second,
+	}
+	matcher := regexp.MustCompile(`pod=~"([^"]+)"`).FindStringSubmatch(promResourceQueryFor(req))
+	if matcher == nil {
+		t.Fatalf("no pod matcher in query: %s", promResourceQueryFor(req))
+	}
+	re := regexp.MustCompile(`^(?:` + matcher[1] + `)$`) // Prometheus anchors as ^(?:re)$
+	for _, pod := range []string{
+		"tea-d98210cbbpdc73dcrkvg-qa-20260826-webhook-svc-55d855bcb7sxgd",
+		"tea-d98210cbbpdc73dcrkvg-qa-20260826-webhook-svc-6d6cfb74ddh5dr",
+		"tea-d98210cbbpdc73dcrkvg-qa-20260826-webhook-svc-7c964c469k4w25",
+	} {
+		if !re.MatchString(pod) {
+			t.Errorf("resource query does not select live pod %q\nmatcher: %s", pod, matcher[1])
+		}
+	}
+	// A short-named service in the same namespace must not be swept in.
+	if re.MatchString("tea-d98210cbbpdc73dcrkvg-block-eden-mono-5f557c45fd-ll7x9") {
+		t.Errorf("resource query selects another App's pods\nmatcher: %s", matcher[1])
 	}
 }
 

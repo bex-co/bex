@@ -247,13 +247,15 @@ func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRa
 //
 // kubelet metrics carry pod NAMES but not pod labels (there is no
 // app.bex.co/app to match on), so an App's pods are matched by the Deployment
-// pod-name shape: <app>-<replicaset-hash>-<5-char-suffix>. Like the Traefik
-// service selector this is a heuristic — but anchored and two-segment, so app
-// "web" never matches a "web-api-…-…" pod. container!="" drops any
-// pod-sandbox/aggregate rows that survive the scrape-side relabeling.
+// pod-name shape — see egressquery.PodNameRegex, which owns both the
+// untruncated <app>-<replicaset-hash>-<5-char-suffix> form and the single-
+// segment name Kubernetes leaves once generateName truncates past 58 chars
+// (w6/m110: the two-segment-only selector blanked Memory/CPU/Total Instances
+// for every service whose object name crossed that threshold). Like the Traefik
+// service selector this is a reconstruction from names, but fully anchored, so
+// app "web" never matches a "web-api-…-…" pod.
 func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
-	matchers := fmt.Sprintf(`namespace=%q,pod=~%q,container!=""`,
-		req.Namespace, fmt.Sprintf(`%s-[a-z0-9]+-[a-z0-9]{5}`, egressquery.RegexEscape(req.App)))
+	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
 	switch req.Metric {
 	case MetricMemory:
 		return fmt.Sprintf(`sum by (pod) (container_memory_working_set_bytes{%s})`, matchers)
