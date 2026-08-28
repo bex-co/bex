@@ -1,6 +1,6 @@
 # w6 · m118 — Nothing caps instance count by plan: a free service runs up to 100 pods at `$0.00/second`, under UI copy promising it is "billed accordingly"
 
-**Worker:** worker6 **Goal:** free-plan replica policy is decided and enforced — or deliberately left open with the UI no longer claiming those instances are billed **Status:** implemented 2026-08-27 (code + all local gates green: tiers/backend/operator tests, `make test` envtest, lint, dashboard typecheck+test) — **live prod re-verification (t005 over-cap scale across REST/GraphQL/MCP + `/instances` re-run) pending a deploy**, same deploy-gated shape as `w6/m110`. See the Resolution section below.
+**Worker:** worker6 **Goal:** free-plan replica policy is decided and enforced — or deliberately left open with the UI no longer claiming those instances are billed **Status:** implemented and deployed (`9917191f` is contained in the production image pinned by `71fe9660`) — code and all local gates are green; t005/t008 remain open only for the authenticated production over-cap parity and `/instances` re-run. See the Resolution section below.
 
 ## Tasks (in order)
 
@@ -72,7 +72,7 @@ Triaged the filing against the code: **every claim verified accurate** — `Scal
 
 **t004 — operator defense-in-depth (done).** `clampReplicas(app, n)` now reads the plan cap from the tier catalog, so a hand-applied CR or projector bug can never run more pods than the plan allows. Three callers updated (`app_controller.go` ×2, `deployment_projection.go` ×1). An untiered/bare CR keeps only `MaxReplicas` (matching how it also gets no tier resource limits).
 
-**t005 — parity ledger (docs done; live re-run pending).** ADR030 records the policy + cost reasoning; ADR018 rows 68 & 69 updated (row 68's w1/m81 divergence superseded). **Remaining, deploy-gated:** attempt an over-cap scale through REST/GraphQL/MCP on a live free service and re-run the scale→`replicas`→`/instances` sequence to confirm agreement — cannot run from here (no prod deploy; commit/push is `/ship`-gated). Same open shape as `w6/m110`.
+**t005 — parity ledger (docs done; live re-run pending).** ADR030 records the policy + cost reasoning; ADR018 rows 68 & 69 updated (row 68's w1/m81 divergence superseded). The fix is deployed: `9917191f` is an ancestor of the production image pinned by `71fe9660`. **Remaining, credential-gated:** attempt an over-cap scale through REST/GraphQL/MCP on a live free service and re-run the scale→`replicas`→`/instances` sequence to confirm agreement.
 
 **t006/t007 — simplify + tests (done).** New coverage red-before-green: `tiers_test.go` (`TestComputeInstanceCap`), backend `instance_cap_test.go` (Scale/create/autoscaling/downgrade boundary + the 5-type family), operator `deployment_projection_test.go` (`TestApplyDeploymentSpecCapsFreePlanReplicas`). Four pre-existing fixtures that scaled a free/untiered service past 1 were corrected (maintenance-mode ×2, blueprint worker, stack autoscaling). Code is minimal and lint-clean (0 issues on the three touched packages); no separate `/simplify` agent pass was run.
 
