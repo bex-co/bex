@@ -26,6 +26,7 @@ limitations under the License.
 package usage
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log"
@@ -89,6 +90,11 @@ type Service struct {
 	// cached, preserving the poll-as-retry graceful-degradation contract.
 	billingCache *core.TTLCache[*billing.Billing]
 	promHTTP     *http.Client
+	// BuildNamespace is BEX_BUILD_NAMESPACE — the namespace the operator runs
+	// build Jobs in, which is where build_seconds must look for them. Empty
+	// means the operator co-locates them with the App (app_controller.go's
+	// buildNamespace()), so the meter falls back to the App's own namespace.
+	BuildNamespace string
 }
 
 // BillingReader reads a workspace's real Stripe cost + finalized invoices
@@ -802,18 +808,47 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 	expectedFrom := usageExpectedFrom(app.CreatedAt)
 	switch kind {
 	case store.UsageKindInstanceSeconds:
-		// The App's pods live in its per-tenant namespace under ADR043, so the
-		// cAdvisor `namespace=` matcher must target AppNamespace(app.TenantID), not
-		// the shared namespace (which after the migration holds none of its pods).
-		quantity, ok = s.queryInstanceSeconds(ctx, app.Name, s.AppNamespace(app.TenantID), window, end)
+		// The pods are named after the App's Kubernetes object, NOT after
+		// store.App.Name (the workspace-scoped public service name) — w6/m110
+		// Defect A: passing the store name built a matcher that hit zero pods for
+		// every App at every name length, so App compute was metered as a healthy
+		// zero for the meter's whole life while Postgres/Key Value (which pass a
+		// real CR name) billed correctly. Resolving the CR also supplies the
+		// per-tenant namespace its pods actually live in under ADR043; the shared
+		// namespace holds none of them after the migration.
+		cr, resolved := s.resolveAppCR(ctx, app, store.UsageKindInstanceSeconds)
+		crName, namespace, identified := s.appPodIdentity(app, cr)
+		if !identified {
+			quantity, ok = 0, false
+		} else {
+			quantity, ok = s.queryInstanceSeconds(ctx, crName, namespace, window, end)
+		}
 		health = oneSourceHealth(store.UsageSourceInstance, ok, expectedFrom)
+		// A zero from an App that is supposed to be running is not coverage
+		// evidence, it is a selector that found nothing — the exact signal that
+		// stayed silent for the life of this meter. Keep the row so the cursor
+		// still advances (a genuinely-down App must not stall the meter forever),
+		// but stop the health record from asserting the zero is sound.
+		if ok && quantity == 0 && resolved && expectsRunningPods(cr) {
+			health = degradeSourceHealth(health)
+		}
 	case store.UsageKindEgressBytes:
 		quantity, health, ok = s.queryEgressBytesEvidence(ctx, app, window, end)
 		for i := range health {
 			health[i].ExpectedFrom = expectedFrom
 		}
 	case store.UsageKindBuildSeconds:
-		quantity, ok = s.queryBuildSeconds(ctx, app.Name, window, end)
+		// Same identity defect as instance_seconds above: the operator stamps
+		// app.bex.co/build with the App CR's name (operator/internal/build/build.go),
+		// and the Job lives in BEX_BUILD_NAMESPACE — never the store name in the
+		// shared namespace.
+		cr, _ := s.resolveAppCR(ctx, app, store.UsageKindBuildSeconds)
+		crName, namespace, identified := s.appPodIdentity(app, cr)
+		if !identified {
+			quantity, ok = 0, false
+		} else {
+			quantity, ok = s.queryBuildSeconds(ctx, crName, cmp.Or(s.BuildNamespace, namespace), window, end)
+		}
 		health = oneSourceHealth(store.UsageSourceBuild, ok, expectedFrom)
 	default:
 		log.Printf("usage: unknown App meter %q for %s", kind, app.ID)
@@ -875,15 +910,18 @@ func (s *Service) recordSourceHealth(ctx context.Context, workspaceID, resourceK
 
 // queryInstanceSeconds returns how many seconds at least one container for the
 // app was running in [start, end), using cAdvisor's
-// container_memory_working_set_bytes as a presence signal (same matcher as the
-// metrics feature's instance-count query). The result is count-of-present-pods
-// × window-seconds, truncated to an integer. Used for App (ReplicaSet) pods
-// whose names follow the two-segment pattern <appName>-<hash>-<hash5>.
-func (s *Service) queryInstanceSeconds(ctx context.Context, appName, namespace string, start, end time.Time) (int64, bool) {
-	matchers := fmt.Sprintf(
-		`namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""`,
-		namespace, egressquery.RegexEscape(appName))
-	return s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, appName)
+// container_memory_working_set_bytes as a presence signal (the same matcher as
+// the metrics feature's instance-count query — egressquery.PodNameMatcher is
+// shared with metrics/source.go precisely so a service can never be charged for
+// pods its Metrics page does not chart, or the reverse). The result is
+// count-of-present-pods × window-seconds, truncated to an integer.
+//
+// crName is the App's Kubernetes object name (core.CRName(tenant, name)), which
+// is what its ReplicaSet pods are named after — not the workspace-scoped
+// store.App.Name.
+func (s *Service) queryInstanceSeconds(ctx context.Context, crName, namespace string, start, end time.Time) (int64, bool) {
+	return s.queryInstanceSecondsByMatcher(
+		ctx, egressquery.PodNameMatcher(namespace, crName), start, end, crName)
 }
 
 // queryInstanceSecondsStateful returns instance-seconds for a StatefulSet-style
@@ -961,24 +999,80 @@ func (s *Service) queryEgressBytes(ctx context.Context, app store.App, start, en
 	return quantity, ok
 }
 
-func (s *Service) queryEgressBytesEvidence(ctx context.Context, app store.App, start, end time.Time) (int64, []store.UsageSourceObservation, bool) {
+// resolveAppCR returns the projected App CR for a control-plane row, resolved
+// by its unique app-id label across every workspace: per-tenant namespaces
+// (ADR043) scatter the CRs across `<ws>` namespaces, so this must list
+// cluster-wide, never scoped to a single namespace. kind names the meter for
+// the log line. A miss is a source-unavailable signal, never a healthy zero —
+// the meter that cannot identify its App has measured nothing, and saying
+// otherwise is what let w6/m110's Defect A stay silent.
+func (s *Service) resolveAppCR(ctx context.Context, app store.App, kind string) (*appv1alpha1.App, bool) {
 	if s.Client == nil {
-		return 0, unavailableAppEgressSources(false), false
+		return nil, false
 	}
-	// Resolve the App CR by its unique app-id across every workspace: per-tenant
-	// namespaces (ADR043) scatter the CRs across `<ws>` namespaces, so this must
-	// list cluster-wide, never scoped to a single namespace.
 	var projected appv1alpha1.AppList
 	if err := s.Client.List(ctx, &projected, client.MatchingLabels{store.LabelAppID: app.ID}); err != nil {
-		log.Printf("usage: egress_bytes resolve App CR for %s: %v", app.ID, err)
-		return 0, unavailableAppEgressSources(false), false
+		log.Printf("usage: %s resolve App CR for %s: %v", kind, app.ID, err)
+		return nil, false
 	}
 	if len(projected.Items) != 1 {
-		log.Printf("usage: egress_bytes resolve App CR for %s: found %d projected Apps", app.ID, len(projected.Items))
+		log.Printf("usage: %s resolve App CR for %s: found %d projected Apps", kind, app.ID, len(projected.Items))
+		return nil, false
+	}
+	return &projected.Items[0], true
+}
+
+// appPodIdentity returns the (object name, namespace) pair that identifies an
+// App's pods and build Jobs in the cluster — the App CR's own metadata, which
+// is what the operator names every child after. Falls back to the derived
+// CRName/AppNamespace when the CR could not be read, so a transient API-server
+// failure degrades to the correct-by-construction identity rather than to the
+// wrong one; ok is false only when neither is available.
+func (s *Service) appPodIdentity(app store.App, cr *appv1alpha1.App) (name, namespace string, ok bool) {
+	if cr != nil {
+		return cr.Name, cr.Namespace, true
+	}
+	if app.TenantID == "" || app.Name == "" {
+		return "", "", false
+	}
+	return core.CRName(app.TenantID, app.Name), s.AppNamespace(app.TenantID), true
+}
+
+// expectsRunningPods reports whether an App should have at least one pod alive
+// for a whole window, so a zero pod-count is evidence of a broken read rather
+// than of the App's own state. Cron Apps have pods only while a run is in
+// flight and suspended/zero-replica Apps have none by construction; both are
+// honest zeros.
+func expectsRunningPods(cr *appv1alpha1.App) bool {
+	if cr == nil || cr.Spec.Suspended || cr.Spec.Type == appv1alpha1.TypeCronJob {
+		return false
+	}
+	return cr.Spec.Replicas > 0
+}
+
+// degradeSourceHealth downgrades every healthy observation to "degraded",
+// leaving unavailable ones alone: the read succeeded, so it is not missing —
+// it is just not to be trusted as a measurement. "degraded" already flows into
+// UsageCoverage.DegradedSources and clears Complete (store/usage.go), which is
+// the signal that would have surfaced Defect A on day one.
+func degradeSourceHealth(health []store.UsageSourceObservation) []store.UsageSourceObservation {
+	out := make([]store.UsageSourceObservation, len(health))
+	copy(out, health)
+	for i := range out {
+		if out[i].State == store.UsageSourceHealthy {
+			out[i].State = store.UsageSourceDegraded
+		}
+	}
+	return out
+}
+
+func (s *Service) queryEgressBytesEvidence(ctx context.Context, app store.App, start, end time.Time) (int64, []store.UsageSourceObservation, bool) {
+	cr, found := s.resolveAppCR(ctx, app, store.UsageKindEgressBytes)
+	if !found {
 		return 0, unavailableAppEgressSources(false), false
 	}
-	direct := projected.Items[0].Spec.Type != appv1alpha1.TypeStaticSite
-	routers, err := s.TraefikRouterNames(ctx, &projected.Items[0])
+	direct := cr.Spec.Type != appv1alpha1.TypeStaticSite
+	routers, err := s.TraefikRouterNames(ctx, cr)
 	if err != nil {
 		log.Printf("usage: egress_bytes resolve routers for %s: %v", app.ID, err)
 		return 0, unavailableAppEgressSources(false), false
@@ -1098,18 +1192,24 @@ func (s *Service) queryEgressSourcesEvidence(ctx context.Context, resourceID str
 const labelBuild = "app.bex.co/build"
 
 // queryBuildSeconds sums the durations of completed build Jobs whose
-// completionTime falls in [window, end). It lists Jobs in the service
-// namespace by the app-name label. The Kubernetes client comes from core.Base.
-func (s *Service) queryBuildSeconds(ctx context.Context, appName string, window, end time.Time) (int64, bool) {
+// completionTime falls in [window, end). It lists Jobs by the app-name label in
+// the namespace the operator actually runs them in — BEX_BUILD_NAMESPACE, or
+// the App's own namespace when the two are co-located. The Kubernetes client
+// comes from core.Base.
+//
+// crName is the App CR's name: the operator stamps app.bex.co/build with
+// exactly that (build.Options{Name: app.Name} in app_controller.go), so the
+// workspace-scoped store name never matches.
+func (s *Service) queryBuildSeconds(ctx context.Context, crName, namespace string, window, end time.Time) (int64, bool) {
 	if s.Client == nil {
 		return 0, false
 	}
 	var jobs batchv1.JobList
 	if err := s.Client.List(ctx, &jobs,
-		client.InNamespace(s.Namespace),
-		client.MatchingLabels{labelBuild: appName},
+		client.InNamespace(namespace),
+		client.MatchingLabels{labelBuild: crName},
 	); err != nil {
-		log.Printf("usage: build_seconds list jobs for %s: %v", appName, err)
+		log.Printf("usage: build_seconds list jobs for %s: %v", crName, err)
 		return 0, false
 	}
 	var total int64

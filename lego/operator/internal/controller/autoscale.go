@@ -23,6 +23,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"time"
@@ -88,6 +89,23 @@ func NewMetricsServerReader(cs kubernetes.Interface) MetricsReader {
 	}
 }
 
+// podNameRegex returns the anchored PromQL pod-name regex for the pods a
+// workload named app owns. It is the operator-side copy of the backend's
+// egressquery.PodNameRegex (operator imports no backend package): an
+// untruncated Deployment pod is "<app>-<replicaset-hash>-<5 random>", but once
+// Kubernetes' generateName base "<app>-<hash>-" passes 58 chars the cut eats
+// the separating hyphen and the name collapses to the single-segment
+// "<app>-<N alphanumerics>", always exactly 63 chars long. Keep the two in
+// step — docs/ADR010-observability.md owns the shape (w6/m110).
+func podNameRegex(app string) string {
+	twoSegment := fmt.Sprintf(`%s-[a-z0-9]+-[a-z0-9]{5}`, regexp.QuoteMeta(app))
+	truncated := 63 - len(app) - 1
+	if truncated <= 0 || len(app) > 58 {
+		return twoSegment
+	}
+	return fmt.Sprintf(`%s|%s-[a-z0-9]{%d}`, twoSegment, regexp.QuoteMeta(app), truncated)
+}
+
 // NewPrometheusMetricsReader returns a MetricsReader that reads current CPU/memory
 // from Prometheus using an instant query over cAdvisor metrics. Used when
 // metrics-server is unavailable (e.g. BEX_PROM_URL is set but metrics-server is not).
@@ -97,12 +115,13 @@ func NewPrometheusMetricsReader(promURL string, hc *http.Client) MetricsReader {
 	}
 	return func(ctx context.Context, namespace, app string) ([]PodUsage, error) {
 		// instant query: current per-pod CPU rate + memory
+		pods := podNameRegex(app)
 		cpuQ := fmt.Sprintf(
-			`sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""}[2m]))`,
-			namespace, app)
+			`sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=%q,pod=~%q,container!=""}[2m]))`,
+			namespace, pods)
 		memQ := fmt.Sprintf(
-			`sum by (pod) (container_memory_working_set_bytes{namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""})`,
-			namespace, app)
+			`sum by (pod) (container_memory_working_set_bytes{namespace=%q,pod=~%q,container!=""})`,
+			namespace, pods)
 		cpuSeries, err := promInstantQuery(ctx, hc, promURL, cpuQ)
 		if err != nil {
 			return nil, fmt.Errorf("prometheus cpu query: %w", err)

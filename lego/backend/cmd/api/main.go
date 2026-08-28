@@ -397,6 +397,10 @@ func main() {
 		if n, ok := positiveIntEnv("BEX_USAGE_RETENTION_MONTHS", usage.DefaultRetentionMonths); ok {
 			usageSvc.RetentionMonths = n
 		}
+		// build_seconds counts Jobs where the operator runs them — must match the
+		// manager's own BEX_BUILD_NAMESPACE, the same way Cancel's Job identity
+		// does (deps.DeployBuildNamespace below).
+		usageSvc.BuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
 		deps.Usage = usageSvc
 
 		stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin = wireStripeBilling(ctx, &deps, base, cl, st, appsNS, usageSvc, billingMetrics, requirePaymentMethod, dashboardURL)
