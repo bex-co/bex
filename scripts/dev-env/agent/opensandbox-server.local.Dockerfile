@@ -13,7 +13,12 @@
 #
 #   docker build -f scripts/dev-env/agent/opensandbox-server.local.Dockerfile \
 #     -t opensandbox-server:0.2.2-local deploy/opensandbox
-FROM python:3.12.13-slim-trixie
+#
+# The base is pinned to the MULTI-ARCH INDEX digest of python:3.12.13-slim-trixie
+# (not production's amd64-specific pin), so scripts/image-pin-validate.sh's
+# supply-chain gate is satisfied while `docker build` on Apple Silicon still
+# resolves the arm64 variant from the index.
+FROM python:3.12.13-slim-trixie@sha256:229a2c5bfa27522db7815ea81f9bed70af17ccb9de9fc7ad142b1877b5830d36
 
 ARG OPENSANDBOX_SERVER_VERSION=0.2.2
 
