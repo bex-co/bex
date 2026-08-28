@@ -1,6 +1,6 @@
 # w6 · m124 — A service that is serving traffic reports "Failed" because its latest build failed — the coarse phase contradicts the running instance, on every surface
 
-**Worker:** worker6 **Goal:** a service that is serving reports that it is serving, on REST, GraphQL, MCP and the dashboard, while its failed deploy stays visible as a deploy fact **Status:** t001–t006 done, fix shipped; t007 (live post-deploy DoD closeout) open
+**Worker:** worker6 **Goal:** a service that is serving reports that it is serving, on REST, GraphQL, MCP and the dashboard, while its failed deploy stays visible as a deploy fact **Status:** t001–t006 done and deployed (`6f29c189` is contained in the production image pinned by `71fe9660`); t007 remains open for the credential-dependent live DoD closeout
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity — **DONE** (decision recorded on ADR018's "Get service" row: parity restored, no new row) | 25m | t003       |
 | t005 | Simplify — **DONE** (reason vocabulary moved onto the CRD contract in `lego/types`)        | 20m | t004       |
 | t006 | Test coverage — **DONE** (operator: Running/Hibernated/first-failure/non-build cases; backend: verdict + message from the Build condition, stale-condition guard, healthy availability) | 40m | t004       |
-| t007 | Closeout — live DoD re-run on production **after this fix deploys** (fixture, MCP probe, first-deploy-failure case, deploy-row check), then move the milestone to `done/` | 15m | t005, t006 |
+| t007 | Closeout — credential-dependent live production DoD re-run (fixture, MCP probe, first-deploy-failure case, deploy-row check), then move the milestone to `done/` | 15m | t005, t006 |
 
 ## Implementation note (2026-08-28)
 
