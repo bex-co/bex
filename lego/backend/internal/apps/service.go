@@ -837,6 +837,18 @@ func view(a *appv1alpha1.App) AppView {
 	// normalizeSubdomainPolicy's error is unreachable: the CRD enum guarantees
 	// a.Spec.SubdomainPolicy is "", "enabled", or "disabled".
 	subdomainPolicy, _ := normalizeSubdomainPolicy(a.Spec.SubdomainPolicy)
+	// renderSubdomainPolicy describes whether the platform subdomain serves this
+	// service — a property only a web service or static site HAS. Render declares
+	// it solely on webServiceDetails/staticSiteDetails; a private service, worker
+	// or cron job has no ingress, so the field is not applicable and reads back
+	// empty (omitted on REST, null on GraphQL), never "enabled" while the same
+	// payload has no url and the host 404s at the edge (w6/m130). Emptying the
+	// VALUE here is what lets GraphQL's flat field agree with REST/MCP's omission
+	// — GraphQL reads this AppView, not renderServiceDetails (which gates again at
+	// the emission site, belt-and-suspenders like ipAllowList).
+	if !appv1alpha1.TypePubliclyRoutable(svcType) {
+		subdomainPolicy = ""
+	}
 	phase := string(a.Status.Phase)
 	if !a.DeletionTimestamp.IsZero() {
 		phase = "Deleting"
@@ -3636,6 +3648,15 @@ func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
+	}
+	// renderSubdomainPolicy toggles the platform subdomain, which only a web
+	// service or static site HAS. A private service, background worker or cron
+	// job has no ingress, so there is no subdomain to enable or disable — refuse
+	// with exactly that reason, not the misleading custom-domain guard below
+	// (which then sends the caller into an add-domain call that itself 400s
+	// because the type has no ingress) and not a silent success (w6/m130).
+	if !a.Spec.PubliclyRoutable() {
+		return AppView{}, fmt.Errorf("%w: renderSubdomainPolicy applies only to web services and static sites; a %s has no platform subdomain to toggle", core.ErrBadRequest, effectiveType(a.Spec.Type))
 	}
 	if normalized == appv1alpha1.SubdomainPolicyDisabled {
 		if a.Spec.Host == "" && len(a.Spec.Hosts) == 0 {

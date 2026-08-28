@@ -39,16 +39,22 @@ import (
 // omitting a field leaves it unchanged.
 type patchServiceRequest struct {
 	ServiceDetails *struct {
-		Plan             string          `json:"plan"`
-		HealthCheckPath  *string         `json:"healthCheckPath"`
-		PreDeployCommand *string         `json:"preDeployCommand"`
-		Schedule         *string         `json:"schedule"`
-		PublishPath      *string         `json:"publishPath"`
-		BuildCommand     *string         `json:"buildCommand"`
-		EnvSpecific      json.RawMessage `json:"envSpecificDetails"`
-		Previews         json.RawMessage `json:"previews"`
-		MaintenanceMode  json.RawMessage `json:"maintenanceMode"`
-		IPAllowList      json.RawMessage `json:"ipAllowList"`
+		Plan             string  `json:"plan"`
+		HealthCheckPath  *string `json:"healthCheckPath"`
+		PreDeployCommand *string `json:"preDeployCommand"`
+		Schedule         *string `json:"schedule"`
+		PublishPath      *string `json:"publishPath"`
+		BuildCommand     *string `json:"buildCommand"`
+		// RenderSubdomainPolicy is Render's webServiceDetails/staticSiteDetails
+		// renderSubdomainPolicy (enabled|disabled) at its documented nesting. A
+		// pointer so "absent" (leave unchanged) is distinct from an explicit value;
+		// the nested spelling wins over the top-level one when both are sent,
+		// matching healthCheckPath/preDeployCommand/schedule (w6/m130).
+		RenderSubdomainPolicy *string         `json:"renderSubdomainPolicy"`
+		EnvSpecific           json.RawMessage `json:"envSpecificDetails"`
+		Previews              json.RawMessage `json:"previews"`
+		MaintenanceMode       json.RawMessage `json:"maintenanceMode"`
+		IPAllowList           json.RawMessage `json:"ipAllowList"`
 		// IdleTTLSeconds is a bex extra (Render has no idle-timeout field) — the
 		// free-tier auto-sleep window. A pointer so "absent" (leave unchanged) is
 		// distinct from an explicit 0 (restore the controller default).
@@ -246,10 +252,16 @@ type serviceDetailsReq struct {
 	// PreDeployCommand is Render's serviceDetails.preDeployCommand — the command
 	// run against the new image before it serves traffic (w1/m33). Accepted here
 	// (Render-faithful) or at the top level (top level wins).
-	PreDeployCommand string          `json:"preDeployCommand"`
-	Previews         json.RawMessage `json:"previews"`
-	MaintenanceMode  json.RawMessage `json:"maintenanceMode"`
-	IPAllowList      json.RawMessage `json:"ipAllowList"`
+	PreDeployCommand string `json:"preDeployCommand"`
+	// RenderSubdomainPolicy is Render's webServiceDetails/staticSiteDetails
+	// renderSubdomainPolicy (enabled|disabled). Render's spec declares it here —
+	// never on the top-level service — so a Render-shaped client sends it nested.
+	// bex accepts it here (Render-faithful) or at the top level (top level wins),
+	// mirroring publishPath/preDeployCommand (w6/m130).
+	RenderSubdomainPolicy string          `json:"renderSubdomainPolicy"`
+	Previews              json.RawMessage `json:"previews"`
+	MaintenanceMode       json.RawMessage `json:"maintenanceMode"`
+	IPAllowList           json.RawMessage `json:"ipAllowList"`
 	// Disk is Render's serviceDetails.disk (schema `serviceDisk`) on the
 	// web/private/worker POST bodies — how a Render client attaches a disk at
 	// create time. Before w1/m88/t001 bex had no such field, and because
@@ -427,6 +439,7 @@ func preferTopLevel(top, nested string) string {
 func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerID string) (CreateRequest, error) {
 	plan, health, schedule, command, publishPath := r.Plan, "", r.Schedule, r.Command, r.PublishPath
 	rootDir := r.RootDir
+	subdomainPolicy := r.RenderSubdomainPolicy
 	var runtime, buildCommand, startCommand, dockerfilePath, dockerContext string
 	var nestedRegistryCredentialID json.RawMessage
 	preDeploy := r.PreDeployCommand
@@ -475,6 +488,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		}
 		publishPath = preferTopLevel(publishPath, r.ServiceDetails.PublishPath)
 		preDeploy = preferTopLevel(preDeploy, r.ServiceDetails.PreDeployCommand)
+		subdomainPolicy = preferTopLevel(subdomainPolicy, r.ServiceDetails.RenderSubdomainPolicy)
 		if d := r.ServiceDetails.Disk; d != nil {
 			// specFromCreate runs this through the same validateCreateDisk the
 			// Blueprint path uses, so eligibility, tier, replica count and the
@@ -541,7 +555,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		Hosts:                   r.Domains,
 		AutoDeploy:              autoDeploy,
 		NotifyOnFail:            r.NotifyOnFail,
-		SubdomainPolicy:         r.RenderSubdomainPolicy,
+		SubdomainPolicy:         subdomainPolicy,
 		PreDeployCommand:        preDeploy,
 		Disk:                    disk,
 		PublishPath:             publishPath,
@@ -755,6 +769,7 @@ type patchFields struct {
 	maxShutdownDelay                                        optionalInt32
 	publishPath, buildCommand, startCommand, dockerfilePath *string
 	healthCheckPath, preDeployCommand, schedule             *string
+	renderSubdomainPolicy                                   *string
 	displayName                                             *string
 	image, imageOwnerID                                     *string
 	registryCredentialID                                    *string
@@ -768,11 +783,12 @@ type patchFields struct {
 // both.
 func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, error) {
 	f := patchFields{
-		dryRun:           core.DryRunRequested(r, req.DryRun),
-		healthCheckPath:  req.HealthCheckPath,
-		preDeployCommand: req.PreDeployCommand,
-		schedule:         req.Schedule,
-		displayName:      req.DisplayName,
+		dryRun:                core.DryRunRequested(r, req.DryRun),
+		healthCheckPath:       req.HealthCheckPath,
+		preDeployCommand:      req.PreDeployCommand,
+		schedule:              req.Schedule,
+		renderSubdomainPolicy: req.RenderSubdomainPolicy,
+		displayName:           req.DisplayName,
 	}
 	var nestedRegistryCredentialID json.RawMessage
 	if req.ServiceDetails != nil {
@@ -786,6 +802,9 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 		}
 		if req.ServiceDetails.Schedule != nil {
 			f.schedule = req.ServiceDetails.Schedule
+		}
+		if req.ServiceDetails.RenderSubdomainPolicy != nil {
+			f.renderSubdomainPolicy = req.ServiceDetails.RenderSubdomainPolicy
 		}
 		f.publishPath = req.ServiceDetails.PublishPath
 		f.buildCommand = req.ServiceDetails.BuildCommand
@@ -942,7 +961,7 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 		StartCommand:                   f.startCommand,
 		DockerfilePath:                 f.dockerfilePath,
 		NotifyOnFail:                   req.NotifyOnFail,
-		RenderSubdomainPolicy:          req.RenderSubdomainPolicy,
+		RenderSubdomainPolicy:          f.renderSubdomainPolicy,
 		IPAllowList:                    f.ipAllowList,
 		// MCP-only (divergence): NotificationsToSend and Autoscaling stay
 		// nil — Render's PATCH body has no spelling for either; only
