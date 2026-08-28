@@ -178,7 +178,12 @@ func TestSandboxChannelCapShedsExcess(t *testing.T) {
 // fallback too). App targets keep rejecting every subsystem.
 func TestSandboxAcceptsSFTPSubsystem(t *testing.T) {
 	clientSigner := signer(t)
-	exec := &gatewaytest.FakeExecutor{}
+	// Started is what makes this test deterministic: RequestSubsystem returns as
+	// soon as the SERVER acknowledges the request, but the gateway dispatches to
+	// the executor on its own goroutine, so reading exec.Command straight after
+	// the ack races that goroutine — it read a nil argv on a loaded CI runner
+	// while passing locally every time (w6/040).
+	exec := &gatewaytest.FakeExecutor{Started: make(chan struct{}, 1)}
 	resolver := &gatewaytest.FakeResolver{Target: sandboxTarget()}
 	// MaxChannelsPerConn left 0 => single-channel fallback; SFTP still honored.
 	addr, stop := startGateway(t, &gatewaytest.FakeStore{}, resolver, exec, clientSigner)
@@ -195,6 +200,11 @@ func TestSandboxAcceptsSFTPSubsystem(t *testing.T) {
 	}
 	if err := session.RequestSubsystem("sftp"); err != nil {
 		t.Fatalf("sftp subsystem should be accepted for a sandbox target: %v", err)
+	}
+	select {
+	case <-exec.Started:
+	case <-time.After(time.Second):
+		t.Fatal("sftp exec did not start")
 	}
 	// Started via `sh -c 'cd "$HOME" && exec …/sftp-server'` so a relative upload
 	// path (Zed's `.zed_server/…`) resolves under $HOME, not the WORKDIR (w2/m65).
@@ -260,4 +270,3 @@ func TestSandboxCapZeroRestoresSingleChannel(t *testing.T) {
 	}
 	close(exec.release)
 }
-
