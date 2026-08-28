@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,25 +32,71 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// newServiceCNPG builds a Service whose fake client also knows the CNPG Backup
-// unstructured types, so the export create/list paths exercise real client calls.
-func newServiceCNPG(objs ...client.Object) (*Service, client.Client) {
+// cnpgScheme is a scheme that also knows the CNPG Cluster + Backup unstructured
+// types, so recovery-info and export paths exercise real client Get/List calls
+// (the recovery window read + the backup list).
+func cnpgScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(cnpgClusterGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(cnpgClusterGVK.GroupVersion().WithKind("ClusterList"), &unstructured.UnstructuredList{})
 	scheme.AddKnownTypeWithName(cnpgBackupGVK, &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(
-		schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "BackupList"},
-		&unstructured.UnstructuredList{},
-	)
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	scheme.AddKnownTypeWithName(cnpgBackupGVK.GroupVersion().WithKind("BackupList"), &unstructured.UnstructuredList{})
+	return scheme
+}
+
+// newServiceCNPG builds a Service whose fake client knows the CNPG unstructured
+// types, so the recovery/export paths exercise real client calls.
+func newServiceCNPG(objs ...client.Object) (*Service, client.Client) {
+	cl := fake.NewClientBuilder().WithScheme(cnpgScheme()).WithObjects(objs...).Build()
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}}, cl
+}
+
+// seedCNPGCluster creates a CNPG Cluster for a database. A non-empty
+// firstRecoverabilityPoint marks the PITR window as established (there is
+// something to restore to); empty leaves the window closed but the Cluster
+// present, the honest "backups enabled, none yet" state.
+func seedCNPGCluster(t *testing.T, cl client.Client, name, firstRecoverabilityPoint string) {
+	t.Helper()
+	c := &unstructured.Unstructured{}
+	c.SetGroupVersionKind(cnpgClusterGVK)
+	c.SetNamespace("default")
+	c.SetName(name)
+	if firstRecoverabilityPoint != "" {
+		if err := unstructured.SetNestedField(c.Object, firstRecoverabilityPoint, "status", "firstRecoverabilityPoint"); err != nil {
+			t.Fatalf("set firstRecoverabilityPoint: %v", err)
+		}
+	}
+	if err := cl.Create(context.Background(), c); err != nil {
+		t.Fatalf("seed cnpg cluster: %v", err)
+	}
+}
+
+// seedCNPGBackup creates a CNPG Backup labelled to its cluster (the intrinsic
+// cnpg.io/cluster link listBackups selects on), with the given phase.
+func seedCNPGBackup(t *testing.T, cl client.Client, clusterName, backupName, phase string) {
+	t.Helper()
+	b := &unstructured.Unstructured{}
+	b.SetGroupVersionKind(cnpgBackupGVK)
+	b.SetNamespace("default")
+	b.SetName(backupName)
+	b.SetLabels(map[string]string{labelCNPGCluster: clusterName})
+	if phase != "" {
+		if err := unstructured.SetNestedField(b.Object, phase, "status", "phase"); err != nil {
+			t.Fatalf("set backup phase: %v", err)
+		}
+	}
+	if err := cl.Create(context.Background(), b); err != nil {
+		t.Fatalf("seed cnpg backup: %v", err)
+	}
 }
 
 // seedDatabaseSpec adds a Ready Database with the given spec + a matching -app Secret.
@@ -145,15 +192,84 @@ func TestRecoveryInfoDisabledForFreePlan(t *testing.T) {
 	}
 }
 
-func TestRecoveryInfoEnabled(t *testing.T) {
-	svc, cl := newService()
+// TestRecoveryInfoReportsAWindowWhenOneExists: with a readable CNPG Cluster that
+// has a firstRecoverabilityPoint and a completed Backup, the Recovery card's three
+// facts agree — earliest, latest and the backup list all say backups exist. This
+// is the state the live probe (w6/m117) could not produce because the reads 403'd.
+func TestRecoveryInfoReportsAWindowWhenOneExists(t *testing.T) {
+	svc, cl := newServiceCNPG()
 	seedDatabaseSpec(t, cl, "paid-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+	seedCNPGCluster(t, cl, "paid-db", "2026-08-21T03:00:00Z")
+	seedCNPGBackup(t, cl, "paid-db", "paid-db-backup-20260821030000", "completed")
+
 	info, err := svc.RecoveryInfo(context.Background(), "paid-db")
 	if err != nil {
 		t.Fatalf("RecoveryInfo => %v", err)
 	}
-	if !info.Enabled || info.LatestRecoveryTime == "" {
-		t.Fatalf("enabled recovery should report a window: %+v", info)
+	if !info.Enabled {
+		t.Fatal("a backed-up database should report recovery enabled")
+	}
+	if info.EarliestRecoveryTime != "2026-08-21T03:00:00Z" {
+		t.Errorf("earliest = %q, want the cluster's firstRecoverabilityPoint", info.EarliestRecoveryTime)
+	}
+	if info.LatestRecoveryTime == "" {
+		t.Error("an established window must report a latest recoverable point")
+	}
+	if len(info.Backups) != 1 || info.Backups[0].Status != "completed" {
+		t.Errorf("backups = %+v, want one completed backup", info.Backups)
+	}
+}
+
+// TestRecoveryInfoNoWindowYetIsHonest: a backed-up database whose CNPG Cluster has
+// not yet established a recoverability point reports NO latest restore point. The
+// card must never name a precise restore point beside an empty backup list — the
+// self-contradiction that shipped unnoticed (w6/m117). latestRecoveryTime used to
+// be the wall clock, present unconditionally; now it is gated on a real window.
+func TestRecoveryInfoNoWindowYetIsHonest(t *testing.T) {
+	svc, cl := newServiceCNPG()
+	seedDatabaseSpec(t, cl, "fresh-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+	seedCNPGCluster(t, cl, "fresh-db", "") // cluster present, window not open yet
+
+	info, err := svc.RecoveryInfo(context.Background(), "fresh-db")
+	if err != nil {
+		t.Fatalf("RecoveryInfo => %v", err)
+	}
+	if !info.Enabled {
+		t.Fatal("a backed-up plan should report recovery enabled")
+	}
+	if info.LatestRecoveryTime != "" || info.EarliestRecoveryTime != "" {
+		t.Errorf("no window established, yet reported earliest=%q latest=%q",
+			info.EarliestRecoveryTime, info.LatestRecoveryTime)
+	}
+	if len(info.Backups) != 0 {
+		t.Errorf("backups = %+v, want none", info.Backups)
+	}
+}
+
+// TestRecoveryInfoUnreadableBackupsAreAnErrorNotEmpty: when the Backup list cannot
+// be read at all (here a forbidden response, standing in for the production RBAC
+// denial that caused this bug), recovery-info must fail loudly rather than return
+// the SAME empty shape as a database that genuinely has no backups. That silent
+// degradation is exactly what told tenants with nightly backups they had none.
+func TestRecoveryInfoUnreadableBackupsAreAnErrorNotEmpty(t *testing.T) {
+	forbidden := apierrors.NewForbidden(
+		schema.GroupResource{Group: "postgresql.cnpg.io", Resource: "backups"}, "",
+		errors.New("RBAC: no access to backups"))
+	cl := fake.NewClientBuilder().WithScheme(cnpgScheme()).
+		WithInterceptorFuncs(interceptor.Funcs{
+			List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+				if list.GetObjectKind().GroupVersionKind().Group == cnpgBackupGVK.Group {
+					return forbidden
+				}
+				return c.List(ctx, list, opts...)
+			},
+		}).Build()
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	seedDatabaseSpec(t, cl, "unreadable-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+	seedCNPGCluster(t, cl, "unreadable-db", "2026-08-21T03:00:00Z")
+
+	if _, err := svc.RecoveryInfo(context.Background(), "unreadable-db"); err == nil {
+		t.Fatal("a denied Backup list must return an error, not a false empty backup list")
 	}
 }
 
