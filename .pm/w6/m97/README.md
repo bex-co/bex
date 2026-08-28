@@ -1,6 +1,6 @@
 # w6 · m97 — Stop the codex-security F7 protected-secret guard from self-rejecting every App's own clone/pull secret
 
-**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** in progress (t001-t005 done; t007 open — its reconcile-cause leg is fixed by t001, its Events-feed leg is not; t008 newly filed and open — a distinct redeploy-path bug, not fixed by t001; t006 closeout blocked on t007 + t008 + deploying the fix)
+**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** in progress (t001–t005 done and deployed; `2cae5f3b` is contained in the production image pinned by `71fe9660`; t007 remains for its Events-feed reason-code leg, t008 remains for the distinct redeploy-generation bug, and t006 closeout depends on both)
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 5th run of the day)
 
@@ -82,7 +82,7 @@ This is a distinct defect from t001's (which only removes one specific rejection
 
 **Deploy-lag note (this run):** t001's fix landed on `origin/main` as `2cae5f3b` ("fix(operator): stop the F7 protected-secret guard rejecting an App's own clone/pull secret (w6/m97)") during this run, with its `deploy.yml` run still `in_progress` at observation time. Not yet live: `beancount-forum`/`beancount-cms-v2`/`tianpan-v4-web`/`eden-cms-v2`/`block-eden-mono` all still read `phase: "Failed"` via REST as of this run (checked read-only, nothing touched).
 
-### Addendum (2026-08-26, 17th `/qa-find-bugs` run): fix still NOT live — re-probed, not just re-read CI
+### Historical addendum (2026-08-26, 17th `/qa-find-bugs` run): fix was not live at that time
 
 This run's brief was specifically to check whether `2cae5f3b` had reached production since the 16th run flagged its `deploy.yml` as still `in_progress`. It has not, and the CI trail shows why the earlier "still building" read was optimistic — the run for that exact commit went on to **fail**, and no successful, non-superseded deploy has landed since:
 
@@ -110,7 +110,7 @@ Evidence: `.playwright-mcp/qa-m97-verify-1-still-failing.png`. Cleaned up: servi
 
 | service | id | phase | latest deploy on record | note |
 | --- | --- | --- | --- | --- |
-| beancount-forum | `srv-d9nqg9dcavls73fp8m2g` | `Failed` (unchanged) | `live`, 2026-08-21T21:39:44Z, no new deploy | exact original signature persists — expected, fix not deployed |
+| beancount-forum | `srv-d9nqg9dcavls73fp8m2g` | `Failed` (unchanged) | `live`, 2026-08-21T21:39:44Z, no new deploy | exact original signature persisted — expected at the time, before the fix deployed |
 | beancount-cms-v2 | `srv-d9bj8s3eg85c7390eb9g` | `Failed` (unchanged) | new: `dep-da7k9qfkh5kc73fbqu3g` created 2026-08-26T19:56:25Z, status **`created`**, still unresolved ~27min old at observation | a new redeploy attempt appeared since the 15th/16th run's snapshot (that one was `live`, 2026-08-25T21:05:19Z) and is stuck **before even reaching `queued`** — a status value t008's write-up didn't discuss; too fresh (<35min) to compare against the `BuildGateTimeout` prediction; **flagged Unverified, not folded into t008's traced mechanism** |
 | tianpan-v4-web | `srv-da40m1qii7bs73drbqlg` | `Failed` (unchanged) | `live`, 2026-08-24T07:33:19Z, no new deploy | unchanged from prior runs — expected |
 | eden-cms-v2 | `srv-d9e40ei9086p3l1jri30` | `Failed` (unchanged) | `dep-da74dkb7o1fc73av6org`, status **still `queued`**, now ~18.5h old (created 2026-08-26T01:52:17Z, first seen by the 15th run) | **contradicts t008's own timing prediction** — t008 traced this exact stuck-`queued` mechanism as resolving to `canceled` once `BuildGateTimeout` (35min) trips, but this row has sat `queued` for ~18.5h without flipping. Either the timeout only fires on active reconcile traffic this App isn't getting, or there's a second mechanism keeping it `queued` indefinitely that t008 hasn't captured. **Flagged Unverified — do not assume t008's fix (once written) automatically covers this without re-checking against this specific row** |
@@ -158,7 +158,7 @@ This directly satisfies the milestone's own DoD bullet ("An already-Live, standi
 | t003 | Render parity | 20m | t002, t007, t008 | — **DONE** for the t001/t002 change; t007's Events-feed leg and t008 still open |
 | t004 | Simplify | 15m | t003 | — **DONE** |
 | t005 | Test coverage | 20m | t004 | — **DONE** |
-| t006 | Closeout | 10m | t005, t007, t008 | blocked on t007 + t008 + deploy |
+| t006 | Closeout | 10m | t005, t007, t008 | blocked on t007 + t008 |
 
 ## Definition of done
 
