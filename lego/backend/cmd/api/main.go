@@ -471,7 +471,12 @@ func main() {
 		log.Printf("bex-api: environment-group path migration mode=%s scanned=%d migrated=%d alreadyMigrated=%d skippedNoWorkspace=%d failed=%v",
 			mode, report.Scanned, report.Migrated, report.AlreadyMigrated, report.SkippedNoWorkspace, report.Failed)
 	}
-	srv.AgentSessionCompleter.Metrics = agentsessions.NewCompletionMetrics(metricRegistry)
+	// One CompletionMetrics registration shared by the Completer (turn duration,
+	// convergence) and the Service (provisioning latency) so the agent-session
+	// lifecycle timing lives under one set of series (w5/m81).
+	agentMetrics := agentsessions.NewCompletionMetrics(metricRegistry)
+	srv.AgentSessionCompleter.Metrics = agentMetrics
+	srv.AgentSessions.Metrics = agentMetrics
 	// codex round-8 #9: the signed git webhook durably claims each processed
 	// delivery body so a captured (body, signature) pair cannot be replayed into
 	// repeated deploys. A configured webhook without this durable store is
@@ -985,6 +990,16 @@ func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.
 				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st},
 				Nonce:  st,
 			})
+			// w5/m80 t003: the gateway reports a vendor auth rejection (401/403 on the
+			// gateway→vendor hop) here so bex-api terminalizes the session fast instead
+			// of the agent CLI burning its full retry/backoff. Same gateway-only HMAC +
+			// internal-only listener as the mint; wired even when hibernation/keys vary,
+			// since it only needs the store to CAS a live session to failed.
+			internalRoot.Handle(agentsession.InternalModelAuthFailurePath, &agentsession.ModelAuthFailureHandler{
+				Secret: []byte(sandboxExecSecret),
+				Failer: &agentsession.ModelAuthFailer{Sessions: st, Audit: st},
+				Nonce:  st,
+			})
 		}
 	}
 	internalRoot.Handle("/", internal.Handler())
@@ -1135,6 +1150,11 @@ func wireAgentSessions(deps *api.Deps) {
 	// reap), and the per-workspace concurrent live-sandbox cap (default 5; 0 ⇒
 	// uncapped).
 	deps.AgentSandboxIdleTTL = zeroableDurationEnv("BEX_AGENT_SANDBOX_IDLE_TTL", 30*time.Minute)
+	// w5/m80 t002: one turn's wall-clock bound, injected into the sandbox as
+	// BEX_AGENT_TURN_TIMEOUT_MS. Default 30m; a 0/invalid value falls back to the
+	// Service's 30m default (the bound is never disabled — that is the 4h-hang bug
+	// this fixes).
+	deps.AgentTurnTimeout = zeroableDurationEnv("BEX_AGENT_TURN_TIMEOUT", 30*time.Minute)
 	deps.AgentMaxLiveSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
 	deps.MaxBlueprintGroupings = zeroableIntEnv("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
 	// Round-11 #3: per-workspace env-group quota (default 100; 0 disables).

@@ -27,6 +27,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log"
 	"mime"
 	"net/http"
 	"net/url"
@@ -196,10 +197,40 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer response.Body.Close()
+	// A 401/403 here is the VENDOR rejecting the injected BYO key (this is past the
+	// mint and the operation allowlist), i.e. the workspace's model key is bad or
+	// expired — non-transient. Report it so bex-api terminalizes the session in
+	// seconds (w5/m80 t003) rather than the agent CLI riding its full retry/backoff
+	// (~3min observed). Transient vendor failures (429/5xx) are NOT reported: they
+	// relay unchanged for the agent's normal retry. The vendor response is still
+	// relayed below so the sandbox sees a coherent status.
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		b.Metrics.Authentication("vendor_auth_rejected")
+		b.reportAuthFailure(verified)
+	}
 	copyResponseHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
 	flushingCopy(w, io.LimitReader(response.Body, maxModelResponseBodyBytes))
 	b.Metrics.Authentication("accepted")
+}
+
+// authFailureReportTimeout bounds the detached gateway→bex-api auth-failure
+// report so a slow control plane never leaks a goroutine.
+const authFailureReportTimeout = 5 * time.Second
+
+// reportAuthFailure tells bex-api to terminalize the session whose BYO key the
+// vendor rejected. Detached (the request context ends with the relayed response)
+// and single-shot: the Completer reaps the now-failed session's sandbox on its
+// next tick, so the report need only land once. Best-effort — a failed report is
+// logged, and the turn-timeout bound (t002) remains the backstop.
+func (b *Broker) reportAuthFailure(req agentsession.ModelMintRequest) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), authFailureReportTimeout)
+		defer cancel()
+		if err := b.API.ReportAuthFailure(ctx, req); err != nil {
+			log.Printf("agent model proxy: report vendor auth rejection failed (session=%s): %v", req.SessionID, err)
+		}
+	}()
 }
 
 // mint always revalidates the current session lifecycle through bex-api. Model

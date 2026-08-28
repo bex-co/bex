@@ -471,6 +471,19 @@ func (f *fakeStore) SetAgentSessionLifecycle(_ context.Context, id, sandboxID, p
 	f.rows[id] = row
 	return row, nil
 }
+func (f *fakeStore) SetAgentSessionFailure(_ context.Context, id, sandboxID, reason string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	if sandboxID != "" {
+		row.SandboxID = sandboxID
+	}
+	row.Phase, row.Status, row.FailureReason = PhaseFailed, "failed", reason
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	f.rows[id] = row
+	return row, nil
+}
 func (f *fakeStore) ListAgentSessionsByPhases(_ context.Context, phases []string) ([]store.AgentSession, error) {
 	want := map[string]bool{}
 	for _, p := range phases {
@@ -1537,8 +1550,11 @@ func TestBackgroundDispatchFailureSurfacesFailedPhase(t *testing.T) {
 		t.Fatal(err) // the create itself still succeeds fast
 	}
 	failed := st.rows[created.ID]
-	if failed.Phase != PhaseFailed || failed.Status != "sandbox create failed" {
-		t.Fatalf("dispatch failure should surface a failed phase + reason: %+v", failed)
+	// w5/m80 t005 (closes w5/048): the reason lands in failure_reason (the field the
+	// dashboard callout reads) with a terminal 'failed' status, matching the
+	// Completer's driver-failure path — not stuffed into status where it was invisible.
+	if failed.Phase != PhaseFailed || failed.Status != "failed" || failed.FailureReason != "sandbox create failed" {
+		t.Fatalf("dispatch failure should surface a failed phase + failureReason: %+v", failed)
 	}
 	if lc.created != 0 {
 		t.Fatalf("no sandbox should have been recorded on a create failure: %+v", lc)
@@ -1594,8 +1610,8 @@ func TestResumeReturnsFastAndSurfacesFailure(t *testing.T) {
 	if resumed.Phase != PhaseResuming || resumed.Ticket != "" {
 		t.Fatalf("resume should return fast in resuming with no ticket: %+v", resumed)
 	}
-	if got := st.rows[created.ID]; got.Phase != PhaseFailed || got.Status != "sandbox resume failed" {
-		t.Fatalf("resume failure should surface failed + reason: %+v", got)
+	if got := st.rows[created.ID]; got.Phase != PhaseFailed || got.Status != "failed" || got.FailureReason != "sandbox resume failed" {
+		t.Fatalf("resume failure should surface failed + failureReason: %+v", got)
 	}
 }
 

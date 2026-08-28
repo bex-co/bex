@@ -46,6 +46,10 @@ type Store interface {
 	ListAgentSessions(context.Context, string, store.AgentSessionListQuery) ([]store.AgentSession, error)
 	ListAgentSessionsByPhases(context.Context, []string) ([]store.AgentSession, error)
 	SetAgentSessionLifecycle(context.Context, string, string, string, string, bool) (store.AgentSession, error)
+	// SetAgentSessionFailure terminalizes an active session with a reason recorded
+	// in failure_reason (w5/m80 t005): the background failure paths use it so a
+	// provisioning failure carries the same surfaced reason a driver failure does.
+	SetAgentSessionFailure(context.Context, string, string, string) (store.AgentSession, error)
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
 	BeginAgentSessionTurn(context.Context, string, string, string, string, string) (store.AgentSession, error)
@@ -192,6 +196,17 @@ type Service struct {
 	// RetentionTTL mirrors the Completer's window so an unpin puts a hibernated
 	// row back on the clock with a consistent deadline. 0 ⇒ the 7d default.
 	RetentionTTL time.Duration
+	// TurnTimeout bounds one agent turn inside the sandbox (w5/m80 t002,
+	// BEX_AGENT_TURN_TIMEOUT). It is injected as BEX_AGENT_TURN_TIMEOUT_MS so a
+	// turn that never converges — a hung model call or an infinite tool loop —
+	// is bounded here instead of the driver's 4h fallback. <= 0 ⇒ the 30m
+	// defaultTurnTimeout; there is deliberately no "disable" (removing the bound
+	// is the failure mode this fixes).
+	TurnTimeout time.Duration
+	// Metrics records sandbox provisioning latency (w5/m81 t002). It is the same
+	// *CompletionMetrics the Completer holds, so lifecycle timing shares one
+	// registration; nil ⇒ no observation (byte-identical to before).
+	Metrics *CompletionMetrics
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
@@ -292,11 +307,20 @@ func phaseSettledOrCanceling(phase string) bool {
 // resurrection path is closed airtight at the DB by RecordAgentSessionDispatch's
 // CAS, and the Completer's status watch is the backstop that reconciles any
 // residue (a phase left running for a torn-down sandbox reads NotFound and fails).
-func (s *Service) setLifecycleIfActive(ctx context.Context, id, sandboxID, phase, status string) {
+// The final argument is a status word for a non-terminal transition (e.g.
+// "running") and a human failure REASON for PhaseFailed. A failure records it in
+// failure_reason (the field the dashboard's failed-session callout reads) with a
+// terminal 'failed' status, matching the Completer's driver-failure path so a
+// provisioning failure never shows a blank card (w5/m80 t005, closes w5/048).
+func (s *Service) setLifecycleIfActive(ctx context.Context, id, sandboxID, phase, statusOrReason string) {
 	if cur, err := s.Store.GetAgentSession(ctx, id); err == nil && phaseSettledOrCanceling(cur.Phase) {
 		return
 	}
-	_, _ = s.Store.SetAgentSessionLifecycle(ctx, id, sandboxID, phase, status, false)
+	if phase == PhaseFailed {
+		_, _ = s.Store.SetAgentSessionFailure(ctx, id, sandboxID, statusOrReason)
+		return
+	}
+	_, _ = s.Store.SetAgentSessionLifecycle(ctx, id, sandboxID, phase, statusOrReason, false)
 }
 
 // GitHubReadiness yields a workspace's GitHub App connection as the neutral,
@@ -486,8 +510,13 @@ func (s *Service) runDispatch(ctx context.Context, record store.AgentSession, sp
 // Steer's re-dispatch so their rollback semantics stay in lock-step.
 func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) (store.AgentSession, error) {
 	ws := record.WorkspaceID
+	// CreateAgentSessionSandbox blocks until the pod is Running with an IP (or
+	// fails/times out), so its wall-clock is the provisioning latency the user
+	// waits through after the fast create-accept (w5/m81 t002).
+	provisionStart := time.Now()
 	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, spec.template, record.ID, record.Repo, record.Branch, spec.modelEndpoint, spec.modelAPIKey, spec.egress, spec.env)
 	if err != nil {
+		s.Metrics.observeProvision(provisionFailed, time.Since(provisionStart))
 		// Log the underlying reason: dispatch failures were previously invisible
 		// (the row records only "sandbox create failed" and the 500 body is
 		// unreadable cross-origin), which hid a real create failure during the
@@ -504,6 +533,7 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox provisioning failed")
 		return store.AgentSession{}, err
 	}
+	s.Metrics.observeProvision(provisionRunning, time.Since(provisionStart))
 	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, spec.modelEndpoint, spec.egress); err != nil {
 		log.Printf("agent-session dispatch: egress phase transition failed (session=%s): %v", record.ID, err)
 		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
@@ -1263,7 +1293,23 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 			env["BEX_AGENT_MODEL_PROXY_URL"] = url
 		}
 	}
+	// Bound one turn (w5/m80 t002): the driver's own fallback is otherwise 4h, so
+	// a hung model call or a runaway tool loop would hold the sandbox for hours.
+	// Always inject a positive millisecond bound; <= 0 ⇒ the 30m default.
+	env["BEX_AGENT_TURN_TIMEOUT_MS"] = fmt.Sprintf("%d", s.turnTimeout().Milliseconds())
 	return env
+}
+
+// defaultTurnTimeout bounds one agent turn when BEX_AGENT_TURN_TIMEOUT is unset.
+// It is generous enough for a real coding task yet far below the driver's 4h
+// fallback, so a stuck turn converges to failed in tens of minutes, not hours.
+const defaultTurnTimeout = 30 * time.Minute
+
+func (s *Service) turnTimeout() time.Duration {
+	if s.TurnTimeout > 0 {
+		return s.TurnTimeout
+	}
+	return defaultTurnTimeout
 }
 
 // modelProxyBaseURL is the internal gateway model-proxy origin (BEX_AGENT_MODEL_

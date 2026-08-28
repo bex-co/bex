@@ -81,6 +81,7 @@ stateDiagram-v2
 - **Hibernated → Active**: on connect / new turn / `Resume` — rehydrate from the snapshot.
 - **Hibernated → Deleted**: retention expiry (D5) or explicit delete. **Pinned removes only this edge.**
 - **Active → Deleted**: explicit cancel/delete.
+- **The idle grace applies to a _completed_ result, not a failure (w5/m80 t004).** The grace exists so a user can reopen a successful turn in an editor; a `failed` session has no such result, so holding its sandbox for the full `graceTTL` only pins plan quota (a bad-key workspace could wedge itself under a small live-sandbox cap). `teardown` therefore skips the grace for a `failed` session — reclaiming at the next reaper tick — exactly as it already does for an `archived` one. The still-open-editor pin is unchanged for both: an active SSH session never has its sandbox reclaimed, so a user who _does_ want to debug a failure keeps it alive by staying connected.
 
 Crucially, **even a pinned workspace passes through Hibernated when idle** — pin removes the Deleted edge, never the pod-reclamation. There is no "live pod forever" state.
 
