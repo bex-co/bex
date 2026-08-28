@@ -139,6 +139,10 @@ func (deployHookStore) SetAppImage(context.Context, string, string) error {
 	return errors.New("unexpected SetAppImage")
 }
 
+func (deployHookStore) InsertServiceEventFact(context.Context, store.ServiceEventFact) (bool, error) {
+	return false, errors.New("unexpected InsertServiceEventFact")
+}
+
 // serverWith builds a fully wired, auth-gated handler over the given base + deps.
 func serverWith(t *testing.T, base *core.Base, d Deps) (http.Handler, *Server) {
 	t.Helper()

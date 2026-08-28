@@ -92,7 +92,9 @@ type fakeStore struct {
 	mu       sync.Mutex
 	byApp    map[string][]store.Deploy
 	nextID   int
-	setImage map[string]string // appID -> last SetAppImage call, for assertions
+	setImage map[string]string        // appID -> last SetAppImage call, for assertions
+	facts    []store.ServiceEventFact // InsertServiceEventFact calls, for assertions
+	seenKeys map[string]bool          // source keys already inserted, for idempotency
 }
 
 func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Deploy{}} }
@@ -287,6 +289,24 @@ func (f *fakeStore) SetAppImage(_ context.Context, id string, image string) erro
 	}
 	f.setImage[id] = image
 	return nil
+}
+
+// InsertServiceEventFact mirrors PGStore's idempotent-by-source-key insert
+// (ON CONFLICT (source_key) DO NOTHING) so a test asserting Cancel's fact
+// emission also exercises the same no-duplicate guarantee the real store
+// gives every producer.
+func (f *fakeStore) InsertServiceEventFact(_ context.Context, fact store.ServiceEventFact) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.seenKeys == nil {
+		f.seenKeys = map[string]bool{}
+	}
+	if f.seenKeys[fact.SourceKey] {
+		return false, nil
+	}
+	f.seenKeys[fact.SourceKey] = true
+	f.facts = append(f.facts, fact)
+	return true, nil
 }
 
 // --- List / Get -----------------------------------------------------------

@@ -790,6 +790,18 @@ func buildLifecycleFacts(open Deploy, newStatus string) []ServiceEventFact {
 	return facts
 }
 
+// CanceledBuildLifecycleFacts derives the build_started/build_ended pair (if
+// any) for a deploy the Cancel verb closes directly (w6/m128) — the one
+// lifecycle transition that bypasses the reconciler entirely, so recordDeploy
+// never runs for it and buildLifecycleFacts is otherwise unreachable. It
+// reuses that same rule rather than re-deriving it: canceled while queued
+// still emits neither fact, canceled mid-build emits build_ended(canceled),
+// and canceled after the build finished emits build_ended(succeeded). open
+// must be the deploy row exactly as it stood before the cancel closed it.
+func CanceledBuildLifecycleFacts(open Deploy) []ServiceEventFact {
+	return buildLifecycleFacts(open, DeployCanceled)
+}
+
 // buildStartedAt is when the deploy's BuildKit Job actually got dispatched, and
 // whether it has been dispatched at all.
 //

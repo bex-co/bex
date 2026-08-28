@@ -1077,6 +1077,74 @@ func TestRecordDeployCancelsSupersededRow(t *testing.T) {
 	}
 }
 
+// TestRecordDeploySupersededMidBuildEmitsBuildEndedCanceled is w6/m128's other
+// route to a canceled build: the supersede path (reconciler.go's
+// recordDeploy, generation-mismatch branch) settles a stranded lower-
+// generation row canceled without ever routing through recordLifecycleFacts —
+// its own comment calls this "a lower-generation row can be settled canceled
+// after the reconciler missed its final observation." Unlike the Cancel verb
+// (deploys.Service.Cancel), this path already ran through buildLifecycleFacts
+// before m128; this test pins that it still closes the pair now that the verb
+// path also does, so the two never drift apart.
+func TestRecordDeploySupersededMidBuildEmitsBuildEndedCanceled(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	row, _ := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Repo: "https://example.com/acme/web.git",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+	})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("create projection: %v", err)
+	}
+
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseBuilding
+	app.Status.ReleaseGeneration = 1
+	app.Status.Conditions = []metav1.Condition{{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+		Reason: "Building", ObservedGeneration: app.Generation,
+	}}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe generation 1 building: %v", err)
+	}
+	deploys, err := st.ListDeploys(ctx, row.ID, DeployFilter{})
+	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployBuildInProgress {
+		t.Fatalf("deploys after building = %+v (err %v), want one build_in_progress", deploys, err)
+	}
+	deployID := deploys[0].ID
+
+	// A newer release generation lands without ever adopting this row — the
+	// missed-observation case supersededDeployStatus exists for.
+	app = getApp(t, cl)
+	app.Status.ReleaseGeneration = 3
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe supersede: %v", err)
+	}
+
+	deploys, err = st.ListDeploys(ctx, row.ID, DeployFilter{})
+	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployCanceled {
+		t.Fatalf("deploys after supersede = %+v (err %v), want one canceled", deploys, err)
+	}
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	started, ok := st.eventFacts["deploy:"+deployID+":build_started"]
+	if !ok || started.Type != EventFactBuildStarted {
+		t.Errorf("build_started = %+v, ok=%v, want present", started, ok)
+	}
+	ended, ok := st.eventFacts["deploy:"+deployID+":build_ended"]
+	if !ok || ended.Type != EventFactBuildEnded || ended.Status != EventStatusCanceled {
+		t.Fatalf("build_ended = %+v, ok=%v, want present with status canceled", ended, ok)
+	}
+}
+
 // TestReconcileOverlapRecordsActiveLiveBeforeLatestQueuedDeploy proves the
 // w2/018 history fix end to end through the reconciler. A newer trigger does
 // not repaint the release that is already building as canceled: generation 1
