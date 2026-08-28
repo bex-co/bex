@@ -90,7 +90,10 @@ limitations under the License.
 // image_pull_failed rides — no faking, a durable source each:
 //
 //	build_started / build_ended            reconciler observing a repo-backed
-//	                                       deploy's BuildKit build phase (ADR034);
+//	                                       deploy's BuildKit build phase (ADR034),
+//	                                       or the Cancel verb closing one directly
+//	                                       (w6/m128, the one lifecycle transition
+//	                                       the reconciler never revisits);
 //	                                       build_ended.details.status is
 //	                                       succeeded|failed|canceled
 //	pre_deploy_started / pre_deploy_ended  reconciler observing status.preDeploy

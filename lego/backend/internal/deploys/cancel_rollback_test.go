@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	batchv1 "k8s.io/api/batch/v1"
@@ -148,7 +149,9 @@ func TestCancelDeletesInFlightKpackImage(t *testing.T) {
 // forever with no terminal phase. Before m104 the stamp sat inside
 // `if a.Spec.Repo != ""`, so an image-backed cancel closed the deploy row but
 // never touched the App, leaving the service stuck Deploying — the regression
-// this asserts against.
+// this asserts against. It also proves the w6/m128 fix stays scoped to
+// repo-backed deploys: an image-backed deploy has no build phase, so Cancel
+// must not manufacture a build_started/build_ended pair for one.
 func TestCancelImageBackedAppStampsCanceledReleaseNoJob(t *testing.T) {
 	ds := newFakeStore()
 	// Deploy generation (4) is deliberately distinct from the App's current
@@ -166,6 +169,128 @@ func TestCancelImageBackedAppStampsCanceledReleaseNoJob(t *testing.T) {
 	app := getApp(t, cl, "web")
 	if marker := app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]; marker != "4" {
 		t.Errorf("canceled release marker = %q, want deploy generation 4 — an image-backed cancel must stamp it too", marker)
+	}
+	if len(ds.facts) != 0 {
+		t.Errorf("image-backed cancel emitted build lifecycle facts %+v, want none", ds.facts)
+	}
+}
+
+// TestCancelMidBuildEmitsBuildEndedCanceled is the w6/m128 bug: a deploy
+// canceled while still build_in_progress used to close with three events —
+// deploy_started, build_started, deploy_ended(canceled) — and no build_ended,
+// leaving the build lifecycle unclosed in the feed forever (the reconciler
+// never gets another pass over a row Cancel just made terminal). It must now
+// carry a build_ended fact with a canceled outcome, per buildEndedStatus's
+// first branch.
+func TestCancelMidBuildEmitsBuildEndedCanceled(t *testing.T) {
+	ds := newFakeStore()
+	started := time.Date(2026, 8, 27, 23, 55, 6, 0, time.UTC)
+	ds.byApp["srv-1"] = []store.Deploy{{
+		ID: "dep-1", AppID: "srv-1", Image: "web:v1", Generation: 2,
+		Status: store.DeployBuildInProgress, CreatedAt: started, StartedAt: &started,
+	}}
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://example.invalid/acme/web.git"
+	svc, _ := newService(ds, app)
+
+	got, err := svc.Cancel(context.Background(), "web", "dep-1")
+	if err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	if got.Status != store.DeployCanceled {
+		t.Fatalf("canceled deploy = %+v", got)
+	}
+
+	var buildStarted, buildEnded *store.ServiceEventFact
+	for i := range ds.facts {
+		switch ds.facts[i].Type {
+		case store.EventFactBuildStarted:
+			buildStarted = &ds.facts[i]
+		case store.EventFactBuildEnded:
+			buildEnded = &ds.facts[i]
+		}
+	}
+	if buildStarted == nil || !buildStarted.At.Equal(started) {
+		t.Errorf("build_started = %+v, want one at %s", buildStarted, started)
+	}
+	if buildEnded == nil || buildEnded.Status != store.EventStatusCanceled {
+		t.Fatalf("build_ended = %+v, want status canceled", buildEnded)
+	}
+	if buildEnded.SourceKey != "deploy:dep-1:build_ended" {
+		t.Errorf("build_ended source key = %q, want deploy:dep-1:build_ended", buildEnded.SourceKey)
+	}
+
+	// A retried Cancel (client timeout, at-least-once webhook redelivery, …) or
+	// a reconciler pass racing the same close must not double the pair: the
+	// source_key stays "deploy:dep-1:build_started"/"build_ended" regardless of
+	// how many times it is derived, and InsertServiceEventFact is ON CONFLICT
+	// (source_key) DO NOTHING (event_facts.go), so re-deriving from the same
+	// pre-cancel snapshot and re-inserting is a no-op.
+	for _, fact := range store.CanceledBuildLifecycleFacts(store.Deploy{
+		ID: "dep-1", AppID: "srv-1", Image: "web:v1", Generation: 2,
+		Status: store.DeployBuildInProgress, CreatedAt: started, StartedAt: &started,
+	}) {
+		if _, err := ds.InsertServiceEventFact(context.Background(), fact); err != nil {
+			t.Fatalf("re-insert %s: %v", fact.SourceKey, err)
+		}
+	}
+	if len(ds.facts) != 2 {
+		t.Fatalf("facts after a re-derived re-insert = %+v, want still exactly build_started + build_ended", ds.facts)
+	}
+}
+
+// TestCancelQueuedEmitsNoBuildFacts is the adjacent class the fix must not
+// disturb: a deploy canceled before its build ever dispatched has nothing to
+// report, so it must keep emitting neither build_started nor build_ended
+// (buildStartedAt withholds both while the deploy never left the queue).
+func TestCancelQueuedEmitsNoBuildFacts(t *testing.T) {
+	ds := newFakeStore()
+	ds.byApp["srv-1"] = []store.Deploy{{
+		ID: "dep-1", AppID: "srv-1", Image: "web:v1", Generation: 2,
+		Status: store.DeployQueued, OverlapPending: true, CreatedAt: time.Now(),
+	}}
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://example.invalid/acme/web.git"
+	svc, _ := newService(ds, app)
+
+	if _, err := svc.Cancel(context.Background(), "web", "dep-1"); err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	if len(ds.facts) != 0 {
+		t.Errorf("canceled-while-queued facts = %+v, want none", ds.facts)
+	}
+}
+
+// TestCancelAfterBuildFinishedEmitsBuildEndedSucceeded is the other adjacent
+// class the fix must not disturb: a deploy canceled once its build already
+// finished (now sitting in a later phase, e.g. update_in_progress) reports its
+// build as having succeeded, per buildEndedStatus's second branch — the build
+// itself was never canceled, only the rollout that followed it.
+func TestCancelAfterBuildFinishedEmitsBuildEndedSucceeded(t *testing.T) {
+	ds := newFakeStore()
+	started := time.Date(2026, 8, 27, 23, 52, 24, 0, time.UTC)
+	ds.byApp["srv-1"] = []store.Deploy{{
+		ID: "dep-1", AppID: "srv-1", Image: "web:v1", Generation: 2,
+		Status: store.DeployUpdateInProgress, CreatedAt: started, StartedAt: &started,
+	}}
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://example.invalid/acme/web.git"
+	svc, _ := newService(ds, app)
+
+	if _, err := svc.Cancel(context.Background(), "web", "dep-1"); err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	var buildEnded *store.ServiceEventFact
+	for i := range ds.facts {
+		if ds.facts[i].Type == store.EventFactBuildEnded {
+			buildEnded = &ds.facts[i]
+		}
+	}
+	if buildEnded == nil || buildEnded.Status != store.EventStatusSucceeded {
+		t.Fatalf("build_ended after build finished = %+v, want status succeeded", buildEnded)
 	}
 }
 

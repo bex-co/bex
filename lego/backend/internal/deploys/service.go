@@ -28,6 +28,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -66,6 +67,11 @@ type DeployStore interface {
 	// SetAppImage writes the row-owned image field — Rollback's row-first
 	// write, same discipline as apps.Service.writeThroughStore.
 	SetAppImage(ctx context.Context, id string, image string) error
+	// InsertServiceEventFact appends a closed lifecycle fact exactly once
+	// (store.PGStore's idempotent-by-source-key insert) — Cancel's route to the
+	// build_started/build_ended pair the reconciler itself can never emit for a
+	// deploy it closes directly (w6/m128).
+	InsertServiceEventFact(ctx context.Context, fact store.ServiceEventFact) (bool, error)
 }
 
 // CommitResolver resolves a repo ref (branch, tag, or SHA) to the exact
@@ -709,6 +715,21 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	}
 	if !won {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already terminal", core.ErrConflict, deployID)
+	}
+	if a.Spec.Repo != "" {
+		// CloseDeploy just made this row terminal, so the reconciler's own
+		// recordDeploy pass will never observe it open again and its usual
+		// build_started/build_ended emission (recordLifecycleFacts) is now
+		// unreachable for this deploy. Derive the same facts directly from d,
+		// the row exactly as it stood before the cancel (w6/m128), so a build
+		// that started also ends in the feed. Best-effort like every other
+		// lifecycle fact write: logged, not fatal — Cancel's own terminal state
+		// already landed regardless.
+		for _, fact := range store.CanceledBuildLifecycleFacts(d) {
+			if _, err := s.Store.InsertServiceEventFact(ctx, fact); err != nil {
+				log.Printf("deploys: record cancel build lifecycle fact %s: %v", fact.SourceKey, err)
+			}
+		}
 	}
 	d, err = s.Store.GetDeploy(ctx, appID, deployID)
 	if err != nil {
