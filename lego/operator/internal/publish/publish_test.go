@@ -116,6 +116,46 @@ func TestPurgeJobHitsOnlyOwningPrefixes(t *testing.T) {
 	}
 }
 
+// TestPurgeJobSatisfiesBuildJobShapePolicy pins the two bex-build-job-shape
+// ValidatingAdmissionPolicy (deploy/gitops/base/operator-workload-admission.yaml)
+// requirements a bare purge Job silently failed: it must declare at least one
+// emptyDir/non-crown-Secret volume, and no container may allow privilege
+// escalation or add capabilities. A Job that regresses on either fails to
+// create in bex-build, and the App finalizer that creates it retries forever
+// (observed live 2026-08: qa-* static-site Apps stuck Terminating for days).
+func TestPurgeJobSatisfiesBuildJobShapePolicy(t *testing.T) {
+	o := testOptions()
+	job := PurgeJob("web", "uid-a", "tea-aaaaaaaaaaaaaaaaaaaa", "tea-aaaaaaaaaaaaaaaaaaaa",
+		o.Store, "bex-system", "", "", "tea-aaaaaaaaaaaaaaaaaaaa/web/")
+
+	spec := job.Spec.Template.Spec
+	if len(spec.Volumes) == 0 {
+		t.Fatal("purge Job declares no volumes; bex-build-job-shape requires has(pod.volumes)")
+	}
+	crownSecrets := map[string]bool{"bex-kubeconfig": true, "bex-ca": true, "bex-etcd": true, "bex-proxy": true, "bex-sa": true}
+	for _, v := range spec.Volumes {
+		switch {
+		case v.EmptyDir != nil:
+		case v.Secret != nil:
+			if crownSecrets[v.Secret.SecretName] {
+				t.Errorf("volume %q mounts a crown Secret %q; bex-build-job-shape forbids it", v.Name, v.Secret.SecretName)
+			}
+		default:
+			t.Errorf("volume %q is neither emptyDir nor secret; bex-build-job-shape forbids it", v.Name)
+		}
+	}
+
+	for _, c := range spec.Containers {
+		sc := c.SecurityContext
+		if sc != nil && sc.AllowPrivilegeEscalation != nil && *sc.AllowPrivilegeEscalation {
+			t.Errorf("container %q allows privilege escalation; bex-build-job-shape forbids it", c.Name)
+		}
+		if sc != nil && sc.Capabilities != nil && len(sc.Capabilities.Add) > 0 {
+			t.Errorf("container %q adds capabilities %v; bex-build-job-shape forbids it for non-buildkit containers", c.Name, sc.Capabilities.Add)
+		}
+	}
+}
+
 func TestPublishJobShape(t *testing.T) {
 	job := PublishJob(testOptions())
 
