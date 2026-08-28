@@ -2680,6 +2680,24 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
   return [
     ...CREATED_AGENT_SESSIONS,
     {
+      // Repo-less (chat-only): bex-api's validateCreate clears repo AND branch
+      // when a session is started without a repository, and it is the DEFAULT
+      // zero-config path — the first session a tenant runs, and the only shape
+      // that works before a GitHub App connection exists. Every other fixture
+      // here has a repo, which is how the empty-heading bug (w1/m90) stayed
+      // invisible offline.
+      ...base,
+      id: "ags-demo00000000000000007",
+      repo: "",
+      branch: "",
+      agentConfig: cfg("Explain how the operator reconciles an App CR."),
+      phase: "completed",
+      status: "completed",
+      turns: 1,
+      createdAt: agoISO(1),
+      updatedAt: agoISO(1),
+    },
+    {
       ...base,
       id: "ags-demo00000000000000006",
       repo: "bex-co/bex-hello-go-live",

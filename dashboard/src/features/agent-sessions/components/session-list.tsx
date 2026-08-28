@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Archive, ArchiveRestore, GitPullRequest } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
@@ -104,6 +105,44 @@ function PrBadge({
   );
 }
 
+const META_SEPARATOR = " · ";
+
+/**
+ * A row's meta line, built from the parts that are actually there.
+ *
+ * The separator used to be interleaved by hand — `{phrase}{" · "}{s.repo}{" · "}
+ * {age}` — which renders `Working… · ·` the moment a part is empty, and a
+ * repo-less (chat-only) session has no repo (w1/m90 t003).
+ */
+function MetaLine({
+  parts,
+  className,
+}: {
+  parts: ReadonlyArray<ReactNode | false | undefined>;
+  className?: string;
+}) {
+  const present = parts.filter(
+    (part) =>
+      part !== null && part !== undefined && part !== false && part !== "",
+  );
+  return (
+    <span
+      className={cn(
+        "text-muted-foreground mt-1 block truncate text-xs",
+        className,
+      )}
+      data-testid="agent-session-meta"
+    >
+      {present.map((part, i) => (
+        <Fragment key={i}>
+          {i > 0 ? META_SEPARATOR : null}
+          {part}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
 export interface SessionListProps {
   sessions: AgentSessionView[];
   loading: boolean;
@@ -157,10 +196,7 @@ function ArchiveRowAction({
 
 export function RecentsRowsSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div
-      className="space-y-2"
-      data-testid="agent-sessions-recents-skeleton"
-    >
+    <div className="space-y-2" data-testid="agent-sessions-recents-skeleton">
       {Array.from({ length: rows }).map((_, i) => (
         <Skeleton key={i} className="h-14 w-full rounded-lg" />
       ))}
@@ -209,7 +245,11 @@ export function SessionList({
     return (
       <AgentSessionsEmptyState
         mode={
-          phase ? "filtered" : archiveFilter === "archived" ? "archived" : "default"
+          phase
+            ? "filtered"
+            : archiveFilter === "archived"
+              ? "archived"
+              : "default"
         }
         onClearFilters={onClearFilters}
       />
@@ -234,13 +274,13 @@ export function SessionList({
               <span className="block truncate font-medium">
                 {sessionTitleShort(s)}
               </span>
-              <span className="text-muted-foreground mt-1 block truncate text-xs">
-                {t(agentSessionStatusPhraseKey(s))}
-                {" · "}
-                {s.repo}
-                {" · "}
-                <RelativeAge value={s.createdAt} />
-              </span>
+              <MetaLine
+                parts={[
+                  t(agentSessionStatusPhraseKey(s)),
+                  s.repo,
+                  <RelativeAge value={s.createdAt} />,
+                ]}
+              />
             </Link>
             <div className="flex shrink-0 items-center gap-1 py-3 pr-1">
               <PrBadge session={s} hideEmpty />
@@ -294,10 +334,18 @@ export function SessionList({
                   >
                     {sessionTitleShort(s)}
                   </Link>
-                  <span className="text-muted-foreground mt-1 block truncate text-xs font-normal">
-                    {s.repo} · <span className="font-mono">{s.branch}</span> ·{" "}
-                    <span className="capitalize">{s.agentConfig.agent}</span>
-                  </span>
+                  <MetaLine
+                    className="font-normal"
+                    parts={[
+                      s.repo,
+                      s.branch && <span className="font-mono">{s.branch}</span>,
+                      s.agentConfig.agent && (
+                        <span className="capitalize">
+                          {s.agentConfig.agent}
+                        </span>
+                      ),
+                    ]}
+                  />
                 </TableCell>
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5">

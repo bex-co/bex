@@ -3,7 +3,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { requireAgentsFeature } from "@/common/lib/growthbook/require-agents-feature";
-import { translatedTitleHead } from "@/common/lib/document-head";
+import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
+import {
+  isNotFoundError,
+  loadRouteResource,
+  routeResourceTitle,
+  titleHead,
+  titleLoaderFetchPolicy,
+  translatedText,
+} from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import {
   Card,
@@ -14,6 +22,10 @@ import {
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSession } from "@/features/agent-sessions/hooks/use-agent-session";
+import {
+  agentSessionDisplayName,
+  agentSessionNameSource,
+} from "@/features/agent-sessions/lib/mapper";
 import { SessionChatColumn } from "@/features/agent-sessions/components/session-chat-column";
 import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
@@ -22,6 +34,7 @@ import {
   type AgentSessionArchivedFilter,
   type AgentSessionPhase,
 } from "@/features/agent-sessions/types";
+import { AgentSessionDocument } from "@/graphql/definitions";
 
 interface AgentSessionDetailSearch {
   fromArchived?: AgentSessionArchivedFilter;
@@ -47,7 +60,7 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
   pendingComponent: AgentSessionDetailPending,
   pendingMs: 0,
   beforeLoad: ({ context, location }) => {
-    requireAuth()( { context, location });
+    requireAuth()({ context, location });
     requireAgentsFeature()({ context });
   },
   validateSearch: (
@@ -67,13 +80,48 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
     }
     return out;
   },
-  head: ({ match }) => translatedTitleHead("agentSessions.detailTitle", match),
+  // Title loader, the shape every other detail route uses: the tab used to read
+  // the constant "Session" for every session at once, so two open sessions were
+  // indistinguishable in the tab strip (w1/m90 t004). The select keeps only the
+  // bounded name fields — the query still reads the whole session into Apollo's
+  // cache, but the router's own dehydrated payload has no business carrying a
+  // second copy of a prompt that runs to 100k chars.
+  loader: ({ context, params, cause }) =>
+    loadRouteResource(
+      () =>
+        context.client.query({
+          query: AgentSessionDocument,
+          variables: { id: params.agentSessionId },
+          fetchPolicy: titleLoaderFetchPolicy(cause),
+          errorPolicy: "all",
+        }),
+      (data) =>
+        data?.agentSession?.id
+          ? agentSessionNameSource(data.agentSession)
+          : null,
+      isNotFoundError,
+    ),
+  head: ({ loaderData, match }) =>
+    titleHead(
+      routeResourceTitle(loaderData, (session) => [
+        agentSessionDisplayName(
+          session,
+          translatedText("agentSessions.untitled"),
+        ).text,
+        translatedText("agentSessions.detailTitle"),
+      ]),
+      match,
+    ),
 });
 
 function AgentSessionDetailPage() {
   const { agentSessionId } = Route.useParams();
   const { fromArchived, fromPhase } = Route.useSearch();
   const { session, loading, error, refetch } = useAgentSession(agentSessionId);
+  // A dehydrated title-loader failure (bex-api rolling during SSR) otherwise
+  // pins the tab on "Couldn't load" until a manual reload — same self-heal every
+  // other loader-bearing detail route mounts.
+  useLoaderErrorRetry(Route.useLoaderData(), agentSessionId);
   // Lifted from the conversation column so the steering composer can send a live
   // turn through the column's own useChat instance (null ⇒ live path disabled).
   const [chat, setChat] = useState<ConversationChatHandle | null>(null);

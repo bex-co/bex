@@ -39,6 +39,7 @@ import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-ag
 import { useArchiveToggle } from "@/features/agent-sessions/hooks/use-archive-toggle";
 import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
 import {
+  agentSessionDisplayName,
   agentSessionDurationMs,
   formatSnapshotBytes,
 } from "@/features/agent-sessions/lib/mapper";
@@ -69,8 +70,10 @@ export interface SessionDetailHeaderProps {
 
 /**
  * The full-page chat header (ADR047 D9, w3/m44): a compact top bar with a
- * back-to-sessions link, the phase chip + repo title, a compact meta row
- * (branch, ticking duration, turns), an inline draft-PR badge `#N`, the Open in
+ * back-to-sessions link, the phase chip + the session's derived name (w1/m90 —
+ * its repo, or its prompt when the session is repo-less), a compact meta row
+ * (branch when there is one, ticking duration, turns), an inline draft-PR badge
+ * `#N`, the Open in
  * Zed action (w2/m65), a "…" overflow menu (open PR), and cancel-with-confirm. The duration ticks live
  * while the session is non-terminal; once terminal it pins to the session's own
  * end timestamp (via the mapper). Cancel is offered only while the session can
@@ -148,6 +151,11 @@ export function SessionDetailHeader({
 
   const duration = formatDurationShort(agentSessionDurationMs(session, nowMs));
 
+  const displayName = agentSessionDisplayName(
+    session,
+    t("agentSessions.untitled"),
+  );
+
   // Cancelable = a session still doing work. `canceling` shows the button
   // disabled with a reason; the terminal completed/failed/canceled states hide
   // it (canceled included — there is nothing left to stop).
@@ -191,13 +199,23 @@ export function SessionDetailHeader({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <AgentSessionPhaseChip phase={session.phase} />
-          <h1 className="truncate text-sm font-semibold">{session.repo}</h1>
+          <h1
+            className="truncate text-sm font-semibold"
+            title={displayName.full}
+          >
+            {displayName.text}
+          </h1>
         </div>
         <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
-          <span className="inline-flex items-center gap-1 font-mono">
-            <GitBranch className="size-3" />
-            {session.branch}
-          </span>
+          {/* A repo-less (chat-only) session has no branch — drop the whole
+              element, icon included, rather than leaving an orphan GitBranch
+              floating next to nothing (w1/m90 t002). */}
+          {session.branch ? (
+            <span className="inline-flex items-center gap-1 font-mono">
+              <GitBranch className="size-3" />
+              {session.branch}
+            </span>
+          ) : null}
           <span>{t("agentSessions.metaDuration", { duration })}</span>
           <span>
             {session.turns === 1

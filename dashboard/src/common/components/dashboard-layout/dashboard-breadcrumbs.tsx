@@ -1,6 +1,7 @@
 import { Link, useParams, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
+  Bot,
   Boxes,
   ChevronDown,
   ChevronRight,
@@ -33,6 +34,7 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { useServices } from "@/features/services/hooks/use-services";
 
 type DashboardParams = {
+  agentSessionId?: string;
   serviceId?: string;
   projectId?: string;
   databaseId?: string;
@@ -338,6 +340,11 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
     icon: Webhook,
   },
   {
+    match: (path) => path.startsWith("/agents"),
+    labelKey: "common.navAgents",
+    icon: Bot,
+  },
+  {
     match: (path) => path.startsWith("/notifications"),
     labelKey: "common.navNotifications",
     icon: Bell,
@@ -369,6 +376,16 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
   },
 ];
 
+/** Detail routes whose breadcrumb trails their resource id (the leaf, in order). */
+const DETAIL_ID_PARAMS = [
+  "agentSessionId",
+  "databaseId",
+  "keyValueId",
+  "groupId",
+  "blueprintId",
+  "webhookId",
+] as const satisfies ReadonlyArray<keyof DashboardParams>;
+
 function PageBreadcrumb({
   pathname,
   params,
@@ -381,12 +398,7 @@ function PageBreadcrumb({
     labelKey: "common.appName" as const,
     icon: Globe2,
   };
-  const detailId =
-    params.databaseId ??
-    params.keyValueId ??
-    params.groupId ??
-    params.blueprintId ??
-    params.webhookId;
+  const detailId = DETAIL_ID_PARAMS.map((key) => params[key]).find(Boolean);
   const Icon = definition.icon;
 
   return (
