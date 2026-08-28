@@ -36,10 +36,19 @@
 #
 # NOTE (the cluster-specific knobs, like prometheus.yaml's): the App pod-label
 # name (app.bex.co/app => Alloy meta key __meta_kubernetes_pod_label_app_bex_co_app),
-# the tenant App namespace (`default` — BEX_API_NAMESPACE / BEX_CP_APPS_NAMESPACE,
-# baked into the ServiceName regex below), and the Loki push URL. If any differs on
-# a cluster, tune the relabel rules / stages / endpoint below. Confirm the pinned
-# alloy chart line against the repo before a first real sync.
+# the tenant App namespaces, and the Loki push URL. If any differs on a cluster,
+# tune the relabel rules / stages / endpoint below. Confirm the pinned alloy chart
+# line against the repo before a first real sync.
+#
+# TENANT NAMESPACES (ADR043, w6/m131): tenant Apps do NOT share one `default`
+# namespace — each workspace gets its own namespace named for its workspace id
+# (`tea-` + a 20-char xid). The app/database/keyvalue/build pipelines read the
+# namespace straight from __meta_kubernetes_namespace, so they were always
+# namespace-correct. The Traefik request pipeline instead RECONSTRUCTS the
+# namespace by parsing the access line's ServiceName, and its regex was anchored
+# to the literal `default` — so every tenant request line missed and was dropped,
+# leaving type=request empty for every service. The regex below now matches a
+# `tea-<xid>` tenant namespace as well as the shared/storeless `default`.
 #
 # NODE SCOPING (w3/m13): every Alloy replica runs as a DaemonSet pod, one per
 # node. `loki.source.kubernetes` tails logs by opening an API log-follow stream
@@ -514,15 +523,30 @@ spec:
                 }
 
                 // App attribution: Traefik names an Ingress-backed service
-                // `<namespace>-<app>-<port>@kubernetes`, and the operator names the
-                // k8s Service after the App (app_controller.go), so the middle
-                // segment IS the App name. `default` is the tenant App namespace
-                // (see NOTE above) — the one knob to change if that moves. The
-                // greedy `.+` claims every hyphen but the port's, so `hello-go`
-                // survives intact.
+                // `<namespace>-<service>-<port>@kubernetes`, and the operator names
+                // the k8s Service after the App CR (app_controller.go), so the
+                // middle segment IS the App name bex-api selects on.
+                //
+                // ADR043 (w6/m131): tenant Apps do NOT live in `default` — each
+                // workspace has its own namespace named for its workspace id
+                // (`tea-` + a 20-char xid), and the App CR name is itself tenant-
+                // prefixed, so a real ServiceName is
+                // `tea-<xid>-tea-<xid>-<app>-<port>@kubernetes`. The original regex
+                // anchored the namespace to the literal `default`, so every tenant
+                // access line missed, `app` stayed empty, and the line was dropped
+                // as not_a_tenant_app — which is why type=request was empty for
+                // every service in production. Match a tenant namespace (fixed
+                // `tea-` + 20 xid chars, unambiguous) OR the shared/storeless
+                // `default`; the greedy `.+` then claims the CR name up to the
+                // trailing `-<port>`, so both the namespace and app labels equal
+                // the values bex-api's LogQL selector resolves (namespace =
+                // app.Namespace, app = app.Name). Misattribution cannot leak across
+                // tenants: the query pins namespace AND app to the caller's own
+                // resolved values, so a wrong label only hides a line, never
+                // surfaces another tenant's.
                 stage.regex {
                   source     = "service"
-                  expression = "^(?P<namespace>default)-(?P<app>.+)-\\d+@kubernetes$"
+                  expression = "^(?P<namespace>tea-[a-z0-9]{20}|default)-(?P<app>.+)-\\d+@kubernetes$"
                 }
                 // A service that doesn't match (a non-App Ingress at the edge —
                 // bex-api itself, etc.) has no App to attribute to. The regex

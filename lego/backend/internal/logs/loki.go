@@ -231,9 +231,12 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 // are wanted (no restriction — all streams for this App).
 func lokiTypeMatcher(q LogQuery) string {
 	if len(q.Types) == 0 {
-		// No explicit type filter: backward-compat union of app + request
-		// (the default Render clients see). Build logs are only included when
-		// the caller explicitly requests them — `type=build` or `type=all`.
+		// No explicit type filter (an absent `type`, or `type=all`, both of which
+		// NormalizeTypes collapses to nil): the backward-compat union of app +
+		// request the default Render client sees. Build is deliberately NOT in
+		// this union — it is a distinct source validate() requires be requested
+		// on its own (`type=build`), so `type=all` does not widen to it (w6/m131:
+		// the prior comment wrongly claimed `type=all` included build).
 		return fmt.Sprintf("container=~%q", core.AppContainer+"|")
 	}
 	wantApp, wantRequest, wantBuild := q.wants(LogTypeApp), q.wants(LogTypeRequest), q.wants(LogTypeBuild)
