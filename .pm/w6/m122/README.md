@@ -1,6 +1,6 @@
 # w6 · m122 — The Events tab silently hides five event types the API emits, because "all types" means the dashboard's catalog rather than what the feed returns
 
-**Worker:** worker6 **Goal:** the Activity feed renders every event the API returns, and a future backend vocabulary addition cannot silently vanish from it **Status:** in progress — t001–t006 done (code, tests, parity and docs landed; dashboard 379 files/2769 tests, backend `internal/api`+`internal/events`, and `make lint` ×4 all green). t007 closeout is open: its checks are live probes against `dashboard.bex.co` and this session has no QA credentials (`scripts/qa-login.sh` exits 2).
+**Worker:** worker6 **Goal:** the Activity feed renders every event the API returns, and a future backend vocabulary addition cannot silently vanish from it **Status:** in progress — t001–t006 done and deployed (`11c0df98` is contained in the production image pinned by `71fe9660`; dashboard 379 files/2769 tests, backend `internal/api`+`internal/events`, and `make lint` ×4 all green). t007 closeout is open: its checks are live probes against `dashboard.bex.co` and this session has no QA credentials (`scripts/qa-login.sh` exits 2).
 
 ## Tasks (in order)
 
@@ -133,7 +133,7 @@ The probe did surface something the hunt had not: `?type=` is validated against 
 
 ### What t007 still owes
 
-The DoD's remaining bullets are live probes CI cannot run, and this session has no QA credentials (`scripts/qa-login.sh` exits **2** — `QA_EMAIL`/`QA_PASSWORD` absent from `.env`), plus the fix is not deployed. Two things must not be quietly dropped at closeout:
+The DoD's remaining bullets are live probes CI cannot run, and this session has no QA credentials (`scripts/qa-login.sh` exits **2** — `QA_EMAIL`/`QA_PASSWORD` absent from `.env`). The fix is deployed: `11c0df98` is an ancestor of the production image pinned by `71fe9660`. Two things must not be quietly dropped at closeout:
 
 - **The `disk_*` half was never observed live** — the QA workspace has no service with a persistent disk. It is code-verified and test-verified only. Say so plainly rather than implying it was seen.
 - **The fixture conflict** in the triage note below still stands: `w6/m110/t008` plans to delete `srv-da7o6ovvqdcc73bpn9hg`, which carries this milestone's `custom_domain_verified` evidence.
