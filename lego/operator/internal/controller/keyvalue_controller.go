@@ -825,7 +825,7 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 		kv.Status.CredentialRevision = credentialRevision
 		reason, message := "Provisioned", "valkey ready"
 		if kv.Spec.Suspended {
-			reason, message = "Suspended", "valkey suspended (scaled to zero)"
+			reason, message = reasonSuspended, "valkey suspended (scaled to zero)"
 		}
 		kv.Status.Phase = appv1alpha1.KVPhaseReady
 		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{

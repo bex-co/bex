@@ -889,7 +889,7 @@ func (r *DatabaseReconciler) reconcileScheduledBackup(ctx context.Context, db *a
 func (r *DatabaseReconciler) settleSuspended(ctx context.Context, db *appv1alpha1.Database, exportRequeue time.Duration) (ctrl.Result, error) {
 	db.Status.Phase = appv1alpha1.DBPhaseReady
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
 		Message: "postgres suspended (hibernated; PVC and config kept)", ObservedGeneration: db.Generation,
 	})
 	if err := r.Status().Update(ctx, db); err != nil {

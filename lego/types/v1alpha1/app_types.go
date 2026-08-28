@@ -209,6 +209,21 @@ func BuildIsRunningReason(reason string) bool {
 	return reason == ReasonBuilding
 }
 
+// Ready-condition reasons for a service that is not failing while its Ready
+// condition is not a plain healthy True — the third slice of the same shared
+// vocabulary. The operator writes them; bex-api's availability projection reads
+// them (lego/backend/internal/store/reconciler.go observedServiceStateFor):
+// a parked (Suspended/AutoHibernated) or bookkeeping-lagged (RolloutSettling)
+// service is excluded from the "unhealthy" verdict, and PriorReleaseServing is
+// the w6/m124 terminal — a failed build whose previously released image keeps
+// serving, which must read as a serving service, not a failing instance.
+const (
+	ReasonSuspended           = "Suspended"
+	ReasonAutoHibernated      = "AutoHibernated"
+	ReasonRolloutSettling     = "RolloutSettling"
+	ReasonPriorReleaseServing = "PriorReleaseServing"
+)
+
 // DefaultBranch is the git branch a repo-backed App tracks when none is
 // specified. It lives on the CRD contract because both sides default to it
 // independently — the backend when validating a source patch or projecting a
@@ -1110,7 +1125,13 @@ const (
 	// healthy release never reaches this state: that release keeps serving and
 	// the phase stays Running.
 	PhaseCanceled AppPhase = "Canceled"
-	PhaseFailed   AppPhase = "Failed"
+	// PhaseFailed: the App could not be converged and nothing is serving. A
+	// BUILD failure reaches this state only when no earlier release ever
+	// succeeded (Status.Image empty): with a released image the failed build is
+	// a deploy fact — the Build condition and the deploy row carry it — and the
+	// phase keeps describing the release that is still serving (or parked), the
+	// same rule PhaseCanceled above applies to user cancels (w6/m52 → w6/m124).
+	PhaseFailed AppPhase = "Failed"
 )
 
 // CronRun is one execution of a cron_job — a Kubernetes Job spawned either by the
