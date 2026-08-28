@@ -26,6 +26,7 @@ import (
 // instance ids, remote addresses, commands, and terminal content are
 // deliberately absent so observability cannot become a second audit stream.
 type Metrics struct {
+	handshakes      *prometheus.CounterVec
 	authentications *prometheus.CounterVec
 	activeSessions  prometheus.Gauge
 	sessions        *prometheus.CounterVec
@@ -38,6 +39,20 @@ type Metrics struct {
 
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
 	m := &Metrics{
+		// Pre-authentication transport outcome. "established" means the SSH
+		// version exchange + key exchange completed and the connection reached
+		// authentication; "failed" means it never did (a malformed handshake, an
+		// un-stripped PROXY header, or the peer hanging up before KEXINIT). An
+		// infrastructure fault that kills the handshake for everyone — the w6/m132
+		// regression — turns "failed" into ~100% of this counter while
+		// authentications_total stays flat, so a dead edge is loud and is
+		// distinguishable from an authorization refusal (which fails AFTER the
+		// handshake, in authentications_total). It carries no subject, address, or
+		// cause, so ADR035:106's non-disclosure of AUTHENTICATION causes is intact.
+		handshakes: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "handshakes_total",
+			Help: "Pre-authentication SSH handshakes by bounded transport result.",
+		}, []string{"result"}),
 		authentications: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "authentications_total",
 			Help: "Completed SSH public-key authentication attempts by bounded result.",
@@ -72,8 +87,19 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Help: "Per-channel reassertions of the transport-auth-time key + target authorization (codex round-8 #5) by bounded result.",
 		}, []string{"result"}),
 	}
-	registerer.MustRegister(m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths)
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths)
 	return m
+}
+
+// Handshake records one pre-authentication transport outcome ("established" /
+// "failed"). "failed" is the honest, content-free signal that a connection
+// never reached authentication — the loud, distinguishable pre-auth failure
+// w6/m132 needed and that ADR035:106 does not govern (it covers only causes
+// AFTER authentication begins).
+func (m *Metrics) Handshake(result string) {
+	if m != nil {
+		m.handshakes.WithLabelValues(result).Inc()
+	}
 }
 
 func (m *Metrics) Authentication(result string) {

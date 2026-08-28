@@ -1867,6 +1867,25 @@ elif [ "$api_proxy_cidrs" != "$cluster_pod_cidr" ]; then
   fail=1
 fi
 
+# w6/m132: the ssh IngressRouteTCP and the gateway Deployment are two halves of
+# one contract. If Traefik wraps the connection in a PROXY header (proxyProtocol
+# set on the route) but the gateway is not told to strip it
+# (BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS unset), the binary header is fed into the
+# SSH version exchange and the handshake never sends KEXINIT — a silent, total
+# loss of `ssh <svc>@ssh.bex.co`. w4/m82 shipped exactly that half-done change
+# (sender on, receiver off), unnoticed for weeks. Assert the two stay in lockstep.
+ssh_proxy_version="$(yq -N 'select(.kind == "IngressRouteTCP" and .metadata.name == "ssh-gateway") | .spec.routes[].services[].proxyProtocol.version' lego/operator/config/ssh/ingressroutetcp.yaml | head -1)"
+ssh_proxy_cidrs="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[].env[]? | select(.name == "BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS") | .value' lego/operator/config/ssh/deployment.yaml)"
+if [ -n "$ssh_proxy_version" ] && [ "$ssh_proxy_version" != "null" ]; then
+  if [ -z "$ssh_proxy_cidrs" ]; then
+    echo "FAIL: ssh-gateway IngressRouteTCP sends PROXY protocol v$ssh_proxy_version but the gateway Deployment does not set BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS — the un-stripped header breaks the SSH handshake before KEXINIT (w6/m132)" >&2
+    fail=1
+  elif [ "$ssh_proxy_cidrs" != "$cluster_pod_cidr" ]; then
+    echo "FAIL: ssh-gateway BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS='$ssh_proxy_cidrs' but Traefik forwards from the cluster pod CIDR '$cluster_pod_cidr' — a wrong trust set means the real client PROXY header is refused as untrusted (w6/m132)" >&2
+    fail=1
+  fi
+fi
+
 deny_types="$(yq -N 'select(.kind == "NetworkPolicy" and .metadata.name == "default-deny" and .metadata.namespace == "bex-build") | .spec.policyTypes | sort | join(",")' "$BUILD_BOUNDARY")"
 if [ "$deny_types" != "Egress,Ingress" ]; then
   echo "FAIL: bex-build default-deny must select both ingress and egress" >&2
