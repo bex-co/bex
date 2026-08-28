@@ -17,6 +17,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w4/dev-4/` keeps onl
 
 ## Milestones
 
+- [ ] **m89** — Honest agent-session states and a real error taxonomy (8 tasks) ← from `/pm-brainstorm` 2026-08-28 findings 3+4: 17 `ErrAgentSessionsUnavailable` sites collapse into one "aren't configured — ask your operator" alert (hit live in dev-1 from a transient etcd timeout), and a normally-starting session renders failure copy.
 - [x] **m1** — Platform auth: Ory Kratos + Hydra on the cluster (+ ADR) (9 tasks) ← from brainstorm 2026-07-05
 - [x] **m2** — bex-api auth: Hydra introspection + Kratos sessions (6 tasks) ← from brainstorm 2026-07-05, needs m1
 - [x] **m3** — API keys replace the static token (7 tasks) ← user decision 2026-07-06, needs m2

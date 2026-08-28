@@ -179,6 +179,44 @@ weaken. So it serves TLS as `api.anthropic.com` behind a `hostAlias`, and the
 gateway trusts it through a CA bundle (stub CA appended to a real root store, so
 every other TLS destination still verifies) via Go's `SSL_CERT_FILE`.
 
+### Driving the agent-session UI (`VITE_AGENT_STREAM_URL`)
+
+The dashboard's `/agents` conversation view will not load in dev-5 on the
+default env — it silently shows "The conversation stream is unavailable" forever.
+Start the dashboard with the stream origin pointed at the gateway:
+
+```sh
+cd dashboard && HYDRA_ADMIN_URL=http://localhost:52050 \
+  HYDRA_PUBLIC_URL=http://localhost:58050 \
+  VITE_API_URL=http://localhost:54050/graphql \
+  VITE_KRATOS_PUBLIC_URL=http://localhost:51050 \
+  VITE_KRATOS_SSR_URL=http://localhost:51050 \
+  VITE_AGENT_STREAM_URL=http://localhost:62050 \
+  yarn dev --port 50050
+```
+
+**Why it is needed.** `agentSessionStreamUrl()` builds the SSE endpoint from
+`config.agentStreamBaseUrl`, which defaults to the **bex-api** origin — correct in
+production, where Traefik path-routes `api.bex.co/v1/agent-sessions/{{id}}/stream`
+to the gateway, so the two share one origin. Locally they are separate ports and
+bex-api does not proxy that path, so the browser hits bex-api and is rejected at
+the preflight:
+
+```
+Access to fetch at 'http://localhost:54050/v1/agent-sessions/<id>/stream'
+  blocked by CORS policy: Request header field x-bex-agent-ticket is not
+  allowed by Access-Control-Allow-Headers in preflight response.
+```
+
+`VITE_AGENT_STREAM_URL` overrides that origin (`dashboard/src/config/config.ts`).
+Pointed at `62050` the request reaches the gateway's attach listener directly,
+which does allow the ticket header and echoes CORS for the dev-5 dashboard
+origin (its `BEX_API_CORS_ORIGIN`).
+
+**`/agents` is also GrowthBook-gated** to one beta workspace
+(`dashboard/src/config/growthbook.ts`), so a local workspace is redirected to `/`
+until that file has a rule matching it.
+
 Readiness is observable: `GET /v1/agent-sessions/capabilities?ownerId=<workspaceId>`
 returns `enabled`, `github.connected`, `modelKeyReady` and an overall `ready`.
 
