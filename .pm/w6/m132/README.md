@@ -15,13 +15,13 @@
 | id   | title                                                                              | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Reproduce and locate why the gateway writes its banner and never sends KEXINIT       | 50m | —          | — **DONE** |
-| t002 | Walk `w2/m39`'s definition of done item by item against production                    | 40m | t001       | owed on deploy |
+| t002 | Walk `w2/m39`'s definition of done item by item against production                    | 40m | t001       | authenticated matrix owed |
 | t003 | Decide the honest-failure behaviour for a **pre-authentication** refusal              | 30m | t001       | — **DONE** |
 | t004 | Wire a guard so a dead SSH edge is loud (coordinate with `w6/m131/t004`)              | 40m | t001       | — **DONE** |
-| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard + official Render CLI)                | 30m | t002, t003 | code-verified; live CLI leg owed on deploy |
+| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard + official Render CLI)                | 30m | t002, t003 | code-verified; authenticated live CLI leg owed |
 | t006 | Simplify                                                                             | 20m | t005       | — **DONE** |
 | t007 | Test coverage                                                                        | 30m | t005       | — **DONE** |
-| t008 | Closeout                                                                             | 10m | t004, t007 | owed on deploy |
+| t008 | Closeout                                                                             | 10m | t004, t007 | authenticated closeout + first scheduled run owed |
 
 ## Background — found live, 2026-08-28, 71st `/qa-find-bugs` run, journey 8
 
