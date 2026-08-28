@@ -60,6 +60,17 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list"]
+  # Read-only managed-Postgres recovery surface (docs/ADR009-postgresql-management.md,
+  # w6/m117): the Recovery card reports the PITR window + base-backup list. bex-api
+  # reads the CNPG Cluster status (firstRecoverabilityPoint) and lists the Backup
+  # objects the operator manages in this namespace. WITHOUT this grant both reads
+  # 403 and recovery-info degraded silently to a false "No backups yet" beside a
+  # phantom restore point on databases that DO have nightly backups — the disaster-
+  # recovery surface lying in the direction that costs the most. get/list only: the
+  # operator owns these objects' lifecycle, bex-api never creates or mutates them.
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["clusters", "backups"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

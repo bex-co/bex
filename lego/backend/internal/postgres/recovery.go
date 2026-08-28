@@ -121,29 +121,48 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	if !info.Enabled {
 		return info, nil
 	}
-	// Best-effort recovery window from the CNPG Cluster status (absent until the
-	// first backup lands — then just report "now" as the latest recoverable point).
+	// The recovery window comes from the CNPG Cluster status. A read that FAILS is
+	// not an empty window: reporting one told tenants with nightly backups they had
+	// none (w6/m117). Distinguish a genuinely-absent Cluster (NotFound — the window
+	// isn't established yet, no error) from a read we could not perform at all
+	// (403/CRD-unavailable/transient), which is an honest error, not a false empty.
 	cluster := &unstructured.Unstructured{}
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
-	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: d.Namespace, Name: name}, cluster); err == nil {
-		if p, ok, _ := unstructured.NestedString(cluster.Object, "status", "firstRecoverabilityPoint"); ok {
+	switch err := s.Client.Get(ctx, client.ObjectKey{Namespace: d.Namespace, Name: name}, cluster); {
+	case err == nil:
+		if p, ok, _ := unstructured.NestedString(cluster.Object, "status", "firstRecoverabilityPoint"); ok && p != "" {
 			info.EarliestRecoveryTime = p
+			// Latest recoverable point ≈ now, but ONLY once the window is actually
+			// open. Before the first recoverability point there is nothing to restore
+			// to, so we report no latest rather than the wall clock — the one field
+			// that used to touch no Kubernetes read and so survived every failure to
+			// contradict the empty backup list beside it.
+			info.LatestRecoveryTime = s.Now().UTC().Format(time.RFC3339)
 		}
+	case apierrors.IsNotFound(err):
+		// No CNPG Cluster yet (a brand-new database): no window, but not an error.
+	default:
+		return RecoveryInfoView{}, fmt.Errorf("read recovery window for %q: %w", name, err)
 	}
-	info.LatestRecoveryTime = s.Now().UTC().Format(time.RFC3339)
-	info.Backups = s.listBackups(ctx, d.Namespace, name)
+	backups, err := s.listBackups(ctx, d.Namespace, name)
+	if err != nil {
+		return RecoveryInfoView{}, fmt.Errorf("list backups for %q: %w", name, err)
+	}
+	info.Backups = backups
 	return info, nil
 }
 
 // listBackups lists the CNPG Backup objects for a database, mapping each to a
-// BackupView. Best-effort: an unavailable CNPG CRD (e.g. envtest) yields an
-// empty list.
-func (s *Service) listBackups(ctx context.Context, namespace, name string) []BackupView {
+// BackupView. A failed List is returned as an ERROR, never a silent empty list:
+// an empty result must mean "this database has no backups", not "I could not read
+// them" (w6/m117). With CNPG installed and the read RBAC granted, a database that
+// genuinely has none simply lists zero items.
+func (s *Service) listBackups(ctx context.Context, namespace, name string) ([]BackupView, error) {
 	sel := client.MatchingLabels{labelCNPGCluster: name}
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(cnpgBackupGVK)
 	if err := s.Client.List(ctx, list, client.InNamespace(namespace), sel); err != nil {
-		return []BackupView{}
+		return nil, err
 	}
 	out := make([]BackupView, 0, len(list.Items))
 	for i := range list.Items {
@@ -155,7 +174,7 @@ func (s *Service) listBackups(ctx context.Context, namespace, name string) []Bac
 			CreatedAt: b.GetCreationTimestamp().UTC().Format(time.RFC3339),
 		})
 	}
-	return out
+	return out, nil
 }
 
 // backupStatus collapses CNPG's Backup phase onto a small stable enum.

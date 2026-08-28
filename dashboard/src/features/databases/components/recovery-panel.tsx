@@ -101,7 +101,12 @@ export function RecoveryPanel({ id }: { id: string }) {
               />
               <Field
                 label={t("databases.recoveryLatest")}
-                value={<LocalDateTime value={info.latestRecoveryTime} />}
+                value={
+                  <LocalDateTime
+                    value={info.latestRecoveryTime}
+                    fallback={t("databases.recoveryNoBackupYet")}
+                  />
+                }
               />
             </dl>
 

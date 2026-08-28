@@ -3,7 +3,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RecoveryPanel } from "@/features/databases/components/recovery-panel";
 import { formatDateTime } from "@/common/lib/format";
-import type { ExportItem } from "@/features/databases/hooks/use-recovery";
+import type {
+  BackupItem,
+  ExportItem,
+  RecoveryInfo,
+} from "@/features/databases/hooks/use-recovery";
 
 const navigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -12,19 +16,25 @@ vi.mock("@tanstack/react-router", () => ({
 
 const createExport = vi.fn();
 const recover = vi.fn();
+
+function windowInfo(): RecoveryInfo {
+  return {
+    enabled: true,
+    earliestRecoveryTime: null,
+    latestRecoveryTime: "2026-07-14T12:00:00Z",
+    backups: [] as BackupItem[],
+  };
+}
+
 const state: {
   exports: ExportItem[];
   exportInProgress: boolean;
-} = { exports: [], exportInProgress: false };
+  info: RecoveryInfo;
+} = { exports: [], exportInProgress: false, info: windowInfo() };
 
 vi.mock("@/features/databases/hooks/use-recovery", () => ({
   useRecovery: () => ({
-    info: {
-      enabled: true,
-      earliestRecoveryTime: null,
-      latestRecoveryTime: "2026-07-14T12:00:00Z",
-      backups: [],
-    },
+    info: state.info,
     exports: state.exports,
     exportInProgress: state.exportInProgress,
     loading: false,
@@ -38,6 +48,7 @@ vi.mock("@/features/databases/hooks/use-recovery", () => ({
 beforeEach(() => {
   state.exports = [];
   state.exportInProgress = false;
+  state.info = windowInfo();
   createExport.mockReset();
   recover.mockReset();
   navigate.mockReset();
@@ -53,6 +64,22 @@ describe("RecoveryPanel restore window", () => {
     expect(
       screen.getByText(formatDateTime("2026-07-14T12:00:00Z")!),
     ).toBeInTheDocument();
+  });
+
+  it("falls back identically on BOTH boundaries when no window is established", () => {
+    // The backend now omits latestRecoveryTime until the PITR window is actually
+    // open (w6/m117): the card must never name a precise "latest restore point"
+    // beside "No backup yet" and an empty backup list. Both boundaries share the
+    // one fallback so they can never contradict each other.
+    state.info = {
+      enabled: true,
+      earliestRecoveryTime: null,
+      latestRecoveryTime: null,
+      backups: [],
+    };
+    render(<RecoveryPanel id="db" />);
+
+    expect(screen.getAllByText("No backup yet")).toHaveLength(2);
   });
 });
 
