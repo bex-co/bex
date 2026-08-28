@@ -73,6 +73,21 @@ spec:
               value: "100"
             - name: BEX_SSH_MAX_SESSIONS_PER_IDENTITY
               value: "5"
+            # Traefik's ssh IngressRouteTCP forwards every connection wrapped in
+            # a PROXY protocol v2 header (config/ssh/ingressroutetcp.yaml). The
+            # gateway MUST be told which immediate peers may assert that header,
+            # or proxyproto.Wrap is a no-op and the un-stripped binary header is
+            # fed into the SSH version exchange — the handshake then never sends
+            # KEXINIT and every `ssh <svc>@ssh.bex.co` hangs to the handshake
+            # timeout (w6/m132, the regression w4/m82 opened by turning the
+            # Traefik sender on without this receiver). The value is the cluster
+            # pod CIDR (kept in lockstep with clusterNetwork.pods.cidrBlocks in
+            # infra/clusterapi/overlays/hetzner-caph/cluster.yaml and bex-api's
+            # BEX_TRUSTED_PROXY_CIDRS by a scripts/gitops-validate.sh check);
+            # trusting the whole pod range is safe because networkpolicy.yaml
+            # already admits :2222 ingress only from the traefik namespace.
+            - name: BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS
+              value: 10.244.0.0/16
             # Browser Web Shell (w2/m55, docs/ADR035-ssh.md § Browser Web Shell):
             # the plain-HTTP WebSocket Traefik terminates TLS onto. The listener
             # starts only when BEX_SHELL_TICKET_SECRET is present (optional), so

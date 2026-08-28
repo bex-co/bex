@@ -1,0 +1,87 @@
+name: SSH edge liveness
+
+# w6/m132/t004: a dead SSH handshake at ssh.bex.co went unnoticed for weeks
+# because the acceptance script for that surface (scripts/ssh-verify.sh) was
+# never wired to run on its own. This scheduled synthetic closes that gap with
+# the cheapest possible check — the credential-free KEXINIT probe from the
+# milestone README (scripts/ssh-kexinit-probe.sh): connect, complete the version
+# exchange, and require an SSH_MSG_KEXINIT, exactly as github.com/gitlab.com do.
+# It needs no key, fixture, or eligible service because the failure it catches is
+# pre-authentication and hits every connection alike.
+#
+# This is the shared carrier reconciled with w6/m131/t004 (the identical gap for
+# scripts/logs-verify.sh): a periodic, loud, production liveness gate. A logs
+# liveness step belongs beside the ssh-liveness job here rather than as a second,
+# parallel mechanism. The heavy scripts/ssh-verify.sh matrix (which needs a paid
+# fixture) stays a manual/less-frequent run; this is the always-on floor.
+
+on:
+  workflow_dispatch:
+    inputs:
+      address:
+        description: "SSH edge to probe (host:port)"
+        required: false
+        default: ssh.bex.co:22
+  schedule:
+    # Every six hours. "Unnoticed for weeks" is the bar this must beat; a dead
+    # edge now surfaces within hours, not on the next human's manual check.
+    - cron: "37 */6 * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  ssh-liveness:
+    runs-on: [self-hosted, Linux, ARM64]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # Same workspace/toolchain split as backend-test.yml: the backend module
+      # resolves standalone with the workspace off.
+      GOWORK: "off"
+      SSH_EDGE: ${{ github.event.inputs.address || 'ssh.bex.co:22' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/backend/go.mod
+          cache-dependency-path: lego/backend/go.sum
+      - name: Probe the SSH edge for KEXINIT
+        id: probe
+        run: |
+          if bash scripts/ssh-kexinit-probe.sh "$SSH_EDGE" > probe.txt 2>&1; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "down=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat probe.txt
+      - name: Open or update the tracking issue
+        if: steps.probe.outputs.down == 'true'
+        run: |
+          gh label create ssh-edge-down --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "ssh.bex.co is not completing the SSH handshake (w6/m132)" --force
+          body="$SSH_EDGE wrote its SSH banner but did not send SSH_MSG_KEXINIT — the handshake never reaches authentication."$'\n\n'
+          body+="Probe output:"$'\n\n```\n'"$(cat probe.txt)"$'\n```\n\n'
+          body+="Likely a PROXY-protocol mismatch between Traefik and the gateway (w6/m132): confirm the gateway Deployment sets BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS to the cluster pod CIDR while the ssh IngressRouteTCP sets proxyProtocol. \`scripts/gitops-validate.sh\` guards the manifests; this checks the live edge."
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ssh-edge-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "SSH edge is down: no KEXINIT from $SSH_EDGE" \
+              --label ssh-edge-down \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once the edge recovers
+        if: steps.probe.outputs.down == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ssh-edge-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "$SSH_EDGE completed the version exchange and sent KEXINIT again."
+          fi
+      - name: Fail the run when the edge is down
+        if: steps.probe.outputs.down == 'true'
+        run: |
+          echo "::error::$SSH_EDGE did not send KEXINIT — SSH is down" >&2
+          exit 1

@@ -1,19 +1,27 @@
 # w6 · m132 — REGRESSION of `w2/m39`: the SSH gateway never sends KEXINIT
 
-**Worker:** worker6 **Goal:** `ssh <service-id>@ssh.bex.co` completes a handshake and opens a shell again, and a dead SSH edge cannot go unnoticed for weeks. **Status:** todo
+**Worker:** worker6 **Goal:** `ssh <service-id>@ssh.bex.co` completes a handshake and opens a shell again, and a dead SSH edge cannot go unnoticed for weeks. **Status:** code-complete; post-deploy live re-verification owed (t002/t005/t008)
+
+## Root cause located + fixed (t001, 2026-08-28)
+
+**Cause (measured, not hypothesized):** `w4/m82` (commit `9c111369`, 2026-08-16 — after the last-good acceptance on 2026-07-18) turned on `proxyProtocol: version: 2` on `lego/operator/config/ssh/ingressroutetcp.yaml` so Traefik forwards a PROXY v2 header, but shipped the gateway Deployment **without** the matching `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS`. With no trusted CIDR, `proxyproto.Wrap` is a no-op (`lego/backend/internal/proxyproto/proxyproto.go:63`), so the un-stripped binary PROXY header is fed into the SSH version exchange; Go's `readVersion` (`golang.org/x/crypto@v0.53.0/ssh/transport.go:335`) discards it as non-`SSH-` preamble and then blocks waiting for a valid version line until the 10 s `BEX_SSH_HANDSHAKE_TIMEOUT` closes the socket. `KEXINIT` is only sent **after** a completed version exchange — hence banner, then 0 bytes, then timeout, for every target alike. The PROXY-config location the filing hunt could not find is `config/ssh/ingressroutetcp.yaml`; `pg-sni-proxy`/`kv-sni-proxy` never regressed because they set their `BEX_PROXY_PROTOCOL_TRUSTED_CIDRS`. **Where the fix belongs:** product config (the operator-owned gateway manifest), not the LB — the LB/route half is correct; the receiver half was missing.
+
+**Reproduced live 2026-08-28** with the milestone's own instrument (now `ProbeKEXINIT`): `github.com`/`gitlab.com` sent `KEXINIT`; `ssh.bex.co` sent its banner then timed out — controls and symptom exactly as filed.
+
+**Fix + guards shipped:** `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS: 10.244.0.0/16` on `config/ssh/deployment.yaml`; a `scripts/gitops-validate.sh` manifest-lockstep check (route sends PROXY ⇒ Deployment must set the trust, == pod CIDR); a `bex_ssh_gateway_handshakes_total{result}` metric (t003: loud, distinguishable pre-auth failure); the always-on `scripts/ssh-kexinit-probe.sh` + `.github/workflows/ssh-edge-liveness.yml` synthetic (t004, shared carrier reconciled with `w6/m131/t004`); protocol-level tests (`nativessh/kexinit_probe_test.go`, `proxyv2_test.go`) and the ADR035/ADR018 records. **Owed:** re-running the raw probe and the full `scripts/ssh-verify.sh` matrix against production **after** the fix deploys — delegated to the deploy pipeline + the new continuous guard, which now fails on its own if the edge is ever dead again.
 
 ## Tasks (in order)
 
 | id   | title                                                                              | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Reproduce and locate why the gateway writes its banner and never sends KEXINIT       | 50m | —          |
-| t002 | Walk `w2/m39`'s definition of done item by item against production                    | 40m | t001       |
-| t003 | Decide the honest-failure behaviour for a **pre-authentication** refusal              | 30m | t001       |
-| t004 | Wire a guard so a dead SSH edge is loud (coordinate with `w6/m131/t004`)              | 40m | t001       |
-| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard + official Render CLI)                | 30m | t002, t003 |
-| t006 | Simplify                                                                             | 20m | t005       |
-| t007 | Test coverage                                                                        | 30m | t005       |
-| t008 | Closeout                                                                             | 10m | t004, t007 |
+| t001 | Reproduce and locate why the gateway writes its banner and never sends KEXINIT       | 50m | —          | — **DONE** |
+| t002 | Walk `w2/m39`'s definition of done item by item against production                    | 40m | t001       | owed on deploy |
+| t003 | Decide the honest-failure behaviour for a **pre-authentication** refusal              | 30m | t001       | — **DONE** |
+| t004 | Wire a guard so a dead SSH edge is loud (coordinate with `w6/m131/t004`)              | 40m | t001       | — **DONE** |
+| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard + official Render CLI)                | 30m | t002, t003 | code-verified; live CLI leg owed on deploy |
+| t006 | Simplify                                                                             | 20m | t005       | — **DONE** |
+| t007 | Test coverage                                                                        | 30m | t005       | — **DONE** |
+| t008 | Closeout                                                                             | 10m | t004, t007 | owed on deploy |
 
 ## Background — found live, 2026-08-28, 71st `/qa-find-bugs` run, journey 8
 

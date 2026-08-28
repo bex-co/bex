@@ -270,6 +270,10 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	_ = raw.SetDeadline(time.Now().Add(s.HandshakeTimeout))
 	transport, err := proxyproto.Wrap(raw, s.TrustedProxies)
 	if err != nil {
+		// A PROXY-header parse failure is a transport fault before the SSH
+		// handshake — count it as a failed handshake so a misconfigured edge is
+		// loud, then close (no in-band SSH channel exists to say more pre-KEXINIT).
+		s.Metrics.Handshake("failed")
 		releasePreAuth()
 		return err
 	}
@@ -295,10 +299,17 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	}
 	conn, channels, requests, err := ssh.NewServerConn(transport, config)
 	if err != nil {
+		// The version exchange or key exchange did not complete: the client never
+		// received a usable KEXINIT (an un-stripped PROXY header, a malformed
+		// client, or a hang-up). This is the pre-authentication counterpart to the
+		// auth-stage results, and — unlike those — it is not a security boundary
+		// (ADR035:106), so it may be observed distinctly. w6/m132.
+		s.Metrics.Handshake("failed")
 		releasePreAuth()
 		releaseSource()
 		return err
 	}
+	s.Metrics.Handshake("established")
 	defer conn.Close()
 	_ = raw.SetDeadline(time.Time{})
 	// Handshake done: the authenticated session limiter now bounds this

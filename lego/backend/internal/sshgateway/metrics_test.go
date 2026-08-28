@@ -27,6 +27,7 @@ import (
 func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	metrics := NewMetrics(registry)
+	metrics.Handshake("established")
 	metrics.Authentication("accepted")
 	metrics.SessionStarted()
 	metrics.SessionEnded("completed", 2*time.Second)
@@ -45,6 +46,7 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 		"bex_ssh_gateway_authentications_total",
 		"bex_ssh_gateway_channel_reauthorizations_total",
 		"bex_ssh_gateway_channels_total",
+		"bex_ssh_gateway_handshakes_total",
 		"bex_ssh_gateway_limit_rejections_total",
 		"bex_ssh_gateway_session_duration_seconds",
 		"bex_ssh_gateway_sessions_total",
