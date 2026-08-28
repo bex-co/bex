@@ -103,6 +103,8 @@ pinned() { [[ "$1" =~ @sha256:[0-9a-f]{64}$ ]]; }
 # copy and own.
 exemptions() {
   cat <<'EOF'
+scripts/dev-env/agent/opensandbox-server.yaml	opensandbox-server:0.2.2-local	local-dev-only image `dev-env.sh N agent-up` builds via opensandbox-server.local.Dockerfile for the arm64 CAPD mock (imagePullPolicy IfNotPresent) — never registry-pulled, so there is no digest to pin
+scripts/dev-env/agent/ssh-gateway.yaml	bex-lego:dev	local-dev-only lego image `dev-env.sh N agent-up` builds from the working tree (imagePullPolicy IfNotPresent) — never registry-pulled, so there is no digest to pin
 lego/operator/config/manager/manager.yaml	controller:latest	kustomize `images:` placeholder — deploy/gitops/base/bex.yaml rewrites it to the operator digest deploy.yml pushed
 lego/operator/config/api/deployment.yaml	controller:latest	same manager image, /api entrypoint; rewritten by the same kustomize edit
 lego/operator/config/ssh/deployment.yaml	controller:latest	same manager image, /ssh-gateway entrypoint; rewritten by the same kustomize edit
