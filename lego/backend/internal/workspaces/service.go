@@ -31,6 +31,8 @@ import (
 	"slices"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -898,9 +900,14 @@ func normalizePlan(plan string) (string, error) {
 }
 
 // ResourceCapView is one resource slot in a workspace's limit report (w7/m9).
+// Used is every CR the workspace owns (what the ResourceQuota gates a create on);
+// Terminating is the subset of Used finishing deletion, which the resource list
+// drops but whose quota it still holds. See ResourceLimits for why the two are
+// reported together rather than filtered (w6/m129).
 type ResourceCapView struct {
-	Used  int `json:"used"`
-	Limit int `json:"limit"` // 0 = unlimited
+	Used        int `json:"used"`
+	Terminating int `json:"terminating"`
+	Limit       int `json:"limit"` // 0 = unlimited
 }
 
 // ResourceLimitsView is the per-workspace resource usage vs. cap (w7/m9):
@@ -922,6 +929,19 @@ type ResourceLimitsView struct {
 // read were retired in w3/m34). When the k8s client is nil (authz-sweep /
 // store-off tests), counts are zero but limits are still returned — the call
 // never 500s.
+//
+// Used counts EVERY CR, including ones mid-deletion, because a k8s object-count
+// ResourceQuota holds quota until an object's finalizers clear and it leaves
+// etcd — so a still-terminating CR genuinely consumes the cap, and Used is the
+// truthful report of what a create will be gated against (w6/m129). We do NOT
+// filter terminating CRs out of Used: that would make the number smaller than
+// enforcement and refuse a create at "6/100" with no explanation. Instead we
+// report Terminating alongside Used so the usage surface stays reconcilable with
+// the resource list (which drops terminating rows, apps.Service.List / w3/m46):
+// the list shows Used - Terminating, and the difference is the quota held by
+// deletes still finishing. The rejected alternative — replacing the ResourceQuota
+// with a mechanism that ignores terminating objects — is infeasible: k8s cannot
+// be told to discount an object it still holds in etcd.
 func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceLimitsView, error) {
 	ws, err := s.GetWorkspace(ctx, ownerID)
 	if err != nil {
@@ -950,8 +970,30 @@ func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceL
 	if listErr := s.ListByTenant(ctx, &kvs, tenantID); listErr != nil {
 		return ResourceLimitsView{}, fmt.Errorf("counting key-values: %w", listErr)
 	}
-	out.Services.Used = len(apps.Items)
-	out.Postgres.Used = len(dbs.Items)
-	out.KeyValues.Used = len(kvs.Items)
+	out.Services.Used, out.Services.Terminating = usageCount(apps.Items)
+	out.Postgres.Used, out.Postgres.Terminating = usageCount(dbs.Items)
+	out.KeyValues.Used, out.KeyValues.Terminating = usageCount(kvs.Items)
 	return out, nil
+}
+
+// deletable is satisfied by *App / *Database / *KeyValue: the pointer carries
+// metav1.Object (GetDeletionTimestamp et al.) promoted from the embedded
+// ObjectMeta, whereas a value T does not — which is why the constraint is on *T.
+type deletable[T any] interface {
+	*T
+	metav1.Object
+}
+
+// usageCount reports total CRs (used) and how many are finishing deletion
+// (terminating — a non-zero DeletionTimestamp), one rule for all three resource
+// kinds so services, Postgres and Key Value cannot drift apart. See ResourceLimits
+// for why terminating CRs count toward used.
+func usageCount[T any, PT deletable[T]](items []T) (used, terminating int) {
+	used = len(items)
+	for i := range items {
+		if !PT(&items[i]).GetDeletionTimestamp().IsZero() {
+			terminating++
+		}
+	}
+	return used, terminating
 }

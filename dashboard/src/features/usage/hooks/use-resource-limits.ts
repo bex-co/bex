@@ -19,6 +19,11 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface ResourceCap {
   used: number;
+  // How many of `used` are finishing deletion. Those rows are dropped from the
+  // resource list but still hold quota (w6/m129), so surfacing this is what lets
+  // the usage figure reconcile with the shorter list: used - terminating is the
+  // count the list shows.
+  terminating: number;
   limit: number;
 }
 
@@ -26,6 +31,26 @@ export interface ResourceLimits {
   services: ResourceCap;
   postgres: ResourceCap;
   keyValues: ResourceCap;
+}
+
+// Coalesce one GraphQL cap (every field nullable) into a defined ResourceCap, so
+// the reconciliation arithmetic used - terminating always has real numbers. A
+// missing terminating defaults to 0, never undefined.
+function toCap(
+  cap:
+    | {
+        used?: number | null;
+        terminating?: number | null;
+        limit?: number | null;
+      }
+    | null
+    | undefined,
+): ResourceCap {
+  return {
+    used: cap?.used ?? 0,
+    terminating: cap?.terminating ?? 0,
+    limit: cap?.limit ?? 0,
+  };
 }
 
 export function useResourceLimits(): {
@@ -50,18 +75,9 @@ export function useResourceLimits(): {
   const raw = data?.workspaceLimits;
   const limits = raw
     ? {
-        services: {
-          used: raw.services?.used ?? 0,
-          limit: raw.services?.limit ?? 0,
-        },
-        postgres: {
-          used: raw.postgres?.used ?? 0,
-          limit: raw.postgres?.limit ?? 0,
-        },
-        keyValues: {
-          used: raw.keyValues?.used ?? 0,
-          limit: raw.keyValues?.limit ?? 0,
-        },
+        services: toCap(raw.services),
+        postgres: toCap(raw.postgres),
+        keyValues: toCap(raw.keyValues),
       }
     : null;
 

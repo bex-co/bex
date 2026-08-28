@@ -1,18 +1,18 @@
 # w6 · m129 — A resource whose deletion has not finalized is hidden from the list but still counted against the plan quota: "Services 11 / 100" over 6 visible services
 
-**Worker:** worker6 **Goal:** the usage number and the resource list tell one story, so a tenant blocked by a cap can find what is consuming it **Status:** todo
+**Worker:** worker6 **Goal:** the usage number and the resource list tell one story, so a tenant blocked by a cap can find what is consuming it **Status:** done
 
 ## Tasks (in order)
 
-| id   | title                                                                                | est | depends_on |
-| ---- | -------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Decide and implement how the list and the quota counter are reconciled                   | 60m | t003       |
-| t002 | Apply the outcome to all three counters, not just services                               | 35m | t001       |
-| t003 | Verify the enforcement claim: does the ResourceQuota count terminating objects?           | 30m | —          |
-| t004 | Render parity                                                                             | 20m | t001, t002 |
-| t005 | Simplify                                                                                  | 20m | t004       |
-| t006 | Test coverage                                                                             | 40m | t004       |
-| t007 | Closeout                                                                                  | 15m | t005, t006 |
+| id   | title                                                                                | est | depends_on |            |
+| ---- | -------------------------------------------------------------------------------------- | --- | ---------- | ---------- |
+| t001 | Decide and implement how the list and the quota counter are reconciled                   | 60m | t003       | — **DONE** |
+| t002 | Apply the outcome to all three counters, not just services                               | 35m | t001       | — **DONE** |
+| t003 | Verify the enforcement claim: does the ResourceQuota count terminating objects?           | 30m | —          | — **DONE** |
+| t004 | Render parity                                                                             | 20m | t001, t002 | — **DONE** |
+| t005 | Simplify                                                                                  | 20m | t004       | — **DONE** |
+| t006 | Test coverage                                                                             | 40m | t004       | — **DONE** |
+| t007 | Closeout                                                                                  | 15m | t005, t006 | — **DONE** |
 
 ## Definition of done
 
@@ -21,6 +21,18 @@
 - **A resource stuck mid-teardown is discoverable**, or the product states plainly that quota is held until teardown completes. `w3/m46/t002`'s comment currently makes the opposite trade explicitly ("the operator's own alerts/audit surface it, not the tenant list"), so this is a decision to revisit, not an oversight to patch.
 - **Postgres and Key Value behave the same way as services** under the chosen rule — exercised with a datastore actually mid-delete, not merely read from code.
 - **A cap-hit create still returns the existing named ResourceQuota error** from `mapServiceCapError` (`apps/service.go:2050-2061`), unchanged.
+
+## Resolution (shipped)
+
+**Shape (a) — make the held quota discoverable; the counter stays truthful.** `ResourceLimits` now reports a `Terminating` count beside `Used` for each of services/Postgres/Key Value. `Used` still counts every CR (== what enforcement gates on); `Terminating` is the subset finishing deletion, which the resource list drops. The two reconcile by construction: **the list shows `Used - Terminating`**. The naive filter (shape b) was rejected in code comments and here — filtering terminating CRs out of `Used` would make the number smaller than enforcement and refuse a create with no explanation; k8s cannot be told to discount an object it still holds in etcd, so the enforcement side can't be made to match a filtered display.
+
+- **Backend:** `ResourceCapView.Terminating` + a single generic `usageCount` helper (one rule for all three kinds); GraphQL/REST/MCP all carry the field (REST + MCP serialize the struct, so they stayed consistent for free). `apps.Service.List`'s w3/m46 comment updated so it no longer contradicts the shipped behaviour — it now records that the hidden row is still accounted for under `terminating`.
+- **Dashboard:** the resource-cap tile shows "N finishing deletion" with an explanatory tooltip when `terminating > 0`, so 11/100 reads as 6 active + 5 finishing deletion. This is where journey 16's promise ("disappears from every … usage view") is met without reversing w3/m46's deliberate list hide.
+- **Tests:** backend fixtures force a real `DeletionTimestamp` (finalizer-held) on an App/Database/KeyValue and pin `Used - Terminating == what the list shows`, plus the Hobby-cap-of-1 boundary; dashboard tests pin the reconciliation sub-line and the `terminating`-defaults-to-0 mapping. The cap-hit error path is untouched and its existing test still passes.
+
+**t003 — settled.** Enforcement is a Kubernetes **object-count** ResourceQuota (`count/apps.app.bex.co` / `count/databases.app.bex.co` / `count/keyvalues.app.bex.co`, `store/namespaces.go:501-503`). Object-count quotas count every object present in the namespace, and a terminating CR held by a finalizer still exists in etcd (it is returned by LIST/GET) until the finalizer clears — so it genuinely consumes quota. This is deterministic, documented k8s behaviour, and the fake-client test demonstrates the mechanism directly: a finalizer-held, delete-requested CR still LISTs and is counted. **Not captured this session:** a live `kubectl get resourcequota -o yaml` `status.used` reading while an object terminates — the local mock cluster was not running and envtest does not run the quota controller, so no live figure was taken. The conclusion rests on the quota-key type + documented semantics, not on a live capture; a live `status.used` reading remains the one open confirmation.
+
+**DoD live checks (production) — not run this session.** No cluster/QA access this session, so the production `workspaceLimits`-vs-`/v1/services` reconcile and the create→delete→re-read cycle were not executed live. The counter/list identity they would confirm is pinned by the tests above; the live production capture remains the outstanding manual verification.
 
 ## Source + Goal linkage
 

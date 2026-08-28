@@ -21,9 +21,9 @@ describe("ResourceCaps", () => {
     render(
       <ResourceCaps
         limits={{
-          services: { used: 20, limit: 25 },
-          postgres: { used: 1, limit: 2 },
-          keyValues: { used: 0, limit: 1 },
+          services: { used: 20, terminating: 0, limit: 25 },
+          postgres: { used: 1, terminating: 0, limit: 2 },
+          keyValues: { used: 0, terminating: 0, limit: 1 },
         }}
       />,
     );
@@ -35,15 +35,38 @@ describe("ResourceCaps", () => {
     expect(screen.getByText("/ 1")).toBeInTheDocument();
     expect(screen.getByText("Near limit")).toBeInTheDocument();
     expect(screen.getAllByRole("progressbar")).toHaveLength(3);
+    // No resource is mid-deletion, so no reconciliation sub-line appears.
+    expect(screen.queryByText(/finishing deletion/)).not.toBeInTheDocument();
+  });
+
+  it("names the resources finishing deletion so used reconciles with the list", () => {
+    // The m129 case: used=11 counts every service that still holds quota, but
+    // the resource list shows only the 6 that are not mid-deletion. Surfacing
+    // "5 finishing deletion" is what bridges 11 and 6 (used - terminating = 6).
+    render(
+      <ResourceCaps
+        limits={{
+          services: { used: 11, terminating: 5, limit: 100 },
+          postgres: { used: 3, terminating: 0, limit: 25 },
+          keyValues: { used: 2, terminating: 0, limit: 25 },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("11")).toBeInTheDocument();
+    expect(screen.getByText("/ 100")).toBeInTheDocument();
+    expect(screen.getByText("5 finishing deletion")).toBeInTheDocument();
+    // The kinds with nothing mid-deletion carry no sub-line.
+    expect(screen.getAllByText(/finishing deletion/)).toHaveLength(1);
   });
 
   it("hides the card when every zero limit means unlimited", () => {
     const { container } = render(
       <ResourceCaps
         limits={{
-          services: { used: 12, limit: 0 },
-          postgres: { used: 3, limit: 0 },
-          keyValues: { used: 4, limit: 0 },
+          services: { used: 12, terminating: 0, limit: 0 },
+          postgres: { used: 3, terminating: 0, limit: 0 },
+          keyValues: { used: 4, terminating: 0, limit: 0 },
         }}
       />,
     );
@@ -55,9 +78,9 @@ describe("ResourceCaps", () => {
     render(
       <ResourceCaps
         limits={{
-          services: { used: 12, limit: 0 },
-          postgres: { used: 1, limit: 1 },
-          keyValues: { used: 4, limit: 0 },
+          services: { used: 12, terminating: 0, limit: 0 },
+          postgres: { used: 1, terminating: 0, limit: 1 },
+          keyValues: { used: 4, terminating: 0, limit: 0 },
         }}
       />,
     );

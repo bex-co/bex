@@ -3031,6 +3031,7 @@ export type Repo = {
 export type ResourceCap = {
   __typename: 'ResourceCap';
   limit: Maybe<Scalars['Int']['output']>;
+  terminating: Maybe<Scalars['Int']['output']>;
   used: Maybe<Scalars['Int']['output']>;
 };
 
