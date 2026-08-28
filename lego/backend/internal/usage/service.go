@@ -817,10 +817,7 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		// per-tenant namespace its pods actually live in under ADR043; the shared
 		// namespace holds none of them after the migration.
 		cr, resolved := s.resolveAppCR(ctx, app, store.UsageKindInstanceSeconds)
-		crName, namespace, identified := s.appPodIdentity(app, cr)
-		if !identified {
-			quantity, ok = 0, false
-		} else {
+		if crName, namespace, identified := s.appPodIdentity(app, cr); identified {
 			quantity, ok = s.queryInstanceSeconds(ctx, crName, namespace, window, end)
 		}
 		health = oneSourceHealth(store.UsageSourceInstance, ok, expectedFrom)
@@ -843,10 +840,7 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		// and the Job lives in BEX_BUILD_NAMESPACE — never the store name in the
 		// shared namespace.
 		cr, _ := s.resolveAppCR(ctx, app, store.UsageKindBuildSeconds)
-		crName, namespace, identified := s.appPodIdentity(app, cr)
-		if !identified {
-			quantity, ok = 0, false
-		} else {
+		if crName, namespace, identified := s.appPodIdentity(app, cr); identified {
 			quantity, ok = s.queryBuildSeconds(ctx, crName, cmp.Or(s.BuildNamespace, namespace), window, end)
 		}
 		health = oneSourceHealth(store.UsageSourceBuild, ok, expectedFrom)

@@ -89,6 +89,14 @@ func NewMetricsServerReader(cs kubernetes.Interface) MetricsReader {
 	}
 }
 
+// Kubernetes' generateName bounds, mirroring the backend's
+// egressquery/podname.go so the two copies cannot drift apart silently.
+const (
+	maxPodNameLength       = 63
+	podRandomSuffixLength  = 5
+	maxGeneratedNameLength = maxPodNameLength - podRandomSuffixLength
+)
+
 // podNameRegex returns the anchored PromQL pod-name regex for the pods a
 // workload named app owns. It is the operator-side copy of the backend's
 // egressquery.PodNameRegex (operator imports no backend package): an
@@ -98,12 +106,14 @@ func NewMetricsServerReader(cs kubernetes.Interface) MetricsReader {
 // "<app>-<N alphanumerics>", always exactly 63 chars long. Keep the two in
 // step — docs/ADR010-observability.md owns the shape (w6/m110).
 func podNameRegex(app string) string {
-	twoSegment := fmt.Sprintf(`%s-[a-z0-9]+-[a-z0-9]{5}`, regexp.QuoteMeta(app))
-	truncated := 63 - len(app) - 1
-	if truncated <= 0 || len(app) > 58 {
+	escaped := regexp.QuoteMeta(app)
+	twoSegment := fmt.Sprintf(`%s-[a-z0-9]+-[a-z0-9]{%d}`, escaped, podRandomSuffixLength)
+	if len(app) > maxGeneratedNameLength {
+		// Truncation lands inside app itself, so the pod name is not even
+		// prefixed by it and no anchored regex built from the full name matches.
 		return twoSegment
 	}
-	return fmt.Sprintf(`%s|%s-[a-z0-9]{%d}`, twoSegment, regexp.QuoteMeta(app), truncated)
+	return fmt.Sprintf(`%s|%s-[a-z0-9]{%d}`, twoSegment, escaped, maxPodNameLength-len(app)-1)
 }
 
 // NewPrometheusMetricsReader returns a MetricsReader that reads current CPU/memory
