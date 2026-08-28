@@ -186,6 +186,168 @@ projects:
 	}
 }
 
+// denyRelationChecker allows every relation except one — the role-ladder fake
+// for a caller who holds can_create but not the admin can_manage.
+type denyRelationChecker struct{ deny string }
+
+func (c denyRelationChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	return relation != c.deny, nil
+}
+
+func seededProtectedEnvironmentStore() (*blueprintGroupingTestStore, store.Environment) {
+	st := &blueprintGroupingTestStore{recordingStore: &recordingStore{}}
+	project := store.Project{ID: ids.New(ids.Project), TenantID: "tea-a", Name: "platform"}
+	environment := store.Environment{
+		ID:                      ids.New(ids.Environment),
+		ProjectID:               project.ID,
+		TenantID:                "tea-a",
+		Name:                    "production",
+		ProtectedStatus:         core.ProtectedStatusProtected,
+		NetworkIsolationEnabled: true,
+	}
+	st.projects = []store.Project{project}
+	st.environments = []store.Environment{environment}
+	return st, environment
+}
+
+// round-21 finding 1: a Blueprint that names an existing protected + isolated
+// environment but OMITS the permissions/networking blocks must PRESERVE the
+// current controls, never silently downgrade them. A downgrade clears the App's
+// network-isolation label, which makes the operator delete its NetworkPolicy.
+func TestBlueprintSyncPreservesOmittedEnvironmentControls(t *testing.T) {
+	st, environment := seededProtectedEnvironmentStore()
+	svc, cl := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, st)
+	svc.BlueprintGroups = st
+	svc.Environments = st
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "oauth2"})
+	manifest := `version: "1"
+projects:
+  - name: platform
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: web
+            runtime: image
+            image:
+              url: nginx:alpine
+`
+	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: manifest}); err != nil {
+		t.Fatal(err)
+	}
+	got := st.environments[0]
+	if got.ProtectedStatus != core.ProtectedStatusProtected || !got.NetworkIsolationEnabled {
+		t.Fatalf("omitted blocks downgraded the existing environment: %+v", got)
+	}
+	if st.aclWrites != 0 {
+		t.Fatalf("preserving unchanged controls must not write the ACL, got %d writes", st.aclWrites)
+	}
+	app := getTenantApp(t, cl, "tea-a", "web")
+	if app.Labels[core.LabelNetworkIsolation] != environment.ID {
+		t.Fatalf("network-isolation label not preserved: %#v", app.Labels)
+	}
+}
+
+// round-21 finding 1: changing an EXISTING environment's admin-classified
+// protected-environment ACL through the declarative apply must clear the same
+// can_manage gate environments.Service.SetACL enforces — a developer holding
+// only can_create must not downgrade it, and the store row must be untouched.
+func TestBlueprintSyncRequiresCanManageToChangeExistingEnvironmentACL(t *testing.T) {
+	st, _ := seededProtectedEnvironmentStore()
+	svc, _ := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, st)
+	svc.BlueprintGroups = st
+	svc.Environments = st
+	svc.Authz = denyRelationChecker{deny: core.RelCanManage}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "oauth2"})
+	manifest := `version: "1"
+projects:
+  - name: platform
+    environments:
+      - name: production
+        permissions:
+          protection: disabled
+        networking:
+          isolation: disabled
+        services:
+          - type: web
+            name: web
+            runtime: image
+            image:
+              url: nginx:alpine
+`
+	_, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: manifest})
+	if !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("want ErrForbidden downgrading an existing environment ACL without can_manage, got %v", err)
+	}
+	if got := st.environments[0]; got.ProtectedStatus != core.ProtectedStatusProtected || !got.NetworkIsolationEnabled {
+		t.Fatalf("ACL was changed despite denied can_manage: %+v", got)
+	}
+	if st.aclWrites != 0 {
+		t.Fatalf("denied ACL change must not reach the store, got %d writes", st.aclWrites)
+	}
+}
+
+// workspaceRecordingEnvReader records the workspace bound on the context each
+// nested env-var read receives.
+type workspaceRecordingEnvReader struct{ gotWorkspace string }
+
+func (r *workspaceRecordingEnvReader) EnvVarKeys(ctx context.Context, _ string) ([]core.EnvVar, error) {
+	r.gotWorkspace = core.NamedWorkspace(ctx)
+	return nil, nil
+}
+
+func (r *workspaceRecordingEnvReader) EnvVarValue(ctx context.Context, _, _ string) (core.EnvVar, error) {
+	r.gotWorkspace = core.NamedWorkspace(ctx)
+	return core.EnvVar{}, nil
+}
+
+// round-21 finding 6: the nested GraphQL secret resolvers re-resolve the parent
+// service by its workspace-scoped public name. The GraphQL execution context
+// carries no workspace, so without rebinding, a same-named service in the
+// caller's DEFAULT workspace would win over the workspace the parent field
+// selected. The resolver must bind the parent AppView's own OwnerID onto the
+// context so the name lookup resolves inside the right workspace.
+func TestNestedSecretResolversBindParentWorkspace(t *testing.T) {
+	reader := &workspaceRecordingEnvReader{}
+	// A GraphQL execution context: env-var reader wired, but NO workspace named.
+	ctx := core.WithEnvVars(context.Background(), reader)
+
+	if _, err := envVarKeysResolve(graphql.ResolveParams{
+		Source:  AppView{Name: "web", OwnerID: "tea-b"},
+		Context: ctx,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if reader.gotWorkspace != "tea-b" {
+		t.Fatalf("envVarKeys bound workspace = %q, want tea-b (the parent's OwnerID)", reader.gotWorkspace)
+	}
+
+	reader.gotWorkspace = ""
+	if _, err := envVarValueResolve(graphql.ResolveParams{
+		Source:  AppView{Name: "web", OwnerID: "tea-b"},
+		Context: ctx,
+		Args:    map[string]any{"key": "SECRET"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if reader.gotWorkspace != "tea-b" {
+		t.Fatalf("envVarValue bound workspace = %q, want tea-b", reader.gotWorkspace)
+	}
+
+	// A hand-applied App (no OwnerID) leaves the context unchanged — matching the
+	// bare-name resolution those Apps already use.
+	reader.gotWorkspace = "sentinel"
+	if _, err := envVarKeysResolve(graphql.ResolveParams{
+		Source:  AppView{Name: "web"},
+		Context: ctx,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if reader.gotWorkspace != "" {
+		t.Fatalf("unlabeled parent must not bind a workspace, got %q", reader.gotWorkspace)
+	}
+}
+
 func TestBlueprintRejectsCreateBodyOnlyFieldsByName(t *testing.T) {
 	for name, manifest := range map[string]string{
 		"secretFiles": `services:

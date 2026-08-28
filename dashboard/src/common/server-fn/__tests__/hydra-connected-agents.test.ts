@@ -129,6 +129,36 @@ describe("listConnectedAgents", () => {
     ]);
   });
 
+  // round-21 finding 5: client_uri is chosen by an unauthenticated DCR
+  // registrant and rendered as a live anchor href on the settings row. A
+  // non-http(s) scheme must be dropped so the row renders inert text.
+  it("drops a non-http(s) client_uri so it never becomes a live href", async () => {
+    mockUpstreams({
+      consentSessions: [
+        consentSession({
+          consent_request: {
+            client: {
+              client_id: "evil-client",
+              client_name: "Evil Agent",
+              client_uri: "javascript:alert(document.domain)",
+            },
+          },
+        }),
+      ],
+    });
+    const res = await listConnectedAgents(req());
+    const body = await res.json();
+    expect(body[0].clientUri).toBeUndefined();
+    expect(body[0].clientName).toBe("Evil Agent");
+  });
+
+  it("keeps an http(s) client_uri untouched", async () => {
+    mockUpstreams({});
+    const res = await listConnectedAgents(req());
+    const body = await res.json();
+    expect(body[0].clientUri).toBe("https://agent.example");
+  });
+
   it("merges multiple consent sessions for the same client into one row", async () => {
     mockUpstreams({
       consentSessions: [

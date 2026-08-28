@@ -418,6 +418,12 @@ func setupAppReconciler(
 			Registry:       envOr("BEX_REGISTRY", "127.0.0.1:5050"),
 			KpackRegistry:  os.Getenv("BEX_KPACK_REGISTRY"),
 			RetentionCount: positiveEnvInt("BEX_ZOT_RETENTION_COUNT", 0),
+			// Legacy-repository dual-read is off unless an operator opts in for a
+			// supervised registry migration (round-21 finding 4): the compatibility
+			// grant is keyed by the bare App name with no ownership check, so leaving
+			// it always-on lets a scoped App read a same-named legacy repo owned by
+			// another workspace.
+			DualReadEnabled: os.Getenv("BEX_REGISTRY_DUAL_READ") == "1",
 		}
 	}
 	if cs != nil {

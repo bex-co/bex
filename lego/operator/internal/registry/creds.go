@@ -73,6 +73,18 @@ type Creds struct {
 	KpackRegistry  string // optional alias used by containerd on nodes (e.g. "zot.local:5000")
 	RetentionCount int    // mostRecentlyPushedCount in baseZotConfig; 0 defaults to 5
 
+	// DualReadEnabled opens the legacy-repository compatibility grant (round-21
+	// finding 4). The legacy repo is keyed by the bare App name with NO workspace
+	// component, and grantZotRepoUser performs no ownership check, so with
+	// dual-read always on any scoped App gets read on a same-named legacy repo it
+	// may never have owned — letting workspace B name a service after workspace
+	// A's pre-migration repo and read A's image. Dual-read is only needed inside a
+	// supervised registry migration window, so it is OFF by default and an
+	// operator opts in (BEX_REGISTRY_DUAL_READ) for the duration of a migration.
+	// Turning it off never removes an existing grant (grantZotRepoUser only adds),
+	// so a migration already in flight keeps its grants; only new grants stop.
+	DualReadEnabled bool
+
 	// Credential activation (w9/m43, verify.go). Zero values mean the package
 	// defaults; tests shrink them.
 	HTTPClient      *http.Client  // probe client; nil => shared 5s-timeout default
@@ -123,8 +135,9 @@ func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
 //  1. dockerconfigjson Secret id.PullSecretName() in appNS for id.ZotUsername().
 //  2. htpasswd entry for that user.
 //  3. exclusive RW ACL on id.Repo().
-//  4. when id.DualRead(), a READ grant for the new user on the legacy repo
-//     (existing policies on that repo are preserved so a sibling is not stomped).
+//  4. when c.DualReadEnabled && id.DualRead(), a READ grant for the new user on
+//     the legacy repo (existing policies on that repo are preserved so a sibling
+//     is not stomped). Off by default — see Creds.DualReadEnabled.
 func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS string) error {
 	zotUser := id.ZotUsername()
 	labels := map[string]string{
@@ -157,7 +170,10 @@ func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS 
 		return fmt.Errorf("zot config: %w", err)
 	}
 	wroteDual := false
-	if id.DualRead() {
+	if c.DualReadEnabled && id.DualRead() {
+		// Only issued inside a supervised migration window (DualReadEnabled).
+		// Off by default so a fresh scoped App never gains read on a same-named
+		// legacy repo owned by another workspace (round-21 finding 4).
 		wroteDual, err = c.grantZotRepoUser(ctx, id.LegacyRepo(), zotUser, zotReadOnlyActions)
 		if err != nil {
 			return fmt.Errorf("zot dual-read grant: %w", err)

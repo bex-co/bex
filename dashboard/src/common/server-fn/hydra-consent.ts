@@ -14,6 +14,7 @@ import {
   hasGranularCapability,
   isPlatformMarked,
 } from "@/common/lib/oauth-scopes";
+import { safeHttpHref } from "@/common/lib/external-url";
 
 // OAuth2 consent (docs/ADR012-auth.md §7, w4/m9 + w4/m16). Hydra redirects the
 // browser here with a consent_challenge after login (which Kratos's native
@@ -400,7 +401,12 @@ export async function handleConsent(
     challenge: consentChallenge,
     clientId: clientID,
     clientName: consent.client?.client_name || clientID,
-    clientUri: consent.client?.client_uri || undefined,
+    // client_uri is chosen by an unauthenticated DCR registrant (see the
+    // dynamic_client_registration note in hydra.values.yaml) and rendered as a
+    // live anchor href on the consent screen. Pass it through safeHttpHref so a
+    // javascript:/data:/other non-http(s) scheme becomes undefined and the view
+    // renders inert text instead of a hostile link (round-21 finding 5).
+    clientUri: safeHttpHref(consent.client?.client_uri),
     redirectOrigin: consentRedirectOrigin(consent),
     scopes: consent.requested_scope ?? [],
     audiences: consent.requested_access_token_audience ?? [],

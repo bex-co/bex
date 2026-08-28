@@ -1975,3 +1975,52 @@ func TestCreateHostSetPerServiceCap(t *testing.T) {
 		t.Fatalf("cap 0 disables the cardinality gate: %v", err)
 	}
 }
+
+// TestCreateHostSetPerWorkspaceQuota pins round-21 finding 2: the per-workspace
+// custom-domain cap must apply to the create/Blueprint path (ensureHostsClaimable),
+// not only to AddDomain. It counts the workspace's existing claims plus the whole
+// newly declared host set, and nets out the App's own existing claims so a
+// re-apply is never double-counted.
+func TestCreateHostSetPerWorkspaceQuota(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	// Workspace tea-a already holds two claims on another service.
+	claims.workspaces["srv-other"] = "tea-a"
+	if _, _, err := claims.AddDomainClaim(context.Background(), "srv-other", "x.example.com", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := claims.AddDomainClaim(context.Background(), "srv-other", "y.example.com", ""); err != nil {
+		t.Fatal(err)
+	}
+	claims.workspaces["srv-web"] = "tea-a"
+
+	newApp := managedAppWithHosts("web", "srv-web", "a.example.com", "b.example.com")
+	newApp.Labels[core.LabelTenant] = "tea-a"
+
+	svc, _ := newService(claims, newApp)
+	svc.MaxCustomDomainsPerWorkspace = 3 // 2 existing + 2 declared = 4 > 3
+
+	err := svc.ensureHostsClaimable(context.Background(), newApp)
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "CUSTOM_DOMAIN_LIMIT" {
+		t.Fatalf("declared host set over the workspace cap => CUSTOM_DOMAIN_LIMIT, got %v", err)
+	}
+
+	// Raising the cap admits the same declaration (2 existing + 2 declared = 4).
+	svc.MaxCustomDomainsPerWorkspace = 4
+	if err := svc.ensureHostsClaimable(context.Background(), newApp); err != nil {
+		t.Fatalf("at the workspace cap the declaration must pass: %v", err)
+	}
+
+	// A re-apply that re-declares the App's OWN existing claims is not
+	// double-counted: the workspace count already includes them.
+	if _, _, err := claims.AddDomainClaim(context.Background(), "srv-web", "a.example.com", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := claims.AddDomainClaim(context.Background(), "srv-web", "b.example.com", ""); err != nil {
+		t.Fatal(err)
+	}
+	// Workspace count is now 4 (2 other + 2 own), cap 4: projected = 4 - 2 + 2 = 4.
+	if err := svc.ensureHostsClaimable(context.Background(), newApp); err != nil {
+		t.Fatalf("re-apply of the App's own hosts must not be double-counted: %v", err)
+	}
+}

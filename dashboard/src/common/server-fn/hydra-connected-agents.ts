@@ -7,6 +7,7 @@ import {
   BodyTooLargeError,
   readBoundedJson,
 } from "@/common/server-fn/bounded-body";
+import { safeHttpHref } from "@/common/lib/external-url";
 
 // The revoke body is a tiny { clientId } object — bound it before buffering
 // (codex-security #11): request.json() has no ceiling and Content-Length can be
@@ -76,7 +77,11 @@ function mergeByClient(sessions: OAuth2ConsentSession[]): ConnectedAgentView[] {
     } else {
       byClient.set(clientId, {
         clientName: client.client_name || clientId,
-        clientUri: client.client_uri || undefined,
+        // client_uri is attacker-chosen (self-registered DCR client) and is
+        // rendered as a live anchor href on the connected-agents settings row.
+        // Drop any non-http(s) scheme so the row renders the client name as
+        // plain text rather than a hostile link (round-21 finding 5).
+        clientUri: safeHttpHref(client.client_uri),
         scopes: new Set(s.grant_scope ?? []),
         grantedAt,
       });

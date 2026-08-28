@@ -984,6 +984,7 @@ func TestEnsureCredsMemoDoesNotMaskTamperedHash(t *testing.T) {
 func TestEnsureCredsForDisjointWorkspaces(t *testing.T) {
 	ctx := context.Background()
 	c := newTestCreds(t, htpasswdSecret())
+	c.DualReadEnabled = true // supervised migration window (round-21 finding 4)
 	a := identity.ForApp("web", "tea-aaaaaaaaaaaaaaaaaaaa")
 	b := identity.ForApp("web", "tea-bbbbbbbbbbbbbbbbbbbb")
 	if err := c.EnsureCredsFor(ctx, a, "ns-a"); err != nil {
@@ -1019,9 +1020,31 @@ func TestEnsureCredsForDisjointWorkspaces(t *testing.T) {
 	}
 }
 
+func TestEnsureCredsForDualReadDisabledByDefault(t *testing.T) {
+	// round-21 finding 4: with dual-read off (the default), a scoped App must NOT
+	// gain a read grant on the bare-name legacy repo. Otherwise workspace B could
+	// name a service after workspace A's pre-migration repo and read A's image,
+	// since the legacy key drops the workspace and grantZotRepoUser checks no
+	// ownership. Its exclusive RW on its OWN workspace-scoped repo is unaffected.
+	ctx := context.Background()
+	c := newTestCreds(t, htpasswdSecret())
+	scoped := identity.ForApp("web", "tea-bbbbbbbbbbbbbbbbbbbb")
+	if err := c.EnsureCredsFor(ctx, scoped, "ns-b"); err != nil {
+		t.Fatal(err)
+	}
+	data := storedConfig(t, c)
+	if zotRepoHasUser(data, scoped.LegacyRepo(), scoped.ZotUsername()) {
+		t.Fatal("dual-read grant on the legacy repo was issued with dual-read disabled")
+	}
+	if !zotRepoGrants(data, scoped.Repo(), scoped.ZotUsername(), zotReadWriteActions) {
+		t.Fatal("scoped exclusive RW on its own repo missing")
+	}
+}
+
 func TestEnsureCredsForPreservesUnlabeledSiblingACL(t *testing.T) {
 	ctx := context.Background()
 	c := newTestCreds(t, htpasswdSecret())
+	c.DualReadEnabled = true // supervised migration window (round-21 finding 4)
 	if err := c.EnsureCreds(ctx, "web", "legacy-ns"); err != nil {
 		t.Fatal(err)
 	}
@@ -1044,6 +1067,7 @@ func TestEnsureCredsForPreservesUnlabeledSiblingACL(t *testing.T) {
 func TestRevokeCredsForScopedLeavesLegacySibling(t *testing.T) {
 	ctx := context.Background()
 	c := newTestCreds(t, htpasswdSecret())
+	c.DualReadEnabled = true // grant the dual-read so revoke has something to drop
 	if err := c.EnsureCreds(ctx, "web", "legacy-ns"); err != nil {
 		t.Fatal(err)
 	}
