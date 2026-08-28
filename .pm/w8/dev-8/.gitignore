@@ -4,3 +4,4 @@ logs/
 bin/
 .github-app-dev.pem
 .rendered-*.yaml
+.agent/

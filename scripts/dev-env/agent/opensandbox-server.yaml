@@ -1,0 +1,181 @@
+# LOCAL-DEV OpenSandbox lifecycle server for `dev-env.sh N agent-up`.
+#
+# Adapted from deploy/opensandbox/server-in-cluster.yaml (the reviewed hosted
+# Deployment). Differences, all local-only:
+#   - the platform-pool nodeSelector/toleration is dropped (the CAPD mock has no
+#     bex.co/pool=platform taint scheme for this workload);
+#   - the config is rendered by dev-env.sh into the ConfigMap directly, so the
+#     hosted manifest's init-container token-render step is unnecessary;
+#   - the `admit-only-bex-api` NetworkPolicy is omitted: locally bex-api is a
+#     HOST process reaching the server through `kubectl port-forward`, and the
+#     Cilium policy that supplies the hosted positive allow does not exist here.
+#
+# The namespace and ServiceAccount NAMES are load-bearing and match production
+# exactly: lego/backend/internal/store/namespaces.go binds each `<ws>-sandbox`
+# namespace's RoleBindings to `opensandbox-server` / `opensandbox-controller-manager`
+# in `opensandbox-system`. Renaming either here would silently strip the sandbox
+# namespaces' RBAC.
+#
+# OWNERSHIP: this is a single cluster-wide workload but its [tenants] endpoint
+# points at ONE dev-N's bex-api control plane, so only one workstream can hold
+# the agent-session leg at a time. dev-env.sh stamps and checks
+# app.bex.co/dev-env to make that exclusive rather than silently shared.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opensandbox-system
+  labels:
+    app.kubernetes.io/part-of: bex
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opensandbox-server
+  namespace: opensandbox-system
+  labels:
+    app.bex.co/dev-env: __DEV_NS__
+---
+# Cluster-wide authority is informer-only, exactly as in production. All
+# mutation comes from the per-`<ws>-sandbox` RoleBindings the bex-api namespace
+# reconciler stamps.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: opensandbox-server
+rules:
+  - apiGroups: ["sandbox.opensandbox.io"]
+    resources: ["batchsandboxes", "pools", "sandboxsnapshots"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opensandbox-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: opensandbox-server
+subjects:
+  - kind: ServiceAccount
+    name: opensandbox-server
+    namespace: opensandbox-system
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opensandbox-store
+  namespace: opensandbox-system
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opensandbox-server
+  namespace: opensandbox-system
+  labels:
+    app.kubernetes.io/name: opensandbox-server
+    app.bex.co/dev-env: __DEV_NS__
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opensandbox-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: opensandbox-server
+        app.bex.co/dev-env: __DEV_NS__
+      annotations:
+        # Roll the pod whenever dev-env.sh re-renders the config (the endpoint
+        # and token change with N).
+        app.bex.co/config-revision: "__CONFIG_REVISION__"
+    spec:
+      serviceAccountName: opensandbox-server
+      # Same OrbStack+Calico constraint as coredns/CNPG in scripts/mock-cluster.sh:
+      # worker-node pods cannot reach the apiserver, and this server is an
+      # apiserver client (informers + BatchSandbox writes).
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: opensandbox-server:0.2.2-local
+          imagePullPolicy: IfNotPresent
+          args: ["--config", "/etc/opensandbox/sandbox-local.toml"]
+          ports:
+            - name: http
+              containerPort: 8077
+          volumeMounts:
+            - name: config
+              mountPath: /etc/opensandbox/sandbox-local.toml
+              subPath: sandbox-local.toml
+              readOnly: true
+            - name: config
+              mountPath: /etc/opensandbox/batchsandbox-template.yaml
+              subPath: batchsandbox-template.yaml
+              readOnly: true
+            - name: store
+              mountPath: /var/lib/opensandbox
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: config
+          configMap:
+            name: opensandbox-config
+        - name: store
+          persistentVolumeClaim:
+            claimName: opensandbox-store
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensandbox-server
+  namespace: opensandbox-system
+spec:
+  selector:
+    app.kubernetes.io/name: opensandbox-server
+  ports:
+    - name: http
+      port: 8077
+      targetPort: http

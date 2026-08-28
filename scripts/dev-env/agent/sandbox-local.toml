@@ -1,0 +1,67 @@
+# LOCAL-DEV OpenSandbox lifecycle-server config for `dev-env.sh N agent-up`.
+#
+# Sibling of deploy/opensandbox/sandbox-cluster.toml (the reviewed hosted
+# config). Two deliberate differences, both forced by the CAPD mock cluster:
+#
+#  1. No [secure_runtime] block. gVisor is the hosted host/kernel boundary, but
+#     the CAPD mock has no runsc handler and no `gvisor` RuntimeClass, so
+#     requiring it would fail scheduling outright (the same reason
+#     deploy/gitops/overlays/local deletes the opensandbox-server Application).
+#     Local sandboxes therefore run under plain runc: adequate for exercising
+#     the ADR047 session path, and NOT a security boundary. Never copy this file
+#     toward anything hosting real tenant code.
+#  2. No [egress] sidecar and no sandbox node pool — the mock cluster runs
+#     Calico, not Cilium, and has no `bex.co/pool=sandbox` nodes.
+#
+# Everything else — multi-tenant mode, the BatchSandbox workload provider, the
+# timeouts — matches the hosted config so the local path exercises the same code.
+#
+# Rendered by scripts/dev-env.sh (__PLACEHOLDER__ substitution) into a ConfigMap.
+
+[server]
+host = "0.0.0.0"
+port = 8077
+max_sandbox_timeout_seconds = 86400
+
+[log]
+level = "INFO"
+
+[runtime]
+type = "kubernetes"
+execd_image = "opensandbox/execd:v1.0.16@sha256:af7b55c861926c1304371c4578007fbaa424538219154a6a49a5d636217d2a3a"
+
+[storage]
+allowed_host_paths = []
+volume_default_size = "1Gi"
+
+[store]
+type = "sqlite"
+path = "/var/lib/opensandbox/opensandbox.db"
+
+[kubernetes]
+# In-cluster ServiceAccount (no kubeconfig_path). `namespace` is only the
+# default target; multi-tenant lookups override it per request.
+namespace = "opensandbox-system"
+informer_enabled = true
+informer_resync_seconds = 300
+informer_watch_timeout_seconds = 60
+workload_provider = "batchsandbox"
+image_pull_policy = "IfNotPresent"
+sandbox_create_timeout_seconds = 300
+snapshot_create_timeout_seconds = 900
+batchsandbox_template_file = "/etc/opensandbox/batchsandbox-template.yaml"
+
+[ingress]
+mode = "direct"
+
+# Multi-tenant mode (OSEP-0014, ADR042 D4): each caller's OPEN-SANDBOX-API-KEY
+# resolves to a `<ws>-sandbox` namespace through bex-api's control-plane
+# endpoint. Locally bex-api is a HOST process, so the endpoint is reached over
+# OrbStack's host.docker.internal rather than a cluster Service.
+[tenants]
+provider = "http"
+endpoint = "http://host.docker.internal:__BEX_CP_PORT__/v1/sandbox-tenants"
+max_stale_seconds = 60
+timeout_seconds = 5
+auth_header = "Authorization"
+auth_token = "Bearer __BEX_CP_TOKEN__"

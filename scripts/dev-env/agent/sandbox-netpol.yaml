@@ -1,0 +1,109 @@
+# LOCAL-DEV sandbox-namespace network allows for `dev-env.sh N agent-up`.
+#
+# WHY THIS FILE EXISTS. bex-api's NamespaceReconciler puts every `<ws>-sandbox`
+# namespace under a Kubernetes default-deny and installs NO allows there
+# (lego/backend/internal/store/namespaces.go, allowNetworkPolicies → RegimeSandbox
+# returns nil). In production the three sanctioned paths are granted by
+# CLUSTER-WIDE CILIUM policies instead:
+#     sandbox-agent-driver-ingress   gateway -> sandbox :8787
+#     sandbox-execd-ingress          gateway -> sandbox execd
+#     the DNS/FQDN/SNI egress allowlist
+# The CAPD mock runs CALICO, and deploy/gitops/overlays/local deletes every one
+# of those CiliumNetworkPolicy/CiliumClusterwideNetworkPolicy objects because the
+# CRDs do not exist here. A sandbox Pod on this cluster is therefore totally
+# isolated: it cannot resolve DNS, cannot clone through the Git proxy, cannot
+# reach the model proxy, and the gateway cannot dial its driver — the agent
+# session fails before its first turn.
+#
+# These portable NetworkPolicies are the local stand-in for exactly those three
+# Cilium rules and nothing more. They are deliberately NARROWER than a blanket
+# allow: egress is restricted to kube-dns and to the gateway Pod on its two
+# broker ports, ingress to the gateway Pod on the driver port.
+#
+# IMPORTANT — these objects intentionally carry NO `app.bex.co/managed-by` label.
+# pruneManagedNetworkPolicies() lists only labelled policies, so an unlabelled one
+# is invisible to the reconciler and survives its convergence loop. Adding that
+# label would make bex-api delete these on its next resync.
+#
+# SECURITY NOTE: unlike the Cilium originals these cannot authenticate the peer's
+# ServiceAccount — a Pod that spoofs the gateway's labels would match. That is
+# acceptable only because this is a disposable single-developer mock cluster
+# running no real tenant code. Never port this file toward a hosted cluster.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dev-local-sandbox-dns-egress
+  namespace: __SANDBOX_NS__
+spec:
+  podSelector:
+    matchLabels:
+      app.bex.co/regime: sandbox
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# The sandbox's two outbound broker paths: the Git smart-HTTP proxy (:8082,
+# ADR047 D2) and the credential-injecting model proxy (:8084, ADR062). The
+# sandbox holds neither a GitHub token nor a model key; both are injected by the
+# gateway on its own upstream hop, which is why these two ports are the entire
+# sanctioned egress surface.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dev-local-sandbox-gateway-egress
+  namespace: __SANDBOX_NS__
+spec:
+  podSelector:
+    matchLabels:
+      app.bex.co/regime: sandbox
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: bex-ssh-gateway
+      ports:
+        - protocol: TCP
+          port: 8082
+        - protocol: TCP
+          port: 8084
+---
+# The one sanctioned INBOUND path: the isolated gateway dialing the in-sandbox
+# driver's AI-SDK stream port (ADR047 D9). Production grants this with the
+# cluster-wide Cilium `sandbox-agent-driver-ingress` policy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dev-local-sandbox-driver-ingress
+  namespace: __SANDBOX_NS__
+spec:
+  podSelector:
+    matchLabels:
+      app.bex.co/regime: sandbox
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: bex-ssh-gateway
+      ports:
+        - protocol: TCP
+          port: 8787

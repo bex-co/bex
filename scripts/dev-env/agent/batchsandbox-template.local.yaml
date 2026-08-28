@@ -1,0 +1,24 @@
+# LOCAL-DEV BatchSandbox template for `dev-env.sh N agent-up`.
+#
+# Sibling of deploy/opensandbox/batchsandbox-template.yaml with the three
+# hosted-only scheduling constraints dropped, because the CAPD mock cluster has
+# none of them:
+#   - runtimeClassName: gvisor   (no runsc handler on a kind node)
+#   - nodeSelector bex.co/pool=sandbox
+#   - toleration     bex.co/sandbox
+#
+# The `app.bex.co/regime: sandbox` label is KEPT: bex-api's namespace
+# reconciler, the gateway's pod checks, and the sandbox NetworkPolicies all key
+# off it, so dropping it would diverge from the code under test.
+metadata:
+  labels:
+    app.bex.co/regime: sandbox
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.bex.co/regime: sandbox
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never

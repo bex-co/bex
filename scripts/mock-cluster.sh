@@ -39,7 +39,31 @@ for ns in capi-system capd-system capi-kubeadm-bootstrap-system capi-kubeadm-con
 done
 
 # 3. the app cluster (Cluster + ClusterClass + MachineDeployment, machines = containers)
-kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml
+#
+# CAPI templates (KubeadmControlPlaneTemplate, KubeadmConfigTemplate, Docker*Template)
+# are IMMUTABLE in spec.template.spec. When this repo changes one of them — w2/m81
+# t002 added `rotate-server-certificates` to the control-plane template — a plain
+# apply onto a mgmt cluster still holding the older ClusterClass fails with
+# "field is immutable", and `set -e` then skipped EVERY step below: no CNI, no
+# StorageClass, no cert-manager. The result looked provisioned (machines Running)
+# but was unusable, and the failure was invisible unless you read the whole log.
+# Templates are pure declarations referenced by name, so recreating the drifted
+# ones converges the mgmt cluster onto whatever this repo now declares.
+if ! apply_err=$(kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml 2>&1); then
+  echo "$apply_err"
+  grep -q "field is immutable" <<<"$apply_err" || {
+    echo "error: applying cluster.yaml failed for a reason other than template immutability" >&2
+    exit 1
+  }
+  echo "==> ClusterClass templates drifted from this repo — recreating the immutable ones"
+  # Only the template kinds are safe to recreate: they are stamped into Machines
+  # at creation time, so deleting one cannot disturb a running node.
+  for kind in kubeadmcontrolplanetemplate kubeadmconfigtemplate \
+              dockerclustertemplate dockermachinetemplate dockermachinepooltemplate; do
+    kubectl delete "$kind" --all --ignore-not-found >/dev/null 2>&1 || true
+  done
+  kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml
+fi
 
 echo "waiting for the app cluster to provision..."
 kubectl --context "$MGMT" wait --for=condition=Available cluster/bex --timeout=600s || true
@@ -88,6 +112,38 @@ KUBECONFIG="$WL_KUBECONFIG" kubectl -n local-path-storage patch deploy local-pat
    "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}' >/dev/null
 KUBECONFIG="$WL_KUBECONFIG" kubectl annotate storageclass local-path \
   storageclass.kubernetes.io/is-default-class=true --overwrite >/dev/null
+
+# kubelet serving certificates. The control-plane template sets
+# `rotate-server-certificates: "true"` (w2/m81 t002), so every kubelet asks the
+# apiserver for a `kubernetes.io/kubelet-serving` cert — and kube-controller-manager
+# NEVER auto-approves those. In production deploy/gitops/base/kubelet-csr-approver.yaml
+# approves them, but Argo CD is not installed on this mock, so without the
+# equivalent here every CSR sits Pending and the kubelets keep serving certs the
+# apiserver won't trust. That breaks `kubectl port-forward`, `kubectl exec`, and
+# `kubectl logs` CLUSTER-WIDE with
+#   "error dialing backend: remote error: tls: internal error"
+# which reads like a dev-N bug but is a broken cluster (it wedged
+# scripts/dev-env.sh at its Hydra bootstrap step). Same chart and same tight
+# matching rules the GitOps Application pins, with ONE local deviation:
+# bypassDnsResolution=true, because a CAPD node's hostname resolves only through
+# the host Docker daemon's DNS, not from inside a pod, so the approver's default
+# forward-lookup check would deny every legitimate CSR here. The providerRegex
+# and the always-on "SAN IP must be one of the Node's own addresses" check still
+# apply. Production keeps the strict default
+# (deploy/gitops/overlays/prod/values/kubelet-csr-approver.values.yaml).
+KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install kubelet-csr-approver \
+  oci://ghcr.io/postfinance/charts/kubelet-csr-approver --version 1.2.7 \
+  -n kube-system \
+  --set providerRegex='^bex(-[a-z0-9]+)+$' \
+  --set allowedDnsNames=1 \
+  --set bypassDnsResolution=true \
+  --set-string 'nodeSelector.node-role\.kubernetes\.io/control-plane=' \
+  --set 'tolerations[0].key=node-role.kubernetes.io/control-plane' \
+  --set 'tolerations[0].effect=NoSchedule' >/dev/null
+# Certificates requested before the approver was running stay Pending forever —
+# approve that startup backlog once so the cluster is usable immediately.
+KUBECONFIG="$WL_KUBECONFIG" kubectl get csr -o name 2>/dev/null \
+  | xargs -r env KUBECONFIG="$WL_KUBECONFIG" kubectl certificate approve >/dev/null 2>&1 || true
 
 # cert-manager (same version deploy/gitops/base/cert-manager.yaml pins for prod):
 # the operator's `make deploy` hard-requires it — config/default mounts the
