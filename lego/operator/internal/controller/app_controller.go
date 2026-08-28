@@ -1635,6 +1635,31 @@ func lastActiveTime(app *appv1alpha1.App) time.Time {
 	return t
 }
 
+// defaultIdleTTL is the platform idle window a free web App auto-hibernates
+// after when it sets no explicit idleTTLSeconds (idleTTLSeconds: 0 / unset). 15
+// minutes mirrors Render's fixed free spin-down window; 0 means "the platform
+// default" (what the API/UI surfaces advertise) — not "off". A free App cannot
+// disable auto-sleep, matching Render's always-on spin-down (ADR003 sleep=free,
+// w6/m116).
+const defaultIdleTTL = 15 * time.Minute
+
+// autoSleepWindow is how long a web App may sit idle before it auto-hibernates,
+// or 0 if it never auto-sleeps (paid tier). A free App with no explicit window
+// falls back to defaultIdleTTL; a positive idleTTLSeconds always wins. This is
+// the ONE place the effective idle window is resolved, so autoSleepEligible,
+// shouldAutoHibernate and idleRequeueAfter cannot disagree about the default.
+// The spec value is never rewritten — 0 stays 0 on the CR and is interpreted
+// here — so the default can evolve without migrating stored Apps (w6/m116).
+func autoSleepWindow(app *appv1alpha1.App) time.Duration {
+	if !isFreeApp(app) {
+		return 0
+	}
+	if app.Spec.IdleTTLSeconds > 0 {
+		return time.Duration(app.Spec.IdleTTLSeconds) * time.Second
+	}
+	return defaultIdleTTL
+}
+
 // autoSleepEligible reports whether the activator is this App's wake path at
 // all — every condition shouldAutoHibernate checks EXCEPT "has it been idle
 // long enough". Split out because the routing question ("can the activator
@@ -1643,11 +1668,11 @@ func lastActiveTime(app *appv1alpha1.App) time.Time {
 // pod is ready, so the activator must still hold the route (w6/m94).
 func autoSleepEligible(app *appv1alpha1.App) bool {
 	web := app.Spec.Type == "" || app.Spec.Type == appv1alpha1.TypeWebService
-	return web && !app.Spec.Suspended && app.Spec.IdleTTLSeconds > 0 && isFreeApp(app)
+	return web && !app.Spec.Suspended && autoSleepWindow(app) > 0
 }
 
 // shouldAutoHibernate reports whether an auto-sleep-eligible app should scale
-// to zero now: its last-active timestamp is older than the TTL.
+// to zero now: its last-active timestamp is older than the effective window.
 func shouldAutoHibernate(app *appv1alpha1.App) bool {
 	if !autoSleepEligible(app) {
 		return false
@@ -1656,12 +1681,12 @@ func shouldAutoHibernate(app *appv1alpha1.App) bool {
 	if last.IsZero() {
 		return false // not yet stamped; operator will stamp on first Running reconcile
 	}
-	return time.Since(last) >= time.Duration(app.Spec.IdleTTLSeconds)*time.Second
+	return time.Since(last) >= autoSleepWindow(app)
 }
 
-// idleRequeueAfter returns how long until the idle TTL elapses from now.
+// idleRequeueAfter returns how long until the idle window elapses from now.
 func idleRequeueAfter(app *appv1alpha1.App, now time.Time) time.Duration {
-	ttl := time.Duration(app.Spec.IdleTTLSeconds) * time.Second
+	ttl := autoSleepWindow(app)
 	last := lastActiveTime(app)
 	if last.IsZero() {
 		return ttl
@@ -1870,13 +1895,18 @@ func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App
 		return ctrl.Result{RequeueAfter: hibernateRoutingGrace}, nil
 	}
 	reason, message := reasonSuspended, "suspended (scaled to 0; config, host and certs kept)"
+	// The effective window, not the raw spec value — a created-default free App
+	// hibernates on defaultIdleTTL with idleTTLSeconds still 0 (w6/m116). Read
+	// once so the message and the log provably report the same number.
+	windowSeconds := 0
 	if autoHibernating {
 		reason = reasonAutoHibernated
-		message = fmt.Sprintf("idle ≥%ds on free tier; wakes on next request", app.Spec.IdleTTLSeconds)
+		windowSeconds = int(autoSleepWindow(app).Seconds())
+		message = fmt.Sprintf("idle ≥%ds on free tier; wakes on next request", windowSeconds)
 	}
 	res, err := r.hibernated(ctx, app, image, hosts, reason, message)
 	if err == nil && autoHibernating {
-		logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", app.Spec.IdleTTLSeconds)
+		logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", windowSeconds)
 	}
 	return res, err
 }

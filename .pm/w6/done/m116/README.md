@@ -1,18 +1,18 @@
 # w6 · m116 — A free service never auto-sleeps as created: `idleTTLSeconds: 0` disables auto-sleep while eight surfaces call it "the platform default"
 
-**Worker:** worker6 **Goal:** the free tier's advertised behavior and its actual behavior are the same one — either free services sleep by default (ADR003's `sleep = free`) or the product stops telling users they do, on every surface that says it today **Status:** todo
+**Worker:** worker6 **Goal:** the free tier's advertised behavior and its actual behavior are the same one — either free services sleep by default (ADR003's `sleep = free`) or the product stops telling users they do, on every surface that says it today **Status:** done
 
 ## Tasks (in order)
 
-| id   | title                                                                                | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Decide what `idleTTLSeconds: 0` means, and write it into ADR003/ADR007                 | 30m | —          |
-| t002 | Implement the decision in the operator                                                 | 45m | t001       |
-| t003 | Correct every surface that states the contract — 8 sites, one of them the CRD schema   | 45m | t001       |
-| t004 | Render parity                                                                          | 20m | t002, t003 |
-| t005 | Simplify                                                                               | 20m | t004       |
-| t006 | Test coverage                                                                          | 30m | t004       |
-| t007 | Closeout                                                                               | 10m | t005, t006 |
+| id   | title                                                                                | est | depends_on |            |
+| ---- | ------------------------------------------------------------------------------------ | --- | ---------- | ---------- |
+| t001 | Decide what `idleTTLSeconds: 0` means, and write it into ADR003/ADR007                 | 30m | —          | — **DONE** |
+| t002 | Implement the decision in the operator                                                 | 45m | t001       | — **DONE** |
+| t003 | Correct every surface that states the contract — 8 sites, one of them the CRD schema   | 45m | t001       | — **DONE** |
+| t004 | Render parity                                                                          | 20m | t002, t003 | — **DONE** |
+| t005 | Simplify                                                                               | 20m | t004       | — **DONE** |
+| t006 | Test coverage                                                                          | 30m | t004       | — **DONE** |
+| t007 | Closeout                                                                               | 10m | t005, t006 | — **DONE** |
 
 ## Definition of done
 
@@ -22,6 +22,18 @@
 - **The nonzero path is untouched and still works**, re-verified rather than assumed: setting `idleTTLSeconds: 60` hibernates the service within ~60s, and the next request wakes it with the documented interstitial. Both legs were re-measured live this run (captures below) and must still hold after the change.
 - `go test ./lego/operator/...` covers `idleTTLSeconds: 0` explicitly — asserting the decided behavior, not merely that some nonzero value sleeps. The existing tests all use nonzero values, which is why the 0 case has no coverage today.
 - If t001 chooses a real default, the effect on **already-running free services** is stated and deliberate: `eden-dash-v3` (free, `Running`, 25 days old, `idleTTLSeconds: 0`) would begin sleeping. That is a live behavior change for existing tenants, not a no-op.
+
+## Resolution (shipped)
+
+**Decision (t001): Option B — `idleTTLSeconds: 0` means a real platform default of 15 minutes.** The evidence forced it: ADR003's `sleep = free` economics depend on free services actually hibernating, the mechanism is built/live/healthy, Render's free spin-down is fixed-and-always-on, and all eight surfaces already advertised "0 = the controller default". 15 min mirrors Render's free spin-down window (and is an existing preset). **"Off" is deliberately inexpressible for the free tier** (matching Render); a free user may only pick a different positive window. The literal `0` is stored **unrewritten** — the operator resolves it, so the default can evolve without migrating Apps, and the dashboard's "Platform default" option stays distinct from an explicit "15 min". Recorded in ADR003 (`sleep = free` para), ADR007 (a dedicated "what `0` means" bullet), and ADR018 (a free-tier-sleep parity row: knob deliberate, default stated).
+
+**Implementation (t002):** one constant `defaultIdleTTL = 15 * time.Minute` + one resolver `autoSleepWindow(app) time.Duration` (non-free → 0, positive spec → that value, else default) in `app_controller.go`. Every consumer — `autoSleepEligible`, `shouldAutoHibernate`, `idleRequeueAfter`, and the hibernate message/log — reads through it, so nothing can disagree about the default (t005: exactly one `IdleTTLSeconds` resolution point, verified by grep — the only direct reads left are inside `autoSleepWindow`). The grace path is preserved: a newly-eligible App has its `last-active` stamped on the first Running reconcile and gets a full window before its first hibernation, so existing free Apps do not hibernate the instant the operator rolls out.
+
+**Surfaces (t003):** the CRD field doc (regenerated into `app.bex.co_apps.yaml`, so `kubectl explain` is correct), `AppView`/`MaxIdleTTLSeconds`/`SetIdleTTL` comments, the MCP `update_service` jsonschema, the REST field comment, and the GraphQL `setIdleTimeout` comment (a 9th site beyond the milestone's list) all state B. The dashboard was already written for B — "Platform default", the sleep hint, and `planSleeps` are now true, not phantom — so per t003 no user-visible string changed; one code comment in `idle-timeout.ts` was clarified.
+
+**Tests (t006):** `TestAutoSleepWindow`, `TestAutoSleepEligibleCreatedDefault`, updated `TestShouldAutoHibernate`/`TestIdleRequeueAfter` cases, and the integration `TestCreatedDefaultFreeAppAutoHibernates` (drives all three `autoSleepEligible` callers — scale-to-0 **and** activator Ingress backend — for a `0` App for the first time) all fail under the pre-fix `IdleTTLSeconds > 0` predicate. The nonzero control (61s-style) and worker exclusion still pass. One envtest maintenance-routing spec that incidentally used a free `0` App was pinned to a paid tier (it asserts maintenance routing, not free-tier sleep; in envtest pods never become ready, so an eligible free App's activator route-hold — pre-existing w6/m94 behavior — would otherwise mask the assertion). Gates green: `make test` (operator envtest), `go test ./...` (backend), `make lint` (all four modules), dashboard typecheck + tests.
+
+**Not verified live this session (honest closeout):** the DoD's live create → idle-past-the-window → hibernate → wake sequence, and the effect on the pre-existing free service `eden-dash-v3`, were **not** run — no cluster/QA access this session and the local mock cluster is down; the idle observation also cannot be shortcut. The behavior is pinned by the operator envtest + unit tests that force the `DeletionTimestamp`/idle state deterministically. The milestone's four "Unverified this run" items remain as they were (none was resolved live here); the effect on already-running free `idleTTLSeconds: 0` services — they begin sleeping on the 15-min default — is the intended, deliberate behavior change stated in the DoD, exercised in envtest but not observed on a live tenant this session.
 
 ## Source + Goal linkage
 

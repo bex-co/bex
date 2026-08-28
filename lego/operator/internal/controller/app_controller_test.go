@@ -587,10 +587,15 @@ var _ = Describe("App Controller", func() {
 
 		It("routes every host to the activator while enabled, restores on disable, pods untouched throughout", func() {
 			By("creating a running App with two hosts")
+			// A paid (always-on) tier isolates maintenance routing from free-tier
+			// auto-sleep: since w6/m116 a free web App with idleTTLSeconds:0 sleeps
+			// on the platform default, and in envtest (no kubelet, so pods never
+			// become ready) the activator would hold its route the whole time —
+			// which is the free-tier wake path's job, not what this spec asserts.
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 				Spec: appv1alpha1.AppSpec{
-					Image: "traefik/whoami", Port: 3000, Replicas: 2,
+					Image: "traefik/whoami", Port: 3000, Replicas: 2, Tier: "starter",
 					Host:  "maint.1.2.3.4.sslip.io",
 					Hosts: []string{"www.maint-example.com"},
 				},

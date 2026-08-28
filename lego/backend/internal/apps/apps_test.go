@@ -1173,12 +1173,15 @@ func TestSetIdleTTLSetsAndReports(t *testing.T) {
 	if got := getApp(t, cl, "web").Spec.IdleTTLSeconds; got != 900 {
 		t.Errorf("spec.idleTTLSeconds = %d, want 900", got)
 	}
-	// 0 restores the controller default and is a valid value (not rejected).
+	// 0 selects the platform default idle window and is a valid value (not
+	// rejected). The literal 0 round-trips UNREWRITTEN — the operator resolves
+	// it to the default window, so the API never rewrites 0 to a concrete number
+	// (w6/m116; keeping the default free to evolve without migrating Apps).
 	if _, err := svc.SetIdleTTL(context.Background(), "web", 0); err != nil {
 		t.Fatalf("SetIdleTTL(0): %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.IdleTTLSeconds; got != 0 {
-		t.Errorf("spec.idleTTLSeconds = %d, want 0 (default)", got)
+		t.Errorf("spec.idleTTLSeconds = %d, want 0 stored unrewritten (operator resolves it to the default)", got)
 	}
 }
 

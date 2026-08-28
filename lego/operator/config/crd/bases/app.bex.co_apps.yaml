@@ -522,8 +522,11 @@ spec:
                 maxItems: 100
                 type: array
               idleTTLSeconds:
-                description: IdleTTLSeconds before the service hibernates ("sleep
-                  = free"). 0 = controller default.
+                description: |-
+                  IdleTTLSeconds a free web service may idle before it auto-hibernates
+                  ("sleep = free"). 0 or unset means the platform default idle window (15
+                  minutes); a positive value overrides it. Paid tiers never auto-sleep. The
+                  operator interprets 0 as the default, so this field is never rewritten.
                 format: int32
                 type: integer
               image:

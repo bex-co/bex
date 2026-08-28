@@ -133,6 +133,34 @@ func TestAutoHibernateIngressBackendResolvesInTenantNamespace(t *testing.T) {
 	}
 }
 
+// TestCreatedDefaultFreeAppAutoHibernates is w6/m116's regression test. A free
+// web service created the product's normal way carries idleTTLSeconds: 0, which
+// the eligibility predicate read as "never sleep" — so NO free App ever
+// hibernated as shipped, defeating ADR003's sleep=free economics while eight
+// surfaces called 0 "the platform default". 0 now means the default window
+// (defaultIdleTTL), so an idle created-default App must scale to 0 AND route
+// through the activator, exactly like an explicit-TTL one. This is the first
+// test to drive all three autoSleepEligible callers for a 0 App.
+func TestCreatedDefaultFreeAppAutoHibernates(t *testing.T) {
+	scheme := wakeScheme()
+	app := hibernatingApp("tea-abc123")
+	app.Spec.IdleTTLSeconds = 0 // the created default — the whole point of the fix
+	// hibernatingApp's last-active is already an hour ago, well past the 15-min
+	// default window, so it is genuinely idle under the resolved default.
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := wakeReconciler(cl, scheme)
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	reconcileTwice(t, r, nn)
+
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("created-default free App replicas = %d, want 0 — idleTTLSeconds:0 must mean the platform default, not never", got)
+	}
+	if got := ingressBackendName(t, cl, nn); got != activatorAliasName(app.Name) {
+		t.Fatalf("created-default free App backend = %q, want the activator alias %q — the wake route must exist for a 0 App", got, activatorAliasName(app.Name))
+	}
+}
+
 // An App that already shares the activator's namespace needs no alias — the
 // Service is directly resolvable there.
 func TestAutoHibernateInActivatorNamespaceUsesActivatorDirectly(t *testing.T) {
