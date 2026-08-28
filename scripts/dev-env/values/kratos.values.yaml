@@ -29,6 +29,20 @@ kratos:
       allowed_return_urls:
         - http://localhost:__DASHBOARD_PORT__
       methods:
+        password:
+          config:
+            # LOCAL DEV ONLY. Kratos's password method checks every new password
+            # against haveibeenpwned.com's range API on the registration request
+            # path. From a CAPD pod that round trip is slow enough to blow the
+            # client deadline, and Kratos then fails the whole flow with a 500
+            # ("Unable to initialize string scanner: context deadline exceeded")
+            # — registration is impossible and the cause is not obvious from the
+            # browser, which only sees a generic internal error.
+            #
+            # Disabled here so a local dev-N can create an account offline. This
+            # values file is the dev-N overlay only; production Kratos keeps the
+            # breach check (deploy/gitops/base/values/kratos.values.yaml).
+            haveibeenpwned_enabled: false
         webauthn:
           config:
             rp:
