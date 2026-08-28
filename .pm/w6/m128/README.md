@@ -1,6 +1,6 @@
 # w6 · m128 — A deploy canceled mid-build leaves an unclosed build in the activity feed: `build_started` with no `build_ended`
 
-**Worker:** worker6 **Goal:** every build that starts also ends in the feed, whatever terminal state its deploy reaches **Status:** in progress — t001 implemented and deployed in `daf84f6e`; t002–t006 remain under triage
+**Worker:** worker6 **Goal:** every build that starts also ends in the feed, whatever terminal state its deploy reaches **Status:** in progress — t001 and t005 are done and deployed in `daf84f6e`; t002 outbound verification, t003 parity, t004 simplify and t006 live closeout remain
 
 ## Tasks (in order)
 
@@ -10,8 +10,14 @@
 | t002 | Confirm the outbound consumers see a closed pair                               | 35m | t001       |
 | t003 | Render parity                                                                   | 25m | t001, t002 |
 | t004 | Simplify                                                                        | 20m | t003       |
-| t005 | Test coverage                                                                   | 40m | t003       |
+| t005 | Test coverage — **DONE**                                                         | 40m | t003       |
 | t006 | Closeout                                                                        | 15m | t004, t005 |
+
+## Implementation update (2026-08-28)
+
+`daf84f6e` added `store.CanceledBuildLifecycleFacts`, reused it from `Service.Cancel`, and preserved fact idempotency through the existing source keys. The regression matrix covers mid-build cancel, queued cancel, post-build cancel, supersede cancel, image-backed deploys and duplicate insertion; the existing `TestBuildEndedStatus` continues to pin successful and build-failed outcomes. `cd lego/backend && go test ./...` is green. The commit is contained in the production image pinned by `71fe9660`.
+
+t002 and t003 remain open because no live webhook/push subscriber, cross-surface probe, dashboard Events-tab check or Render comparison was performed. t004 also remains open because the landed commit does not record a `/simplify` pass. t006 owns the credential-dependent live closeout.
 
 ## Definition of done
 
