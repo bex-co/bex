@@ -1,6 +1,6 @@
 # w6 · m133 — The Postgres parameter editor is seeded from the live `pg_settings` read
 
-**Worker:** worker6 **Goal:** the parameter editor shows and replaces only what the tenant declared, and operator-owned settings — the WAL archive/restore commands, the TLS paths, the replication group — cannot be captured into tenant config. **Status:** in progress — t001–t007 done (backend, dashboard, docs and tests landed; dashboard 379 files/2773 tests, backend `go test ./...` 60 packages, `make lint` ×4 all green). t008 closeout is open: its checks are live probes against `dashboard.bex.co` and this session has no QA credentials (`scripts/qa-login.sh` exits 2).
+**Worker:** worker6 **Goal:** the parameter editor shows and replaces only what the tenant declared, and operator-owned settings — the WAL archive/restore commands, the TLS paths, the replication group — cannot be captured into tenant config. **Status:** in progress — t001–t007 done and deployed (`35655226` is contained in the production image pinned by `71fe9660`; dashboard 379 files/2773 tests, backend `go test ./...` 60 packages, `make lint` ×4 all green). t008 closeout is open: its checks are live probes against `dashboard.bex.co` and this session has no QA credentials (`scripts/qa-login.sh` exits 2).
 
 ## Tasks (in order)
 
@@ -144,7 +144,7 @@ The guard tests were verified non-tautological by disabling the check — all 15
 
 ### What t008 still owes
 
-The remaining DoD bullets are live probes and this session has neither QA credentials (`scripts/qa-login.sh` exits 2) nor a deployed build. Two items must be carried honestly into the closeout:
+The remaining DoD bullets are live probes and this session has no QA credentials (`scripts/qa-login.sh` exits 2). The fix is deployed: `35655226` is an ancestor of the production image pinned by `71fe9660`. Two items must be carried honestly into the closeout:
 
 - **Still unverified, and it was unverified when filed:** what CloudNativePG actually does when `spec.parameters` contains an operator-owned key — reject the Cluster patch, silently win, or fight it in a reconcile loop. The guard now makes it unreachable through the API, so the question is about **existing** databases whose `spec.parameters` may already carry captured values from before this fix. Closeout should check the three production databases for captured keys; if any has them, removing them is a data-repair task, not this milestone's.
 - **Key Value was not checked** for the same conflation (the Background flagged it as unverified). It is a separate resource with its own insights surface; if the same shape exists there it deserves its own note.
