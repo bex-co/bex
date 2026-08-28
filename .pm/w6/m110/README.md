@@ -1,6 +1,6 @@
 # w6 · m110 — App compute is never metered, and a service named ≥22 chars loses CPU/memory/instance metrics
 
-**Worker:** worker6 **Goal:** every App's pods are selected by an identity that actually matches them — so App compute is metered and billed like Postgres/Key Value already is, and the Metrics page's Memory/CPU/Total Instances cards stop going blank for services with ordinary-length names. **Status:** code complete — t001–t007 done (t005's parity pass found and fixed a second, MCP-only empty-case divergence); t008 closeout open, blocked on the live sweep (needs `23c323f9` in a successful deploy AND production credentials, which this session does not have)
+**Worker:** worker6 **Goal:** every App's pods are selected by an identity that actually matches them — so App compute is metered and billed like Postgres/Key Value already is, and the Metrics page's Memory/CPU/Total Instances cards stop going blank for services with ordinary-length names. **Status:** code complete and deployed — t001–t007 done (t005's parity pass found and fixed a second, MCP-only empty-case divergence); `23c323f9` is an ancestor of the production image pinned by `71fe9660`; t008 closeout is blocked only on production QA credentials and cross-milestone fixture sequencing
 
 ## Background (found live, 2026-08-27, 21st `/qa-find-bugs` run)
 
