@@ -1,12 +1,12 @@
 # w6 · m128 — A deploy canceled mid-build leaves an unclosed build in the activity feed: `build_started` with no `build_ended`
 
-**Worker:** worker6 **Goal:** every build that starts also ends in the feed, whatever terminal state its deploy reaches **Status:** todo
+**Worker:** worker6 **Goal:** every build that starts also ends in the feed, whatever terminal state its deploy reaches **Status:** in progress — t001 implemented and deployed in `daf84f6e`; t002–t006 remain under triage
 
 ## Tasks (in order)
 
 | id   | title                                                                       | est | depends_on |
 | ---- | ----------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Emit the build lifecycle close on the cancel path                              | 45m | —          |
+| t001 | Emit the build lifecycle close on the cancel path — **DONE**                    | 45m | —          |
 | t002 | Confirm the outbound consumers see a closed pair                               | 35m | t001       |
 | t003 | Render parity                                                                   | 25m | t001, t002 |
 | t004 | Simplify                                                                        | 20m | t003       |
