@@ -114,6 +114,7 @@ vi.mock("@/features/logs/hooks/use-live-logs", () => ({
 // The filter bar's dropdowns discover values over Apollo — stub so this routing
 // test needs no ApolloProvider.
 vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
+  useLogLabelDiscovery: () => ({ values: [], resolved: false }),
   useLogLabelValues: () => [],
 }));
 

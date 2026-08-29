@@ -127,6 +127,7 @@ jobs:
           scripts/terraform-install.sh scripts/terraform-install.test.sh
           scripts/lib/image-digest-exists.sh
           scripts/disk-snapshot-secret.sh scripts/disk-snapshot-secret.test.sh
+          scripts/request-logs-liveness.sh
       - name: Restore script hermetic safety tests
         run: bash scripts/restore.test.sh
       # ADR082 D5: the disk-snapshot provisioner's refusals — a shared bucket, a

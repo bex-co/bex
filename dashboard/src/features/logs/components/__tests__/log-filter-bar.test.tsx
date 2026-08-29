@@ -21,7 +21,15 @@ beforeAll(() => {
 
 // The dropdowns discover values over Apollo — stub the hook.
 const discovered = vi.fn((_label: string) => [] as string[]);
+// Whether discovery ANSWERED. Default false = the store is unavailable, which
+// is the state the pre-existing cases were written against (fallbacks shown).
+let discoveryResolved = false;
+const resolvedDiscovery = () => discoveryResolved;
 vi.mock("../../hooks/use-log-label-values", () => ({
+  useLogLabelDiscovery: (_resource: string, label: string) => ({
+    values: discovered(label),
+    resolved: resolvedDiscovery(),
+  }),
   useLogLabelValues: (_resource: string, label: string) => discovered(label),
 }));
 
@@ -46,6 +54,7 @@ function renderBar(
 
 beforeEach(() => {
   discovered.mockReturnValue([]);
+  discoveryResolved = false;
 });
 
 describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
@@ -62,6 +71,52 @@ describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
     expect(screen.queryByLabelText("Status code")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Instance")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Request path")).not.toBeInTheDocument();
+  });
+
+  // w6/m131/t003. The request-log outage was invisible because the Method
+  // dropdown kept offering GET/POST/PUT/PATCH/DELETE from the static fallback
+  // while discovery authoritatively returned []. Every one of those five
+  // selected to an empty page that read as "this service had no traffic".
+  // A value the store says was never produced must not be offered.
+  it("drops the static fallbacks once discovery answers with no values", async () => {
+    const user = userEvent.setup();
+    discoveryResolved = true; // the store answered: this App produced none
+    discovered.mockReturnValue([]);
+    renderBar();
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(screen.getByLabelText("Method"));
+    for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"]) {
+      expect(
+        screen.queryByRole("option", { name: method }),
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  it("keeps the static fallbacks when discovery is unavailable, not empty", async () => {
+    const user = userEvent.setup();
+    discoveryResolved = false; // no store wired => 503, so we could not ask
+    discovered.mockReturnValue([]);
+    renderBar();
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(screen.getByLabelText("Method"));
+    expect(screen.getByRole("option", { name: "GET" })).toBeInTheDocument();
+  });
+
+  it("offers exactly the discovered values when the store answers with some", async () => {
+    const user = userEvent.setup();
+    discoveryResolved = true;
+    discovered.mockImplementation((label: string) =>
+      label === "method" ? ["GET", "POST"] : [],
+    );
+    renderBar();
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(screen.getByLabelText("Method"));
+    expect(screen.getByRole("option", { name: "GET" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "POST" })).toBeInTheDocument();
+    // Still merged on top of the fallback list, which GET/POST already cover.
+    expect(
+      screen.queryByRole("option", { name: "PATCH" }),
+    ).toBeInTheDocument();
   });
 
   it("reveals the structured filter controls inside the Filters popover", async () => {

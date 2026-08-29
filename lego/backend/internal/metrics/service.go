@@ -756,6 +756,16 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 		if s.RequestLogMetrics == nil {
 			return nil, core.ErrLogStoreUnavailable
 		}
+		// w6/m131/t009: this guard covers "source unwired", not "source wired but
+		// the access-log stream is not being produced" — the state that made a
+		// host filter zero a real request graph while the unfiltered read showed
+		// traffic. That second state is deliberately NOT represented here: it is
+		// indistinguishable from a genuinely quiet host at this vantage point,
+		// exactly as for the logs read (w6/m131/t002 — the reasoning is recorded
+		// in docs/ADR018-render-parity.md row 182). A pipeline that has stopped
+		// producing is caught out-of-band and loudly by the scheduled
+		// request-logs-liveness probe, not by manufacturing an error here that a
+		// quiet host would also trigger.
 		return s.readRequestSeries(ctx, s.RequestLogMetrics, q, app, nil)
 	}
 	if s.RequestMetrics == nil {

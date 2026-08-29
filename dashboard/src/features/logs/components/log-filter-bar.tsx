@@ -23,7 +23,10 @@ import { Button } from "@/common/components/ui/button";
 import { RangeSelect } from "@/features/metrics/components/range-select";
 import { type RangeSelection } from "@/features/metrics/lib/range";
 import { DEFAULT_LOG_RANGE } from "../lib/log-search";
-import { useLogLabelValues } from "../hooks/use-log-label-values";
+import {
+  useLogLabelDiscovery,
+  type LogLabelDiscovery,
+} from "../hooks/use-log-label-values";
 import {
   LOG_LABEL_INSTANCE,
   LOG_LABEL_LEVEL,
@@ -67,6 +70,9 @@ const ALL = "all";
 // dev has no store, so `logLabelValues` returns nothing). Discovered values the
 // App has actually produced are merged in on top. Level/status classes mirror
 // Render's fixed filter options.
+//
+// They are fallbacks for "we could not ask", NOT for "the answer was none" —
+// see mergeOptions (w6/m131/t003).
 const LEVEL_FALLBACK = ["debug", "info", "warning", "error"];
 const METHOD_FALLBACK = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const STATUS_CLASSES = ["2xx", "3xx", "4xx", "5xx"];
@@ -74,8 +80,22 @@ const STATUS_CLASSES = ["2xx", "3xx", "4xx", "5xx"];
 // mergeOptions keeps the static fallbacks first (a stable, familiar order) then
 // appends discovered values not already listed, sorted — the same shape the
 // metrics filter bar builds its Status Code list with.
-function mergeOptions(fallback: string[], discovered: string[]): string[] {
-  const extra = discovered.filter((v) => !fallback.includes(v)).sort();
+//
+// w6/m131/t003: when discovery has ANSWERED and the answer is "none", the
+// fallbacks are dropped. A filter value the store says this App has never
+// produced cannot match a single line, and offering it anyway is what made the
+// request-log outage invisible — every service advertised
+// GET/POST/PUT/PATCH/DELETE from this list while `label=method` returned `[]`,
+// so all five selected to an empty page that read as "no traffic". Fallbacks
+// still carry the UI while loading and when discovery is UNAVAILABLE (no store
+// => 503), where they are a guess in place of an answer rather than a
+// contradiction of one.
+function mergeOptions(
+  fallback: string[],
+  discovery: LogLabelDiscovery,
+): string[] {
+  if (discovery.resolved && discovery.values.length === 0) return [];
+  const extra = discovery.values.filter((v) => !fallback.includes(v)).sort();
   return [...fallback, ...extra];
 }
 
@@ -122,19 +142,19 @@ export function LogFilterBar({
   // store, where the static fallbacks carry the UI.
   const levels = mergeOptions(
     LEVEL_FALLBACK,
-    useLogLabelValues(resource, LOG_LABEL_LEVEL),
+    useLogLabelDiscovery(resource, LOG_LABEL_LEVEL),
   );
   const methods = mergeOptions(
     METHOD_FALLBACK,
-    useLogLabelValues(resource, LOG_LABEL_METHOD),
+    useLogLabelDiscovery(resource, LOG_LABEL_METHOD),
   );
   const statuses = mergeOptions(
     STATUS_CLASSES,
-    useLogLabelValues(resource, LOG_LABEL_STATUS_CODE),
+    useLogLabelDiscovery(resource, LOG_LABEL_STATUS_CODE),
   );
   const instances = mergeOptions(
     [],
-    useLogLabelValues(resource, LOG_LABEL_INSTANCE),
+    useLogLabelDiscovery(resource, LOG_LABEL_INSTANCE),
   );
 
   const active = STRUCTURED_FILTER_KEYS.filter((key) => filters[key] !== "");

@@ -1,4 +1,4 @@
-name: SSH edge liveness
+name: Production edge liveness
 
 # w6/m132/t004: a dead SSH handshake at ssh.bex.co went unnoticed for weeks
 # because the acceptance script for that surface (scripts/ssh-verify.sh) was
@@ -10,10 +10,14 @@ name: SSH edge liveness
 # pre-authentication and hits every connection alike.
 #
 # This is the shared carrier reconciled with w6/m131/t004 (the identical gap for
-# scripts/logs-verify.sh): a periodic, loud, production liveness gate. A logs
-# liveness step belongs beside the ssh-liveness job here rather than as a second,
-# parallel mechanism. The heavy scripts/ssh-verify.sh matrix (which needs a paid
-# fixture) stays a manual/less-frequent run; this is the always-on floor.
+# scripts/logs-verify.sh): a periodic, loud, production liveness gate. The heavy
+# scripts/ssh-verify.sh matrix (which needs a paid fixture) stays a
+# manual/less-frequent run; this is the always-on floor.
+#
+# w6/m131/t004 took that slot: request-logs-liveness below. Same shape, same
+# failure class — an acceptance script (scripts/logs-verify.sh) that was written,
+# never scheduled, and so never noticed that type=request had been silently empty
+# for every tenant service in production. Two probes, one carrier, one schedule.
 
 on:
   workflow_dispatch:
@@ -85,3 +89,95 @@ jobs:
         run: |
           echo "::error::$SSH_EDGE did not send KEXINIT — SSH is down" >&2
           exit 1
+
+  # w6/m131/t004. The request-log pipeline's silent-zero failure: type=request
+  # returned 200 with no rows for every tenant service while app and build logs
+  # kept working, because the shipper's ServiceName attribution regex was
+  # anchored to the literal `default` namespace and every ADR043 `tea-<xid>`
+  # tenant access line was dropped as not_a_tenant_app.
+  #
+  # scripts/logs-verify.sh could not have caught this even if it HAD been run in
+  # production — it deploys its fixture into APP_NS=default, the one namespace
+  # the broken regex still matched. So this probe asserts the property that
+  # actually failed: request streams exist FOR A TENANT NAMESPACE. It reads
+  # Loki's label index (no line scan, no API credential, no fixture) and needs
+  # only cluster access.
+  request-logs-liveness:
+    runs-on: [self-hosted, Linux, ARM64]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+      # Same credential staging as deploy.yml: everything under $RUNNER_TEMP
+      # (auto-deleted at job end), never ~/.ssh or a fixed path on the shared
+      # self-hosted runner, and the control-plane host key is pinned so the
+      # fetch fails closed rather than trusting an unknown key.
+      - name: Get app cluster kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >> "$GITHUB_ENV"
+      # The SSH key was only ever needed to fetch admin.conf.
+      - name: Scrub SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+      - name: Probe the request-log pipeline for tenant streams
+        id: probe
+        run: |
+          if bash scripts/request-logs-liveness.sh 6h > logs-probe.txt 2>&1; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "down=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat logs-probe.txt
+      - name: Open or update the tracking issue
+        if: steps.probe.outputs.down == 'true'
+        run: |
+          gh label create request-logs-down --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "type=request is producing no tenant lines (w6/m131)" --force
+          body="The Traefik request-log pipeline is not attributing lines to tenant namespaces, so \`type=request\` is silently empty for every service — a 200 with no rows, indistinguishable from a quiet service."$'\n\n'
+          body+="Probe output:"$'\n\n```\n'"$(cat logs-probe.txt)"$'\n```\n\n'
+          body+="First suspect is the ServiceName attribution regex in \`deploy/gitops/base/log-shipper.yaml\` drifting from where App CRs actually live (ADR043 \`tea-<xid>\` namespaces) — the w6/m131 root cause. \`TestShipperRegexAttributesTenantNamespaceServices\` guards the regex in CI; this checks the live pipeline."
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label request-logs-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Request logs are dark: no type=request streams for any tenant" \
+              --label request-logs-down \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once request logs recover
+        if: steps.probe.outputs.down == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label request-logs-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "type=request streams are being attributed to tenant namespaces again."
+          fi
+      - name: Fail the run when request logs are dark
+        if: steps.probe.outputs.down == 'true'
+        run: |
+          echo "::error::no type=request streams for any tenant namespace — request logs are dark" >&2
+          exit 1
+      # Last, and only after every cluster read: admin.conf outlives the SSH key
+      # because the probe needs it, so it is scrubbed here rather than above.
+      - name: Scrub the cluster kubeconfig
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"
