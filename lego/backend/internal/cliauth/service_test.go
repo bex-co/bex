@@ -600,7 +600,9 @@ func TestDeviceRateLimiterShedsFloodPerIPNotGlobally(t *testing.T) {
 // longer hold the 30/min device budget platform-wide), while a spoofed
 // X-Forwarded-For from an UNTRUSTED peer is ignored.
 func TestDeviceRateLimiterTrustedProxyXFF(t *testing.T) {
-	rl := NewDeviceRateLimiter(60000, 1) // burst=1: a repeat for a key is shed
+	// Keep the refill interval long enough that scheduler latency cannot mint a
+	// replacement token between the two back-to-back requests under test.
+	rl := NewDeviceRateLimiter(1, 1) // burst=1: a repeat for a key is shed
 	tp, err := core.ParseTrustedProxies("10.0.0.0/8")
 	if err != nil {
 		t.Fatalf("ParseTrustedProxies: %v", err)
@@ -637,7 +639,7 @@ func TestDeviceRateLimiterTrustedProxyXFF(t *testing.T) {
 	}
 
 	// Unset TrustedProxies stays byte-identical: headers ignored, peer keyed.
-	plain := NewDeviceRateLimiter(60000, 1)
+	plain := NewDeviceRateLimiter(1, 1)
 	if ok, _ := plain.allow(from("10.0.0.1", "203.0.113.60")); !ok {
 		t.Fatal("no trusted proxies, first request: want allowed")
 	}
