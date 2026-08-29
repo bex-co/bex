@@ -1,6 +1,6 @@
 # w6 · m132 — REGRESSION of `w2/m39`: the SSH gateway never sends KEXINIT
 
-**Worker:** worker6 **Goal:** `ssh <service-id>@ssh.bex.co` completes a handshake and opens a shell again, and a dead SSH edge cannot go unnoticed for weeks. **Status:** code complete and deployed (`b2bec3ff` is contained in the production image pinned by `71fe9660`); the credential-free production KEXINIT probe passes as of 2026-08-28; t002/t005/t008 remain for the authenticated SSH/CLI matrix and confirmed scheduled-guard execution
+**Worker:** worker6 **Goal:** `ssh <service-id>@ssh.bex.co` completes a handshake and opens a shell again, and a dead SSH edge cannot go unnoticed for weeks. **Status:** code complete and deployed; **2026-08-29 authenticated matrix (partial):** raw-OpenSSH exec into a running paid service is LIVE-VERIFIED (real in-pod output, pinned host key) and the free/non-Running fail-closed gates refuse correctly — but **interactive PTY was refused in two attempts (`PTY allocation request failed`) and is a recorded anomaly to settle via `scripts/ssh-verify.sh`**, and the scripted full matrix + official-CLI leg remain blocked on an OAuth bearer (token endpoint 403s from this network) plus the out-of-band full-matrix identities. See t002's item-by-item walk. Do not close until PTY is settled and the scripted run + first `ssh-edge-liveness.yml` run land.
 
 ## Root cause located + fixed (t001, 2026-08-28)
 
