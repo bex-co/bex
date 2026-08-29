@@ -132,6 +132,33 @@ const enGit: Record<string, TranslationEntry> = {
     message: "Couldn't disconnect GitHub.",
     description: "Toast when disconnect fails",
   },
+  "git.credentialsTrigger": {
+    message: "Credentials ({count})",
+    description:
+      "In-place credentials menu trigger on the source picker (w8/m31); {count} is the number of connected GitHub accounts",
+  },
+  "git.credentialsAccountsHeading": {
+    message: "Accounts & orgs",
+    description: "Heading above the connected-account list in the credentials menu",
+  },
+  "git.repoCount": {
+    message: "{count} repos",
+    description: "Repo count shown next to a connected GitHub account",
+  },
+  "git.openInGitHub": {
+    message: "Open in GitHub",
+    description: "Link/title opening a connected account's GitHub page",
+  },
+  "git.configureInGitHub": {
+    message: "Configure in GitHub",
+    description:
+      "Link to GitHub's install-settings page to change repo grants (Render parity label)",
+  },
+  "git.disconnectAccount": {
+    message: "Disconnect {account}",
+    description:
+      "Accessible label for a specific account's disconnect button in the credentials menu",
+  },
 };
 
 export default enGit;

@@ -18,13 +18,20 @@ export interface UseReposResult {
   repos: RepoView[];
   loading: boolean;
   error: Error | undefined;
+  /**
+   * Re-runs the repos query. The credentials menu / source picker call it on
+   * window focus so a newly-connected account's repos appear in place after the
+   * new-tab install returns (w8/m31); Apollo normalizes on the document, so the
+   * refreshed list updates every `useRepos` reader.
+   */
+  refetch: () => Promise<unknown>;
 }
 
 export function useRepos(): UseReposResult {
   // ADR075 §6: the repo list is the SELECTED workspace's connection set, never
   // the caller's default one; defer while the workspace id resolves.
   const { currentWorkspaceId } = useWorkspace();
-  const { data, loading, error } = useQuery(ReposDocument, {
+  const { data, loading, error, refetch } = useQuery(ReposDocument, {
     variables: { ownerId: currentWorkspaceId },
     skip: currentWorkspaceId == null,
   });
@@ -45,5 +52,5 @@ export function useRepos(): UseReposResult {
     [data],
   );
 
-  return { repos, loading, error };
+  return { repos, loading, error, refetch };
 }

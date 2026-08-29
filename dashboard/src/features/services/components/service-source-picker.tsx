@@ -1,23 +1,11 @@
-import { useMemo, useState } from "react";
-import {
-  Box,
-  ChevronDown,
-  ExternalLink,
-  Github,
-  GitBranch,
-  Plus,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Github, GitBranch, Box } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Skeleton } from "@/common/components/ui/skeleton";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/common/components/ui/popover";
 import {
   Tabs,
   TabsContent,
@@ -27,11 +15,9 @@ import {
 import { isValidGitUrl } from "@/common/lib/utils/git-url";
 import { cn } from "@/common/lib/utils/utils";
 import { useRepos, type RepoView } from "@/features/services/hooks/use-repos";
-import {
-  useGitConnections,
-  type GitConnectionRow,
-} from "@/features/git/hooks/use-git-connection";
+import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { useConnectGit } from "@/features/git/hooks/use-connect-git";
+import { GitCredentialsMenu } from "@/features/git/components/git-credentials-menu";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 
 /** Where a new service's code comes from. */
@@ -85,16 +71,31 @@ export function ServiceSourcePicker({
   idPrefix?: string;
 }) {
   const { t } = useTranslations();
-  const { repos, loading: reposLoading } = useRepos();
+  const { repos, loading: reposLoading, refetch: refetchRepos } = useRepos();
   const {
-    connections,
-    connected,
+    connection,
     loading: connectionLoading,
-  } = useGitConnections();
-  const { connect, busy: connecting } = useConnectGit();
+    refetch: refetchConnection,
+  } = useGitConnection();
+  // In-place connect opens GitHub in a new tab so the create form survives (w8/m31).
+  const { connect, busy: connecting } = useConnectGit({ newTab: true });
   const [repoSearch, setRepoSearch] = useState("");
 
-  const gitHubDisconnected = !connectionLoading && !connected;
+  const gitHubDisconnected =
+    !connectionLoading && connection?.connected !== true;
+
+  // When connected, GitCredentialsMenu owns the focus refetch. When disconnected
+  // the menu isn't mounted, so the picker refreshes here to catch a connection
+  // made from the empty-state Connect button's new tab (w8/m31).
+  useEffect(() => {
+    if (!gitHubDisconnected) return;
+    const onFocus = () => {
+      void refetchConnection();
+      void refetchRepos();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [gitHubDisconnected, refetchConnection, refetchRepos]);
 
   const filteredRepos = useMemo(
     () =>
@@ -183,11 +184,7 @@ export function ServiceSourcePicker({
                   onChange={(e) => setRepoSearch(e.target.value)}
                   aria-label={t("services.createRepoSearchPlaceholder")}
                 />
-                <GitHubConnectionsMenu
-                  connections={connections}
-                  onConnect={connect}
-                  connecting={connecting}
-                />
+                <GitCredentialsMenu />
               </div>
               <div className="max-h-64 overflow-y-auto rounded-md border divide-y">
                 {reposLoading ? (
@@ -299,88 +296,5 @@ export function ServiceSourcePicker({
         )}
       </Tabs>
     </div>
-  );
-}
-
-/**
- * Keeps GitHub account management beside the repository picker, matching the
- * create flow's context instead of making the user detour through Settings.
- * Configuration opens GitHub in a new tab so the in-progress form is retained.
- */
-function GitHubConnectionsMenu({
-  connections,
-  onConnect,
-  connecting,
-}: {
-  connections: GitConnectionRow[];
-  onConnect: () => void;
-  connecting: boolean;
-}) {
-  const { t } = useTranslations();
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full justify-between sm:w-auto sm:shrink-0"
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <Github className="size-4 shrink-0" />
-            <span className="truncate">
-              {t("services.createGitConnectionsButton", {
-                count: connections.length,
-              })}
-            </span>
-          </span>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[calc(100vw-3rem)] max-w-sm p-0">
-        <div className="border-b px-4 py-3">
-          <p className="font-medium">
-            {t("services.createGitConnectionsTitle")}
-          </p>
-        </div>
-        <ul className="divide-y">
-          {connections.map((connection) => (
-            <li
-              key={connection.installationId}
-              className="flex items-center justify-between gap-3 px-4 py-3"
-            >
-              <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
-                <Github className="size-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{connection.accountLogin}</span>
-              </span>
-              {connection.installUrl ? (
-                <Button variant="ghost" size="sm" asChild>
-                  <a
-                    href={connection.installUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {t("services.createGitConfigureButton")}
-                    <ExternalLink className="size-4" />
-                  </a>
-                </Button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-        <div className="border-t p-2">
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={onConnect}
-            disabled={connecting}
-          >
-            <Plus className="size-4" />
-            {t("git.connectAnotherButton")}
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
   );
 }
