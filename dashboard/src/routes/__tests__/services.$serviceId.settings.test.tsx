@@ -267,6 +267,11 @@ vi.mock("@/features/services/hooks/use-build-filter", () => ({
 }));
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnection: () => ({ connection: undefined }),
+  useGitConnections: () => ({
+    connections: [],
+    connected: false,
+    loading: false,
+  }),
 }));
 vi.mock("@/features/services/hooks/use-set-image", () => ({
   useSetImage: () => ({ setImage: vi.fn(async () => true), busy: false }),

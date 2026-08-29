@@ -248,7 +248,27 @@ function SourcePickerSkeleton({ tabs }: { tabs: 2 | 3 }) {
           <Skeleton key={index} className="h-8 w-full" />
         ))}
       </div>
-      <Skeleton className="h-[10.625rem] w-full rounded-lg" />
+      <div className="space-y-2">
+        <div
+          className="flex flex-col gap-2 sm:flex-row"
+          data-skeleton-region="source-toolbar"
+        >
+          <Skeleton className="h-9 min-w-0 flex-1" />
+          <Skeleton className="h-9 w-full sm:w-48" />
+        </div>
+        <div
+          className="divide-y rounded-md border"
+          data-skeleton-region="source-repositories"
+        >
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className="flex items-center gap-3 p-3">
+              <Skeleton className="size-4 shrink-0 rounded-full" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

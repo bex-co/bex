@@ -1322,6 +1322,10 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { services: byOwner(SERVICES, variables.ownerId) };
     case "GitConnection":
       return { gitConnection: GIT_CONNECTION };
+    case "GitConnections":
+      return {
+        gitConnections: GIT_CONNECTION.connected ? [GIT_CONNECTION] : [],
+      };
     case "Repos":
       // Only return repos when connected; an unconnected installation has no repos.
       return { repos: GIT_CONNECTION.connected ? REPOS : [] };
