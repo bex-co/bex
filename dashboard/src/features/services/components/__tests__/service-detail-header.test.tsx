@@ -234,7 +234,7 @@ describe("ServiceDetailHeader", () => {
 
     // source repo links to the branch tree, with the branch beside it
     expect(
-      screen.getByRole("link", { name: "bex-co / hello-go" }),
+      screen.getByRole("link", { name: "github.com · bex-co / hello-go" }),
     ).toHaveAttribute("href", "https://github.com/bex-co/hello-go/tree/main");
     expect(screen.getByText("main")).toBeInTheDocument();
 

@@ -856,7 +856,7 @@ func deployEmail(appName string, kind deployMailKind, details deployDetails, log
 	// separate "View commit" line duplicating the same reference.
 	cm := strings.TrimSpace(details.commitMessage)
 	if cu := commitURL(details.repoURL, details.commitSHA); cu != "" {
-		msg.Reference = &email.Reference{Label: "Commit", Token: shortSHA(details.commitSHA), URL: cu, Desc: cm}
+		msg.Reference = &email.Reference{Label: "Commit", Token: commitLinkLabel(cu, details.commitSHA), URL: cu, Desc: cm}
 	} else if cm != "" {
 		msg.Paragraphs = append(msg.Paragraphs, "Commit:\n"+cm)
 	}
@@ -864,6 +864,19 @@ func deployEmail(appName string, kind deployMailKind, details deployDetails, log
 		msg.CTA = &email.CTA{Lead: "View logs", Label: "View logs", URL: logsURL}
 	}
 	return subject, msg
+}
+
+// commitLinkLabel keeps the destination hostname visible next to the linked
+// SHA. Self-hosted forges are supported, so a fixed host allowlist would break
+// valid repos; showing the authority prevents an arbitrary stored repo URL from
+// masquerading as a trusted forge in a bex-branded email.
+func commitLinkLabel(commitURL, sha string) string {
+	label := shortSHA(sha)
+	u, err := url.Parse(commitURL)
+	if err != nil || u.Hostname() == "" {
+		return label
+	}
+	return label + " on " + u.Hostname()
 }
 
 // commitURL builds the repo's web commit page URL from an App's spec.repo and a

@@ -1165,6 +1165,41 @@ func TestEnvGroup_LinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T
 	}
 }
 
+func TestEnvGroup_UnlinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T) {
+	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	app := ownedApp("web", "tea-a")
+	store := newFakeStore()
+	svc := &Service{
+		Base:  &core.Base{Client: fakeClient(app), Namespace: "default", Workspace: resolver},
+		Store: store,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+
+	groupB, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo-secrets", OwnerID: "tea-b"})
+	if err != nil {
+		t.Fatalf("create bravo group: %v", err)
+	}
+	m, err := svc.readMeta(ctx, groupB.ID)
+	if err != nil {
+		t.Fatalf("read group meta: %v", err)
+	}
+	m.links = []string{"web"} // legacy bare-name link in tea-b
+	if err := svc.writeMeta(ctx, groupB.ID, m); err != nil {
+		t.Fatalf("seed group link: %v", err)
+	}
+
+	if err := svc.UnlinkService(ctx, groupB.ID, "web"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("unlink tea-b's group via tea-a's same-named service = %v, want ErrForbidden", err)
+	}
+	got, err := svc.GetEnvGroup(ctx, groupB.ID)
+	if err != nil {
+		t.Fatalf("GetEnvGroup: %v", err)
+	}
+	if !slices.Equal(got.ServiceLinks, []string{"web"}) {
+		t.Fatalf("refused unlink changed tea-b links: %v", got.ServiceLinks)
+	}
+}
+
 func TestEnvGroup_MutationProjectsIntoOwningWorkspaceNotCallers(t *testing.T) {
 	// dana belongs to both tea-a (her default) and tea-b. Mutating a
 	// tea-b-owned group from her default-workspace context authorizes against

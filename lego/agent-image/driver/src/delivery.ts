@@ -89,9 +89,31 @@ interface EvidenceAccumulator {
 }
 
 async function git(cwd: string, args: string[]): Promise<string> {
-  const { stdout } = await run("git", args, {
+  // The working tree and its repository-local configuration are controlled by
+  // the agent. Delivery runs after the provider has stopped and credentials
+  // have been scrubbed, so Git must not re-introduce tenant code execution via
+  // hooks, fsmonitor helpers, interactive credential prompts, or external diff
+  // commands during this privileged phase.
+  const hardenedArgs = [
+    "-c",
+    "core.hooksPath=/dev/null",
+    "-c",
+    "core.fsmonitor=false",
+    "-c",
+    "diff.external=",
+    "-c",
+    "core.attributesFile=/dev/null",
+    ...args,
+  ];
+  const { stdout } = await run("git", hardenedArgs, {
     cwd,
     maxBuffer: 32 * 1024 * 1024,
+    env: {
+      ...process.env,
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_TERMINAL_PROMPT: "0",
+    },
   });
   return stdout.trim();
 }
@@ -208,13 +230,17 @@ export async function restoreWorkspace(
   const dir = await mkdtemp(path.join(tmpdir(), "bex-restore-"));
   const archive = path.join(dir, "snap.tgz");
   try {
-    await run("/bin/sh", ["-c", 'curl -sf "$BEX_RESTORE_URL" -o "$BEX_RESTORE_FILE"'], {
-      env: {
-        ...process.env,
-        BEX_RESTORE_URL: config.restoreUrl,
-        BEX_RESTORE_FILE: archive,
+    await run(
+      "/bin/sh",
+      ["-c", 'curl -sf "$BEX_RESTORE_URL" -o "$BEX_RESTORE_FILE"'],
+      {
+        env: {
+          ...process.env,
+          BEX_RESTORE_URL: config.restoreUrl,
+          BEX_RESTORE_FILE: archive,
+        },
       },
-    });
+    );
     const body = await readFile(archive);
     if (
       config.restoreBytes != null &&
@@ -343,6 +369,7 @@ export async function deliverBranch(
       "-c",
       `user.email=${config.gitEmail}`,
       "commit",
+      "--no-verify",
       "-m",
       commitMessage(config),
     ]);
@@ -407,11 +434,7 @@ export async function deliverBranch(
     // have published the exact scanned object. Treat that as idempotent success
     // instead of issuing a no-update receive-pack that can obscure the outcome
     // with a transport error. Any different remote update remains a conflict.
-    const beforePushOid = await remoteOid(
-      cwd,
-      config.repoUrl,
-      config.branch,
-    );
+    const beforePushOid = await remoteOid(cwd, config.repoUrl, config.branch);
     if (beforePushOid !== candidateOid) {
       if (beforePushOid !== baseline.remoteBranchOid) {
         throw new Error(
@@ -426,6 +449,7 @@ export async function deliverBranch(
       try {
         await git(cwd, [
           "push",
+          "--no-verify",
           lease,
           config.repoUrl,
           `${candidateOid}:refs/heads/${config.branch}`,

@@ -117,6 +117,32 @@ func TestClientGetMapsRunningAndNotFound(t *testing.T) {
 	}
 }
 
+func TestClientEscapesSandboxIDAndNeverForwardsTenantKeyOnRedirect(t *testing.T) {
+	var redirected bool
+	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		redirected = true
+	}))
+	defer target.Close()
+
+	var escapedPath, rawQuery string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		escapedPath, rawQuery = r.URL.EscapedPath(), r.URL.RawQuery
+		http.Redirect(w, r, target.URL+"/capture", http.StatusFound)
+	}))
+	defer upstream.Close()
+
+	_, err := NewClient(upstream.URL).Get(context.Background(), "workspace-capability", "../other?admin=1")
+	if err == nil {
+		t.Fatal("redirect response must not be treated as a sandbox")
+	}
+	if redirected {
+		t.Fatal("OpenSandbox client followed a redirect carrying the tenant key")
+	}
+	if rawQuery != "" || escapedPath != "/sandboxes/..%2Fother%3Fadmin=1" {
+		t.Fatalf("sandbox id contributed URL syntax: escapedPath=%q rawQuery=%q", escapedPath, rawQuery)
+	}
+}
+
 func TestClientListHandlesArrayAndWrapped(t *testing.T) {
 	bodies := []string{`[{"id":"a","status":{"state":"Running"}}]`, `{"items":[{"id":"b","status":{"state":"Paused"}}]}`}
 	idx := 0

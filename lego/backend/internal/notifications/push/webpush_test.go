@@ -190,3 +190,15 @@ func TestEncodeWebPushJSONRejectsAbsoluteRoute(t *testing.T) {
 		t.Fatal("absolute route must be rejected")
 	}
 }
+
+func TestEncodeWebPushJSONRejectsAuthorityLikeRelativeRoutes(t *testing.T) {
+	for _, route := range []string{`/\evil.example`, `//evil.example`, "/\tevil.example"} {
+		_, err := encodeWebPushJSON(WebPushMessage{
+			Title: "t", Body: "b",
+			Data: EnvelopeData{Schema: "bex.notification.v1", NotificationID: "n", Event: "deploy_failed", Route: route},
+		})
+		if err == nil {
+			t.Errorf("route %q must be rejected", route)
+		}
+	}
+}

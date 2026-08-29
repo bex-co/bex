@@ -309,6 +309,73 @@ func TestDeletePlainEnvironmentStaysDeveloperLevel(t *testing.T) {
 	}
 }
 
+// codex security round 22 #3: every path that can dismantle an ACL-bearing
+// environment must inherit the same fresh can_manage boundary as Delete.
+// Keeping these cases together pins the shared helper across service links,
+// label-backed resource links, and the project-delete cascade seam.
+func TestACLBearingMembershipTeardownRequiresCanManage(t *testing.T) {
+	ctx := ctxAs("user-a")
+	newFixture := func(t *testing.T) (*fakeStore, *Service, store.Environment) {
+		t.Helper()
+		st := newFakeStore()
+		st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+		admin, _ := newServiceWithClient(st, sampleApp("web"))
+		view, err := admin.CreateWithACL(ctx, CreateEnvironmentRequest{
+			ProjectID:               "prj-1",
+			Name:                    "prod",
+			NetworkIsolationEnabled: true,
+		})
+		if err != nil {
+			t.Fatalf("admin CreateWithACL: %v", err)
+		}
+		e, err := st.GetEnvironment(ctx, view.ID)
+		if err != nil {
+			t.Fatalf("GetEnvironment: %v", err)
+		}
+		return st, admin, e
+	}
+
+	t.Run("service links", func(t *testing.T) {
+		st, admin, e := newFixture(t)
+		if _, err := admin.SetServices(ctx, e.ID, []string{"web"}); err != nil {
+			t.Fatalf("admin SetServices: %v", err)
+		}
+		dev := &Service{Base: &core.Base{Authz: developerChecker{}}, Store: st}
+		if _, err := dev.SetServices(ctx, e.ID, nil); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("developer SetServices on ACL-bearing environment = %v, want ErrForbidden", err)
+		}
+		members, err := st.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
+		if err != nil || len(members) != 1 || members[0] != "web" {
+			t.Fatalf("refused service-link mutation changed members: members=%v err=%v", members, err)
+		}
+	})
+
+	t.Run("database links", func(t *testing.T) {
+		st, admin, e := newFixture(t)
+		dbs := newDatabaseIndex()
+		dbs.add(postgres.PostgresView{ID: "dpg-one", OwnerID: "tea-a", EnvironmentID: e.ID})
+		admin.Databases = dbs
+		dev := &Service{Base: &core.Base{Authz: developerChecker{}}, Store: st, Databases: dbs}
+		if _, err := dev.SetDatabases(ctx, e.ID, nil); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("developer SetDatabases on ACL-bearing environment = %v, want ErrForbidden", err)
+		}
+		if got := dbs.dbs["dpg-one"].EnvironmentID; got != e.ID {
+			t.Fatalf("refused database-link mutation changed environmentID: got %q, want %q", got, e.ID)
+		}
+	})
+
+	t.Run("project cascade", func(t *testing.T) {
+		st, _, e := newFixture(t)
+		dev := &Service{Base: &core.Base{Authz: developerChecker{}}, Store: st}
+		if err := dev.clearMembersForProject(ctx, e.ProjectID); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("developer project cascade on ACL-bearing environment = %v, want ErrForbidden", err)
+		}
+		if _, err := st.GetEnvironment(ctx, e.ID); err != nil {
+			t.Fatalf("refused project cascade removed environment: %v", err)
+		}
+	})
+}
+
 // --- ipAllowList propagation (t006) ---
 //
 // Reuses fakeDatabaseIndex/fakeKeyValueIndex (databases_test.go, w6/m20) —

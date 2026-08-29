@@ -138,6 +138,35 @@ func TestRoundTripRestoresTheTreeExactly(t *testing.T) {
 	}
 }
 
+func TestExtractTreeRejectsEscapingSymlinkTargets(t *testing.T) {
+	for _, link := range []string{"/etc", "../outside"} {
+		t.Run(link, func(t *testing.T) {
+			var raw bytes.Buffer
+			archive := tar.NewWriter(&raw)
+			if err := archive.WriteHeader(&tar.Header{
+				Name: "link", Linkname: link, Typeflag: tar.TypeSymlink, Mode: 0o777,
+			}); err != nil {
+				t.Fatalf("write symlink header: %v", err)
+			}
+			body := []byte("must stay contained")
+			if err := archive.WriteHeader(&tar.Header{Name: "link/passwd", Typeflag: tar.TypeReg, Mode: 0o600, Size: int64(len(body))}); err != nil {
+				t.Fatalf("write file header: %v", err)
+			}
+			if _, err := archive.Write(body); err != nil {
+				t.Fatalf("write body: %v", err)
+			}
+			if err := archive.Close(); err != nil {
+				t.Fatalf("close archive: %v", err)
+			}
+
+			root := t.TempDir()
+			if err := extractTree(tar.NewReader(bytes.NewReader(raw.Bytes())), root); err == nil {
+				t.Fatalf("extractTree accepted escaping link target %q", link)
+			}
+		})
+	}
+}
+
 // Restore discards post-snapshot writes — that is Render's documented behavior
 // and the reason it warns before running one.
 func TestRestoreDiscardsEverythingWrittenAfterTheSnapshot(t *testing.T) {

@@ -73,7 +73,7 @@ describe("ServiceSourceCard", () => {
       />,
     );
 
-    expect(screen.getByText("acme / api")).toBeInTheDocument();
+    expect(screen.getByText("github.com · acme / api")).toBeInTheDocument();
     expect(screen.getByText("main")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Edit" }));
 
