@@ -112,8 +112,50 @@ func TestModelMinterRefusesUnprovisionedKey(t *testing.T) {
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("Mint error = %v, want forbidden", err)
 	}
+	// It is ALSO the distinct missing-key cause, which is what lets the model
+	// proxy report an auth failure for this refusal and no other (w1/m136).
+	// Keeping both assertions pins the wrapping: dropping ErrForbidden would
+	// silently change the HTTP status, dropping the sentinel would silently stop
+	// terminalizing the session.
+	if !errors.Is(err, ErrModelKeyMissing) {
+		t.Fatalf("Mint error = %v, want ErrModelKeyMissing", err)
+	}
 	if len(audit.events) != 1 || audit.events[0].Outcome != core.AuditDenied {
 		t.Fatalf("denied audit = %+v", audit.events)
+	}
+}
+
+// The authorization refusals must NOT be mistaken for a missing key: they mean a
+// stale or cross sandbox is asking, and reporting them would let such a pod
+// terminalize a session that is not its own (w1/m136).
+func TestModelMinterAuthorizationRefusalsAreNotMissingKey(t *testing.T) {
+	live := modelSession("https://api.anthropic.com/v1")
+	cases := []struct {
+		name    string
+		session store.AgentSession
+		mutate  func(*ModelMintRequest)
+	}{
+		{"cross sandbox pod", live, func(r *ModelMintRequest) { r.PodName = "sbx-9-0" }},
+		{"session not found", live, func(r *ModelMintRequest) { r.SessionID = "ags-other" }},
+		{"terminal session", func() store.AgentSession { s := live; s.Phase = "completed"; return s }(), func(*ModelMintRequest) {}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := &ModelMinter{
+				Keys:     modelKeysFor("sk-ant-api03-REAL"),
+				Sessions: fakeSessions{session: tc.session},
+				Audit:    &auditRecorder{},
+			}
+			req := validModelRequest()
+			tc.mutate(&req)
+			_, err := m.Mint(context.Background(), req)
+			if !errors.Is(err, ErrForbidden) {
+				t.Fatalf("Mint error = %v, want ErrForbidden", err)
+			}
+			if errors.Is(err, ErrModelKeyMissing) {
+				t.Fatalf("an authorization refusal must not read as a missing key: %v", err)
+			}
+		})
 	}
 }
 

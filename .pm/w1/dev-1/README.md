@@ -65,6 +65,7 @@ command):
 
 ```sh
 cd dashboard && VITE_API_URL=http://localhost:54010/graphql \
+  VITE_SSR_API_URL=http://localhost:54010/graphql \
   VITE_KRATOS_PUBLIC_URL=http://localhost:51010 yarn dev --port 50010
 ```
 
@@ -189,11 +190,23 @@ Start the dashboard with the stream origin pointed at the gateway:
 cd dashboard && HYDRA_ADMIN_URL=http://localhost:52010 \
   HYDRA_PUBLIC_URL=http://localhost:58010 \
   VITE_API_URL=http://localhost:54010/graphql \
+  VITE_SSR_API_URL=http://localhost:54010/graphql \
   VITE_KRATOS_PUBLIC_URL=http://localhost:51010 \
   VITE_KRATOS_SSR_URL=http://localhost:51010 \
   VITE_AGENT_STREAM_URL=http://localhost:62010 \
   yarn dev --port 50010
 ```
+
+**`VITE_SSR_API_URL` is not optional.** `dashboard/.env` (untracked, written for
+`yarn local-bex`) pins it to the offline stub on `:8099`, and a `.env` value wins
+over a shell variable that is never set — so omitting it points only the **SSR**
+Apollo client at a port nothing serves. Every SSR GraphQL query then fails with
+`TypeError: fetch failed` / `ECONNREFUSED` (visible as `apollo_ssr <Op>: fetch
+failed` in the dev-server log), `loadRouteResource` dehydrates `{state:"error"}`,
+and every session detail page cold-loads titled **"Something went wrong"** with an
+empty content region until `useLoaderErrorRetry` re-runs the loader client-side.
+The page self-heals, so it reads as a slow flash rather than a broken env — which
+is exactly why it is worth pinning here.
 
 **Why it is needed.** `agentSessionStreamUrl()` builds the SSE endpoint from
 `config.agentStreamBaseUrl`, which defaults to the **bex-api** origin — correct in
