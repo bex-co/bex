@@ -157,13 +157,13 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
         <TableHeader>
           <TableRow>
             <TableHead>{t("deploys.columnDeploy")}</TableHead>
-            <TableHead className="hidden sm:table-cell">
+            <TableHead className="hidden whitespace-nowrap @3xl/deploys:table-cell">
               {t("deploys.columnTrigger")}
             </TableHead>
-            <TableHead className="hidden whitespace-nowrap sm:table-cell">
+            <TableHead className="hidden whitespace-nowrap @3xl/deploys:table-cell">
               {t("deploys.columnDuration")}
             </TableHead>
-            <TableHead className="w-0 text-right">
+            <TableHead className="w-0 whitespace-nowrap text-right">
               <span className="sr-only">{t("deploys.columnActions")}</span>
             </TableHead>
           </TableRow>
@@ -229,21 +229,21 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                       ) : null}
                     </div>
                   </Link>
-                  {/* On mobile the Trigger/Duration columns are hidden, so fold
-                      their values under the deploy identity instead. */}
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:hidden">
+                  {/* Until the card is wide enough for the full table, fold
+                      Trigger/Duration under the deploy identity instead. */}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground @3xl/deploys:hidden">
                     <span className="capitalize">{triggerLabel(d, t)}</span>
                     <span aria-hidden="true">·</span>
                     <span className="tabular-nums">{durationLabel(d, t)}</span>
                   </div>
                 </TableCell>
-                <TableCell className="hidden align-top text-sm capitalize text-muted-foreground sm:table-cell">
+                <TableCell className="hidden whitespace-nowrap align-top text-sm capitalize text-muted-foreground @3xl/deploys:table-cell">
                   {triggerLabel(d, t)}
                 </TableCell>
-                <TableCell className="hidden align-top tabular-nums text-sm text-muted-foreground sm:table-cell">
+                <TableCell className="hidden whitespace-nowrap align-top tabular-nums text-sm text-muted-foreground @3xl/deploys:table-cell">
                   {durationLabel(d, t)}
                 </TableCell>
-                <TableCell className="align-top text-right">
+                <TableCell className="w-0 whitespace-nowrap align-top text-right">
                   {hasListAction ? (
                     <div className="flex justify-end">
                       <DeployActions
@@ -263,7 +263,7 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
   }
 
   return (
-    <Card>
+    <Card className="@container/deploys">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <CardTitle>{t("deploys.listTitle")}</CardTitle>
