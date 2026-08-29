@@ -36,6 +36,8 @@ permissions:
 
 jobs:
   backend:
+    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64]
     env:
       # Same workspace/toolchain split as operator-test.yml: lego/go.work

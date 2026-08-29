@@ -75,6 +75,19 @@ assert "self-hosted label passes" 0 "$(job_body "[self-hosted, Linux, ARM64]" " 
 assert "sudo workflow fails" 1 "$(job_body "[self-hosted, Linux, ARM64]" "      - uses: $PINNED
       - run: sudo apt-get install shellcheck")" "must not require sudo"
 
+# --- Public-fork isolation --------------------------------------------------
+pr_job_body() {
+  printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$1" "$PINNED"
+}
+# RED: a pull_request job without a repository-identity gate can schedule fork
+# code on a persistent self-hosted runner.
+assert "unguarded fork PR job fails" 1 "$(pr_job_body "name: unguarded")" \
+  "reject public fork heads"
+# GREEN: same-repository PR branches continue to run, while fork heads skip.
+assert "same-repository PR guard passes" 0 "$(pr_job_body "if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository")"
+# GREEN: a job in a mixed-event workflow may instead exclude all PR events.
+assert "PR-excluded self-hosted job passes" 0 "$(pr_job_body "if: github.event_name != 'pull_request'")"
+
 # --- w1/m68 F3: host-key pin coverage for admin.conf fetchers ---------------
 # RED: a workflow that fetches admin.conf over SSH without wiring the pin. This
 # is exactly the shape openbao-restore-drill.yml had — the whole reason m66's
