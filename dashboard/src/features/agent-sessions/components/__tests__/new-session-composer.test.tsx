@@ -90,9 +90,11 @@ beforeEach(() => {
 /** Type a valid task into the prompt box. */
 async function typeTask(user: ReturnType<typeof userEvent.setup>) {
   // The Tiptap editor mounts after its chunk's dynamic import resolves
-  // (lazy-mention-editor), so the first access of a test must await it.
+  // (lazy-mention-editor), so the first access of a test must await it. The
+  // full-suite worker can take longer than Testing Library's 1s default to
+  // transform that deliberately split chunk.
   await user.type(
-    await screen.findByLabelText("Task"),
+    await screen.findByLabelText("Task", undefined, { timeout: 5_000 }),
     "  refactor the mapper  ",
   );
 }

@@ -1199,7 +1199,7 @@ if [ -f "$EGRESS" ]; then
 
   structural_positive_rules="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
-      ((.spec.egress // []) | length)' "$EGRESS" | tr -d '\n')"
+      (.spec.egress | length)' "$EGRESS" | tr -d '\n')"
   [ "$structural_positive_rules" = "0" ] \
     || { echo "FAIL: structural sandbox default-deny regained positive egress rules" >&2; fail=1; }
 
