@@ -40,6 +40,22 @@ const (
 	TimestampHeader = "X-Bex-Agent-Credential-Timestamp"
 	NamespaceHeader = "X-Bex-Sandbox-Namespace"
 
+	// RefusalHeader names WHICH refusal a 403 on the internal mint hop was,
+	// because postSignedMint rebuilds a bare ErrForbidden from the status and a
+	// wrapped sentinel cannot survive that (w1/m136).
+	//
+	// A response header rather than a field on the signed request envelope, which
+	// is shared with the mint verb: changing that would be a wire break between
+	// two separately deployed images. This degrades cleanly both ways — an old
+	// gateway ignores it, a new gateway against an old bex-api never sees it.
+	//
+	// Not a trust boundary: it unlocks only the gateway's auth-failure REPORT,
+	// which ModelAuthFailer.Fail re-authorizes from scratch, so a forged header
+	// cannot terminalize a session the failer would otherwise refuse.
+	RefusalHeader = "X-Bex-Agent-Credential-Refusal"
+	// RefusalModelKeyMissing is RefusalHeader's value for ErrModelKeyMissing.
+	RefusalModelKeyMissing = "model-key-missing"
+
 	// Pod metadata is the authorization record until the durable session table
 	// (w3/m39) lands. OpenSandbox copies create metadata to labels, so the repo and
 	// branch use fixed-size digests while their exact values arrive in the request.
@@ -83,6 +99,12 @@ func ProxyRepositoryURL(baseURL, namespace, sessionID, repository, branch string
 var (
 	ErrInvalidRequest = errors.New("invalid agent credential request")
 	ErrForbidden      = errors.New("agent credential request forbidden")
+	// ErrModelKeyMissing is the one mint refusal that is the TENANT's to fix, so
+	// it alone may terminalize the session (w1/m136). The other ErrForbidden
+	// refusals mean a stale or cross sandbox is asking, and must never be able to
+	// end a live session. It wraps ErrForbidden so existing errors.Is callers keep
+	// their behavior and recognizing the cause stays opt-in.
+	ErrModelKeyMissing = fmt.Errorf("%w: no model key provisioned for this workspace", ErrForbidden)
 )
 
 // MintRequest contains no credential. The gateway derives Workspace, PodName,

@@ -68,15 +68,21 @@ func (s *authFailStore) didFinalize() (bool, string) {
 	return s.finalized, s.reason
 }
 
-// authFailHarness wires a bex-api mint + auth-failure pair behind the shared HMAC
-// and a Broker whose upstream returns `upstreamStatus`.
-func authFailHarness(t *testing.T, upstreamStatus int) (*httptest.Server, *authFailStore) {
+// modelHarness wires a bex-api mint + auth-failure pair behind the shared HMAC
+// and a Broker whose upstream returns `upstreamStatus`. `key` is the workspace's
+// stored BYO credential (empty ⇒ never provisioned) and `sess` is the session row
+// the minter re-reads, so one harness covers both the vendor-hop tests and the
+// refusals that never reach a vendor. The session store comes back so a test can
+// count mint attempts — the minter reads the session exactly once per attempt.
+func modelHarness(t *testing.T, key string, sess store.AgentSession, upstreamStatus int) (*httptest.Server, *authFailStore, *fakeStore) {
 	t.Helper()
 	failStore := &authFailStore{}
-	minter := &agentsession.ModelMinter{
-		Keys:     fakeKV{data: map[string]map[string]string{agentsession.ModelKeySecretPath("tea-a"): {agentsession.ModelKeyField: "sk-ant-api03-REAL"}}},
-		Sessions: &fakeStore{session: liveSession("https://api.anthropic.com/v1")},
+	sessions := &fakeStore{session: sess}
+	kv := map[string]map[string]string{}
+	if key != "" {
+		kv[agentsession.ModelKeySecretPath("tea-a")] = map[string]string{agentsession.ModelKeyField: key}
 	}
+	minter := &agentsession.ModelMinter{Keys: fakeKV{data: kv}, Sessions: sessions}
 	mux := http.NewServeMux()
 	mux.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{Secret: secret, Minter: minter})
 	mux.Handle(agentsession.InternalModelAuthFailurePath, &agentsession.ModelAuthFailureHandler{
@@ -93,6 +99,22 @@ func authFailHarness(t *testing.T, upstreamStatus int) (*httptest.Server, *authF
 	}
 	proxy := httptest.NewServer(broker.Handler())
 	t.Cleanup(proxy.Close)
+	return proxy, failStore, sessions
+}
+
+// mintAttempts reads the minter's session-read count under the lock the fake
+// writes it with — the mint may still be in flight behind a detached report.
+func (f *fakeStore) mintAttempts() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
+}
+
+// authFailHarness is modelHarness with a provisioned key and a live session — the
+// shape the vendor-hop tests want, where only the upstream status varies.
+func authFailHarness(t *testing.T, upstreamStatus int) (*httptest.Server, *authFailStore) {
+	t.Helper()
+	proxy, failStore, _ := modelHarness(t, "sk-ant-api03-REAL", liveSession("https://api.anthropic.com/v1"), upstreamStatus)
 	return proxy, failStore
 }
 
@@ -132,5 +154,46 @@ func TestProxyDoesNotReportTransientVendorStatus(t *testing.T) {
 	resp.Body.Close()
 	if done, _ := eventuallyFinalized(t, failStore); done {
 		t.Fatal("a transient vendor 429 must not fast-fail the session")
+	}
+}
+
+// A workspace that never provisioned a BYO model key terminalizes with the
+// actionable reason on the FIRST refusal — the w1/m136 fix. Before it, this
+// refusal returned a bare 403, the mint was retried the full
+// mintModelRetryAttempts, and the session died carrying the agent CLI's raw
+// JSON-RPC text instead.
+func TestProxyReportsMissingModelKey(t *testing.T) {
+	proxy, failStore, sessions := modelHarness(t, "", liveSession("https://api.anthropic.com/v1"), http.StatusOK)
+	resp := request(t, proxy, "ags-one", "/v1/messages", "x-api-key", "bex-model-proxy-placeholder-ags-one")
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("proxy status %d, want 403 for a refused mint", resp.StatusCode)
+	}
+	resp.Body.Close()
+	done, reason := eventuallyFinalized(t, failStore)
+	if !done || reason != agentsession.ModelAuthFailureReason {
+		t.Fatalf("missing key did not terminalize the session (done=%v reason=%q)", done, reason)
+	}
+	// Not retried: an absent key is a standing state, not the create-time race
+	// mintModelRetryAttempts exists for.
+	if n := sessions.mintAttempts(); n != 1 {
+		t.Fatalf("mint attempts = %d, want exactly 1 (a missing key must not be retried)", n)
+	}
+}
+
+// An AUTHORIZATION refusal at the mint — here a stale sandbox whose pod is no
+// longer the session's current one — still gets a bare 403 and terminalizes
+// NOTHING. This is the guard that keeps the fix above from becoming a way for a
+// stale or compromised pod to kill a live session.
+func TestProxyDoesNotReportAuthorizationRefusal(t *testing.T) {
+	stale := liveSession("https://api.anthropic.com/v1")
+	stale.SandboxID = "sbx-9" // the resolved pod is sbx-1-0, so it is not the current caller
+	proxy, failStore, _ := modelHarness(t, "sk-ant-api03-REAL", stale, http.StatusOK)
+	resp := request(t, proxy, "ags-one", "/v1/messages", "x-api-key", "bex-model-proxy-placeholder-ags-one")
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("proxy status %d, want 403", resp.StatusCode)
+	}
+	resp.Body.Close()
+	if done, reason := eventuallyFinalized(t, failStore); done {
+		t.Fatalf("an authorization refusal must not terminalize the session (reason=%q)", reason)
 	}
 }

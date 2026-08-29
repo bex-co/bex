@@ -204,11 +204,18 @@ type ModelAuthFailureResponse struct {
 	Acknowledged bool `json:"acknowledged"`
 }
 
-// ModelAuthFailureReason is the terminal failureReason recorded when the vendor
-// rejects the workspace's BYO model credential. It is actionable — the fix is to
-// update the key, not to retry — so the dashboard renders a next-step message
+// ModelAuthFailureReason is the terminal failureReason recorded when a session
+// cannot authenticate to the model provider. It is actionable — the fix is to
+// set a working key, not to retry — so the dashboard renders a next-step message
 // rather than a blank failure card (w5/m80 t003/t005).
-const ModelAuthFailureReason = "the model provider rejected this workspace's API key (authentication failed); update the model key and start a new session"
+//
+// It covers BOTH causes deliberately (w1/m136): the vendor rejecting a key that
+// was sent, and no key existing to send. The remedy is identical — provision a
+// valid key and start a new session — so one constant keeps the report a plain
+// ModelMintRequest instead of carrying a cause through the signed envelope. The
+// wording therefore names both causes rather than asserting the provider
+// rejected a key that may never have been sent.
+const ModelAuthFailureReason = "this workspace's model API key is missing or was rejected by the model provider (authentication failed); set a valid model key and start a new session"
 
 // modelFailedPhase is the terminal phase the auth-failure verb CASes a live
 // session into. It matches agentsessions.PhaseFailed and the store's literal;
@@ -295,7 +302,12 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		// No key provisioned for this workspace: the proxy has nothing to inject, so
 		// the agent cannot authenticate. Refuse (the same end state as a keyless
 		// session today) rather than forward an unauthenticated request.
-		return ModelMintResponse{}, ErrForbidden
+		//
+		// The distinct sentinel (it still satisfies errors.Is(_, ErrForbidden)) is
+		// what lets the model proxy report an auth failure for THIS cause only, so
+		// the session terminalizes with ModelAuthFailureReason instead of the agent
+		// CLI retrying into a raw JSON-RPC error (w1/m136).
+		return ModelMintResponse{}, ErrModelKeyMissing
 	}
 	return ModelMintResponse{Credential: credential, EndpointHost: host, Scheme: ResolveAuthScheme(host, credential)}, nil
 }

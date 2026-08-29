@@ -161,12 +161,27 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 	}
 	credential, err := b.mintWithRetry(r.Context(), namespace, verified)
 	if err != nil {
-		if errors.Is(err, agentsession.ErrForbidden) {
+		switch {
+		// ErrModelKeyMissing wraps ErrForbidden, so it MUST be tested first.
+		case errors.Is(err, agentsession.ErrModelKeyMissing):
+			// No key exists to inject, so report it exactly as the vendor-rejection
+			// path below does and let bex-api terminalize now with the actionable
+			// reason; otherwise the agent CLI rides its own retry/backoff and the
+			// session ends carrying the adapter's raw JSON-RPC text (w1/m136).
+			// Safe from a refusal because ModelAuthFailer.Fail re-checks
+			// currentSandboxCaller itself.
+			b.Metrics.Authentication("missing_model_key")
+			b.reportAuthFailure(verified)
+			http.Error(w, "forbidden", http.StatusForbidden)
+		case errors.Is(err, agentsession.ErrForbidden):
+			// A stale, cross, or post-terminal sandbox asking for a session that is
+			// not its own: it learns nothing and must not be able to end a live
+			// session, so nothing is reported.
 			b.Metrics.Authentication("rejected_target")
 			http.Error(w, "forbidden", http.StatusForbidden)
-			return
+		default:
+			http.Error(w, "model proxy unavailable", http.StatusBadGateway)
 		}
-		http.Error(w, "model proxy unavailable", http.StatusBadGateway)
 		return
 	}
 	if !allowedProviderOperation(credential.EndpointHost, r.Method, upstreamPath, r.URL.RawQuery, r.Header.Get("Content-Type")) {
@@ -253,12 +268,19 @@ const (
 // mintWithRetry retries only the transient ErrForbidden of the create-time race
 // (see mintModelRetryAttempts); any other error, or a non-forbidden result, is
 // returned immediately.
+//
+// ErrModelKeyMissing is explicitly NOT retried even though it satisfies
+// errors.Is(_, ErrForbidden): an absent BYO key is a standing state, not a race,
+// so retrying it only spends the full ≈4s budget and floods the audit log with
+// identical mint-denied events before failing anyway (w1/m136 — 13 such lines in
+// ~5s observed in dev-1).
 func (b *Broker) mintWithRetry(ctx context.Context, namespace string, req agentsession.ModelMintRequest) (agentsession.ModelMintResponse, error) {
 	var cred agentsession.ModelMintResponse
 	var err error
 	for attempt := 1; attempt <= mintModelRetryAttempts; attempt++ {
 		cred, err = b.mint(ctx, namespace, req)
-		if err == nil || !errors.Is(err, agentsession.ErrForbidden) || attempt == mintModelRetryAttempts {
+		if err == nil || !errors.Is(err, agentsession.ErrForbidden) ||
+			errors.Is(err, agentsession.ErrModelKeyMissing) || attempt == mintModelRetryAttempts {
 			return cred, err
 		}
 		select {

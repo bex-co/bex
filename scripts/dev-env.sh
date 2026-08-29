@@ -610,7 +610,13 @@ dev-$N (workstream w$N) is up:
   bex-api:     http://localhost:$BEX_API_PORT (log: $ENVDIR/logs/bex-api.log, truncated on each up)
 
 start the dashboard against it:
-  cd dashboard && HYDRA_ADMIN_URL=http://localhost:$HYDRA_ADMIN_PORT HYDRA_PUBLIC_URL=http://localhost:$HYDRA_PUBLIC_PORT VITE_API_URL=http://localhost:$BEX_API_PORT/graphql VITE_KRATOS_PUBLIC_URL=http://localhost:$KRATOS_PUBLIC_PORT VITE_KRATOS_SSR_URL=http://localhost:$KRATOS_PUBLIC_PORT yarn dev --port $DASHBOARD_PORT
+  cd dashboard && HYDRA_ADMIN_URL=http://localhost:$HYDRA_ADMIN_PORT HYDRA_PUBLIC_URL=http://localhost:$HYDRA_PUBLIC_PORT VITE_API_URL=http://localhost:$BEX_API_PORT/graphql VITE_SSR_API_URL=http://localhost:$BEX_API_PORT/graphql VITE_KRATOS_PUBLIC_URL=http://localhost:$KRATOS_PUBLIC_PORT VITE_KRATOS_SSR_URL=http://localhost:$KRATOS_PUBLIC_PORT yarn dev --port $DASHBOARD_PORT
+
+  (VITE_SSR_API_URL is NOT optional: dashboard/.env pins it to local-bex's
+   offline stub on :8099, and a .env value wins over an unset shell var — so
+   omitting it leaves every SSR GraphQL query failing with ECONNREFUSED and
+   each detail page cold-loading as "Something went wrong" until the client
+   self-heals. Same reason VITE_KRATOS_SSR_URL is already spelled out.)
 
 status: bash scripts/dev-env.sh $N status   |   tear down: bash scripts/dev-env.sh $N down
 EOF

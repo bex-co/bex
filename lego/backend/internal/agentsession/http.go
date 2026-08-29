@@ -114,6 +114,12 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 		case errors.Is(err, ErrInvalidRequest):
 			status = http.StatusBadRequest
 		}
+		// Name the refusal so the caller can tell "this workspace has no model key"
+		// (the tenant's to fix, and worth terminalizing the session for) from an
+		// authorization refusal, which the status code alone flattens together.
+		if errors.Is(err, ErrModelKeyMissing) {
+			w.Header().Set(RefusalHeader, RefusalModelKeyMissing)
+		}
 		http.Error(w, http.StatusText(status), status)
 		return
 	}
@@ -150,6 +156,14 @@ func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byt
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
+			// Recover the specific refusal when bex-api named it. Absent or unknown
+			// header ⇒ the plain ErrForbidden every caller already handles, so an
+			// older broker (or the git-credential path, which never sets it) is
+			// unchanged. ErrModelKeyMissing wraps ErrForbidden, so callers that only
+			// test for the latter are unaffected either way.
+			if resp.Header.Get(RefusalHeader) == RefusalModelKeyMissing {
+				return zero, ErrModelKeyMissing
+			}
 			return zero, ErrForbidden
 		}
 		return zero, fmt.Errorf("agent credential broker returned status %d", resp.StatusCode)
