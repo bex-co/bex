@@ -64,6 +64,23 @@ const WORKSPACE_MEMBERS_QUERY = `
   }
 `;
 
+describe("local-bex.mjs GitHub connections", () => {
+  it("answers the plural connection query used by create source pickers", async () => {
+    const { data, errors } = await graphql(
+      "GitConnections",
+      `query GitConnections { gitConnections { accountLogin installationId installUrl } }`,
+    );
+
+    expect(errors).toBeUndefined();
+    expect(data.gitConnections).toEqual([
+      expect.objectContaining({
+        accountLogin: "acme-corp",
+        installationId: 87654321,
+      }),
+    ]);
+  });
+});
+
 describe("local-bex.mjs workspaceMembers", () => {
   it("returns enriched member rows (userId + email) for the default workspace", async () => {
     const { data, errors } = await graphql(

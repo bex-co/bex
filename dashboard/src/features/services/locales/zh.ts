@@ -2602,6 +2602,20 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard GitHub tab button that opens the GitHub App install flow",
   },
+  "services.createGitConnectionsButton": {
+    message: "GitHub 连接（{count}）",
+    description:
+      "Create-wizard button opening the connected GitHub accounts menu",
+  },
+  "services.createGitConnectionsTitle": {
+    message: "GitHub 连接",
+    description: "Create-wizard connected GitHub accounts menu title",
+  },
+  "services.createGitConfigureButton": {
+    message: "配置",
+    description:
+      "Create-wizard link to configure one connection's repository access on GitHub",
+  },
   "services.createPublicUrlLabel": {
     message: "仓库 URL",
     description: "Create-wizard Public Git URL tab input label",

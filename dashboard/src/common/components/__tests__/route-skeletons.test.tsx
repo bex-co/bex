@@ -146,6 +146,28 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     unmount();
   });
 
+  it("previews the create source picker's search, connection control, and repository list", async () => {
+    const { container } = renderServiceCreateSkeleton(
+      "/services/new?type=web_service",
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-skeleton-region="source-toolbar"]'),
+      ).not.toBeNull(),
+    );
+    const toolbar = container.querySelector<HTMLElement>(
+      '[data-skeleton-region="source-toolbar"]',
+    );
+    const repositories = container.querySelector<HTMLElement>(
+      '[data-skeleton-region="source-repositories"]',
+    );
+
+    expect(toolbar).not.toBeNull();
+    expect(toolbar).toHaveClass("flex-col", "sm:flex-row");
+    expect(toolbar?.children).toHaveLength(2);
+    expect(repositories?.children).toHaveLength(3);
+  });
+
   it.each([
     [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 6],

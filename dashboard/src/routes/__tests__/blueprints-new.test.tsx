@@ -25,7 +25,20 @@ const connectionState: {
   loading: false,
 };
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
-  useGitConnection: () => connectionState,
+  useGitConnections: () => ({
+    connections: connectionState.connection
+      ? [
+          {
+            accountLogin: connectionState.connection.accountLogin,
+            installationId: 42,
+            createdAt: "",
+            installUrl: connectionState.connection.installUrl,
+          },
+        ]
+      : [],
+    connected: connectionState.connection?.connected === true,
+    loading: connectionState.loading,
+  }),
 }));
 
 vi.mock("@/features/git/hooks/use-connect-git", () => ({
@@ -256,7 +269,9 @@ describe("NewBlueprintPage", () => {
     expect(smtp).toHaveAttribute("type", "password");
     await user.type(smtp, "s3cret");
     // API_TOKEN left blank: warned, allowed, omitted from the mutation.
-    expect(screen.getByText(/blank values deploy as unset/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/blank values deploy as unset/i),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /deploy blueprint/i }));
     expect(create).toHaveBeenCalledWith(

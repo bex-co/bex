@@ -40,8 +40,16 @@ vi.mock("@/features/services/hooks/use-repo-branches", () => ({
   useRepoBranches: () => ({ branches: ["main", "release"], loading: false }),
 }));
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
-  useGitConnection: () => ({
-    connection: { connected: true },
+  useGitConnections: () => ({
+    connections: [
+      {
+        accountLogin: "acme",
+        installationId: 42,
+        createdAt: "",
+        installUrl: "https://github.com/settings/installations/42",
+      },
+    ],
+    connected: true,
     loading: false,
   }),
 }));

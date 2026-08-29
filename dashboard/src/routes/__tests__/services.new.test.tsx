@@ -77,20 +77,25 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
 }));
 
 const connectionState: {
-  connection: {
-    connected: boolean;
+  connections: Array<{
     accountLogin: string;
+    installationId: number;
+    createdAt: string;
     installUrl: string;
-  } | null;
+  }>;
   loading: boolean;
-} = { connection: null, loading: false };
+} = { connections: [], loading: false };
 
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
-  useGitConnection: () => connectionState,
+  useGitConnections: () => ({
+    ...connectionState,
+    connected: connectionState.connections.length > 0,
+  }),
 }));
 
+const connectGit = vi.fn();
 vi.mock("@/features/git/hooks/use-connect-git", () => ({
-  useConnectGit: () => ({ connect: vi.fn(), busy: false }),
+  useConnectGit: () => ({ connect: connectGit, busy: false }),
 }));
 
 const PRIVATE_REGISTRY_CREDENTIAL: RegistryCredentialView = {
@@ -218,12 +223,16 @@ function renderPage(initialEntry = "/") {
 beforeEach(() => {
   instanceTypesState.instanceTypes = [FREE, STARTER];
   reposState.repos = [REPO];
-  connectionState.connection = {
-    connected: true,
-    accountLogin: "acme-corp",
-    installUrl: "",
-  };
+  connectionState.connections = [
+    {
+      accountLogin: "acme-corp",
+      installationId: 42,
+      createdAt: "2026-08-29T00:00:00Z",
+      installUrl: "https://github.com/settings/installations/42",
+    },
+  ];
   connectionState.loading = false;
+  connectGit.mockReset();
   create.mockReset();
   create.mockResolvedValue({
     id: "srv-abc123",
@@ -310,11 +319,7 @@ describe("NewServicePage", () => {
     });
 
     it("shows connect prompt when not connected", async () => {
-      connectionState.connection = {
-        connected: false,
-        accountLogin: "",
-        installUrl: "https://github.com/apps/bex/installations/new",
-      };
+      connectionState.connections = [];
       renderPage();
       expect(
         await screen.findByText(/Connect your GitHub account/i),
@@ -325,11 +330,31 @@ describe("NewServicePage", () => {
     });
 
     it("shows connect prompt when connection is null after load", async () => {
-      connectionState.connection = null;
+      connectionState.connections = [];
       renderPage();
       expect(
         await screen.findByText(/Connect your GitHub account/i),
       ).toBeInTheDocument();
+    });
+
+    it("configures GitHub or connects another account without leaving the create flow", async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.click(
+        await screen.findByRole("button", { name: "GitHub connections (1)" }),
+      );
+
+      expect(screen.getByText("acme-corp")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Configure/i })).toMatchObject({
+        href: "https://github.com/settings/installations/42",
+        target: "_blank",
+      });
+
+      await user.click(
+        screen.getByRole("button", { name: "Connect another account" }),
+      );
+      expect(connectGit).toHaveBeenCalledOnce();
     });
   });
 
@@ -812,8 +837,7 @@ describe("NewServicePage", () => {
       {
         label: /Background Worker/i,
         heading: "New Background Worker",
-        subtitle:
-          "Deploy a background worker from a Git repo or Docker image.",
+        subtitle: "Deploy a background worker from a Git repo or Docker image.",
       },
       {
         label: /Cron Job/i,
