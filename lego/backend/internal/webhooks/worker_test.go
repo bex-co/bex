@@ -585,6 +585,13 @@ func TestProjectExistingLifecycleFactsCarriesOnlyTerminalStatus(t *testing.T) {
 		{store.EventFactBranchDeleted, "", TypeBranchDeleted, ""},
 		{store.EventFactBuildStarted, "", TypeBuildStarted, ""},
 		{store.EventFactBuildEnded, store.EventStatusFailed, TypeBuildEnded, store.EventStatusFailed},
+		// build_ended(canceled) is the fact the Cancel verb now emits on a
+		// mid-build cancel (w6/m128); this pins that an outbound webhook
+		// subscriber receives the closed pair's build_ended with a canceled
+		// outcome, not just the reconciler-emitted failed/succeeded ones. The
+		// projection reads fact_type + status, so a fact Cancel inserts is
+		// indistinguishable here from one the reconciler inserts (t002).
+		{store.EventFactBuildEnded, store.EventStatusCanceled, TypeBuildEnded, store.EventStatusCanceled},
 		{store.EventFactPreDeployStarted, "", TypePreDeployStarted, ""},
 		{store.EventFactPreDeployEnded, store.EventStatusSucceeded, TypePreDeployEnded, store.EventStatusSucceeded},
 		{store.EventFactJobRunEnded, store.EventStatusCanceled, TypeJobRunEnded, store.EventStatusCanceled},

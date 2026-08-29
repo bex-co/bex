@@ -1,17 +1,24 @@
 # w6 · m128 — A deploy canceled mid-build leaves an unclosed build in the activity feed: `build_started` with no `build_ended`
 
-**Worker:** worker6 **Goal:** every build that starts also ends in the feed, whatever terminal state its deploy reaches **Status:** in progress — t001 and t005 are done and deployed in `daf84f6e`; t002 outbound verification, t003 parity, t004 simplify and t006 live closeout remain
+**Worker:** worker6 **Goal:** every build that starts also ends in the feed, whatever terminal state its deploy reaches **Status:** done — the fix (t001) shipped in `daf84f6e` (production image `71fe9660`); this session completed the remaining code/doc tasks. **Carried caveat (observation, not code):** a live Render capture confirming Render's own feed closes a canceled build, and the dashboard Events-tab visual of the now-closed pair, were not driven (no cluster/QA/Render access) — the ADR018 note covers both outcomes, and the behavior is fully test-pinned.
+
+**Completed this session:**
+
+- **t002 — outbound consumers see the closed pair (code-verified):** `TestProjectExistingLifecycleFactsCarriesOnlyTerminalStatus` now includes `build_ended(canceled)`, pinning that the outbound-webhook projection maps the cancel-emitted fact to `TypeBuildEnded` with a `canceled` status. The projection reads `fact_type` + `status`, and Cancel inserts the fact through the same `InsertServiceEventFact` into the same `service_event_facts` table the feed reads, so a cancel-emitted `build_ended` is byte-identical to a reconciler-emitted one (same stable `deploy:<id>:build_ended` source key) — an outbound subscriber cannot tell them apart. Push deliberately omits build lifecycle for every `build_ended`, cancel included (`push_worker.go` has no build case).
+- **t003 — Render parity:** documented in `docs/ADR018-render-parity.md` (Service events row) — the behavior, the byte-identical delivery across REST/GraphQL/MCP + webhooks, and the explicit **Render-comparison caveat**: closing a started build is the truthful "1:1 record" behavior; if a live Render capture shows Render does not emit `build_ended` on cancel, this is a deliberate bex divergence toward a complete feed, now on the record rather than silently added.
+- **t004 — simplify:** reviewed the landed fix; it is already minimal. It reuses the reconciler's own `buildLifecycleFacts` with zero duplication (`CanceledBuildLifecycleFacts` is the minimal exported exposure, pinning `newStatus` to `DeployCanceled`), and the `a.Spec.Repo != ""` guard is **load-bearing** — `buildStartedAt` returns dispatched whenever `StartedAt` is set (image-backed deploys included), so the guard is what keeps an image-backed cancel from manufacturing a build pair, mirroring the reconciler's own `d.Repo != ""` gate at `reconciler.go:654`. No change warranted.
+- **t006 — closeout:** this update; board moved to done.
 
 ## Tasks (in order)
 
-| id   | title                                                                       | est | depends_on |
-| ---- | ----------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Emit the build lifecycle close on the cancel path — **DONE**                    | 45m | —          |
-| t002 | Confirm the outbound consumers see a closed pair                               | 35m | t001       |
-| t003 | Render parity                                                                   | 25m | t001, t002 |
-| t004 | Simplify                                                                        | 20m | t003       |
-| t005 | Test coverage — **DONE**                                                         | 40m | t003       |
-| t006 | Closeout                                                                        | 15m | t004, t005 |
+| id   | title                                                                       | est | depends_on | status   |
+| ---- | ----------------------------------------------------------------------------- | --- | ---------- | -------- |
+| t001 | Emit the build lifecycle close on the cancel path                              | 45m | —          | **DONE** |
+| t002 | Confirm the outbound consumers see a closed pair                               | 35m | t001       | **DONE** |
+| t003 | Render parity                                                                   | 25m | t001, t002 | **DONE** |
+| t004 | Simplify                                                                        | 20m | t003       | **DONE** |
+| t005 | Test coverage                                                                   | 40m | t003       | **DONE** |
+| t006 | Closeout                                                                        | 15m | t004, t005 | **DONE** |
 
 ## Implementation update (2026-08-28)
 
