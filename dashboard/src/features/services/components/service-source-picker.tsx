@@ -354,7 +354,7 @@ function GitHubConnectionsMenu({
                 <span className="truncate">{connection.accountLogin}</span>
               </span>
               {connection.installUrl ? (
-                <Button type="button" variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="sm" asChild>
                   <a
                     href={connection.installUrl}
                     target="_blank"

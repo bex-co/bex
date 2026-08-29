@@ -68,7 +68,15 @@ describe("local-bex.mjs GitHub connections", () => {
   it("answers the plural connection query used by create source pickers", async () => {
     const { data, errors } = await graphql(
       "GitConnections",
-      `query GitConnections { gitConnections { accountLogin installationId installUrl } }`,
+      `
+        query GitConnections {
+          gitConnections {
+            accountLogin
+            installationId
+            installUrl
+          }
+        }
+      `,
     );
 
     expect(errors).toBeUndefined();

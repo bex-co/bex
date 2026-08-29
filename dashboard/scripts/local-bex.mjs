@@ -1264,7 +1264,7 @@ const GIT_CONNECTION = {
   accountLogin: "acme-corp",
   installationId: 87654321,
   createdAt: "2026-06-01T09:00:00Z",
-  installUrl: "https://github.com/apps/bex-local/installations/new",
+  installUrl: "https://github.com/settings/installations/87654321",
 };
 
 // Sample repos visible to the connected GitHub App installation (w5/m15):
@@ -1316,7 +1316,11 @@ const REPOS = [
     htmlUrl: "https://github.com/acme-corp/internal-tools",
     cloneUrl: "https://github.com/acme-corp/internal-tools.git",
   },
-];
+].map((repo) => ({
+  ...repo,
+  accountLogin: GIT_CONNECTION.accountLogin,
+  installationId: GIT_CONNECTION.installationId,
+}));
 
 // Resolve one GraphQL operation to canned data. Only the reads the dashboard
 // actually fires need real shapes; everything else returns a safe empty.
