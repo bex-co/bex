@@ -112,25 +112,6 @@ func TestLokiQueryFor(t *testing.T) {
 			want: `{namespace="default", app="web", type="build"}`,
 		},
 		{
-			name: "type=app+build unions app and build streams",
-			ns:   "default",
-			q:    LogQuery{App: "web", Types: []string{LogTypeApp, LogTypeBuild}},
-			want: `{namespace="default", app="web", type=~"app|build"}`,
-		},
-		{
-			name: "type=request+build unions request and build streams",
-			ns:   "default",
-			q:    LogQuery{App: "web", Types: []string{LogTypeBuild, LogTypeRequest}},
-			want: `{namespace="default", app="web", type=~"request|build"}`,
-		},
-		{
-			// All three explicit types: no type restriction, no container filter.
-			name: "type=app+request+build: no type matcher",
-			ns:   "default",
-			q:    LogQuery{App: "web", Types: []string{LogTypeApp, LogTypeBuild, LogTypeRequest}},
-			want: `{namespace="default", app="web"}`,
-		},
-		{
 			// A service name carrying LogQL/regex metacharacters must not break out
 			// of the label matcher or inject a selector — label injection guard.
 			name: "label injection is escaped",
@@ -165,6 +146,33 @@ func TestLokiQueryFor(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			if got := lokiQueryFor(c.ns, c.q); got != c.want {
 				t.Errorf("lokiQueryFor:\n got %s\nwant %s", got, c.want)
+			}
+		})
+	}
+}
+
+// TestBuildTypeIsNeverCombined pins the rule that makes lokiTypeMatcher's
+// build-plus-other branches unreachable — w6/m131 removed those branches, so
+// what guards the removal is this: validate() refuses `build` alongside any
+// other type, and every lokiTypeMatcher caller has already validated. If that
+// rule is ever relaxed, this test fails and lokiTypeMatcher needs the union
+// branches back rather than silently returning `type="build"` alone.
+func TestBuildTypeIsNeverCombined(t *testing.T) {
+	for _, types := range [][]string{
+		{LogTypeApp, LogTypeBuild},
+		{LogTypeBuild, LogTypeRequest},
+		{LogTypeApp, LogTypeBuild, LogTypeRequest},
+	} {
+		t.Run(strings.Join(types, "+"), func(t *testing.T) {
+			err := LogQuery{App: "web", Types: types}.validate()
+			if err == nil {
+				t.Fatalf("validate() accepted type=%v; lokiTypeMatcher no longer handles that union", types)
+			}
+			if !errors.Is(err, core.ErrBadRequest) {
+				t.Errorf("validate() error = %v, want core.ErrBadRequest", err)
+			}
+			if !strings.Contains(err.Error(), `"build" must be requested on its own`) {
+				t.Errorf("validate() error = %q, want it to name the build-alone rule", err)
 			}
 		})
 	}

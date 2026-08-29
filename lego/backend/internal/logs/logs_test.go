@@ -1760,3 +1760,148 @@ func TestSubscribeSSEOmitsIDForStamplessLine(t *testing.T) {
 		t.Errorf("the stampless line must still be delivered: %q", body)
 	}
 }
+
+// TestRequestStreamStatesAgreeAcrossRESTGraphQLAndMCP is w6/m131's parity guard
+// (t005) over the decision t002 recorded: there are exactly THREE states for a
+// request-log read, and all three adapters must agree on each.
+//
+//	store absent                     => 503 / error, never a fake empty page
+//	store present, stream not produced => honest empty (200, logs: [])
+//	store present, stream produced      => the rows
+//
+// The middle case is the one this milestone was filed for. It is deliberately
+// INDISTINGUISHABLE from a genuinely quiet service — bex cannot tell them apart
+// from one resource's vantage point (Loki's label index is empty either way), so
+// inventing an error would misreport every quiet service. This test pins that
+// choice so a future "make the empty state honest" change has to confront it
+// rather than quietly break the quiet-service case. The platform-level
+// assertion lives out-of-band in scripts/request-logs-liveness.sh.
+func TestRequestStreamStatesAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
+	produced := []LogEntry{{
+		Timestamp: "2026-07-05T00:00:01Z",
+		Message:   `{"RequestMethod":"GET","DownstreamStatus":200}`,
+		Labels:    map[string]string{LabelType: LogTypeRequest, LabelMethod: "GET"},
+	}}
+
+	for _, c := range []struct {
+		name string
+		// history nil => no store wired at all (the 503 path).
+		history   LogHistorySource
+		wantREST  int
+		wantRows  int
+		wantError bool
+	}{
+		{
+			name:      "store absent: every surface refuses rather than answering empty",
+			history:   nil,
+			wantREST:  http.StatusServiceUnavailable,
+			wantError: true,
+		},
+		{
+			name:     "store present, stream not produced: an honest empty on every surface",
+			history:  func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil },
+			wantREST: http.StatusOK,
+			wantRows: 0,
+		},
+		{
+			name:     "store present, stream produced: the rows on every surface",
+			history:  func(context.Context, string, LogQuery) ([]LogEntry, error) { return produced, nil },
+			wantREST: http.StatusOK,
+			wantRows: 1,
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			svc := newService(nil, sampleApp("web"))
+			svc.PodLogs, svc.PodLogsFollow = nil, nil // force the store path
+			svc.History = c.history
+
+			// --- REST
+			rec := serveREST(svc, http.MethodGet, "/v1/logs?resource=web&type=request")
+			if rec.Code != c.wantREST {
+				t.Fatalf("REST => %d, want %d (%s)", rec.Code, c.wantREST, rec.Body.String())
+			}
+			if !c.wantError {
+				var env renderLogList
+				if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+					t.Fatalf("REST body: %v", err)
+				}
+				if len(env.Logs) != c.wantRows {
+					t.Errorf("REST rows = %d, want %d", len(env.Logs), c.wantRows)
+				}
+				if env.HasMore {
+					t.Error("REST hasMore = true, want false")
+				}
+			}
+
+			// --- GraphQL
+			schema, err := gqlSchema(svc)
+			if err != nil {
+				t.Fatalf("schema: %v", err)
+			}
+			res := graphql.Do(graphql.Params{
+				Schema:        schema,
+				RequestString: `{ logs(resource:"web", type:"request") { message } }`,
+				Context:       context.Background(),
+			})
+			if c.wantError {
+				if len(res.Errors) == 0 {
+					t.Error("GraphQL returned no error while REST returned 503")
+				}
+			} else {
+				if len(res.Errors) > 0 {
+					t.Fatalf("GraphQL errors: %v", res.Errors)
+				}
+				rows, _ := res.Data.(map[string]any)["logs"].([]any)
+				if len(rows) != c.wantRows {
+					t.Errorf("GraphQL rows = %d, want %d", len(rows), c.wantRows)
+				}
+			}
+
+			// --- MCP (exercised, not assumed — the filing hunt never ran it live)
+			srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+			svc.RegisterMCP(srv)
+			serverT, clientT := mcp.NewInMemoryTransports()
+			ctx := context.Background()
+			if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+				t.Fatalf("server connect: %v", err)
+			}
+			cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+			if err != nil {
+				t.Fatalf("client connect: %v", err)
+			}
+			t.Cleanup(func() { _ = cs.Close() })
+			out, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{
+				"resource": []string{"web"}, "type": []string{LogTypeRequest},
+			}})
+			if err != nil {
+				t.Fatalf("MCP call: %v", err)
+			}
+			if c.wantError {
+				if !out.IsError {
+					t.Error("MCP succeeded while REST returned 503 — the surfaces disagree")
+				}
+			} else if out.IsError {
+				t.Errorf("MCP errored while REST returned 200: %+v", out)
+			}
+		})
+	}
+}
+
+// TestQuietServiceAndDarkPipelineAreTheSameResponse states the limit plainly:
+// the two cases the milestone had to tell apart produce byte-identical
+// responses, because from one App's vantage point they ARE identical. Recorded
+// as a test so the claim in ADR018 row 182 is checkable, not just prose.
+func TestQuietServiceAndDarkPipelineAreTheSameResponse(t *testing.T) {
+	body := func() string {
+		svc := newService(nil, sampleApp("web"))
+		svc.PodLogs, svc.PodLogsFollow = nil, nil
+		svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil }
+		return serveREST(svc, http.MethodGet, "/v1/logs?resource=web&type=request").Body.String()
+	}
+	// Same wire bytes whether the service was quiet or the shipper was dropping
+	// every line — which is exactly why the guard is a scheduled platform probe
+	// (scripts/request-logs-liveness.sh) and not a field in this response.
+	if quiet, dark := body(), body(); quiet != dark {
+		t.Fatalf("expected identical responses, got %q vs %q", quiet, dark)
+	}
+}

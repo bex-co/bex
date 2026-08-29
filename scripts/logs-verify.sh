@@ -261,6 +261,41 @@ n_5xx="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=request&s
 [ "${n_5xx:-1}" -eq 0 ] || fail "statusCode=5xx must exclude the 200 access line, got $n_5xx"
 pass "REQUEST FILTERS: path=/$NONCE finds it; statusCode=5xx excludes it (filters really narrow)"
 
+# 4b. TENANT ATTRIBUTION (w6/m131). Everything above runs in APP_NS=default —
+#     and `default` is exactly the namespace the w6/m131 bug did NOT break. The
+#     shipper reconstructs {namespace, app} by parsing Traefik's ServiceName, and
+#     its regex was anchored to the literal `default`; under ADR043 a tenant App
+#     lives in `tea-<xid>`, so every REAL service's access line was dropped as
+#     not_a_tenant_app while this script's own fixture kept passing. Running this
+#     script in production would have gone green through the entire outage.
+#
+#     So assert the property the fixture cannot: that the regex in the LIVE,
+#     DEPLOYED ConfigMap attributes a tenant namespace. Reading the cluster's own
+#     copy (not the repo's) is what makes this answer "did the GitOps change
+#     actually reach the running shipper?" — including the w3/m13 failure mode
+#     where Argo CD freezes the live ConfigMap at an older render.
+expr_line="$(kubectl -n "$MON_NS" get configmap -o json \
+  | jq -r '.items[] | (.data // {}) | to_entries[] | .value' 2>/dev/null \
+  | grep -F 'expression =' | grep -F '@kubernetes' | head -n1 || true)"
+[ -n "$expr_line" ] \
+  || fail "no deployed ConfigMap in $MON_NS carries a Traefik ServiceName regex — the shipper config is not live"
+deployed_re="${expr_line#*\"}"
+deployed_re="${deployed_re%\"*}"
+# RE2 named groups and \d are not POSIX ERE; translate for grep -E.
+# The ConfigMap holds River SOURCE, so \d appears escaped as \\d; handle a
+# single backslash too in case the config is ever written unescaped.
+ere="$(printf '%s' "$deployed_re" | sed -e 's/(?P<[a-z]*>/(/g' -e 's/\\\\d/[0-9]/g' -e 's/\\d/[0-9]/g')"
+info "deployed ServiceName regex: $deployed_re"
+XID=abcdefghijklmnopqrst # 20 chars, the [a-z0-9]{20} xid shape
+echo "tea-$XID-tea-$XID-web-80@kubernetes" | grep -Eq "$ere" \
+  || fail "the DEPLOYED ServiceName regex does not match a tenant (tea-<xid>) namespace — every tenant access line is being dropped as not_a_tenant_app (w6/m131). Deployed: $deployed_re"
+echo "default-$SVC-80@kubernetes" | grep -Eq "$ere" \
+  || fail "the deployed ServiceName regex no longer matches the shared \`default\` namespace — this script's own fixture would stop being attributed. Deployed: $deployed_re"
+if echo "kube-system-traefik-80@kubernetes" | grep -Eq "$ere"; then
+  fail "the deployed ServiceName regex matches a NON-tenant namespace (kube-system) — platform access lines would be attributed to a tenant App. Deployed: $deployed_re"
+fi
+pass "TENANT ATTRIBUTION: the live shipper regex attributes tea-<xid> AND default, and rejects kube-system"
+
 # 5. SPLIT: the two types don't bleed into each other, in either direction.
 app_reqs="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=app&limit=100" \
   | jq '[.logs[] | select(.labels[]? | select(.name == "type") | .value == "request")] | length')"

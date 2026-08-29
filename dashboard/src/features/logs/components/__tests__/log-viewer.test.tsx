@@ -29,6 +29,7 @@ vi.mock("../../hooks/use-live-logs", () => ({
   },
 }));
 vi.mock("../../hooks/use-log-label-values", () => ({
+  useLogLabelDiscovery: () => ({ values: [], resolved: false }),
   useLogLabelValues: () => [],
 }));
 
