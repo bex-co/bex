@@ -3580,6 +3580,26 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Service activity type: environment variables and secret files changed",
   },
+  "services.eventsTypeServiceMoved": {
+    message: "服务已移动",
+    description:
+      "Service activity type: the service was reassigned between projects or environments (service_moved) — distinct from the env-var fact above",
+  },
+  "services.eventsProjectChange": {
+    message: "项目 {from} → {to}",
+    description:
+      "service_moved detail line: previous and new project id, or the placement-none placeholder",
+  },
+  "services.eventsEnvironmentChange": {
+    message: "环境 {from} → {to}",
+    description:
+      "service_moved detail line: previous and new environment id, or the placement-none placeholder",
+  },
+  "services.eventsPlacementNone": {
+    message: "无",
+    description:
+      "Placeholder for an absent placement side of a service_moved event (assigned from / removed to nothing)",
+  },
   "services.eventsTypeEnvGroupLinked": {
     message: "已关联环境组",
     description: "Service activity type: environment group linked",

@@ -3200,6 +3200,8 @@ export type ServiceEventDetails = {
   commitUrl: Maybe<Scalars['String']['output']>;
   deployId: Maybe<Scalars['String']['output']>;
   deployStatus: Maybe<Scalars['String']['output']>;
+  environmentFrom: Maybe<Scalars['String']['output']>;
+  environmentTo: Maybe<Scalars['String']['output']>;
   finishedAt: Maybe<Scalars['String']['output']>;
   fromCount: Maybe<Scalars['Int']['output']>;
   image: Maybe<Scalars['String']['output']>;
@@ -3209,6 +3211,8 @@ export type ServiceEventDetails = {
   planFrom: Maybe<Scalars['String']['output']>;
   planTo: Maybe<Scalars['String']['output']>;
   preDeployStatus: Maybe<Scalars['String']['output']>;
+  projectFrom: Maybe<Scalars['String']['output']>;
+  projectTo: Maybe<Scalars['String']['output']>;
   reasonCode: Maybe<Scalars['String']['output']>;
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;

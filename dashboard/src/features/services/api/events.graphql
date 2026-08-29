@@ -44,6 +44,12 @@ query ServiceEvents(
       branchFrom
       branchTo
       commitUrl
+      # service_moved placement pair (w6/m134): public prj-/env- ids, null = no
+      # placement on that side.
+      projectFrom
+      projectTo
+      environmentFrom
+      environmentTo
       trigger {
         firstBuild
         envUpdated

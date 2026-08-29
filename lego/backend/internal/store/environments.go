@@ -178,23 +178,34 @@ func (s *PGStore) DeleteEnvironment(ctx context.Context, id string) error {
 // sufficient to join its project too (a caller doesn't need two calls).
 // Service ids/names not found in tenantID are silently skipped (the UPDATE
 // affects 0 rows for them, the same convention SetProjectServices uses).
-func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string) error {
-	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx,
-			`UPDATE apps SET environment_id = NULL, updated_at = now()
-			 WHERE environment_id = $1 AND tenant_id = $2`,
-			environmentID, tenantID); err != nil {
+// Returns the per-service placement diff (w6/m134) the service layer records
+// move events from — empty for a no-op replacement.
+func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string) ([]core.ServicePlacementChange, error) {
+	if serviceIDs == nil {
+		serviceIDs = []string{}
+	}
+	var changes []core.ServicePlacementChange
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var err error
+		changes, err = placementDiffAround(ctx, tx, "environment_id", environmentID, tenantID, serviceIDs, func() error {
+			if _, err := tx.Exec(ctx,
+				`UPDATE apps SET environment_id = NULL, updated_at = now()
+				 WHERE environment_id = $1 AND tenant_id = $2`,
+				environmentID, tenantID); err != nil {
+				return err
+			}
+			if len(serviceIDs) == 0 {
+				return nil
+			}
+			_, err := tx.Exec(ctx,
+				`UPDATE apps SET environment_id = $1, project_id = $2, updated_at = now()
+				 WHERE (id = ANY($3) OR name = ANY($3)) AND tenant_id = $4`,
+				environmentID, projectID, serviceIDs, tenantID)
 			return err
-		}
-		if len(serviceIDs) == 0 {
-			return nil
-		}
-		_, err := tx.Exec(ctx,
-			`UPDATE apps SET environment_id = $1, project_id = $2, updated_at = now()
-			 WHERE (id = ANY($3) OR name = ANY($3)) AND tenant_id = $4`,
-			environmentID, projectID, serviceIDs, tenantID)
+		})
 		return err
 	})
+	return changes, err
 }
 
 // ListEnvironmentServices returns the public ids of all services currently in the

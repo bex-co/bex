@@ -75,6 +75,7 @@ export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
     types: [
       "env_vars_changed",
       "service_environment_changed",
+      "service_moved",
       "env_group_linked",
       "env_group_unlinked",
       "auto_deploy_enabled",
@@ -145,6 +146,9 @@ const LABEL_KEYS: Record<string, string> = {
   maintenance_mode_uri_updated: "services.eventsTypeMaintenanceModeUriUpdated",
   env_vars_changed: "services.eventsTypeEnvVarsChanged",
   service_environment_changed: "services.eventsTypeEnvironmentChanged",
+  // A project/environment reassignment (w6/m134) — NOT the env-var fact the
+  // similarly named type above records.
+  service_moved: "services.eventsTypeServiceMoved",
   env_group_linked: "services.eventsTypeEnvGroupLinked",
   env_group_unlinked: "services.eventsTypeEnvGroupUnlinked",
   auto_deploy_enabled: "services.eventsTypeAutoDeployChanged",

@@ -928,7 +928,7 @@ func (sweepProjectStore) ListProjects(context.Context, string) ([]store.Project,
 
 func (sweepProjectStore) RenameProject(context.Context, string, string) error { return nil }
 func (sweepProjectStore) DeleteProject(context.Context, string) error         { return nil }
-func (sweepProjectStore) SetProjectServices(context.Context, string, string, []string) ([]string, error) {
+func (sweepProjectStore) SetProjectServices(context.Context, string, string, []string) ([]core.ServicePlacementChange, error) {
 	return nil, nil
 }
 func (sweepProjectStore) ListProjectServices(context.Context, string) ([]string, error) {

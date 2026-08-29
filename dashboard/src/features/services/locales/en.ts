@@ -3641,6 +3641,26 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Service activity type: environment variables and secret files changed",
   },
+  "services.eventsTypeServiceMoved": {
+    message: "Service moved",
+    description:
+      "Service activity type: the service was reassigned between projects or environments (service_moved) — distinct from the env-var fact above",
+  },
+  "services.eventsProjectChange": {
+    message: "Project {from} → {to}",
+    description:
+      "service_moved detail line: previous and new project id, or the placement-none placeholder",
+  },
+  "services.eventsEnvironmentChange": {
+    message: "Environment {from} → {to}",
+    description:
+      "service_moved detail line: previous and new environment id, or the placement-none placeholder",
+  },
+  "services.eventsPlacementNone": {
+    message: "none",
+    description:
+      "Placeholder for an absent placement side of a service_moved event (assigned from / removed to nothing)",
+  },
   "services.eventsTypeEnvGroupLinked": {
     message: "Environment group linked",
     description: "Service activity type: environment group linked",

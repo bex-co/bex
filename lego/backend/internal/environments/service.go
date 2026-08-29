@@ -56,7 +56,7 @@ type EnvironmentStore interface {
 	ListWorkspaceEnvironments(ctx context.Context, tenantID string) ([]store.Environment, error)
 	RenameEnvironment(ctx context.Context, id, name string) error
 	DeleteEnvironment(ctx context.Context, id string) error
-	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string) error
+	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string) ([]core.ServicePlacementChange, error)
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
 	ListWorkspaceEnvironmentServices(ctx context.Context, tenantID string) (map[string][]string, error)
 	// SetEnvironmentACL replaces the protected-environment ACL triple (w6/m19).
@@ -856,18 +856,30 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	before, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
+	moves, err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs)
 	if err != nil {
-		return EnvironmentView{}, err
-	}
-	if err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs); err != nil {
 		return EnvironmentView{}, store.MapError(err)
 	}
+	// The store transaction IS the authoritative membership change, so the
+	// per-service move facts are recorded here — before the k8s-side label
+	// fan-out, whose failure would not un-move anything (w6/m134).
+	s.RecordServiceMoves(ctx, core.AuditVerbEnvironmentServiceMoved, moves)
 	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	leaving := namesLeaving(before, sids)
+	// Leavers, from the same in-transaction diff (w6/m134): a service left THIS
+	// environment iff its environment went from e.ID to nothing (the assign
+	// UPDATE only ever points environment_id here, never elsewhere). Unlike the
+	// pre-diff before/after list comparison this also reaches rows whose stale
+	// project_id hid them from ListEnvironmentServices, and it cannot race a
+	// concurrent membership change between two reads.
+	var leaving []string
+	for _, mv := range moves {
+		if mv.EnvironmentFrom != nil && *mv.EnvironmentFrom == e.ID && mv.EnvironmentTo == nil {
+			leaving = append(leaving, mv.ServiceID)
+		}
+	}
 	if err := s.applyAppEnvironmentLabels(ctx, leaving, "", false); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -1181,23 +1193,6 @@ func toView(e store.Environment, serviceIDs, databaseIDs, keyValueIDs, envGroupI
 		NetworkIsolationEnabled: e.NetworkIsolationEnabled,
 		IPAllowList:             ipAllowList,
 	}
-}
-
-// namesLeaving returns the entries of before that are absent from after —
-// the App CR names that just stopped being members of an environment
-// (SetServices), so their core.LabelNetworkIsolation can be cleared.
-func namesLeaving(before, after []string) []string {
-	keep := make(map[string]bool, len(after))
-	for _, n := range after {
-		keep[n] = true
-	}
-	var out []string
-	for _, n := range before {
-		if !keep[n] {
-			out = append(out, n)
-		}
-	}
-	return out
 }
 
 // patchApps applies mutate to every named App CR, one merge-patch each. Every

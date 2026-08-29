@@ -40,10 +40,12 @@ type ProjectStore interface {
 	ListProjects(ctx context.Context, tenantID string) ([]store.Project, error)
 	RenameProject(ctx context.Context, id, name string) error
 	DeleteProject(ctx context.Context, id string) error
-	// SetProjectServices returns the departing names that carried a non-null
-	// environment_id (w4/m32) — Service.SetServices' cue to also clear their
-	// App CR's environment-projected fields via EnvironmentIndex.
-	SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string) ([]string, error)
+	// SetProjectServices returns the per-service placement diff (w6/m134).
+	// Service.SetServices records move events from it, and derives the w4/m32
+	// environment-layer clear list: a change with EnvironmentFrom set and
+	// EnvironmentTo nil is exactly a row whose environment_id the replacement
+	// NULLed.
+	SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string) ([]core.ServicePlacementChange, error)
 	ListProjectServices(ctx context.Context, projectID string) ([]string, error)
 }
 
@@ -425,9 +427,23 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	if err != nil {
 		return ProjectView{}, err
 	}
-	departedWithEnv, err := s.Store.SetProjectServices(ctx, id, p.TenantID, serviceIDs)
+	moves, err := s.Store.SetProjectServices(ctx, id, p.TenantID, serviceIDs)
 	if err != nil {
 		return ProjectView{}, err
+	}
+	// The store transaction IS the authoritative membership change, so the
+	// per-service move facts are recorded here — before the k8s-side
+	// environment-layer clear, whose failure would not un-move anything
+	// (w6/m134).
+	s.RecordServiceMoves(ctx, core.AuditVerbProjectServiceMoved, moves)
+	// The w4/m32 clear list, derived from the same diff: every row whose
+	// environment_id the replacement NULLed — departing members and kept
+	// members alike.
+	var departedWithEnv []string
+	for _, mv := range moves {
+		if mv.EnvironmentFrom != nil && mv.EnvironmentTo == nil {
+			departedWithEnv = append(departedWithEnv, mv.ServiceName)
+		}
 	}
 	if len(departedWithEnv) > 0 && s.Environments != nil {
 		if err := s.Environments.ClearServiceEnvironmentLayer(ctx, departedWithEnv); err != nil {

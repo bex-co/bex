@@ -1,18 +1,18 @@
 # w6 · m134 — Record project/environment reassignments in the service Events feed
 
-**Worker:** worker6 **Goal:** a successful service move between projects or environments leaves one truthful, service-scoped event on REST, GraphQL, MCP, and the dashboard, without colliding with the existing env-var-change event **Status:** todo
+**Worker:** worker6 **Goal:** a successful service move between projects or environments leaves one truthful, service-scoped event on REST, GraphQL, MCP, and the dashboard, without colliding with the existing env-var-change event **Status:** in progress — t001–t006 done 2026-08-28 (contract `service_moved` + typed audit columns, emission from both funnels, all API/webhook/dashboard surfaces, parity record, simplify pass applied, regression coverage green incl. real-Postgres store suite); t007 (closeout) remains: the live-production DoD bullet needs the change shipped/deployed and a real move observed in both the workspace audit log and the service Events feed
 
 ## Tasks (in order)
 
-| id   | title                                                               | est | depends_on |
-| ---- | ------------------------------------------------------------------- | --- | ---------- |
-| t001 | Define a non-colliding reassignment event contract and detail shape | 35m | —          |
-| t002 | Emit exactly one event from both successful membership funnels      | 45m | t001       |
-| t003 | Carry and render the event across REST, GraphQL, MCP, and dashboard | 45m | t002       |
-| t004 | Render parity                                                       | 30m | t003       |
-| t005 | Simplify                                                            | 20m | t004       |
-| t006 | Test coverage                                                       | 40m | t004       |
-| t007 | Closeout                                                           | 10m | t006       |
+| id   | title                                                                            | est | depends_on |
+| ---- | -------------------------------------------------------------------------------- | --- | ---------- |
+| t001 | Define a non-colliding reassignment event contract and detail shape — **DONE**    | 35m | —          |
+| t002 | Emit exactly one event from both successful membership funnels — **DONE**         | 45m | t001       |
+| t003 | Carry and render the event across REST, GraphQL, MCP, and dashboard — **DONE**    | 45m | t002       |
+| t004 | Render parity — **DONE**                                                          | 30m | t003       |
+| t005 | Simplify — **DONE**                                                               | 20m | t004       |
+| t006 | Test coverage — **DONE**                                                          | 40m | t004       |
+| t007 | Closeout                                                                          | 10m | t006       |
 
 ## Definition of done
 
@@ -30,3 +30,4 @@
 - **Expected outcome:** a tenant can answer when and where a service moved from the service's own history instead of correlating a separate workspace audit stream.
 - **Why now:** the move already produces durable audit evidence, but the service-facing history silently drops it; leaving the two truth surfaces inconsistent makes successful organizational changes look as though they never happened.
 - **Render parity:** included because this adds a tenant-visible event vocabulary entry on all public API and UI surfaces; compare Render's equivalent project/environment move behavior before settling the wire spelling.
+- **Triage 2026-08-28:** keep — re-verified against the current tree: the vocabulary in `lego/backend/internal/events/service.go` has no reassignment type, and `lego/backend/internal/events/vocabulary_test.go` still carries the deliberate w6/m19 exemption for `environments.SetServices` ("not itself a per-App verb … environments is a grouping feature, like projects, neither of which has one yet"). That exemption map is the guard t002 must revisit when the new event lands.

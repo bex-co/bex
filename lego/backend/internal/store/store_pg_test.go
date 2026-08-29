@@ -792,8 +792,22 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	}
 
 	// Assigning by the public stable id also joins the service to its project.
-	if err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.ID}); err != nil {
+	// The placement diff (w6/m134) reports the assign: no prior placement, new
+	// environment + project.
+	moves, err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.ID})
+	if err != nil {
 		t.Fatalf("set environment services: %v", err)
+	}
+	if len(moves) != 1 || moves[0].ServiceID != app.ID ||
+		moves[0].ProjectFrom != nil || moves[0].EnvironmentFrom != nil ||
+		moves[0].ProjectTo == nil || *moves[0].ProjectTo != proj.ID ||
+		moves[0].EnvironmentTo == nil || *moves[0].EnvironmentTo != env.ID {
+		t.Fatalf("assign placement diff = %+v, want one nil→(%s,%s) change for %s", moves, proj.ID, env.ID, app.ID)
+	}
+	// Replaying the same membership is a no-op and reports no placement change
+	// — the diff is what keeps the service layer from recording a false move.
+	if moves, err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.ID}); err != nil || len(moves) != 0 {
+		t.Fatalf("no-op environment replacement diff = %+v (err %v), want empty", moves, err)
 	}
 	var gotProjectID *string
 	if err := pool.QueryRow(ctx, `SELECT project_id FROM apps WHERE id = $1`, app.ID).Scan(&gotProjectID); err != nil {
@@ -809,9 +823,16 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 		t.Fatalf("ListProjectServices = %+v (err %v), want public id [%s]", ids, err, app.ID)
 	}
 
-	// Legacy name input remains accepted during the stable-id transition.
-	if err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.Name}); err != nil {
+	// Legacy name input remains accepted during the stable-id transition. The
+	// move between environments reports the before/after pair, project intact.
+	moves, err = s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.Name})
+	if err != nil {
 		t.Fatalf("reassign: %v", err)
+	}
+	if len(moves) != 1 || moves[0].ServiceID != app.ID ||
+		moves[0].EnvironmentFrom == nil || *moves[0].EnvironmentFrom != env.ID ||
+		moves[0].EnvironmentTo == nil || *moves[0].EnvironmentTo != prod.ID {
+		t.Fatalf("reassign placement diff = %+v, want one %s→%s environment change for %s", moves, env.ID, prod.ID, app.ID)
 	}
 	if ids, err := s.ListEnvironmentServices(ctx, env.ID, proj.ID); err != nil || len(ids) != 0 {
 		t.Fatalf("ListEnvironmentServices(staging) after reassign = %+v (err %v), want empty", ids, err)
@@ -858,12 +879,18 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	// project must not strand a stale apps.environment_id (and the App CR's
 	// frozen spec.environmentIPAllowList it implies) behind. app is currently
 	// a member of prod (both project_id and environment_id set).
-	departed, err := s.SetProjectServices(ctx, proj.ID, ten.ID, nil)
+	moves, err = s.SetProjectServices(ctx, proj.ID, ten.ID, nil)
 	if err != nil {
 		t.Fatalf("SetProjectServices(remove all): %v", err)
 	}
-	if len(departed) != 1 || departed[0] != app.Name {
-		t.Fatalf("SetProjectServices departedWithEnv = %v, want [%s] (app carried a non-null environment_id)", departed, app.Name)
+	// The unassign reports the departing placement pair going to nil (w6/m134),
+	// carrying the app NAME the w4/m32 environment-layer clear list is derived
+	// from (the change's EnvironmentFrom≠nil→nil shape IS that cue).
+	if len(moves) != 1 || moves[0].ServiceID != app.ID || moves[0].ServiceName != app.Name ||
+		moves[0].ProjectFrom == nil || *moves[0].ProjectFrom != proj.ID ||
+		moves[0].EnvironmentFrom == nil || *moves[0].EnvironmentFrom != prod.ID ||
+		moves[0].ProjectTo != nil || moves[0].EnvironmentTo != nil {
+		t.Fatalf("unassign placement diff = %+v, want one (%s,%s)→nil change for %s/%s", moves, proj.ID, prod.ID, app.ID, app.Name)
 	}
 	var gotEnvID *string
 	if err := pool.QueryRow(ctx, `SELECT project_id, environment_id FROM apps WHERE id = $1`, app.ID).Scan(&gotProjectID, &gotEnvID); err != nil {
@@ -874,7 +901,7 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	}
 	// Rejoin so the DeleteEnvironment/DeleteProject assertions below (which
 	// assume app is a prod member) still hold.
-	if err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.ID}); err != nil {
+	if _, err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.ID}); err != nil {
 		t.Fatalf("rejoin prod: %v", err)
 	}
 
@@ -3555,7 +3582,7 @@ func TestPGReclaimEmptyBlueprintGroupings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SetEnvironmentServices(ctx, popEnv.ID, populated.ID, tenant, []string{app.ID}); err != nil {
+	if _, err := s.SetEnvironmentServices(ctx, popEnv.ID, populated.ID, tenant, []string{app.ID}); err != nil {
 		t.Fatal(err)
 	}
 	referenced, err := s.CreateProject(ctx, tenant, "rc-referenced")

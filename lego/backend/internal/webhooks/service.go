@@ -100,8 +100,12 @@ const (
 	// Free-tier idle auto-sleep (w6/m47). Subscribers watching
 	// service_suspended for an unexpected suspension must not be paged by every
 	// routine sleep cycle, so auto-sleep is its own opt-in pair.
-	TypeServiceHibernated          = "service_hibernated"
-	TypeServiceWoken               = "service_woken"
+	TypeServiceHibernated = "service_hibernated"
+	TypeServiceWoken      = "service_woken"
+	// Project/environment reassignment (w6/m134) — a bex extension; the thin
+	// payload stays value-free and a receiver hydrates the placement detail
+	// via the shared evt-… id (GET /v1/events/{id}).
+	TypeServiceMoved               = "service_moved"
 	TypeInstanceCountChanged       = "instance_count_changed"
 	TypeAutoscalingConfigChanged   = "autoscaling_config_changed"
 	TypeCronJobRunStarted          = "cron_job_run_started"
@@ -138,6 +142,8 @@ var verbEvents = func() map[string]string {
 	types[core.AuditVerbMaintenanceModeEnabled] = TypeMaintenanceModeEnabled
 	types[core.AuditVerbMaintenanceModeURIUpdated] = TypeMaintenanceModeURIUpdated
 	types[core.AuditVerbSetPlan] = TypePlanChanged
+	types[core.AuditVerbProjectServiceMoved] = TypeServiceMoved
+	types[core.AuditVerbEnvironmentServiceMoved] = TypeServiceMoved
 	return types
 }()
 

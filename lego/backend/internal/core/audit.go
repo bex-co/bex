@@ -80,6 +80,14 @@ type AuditEvent struct {
 	// Stripe, false = billable again. Nil for every other verb. Admin-only,
 	// set through the control-plane internal API.
 	BillingExcludedTo *bool
+	// ProjectFrom/ProjectTo and EnvironmentFrom/EnvironmentTo are the typed
+	// placement detail of the two service-move verbs (w6/m134): public prj-/env-
+	// ids, nil = no placement on that side (assign/unassign). Nil for every
+	// other verb; never a display name or a Kubernetes name.
+	ProjectFrom     *string
+	ProjectTo       *string
+	EnvironmentFrom *string
+	EnvironmentTo   *string
 	// Relation is the RelCan… the decision was made against. Empty on typed
 	// system events that are not an authorization check (billing lifecycle).
 	Relation string
@@ -115,6 +123,15 @@ const (
 	AuditVerbSetAutoscaling    = "apps.SetAutoscaling"
 	AuditVerbDeleteAutoscaling = "apps.DeleteAutoscaling"
 	AuditVerbSetAutoDeploy     = "apps.SetAutoDeploy"
+	// AuditVerbProjectServiceMoved / AuditVerbEnvironmentServiceMoved are the
+	// per-service effects of one successful bulk membership replacement
+	// (projects.SetServices / environments.SetServices, w6/m134). Like the
+	// maintenance-mode pair they are fixed vocabulary recorded only after the
+	// authoritative write succeeds — one row per service whose placement
+	// actually changed, so a no-op or failed replacement records none. The
+	// enclosing SetServices verbs' own fan-out rows remain non-events.
+	AuditVerbProjectServiceMoved     = "projects.MoveService"
+	AuditVerbEnvironmentServiceMoved = "environments.MoveService"
 	// Fixed datastore effects that have exact Render webhook counterparts. These
 	// are recorded only after the underlying mutation succeeds, then consumed by
 	// the outbound-webhook projection. Keeping them fixed prevents arbitrary
@@ -375,6 +392,74 @@ func (b *Base) RecordAutoDeployChanged(ctx context.Context, app *appv1alpha1.App
 	}
 	ev := b.verbAuditEvent(ctx, AuditVerbSetAutoDeploy, resource, canonicalAppTarget(app))
 	ev.AutoDeployEnabled = &enabled
+	b.recordAudit(ctx, ev)
+}
+
+// ServiceMove is one service's before/after project/environment placement —
+// the typed detail of a RecordServiceMoved row. Fields are public prj-/env-
+// ids; nil = no placement on that side, so assign, move, and unassign are all
+// the same shape.
+type ServiceMove struct {
+	ProjectFrom     *string
+	ProjectTo       *string
+	EnvironmentFrom *string
+	EnvironmentTo   *string
+}
+
+// ServicePlacementChange pairs a moved service's identity with its placement
+// diff — what the store's bulk SetServices replacements report for every
+// service whose placement actually changed (w6/m134). ServiceID is the public
+// srv- id; ServiceName the store row's app name, which the funnels' k8s-side
+// fan-outs key on. Defined here, not in store, so the projects and
+// environments funnels and the recording seam below share one shape.
+type ServicePlacementChange struct {
+	ServiceID   string
+	ServiceName string
+	ServiceMove
+}
+
+// RecordServiceMoves records one typed move row per placement change from a
+// successful bulk membership replacement (w6/m134). Each service's App CR is
+// resolved read-only (recording no extra audit rows) so the audit target is
+// spelled exactly as every other row of that service's feed; a change whose
+// CR is missing (hand-applied, or concurrently deleted) is skipped, mirroring
+// the funnels' own stale-name tolerance.
+func (b *Base) RecordServiceMoves(ctx context.Context, verb string, changes []ServicePlacementChange) {
+	if b.Client == nil || len(changes) == 0 {
+		return
+	}
+	// One workspace resolution for the whole loop: GetApp and RecordServiceMoved
+	// (via resourceWorkspace) both resolve the acting workspace, and resolution
+	// is ctx-dependent only — memoizing it here is the same hoist AuthorizeApp's
+	// candidate loops apply (w4/m30).
+	ctx, _, _ = b.resolveWorkspaceMemo(ctx)
+	for _, c := range changes {
+		app, err := b.GetApp(ctx, RelCanView, c.ServiceID)
+		if err != nil {
+			log.Printf("audit: resolve moved service %s: %v", c.ServiceID, err)
+			continue
+		}
+		b.RecordServiceMoved(ctx, verb, app, c.ServiceMove)
+	}
+}
+
+// RecordServiceMoved records the typed placement detail for one service whose
+// project/environment membership changed in a successful bulk SetServices
+// replacement (w6/m134). verb is one of the two fixed move verbs. Called once
+// per service whose placement actually changed, after the authoritative store
+// write succeeds — paired with the funnels' diff so no-op and failed writes
+// record none, exactly like RecordPlanChanged's deferred-success discipline.
+func (b *Base) RecordServiceMoved(ctx context.Context, verb string, app *appv1alpha1.App, move ServiceMove) {
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve service-move resource: %v", err)
+		return
+	}
+	ev := b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app))
+	ev.ProjectFrom = move.ProjectFrom
+	ev.ProjectTo = move.ProjectTo
+	ev.EnvironmentFrom = move.EnvironmentFrom
+	ev.EnvironmentTo = move.EnvironmentTo
 	b.recordAudit(ctx, ev)
 }
 

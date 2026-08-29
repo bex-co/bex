@@ -111,8 +111,9 @@ func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 		    maintenance_mode_to, plan_from, plan_to, instance_count_from, instance_count_to,
 		    autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to, auto_deploy_enabled,
 		    role_from, role_to, billing_excluded_to,
-		    relation, oauth_client_id, oauth_audience, oauth_scopes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
+		    relation, oauth_client_id, oauth_audience, oauth_scopes,
+		    project_from, project_to, environment_from, environment_to)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)`,
 		ids.New(ids.Audit), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, ev.TargetName, string(ev.Outcome), ev.At,
 		ev.MaintenanceModeTo,
 		ev.PlanFrom, ev.PlanTo,
@@ -120,7 +121,8 @@ func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 		ev.AutoscalingMinFrom, ev.AutoscalingMaxFrom, ev.AutoscalingMinTo, ev.AutoscalingMaxTo,
 		ev.AutoDeployEnabled,
 		ev.RoleFrom, ev.RoleTo, ev.BillingExcludedTo,
-		nullIfEmpty(ev.Relation), nullIfEmpty(ev.OAuthClientID), nullIfEmpty(ev.OAuthAudience), nullIfEmptyScopes(ev.OAuthScopes))
+		nullIfEmpty(ev.Relation), nullIfEmpty(ev.OAuthClientID), nullIfEmpty(ev.OAuthAudience), nullIfEmptyScopes(ev.OAuthScopes),
+		ev.ProjectFrom, ev.ProjectTo, ev.EnvironmentFrom, ev.EnvironmentTo)
 	return err
 }
 

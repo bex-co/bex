@@ -113,4 +113,21 @@ Two corrections to the record above.
 
 One standing property is worth stating because the probe made it concrete: `?type=` is validated against Render's pinned 39-value enum before the handler runs, so **every bex-named type is refused 400 on that parameter** — `env_vars_changed`, `custom_domain_added`, `custom_domain_verified` alike. That is the pinned contract working as designed, not a regression, and it is why the dashboard filters client-side over the unfiltered feed rather than pushing its type selection into the query.
 
+## Project/environment reassignment (2026-08-28, w6/m134)
+
+A successful service move between projects or environments (`projects.SetServices` / `environments.SetServices`) previously left durable workspace audit rows but **no service-scoped event** — live-reproduced 2026-08-27 (`.pm/w6/done/054.md`): `environments.SetServices` appeared in the workspace audit log while the service feed stayed byte-identical.
+
+**Render evidence limit:** Render's pinned 39-value events enum (`render-public-api-1.json` `eventTypeParam`), its 65-value webhook enum, and the 2026-08-17 authenticated dashboard capture ([fixture](fixtures/render-webhook-vocabulary-2026-08-17.json)) name **no** project/environment membership event, and a fresh live Render move was not available to this change — so the wire spelling is a bex extension, not a mirrored name.
+
+bex adds **`service_moved`** (deliberately not `service_environment_changed`, which despite its name is the env-var/config-rollout fact):
+
+| Property | Contract |
+| --- | --- |
+| Source | Fixed audit verbs `projects.MoveService` / `environments.MoveService`, recorded only after the membership transaction succeeds — one row per service whose placement pair actually changed (the store returns the in-transaction before/after diff), so no-op and failed replacements record none |
+| Details | `projectFrom`/`projectTo`/`environmentFrom`/`environmentTo` — public `prj-`/`env-` ids in typed audit columns (migration 0101); an absent placement side is omitted, covering assign, move, and unassign; never a Kubernetes name |
+| Surfaces | REST/GraphQL/MCP via the shared view; webhook-subscribable (`service_moved`, thin payload, hydrate via `GET /v1/events/{id}`); dashboard Configuration group with per-dimension from→to detail lines (en + zh) |
+| `?type=` param | Refused 400 like every bex-named type (the pinned-enum rule above) |
+
+The enclosing `environments.SetServices`/`projects.SetServices` fan-out verbs remain excused non-events — their per-member `AuthorizeApp` rows are isolation-label plumbing, not placement facts.
+
 The official API specification is explicitly unversioned, so this comparison records the capture date and should be refreshed when Render changes its enum.

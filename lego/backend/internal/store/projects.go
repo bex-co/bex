@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // Project is a row of `projects` — a named grouping of services within a
@@ -76,6 +78,94 @@ func (s *PGStore) DeleteProject(ctx context.Context, id string) error {
 	return nil
 }
 
+// servicePlacement is one apps row's placement snapshot inside the
+// SetServices transactions: identity plus nullable project/environment ids.
+type servicePlacement struct {
+	id            string
+	name          string
+	projectID     *string
+	environmentID *string
+}
+
+func queryServicePlacements(ctx context.Context, tx pgx.Tx, query string, args ...any) ([]servicePlacement, error) {
+	rows, err := tx.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []servicePlacement
+	for rows.Next() {
+		var p servicePlacement
+		if err := rows.Scan(&p.id, &p.name, &p.projectID, &p.environmentID); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// placementChanges diffs the candidate rows' before/after snapshots (matched
+// by row id) down to the subset whose placement pair actually changed. A row
+// absent from after (deleted mid-transaction) has no truthful after state and
+// is dropped rather than guessed.
+func placementChanges(before, after []servicePlacement) []core.ServicePlacementChange {
+	afterByID := make(map[string]servicePlacement, len(after))
+	for _, a := range after {
+		afterByID[a.id] = a
+	}
+	var changes []core.ServicePlacementChange
+	for _, b := range before {
+		a, ok := afterByID[b.id]
+		if !ok || (equalStringPtrs(b.projectID, a.projectID) && equalStringPtrs(b.environmentID, a.environmentID)) {
+			continue
+		}
+		changes = append(changes, core.ServicePlacementChange{
+			ServiceID:   b.id,
+			ServiceName: b.name,
+			ServiceMove: core.ServiceMove{
+				ProjectFrom:     b.projectID,
+				ProjectTo:       a.projectID,
+				EnvironmentFrom: b.environmentID,
+				EnvironmentTo:   a.environmentID,
+			},
+		})
+	}
+	return changes
+}
+
+// placementDiffAround brackets one funnel's membership UPDATEs (mutate) with
+// the candidate placement snapshots that turn them into a per-service diff
+// (w6/m134). The candidate set — current members of the pivot grouping plus
+// every row the caller named — is the correctness-critical predicate, so it
+// lives once here for both funnels. pivotColumn is a compile-time literal
+// ("project_id" / "environment_id"), never caller input.
+func placementDiffAround(ctx context.Context, tx pgx.Tx, pivotColumn, pivotID, tenantID string, serviceIDs []string, mutate func() error) ([]core.ServicePlacementChange, error) {
+	before, err := queryServicePlacements(ctx, tx,
+		`SELECT id, name, project_id, environment_id FROM apps
+		 WHERE tenant_id = $1 AND (`+pivotColumn+` = $2 OR id = ANY($3) OR name = ANY($3))
+		 ORDER BY name`,
+		tenantID, pivotID, serviceIDs)
+	if err != nil {
+		return nil, err
+	}
+	if err := mutate(); err != nil {
+		return nil, err
+	}
+	if len(before) == 0 {
+		return nil, nil
+	}
+	beforeIDs := make([]string, len(before))
+	for i, p := range before {
+		beforeIDs[i] = p.id
+	}
+	after, err := queryServicePlacements(ctx, tx,
+		`SELECT id, name, project_id, environment_id FROM apps WHERE id = ANY($1)`, beforeIDs)
+	if err != nil {
+		return nil, err
+	}
+	return placementChanges(before, after), nil
+}
+
 // SetProjectServices replaces the full list of services in a project
 // (within tenantID): clears any apps currently assigned to it, then assigns
 // only the identified apps. Public srv- ids are canonical; names remain
@@ -85,47 +175,39 @@ func (s *PGStore) DeleteProject(ctx context.Context, id string) error {
 // stale apps.environment_id (and the App CR's frozen spec.environmentIPAllowList
 // that implies): ListEnvironmentServices already filters on project_id too,
 // so the row silently drops out of every future environment fan-out while
-// its k8s-projected rules stay stuck. Returns the departing names that
-// carried a non-null environment_id — the store layer's cue for the service
-// layer's k8s-side clear, since a raw SQL UPDATE can't itself patch a CR.
-// Service ids/names not found in tenantID are silently skipped (the UPDATE
-// affects 0 rows for them).
-func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID string, serviceIDs []string) ([]string, error) {
-	var departedWithEnv []string
+// its k8s-projected rules stay stuck. Returns the per-service placement diff
+// (w6/m134): the service layer records move events from it and derives the
+// w4/m32 environment-layer clear list (rows whose environment this
+// transaction NULLed are exactly the changes with EnvironmentFrom set and
+// EnvironmentTo nil, since nothing here ever sets environment_id). Service
+// ids/names not found in tenantID are silently skipped (the UPDATE affects 0
+// rows for them).
+func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID string, serviceIDs []string) ([]core.ServicePlacementChange, error) {
+	if serviceIDs == nil {
+		serviceIDs = []string{}
+	}
+	var changes []core.ServicePlacementChange
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx,
-			`SELECT name FROM apps WHERE project_id = $1 AND tenant_id = $2 AND environment_id IS NOT NULL`,
-			projectID, tenantID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var name string
-			if err := rows.Scan(&name); err != nil {
+		var err error
+		changes, err = placementDiffAround(ctx, tx, "project_id", projectID, tenantID, serviceIDs, func() error {
+			if _, err := tx.Exec(ctx,
+				`UPDATE apps SET project_id = NULL, environment_id = NULL, updated_at = now()
+				 WHERE project_id = $1 AND tenant_id = $2`,
+				projectID, tenantID); err != nil {
 				return err
 			}
-			departedWithEnv = append(departedWithEnv, name)
-		}
-		if err := rows.Err(); err != nil {
+			if len(serviceIDs) == 0 {
+				return nil
+			}
+			_, err := tx.Exec(ctx,
+				`UPDATE apps SET project_id = $1, updated_at = now()
+				 WHERE (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3`,
+				projectID, serviceIDs, tenantID)
 			return err
-		}
-		if _, err := tx.Exec(ctx,
-			`UPDATE apps SET project_id = NULL, environment_id = NULL, updated_at = now()
-			 WHERE project_id = $1 AND tenant_id = $2`,
-			projectID, tenantID); err != nil {
-			return err
-		}
-		if len(serviceIDs) == 0 {
-			return nil
-		}
-		_, err = tx.Exec(ctx,
-			`UPDATE apps SET project_id = $1, updated_at = now()
-			 WHERE (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3`,
-			projectID, serviceIDs, tenantID)
+		})
 		return err
 	})
-	return departedWithEnv, err
+	return changes, err
 }
 
 // ListProjectServices returns the public ids of all services in the project.
