@@ -334,7 +334,9 @@ func managedRoles(users []appv1alpha1.DatabaseUser, deletedUsers []string) []any
 		return nil
 	}
 	roles := make([]any, 0, len(users)+len(deletedUsers))
+	present := make(map[string]struct{}, len(users))
 	for _, u := range users {
+		present[u.Name] = struct{}{}
 		role := map[string]any{"name": u.Name, "ensure": "present", "login": true}
 		if u.SecretName != "" {
 			role["passwordSecret"] = map[string]any{"name": u.SecretName}
@@ -342,7 +344,12 @@ func managedRoles(users []appv1alpha1.DatabaseUser, deletedUsers []string) []any
 		roles = append(roles, role)
 	}
 	// ensure:absent tombstones so CNPG drops the role from PostgreSQL (codex #8).
+	// An active role wins over stale same-name tombstones left by older API
+	// versions, avoiding contradictory managed-role entries during recreation.
 	for _, name := range deletedUsers {
+		if _, active := present[name]; active {
+			continue
+		}
 		roles = append(roles, map[string]any{"name": name, "ensure": "absent"})
 	}
 	return roles

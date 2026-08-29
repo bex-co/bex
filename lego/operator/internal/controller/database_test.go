@@ -335,6 +335,16 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 	if _, has := drop["login"]; has {
 		t.Errorf("absent tombstone must not assert login: %v", drop)
 	}
+
+	// Active intent wins over a stale same-name tombstone from an older API.
+	overlap := cnpgClusterSpec(clusterParams{
+		plan: plan, storageGB: gb, dbname: "d", owner: "d_user",
+		users: users, deletedUsers: []string{"reporting"},
+	})
+	overlapRoles := overlap["managed"].(map[string]any)["roles"].([]any)
+	if len(overlapRoles) != 1 || overlapRoles[0].(map[string]any)["ensure"] != "present" {
+		t.Fatalf("active role did not override stale tombstone: %v", overlapRoles)
+	}
 }
 
 func TestScheduledBackupSpec(t *testing.T) {

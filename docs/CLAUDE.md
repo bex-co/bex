@@ -6,7 +6,7 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 
 - Each `ADR*.md` is self-contained; read the ADR directly for design + status.
 - Render-parity ledgers ([ADR018](ADR018-render-parity.md), [cli-compatibility-checklist.md](cli-compatibility-checklist.md)) are evidence-backed.
-- Security reviews form a chain ADR028 → ADR084 (see § Security lineage); read the latest for current residual.
+- Security reviews form a chain ADR028 → ADR085 (see § Security lineage); read the latest for current residual.
 
 ## Catalog — by topic
 
@@ -99,9 +99,9 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 - [ADR039-operator-audit-and-platform-reuse.md](ADR039-operator-audit-and-platform-reuse.md) — operator audit + reuse candidates
 - [ADR058-release-engineering.md](ADR058-release-engineering.md) — `bex/vX.Y.Z` lockstep, CLI `bex-cli/v0.x` until 1.0
 
-### Security review lineage (ADR028 → round 22)
+### Security review lineage (ADR028 → round 23)
 
-Each entry is a codex-security triage; earlier rounds' residuals are re-confirmed in later ones. Read the latest ([ADR084](ADR084-security-review-round22.md)) for current posture.
+Each entry is a codex-security triage; earlier rounds' residuals are re-confirmed in later ones. Read the latest ([ADR085](ADR085-security-review-round23.md)) for current posture.
 
 - [ADR081-security-review-harness-glm.md](ADR081-security-review-harness-glm.md) — harness architecture (proposed): reuse codex-security with a GLM model if possible, else mirror it on GLM 5.2; one harness at a time
 - [ADR028-security-review.md](ADR028-security-review.md) — round 0 audit (evidence-backed)
@@ -125,5 +125,6 @@ Each entry is a codex-security triage; earlier rounds' residuals are re-confirme
 - [ADR080-security-review-round19.md](ADR080-security-review-round19.md) — round 19: 8 findings, 7 fixed (CI env gates, secrets CAS, metrics scoping)
 - [ADR083-security-review-round20.md](ADR083-security-review-round20.md) — round 20: self-hosted CI runner risks accepted (persistent hosts, shared pool, fork-PR policy)
 - [ADR084-security-review-round22.md](ADR084-security-review-round22.md) — round 22: dnR05P triage; 3 security fixes, 5 boundary/correctness hardenings, 2 accepted residuals
+- [ADR085-security-review-round23.md](ADR085-security-review-round23.md) — round 23: 5PePz5 managed-Postgres credential resurrection fixed
 
 Other docs: [PRFAQ001-bex-v1-hosting.md](PRFAQ001-bex-v1-hosting.md), [assets/](assets/) media.

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -418,6 +419,9 @@ func TestUsersCRUD(t *testing.T) {
 	if _, err := svc.CreateUser(ctx, "usr-db", "Bad-Name"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("invalid role name should be ErrBadRequest, got %v", err)
 	}
+	if _, err := svc.CreateUser(ctx, "usr-db", strings.Repeat("a", 64)); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("overlength role name should be ErrBadRequest, got %v", err)
+	}
 
 	res, err := svc.CreateUser(ctx, "usr-db", "reporting")
 	if err != nil || res.Name != "reporting" || res.Password == "" {
@@ -429,8 +433,11 @@ func TestUsersCRUD(t *testing.T) {
 	if len(db.Spec.Users) != 1 || db.Spec.Users[0].Name != "reporting" {
 		t.Fatalf("spec.users wrong: %+v", db.Spec.Users)
 	}
+	if db.Spec.Users[0].SecretName == "usr-db-user-reporting" {
+		t.Fatal("CreateUser reused the legacy deterministic Secret name")
+	}
 	var sec corev1.Secret
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "usr-db-user-reporting"}, &sec); err != nil {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: db.Spec.Users[0].SecretName}, &sec); err != nil {
 		t.Fatalf("user secret missing: %v", err)
 	}
 	if string(sec.Data["password"]) != res.Password {
@@ -460,11 +467,263 @@ func TestUsersCRUD(t *testing.T) {
 	if len(db.Spec.DeletedUsers) != 1 || db.Spec.DeletedUsers[0] != "reporting" {
 		t.Fatalf("DeleteUser did not record the drop tombstone: %+v", db.Spec.DeletedUsers)
 	}
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "usr-db-user-reporting"}, &sec); err == nil {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: sec.Name}, &sec); err == nil {
 		t.Fatal("DeleteUser did not delete the user secret")
 	}
 	if err := svc.DeleteUser(ctx, "usr-db", "ghost"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("deleting an unknown user should be ErrNotFound, got %v", err)
+	}
+}
+
+func TestCreateUserReplacesLegacyCredentialAndClearsTombstone(t *testing.T) {
+	svc, cl := newService()
+	seedDatabaseSpec(t, cl, "rotate-db", appv1alpha1.DatabaseSpec{
+		Plan:         "free",
+		DeletedUsers: []string{"reporting", "retired"},
+	}, false)
+	ctx := context.Background()
+	legacyName := "rotate-db-user-reporting"
+	legacy := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: legacyName, Namespace: "default"},
+		Type:       corev1.SecretTypeBasicAuth,
+		Data: map[string][]byte{
+			corev1.BasicAuthUsernameKey: []byte("reporting"),
+			corev1.BasicAuthPasswordKey: []byte("old-compromised-password"),
+		},
+	}
+	if err := cl.Create(ctx, legacy); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := svc.CreateUser(ctx, "rotate-db", "reporting")
+	if err != nil {
+		t.Fatalf("CreateUser recreation: %v", err)
+	}
+	if result.Password == "" || result.Password == "old-compromised-password" {
+		t.Fatalf("CreateUser returned an invalid rotated password %q", result.Password)
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(legacy), &corev1.Secret{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("legacy credential survived recreation: %v", err)
+	}
+
+	var db appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "rotate-db"}, &db); err != nil {
+		t.Fatal(err)
+	}
+	if len(db.Spec.Users) != 1 || db.Spec.Users[0].Name != "reporting" || db.Spec.Users[0].SecretName == legacyName {
+		t.Fatalf("recreated user = %+v", db.Spec.Users)
+	}
+	if len(db.Spec.DeletedUsers) != 1 || db.Spec.DeletedUsers[0] != "retired" {
+		t.Fatalf("recreation tombstones = %v, want only retired", db.Spec.DeletedUsers)
+	}
+	var current corev1.Secret
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: db.Spec.Users[0].SecretName}, &current); err != nil {
+		t.Fatalf("rotated credential missing: %v", err)
+	}
+	if got := string(current.Data[corev1.BasicAuthPasswordKey]); got != result.Password {
+		t.Fatalf("stored password does not match one-time response")
+	}
+}
+
+func TestCreateUserPatchFailureCleansUnreferencedCredential(t *testing.T) {
+	scheme := cnpgScheme()
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "create-retry-db", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "create-retry-db", Plan: "free"},
+	}
+	failPatch := true
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+				if failPatch {
+					failPatch = false
+					return errors.New("transient Database patch failure")
+				}
+				return c.Patch(ctx, obj, patch, opts...)
+			},
+		}).Build()
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	ctx := context.Background()
+
+	if result, err := svc.CreateUser(ctx, db.Name, "reporting"); err == nil || result.Password != "" {
+		t.Fatalf("failed CreateUser = %+v, %v; want no credential response", result, err)
+	}
+	var secrets corev1.SecretList
+	if err := cl.List(ctx, &secrets, client.InNamespace("default")); err != nil {
+		t.Fatal(err)
+	}
+	if len(secrets.Items) != 0 {
+		t.Fatalf("failed issuance left Secrets: %+v", secrets.Items)
+	}
+	var current appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(db), &current); err != nil {
+		t.Fatal(err)
+	}
+	if len(current.Spec.Users) != 0 {
+		t.Fatalf("failed issuance changed spec.users: %+v", current.Spec.Users)
+	}
+
+	result, err := svc.CreateUser(ctx, db.Name, "reporting")
+	if err != nil || result.Password == "" {
+		t.Fatalf("CreateUser retry = %+v, %v", result, err)
+	}
+}
+
+func TestConcurrentCreateUserReturnsOnlyReferencedCredential(t *testing.T) {
+	scheme := cnpgScheme()
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "concurrent-db", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "concurrent-db", Plan: "free"},
+	}
+	var patchMu sync.Mutex
+	patches := 0
+	releasePatches := make(chan struct{})
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+				patchMu.Lock()
+				patches++
+				if patches == 2 {
+					close(releasePatches)
+				}
+				patchMu.Unlock()
+				<-releasePatches
+				return c.Patch(ctx, obj, patch, opts...)
+			},
+		}).Build()
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	ctx := context.Background()
+
+	type outcome struct {
+		result CreateUserResult
+		err    error
+	}
+	outcomes := make([]outcome, 2)
+	var wg sync.WaitGroup
+	for i := range outcomes {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			outcomes[i].result, outcomes[i].err = svc.CreateUser(ctx, db.Name, "reporting")
+		}()
+	}
+	wg.Wait()
+
+	successes := 0
+	var winner CreateUserResult
+	for _, outcome := range outcomes {
+		if outcome.err == nil {
+			successes++
+			winner = outcome.result
+		} else if outcome.result.Password != "" {
+			t.Fatalf("failed concurrent creator received a password: %+v, %v", outcome.result, outcome.err)
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("concurrent CreateUser successes = %d, outcomes=%+v", successes, outcomes)
+	}
+	var current appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(db), &current); err != nil {
+		t.Fatal(err)
+	}
+	if len(current.Spec.Users) != 1 {
+		t.Fatalf("concurrent spec.users = %+v", current.Spec.Users)
+	}
+	var credential corev1.Secret
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: current.Spec.Users[0].SecretName}, &credential); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(credential.Data[corev1.BasicAuthPasswordKey]); got != winner.Password {
+		t.Fatal("winning response did not match the referenced credential")
+	}
+	var secrets corev1.SecretList
+	if err := cl.List(ctx, &secrets, client.InNamespace("default")); err != nil {
+		t.Fatal(err)
+	}
+	if len(secrets.Items) != 1 || secrets.Items[0].Name != credential.Name {
+		t.Fatalf("losing concurrent credential was not cleaned up: %+v", secrets.Items)
+	}
+}
+
+func TestDeleteUserSecretFailureLeavesRevocationRetryable(t *testing.T) {
+	scheme := cnpgScheme()
+	secretName := "delete-retry-db-user-generation"
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "delete-retry-db", Namespace: "default"},
+		Spec: appv1alpha1.DatabaseSpec{
+			Name: "delete-retry-db", Plan: "free",
+			Users: []appv1alpha1.DatabaseUser{{Name: "reporting", SecretName: secretName}},
+		},
+	}
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: "default"}}
+	failDelete := true
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db, secret).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+				if failDelete && obj.GetName() == secretName {
+					failDelete = false
+					return errors.New("transient Secret delete failure")
+				}
+				return c.Delete(ctx, obj, opts...)
+			},
+		}).Build()
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	ctx := context.Background()
+
+	if err := svc.DeleteUser(ctx, db.Name, "reporting"); err == nil {
+		t.Fatal("DeleteUser succeeded despite Secret deletion failure")
+	}
+	var current appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(db), &current); err != nil {
+		t.Fatal(err)
+	}
+	if len(current.Spec.Users) != 1 || len(current.Spec.DeletedUsers) != 0 {
+		t.Fatalf("failed delete changed Database: users=%v tombstones=%v", current.Spec.Users, current.Spec.DeletedUsers)
+	}
+	if err := svc.DeleteUser(ctx, db.Name, "reporting"); err != nil {
+		t.Fatalf("DeleteUser retry: %v", err)
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(db), &current); err != nil {
+		t.Fatal(err)
+	}
+	if len(current.Spec.Users) != 0 || len(current.Spec.DeletedUsers) != 1 || current.Spec.DeletedUsers[0] != "reporting" {
+		t.Fatalf("completed delete: users=%v tombstones=%v", current.Spec.Users, current.Spec.DeletedUsers)
+	}
+}
+
+func TestDeleteUserPatchFailureRemainsRetryable(t *testing.T) {
+	scheme := cnpgScheme()
+	secretName := "patch-retry-db-user-generation"
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "patch-retry-db", Namespace: "default"},
+		Spec: appv1alpha1.DatabaseSpec{
+			Name: "patch-retry-db", Plan: "free",
+			Users: []appv1alpha1.DatabaseUser{{Name: "reporting", SecretName: secretName}},
+		},
+	}
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: "default"}}
+	failPatch := true
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db, secret).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+				if failPatch {
+					failPatch = false
+					return errors.New("transient Database patch failure")
+				}
+				return c.Patch(ctx, obj, patch, opts...)
+			},
+		}).Build()
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	ctx := context.Background()
+
+	if err := svc.DeleteUser(ctx, db.Name, "reporting"); err == nil {
+		t.Fatal("DeleteUser succeeded despite Database patch failure")
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(secret), &corev1.Secret{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("credential survived the first revocation attempt: %v", err)
+	}
+	if err := svc.DeleteUser(ctx, db.Name, "reporting"); err != nil {
+		t.Fatalf("DeleteUser retry after missing Secret: %v", err)
 	}
 }
 

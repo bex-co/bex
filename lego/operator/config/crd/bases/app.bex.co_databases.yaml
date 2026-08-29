@@ -309,8 +309,8 @@ spec:
                       description: |-
                         SecretName references a Secret in the Database's namespace whose "password"
                         key holds the role's password (a CNPG basic-auth Secret referenced by
-                        spec.managed.roles[].passwordSecret). bex-api creates it as
-                        "<db>-user-<name>" with a generated password on user creation.
+                        spec.managed.roles[].passwordSecret). bex-api creates a distinct Secret for
+                        every credential issuance so a stale or concurrent Secret cannot be adopted.
                       type: string
                   required:
                   - name
