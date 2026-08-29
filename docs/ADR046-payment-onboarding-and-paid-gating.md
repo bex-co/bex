@@ -69,6 +69,8 @@ Free-tier creates, and every other verb, are untouched. Exempt: `tenants.billing
 
 ### 5. Onboarding UX — interception, not a wall
 
+> **Superseded for the primary path by [ADR075](ADR075-user-onboarding.md) D7 as revised 2026-08-29:** the dashboard now collects the card as a dedicated sign-up step (`/setup/payment`), driven by a new `paymentMethodOnboardingRequired` readiness field derived from this very gate. The interception below remains as the backstop (API/CLI/MCP callers, members who cannot bind a card) and is otherwise unchanged.
+
 The dashboard intercepts the paid intent in place: plan pickers and create flows catch structured `PAYMENT_REQUIRED` and open the existing `BillingOnboardingView` flow—Checkout in a new tab, poll readiness until `PaymentMethodReady` flips (webhook latency means the success redirect alone is not proof), then resume the exact interrupted mutation. A focus event also refreshes readiness; if Stripe readiness leads the local webhook commit, retry stays bounded at the same cadence. No new billing UI is built; the `/usage` mounting stays.
 
 ### 6. Stop shipping meter events for card-less workspaces

@@ -10,7 +10,7 @@ Render documents billing as a workspace-dashboard workflow. Its [Dashboard guide
 
 | Concern | Render public contract | bex m51 contract |
 | --- | --- | --- |
-| Payment setup | Dashboard Billing page | Stripe-hosted setup-mode Checkout launched from dashboard, REST, GraphQL, or MCP |
+| Payment setup | Dashboard Billing page | Stripe-hosted setup-mode Checkout launched from dashboard, REST, GraphQL, or MCP; since 2026-08-29 also collected at sign-up on `/setup/payment`, driven by readiness `paymentMethodOnboardingRequired` (ADR075 D7 rev.) |
 | Invoice self-service | Dashboard Billing page | Stripe-hosted Customer Portal plus normalized invoice reads on every API surface |
 | Authorization | Admin and Billing can edit; Developer view only | Billing role or admin (`can_manage_billing`, w1/m60) for onboarding readiness and both hosted actions; billing/invoice **visibility** stays open to any `can_view` member via the usage `billing` object |
 | Machine surface | No public billing-onboarding verb found | Shared core with three thin adapters; dashboard consumes GraphQL |

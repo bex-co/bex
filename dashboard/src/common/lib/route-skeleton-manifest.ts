@@ -106,6 +106,12 @@ export const ROUTE_SKELETON_MANIFEST = {
     owner: "routes/register.tsx",
     destination: "/auth/sign-up",
   },
+  "/setup/payment": {
+    kind: "render",
+    owner: "routes/setup.payment.tsx",
+    shape: "payment-setup",
+    regions: ["language-action", "page-header", "payment-setup-card"],
+  },
   "/settings": {
     kind: "render",
     owner: "routes/settings.tsx",

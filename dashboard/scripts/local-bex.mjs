@@ -325,6 +325,10 @@ const SECRET_FILES_BY_SERVICE = new Map([
 ]);
 let failEnvironmentSaveOnce = process.env.LOCAL_BEX_FAIL_ENV_SAVE_ONCE === "1";
 let failDeployOnce = process.env.LOCAL_BEX_FAIL_DEPLOY_ONCE === "1";
+// LOCAL_BEX_PAYMENT_WALL=1: report the workspace as card-less AND refused by
+// the `all` payment gate, so the sign-up payment wall (/setup/payment) and its
+// root-level redirect can be reviewed locally (ADR075 D7 rev. 2026-08-29).
+const paymentWall = process.env.LOCAL_BEX_PAYMENT_WALL === "1";
 
 // Secret Deploy Hook URLs (w2/m33). These are synthetic dev-only values, kept
 // per service so the Settings control can reveal/copy/rotate offline.
@@ -1726,11 +1730,13 @@ function resolveGraphQL({ operationName, variables = {} }) {
           __typename: "WorkspaceBillingReadiness",
           workspaceId: "local-workspace",
           mode: "test",
-          customerReady: true,
-          subscriptionReady: true,
-          paymentMethodReady: true,
-          paymentMethodBrand: "visa",
-          paymentMethodLast4: "4242",
+          customerReady: !paymentWall,
+          subscriptionReady: !paymentWall,
+          paymentMethodReady: !paymentWall,
+          paymentMethodBrand: paymentWall ? "" : "visa",
+          paymentMethodLast4: paymentWall ? "" : "4242",
+          paymentMethodRequired: paymentWall,
+          paymentMethodOnboardingRequired: paymentWall,
           lifecycle: {
             __typename: "BillingLifecycle",
             status: "healthy",
@@ -1750,6 +1756,18 @@ function resolveGraphQL({ operationName, variables = {} }) {
             taxBehavior: "",
             registrationCount: 0,
           },
+        },
+      };
+    // Hosted Checkout stand-in: bounce straight back to the wall's success
+    // return so the post-Checkout "confirming…" state is reviewable.
+    case "CreateBillingCheckoutSession":
+      return {
+        createBillingCheckoutSession: {
+          __typename: "BillingHostedSession",
+          url:
+            variables.successUrl ??
+            "http://localhost:5173/billing?billing=success",
+          expiresAt: "",
         },
       };
     case "WorkspaceLimits":

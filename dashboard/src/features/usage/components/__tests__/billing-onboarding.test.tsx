@@ -25,6 +25,7 @@ const baseReadiness = {
   paymentMethodBrand: "",
   paymentMethodLast4: "",
   paymentMethodRequired: false,
+  paymentMethodOnboardingRequired: false,
   lifecycle: {
     status: "healthy",
     reason: "",

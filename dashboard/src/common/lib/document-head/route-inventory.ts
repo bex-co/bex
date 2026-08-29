@@ -53,6 +53,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "services.$serviceId.tsx",
     "services.new.tsx",
     "settings.tsx",
+    "setup.payment.tsx",
     "static.$serviceId.tsx",
     "webhook.$webhookId.tsx",
     "webhooks.tsx",

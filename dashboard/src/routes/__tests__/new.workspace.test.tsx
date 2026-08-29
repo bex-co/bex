@@ -86,6 +86,7 @@ function gatedReadiness(ready: boolean): BillingReadiness {
     paymentMethodBrand: "",
     paymentMethodLast4: "",
     paymentMethodRequired: true,
+    paymentMethodOnboardingRequired: false,
     lifecycle: {
       status: "healthy",
       reason: "",

@@ -1,6 +1,7 @@
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { RootProvider } from "@/common/providers/root-provider";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PaymentSetupGate } from "@/features/onboarding/components/payment-setup-gate";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Outlet, useRouter, useMatches } from "@tanstack/react-router";
 import { useLanguageHydrationSync } from "@/i18n/use-language-hydration-sync";
@@ -18,7 +19,10 @@ export const RootComponent = () => {
   // so auth / health / redirect-shim / 404 routes stay bare. Between two chrome
   // routes the `<DashboardLayout>` element holds its slot, so React reconciles
   // it (no remount) and the router's pending fallback paints inside the shell
-  // rather than blanking the viewport.
+  // rather than blanking the viewport. `PaymentSetupGate` sits inside the
+  // shell, around the routed content only: a workspace the payment gate still
+  // refuses is sent to the sign-up wall from any app route (ADR075 D7), while
+  // bare routes (auth, the wall itself, consent/device, 404) are never gated.
   const chrome = useMatches({
     select: (matches) => matches.some((m) => m.staticData?.chrome),
   });
@@ -43,7 +47,9 @@ export const RootComponent = () => {
     >
       {chrome ? (
         <DashboardLayout>
-          <Outlet />
+          <PaymentSetupGate>
+            <Outlet />
+          </PaymentSetupGate>
         </DashboardLayout>
       ) : (
         <Outlet />
