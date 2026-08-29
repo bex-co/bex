@@ -50,6 +50,10 @@ limitations under the License.
 //
 //	env_vars_changed            secrets.Set/DeleteEnvVar(s)     (KEYS and VALUES both absent — see Redaction)
 //	service_environment_changed secrets.PatchEnvironment        (env vars + files; names and values absent)
+//	service_moved               projects.MoveService / environments.MoveService (w6/m134: one row per
+//	                            service whose project/environment placement changed in a successful
+//	                            bulk SetServices replacement; details carry the before/after public
+//	                            prj-/env- ids — NOT the env-var fact service_environment_changed is)
 //	env_group_linked/unlinked   envgroups.Link/UnlinkService
 //	auto_deploy_enabled         apps.SetAutoDeploy(enabled=true)  — new rows only
 //	auto_deploy_disabled        apps.SetAutoDeploy(enabled=false) — new rows only
@@ -193,8 +197,15 @@ const (
 const (
 	TypeEnvVarsChanged            = "env_vars_changed"
 	TypeServiceEnvironmentChanged = "service_environment_changed"
-	TypeEnvGroupLinked            = "env_group_linked"
-	TypeEnvGroupUnlinked          = "env_group_unlinked"
+	// TypeServiceMoved is a project/environment reassignment (w6/m134) —
+	// deliberately NOT TypeServiceEnvironmentChanged, which despite its name is
+	// the env-var/config-rollout fact. Render's pinned enums have no
+	// membership-move type (render-public-api-1.json eventTypeParam +
+	// docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-08-17.json,
+	// re-checked 2026-08-28), so this is a bex extension.
+	TypeServiceMoved     = "service_moved"
+	TypeEnvGroupLinked   = "env_group_linked"
+	TypeEnvGroupUnlinked = "env_group_unlinked"
 	// TypeAutoDeployEnabled and TypeAutoDeployDisabled replace the bex-named
 	// TypeAutoDeployChanged for new rows that carry the auto_deploy_enabled boolean.
 	// Legacy rows without a recorded value still produce TypeAutoDeployChanged.
@@ -287,6 +298,8 @@ var eventTypes = map[string]string{
 	"secrets.DeleteEnvVar":                  TypeEnvVarsChanged,
 	"secrets.SeedEnvVars":                   TypeEnvVarsChanged, // blueprint seed-once (w1/m35)
 	"secrets.PatchEnvironment":              TypeServiceEnvironmentChanged,
+	core.AuditVerbProjectServiceMoved:       TypeServiceMoved,
+	core.AuditVerbEnvironmentServiceMoved:   TypeServiceMoved,
 	"envgroups.LinkService":                 TypeEnvGroupLinked,
 	"envgroups.UnlinkService":               TypeEnvGroupUnlinked,
 	"envgroups.LinkEnvGroup":                TypeEnvGroupLinked, // blueprint fromGroup (w1/m35)
@@ -428,6 +441,12 @@ type Details struct {
 	AutoscalingMaxFrom *int32
 	AutoscalingMinTo   *int32
 	AutoscalingMaxTo   *int32
+	// service_moved (w6/m134): the before/after public prj-/env- ids; nil = no
+	// placement on that side, so assign, move, and unassign share one shape.
+	ProjectFrom     *string
+	ProjectTo       *string
+	EnvironmentFrom *string
+	EnvironmentTo   *string
 	// Durable fact details. ReasonCode is a closed public code, never a raw
 	// Kubernetes or Git message.
 	ReasonCode string
@@ -675,6 +694,11 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.AutoscalingMaxFrom = r.AutoscalingMaxFrom
 			ev.Details.AutoscalingMinTo = r.AutoscalingMinTo
 			ev.Details.AutoscalingMaxTo = r.AutoscalingMaxTo
+		case TypeServiceMoved:
+			ev.Details.ProjectFrom = r.ProjectFrom
+			ev.Details.ProjectTo = r.ProjectTo
+			ev.Details.EnvironmentFrom = r.EnvironmentFrom
+			ev.Details.EnvironmentTo = r.EnvironmentTo
 		case TypeAutoDeployChanged:
 			// Discriminate: new rows carry the boolean; legacy rows keep the bex name.
 			if r.AutoDeployEnabled != nil {

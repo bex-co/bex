@@ -133,15 +133,32 @@ func (f *fakeStore) DeleteEnvironment(_ context.Context, id string) error {
 	return nil
 }
 
-func (f *fakeStore) SetEnvironmentServices(_ context.Context, environmentID, _, _ string, serviceNames []string) error {
+func (f *fakeStore) SetEnvironmentServices(_ context.Context, environmentID, projectID, _ string, serviceNames []string) ([]core.ServicePlacementChange, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	m := map[string]bool{}
+	var changes []core.ServicePlacementChange
 	for _, n := range serviceNames {
 		m[n] = true
+		if !f.assign[environmentID][n] {
+			changes = append(changes, core.ServicePlacementChange{
+				ServiceID:   n,
+				ServiceName: n,
+				ServiceMove: core.ServiceMove{ProjectTo: &projectID, EnvironmentTo: &environmentID},
+			})
+		}
+	}
+	for n := range f.assign[environmentID] {
+		if !m[n] {
+			changes = append(changes, core.ServicePlacementChange{
+				ServiceID:   n,
+				ServiceName: n,
+				ServiceMove: core.ServiceMove{ProjectFrom: &projectID, EnvironmentFrom: &environmentID},
+			})
+		}
 	}
 	f.assign[environmentID] = m
-	return nil
+	return changes, nil
 }
 
 func (f *fakeStore) ListEnvironmentServices(_ context.Context, environmentID, _ string) ([]string, error) {

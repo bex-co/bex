@@ -95,6 +95,13 @@ type renderDetails struct {
 	// type (string vs int pointer) differs, so `any` is required for a flat struct.
 	From any `json:"from,omitempty"`
 	To   any `json:"to,omitempty"`
+	// service_moved (w6/m134): the before/after public prj-/env- ids. A side
+	// with no placement is omitted, so assign shows only *To, unassign only
+	// *From, and a move both.
+	ProjectFrom     *string `json:"projectFrom,omitempty"`
+	ProjectTo       *string `json:"projectTo,omitempty"`
+	EnvironmentFrom *string `json:"environmentFrom,omitempty"`
+	EnvironmentTo   *string `json:"environmentTo,omitempty"`
 	// autoscaling_config_changed uses nested previous/current objects.
 	Previous *autoscalingState `json:"previous,omitempty"`
 	Current  *autoscalingState `json:"current,omitempty"`
@@ -167,6 +174,11 @@ func toRenderEvent(e Event) renderEvent {
 	case TypeBranchChanged:
 		d.From = e.Details.BranchFrom
 		d.To = e.Details.BranchTo
+	case TypeServiceMoved:
+		d.ProjectFrom = e.Details.ProjectFrom
+		d.ProjectTo = e.Details.ProjectTo
+		d.EnvironmentFrom = e.Details.EnvironmentFrom
+		d.EnvironmentTo = e.Details.EnvironmentTo
 	case TypeAutoscalingStarted, TypeAutoscalingEnded:
 		// Render's event-detail contract calls these fromInstances/toInstances,
 		// unlike manual scaling's generic from/to pair.

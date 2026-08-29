@@ -95,6 +95,12 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"autoscalingMaxFrom": gqlutil.IntField(func(d Details) any { return d.AutoscalingMaxFrom }),
 		"autoscalingMinTo":   gqlutil.IntField(func(d Details) any { return d.AutoscalingMinTo }),
 		"autoscalingMaxTo":   gqlutil.IntField(func(d Details) any { return d.AutoscalingMaxTo }),
+		// service_moved before/after placement (w6/m134): public prj-/env- ids,
+		// null = no placement on that side.
+		"projectFrom":     gqlutil.StrField(func(d Details) any { return d.ProjectFrom }),
+		"projectTo":       gqlutil.StrField(func(d Details) any { return d.ProjectTo }),
+		"environmentFrom": gqlutil.StrField(func(d Details) any { return d.EnvironmentFrom }),
+		"environmentTo":   gqlutil.StrField(func(d Details) any { return d.EnvironmentTo }),
 	},
 })
 

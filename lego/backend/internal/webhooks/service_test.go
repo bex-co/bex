@@ -502,6 +502,33 @@ func TestMaintenanceEventTypesAreSubscribableAndMapped(t *testing.T) {
 	}
 }
 
+func TestServiceMovedEventTypeIsSubscribableAndMapped(t *testing.T) {
+	for _, verb := range []string{core.AuditVerbProjectServiceMoved, core.AuditVerbEnvironmentServiceMoved} {
+		if got := verbEvents[verb]; got != TypeServiceMoved {
+			t.Errorf("verbEvents[%q] = %q, want %q", verb, got, TypeServiceMoved)
+		}
+		if !slices.Contains(auditVerbs, verb) {
+			t.Errorf("auditVerbs does not push %q down into the feed query", verb)
+		}
+	}
+	if !slices.Contains(EventTypes, TypeServiceMoved) {
+		t.Errorf("EventTypes does not contain %q: %v", TypeServiceMoved, EventTypes)
+	}
+	svc, _ := newTestService()
+	created, err := svc.Create(context.Background(), CreateRequest{
+		Name:       "moves",
+		URL:        "https://example.com/moves-hook",
+		EventTypes: []string{TypeServiceMoved},
+		Enabled:    true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(created.EventTypes, []string{TypeServiceMoved}) {
+		t.Fatalf("move subscriptions = %v", created.EventTypes)
+	}
+}
+
 func TestDatastoreEventTypesAreSubscribableAndMapped(t *testing.T) {
 	wantByVerb := map[string]string{
 		core.AuditVerbSetPlan:                    TypePlanChanged,

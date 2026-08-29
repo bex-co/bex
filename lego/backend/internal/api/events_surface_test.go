@@ -584,6 +584,8 @@ func TestServiceEventSurfaceCarriesDriftedTypes(t *testing.T) {
 	// The ?type= FILTER is a different question, and its answer is Render's, not
 	// bex's: the pinned Render contract declares `type` as a 39-value enum, so
 	// the request validator refuses any bex-named type before the handler runs.
+	// (service_moved, asserted below, is refused on this parameter for the same
+	// reason — the dashboard filters it client-side like every bex-named type.)
 	// disk_updated is IN Render's enum and narrows normally; custom_domain_verified
 	// is not, and is refused 400. The control below proves that refusal is the
 	// contract's standing behaviour for every bex-named type rather than anything
@@ -592,10 +594,89 @@ func TestServiceEventSurfaceCarriesDriftedTypes(t *testing.T) {
 	if filtered.Code != 200 {
 		t.Fatalf("REST events?type=%s: %d %s", events.TypeDiskUpdated, filtered.Code, filtered.Body.String())
 	}
-	for _, bexNamed := range []string{events.TypeCustomDomainVerified, events.TypeCustomDomainAdded, events.TypeEnvVarsChanged} {
+	for _, bexNamed := range []string{events.TypeCustomDomainVerified, events.TypeCustomDomainAdded, events.TypeEnvVarsChanged, events.TypeServiceMoved} {
 		refused := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z&type="+bexNamed, testToken, "")
 		if refused.Code != http.StatusBadRequest {
 			t.Errorf("REST events?type=%s = %d, want 400 from the pinned Render enum", bexNamed, refused.Code)
+		}
+	}
+}
+
+// TestServiceMovedEventCarriesPlacementDetails is w6/m134's cross-surface
+// contract: both move verbs project onto ONE service_moved type, the typed
+// placement pair reaches REST/GraphQL/MCP under the same spelling, and an
+// absent placement side is OMITTED (assign shows only *To, unassign only
+// *From) rather than serialized as an empty string.
+func TestServiceMovedEventCarriesPlacementDetails(t *testing.T) {
+	at := time.Date(2026, 8, 28, 9, 0, 0, 0, time.UTC)
+	prjFrom, prjTo := "prj-old", "prj-new"
+	envFrom, envTo := "env-old", "env-new"
+	fake := &fakeEventStore{rows: []store.ServiceEventRow{
+		// A full move through the environments funnel: both dimensions change.
+		{Key: "aud-move:", At: at, Source: store.EventSourceAudit, Verb: core.AuditVerbEnvironmentServiceMoved, Caller: "user-x",
+			ProjectFrom: &prjFrom, ProjectTo: &prjTo, EnvironmentFrom: &envFrom, EnvironmentTo: &envTo},
+		// An unassign through the projects funnel: only the from side exists.
+		{Key: "aud-unassign:", At: at.Add(-time.Minute), Source: store.EventSourceAudit, Verb: core.AuditVerbProjectServiceMoved, Caller: "user-x",
+			ProjectFrom: &prjFrom, EnvironmentFrom: &envFrom},
+	}}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake})
+
+	res := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z", testToken, "")
+	if res.Code != 200 {
+		t.Fatalf("REST events: %d %s", res.Code, res.Body.String())
+	}
+	var rest []restEvent
+	if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil {
+		t.Fatalf("decode REST: %v", err)
+	}
+	if len(rest) != 2 {
+		t.Fatalf("REST events = %d, want 2", len(rest))
+	}
+	for i, r := range rest {
+		if r.Event.Type != events.TypeServiceMoved {
+			t.Fatalf("REST event %d type = %q, want %q (both funnels' verbs map to one type)", i, r.Event.Type, events.TypeServiceMoved)
+		}
+	}
+	move, unassign := rest[0].Event.Details, rest[1].Event.Details
+	if move["projectFrom"] != prjFrom || move["projectTo"] != prjTo ||
+		move["environmentFrom"] != envFrom || move["environmentTo"] != envTo {
+		t.Errorf("move details = %v, want the full placement pair", move)
+	}
+	if unassign["projectFrom"] != prjFrom || unassign["environmentFrom"] != envFrom {
+		t.Errorf("unassign details = %v, want the from side", unassign)
+	}
+	for _, absent := range []string{"projectTo", "environmentTo"} {
+		if _, ok := unassign[absent]; ok {
+			t.Errorf("unassign details carry %q = %v, want the absent side omitted", absent, unassign[absent])
+		}
+	}
+
+	gqlData := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-08-01T00:00:00Z") { id type details { projectFrom projectTo environmentFrom environmentTo } } }`)
+	gqlList, ok := gqlData["serviceEvents"].([]any)
+	if !ok || len(gqlList) != 2 {
+		t.Fatalf("GraphQL serviceEvents = %v, want 2 events", gqlData["serviceEvents"])
+	}
+	gqlMove := gqlList[0].(map[string]any)["details"].(map[string]any)
+	if gqlMove["projectFrom"] != prjFrom || gqlMove["projectTo"] != prjTo ||
+		gqlMove["environmentFrom"] != envFrom || gqlMove["environmentTo"] != envTo {
+		t.Errorf("GraphQL move details = %v, want the full placement pair", gqlMove)
+	}
+	gqlUnassign := gqlList[1].(map[string]any)["details"].(map[string]any)
+	if gqlUnassign["projectFrom"] != prjFrom || gqlUnassign["projectTo"] != nil {
+		t.Errorf("GraphQL unassign details = %v, want from side only (absent = null)", gqlUnassign)
+	}
+
+	mcpEvents := callListServiceEvents(t, srv, map[string]any{"serviceId": "web", "startTime": "2026-08-01T00:00:00Z"})
+	if len(mcpEvents) != 2 {
+		t.Fatalf("MCP list_service_events = %d events, want 2", len(mcpEvents))
+	}
+	for i, r := range rest {
+		m := mcpEvents[i]
+		if m.Event.ID != r.Event.ID || m.Event.Type != r.Event.Type ||
+			m.Event.Details["projectFrom"] != r.Event.Details["projectFrom"] ||
+			m.Event.Details["environmentTo"] != r.Event.Details["environmentTo"] {
+			t.Errorf("event %d diverges REST vs MCP: %+v vs %+v", i, r.Event, m.Event)
 		}
 	}
 }

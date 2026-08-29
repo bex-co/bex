@@ -360,6 +360,18 @@ function EventSummary({
   const branchFrom = details?.branchFrom || null;
   const branchTo = details?.branchTo || null;
   const commitUrl = details?.commitUrl || null;
+  // service_moved placement pair (w6/m134). A dimension renders only when it
+  // actually changed; an absent side reads as the placement-none placeholder.
+  const projectFrom = details?.projectFrom ?? null;
+  const projectTo = details?.projectTo ?? null;
+  const environmentFrom = details?.environmentFrom ?? null;
+  const environmentTo = details?.environmentTo ?? null;
+  const projectChanged =
+    type === "service_moved" && projectFrom !== projectTo;
+  const environmentChanged =
+    type === "service_moved" && environmentFrom !== environmentTo;
+  const placementLabel = (id: string | null) =>
+    id ?? t("services.eventsPlacementNone");
   const isDeploy = type === "deploy_started" || type === "deploy_ended";
   const exactTimestamp = useLocalDateTime(timestamp);
   // Compute deploy duration (w1/m47): startedAt → finishedAt
@@ -465,6 +477,26 @@ function EventSummary({
               to: branchTo,
             })}
           </p>
+        ) : null}
+        {projectChanged || environmentChanged ? (
+          <div className="text-muted-foreground mt-2 space-y-1 font-mono text-xs">
+            {projectChanged ? (
+              <p>
+                {t("services.eventsProjectChange", {
+                  from: placementLabel(projectFrom),
+                  to: placementLabel(projectTo),
+                })}
+              </p>
+            ) : null}
+            {environmentChanged ? (
+              <p>
+                {t("services.eventsEnvironmentChange", {
+                  from: placementLabel(environmentFrom),
+                  to: placementLabel(environmentTo),
+                })}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         {type === "branch_deleted" && branchFrom ? (
           <p className="text-muted-foreground mt-2 text-xs">

@@ -166,6 +166,12 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	syntheticVerbs := map[string]bool{
 		core.AuditVerbMaintenanceModeEnabled:    true,
 		core.AuditVerbMaintenanceModeURIUpdated: true,
+		// The per-service move effects of one bulk membership replacement
+		// (w6/m134): fixed verbs recorded post-success by RecordServiceMoves,
+		// exactly like the maintenance-mode pair. The enclosing SetServices
+		// verbs stay excused above.
+		core.AuditVerbProjectServiceMoved:     true,
+		core.AuditVerbEnvironmentServiceMoved: true,
 		// Historical rows may still name the deleted SetSource alias
 		// (w1/063); the live verb is SetSourceAndRegistryCredential.
 		"apps.SetSource": true,

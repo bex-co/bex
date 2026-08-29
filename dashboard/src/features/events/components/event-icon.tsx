@@ -2,6 +2,7 @@ import {
   Ban,
   CheckCircle2,
   CircleDot,
+  FolderInput,
   Globe,
   GitBranch,
   HardDrive,
@@ -77,6 +78,9 @@ export function EventIcon({
   // Domain ownership passing its check is the awaited beat of the custom-domain
   // journey (ADR005), so it reads as a globe rather than a generic settings dot.
   if (type === "custom_domain_verified") return <Globe {...iconProps} />;
+  // A project/environment reassignment (w6/m134): the service entered a
+  // different grouping folder.
+  if (type === "service_moved") return <FolderInput {...iconProps} />;
   // The persistent-disk lifecycle (ADR082): attach/update share the drive glyph,
   // detach unplugs it, restore is a point-in-time rewind.
   if (type === "disk_attached" || type === "disk_updated") {

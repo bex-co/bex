@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -109,20 +110,35 @@ func (f *fakeProjectStore) DeleteProject(_ context.Context, projectID string) er
 	return nil
 }
 
-func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ string, serviceNames []string) ([]string, error) {
+func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ string, serviceNames []string) ([]core.ServicePlacementChange, error) {
 	want := make(map[string]bool, len(serviceNames))
 	for _, n := range serviceNames {
 		want[n] = true
 	}
-	var departedWithEnv []string
+	var changes []core.ServicePlacementChange
 	for _, n := range f.services[projectID] {
-		if !want[n] && f.envAttached[n] {
-			departedWithEnv = append(departedWithEnv, n)
+		if want[n] {
+			continue
+		}
+		mv := core.ServiceMove{ProjectFrom: &projectID}
+		if f.envAttached[n] {
+			env := "env-" + n
+			mv.EnvironmentFrom = &env
 			delete(f.envAttached, n) // simulates environment_id NULLed in the same transaction
+		}
+		changes = append(changes, core.ServicePlacementChange{ServiceID: n, ServiceName: n, ServiceMove: mv})
+	}
+	for _, n := range serviceNames {
+		if !slices.Contains(f.services[projectID], n) {
+			changes = append(changes, core.ServicePlacementChange{
+				ServiceID:   n,
+				ServiceName: n,
+				ServiceMove: core.ServiceMove{ProjectTo: &projectID},
+			})
 		}
 	}
 	f.services[projectID] = append([]string(nil), serviceNames...)
-	return departedWithEnv, nil
+	return changes, nil
 }
 
 func (f *fakeProjectStore) ListProjectServices(_ context.Context, projectID string) ([]string, error) {

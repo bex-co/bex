@@ -107,6 +107,12 @@ type ServiceEventRow struct {
 	AutoscalingMinTo   *int32
 	AutoscalingMaxTo   *int32
 	AutoDeployEnabled  *bool
+	// service_moved placement pair (w6/m134): public prj-/env- ids, nil = no
+	// placement on that side. Nil for every other verb.
+	ProjectFrom     *string
+	ProjectTo       *string
+	EnvironmentFrom *string
+	EnvironmentTo   *string
 
 	// Typed service_event_facts columns. FactType is the closed discriminator;
 	// all remaining values are bounded scalars used only by the types that own
@@ -231,6 +237,10 @@ WITH feed AS (
            NULL::integer                       AS autoscaling_min_to,
            NULL::integer                       AS autoscaling_max_to,
            NULL::boolean                       AS auto_deploy_enabled,
+           NULL::text                          AS project_from,
+           NULL::text                          AS project_to,
+           NULL::text                          AS environment_from,
+           NULL::text                          AS environment_to,
            d.image                             AS image,
            d.commit                            AS commit_id,
            d.commit_message                    AS commit_message,
@@ -267,6 +277,10 @@ WITH feed AS (
            NULL::integer,
            NULL::integer,
            NULL::boolean,
+           NULL::text,
+           NULL::text,
+           NULL::text,
+           NULL::text,
            d.image,
            d.commit,
            d.commit_message,
@@ -303,6 +317,10 @@ WITH feed AS (
            a.autoscaling_min_to,
            a.autoscaling_max_to,
            a.auto_deploy_enabled,
+           a.project_from,
+           a.project_to,
+           a.environment_from,
+           a.environment_to,
            ''::text,
            ''::text,
            ''::text,
@@ -346,6 +364,10 @@ WITH feed AS (
            NULL::integer,
            NULL::integer,
            NULL::boolean,
+           NULL::text,
+           NULL::text,
+           NULL::text,
+           NULL::text,
            f.image,
            f.commit_id,
            ''::text,
@@ -366,7 +388,8 @@ WITH feed AS (
 SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, verb, caller,
        plan_from, plan_to, instance_count_from, instance_count_to,
        autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to,
-       auto_deploy_enabled, image, commit_id, commit_message, started_at, finished_at,
+       auto_deploy_enabled, project_from, project_to, environment_from, environment_to,
+       image, commit_id, commit_message, started_at, finished_at,
        fact_type, reason_code, instance_id, fact_from_count, fact_to_count,
        branch_from, branch_to, commit_url, fact_status
 FROM feed
@@ -463,6 +486,10 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.autoscaling_min_to END AS autoscaling_min_to,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.autoscaling_max_to END AS autoscaling_max_to,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.auto_deploy_enabled END AS auto_deploy_enabled,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.project_from END AS project_from,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.project_to END AS project_to,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.environment_from END AS environment_from,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.environment_to END AS environment_to,
        CASE
            WHEN h.source = '` + EventSourceDeploy + `' THEN d.image
            WHEN h.source = '` + EventSourceFact + `' THEN f.image
@@ -545,7 +572,8 @@ func serviceEventScanDestinations(r *ServiceEventRow, trailing ...any) []any {
 		&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.Verb, &r.Caller,
 		&r.PlanFrom, &r.PlanTo, &r.InstanceCountFrom, &r.InstanceCountTo,
 		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
-		&r.AutoDeployEnabled, &r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt,
+		&r.AutoDeployEnabled, &r.ProjectFrom, &r.ProjectTo, &r.EnvironmentFrom, &r.EnvironmentTo,
+		&r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt,
 		&r.FactType, &r.ReasonCode, &r.InstanceID, &r.FromCount, &r.ToCount,
 		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus,
 	}

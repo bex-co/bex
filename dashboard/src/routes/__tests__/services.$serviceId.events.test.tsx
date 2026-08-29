@@ -248,6 +248,70 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
   });
 });
 
+describe("ServiceEventsPage — service_moved placement details (w6/m134)", () => {
+  function movedEvent(details: Record<string, unknown>) {
+    return {
+      id: "evt-move-1",
+      type: "service_moved",
+      timestamp: "2026-08-28T09:00:00Z",
+      cursor: "cursor-move-1",
+      details,
+    };
+  }
+
+  it("renders both from→to dimensions of a full move", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          movedEvent({
+            projectFrom: "prj-old",
+            projectTo: "prj-new",
+            environmentFrom: "env-old",
+            environmentTo: "env-new",
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("Service moved")).toBeInTheDocument();
+    expect(screen.getByText("Project prj-old → prj-new")).toBeInTheDocument();
+    expect(
+      screen.getByText("Environment env-old → env-new"),
+    ).toBeInTheDocument();
+  });
+
+  it("reads an absent placement side as none, and skips an unchanged dimension", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          // An environment-only move: the project pair is identical and must
+          // not render a "changed" line for it.
+          movedEvent({
+            projectFrom: "prj-1",
+            projectTo: "prj-1",
+            environmentFrom: null,
+            environmentTo: "env-new",
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("Service moved")).toBeInTheDocument();
+    expect(
+      screen.getByText("Environment none → env-new"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Project /)).not.toBeInTheDocument();
+  });
+});
+
 describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
   // The 2026-08-27 live capture: custom_domain_verified sat between two
   // custom_domain_added rows that rendered, and it did not — the tab filtered
