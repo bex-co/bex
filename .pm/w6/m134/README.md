@@ -1,6 +1,6 @@
 # w6 · m134 — Record project/environment reassignments in the service Events feed
 
-**Worker:** worker6 **Goal:** a successful service move between projects or environments leaves one truthful, service-scoped event on REST, GraphQL, MCP, and the dashboard, without colliding with the existing env-var-change event **Status:** in progress — t001–t006 done 2026-08-28 (contract `service_moved` + typed audit columns, emission from both funnels, all API/webhook/dashboard surfaces, parity record, simplify pass applied, regression coverage green incl. real-Postgres store suite); t007 (closeout) remains: the live-production DoD bullet needs the change shipped/deployed and a real move observed in both the workspace audit log and the service Events feed
+**Worker:** worker6 **Goal:** a successful service move between projects or environments leaves one truthful, service-scoped event on REST, GraphQL, MCP, and the dashboard, without colliding with the existing env-var-change event **Status:** in progress — t001–t006 done + shipped in `8ab1e6db`; **2026-08-29: QA-credential blocker removed and the move verified live** (env service-links PUT 200, environment now lists the service) **but `service_moved` is absent because the running image `2a9a7240` predates `8ab1e6db`** — so t007 is now DEPLOY-blocked only, not credential-blocked. Close it once `8ab1e6db` deploys and the move produces the event on the feed + audit log + dashboard (see t007).
 
 ## Tasks (in order)
 
