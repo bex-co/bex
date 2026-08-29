@@ -129,6 +129,34 @@ const zhGit: Record<string, TranslationEntry> = {
     message: "无法断开 GitHub 连接。",
     description: "Toast when disconnect fails",
   },
+  "git.credentialsTrigger": {
+    message: "凭据（{count}）",
+    description:
+      "In-place credentials menu trigger on the source picker (w8/m31); {count} is the number of connected GitHub accounts",
+  },
+  "git.credentialsAccountsHeading": {
+    message: "账户与组织",
+    description:
+      "Heading above the connected-account list in the credentials menu",
+  },
+  "git.repoCount": {
+    message: "{count} 个仓库",
+    description: "Repo count shown next to a connected GitHub account",
+  },
+  "git.openInGitHub": {
+    message: "在 GitHub 中打开",
+    description: "Link/title opening a connected account's GitHub page",
+  },
+  "git.configureInGitHub": {
+    message: "在 GitHub 中配置",
+    description:
+      "Link to GitHub's install-settings page to change repo grants (Render parity label)",
+  },
+  "git.disconnectAccount": {
+    message: "断开 {account}",
+    description:
+      "Accessible label for a specific account's disconnect button in the credentials menu",
+  },
 };
 
 export default zhGit;

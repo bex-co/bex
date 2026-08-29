@@ -73,7 +73,7 @@ const reposState: {
 } = { repos: [], loading: false, error: undefined };
 
 vi.mock("@/features/services/hooks/use-repos", () => ({
-  useRepos: () => reposState,
+  useRepos: () => ({ ...reposState, refetch: vi.fn() }),
 }));
 
 const connectionState: {
@@ -87,15 +87,37 @@ const connectionState: {
 } = { connections: [], loading: false };
 
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
+  // GitCredentialsMenu (w8/m31) reads the full list.
   useGitConnections: () => ({
     ...connectionState,
     connected: connectionState.connections.length > 0,
+    error: undefined,
+    refetch: vi.fn(),
   }),
+  // ServiceSourcePicker reads the singular view for its disconnected gate.
+  useGitConnection: () => {
+    const first = connectionState.connections[0];
+    return {
+      connection: {
+        connected: connectionState.connections.length > 0,
+        accountLogin: first?.accountLogin ?? "",
+        installUrl: first?.installUrl ?? "",
+      },
+      loading: connectionState.loading,
+      refetch: vi.fn(),
+    };
+  },
 }));
 
 const connectGit = vi.fn();
 vi.mock("@/features/git/hooks/use-connect-git", () => ({
   useConnectGit: () => ({ connect: connectGit, busy: false }),
+}));
+vi.mock("@/features/git/hooks/use-claim-git", () => ({
+  useClaimGit: () => ({ claim: vi.fn(), busy: false }),
+}));
+vi.mock("@/features/git/hooks/use-disconnect-git", () => ({
+  useDisconnectGit: () => ({ disconnect: vi.fn(), busy: false }),
 }));
 
 const PRIVATE_REGISTRY_CREDENTIAL: RegistryCredentialView = {
@@ -342,14 +364,16 @@ describe("NewServicePage", () => {
       renderPage();
 
       await user.click(
-        await screen.findByRole("button", { name: "GitHub connections (1)" }),
+        await screen.findByRole("button", { name: /Credentials \(1\)/ }),
       );
 
       expect(screen.getByText("acme-corp")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /Configure/i })).toMatchObject({
-        href: "https://github.com/settings/installations/42",
-        target: "_blank",
-      });
+      const configure = screen.getByLabelText("Configure in GitHub");
+      expect(configure).toHaveAttribute(
+        "href",
+        "https://github.com/settings/installations/42",
+      );
+      expect(configure).toHaveAttribute("target", "_blank");
 
       await user.click(
         screen.getByRole("button", { name: "Connect another account" }),

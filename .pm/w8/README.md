@@ -46,6 +46,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w8/dev-8/` keeps onl
 - [x] **m28** — Polish `/agents` as a prompt-first workspace (8 tasks) ← designer review of `dashboard.bex.co/agents` 2026-08-18, user handoff to w8
 - [x] **m29** — bex CLI help chrome: strip Render branding without forking (7 tasks) ← from CLI branding research handoff 2026-08-19; Layer-1 `RootCmd` overlay only — DO_NOT_DO no-fork honored
 - [ ] **m30** — Restore paid KeyValue backup protection (9 tasks) ← from the 2026-08-25 backup verification (`docs/drills/2026-08-25-backup-verification.md`), user handoff to w8 2026-08-25; supersedes `w5/049`
+- [ ] **m31** — In-place GitHub "Credentials" menu on the service source picker (Render /web/new parity) (6 tasks) ← from `/pm-brainstorm` 2026-08-28, user handoff to w8; UI-only composition over the shipped multi-account surface (`w5/m74`/ADR075) — adds Render's `/web/new` connect/disconnect/manage-in-place credentials dropdown to the `ServiceSourcePicker` GitHub tab; backend unchanged. **t001–t005 DONE 2026-08-29** (code, ADR018 parity note, simplify, tests — typecheck/lint clean, 105 affected tests green); t006 live DoD verification + closeout remains (needs a live env with a GitHub App).
 
 ## Inbox
 

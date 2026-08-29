@@ -25,24 +25,35 @@ const connectionState: {
   loading: false,
 };
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
+  // ServiceSourcePicker reads the singular view for its disconnected gate.
+  useGitConnection: () => connectionState,
+  // GitCredentialsMenu (w8/m31) renders in the picker's GitHub tab header.
   useGitConnections: () => ({
-    connections: connectionState.connection
+    connections: connectionState.connection?.connected
       ? [
           {
             accountLogin: connectionState.connection.accountLogin,
-            installationId: 42,
+            installationId: 1,
             createdAt: "",
             installUrl: connectionState.connection.installUrl,
           },
         ]
       : [],
-    connected: connectionState.connection?.connected === true,
+    connected: connectionState.connection?.connected ?? false,
     loading: connectionState.loading,
+    error: undefined,
+    refetch: vi.fn(),
   }),
 }));
 
 vi.mock("@/features/git/hooks/use-connect-git", () => ({
   useConnectGit: () => ({ connect: vi.fn(), busy: false }),
+}));
+vi.mock("@/features/git/hooks/use-claim-git", () => ({
+  useClaimGit: () => ({ claim: vi.fn(), busy: false }),
+}));
+vi.mock("@/features/git/hooks/use-disconnect-git", () => ({
+  useDisconnectGit: () => ({ disconnect: vi.fn(), busy: false }),
 }));
 
 // --- repos mock ---
@@ -52,7 +63,7 @@ const reposState: { repos: RepoView[]; loading: boolean; error: undefined } = {
   error: undefined,
 };
 vi.mock("@/features/services/hooks/use-repos", () => ({
-  useRepos: () => reposState,
+  useRepos: () => ({ ...reposState, refetch: vi.fn() }),
 }));
 
 // --- branches mock ---

@@ -2655,20 +2655,6 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard GitHub tab button that opens the GitHub App install flow",
   },
-  "services.createGitConnectionsButton": {
-    message: "GitHub connections ({count})",
-    description:
-      "Create-wizard button opening the connected GitHub accounts menu",
-  },
-  "services.createGitConnectionsTitle": {
-    message: "GitHub connections",
-    description: "Create-wizard connected GitHub accounts menu title",
-  },
-  "services.createGitConfigureButton": {
-    message: "Configure",
-    description:
-      "Create-wizard link to configure one connection's repository access on GitHub",
-  },
   "services.createPublicUrlLabel": {
     message: "Repository URL",
     description: "Create-wizard Public Git URL tab input label",

@@ -26,14 +26,7 @@ import {
 import { useConnectGit } from "@/features/git/hooks/use-connect-git";
 import { useClaimGit } from "@/features/git/hooks/use-claim-git";
 import { useDisconnectGit } from "@/features/git/hooks/use-disconnect-git";
-
-// The backend answers ErrGitHubUnavailable (503) when BEX_GITHUB_APP_* is unset;
-// that message flows through GraphQL as "github integration not configured".
-function isUnavailable(error: Error | undefined): boolean {
-  if (!error) return false;
-  const m = error.message.toLowerCase();
-  return m.includes("not configured") || m.includes("unavailable");
-}
+import { isGitHubUnavailable } from "@/features/git/lib/errors";
 
 // The bounded git_error codes the callback redirects with (backend
 // internal/github/rest.go). missing_state is the direct-github.com-install case;
@@ -90,7 +83,7 @@ export function ConnectGithubCard({
     return () => window.removeEventListener("focus", onFocus);
   }, [refetch]);
 
-  const unavailable = isUnavailable(error);
+  const unavailable = isGitHubUnavailable(error);
   const initialLoading = loading && connections.length === 0 && !error;
 
   async function handleDisconnect(installationId: number) {
