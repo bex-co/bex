@@ -1,12 +1,16 @@
 package agentcred
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +21,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -120,17 +125,19 @@ func TestGitProxyKeepsTokenOutOfSandboxAndBindsSourcePod(t *testing.T) {
 	}
 }
 
-func gitBudgetHarness(t *testing.T, perSession, perWorkspace int) (*Broker, string, *credentialGitHub) {
+// gitProxyHarness wires a broker against a caller-supplied upstream handler,
+// returning the broker, the bound proxy repo URL (session ags-one, repo
+// octo/repo, branch bex-agent/task-1, source pod 10.0.0.1), and the mint
+// counter.
+func gitProxyHarness(t *testing.T, upstreamHandler http.HandlerFunc) (*Broker, string, *credentialGitHub) {
 	t.Helper()
-	secret := []byte("budget-secret")
+	secret := []byte("harness-secret")
 	gh := &credentialGitHub{}
 	apiServer := httptest.NewServer(&agentsession.Handler{Secret: secret, Minter: &agentsession.Minter{
 		GitHub: gh, Connections: credentialConnections{}, Sessions: credentialSessions{},
 	}})
 	t.Cleanup(apiServer.Close)
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, "0000")
-	}))
+	upstream := httptest.NewServer(upstreamHandler)
 	t.Cleanup(upstream.Close)
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
@@ -139,12 +146,21 @@ func gitBudgetHarness(t *testing.T, perSession, perWorkspace int) (*Broker, stri
 		}},
 		API:            &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()},
 		UpstreamOrigin: upstream.URL, HTTP: upstream.Client(),
-		MaxRequestsPerSession: perSession, MaxRequestsPerWorkspace: perWorkspace,
 	}
 	repoURL, err := agentsession.ProxyRepositoryURL("http://gateway", "tea-a-sandbox", "ags-one", "octo/repo", "bex-agent/task-1")
 	if err != nil {
 		t.Fatal(err)
 	}
+	return broker, repoURL, gh
+}
+
+func gitBudgetHarness(t *testing.T, perSession, perWorkspace int) (*Broker, string, *credentialGitHub) {
+	t.Helper()
+	broker, repoURL, gh := gitProxyHarness(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "0000")
+	})
+	// Safe post-construction: budgets() memoizes lazily on the first request.
+	broker.MaxRequestsPerSession, broker.MaxRequestsPerWorkspace = perSession, perWorkspace
 	return broker, repoURL, gh
 }
 
@@ -283,12 +299,12 @@ func TestValidateReceivePackRejectsWhitespacePaddedShallow(t *testing.T) {
 	command := old + " " + next + " refs/heads/bex-agent/task-1\x00report-status\n"
 	for name, padded := range map[string]string{
 		// Multiple interior spaces: a two-field line to strings.Fields, malformed on the wire.
-		"interior spaces": pkt("shallow  " + strings.Repeat("a", 40) + "\n") + pkt(command) + "0000",
+		"interior spaces": pkt("shallow  "+strings.Repeat("a", 40)+"\n") + pkt(command) + "0000",
 		// Maximal padding sized to the per-packet cap — the shape the buffer
 		// budget must never see.
-		"padding to packet cap": pkt("shallow " + strings.Repeat(" ", maxPacketBytes-4-8-41-len("\n")) + strings.Repeat("a", 40) + "\n") + pkt(command) + "0000",
+		"padding to packet cap": pkt("shallow "+strings.Repeat(" ", maxPacketBytes-4-8-41-len("\n"))+strings.Repeat("a", 40)+"\n") + pkt(command) + "0000",
 		// Tab separator — same class.
-		"tab separator": pkt("shallow\t" + strings.Repeat("a", 40) + "\n") + pkt(command) + "0000",
+		"tab separator": pkt("shallow\t"+strings.Repeat("a", 40)+"\n") + pkt(command) + "0000",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := validateReceivePack(strings.NewReader(padded), "bex-agent/task-1"); !errors.Is(err, agentsession.ErrForbidden) {
@@ -422,6 +438,227 @@ func TestGitProxyReusesOneUpstreamClient(t *testing.T) {
 	}
 	if first.Timeout != 0 {
 		t.Fatalf("upstream client must not carry a total timeout (it truncates a streaming pack); got %s", first.Timeout)
+	}
+}
+
+// upstreamRequest is one exchange as the recording upstream saw it.
+type upstreamRequest struct {
+	encoding string
+	body     []byte
+}
+
+// recordingUpstream captures each proxied request's Content-Encoding and body
+// and answers a minimal git response.
+func recordingUpstream(got *[]upstreamRequest) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		*got = append(*got, upstreamRequest{encoding: r.Header.Get("Content-Encoding"), body: body})
+		_, _ = io.WriteString(w, "0000")
+	}
+}
+
+func gzipBytes(t *testing.T, plain string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	if _, err := zw.Write([]byte(plain)); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+// git gzips any smart-HTTP RPC body over 1 KiB (remote-curl.c post_rpc), so the
+// pack-fetch POST of a many-ref repo arrives compressed. The proxy must forward
+// the encoding header WITH the compressed bytes — stripping it while passing the
+// body made GitHub 400 every clone of bex-co/bex-security (887 refs) as an
+// opaque 502 (w5/m82, session ags-da9l9e5a801s739cb2ig).
+func TestGitProxyForwardsGzipEncodedUploadPack(t *testing.T) {
+	negotiation := "0011command=fetch0001000fno-progress" + strings.Repeat("0032want 1111111111111111111111111111111111111111\n", 40) + "0009done\n0000"
+	compressed := gzipBytes(t, negotiation)
+
+	var got []upstreamRequest
+	broker, repoURL, _ := gitProxyHarness(t, recordingUpstream(&got))
+
+	post := func(body []byte, gzipped bool) int {
+		req := httptest.NewRequest(http.MethodPost, repoURL+"/git-upload-pack", bytes.NewReader(body))
+		req.RemoteAddr = "10.0.0.1:1234"
+		req.Header.Set("Content-Type", "application/x-git-upload-pack-request")
+		if gzipped {
+			req.Header.Set("Content-Encoding", "gzip")
+		}
+		rec := httptest.NewRecorder()
+		broker.Handler().ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	if code := post(compressed, true); code != http.StatusOK {
+		t.Fatalf("gzipped upload-pack status=%d", code)
+	}
+	if len(got) != 1 || got[0].encoding != "gzip" || !bytes.Equal(got[0].body, compressed) {
+		t.Fatalf("upstream saw encoding=%q body-intact=%t; the compressed body must travel with its header",
+			got[0].encoding, bytes.Equal(got[0].body, compressed))
+	}
+	if code := post([]byte(negotiation), false); code != http.StatusOK {
+		t.Fatalf("plain upload-pack status=%d", code)
+	}
+	if len(got) != 2 || got[1].encoding != "" || !bytes.Equal(got[1].body, []byte(negotiation)) {
+		t.Fatalf("plain request changed: encoding=%q intact=%t", got[1].encoding, bytes.Equal(got[1].body, []byte(negotiation)))
+	}
+}
+
+// A gzipped receive-pack body (any push in git's 1 KiB–postBuffer gzip band) is
+// validated against the plaintext pkt-lines and forwarded DECOMPRESSED, so
+// branch confinement keeps working and the upstream never sees an encoding
+// header the body no longer matches.
+func TestGitProxyReceivePackAcceptsGzippedBody(t *testing.T) {
+	plainPush := func(ref string) string {
+		old := strings.Repeat("1", 40)
+		next := strings.Repeat("2", 40)
+		line := old + " " + next + " " + ref + "\x00report-status\n"
+		return fmt.Sprintf("%04x%s0000PACK", len(line)+4, line)
+	}
+
+	var got []upstreamRequest
+	broker, repoURL, _ := gitProxyHarness(t, recordingUpstream(&got))
+
+	push := func(body []byte, encoding string) int {
+		req := httptest.NewRequest(http.MethodPost, repoURL+"/git-receive-pack", bytes.NewReader(body))
+		req.RemoteAddr = "10.0.0.1:1234"
+		req.Header.Set("Content-Type", "application/x-git-receive-pack-request")
+		if encoding != "" {
+			req.Header.Set("Content-Encoding", encoding)
+		}
+		rec := httptest.NewRecorder()
+		broker.Handler().ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	bound := plainPush("refs/heads/bex-agent/task-1")
+	if code := push(gzipBytes(t, bound), "gzip"); code != http.StatusOK {
+		t.Fatalf("gzipped bound-branch push status=%d", code)
+	}
+	if len(got) != 1 || got[0].encoding != "" || !bytes.Equal(got[0].body, []byte(bound)) {
+		t.Fatalf("upstream must receive the decompressed body with no encoding header: encoding=%q decompressed=%t",
+			got[0].encoding, bytes.Equal(got[0].body, []byte(bound)))
+	}
+	// Branch confinement is enforced on the DECOMPRESSED stream: a cross-branch
+	// push cannot smuggle itself past validation inside gzip.
+	if code := push(gzipBytes(t, plainPush("refs/heads/main")), "gzip"); code != http.StatusForbidden {
+		t.Fatalf("gzipped cross-branch push status=%d, want 403", code)
+	}
+	// A body that claims gzip but is not fails closed before validation.
+	if code := push([]byte(bound), "gzip"); code != http.StatusBadRequest {
+		t.Fatalf("corrupt gzip status=%d, want 400", code)
+	}
+	if len(got) != 1 {
+		t.Fatalf("rejected pushes reached upstream: %d calls", len(got))
+	}
+}
+
+// The forwarded-header set is a CONTRACT, not a best-effort copy: exactly the
+// allowlisted headers (plus Content-Encoding for upload-pack) cross the trust
+// boundary, the injected installation-token auth cannot be overridden by the
+// sandbox, and hostile extras never reach the forge. A future hardening pass
+// that "narrows" the list again (the e91d5be8 regression class) or a loosening
+// that reflects sandbox headers both fail here.
+func TestGitProxyForwardsOnlyAllowlistedHeaders(t *testing.T) {
+	var gotHeaders http.Header
+	var gotAuth string
+	broker, repoURL, _ := gitProxyHarness(t, func(w http.ResponseWriter, r *http.Request) {
+		gotHeaders = r.Header.Clone()
+		gotAuth = r.Header.Get("Authorization")
+		_, _ = io.WriteString(w, "0000")
+	})
+
+	body := gzipBytes(t, "0011command=fetch0009done\n0000")
+	req := httptest.NewRequest(http.MethodPost, repoURL+"/git-upload-pack", bytes.NewReader(body))
+	req.RemoteAddr = "10.0.0.1:1234"
+	req.Header.Set("Content-Type", "application/x-git-upload-pack-request")
+	req.Header.Set("Accept", "application/x-git-upload-pack-result")
+	req.Header.Set("Git-Protocol", "version=2")
+	req.Header.Set("Content-Encoding", "gzip")
+	// Hostile extras a compromised sandbox could attach.
+	req.Header.Set("Authorization", "Bearer sandbox-evil")
+	req.Header.Set("Cookie", "session=stolen")
+	req.Header.Set("X-Evil", "1")
+	req.Header.Set("X-Forwarded-For", "10.9.9.9")
+	rec := httptest.NewRecorder()
+	broker.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d", rec.Code)
+	}
+	if !strings.HasPrefix(gotAuth, "Basic ") || strings.Contains(gotAuth, "sandbox-evil") {
+		t.Fatalf("upstream Authorization must be the injected installation token, got %q", gotAuth)
+	}
+	for _, name := range []string{"Cookie", "X-Evil", "X-Forwarded-For"} {
+		if gotHeaders.Get(name) != "" {
+			t.Fatalf("hostile header %s crossed the trust boundary: %q", name, gotHeaders.Get(name))
+		}
+	}
+	for name, want := range map[string]string{
+		"Accept": "application/x-git-upload-pack-result", "Content-Type": "application/x-git-upload-pack-request",
+		"Git-Protocol": "version=2", "Content-Encoding": "gzip", "User-Agent": "bex-agent-git-proxy/1",
+	} {
+		if gotHeaders.Get(name) != want {
+			t.Fatalf("upstream %s = %q, want %q", name, gotHeaders.Get(name), want)
+		}
+	}
+}
+
+// Every admitted-then-failed upstream exchange logs an attributable reason and
+// counts a bounded-cause metric — the ags-da9l9e5a801s739cb2ig 502 was invisible
+// in gateway logs and needed a DB audit-trail reconstruction (w5/m82 t003).
+func TestGitProxyUpstreamRefusalLogsAndCounts(t *testing.T) {
+	broker, repoURL, _ := gitProxyHarness(t, func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+	})
+	registry := prometheus.NewRegistry()
+	broker.Metrics = sshgateway.NewMetrics(registry)
+
+	var logged bytes.Buffer
+	log.SetOutput(&logged)
+	defer log.SetOutput(os.Stderr)
+
+	req := httptest.NewRequest(http.MethodGet, repoURL+"/info/refs?service=git-upload-pack", nil)
+	req.RemoteAddr = "10.0.0.1:1234"
+	rec := httptest.NewRecorder()
+	broker.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status=%d, want 502", rec.Code)
+	}
+	// The sandbox keeps seeing only the generic refusal — the upstream error
+	// body must not be reflected across the trust boundary.
+	if body := rec.Body.String(); strings.Contains(body, "Bad Request") || !strings.Contains(body, "git upstream refused request") {
+		t.Fatalf("sandbox-visible 502 body reflected upstream content: %q", body)
+	}
+	line := logged.String()
+	for _, want := range []string{"refused", "session=ags-one", "repo=octo/repo", "status 400"} {
+		if !strings.Contains(line, want) {
+			t.Fatalf("log line missing %q: %q", want, line)
+		}
+	}
+	if strings.Contains(line, "ghs_gateway_secret") || strings.Contains(line, "Authorization") {
+		t.Fatalf("credential material leaked into the log: %q", line)
+	}
+	if v := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_git_proxy_upstream_failures_total", map[string]string{"cause": "refused"}); v != 1 {
+		t.Fatalf(`git_proxy_upstream_failures_total{cause="refused"} = %v, want 1`, v)
+	}
+
+	// An unreachable upstream is the other silent-502 class: same generic
+	// sandbox answer, distinct bounded cause.
+	broker.UpstreamOrigin = "http://127.0.0.1:1"
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, repoURL+"/info/refs?service=git-upload-pack", nil)
+	req.RemoteAddr = "10.0.0.1:1234"
+	broker.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("unreachable upstream status=%d, want 502", rec.Code)
+	}
+	if v := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_git_proxy_upstream_failures_total", map[string]string{"cause": "network"}); v != 1 {
+		t.Fatalf(`git_proxy_upstream_failures_total{cause="network"} = %v, want 1`, v)
 	}
 }
 

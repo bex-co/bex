@@ -35,6 +35,7 @@ type Metrics struct {
 	channels        prometheus.Counter
 	activeChannels  prometheus.Gauge
 	reauths         *prometheus.CounterVec
+	gitUpstream     *prometheus.CounterVec
 }
 
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
@@ -86,8 +87,12 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "channel_reauthorizations_total",
 			Help: "Per-channel reassertions of the transport-auth-time key + target authorization (codex round-8 #5) by bounded result.",
 		}, []string{"result"}),
+		gitUpstream: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "git_proxy_upstream_failures_total",
+			Help: "Agent-session Git smart-HTTP exchanges that were admitted and authorized but failed on the gateway->forge hop, by bounded cause.",
+		}, []string{"cause"}),
 	}
-	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths)
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.gitUpstream)
 	return m
 }
 
@@ -148,5 +153,17 @@ func (m *Metrics) ChannelClosed() {
 func (m *Metrics) Reauthorization(result string) {
 	if m != nil {
 		m.reauths.WithLabelValues(result).Inc()
+	}
+}
+
+// GitProxyUpstreamFailure records one agent-session Git smart-HTTP exchange
+// that passed admission and authorization but failed on the gateway→forge hop,
+// by bounded cause ("mint" / "request" / "network" / "refused"). The sandbox
+// deliberately sees only an undifferentiated 502 (upstream error bodies are
+// never reflected), so this counter plus the paired gateway log line is where
+// a broken upstream becomes loud (w5/m82).
+func (m *Metrics) GitProxyUpstreamFailure(cause string) {
+	if m != nil {
+		m.gitUpstream.WithLabelValues(cause).Inc()
 	}
 }

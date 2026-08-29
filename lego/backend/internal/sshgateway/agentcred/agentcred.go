@@ -23,10 +23,13 @@ package agentcred
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -209,8 +212,31 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := io.Reader(r.Body)
+	// contentLength is what the upstream request advertises. A gzipped
+	// receive-pack body is decompressed below, so its wire Content-Length no
+	// longer describes the forwarded stream and that path switches to -1
+	// (chunked), which GitHub accepts.
+	contentLength := r.ContentLength
 	if service == "git-receive-pack" && r.Method == http.MethodPost {
-		body, err = validateReceivePack(r.Body, verified.Branch)
+		raw := body
+		if strings.EqualFold(r.Header.Get("Content-Encoding"), "gzip") {
+			// git gzips any smart-HTTP RPC body over 1 KiB (remote-curl.c
+			// post_rpc), so a push in the 1 KiB–postBuffer band arrives
+			// compressed. validateReceivePack speaks plaintext pkt-lines, so the
+			// push is validated AND forwarded decompressed (the encoding header
+			// is never forwarded for this service). The decompressed stream gets
+			// its own byte cap: the MaxBytesReader above bounds only the
+			// compressed wire bytes, and gzip expands.
+			gz, gzErr := gzip.NewReader(r.Body)
+			if gzErr != nil {
+				http.Error(w, "invalid git request", http.StatusBadRequest)
+				return
+			}
+			defer gz.Close()
+			raw = http.MaxBytesReader(nil, io.NopCloser(gz), maxRequestBodyBytes)
+			contentLength = -1
+		}
+		body, err = validateReceivePack(raw, verified.Branch)
 		if err != nil {
 			b.Metrics.Authentication("rejected_target")
 			http.Error(w, "push is not confined to the session branch", http.StatusForbidden)
@@ -224,29 +250,43 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
+		b.failUpstream("mint", service, verified, err)
 		http.Error(w, "git proxy unavailable", http.StatusBadGateway)
 		return
 	}
 	upstream, err := b.upstreamURL(verified.Repository, service, r.URL.RawQuery)
 	if err != nil {
+		b.failUpstream("request", service, verified, err)
 		http.Error(w, "git proxy unavailable", http.StatusBadGateway)
 		return
 	}
 	request, err := http.NewRequestWithContext(r.Context(), r.Method, upstream, body)
 	if err != nil {
+		b.failUpstream("request", service, verified, err)
 		http.Error(w, "git proxy unavailable", http.StatusBadGateway)
 		return
 	}
-	request.ContentLength = r.ContentLength
+	request.ContentLength = contentLength
 	request.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(credential.Username+":"+credential.Token)))
 	request.Header.Set("User-Agent", "bex-agent-git-proxy/1")
-	for _, name := range []string{"Accept", "Content-Type", "Git-Protocol"} {
+	forwarded := []string{"Accept", "Content-Type", "Git-Protocol"}
+	if service != "git-receive-pack" {
+		// git gzips the upload-pack negotiation body of any many-ref repo
+		// (> 1 KiB, remote-curl.c post_rpc); forwarding those bytes without
+		// their encoding makes GitHub 400 the pack fetch (w5/m82, session
+		// ags-da9l9e5a801s739cb2ig). receive-pack is decompressed before
+		// validation and forwarded plain, so its encoding header must NOT
+		// follow the body.
+		forwarded = append(forwarded, "Content-Encoding")
+	}
+	for _, name := range forwarded {
 		if value := r.Header.Get(name); value != "" {
 			request.Header.Set(name, value)
 		}
 	}
 	response, err := b.httpClient().Do(request)
 	if err != nil {
+		b.failUpstream("network", service, verified, err)
 		http.Error(w, "git upstream unavailable", http.StatusBadGateway)
 		return
 	}
@@ -254,6 +294,7 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 	// GitHub smart HTTP succeeds with 200. Do not reflect error bodies or auth
 	// challenges from the credential-bearing hop into the untrusted sandbox.
 	if response.StatusCode != http.StatusOK {
+		b.failUpstream("refused", service, verified, fmt.Errorf("upstream status %d", response.StatusCode))
 		http.Error(w, "git upstream refused request", http.StatusBadGateway)
 		return
 	}
@@ -273,6 +314,17 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		Resource: core.WorkspaceObject(verified.Workspace), Target: "agent-session:" + verified.SessionID,
 		TargetName: verified.Repository, Outcome: core.AuditAllowed, At: b.now(),
 	})
+}
+
+// failUpstream names the gateway-side cause of a 502 that the sandbox will
+// otherwise only ever see as an opaque "RPC failed" (diagnosing session
+// ags-da9l9e5a801s739cb2ig required reconstructing this hop from the DB audit
+// trail — the gateway logged nothing). Bounded identifiers only: the
+// credential, headers, and request bytes never appear; mint/network error
+// strings are already sanitized by their producers.
+func (b *Broker) failUpstream(cause, service string, verified agentsession.MintRequest, err error) {
+	b.Metrics.GitProxyUpstreamFailure(cause)
+	log.Printf("agent git proxy: %s failure (service=%s session=%s repo=%s): %v", cause, service, verified.SessionID, verified.Repository, err)
 }
 
 type requestBudget struct {
