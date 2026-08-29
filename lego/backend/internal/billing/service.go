@@ -47,9 +47,17 @@ type Readiness struct {
 	// (ADR046), not whether this workspace already has a card. The dashboard
 	// create-workspace flow uses it to disable Create on Pro/Scale until the
 	// current workspace can bind a method; false ⇒ prior ungated behavior.
-	PaymentMethodRequired bool          `json:"paymentMethodRequired"`
-	Tax                   TaxReadiness  `json:"tax"`
-	Lifecycle             LifecycleView `json:"lifecycle"`
+	PaymentMethodRequired bool `json:"paymentMethodRequired"`
+	// PaymentMethodOnboardingRequired is the sign-up wall's one input: true when
+	// this workspace cannot use ANY resource until a payment method is bound —
+	// the gate runs in `all` mode (ADR075 D7) and the same marker read every
+	// create consults (PaymentGate.RequirePaymentMethod) refuses the workspace
+	// right now (not bound, not Mode-A excluded, not comped). Derived from the
+	// gate itself rather than from PaymentMethodReady so the dashboard's wall
+	// and the API's 402 cannot disagree; false whenever a create would pass.
+	PaymentMethodOnboardingRequired bool          `json:"paymentMethodOnboardingRequired"`
+	Tax                             TaxReadiness  `json:"tax"`
+	Lifecycle                       LifecycleView `json:"lifecycle"`
 }
 
 type LifecycleView struct {
@@ -125,11 +133,35 @@ func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, er
 	}
 	status.WorkspaceID = tenantID
 	status.PaymentMethodRequired = s.Payment != nil
+	status.PaymentMethodOnboardingRequired, err = s.onboardingRequired(ctx, tenantID)
+	if err != nil {
+		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+	}
 	status.Lifecycle, err = s.lifecycle(ctx, tenantID)
 	if err != nil {
 		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
 	}
 	return status, nil
+}
+
+// onboardingRequired asks the injected PaymentGate the exact question a create
+// would ask, but only when the gate covers every plan (`all` mode): in
+// paid-intent-only mode a card-less workspace can still run the free tier, so
+// there is nothing to wall at sign-up. A refused workspace reads true; a marker
+// read failure surfaces as the same ErrBillingUnavailable as the rest of Status.
+func (s *Service) onboardingRequired(ctx context.Context, workspaceID string) (bool, error) {
+	if s.Payment == nil || !s.PaymentAllPlans {
+		return false, nil
+	}
+	err := s.RequirePaymentMethod(ctx, workspaceID)
+	switch {
+	case err == nil:
+		return false, nil
+	case errors.Is(err, core.ErrPaymentRequired):
+		return true, nil
+	default:
+		return false, err
+	}
 }
 
 func (s *Service) lifecycle(ctx context.Context, workspaceID string) (LifecycleView, error) {

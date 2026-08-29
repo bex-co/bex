@@ -25,7 +25,7 @@ describe("route skeleton manifest (w5/m79)", () => {
     const classified = Object.keys(ROUTE_SKELETON_MANIFEST).sort();
 
     expect(classified).toEqual(generated);
-    expect(classified).toHaveLength(82);
+    expect(classified).toHaveLength(83);
   });
 
   it("points every classification at a real route owner", () => {

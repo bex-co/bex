@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import type { VerificationFlow } from "@ory/client-fetch";
+import {
+  FlowType,
+  VerificationFlowState,
+  type VerificationFlow,
+} from "@ory/client-fetch";
 
 // The page is a thin client of useOryFlow + Ory Elements' <Verification>. Mock
 // both so the test drives the loading vs. ready states directly without a live
@@ -14,8 +18,15 @@ vi.mock("@/common/hooks/use-ory-flow", () => ({
 }));
 const calls: unknown[][] = [];
 
+// Expose onSuccess so a test can complete the code step the way Elements does.
+const elements = vi.hoisted(() => ({
+  onSuccess: null as null | ((event: unknown) => void),
+}));
 vi.mock("@ory/elements-react/theme", () => ({
-  Verification: () => <div data-testid="ory-verification" />,
+  Verification: ({ onSuccess }: { onSuccess: (event: unknown) => void }) => {
+    elements.onSuccess = onSuccess;
+    return <div data-testid="ory-verification" />;
+  },
 }));
 
 vi.mock("@/common/lib/ory/config", () => ({
@@ -24,10 +35,19 @@ vi.mock("@/common/lib/ory/config", () => ({
   KRATOS_PUBLIC_URL: "http://localhost",
 }));
 
-// The page reads its `flow` search param; return a fixed value (no router mount).
+// The page reads its `flow`/`next` search params and navigates on success;
+// pin both (no router mount).
+const routerMock = vi.hoisted(() => ({
+  search: { flow: undefined, next: undefined } as {
+    flow: string | undefined;
+    next: string | undefined;
+  },
+  navigate: vi.fn(),
+}));
 vi.mock("@tanstack/react-router", async (orig) => ({
   ...(await orig<typeof import("@tanstack/react-router")>()),
-  useSearch: () => ({ flow: undefined }),
+  useSearch: () => routerMock.search,
+  useNavigate: () => routerMock.navigate,
 }));
 
 import VerificationPage from "@/features/auth/pages/verification-page";
@@ -35,6 +55,9 @@ import VerificationPage from "@/features/auth/pages/verification-page";
 beforeEach(() => {
   oryFlow.value = null;
   calls.length = 0;
+  elements.onSuccess = null;
+  routerMock.search = { flow: undefined, next: undefined };
+  routerMock.navigate.mockReset();
 });
 
 describe("VerificationPage", () => {
@@ -57,5 +80,45 @@ describe("VerificationPage", () => {
     oryFlow.value = { id: "flow-1" } as VerificationFlow;
     render(<VerificationPage />);
     expect(screen.getByTestId("ory-verification")).toBeInTheDocument();
+  });
+
+  // ADR075 D7 (revised 2026-08-29): a verified sign-up continues through the
+  // payment wall, which carries the guarded deep link onward.
+  it("continues into the product through the payment wall, deep link intact", () => {
+    oryFlow.value = { id: "flow-1" } as VerificationFlow;
+    routerMock.search = { flow: undefined, next: "/services/new?type=web" };
+    render(<VerificationPage />);
+    elements.onSuccess?.({
+      flowType: FlowType.Verification,
+      flow: { state: VerificationFlowState.PassedChallenge },
+    });
+    expect(routerMock.navigate).toHaveBeenCalledWith({
+      to: "/",
+      href: "/setup/payment?next=%2Fservices%2Fnew%3Ftype%3Dweb",
+    });
+  });
+
+  it("does not navigate on the intermediate 'code sent' submit", () => {
+    oryFlow.value = { id: "flow-1" } as VerificationFlow;
+    render(<VerificationPage />);
+    elements.onSuccess?.({
+      flowType: FlowType.Verification,
+      flow: { state: VerificationFlowState.SentEmail },
+    });
+    expect(routerMock.navigate).not.toHaveBeenCalled();
+  });
+
+  it("drops an off-origin deep link before it reaches the wall", () => {
+    oryFlow.value = { id: "flow-1" } as VerificationFlow;
+    routerMock.search = { flow: undefined, next: "https://evil.example/" };
+    render(<VerificationPage />);
+    elements.onSuccess?.({
+      flowType: FlowType.Verification,
+      flow: { state: VerificationFlowState.PassedChallenge },
+    });
+    expect(routerMock.navigate).toHaveBeenCalledWith({
+      to: "/",
+      href: "/setup/payment",
+    });
   });
 });

@@ -116,6 +116,10 @@ query BillingReadiness($workspaceId: String!) {
     paymentMethodBrand
     paymentMethodLast4
     paymentMethodRequired
+    # The sign-up wall's one input (features/onboarding): true only when the
+    # gate runs in `all` mode AND the marker read every create consults refuses
+    # this workspace — so the wall and the API's 402 cannot disagree.
+    paymentMethodOnboardingRequired
     lifecycle {
       status
       reason

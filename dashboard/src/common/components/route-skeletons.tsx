@@ -1099,6 +1099,39 @@ export function LogoutRouteSkeleton() {
   );
 }
 
+/** `/setup/payment` — the sign-up payment wall: hero + one card (title row,
+ *  description, the workspace line, the Checkout button, the hosted note, and
+ *  the self-host/sign-out footer), matching PaymentSetupPage's ready state. */
+export function PaymentSetupRouteSkeleton() {
+  return (
+    <AuthRouteSkeleton route="payment-setup">
+      <Region name="payment-setup-card">
+        <Card>
+          <CardHeader className="space-y-2">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-11/12" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+            <div className="space-y-2 border-t pt-4">
+              <Skeleton className="h-4 w-full" />
+              <div className="flex gap-4">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </Region>
+    </AuthRouteSkeleton>
+  );
+}
+
 export function ConsentRouteSkeleton() {
   return (
     <AuthRouteSkeleton route="oauth-consent">

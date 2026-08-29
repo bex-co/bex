@@ -45,8 +45,11 @@ var billingReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"paymentMethodBrand":    gqlutil.StrField(func(r Readiness) any { return r.PaymentMethodBrand }),
 		"paymentMethodLast4":    gqlutil.StrField(func(r Readiness) any { return r.PaymentMethodLast4 }),
 		"paymentMethodRequired": gqlutil.BoolField(func(r Readiness) any { return r.PaymentMethodRequired }),
-		"tax":                   gqlutil.Typed(taxReadinessGQLType, func(r Readiness) any { return r.Tax }),
-		"lifecycle":             gqlutil.Typed(billingLifecycleGQLType, func(r Readiness) any { return r.Lifecycle }),
+		"paymentMethodOnboardingRequired": gqlutil.BoolField(func(r Readiness) any {
+			return r.PaymentMethodOnboardingRequired
+		}),
+		"tax":       gqlutil.Typed(taxReadinessGQLType, func(r Readiness) any { return r.Tax }),
+		"lifecycle": gqlutil.Typed(billingLifecycleGQLType, func(r Readiness) any { return r.Lifecycle }),
 	},
 })
 

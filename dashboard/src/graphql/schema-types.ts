@@ -3372,6 +3372,7 @@ export type WorkspaceBillingReadiness = {
   mode: Maybe<Scalars['String']['output']>;
   paymentMethodBrand: Maybe<Scalars['String']['output']>;
   paymentMethodLast4: Maybe<Scalars['String']['output']>;
+  paymentMethodOnboardingRequired: Maybe<Scalars['Boolean']['output']>;
   paymentMethodReady: Maybe<Scalars['Boolean']['output']>;
   paymentMethodRequired: Maybe<Scalars['Boolean']['output']>;
   subscriptionReady: Maybe<Scalars['Boolean']['output']>;

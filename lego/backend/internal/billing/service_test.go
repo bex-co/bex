@@ -113,7 +113,7 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 	gql := graphql.Do(graphql.Params{
 		Schema: schema,
 		RequestString: `{ workspaceBillingReadiness(workspaceId:"tea-a") {
-			workspaceId mode customerReady subscriptionReady paymentMethodReady paymentMethodBrand paymentMethodLast4 paymentMethodRequired
+			workspaceId mode customerReady subscriptionReady paymentMethodReady paymentMethodBrand paymentMethodLast4 paymentMethodRequired paymentMethodOnboardingRequired
 			tax { configured enabled reason productTaxCode taxBehavior registrationCount }
 			lifecycle { status reason graceDeadline enforcementOwned recoveryPending allowedActions updatedAt }
 		} }`,
@@ -175,6 +175,65 @@ func TestBillingStatusReportsPaymentMethodRequiredWhenGateWired(t *testing.T) {
 	}
 	if !got.PaymentMethodRequired {
 		t.Fatal("expected paymentMethodRequired when core.Payment is set")
+	}
+}
+
+type refusingPaymentGate struct{ calls int }
+
+func (g *refusingPaymentGate) RequirePaymentMethod(context.Context, string) error {
+	g.calls++
+	return core.NewPaymentRequiredError()
+}
+
+type failingPaymentGate struct{}
+
+func (failingPaymentGate) RequirePaymentMethod(context.Context, string) error {
+	return errors.New("marker read failed")
+}
+
+// The sign-up wall's input mirrors the create gate exactly: it is true only in
+// `all` mode AND only when the very gate a create consults refuses the
+// workspace. Paid-intent-only mode never walls (the free tier is usable
+// card-less), a bound/excluded/comped workspace never walls, and a marker read
+// failure degrades the whole readiness read the way every other store failure
+// in Status does — never a silent false that would let an unbound workspace
+// through the wall.
+func TestBillingStatusOnboardingRequiredMirrorsAllModeGate(t *testing.T) {
+	cases := []struct {
+		name     string
+		gate     core.PaymentGate
+		allPlans bool
+		want     bool
+		wantErr  bool
+	}{
+		{name: "gate unwired", gate: nil, allPlans: true, want: false},
+		{name: "paid-intent-only mode never walls", gate: &refusingPaymentGate{}, allPlans: false, want: false},
+		{name: "all mode, workspace refused", gate: &refusingPaymentGate{}, allPlans: true, want: true},
+		{name: "all mode, workspace allowed", gate: readyPaymentGate{}, allPlans: true, want: false},
+		{name: "all mode, marker read failed", gate: failingPaymentGate{}, allPlans: true, wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := billingTestService(&billingProviderFake{status: Readiness{Mode: "test"}})
+			svc.Payment = tc.gate
+			svc.PaymentAllPlans = tc.allPlans
+			got, err := svc.Status(billingIdentity(context.Background()), "tea-a")
+			if tc.wantErr {
+				if !errors.Is(err, core.ErrBillingUnavailable) {
+					t.Fatalf("err=%v, want ErrBillingUnavailable", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.PaymentMethodOnboardingRequired != tc.want {
+				t.Fatalf("paymentMethodOnboardingRequired=%v, want %v", got.PaymentMethodOnboardingRequired, tc.want)
+			}
+			if gate, ok := tc.gate.(*refusingPaymentGate); ok && tc.allPlans && gate.calls != 1 {
+				t.Fatalf("gate consulted %d times, want exactly once", gate.calls)
+			}
+		})
 	}
 }
 

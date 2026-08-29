@@ -9,11 +9,13 @@ src/
 ├── routes/                # File-based routes (TanStack Router)
 │   ├── index.tsx           # Services list — live bex-api `services` query + lifecycle actions (w5/m4)
 │   ├── auth.{login,sign-up,forgot-password,reset-password,logout}.tsx
+│   ├── setup.payment.tsx   # sign-up payment wall (ADR075 D7 rev. 2026-08-29) — bare (no chrome), verification lands here
 │   ├── services.$serviceId.tsx            # service-detail shell + tab nav, with child tabs:
 │   │     services.$serviceId.{index,env,logs,metrics,plan,settings}.tsx
 │   ├── settings.tsx        # account settings (Kratos settings flow)
 │   └── $.tsx               # catch-all 404
 ├── features/auth/          # login/registration/recovery/settings pages + shared page shell
+├── features/onboarding/     # payment wall page + `PaymentSetupGate` (root backstop) + the pure `paymentSetupState` decision
 ├── features/services/       # service list + detail tabs (overview/env/plan/settings), lifecycle actions
 ├── features/logs/           # live logs page (query + follow) over bex-api
 ├── features/metrics/        # App metrics page (Render-style) — first real bex-api GraphQL client
@@ -112,6 +114,14 @@ The router (`src/router.tsx`) holds the outgoing page for `defaultPendingMs: 150
 - The detail-route `pendingMs: 0` + component-as-pending config was **audited against the persistent shell (w9/m69) and retained**: rendering the detail frame's skeleton at 0ms is still the right behavior (the shell persists, but the frame's header/tabs skeleton should appear immediately, not after `defaultPendingMs`). Don't remove it, and don't cargo-cult `pendingMs: 0` onto a list route — a list route wants its default-delay, destination-shaped skeleton, not an instant one.
 - Title loaders pass `cause` to `titleLoaderFetchPolicy` (`common/lib/document-head`): `network-only` on entry/preload, `cache-first` on retained-match re-runs (`stay` — tab switches, search-param changes, the loader-error retry) so tab clicks don't refire the title query.
 - Links to a service must target its canonical base (`serviceBaseForType`: `static_site` → `/static/<id>`, else `/services/<id>` — see `ResourceLink`, global search). Both detail **parents** (`services.$serviceId`, `static.$serviceId`) call `loadServiceDetail`, which canonicalizes the base (with subpath via `redirectPreservingSuffix`) before render — so a static site hit at `/services/<id>/<subpath>` still lands, under `/static/...`. Prefer the canonical link up front to skip that bounce (loader RTT + chunk).
+
+## Sign-up payment wall (ADR075 D7, revised 2026-08-29)
+
+Hosted bex requires a bound payment method before any resource use (`BEX_REQUIRE_PAYMENT_METHOD=all`). The dashboard collects it as the last onboarding step, not by intercepting the first create:
+
+- **`/setup/payment`** (`routes/setup.payment.tsx` → `features/onboarding/pages/payment-setup-page`) is a **bare** route in the auth-page shell — verification success navigates there with the guarded `next`, same-tab Stripe Checkout returns there (`useBillingOnboarding({ returnPath })`), and it forwards to `next` the moment readiness says the gate is open. Exits: "Self-host bex instead" (GitHub) and sign out.
+- **`PaymentSetupGate`** (`features/onboarding/components/`) wraps the `<Outlet/>` inside the persistent shell in `RootComponent` and redirects a still-refused workspace's billing manager to the wall from **any chrome route**. It is fail-open: only the server's definitive `paymentMethodOnboardingRequired: true` moves anyone; loading/errored/`canManageBilling=false` reads render the page (the API's 402 + `PaymentRequiredProvider` dialog remain the backstop).
+- **Never re-derive the gate client-side.** `paymentMethodOnboardingRequired` is computed in bex-api from the same `PaymentGate` call a create runs (true only in `all` mode and only for a workspace that is not bound/excluded/comped). Don't wall on `paymentMethodReady` or lifecycle — an excluded first-party workspace is unbound yet allowed.
 
 ## Internationalization (i18n)
 

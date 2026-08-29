@@ -44,6 +44,11 @@ export interface BillingReadiness {
   paymentMethodBrand: string;
   paymentMethodLast4: string;
   paymentMethodRequired: boolean;
+  /** This workspace cannot use any resource until a payment method is bound —
+   *  the `all` gate mode refuses it right now (not bound, not excluded, not
+   *  comped). Server-derived from the create gate itself (ADR075 D7), so the
+   *  sign-up wall (`/setup/payment`) mirrors exactly what the API enforces. */
+  paymentMethodOnboardingRequired: boolean;
   lifecycle: BillingLifecycle;
   tax: BillingTaxReadiness;
 }
@@ -73,10 +78,22 @@ export interface UseBillingOnboardingOptions {
   active?: boolean;
   pollInterval?: number;
   checkoutTarget?: "same-tab" | "new-tab";
+  /** Root-relative path (query allowed) Stripe sends the browser back to after
+   *  Checkout/Portal; `?billing=success|cancelled` is appended for Checkout.
+   *  Defaults to the billing page; the sign-up wall passes its own URL so a
+   *  new user lands back on the wall, not in the product. */
+  returnPath?: string;
 }
 
-function billingReturnURL(state?: "success" | "cancelled"): string {
-  const url = new URL("/billing", window.location.origin);
+/** The billing page is the default hosted-session return target. */
+export const DEFAULT_BILLING_RETURN_PATH = "/billing";
+
+export function billingReturnURL(
+  returnPath: string,
+  state?: "success" | "cancelled",
+  origin: string = window.location.origin,
+): string {
+  const url = new URL(returnPath, origin);
   if (state) url.searchParams.set("billing", state);
   return url.toString();
 }
@@ -85,6 +102,7 @@ export function useBillingOnboarding({
   active = true,
   pollInterval = 15_000,
   checkoutTarget = "same-tab",
+  returnPath = DEFAULT_BILLING_RETURN_PATH,
 }: UseBillingOnboardingOptions = {}): UseBillingOnboardingResult {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
@@ -118,6 +136,8 @@ export function useBillingOnboarding({
       paymentMethodBrand: raw.paymentMethodBrand ?? "",
       paymentMethodLast4: raw.paymentMethodLast4 ?? "",
       paymentMethodRequired: raw.paymentMethodRequired ?? false,
+      paymentMethodOnboardingRequired:
+        raw.paymentMethodOnboardingRequired ?? false,
       lifecycle: {
         status: raw.lifecycle?.status ?? "healthy",
         reason: raw.lifecycle?.reason ?? "",
@@ -154,8 +174,8 @@ export function useBillingOnboarding({
       const result = await createCheckout({
         variables: {
           workspaceId: currentWorkspaceId,
-          successUrl: billingReturnURL("success"),
-          cancelUrl: billingReturnURL("cancelled"),
+          successUrl: billingReturnURL(returnPath, "success"),
+          cancelUrl: billingReturnURL(returnPath, "cancelled"),
         },
       });
       const url = result.data?.createBillingCheckoutSession?.url;
@@ -172,7 +192,7 @@ export function useBillingOnboarding({
       toast.error(t("usage.billingCheckoutError"));
       setCheckoutBusy(false);
     }
-  }, [checkoutTarget, createCheckout, currentWorkspaceId, t]);
+  }, [checkoutTarget, createCheckout, currentWorkspaceId, returnPath, t]);
 
   const openPortal = useCallback(async () => {
     if (!currentWorkspaceId) return;
@@ -181,7 +201,7 @@ export function useBillingOnboarding({
       const result = await createPortal({
         variables: {
           workspaceId: currentWorkspaceId,
-          returnUrl: billingReturnURL(),
+          returnUrl: billingReturnURL(returnPath),
         },
       });
       const url = result.data?.createBillingPortalSession?.url;
@@ -191,7 +211,7 @@ export function useBillingOnboarding({
       toast.error(t("usage.billingPortalError"));
       setPortalBusy(false);
     }
-  }, [createPortal, currentWorkspaceId, t]);
+  }, [createPortal, currentWorkspaceId, returnPath, t]);
 
   return {
     readiness,
