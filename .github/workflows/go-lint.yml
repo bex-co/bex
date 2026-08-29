@@ -40,6 +40,8 @@ permissions:
 
 jobs:
   lint:
+    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

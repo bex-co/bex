@@ -16,6 +16,8 @@
 #  5. Self-hosted runner custody (ADR083, `.pm/DO_NOT_DO.md` #CI-RUNNERS): every
 #     job `runs-on` must target self-hosted labels and install tools without
 #     sudo, which the deliberately unprivileged runner account does not have.
+#  6. Public-fork isolation: any self-hosted job in a `pull_request` workflow
+#     must either reject fork PRs by repository identity or reject all PR events.
 #
 # Setting WORKFLOWS_DIR overrides the scanned tree; the self-test
 # (github-actions-validate.test.sh) points it at fixtures to exercise the
@@ -180,10 +182,54 @@ if [ -n "$sudo_workflows" ]; then
   exit 1
 fi
 
+# 6. Public-fork isolation. A public fork can control code reached by `make`,
+# package-manager, and test steps without editing the workflow itself. Every
+# self-hosted job in a pull_request workflow therefore has to prove one of two
+# things before GitHub schedules it: the PR head belongs to this repository, or
+# the job excludes pull_request events entirely. This is defense in depth with
+# the repository's "Require approval for all external contributors" setting;
+# neither control substitutes for the other.
+pull_request_workflows() {
+  grep -lE '^  pull_request:' "$WORKFLOWS_DIR"/*.yml 2>/dev/null || true
+}
+
+unguarded_pr_jobs() {
+  local wf
+  for wf in $(pull_request_workflows); do
+    awk -v file="$wf" '
+      function check_job() {
+        if (job == "" || block !~ /\n    runs-on:/) return
+        same_repository = block ~ /github\.event\.pull_request\.head\.repo\.full_name[[:space:]]*==[[:space:]]*github\.repository/
+        excludes_pr = block ~ /github\.event_name[[:space:]]*!=[[:space:]]*[^[:space:]]*pull_request/
+        if (!same_repository && !excludes_pr) print file ":" job
+      }
+      /^jobs:[[:space:]]*$/ { in_jobs = 1; next }
+      in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ {
+        check_job()
+        job = $1
+        sub(/:$/, "", job)
+        block = "\n" $0
+        next
+      }
+      in_jobs && job != "" { block = block "\n" $0 }
+      END { check_job() }
+    ' "$wf"
+  done
+}
+
+unguarded_fork_jobs="$(unguarded_pr_jobs)"
+if [ -n "$unguarded_fork_jobs" ]; then
+  echo "FAIL: self-hosted jobs reachable from pull_request must reject public fork heads:" >&2
+  printf '  %s\n' $unguarded_fork_jobs >&2
+  echo "      Require github.event.pull_request.head.repo.full_name == github.repository," >&2
+  echo "      or explicitly exclude pull_request events from the job." >&2
+  exit 1
+fi
+
 # The remaining checks pin the canonical tree's reviewed inventory + deploy.yml
 # wiring; they don't apply to a fixture dir, so stop here under an override.
 if [ "$canonical_tree" -eq 0 ]; then
-  echo "PASS: third-party refs SHA-pinned, Node 20 absent, self-hosted runner custody intact (fixture: $WORKFLOWS_DIR)"
+  echo "PASS: third-party refs SHA-pinned, Node 20 absent, self-hosted runner custody and public-fork isolation intact (fixture: $WORKFLOWS_DIR)"
   exit 0
 fi
 
@@ -265,4 +311,4 @@ if [ "$(grep -Rh 'self-hosted' .github/workflows lego/operator/.github/workflows
   exit 1
 fi
 
-echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, rootless self-hosted runner custody intact"
+echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, rootless self-hosted runner custody and public-fork isolation intact"
