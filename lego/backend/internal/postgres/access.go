@@ -25,24 +25,21 @@ package postgres
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
-	"regexp"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
-
-// pgRoleName matches a valid unquoted PostgreSQL role name: a lowercase letter
-// or underscore, then lowercase letters/digits/underscores. Enforced so a role
-// never needs double-quoting and can't be an injection vector.
-var pgRoleName = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 
 // --- IP allowlist ---
 
@@ -105,7 +102,7 @@ func (s *Service) ListUsers(ctx context.Context, name string) ([]PostgresUserVie
 }
 
 // CreateUser adds a managed login role: it generates a password into a
-// per-user basic-auth Secret ("<db>-user-<role>") and records the role on the
+// generation-specific per-user basic-auth Secret and records the role on the
 // Database (spec.users), which the operator projects to CNPG's managed roles.
 // The password is returned once and never logged.
 func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUserResult, error) {
@@ -123,8 +120,8 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanCreate, d); err != nil {
 		return CreateUserResult{}, err
 	}
-	if !pgRoleName.MatchString(role) {
-		return CreateUserResult{}, fmt.Errorf("%w: role must match %s", core.ErrBadRequest, pgRoleName.String())
+	if !appv1alpha1.ValidPostgresIdentifier(role) {
+		return CreateUserResult{}, fmt.Errorf("%w: role must be a lowercase PostgreSQL identifier of at most 63 bytes", core.ErrBadRequest)
 	}
 	orig := d.DeepCopy()
 	for _, u := range d.Spec.Users {
@@ -136,7 +133,25 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 	if err != nil {
 		return CreateUserResult{}, err
 	}
-	secretName := fmt.Sprintf("%s-user-%s", name, role)
+
+	// Earlier releases used a deterministic <db>-user-<role> name and silently
+	// adopted it when a failed delete left the Secret behind. Remove that legacy
+	// credential before recreating the role. Roles containing underscores could
+	// never have produced a valid legacy Kubernetes Secret name, so there is
+	// nothing to clean up for those names.
+	legacySecretName := fmt.Sprintf("%s-user-%s", name, role)
+	if len(validation.IsDNS1123Subdomain(legacySecretName)) == 0 {
+		legacy := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: legacySecretName, Namespace: d.Namespace}}
+		if err := s.Client.Delete(ctx, legacy); err != nil && !apierrors.IsNotFound(err) {
+			return CreateUserResult{}, err
+		}
+	}
+
+	// A distinct Secret per issuance keeps concurrent creators and abandoned
+	// attempts from overwriting the credential referenced by the successful CR
+	// patch. The digest exposes no useful password material: pw has 192 random
+	// bits and only a 128-bit prefix is used as a Kubernetes-safe generation id.
+	secretName := postgresUserSecretName(name, pw)
 	sec := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: d.Namespace},
 		Type:       corev1.SecretTypeBasicAuth, // CNPG passwordSecret expects username/password
@@ -145,12 +160,19 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 			"password": []byte(pw),
 		},
 	}
-	if err := s.Client.Create(ctx, sec); err != nil && !apierrors.IsAlreadyExists(err) {
+	if err := s.Client.Create(ctx, sec); err != nil {
 		return CreateUserResult{}, err
 	}
 	d.Spec.Users = append(d.Spec.Users, appv1alpha1.DatabaseUser{Name: role, SecretName: secretName})
+	d.Spec.DeletedUsers = removePostgresUserTombstone(d.Spec.DeletedUsers, role)
 	resourcemeta.Touch(d, s.Now())
-	if err := s.Client.Patch(ctx, d, client.MergeFrom(orig)); err != nil {
+	// The resource-version precondition makes exactly one concurrent creator the
+	// winner; a loser removes only its generation-specific Secret below.
+	patch := client.MergeFromWithOptions(orig, client.MergeFromWithOptimisticLock{})
+	if err := s.Client.Patch(ctx, d, patch); err != nil {
+		if cleanupErr := s.Client.Delete(ctx, sec); cleanupErr != nil && !apierrors.IsNotFound(cleanupErr) {
+			return CreateUserResult{}, errors.Join(err, fmt.Errorf("clean up unreferenced postgres user Secret: %w", cleanupErr))
+		}
 		return CreateUserResult{}, err
 	}
 	s.RecordDatabaseEffect(ctx, d, core.DatabaseCredentialsCreated)
@@ -180,21 +202,42 @@ func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
 		return core.ErrNotFound
 	}
 	secretName := d.Spec.Users[idx].SecretName
-	d.Spec.Users = append(d.Spec.Users[:idx], d.Spec.Users[idx+1:]...)
-	// Record the tombstone so the operator drops the live PostgreSQL role (codex #8).
-	d.Spec.DeletedUsers = append(d.Spec.DeletedUsers, role)
-	resourcemeta.Touch(d, s.Now())
-	if err := s.Client.Patch(ctx, d, client.MergeFrom(orig)); err != nil {
-		return err
-	}
+	// Delete the credential first so a transient Secret deletion failure leaves
+	// spec.users intact and the whole revocation can be retried. If the later CR
+	// patch fails, retrying tolerates the already-absent Secret and completes the
+	// tombstone write.
 	if secretName != "" {
 		sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: d.Namespace}}
 		if err := s.Client.Delete(ctx, sec); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
+	d.Spec.Users = append(d.Spec.Users[:idx], d.Spec.Users[idx+1:]...)
+	// Record the tombstone so the operator drops the live PostgreSQL role (codex #8).
+	d.Spec.DeletedUsers = append(d.Spec.DeletedUsers, role)
+	resourcemeta.Touch(d, s.Now())
+	// Do not erase a concurrent user/tombstone update with this full-list patch.
+	patch := client.MergeFromWithOptions(orig, client.MergeFromWithOptimisticLock{})
+	if err := s.Client.Patch(ctx, d, patch); err != nil {
+		return err
+	}
 	s.RecordDatabaseEffect(ctx, d, core.DatabaseCredentialsDeleted)
 	return nil
+}
+
+func postgresUserSecretName(databaseName, password string) string {
+	digest := sha256.Sum256([]byte(password))
+	return fmt.Sprintf("%s-user-%x", databaseName, digest[:16])
+}
+
+func removePostgresUserTombstone(tombstones []string, role string) []string {
+	kept := tombstones[:0]
+	for _, tombstone := range tombstones {
+		if tombstone != role {
+			kept = append(kept, tombstone)
+		}
+	}
+	return kept
 }
 
 // generatePassword returns a URL-safe 24-byte random password (same scheme the
