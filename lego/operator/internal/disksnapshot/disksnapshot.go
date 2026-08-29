@@ -172,6 +172,11 @@ func clearTree(root string) error {
 }
 
 func extractTree(archive *tar.Reader, root string) error {
+	rooted, err := os.OpenRoot(root)
+	if err != nil {
+		return fmt.Errorf("open extraction root: %w", err)
+	}
+	defer func() { _ = rooted.Close() }()
 	for {
 		header, err := archive.Next()
 		if errors.Is(err, io.EOF) {
@@ -184,20 +189,27 @@ func extractTree(archive *tar.Reader, root string) error {
 		if err != nil {
 			return err
 		}
+		name, err := filepath.Rel(root, target)
+		if err != nil {
+			return err
+		}
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, header.FileInfo().Mode().Perm()); err != nil {
+			if err := rooted.MkdirAll(name, header.FileInfo().Mode().Perm()); err != nil {
 				return err
 			}
 		case tar.TypeSymlink:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			if err := rooted.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 				return err
 			}
-			if err := os.Symlink(header.Linkname, target); err != nil {
+			// os.Root rejects absolute link targets and any relative target that
+			// escapes root. Later writes through a symlink are constrained by the
+			// same rooted handle, closing both forms of tar extraction escape.
+			if err := rooted.Symlink(header.Linkname, name); err != nil {
 				return err
 			}
 		case tar.TypeReg:
-			if err := writeFile(target, archive, header.FileInfo().Mode().Perm()); err != nil {
+			if err := writeFile(rooted, name, archive, header.FileInfo().Mode().Perm()); err != nil {
 				return err
 			}
 		default:
@@ -205,18 +217,18 @@ func extractTree(archive *tar.Reader, root string) error {
 			// as its parent directory; a tenant filesystem that needs them is
 			// outside what a file-level snapshot can promise, and inventing a
 			// device node from an archive is worse than not having one.
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			if err := rooted.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 				return err
 			}
 		}
 	}
 }
 
-func writeFile(target string, src io.Reader, mode fs.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+func writeFile(root *os.Root, name string, src io.Reader, mode fs.FileMode) error {
+	if err := root.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+	file, err := root.OpenFile(name, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 	if err != nil {
 		return err
 	}

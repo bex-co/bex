@@ -58,9 +58,9 @@ type fakeStore struct {
 func newFakeStore() *fakeStore {
 	return &fakeStore{
 		rows: map[[2]string]store.NotificationSettings{}, recipients: map[string][]store.NotifyRecipient{},
-		devices: map[[3]string]store.DevicePushSubscription{},
+		devices:  map[[3]string]store.DevicePushSubscription{},
 		browsers: map[[3]string]store.WebPushSubscription{},
-		push:    map[[2]string][]store.PushNotification{},
+		push:     map[[2]string][]store.PushNotification{},
 	}
 }
 
@@ -603,19 +603,31 @@ func TestDeployEmailContent(t *testing.T) {
 		// the View logs CTA — not a paragraph plus a separate trailing link.
 		want := "We encountered an error during the deploy process for \"web\". " +
 			"This means your deploy didn't complete successfully and your latest changes may not be live.\n\n" +
-			"Commit abc1234\n" + commit + "\n" +
+			"Commit abc1234 on github.com\n" + commit + "\n" +
 			"https://github.com/acme/web/commit/abc1234def5678\n\n" +
 			"View logs:\n" + logsURL + "\n"
 		if got := msg.Text(); got != want {
 			t.Errorf("text with commit reference drift:\n got %q\nwant %q", got, want)
 		}
 		html := msg.HTML()
-		if !strings.Contains(html, `href="https://github.com/acme/web/commit/abc1234def5678"`) || !strings.Contains(html, ">abc1234</a>") {
+		if !strings.Contains(html, `href="https://github.com/acme/web/commit/abc1234def5678"`) || !strings.Contains(html, ">abc1234 on github.com</a>") {
 			t.Errorf("HTML commit SHA not linked:\n%s", html)
 		}
 		// The reference is not duplicated as a "View commit" line.
 		if strings.Contains(html, "View commit") {
 			t.Errorf("commit link duplicated as a separate line:\n%s", html)
+		}
+	})
+
+	t.Run("self-hosted forge hostname is visible in the trusted email label", func(t *testing.T) {
+		_, msg := deployEmail("web", deployMailFailed, deployDetails{
+			commitMessage: commit,
+			commitSHA:     "abc1234def5678",
+			repoURL:       "https://attacker.example/acme/web",
+		}, logsURL)
+		if !strings.Contains(msg.Text(), "Commit abc1234 on attacker.example") ||
+			!strings.Contains(msg.HTML(), ">abc1234 on attacker.example</a>") {
+			t.Fatalf("commit link hid its destination hostname:\n%s", msg.HTML())
 		}
 	})
 

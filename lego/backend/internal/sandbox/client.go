@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -72,7 +73,14 @@ type Client struct {
 func NewClient(baseURL string) *Client {
 	return &Client{
 		BaseURL: baseURL,
-		HTTP:    &http.Client{Timeout: 330 * time.Second},
+		HTTP: &http.Client{
+			Timeout: 330 * time.Second,
+			// The workspace tenant key is a capability for one OpenSandbox
+			// namespace. Never forward it through an upstream-controlled redirect.
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
 	}
 }
 
@@ -181,7 +189,7 @@ func (c *Client) Create(ctx context.Context, tenantKey, image string, entrypoint
 // Get returns a sandbox's durable OpenSandbox representation. A missing object
 // remains distinguishable so the service can map it to one non-enumerating 404.
 func (c *Client) Get(ctx context.Context, tenantKey, id string) (osSandbox, error) {
-	data, code, err := c.do(ctx, http.MethodGet, "/sandboxes/"+id, tenantKey, nil)
+	data, code, err := c.do(ctx, http.MethodGet, "/sandboxes/"+url.PathEscape(id), tenantKey, nil)
 	if err != nil {
 		return osSandbox{}, err
 	}
@@ -224,17 +232,17 @@ func (c *Client) List(ctx context.Context, tenantKey string) ([]osSandbox, error
 
 // Suspend pauses a sandbox (OpenSandbox rootfs snapshot, ADR042 D5).
 func (c *Client) Suspend(ctx context.Context, tenantKey, id string) error {
-	return c.expectOK(c.do(ctx, http.MethodPost, "/sandboxes/"+id+"/pause", tenantKey, nil))
+	return c.expectOK(c.do(ctx, http.MethodPost, "/sandboxes/"+url.PathEscape(id)+"/pause", tenantKey, nil))
 }
 
 // Resume wakes a suspended sandbox.
 func (c *Client) Resume(ctx context.Context, tenantKey, id string) error {
-	return c.expectOK(c.do(ctx, http.MethodPost, "/sandboxes/"+id+"/resume", tenantKey, nil))
+	return c.expectOK(c.do(ctx, http.MethodPost, "/sandboxes/"+url.PathEscape(id)+"/resume", tenantKey, nil))
 }
 
 // Terminate deletes a sandbox.
 func (c *Client) Terminate(ctx context.Context, tenantKey, id string) error {
-	_, code, err := c.do(ctx, http.MethodDelete, "/sandboxes/"+id, tenantKey, nil)
+	_, code, err := c.do(ctx, http.MethodDelete, "/sandboxes/"+url.PathEscape(id), tenantKey, nil)
 	if err != nil {
 		return err
 	}

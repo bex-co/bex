@@ -768,20 +768,6 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	// codex round-9 #5: deleting a protected/ACL-bearing environment removes
-	// the same administrator governance boundary SetACL guards — member
-	// protection, network isolation, and the inbound-IP layer are all cleared
-	// on the way to the row delete, so a developer's can_create must not be
-	// enough to dismantle them. Elevate to can_manage (the relation SetACL
-	// requires) and assert it FRESH immediately before the destructive fan-out,
-	// so neither a stale cached positive nor a mid-flight revocation slips a
-	// protected environment through. A bare environment (no ACL state) keeps
-	// the historical developer-level delete.
-	if aclBearing(e) {
-		if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(e.TenantID)); err != nil {
-			return err
-		}
-	}
 	if err := s.clearEnvironmentMembers(ctx, e); err != nil {
 		return err
 	}
@@ -805,6 +791,12 @@ func aclBearing(e store.Environment) bool {
 // projects.Service.Delete's cascade removes it, after every member across
 // every child environment has already been cleared).
 func (s *Service) clearEnvironmentMembers(ctx context.Context, e store.Environment) error {
+	// Every caller of this shared teardown inherits the administrator boundary.
+	// Keeping the gate here prevents project deletion (and future cascade paths)
+	// from bypassing Delete's ACL-bearing elevation.
+	if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
+		return err
+	}
 	names, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 	if err != nil {
 		return err
@@ -854,6 +846,13 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
 	if err != nil {
+		return EnvironmentView{}, err
+	}
+	// Replacing membership can remove the projected isolation and inbound-IP
+	// layers from existing members. ACL-bearing environments are administrator-
+	// governed, so authorize before the store mutation (which is otherwise
+	// irreversible if the later CR projection fails).
+	if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
 		return EnvironmentView{}, err
 	}
 	moves, err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs)
@@ -961,6 +960,9 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 	if idx == nil {
 		return EnvironmentView{}, ErrEnvironmentsUnavailable
 	}
+	if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
+		return EnvironmentView{}, err
+	}
 	// Act inside the environment's OWN workspace: env group writes authorize
 	// against the context workspace, while the Database/KeyValue seams resolve
 	// it from the resource's own labels and are unaffected — binding it here
@@ -996,6 +998,18 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 		}
 	}
 	return s.toFullView(ctx, e)
+}
+
+// authorizeACLBearingMutation protects the administrator-owned ACL boundary at
+// the shared mutation seams rather than at individual public verbs. A fresh
+// check is required immediately before destructive membership work so a stale
+// cached can_manage decision cannot dismantle protected status, network
+// isolation, or the projected inbound-IP layer.
+func (s *Service) authorizeACLBearingMutation(ctx context.Context, e store.Environment) error {
+	if !aclBearing(e) {
+		return nil
+	}
+	return s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(e.TenantID))
 }
 
 // SetACL replaces an environment's full protected-environment ACL triple

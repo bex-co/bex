@@ -17,7 +17,15 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
+import {
+  access,
+  chmod,
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readFile,
+  rm,
+} from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -202,6 +210,29 @@ test("deliverBranch commits changes and pushes the branch with a head SHA", asyn
     git(remote, ["rev-parse", "bex-agent/session-1"]),
     delivery.headSha,
   );
+});
+
+test("deliverBranch never executes tenant-controlled Git hooks", async () => {
+  const { root, remote } = await bareRemote();
+  const cwd = path.join(root, "workspace");
+  await mkdir(cwd);
+  const config = baseConfig(cwd, { repoUrl: remote });
+  await ensureRepo(config);
+
+  const hooks = path.join(root, "tenant-hooks");
+  const marker = path.join(root, "hook-ran");
+  await mkdir(hooks);
+  const hook = path.join(hooks, "pre-commit");
+  await writeFile(hook, `#!/bin/sh\ntouch '${marker}'\nexit 1\n`);
+  await chmod(hook, 0o755);
+  // The agent controls .git/config and can point hooksPath anywhere it can
+  // write. The delivery wrapper's command-line override must win.
+  git(cwd, ["config", "core.hooksPath", hooks]);
+  await writeFile(path.join(cwd, "fix.txt"), "safe delivery\n");
+
+  const delivery = await deliverBranch(config);
+  assert.equal(delivery.pushed, true);
+  await assert.rejects(access(marker));
 });
 
 test("deliverBranch scans against the pre-agent remote OID after local base ref rewrite", async () => {

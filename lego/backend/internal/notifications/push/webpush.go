@@ -133,7 +133,7 @@ func NewWebPush(config WebPushConfig, options ...Option) (*WebPush, error) {
 		tr.DialContext = netutil.SafeDialContext(timeout)
 		tr.Proxy = nil
 		doer = &http.Client{
-			Timeout: timeout,
+			Timeout:   timeout,
 			Transport: tr,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
@@ -252,10 +252,18 @@ func validateEnvelope(title, body string, data EnvelopeData) error {
 	if data.Schema == "" || data.NotificationID == "" || data.Event == "" || data.Route == "" {
 		return &PayloadError{Field: "data", Reason: "required"}
 	}
-	if len(data.Route) > MaxRouteBytes || !strings.HasPrefix(data.Route, "/") || strings.HasPrefix(data.Route, "//") {
+	if !validSameOriginRoute(data.Route) {
 		return &PayloadError{Field: "route", Reason: "invalid"}
 	}
 	return nil
+}
+
+func validSameOriginRoute(route string) bool {
+	if len(route) > MaxRouteBytes || !strings.HasPrefix(route, "/") || strings.HasPrefix(route, "//") || strings.HasPrefix(route, `/\`) {
+		return false
+	}
+	parsed, err := url.ParseRequestURI(route)
+	return err == nil && !parsed.IsAbs() && parsed.Host == "" && !strings.Contains(route, `\`)
 }
 
 func classifyWebPushStatus(code int, retryAfter string) error {

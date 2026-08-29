@@ -9,4 +9,4 @@ runcmd:
   # pins the binary the verified installer downloads.
   - curl -fsSL -o /run/k3s-install.sh "https://raw.githubusercontent.com/k3s-io/k3s/${k3s_version}/install.sh"
   - printf '%s  %s\n' '${k3s_install_sha256}' /run/k3s-install.sh | sha256sum --check --strict
-  - INSTALL_K3S_VERSION=${k3s_version} sh /run/k3s-install.sh --disable traefik --write-kubeconfig-mode 644 --tls-san "$PUBIP"
+  - INSTALL_K3S_VERSION=${k3s_version} sh /run/k3s-install.sh --disable traefik --write-kubeconfig-mode 600 --tls-san "$PUBIP"

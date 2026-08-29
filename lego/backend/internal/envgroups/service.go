@@ -999,6 +999,13 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	if err != nil {
 		return err
 	}
+	// Linking and unlinking share the same resource-pair invariant. Authorizing
+	// each object independently is insufficient for a dual-workspace member:
+	// bare service names are workspace-local, so a mismatched pair could detach
+	// one workspace's App while mutating another workspace's group metadata.
+	if a.Labels[core.LabelTenant] != m.workspace {
+		return core.ErrForbidden
+	}
 	if err := s.detachFetched(ctx, gid, a); err != nil {
 		return err
 	}
