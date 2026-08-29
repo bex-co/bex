@@ -51,8 +51,16 @@ jobs:
       postgres:
         # Digest-pinned like every other image bex resolves (w7/m85): the
         # integration suite runs real SQL against this container, so a retagged
-        # postgres:17 changes what the backend is certified against.
-        image: postgres:17@sha256:e38411452a464af89e5adadb8d223bf53b898d47d6ef918b2d58c08707350449
+        # postgres:17 changes what the backend is certified against. Pinned to
+        # the linux/arm64/v8 manifest specifically, not the multi-arch index —
+        # this runner is self-hosted ARM64 (runs-on above), and GitHub Actions'
+        # `services:` container pull does not reliably resolve an OCI index to
+        # the host's own platform (it failed here with the entrypoint script
+        # exec-ing with EINVAL, the signature of a wrong-arch binary, even
+        # though the index digest we previously pinned did include an arm64/v8
+        # manifest). Pinning the platform-specific digest removes that
+        # resolution step entirely.
+        image: postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296
         env:
           POSTGRES_PASSWORD: pw
         options: >-
