@@ -79,6 +79,8 @@ derive() {
   OPENFGA_PORT=$((63000 + off))
   OPENBAO_PORT=$((64000 + off))
   SANDBOX_EXEC_PORT=$((65000 + off))
+  AGENT_HOST_API_HOST="bex-dev-host-api.kube-system.svc.cluster.local"
+  AGENT_HOST_API_PORT=8091
   KUBECONFIG_FILE="$ENVDIR/.kubeconfig"
   AGENTDIR="$ENVDIR/.agent"
 
@@ -119,6 +121,8 @@ AGENT_ATTACH_PORT=$AGENT_ATTACH_PORT
 OPENFGA_PORT=$OPENFGA_PORT
 OPENBAO_PORT=$OPENBAO_PORT
 SANDBOX_EXEC_PORT=$SANDBOX_EXEC_PORT
+AGENT_HOST_API_HOST=$AGENT_HOST_API_HOST
+AGENT_HOST_API_PORT=$AGENT_HOST_API_PORT
 EOF
 }
 
@@ -141,6 +145,10 @@ render() {
     -e "s/__SANDBOX_NS__/${SANDBOX_NS:-}/g" \
     -e "s|__OPENFGA_KEY__|${OPENFGA_KEY:-}|g" \
     -e "s|__BAO_DEV_TOKEN__|${BAO_DEV_TOKEN:-}|g" \
+    -e "s|__HOST_DOCKER_IPV4__|${HOST_DOCKER_IPV4:-}|g" \
+    -e "s|__AGENT_HOST_API_HOST__|${AGENT_HOST_API_HOST:-}|g" \
+    -e "s|__AGENT_HOST_API_PORT__|${AGENT_HOST_API_PORT:-}|g" \
+    -e "s|__HOST_API_REVISION__|${HOST_API_REVISION:-0}|g" \
     -e "s|__CONFIG_REVISION__|${CONFIG_REVISION:-0}|g" \
     "$1"
 }
@@ -163,8 +171,35 @@ kill_if_running() {
     pid="$(cat "$pidfile")"
     pkill -P "$pid" 2>/dev/null || true # the forward()'d loop's current kubectl child
     kill "$pid" 2>/dev/null || true
+    # Do not race the replacement process against a listener that is still
+    # draining after SIGTERM. This matters most when agent-up restarts bex-api:
+    # its public listener can close before the control-plane :8091 listener,
+    # making the first few replacements die with an avoidable address-in-use.
+    local _
+    for _ in $(seq 1 100); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.1
+    done
   fi
   rm -f "$pidfile"
+}
+
+# A failed start can briefly leave an untracked bex-api holding one of dev-N's
+# two listeners. Sweep only this environment's uniquely pathed binary before a
+# replacement starts; another dev-M process cannot match this path.
+kill_dev_api_processes() {
+  local pids attempt
+  pids="$(pgrep -f "$ENVDIR/bin/bex-api" 2>/dev/null || true)"
+  [ -z "$pids" ] && return
+  # shellcheck disable=SC2086 # pgrep emits a whitespace-separated PID list.
+  kill $pids 2>/dev/null || true
+  for attempt in $(seq 1 100); do
+    pids="$(pgrep -f "$ENVDIR/bin/bex-api" 2>/dev/null || true)"
+    [ -z "$pids" ] && return
+    sleep 0.1
+  done
+  echo "error: an existing dev-$N bex-api process did not stop" >&2
+  return 1
 }
 
 # forward NAME SERVICE LOCALPORT:REMOTEPORT [NAMESPACE] — a self-healing
@@ -200,6 +235,25 @@ forward() {
     done" \
     >"$ENVDIR/logs/pf-$name.log" 2>&1 &
   echo $! >"$ENVDIR/.pids/pf-$name.pid"
+}
+
+refresh_agent_gateway_forwards() {
+  forward agent-attach bex-ssh-gateway "$AGENT_ATTACH_PORT:8083" bex-system
+  forward sandbox-exec bex-ssh-gateway "$SANDBOX_EXEC_PORT:8081" bex-system
+
+  local attempt attach_code exec_code
+  for attempt in $(seq 1 50); do
+    attach_code="$(curl -s -o /dev/null -w '%{http_code}' \
+      "http://localhost:$AGENT_ATTACH_PORT/healthz" 2>/dev/null || true)"
+    exec_code="$(curl -s -o /dev/null -w '%{http_code}' \
+      "http://localhost:$SANDBOX_EXEC_PORT/healthz" 2>/dev/null || true)"
+    if [ "$attach_code" = 200 ] && [ "$exec_code" = 200 ]; then
+      return
+    fi
+    sleep 0.2
+  done
+  echo "error: ssh-gateway attach/exec forwards did not become healthy" >&2
+  return 1
 }
 
 # dsn CLUSTER DB — postgres:// DSN for a CNPG cluster's app user, in-cluster.
@@ -387,12 +441,28 @@ agent_secret() {
   cat "$f"
 }
 
+# Resolve the host-reachable IPv4 from the CAPD control-plane container. A
+# host-network proxy on that node can reach it even though ordinary Pods cannot;
+# those Pods use the proxy's stable kube-system Service instead.
+agent_resolve_host_docker() {
+  local node
+  node="$(kubectl get nodes -l node-role.kubernetes.io/control-plane \
+    -o jsonpath='{.items[0].metadata.name}')"
+  HOST_DOCKER_IPV4="$(docker exec "$node" getent ahostsv4 host.docker.internal 2>/dev/null \
+    | awk 'NR == 1 { print $1 }')"
+  [ -n "$HOST_DOCKER_IPV4" ] || {
+    echo "error: could not resolve host.docker.internal to IPv4 from CAPD node $node" >&2
+    exit 1
+  }
+}
+
 # start_api — the single definition of how this environment runs bex-api. Both
 # `up` and `agent-up` call it; agent-up only adds variables, so there is one
 # place where the process environment is described.
 start_api() {
   echo "==> starting bex-api on :$BEX_API_PORT (namespace $DEV_NS)"
   kill_if_running "$ENVDIR/.pids/bex-api.pid"
+  kill_dev_api_processes
 
   # Base environment. Authz and the control-plane API are BOTH insecure here:
   # unset BEX_OPENFGA_URL means allow-all, which is fine while the only client
@@ -455,9 +525,19 @@ start_api() {
   if [ -f "$AGENTDIR/github-app.env" ] && [ -f "$AGENTDIR/github-app.pem" ]; then
     # shellcheck disable=SC1091
     source "$AGENTDIR/github-app.env"
+    local github_var
+    for github_var in BEX_GITHUB_APP_ID BEX_GITHUB_APP_SLUG \
+      BEX_GITHUB_APP_CLIENT_ID BEX_GITHUB_APP_CLIENT_SECRET; do
+      if [ -z "${!github_var:-}" ]; then
+        echo "error: $AGENTDIR/github-app.env is missing $github_var" >&2
+        return 1
+      fi
+    done
     env_args+=(
       BEX_GITHUB_APP_ID="$BEX_GITHUB_APP_ID"
       BEX_GITHUB_APP_SLUG="$BEX_GITHUB_APP_SLUG"
+      BEX_GITHUB_APP_CLIENT_ID="$BEX_GITHUB_APP_CLIENT_ID"
+      BEX_GITHUB_APP_CLIENT_SECRET="$BEX_GITHUB_APP_CLIENT_SECRET"
       BEX_GITHUB_APP_PRIVATE_KEY="$(cat "$AGENTDIR/github-app.pem")"
     )
   else
@@ -478,7 +558,7 @@ start_api() {
       api_started=1
       break
     fi
-    echo "    bex-api start attempt $attempt hit a transient DB-forward failure; retrying..."
+    echo "    bex-api start attempt $attempt hit a transient listener/startup failure; retrying..."
     sleep 2
   done
   if [ "$api_started" -ne 1 ]; then
@@ -737,6 +817,76 @@ cmd_status() {
     no "bex-api not reachable (:$BEX_API_PORT healthz=$api_code)"
   fi
 
+  if agent_enabled; then
+    local openfga_body openbao_body opensandbox_body gateway_ready
+    openfga_body="$(curl -fsS -H "Authorization: Bearer $(cat "$AGENTDIR/openfga.key" 2>/dev/null || true)" \
+      "http://localhost:$OPENFGA_PORT/stores?page_size=100" 2>/dev/null || true)"
+    if printf '%s' "$openfga_body" | grep -Eq '"name"[[:space:]]*:[[:space:]]*"bex"'; then
+      ok "OpenFGA reachable with store 'bex'"
+    else
+      no "OpenFGA unavailable or store 'bex' missing (:$OPENFGA_PORT; re-run agent-up)"
+    fi
+
+    openbao_body="$(curl -fsS "http://localhost:$OPENBAO_PORT/v1/sys/health" 2>/dev/null || true)"
+    if printf '%s' "$openbao_body" | tr -d '[:space:]' | grep -q '"sealed":false'; then
+      ok "OpenBao reachable and unsealed"
+    else
+      no "OpenBao unavailable or sealed (:$OPENBAO_PORT; check deploy/openbao in $DEV_AUTH_NS)"
+    fi
+
+    opensandbox_body="$(curl -fsS "http://localhost:$OPENSANDBOX_PORT/health" 2>/dev/null || true)"
+    if printf '%s' "$opensandbox_body" | tr -d '[:space:]' | grep -q '"status":"healthy"'; then
+      ok "OpenSandbox lifecycle server healthy"
+    else
+      no "OpenSandbox unhealthy (:$OPENSANDBOX_PORT; check opensandbox-system logs)"
+    fi
+
+    if [ -f "$KUBECONFIG_FILE" ] \
+      && kubectl get crd ciliumnetworkpolicies.cilium.io batchsandboxes.sandbox.opensandbox.io >/dev/null 2>&1; then
+      ok "agent-session CRDs established (CiliumNetworkPolicy + BatchSandbox)"
+    else
+      no "agent-session CRDs missing (re-run agent-up)"
+    fi
+
+    if kubectl -n opensandbox-system exec deploy/opensandbox-server -- \
+      python -c "import socket; s=socket.create_connection(('$AGENT_HOST_API_HOST',$AGENT_HOST_API_PORT),3); s.close()" \
+      >/dev/null 2>&1; then
+      ok "OpenSandbox reverse hop reaches host bex-api via Service (:$AGENT_HOST_API_PORT -> :$BEX_CP_PORT)"
+    else
+      no "OpenSandbox cannot reach host bex-api through kube-system/bex-dev-host-api"
+    fi
+
+    gateway_ready="$(kubectl -n bex-system get deploy bex-ssh-gateway \
+      -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)"
+    if [ "${gateway_ready:-0}" -ge 1 ] \
+      && [ "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$AGENT_ATTACH_PORT/healthz" 2>/dev/null)" = 200 ] \
+      && [ "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$SANDBOX_EXEC_PORT/healthz" 2>/dev/null)" = 200 ]; then
+      ok "ssh-gateway ready (attach :$AGENT_ATTACH_PORT, exec :$SANDBOX_EXEC_PORT)"
+    else
+      no "ssh-gateway not ready or an aux forward is down (check bex-system/bex-ssh-gateway)"
+    fi
+
+    # Capabilities is tenant-authorized and intentionally cannot be probed with
+    # the unbound platform bootstrap token. Reuse the live verifier's standard
+    # inputs so status checks the ACTUAL public gate rather than inferring it
+    # from process environment. The token is never printed.
+    if [ -n "${BEX_API_TOKEN:-}" ]; then
+      local caps_url caps_body
+      caps_url="http://localhost:$BEX_API_PORT/v1/agent-sessions/capabilities"
+      if [ -n "${BEX_VERIFY_OWNER_ID:-}" ]; then
+        caps_url="$caps_url?ownerId=$BEX_VERIFY_OWNER_ID"
+      fi
+      caps_body="$(curl -fsS -H "Authorization: Bearer $BEX_API_TOKEN" "$caps_url" 2>/dev/null || true)"
+      if printf '%s' "$caps_body" | tr -d '[:space:]' | grep -q '"enabled":true'; then
+        ok "agent-session capabilities.enabled=true"
+      else
+        no "agent-session capabilities gate is false or unauthorized (check token/owner and bex-api agent env)"
+      fi
+    else
+      no "capabilities check needs BEX_API_TOKEN (workspace member with can_operate; optional BEX_VERIFY_OWNER_ID)"
+    fi
+  fi
+
   echo
   if [ "$inv_fail" -eq 0 ]; then
     echo "verification inventory: ALL GREEN"
@@ -796,6 +946,8 @@ cmd_agent_up() {
   OPENFGA_KEY="$(agent_secret openfga.key)"
   BAO_DEV_TOKEN="$(agent_secret bao.token)"
   CONFIG_REVISION="$(date -u +%Y%m%d%H%M%S)"
+  agent_resolve_host_docker
+  HOST_API_REVISION="$HOST_DOCKER_IPV4-$BEX_CP_PORT"
 
   echo "==> building the agent-session images (arm64-native where the pinned digest is not)"
   agent_build_images
@@ -814,6 +966,10 @@ cmd_agent_up() {
 
   echo "==> tenant-namespace ClusterRoles (shared; the RoleBindings bex-api stamps point at these)"
   kubectl apply -f deploy/gitops/base/tenant-namespace-clusterroles.yaml >/dev/null
+
+  echo "==> reverse hop Service (cluster Pods -> host bex-api :$BEX_CP_PORT)"
+  render "$AGENT_TEMPLATES/host-api.yaml" | kubectl apply -f - >/dev/null
+  kubectl -n kube-system rollout status deploy/bex-dev-host-api-proxy --timeout=180s
 
   # Inert CiliumNetworkPolicy CRD. Without it EVERY agent session fails at
   # dispatch with `no matches for kind "CiliumNetworkPolicy"`, because bex-api
@@ -863,8 +1019,7 @@ cmd_agent_up() {
 
   echo "==> port-forwards"
   forward opensandbox opensandbox-server "$OPENSANDBOX_PORT:8077" opensandbox-system
-  forward agent-attach bex-ssh-gateway "$AGENT_ATTACH_PORT:8083" bex-system
-  forward sandbox-exec bex-ssh-gateway "$SANDBOX_EXEC_PORT:8081" bex-system
+  refresh_agent_gateway_forwards
   forward openfga openfga "$OPENFGA_PORT:8080"
   forward openbao openbao "$OPENBAO_PORT:8200"
   sleep 4
@@ -884,10 +1039,11 @@ dev-$N agent-session leg is up:
   agent attach: http://localhost:$AGENT_ATTACH_PORT (browser SSE; BEX_AGENT_SESSION_GATEWAY_URL)
   openfga:      http://localhost:$OPENFGA_PORT   openbao: http://localhost:$OPENBAO_PORT
 
-Still required before a session can run (both are per-workspace, not per-env):
+Still required before a real repository session can run (per workspace):
   1. a GitHub App connection — stage real credentials in
-     $AGENTDIR/github-app.env (BEX_GITHUB_APP_ID/_SLUG) + github-app.pem, re-run
-     'agent-up'; the throwaway identity cannot mint installation tokens.
+     $AGENTDIR/github-app.env (BEX_GITHUB_APP_ID/_SLUG/_CLIENT_ID/
+     _CLIENT_SECRET) + github-app.pem, re-run 'agent-up', then connect the App;
+     the throwaway identity cannot complete OAuth or mint installation tokens.
   2. the BYO model key (ADR062):
      bao kv put tenants/default/agent-sessions/<workspaceId>/model-key \\
        BEX_AGENT_MODEL_API_KEY=<key>
@@ -1057,6 +1213,11 @@ cmd_agent_stub() {
     }}}
   }" >/dev/null
   kubectl -n bex-system rollout status deploy/bex-ssh-gateway --timeout=180s
+  # A kubectl port-forward is bound to one Pod, not the Service forever. The
+  # gateway rollout above invalidates both existing tunnels; restart them now
+  # so the first completer/attach call cannot be the one that discovers the
+  # dead Pod and leaves a session waiting for the next reconciliation pass.
+  refresh_agent_gateway_forwards
 
   cat <<EOF
 
@@ -1077,14 +1238,15 @@ cmd_agent_stub_off() {
   refresh_kubeconfig
   kubectl -n "$DEV_NS" delete deploy/model-stub svc/model-stub \
     configmap/model-stub-src secret/model-stub-tls --ignore-not-found >/dev/null
+  # Recreate the Deployment from its template. `kubectl apply` alone preserves
+  # fields added by the strategic stub patch, which would leave a dangling CA
+  # mount after its ConfigMap is removed.
+  kubectl -n bex-system delete deploy bex-ssh-gateway --ignore-not-found --wait=true >/dev/null
   kubectl -n bex-system delete configmap model-stub-ca --ignore-not-found >/dev/null
-  # Re-render the gateway from its template: that is the definition without the
-  # hostAlias/CA, so this cannot drift from what agent-up installs.
   CONFIG_REVISION="$(date -u +%Y%m%d%H%M%S)"
   render "$AGENT_TEMPLATES/ssh-gateway.yaml" | kubectl apply -f - >/dev/null
-  kubectl -n bex-system patch deploy bex-ssh-gateway --type json \
-    -p '[{"op":"remove","path":"/spec/template/spec/hostAliases"}]' >/dev/null 2>&1 || true
   kubectl -n bex-system rollout status deploy/bex-ssh-gateway --timeout=180s
+  refresh_agent_gateway_forwards
   echo "model stub removed; the gateway is back on the system trust store."
 }
 
@@ -1105,7 +1267,13 @@ cmd_agent_down() {
   done
   helm uninstall opensandbox-controller -n opensandbox-system >/dev/null 2>&1 || true
   kubectl delete ns opensandbox-system --ignore-not-found >/dev/null
+  kubectl -n "$DEV_NS" delete deploy/model-stub svc/model-stub \
+    configmap/model-stub-src secret/model-stub-tls --ignore-not-found >/dev/null
   kubectl -n bex-system delete deploy bex-ssh-gateway --ignore-not-found >/dev/null
+  kubectl -n bex-system delete configmap model-stub-ca --ignore-not-found >/dev/null
+  kubectl -n kube-system delete deploy bex-dev-host-api-proxy --ignore-not-found >/dev/null
+  kubectl -n kube-system delete service bex-dev-host-api --ignore-not-found >/dev/null
+  kubectl -n kube-system delete configmap bex-dev-host-api-proxy --ignore-not-found >/dev/null
   kubectl -n bex-system delete secret bex-dev-gateway bex-dev-gateway-hostkey --ignore-not-found >/dev/null
   kubectl -n "$DEV_AUTH_NS" delete deploy openfga openbao --ignore-not-found >/dev/null
   kubectl -n "$DEV_AUTH_NS" delete svc openfga openbao --ignore-not-found >/dev/null

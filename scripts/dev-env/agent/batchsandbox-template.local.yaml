@@ -1,11 +1,13 @@
 # LOCAL-DEV BatchSandbox template for `dev-env.sh N agent-up`.
 #
 # Sibling of deploy/opensandbox/batchsandbox-template.yaml with the three
-# hosted-only scheduling constraints dropped, because the CAPD mock cluster has
-# none of them:
+# hosted-only scheduling constraints adjusted for the CAPD mock cluster:
 #   - runtimeClassName: gvisor   (no runsc handler on a kind node)
 #   - nodeSelector bex.co/pool=sandbox
 #   - toleration     bex.co/sandbox
+# The local replacement pins the pod to the control-plane node. Under
+# OrbStack+Calico the in-cluster gateway is pinned there too, and cross-node
+# Pod routing is unreliable; co-location keeps gateway -> driver :8787 stable.
 #
 # The `app.bex.co/regime: sandbox` label is KEPT: bex-api's namespace
 # reconciler, the gateway's pod checks, and the sandbox NetworkPolicies all key
@@ -22,3 +24,8 @@ spec:
     spec:
       automountServiceAccountToken: false
       restartPolicy: Never
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule

@@ -56,11 +56,11 @@ mode = "direct"
 
 # Multi-tenant mode (OSEP-0014, ADR042 D4): each caller's OPEN-SANDBOX-API-KEY
 # resolves to a `<ws>-sandbox` namespace through bex-api's control-plane
-# endpoint. Locally bex-api is a HOST process, so the endpoint is reached over
-# OrbStack's host.docker.internal rather than a cluster Service.
+# endpoint. Locally a kube-system Service fronts a control-plane host-network
+# bridge to the host-run bex-api process.
 [tenants]
 provider = "http"
-endpoint = "http://host.docker.internal:__BEX_CP_PORT__/v1/sandbox-tenants"
+endpoint = "http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/sandbox-tenants"
 max_stale_seconds = 60
 timeout_seconds = 5
 auth_header = "Authorization"
