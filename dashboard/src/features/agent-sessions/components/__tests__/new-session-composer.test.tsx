@@ -99,6 +99,13 @@ async function typeTask(user: ReturnType<typeof userEvent.setup>) {
   );
 }
 
+const ATTACHMENT_CONTROL_NAME =
+  /^(Add repository(?: or session)?|Mention a repository or session|Repository .+)$/;
+
+function attachmentControl() {
+  return screen.getByRole("button", { name: ATTACHMENT_CONTROL_NAME });
+}
+
 /**
  * Insert a repo mention through the @ toolbar. The picker is universal now, so
  * the repo is offered directly at the top level — one step, no category hop.
@@ -107,9 +114,7 @@ async function pickRepo(
   user: ReturnType<typeof userEvent.setup>,
   match: RegExp = /widgets/,
 ) {
-  await user.click(
-    screen.getByRole("button", { name: "Mention a repository or session" }),
-  );
+  await user.click(attachmentControl());
   await user.click(await screen.findByRole("option", { name: match }));
 }
 
@@ -192,9 +197,7 @@ describe("NewSessionComposer", () => {
     render(<NewSessionComposer />);
     await user.type(await screen.findByLabelText("Task"), "fix this");
 
-    await user.click(
-      screen.getByRole("button", { name: "Mention a repository or session" }),
-    );
+    await user.click(attachmentControl());
 
     expect(
       await screen.findByRole("option", { name: /Repositories/ }),
@@ -373,9 +376,7 @@ describe("NewSessionComposer", () => {
     await typeTask(user);
     await pickRepo(user);
 
-    await user.click(
-      screen.getByRole("button", { name: "Mention a repository or session" }),
-    );
+    await user.click(attachmentControl());
     await user.click(await screen.findByRole("option", { name: /Sessions/ }));
     await user.click(
       await screen.findByRole("option", { name: /Investigate flaky tests/ }),
@@ -555,12 +556,23 @@ describe("NewSessionComposer", () => {
     render(<NewSessionComposer />);
     await screen.findByLabelText("Task");
     expect(
-      screen.getByRole("button", { name: "Add repository" }),
+      screen.getByRole("button", { name: "Add repository or session" }),
     ).toBeInTheDocument();
     await pickRepo(user);
     expect(
       screen.getByRole("button", { name: "Repository acme/widgets" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders exactly one repository/session attachment control", async () => {
+    render(<NewSessionComposer />);
+    await screen.findByLabelText("Task");
+
+    expect(
+      screen.getAllByRole("button", {
+        name: ATTACHMENT_CONTROL_NAME,
+      }),
+    ).toHaveLength(1);
   });
 
   it("lets chat-only sessions start without a GitHub banner when there are no repos", async () => {
@@ -572,9 +584,7 @@ describe("NewSessionComposer", () => {
       screen.queryByTestId("agent-composer-github-empty"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Enter to start · Shift+Enter for a new line · @ for a repo",
-      ),
+      screen.getByText("Enter to start · Shift+Enter for a new line"),
     ).toBeInTheDocument();
 
     await typeTask(user);

@@ -147,23 +147,20 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Composer — task editor placeholder",
   },
   "agentSessions.mentionButton": {
-    message: "提及仓库或会话",
-    description: "Composer toolbar — accessible label of the @ mention button",
+    message: "添加仓库或会话",
+    description:
+      "Composer toolbar — opens the repository/session mention picker",
   },
   "agentSessions.configButton": {
     message: "高级",
     description: "Composer toolbar — the Advanced popover trigger",
-  },
-  "agentSessions.addRepository": {
-    message: "添加仓库",
-    description: "Composer toolbar — repo chip when none is selected",
   },
   "agentSessions.repoChip": {
     message: "仓库 {repo}",
     description: "Composer toolbar — accessible name of the selected-repo chip",
   },
   "agentSessions.keyboardHint": {
-    message: "Enter 开始 · Shift+Enter 换行 · @ 选择仓库",
+    message: "Enter 开始 · Shift+Enter 换行",
     description: "Muted hint under the composer",
   },
   "agentSessions.connectGitHubTitle": {
@@ -797,10 +794,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.archivedBadge": {
     message: "已归档",
     description: "Badge marking a session as archived (out of the working set)",
-  },
-  "agentSessions.sidebarArchived": {
-    message: "已归档",
-    description: "Sidebar link to the archived-sessions list",
   },
   "agentSessions.delete": {
     message: "删除",

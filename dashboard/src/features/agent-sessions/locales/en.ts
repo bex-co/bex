@@ -147,23 +147,20 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description: "Composer — task editor placeholder",
   },
   "agentSessions.mentionButton": {
-    message: "Mention a repository or session",
-    description: "Composer toolbar — accessible label of the @ mention button",
+    message: "Add repository or session",
+    description:
+      "Composer toolbar — opens the repository/session mention picker",
   },
   "agentSessions.configButton": {
     message: "Advanced",
     description: "Composer toolbar — the Advanced popover trigger",
-  },
-  "agentSessions.addRepository": {
-    message: "Add repository",
-    description: "Composer toolbar — repo chip when none is selected",
   },
   "agentSessions.repoChip": {
     message: "Repository {repo}",
     description: "Composer toolbar — accessible name of the selected-repo chip",
   },
   "agentSessions.keyboardHint": {
-    message: "Enter to start · Shift+Enter for a new line · @ for a repo",
+    message: "Enter to start · Shift+Enter for a new line",
     description: "Muted hint under the composer",
   },
   "agentSessions.connectGitHubTitle": {
@@ -809,10 +806,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.archivedBadge": {
     message: "Archived",
     description: "Badge marking a session as archived (out of the working set)",
-  },
-  "agentSessions.sidebarArchived": {
-    message: "Archived",
-    description: "Sidebar link to the archived-sessions list",
   },
   "agentSessions.delete": {
     message: "Delete",

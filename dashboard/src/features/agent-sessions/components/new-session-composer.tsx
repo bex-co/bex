@@ -261,36 +261,22 @@ export function NewSessionComposer() {
                 )}
               />
 
-              <div className="relative">
-                <Button
-                  type="button"
-                  variant={repo ? "secondary" : "ghost"}
-                  size="sm"
-                  data-testid="agent-composer-repo-chip"
-                  className="h-8 max-w-48 gap-1.5 px-2 text-xs font-normal"
-                  aria-label={
-                    repo
-                      ? t("agentSessions.repoChip", { repo })
-                      : t("agentSessions.addRepository")
-                  }
-                  onClick={openMention}
-                >
-                  <AtSign className="size-3.5" />
-                  <span className="truncate">
-                    {repo ?? t("agentSessions.addRepository")}
-                  </span>
-                </Button>
-              </div>
-
               <Button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                aria-label={t("agentSessions.mentionButton")}
+                variant={repo ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 max-w-56 gap-1.5 px-2 text-xs font-normal"
+                aria-label={
+                  repo
+                    ? t("agentSessions.repoChip", { repo })
+                    : t("agentSessions.mentionButton")
+                }
                 onClick={openMention}
               >
-                <AtSign className="size-4" />
+                <AtSign className="size-3.5" />
+                <span className="truncate">
+                  {repo ?? t("agentSessions.mentionButton")}
+                </span>
               </Button>
 
               <Popover open={configOpen} onOpenChange={setConfigOpen}>

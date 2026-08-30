@@ -26,13 +26,17 @@ describe("agent-session filter search contracts", () => {
     expect(
       validateList({ archived: "true", phase: "failed", view: "list" }),
     ).toEqual({ archived: "archived", phase: "failed", view: "list" });
+    expect(validateList({ archived: true })).toEqual({ archived: "archived" });
     expect(validateList({ archived: "no", phase: "unknown" })).toEqual({});
   });
 
   it("does not wire a phase-filter dropdown on /agents", async () => {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
-    const src = readFileSync(join(import.meta.dirname, "../agents.tsx"), "utf8");
+    const src = readFileSync(
+      join(import.meta.dirname, "../agents.tsx"),
+      "utf8",
+    );
     expect(src).not.toMatch(/agentSessions\.filterPhase/);
     expect(src).not.toMatch(/<Select[\s\S]*AGENT_SESSION_PHASES/);
   });
@@ -45,6 +49,9 @@ describe("agent-session filter search contracts", () => {
     expect(
       validateDetail({ fromArchived: "true", fromPhase: "completed" }),
     ).toEqual({ fromArchived: "archived", fromPhase: "completed" });
+    expect(validateDetail({ fromArchived: true })).toEqual({
+      fromArchived: "archived",
+    });
     expect(
       validateDetail({ fromArchived: "false", fromPhase: "unknown" }),
     ).toEqual({});
