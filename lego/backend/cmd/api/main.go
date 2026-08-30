@@ -51,6 +51,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/accounts"
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/api"
@@ -345,9 +346,13 @@ func main() {
 	// Owner/member identity attributes (w6/m2): Kratos' admin API, distinct from
 	// the public BEX_KRATOS_URL session whoami above — looking up OTHER members'
 	// email/MFA needs the admin API, not a session. Unset => those fields omitted.
-	if kratosAdmin := os.Getenv("BEX_KRATOS_ADMIN_URL"); kratosAdmin != "" {
-		deps.Identities = workspaces.NewKratosIdentities(kratosAdmin)
+	kratosAdminURL := os.Getenv("BEX_KRATOS_ADMIN_URL")
+	if kratosAdminURL != "" {
+		deps.Identities = workspaces.NewKratosIdentities(kratosAdminURL)
 	}
+	oryAccountCleaner := accounts.NewOryCleaner(hydraAdminURL, kratosAdminURL)
+	deps.AccountOAuth = oryAccountCleaner
+	deps.AccountKratos = oryAccountCleaner
 	authzChecker := wireAuthz(base, cpDBURI)
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
@@ -491,6 +496,7 @@ func main() {
 	// Postgres outbox. Drain it independently of request retries so an invite or
 	// downgrade survives transient OpenFGA failures and process restarts.
 	go srv.Members.RunRoleReconciler(ctx)
+	go srv.Accounts.Run(ctx)
 	// The agent-session Completer finalizes fire-and-forget sessions: it opens the
 	// draft PR + records evidence for completed turns (ADR047 D4, w3/m41). It is a
 	// no-op unless the store, OpenSandbox, and GitHub App are all wired.
@@ -761,6 +767,7 @@ func wireGitHubApp(deps *api.Deps) *github.Client {
 func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore, rec *store.Reconciler, authzChecker core.Checker) store.MembershipGranter {
 	deps.Store = st // single writer of intent: suspend/resume write the row first
 	deps.OAuthRevocations = st
+	deps.AccountStore = st
 	deps.SSHKeysStore = st // identity-scoped SSH public-key registry
 	deps.DeployStore = st  // deploy history (w2/m5): list/get/trigger read+write the same rows
 	// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build

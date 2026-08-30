@@ -232,7 +232,7 @@ func TestRoleLadderDenyMatrix(t *testing.T) {
 	// A direct session identity (round-7 F3): the durable-credential mint verbs
 	// (apikeys/sshkeys Create) are credential-class-gated before their Authorize,
 	// so the relation capture must ride a mint-eligible class to observe them.
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "session"})
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "session", Human: true})
 	verbRelations := captureVerbRelations(t, ctx)
 
 	// A capabilities projection (w9/m84) probes every relation to REPORT whether

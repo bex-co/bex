@@ -99,3 +99,7 @@ The gaps a live side-by-side against Render's Team Members section surfaced, clo
 - **No `name` trait.** bex's Kratos identity schema defines only `email` (no `name`), so nothing above ever surfaces a Render-style `user.name` — there is no field to omit-on-unset here, the trait simply doesn't exist. → future work only if a real consumer needs it. (Avatar likewise — bex has no avatar upload anywhere.)
 - **Flatter GraphQL.** Render nests members under `owner.team.members`; bex has no polymorphic `owner` type, so it exposes workspace-scoped `workspaceMembers` / `workspaceInvites` queries. Field names (role, email, expiresAt, userId) match.
 - **Active-workspace resolution** stays single-tenant (w1/m9): a caller resolves to one workspace for resource queries. The member verbs sidestep this by taking an explicit workspace id; a full workspace switcher is future work (the `workspaces` query already returns every membership).
+
+## Account-deletion offboarding (ADR086)
+
+The last-admin refusal is also the account-deletion preflight: a sole-member workspace is deleted through workspace teardown, a shared workspace is left only when another admin remains, and a workspace with other members but no other admin blocks the request. Intent rechecks this matrix under deterministic membership locks so preview cannot race a role or membership change.

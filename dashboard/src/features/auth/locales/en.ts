@@ -35,8 +35,7 @@ const enAuth: Record<string, TranslationEntry> = {
     description: "Verification page hero title",
   },
   "auth.verificationSubtitle": {
-    message:
-      "Enter the email address associated with your account to continue",
+    message: "Enter the email address associated with your account to continue",
     description:
       "Verification page hero subtitle (email-first Ory step; code arrives after)",
   },
@@ -85,6 +84,90 @@ const enAuth: Record<string, TranslationEntry> = {
   "auth.securityComplianceSectionSubtitle": {
     message: "Account security controls and your workspace's audit trail.",
     description: "Settings page Security & Compliance section description",
+  },
+  "auth.dangerZoneSection": {
+    message: "Danger zone",
+    description: "Account settings destructive-actions section",
+  },
+  "auth.dangerZoneSectionSubtitle": {
+    message: "Permanently remove your account and revoke all access.",
+    description: "Account deletion section description",
+  },
+  "auth.deleteAccountTitle": {
+    message: "Delete account",
+    description: "Account deletion card title",
+  },
+  "auth.deleteAccountDescription": {
+    message:
+      "This permanently deletes your identity, credentials, and sole-member workspaces. Shared workspaces remain available to their other administrators.",
+    description: "Account deletion consequences",
+  },
+  "auth.deleteAccountWillDelete": {
+    message: "These workspaces will be deleted",
+    description: "Account deletion preview heading for sole-member workspaces",
+  },
+  "auth.deleteAccountWillLeave": {
+    message: "You will leave these workspaces",
+    description: "Account deletion preview heading for shared workspaces",
+  },
+  "auth.deleteAccountBlockedTitle": {
+    message: "Resolve workspace ownership first",
+    description: "Account deletion blocker heading",
+  },
+  "auth.deleteAccountBlockedDescription": {
+    message:
+      "Each workspace below has other members but no other administrator. Promote another member, remove the other members, or delete the workspace before deleting your account.",
+    description: "Actionable account deletion blocker guidance",
+  },
+  "auth.deleteAccountBlockedAction": {
+    message: "Open settings",
+    description: "Link to resolve an account deletion workspace blocker",
+  },
+  "auth.deleteAccountConfirmLabel": {
+    message: "Type {phrase} below to confirm.",
+    description: "Exact account deletion confirmation prompt",
+  },
+  "auth.deleteAccountSubmit": {
+    message: "Delete my account",
+    description: "Account deletion submit button",
+  },
+  "auth.deleteAccountErrorTitle": {
+    message: "Account deletion could not start",
+    description: "Account deletion mutation error heading",
+  },
+  "auth.deleteAccountError": {
+    message: "We couldn't start account deletion. Please try again.",
+    description: "Generic account deletion mutation error",
+  },
+  "auth.deleteAccountPreviewErrorTitle": {
+    message: "Deletion preview unavailable",
+    description: "Account deletion preview error heading",
+  },
+  "auth.deleteAccountPreviewError": {
+    message:
+      "We couldn't safely determine what will happen to your workspaces. Nothing has been deleted.",
+    description: "Account deletion preview failure explanation",
+  },
+  "auth.deleteAccountRetry": {
+    message: "Try again",
+    description: "Account deletion preview retry button",
+  },
+  "auth.accountDeletedTitle": {
+    message: "Account deletion started",
+    description: "Accepted account deletion terminal page title",
+  },
+  "auth.accountDeletedSubtitle": {
+    message: "You have been signed out safely.",
+    description: "Accepted account deletion terminal page subtitle",
+  },
+  "auth.accountDeletedStatus": {
+    message:
+      "Your workspaces and credentials are being removed. You can close this page; no further action is required.",
+    description: "Accepted account deletion background completion status",
+  },
+  "auth.accountDeletedHome": {
+    message: "Return to bex",
+    description: "Accepted account deletion terminal page home link",
   },
   "auth.loggingOutTitle": {
     message: "Signing out...",

@@ -39,6 +39,7 @@ import (
 	"github.com/graphql-go/graphql/gqlerrors"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/accounts"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
@@ -88,6 +89,7 @@ type Server struct {
 	Logs          *logs.Service
 	Metrics       *metrics.Service
 	APIKeys       *apikeys.Service
+	Accounts      *accounts.Service
 	SSHKeys       *sshkeys.Service
 	Sandbox       *sandbox.Service
 	AgentSessions *agentsessions.Service
@@ -228,6 +230,11 @@ type Server struct {
 	schema graphql.Schema
 }
 
+type accountStore interface {
+	accounts.Store
+	members.AccountMemberStore
+}
+
 // Deps bundles the injected backends the feature services need — the seams that
 // keep the domain layer clientset/HTTP-free (nil leaves a verb reporting its
 // "…Unavailable" sentinel). NewServer wires them onto the services in one place.
@@ -260,6 +267,11 @@ type Deps struct {
 	ReplicationLag metrics.ReplicationLagSource
 	KeyValueStats  metrics.KeyValueStatsSource
 	APIKeys        apikeys.APIKeyStore
+	// Account deletion is durable control-plane orchestration. These seams are
+	// nil in DB-less mode, leaving the stable API available but unavailable.
+	AccountStore  accountStore
+	AccountOAuth  accounts.SubjectCleaner
+	AccountKratos accounts.IdentityCleaner
 	// SSHKeysStore persists identity-scoped public keys and resolves their
 	// fingerprints for the separately deployed SSH gateway. nil => management
 	// verbs report ErrSSHKeysUnavailable.
@@ -738,6 +750,27 @@ func NewServer(base *core.Base, d Deps) *Server {
 		_, err := deploysSvc.Trigger(ctx, serviceID, deploys.TriggerParams{})
 		return err
 	}
+	apiKeysSvc := &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, CreationLimiter: apikeys.NewCreationRateLimiter()}
+	membersSvc := &members.Service{
+		Base: base, Store: d.MembersStore, Granter: d.MembersGranter,
+		Revoker: d.MembersRevoker, Mailer: d.Mailer, InviteBaseURL: d.InviteBaseURL,
+		Identities: identityEmailLookup{d.Identities},
+	}
+	var workspaceResolver core.WorkspaceResolver
+	if base != nil {
+		workspaceResolver = base.Workspace
+	}
+	var accountKeys accounts.MachineCredentials
+	if d.APIKeys != nil && d.KeyBinder != nil {
+		accountKeys = apikeys.AccountTeardown{Store: d.APIKeys, Binding: d.KeyBinder}
+	}
+	accountSvc := &accounts.Service{
+		Base: base, Store: d.AccountStore,
+		Workspaces: workspaces.AccountTeardown{Service: workspaceSvc},
+		Members:    members.AccountOffboarder{Store: d.AccountStore, Revoker: d.MembersRevoker, Workspace: workspaceResolver},
+		APIKeys:    accountKeys,
+		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
+	}
 	srv := &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
@@ -754,9 +787,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 			ReplicationLag:             d.ReplicationLag,
 			KeyValueStats:              d.KeyValueStats,
 		},
-		APIKeys: &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, CreationLimiter: apikeys.NewCreationRateLimiter()},
-		SSHKeys: &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
-		Sandbox: sandboxSvc,
+		APIKeys:  apiKeysSvc,
+		Accounts: accountSvc,
+		SSHKeys:  &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
+		Sandbox:  sandboxSvc,
 		AgentSessions: &agentsessions.Service{
 			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
 			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
@@ -777,22 +811,14 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Snapshots:    d.AgentSnapshotStore,
 			RetentionTTL: d.AgentSnapshotRetentionTTL,
 		},
-		Postgres:   pg,
-		KeyValue:   kv,
-		Secrets:    secretsSvc,
-		EnvGroups:  envGroupsSvc,
-		Deploys:    deploysSvc,
-		Events:     &events.Service{Base: base, Store: d.EventStore},
-		Workspaces: workspaceSvc,
-		Members: &members.Service{
-			Base:          base,
-			Store:         d.MembersStore,
-			Granter:       d.MembersGranter,
-			Revoker:       d.MembersRevoker,
-			Mailer:        d.Mailer,
-			InviteBaseURL: d.InviteBaseURL,
-			Identities:    identityEmailLookup{d.Identities},
-		},
+		Postgres:      pg,
+		KeyValue:      kv,
+		Secrets:       secretsSvc,
+		EnvGroups:     envGroupsSvc,
+		Deploys:       deploysSvc,
+		Events:        &events.Service{Base: base, Store: d.EventStore},
+		Workspaces:    workspaceSvc,
+		Members:       membersSvc,
 		Billing:       billingSvc,
 		Notifications: notificationsSvc,
 		Projects: &projects.Service{
@@ -908,6 +934,7 @@ func (s *Server) features() []any {
 	out = appendFeature(out, s.Logs)
 	out = appendFeature(out, s.Metrics)
 	out = appendFeature(out, s.APIKeys)
+	out = appendFeature(out, s.Accounts)
 	out = appendFeature(out, s.SSHKeys)
 	out = appendFeature(out, s.Sandbox)
 	out = appendFeature(out, s.AgentSessions)

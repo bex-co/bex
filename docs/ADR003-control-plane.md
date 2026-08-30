@@ -106,3 +106,7 @@ The control plane reconciles these rows into `App` CRs (e.g. an `apps` row + its
 
 - **Built:** the `App` CRD + operator (reconcile → Deployment/Service/Ingress/TLS), GitOps platform (Traefik, cert-manager, Zot, Argo), the local CAPD mock → Hetzner CAPH, the product API (bex-api: REST/GraphQL/MCP, auth, logs/metrics, env vars, managed Postgres), the dashboard, and the Postgres control plane itself (`lego/backend/internal/store/`: schema + tenant/domain rows + projection to CRs, opt-in via `BEX_CP_DB_URI`).
 - **Planned:** flipping the control plane on in prod (today `BEX_CP_DB_URI` is unset there — etcd is still the effective store; snapshot etcd off-node for interim durability, [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md)), tenant onboarding, billing logic.
+
+## Account deletion tombstone (ADR086)
+
+The control-plane database owns the durable account-deletion tombstone. It is committed before cleanup and onboarding consults it before cached workspace resolution or tenant minting. Kratos remains the identity store, but its identity is deleted only after the control plane converges workspace and credential cleanup.

@@ -73,6 +73,10 @@ for n in 1 2 3 4 5 6 7 8 9 10; do
   assert "$f matches the derivation" "[ '$mismatch' -eq 0 ]"
 done
 
+echo "==> Kratos can return native OAuth login flows to dev-N Hydra"
+assert "Kratos allowlists the rendered Hydra public origin" \
+  "grep -q 'http://localhost:__HYDRA_PUBLIC_PORT__' scripts/dev-env/values/kratos.values.yaml"
+
 echo "==> invalid N fails loudly with no side effect"
 for bad in "" 0 11 -1 abc 1.5 "2; rm -rf /"; do
   set +e

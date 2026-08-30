@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -30,6 +31,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
@@ -419,7 +421,7 @@ func TestRevokeCleansLegacyPullSecretForLabeledApp(t *testing.T) {
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
 		Name: "web", Namespace: "tea-ns", UID: "uid-web",
 		Labels: map[string]string{labelWorkspace: ws},
-	}}
+	}, Spec: appv1alpha1.AppSpec{Repo: "https://example.test/repo.git"}}
 	id := identity.ForApp("web", ws)
 	ownedLabels := map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-web"}
 	objects := []client.Object{
@@ -469,6 +471,29 @@ func TestRevokeCleansLegacyPullSecretForLabeledApp(t *testing.T) {
 	}
 }
 
+func TestRevokeSkipsCredentialsForExternalPrebuiltApp(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name: "web", Namespace: "tea-deleting", UID: "uid-web",
+	}, Spec: appv1alpha1.AppSpec{Image: "traefik/whoami:v1.10.3"}}
+	now := metav1.Now()
+	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: app.Namespace, DeletionTimestamp: &now, Finalizers: []string{"kubernetes"},
+	}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(namespace).
+		WithInterceptorFuncs(interceptor.Funcs{Delete: func(context.Context, client.WithWatch, client.Object, ...client.DeleteOption) error {
+			return apierrors.NewForbidden(corev1.Resource("secrets"), "", errors.New("tenant RoleBinding already removed"))
+		}}).Build()
+	r := &AppReconciler{Client: cl, Registry: "zot.example.test", PerAppRegistry: &registry.Creds{}}
+
+	pending, err := r.revokeAppRegistryCredentials(context.Background(), app, "bex-build", cl)
+	if err != nil || pending {
+		t.Fatalf("external prebuilt credential cleanup = pending %v err %v, want converged", pending, err)
+	}
+}
+
 func TestRevokeDeletesOwnedLegacyBuildMirror(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
@@ -477,7 +502,7 @@ func TestRevokeDeletesOwnedLegacyBuildMirror(t *testing.T) {
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
 		Name: "web", Namespace: "tea-ns", UID: "uid-web",
 		Labels: map[string]string{labelWorkspace: ws},
-	}}
+	}, Spec: appv1alpha1.AppSpec{Repo: "https://example.test/repo.git"}}
 	id := identity.ForApp("web", ws)
 	ownedLabels := map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-web"}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app,

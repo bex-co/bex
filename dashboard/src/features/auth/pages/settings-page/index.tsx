@@ -13,6 +13,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
+import { AccountDeletionCard } from "@/features/auth/pages/settings-page/account-deletion-card";
 import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings-navigation";
 import { SettingsSection } from "@/features/auth/pages/settings-page/settings-section";
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
@@ -92,6 +93,14 @@ export default function SettingsPage() {
               </SettingsSection>
 
               <SecurityComplianceSection />
+
+              <SettingsSection
+                id="danger-zone"
+                title={t("auth.dangerZoneSection")}
+                description={t("auth.dangerZoneSectionSubtitle")}
+              >
+                <AccountDeletionCard />
+              </SettingsSection>
             </div>
           </div>
 

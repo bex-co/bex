@@ -85,6 +85,88 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "账户安全控制以及您工作区的审计记录。",
     description: "Settings page Security & Compliance section description",
   },
+  "auth.dangerZoneSection": {
+    message: "危险操作",
+    description: "Account settings destructive-actions section",
+  },
+  "auth.dangerZoneSectionSubtitle": {
+    message: "永久删除您的账户并撤销所有访问权限。",
+    description: "Account deletion section description",
+  },
+  "auth.deleteAccountTitle": {
+    message: "删除账户",
+    description: "Account deletion card title",
+  },
+  "auth.deleteAccountDescription": {
+    message:
+      "此操作会永久删除您的身份、凭据和仅有您一名成员的工作区。共享工作区仍可由其他管理员使用。",
+    description: "Account deletion consequences",
+  },
+  "auth.deleteAccountWillDelete": {
+    message: "以下工作区将被删除",
+    description: "Account deletion preview heading for sole-member workspaces",
+  },
+  "auth.deleteAccountWillLeave": {
+    message: "您将离开以下工作区",
+    description: "Account deletion preview heading for shared workspaces",
+  },
+  "auth.deleteAccountBlockedTitle": {
+    message: "请先解决工作区管理权",
+    description: "Account deletion blocker heading",
+  },
+  "auth.deleteAccountBlockedDescription": {
+    message:
+      "以下工作区有其他成员，但没有其他管理员。请先将其他成员提升为管理员、移除其他成员，或删除该工作区。",
+    description: "Actionable account deletion blocker guidance",
+  },
+  "auth.deleteAccountBlockedAction": {
+    message: "打开设置",
+    description: "Link to resolve an account deletion workspace blocker",
+  },
+  "auth.deleteAccountConfirmLabel": {
+    message: "请在下方输入 {phrase} 以确认。",
+    description: "Exact account deletion confirmation prompt",
+  },
+  "auth.deleteAccountSubmit": {
+    message: "删除我的账户",
+    description: "Account deletion submit button",
+  },
+  "auth.deleteAccountErrorTitle": {
+    message: "无法开始删除账户",
+    description: "Account deletion mutation error heading",
+  },
+  "auth.deleteAccountError": {
+    message: "无法开始删除账户，请重试。",
+    description: "Generic account deletion mutation error",
+  },
+  "auth.deleteAccountPreviewErrorTitle": {
+    message: "无法加载删除预览",
+    description: "Account deletion preview error heading",
+  },
+  "auth.deleteAccountPreviewError": {
+    message: "无法安全确定工作区的处理方式。尚未删除任何内容。",
+    description: "Account deletion preview failure explanation",
+  },
+  "auth.deleteAccountRetry": {
+    message: "重试",
+    description: "Account deletion preview retry button",
+  },
+  "auth.accountDeletedTitle": {
+    message: "账户删除已开始",
+    description: "Accepted account deletion terminal page title",
+  },
+  "auth.accountDeletedSubtitle": {
+    message: "您已安全退出登录。",
+    description: "Accepted account deletion terminal page subtitle",
+  },
+  "auth.accountDeletedStatus": {
+    message: "正在删除您的工作区和凭据。您可以关闭此页面，无需执行其他操作。",
+    description: "Accepted account deletion background completion status",
+  },
+  "auth.accountDeletedHome": {
+    message: "返回 bex",
+    description: "Accepted account deletion terminal page home link",
+  },
   "auth.loggingOutTitle": {
     message: "正在退出登录…",
     description: "Logout page heading while the logout request is in flight",

@@ -22,6 +22,28 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// lockSubjectMembership serializes every path that can add a human subject's
+// tenant_members row with account-deletion preflight. The prefix keeps this
+// lock domain separate from workspace-id admission locks.
+func lockSubjectMembership(ctx context.Context, tx pgx.Tx, subject string) error {
+	_, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "account-subject:"+subject)
+	return err
+}
+
+func refuseDeletingSubject(ctx context.Context, tx pgx.Tx, subject string) error {
+	var pending bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM account_deletions WHERE subject = $1)`, subject,
+	).Scan(&pending); err != nil {
+		return err
+	}
+	if pending {
+		return ErrAccountDeletionPending
+	}
+	return nil
+}
+
 // WithTenantAdvisoryLock runs fn while holding a transaction-scoped Postgres
 // advisory lock for tenantID. It coordinates count-then-write admission paths
 // across bex-api replicas even when the write itself reaches an external

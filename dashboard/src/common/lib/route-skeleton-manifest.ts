@@ -153,6 +153,12 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "oauth-consent",
     regions: ["language-action", "page-header", "consent-card"],
   },
+  "/auth/account-deleted": {
+    kind: "render",
+    owner: "routes/auth.account-deleted.tsx",
+    shape: "account-deleted",
+    regions: ["language-action", "page-header", "status-card"],
+  },
   "/auth/device": {
     kind: "delegate",
     owner: "routes/auth.device.tsx",

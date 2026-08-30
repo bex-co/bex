@@ -29,6 +29,8 @@ import (
 	"strings"
 )
 
+const CodeAccountDeletionPending = "ACCOUNT_DELETION_PENDING"
+
 // The domain error sentinels every feature returns and the REST adapter maps to
 // status codes (see WriteErr). Shared here so one WriteErr can map them all and
 // the surfaces stay authorization/error identical.
@@ -281,6 +283,12 @@ func NewBadRequestError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrBadRequest, msg: msg}
 }
 
+// NewForbiddenError returns a machine-readable 403 for a caller class or
+// permission that cannot perform a feature-specific operation.
+func NewForbiddenError(code, msg string, params map[string]any) *CodedError {
+	return &CodedError{Code: code, Params: params, sentinel: ErrForbidden, msg: msg}
+}
+
 // NewNotFoundError returns a machine-readable 404 for a feature-specific
 // resource lookup. It deliberately wraps the shared ErrNotFound sentinel so all
 // transports keep the same status mapping while avoiding the App-specific
@@ -293,6 +301,12 @@ func NewNotFoundError(code, msg string, params map[string]any) *CodedError {
 // that the resource's current state makes unsafe.
 func NewConflictError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrConflict, msg: msg}
+}
+
+// NewAccountDeletionPendingError keeps onboarding and credential writers on
+// the same durable-tombstone wire contract.
+func NewAccountDeletionPendingError() *CodedError {
+	return NewConflictError(CodeAccountDeletionPending, "account deletion is in progress", nil)
 }
 
 // NewUnavailableError returns a machine-readable 503 for a verb whose backing

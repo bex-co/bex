@@ -46,12 +46,26 @@ func scanSSHKey(row pgx.Row) (SSHKey, error) {
 // CreateSSHKey persists a canonicalized public key. The fingerprint's unique
 // constraint is the ambiguity guard: one SSH handshake must map to one subject.
 func (s *PGStore) CreateSSHKey(ctx context.Context, key SSHKey) (SSHKey, error) {
-	created, err := scanSSHKey(s.Pool.QueryRow(ctx, `
-		INSERT INTO ssh_keys (id, subject, name, public_key, fingerprint)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING `+sshKeyColumns,
-		key.ID, key.Subject, key.Name, key.PublicKey, key.Fingerprint))
+	var created SSHKey
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockSubjectMembership(ctx, tx, key.Subject); err != nil {
+			return err
+		}
+		if err := refuseDeletingSubject(ctx, tx, key.Subject); err != nil {
+			return err
+		}
+		var err error
+		created, err = scanSSHKey(tx.QueryRow(ctx, `
+			INSERT INTO ssh_keys (id, subject, name, public_key, fingerprint)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING `+sshKeyColumns,
+			key.ID, key.Subject, key.Name, key.PublicKey, key.Fingerprint))
+		return err
+	})
 	if err != nil {
+		if err == ErrAccountDeletionPending {
+			return SSHKey{}, err
+		}
 		return SSHKey{}, classify("ssh key", err)
 	}
 	return created, nil

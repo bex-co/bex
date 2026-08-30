@@ -1,0 +1,25 @@
+query AccountDeletionPreview {
+  accountDeletionPreview {
+    delete {
+      id
+      name
+      action
+    }
+    leave {
+      id
+      name
+      action
+    }
+    blocked {
+      id
+      name
+      action
+    }
+  }
+}
+
+mutation DeleteAccount($confirmation: String!) {
+  deleteAccount(confirmation: $confirmation) {
+    state
+  }
+}

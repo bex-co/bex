@@ -397,6 +397,12 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 	// self-heals: it redeems on the next login after the workspace upgrades again.
 	accepted := make([]Invite, 0, len(pending))
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockSubjectMembership(ctx, tx, subject); err != nil {
+			return err
+		}
+		if err := refuseDeletingSubject(ctx, tx, subject); err != nil {
+			return err
+		}
 		for _, inv := range pending {
 			ok, err := planAllowsJoin(ctx, tx, inv, subject)
 			if err != nil {
@@ -483,6 +489,12 @@ func enqueueRoleReconciliation(ctx context.Context, tx pgx.Tx, tenantID, subject
 func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string) (Invite, error) {
 	var accepted Invite
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockSubjectMembership(ctx, tx, subject); err != nil {
+			return err
+		}
+		if err := refuseDeletingSubject(ctx, tx, subject); err != nil {
+			return err
+		}
 		inv, err := scanInvite(tx.QueryRow(ctx,
 			`SELECT `+inviteColumns+` FROM tenant_invites WHERE token_hash = $1 FOR UPDATE`,
 			hashInviteToken(token)))

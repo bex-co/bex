@@ -17,6 +17,25 @@ export type AcceptedWorkspaceInvite = {
   workspaceName: Maybe<Scalars['String']['output']>;
 };
 
+export type AccountDeletion = {
+  __typename: 'AccountDeletion';
+  state: Scalars['String']['output'];
+};
+
+export type AccountDeletionPreview = {
+  __typename: 'AccountDeletionPreview';
+  blocked: Array<AccountWorkspaceDisposition>;
+  delete: Array<AccountWorkspaceDisposition>;
+  leave: Array<AccountWorkspaceDisposition>;
+};
+
+export type AccountWorkspaceDisposition = {
+  __typename: 'AccountWorkspaceDisposition';
+  action: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+};
+
 export type AgentSession = {
   __typename: 'AgentSession';
   agentConfig: AgentSessionConfig;
@@ -1007,6 +1026,7 @@ export type Mutation = {
   createShellSession: Maybe<ShellSession>;
   createWebhookEndpoint: Maybe<WebhookEndpoint>;
   createWorkspace: Maybe<Workspace>;
+  deleteAccount: Maybe<AccountDeletion>;
   deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
   deleteDatabase: Maybe<Scalars['Boolean']['output']>;
@@ -1406,6 +1426,11 @@ export type MutationCreateWebhookEndpointArgs = {
 export type MutationCreateWorkspaceArgs = {
   name: Scalars['String']['input'];
   plan?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeleteAccountArgs = {
+  confirmation: Scalars['String']['input'];
 };
 
 
@@ -2345,6 +2370,7 @@ export enum PushNotificationWeekday {
 
 export type Query = {
   __typename: 'Query';
+  accountDeletionPreview: Maybe<AccountDeletionPreview>;
   agentSession: Maybe<AgentSession>;
   agentSessionCapabilities: AgentSessionCapabilities;
   agentSessionTranscript: AgentSessionTranscriptPage;

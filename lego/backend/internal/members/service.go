@@ -860,6 +860,48 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	return nil
 }
 
+// AccountMemberStore is the deletion-specific store operation that rechecks
+// another admin under the membership advisory lock and clears a surviving
+// workspace's onboarding owner binding. *store.PGStore satisfies it.
+type AccountMemberStore interface {
+	GetTenantMember(context.Context, string, string) (store.TenantMember, error)
+	RemoveAccountMember(context.Context, string, string) error
+}
+
+// AccountOffboarder is the trusted accounts-worker adapter. It preserves the
+// public Remove verb's fail-closed order (OpenFGA first, row second) without
+// pretending a background worker is an authenticated workspace admin.
+type AccountOffboarder struct {
+	Store     AccountMemberStore
+	Revoker   RoleRevoker
+	Workspace core.WorkspaceResolver
+}
+
+func (a AccountOffboarder) Remove(ctx context.Context, workspaceID, subject string) error {
+	if a.Store == nil {
+		return ErrMembersUnavailable
+	}
+	m, err := a.Store.GetTenantMember(ctx, workspaceID, subject)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return mapStoreErr(err)
+	}
+	if a.Revoker != nil {
+		if err := a.Revoker.RevokeWorkspaceMember(ctx, workspaceID, "user:"+subject, m.Role); err != nil {
+			return fmt.Errorf("revoke %s from workspace %s: %w", subject, workspaceID, err)
+		}
+	}
+	if err := a.Store.RemoveAccountMember(ctx, workspaceID, subject); err != nil {
+		return mapStoreErr(err)
+	}
+	if inv, ok := a.Workspace.(interface{ InvalidateTenant(string) }); ok {
+		inv.InvalidateTenant(subject)
+	}
+	return nil
+}
+
 // RevokeInvite deletes a pending invite before it's redeemed. Admin-only.
 func (s *Service) RevokeInvite(ctx context.Context, workspaceID, inviteID string) error {
 	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.InviteTarget(inviteID)); err != nil {

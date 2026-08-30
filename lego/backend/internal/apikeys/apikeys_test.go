@@ -105,10 +105,11 @@ func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID st
 // tests simulate an OpenFGA write failure during key mint (t002/t006: no
 // orphaned Hydra client survives a failed bind).
 type fakeBinder struct {
-	failNext   int
-	failUnbind bool
-	bound      map[string]string // clientID -> tenantID
-	unbound    []string
+	failNext      int
+	failUnbind    bool
+	bound         map[string]string // clientID -> tenantID
+	unbound       []string
+	deletionReads []bool
 }
 
 func newFakeBinder() *fakeBinder { return &fakeBinder{bound: map[string]string{}} }
@@ -136,6 +137,15 @@ func (b *fakeBinder) TenantForKey(_ context.Context, clientID string) (string, b
 	return tid, ok
 }
 
+func (b *fakeBinder) AccountDeletionTombstoned(context.Context, string) (bool, error) {
+	if len(b.deletionReads) == 0 {
+		return false, nil
+	}
+	pending := b.deletionReads[0]
+	b.deletionReads = b.deletionReads[1:]
+	return pending, nil
+}
+
 type lockingBinder struct {
 	*fakeBinder
 	mu sync.Mutex
@@ -145,6 +155,35 @@ func (b *lockingBinder) WithTenantAdvisoryLock(_ context.Context, _ string, fn f
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return fn()
+}
+
+func TestAccountTeardownUnbindsOwnedKeysBeforeDelete(t *testing.T) {
+	keys := newFakeKeyStore()
+	owned, _ := keys.Create(context.Background(), "owned", "identity-a")
+	other, _ := keys.Create(context.Background(), "other", "identity-b")
+	binder := newFakeBinder()
+	binder.bound[owned.ID] = "tea-a"
+	binder.bound[other.ID] = "tea-b"
+	teardown := AccountTeardown{Store: keys, Binding: binder}
+
+	binder.failUnbind = true
+	if err := teardown.CleanupSubject(context.Background(), "identity-a"); err == nil {
+		t.Fatal("cleanup ignored fail-closed unbind error")
+	}
+	if _, ok := keys.keys[owned.ID]; !ok {
+		t.Fatal("key deleted before its binding was revoked")
+	}
+
+	binder.failUnbind = false
+	if err := teardown.CleanupSubject(context.Background(), "identity-a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := keys.keys[owned.ID]; ok {
+		t.Fatal("owned key survived cleanup")
+	}
+	if _, ok := keys.keys[other.ID]; !ok {
+		t.Fatal("another subject's key was deleted")
+	}
 }
 
 // multiWorkspace is a core.WorkspaceResolver for a caller who belongs to
@@ -188,6 +227,27 @@ func TestCreateAPIKeyBindsToCallerTenant(t *testing.T) {
 	}
 	if binder.bound[created.ID] != "tea-a" {
 		t.Errorf("bound[%s] = %q, want tea-a", created.ID, binder.bound[created.ID])
+	}
+}
+
+func TestCreateAPIKeyRollsBackWhenDeletionStartsDuringIssuance(t *testing.T) {
+	keyStore := newFakeKeyStore()
+	binder := newFakeBinder()
+	binder.deletionReads = []bool{false, true}
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}},
+		APIKeys: keyStore,
+		Binding: binder,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	_, err := svc.CreateAPIKey(ctx, "", "racing-agent")
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "ACCOUNT_DELETION_PENDING" {
+		t.Fatalf("CreateAPIKey = %v, want ACCOUNT_DELETION_PENDING", err)
+	}
+	if len(keyStore.keys) != 0 || len(binder.bound) != 0 || len(binder.unbound) != 1 {
+		t.Fatalf("racing key survived rollback: keys=%d bound=%d unbound=%v", len(keyStore.keys), len(binder.bound), binder.unbound)
 	}
 }
 

@@ -1460,7 +1460,8 @@ const annotRotateRegistryCreds = "bex.co/rotate-registry-creds"
 // credential: it will build+push to our registry (Repo-based) or already has a
 // registry-hosted image in spec or status.
 func (r *AppReconciler) appNeedsRegistryCred(app *appv1alpha1.App) bool {
-	return app.Spec.Repo != "" || r.registryHosted(app.Spec.Image) || r.registryHosted(app.Status.Image)
+	return app.Spec.Repo != "" || r.registryHosted(app.Spec.Image) ||
+		r.registryHosted(app.Status.Image) || r.registryHosted(app.Status.ArtifactImage)
 }
 
 // ensurePerAppRegistryCreds mints per-App pull credentials (w7/m36) when
@@ -4425,9 +4426,7 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 			}
 		}
 	}
-	registryOwned := r.registryHosted(app.Status.Image) ||
-		r.registryHosted(app.Status.ArtifactImage) || app.Spec.Repo != ""
-	if r.Registry != "" && registryOwned && app.Annotations[annotRegistryPurgeComplete] != registryCredentialRotateTrue {
+	if r.Registry != "" && r.appNeedsRegistryCred(app) && app.Annotations[annotRegistryPurgeComplete] != registryCredentialRotateTrue {
 		done, registryErr := r.deleteRegistryRepo(ctx, app)
 		pending = pending || !done
 		if registryErr != nil {
@@ -4465,19 +4464,35 @@ func (r *AppReconciler) revokeAppRegistryCredentials(ctx context.Context, app *a
 	if r.PerAppRegistry == nil {
 		return false, nil
 	}
+	id := appIdentity(app)
+	pullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: id.PullSecretName(), Namespace: app.Namespace}}
+	if !r.appNeedsRegistryCred(app) {
+		// A reconciler may temporarily have no Registry URL while deleting an
+		// App that was issued credentials earlier. The owned pull Secret is the
+		// durable evidence in that case; an external prebuilt App has neither
+		// the registry-hosted image nor this Secret and remains a true no-op.
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(pullSec), pullSec); apierrors.IsNotFound(err) {
+			return false, nil
+		} else if err != nil {
+			return false, fmt.Errorf("discover per-app registry credentials: %w", err)
+		}
+	}
 	var errs []error
 	pending := false
-	if err := r.PerAppRegistry.RevokeCredsFor(ctx, appIdentity(app)); err != nil {
+	if err := r.PerAppRegistry.RevokeCredsFor(ctx, id); err != nil {
 		errs = append(errs, fmt.Errorf("revoke per-app registry credentials: %w", err))
 	}
-	id := appIdentity(app)
 	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
 		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
-	pullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: id.PullSecretName(), Namespace: app.Namespace}}
-	if done, deleteErr := deleteAndWait(ctx, cl, pullSec); deleteErr != nil {
-		errs = append(errs, fmt.Errorf("delete per-app pull Secret: %w", deleteErr))
-	} else {
-		pending = pending || !done
+	terminating, namespaceErr := namespaceDeletionOwnsLocalCleanup(ctx, cl, app.Namespace)
+	if namespaceErr != nil {
+		errs = append(errs, namespaceErr)
+	} else if !terminating {
+		if done, deleteErr := deleteAndWait(ctx, cl, pullSec); deleteErr != nil {
+			errs = append(errs, fmt.Errorf("delete per-app pull Secret: %w", deleteErr))
+		} else {
+			pending = pending || !done
+		}
 	}
 	if namespace != app.Namespace {
 		// round 12, finding 1: the build-namespace reg-pull mirror carries the
@@ -4495,11 +4510,13 @@ func (r *AppReconciler) revokeAppRegistryCredentials(ctx context.Context, app *a
 	// behind when minting moved to reg-pull-<ws>-<name>. Delete only objects
 	// this App lifetime owns so a same-named unlabeled sibling keeps its Secret.
 	if legacy := id.LegacyPullSecretName(); legacy != id.PullSecretName() {
-		done, deleteErr := deleteOwnedObject(ctx, cl, app.Namespace, legacy, &corev1.Secret{}, owned)
-		if deleteErr != nil {
-			errs = append(errs, fmt.Errorf("delete legacy pull Secret: %w", deleteErr))
-		} else {
-			pending = pending || !done
+		if namespaceErr == nil && !terminating {
+			done, deleteErr := deleteOwnedObject(ctx, cl, app.Namespace, legacy, &corev1.Secret{}, owned)
+			if deleteErr != nil {
+				errs = append(errs, fmt.Errorf("delete legacy pull Secret: %w", deleteErr))
+			} else {
+				pending = pending || !done
+			}
 		}
 		if namespace != app.Namespace {
 			done, deleteErr := deleteOwnedObject(ctx, cl, namespace, legacy, &corev1.Secret{}, owned)
@@ -4652,6 +4669,18 @@ func (r *AppReconciler) quiesceTLSProducers(ctx context.Context, app *appv1alpha
 
 func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.App) (bool, error) {
 	secretClient := r.buildPlaneClient()
+	// Namespace deletion is the stronger garbage-collection boundary. Its
+	// controller may remove the per-tenant RoleBinding before reconciling the App
+	// finalizer, at which point listing Secrets is permanently Forbidden even
+	// though every namespace-local Certificate and Secret is already guaranteed
+	// to disappear. External/build cleanup still runs before this function.
+	terminating, err := namespaceDeletionOwnsLocalCleanup(ctx, secretClient, app.Namespace)
+	if err != nil {
+		return false, err
+	}
+	if terminating {
+		return true, nil
+	}
 	names := r.tlsSecretNameSet(app)
 	// Migration safety for Apps whose custom host was removed before m61 wrote
 	// the history annotation. These names are operator-reserved for this App.
@@ -4676,6 +4705,21 @@ func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.A
 		}
 	}
 	return !pending, errors.Join(errs...)
+}
+
+// namespaceDeletionOwnsLocalCleanup reports whether namespace garbage
+// collection is already authoritative for namespace-local objects. The tenant
+// RoleBinding may disappear before an App finalizer runs, so attempting local
+// cleanup after this point can otherwise retry Forbidden forever.
+func namespaceDeletionOwnsLocalCleanup(ctx context.Context, cl client.Client, namespaceName string) (bool, error) {
+	var namespace corev1.Namespace
+	if err := cl.Get(ctx, client.ObjectKey{Name: namespaceName}, &namespace); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("get App namespace before local cleanup: %w", err)
+	}
+	return !namespace.DeletionTimestamp.IsZero(), nil
 }
 
 // deleteRegistryRepo removes all manifests for the app's image repository from

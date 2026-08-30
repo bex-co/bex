@@ -212,8 +212,21 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
   it("keeps account settings mobile navigation and desktop rail together", () => {
     const { container } = render(<AccountSettingsPageSkeleton />);
     expect(regions(container)).toEqual(
-      expect.arrayContaining(["mobile-navigation", "section-navigation"]),
+      expect.arrayContaining([
+        "mobile-navigation",
+        "section-navigation",
+        "danger-zone",
+      ]),
     );
+    expect(
+      container.querySelector('[data-skeleton-region="mobile-navigation"]')
+        ?.children[0]?.children,
+    ).toHaveLength(5);
+    expect(
+      container
+        .querySelector('[data-skeleton-region="section-navigation"]')
+        ?.querySelectorAll('[data-slot="skeleton"]'),
+    ).toHaveLength(5);
   });
 
   it.each([
