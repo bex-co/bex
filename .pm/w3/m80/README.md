@@ -1,6 +1,6 @@
 # w3 · m80 — Session-expiry experience: auth-aware 401 handling, sliding sessions, lossless re-auth
 
-**Worker:** worker3 **Goal:** a mid-session Kratos-session expiry never renders as a platform outage — the dashboard detects the 401, sends the user through sign-in with `next=` back to the exact page, active users rarely hit expiry at all (sliding sessions), and unsaved work survives the round-trip. **Status:** t001–t008 done (implementation complete, typecheck/lint/2720 tests green, gitops-validate green); t009 closeout awaits live revoke-session E2E on a real Kratos environment
+**Worker:** worker3 **Goal:** a mid-session Kratos-session expiry never renders as a platform outage — the dashboard detects the 401, sends the user through sign-in with `next=` back to the exact page, active users rarely hit expiry at all (sliding sessions), and unsaved work survives the round-trip. **Status:** t001–t008 done; production audit 2026-08-30 confirms Kratos serves an active session with an exact 168-hour issued→expiry window, so the lifespan config is live. t009 still awaits the destructive revoke → mounted-page redirect → sign-in return → unsaved-draft restore E2E; the current signed-in browser had no safe reauthentication credential, so that gate was not guessed or bypassed.
 
 ## Tasks (in order)
 

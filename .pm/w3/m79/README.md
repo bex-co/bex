@@ -1,6 +1,6 @@
 # w3 · m79 — Run the full agent-session stack locally on `dev-N`
 
-**Worker:** worker1 **Goal:** a developer can bring the entire [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md) agent-session stack up end to end on the shared local kind/CAPD `bex` cluster — live sandbox, streamed turn, draft PR — via one opt-in path on `scripts/dev-env.sh N`. **Status:** in progress (t001–t007 and t009–t010 done; t008's substrate/status/real-model stream is verified on dev-3, but its real GitHub App repository + draft-PR leg is blocked on developer-supplied App credentials/installation; t011 closeout waits on that proof)
+**Worker:** worker1 **Goal:** a developer can bring the entire [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md) agent-session stack up end to end on the shared local kind/CAPD `bex` cluster — live sandbox, streamed turn, draft PR — via one opt-in path on `scripts/dev-env.sh N`. **Status:** in progress (audited 2026-08-30; t001–t007 and t009–t010 done; dev-3's auth/OpenFGA/OpenBao/OpenSandbox/gateway substrate is live, but its dashboard is down and the status capability check has no `BEX_API_TOKEN`; the required real GitHub App repository + draft-PR leg still lacks developer-supplied App credentials/installation, so t008/t011 remain open)
 
 ## Tasks (in order)
 

@@ -283,7 +283,7 @@ Retires `.pm/w7/028.md`, generalized.
 
 ## 6. Not proposed (checked against `.pm/DO_NOT_DO.md`)
 
-- `.pm/w7/023.md` (LLM token-metering proxy) — stays held; `w3/m41` is still open and the hold is an explicit user decision.
+- `.pm/w7/023.md` (LLM token-metering proxy) — its explicit m41 hold lifted with the green 2026-08-18 production proof; ready for a separate scheduling decision, not auto-promoted by this review.
 - A static source-IP firewall on build nodes, and vcluster-per-tenant build isolation — both are explicit anti-goals.
 
 ## 7. Board bookkeeping when these materialize

@@ -1,6 +1,6 @@
 # w3 · m46 — Static-site Render-parity fixes (suspend page · delete-row projection · clear-cache deploy · SPA-fallback reconciliation)
 
-**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** implementation complete + locally verified (t001–t007 done); **t009 reopened from a live probe** — the 31st `/qa-find-bugs` run (2026-08-27) ran the E2E t008 was waiting on and DoD item 2 does not hold: the list row goes (t002 works) and the URL is torn down, but every by-id surface still returns 200 with `phase: "Deleting"` 26+ minutes later and the dashboard renders the exact `Unknown` page the DoD names. t008 now awaits t009.
+**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** implementation complete + locally verified (t001–t007 done); **t009 remains open after the 2026-08-30 audit** — the original stuck fixture now returns 404 on service/routes/deploys/headers, but current source still serves a deleting App by ID until finalization, advertises its withdrawn URL, and defines no tenant-visible finalizer bound. The cross-surface contract and fresh live timing proof required by t009 are unimplemented; t008 waits on them.
 
 ## Tasks (in order)
 
