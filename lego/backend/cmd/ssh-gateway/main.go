@@ -239,6 +239,7 @@ func main() {
 		credentials.MaxDuration = durationEnv("BEX_AGENT_GIT_MAX_DURATION", 10*time.Minute)
 		credentials.MaxRequestsPerSession = intEnv("BEX_AGENT_GIT_MAX_REQUESTS_PER_SESSION", 1000)
 		credentials.MaxRequestsPerWorkspace = intEnv("BEX_AGENT_GIT_MAX_REQUESTS_PER_WORKSPACE", 5000)
+		credentials.MaxResponseBytes = int64(intEnv("BEX_AGENT_GIT_MAX_RESPONSE_BYTES", 4<<30))
 
 		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
 		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}

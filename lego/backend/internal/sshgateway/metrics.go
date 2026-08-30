@@ -158,7 +158,8 @@ func (m *Metrics) Reauthorization(result string) {
 
 // GitProxyUpstreamFailure records one agent-session Git smart-HTTP exchange
 // that passed admission and authorization but failed on the gateway→forge hop,
-// by bounded cause ("mint" / "request" / "network" / "refused"). The sandbox
+// by bounded cause ("mint" / "request" / "network" / "refused" /
+// "response_cap" / "stream"). The sandbox
 // deliberately sees only an undifferentiated 502 (upstream error bodies are
 // never reflected), so this counter plus the paired gateway log line is where
 // a broken upstream becomes loud (w5/m82).

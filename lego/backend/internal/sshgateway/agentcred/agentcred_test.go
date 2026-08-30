@@ -139,10 +139,14 @@ func gitProxyHarness(t *testing.T, upstreamHandler http.HandlerFunc) (*Broker, s
 	t.Cleanup(apiServer.Close)
 	upstream := httptest.NewServer(upstreamHandler)
 	t.Cleanup(upstream.Close)
+	// The session pod answers under the synthetic 10.0.0.1 (httptest.NewRequest
+	// callers) and under loopback (tests that must ride a REAL server, e.g. the
+	// abort paths, whose ErrAbortHandler only the server machinery recovers).
+	pod := SessionPod{Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a")}
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
 		Pods: credentialPodResolver{pods: map[string]SessionPod{
-			"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a")},
+			"10.0.0.1": pod, "127.0.0.1": pod, "::1": pod,
 		}},
 		API:            &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()},
 		UpstreamOrigin: upstream.URL, HTTP: upstream.Client(),
@@ -659,6 +663,87 @@ func TestGitProxyUpstreamRefusalLogsAndCounts(t *testing.T) {
 	}
 	if v := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_git_proxy_upstream_failures_total", map[string]string{"cause": "network"}); v != 1 {
 		t.Fatalf(`git_proxy_upstream_failures_total{cause="network"} = %v, want 1`, v)
+	}
+}
+
+// The response byte budget must fail LOUD. The 512 MiB predecessor truncated
+// bex-co/web-beancount's 549 MiB clone pack on every attempt while still
+// counting "accepted" and auditing "allowed" (ags-da9mh5vj596c73en5eq0): the
+// LimitReader EOF'd cleanly and git saw only "unexpected disconnect". An
+// over-budget exchange now aborts the connection, logs, counts response_cap —
+// and never reaches the accepted/allowed bookkeeping.
+func TestGitProxyResponseBudgetAbortsLoudly(t *testing.T) {
+	broker, repoURL, _ := gitProxyHarness(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, strings.Repeat("x", 8192))
+	})
+	registry := prometheus.NewRegistry()
+	broker.Metrics = sshgateway.NewMetrics(registry)
+	broker.MaxResponseBytes = 1024
+
+	var logged bytes.Buffer
+	log.SetOutput(&logged)
+	defer log.SetOutput(os.Stderr)
+
+	front := httptest.NewServer(broker.Handler())
+	t.Cleanup(front.Close)
+	resp, err := front.Client().Get(front.URL + strings.TrimPrefix(repoURL, "http://gateway") + "/info/refs?service=git-upload-pack")
+	if err != nil {
+		t.Fatalf("request failed before the stream: %v", err)
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if readErr == nil && int64(len(body)) >= 8192 {
+		t.Fatal("over-budget response was streamed in full — the cap did not abort")
+	}
+	if !strings.Contains(logged.String(), "response_cap") {
+		t.Fatalf("cap overflow not logged: %q", logged.String())
+	}
+	if v := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_git_proxy_upstream_failures_total", map[string]string{"cause": "response_cap"}); v != 1 {
+		t.Fatalf(`response_cap metric = %v, want 1`, v)
+	}
+	if v := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_authentications_total", map[string]string{"result": "accepted"}); v != 0 {
+		t.Fatalf("truncated exchange still counted accepted (%v) — the ten-day blind spot", v)
+	}
+}
+
+// A broken upstream stream (GitHub resetting mid-pack) is the sibling failure:
+// same abort, logged and counted under its own cause instead of vanishing into
+// a clean-looking short body.
+func TestGitProxyUpstreamStreamErrorAbortsLoudly(t *testing.T) {
+	broker, repoURL, _ := gitProxyHarness(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "8192")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, "short")
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		panic(http.ErrAbortHandler)
+	})
+	registry := prometheus.NewRegistry()
+	broker.Metrics = sshgateway.NewMetrics(registry)
+
+	var logged bytes.Buffer
+	log.SetOutput(&logged)
+	defer log.SetOutput(os.Stderr)
+
+	front := httptest.NewServer(broker.Handler())
+	t.Cleanup(front.Close)
+	// The abort may land before the gateway's own headers flush (hard EOF, no
+	// response) or after (truncated body). Both are loud; a full-looking body
+	// is the only failure.
+	resp, err := front.Client().Get(front.URL + strings.TrimPrefix(repoURL, "http://gateway") + "/info/refs?service=git-upload-pack")
+	if err == nil {
+		body, readErr := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if readErr == nil && len(body) >= 8192 {
+			t.Fatal("broken upstream stream produced a full-looking body")
+		}
+	}
+	if !strings.Contains(logged.String(), "stream failure") {
+		t.Fatalf("stream error not logged: %q", logged.String())
+	}
+	if v := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_git_proxy_upstream_failures_total", map[string]string{"cause": "stream"}); v != 1 {
+		t.Fatalf(`stream metric = %v, want 1`, v)
 	}
 }
 
