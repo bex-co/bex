@@ -76,6 +76,12 @@ providers:
     # namespaces to reach the fixed responder Service in bex-system. Tenant
     # workloads cannot choose the alias target.
     allowExternalNameServices: true
+# `default` TLSStore/TLSOption resources are cluster-wide even though their
+# objects are namespaced. Chart 41.0.0 does not expose Traefik's typed
+# defaultTLSResourcesNamespace value yet, so pass the supported static option
+# directly and reserve that singleton authority to the trusted edge namespace.
+additionalArguments:
+  - --providers.kubernetescrd.defaulttlsresourcesnamespace=traefik
 # Access logs — the backend for bex-api's REQUEST logs (GET /v1/logs?type=request,
 # docs/ADR010-observability.md). JSON format so the log-shipper (log-shipper.yaml)
 # can parse each line into labels: ServiceName gives App attribution

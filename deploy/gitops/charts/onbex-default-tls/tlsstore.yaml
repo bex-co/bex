@@ -1,0 +1,12 @@
+# Traefik serves this certificate only when SNI does not match a routed host's
+# certificate. There is deliberately no catch-all Ingress: unknown hosts still
+# terminate at Traefik's intentional 404 handler.
+apiVersion: traefik.io/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  defaultCertificate:
+    secretName: onbex-default-wildcard-tls

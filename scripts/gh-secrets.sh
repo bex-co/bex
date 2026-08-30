@@ -12,10 +12,16 @@ command -v gh >/dev/null || { echo "ERROR: gh CLI not found — brew install gh 
 set -a; . ./.env; set +a
 
 set_scalar() {
-  local name="$1" val="${!1:-}"
+  local name="$1" environment="${2:-}" val="${!1:-}"
+  [ "$#" -le 2 ] || { echo "ERROR: set_scalar accepts only NAME [ENVIRONMENT]" >&2; return 2; }
   [ -n "$val" ] || { echo "skip  $name (empty in .env)"; return; }
-  printf '%s' "$val" | gh secret set "$name"
-  echo "set   $name"
+  if [ -n "$environment" ]; then
+    printf '%s' "$val" | gh secret set "$name" --env "$environment"
+    echo "set   $name  (environment: $environment)"
+  else
+    printf '%s' "$val" | gh secret set "$name"
+    echo "set   $name"
+  fi
 }
 set_file() {
   local name="$1" path="$2"
@@ -47,6 +53,11 @@ for s in HCLOUD_TOKEN TF_STATE_BUCKET TF_STATE_ENDPOINT TF_STATE_REGION TF_STATE
          BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY; do
   set_scalar "$s"
 done
+# The wildcard issuer needs DNS authority only during the protected production
+# deploy. Keep this credential environment-scoped so test/build jobs and sibling
+# production workflows cannot read it. The token itself must be restricted in
+# Cloudflare to Zone:DNS:Edit + Zone:Zone:Read for onbex.co only.
+set_scalar BEX_ONBEX_DNS_API_TOKEN production-deploy
 set_file BEX_SSH_PUBLIC_KEY  "${BEX_SSH_PUBLIC_KEY_FILE:?set BEX_SSH_PUBLIC_KEY_FILE in .env}"
 set_file BEX_SSH_PRIVATE_KEY "${BEX_SSH_PRIVATE_KEY_FILE:?set BEX_SSH_PRIVATE_KEY_FILE in .env}"
 # The control-plane host-key pin (w1/m68 t006, docs/ADR019-infra-credentials.md):
