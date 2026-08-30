@@ -4,7 +4,7 @@ import { WorkspaceSettingsNavigation } from "../workspace-settings-navigation";
 
 describe("WorkspaceSettingsNavigation", () => {
   it("renders an accessible quick nav linking every settings section", () => {
-    render(<WorkspaceSettingsNavigation className="sticky" />);
+    render(<WorkspaceSettingsNavigation className="sticky" showDangerZone />);
 
     const navigation = screen.getByRole("navigation", {
       name: "Settings sections",
@@ -22,5 +22,22 @@ describe("WorkspaceSettingsNavigation", () => {
         href,
       );
     }
+  });
+
+  it("omits the danger-zone link when workspace deletion is unavailable", () => {
+    render(<WorkspaceSettingsNavigation showDangerZone={false} />);
+
+    const navigation = screen.getByRole("navigation", {
+      name: "Settings sections",
+    });
+    expect(
+      within(navigation).queryByRole("link", { name: "Danger Zone" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(navigation).getByRole("link", { name: "General" }),
+    ).toHaveAttribute("href", "#general");
+    expect(
+      within(navigation).getByRole("link", { name: "Team" }),
+    ).toHaveAttribute("href", "#team");
   });
 });

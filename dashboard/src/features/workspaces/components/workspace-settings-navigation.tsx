@@ -8,8 +8,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
  */
 export function WorkspaceSettingsNavigation({
   className,
+  showDangerZone,
 }: {
   className?: string;
+  showDangerZone: boolean;
 }) {
   const { t } = useTranslations();
   const items = [
@@ -19,11 +21,15 @@ export function WorkspaceSettingsNavigation({
       icon: Settings2,
     },
     { href: "#team", label: t("team.title"), icon: Users },
-    {
-      href: "#danger-zone",
-      label: t("workspaces.dangerZoneTitle"),
-      icon: TriangleAlert,
-    },
+    ...(showDangerZone
+      ? [
+          {
+            href: "#danger-zone",
+            label: t("workspaces.dangerZoneTitle"),
+            icon: TriangleAlert,
+          },
+        ]
+      : []),
   ];
 
   return (

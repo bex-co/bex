@@ -40,9 +40,10 @@ export const Route = createFileRoute("/workspace/settings")({
  */
 function WorkspaceSettingsPage() {
   const { t } = useTranslations();
-  const { currentWorkspace, loading } = useWorkspace();
+  const { currentWorkspace, loading, workspaces } = useWorkspace();
   const { plan } = Route.useSearch();
   const navigate = Route.useNavigate();
+  const hasMultipleWorkspaces = workspaces.length > 1;
 
   // The URL owns whether the plan dialog is open, so the blocked-invite CTA can
   // open it from the team page by navigating here. `replace` keeps opening and
@@ -61,6 +62,7 @@ function WorkspaceSettingsPage() {
           {/* Same right-rail quick nav as the service settings page. */}
           <WorkspaceSettingsNavigation
             className={SECTION_NAVIGATION_STICKY_CLASS}
+            showDangerZone={hasMultipleWorkspaces}
           />
 
           <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
@@ -80,9 +82,11 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="team">
                   <CardSkeleton rows={5} />
                 </section>
-                <section data-skeleton-region="danger-zone">
-                  <CardSkeleton rows={2} />
-                </section>
+                {hasMultipleWorkspaces ? (
+                  <section data-skeleton-region="danger-zone">
+                    <CardSkeleton rows={2} />
+                  </section>
+                ) : null}
               </>
             ) : !currentWorkspace ? (
               <p className="text-muted-foreground text-sm">
@@ -103,9 +107,11 @@ function WorkspaceSettingsPage() {
                 <section id="team" className="scroll-mt-6">
                   <TeamPanel />
                 </section>
-                <section id="danger-zone" className="scroll-mt-6">
-                  <DeleteWorkspaceCard workspace={currentWorkspace} />
-                </section>
+                {hasMultipleWorkspaces ? (
+                  <section id="danger-zone" className="scroll-mt-6">
+                    <DeleteWorkspaceCard workspace={currentWorkspace} />
+                  </section>
+                ) : null}
               </>
             )}
           </div>
