@@ -1,0 +1,21 @@
+# Production-only fallback TLS. HTTP-01 cannot issue wildcards, and local/CAPD
+# must never require the production Cloudflare credential. The parent sync wave
+# follows cert-manager (wave 1) and the shared HTTP-01 ClusterIssuers (wave 2).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: onbex-default-tls
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: bex-platform
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: deploy/gitops/charts/onbex-default-tls
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }

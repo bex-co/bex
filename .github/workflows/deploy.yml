@@ -552,6 +552,16 @@ jobs:
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
 
+      # The wildcard Certificate is GitOps-owned, but its zone-scoped DNS token
+      # is not. Install/rotate the namespace-local credential before Argo sees
+      # the production child Application. stdin keeps the token out of argv and
+      # logs; the protected production-deploy environment gates access to it.
+      - name: install onbex.co DNS-01 credential
+        if: ${{ env.SUPERSEDED != 'true' }}
+        env:
+          BEX_ONBEX_DNS_API_TOKEN: ${{ secrets.BEX_ONBEX_DNS_API_TOKEN }}
+        run: bash scripts/onbex-dns01-secret.sh
+
       # Mirror only archives whose upstream bytes and resulting OCI manifests
       # match deploy/helm-artifacts.lock. Argo consumes these packages by digest,
       # never by an upstream chart-repository version label. GHCR chart packages

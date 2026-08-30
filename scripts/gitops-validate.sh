@@ -212,10 +212,105 @@ bash scripts/datastore-dns-cloudflare.test.sh || { echo "FAIL: datastore Cloudfl
 echo "==> SSH verifier CLI safety gates"
 bash scripts/ssh-verify.test.sh || { echo "FAIL: SSH verifier CLI safety gates" >&2; fail=1; }
 
+echo "==> onbex DNS-01 secret installation safety gates"
+bash scripts/onbex-dns01-secret.test.sh || { echo "FAIL: onbex DNS-01 secret installation safety gates" >&2; fail=1; }
+
 for dir in deploy/opensandbox deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/; do
   [ -f "$dir/kustomization.yaml" ] || continue # e.g. charts/opensandbox-controller is a Helm chart
   echo "==> kustomize build $dir"
   kubectl kustomize "$dir" >/dev/null || { echo "FAIL: $dir does not render" >&2; fail=1; }
+done
+
+# w2/m85: unknown *.onbex.co SNI must get a public wildcard instead of
+# Traefik's generated self-signed certificate, without adding a catch-all route.
+# These checks prove the Git-owned contract only; live issuance/trust and the
+# intentional 404 remain external closeout probes.
+echo "==> production onbex.co wildcard/default TLS contract"
+onbex_tls_render="$(kubectl kustomize deploy/gitops/charts/onbex-default-tls)"
+issuer_shape="$(yq -N '
+  select(.kind == "Issuer" and .metadata.namespace == "traefik" and .metadata.name == "onbex-dns01") |
+  [.metadata.annotations."argocd.argoproj.io/sync-wave",
+   .spec.acme.server,
+   .spec.acme.solvers[0].selector.dnsZones[0],
+   .spec.acme.solvers[0].dns01.cloudflare.apiTokenSecretRef.name,
+   .spec.acme.solvers[0].dns01.cloudflare.apiTokenSecretRef.key] | join("|")
+' - <<<"$onbex_tls_render" | tr -d '\n')"
+expected_issuer_shape='0|https://acme-v02.api.letsencrypt.org/directory|onbex.co|onbex-dns01-cloudflare|api-token'
+if [ "$issuer_shape" != "$expected_issuer_shape" ]; then
+  echo "FAIL: onbex DNS-01 Issuer contract is '$issuer_shape'" >&2
+  fail=1
+fi
+certificate_shape="$(yq -N '
+  select(.kind == "Certificate" and .metadata.namespace == "traefik" and .metadata.name == "onbex-default-wildcard") |
+  [.metadata.annotations."argocd.argoproj.io/sync-wave",
+   (.spec.dnsNames | join(",")), .spec.secretName,
+   .spec.issuerRef.group, .spec.issuerRef.kind, .spec.issuerRef.name] | join("|")
+' - <<<"$onbex_tls_render" | tr -d '\n')"
+expected_certificate_shape='1|*.onbex.co|onbex-default-wildcard-tls|cert-manager.io|Issuer|onbex-dns01'
+if [ "$certificate_shape" != "$expected_certificate_shape" ]; then
+  echo "FAIL: onbex wildcard Certificate contract is '$certificate_shape'" >&2
+  fail=1
+fi
+tlsstore_shape="$(yq -N '
+  select(.kind == "TLSStore" and .metadata.namespace == "traefik" and .metadata.name == "default") |
+  [.metadata.annotations."argocd.argoproj.io/sync-wave", .spec.defaultCertificate.secretName] | join("|")
+' - <<<"$onbex_tls_render" | tr -d '\n')"
+if [ "$tlsstore_shape" != '2|onbex-default-wildcard-tls' ]; then
+  echo "FAIL: Traefik default TLSStore contract is '$tlsstore_shape'" >&2
+  fail=1
+fi
+if yq -N 'select(.kind == "Secret") | .metadata.name' - <<<"$onbex_tls_render" | grep -q .; then
+  echo "FAIL: onbex TLS GitOps must reference out-of-band Secrets, never render one" >&2
+  fail=1
+fi
+default_tls_namespace_arg="$(yq -N '
+  .additionalArguments[] |
+  select(. == "--providers.kubernetescrd.defaulttlsresourcesnamespace=traefik")
+' deploy/gitops/base/values/traefik.values.yaml | tr -d '\n')"
+if [ "$default_tls_namespace_arg" != '--providers.kubernetescrd.defaulttlsresourcesnamespace=traefik' ]; then
+  echo "FAIL: Traefik default TLS resources are not reserved to the traefik namespace" >&2
+  fail=1
+fi
+prod_tls_app="$(yq -N '
+  select(.kind == "Application" and .metadata.name == "onbex-default-tls") |
+  [.metadata.annotations."argocd.argoproj.io/sync-wave", .spec.project,
+   .spec.destination.namespace, .spec.source.path] | join("|")
+' deploy/gitops/overlays/prod/onbex-default-tls.yaml | tr -d '\n')"
+if [ "$prod_tls_app" != '3|bex-platform|traefik|deploy/gitops/charts/onbex-default-tls' ]; then
+  echo "FAIL: production onbex-default-tls Application wiring is '$prod_tls_app'" >&2
+  fail=1
+fi
+if ! grep -qF -- '- onbex-default-tls.yaml' deploy/gitops/overlays/prod/kustomization.yaml; then
+  echo "FAIL: production overlay no longer includes onbex-default-tls.yaml" >&2
+  fail=1
+fi
+if rg -q 'onbex-default-tls' deploy/gitops/base/kustomization.yaml deploy/gitops/overlays/local/kustomization.yaml; then
+  echo "FAIL: local overlay must not require the production onbex DNS credential" >&2
+  fail=1
+fi
+require_onbex_literal() {
+  local contract_file="$1" required="$2"
+  grep -qF -- "$required" "$contract_file" || {
+    echo "FAIL: onbex DNS credential inventory lost '$required' in $contract_file" >&2
+    fail=1
+  }
+}
+require_onbex_literal .env.example 'BEX_ONBEX_DNS_API_TOKEN='
+require_onbex_literal scripts/gh-secrets.sh 'set_scalar BEX_ONBEX_DNS_API_TOKEN production-deploy'
+require_onbex_literal .github/workflows/deploy.yml 'BEX_ONBEX_DNS_API_TOKEN: ${{ secrets.BEX_ONBEX_DNS_API_TOKEN }}'
+require_onbex_literal .github/workflows/deploy.yml 'run: bash scripts/onbex-dns01-secret.sh'
+require_onbex_literal scripts/onbex-dns01-secret.sh '. "$script_dir/lib/secret-install.sh"'
+require_onbex_literal scripts/onbex-dns01-secret.sh 'apply_secret traefik onbex-dns01-cloudflare Opaque api-token "$token"'
+if [ "$(yq -N 'select(.kind == "ClusterIssuer") | .spec.acme.solvers[0].http01.ingress.ingressClassName' \
+  deploy/gitops/charts/cert-manager-issuers/clusterissuers.yaml | grep -c '^traefik$')" != 2 ]; then
+  echo "FAIL: existing staging/prod HTTP-01 ClusterIssuers drifted while adding wildcard DNS-01" >&2
+  fail=1
+fi
+for alert in CertificateNotReady CertificateExpiringSoon; do
+  grep -qF -- "- alert: $alert" deploy/gitops/base/prometheus.yaml || {
+    echo "FAIL: wildcard Certificate lost existing cert-manager alert coverage: $alert" >&2
+    fail=1
+  }
 done
 
 # w2/m81 (docs/ADR072-security-review-round7.md #5 / ADR061 #11 / ADR063 #9):
