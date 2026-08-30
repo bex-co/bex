@@ -47,6 +47,46 @@ for n in 1 5 10; do
   assert "dev-$n's ports are mutually distinct ($total settings)" "[ '$total' -eq '$uniq_total' ]"
 done
 
+echo "==> the agent overlay wires derived ports and removes insecure authz"
+# shellcheck disable=SC2034 # referenced by the assertion commands evaluated below.
+agent_env_block="$(sed -n '/if agent_enabled; then/,/  else/p' scripts/dev-env.sh)"
+assert "OpenFGA uses the per-N forward" \
+  "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_OPENFGA_URL=\"http://localhost:\$OPENFGA_PORT\"'"
+assert "OpenBao uses the per-N forward" \
+  "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_OPENBAO_URL=\"http://localhost:\$OPENBAO_PORT\"'"
+assert "agent attach uses the per-N gateway forward" \
+  "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_AGENT_SESSION_GATEWAY_URL=\"http://localhost:\$AGENT_ATTACH_PORT\"'"
+assert "sandbox exec uses the per-N gateway forward" \
+  "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_SANDBOX_EXEC_URL=\"http://localhost:\$SANDBOX_EXEC_PORT/sandbox-exec\"'"
+assert "agent mode does not set BEX_ALLOW_INSECURE_AUTHZ" \
+  "! printf '%s' \"\$agent_env_block\" | grep -q 'BEX_ALLOW_INSECURE_AUTHZ'"
+assert "real GitHub App OAuth credentials are forwarded to bex-api" \
+  "grep -q 'BEX_GITHUB_APP_CLIENT_ID=\"\$BEX_GITHUB_APP_CLIENT_ID\"' scripts/dev-env.sh && grep -q 'BEX_GITHUB_APP_CLIENT_SECRET=\"\$BEX_GITHUB_APP_CLIENT_SECRET\"' scripts/dev-env.sh"
+
+echo "==> agent-enabled status covers every live gate"
+for needle in "OpenFGA reachable" "OpenBao reachable" "OpenSandbox lifecycle server healthy" \
+  "OpenSandbox reverse hop reaches host bex-api" "ssh-gateway ready" "capabilities.enabled=true"; do
+  assert "status checks $needle" "grep -q '$needle' scripts/dev-env.sh"
+done
+assert "reverse-hop bridge uses the derived host IPv4" \
+  "grep -q 'upstream = (\"__HOST_DOCKER_IPV4__\", __BEX_CP_PORT__)' scripts/dev-env/agent/host-api.yaml"
+assert "reverse-hop bridge is control-plane host-networked" \
+  "grep -q 'hostNetwork: true' scripts/dev-env/agent/host-api.yaml"
+assert "OpenSandbox uses the in-cluster reverse-hop Service" \
+  "grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__' scripts/dev-env/agent/sandbox-local.toml"
+assert "ssh-gateway uses the in-cluster reverse-hop Service" \
+  "grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__' scripts/dev-env/agent/ssh-gateway.yaml"
+assert "local sandboxes co-locate with the gateway on the control-plane node" \
+  "grep -q 'node-role.kubernetes.io/control-plane' scripts/dev-env/agent/batchsandbox-template.local.yaml"
+assert "agent-stub refreshes both gateway forwards after its rollout" \
+  "sed -n '/cmd_agent_stub()/,/cmd_agent_stub_off()/p' scripts/dev-env.sh | grep -q 'refresh_agent_gateway_forwards'"
+assert "agent-stub-off recreates the gateway without strategic-patch residue" \
+  "sed -n '/cmd_agent_stub_off()/,/cmd_agent_down()/p' scripts/dev-env.sh | grep -q 'delete deploy bex-ssh-gateway'"
+assert "agent-down removes model-stub resources" \
+  "sed -n '/cmd_agent_down()/,/entrypoint/p' scripts/dev-env.sh | grep -q 'deploy/model-stub'"
+assert "the live verifier supports the local gateway stream origin" \
+  "grep -q 'BEX_VERIFY_STREAM_URL' scripts/agent-session-verify.sh"
+
 echo "==> the identity every prune is scoped by is per-N"
 for n in 1 2 3 4 5 6 7 8 9 10; do
   assert "dev-$n's BEX_CP_IDENTITY is dev-$n" "[ \"$(value_of "$n" BEX_CP_IDENTITY)\" = 'dev-$n' ]"

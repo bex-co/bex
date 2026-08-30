@@ -19,8 +19,8 @@
 #     multi-replica correctness a production concern, not a local one);
 #   - no platform-pool nodeSelector; pinned to the control-plane node for the
 #     same OrbStack+Calico apiserver-reachability reason as coredns;
-#   - bex-api runs on the HOST, so the two control-plane callback URLs point at
-#     host.docker.internal rather than the bex-api Service;
+#   - bex-api runs on the HOST, so the two control-plane callback URLs use a
+#     kube-system Service backed by a control-plane host-network bridge;
 #   - BEX_CP_DB_URI is the full bex-db superuser DSN rather than the scoped
 #     `bex_ssh_gateway` role scripts/ssh-gateway-db-role.sh mints: that role is a
 #     production least-privilege boundary, and dev-N has no separate credential
@@ -141,11 +141,11 @@ spec:
             - name: BEX_AGENT_CREDENTIAL_ADDR
               value: ":8082"
             - name: BEX_AGENT_CREDENTIAL_API_URL
-              value: http://host.docker.internal:__BEX_CP_PORT__/v1/agent-session-credentials
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-credentials
             - name: BEX_AGENT_MODEL_PROXY_ADDR
               value: ":8084"
             - name: BEX_AGENT_MODEL_CREDENTIAL_API_URL
-              value: http://host.docker.internal:__BEX_CP_PORT__/v1/agent-session-model-credentials
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-model-credentials
             # Agent-session conversation transport (ADR047 D9). dev-env.sh
             # port-forwards this listener to the host so the dashboard's
             # useChat can reach it; the CORS origin is the dev-N dashboard.

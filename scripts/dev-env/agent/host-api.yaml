@@ -1,0 +1,122 @@
+# LOCAL-DEV reverse hop from cluster Pods to the host-run bex-api control-plane
+# listener. Pods cannot route directly to OrbStack's host address under
+# CAPD+Calico, while the control-plane NODE can. This tiny TCP bridge therefore
+# runs hostNetwork on that node (kube-system is the mock cluster's privileged
+# infrastructure namespace) and exposes an ordinary ClusterIP Service to
+# OpenSandbox and ssh-gateway. It has no HTTP awareness and holds no credential.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bex-dev-host-api-proxy
+  namespace: kube-system
+  labels:
+    app.bex.co/dev-env: __DEV_NS__
+data:
+  proxy.py: |
+    import select
+    import socket
+    import socketserver
+
+    upstream = ("__HOST_DOCKER_IPV4__", __BEX_CP_PORT__)
+
+    class Proxy(socketserver.BaseRequestHandler):
+        def handle(self):
+            with socket.create_connection(upstream, timeout=10) as peer:
+                sockets = [self.request, peer]
+                while True:
+                    for source in select.select(sockets, [], [])[0]:
+                        data = source.recv(65536)
+                        if not data:
+                            return
+                        (peer if source is self.request else self.request).sendall(data)
+
+    class Server(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    Server(("0.0.0.0", __AGENT_HOST_API_PORT__), Proxy).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bex-dev-host-api-proxy
+  namespace: kube-system
+  labels:
+    app.bex.co/dev-env: __DEV_NS__
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bex-dev-host-api-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bex-dev-host-api-proxy
+        app.bex.co/dev-env: __DEV_NS__
+      annotations:
+        app.bex.co/config-revision: "__HOST_API_REVISION__"
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      automountServiceAccountToken: false
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: proxy
+          image: python:3.12-slim@sha256:09f7da3bc104798d0afb40bc08d23ab2da20a76130cec1f2ef170848f5d85217
+          imagePullPolicy: IfNotPresent
+          command: [python3, /opt/bex/proxy.py]
+          ports:
+            - name: http
+              containerPort: 8091
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: script
+              mountPath: /opt/bex
+              readOnly: true
+      volumes:
+        - name: script
+          configMap:
+            name: bex-dev-host-api-proxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bex-dev-host-api
+  namespace: kube-system
+  labels:
+    app.bex.co/dev-env: __DEV_NS__
+spec:
+  selector:
+    app.kubernetes.io/name: bex-dev-host-api-proxy
+  ports:
+    - name: http
+      port: __AGENT_HOST_API_PORT__
+      targetPort: http

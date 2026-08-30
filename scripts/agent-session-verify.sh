@@ -41,6 +41,7 @@ set -euo pipefail
 #   BEX_VERIFY_MODEL=gpt-5           # model passed to the adapter
 #   BEX_VERIFY_MODEL_ENDPOINT=https://api.openai.com/v1
 #   BEX_VERIFY_OWNER_ID=<workspace id to bill/scope to>
+#   BEX_VERIFY_STREAM_URL=http://localhost:62030 # local gateway; defaults to API origin
 #   BEX_GITHUB_TOKEN=<token to independently confirm the PR on GitHub>
 #   BEX_VERIFY_TIMEOUT=1800          # seconds to wait for a turn (default 30m)
 #   BEX_VERIFY_CRASH_TIMEOUT=180      # terminal convergence bound for crash leg
@@ -63,6 +64,8 @@ for command in curl jq; do
 done
 
 api_url="${BEX_API_URL%/}"
+stream_api_url="${BEX_VERIFY_STREAM_URL:-$api_url}"
+stream_api_url="${stream_api_url%/}"
 agent="${BEX_VERIFY_AGENT}"
 model="${BEX_VERIFY_MODEL:-}"
 model_endpoint="${BEX_VERIFY_MODEL_ENDPOINT:-}"
@@ -287,12 +290,14 @@ stream_get() {
 
 echo "-- 5. conversation API (attach / replay / turn / reattach) --"
 
-# stream_url_for SESSION_ID -> the phase-1 SSE stream endpoint. The stream is
-# published under the PRIMARY API origin (edge-routed to the isolated gateway,
-# t006); the mint's `url` field is the phase-2 raw-ACP WebSocket origin
+# stream_url_for SESSION_ID -> the phase-1 SSE stream endpoint. In production
+# this is the primary API origin (edge-routed to the isolated gateway). Local
+# dev has no edge route, so BEX_VERIFY_STREAM_URL points at the :8083 forward.
+# The mint's `url` field is the phase-2 raw-ACP WebSocket origin
 # (BEX_AGENT_SESSION_GATEWAY_URL, e.g. wss://ssh.bex.co/agent-sessions) and is
-# NOT the SSE base — validate it is present, but stream against the API origin.
-stream_url_for() { printf '%s/v1/agent-sessions/%s/stream' "$api_url" "$1"; }
+# NOT the SSE base — validate it is present, but stream against the configured
+# production or local SSE origin.
+stream_url_for() { printf '%s/v1/agent-sessions/%s/stream' "$stream_api_url" "$1"; }
 
 mint="$(mint_attach "$sid")"
 ticket="$(jq -r '.ticket // empty' <<<"$mint")"
