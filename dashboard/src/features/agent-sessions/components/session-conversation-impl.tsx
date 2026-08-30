@@ -480,7 +480,11 @@ type DisplayBlock =
       key: string;
       steps: ActivityStep[];
       sourceTimesMs: number[];
-    };
+    }
+  // The driver's ADR047 D3 continuity annotation: which ladder rung primed a
+  // fresh agent generation. Rendered as an honest system line so the UI never
+  // implies conversational fidelity the agent doesn't have (w5/m84).
+  | { type: "continuity"; key: string; rung: string };
 
 function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   const blocks: DisplayBlock[] = [];
@@ -526,6 +530,18 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
       // because replay intentionally adapts all raw chunks into one AI-SDK
       // assistant message.
       planBlock = null;
+      return;
+    }
+
+    if (part.type === "data-bex-continuity") {
+      const data =
+        part.data && typeof part.data === "object"
+          ? (part.data as Record<string, unknown>)
+          : {};
+      const rung = str(data.rung);
+      if (rung && rung !== "none") {
+        blocks.push({ type: "continuity", key: `continuity-${index}`, rung });
+      }
       return;
     }
 
@@ -690,6 +706,9 @@ const MessageRow = memo(function MessageRow({
               />
             );
           }
+          if (block.type === "continuity") {
+            return <ContinuityNote key={block.key} rung={block.rung} />;
+          }
           return (
             <ActivityGroup
               key={block.key}
@@ -703,6 +722,25 @@ const MessageRow = memo(function MessageRow({
     </div>
   );
 });
+
+// ContinuityNote renders the driver's fresh-generation priming annotation as a
+// muted system line (the TerminalStatusLine shell, so transcript system lines
+// read as one system): restored state (rung 1), transcript-rebuilt context
+// (rung 2), or a re-delivered task (rung 3). Honest by design — the reader
+// should know whether the agent truly remembers or was re-briefed; an unknown
+// rung renders nothing rather than a wrong claim (w5/m84).
+const CONTINUITY_MESSAGES: Record<string, string> = {
+  "session-load": "agentSessions.continuitySessionLoad",
+  "transcript-reprime": "agentSessions.continuityReprime",
+  "task-redelivery": "agentSessions.continuityTaskRedelivery",
+};
+
+function ContinuityNote({ rung }: { rung: string }) {
+  const { t } = useTranslations();
+  const key = CONTINUITY_MESSAGES[rung];
+  if (!key) return null;
+  return <TerminalStatusLine label={t(key)} />;
+}
 
 function DurableUserTurn({
   text,

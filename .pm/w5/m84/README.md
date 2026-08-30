@@ -1,16 +1,16 @@
 # w5 · m84 — Agent-context continuity across sandbox generations (resume / steer / redispatch)
 
-**Worker:** worker5 **Goal:** a resumed or steered agent session remembers its conversation — the fresh agent process is primed per the ADR047 D3 continuity ladder instead of cold-starting while the dashboard replays history it doesn't have. **Status:** todo
+**Worker:** worker5 **Goal:** a resumed or steered agent session remembers its conversation — the fresh agent process is primed per the ADR047 D3 continuity ladder instead of cold-starting while the dashboard replays history it doesn't have. **Status:** todo (t001–t005 done 2026-08-30; t006 live E2E awaits ship + rollout of the platform AND agent-sandbox images)
 
 ## Tasks (in order)
 
 | id   | title                                                                                  | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Driver: transcript re-priming + task re-delivery (ladder rungs 2–3)                     | 60m | —          |
-| t002 | Rung 1: snapshot carries agent session-state dirs + ACP `session/load` when advertised  | 60m | t001       |
-| t003 | Surface the applied rung: turn annotation + dashboard restored/fresh-context hint       | 45m | t001       |
-| t004 | Simplify — `/simplify` over the changed code                                            | 30m | t002, t003 |
-| t005 | Test coverage — ladder selection, preamble bounds, no double-render, empty-snapshot resume | 45m | t004       |
+| t001 | Driver: transcript re-priming + task re-delivery (ladder rungs 2–3) — **DONE**                     | 60m | —          |
+| t002 | Rung 1: snapshot carries agent session-state dirs + ACP `session/load` when advertised — **DONE**  | 60m | t001       |
+| t003 | Surface the applied rung: turn annotation + dashboard restored/fresh-context hint — **DONE**       | 45m | t001       |
+| t004 | Simplify — `/simplify` over the changed code — **DONE**                                            | 30m | t002, t003 |
+| t005 | Test coverage — ladder selection, preamble bounds, no double-render, empty-snapshot resume — **DONE** | 45m | t004       |
 | t006 | Live E2E: production resume + steer-redispatch answer a context-dependent prompt        | 45m | t005       |
 | t007 | Closeout                                                                                | 15m | t006       |
 

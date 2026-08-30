@@ -54,6 +54,13 @@ export interface AgentDriverConfig {
   gitEmail: string;
   existingSessionId: string;
   persistSession: boolean;
+  // Continuity priming material for a fresh agent generation (ADR047 D3
+  // ladder, w5/m84). bex-api injects at most one: contextJson is the prior
+  // conversation extract (rung 2), originalTask the session task to re-deliver
+  // when the agent never ran before (rung 3). Both are ignored when ACP
+  // session/load succeeds (rung 1).
+  contextJson: string;
+  originalTask: string;
   listenHost: string;
   listenPort: number;
   sessionLogPath: string;
@@ -241,6 +248,8 @@ export function loadConfig(
     gitEmail: env.BEX_AGENT_GIT_EMAIL || "agent@bex.co",
     existingSessionId: env.BEX_AGENT_EXISTING_SESSION_ID || "",
     persistSession: env.BEX_AGENT_PERSIST_SESSION !== "0",
+    contextJson: env.BEX_AGENT_CONTEXT_JSON || "",
+    originalTask: env.BEX_AGENT_ORIGINAL_TASK || "",
     listenHost: env.BEX_AGENT_LISTEN_HOST || "0.0.0.0",
     listenPort: positivePort(env.BEX_AGENT_LISTEN_PORT),
     sessionLogPath,

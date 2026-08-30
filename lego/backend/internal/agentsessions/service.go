@@ -491,6 +491,10 @@ type dispatchSpec struct {
 	delivery          string
 	turn              int
 	previousSandboxID string
+	// task carries agentConfig.Task into the background dispatch so
+	// continuityEnv (its transcript read stays OFF the accept path) can
+	// re-deliver it on the rung-3 shape (w5/m84).
+	task string
 }
 
 // runDispatch executes the slow sandbox-provisioning half of a create/steer turn
@@ -1052,6 +1056,7 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 		env:           env,
 		delivery:      delivery,
 		turn:          acceptedTurn,
+		task:          config.Task,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runRehydrate(ctx, record, spec) })
 	return s.toView(record)
@@ -1064,6 +1069,15 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 // adopts the sandbox and clears the snapshot fields (RehydrateAgentSession).
 func (s *Service) runRehydrate(ctx context.Context, record store.AgentSession, spec dispatchSpec) {
 	ws := record.WorkspaceID
+	// Fresh pod with prior turns and a prompt to run: hand the driver its
+	// rung-2/3 priming material (ADR047 D3 ladder, w5/m84). Computed here, off
+	// the accept path — the transcript read is background work. Rung 1
+	// (session/load) stays the driver's call: it wins when the restored
+	// snapshot carries agent state. A restore-only resume (turn 0) runs no
+	// prompt and needs no priming.
+	if spec.turn > 0 {
+		s.continuityEnv(ctx, spec.env, record, spec.task)
+	}
 	// Resume-latency instrumentation (ADR059 D4 SLOs p50<~5s/p95<~15s): time the
 	// cold restore from claim to a live sandbox. The dominant factor is the pod
 	// schedule + the in-sandbox snapshot fetch/untar; the number is logged for the
@@ -1407,6 +1421,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		delivery:          DeliveryRedispatch,
 		turn:              record.Turns,
 		previousSandboxID: previousSandboxID,
+		task:              config.Task,
 	}
 	// Accept fast: tear the previous turn's sandbox down and re-dispatch a fresh
 	// one in the background. In phase 1 a new prompt can't ride the old sandbox
@@ -1420,6 +1435,10 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 // runSteerDispatch tears the previous turn's sandbox down (idempotent) then
 // re-dispatches a fresh one for the steering prompt, in the background.
 func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) {
+	// A redispatch crosses a sandbox-generation boundary exactly like a
+	// hibernated resume: prime the blank agent (ADR047 D3 ladder, w5/m84).
+	// Off the accept path by design — see runRehydrate.
+	s.continuityEnv(ctx, spec.env, record, spec.task)
 	if spec.previousSandboxID != "" {
 		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, spec.previousSandboxID); err != nil {
 			log.Printf("agent-session steer: teardown of previous sandbox failed (session=%s sandbox=%s): %v", record.ID, spec.previousSandboxID, err)

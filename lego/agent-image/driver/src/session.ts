@@ -25,6 +25,7 @@ import path from "node:path";
 import { createUIMessageStream } from "ai";
 import { createSessionProvider, type SessionProvider } from "./acp.js";
 import { createUpdateMapper } from "./acp-map.js";
+import { resolveContinuity, type ContinuityRung } from "./continuity.js";
 import { stampSourceTimestamp } from "./timestamp.js";
 import {
   deliverBranch,
@@ -254,6 +255,7 @@ export async function runHeadlessTurn(
     // chunk, so the consume loop below would otherwise resolve normally on an
     // agent crash. Capture the error and re-raise it after the stream drains.
     let turnError: unknown;
+    let continuityRung: ContinuityRung = "none";
     const execute = async () => {
       const mapper = createUpdateMapper();
       const stream = createUIMessageStream({
@@ -271,7 +273,21 @@ export async function runHeadlessTurn(
                 redact: (value) => credentialManager.redact(value),
               },
             );
-            promptResponse = await provider.prompt(prompt);
+            // Continuity ladder (ADR047 D3, w5/m84): the rung depends on
+            // whether session/load actually happened, known only now. The
+            // annotation is a durable (non-transient) part so replay shows the
+            // same restored-vs-rebuilt hint the live stream carried; the
+            // preamble itself rides only the ACP prompt, never the stream, so
+            // history is never double-rendered.
+            const continuity = resolveContinuity(config, provider.resume, prompt);
+            continuityRung = continuity.rung;
+            if (continuity.rung !== "none") {
+              writer.write({
+                type: "data-bex-continuity",
+                data: { rung: continuity.rung },
+              });
+            }
+            promptResponse = await provider.prompt(continuity.prompt);
             for (const chunk of mapper.flush()) writer.write(chunk);
             writer.write({ type: "finish" });
           } catch (error) {
@@ -321,6 +337,7 @@ export async function runHeadlessTurn(
       state: "succeeded",
       sessionId: provider!.sessionId,
       resume: provider!.resume,
+      ...(continuityRung !== "none" ? { continuity: continuityRung } : {}),
       ...(resumedFrom ? { resumedFrom } : {}),
       ...(delivery ? { delivery } : {}),
       evidence,

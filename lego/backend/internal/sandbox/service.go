@@ -705,7 +705,12 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 // hibernateScript is the ADR059 D3 snapshot pipeline, run once via the trusted
 // gateway exec boundary (stdout-only, signed argv). It scrubs credentials (the
 // same bex-pre-snapshot hook Suspend uses), tars the mutable workspace state
-// (`/workspace` + `~/.zed_server` when present) preserving ownership, prints the
+// (`/workspace`, `~/.zed_server`, each agent profile's session-state dirs, and
+// the driver's `/var/run/bex-agent` status dir — the state ADR047 D3's
+// `session/load` resume rung depends on; ADR059 D3 continuity amendment,
+// w5/m84 — the per-profile dirs are declared in agent-profiles.json
+// `sessionState` and guard-tested against this script) preserving ownership,
+// prints the
 // digest + byte count on stdout (the only channel back), then streams the
 // archive straight to the create-once presigned PUT URL — so **no durable
 // credential ever enters the sandbox**, only a single-object time-boxed URL.
@@ -723,6 +728,10 @@ SNAP=/tmp/bex-hibernate.tgz
 HOME_DIR="${HOME:-/home/bex}"
 MEMBERS="/workspace"
 [ -d "$HOME_DIR/.zed_server" ] && MEMBERS="$MEMBERS $HOME_DIR/.zed_server"
+for STATE in .claude .claude.json .codex .gemini; do
+  [ -e "$HOME_DIR/$STATE" ] && MEMBERS="$MEMBERS $HOME_DIR/$STATE"
+done
+[ -d /var/run/bex-agent ] && MEMBERS="$MEMBERS /var/run/bex-agent"
 tar czf "$SNAP" --numeric-owner $MEMBERS 2>/dev/null
 sha256sum "$SNAP" | cut -d' ' -f1
 wc -c < "$SNAP"
