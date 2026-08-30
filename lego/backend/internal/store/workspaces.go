@@ -44,6 +44,12 @@ type TenantMember struct {
 func (s *PGStore) CreateWorkspace(ctx context.Context, name, plan, ownerSubject string) (Tenant, error) {
 	t := Tenant{ID: ids.New(ids.Workspace), Name: name, Plan: plan}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockSubjectMembership(ctx, tx, ownerSubject); err != nil {
+			return err
+		}
+		if err := refuseDeletingSubject(ctx, tx, ownerSubject); err != nil {
+			return err
+		}
 		if err := tx.QueryRow(ctx,
 			`INSERT INTO tenants (id, name, plan) VALUES ($1, $2, $3) RETURNING created_at`,
 			t.ID, name, plan,

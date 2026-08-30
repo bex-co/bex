@@ -17,7 +17,7 @@ function isAlreadySignedOut(err: unknown): boolean {
   return false;
 }
 
-async function clearLocalSessionState(): Promise<void> {
+export async function clearBrowserAccountState(): Promise<void> {
   // The CSR Apollo client is a module singleton that survives logout, so
   // without this the next account could read the previous one's cached
   // workspaces/resources (codex-security #24).
@@ -67,7 +67,7 @@ export async function endBrowserSession(): Promise<void> {
     logoutUrl = flow.logout_url;
   } catch (err) {
     if (isAlreadySignedOut(err)) {
-      await clearLocalSessionState();
+      await clearBrowserAccountState();
       return;
     }
     throw err;
@@ -84,5 +84,5 @@ export async function endBrowserSession(): Promise<void> {
     }
   }
 
-  await clearLocalSessionState();
+  await clearBrowserAccountState();
 }

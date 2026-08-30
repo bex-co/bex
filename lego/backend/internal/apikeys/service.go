@@ -85,6 +85,54 @@ type KeyQuotaLocker interface {
 	WithTenantAdvisoryLock(ctx context.Context, tenantID string, fn func() error) error
 }
 
+// AccountDeletionReader lets credential issuance close the race with account
+// deletion. Production's tenant binding implements it from the same Postgres
+// tombstone used by onboarding; legacy/in-memory binders may omit it.
+type AccountDeletionReader interface {
+	AccountDeletionTombstoned(context.Context, string) (bool, error)
+}
+
+type accountKeyBinding interface {
+	UnbindKey(context.Context, string) error
+}
+
+// AccountTeardown is the trusted account-worker adapter for machine
+// credentials. It preserves the same fail-closed unbind-before-delete order as
+// the public revoke verb without pretending the worker is a workspace admin.
+type AccountTeardown struct {
+	Store   APIKeyStore
+	Binding accountKeyBinding
+}
+
+func (a AccountTeardown) List(ctx context.Context) ([]APIKey, error) {
+	if a.Store == nil {
+		return nil, core.ErrAPIKeysUnavailable
+	}
+	return a.Store.List(ctx)
+}
+
+func (a AccountTeardown) CleanupSubject(ctx context.Context, subject string) error {
+	if a.Store == nil || a.Binding == nil {
+		return core.ErrAPIKeysUnavailable
+	}
+	keys, err := a.Store.List(ctx)
+	if err != nil {
+		return err
+	}
+	for _, key := range keys {
+		if key.CreatedBy != subject {
+			continue
+		}
+		if err := a.Binding.UnbindKey(ctx, key.ID); err != nil {
+			return fmt.Errorf("unbind API key %s: %w", key.ID, err)
+		}
+		if err := a.Store.Delete(ctx, key.ID); err != nil && !errors.Is(err, core.ErrNotFound) {
+			return fmt.Errorf("delete API key %s: %w", key.ID, err)
+		}
+	}
+	return nil
+}
+
 // Service manages machine credentials over the injected APIKeyStore.
 type Service struct {
 	*core.Base
@@ -193,6 +241,9 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 }
 
 func (s *Service) createBoundAPIKey(ctx context.Context, tenantID, name, createdBy string) (APIKey, error) {
+	if err := s.refuseDeletingCreator(ctx, createdBy); err != nil {
+		return APIKey{}, err
+	}
 	keys, err := s.APIKeys.List(ctx)
 	if err != nil {
 		return APIKey{}, err
@@ -220,7 +271,31 @@ func (s *Service) createBoundAPIKey(ctx context.Context, tenantID, name, created
 		_ = s.APIKeys.Delete(ctx, key.ID)
 		return APIKey{}, fmt.Errorf("bind api key to tenant: %w", err)
 	}
+	// Recheck after the external Hydra create and local binding. If deletion
+	// committed while issuance was in flight, roll both halves back. If it
+	// commits after this check, the deletion worker's later Hydra inventory sees
+	// this completed key, so every ordering converges without an orphan.
+	if err := s.refuseDeletingCreator(ctx, createdBy); err != nil {
+		_ = s.Binding.UnbindKey(ctx, key.ID)
+		_ = s.APIKeys.Delete(ctx, key.ID)
+		return APIKey{}, err
+	}
 	return key, nil
+}
+
+func (s *Service) refuseDeletingCreator(ctx context.Context, subject string) error {
+	reader, ok := s.Binding.(AccountDeletionReader)
+	if !ok || subject == "" {
+		return nil
+	}
+	pending, err := reader.AccountDeletionTombstoned(ctx, subject)
+	if err != nil {
+		return err
+	}
+	if pending {
+		return core.NewAccountDeletionPendingError()
+	}
+	return nil
 }
 
 // touchThrottle is the minimum interval between last-used writes for one key.

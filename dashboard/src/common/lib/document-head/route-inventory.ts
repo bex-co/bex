@@ -26,6 +26,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     // This inventory entry is the tripwire — renaming back to the nested form
     // fails this test.
     "agents_.$agentSessionId.tsx",
+    "auth.account-deleted.tsx",
     "auth.consent.tsx",
     "auth.device.success.tsx",
     "auth.device.tsx",

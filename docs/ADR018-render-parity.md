@@ -335,3 +335,7 @@ The official CLI's Postgres and Key Value create schemas omit bex's `public` ext
 - **Render MCP** — `render-oss/render-mcp-server` v0.3.0 (24 tools): `cmd/server.go` + `pkg/*/tools.go`; docs `https://render.com/docs/mcp-server`.
 - **Render dashboard IA** — `render.com/docs` (service-metrics, logging, deploys, scaling, disks, jobs, ssh, custom-domains, postgresql\*, configure-environment-variables, team-members, notifications, audit-logs).
 - **Render GraphQL** — captured live in [render-artifacts/](render-artifacts/) (`team-members.graphql`); the dashboard operation names bex mirrors are noted in [ADR006-bex-api.md](ADR006-bex-api.md).
+
+## Account deletion (w2/m84, ADR086)
+
+Render makes account deletion discoverable at the bottom of profile/settings but publishes no self-delete operation in its public OpenAPI. bex matches that danger-zone placement and irreversible confirmation while deliberately exposing REST and GraphQL self-delete because ADR008 forbids dashboard-only behavior. bex also previews delete/leave/block disposition across every workspace; Render's public contract does not document equivalent multi-workspace behavior. MCP is omitted as an intentional irreversible-boundary restriction.

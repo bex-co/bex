@@ -12,6 +12,7 @@
 # so a port change lands in one place instead of ten values files (w1/m72):
 #   dashboard  -> http://localhost:__DASHBOARD_PORT__
 #   kratos-public port-forward -> http://localhost:__KRATOS_PUBLIC_PORT__
+#   hydra-public port-forward -> http://localhost:__HYDRA_PUBLIC_PORT__
 kratos:
   config:
     oauth2_provider:
@@ -28,6 +29,11 @@ kratos:
       default_browser_return_url: http://localhost:__DASHBOARD_PORT__/
       allowed_return_urls:
         - http://localhost:__DASHBOARD_PORT__
+        # Kratos's native Hydra integration returns the browser to the original
+        # authorize URL after accepting a login challenge. Without the dev-N
+        # issuer origin, every connected-agent OAuth flow fails closed with
+        # self_service_flow_return_to_forbidden before consent can begin.
+        - http://localhost:__HYDRA_PUBLIC_PORT__
       methods:
         password:
           config:

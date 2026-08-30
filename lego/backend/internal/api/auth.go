@@ -376,6 +376,11 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			// request that can't be tenanted must not be served un-tenanted.
 			if a.onboard != nil && id.Human {
 				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject, id.Email, id.EmailVerified); err != nil {
+					var coded *core.CodedError
+					if errors.As(err, &coded) {
+						core.WriteErr(w, err)
+						return
+					}
 					core.WriteErrStatus(w, http.StatusServiceUnavailable, "tenant onboarding unavailable")
 					return
 				}

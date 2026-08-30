@@ -940,7 +940,7 @@ export function AccountSettingsPageSkeleton() {
             className="mt-6 border-y py-2 lg:hidden"
           >
             <div className="flex gap-2 overflow-hidden">
-              {Array.from({ length: 4 }, (_, index) => (
+              {Array.from({ length: 5 }, (_, index) => (
                 <Skeleton key={index} className="h-8 w-24 shrink-0" />
               ))}
             </div>
@@ -951,6 +951,7 @@ export function AccountSettingsPageSkeleton() {
               { name: "integrations", count: 2 },
               { name: "access", count: 2 },
               { name: "security", count: 3 },
+              { name: "danger-zone", count: 1 },
             ].map(({ name, count }) => (
               <Region key={name} name={name} className="space-y-4">
                 <div className="space-y-2">
@@ -965,7 +966,7 @@ export function AccountSettingsPageSkeleton() {
           </div>
         </div>
         <div className="sticky top-6 hidden lg:block">
-          <VerticalNavigationSkeleton count={4} />
+          <VerticalNavigationSkeleton count={5} />
         </div>
       </div>
     </PendingFrame>
@@ -1092,6 +1093,27 @@ export function LogoutRouteSkeleton() {
               <Skeleton className="h-9 w-24" />
               <Skeleton className="h-9 w-24" />
             </div>
+          </CardContent>
+        </Card>
+      </Region>
+    </AuthRouteSkeleton>
+  );
+}
+
+export function AccountDeletedRouteSkeleton() {
+  return (
+    <AuthRouteSkeleton route="account-deleted">
+      <Region name="status-card">
+        <Card>
+          <CardContent className="space-y-6 p-6 sm:p-8">
+            <div className="flex items-start gap-3">
+              <Skeleton className="size-6 shrink-0 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-4/5" />
+              </div>
+            </div>
+            <Skeleton className="h-9 w-32" />
           </CardContent>
         </Card>
       </Region>

@@ -56,6 +56,9 @@ var (
 	ErrNotFound = errors.New("not found")
 	ErrConflict = errors.New("already exists")
 	ErrInvalid  = errors.New("invalid")
+	// ErrAccountDeletionPending is returned by membership writers after they
+	// serialize with a newly committed account-deletion intent.
+	ErrAccountDeletionPending = errors.New("account deletion pending")
 )
 
 // MapError translates this taxonomy into core's, so a feature service can
@@ -677,6 +680,12 @@ func (s *PGStore) IsMember(ctx context.Context, subject, tenantID string) (bool,
 func (s *PGStore) CreateTenantWithMember(ctx context.Context, identityID, plan string) (Tenant, error) {
 	var t Tenant
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		if err := lockSubjectMembership(ctx, tx, identityID); err != nil {
+			return err
+		}
+		if err := refuseDeletingSubject(ctx, tx, identityID); err != nil {
+			return err
+		}
 		id := ids.New(ids.Workspace)
 		var err error
 		t, err = scanTenant(tx.QueryRow(ctx, `
@@ -707,10 +716,19 @@ func (s *PGStore) CreateTenantWithMember(ctx context.Context, identityID, plan s
 // platform tenant-create path (store/api.go, an explicit Admin) and by
 // BindClient (a minted API key is "membership" too — same table, same shape).
 func (s *PGStore) AddMember(ctx context.Context, subject, tenantID, role string) error {
-	_, err := s.Pool.Exec(ctx, `
-		INSERT INTO tenant_members (tenant_id, subject, role)
-		VALUES ($1, $2, $3)
-		ON CONFLICT DO NOTHING`, tenantID, subject, role)
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockSubjectMembership(ctx, tx, subject); err != nil {
+			return err
+		}
+		if err := refuseDeletingSubject(ctx, tx, subject); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `
+			INSERT INTO tenant_members (tenant_id, subject, role)
+			VALUES ($1, $2, $3)
+			ON CONFLICT DO NOTHING`, tenantID, subject, role)
+		return err
+	})
 	if err != nil {
 		return classify("tenant_member", err)
 	}

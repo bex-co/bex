@@ -225,7 +225,8 @@ func TestDeleteTLSSecretsUsesUncachedClientForTenantNamespace(t *testing.T) {
 			}
 			return nil
 		}}).Build()
-	direct := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
+	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: app.Namespace}}
+	direct := fake.NewClientBuilder().WithScheme(scheme).WithObjects(namespace, secret).Build()
 	r := &AppReconciler{Client: cached, BuildClient: direct, Scheme: scheme}
 
 	done, err := r.deleteTLSSecrets(ctx, app)
@@ -238,6 +239,26 @@ func TestDeleteTLSSecretsUsesUncachedClientForTenantNamespace(t *testing.T) {
 	}
 	if err := direct.Get(ctx, client.ObjectKeyFromObject(secret), &corev1.Secret{}); !apierrors.IsNotFound(err) {
 		t.Fatalf("tenant TLS Secret survived direct-client cleanup: %v", err)
+	}
+}
+
+func TestDeleteTLSSecretsConvergesWhenTenantNamespaceIsTerminating(t *testing.T) {
+	ctx := context.Background()
+	scheme := deletionScheme(t)
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "tenant-tls", Namespace: "tea-deleting"}}
+	now := metav1.Now()
+	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: app.Namespace, DeletionTimestamp: &now, Finalizers: []string{"kubernetes"},
+	}}
+	direct := fake.NewClientBuilder().WithScheme(scheme).WithObjects(namespace).
+		WithInterceptorFuncs(interceptor.Funcs{List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+			return apierrors.NewForbidden(corev1.Resource("secrets"), "", errors.New("tenant RoleBinding already removed"))
+		}}).Build()
+	r := &AppReconciler{Client: direct, BuildClient: direct, Scheme: scheme}
+
+	done, err := r.deleteTLSSecrets(ctx, app)
+	if err != nil || !done {
+		t.Fatalf("terminating namespace TLS cleanup = done %v err %v, want converged", done, err)
 	}
 }
 

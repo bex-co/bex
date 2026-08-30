@@ -164,6 +164,7 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/blueprints":                              true,
 	"GET /v1/usage":                                   true,
 	"GET /v1/users":                                   true,
+	"GET /v1/users/deletion-preview":                  true, // caller's own identity and memberships only
 	"GET /v1/repos":                                   true,
 	"GET /v1/notification-settings":                   true,
 	"GET /v1/notification-settings/push":              true,
@@ -172,6 +173,7 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/notification-device-subscriptions":       true, // caller's own workspace + subject; no owner path arg
 	"GET /v1/notification-webpush-subscriptions":      true, // caller's own browser subscriptions; no owner path arg
 	"GET /v1/git/connection":                          true,
+	"DELETE /v1/users":                                true, // self-delete derives the subject exclusively from auth context
 	// The caller's own workspace git connection(s) — no resource in the path
 	// (ADR075). DELETE /v1/git/connections/{installationId} carries a GitHub
 	// installation id (not a bex resource id) so it rides the wildcard deny matrix.

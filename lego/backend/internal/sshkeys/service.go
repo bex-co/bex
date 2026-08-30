@@ -132,6 +132,9 @@ func (s *Service) Create(ctx context.Context, name, rawPublicKey string) (store.
 	if errors.Is(err, store.ErrConflict) {
 		return store.SSHKey{}, fmt.Errorf("%w: SSH public key is already registered", core.ErrConflict)
 	}
+	if errors.Is(err, store.ErrAccountDeletionPending) {
+		return store.SSHKey{}, core.NewAccountDeletionPendingError()
+	}
 	return key, err
 }
 

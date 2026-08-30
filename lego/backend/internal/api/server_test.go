@@ -39,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/backend/internal/accounts"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
@@ -941,6 +942,7 @@ func sweepableServices(base *core.Base) []any {
 		&logs.Service{Base: base},
 		&metrics.Service{Base: base},
 		&apikeys.Service{Base: base, APIKeys: newFakeKeyStore()},
+		&accounts.Service{Base: base},
 		&sshkeys.Service{Base: base},
 		&sandbox.Service{Base: base},
 		&agentsessions.Service{Base: base},

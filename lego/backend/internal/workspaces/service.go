@@ -818,6 +818,32 @@ func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 	if want := DeleteConfirmation(t.Name); confirmName != want {
 		return fmt.Errorf("%w: confirmation must be %q", core.ErrBadRequest, want)
 	}
+	return s.deleteWorkspace(ctx, id)
+}
+
+// AccountTeardown is the trusted account-lifecycle adapter over the same
+// workspace teardown used by the public Delete verb. It intentionally is not a
+// Service verb: only the accounts worker receives it from the composition root,
+// and public callers must still pass Delete's authorization and confirmation.
+type AccountTeardown struct{ Service *Service }
+
+func (a AccountTeardown) Delete(ctx context.Context, id string) error {
+	if a.Service == nil || a.Service.Store == nil {
+		return core.ErrWorkspacesUnavailable
+	}
+	err := a.Service.deleteWorkspace(ctx, id)
+	if errors.Is(err, core.ErrNotFound) {
+		return nil
+	}
+	return err
+}
+
+func (s *Service) deleteWorkspace(ctx context.Context, id string) error {
+	// Re-read so a background retry that starts after a prior cascade converges
+	// as not-found at AccountTeardown's boundary.
+	if _, err := s.Store.GetTenant(ctx, id); err != nil {
+		return mapStoreErr(err)
+	}
 	// Revoke authz tuples before dropping the rows: the tenant_members rows name
 	// exactly the subjects to revoke, and reading them after the cascade would be
 	// too late. Every m1 membership is admin (create is the only writer); the

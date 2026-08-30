@@ -1,0 +1,9 @@
+DROP INDEX IF EXISTS audit_events_lower_target_name_idx;
+DROP INDEX IF EXISTS audit_events_caller_idx;
+DROP INDEX IF EXISTS webhook_endpoints_created_by_idx;
+DROP INDEX IF EXISTS registry_credentials_created_by_idx;
+DROP INDEX IF EXISTS tenant_invites_lower_email_idx;
+DROP INDEX IF EXISTS tenant_invites_invited_by_idx;
+DROP INDEX IF EXISTS github_connect_transactions_subject_idx;
+DROP INDEX IF EXISTS notification_settings_subject_idx;
+DROP TABLE IF EXISTS account_deletions;

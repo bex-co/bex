@@ -34,12 +34,19 @@ import (
 // semantics (the ownerOf gate, not a check-then-insert); the DB-level race
 // itself is covered live in store_pg_test.go.
 type fakeTenantStore struct {
-	mu      sync.Mutex
-	tenants map[string]store.Tenant
-	members map[string]string // subject (identity or client id) -> tenantID
-	ownerOf map[string]string // identityID -> tenantID (mint gate)
-	invites []store.Invite    // outstanding invites (seeded via invite())
-	n       int
+	mu       sync.Mutex
+	tenants  map[string]store.Tenant
+	members  map[string]string // subject (identity or client id) -> tenantID
+	ownerOf  map[string]string // identityID -> tenantID (mint gate)
+	invites  []store.Invite    // outstanding invites (seeded via invite())
+	n        int
+	deleting bool
+}
+
+func (f *fakeTenantStore) AccountDeletionTombstoned(context.Context, string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.deleting, nil
 }
 
 func newFakeTenantStore() *fakeTenantStore {
@@ -215,6 +222,26 @@ func TestEnsureTenantMintsOnceAndCaches(t *testing.T) {
 	}
 	if len(st.tenants) != 1 {
 		t.Errorf("tenants after second call = %d, want 1 (idempotent)", len(st.tenants))
+	}
+}
+
+func TestEnsureTenantDeletionTombstoneWinsOverPositiveCache(t *testing.T) {
+	st := newFakeTenantStore()
+	ts := NewTenantService(st, nil)
+	ctx := context.Background()
+	if _, err := ts.EnsureTenant(ctx, "identity-a", "", false); err != nil {
+		t.Fatalf("initial onboarding: %v", err)
+	}
+	st.mu.Lock()
+	st.deleting = true
+	st.mu.Unlock()
+	_, err := ts.EnsureTenant(ctx, "identity-a", "", false)
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "ACCOUNT_DELETION_PENDING" {
+		t.Fatalf("cached onboarding after tombstone = %v, want ACCOUNT_DELETION_PENDING", err)
+	}
+	if len(st.tenants) != 1 {
+		t.Fatalf("tombstone reminted tenant: count=%d", len(st.tenants))
 	}
 }
 

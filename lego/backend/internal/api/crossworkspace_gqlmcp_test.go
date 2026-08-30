@@ -136,6 +136,8 @@ func callGQLField(ctx context.Context, def *graphql.FieldDefinition) (result any
 // catalog), taking no tea-b-scoped target. A resolver that returns data here and
 // is NOT justified fails the sweep.
 var callerScopedGQLFields = map[string]bool{
+	"Query.accountDeletionPreview": true, // caller's own identity and memberships only
+	"Mutation.deleteAccount":       true, // self-delete derives the subject exclusively from auth context
 	// Global compute/plan catalogs — identical for every workspace, no resource.
 	"Query.instanceTypes":         true,
 	"Query.databaseInstanceTypes": true,

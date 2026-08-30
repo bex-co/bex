@@ -65,6 +65,20 @@ type Onboarding interface {
 	EnsureTenant(ctx context.Context, identityID, email string, emailVerified bool) (tenantID string, err error)
 }
 
+type accountDeletionReader interface {
+	AccountDeletionTombstoned(context.Context, string) (bool, error)
+}
+
+// AccountDeletionTombstoned implements apikeys.AccountDeletionReader over the
+// same durable tombstone used by onboarding. Stores predating account deletion
+// preserve their legacy behavior.
+func (t *tenantService) AccountDeletionTombstoned(ctx context.Context, subject string) (bool, error) {
+	if deletions, ok := t.store.(accountDeletionReader); ok {
+		return deletions.AccountDeletionTombstoned(ctx, subject)
+	}
+	return false, nil
+}
+
 // tenantService implements both core.WorkspaceResolver (the read path
 // Authorize/List/Get use) and Onboarding (the mint the auth gate drives), over
 // one store + one TTL cache. The granter is nil when OpenFGA is off (store on,
@@ -140,6 +154,19 @@ const (
 // owns. A returning caller costs one owner-keyed SELECT (TenantForOwner); only a
 // first login falls to the idempotent CreateTenantWithMember upsert.
 func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email string, emailVerified bool) (string, error) {
+	// ADR086: the tombstone wins over even a positive tenant cache entry. It is
+	// checked before invite redemption and tenant creation so cleanup can never
+	// race a request into reminting the personal workspace.
+	if deletions, ok := t.store.(accountDeletionReader); ok {
+		pending, err := deletions.AccountDeletionTombstoned(ctx, identityID)
+		if err != nil {
+			return "", err
+		}
+		if pending {
+			t.cache.Delete(cacheKey(methodSession, identityID))
+			return "", core.NewAccountDeletionPendingError()
+		}
+	}
 	key := cacheKey(methodSession, identityID)
 	if tid, ok := t.cache.Get(key); ok {
 		return tid, nil
@@ -156,6 +183,10 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 		// returning caller — personal tenant already minted
 	case errors.Is(err, store.ErrNotFound):
 		tenant, err = t.store.CreateTenantWithMember(ctx, identityID, store.PlanHobby)
+		if errors.Is(err, store.ErrAccountDeletionPending) {
+			t.cache.Delete(cacheKey(methodSession, identityID))
+			return "", core.NewAccountDeletionPendingError()
+		}
 		if err != nil {
 			return "", err
 		}
@@ -193,6 +224,9 @@ func (t *tenantService) acceptInvites(ctx context.Context, identityID, email str
 	}
 	accepted, err := t.store.AcceptInvitesForEmail(ctx, email, identityID)
 	if err != nil {
+		if errors.Is(err, store.ErrAccountDeletionPending) {
+			return
+		}
 		log.Printf("tenancy: redeeming invites for %s: %v", identityID, err)
 		return
 	}
