@@ -1,10 +1,8 @@
-// Typed error mapping for the agent-session mutations. bex-api reports two
-// distinct, actionable failure shapes the UI must render differently from a
-// generic Apollo error: a 503 when the feature is unconfigured, and coded
-// `AGENT_SESSION_*` validation/conflict errors (backend/internal/agentsessions,
-// internal/sessionegress) carrying machine-readable params. Mapping keys off the
-// stable `extensions.code`, never a message substring, so backend copy changes
-// have no effect on which UI branch fires.
+// Typed error mapping for agent-session operations. bex-api reports coded
+// availability, validation, and conflict errors (backend/internal/agentsessions,
+// internal/sessionegress) carrying machine-readable params. Mapping keys off
+// the stable `extensions.code`, never a message substring, so backend copy
+// changes have no effect on which UI branch fires.
 
 import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
 
@@ -16,7 +14,9 @@ import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
  * rather than surfacing a transient failure.
  */
 export class AgentSessionsUnavailableError extends Error {
-  constructor(message = "agent sessions not configured") {
+  readonly code = "AGENT_SESSION_NOT_CONFIGURED";
+
+  constructor(message = "agent sessions are not configured") {
     super(message);
     this.name = "AgentSessionsUnavailableError";
   }
@@ -57,10 +57,10 @@ export class AgentSessionError extends Error {
 
 /**
  * Resolves a typed agent-session error into a display string via `t()`: the
- * house 503 copy for the unavailable state, the coded `agentSessions.errors.*`
- * message (with params + server fallback) for a coded error, else the raw error
- * text. Callers own only the sink (toast vs inline state); this keeps the
- * error→copy mapping in one place instead of re-implemented per component.
+ * availability copy for a configuration/dependency/storage refusal, the coded
+ * `agentSessions.errors.*` message (with params + server fallback) for any other
+ * coded error, else the raw error text. Callers own only the sink (toast vs
+ * inline state); this keeps the error→copy mapping in one place.
  * Note: a caller that needs to branch on the *kind* (e.g. the create composer
  * anchoring a coded error to a form field) still inspects the typed error itself.
  */
@@ -68,9 +68,8 @@ export function agentSessionErrorMessage(
   err: unknown,
   t: (key: string, params?: Record<string, string | number>) => string,
 ): string {
-  if (err instanceof AgentSessionsUnavailableError) {
-    return t("agentSessions.unavailableBody");
-  }
+  const availabilityCopy = agentSessionAvailabilityCopy(err);
+  if (availabilityCopy) return t(availabilityCopy.bodyKey);
   if (err instanceof AgentSessionError) {
     return t(err.messageKey, { ...err.params, defaultValue: err.message });
   }
@@ -78,6 +77,43 @@ export function agentSessionErrorMessage(
 }
 
 const UNAVAILABLE = /not configured/i;
+
+export interface AgentSessionAvailabilityCopy {
+  titleKey: string;
+  bodyKey: string;
+  destructive: boolean;
+}
+
+const AVAILABILITY_COPY: Record<string, AgentSessionAvailabilityCopy> = {
+  AGENT_SESSION_NOT_CONFIGURED: {
+    titleKey: "agentSessions.unavailableTitle",
+    bodyKey: "agentSessions.unavailableBody",
+    destructive: false,
+  },
+  AGENT_SESSION_DEPENDENCY_UNAVAILABLE: {
+    titleKey: "agentSessions.dependencyUnavailableTitle",
+    bodyKey: "agentSessions.dependencyUnavailableBody",
+    destructive: true,
+  },
+  AGENT_SESSION_SNAPSHOT_STORE_UNAVAILABLE: {
+    titleKey: "agentSessions.snapshotUnavailableTitle",
+    bodyKey: "agentSessions.snapshotUnavailableBody",
+    destructive: true,
+  },
+};
+
+/** The single code→title/body mapping used by create and generic error sinks. */
+export function agentSessionAvailabilityCopy(
+  err: unknown,
+): AgentSessionAvailabilityCopy | null {
+  const code =
+    err instanceof AgentSessionsUnavailableError
+      ? err.code
+      : err instanceof AgentSessionError
+        ? err.code
+        : null;
+  return code ? (AVAILABILITY_COPY[code] ?? null) : null;
+}
 
 /** Pulls the flattened extension params (minus `code`) off one GraphQL error. */
 function extensionParams(
@@ -93,16 +129,21 @@ function extensionParams(
 }
 
 /**
- * Normalizes an Apollo mutation rejection into a typed agent-session error:
- * `AgentSessionsUnavailableError` for the 503/"not configured" state, an
- * `AgentSessionError` for any `AGENT_SESSION_*` coded GraphQL error, otherwise
- * the original error unchanged (transient/transport failures stay raw so the
- * caller can retry-toast them).
+ * Normalizes an Apollo operation rejection into a typed agent-session error:
+ * coded GraphQL failures preserve their `AGENT_SESSION_*` code, a cause-less
+ * transport 503 becomes dependency-unavailable, and the legacy uncoded "not
+ * configured" message remains compatible. Other failures stay unchanged.
  */
 export function toAgentSessionError(err: unknown): unknown {
-  // Raw 503 (e.g. a non-GraphQL transport response) → unavailable.
+  // A raw non-GraphQL 503 carries no cause code. Treat it as retryable rather
+  // than claiming the platform was never configured — only the explicit code
+  // is allowed to produce operator-directed copy.
   if (ServerError.is(err) && err.statusCode === 503) {
-    return new AgentSessionsUnavailableError();
+    return new AgentSessionError(
+      "AGENT_SESSION_DEPENDENCY_UNAVAILABLE",
+      "agent session dependencies are temporarily unavailable",
+      {},
+    );
   }
   if (CombinedGraphQLErrors.is(err)) {
     for (const item of err.errors) {

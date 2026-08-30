@@ -32,10 +32,13 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import { useConnectGit } from "@/features/git/hooks/use-connect-git";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
+import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import {
   AgentSessionError,
   AgentSessionsUnavailableError,
+  agentSessionAvailabilityCopy,
+  toAgentSessionError,
 } from "@/features/agent-sessions/lib/errors";
 import { ConfigurationFields } from "@/features/agent-sessions/components/configuration-fields";
 import {
@@ -78,6 +81,11 @@ export function NewSessionComposer() {
   const { create } = useAgentSessionMutations();
   const { repos, loading: reposLoading } = useRepos();
   const { sessions } = useAgentSessions({ poll: false });
+  const {
+    capabilities,
+    loading: capabilitiesLoading,
+    error: capabilitiesError,
+  } = useAgentSessionCapabilities();
 
   const [composerDocument, setComposerDocument] = useState<ComposerDocument>({
     task: "",
@@ -85,14 +93,34 @@ export function NewSessionComposer() {
     sessionIds: [],
   });
   const [configOpen, setConfigOpen] = useState(false);
-  const [unavailable, setUnavailable] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<unknown>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
   const noRepos = !reposLoading && repos.length === 0;
   // Repo-backed create needs GitHub; chat-only sessions do not.
-  const showGitHubCallout = noRepos && Boolean(repo);
+  const githubMissing = capabilities ? !capabilities.github.connected : noRepos;
+  const showGitHubCallout = githubMissing && Boolean(repo);
   const showExamples = !noRepos && sessions.length === 0;
+  const platformUnavailable = capabilities?.enabled === false;
+  const modelKeyMissing = capabilities?.enabled && !capabilities.modelKeyReady;
+  const preflightError = useMemo(
+    () =>
+      platformUnavailable
+        ? new AgentSessionError(
+            "AGENT_SESSION_NOT_CONFIGURED",
+            "agent sessions are not configured",
+            {},
+          )
+        : capabilitiesError
+          ? toAgentSessionError(capabilitiesError)
+          : null,
+    [capabilitiesError, platformUnavailable],
+  );
+  const availabilityCopy = useMemo(
+    () => agentSessionAvailabilityCopy(availabilityError ?? preflightError),
+    [availabilityError, preflightError],
+  );
 
   const form = useForm<ComposerValues>({
     defaultValues: {
@@ -118,8 +146,19 @@ export function NewSessionComposer() {
   }
 
   const onSubmit = form.handleSubmit(async (values) => {
-    setUnavailable(false);
+    setAvailabilityError(null);
     setSubmitError(null);
+
+    // The button carries the same gate, but Enter can submit from the editor.
+    // Re-check here so no interaction can race a known capability gap.
+    if (
+      capabilitiesLoading ||
+      platformUnavailable ||
+      modelKeyMissing ||
+      (repo && githubMissing)
+    ) {
+      return;
+    }
 
     // Repo-less (chat-only) sessions are allowed: with no repo the agent just
     // runs the prompt in an empty sandbox and delivers no PR. A branch is only
@@ -169,11 +208,15 @@ export function NewSessionComposer() {
     // error to report.
     if (isPaymentOnboardingCancelled(err)) return;
     if (err instanceof AgentSessionsUnavailableError) {
-      setUnavailable(true);
+      setAvailabilityError(err);
       return;
     }
     if (!(err instanceof AgentSessionError)) {
       setSubmitError(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    if (agentSessionAvailabilityCopy(err)) {
+      setAvailabilityError(err);
       return;
     }
     const message = t(err.messageKey, {
@@ -196,11 +239,21 @@ export function NewSessionComposer() {
 
   return (
     <div className="space-y-3">
-      {unavailable ? (
-        <Alert>
-          <AlertTitle>{t("agentSessions.unavailableTitle")}</AlertTitle>
+      {availabilityCopy ? (
+        <Alert
+          variant={availabilityCopy.destructive ? "destructive" : "default"}
+        >
+          <AlertTitle>{t(availabilityCopy.titleKey as never)}</AlertTitle>
           <AlertDescription>
-            {t("agentSessions.unavailableBody")}
+            {t(availabilityCopy.bodyKey as never)}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      {modelKeyMissing ? (
+        <Alert>
+          <AlertTitle>{t("agentSessions.modelKeyMissingTitle")}</AlertTitle>
+          <AlertDescription>
+            {t("agentSessions.modelKeyMissingBody")}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -303,7 +356,14 @@ export function NewSessionComposer() {
                 type="submit"
                 size="sm"
                 className="ml-auto h-8"
-                disabled={isSubmitting || task.trim().length === 0}
+                disabled={
+                  isSubmitting ||
+                  capabilitiesLoading ||
+                  platformUnavailable ||
+                  modelKeyMissing ||
+                  (Boolean(repo) && githubMissing) ||
+                  task.trim().length === 0
+                }
               >
                 {isSubmitting ? (
                   <Loader2 className="size-4 animate-spin" />

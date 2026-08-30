@@ -72,10 +72,33 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-sessions", () => ({
   }),
 }));
 
+const capabilitiesState = {
+  capabilities: {
+    enabled: true,
+    modelKeyReady: true,
+    github: {
+      connected: true,
+    },
+  },
+  loading: false,
+  error: undefined as Error | undefined,
+};
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-capabilities",
+  () => ({
+    useAgentSessionCapabilities: () => capabilitiesState,
+  }),
+);
+
 beforeEach(() => {
   priorSessions = [];
   reposState.repos = defaultRepos;
   reposState.loading = false;
+  capabilitiesState.capabilities.enabled = true;
+  capabilitiesState.capabilities.modelKeyReady = true;
+  capabilitiesState.capabilities.github.connected = true;
+  capabilitiesState.loading = false;
+  capabilitiesState.error = undefined;
   mockNavigate.mockReset();
   connectGit.mockReset();
   create.mockReset();
@@ -471,6 +494,66 @@ describe("NewSessionComposer", () => {
       await screen.findByText("Agent sessions aren't configured"),
     ).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("renders retry copy that is distinct from not-configured for a dependency outage", async () => {
+    create.mockRejectedValue(
+      new AgentSessionError(
+        "AGENT_SESSION_DEPENDENCY_UNAVAILABLE",
+        "safe server copy",
+        {},
+      ),
+    );
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+
+    expect(
+      await screen.findByText("Agent sessions are temporarily unavailable"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/wait a moment and try again/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/ask your operator/i)).not.toBeInTheDocument();
+  });
+
+  it("reports a missing model key before submit and blocks every session shape", async () => {
+    capabilitiesState.capabilities.modelKeyReady = false;
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+
+    expect(
+      screen.getByText("Add a model provider key first"),
+    ).toBeInTheDocument();
+    await typeTask(user);
+    expect(
+      screen.getByRole("button", { name: "Start session" }),
+    ).toBeDisabled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("allows chat-only without GitHub but explains and blocks a repo-backed session", async () => {
+    capabilitiesState.capabilities.github.connected = false;
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+
+    // GitHub is irrelevant until a repository is attached.
+    expect(
+      screen.queryByTestId("agent-composer-github-empty"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start session" })).toBeEnabled();
+
+    await pickRepo(user);
+    expect(
+      screen.getByTestId("agent-composer-github-empty"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Start session" }),
+    ).toBeDisabled();
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("anchors an egress-allowlist code to the egress field and opens Configuration", async () => {

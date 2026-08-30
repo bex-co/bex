@@ -13,6 +13,8 @@ import type {
   ConversationChatHandle,
   SessionConversationImplProps,
 } from "@/features/agent-sessions/components/session-conversation-impl";
+import type { ConversationState } from "@/features/agent-sessions/lib/conversation-state";
+import type { AgentSessionPhase } from "@/features/agent-sessions/types";
 
 export type { ConversationChatHandle };
 
@@ -27,6 +29,7 @@ export type { ConversationChatHandle };
 export interface SessionConversationProps {
   sessionId: string;
   isTerminal: boolean;
+  phase: AgentSessionPhase;
   /** "Attach target changed" signal — re-attaches in place; see the impl prop. */
   attachSignal?: string;
   /**
@@ -35,6 +38,7 @@ export interface SessionConversationProps {
    * turn through this column's own `useChat` instance.
    */
   onChatStateChange?: (handle: ConversationChatHandle | null) => void;
+  onConversationStateChange?: (state: ConversationState) => void;
   /** Inline transcript footer (draft-PR card + failure callout) — see impl. */
   footer?: ReactNode;
   /** Phase-derived terminal status label rendered once the transcript settles. */
@@ -44,8 +48,10 @@ export interface SessionConversationProps {
 export function SessionConversation({
   sessionId,
   isTerminal,
+  phase,
   attachSignal,
   onChatStateChange,
+  onConversationStateChange,
   footer,
   terminalLabel,
 }: SessionConversationProps) {
@@ -56,11 +62,11 @@ export function SessionConversation({
 
   useEffect(() => {
     let live = true;
-    void import("@/features/agent-sessions/components/session-conversation-impl").then(
-      (module) => {
-        if (live) setImpl(() => module.SessionConversationImpl);
-      },
-    );
+    void import(
+      "@/features/agent-sessions/components/session-conversation-impl"
+    ).then((module) => {
+      if (live) setImpl(() => module.SessionConversationImpl);
+    });
     return () => {
       live = false;
     };
@@ -95,9 +101,11 @@ export function SessionConversation({
     <Impl
       sessionId={sessionId}
       isTerminal={isTerminal}
+      phase={phase}
       attachSignal={attachSignal}
       mintTicket={mintTicket}
       onChatStateChange={onChatStateChange}
+      onConversationStateChange={onConversationStateChange}
       footer={footer}
       terminalLabel={terminalLabel}
     />

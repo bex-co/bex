@@ -629,6 +629,7 @@ type fakeSnapshots struct {
 	deleted   []string
 	uploadErr error
 	getErr    error
+	deleteErr error
 }
 
 func newFakeSnapshots() *fakeSnapshots { return &fakeSnapshots{refs: map[string]bool{}} }
@@ -651,6 +652,9 @@ func (f *fakeSnapshots) PrepareDownload(_ context.Context, ref string) (string, 
 }
 
 func (f *fakeSnapshots) Delete(_ context.Context, ref string) error {
+	if f.deleteErr != nil {
+		return f.deleteErr
+	}
 	f.deleted = append(f.deleted, ref)
 	delete(f.refs, ref)
 	return nil
@@ -1454,11 +1458,73 @@ func TestTupleWriteFailureCompensatesBeforeSandbox(t *testing.T) {
 	fga.fail = true
 	// Let the workspace check succeed, then fail just the tuple write.
 	svc.Base.Authz = checkerFunc(func(context.Context, string, string, string) (bool, error) { return true, nil })
-	if _, err := svc.Create(caller("alice"), createInput()); !errors.Is(err, core.ErrAuthzUnavailable) {
-		t.Fatalf("create = %v, want authz unavailable", err)
+	if _, err := svc.Create(caller("alice"), createInput()); !isCode(err, core.AgentSessionDependencyUnavailableCode) {
+		t.Fatalf("create = %v, want %s", err, core.AgentSessionDependencyUnavailableCode)
 	}
 	if len(st.rows) != 0 || lifecycle.created != 0 {
 		t.Fatalf("unreachable resource survived: rows=%d created=%d", len(st.rows), lifecycle.created)
+	}
+}
+
+func TestAgentSessionAvailabilityCauseCodesStayDistinctAndSanitized(t *testing.T) {
+	configured := core.ErrAgentSessionsUnavailable
+	dependency := core.NewAgentSessionDependencyUnavailableError()
+	snapshot := core.NewAgentSessionSnapshotUnavailableError()
+	want := []struct {
+		err  error
+		code string
+	}{
+		{configured, core.AgentSessionNotConfiguredCode},
+		{dependency, core.AgentSessionDependencyUnavailableCode},
+		{snapshot, core.AgentSessionSnapshotUnavailableCode},
+	}
+	seen := map[string]bool{}
+	for _, tc := range want {
+		var coded *core.CodedError
+		if !errors.As(tc.err, &coded) || coded.Code != tc.code {
+			t.Fatalf("error %v code = %#v, want %s", tc.err, coded, tc.code)
+		}
+		if seen[coded.Code] {
+			t.Fatalf("availability causes collapsed onto duplicate code %q", coded.Code)
+		}
+		seen[coded.Code] = true
+
+		// REST, GraphQL, and MCP all preserve the same stable code/message. The
+		// concrete transport seams are shared globally; this pins all three for
+		// every taxonomy member, including snapshot-only verbs.
+		rec := httptest.NewRecorder()
+		core.WriteErr(rec, tc.err)
+		if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), tc.code) {
+			t.Errorf("REST %s = %d %s", tc.code, rec.Code, rec.Body.String())
+		}
+		if coded.Extensions()["code"] != tc.code {
+			t.Errorf("GraphQL %s extensions = %#v", tc.code, coded.Extensions())
+		}
+		mcpErr := core.MCPError(tc.err)
+		if !strings.HasPrefix(mcpErr.Error(), tc.code+": ") {
+			t.Errorf("MCP %s = %v", tc.code, mcpErr)
+		}
+		for _, secret := range []string{"fga", "openbao", "s3.example", "postgres"} {
+			if strings.Contains(strings.ToLower(rec.Body.String()), secret) || strings.Contains(strings.ToLower(mcpErr.Error()), secret) {
+				t.Errorf("%s leaked internal detail %q", tc.code, secret)
+			}
+		}
+	}
+}
+
+func TestSnapshotFailureUsesSnapshotCodeWithoutLeakingCause(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	snaps := newFakeSnapshots()
+	snaps.deleteErr = errors.New("s3.example:9443: credential path /run/secrets/key")
+	svc.Snapshots = snaps
+	seedHibernated(st, id)
+
+	err := svc.Delete(caller("alice"), id)
+	if !isCode(err, core.AgentSessionSnapshotUnavailableCode) {
+		t.Fatalf("delete snapshot failure = %v, want %s", err, core.AgentSessionSnapshotUnavailableCode)
+	}
+	if strings.Contains(err.Error(), "s3.example") || strings.Contains(err.Error(), "/run/secrets") {
+		t.Fatalf("snapshot error leaked internal detail: %v", err)
 	}
 }
 

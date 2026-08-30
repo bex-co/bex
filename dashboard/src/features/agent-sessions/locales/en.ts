@@ -321,6 +321,36 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "This platform hasn't enabled cloud agent sessions. Ask your operator to configure the agent-session gateway.",
     description: "Composer — house callout body when the feature is 503",
   },
+  "agentSessions.dependencyUnavailableTitle": {
+    message: "Agent sessions are temporarily unavailable",
+    description:
+      "Composer — retryable dependency-outage title, distinct from configuration",
+  },
+  "agentSessions.dependencyUnavailableBody": {
+    message:
+      "A platform dependency is having trouble right now. Your setup is still intact; wait a moment and try again.",
+    description:
+      "Composer — retryable dependency-outage body that does not send the user to an operator",
+  },
+  "agentSessions.snapshotUnavailableTitle": {
+    message: "Session storage is temporarily unavailable",
+    description: "Agent-session snapshot restore/delete outage title",
+  },
+  "agentSessions.snapshotUnavailableBody": {
+    message:
+      "The session snapshot store could not be reached. Wait a moment and try again.",
+    description: "Agent-session snapshot restore/delete outage body",
+  },
+  "agentSessions.modelKeyMissingTitle": {
+    message: "Add a model provider key first",
+    description:
+      "Composer pre-flight title when the workspace has no model key",
+  },
+  "agentSessions.modelKeyMissingBody": {
+    message:
+      "This workspace needs a model provider key before it can start an agent session. Add one in workspace settings, then return here.",
+    description: "Composer pre-flight body when the workspace has no model key",
+  },
   "agentSessions.createErrorTitle": {
     message: "Couldn't start the session",
     description: "Composer — error alert title when the create fails",
@@ -571,6 +601,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Connecting to the session stream…",
     description: "Shown while the conversation stream replay is in flight",
   },
+  "agentSessions.conversationNotStarted": {
+    message: "The conversation will appear when the sandbox is ready.",
+    description:
+      "Healthy pre-stream state while a newly created session is provisioning",
+  },
   "agentSessions.conversationEmpty": {
     message: "No conversation yet.",
     description: "Shown when a session has produced no transcript parts",
@@ -589,6 +624,10 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Agent restarted — the original task was re-delivered.",
     description:
       "System line when no prior turn ever reached the agent, so the task was re-sent (ladder rung 3)",
+  },
+  "agentSessions.conversationEndedEmpty": {
+    message: "This session ended before a conversation was recorded.",
+    description: "Ended session with no durable transcript parts",
   },
   "agentSessions.conversationEnded": {
     message: "Session ended.",
