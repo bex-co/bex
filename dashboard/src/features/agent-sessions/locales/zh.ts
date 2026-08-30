@@ -567,6 +567,21 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "暂无对话。",
     description: "Shown when a session has produced no transcript parts",
   },
+  "agentSessions.continuitySessionLoad": {
+    message: "智能体已恢复其保存的会话状态。",
+    description:
+      "System line when a fresh agent generation reloaded its own saved session (ADR047 D3 ladder rung 1)",
+  },
+  "agentSessions.continuityReprime": {
+    message: "智能体已重启——上下文已从会话历史重建。",
+    description:
+      "System line when a fresh agent generation was primed from the durable transcript (ladder rung 2)",
+  },
+  "agentSessions.continuityTaskRedelivery": {
+    message: "智能体已重启——原始任务已重新下发。",
+    description:
+      "System line when no prior turn ever reached the agent, so the task was re-sent (ladder rung 3)",
+  },
   "agentSessions.conversationEnded": {
     message: "会话已结束。",
     description: "Footer note under a terminal session's replayed transcript",

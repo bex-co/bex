@@ -77,6 +77,61 @@ describe("SessionConversationImpl", () => {
     expect(screen.getByText(/committed by the agent/)).toBeInTheDocument();
   });
 
+  it("renders the continuity annotation as an honest system line (w5/m84)", async () => {
+    const transcript = [
+      { type: "start", messageId: "asm-continuity" },
+      {
+        type: "data-user-prompt",
+        data: { turn: 1, text: "fix the translation", complete: true },
+      },
+      { type: "text-start", id: "t1" },
+      { type: "text-delta", id: "t1", delta: "done" },
+      { type: "text-end", id: "t1" },
+      {
+        type: "data-user-prompt",
+        data: { turn: 2, text: "try again", complete: true },
+      },
+      // A fresh sandbox generation primed from the durable transcript (ladder
+      // rung 2) announces itself; the reader must not assume the agent
+      // literally remembers.
+      { type: "data-bex-continuity", data: { rung: "transcript-reprime" } },
+      // A rung this build doesn't know must render NOTHING — a wrong fidelity
+      // claim is worse than silence.
+      { type: "data-bex-continuity", data: { rung: "future-unknown-rung" } },
+      { type: "text-start", id: "t2" },
+      { type: "text-delta", id: "t2", delta: "continuing in context" },
+      { type: "text-end", id: "t2" },
+      { type: "finish" },
+    ] as UIMessageChunk[];
+    const transport = createAgentSessionTransport({
+      sessionId: "as-continuity",
+      mintTicket,
+      fetch: makeFixtureFetch(transcript, { terminal: true }),
+    });
+
+    render(
+      <SessionConversationImpl
+        sessionId="as-continuity"
+        isTerminal
+        transport={transport}
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        "Agent restarted — context rebuilt from the session history.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("continuing in context")).toBeInTheDocument();
+    // The unknown rung rendered nothing: no other continuity line exists.
+    expect(
+      screen.queryByText("Agent resumed with its restored conversation state."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Agent restarted — the original task was re-delivered."),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders durable user prompts in turn order after refresh", async () => {
     const transcript = [
       { type: "start", messageId: "asm-durable" },

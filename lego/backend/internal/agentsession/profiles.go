@@ -32,7 +32,7 @@ var agentProfilesJSON []byte
 // AgentProfileManifest is the release-locked, non-secret runtime profile contract
 // shared by bex-api and the in-pod driver (w5/m77).
 type AgentProfileManifest struct {
-	Version  int           `json:"version"`
+	Version  int            `json:"version"`
 	Profiles []AgentProfile `json:"profiles"`
 }
 
@@ -45,14 +45,20 @@ type AgentProfile struct {
 	Env           map[string]string `json:"env"`
 	ModelEndpoint string            `json:"modelEndpoint"`
 	ModelProxy    ModelProxyRoute   `json:"modelProxy"`
+	// SessionState names the HOME-relative dirs/files carrying this agent's
+	// on-disk conversation state. The hibernation snapshot must include them —
+	// they are the substrate of ADR047 D3's `session/load` resume rung (ADR059
+	// D3 continuity amendment, w5/m84); a guard test binds this list to the
+	// sandbox hibernate script.
+	SessionState []string `json:"sessionState"`
 }
 
 // ModelProxyRoute describes how the driver points a provider SDK at the gateway
 // model proxy for a profile.
 type ModelProxyRoute struct {
-	BaseURLEnv     string `json:"baseUrlEnv"`
-	BaseURLSuffix  string `json:"baseUrlSuffix"`
-	CredentialEnv  string `json:"credentialEnv"`
+	BaseURLEnv    string `json:"baseUrlEnv"`
+	BaseURLSuffix string `json:"baseUrlSuffix"`
+	CredentialEnv string `json:"credentialEnv"`
 }
 
 var (

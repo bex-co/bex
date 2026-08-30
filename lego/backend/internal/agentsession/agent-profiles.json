@@ -11,7 +11,11 @@
         "baseUrlEnv": "ANTHROPIC_BASE_URL",
         "baseUrlSuffix": "",
         "credentialEnv": "ANTHROPIC_API_KEY"
-      }
+      },
+      "sessionState": [
+        ".claude",
+        ".claude.json"
+      ]
     },
     {
       "id": "codex",
@@ -26,19 +30,27 @@
         "baseUrlEnv": "OPENAI_BASE_URL",
         "baseUrlSuffix": "/v1",
         "credentialEnv": "OPENAI_API_KEY"
-      }
+      },
+      "sessionState": [
+        ".codex"
+      ]
     },
     {
       "id": "gemini",
       "executable": "/usr/local/bin/gemini",
-      "args": ["--acp"],
+      "args": [
+        "--acp"
+      ],
       "env": {},
       "modelEndpoint": "https://generativelanguage.googleapis.com/v1beta",
       "modelProxy": {
         "baseUrlEnv": "GOOGLE_GEMINI_BASE_URL",
         "baseUrlSuffix": "",
         "credentialEnv": "GEMINI_API_KEY"
-      }
+      },
+      "sessionState": [
+        ".gemini"
+      ]
     }
   ]
 }

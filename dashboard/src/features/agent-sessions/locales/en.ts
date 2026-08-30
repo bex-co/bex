@@ -578,6 +578,21 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "No conversation yet.",
     description: "Shown when a session has produced no transcript parts",
   },
+  "agentSessions.continuitySessionLoad": {
+    message: "Agent resumed with its restored conversation state.",
+    description:
+      "System line when a fresh agent generation reloaded its own saved session (ADR047 D3 ladder rung 1)",
+  },
+  "agentSessions.continuityReprime": {
+    message: "Agent restarted — context rebuilt from the session history.",
+    description:
+      "System line when a fresh agent generation was primed from the durable transcript (ladder rung 2)",
+  },
+  "agentSessions.continuityTaskRedelivery": {
+    message: "Agent restarted — the original task was re-delivered.",
+    description:
+      "System line when no prior turn ever reached the agent, so the task was re-sent (ladder rung 3)",
+  },
   "agentSessions.conversationEnded": {
     message: "Session ended.",
     description: "Footer note under a terminal session's replayed transcript",
