@@ -185,11 +185,18 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
     ).not.toBeInTheDocument();
   });
 
-  it("does not duplicate the Archived list tab in the sidebar", async () => {
+  it("re-homes Archived and All filters in the one rail", async () => {
     sessionsState.sessions = [view()];
     renderAt("/agents");
     await screen.findByText("Recent");
-    expect(screen.queryByRole("link", { name: "Archived" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Archived" })).toHaveAttribute(
+      "href",
+      "/agents?archived=archived",
+    );
+    expect(screen.getByRole("link", { name: "All" })).toHaveAttribute(
+      "href",
+      "/agents?archived=all",
+    );
   });
 
   it("degrades the list without taking the global nav down with it", async () => {

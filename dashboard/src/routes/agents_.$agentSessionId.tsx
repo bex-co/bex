@@ -33,6 +33,7 @@ import {
   AGENT_SESSION_PHASES,
   type AgentSessionArchivedFilter,
   type AgentSessionPhase,
+  parseAgentSessionArchivedFilter,
 } from "@/features/agent-sessions/types";
 import { AgentSessionDocument } from "@/graphql/definitions";
 
@@ -67,11 +68,7 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
     search: Record<string, unknown>,
   ): AgentSessionDetailSearch => {
     const out: AgentSessionDetailSearch = {};
-    if (search.fromArchived === "archived" || search.fromArchived === "all") {
-      out.fromArchived = search.fromArchived as AgentSessionArchivedFilter;
-    } else if (search.fromArchived === "true") {
-      out.fromArchived = "archived";
-    }
+    out.fromArchived = parseAgentSessionArchivedFilter(search.fromArchived);
     if (
       typeof search.fromPhase === "string" &&
       AGENT_SESSION_PHASES.includes(search.fromPhase as AgentSessionPhase)

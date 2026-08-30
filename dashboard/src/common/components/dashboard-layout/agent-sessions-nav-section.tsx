@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
-import { GitPullRequest, Search } from "lucide-react";
+import { Link, useParams, useRouterState } from "@tanstack/react-router";
+import { Archive, GitPullRequest, List, Search } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   SidebarGroup,
@@ -18,7 +18,10 @@ import {
   agentSessionStatusPhraseKey,
   sessionTitleShort,
 } from "@/features/agent-sessions/lib/mapper";
-import type { AgentSessionView } from "@/features/agent-sessions/types";
+import {
+  parseAgentSessionArchivedFilter,
+  type AgentSessionView,
+} from "@/features/agent-sessions/types";
 
 /** Substring match for prose titles — avoids the mention picker's subsequence fallback. */
 function sessionSearchMatch(query: string, candidate: string): boolean {
@@ -26,6 +29,15 @@ function sessionSearchMatch(query: string, candidate: string): boolean {
   if (q === "") return true;
   return candidate.toLowerCase().includes(q);
 }
+
+const HISTORY_FILTERS = [
+  {
+    value: "archived",
+    labelKey: "agentSessions.filterArchived",
+    Icon: Archive,
+  },
+  { value: "all", labelKey: "agentSessions.filterAll", Icon: List },
+] as const;
 
 /**
  * The agent-sessions section of the one dashboard rail (w5/m64) — Devin's
@@ -38,8 +50,8 @@ function sessionSearchMatch(query: string, candidate: string): boolean {
  * Replaces the standalone `<aside>` w3/m45 t004 shipped, which made `/agents`
  * the only route in the dashboard rendering a second sidebar. Affordances:
  * search over title + repo, human status phrases, and the direct GitHub PR
- * link. (There is no "New session" or "View all" row: the global "Agents" nav
- * item opens the combined create + history page, so both would be redundant.)
+ * link. Archived and All are navigation rows here because the default page is
+ * now composer-only; the global "Agents" nav item returns to that composer.
  *
  * The whole group hides in icon mode — sessions have no meaningful icon
  * representation, which is Devin's own answer (its collapsed rail keeps nav
@@ -47,12 +59,18 @@ function sessionSearchMatch(query: string, candidate: string): boolean {
  *
  * Below `lg` it rides `SidebarProvider`'s mobile Sheet, so sessions stay
  * reachable from the drawer. That is a deliberate improvement on the rail this
- * replaced, which set `hidden … lg:flex`; the combined main page also keeps the
- * full history available at every viewport size.
+ * replaced, which set `hidden … lg:flex`; Archived and All remain reachable in
+ * the same mobile drawer.
  */
 export function AgentSessionsNavSection() {
   const { t } = useTranslations();
   const { agentSessionId } = useParams({ strict: false });
+  const archiveFilter = useRouterState({
+    select: (state) =>
+      parseAgentSessionArchivedFilter(
+        (state.location.search as Record<string, unknown>).archived,
+      ),
+  });
   const { sessions, loading } = useAgentSessions({
     limit: 20,
   });
@@ -74,6 +92,23 @@ export function AgentSessionsNavSection() {
       aria-label={t("agentSessions.sidebarLabel")}
       className="min-h-0 group-data-[collapsible=icon]:hidden"
     >
+      <SidebarMenu className="mb-1">
+        {HISTORY_FILTERS.map(({ value, labelKey, Icon }) => (
+          <SidebarMenuItem key={value}>
+            <SidebarMenuButton
+              asChild
+              size="sm"
+              isActive={archiveFilter === value}
+            >
+              <Link to="/agents" search={{ archived: value }}>
+                <Icon aria-hidden />
+                <span>{t(labelKey)}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
+
       <div className="flex items-center justify-between gap-1">
         <SidebarGroupLabel className="min-w-0 flex-1">
           {t("agentSessions.recentSessions")}

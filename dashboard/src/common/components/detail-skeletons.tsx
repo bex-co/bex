@@ -35,10 +35,15 @@ export function ListPageSkeleton() {
 }
 
 /**
- * `/agents` pending state: a centered composer box over recents rows, not the
- * 3-column service card grid. Other list routes keep `ListPageSkeleton`.
+ * `/agents` pending state. Its default prompt workspace is composer-only;
+ * explicit Archived/All/phase URLs render the page heading plus history list.
+ * Other list routes keep `ListPageSkeleton`.
  */
-export function AgentsPageSkeleton() {
+export function AgentsPageSkeleton({
+  mode = "composer",
+}: {
+  mode?: "composer" | "list";
+}) {
   return (
     <div
       aria-hidden="true"
@@ -47,26 +52,38 @@ export function AgentsPageSkeleton() {
       data-testid="agents-page-skeleton"
     >
       <div className="mx-auto w-full max-w-5xl space-y-8 p-4 sm:p-6">
-        <div
-          className="mx-auto w-full max-w-[40rem]"
-          data-skeleton-region="composer"
-        >
-          <Skeleton className="h-40 w-full rounded-xl" />
-        </div>
-        <div
-          className="mx-auto w-full max-w-[40rem] space-y-3"
-          data-skeleton-region="session-list"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Skeleton className="h-5 w-24" />
-            <Skeleton className="h-8 w-56 max-w-full rounded-lg" />
+        {mode === "composer" ? (
+          <div
+            className="mx-auto w-full max-w-[40rem] space-y-3"
+            data-skeleton-region="composer"
+          >
+            <Skeleton className="h-[11.75rem] w-full rounded-xl sm:h-[9.5rem]" />
+            <Skeleton
+              className="h-4 w-64 max-w-full"
+              data-skeleton-region="composer-hint"
+            />
           </div>
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-lg" />
-            ))}
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="mx-auto w-full max-w-4xl">
+              <Skeleton
+                className="h-7 w-40"
+                data-skeleton-region="page-header"
+              />
+            </div>
+            <div
+              className="mx-auto w-full max-w-4xl space-y-3"
+              data-skeleton-region="session-list"
+            >
+              <Skeleton className="h-5 w-24" />
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

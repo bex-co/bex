@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AgentsPageSkeleton } from "@/common/components/detail-skeletons";
 import { Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -12,11 +12,16 @@ import { AgentSessionsDocument } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
+import {
+  AGENT_SESSION_PAGE_SIZE,
+  useAgentSessions,
+} from "@/features/agent-sessions/hooks/use-agent-sessions";
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
 import { SessionList } from "@/features/agent-sessions/components/session-list";
 import {
   AGENT_SESSION_PHASES,
+  agentSessionArchivedQueryValue,
+  parseAgentSessionArchivedFilter,
   type AgentSessionArchivedFilter,
   type AgentSessionListSearch,
   type AgentSessionPhase,
@@ -30,15 +35,19 @@ export interface AgentsSearch extends AgentSessionListSearch {
 export const Route = createFileRoute("/agents")({
   staticData: { chrome: true },
   component: AgentSessionsPage,
-  pendingComponent: AgentsPageSkeleton,
+  pendingComponent: AgentSessionsPendingPage,
   beforeLoad: ({ context, location }) => {
-    requireAuth()( { context, location });
+    requireAuth()({ context, location });
     requireAgentsFeature()({ context });
   },
-  // Prefetch the working-set list on hover-intent so `/agents` mounts warm
-  // (same pattern as `/` and `/blueprints`). Variables match `useAgentSessions`
-  // defaults (unarchived, no phase/repo/limit filters).
-  loader: ({ context, cause }) => {
+  // Prefetch the requested working set on hover-intent so `/agents` mounts warm
+  // (same pattern as `/` and `/blueprints`). Variables match the list hook's
+  // archive/phase filters and default page size exactly.
+  loaderDeps: ({ search }) => ({
+    archived: search.archived,
+    phase: search.phase,
+  }),
+  loader: ({ context, cause, deps }) => {
     const ownerId = context.workspaceId;
     if (ownerId == null) return;
     return prefetchInParallel([
@@ -47,10 +56,10 @@ export const Route = createFileRoute("/agents")({
           query: AgentSessionsDocument,
           variables: {
             ownerId,
-            archived: null,
-            phases: null,
+            archived: agentSessionArchivedQueryValue(deps.archived),
+            phases: deps.phase ? [deps.phase] : null,
             repo: null,
-            limit: null,
+            limit: AGENT_SESSION_PAGE_SIZE,
           },
           fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
@@ -65,11 +74,7 @@ export const Route = createFileRoute("/agents")({
   validateSearch: (search: Record<string, unknown>): AgentsSearch => {
     const out: AgentsSearch = {};
     if (search.view === "list") out.view = "list";
-    if (search.archived === "archived" || search.archived === "all") {
-      out.archived = search.archived as AgentSessionArchivedFilter;
-    } else if (search.archived === "true") {
-      out.archived = "archived";
-    }
+    out.archived = parseAgentSessionArchivedFilter(search.archived);
     if (
       typeof search.phase === "string" &&
       AGENT_SESSION_PHASES.includes(search.phase as AgentSessionPhase)
@@ -82,21 +87,46 @@ export const Route = createFileRoute("/agents")({
 });
 
 /**
- * The `/agents` page (ADR047 D9): a prompt workspace. Recents live below the
- * composer; the working set also lives in the ONE dashboard rail
- * (`AgentSessionsNavSection`, w5/m64). This page renders no sidebar of its own.
+ * The `/agents` page (ADR047 D9): a prompt workspace. The unarchived working
+ * set lives only in the ONE dashboard rail (`AgentSessionsNavSection`,
+ * w5/m64); explicit Archived/All/phase URLs swap the composer for the wider
+ * history view. This page renders no sidebar of its own.
  */
 function AgentSessionsPage() {
   const { archived, phase } = Route.useSearch();
-  const listMode = archived === "archived" || archived === "all";
+  return <AgentSessionsPageContent archived={archived} phase={phase} />;
+}
+
+function AgentSessionsPendingPage() {
+  const search = Route.useSearch();
+  return <AgentsPageSkeleton mode={agentSessionsPageMode(search)} />;
+}
+
+function agentSessionsPageMode({
+  archived,
+  phase,
+}: Pick<AgentsSearch, "archived" | "phase">): "composer" | "list" {
+  return archived != null || phase != null ? "list" : "composer";
+}
+
+export function AgentSessionsPageContent({
+  archived,
+  phase,
+}: Pick<AgentsSearch, "archived" | "phase">) {
+  const listMode = agentSessionsPageMode({ archived, phase }) === "list";
 
   return (
     <DashboardLayout>
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">
         <div className="mx-auto w-full max-w-5xl space-y-8 p-4 sm:p-6">
-          {listMode ? <PageHeader /> : null}
-          <ComposerSection />
-          <SessionListSection archived={archived} phase={phase} />
+          {listMode ? (
+            <>
+              <PageHeader />
+              <SessionListSection archived={archived} phase={phase} />
+            </>
+          ) : (
+            <ComposerSection />
+          )}
         </div>
       </div>
     </DashboardLayout>
@@ -106,7 +136,7 @@ function AgentSessionsPage() {
 function PageHeader() {
   const { t } = useTranslations();
   return (
-    <header>
+    <header className="mx-auto w-full max-w-4xl">
       <h1 className="text-xl font-semibold">{t("agentSessions.pageTitle")}</h1>
     </header>
   );
@@ -140,54 +170,21 @@ function SessionListSection({
       phases: phase ? [phase] : undefined,
     });
 
-  const membershipTabs: Array<{
-    key: string;
-    label: string;
-    archived?: AgentSessionArchivedFilter;
-  }> = [
-    { key: "active", label: t("agentSessions.filterActive") },
-    {
-      key: "archived",
-      label: t("agentSessions.filterArchived"),
-      archived: "archived",
-    },
-    { key: "all", label: t("agentSessions.filterAll"), archived: "all" },
-  ];
-  const activeKey =
-    archived === "archived" ? "archived" : archived === "all" ? "all" : "active";
+  const heading =
+    archived === "archived"
+      ? t("agentSessions.filterArchived")
+      : archived === "all"
+        ? t("agentSessions.filterAll")
+        : t("agentSessions.filterActive");
 
   return (
     <section
-      className="mx-auto w-full max-w-[40rem] space-y-3"
+      className="mx-auto w-full max-w-4xl space-y-3"
       aria-labelledby="session-list-title"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="session-list-title" className="text-base font-semibold">
-          {activeKey === "archived"
-            ? t("agentSessions.filterArchived")
-            : activeKey === "all"
-              ? t("agentSessions.filterAll")
-              : t("agentSessions.filterActive")}
-        </h2>
-        <div
-          className="bg-muted/50 flex items-center gap-0.5 rounded-lg p-0.5"
-          role="group"
-        >
-          {membershipTabs.map((tab) => (
-            <Button
-              key={tab.key}
-              asChild
-              size="sm"
-              variant={activeKey === tab.key ? "secondary" : "ghost"}
-              className="h-7 px-2.5 shadow-none"
-            >
-              <Link to="/agents" search={{ archived: tab.archived, phase }}>
-                {tab.label}
-              </Link>
-            </Button>
-          ))}
-        </div>
-      </div>
+      <h2 id="session-list-title" className="text-base font-semibold">
+        {heading}
+      </h2>
       <SessionList
         sessions={sessions}
         loading={loading}

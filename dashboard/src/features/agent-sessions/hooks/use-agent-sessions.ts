@@ -3,7 +3,10 @@ import { useQuery } from "@apollo/client/react";
 import { AgentSessionsDocument } from "@/graphql/definitions";
 import { skipPollWhenHidden } from "@/common/lib/polling";
 import { toAgentSessionViews } from "@/features/agent-sessions/lib/mapper";
-import type { AgentSessionView } from "@/features/agent-sessions/types";
+import {
+  agentSessionArchivedQueryValue,
+  type AgentSessionView,
+} from "@/features/agent-sessions/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 /** Fast cadence while any session is still converging (a live transcript moves). */
@@ -74,8 +77,7 @@ export function useAgentSessions({
 }: UseAgentSessionsOptions = {}): UseAgentSessionsResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
-  const backendArchived =
-    archived === "archived" ? "true" : (archived ?? null);
+  const backendArchived = agentSessionArchivedQueryValue(archived);
   const effectiveLimit = limit ?? AGENT_SESSION_PAGE_SIZE;
   const { data, loading, error, refetch, startPolling, fetchMore } = useQuery(
     AgentSessionsDocument,

@@ -28,6 +28,23 @@ export type AgentSessionPhase = (typeof AGENT_SESSION_PHASES)[number];
 /** Archive-membership values accepted by the sessions list URL (UI key). */
 export type AgentSessionArchivedFilter = "archived" | "all";
 
+/** Parse current and legacy archive-membership values from route search. */
+export function parseAgentSessionArchivedFilter(
+  value: unknown,
+): AgentSessionArchivedFilter | undefined {
+  if (value === "archived" || value === "true" || value === true) {
+    return "archived";
+  }
+  return value === "all" ? "all" : undefined;
+}
+
+/** Translate the UI's `archived` name to the backend's `true` wire value. */
+export function agentSessionArchivedQueryValue(
+  value: AgentSessionArchivedFilter | "false" | undefined,
+): "false" | "true" | "all" | null {
+  return value === "archived" ? "true" : (value ?? null);
+}
+
 /** Shareable list context carried into a detail page's Back affordance. */
 export interface AgentSessionListSearch {
   archived?: AgentSessionArchivedFilter;
