@@ -1,6 +1,15 @@
 # w5 · m82 — Agent-session Git proxy: forward gzip-encoded git bodies (clone/push of many-ref repos) + full E2E workflow verification
 
-**Worker:** worker5 **Goal:** an agent session against a repo with many refs (e.g. `bex-co/bex-security`, 887 refs) clones, works, and delivers end to end — the gateway Git proxy no longer corrupts gzip-encoded git request bodies. **Status:** todo (t001–t005 done 2026-08-29; t006 live E2E awaits `/ship` + production rollout)
+**Worker:** worker5 **Goal:** an agent session against a repo with many refs (e.g. `bex-co/bex-security`, 887 refs) clones, works, and delivers end to end — the gateway Git proxy no longer corrupts gzip-encoded git request bodies. **Status:** done (2026-08-30; shipped `3677e562`, pinned `0f84265a` → digest `ee3e9594…`, live E2E passed)
+
+## t006 live E2E evidence (2026-08-30)
+
+- Shipped `3677e562`, deploy run 33280196960 green, pin `0f84265a` (`33800901d0f4`), prod `bex-ssh-gateway` running pinned digest `ee3e9594…` (fresh pods verified before the run).
+- Fresh production session **`ags-da9n7napkpos739mfsug`** — workspace `tea-d98210cbbpdc73dcrkvg`, repo `bex-co/bex-security` (887 refs, the exact repo whose clone deterministically 502'd as `ags-da9l9e5a801s739cb2ig`), branch `bex-agent/m82-gzip-proxy-e2e`, agent `claude`.
+- **Clone succeeded in one attempt**: audit trail 00:06:16–00:06:22 shows every git exchange `MintCredential allowed` → `ProxyCredential allowed`, including the gzipped pack-fetch POST that previously died; only the known-benign startup-race denial at 00:06:12 (retried +4s, passed). Gateway logs carry **zero** `agent git proxy: … failure` lines.
+- Turn 1 completed ~40s after dispatch; **delivery pushed** through the receive-pack proxy (exchanges 00:06:43–46 all `allowed`): `HELLO_M82.md` on the branch with the exact requested content.
+- **Steer turn**: redispatched onto a fresh sandbox (re-exercised the clone a second time, clean), completed as `turns=2`, head `a8fa5670`, file appended with the steer line — both commits live on `refs/heads/bex-agent/m82-gzip-proxy-e2e`.
+- **Replay**: `GET /v1/agent-sessions/{id}/transcript` returns 66 durable parts across both turns (the data the dashboard session page renders). Dashboard-browser screenshot leg was not possible — `QA_EMAIL`/`QA_PASSWORD` are empty in `.env` — so the session view + transcript were verified via the identical backing REST surface; caller was a temporary Hydra API-key client (`m82-e2e-verify`, developer-bound to the workspace) that was **fully revoked after the run** (FGA tuple deleted, `tenant_members` row deleted, Hydra client deleted).
 
 ## Tasks (in order)
 
@@ -11,8 +20,8 @@
 | t003 | Log + metric the gateway's silent upstream-502 paths — **DONE**                         | 30m | t001                 |
 | t004 | Simplify — `/simplify` over the changed code — **DONE**                                 | 30m | t002, t003           |
 | t005 | Test coverage — gzip clone/push proxy behavior + failure modes — **DONE**               | 45m | t004                 |
-| t006 | Live E2E: entire agent-session workflow end to end on production                        | 45m | t005 (shipped image) |
-| t007 | Closeout                                                                                | 15m | t006                 |
+| t006 | Live E2E: entire agent-session workflow end to end on production — **DONE**             | 45m | t005 (shipped image) |
+| t007 | Closeout — **DONE**                                                                     | 15m | t006                 |
 
 ## Definition of done
 
