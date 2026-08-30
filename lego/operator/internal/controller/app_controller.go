@@ -501,6 +501,14 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	// Adopt the release identity before any validation/convergence gate can fail.
+	// Those gates write a Ready=False condition against this metadata generation;
+	// the control-plane deploy projector must also see the matching release
+	// generation or a rejected redeploy remains queued until its timeout. This is
+	// still only an in-memory status mutation on the success path — the normal
+	// runtime/status write persists it later in the reconcile.
+	releaseDecision := prepareAppReleaseDecision(&app)
+
 	// codex F1: refuse to build any workload for an App that references an
 	// operator-managed Secret marked protected-from-tenant-mount (the shared S3
 	// backup credential the Database/KeyValue reconcilers project into a datastore
@@ -524,11 +532,12 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	port := int(app.Spec.EffectivePort())
 
-	// Classify the desired spec before resolving an image. Kubernetes generation
-	// acknowledges every spec mutation; release identity records only mutations
-	// that actually need a build/pre-deploy/rollout. Operational mutations such as
-	// manual scale therefore keep using the active artifact and release.
-	releaseDecision := prepareAppReleaseDecision(&app)
+	// The desired spec was classified before the validation/convergence gates so
+	// their failure status is attributable to the release that requested it.
+	// Kubernetes generation acknowledges every spec mutation; release identity
+	// records only mutations that actually need a build/pre-deploy/rollout.
+	// Operational mutations such as manual scale therefore keep using the active
+	// artifact and release.
 	if releaseDecision.canceled {
 		return r.settleCanceledRelease(ctx, &app, port)
 	}

@@ -1277,6 +1277,20 @@ func concreteContainerFailure(reason string) bool {
 	return false
 }
 
+// preRuntimeFailure reports Ready=False reasons written before dispatchRuntime
+// has inspected or changed an instance. They are release/configuration
+// refusals, not evidence that a running instance stopped passing readiness.
+// Leaving availability unobserved prevents the Events feed and Critical push
+// policy from inventing a server_failed/readiness_failed outage for them; the
+// corresponding deploy row carries the actionable failure reason.
+func preRuntimeFailure(reason string) bool {
+	switch reason {
+	case "ProtectedSecretReference", "PerAppRegistryCredsFailed", "RegistryPullSecretFailed":
+		return true
+	}
+	return false
+}
+
 func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
 	for i := range app.Status.Conditions {
 		ready := &app.Status.Conditions[i]
@@ -1314,6 +1328,12 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 				obs.ReadyTransitionAt = condition.LastTransitionTime.Time
 			}
 		case metav1.ConditionFalse:
+			// A gate that failed before runtime dispatch says nothing about the
+			// serving instance's availability. In particular, do not collapse it
+			// into readiness_failed merely because the deploy row has since closed.
+			if preRuntimeFailure(condition.Reason) {
+				break
+			}
 			// Ordinary rollout progress is not a service failure. A concrete
 			// current-revision container failure is still a truthful failed
 			// instance observation even while its deploy remains open/retrying.

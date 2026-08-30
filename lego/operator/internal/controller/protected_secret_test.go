@@ -18,13 +18,17 @@ package controller
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
@@ -340,4 +344,105 @@ func TestAllowsOwnBuildPlaneSecretRefs(t *testing.T) {
 			t.Fatal("configured operational Secret named via cloneSecret was ACCEPTED")
 		}
 	})
+}
+
+// TestStandingAppOwnProtectedCloneSurvivesReconcile covers the level-triggered
+// half of the w6/m97 regression. The clone Secret remains on a released App
+// after its build, so every later unrelated reconcile sees it again. An exact
+// self-reference must pass the full reconcile path, not only the guard helper.
+func TestStandingAppOwnProtectedCloneSurvivesReconcile(t *testing.T) {
+	ctx := context.Background()
+	scheme := protectedSecretScheme(t)
+	cloneName := appv1alpha1.CloneSecretName("web")
+	spec := appv1alpha1.AppSpec{Image: "registry.example/web:v1", CloneSecret: cloneName, Port: 3000}
+	identity := desiredAppReleaseIdentity(spec)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "web", Namespace: "default", UID: "uid-web", Generation: 1,
+			Finalizers: []string{finalizer},
+		},
+		Spec: spec,
+		Status: appv1alpha1.AppStatus{
+			Phase: appv1alpha1.PhaseRunning, Image: spec.Image, ArtifactImage: spec.Image,
+			ArtifactFingerprint: identity.artifact, ReleaseFingerprint: identity.release,
+			ReleaseArtifactFingerprint: identity.artifact, ReleaseGeneration: 1,
+			ActiveRevision: "rev-1", ObservedGeneration: 1,
+			Conditions: []metav1.Condition{{
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
+				ObservedGeneration: 1,
+			}},
+		},
+	}
+	clone := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name: cloneName, Namespace: app.Namespace,
+		Labels: map[string]string{execution.LabelProtectedFromTenantMount: execution.ProtectedFromTenantMount},
+	}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, clone).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes}
+
+	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: app.Name, Namespace: app.Namespace}}); err != nil {
+		t.Fatalf("standing App reconcile rejected its own clone Secret: %v", err)
+	}
+	var stored appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status.Phase == appv1alpha1.PhaseFailed {
+		t.Fatalf("standing App phase = %q, own clone Secret must not fail a later reconcile", stored.Status.Phase)
+	}
+	if ready := metaReadyCondition(stored.Status.Conditions); ready != nil && ready.Reason == "ProtectedSecretReference" {
+		t.Fatalf("standing App Ready condition = %+v, own clone Secret was rejected", ready)
+	}
+}
+
+// TestRejectedRedeployPinsReleaseGenerationBeforeFailure covers the remaining
+// w6/m97 redeploy bug. A validation failure used to return before release
+// classification, leaving status.releaseGeneration on the prior release; the
+// deploy projector therefore could not attribute Ready=False to the new row and
+// left it queued until timeout.
+func TestRejectedRedeployPinsReleaseGenerationBeforeFailure(t *testing.T) {
+	ctx := context.Background()
+	scheme := protectedSecretScheme(t)
+	previousSpec := appv1alpha1.AppSpec{Image: "registry.example/web:v1", Port: 3000}
+	previous := desiredAppReleaseIdentity(previousSpec)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "web", Namespace: "default", UID: "uid-web", Generation: 2,
+			Finalizers:  []string{finalizer},
+			Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "2"},
+		},
+		Spec: appv1alpha1.AppSpec{
+			Image: "registry.example/web:v2", Port: 3000, EnvFromSecret: "platform-secret",
+		},
+		Status: appv1alpha1.AppStatus{
+			Phase: appv1alpha1.PhaseRunning, Image: previousSpec.Image, ArtifactImage: previousSpec.Image,
+			ArtifactFingerprint: previous.artifact, ReleaseFingerprint: previous.release,
+			ReleaseArtifactFingerprint: previous.artifact, ReleaseGeneration: 1,
+			ActiveRevision: "rev-1", ObservedGeneration: 1,
+		},
+	}
+	protected := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name: "platform-secret", Namespace: app.Namespace,
+		Labels: map[string]string{execution.LabelProtectedFromTenantMount: execution.ProtectedFromTenantMount},
+	}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, protected).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes}
+
+	_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: app.Name, Namespace: app.Namespace}})
+	if err == nil || !strings.Contains(err.Error(), "protected operator Secret") {
+		t.Fatalf("reconcile error = %v, want protected-Secret rejection", err)
+	}
+	var stored appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status.ReleaseGeneration != 2 {
+		t.Fatalf("releaseGeneration = %d, want rejected deploy generation 2", stored.Status.ReleaseGeneration)
+	}
+	ready := metaReadyCondition(stored.Status.Conditions)
+	if stored.Status.Phase != appv1alpha1.PhaseFailed || ready == nil || ready.Reason != "ProtectedSecretReference" || ready.ObservedGeneration != 2 {
+		t.Fatalf("rejected redeploy status = %+v, want Failed/ProtectedSecretReference at generation 2", stored.Status)
+	}
 }

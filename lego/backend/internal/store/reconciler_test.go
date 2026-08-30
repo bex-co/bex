@@ -270,14 +270,41 @@ func TestObservedServiceStateTreatsConcreteOpenDeployFailureAsInstanceFailure(t 
 			}},
 		},
 	}
-	obs := observedServiceStateFor("srv-image", app, true)
-	if !obs.AvailabilityObserved || obs.Availability != "unhealthy" || obs.ReasonCode != EventReasonReadinessFailed {
-		t.Fatalf("image-pull observation = %+v, want unhealthy instance", obs)
+	for _, reason := range []string{"ImagePullBackOff", "CrashLoopBackOff"} {
+		app.Status.Conditions[0].Reason = reason
+		obs := observedServiceStateFor("srv-image", app, true)
+		if !obs.AvailabilityObserved || obs.Availability != "unhealthy" || obs.ReasonCode != EventReasonReadinessFailed {
+			t.Fatalf("%s observation = %+v, want unhealthy instance", reason, obs)
+		}
 	}
 	app.Status.Conditions[0].Reason = "Deploying"
-	obs = observedServiceStateFor("srv-image", app, true)
+	obs := observedServiceStateFor("srv-image", app, true)
 	if obs.AvailabilityObserved {
 		t.Fatalf("ordinary rollout progress = %+v, must not be an instance failure", obs)
+	}
+}
+
+// A refusal written before dispatchRuntime has run is not an observation about
+// instance health. In particular it must not manufacture a Critical
+// server_failed/readiness_failed event after the deploy row closes.
+func TestObservedServiceStateExcludesPreRuntimeFailures(t *testing.T) {
+	for _, reason := range []string{"ProtectedSecretReference", "PerAppRegistryCredsFailed", "RegistryPullSecretFailed"} {
+		t.Run(reason, func(t *testing.T) {
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Generation: 4},
+				Status: appv1alpha1.AppStatus{
+					Phase: appv1alpha1.PhaseFailed, ActiveRevision: "rev-3",
+					Conditions: []metav1.Condition{{
+						Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+						Reason: reason, ObservedGeneration: 4,
+					}},
+				},
+			}
+			obs := observedServiceStateFor("srv-config", app, false)
+			if obs.AvailabilityObserved || obs.Availability != "" || obs.ReasonCode != "" {
+				t.Fatalf("pre-runtime refusal observation = %+v, want availability unobserved", obs)
+			}
+		})
 	}
 }
 
@@ -939,6 +966,26 @@ func TestObservedDeployStatusUsesCurrentGenerationEvidence(t *testing.T) {
 	operational.Status.ActiveRevision = fmt.Sprintf("rev-%d", gen)
 	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployUpdateInProgress}, operational, false); got != DeployLive {
 		t.Errorf("operational generation after rollout emitted %q, want %q", got, DeployLive)
+	}
+}
+
+func TestObservedDeployStatusClosesRejectedRedeployImmediately(t *testing.T) {
+	const generation = int64(2)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: generation},
+		Status: appv1alpha1.AppStatus{
+			Phase: appv1alpha1.PhaseFailed, ReleaseGeneration: generation,
+			ActiveRevision: "rev-1", ObservedGeneration: 1,
+			Conditions: []metav1.Condition{{
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+				Reason: "ProtectedSecretReference", Message: "refused protected Secret",
+				ObservedGeneration: generation,
+			}},
+		},
+	}
+	open := Deploy{Generation: generation, Status: DeployQueued}
+	if got := observedDeployStatus(open, app, false); got != DeployUpdateFailed {
+		t.Fatalf("rejected redeploy status = %q, want %q without waiting for timeout", got, DeployUpdateFailed)
 	}
 }
 
