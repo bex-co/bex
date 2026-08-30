@@ -356,7 +356,7 @@ func (s *Service) ticketEnabled() bool {
 	return len(s.TicketSecret) > 0 && strings.TrimSpace(s.GatewayURL) != ""
 }
 
-func sessionObject(id string) string { return "agent_session:" + id }
+func sessionObject(id string) string { return agentsession.SessionObject(id) }
 
 func validateSessionID(value string) error {
 	kind, ok := ids.KindOf(value)

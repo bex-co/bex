@@ -30,6 +30,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -186,7 +187,7 @@ func (o *openfgaChecker) GrantAgentSessionWorkspace(ctx context.Context, session
 	return o.writeTuple(ctx, false, tupleKey{
 		User:     "workspace:" + workspaceID,
 		Relation: "workspace",
-		Object:   "agent_session:" + sessionID,
+		Object:   agentsession.SessionObject(sessionID),
 	})
 }
 
