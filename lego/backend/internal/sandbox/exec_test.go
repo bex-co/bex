@@ -412,10 +412,10 @@ func agentSessionSandboxClient(t *testing.T, owner string) *Client {
 		_ = json.NewEncoder(w).Encode(osSandbox{
 			ID: "os-agent",
 			Metadata: map[string]string{
-				metadataOwner:          owner,
-				metadataWorkspace:      "tea-a",
-				metadataRegime:         metadataSandboxRegime,
-				metadataNetworkPolicy:  string(NetworkPolicyDenyAll),
+				metadataOwner:             owner,
+				metadataWorkspace:         "tea-a",
+				metadataRegime:            metadataSandboxRegime,
+				metadataNetworkPolicy:     string(NetworkPolicyDenyAll),
 				agentsession.LabelSession: "ags-one",
 			},
 		})
@@ -463,22 +463,6 @@ func TestExecAgentSessionSandboxRequiresViewSensitive(t *testing.T) {
 	if _, err := ordinary.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "id"}); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("contributor exec on ordinary sandbox = %v, want ErrForbidden", err)
 	}
-}
-
-// gwEchoServer is a stub gateway that verifies the ticket and returns a clean
-// exit event, so success-path tests only need the exec to round-trip.
-func gwEchoServer(t *testing.T, secret string) *httptest.Server {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := sandboxexec.Verify([]byte(secret), r.Header.Get(sandboxexec.TicketHeader), time.Now()); err != nil {
-			http.Error(w, "invalid ticket", http.StatusUnauthorized)
-			return
-		}
-		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
-	}))
-	t.Cleanup(srv.Close)
-	return srv
 }
 
 // A developer (can_view_sensitive) exec-ing their own agent-session sandbox

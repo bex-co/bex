@@ -56,10 +56,6 @@ import (
 // (codex #10). 200 is well above any reasonable page limit.
 const maxHydratedEnvGroups = 200
 
-// Round-11 #3 knob: the per-workspace create quota (default; 0 disables via
-// the env wiring).
-const defaultMaxEnvGroups = 100
-
 // Service manages environment groups over the shared core.SecretKV store and
 // projects them into linked services. Embeds *core.Base for the client, clock, and
 // authorization gate.
@@ -1730,15 +1726,6 @@ func (s *Service) envGroupNamespace(workspace string) string {
 func (s *Service) now() string { return s.Now().UTC().Format(time.RFC3339Nano) }
 
 // --- view + validation helpers ------------------------------------------------
-
-func envViews(env map[string]string) []EnvVarView {
-	out := make([]EnvVarView, 0, len(env))
-	for k, v := range env {
-		out = append(out, EnvVarView{Key: k, Value: v})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
-	return out
-}
 
 func envKeyViews(env map[string]string) []EnvVarView {
 	return envKeyViewsFromKeys(slices.Sorted(maps.Keys(env)))

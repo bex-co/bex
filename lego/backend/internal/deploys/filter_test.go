@@ -62,14 +62,6 @@ func seedHistory(ds *fakeStore) (base time.Time) {
 	return base
 }
 
-func viewIDs(deploys []DeployView) []string {
-	out := make([]string, len(deploys))
-	for i, d := range deploys {
-		out[i] = d.ID
-	}
-	return out
-}
-
 // --- FilterOf -----------------------------------------------------------------
 
 func TestFilterOfRejectsMalformedParams(t *testing.T) {

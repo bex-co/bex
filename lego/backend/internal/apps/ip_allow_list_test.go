@@ -37,14 +37,6 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-func serviceAllowList(cidrs ...string) []core.IPAllowListEntry {
-	entries := make([]core.IPAllowListEntry, len(cidrs))
-	for i, cidr := range cidrs {
-		entries[i] = core.IPAllowListEntry{CIDRBlock: cidr}
-	}
-	return entries
-}
-
 // --- CIDR validation ---
 
 func TestSetIPAllowListRejectsInvalidCIDR(t *testing.T) {

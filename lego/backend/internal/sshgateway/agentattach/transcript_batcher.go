@@ -76,12 +76,6 @@ func (b *transcriptBatcher) enqueue(part store.AgentSessionTranscriptPart) {
 	}
 }
 
-func (b *transcriptBatcher) flush() {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.flushLocked(true)
-}
-
 func (b *transcriptBatcher) close() {
 	b.mu.Lock()
 	b.closed = true

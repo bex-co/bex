@@ -36,10 +36,6 @@ import (
 // Either the ledger row is stale or this surface should not be here; flagged
 // for a decision rather than silently resolved in a parity-pin milestone.
 
-type jobServiceIDArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
-}
-
 type listJobsArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
 	Limit     int    `json:"limit,omitempty" jsonschema:"page size (default: all)"`

@@ -41,6 +41,12 @@ export default tseslint.config([
     rules: {
       "react-hooks/incompatible-library": "off",
       "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+        },
+      ],
     },
   },
   {
@@ -52,13 +58,6 @@ export default tseslint.config([
     },
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-        },
-      ],
       // Allow test utilities that modify external state
       "react-hooks/globals": "off",
       "react-hooks/immutability": "off",

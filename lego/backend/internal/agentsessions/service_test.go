@@ -613,13 +613,12 @@ type fakeLifecycle struct {
 	// sandbox create (nothing is counted); resumeErr aborts a resume.
 	createErr, resumeErr error
 	// Hibernation (ADR059 D3, w2/m68). hibernated counts snapshot calls;
-	// lastPutURL/lastRestoreURL capture the presigned URLs threaded through;
+	// lastPutURL captures the presigned upload URL threaded through;
 	// snapshot is the returned result; hibernateErr injects a snapshot failure.
-	hibernated     int
-	lastPutURL     string
-	lastRestoreURL string
-	snapshot       sandbox.SnapshotResult
-	hibernateErr   error
+	hibernated   int
+	lastPutURL   string
+	snapshot     sandbox.SnapshotResult
+	hibernateErr error
 }
 
 // fakeSnapshots is an in-memory SnapshotStore for the hibernation tests: it
