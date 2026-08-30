@@ -74,6 +74,8 @@ implementation serves every workstream since `w1/m72`; `.pm/w4/dev-4/` keeps onl
 
 - [ ] **035** — Correct ADR018's stale shared-hosting security update (sub-hour; `.pm/DO_NOT_DO.md` `#PSL` is canonical)
 
+_(`037` done 2026-08-29 — `/workspace/settings` now omits the Danger Zone navigation link, loading skeleton, and Delete Workspace card when the caller has only one workspace; two-or-more-workspace behavior is unchanged; a `local-bex` browser walk verified desktop and 390px-mobile states after deleting from two workspaces to one; focused coverage plus the full dashboard typecheck, lint, and 2,839-test suite are green; note moved to `done/`.)_
+
 _(`036` done 2026-08-22 — `deployTriggerKey` (`dashboard/src/features/deploys/lib/deploy-status.ts`) gained the missing `new_commit` case + `deploys.triggerNewCommit` en/zh locale entries, so the Deploys list/detail "Trigger" column now renders "new commit" instead of leaking the raw enum as "New_commit"; the Duration column header's mid-word wrap was fixed alongside it (`whitespace-nowrap`); added `deployTriggerKey` unit coverage (previously untested) plus a `new_commit` case in the list page's trigger-humanization test; full dashboard suite (348 files / 2377 tests), typecheck, and lint all green — note moved to `done/`.)_
 
 _(`034` done 2026-08-18 — the live-log tail revalidation watchdog shipped (`BEX_LOG_STREAM_REVALIDATE_INTERVAL`, default 1m, `AuthorizeAppFresh(can_view_logs)`); note moved to `done/`.)_
