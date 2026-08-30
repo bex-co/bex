@@ -131,15 +131,9 @@ func ListTags(ctx context.Context, httpClient *http.Client, registryHost, repo, 
 	return body.Tags, nil
 }
 
-// ResolveBuiltDigest resolves appName's freshly pushed tag with the App's own
-// per-App credential — the same identity EnsureActive just proved the registry
-// accepts, so a resolution cannot fail on auth that pulls would pass.
-func (c *Creds) ResolveBuiltDigest(ctx context.Context, appName, appNS, tag string) (string, error) {
-	return c.ResolveBuiltDigestFor(ctx, identity.ForApp(appName, ""), appNS, tag)
-}
-
 // ResolveBuiltDigestFor resolves id's freshly pushed tag with the App's own
-// per-App credential.
+// per-App credential — the same identity EnsureActiveFor just proved the
+// registry accepts, so a resolution cannot fail on auth that pulls would pass.
 func (c *Creds) ResolveBuiltDigestFor(ctx context.Context, id identity.Identity, appNS, tag string) (string, error) {
 	password, err := c.readPasswordFor(ctx, id, appNS)
 	if err != nil {

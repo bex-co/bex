@@ -52,17 +52,17 @@ func ClosedOAuthScopes() []string {
 	return []string{ScopeRead, ScopeWrite, ScopeSensitive, ScopeAPICompatibility}
 }
 
+// granularScopes is the closed least-privilege vocabulary a third-party human
+// token must carry at least one member of — and, in the same stable order, the
+// RFC 9728 scopes_supported list AdvertisedScopes serves. Defined once here so
+// the advertised set and the enforced set (HasGranularCapability) cannot drift.
+var granularScopes = []string{ScopeRead, ScopeWrite, ScopeSensitive}
+
 // AdvertisedScopes is the RFC 9728 scopes_supported list in one stable order.
 // Discovery-driven clients request exactly these; bex.api is compatibility-only
 // for platform-marked clients and is not advertised.
 func AdvertisedScopes() []string {
-	return GranularScopes()
-}
-
-// GranularScopes is the closed least-privilege vocabulary a third-party human
-// token must carry at least one member of.
-func GranularScopes() []string {
-	return []string{ScopeRead, ScopeWrite, ScopeSensitive}
+	return slices.Clone(granularScopes)
 }
 
 // relationCapability maps every RelCan… relation onto exactly one capability.
@@ -127,8 +127,7 @@ func (g OAuthGrant) HasGranular() bool {
 // substring) do not count.
 func HasGranularCapability(canonical string) bool {
 	for _, s := range strings.Fields(canonical) {
-		switch s {
-		case ScopeRead, ScopeWrite, ScopeSensitive:
+		if slices.Contains(granularScopes, s) {
 			return true
 		}
 	}
