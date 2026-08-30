@@ -96,6 +96,10 @@ flowchart TB
 
 The stored UI-message response chunks encode assistant output, not the submitted user role. The gateway therefore interleaves durable `agent_session_turns` as `data-user-prompt` parts and normalizes nested per-turn `start`/`finish` chunks into one response envelope. The dashboard renders those prompt parts as user messages and surfaces incomplete-history reasons. React optimistic state is only an in-flight echo, never history.
 
+### Transcript as the agent re-priming source (w5/m84, 2026-08-30)
+
+The transcript's purpose widens from "human replay + audit" to **the authoritative fallback context for the agent itself**: ADR047 D3's continuity ladder (rung 2) derives a bounded re-priming preamble from it whenever a fresh agent generation lacks its own `session/load` state — post-hibernation resume with a missing/empty snapshot, and steer-driven redispatch alike. `ags-da9mh5vj596c73en5eq0` is the motivating incident: the dashboard replayed durable history while the fresh agent received only "try again" and asked what to retry. Consequences for this store: the redacted, re-wrapped harvest (accepted above for terminal replay) is also sufficient for re-priming — the agent needs prompts + assistant text, not verbatim wire bytes; truncation/summary policy lives in the **driver** (newest-first under an explicit byte budget), not in the store; and the preamble is annotated on the new turn so replay never double-renders it as fresh conversation.
+
 ---
 
 ## Alternatives considered

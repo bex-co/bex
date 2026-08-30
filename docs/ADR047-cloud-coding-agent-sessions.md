@@ -139,6 +139,18 @@ The production incident for `ags-da1prbt040bc73aj5230` exposed four independent 
 
 All product adapters continue to read the same durable session row and turn/transcript tables. REST, GraphQL, and MCP therefore expose the same terminal `phase`/`failureReason`/turn completeness, while gateway replay and the dashboard can still render retained user turns and assistant parts after the Pod disappears.
 
+#### D3 continuity amendment — agent context across sandbox generations (w5/m84, 2026-08-30)
+
+Production session `ags-da9mh5vj596c73en5eq0` exposed that this section's continuity promise was never implemented: after a post-hibernation resume, the dashboard replayed the full durable history while the fresh agent process received only the literal steer prompt ("try again") and answered that it had no idea what to retry. Today's "transcript replay is the universal fallback" reaches only the **client**; nothing ever reaches the **agent**. The gap is worst for sessions whose every prior turn died during setup (e.g. the m82/m83 clone failures): they hibernate with an empty snapshot, so even a perfect state-restore design would have nothing to restore, yet resume still delivers a cold prompt.
+
+The contract is now explicit — every fresh agent process spawned for a session that has prior durable turns MUST be primed by exactly one rung of this ladder, tried in order:
+
+1. **Agent-native resume** — ACP `session/load` from the agent's own on-disk session state, used when the adapter advertises `loadSession` **and** the state is present (restored by the ADR059 D3 snapshot, whose mutable-mount scope now explicitly includes each reviewed profile's agent session-state directories).
+2. **Transcript re-priming** — the driver injects a bounded context preamble derived from the durable transcript (turn prompts + assistant text; tool noise elided; newest-first truncation under an explicit byte budget) ahead of the new user prompt. The preamble is marked so the stream/tee does not re-render it as fresh conversation.
+3. **Task re-delivery** — when **no prior turn ever reached the agent** (setup-phase failures), the resume/steer prompt is prefixed with `agent_config.task`: a bare "try again" means "retry the task," never an open question to a blank agent.
+
+The applied rung is surfaced on the turn (a `data-` part / turn annotation) so the dashboard can indicate restored-vs-fresh agent context instead of implying fidelity that was not there. Implementation tracked as `w5/m84`; ADR059 D3/D4 and ADR051 carry the matching snapshot-scope and transcript-purpose amendments.
+
 ### D4 — Delivery: draft PR + evidence
 
 A session ends (or checkpoints) by pushing its `bex-agent/*` branch with the session token and opening a **draft PR** via the GitHub App from bex-api. The session record attaches Codex-style verifiable evidence — command log, test output tails — sourced from the transcript. Steering channels: new ACP prompt turns on an attached session (phase 2), and a PR-comment loop (webhook → resume session) as a follow-on.
