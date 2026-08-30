@@ -58,6 +58,12 @@ api_json() {
   fi
 }
 
+api_status() {
+  local method="$1" path="$2"
+  curl -sS --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' \
+    -X "$method" "${auth[@]}" "$api$path"
+}
+
 # Authenticate and validate the selected workspace before the first mutation.
 api_json GET /key-value >/dev/null || fail "API/workspace preflight failed"
 
@@ -95,21 +101,20 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 fixture_name="kvcli-m57-$(date +%s)-$$"
-create_payload="$(jq -cn --arg name "$fixture_name" --arg cidr "$BEX_KV_VERIFY_ALLOW_CIDR" '{
-  name:$name,
-  plan:"free",
-  public:true,
-  ipAllowList:[{cidrBlock:$cidr,description:"automated kv-cli acceptance"}]
-}')"
-created="$(api_json POST /key-value "$create_payload")" || fail "disposable Key Value creation failed"
-fixture_id="$(jq -er '.id | select(startswith("red-"))' <<<"$created")" || fail "create response omitted an opaque Key Value id"
+if ! created="$("$RENDER_BIN" keyvalues create --confirm \
+  --name "$fixture_name" --plan free --workspace "$RENDER_WORKSPACE" \
+  --ip-allow-list "cidr=$BEX_KV_VERIFY_ALLOW_CIDR,description=automated kv-cli acceptance" \
+  --output json 2>&1)"; then
+  created=""
+  fail "official CLI disposable Key Value creation failed"
+fi
+fixture_id="$(jq -er '.data.id | select(startswith("red-"))' <<<"$created")" || fail "create response omitted an opaque Key Value id"
 fixture_created=1
-created_name="$(jq -er '.name' <<<"$created")" || fail "create response omitted the display name"
+created_name="$(jq -er '.data.name' <<<"$created")" || fail "create response omitted the display name"
 [[ "$created_name" == "$fixture_name" ]] || fail "create response returned an unexpected display name"
 created=""
-create_payload=""
 created_name=""
-echo "PASS source-restricted public Key Value created"
+echo "PASS official-CLI source-restricted public Key Value created"
 
 deadline=$((SECONDS + ready_timeout))
 ready=0
@@ -125,6 +130,12 @@ done
 [[ "$ready" == "1" ]] || fail "public Key Value did not become available"
 resource=""
 
+connection_status="$(api_status GET "/key-value/$fixture_id/connection-info" 2>/dev/null || true)"
+if [[ "$connection_status" == "503" ]]; then
+  fail "public Key Value endpoint unavailable (configure BEX_KV_DOMAIN and wait for reconciliation)"
+fi
+[[ "$connection_status" == "200" ]] || fail "connection-info returned HTTP $connection_status"
+connection_status=""
 connection_info="$(api_json GET "/key-value/$fixture_id/connection-info")" || fail "connection-info lookup failed"
 external_host="$(jq -er '.externalConnectionString |
   select(startswith("rediss://")) |

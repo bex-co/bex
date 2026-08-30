@@ -183,6 +183,47 @@ func TestRESTKeyValueCRUD(t *testing.T) {
 	}
 }
 
+func TestRESTKeyValuePublicIntentFollowsExternalAllowList(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       string
+		wantPublic bool
+	}{
+		{"omitted allowlist stays private", `{"name":"kv-private"}`, false},
+		{"CLI allowlist enables public", `{"name":"kv-cli","ipAllowList":[{"cidrBlock":"203.0.113.7/32"}]}`, true},
+		{"empty allowlist stays private", `{"name":"kv-empty","ipAllowList":[]}`, false},
+		{"explicit private wins", `{"name":"kv-explicit-private","public":false,"ipAllowList":[{"cidrBlock":"203.0.113.7/32"}]}`, false},
+		{"explicit public remains available", `{"name":"kv-explicit-public","public":true}`, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, _ := newService()
+			w := serveREST(svc, http.MethodPost, "/v1/key-value", tt.body)
+			if w.Code != http.StatusCreated {
+				t.Fatalf("create = %d: %s", w.Code, w.Body.String())
+			}
+			var kv KeyValueView
+			if err := json.Unmarshal(w.Body.Bytes(), &kv); err != nil {
+				t.Fatal(err)
+			}
+			if kv.Public != tt.wantPublic {
+				t.Fatalf("public = %v, want %v", kv.Public, tt.wantPublic)
+			}
+		})
+	}
+
+	// Shared bex-native verbs used by GraphQL/MCP/Blueprint adapters remain
+	// private by omission.
+	svc, _ := newService()
+	kv, err := svc.CreateKeyValue(context.Background(), CreateKeyValueRequest{Name: "shared-default"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kv.Public {
+		t.Fatal("shared CreateKeyValue omission became public")
+	}
+}
+
 func TestKeyValueListPaginationAcrossRESTAndGraphQL(t *testing.T) {
 	svc, cl := newService()
 	for i := 22; i >= 0; i-- { // deliberately seed opposite cursor order
@@ -800,6 +841,33 @@ func TestRESTKeyValueConnectionInfoInternalOnly(t *testing.T) {
 	}
 	if ci.CLICommand != "redis-cli -u redis://default:pw@priv.default.svc:6379" {
 		t.Errorf("cliCommand should use internal for a private store, got %q", ci.CLICommand)
+	}
+}
+
+func TestRESTKeyValueConnectionInfoRejectsMissingPublicEdge(t *testing.T) {
+	svc, cl := newService()
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "edge-pending", Namespace: "default"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", Public: true},
+		Status:     appv1alpha1.KeyValueStatus{Phase: appv1alpha1.KVPhaseReady, SecretName: "edge-pending"},
+	}
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "edge-pending", Namespace: "default"},
+		Data:       map[string][]byte{"uri": []byte("redis://default:must-not-leak@internal:6379")},
+	}
+	if err := cl.Create(context.Background(), kv); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Create(context.Background(), sec); err != nil {
+		t.Fatal(err)
+	}
+
+	w := serveREST(svc, http.MethodGet, "/v1/key-value/edge-pending/connection-info", "")
+	if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "BEX_KV_DOMAIN") {
+		t.Fatalf("missing public edge = %d %s, want named 503", w.Code, w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), "must-not-leak") {
+		t.Fatalf("missing-edge response leaked credentials: %s", w.Body.String())
 	}
 }
 

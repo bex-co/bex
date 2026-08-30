@@ -219,42 +219,39 @@ else
       "${verifier_ip}/$( [[ "$verifier_ip" == *:* ]] && echo 128 || echo 32 )")" || fail "source-IP CIDR"
     verifier_ip=""
   fi
-  if ! allow_list="$(python3 - "$allow_cidr" "${BEX_PSQL_ADDITIONAL_ALLOW_CIDRS:-}" <<'PY'
+  if ! allow_entries="$(python3 - "$allow_cidr" "${BEX_PSQL_ADDITIONAL_ALLOW_CIDRS:-}" <<'PY'
 import ipaddress
-import json
 import sys
 
 cidrs = [sys.argv[1]]
 cidrs.extend(value.strip() for value in sys.argv[2].split(",") if value.strip())
-entries = []
 for index, cidr in enumerate(cidrs):
-    entries.append({
-        "cidrBlock": str(ipaddress.ip_network(cidr, strict=False)),
-        "description": (
-            "psql compatibility verifier"
-            if index == 0
-            else "psql compatibility local transport"
-        ),
-    })
-print(json.dumps(entries, separators=(",", ":")))
+    description = "psql compatibility verifier" if index == 0 else "psql compatibility local transport"
+    print(f"cidr={ipaddress.ip_network(cidr, strict=False)},description={description}")
 PY
 )"; then
     fail "invalid verifier allow-list CIDR"
   fi
-  create_payload="$(jq -cn \
-    --arg name "$database_name" \
-    --arg owner "${RENDER_WORKSPACE:-}" \
-    --argjson allow "$allow_list" \
-    '{name:$name,plan:"free",public:true,ipAllowList:$allow} + if $owner == "" then {} else {ownerId:$owner} end')"
-  allow_list=""
-  created_json="$(api_request POST /postgres "$create_payload")" || fail "disposable database create"
-  create_payload=""
-  database_id="$(jq -er '.id' <<<"$created_json")" || fail "created database id"
+  create_args=(postgres create --confirm --name "$database_name" --plan free --version 18 --output json)
+  if [[ -n "${RENDER_WORKSPACE:-}" ]]; then
+    create_args+=(--workspace "$RENDER_WORKSPACE")
+  fi
+  while IFS= read -r entry; do
+    [[ -n "$entry" ]] && create_args+=(--ip-allow-list "$entry")
+  done <<<"$allow_entries"
+  allow_entries=""
+  if ! created_json="$(RENDER_CLI_CONFIG_PATH="$tmp/create-cli.yaml" \
+    run_bounded "${BEX_PSQL_COMMAND_TIMEOUT_SECONDS:-60}" "$RENDER_BIN" "${create_args[@]}" 2>&1)"; then
+    created_json=""
+    fail "official CLI disposable database create"
+  fi
+  create_args=()
+  database_id="$(jq -er '.data.id' <<<"$created_json")" || fail "created database id"
   [[ "$database_id" =~ ^dpg-[a-z0-9]{20}([a-z0-9]{2})?$ ]] || fail "created database id is not Render-shaped"
   created=1
-  database_name="$(jq -er '.name' <<<"$created_json")" || fail "created database name"
+  database_name="$(jq -er '.data.name' <<<"$created_json")" || fail "created database name"
   created_json=""
-  echo "PASS psql disposable-database-created id=$database_id"
+  echo "PASS psql official-CLI disposable-database-created id=$database_id"
 fi
 
 ready=0
@@ -281,6 +278,12 @@ target_json=""
 
 # Assert the external connection contract the CLI will consume, without letting
 # the URI/password leave the parser (only host/database/TLS mode do).
+connection_status="$(api_status GET "/postgres/$database_id/connection-info" 2>/dev/null || true)"
+if [[ "$connection_status" == "503" ]]; then
+  fail "public Postgres endpoint unavailable (configure BEX_DB_DOMAIN and wait for reconciliation)"
+fi
+[[ "$connection_status" == "200" ]] || fail "connection-info returned HTTP $connection_status"
+connection_status=""
 if ! connection_facts="$(api_request GET "/postgres/$database_id/connection-info" | python3 -c '
 import json
 import sys

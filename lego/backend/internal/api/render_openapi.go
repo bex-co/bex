@@ -177,6 +177,14 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	"get-disk-capacity": {"kind": {}},
 }
 
+// These are deliberate bex body extensions on Render-shaped operations. The
+// runtime contract is widened before validation so fields the handler already
+// supports are not rejected as unknown by the pinned upstream schema.
+var renderBodyPropertyExtensions = map[string]map[string]*openapi3.SchemaRef{
+	"create-key-value": {"public": {Value: openapi3.NewBoolSchema()}},
+	"create-postgres":  {"public": {Value: openapi3.NewBoolSchema()}},
+}
+
 func loadRenderOpenAPIContract() (*renderOpenAPIContract, error) {
 	return loadRenderOpenAPIContractData(renderOpenAPISource, renderOpenAPISHA256)
 }
@@ -269,6 +277,7 @@ func applyRenderCompatibility(doc *openapi3.T) {
 			if media == nil || media.Schema == nil || media.Schema.Value == nil {
 				continue
 			}
+			maps.Copy(media.Schema.Value.Properties, renderBodyPropertyExtensions[operation.OperationID])
 			if len(remove) > 0 {
 				media.Schema.Value.Required = slices.DeleteFunc(media.Schema.Value.Required, func(name string) bool {
 					return slices.Contains(remove, name)

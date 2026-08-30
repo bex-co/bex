@@ -169,6 +169,15 @@ func TestRenderOpenAPICompatibilityIsOperationScoped(t *testing.T) {
 			}
 		}
 	}
+	for operationID, extensions := range renderBodyPropertyExtensions {
+		_, operation := findRenderOperation(t, contract.document, operationID)
+		schema := operation.RequestBody.Value.Content.Get("application/json").Schema.Value
+		for extension := range extensions {
+			if schema.Properties[extension] == nil {
+				t.Errorf("%s rejects documented body extension %s", operationID, extension)
+			}
+		}
+	}
 }
 
 func TestRenderRouteIntersectionInventory(t *testing.T) {

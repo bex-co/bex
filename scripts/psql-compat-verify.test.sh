@@ -55,7 +55,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-PORT_FILE, LOG_FILE = sys.argv[1:]
+PORT_FILE, LOG_FILE, EDGE_FILE = sys.argv[1:]
 SECRET = os.environ["FAKE_SECRET"]
 MAIN_ID = "dpg-0123456789abcdefghij"
 state = {"deleted": False, "name": "psql-test",
@@ -141,6 +141,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlsplit(self.path)
         path = parsed.path
+        if path == "/v1/owners/tea-0123456789abcdefghij":
+            self.record("GET owner")
+            self.send_json(200, {
+                "id": "tea-0123456789abcdefghij", "name": "test",
+                "type": "team", "email": "test@example.invalid",
+            })
+            return
         if path == "/v1/postgres":
             name = parse_qs(parsed.query).get("name", [""])[0]
             self.record("GET list-name")
@@ -153,6 +160,12 @@ class Handler(BaseHTTPRequestHandler):
         parts = path.split("/")
         if len(parts) == 5 and parts[:3] == ["", "v1", "postgres"] and parts[4] == "connection-info":
             self.record("GET connection-info")
+            if os.path.exists(EDGE_FILE):
+                self.send_json(503, {
+                    "id": "unavailable",
+                    "message": "public datastore endpoint unavailable: configure BEX_DB_DOMAIN",
+                })
+                return
             uri = f"postgresql://planted_user:{SECRET}@db.nonprod.invalid:5432/psql_test?sslmode=require"
             self.send_json(200, {
                 "externalConnectionString": uri,
@@ -182,7 +195,7 @@ server.serve_forever()
 PY
 
 : >"$tmp/requests.log"
-FAKE_SECRET="$secret" python3 "$tmp/fake-api.py" "$tmp/port" "$tmp/requests.log" &
+FAKE_SECRET="$secret" python3 "$tmp/fake-api.py" "$tmp/port" "$tmp/requests.log" "$tmp/missing-edge" &
 server_pid=$!
 for _ in {1..100}; do
   [[ -s "$tmp/port" ]] && break
@@ -253,13 +266,29 @@ assert_safe "$tmp/missing-psql.out"
 
 # 3) full green path: create → ready → precondition → id/name probes → unknown
 #    reject → allow-list-deny (or a gated skip) → cleanup.
+
+# Missing public-edge state must fail with configuration guidance before the
+# local psql process is invoked with an empty target.
+touch "$tmp/missing-edge"
+: >"$tmp/fake-psql-record"
+set +e
+env "${common_env[@]}" bash "$verifier" >"$tmp/missing-edge.out" 2>&1
+missing_edge_rc=$?
+set -e
+rm -f "$tmp/missing-edge"
+[[ "$missing_edge_rc" != "0" ]] || fail "missing public edge unexpectedly passed"
+grep -Fq 'configure BEX_DB_DOMAIN' "$tmp/missing-edge.out" ||
+  fail "missing public edge did not return actionable guidance"
+[[ ! -s "$tmp/fake-psql-record" ]] || fail "missing public edge invoked local psql"
+assert_safe "$tmp/missing-edge.out"
+
 if ! env "${common_env[@]}" bash "$verifier" >"$tmp/full.out" 2>&1; then
   grep -E '^(PASS|FAIL|INFO|SKIP)' "$tmp/full.out" | sed "s/$secret/[redacted]/g" >&2 || true
   tail -n 40 "$tmp/requests.log" >&2
   fail "full verifier failed"
 fi
 for marker in \
-  'PASS psql disposable-database-created' \
+  'PASS psql official-CLI disposable-database-created' \
   'PASS psql external-connection-precondition' \
   'PASS psql probe-id' \
   'PASS psql probe-name' \

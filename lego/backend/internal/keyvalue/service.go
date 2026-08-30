@@ -826,6 +826,11 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	if err := s.AuthorizeKeyValueFresh(ctx, core.RelCanViewSensitive, kv); err != nil {
 		return KeyValueConnectionInfo{}, err
 	}
+	if kv.Spec.Public && kv.Status.ExternalHost == "" {
+		return KeyValueConnectionInfo{}, fmt.Errorf(
+			"%w: Key Value %q has public access enabled but no external host; configure BEX_KV_DOMAIN and wait for reconciliation",
+			core.ErrUnavailable, kv.Name)
+	}
 	internal := string(sec.Data["uri"])         // legacy connection Secret
 	external := string(sec.Data["externalUri"]) // legacy connection Secret (public only)
 	if kv.Status.CredentialSecretName != "" {
