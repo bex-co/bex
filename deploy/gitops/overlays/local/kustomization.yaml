@@ -215,3 +215,31 @@ patches:
       - op: add
         path: /spec/sources/0/helm/valueFiles/-
         value: $values/deploy/gitops/overlays/local/values/openbao.values.yaml
+  # The raw-TCP edge proxies watch datastore CRs and dial their private
+  # backends. Worker pods cannot reach either the apiserver or cross-node
+  # services under the local OrbStack/CAPD networking quirk documented above,
+  # so pin only the local deployment to the control-plane node. Production
+  # keeps the platform-pool DaemonSets from config/default unchanged.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: bex-operator
+    patch: |-
+      - op: add
+        path: /spec/source/kustomize/patches
+        value:
+          - target:
+              kind: DaemonSet
+              name: (pg|kv)-sni-proxy
+            patch: |-
+              - op: replace
+                path: /spec/template/spec/nodeSelector
+                value:
+                  node-role.kubernetes.io/control-plane: ""
+              - op: replace
+                path: /spec/template/spec/tolerations
+                value:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+                    effect: NoSchedule

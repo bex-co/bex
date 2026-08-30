@@ -267,10 +267,23 @@ func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request) {
 func (s *Service) handleCreateKeyValue(w http.ResponseWriter, r *http.Request) {
 	// CreateKeyValueRequest.IPAllowList decodes Render's structured
 	// {cidrBlock, description} objects directly.
-	var req CreateKeyValueRequest
-	if err := core.DecodeJSON(r, &req); err != nil {
+	var wire struct {
+		CreateKeyValueRequest
+		Public *bool `json:"public"`
+	}
+	if err := core.DecodeJSON(r, &wire); err != nil {
 		writeBadRequestBody(w, err)
 		return
+	}
+	req := wire.CreateKeyValueRequest
+	if wire.Public != nil {
+		req.Public = *wire.Public
+	} else {
+		// Render Key Value is private until an inbound IP rule enables
+		// external access. The official CLI has no bex `public` field, but
+		// --ip-allow-list sends this array, making a nonempty list the only
+		// safe compatibility default. Empty or omitted stays private.
+		req.Public = len(req.IPAllowList) > 0
 	}
 	req.DryRun = core.DryRunRequested(r, req.DryRun)
 	status := http.StatusCreated // Render: create => 201

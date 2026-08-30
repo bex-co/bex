@@ -11,7 +11,21 @@ mkdir -p "$fake_bin" "$tmp/config"
 write_fakes() {
   printf '%s\n' \
     '#!/usr/bin/env bash' \
-    'echo "render v2.21.0"' >"$fake_bin/render"
+    'set -euo pipefail' \
+    'if [[ "${1:-}" == "--version" ]]; then echo "render v2.21.0"; exit 0; fi' \
+    'if [[ "${1:-}" == "keyvalues" && "${2:-}" == "create" ]]; then' \
+    '  name=""; allow=""; args=("$@")' \
+    '  for ((i=0; i<${#args[@]}; i++)); do' \
+    '    [[ "${args[$i]}" == "--name" ]] && name="${args[$((i+1))]}"' \
+    '    [[ "${args[$i]}" == "--ip-allow-list" ]] && allow="${args[$((i+1))]}"' \
+    '    [[ "${args[$i]}" != "--public" ]] || exit 91' \
+    '  done' \
+    '  [[ -n "$name" && "$allow" == cidr=192.0.2.10/32,* ]] || exit 92' \
+    '  printf "CLI create %s\n" "$name" >>"$KV_VERIFY_CALLS"' \
+    '  printf "{\"data\":{\"id\":\"red-fixture\",\"name\":\"%s\"}}\n" "$name"' \
+    '  exit 0' \
+    'fi' \
+    'exit 93' >"$fake_bin/render"
 
   printf '%s\n' \
     '#!/usr/bin/env bash' \
@@ -59,7 +73,6 @@ write_fakes() {
     'printf "%s %s\n" "$method" "$path" >>"$KV_VERIFY_CALLS"' \
     'case "$method $path" in' \
     '  "GET /key-value") [[ "${KV_VERIFY_API_PREFLIGHT_FAIL:-0}" != "1" ]] || exit 22; echo "[]" ;;' \
-    '  "POST /key-value") name="$(jq -r .name <<<"$data")"; echo "{\"id\":\"red-fixture\",\"name\":\"$name\"}" ;;' \
     '  "GET /key-value/red-fixture")' \
     '    if [[ -f "$KV_VERIFY_DELETED" ]]; then' \
     '      [[ "$write_code" == "1" ]] && printf 404' \
@@ -68,7 +81,11 @@ write_fakes() {
     '    else' \
     '      echo "{\"status\":\"available\",\"externalHost\":\"kv.example.test\"}"' \
     '    fi ;;' \
-    '  "GET /key-value/red-fixture/connection-info") echo "{\"externalConnectionString\":\"rediss://default:synthetic@kv.example.test:6379\"}" ;;' \
+    '  "GET /key-value/red-fixture/connection-info")' \
+    '    if [[ "${KV_VERIFY_MISSING_EDGE:-0}" == "1" ]]; then' \
+    '      [[ "$write_code" == "1" ]] && printf 503' \
+    '    elif [[ "$write_code" == "1" ]]; then printf 200' \
+    '    else echo "{\"externalConnectionString\":\"rediss://default:synthetic@kv.example.test:6379\"}"; fi ;;' \
     '  "DELETE /key-value/red-fixture") touch "$KV_VERIFY_DELETED" ;;' \
     '  *) echo "unexpected fake curl call: $method $path" >&2; exit 90 ;;' \
     'esac' >"$fake_bin/curl"
@@ -167,6 +184,25 @@ run_probe_failure() {
 
 run_probe_failure
 
+# A public-intent resource without a reconciled edge returns actionable config
+# guidance and never launches the PTY/local redis client. Cleanup still runs.
+rm -f "$KV_VERIFY_DELETED"
+: >"$KV_VERIFY_CALLS"
+unset KV_VERIFY_GO_FAIL
+set +e
+missing_edge_output="$(KV_VERIFY_MISSING_EDGE=1 bash "$verify" 2>&1)"
+missing_edge_status=$?
+set -e
+[[ "$missing_edge_status" != 0 && "$missing_edge_output" == *"configure BEX_KV_DOMAIN"* ]] || {
+  echo "missing-edge failure was not actionable: $missing_edge_output" >&2
+  exit 1
+}
+! grep -Fq 'go id=' "$KV_VERIFY_CALLS" || {
+  echo "missing edge invoked the local Key Value client" >&2
+  exit 1
+}
+grep -Fxq 'DELETE /key-value/red-fixture' "$KV_VERIFY_CALLS"
+
 # An interrupt after creation must take the same exact-id cleanup path.
 rm -f "$KV_VERIFY_DELETED"
 : >"$KV_VERIFY_CALLS"
@@ -212,7 +248,7 @@ rm -f "$KV_VERIFY_DELETED"
 unset KV_VERIFY_GO_FAIL
 success_output="$(bash "$verify" 2>&1)"
 for label in \
-  'PASS source-restricted public Key Value created' \
+  'PASS official-CLI source-restricted public Key Value created' \
   'PASS public rediss endpoint ready' \
   'PASS official kv-cli by opaque id: PING and SET' \
   'PASS official kv-cli by display name: GET and DEL' \
@@ -230,4 +266,9 @@ for forbidden in synthetic-token 'default:synthetic' 'rediss://'; do
   }
 done
 grep -Fxq 'DELETE /key-value/red-fixture' "$KV_VERIFY_CALLS"
+grep -Eq '^CLI create kvcli-m57-[0-9]+-[0-9]+$' "$KV_VERIFY_CALLS"
+if grep -Fxq 'POST /key-value' "$KV_VERIFY_CALLS"; then
+  echo "verifier bypassed the official CLI for fixture creation" >&2
+  exit 1
+fi
 echo "PASS Key Value CLI verifier preflight and exact cleanup"

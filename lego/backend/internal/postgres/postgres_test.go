@@ -279,6 +279,45 @@ func TestRESTCreatePostgresIPAllowListWireShape(t *testing.T) {
 	}
 }
 
+func TestRESTPostgresPublicDefaultIsAdapterSpecific(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       string
+		wantPublic bool
+	}{
+		{"Render omission", `{"name":"render-default"}`, true},
+		{"Render explicit private", `{"name":"render-private","public":false}`, false},
+		{"Render explicit public", `{"name":"render-public","public":true}`, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, _ := newService()
+			w := serveREST(svc, http.MethodPost, "/v1/postgres", tt.body)
+			if w.Code != http.StatusCreated {
+				t.Fatalf("create = %d: %s", w.Code, w.Body.String())
+			}
+			var pg PostgresView
+			if err := json.Unmarshal(w.Body.Bytes(), &pg); err != nil {
+				t.Fatal(err)
+			}
+			if pg.Public != tt.wantPublic {
+				t.Fatalf("public = %v, want %v", pg.Public, tt.wantPublic)
+			}
+		})
+	}
+
+	// Shared bex-native verbs (the seam GraphQL/MCP/Blueprint adapters call)
+	// retain their private-by-default contract.
+	svc, _ := newService()
+	pg, err := svc.CreatePostgres(context.Background(), CreatePostgresRequest{Name: "shared-default"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pg.Public {
+		t.Fatal("shared CreatePostgres omission became public")
+	}
+}
+
 func TestCreatePostgresPhysicalIdentifierAdapterParity(t *testing.T) {
 	const databaseName = "orders_data"
 	const databaseUser = "orders_owner"
@@ -506,6 +545,38 @@ func TestRESTPostgresConnectionInfo(t *testing.T) {
 	}
 	if ci.PSQLCommand == "" {
 		t.Error("psqlCommand empty")
+	}
+}
+
+func TestRESTPostgresConnectionInfoRejectsMissingPublicEdge(t *testing.T) {
+	svc, cl := newService()
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "edge-pending", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "free", Public: true},
+		Status: appv1alpha1.DatabaseStatus{
+			Phase: appv1alpha1.DBPhaseReady, SecretName: "edge-pending-app",
+		},
+	}
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "edge-pending-app", Namespace: "default"},
+		Data: map[string][]byte{
+			"username": []byte("user"), "password": []byte("must-not-leak"),
+			"dbname": []byte("db"), "uri": []byte("postgresql://must-not-leak@internal/db"),
+		},
+	}
+	if err := cl.Create(context.Background(), db); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Create(context.Background(), sec); err != nil {
+		t.Fatal(err)
+	}
+
+	w := serveREST(svc, http.MethodGet, "/v1/postgres/edge-pending/connection-info", "")
+	if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "BEX_DB_DOMAIN") {
+		t.Fatalf("missing public edge = %d %s, want named 503", w.Code, w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), "must-not-leak") {
+		t.Fatalf("missing-edge response leaked credentials: %s", w.Body.String())
 	}
 }
 

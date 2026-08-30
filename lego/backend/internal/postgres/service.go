@@ -659,6 +659,11 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, d); err != nil {
 		return PostgresConnectionInfo{}, err
 	}
+	if d.Spec.Public && d.Status.ExternalHost == "" {
+		return PostgresConnectionInfo{}, fmt.Errorf(
+			"%w: Postgres %q has public access enabled but no external host; configure BEX_DB_DOMAIN and wait for reconciliation",
+			core.ErrUnavailable, d.Name)
+	}
 	user := string(sec.Data["username"])
 	pass := string(sec.Data["password"])
 	dbn := string(sec.Data["dbname"])

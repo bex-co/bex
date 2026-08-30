@@ -50,7 +50,7 @@ This launcher record does not replace the unmodified-v2.24.0 server oracle below
 
 > Regenerate the command tree with `render <subcommand> --help`. Re-run the graded baseline with `scripts/cli-compat.sh verify`. Grouping mirrors the CLI's own `render --help` sections.
 
-The interactive-only Key Value client has a separate, opt-in full-edge verifier: set the production-equivalent `BEX_API_URL`, `HYDRA_PUBLIC_URL`, `CLI_KEY_ENV`, and the runner's explicit `BEX_KV_VERIFY_ALLOW_CIDR`, then run `scripts/cli-compat.sh kv-cli-verify`. It provisions and always deletes one source-restricted public Key Value. The verifier launches the unmodified v2.21.0 CLI under an automated pseudo-terminal with explicit `--output interactive`; one-shot Redis arguments after `--` let the child and TUI exit without human input. This is deliberately excluded from the dev-9 baseline because it requires public Key Value DNS, TLS, and the SNI proxy. Production acceptance on 2026-07-18 exposed and repaired three real edge defects in sequence: the datastore wildcard was Cloudflare-proxied instead of DNS-only, Hetzner PROXY protocol was absent so exact source allowlists saw the load balancer, and `redis-cli` needed an explicit `--sni` hostname. The final opaque-id and display-name legs passed end to end; [`scripts/datastore-dns-cloudflare.sh`](../scripts/datastore-dns-cloudflare.sh) and the proxy tests retain the deployed prerequisites.
+The interactive-only Key Value client has a separate, opt-in full-edge verifier: set the production-equivalent `BEX_API_URL`, `HYDRA_PUBLIC_URL`, `CLI_KEY_ENV`, and the runner's explicit `BEX_KV_VERIFY_ALLOW_CIDR`, then run `scripts/cli-compat.sh kv-cli-verify`. The unmodified CLI provisions the source-restricted public fixture through `keyvalues create --ip-allow-list`, and the verifier always deletes the returned opaque id. It then launches the same v2.21.0 CLI under an automated pseudo-terminal with explicit `--output interactive`; one-shot Redis arguments after `--` let the child and TUI exit without human input. This is deliberately excluded from the dev-9 baseline because it requires public Key Value DNS, TLS, and the SNI proxy. Production acceptance on 2026-07-18 exposed and repaired three real edge defects in sequence: the datastore wildcard was Cloudflare-proxied instead of DNS-only, Hetzner PROXY protocol was absent so exact source allowlists saw the load balancer, and `redis-cli` needed an explicit `--sni` hostname. The final opaque-id and display-name legs passed end to end; [`scripts/datastore-dns-cloudflare.sh`](../scripts/datastore-dns-cloudflare.sh) and the proxy tests retain the deployed prerequisites.
 
 ## Core
 
@@ -69,7 +69,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--plan-id <id>` — `starter`/`free` accepted, echoed back
   - [x] `jobs cancel <serviceID> <jobID>` — cancels a running job
 - [x] **`keyvalues`** (alias `kv`) — manage Render Key Value instances
-  - [x] `keyvalues create` — nested owner/options, opaque `red-<xid>` id, underscore `maxmemoryPolicy`
+  - [x] `keyvalues create` — nested owner/options, opaque `red-<xid>` id, underscore `maxmemoryPolicy`; a nonempty CLI `--ip-allow-list` creates public intent without a bex-only flag
     - [x] payment-required failures remain an ordinary Render API error (HTTP 402 with `id`/`message`); the actionable message names `create_billing_checkout_session`, so the unmodified client does not receive an undecodable body
     - [x] `--name`
     - [x] `--plan <free|starter|standard|pro|pro_plus>`
@@ -109,7 +109,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `--task-id <ids>` — accepted as a filter
   - [x] `--task-run-id <ids>` — accepted as a filter
 - [x] **`postgres`** (alias `pg`) — manage Render Postgres databases
-  - [x] `postgres create` — id/name/ipAllowList wire shape correct (description persists)
+  - [x] `postgres create` — id/name/ipAllowList wire shape correct (description persists); Render-route omission creates public intent while explicit `public:false` and shared Core callers remain private
     - [x] payment-required failures use the same CLI-decodable 402 envelope as Service and Key Value creates
     - [x] `--name`
     - [x] `--plan <free|basic_*|pro_*|accelerated_*>`
