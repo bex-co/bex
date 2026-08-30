@@ -1,6 +1,6 @@
 # w6 · m97 — Stop the codex-security F7 protected-secret guard from self-rejecting every App's own clone/pull secret
 
-**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** in progress (t001–t005 done and deployed; `2cae5f3b` is contained in the production image pinned by `71fe9660`; t007 remains for its Events-feed reason-code leg, t008 remains for the distinct redeploy-generation bug, and t006 closeout depends on both)
+**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** in progress (t001–t005 done and deployed; t007/t008 implemented and fully tested locally on 2026-08-29; t006 closeout and the two tasks' final acceptance remain blocked on shipping/deploying these changes and running their production checks)
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 5th run of the day)
 
@@ -153,12 +153,12 @@ This directly satisfies the milestone's own DoD bullet ("An already-Live, standi
 | --- | --- | --- | --- | --- |
 | t001 | Fix `rejectProtectedSecretRefs`: allow an App's own deterministic `<app>-clone`/`<app>-registry-pull` self-reference, keep every other protected-Secret reference (including another App's own clone/pull secret in the same namespace) refused | 30m | — | — **DONE** |
 | t002 | Regression tests: self-reference accepted for both `CloneSecret` and `ExternalRegistryPullSecret`; the existing malicious-case tests (arbitrary protected Secret, and — new — a *different* App's own `<other>-clone` name) still refused; exercise via the 4 enumerated call sites' shared code path | 40m | t001 | — **DONE** |
-| t007 | Prove already-Live services get bounced to Failed on ordinary reconcile (live-confirmed on `beancount-forum`), and fix the Events feed misreporting the cause as a readiness-check failure | 30m | t002 | todo |
-| t008 | Fix redeploy-path `Status.ReleaseGeneration` staleness so a guard-rejected redeploy reaches `update_failed` instead of stuck `queued`/eventually `canceled` | 40m | t001 | todo |
-| t003 | Render parity | 20m | t002, t007, t008 | — **DONE** for the t001/t002 change; t007's Events-feed leg and t008 still open |
+| t007 | Prove already-Live services get bounced to Failed on ordinary reconcile (live-confirmed on `beancount-forum`), and fix the Events feed misreporting the cause as a readiness-check failure | 30m | t002 | code + tests complete locally; live check pending |
+| t008 | Fix redeploy-path `Status.ReleaseGeneration` staleness so a guard-rejected redeploy reaches `update_failed` instead of stuck `queued`/eventually `canceled` | 40m | t001 | code + tests complete locally; live check pending |
+| t003 | Render parity | 20m | t002, t007, t008 | — **DONE** for the t001/t002 change; t007/t008 production verification pending |
 | t004 | Simplify | 15m | t003 | — **DONE** |
 | t005 | Test coverage | 20m | t004 | — **DONE** |
-| t006 | Closeout | 10m | t005, t007, t008 | blocked on t007 + t008 |
+| t006 | Closeout | 10m | t005, t007, t008 | blocked on shipping/deploying t007 + t008 and their live checks |
 
 ## Definition of done
 
