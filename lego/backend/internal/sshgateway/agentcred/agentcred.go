@@ -50,10 +50,20 @@ import (
 const (
 	maxPacketBytes       = 65520
 	maxShallowBoundaries = 1024
-	maxResponseBodyBytes = 512 << 20
 	defaultMaxDuration   = 10 * time.Minute
 	budgetSweepInterval  = 30 * time.Minute
 	budgetIdleTTL        = 24 * time.Hour
+
+	// defaultMaxResponseBodyBytes bounds one streamed upstream response. The
+	// prior 512 MiB ceiling silently truncated any clone whose pack exceeded it
+	// — bex-co/web-beancount's 549 MiB pack hit it on EVERY attempt
+	// (ags-da9mh5vj596c73en5eq0): io.LimitReader EOF'd cleanly, io.Copy
+	// returned nil, the exchange was audited "allowed", and git reported only
+	// "unexpected disconnect while reading sideband packet". 4 GiB clears any
+	// repo GitHub itself will host (its hard cap warnings start at 5 GB) while
+	// still bounding a hostile stream; the cap now also fails LOUD (abort + log
+	// + metric), never as a clean-looking end-of-stream.
+	defaultMaxResponseBodyBytes = 4 << 30
 
 	// maxReceivePackPrefixBytes is the total-bytes budget for the receive-pack
 	// preamble validateReceivePack replays upstream (codex-security 2026-08 F3).
@@ -129,6 +139,9 @@ type Broker struct {
 	MaxDuration             time.Duration
 	MaxRequestsPerSession   int
 	MaxRequestsPerWorkspace int
+	// MaxResponseBytes bounds one streamed upstream response body; 0 means
+	// defaultMaxResponseBodyBytes. Exceeding it aborts the exchange loudly.
+	MaxResponseBytes int64
 
 	// clientOnce/client memoize the default upstream client so its connection
 	// pool is reused across requests (see httpClient).
@@ -307,7 +320,22 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 	if deadline, ok := r.Context().Deadline(); ok {
 		_ = http.NewResponseController(w).SetWriteDeadline(deadline)
 	}
-	_, _ = io.Copy(w, io.LimitReader(response.Body, maxResponseBodyBytes))
+	// The response streams through — never buffered — under a byte budget. Both
+	// failure shapes abort the connection mid-stream (the 200 is already on the
+	// wire, so aborting is the only honest signal left) AND are logged/counted:
+	// a budget overflow or a broken stream must never fall through to the
+	// "accepted" metric + allowed audit below, which is exactly how the 512 MiB
+	// truncation hid for ten days (w5/m82 follow-on).
+	budget := b.maxResponseBytes()
+	copied, copyErr := io.Copy(w, io.LimitReader(response.Body, budget+1))
+	if copied > budget {
+		b.failUpstream("response_cap", service, verified, fmt.Errorf("upstream response exceeded the %d-byte budget", budget))
+		panic(http.ErrAbortHandler)
+	}
+	if copyErr != nil {
+		b.failUpstream("stream", service, verified, copyErr)
+		panic(http.ErrAbortHandler)
+	}
 	b.Metrics.Authentication("accepted")
 	core.RecordAuditEvent(r.Context(), b.Audit, core.AuditEvent{
 		Caller: pod.Name, CallerMethod: "sandbox", Verb: agentsession.AuditVerbProxyCredential,
@@ -393,6 +421,13 @@ func (b *Broker) maxDuration() time.Duration {
 		return b.MaxDuration
 	}
 	return defaultMaxDuration
+}
+
+func (b *Broker) maxResponseBytes() int64 {
+	if b.MaxResponseBytes > 0 {
+		return b.MaxResponseBytes
+	}
+	return defaultMaxResponseBodyBytes
 }
 
 func parseProxyPath(path string) (string, agentsession.MintRequest, string, error) {
