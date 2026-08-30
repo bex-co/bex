@@ -185,7 +185,7 @@ func (s *S3SnapshotStore) snapshotKey(workspaceID, sessionID string) string {
 
 func (s *S3SnapshotStore) PrepareUpload(ctx context.Context, workspaceID, sessionID string) (string, string, error) {
 	if s == nil {
-		return "", "", core.ErrAgentSessionsUnavailable
+		return "", "", core.NewAgentSessionSnapshotUnavailableError()
 	}
 	key := s.snapshotKey(workspaceID, sessionID)
 	// Create-once (round-16 #9 / ADR073 #7 residual impact): sign If-None-Match:*
@@ -206,7 +206,7 @@ func (s *S3SnapshotStore) PrepareUpload(ctx context.Context, workspaceID, sessio
 
 func (s *S3SnapshotStore) PrepareDownload(ctx context.Context, ref string) (string, error) {
 	if s == nil {
-		return "", core.ErrAgentSessionsUnavailable
+		return "", core.NewAgentSessionSnapshotUnavailableError()
 	}
 	req, err := s.presign.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),

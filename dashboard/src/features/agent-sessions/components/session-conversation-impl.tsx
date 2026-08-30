@@ -40,6 +40,11 @@ import {
   partSignature,
 } from "@/features/agent-sessions/lib/collapse-doubled-parts";
 import {
+  deriveConversationState,
+  type ConversationState,
+} from "@/features/agent-sessions/lib/conversation-state";
+import type { AgentSessionPhase } from "@/features/agent-sessions/types";
+import {
   Task,
   TaskTrigger,
   TaskContent,
@@ -80,6 +85,8 @@ export interface SessionConversationImplProps {
   sessionId: string;
   /** Terminal sessions show replay-only; running sessions live-tail after replay. */
   isTerminal: boolean;
+  /** Lifecycle phase paired with transport status for honest copy. */
+  phase?: AgentSessionPhase;
   /**
    * Opaque "attach target changed" signal (`turns:sandboxId:isTerminal`). On a
    * change the column re-attaches IN PLACE (a fresh `resumeStream`) instead of
@@ -104,6 +111,7 @@ export interface SessionConversationImplProps {
    * live turn through this same `useChat` instance rather than a second one.
    */
   onChatStateChange?: (handle: ConversationChatHandle | null) => void;
+  onConversationStateChange?: (state: ConversationState) => void;
   /**
    * Rendered inside the scroll region after the transcript (before the terminal
    * status line) — the detail page passes the inline draft-PR card + failure
@@ -135,10 +143,12 @@ const WINDOW_STEP = 200;
 export function SessionConversationImpl({
   sessionId,
   isTerminal,
+  phase,
   attachSignal,
   mintTicket,
   transport: injectedTransport,
   onChatStateChange,
+  onConversationStateChange,
   footer,
   terminalLabel,
 }: SessionConversationImplProps) {
@@ -299,14 +309,33 @@ export function SessionConversationImpl({
   // keeping the live tail visible.
   const [windowSize, setWindowSize] = useState(INITIAL_WINDOW);
 
+  const empty = messages.length === 0;
+  const isLoading = status === "submitted" || status === "streaming";
+  const conversationState = deriveConversationState({
+    phase,
+    isTerminal,
+    transportStatus: status,
+    hasMessages: !empty,
+    resuming,
+    transportError: Boolean(error),
+  });
+  useEffect(() => {
+    onConversationStateChange?.(conversationState);
+  }, [conversationState, onConversationStateChange]);
+
   // Surrender to the error state only when there's nothing to show. Once the
   // transcript has loaded, a later error is transient (a re-attach during a
   // redispatch's provisioning window fails to mint before the pod exists) and
   // must not blank the conversation the user is reading.
-  if (error && messages.length === 0) {
-    const unavailableKey = isTerminal
-      ? "agentSessions.conversationUnavailableTerminal"
-      : "agentSessions.conversationUnavailable";
+  if (
+    error &&
+    empty &&
+    (conversationState === "broken" || conversationState === "ended")
+  ) {
+    const unavailableKey =
+      conversationState === "ended"
+        ? "agentSessions.conversationUnavailableTerminal"
+        : "agentSessions.conversationUnavailable";
     return (
       <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
         <AlertCircle aria-hidden className="text-destructive size-4 shrink-0" />
@@ -315,14 +344,12 @@ export function SessionConversationImpl({
     );
   }
 
-  const empty = messages.length === 0;
-  const isLoading = status === "submitted" || status === "streaming";
   // `resumeStream()`'s promise doesn't settle until the whole resumed stream
   // does — for a live session that can span the entire tail, not just the
   // initial "is there anything to resume" check. That's fine only because
   // `empty` already flips false the moment a real message arrives, so
   // `resuming` staying true past that point never masks real content.
-  const connecting = empty && (isLoading || resuming);
+  const connecting = empty && conversationState === "connecting";
 
   const last = rendered[rendered.length - 1];
   const showTyping =
@@ -357,7 +384,13 @@ export function SessionConversationImpl({
           )}
           {empty && !connecting && (
             <p className="text-muted-foreground text-sm">
-              {t("agentSessions.conversationEmpty")}
+              {t(
+                conversationState === "not-started"
+                  ? "agentSessions.conversationNotStarted"
+                  : conversationState === "ended"
+                    ? "agentSessions.conversationEndedEmpty"
+                    : "agentSessions.conversationEmpty",
+              )}
             </p>
           )}
 
@@ -592,11 +625,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
         );
         return;
       }
-      pushStep(
-        { kind: "terminal", output: group.output },
-        index,
-        part,
-      );
+      pushStep({ kind: "terminal", output: group.output }, index, part);
       return;
     }
 

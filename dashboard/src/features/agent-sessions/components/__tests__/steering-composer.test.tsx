@@ -73,15 +73,30 @@ describe("SteeringComposer state routing", () => {
     expect(steer).not.toHaveBeenCalled();
   });
 
-  it("disables live steering with a reason when the stream handle is missing", () => {
+  it("does not call a normal starting/running turn broken while its handle is missing", () => {
     render(<SteeringComposer session={view("running")} chat={null} />);
     expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Wait for the current turn to finish before sending a follow-up.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+  });
+
+  it("uses unavailable copy only for an explicitly broken stream", () => {
+    render(
+      <SteeringComposer
+        session={view("running")}
+        chat={null}
+        conversationState="broken"
+      />,
+    );
     expect(
       screen.getByText(
         "The conversation stream is unavailable, so live steering is paused.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   });
 
   it("disables the composer with a reason while canceling", () => {
@@ -106,7 +121,7 @@ describe("SteeringComposer state routing", () => {
     );
     expect(screen.getByRole("textbox")).toBeDisabled();
     expect(screen.getByText(/Wait for the current turn/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sending…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   });
 
   it("surfaces a typed redispatch error inline instead of throwing", async () => {

@@ -15,6 +15,7 @@ import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-ag
 import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
+import type { ConversationState } from "@/features/agent-sessions/lib/conversation-state";
 
 /** The routed target of a steering message (ADR047 D9). */
 type SteerRoute = "chat" | "redispatch";
@@ -26,6 +27,7 @@ export interface SteeringComposerProps {
    * only while the stream is healthy; `null` disables the live (chat POST) path.
    */
   chat: ConversationChatHandle | null;
+  conversationState?: ConversationState;
   /** Re-read the session after a redispatch converges (turns/phase change). */
   onSteered?: () => void;
   /**
@@ -56,6 +58,7 @@ export interface SteeringComposerProps {
 export function SteeringComposer({
   session,
   chat,
+  conversationState,
   onSteered,
   onOptimisticSteer,
 }: SteeringComposerProps) {
@@ -73,8 +76,6 @@ export function SteeringComposer({
   // Route: idle (completed/failed) → durable redispatch mutation; every live
   // phase stays disabled until it reaches one of those terminal states.
   const route: SteerRoute = session.isSteerable ? "redispatch" : "chat";
-  const liveStreamMissing =
-    route === "chat" && !isCanceling && !isCanceled && !chat;
   // w5/m71 closes the gateway POST path because it could execute a prompt
   // without atomically recording the turn. Follow-ups are accepted only after
   // the current control-plane turn settles, through the durable Steer mutation.
@@ -86,7 +87,7 @@ export function SteeringComposer({
     ? t("agentSessions.steerDisabledCanceling")
     : isCanceled
       ? t("agentSessions.steerDisabledCanceled")
-      : liveStreamMissing
+      : conversationState === "broken"
         ? t("agentSessions.steerDisabledStream")
         : liveTurnUnavailable
           ? t("agentSessions.steerDisabledWaitForTurn")
@@ -94,8 +95,7 @@ export function SteeringComposer({
             ? t("agentSessions.steerDisabledInFlight")
             : null;
 
-  const hardDisabled =
-    isCanceling || isCanceled || liveStreamMissing || liveTurnUnavailable;
+  const hardDisabled = isCanceling || isCanceled || liveTurnUnavailable;
   const busy = pending || turnInFlight;
   const submitDisabled = hardDisabled || busy || value.trim().length === 0;
 
@@ -182,7 +182,7 @@ export function SteeringComposer({
               disabled={submitDisabled}
               className="shrink-0 rounded-xl"
             >
-              {busy ? (
+              {pending ? (
                 <>
                   <Loader2 className="animate-spin" />
                   {t("agentSessions.steerSending")}

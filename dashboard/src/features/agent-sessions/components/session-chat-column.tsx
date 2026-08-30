@@ -11,6 +11,10 @@ import type {
   AgentSessionListSearch,
   AgentSessionView,
 } from "@/features/agent-sessions/types";
+import {
+  deriveConversationState,
+  type ConversationState,
+} from "@/features/agent-sessions/lib/conversation-state";
 
 export interface SessionChatColumnProps {
   session: AgentSessionView;
@@ -42,6 +46,8 @@ export function SessionChatColumn({
   backSearch,
 }: SessionChatColumnProps) {
   const { t } = useTranslations();
+  const [transportState, setTransportState] =
+    useState<ConversationState>("not-started");
 
   // Visibility is DERIVED, not cleared via an effect: the echo hides once the new
   // turn is recorded (turns advanced past the submit-time count), by which point
@@ -95,6 +101,12 @@ export function SessionChatColumn({
     Boolean(session.sandboxId) ||
     session.isFinished ||
     (session.turns >= 2 && !provisioningWithoutSandbox);
+  const conversationState = attachable
+    ? transportState
+    : deriveConversationState({
+        phase: session.phase,
+        isTerminal: session.isTerminal,
+      });
   const conversation = attachable ? (
     <SessionConversation
       // Keyed ONLY on the session id (not turns/sandbox), so the `useChat`
@@ -104,8 +116,10 @@ export function SessionChatColumn({
       key={session.id}
       sessionId={session.id}
       isTerminal={session.isTerminal}
+      phase={session.phase}
       attachSignal={`${session.turns}:${session.sandboxId}:${session.isTerminal}`}
       onChatStateChange={onChatStateChange}
+      onConversationStateChange={setTransportState}
       footer={footer}
       terminalLabel={terminalLabel}
     />
@@ -143,6 +157,7 @@ export function SessionChatColumn({
         <SteeringComposer
           session={session}
           chat={chat}
+          conversationState={conversationState}
           onSteered={onChanged}
           onOptimisticSteer={(prompt) =>
             setPendingSteer(prompt ? { prompt, atTurns: session.turns } : null)

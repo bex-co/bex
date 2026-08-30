@@ -470,9 +470,7 @@ describe("SessionConversationImpl", () => {
     );
 
     // While the resume request is still unresolved: no premature empty state.
-    expect(
-      screen.queryByText("No conversation yet."),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("No conversation yet.")).not.toBeInTheDocument();
 
     // Resolve as a 204 — a genuinely empty session with nothing to resume.
     await act(async () => {
@@ -512,6 +510,34 @@ describe("SessionConversationImpl", () => {
     );
     // The steering handle is withheld (null) while the stream is errored.
     await waitFor(() => expect(onChatStateChange).toHaveBeenCalledWith(null));
+  });
+
+  it("shows healthy connecting copy, never failure copy, when Creating hits an attach race", async () => {
+    const failingFetch = (async () =>
+      new Response("not ready", { status: 503 })) as typeof globalThis.fetch;
+    const transport = createAgentSessionTransport({
+      sessionId: "as-creating-race",
+      mintTicket,
+      fetch: failingFetch,
+    });
+
+    render(
+      <SessionConversationImpl
+        sessionId="as-creating-race"
+        phase="creating"
+        isTerminal={false}
+        transport={transport}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Connecting to the session stream…"),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText("The conversation stream is unavailable right now."),
+    ).not.toBeInTheDocument();
   });
 });
 

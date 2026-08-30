@@ -83,11 +83,16 @@ var (
 	// OpenSandbox lifecycle client isn't wired (BEX_OPENSANDBOX_URL unset);
 	// adapters surface it as 503 (pillar 5, ADR042/w3/m32).
 	ErrSandboxesUnavailable = Unavailable("sandbox runtime not configured")
-	// ErrAgentSessionsUnavailable is returned when any required session control
-	// plane dependency is absent: Postgres, OpenSandbox, ticket signer, or the
-	// browser-reachable gateway origin. A partially configured session cannot be
-	// created safely, so the feature fails closed as one unit.
-	ErrAgentSessionsUnavailable = Unavailable("agent sessions not configured")
+	// ErrAgentSessionsUnavailable is the stable, coded refusal when the agent-
+	// session feature itself is not wired. Keep this sentinel as the legacy
+	// errors.Is target, but do not use it for a configured dependency outage or
+	// snapshot-store fault: callers need to tell operator action from retryable
+	// failure without matching human copy (w4/m89).
+	ErrAgentSessionsUnavailable = NewUnavailableError(
+		AgentSessionNotConfiguredCode,
+		"agent sessions are not configured",
+		nil,
+	)
 	// ErrBadRequest is returned for invalid caller input (adapters map it to 400).
 	ErrBadRequest = errors.New("bad request")
 	// ErrForbidden is returned when the caller lacks the permission a verb requires
@@ -321,6 +326,40 @@ func NewAccountDeletionPendingError() *CodedError {
 // card did on production, 2026-08-24).
 func NewUnavailableError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrUnavailable, msg: msg}
+}
+
+// Agent-session availability codes deliberately distinguish a platform that
+// was never configured from a configured dependency that is temporarily down,
+// and from the optional snapshot tier being unavailable. All remain 503: a
+// retry cannot repair missing operator configuration, but none is caller input
+// or a resource-state conflict.
+const (
+	AgentSessionNotConfiguredCode         = "AGENT_SESSION_NOT_CONFIGURED"
+	AgentSessionDependencyUnavailableCode = "AGENT_SESSION_DEPENDENCY_UNAVAILABLE"
+	AgentSessionSnapshotUnavailableCode   = "AGENT_SESSION_SNAPSHOT_STORE_UNAVAILABLE"
+)
+
+// NewAgentSessionDependencyUnavailableError returns the sanitized retryable
+// refusal for a configured agent-session dependency. Callers must log the
+// underlying cause before returning this error; wrapping it would expose the
+// dependency detail through the public CodedError message.
+func NewAgentSessionDependencyUnavailableError() *CodedError {
+	return NewUnavailableError(
+		AgentSessionDependencyUnavailableCode,
+		"agent session dependencies are temporarily unavailable",
+		nil,
+	)
+}
+
+// NewAgentSessionSnapshotUnavailableError returns the snapshot-tier-specific
+// retryable refusal. It is separate from whole-feature configuration because
+// ordinary sessions can remain healthy while restore/delete storage is down.
+func NewAgentSessionSnapshotUnavailableError() *CodedError {
+	return NewUnavailableError(
+		AgentSessionSnapshotUnavailableCode,
+		"agent session snapshot storage is temporarily unavailable",
+		nil,
+	)
 }
 
 const PaymentRequiredMessage = "Payment information is required for paid plans. Call create_billing_checkout_session to add a payment method, then retry."

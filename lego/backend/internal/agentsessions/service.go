@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
@@ -341,7 +342,8 @@ func (s *Service) modelAPIKey(ctx context.Context, workspaceID string) (string, 
 	}
 	data, err := s.ModelKeys.Get(ctx, modelKeySecretPath(workspaceID))
 	if err != nil {
-		return "", fmt.Errorf("%w: read agent session model key: %v", core.ErrSecretsUnavailable, err)
+		log.Printf("agent-session capabilities: read model-key readiness failed (workspace=%s): %v", workspaceID, err)
+		return "", core.NewAgentSessionDependencyUnavailableError()
 	}
 	return data[sandbox.ModelAPIKeyEnvVar], nil
 }
@@ -464,7 +466,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	// unavailable, compensate the row and refuse before any sandbox is started.
 	if err := s.Tuples.GrantAgentSessionWorkspace(ctx, record.ID, workspaceID); err != nil {
 		_ = s.Store.DeleteAgentSession(ctx, record.ID)
-		return View{}, fmt.Errorf("%w: establish agent session authorization: %v", core.ErrAuthzUnavailable, err)
+		log.Printf("agent-session create: establish authorization failed (session=%s workspace=%s): %v", record.ID, workspaceID, err)
+		return View{}, core.NewAgentSessionDependencyUnavailableError()
 	}
 	modelAPIKey := agentsession.ModelKeyPlaceholder(record.ID)
 	spec := dispatchSpec{
@@ -593,20 +596,34 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 		return Capabilities{}, core.ErrForbidden
 	}
 	caps.Agents = agentProfiles()
-	key, err := s.modelAPIKey(ctx, workspaceID)
-	if err != nil {
+	var key string
+	var connection github.Connection
+	var group errgroup.Group
+	group.Go(func() error {
+		var err error
+		key, err = s.modelAPIKey(ctx, workspaceID)
+		return err
+	})
+	if s.GitHub != nil {
+		group.Go(func() error {
+			var err error
+			connection, err = s.GitHub.GetConnection(ctx, workspaceID)
+			if err != nil {
+				log.Printf("agent-session capabilities: read GitHub readiness failed (workspace=%s): %v", workspaceID, err)
+				return core.NewAgentSessionDependencyUnavailableError()
+			}
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
 		return Capabilities{}, err
 	}
 	caps.ModelKeyReady = key != ""
 	if s.GitHub != nil {
-		conn, err := s.GitHub.GetConnection(ctx, workspaceID)
-		if err != nil {
-			return Capabilities{}, err
-		}
 		caps.GitHub = GitHubReadinessView{
-			Connected:    conn.Connected,
-			AccountLogin: conn.AccountLogin,
-			InstallURL:   conn.InstallURL,
+			Connected:    connection.Connected,
+			AccountLogin: connection.AccountLogin,
+			InstallURL:   connection.InstallURL,
 		}
 	}
 	caps.Ready = caps.GitHub.Connected && caps.ModelKeyReady
@@ -806,10 +823,11 @@ func (s *Service) Delete(ctx context.Context, sessionID string) error {
 		// Blob BEFORE row (the sweep's ordering): a failed object delete refuses
 		// the whole verb (retryable) rather than orphaning an unreachable blob.
 		if s.Snapshots == nil {
-			return fmt.Errorf("%w: snapshot store unavailable to delete the session snapshot", core.ErrAgentSessionsUnavailable)
+			return core.NewAgentSessionSnapshotUnavailableError()
 		}
 		if err := s.Snapshots.Delete(ctx, record.SnapshotRef); err != nil {
-			return fmt.Errorf("%w: delete session snapshot: %v", core.ErrAgentSessionsUnavailable, err)
+			log.Printf("agent-session delete: snapshot delete failed (session=%s): %v", record.ID, err)
+			return core.NewAgentSessionSnapshotUnavailableError()
 		}
 	}
 	if err := s.Store.DeleteAgentSession(ctx, sessionID); err != nil {
@@ -1011,7 +1029,8 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 	}
 	restoreURL, err := s.Snapshots.PrepareDownload(ctx, record.SnapshotRef)
 	if err != nil {
-		return View{}, fmt.Errorf("%w: prepare snapshot restore: %v", core.ErrAgentSessionsUnavailable, err)
+		log.Printf("agent-session rehydrate: prepare snapshot restore failed (session=%s): %v", record.ID, err)
+		return View{}, core.NewAgentSessionSnapshotUnavailableError()
 	}
 	config, err := decodeAgentConfig(record)
 	if err != nil {

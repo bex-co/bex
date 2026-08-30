@@ -319,6 +319,34 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "该平台尚未启用云端智能体会话。请联系运维配置智能体会话网关。",
     description: "Composer — house callout body when the feature is 503",
   },
+  "agentSessions.dependencyUnavailableTitle": {
+    message: "智能体会话暂时不可用",
+    description:
+      "Composer — retryable dependency-outage title, distinct from configuration",
+  },
+  "agentSessions.dependencyUnavailableBody": {
+    message: "平台依赖项当前出现问题。你的配置仍然完好，请稍后重试。",
+    description:
+      "Composer — retryable dependency-outage body that does not send the user to an operator",
+  },
+  "agentSessions.snapshotUnavailableTitle": {
+    message: "会话存储暂时不可用",
+    description: "Agent-session snapshot restore/delete outage title",
+  },
+  "agentSessions.snapshotUnavailableBody": {
+    message: "无法访问会话快照存储。请稍后重试。",
+    description: "Agent-session snapshot restore/delete outage body",
+  },
+  "agentSessions.modelKeyMissingTitle": {
+    message: "请先添加模型提供方密钥",
+    description:
+      "Composer pre-flight title when the workspace has no model key",
+  },
+  "agentSessions.modelKeyMissingBody": {
+    message:
+      "此工作区需要模型提供方密钥才能启动智能体会话。请在工作区设置中添加后返回此处。",
+    description: "Composer pre-flight body when the workspace has no model key",
+  },
   "agentSessions.createErrorTitle": {
     message: "无法开始会话",
     description: "Composer — error alert title when the create fails",
@@ -560,6 +588,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "正在连接会话流…",
     description: "Shown while the conversation stream replay is in flight",
   },
+  "agentSessions.conversationNotStarted": {
+    message: "沙箱准备就绪后，对话将显示在此处。",
+    description:
+      "Healthy pre-stream state while a newly created session is provisioning",
+  },
   "agentSessions.conversationEmpty": {
     message: "暂无对话。",
     description: "Shown when a session has produced no transcript parts",
@@ -578,6 +611,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "智能体已重启——原始任务已重新下发。",
     description:
       "System line when no prior turn ever reached the agent, so the task was re-sent (ladder rung 3)",
+  },
+  "agentSessions.conversationEndedEmpty": {
+    message: "该会话在记录对话之前已结束。",
+    description: "Ended session with no durable transcript parts",
   },
   "agentSessions.conversationEnded": {
     message: "会话已结束。",

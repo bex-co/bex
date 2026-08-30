@@ -54,6 +54,15 @@ export interface AgentSessionListSearch {
 /** How a turn's sandbox was obtained (backend Delivery* constants). */
 export type AgentSessionDeliveryMode = "resume" | "redispatch";
 
+/** Secret-free workspace readiness returned by agentSessionCapabilities. */
+export interface AgentSessionCapabilitiesView {
+  enabled: boolean;
+  modelKeyReady: boolean;
+  github: {
+    connected: boolean;
+  };
+}
+
 /** The stable cross-surface per-session config (agent/model/task/template). */
 export interface AgentSessionConfigView {
   agent: string;

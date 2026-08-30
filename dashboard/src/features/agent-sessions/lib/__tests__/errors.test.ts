@@ -3,6 +3,7 @@ import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
 import {
   AgentSessionError,
   AgentSessionsUnavailableError,
+  agentSessionAvailabilityCopy,
   toAgentSessionError,
 } from "@/features/agent-sessions/lib/errors";
 
@@ -43,12 +44,18 @@ const CODES = [
   "AGENT_SESSION_EGRESS_ALLOWLIST_INVALID",
   "AGENT_SESSION_EGRESS_ALLOWLIST_IMMUTABLE",
   "AGENT_SESSION_EGRESS_PHASE_INVALID",
+  "AGENT_SESSION_NOT_CONFIGURED",
+  "AGENT_SESSION_DEPENDENCY_UNAVAILABLE",
+  "AGENT_SESSION_SNAPSHOT_STORE_UNAVAILABLE",
 ];
 
 describe("toAgentSessionError", () => {
-  it("maps a raw 503 ServerError to AgentSessionsUnavailableError", () => {
+  it("maps a raw cause-less 503 to retryable dependency copy, never not-configured", () => {
     const out = toAgentSessionError(serverError(503));
-    expect(out).toBeInstanceOf(AgentSessionsUnavailableError);
+    expect(out).toBeInstanceOf(AgentSessionError);
+    expect((out as AgentSessionError).code).toBe(
+      "AGENT_SESSION_DEPENDENCY_UNAVAILABLE",
+    );
   });
 
   it("leaves a non-503 ServerError raw", () => {
@@ -122,5 +129,17 @@ describe("toAgentSessionError", () => {
     const out = toAgentSessionError(combined);
     expect(out).toBeInstanceOf(AgentSessionError);
     expect((out as AgentSessionError).code).toBe("AGENT_SESSION_INPUT_INVALID");
+  });
+
+  it("keeps not-configured and transient dependency copy machine-distinct", () => {
+    const configured = agentSessionAvailabilityCopy(
+      new AgentSessionError("AGENT_SESSION_NOT_CONFIGURED", "", {}),
+    );
+    const transient = agentSessionAvailabilityCopy(
+      new AgentSessionError("AGENT_SESSION_DEPENDENCY_UNAVAILABLE", "", {}),
+    );
+    expect(configured?.bodyKey).not.toBe(transient?.bodyKey);
+    expect(configured?.destructive).toBe(false);
+    expect(transient?.destructive).toBe(true);
   });
 });

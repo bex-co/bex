@@ -57,6 +57,18 @@ fragment AgentSessionMintFields on AgentSession {
   expiresAt
 }
 
+# Secret-free composer readiness. The dashboard uses the individual gates
+# rather than `ready`: chat-only sessions require a model key but not GitHub.
+query AgentSessionCapabilities($ownerId: String) {
+  agentSessionCapabilities(ownerId: $ownerId) {
+    enabled
+    modelKeyReady
+    github {
+      connected
+    }
+  }
+}
+
 # One filtered page (ADR065 D3): the backend defaults to the unarchived
 # working set, newest first, limit 50. `archived` selects false|true|all;
 # `cursor` is the prior page's last session id (a shorter/empty page = end).
@@ -176,4 +188,3 @@ mutation UnarchiveAgentSession($id: String!) {
 mutation DeleteAgentSession($id: String!) {
   deleteAgentSession(id: $id)
 }
-
