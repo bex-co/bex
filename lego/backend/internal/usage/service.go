@@ -1113,7 +1113,7 @@ func (s *Service) queryDatastoreEgressBytesEvidence(ctx context.Context, ds data
 	return s.queryEgressSourcesEvidence(ctx, ds.ID, egressquery.Datastore(ds.ID, ds.Kind, true), start, end)
 }
 
-// queryEgressSources sums the hour's egress across sources with PER-SOURCE
+// queryEgressSourcesEvidence sums the hour's egress across sources with PER-SOURCE
 // health gating (w1/m51, ADR023 § Observability reads vs billing reads): a
 // source failing its health product is SKIPPED for this hour (undercount,
 // never invent — its increase() could be reset-inflated), while the healthy
@@ -1122,11 +1122,6 @@ func (s *Service) queryDatastoreEgressBytesEvidence(ctx context.Context, ds data
 // to never recording (prod evidence: zero egress_bytes rows for all of July
 // 2026 under the old any-source-defers rule, w1/034). All sources skipped
 // still records a successful zero — the gap-free cursor advances.
-func (s *Service) queryEgressSources(ctx context.Context, resourceID string, specs []egressquery.Spec, start, end time.Time) (int64, bool) {
-	quantity, _, ok := s.queryEgressSourcesEvidence(ctx, resourceID, specs, start, end)
-	return quantity, ok
-}
-
 func (s *Service) queryEgressSourcesEvidence(ctx context.Context, resourceID string, specs []egressquery.Spec, start, end time.Time) (int64, []store.UsageSourceObservation, bool) {
 	if len(specs) == 0 {
 		return 0, nil, true

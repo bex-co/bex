@@ -22,7 +22,6 @@ export const getCookie = createIsomorphicFn()
  */
 export const setCookie = createIsomorphicFn()
   .server(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_key: string, _value: string, _options?: Cookies.CookieAttributes) => {
       serverSetCookie(_key, _value);
     },
@@ -37,7 +36,6 @@ export const setCookie = createIsomorphicFn()
  * - Client: delegates to js-cookie
  */
 export const removeCookie = createIsomorphicFn()
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   .server((_key: string, _options?: Cookies.CookieAttributes) => {
     serverDeleteCookie(_key);
   })

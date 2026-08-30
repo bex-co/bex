@@ -524,11 +524,6 @@ const (
 	dbPropertyPassword             = "password"
 	dbPropertyDatabase             = "database"
 
-	// Key-value property names from render.yaml fromKeyValue references
-	kvPropertyConnectionString = "connectionString"
-	kvPropertyHost             = "host"
-	kvPropertyPort             = "port"
-
 	// Service reference property names from render.yaml fromService references
 	serviceRefPropertyHost     = "host"
 	serviceRefPropertyPort     = "port"

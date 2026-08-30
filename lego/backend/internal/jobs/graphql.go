@@ -52,10 +52,6 @@ var jobGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-var jobServiceIDArg = graphql.FieldConfigArgument{
-	"serviceId": gqlutil.ReqArg(graphql.String),
-}
-
 // GraphQLQuery returns jobs(serviceId, …) for the root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{

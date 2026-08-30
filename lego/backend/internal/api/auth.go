@@ -44,8 +44,7 @@ import (
 // parameter inside the github feature handler. Exact method + path matching keeps
 // that alternate credential from becoming a general auth bypass.
 
-// bearerToken extracts the RFC 6750 credential from the Authorization header; ok
-// is false when the header is absent or not "Bearer "-prefixed.
+// requestCredential is the single credential selected from an HTTP request.
 type requestCredential struct {
 	kind  string
 	value string
@@ -66,11 +65,6 @@ func presentedCredential(r *http.Request) requestCredential {
 		return requestCredential{kind: "session", value: cookie.Value}
 	}
 	return requestCredential{}
-}
-
-func bearerToken(r *http.Request) (string, bool) {
-	credential := presentedCredential(r)
-	return credential.value, credential.kind == "bearer" && credential.value != ""
 }
 
 // oryAuth validates real credentials against the Ory substrate. A bearer, when
@@ -416,13 +410,6 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 func (a *oryAuth) introspectFresh(r *http.Request, token string) (core.Identity, error) {
 	a.cache.Delete(token)
 	return a.introspect(r, token)
-}
-
-// hasSessionCredential reports whether the request carries something worth a
-// Kratos round trip: the session header, or Kratos' session cookie. An unrelated
-// cookie (analytics, LB affinity) must not cost an upstream call.
-func hasSessionCredential(r *http.Request) bool {
-	return presentedCredential(r).kind == "session"
 }
 
 // introspect validates an OAuth2 token at Hydra's admin API. Returns the zero
