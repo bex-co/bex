@@ -40,3 +40,5 @@ yarn expo:check
 yarn bundle:ios
 yarn bundle:android
 ```
+
+`yarn lint` runs ESLint plus framework-aware unused file/dependency analysis.

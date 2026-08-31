@@ -144,7 +144,7 @@ yarn local-bex          # Local bex-api + Kratos dev stub on :8099 (scripts/loca
 yarn dev:local          # Vite dev wired to yarn local-bex (no cluster/Ory/prod-CORS)
 yarn build              # Build for production
 yarn typecheck          # generate-routes + tsc -b
-yarn lint               # typecheck + eslint
+yarn lint               # typecheck + ESLint + unused file/dependency analysis
 yarn format             # Prettier formatting
 yarn test               # Vitest — CI-enforced on every push/PR touching dashboard/** (.github/workflows/dashboard-test.yml)
 yarn test:coverage      # Vitest with coverage

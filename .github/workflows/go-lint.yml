@@ -1,8 +1,8 @@
 name: go lint
 
 # Runs `make lint` from lego/operator — golangci-lint over all four modules
-# (operator + backend + types + cli), exactly as locally. operator/backend carry
-# their own .golangci.yml; types/cli lint with the default linter set.
+# (operator + backend + types + cli), followed by whole-program dead-code
+# analysis across every executable and test root (including e2e build tags).
 #
 # Notable enforced conventions: the backend config's depguard forbids importing
 # github.com/rs/xid outside internal/id (the resource-id convention,
@@ -13,7 +13,8 @@ name: go lint
 #   cd lego/operator && make lint-fix    # auto-fix what's fixable
 #
 # The Makefile builds its pinned custom golangci-lint (v2.11.4 + operator
-# plugins) on first use, so this job needs no separate tool install. Go comes
+# plugins) and deadcode analyzer on first use, so this job needs no separate
+# tool install. Go comes
 # from lego/cli/go.mod (1.26): the workspace (lego/go.work) requires >= 1.26.0
 # because of the CLI's pinned upstream render-oss/cli, and a 1.26 toolchain
 # lints the 1.25.7 platform modules fine (language semantics come from each
@@ -54,6 +55,6 @@ jobs:
             lego/operator/go.sum
             lego/backend/go.sum
             lego/types/go.sum
-      - name: make lint (operator + backend + types + cli)
+      - name: lint and dead-code analysis (operator + backend + types + cli)
         working-directory: lego/operator
         run: make lint

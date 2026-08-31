@@ -422,11 +422,6 @@ func k8sJobStatus(kj *batchv1.Job) string {
 // ptr returns a pointer to v — the one-liner predeploy uses.
 func ptr[T any](v T) *T { return &v }
 
-// IsCancellable returns true when the job's status allows cancellation.
-func IsCancellable(status string) bool {
-	return status != store.JobSucceeded && status != store.JobFailed && status != store.JobCanceled
-}
-
 // StatusValid reports whether s is one of the Render job status values.
 func StatusValid(s string) bool {
 	switch s {

@@ -23,7 +23,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"regexp"
 	"sort"
 	"strconv"
 	"time"
@@ -86,87 +85,6 @@ func NewMetricsServerReader(cs kubernetes.Interface) MetricsReader {
 			return nil, err
 		}
 		return parsePodUsage(raw)
-	}
-}
-
-// Kubernetes' generateName bounds, mirroring the backend's
-// egressquery/podname.go so the two copies cannot drift apart silently.
-const (
-	maxPodNameLength       = 63
-	podRandomSuffixLength  = 5
-	maxGeneratedNameLength = maxPodNameLength - podRandomSuffixLength
-)
-
-// podNameRegex returns the anchored PromQL pod-name regex for the pods a
-// workload named app owns. It is the operator-side copy of the backend's
-// egressquery.PodNameRegex (operator imports no backend package): an
-// untruncated Deployment pod is "<app>-<replicaset-hash>-<5 random>", but once
-// Kubernetes' generateName base "<app>-<hash>-" passes 58 chars the cut eats
-// the separating hyphen and the name collapses to the single-segment
-// "<app>-<N alphanumerics>", always exactly 63 chars long. Keep the two in
-// step — docs/ADR010-observability.md owns the shape (w6/m110).
-func podNameRegex(app string) string {
-	escaped := regexp.QuoteMeta(app)
-	twoSegment := fmt.Sprintf(`%s-[a-z0-9]+-[a-z0-9]{%d}`, escaped, podRandomSuffixLength)
-	if len(app) > maxGeneratedNameLength {
-		// Truncation lands inside app itself, so the pod name is not even
-		// prefixed by it and no anchored regex built from the full name matches.
-		return twoSegment
-	}
-	return fmt.Sprintf(`%s|%s-[a-z0-9]{%d}`, twoSegment, escaped, maxPodNameLength-len(app)-1)
-}
-
-// NewPrometheusMetricsReader returns a MetricsReader that reads current CPU/memory
-// from Prometheus using an instant query over cAdvisor metrics. Used when
-// metrics-server is unavailable (e.g. BEX_PROM_URL is set but metrics-server is not).
-func NewPrometheusMetricsReader(promURL string, hc *http.Client) MetricsReader {
-	if hc == nil {
-		hc = boundedhttp.Shared
-	}
-	return func(ctx context.Context, namespace, app string) ([]PodUsage, error) {
-		// instant query: current per-pod CPU rate + memory
-		pods := podNameRegex(app)
-		cpuQ := fmt.Sprintf(
-			`sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=%q,pod=~%q,container!=""}[2m]))`,
-			namespace, pods)
-		memQ := fmt.Sprintf(
-			`sum by (pod) (container_memory_working_set_bytes{namespace=%q,pod=~%q,container!=""})`,
-			namespace, pods)
-		cpuSeries, err := promInstantQuery(ctx, hc, promURL, cpuQ)
-		if err != nil {
-			return nil, fmt.Errorf("prometheus cpu query: %w", err)
-		}
-		memSeries, err := promInstantQuery(ctx, hc, promURL, memQ)
-		if err != nil {
-			return nil, fmt.Errorf("prometheus memory query: %w", err)
-		}
-		byPod := map[string]*PodUsage{}
-		for _, s := range cpuSeries {
-			pod := s.labels["pod"]
-			if pod == "" {
-				continue
-			}
-			if byPod[pod] == nil {
-				byPod[pod] = &PodUsage{Pod: pod}
-			}
-			byPod[pod].CPUCores = s.value
-		}
-		for _, s := range memSeries {
-			pod := s.labels["pod"]
-			if pod == "" {
-				continue
-			}
-			if byPod[pod] == nil {
-				byPod[pod] = &PodUsage{Pod: pod}
-			}
-			byPod[pod].MemoryBytes = s.value
-		}
-		out := make([]PodUsage, 0, len(byPod))
-		for _, u := range byPod {
-			out = append(out, *u)
-		}
-		sort.Slice(out, func(i, j int) bool { return out[i].Pod < out[j].Pod })
-		return out, nil
 	}
 }
 
