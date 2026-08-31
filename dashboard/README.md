@@ -63,7 +63,7 @@ kubectl -n dashboard port-forward service/dashboard 5173:80
 yarn install
 yarn dev            # http://localhost:5173
 yarn typecheck       # generate routes + tsc -b
-yarn lint            # typecheck + eslint
+yarn lint            # typecheck + ESLint + unused file/dependency analysis
 yarn build
 yarn test            # vitest run
 ```

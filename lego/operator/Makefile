@@ -102,12 +102,15 @@ verify-tenant-isolation:
 	bash $(CURDIR)/../../scripts/verify-tenant-isolation.sh
 
 .PHONY: lint
-lint: golangci-lint ## Run golangci-lint over all modules (operator + backend + types + cli); fails if any does
+lint: golangci-lint deadcode ## Run lint and reachability checks over all Go modules; fails if any does
 	@rc=0; \
 	"$(GOLANGCI_LINT)" run || rc=1; \
 	( cd ../backend && "$(GOLANGCI_LINT)" run ) || rc=1; \
 	( cd ../types && "$(GOLANGCI_LINT)" run ) || rc=1; \
 	( cd ../cli && "$(GOLANGCI_LINT)" run ) || rc=1; \
+	output="$$(cd .. && "$(DEADCODE)" -tags=e2e -test -filter='^github.com/bex-co/bex/lego/' ./backend/... ./operator/... ./cli/... 2>&1)"; \
+	status=$$?; \
+	if [ $$status -ne 0 ] || [ -n "$$output" ]; then printf '%s\n' "$$output"; rc=1; fi; \
 	exit $$rc
 
 .PHONY: lint-backend
@@ -212,6 +215,7 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+DEADCODE = $(LOCALBIN)/deadcode
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
@@ -228,6 +232,7 @@ ENVTEST_K8S_VERSION ?= $(shell v='$(call gomodver,k8s.io/api)'; \
   printf '%s\n' "$$v" | sed -E 's/^v?[0-9]+\.([0-9]+).*/1.\1/')
 
 GOLANGCI_LINT_VERSION ?= v2.11.4
+DEADCODE_VERSION ?= v0.49.0
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
@@ -260,6 +265,11 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 		$(GOLANGCI_LINT) custom --destination $(LOCALBIN) --name golangci-lint-custom && \
 		mv -f $(LOCALBIN)/golangci-lint-custom $(GOLANGCI_LINT); \
 	} || true
+
+.PHONY: deadcode
+deadcode: $(DEADCODE) ## Download the whole-program unreachable-code analyzer.
+$(DEADCODE): $(LOCALBIN)
+	$(call go-install-tool,$(DEADCODE),golang.org/x/tools/cmd/deadcode,$(DEADCODE_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary

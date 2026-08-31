@@ -361,14 +361,6 @@ func decodeKeyMaterial(s string) ([]byte, error) {
 	return nil, errors.New("invalid base64url")
 }
 
-func ValidatePublicPushEndpoint(raw string) (string, error) {
-	return validatePushEndpoint(raw, false)
-}
-
-func DecodeSubscriptionKey(s string) ([]byte, error) {
-	return decodeKeyMaterial(s)
-}
-
 func validatePushEndpoint(raw string, allowLoopbackHTTP bool) (string, error) {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || u.User != nil || u.Host == "" || len(raw) > 2048 {

@@ -116,13 +116,6 @@ type BlueprintCapabilityRegistry struct {
 
 var renderBlueprintRegistryOnce = sync.OnceValues(loadRenderBlueprintCapabilityRegistry)
 
-// RenderBlueprintSchema returns a copy of the reviewed Render schema bytes.
-// Copying prevents callers from invalidating the integrity check for a later
-// request in the same process.
-func RenderBlueprintSchema() []byte {
-	return append([]byte(nil), renderBlueprintSchemaSource...)
-}
-
 // RenderBlueprintCapabilityRegistry returns the checked, immutable-by-
 // convention capability registry. Callers must treat its maps as read-only.
 func RenderBlueprintCapabilityRegistry() (*BlueprintCapabilityRegistry, error) {

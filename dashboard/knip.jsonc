@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // The generic Vite plugin treats every tsconfig source as reachable in this
+  // TanStack Start app. Curated framework entrypoints keep orphan detection
+  // fail-closed while still loading vite.config.ts as a real config root.
+  "vite": false,
+  "entry": [
+    "src/router.tsx",
+    "src/routes/**/*.{ts,tsx}",
+    "src/**/*.{test,spec}.{ts,tsx}",
+    "server/**/*.{ts,tsx}",
+    "scripts/*.{js,mjs}",
+    "vite.config.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "src/**/*.css",
+    "server/**/*.{ts,tsx}",
+    "scripts/*.{js,mjs}",
+    "*.{ts,tsx,js,mjs}"
+  ]
+}
