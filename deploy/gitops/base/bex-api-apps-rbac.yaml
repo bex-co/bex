@@ -1,12 +1,12 @@
-# bex-api's namespace-scoped grants for the tenant apps namespace (w6/002, RBAC
-# least-privilege audit). bex-api serves a single apps namespace
-# (BEX_API_NAMESPACE / BEX_CP_APPS_NAMESPACE, default "default") — App pods, their
-# logs, the per-app "<app>-env" Secrets the env-vars API materializes, the CNPG
-# "<db>-app" connection Secrets, and metrics-server resource metrics all live
-# THERE, not cluster-wide. Scoping these grants to the apps namespace means a
-# compromised bex-api pod can no longer read platform secrets (Kratos/Hydra in
-# auth, OpenBao in secrets, the GitHub App key, CNPG creds everywhere) nor tail
-# arbitrary pods — only the tenant namespace it actually serves.
+# bex-api's namespace-scoped grants for the bootstrap/default apps namespace
+# (w6/002, RBAC least-privilege audit). ADR043 later moved hosted resources into
+# per-workspace tea-<id> namespaces; their equivalent grants now live on
+# bex-tenant-api in tenant-namespace-clusterroles.yaml and are activated only by
+# each namespace's RoleBinding. Keep this Role for the bootstrap namespace and
+# installations that still set BEX_API_NAMESPACE / BEX_CP_APPS_NAMESPACE to
+# default. In both regimes a compromised bex-api pod cannot read platform
+# secrets (Kratos/Hydra in auth, OpenBao in secrets, the GitHub App key, CNPG
+# creds elsewhere) or tail arbitrary pods.
 #
 # This file lives in deploy/gitops (not lego/operator/config/api) deliberately:
 # config/api inherits the bex-system namespace transform from config/default,
@@ -14,9 +14,8 @@
 # keep their explicit namespace, so the Role lands in the apps namespace.
 #
 # The app.bex.co verbs stay cluster-wide (in lego/operator/config/api/rbac.yaml)
-# for dynamic tenant namespaces. If a deployment uses a non-default apps namespace,
-# duplicate this Role+RoleBinding there (same caveat as tenant-namespace.yaml /
-# tenant-quotas.yaml, which also pin "default").
+# so the API can locate resources across dynamic tenant namespaces; sensitive
+# core/CNPG reads remain namespaced through this Role or bex-tenant-api.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -61,16 +60,19 @@ rules:
     resources: ["ingresses"]
     verbs: ["get", "list"]
   # Read-only managed-Postgres recovery surface (docs/ADR009-postgresql-management.md,
-  # w6/m117): the Recovery card reports the PITR window + base-backup list. bex-api
-  # reads the CNPG Cluster status (firstRecoverabilityPoint) and lists the Backup
-  # objects the operator manages in this namespace. WITHOUT this grant both reads
-  # 403 and recovery-info degraded silently to a false "No backups yet" beside a
-  # phantom restore point on databases that DO have nightly backups — the disaster-
-  # recovery surface lying in the direction that costs the most. get/list only: the
-  # operator owns these objects' lifecycle, bex-api never creates or mutates them.
+  # w6/m117): the Recovery card lists the CNPG Backup objects the operator manages
+  # in this namespace. The Barman ObjectStore rule below supplies the authoritative
+  # PITR window. WITHOUT these grants recovery-info cannot distinguish unreadable
+  # state from verified absence. The operator owns both resources' lifecycle.
   - apiGroups: ["postgresql.cnpg.io"]
-    resources: ["clusters", "backups"]
-    verbs: ["get", "list"]
+    resources: ["backups"]
+    verbs: ["list"]
+  # The plugin keys each database's exact recovery window under this shared,
+  # namespaced ObjectStore. Restrict the read to that one projected object.
+  - apiGroups: ["barmancloud.cnpg.io"]
+    resources: ["objectstores"]
+    resourceNames: ["bex-tenant-postgres"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

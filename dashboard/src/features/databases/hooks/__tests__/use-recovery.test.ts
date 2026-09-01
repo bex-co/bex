@@ -37,6 +37,38 @@ beforeEach(() => {
 });
 
 describe("useRecovery post-create identity", () => {
+  it("does not poll exports while recovery information is unreadable", () => {
+    const infoError = new Error("forbidden");
+    const startExportPolling = vi.fn();
+    const stopExportPolling = vi.fn();
+    useQuery
+      .mockReturnValueOnce({
+        data: {
+          databaseRecoveryInfo: {
+            enabled: true,
+            earliestRecoveryTime: "2026-07-13T12:00:00Z",
+            latestRecoveryTime: "2026-07-14T12:00:00Z",
+            backups: [],
+          },
+        },
+        error: infoError,
+        loading: false,
+      })
+      .mockReturnValueOnce({
+        data: undefined,
+        refetch: vi.fn(async () => undefined),
+        startPolling: startExportPolling,
+        stopPolling: stopExportPolling,
+      });
+
+    const { result } = renderHook(() => useRecovery("dpg-source"));
+
+    expect(useQuery.mock.calls[1]?.[1]).toMatchObject({ skip: true });
+    expect(startExportPolling).not.toHaveBeenCalled();
+    expect(stopExportPolling).toHaveBeenCalled();
+    expect(result.current.error).toBe(infoError);
+  });
+
   it("returns the recovered database id from the mutation", async () => {
     recoverMutation.mockResolvedValue({
       data: { recoverDatabase: { id: "dpg-recovered-id" } },

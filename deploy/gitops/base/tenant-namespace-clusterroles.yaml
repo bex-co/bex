@@ -41,6 +41,19 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list"]
+  # RecoveryInfo reads the CNPG base-backup history and the Barman plugin's
+  # authoritative PITR window in the resource's tenant namespace (w6/m117).
+  # This belongs on the per-tenant role, not only bex-api-apps' legacy/default-
+  # namespace Role: ADR043 moved managed databases into tea-<id> namespaces,
+  # where this ClusterRole is bound by a namespaced RoleBinding. Read-only; the
+  # operator owns both resources.
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["backups"]
+    verbs: ["list"]
+  - apiGroups: ["barmancloud.cnpg.io"]
+    resources: ["objectstores"]
+    resourceNames: ["bex-tenant-postgres"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

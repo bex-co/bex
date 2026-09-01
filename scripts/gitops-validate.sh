@@ -750,6 +750,23 @@ if [ "$bex_api_ingress_verbs" != "get,list" ]; then
   echo "FAIL: bex-api tenant Role needs exactly get,list on Ingresses for exact-router egress accounting; got '$bex_api_ingress_verbs'" >&2
   fail=1
 fi
+# Guard recovery's exact read-only grants in both the bootstrap/default Role and
+# the per-tenant ClusterRole bound into ADR043 workspace namespaces.
+for recovery_role_spec in \
+  'Role:bex-api-apps:deploy/gitops/base/bex-api-apps-rbac.yaml' \
+  'ClusterRole:bex-tenant-api:deploy/gitops/base/tenant-namespace-clusterroles.yaml'; do
+  IFS=: read -r recovery_kind recovery_name recovery_file <<<"$recovery_role_spec"
+  cnpg_backup_shape="$(yq -N ". | select(.kind == \"$recovery_kind\" and .metadata.name == \"$recovery_name\") | .rules[] | select(.apiGroups[] == \"postgresql.cnpg.io\" and .resources[] == \"backups\") | [(.resources | sort | join(\",\")), (.verbs | sort | join(\",\"))] | join(\"|\")" "$recovery_file" | sed '/^$/d')"
+  barman_window_shape="$(yq -N ". | select(.kind == \"$recovery_kind\" and .metadata.name == \"$recovery_name\") | .rules[] | select(.apiGroups[] == \"barmancloud.cnpg.io\" and .resources[] == \"objectstores\") | [(.resources | sort | join(\",\")), (.resourceNames | sort | join(\",\")), (.verbs | sort | join(\",\"))] | join(\"|\")" "$recovery_file" | sed '/^$/d')"
+  if [ "$cnpg_backup_shape" != "backups|list" ]; then
+    echo "FAIL: $recovery_name needs exactly list on CNPG backups for managed-Postgres recovery; got '$cnpg_backup_shape'" >&2
+    fail=1
+  fi
+  if [ "$barman_window_shape" != "objectstores|bex-tenant-postgres|get" ]; then
+    echo "FAIL: $recovery_name needs get on only Barman ObjectStore bex-tenant-postgres; got '$barman_window_shape'" >&2
+    fail=1
+  fi
+done
 ssh_cluster_binding="$(kubectl kustomize lego/operator/config/default | yq -N '. | select(.kind == "ClusterRoleBinding") | .subjects[]? | select(.kind == "ServiceAccount" and .name == "bex-ssh-gateway") | .name')"
 if [ -n "$ssh_cluster_binding" ]; then
   echo "FAIL: SSH gateway must not have cluster-wide RBAC in its operator deployment overlay (cluster-scoped grants live only in bex-ssh-apps-rbac.yaml, policed above)" >&2

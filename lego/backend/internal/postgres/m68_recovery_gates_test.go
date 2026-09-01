@@ -53,12 +53,12 @@ func (g *refusingBillingGate) CheckBillingMutationAllowed(_ context.Context, wor
 // Recover accepts as a source.
 func backedUpSource(t *testing.T, plan string) (*Service, *appv1alpha1.Database) {
 	t.Helper()
-	svc, cl := newServiceCNPG()
+	svc, cl := newServicePostgresResources()
 	src := seedDatabaseSpec(t, cl, "dpg-src", appv1alpha1.DatabaseSpec{Name: "orders", Plan: plan}, true)
 	// The PITR window is established: these tests pin the billing gates, and
 	// since w6/m117 Recover refuses before ever reaching them when the source
 	// has no restore point.
-	seedCNPGCluster(t, cl, "dpg-src", "2026-08-01T00:00:00Z")
+	seedBarmanRecoveryWindow(t, cl, "dpg-src", "2026-08-01T00:00:00Z", "2026-08-02T00:00:00Z")
 	src.Labels = map[string]string{core.LabelTenant: "tea-a", core.LabelWorkspace: "tea-a"}
 	if err := cl.Update(context.Background(), src); err != nil {
 		t.Fatalf("label source: %v", err)

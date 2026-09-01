@@ -519,6 +519,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
       "当前套餐未启用备份，无法恢复。升级到含备份的套餐以启用时间点恢复。",
     description: "Recovery panel state when the plan has no backups",
   },
+  "databases.recoveryUnavailable": {
+    message: "无法读取恢复信息，请重试。",
+    description: "Recovery panel state when backup metadata could not be read",
+  },
   "databases.recoveryEarliest": {
     message: "最早恢复点",
     description: "Recovery panel field (earliest recoverable time)",
@@ -527,13 +531,17 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "最新恢复点",
     description: "Recovery panel field (latest recoverable time)",
   },
-  "databases.recoveryNoBackupYet": {
-    message: "尚无备份",
-    description: "Recovery panel value when the first backup hasn't landed",
+  "databases.recoveryWindowNotEstablished": {
+    message: "尚未建立",
+    description: "Recovery panel value before the PITR window is established",
   },
   "databases.recoveryRestore": {
     message: "恢复到新实例",
     description: "Recovery panel button that opens the restore dialog",
+  },
+  "databases.recoveryRestoreUnavailable": {
+    message: "建立首个可恢复时间点后即可进行恢复。",
+    description: "Reason restore is disabled before the PITR window opens",
   },
   "databases.recoveryCreateExport": {
     message: "创建导出",

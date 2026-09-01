@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -42,11 +43,11 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// CNPG types the recovery surface reads/writes via unstructured (bex-api, like
-// the operator, does not vendor CNPG's Go API).
+// CNPG/Barman types the recovery surface reads via unstructured (bex-api, like
+// the operator, does not vendor either project's Go API).
 var (
-	cnpgClusterGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Cluster"}
-	cnpgBackupGVK  = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Backup"}
+	cnpgBackupGVK             = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Backup"}
+	barmanCloudObjectStoreGVK = schema.GroupVersionKind{Group: "barmancloud.cnpg.io", Version: "v1", Kind: "ObjectStore"}
 )
 
 const (
@@ -54,6 +55,9 @@ const (
 	// (scheduled and on-demand) — the reliable Backup→Database link, so
 	// recovery info can list the automatic base backups too, not just exports.
 	labelCNPGCluster = "cnpg.io/cluster"
+	// tenantBackupObjectStoreName is the shared namespaced ObjectStore projected
+	// by the operator into every tenant namespace.
+	tenantBackupObjectStoreName = "bex-tenant-postgres"
 	// ExportURLTTL is the maximum life of a freshly minted download URL. It is
 	// deliberately much shorter than the seven-day artifact-retention window.
 	ExportURLTTL = 15 * time.Minute
@@ -66,8 +70,8 @@ type RecoveryInfoView struct {
 	// there, just unavailable, so a client can render a disabled state.
 	Enabled bool `json:"enabled"`
 	// EarliestRecoveryTime / LatestRecoveryTime bound the restorable window
-	// (RFC3339). Earliest is CNPG's firstRecoverabilityPoint; latest tracks the
-	// continuous WAL stream (≈ now).
+	// (RFC3339), as reported by the Barman Cloud ObjectStore for this database's
+	// exact backup server name.
 	EarliestRecoveryTime string `json:"earliestRecoveryTime,omitempty"`
 	LatestRecoveryTime   string `json:"latestRecoveryTime,omitempty"`
 	// Backups is the visible backup history (base backups in object storage).
@@ -110,6 +114,22 @@ type RecoverRequest struct {
 	Version    string `json:"version,omitempty"`
 }
 
+type recoveryWindowBounds struct {
+	earliest string
+	latest   string
+}
+
+func (w recoveryWindowBounds) established() bool {
+	return w.earliest != "" && w.latest != ""
+}
+
+func effectiveBackupServerName(d *appv1alpha1.Database) string {
+	if d.Status.BackupServerName != "" {
+		return d.Status.BackupServerName
+	}
+	return d.Name
+}
+
 // RecoveryInfo returns the recovery window + backup list for a managed Postgres.
 // A no-backup plan returns {enabled:false} rather than an error.
 func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoView, error) {
@@ -121,48 +141,48 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	if !info.Enabled {
 		return info, nil
 	}
-	windowStart, err := s.recoveryWindowStart(ctx, d.Namespace, name)
-	if err != nil {
+	var window recoveryWindowBounds
+	var backups []BackupView
+	group, readCtx := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		var windowErr error
+		window, windowErr = s.recoveryWindow(readCtx, d)
+		return windowErr
+	})
+	group.Go(func() error {
+		var backupErr error
+		backups, backupErr = s.listBackups(readCtx, d.Namespace, d.Name)
+		if backupErr != nil {
+			return fmt.Errorf("list backups for %q: %w", d.Name, backupErr)
+		}
+		return nil
+	})
+	if err := group.Wait(); err != nil {
 		return RecoveryInfoView{}, err
 	}
-	if windowStart != "" {
-		info.EarliestRecoveryTime = windowStart
-		// Latest recoverable point ≈ now, but ONLY once the window is actually
-		// open. Before the first recoverability point there is nothing to restore
-		// to, so we report no latest rather than the wall clock — the one field
-		// that used to touch no Kubernetes read and so survived every failure to
-		// contradict the empty backup list beside it.
-		info.LatestRecoveryTime = s.Now().UTC().Format(time.RFC3339)
-	}
-	backups, err := s.listBackups(ctx, d.Namespace, name)
-	if err != nil {
-		return RecoveryInfoView{}, fmt.Errorf("list backups for %q: %w", name, err)
-	}
+	info.EarliestRecoveryTime = window.earliest
+	info.LatestRecoveryTime = window.latest
 	info.Backups = backups
 	return info, nil
 }
 
-// recoveryWindowStart reads the PITR window's opening point — CNPG's
-// firstRecoverabilityPoint — off the Cluster status. It is the ONE spelling of
-// this read, shared by reporting (RecoveryInfo) and provisioning (Recover), so
-// the two can never disagree about what a failed read means (w6/m117). "" means
-// the window is not yet established: the Cluster is absent (NotFound — a
-// brand-new database) or does not report a point yet (a missing or empty field,
-// deliberately not distinguished — both mean "nothing restorable yet"). A read
-// that FAILS is an error — RBAC, an unavailable CRD, a transient fault — and is
-// never presented as either an empty or an established window.
-func (s *Service) recoveryWindowStart(ctx context.Context, namespace, name string) (string, error) {
-	cluster := &unstructured.Unstructured{}
-	cluster.SetGroupVersionKind(cnpgClusterGVK)
-	switch err := s.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cluster); {
-	case err == nil:
-		point, _, _ := unstructured.NestedString(cluster.Object, "status", "firstRecoverabilityPoint")
-		return point, nil
-	case apierrors.IsNotFound(err):
-		return "", nil
-	default:
-		return "", fmt.Errorf("read recovery window for %q: %w", name, err)
+// recoveryWindow reads both authoritative bounds for the database's exact
+// Barman server identity. Empty or partial status is not an established window;
+// a failed source read remains an error rather than masquerading as empty.
+func (s *Service) recoveryWindow(ctx context.Context, d *appv1alpha1.Database) (recoveryWindowBounds, error) {
+	objectStore := &unstructured.Unstructured{}
+	objectStore.SetGroupVersionKind(barmanCloudObjectStoreGVK)
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: d.Namespace, Name: tenantBackupObjectStoreName}, objectStore); err != nil {
+		return recoveryWindowBounds{}, fmt.Errorf("read recovery window for %q: %w", d.Name, err)
 	}
+	serverName := effectiveBackupServerName(d)
+	start, _, _ := unstructured.NestedString(objectStore.Object, "status", "serverRecoveryWindow", serverName, "firstRecoverabilityPoint")
+	end, _, _ := unstructured.NestedString(objectStore.Object, "status", "serverRecoveryWindow", serverName, "lastSuccessfulBackupTime")
+	window := recoveryWindowBounds{earliest: start, latest: end}
+	if !window.established() {
+		return recoveryWindowBounds{}, nil
+	}
+	return window, nil
 }
 
 // listBackups lists the CNPG Backup objects for a database, mapping each to a
@@ -231,18 +251,14 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if !src.Status.BackupsEnabled {
 		return PostgresView{}, fmt.Errorf("%w: %q has no backups to recover from", core.ErrBadRequest, name)
 	}
-	// BackupsEnabled proves backups are CONFIGURED, not that anything restorable
-	// exists yet. Require the established window too (w6/m117 t003): without a
-	// firstRecoverabilityPoint there is no point in time to restore to, and
-	// proceeding provisioned a new billable database that could never bootstrap.
-	// Refuse HERE — before the plan/billing gates and the Create — so nothing
-	// billable is created against an unsubstantiated window; and a window we
-	// could not read surfaces as the read's error, never as absent or present.
-	windowStart, err := s.recoveryWindowStart(ctx, src.Namespace, src.Name)
+	// BackupsEnabled proves configuration, not a restorable point. Refuse an
+	// unestablished window before billing or Create so a dead recovery cannot
+	// provision paid capacity; source-read failures remain explicit errors.
+	window, err := s.recoveryWindow(ctx, src)
 	if err != nil {
 		return PostgresView{}, err
 	}
-	if windowStart == "" {
+	if !window.established() {
 		return PostgresView{}, fmt.Errorf("%w: %q has no restore point yet; recovery becomes available once its first backup completes", core.ErrBadRequest, name)
 	}
 	plan := req.Plan
@@ -276,10 +292,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if err := s.RequirePlanBilling(ctx, tenantID, plan); err != nil {
 		return PostgresView{}, err
 	}
-	sourceBackupServerName := src.Status.BackupServerName
-	if sourceBackupServerName == "" {
-		sourceBackupServerName = src.Name
-	}
+	sourceBackupServerName := effectiveBackupServerName(src)
 	newDB := &appv1alpha1.Database{
 		// A recovered database belongs to the same workspace as its source, so it
 		// lands in the same namespace (ADR043 D8).
