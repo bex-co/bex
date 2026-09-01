@@ -693,11 +693,67 @@ func (a *oryAuth) unauthorized(w http.ResponseWriter) {
 	core.WriteErrStatus(w, http.StatusUnauthorized, "unauthorized")
 }
 
+const (
+	// Two hours is Chromium's cache ceiling: it removes the round trip without
+	// leaving an old policy cached for a full day after a future route change.
+	corsMaxAge = "7200"
+	// This is a reviewed browser-input allowlist, not a raw inventory of every
+	// header mentioned in the process. Idempotency-Key reaches the authenticated
+	// webhook resend route. X-Api-Key is deliberately absent: it is only set on
+	// outbound model-provider requests by sshgateway/modelproxy, never read by an
+	// inbound browser handler. Last-Event-ID is browser-owned too: EventSource
+	// reconnects send it without a preflight, so advertising it would not affect
+	// whether it reaches logs.
+	corsAllowHeaders = "Authorization, Content-Type, Idempotency-Key, X-Session-Token"
+)
+
+// corsRoutes is the composed router topology that CORS consults. root delegates
+// authenticated REST traffic through its method-less /v1/ mount, so delegated
+// maps that root pattern to the actual REST mux where the method-qualified
+// patterns live.
+type corsRoutes struct {
+	root      *http.ServeMux
+	delegated map[string]*http.ServeMux
+}
+
+// routes reports whether the same muxes that will serve r accept method. This
+// request-specific lookup is deliberately more precise than a global verb
+// union: a preflight advertises only the requested routed method plus OPTIONS,
+// and a future method starts working as soon as its route is registered. GET's
+// implicit HEAD support comes from ServeMux.Handler itself.
+func (c corsRoutes) routesMethod(r *http.Request, method string) bool {
+	if c.root == nil {
+		return false
+	}
+	probe := *r
+	probe.Method = method
+	_, pattern := c.root.Handler(&probe)
+	if pattern == "" {
+		return false
+	}
+	if mux := c.delegated[pattern]; mux != nil {
+		_, pattern = mux.Handler(&probe)
+		return pattern != ""
+	}
+	return true
+}
+
+func (c corsRoutes) allowMethods(r *http.Request) string {
+	method := strings.TrimSpace(r.Header.Get("Access-Control-Request-Method"))
+	if method == "" {
+		method = r.Method
+	}
+	if method == http.MethodOptions || !c.routesMethod(r, method) {
+		return http.MethodOptions
+	}
+	return method + ", " + http.MethodOptions
+}
+
 // withCORS adds CORS for a comma-separated allowlist of origins and answers
 // preflight. Empty origins => no CORS headers (same-origin / server-to-server).
 // The matched request Origin is echoed back; Allow-Credentials is required for
 // the dashboard's Kratos-session cookie to be readable cross-origin.
-func withCORS(origins string, next http.Handler) http.Handler {
+func withCORS(origins string, routes corsRoutes) http.Handler {
 	allowed := map[string]bool{}
 	for _, o := range strings.Split(origins, ",") {
 		if o = strings.TrimSpace(o); o != "" {
@@ -711,17 +767,25 @@ func withCORS(origins string, next http.Handler) http.Handler {
 			// dropping the cache-safety header that keeps a shared cache from
 			// handing a gzip body to an identity-only client (w9/m61, w9/044).
 			w.Header().Add("Vary", "Origin")
+			// allowMethods is route- and requested-method-specific. Keep a shared
+			// cache from reusing (for example) a DELETE preflight for PATCH.
+			if r.Method == http.MethodOptions {
+				w.Header().Add("Vary", "Access-Control-Request-Method")
+			}
 			if origin := r.Header.Get("Origin"); allowed[origin] {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
-				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-Token")
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				if r.Method == http.MethodOptions {
+					w.Header().Set("Access-Control-Allow-Headers", corsAllowHeaders)
+					w.Header().Set("Access-Control-Allow-Methods", routes.allowMethods(r))
+					w.Header().Set("Access-Control-Max-Age", corsMaxAge)
+				}
 			}
 		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		next.ServeHTTP(w, r)
+		routes.root.ServeHTTP(w, r)
 	})
 }

@@ -870,14 +870,20 @@ func TestIntrospectionTouchesKey(t *testing.T) {
 
 func TestWithCORS(t *testing.T) {
 	ok := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200) })
+	mux := http.NewServeMux()
+	mux.Handle("/graphql", ok)
+	routes := corsRoutes{root: mux}
 	do := func(origins, reqOrigin, method string) *httptest.ResponseRecorder {
 		t.Helper()
 		req := httptest.NewRequest(method, "/graphql", nil)
 		if reqOrigin != "" {
 			req.Header.Set("Origin", reqOrigin)
 		}
+		if method == http.MethodOptions {
+			req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+		}
 		rec := httptest.NewRecorder()
-		withCORS(origins, ok).ServeHTTP(rec, req)
+		withCORS(origins, routes).ServeHTTP(rec, req)
 		return rec
 	}
 	const list = "https://dashboard.bex.co, http://localhost:5173"
@@ -891,22 +897,42 @@ func TestWithCORS(t *testing.T) {
 			t.Errorf("Allow-Credentials missing for %s", origin)
 		}
 	}
-	// Unlisted origin: Vary only, no allow headers.
-	rec := do(list, "https://evil.example", http.MethodGet)
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
-		t.Errorf("Allow-Origin for unlisted origin = %q, want empty", got)
+	// Unlisted origin: Vary only, no CORS response headers even on preflight.
+	rec := do(list, "https://evil.example", http.MethodOptions)
+	for _, header := range []string{
+		"Access-Control-Allow-Origin",
+		"Access-Control-Allow-Credentials",
+		"Access-Control-Allow-Headers",
+		"Access-Control-Allow-Methods",
+		"Access-Control-Max-Age",
+	} {
+		if got := rec.Header().Get(header); got != "" {
+			t.Errorf("%s for unlisted origin = %q, want empty", header, got)
+		}
 	}
 	// Empty config: pure pass-through.
-	rec = do("", "http://localhost:5173", http.MethodGet)
-	for _, hd := range []string{"Access-Control-Allow-Origin", "Vary"} {
-		if got := rec.Header().Get(hd); got != "" {
-			t.Errorf("empty config set %s = %q, want unset", hd, got)
+	for _, method := range []string{http.MethodGet, http.MethodOptions} {
+		rec = do("", "http://localhost:5173", method)
+		for _, header := range []string{
+			"Access-Control-Allow-Origin",
+			"Access-Control-Allow-Credentials",
+			"Access-Control-Allow-Headers",
+			"Access-Control-Allow-Methods",
+			"Access-Control-Max-Age",
+			"Vary",
+		} {
+			if got := rec.Header().Get(header); got != "" {
+				t.Errorf("empty config %s set %s = %q, want unset", method, header, got)
+			}
 		}
 	}
 	// Preflight short-circuits with 204 and the echoed origin.
 	rec = do(list, "http://localhost:5173", http.MethodOptions)
 	if rec.Code != http.StatusNoContent || rec.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5173" {
 		t.Errorf("preflight: code %d origin %q", rec.Code, rec.Header().Get("Access-Control-Allow-Origin"))
+	}
+	if methods := commaFoldedTokens(rec.Header().Get("Access-Control-Allow-Methods")); !methods[strings.ToLower(http.MethodPost)] || !methods[strings.ToLower(http.MethodOptions)] {
+		t.Errorf("preflight methods = %q, want POST and OPTIONS", rec.Header().Get("Access-Control-Allow-Methods"))
 	}
 }
 
