@@ -52,9 +52,9 @@
           "image": "./src/assets/images/icon.png",
           "resizeMode": "contain",
           "imageWidth": 160,
-          "backgroundColor": "#f8faf8",
+          "backgroundColor": "#000000",
           "dark": {
-            "backgroundColor": "#111411"
+            "backgroundColor": "#000000"
           }
         }
       ],

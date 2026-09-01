@@ -155,7 +155,7 @@ describe("dashboard title contract", () => {
     );
     expect(html.match(/<title>/g)).toHaveLength(1);
     expect(html).toContain('property="og:url"');
-    expect(html).toContain("https://dashboard.selfhost.test/logo.png");
+    expect(html).toContain("https://dashboard.selfhost.test/logo.webp");
   });
 
   it("keeps a private route title out of composed SSR social metadata", async () => {
@@ -349,7 +349,7 @@ describe("global dashboard metadata", () => {
       "https://dashboard.selfhost.test",
     );
     expect(metadataValue(enHead, "og:image")).toBe(
-      "https://dashboard.selfhost.test/logo.png",
+      "https://dashboard.selfhost.test/logo.webp",
     );
     expect(metadataValue(enHead, "twitter:card")).toBe("summary_large_image");
     expect(metadataValue(enHead, "description")).toContain(

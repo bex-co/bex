@@ -26,7 +26,7 @@ export function SidebarBrand() {
           className="shrink-0 rounded-md ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <img
-            src="/logo.png"
+            src="/logo.webp"
             alt={t("common.appName")}
             className="size-7 rounded-md"
           />
