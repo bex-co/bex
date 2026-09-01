@@ -258,6 +258,11 @@ if ! grep -qF -- '- onbex-default-tls.yaml' deploy/gitops/overlays/prod/kustomiz
   echo "FAIL: production overlay no longer includes onbex-default-tls.yaml" >&2
   fail=1
 fi
+if ! grep -qF -- 'kubectl apply -k deploy/gitops/charts/onbex-default-tls' .github/workflows/deploy.yml \
+  || ! grep -qF -- 'bash scripts/onbex-default-tls-verify.sh notfound.onbex.co' .github/workflows/deploy.yml; then
+  echo "FAIL: deploy must bootstrap and publicly verify the Git-owned fallback TLSStore" >&2
+  fail=1
+fi
 if rg -q 'onbex-default-tls' deploy/gitops/base/kustomization.yaml deploy/gitops/overlays/local/kustomization.yaml; then
   echo "FAIL: local overlay must not require production onbex certificate material" >&2
   fail=1
