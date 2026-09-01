@@ -1226,6 +1226,27 @@ type PreDeployStatus struct {
 	Message string `json:"message,omitempty"`
 }
 
+// BuildRunStatus is when a source build Job actually ran, from the Job's own
+// status timestamps (start) and its terminal condition (finish) — never the
+// operator's observation clock, so the window survives a manager restart and
+// a late first observation alike (w6/m123). One slot, replaced by the next
+// terminal build, bounded exactly like status.preDeploy and ConditionBuild.
+type BuildRunStatus struct {
+	// Generation is the release generation whose build this window describes
+	// (status.releaseGeneration at dispatch), so a stale window from an earlier
+	// release is distinguishable from the current one.
+	// +optional
+	Generation int64 `json:"generation,omitempty"`
+
+	// StartedAt is when the build Job's first pod started work (RFC3339).
+	// +optional
+	StartedAt string `json:"startedAt,omitempty"`
+
+	// FinishedAt is when the Job reached its terminal condition (RFC3339).
+	// +optional
+	FinishedAt string `json:"finishedAt,omitempty"`
+}
+
 const (
 	AutoscalingTransitionStarted = "Started"
 	AutoscalingTransitionEnded   = "Ended"
@@ -1289,6 +1310,18 @@ type AppStatus struct {
 	// configured or none has run yet). See spec.preDeployCommand.
 	// +optional
 	PreDeploy *PreDeployStatus `json:"preDeploy,omitempty"`
+
+	// BuildRun is the execution window of the most recent terminal source
+	// build, read off the build Job's own status timestamps (w6/m123). It is
+	// the failure path's timing truth: a build that fails between two bex-api
+	// resync passes is first observed already-terminal, and without this record
+	// the deploy row's started_at would be stamped at observation time —
+	// collapsing a minute-long build into a microsecond. bex-api reads it (via
+	// its Generation attribution, like status.preDeploy) to stamp the failed
+	// deploy row's real start. Nil when no terminal build has been observed or
+	// the Job's timestamps were unavailable.
+	// +optional
+	BuildRun *BuildRunStatus `json:"buildRun,omitempty"`
 
 	// Autoscaling is the latest autoscaler-driven replica transition. Manual
 	// Scale changes never populate it.

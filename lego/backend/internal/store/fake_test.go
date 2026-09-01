@@ -792,7 +792,7 @@ func (m *memStore) ListOpenDeploys(_ context.Context) ([]Deploy, error) {
 	return out, nil
 }
 
-func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage, failureReason, _ string) (bool, error) {
+func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage, failureReason, _ string, startedAt *time.Time) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.deploys[id]
@@ -819,8 +819,14 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage
 	if failureReason != "" {
 		d.FailureReason = failureReason
 	}
-	if status != DeployQueued && status != DeployCanceled && status != DeployDeactivated && d.StartedAt == nil {
-		d.StartedAt = &now
+	if d.StartedAt == nil {
+		switch {
+		case DeployStatusStampsDispatch(status):
+			d.StartedAt = &now
+		case startedAt != nil:
+			at := *startedAt
+			d.StartedAt = &at
+		}
 	}
 	if IsTerminalDeployStatus(status) && d.FinishedAt == nil {
 		d.FinishedAt = &now
@@ -843,7 +849,7 @@ func (m *memStore) CloseDeploy(ctx context.Context, id, status, resolvedImage st
 	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
 		return false, nil
 	}
-	return m.TransitionDeploy(ctx, id, status, resolvedImage, "", "")
+	return m.TransitionDeploy(ctx, id, status, resolvedImage, "", "", nil)
 }
 
 func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string) (bool, error) {

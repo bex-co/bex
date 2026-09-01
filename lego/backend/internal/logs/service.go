@@ -897,12 +897,68 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource, rep
 	ch := make(chan LogEntry, 64)
 	var opened atomic.Bool
 	var wg sync.WaitGroup
-	for _, container := range containers {
+	startStream := func(container string) {
 		wg.Add(1)
-		go func(container string) {
+		go func() {
 			defer wg.Done()
 			s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.Since, ch, &opened)
-		}(container)
+		}()
+	}
+	started := make(map[string]bool, len(containers))
+	for _, container := range containers {
+		started[container] = true
+		startStream(container)
+	}
+	// The build's phases are sequential init containers, so the set running at
+	// subscribe time is not the set that will run: a subscriber connected while
+	// the clone streams would otherwise never see BuildKit's output at all
+	// (w6/m123). Keep watching the pod and attach to each phase as it starts —
+	// until every container the spec declares has been attached (nothing more
+	// can begin) or the pod turns terminal. The stream then ends the way it
+	// always has: when the attached streams finish.
+	allAttached := func(p *corev1.Pod) bool {
+		return len(started) >= len(p.Spec.InitContainers)+len(p.Spec.Containers)
+	}
+	if !allAttached(&pod) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			wait := s.BuildPodWaitInterval
+			if wait <= 0 {
+				wait = 2 * time.Second
+			}
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(wait):
+				}
+				pods, err := s.BuildPods(ctx, q.App, s.BuildNamespace)
+				if err != nil {
+					continue
+				}
+				var cur *corev1.Pod
+				for i := range pods {
+					if pods[i].Name == pod.Name {
+						cur = &pods[i]
+						break
+					}
+				}
+				if cur == nil {
+					return
+				}
+				for _, container := range runningContainers(*cur) {
+					if !started[container] {
+						started[container] = true
+						startStream(container)
+					}
+				}
+				if allAttached(cur) ||
+					cur.Status.Phase == corev1.PodSucceeded || cur.Status.Phase == corev1.PodFailed {
+					return
+				}
+			}
+		}()
 	}
 	go func() { wg.Wait(); close(ch) }()
 

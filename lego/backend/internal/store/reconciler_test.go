@@ -104,14 +104,14 @@ func TestBuildLifecycleFacts(t *testing.T) {
 	created := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
 	open := Deploy{ID: "dep-1", AppID: "srv-1", Image: "reg/x:1", Status: DeployBuildInProgress, CreatedAt: created}
 
-	building := buildLifecycleFacts(open, "")
+	building := buildLifecycleFacts(open, "", nil)
 	if len(building) != 1 || building[0].Type != EventFactBuildStarted ||
 		building[0].SourceKey != "deploy:dep-1:build_started" || !building[0].At.Equal(created) ||
 		building[0].Image != "reg/x:1" {
 		t.Fatalf("still-building facts = %+v, want a single build_started at created_at", building)
 	}
 
-	failed := buildLifecycleFacts(open, DeployBuildFailed)
+	failed := buildLifecycleFacts(open, DeployBuildFailed, nil)
 	if len(failed) != 2 || failed[1].Type != EventFactBuildEnded ||
 		failed[1].SourceKey != "deploy:dep-1:build_ended" || failed[1].Status != EventStatusFailed {
 		t.Fatalf("failed-build facts = %+v, want build_started + build_ended(failed)", failed)
@@ -129,22 +129,22 @@ func TestBuildStartedRidesRealDispatchNotRowCreation(t *testing.T) {
 	// Queued behind another build: nothing has been dispatched, so neither
 	// fact is emitted — not a build_started dated to the queue-entry time.
 	queued := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployQueued, CreatedAt: created}
-	if facts := buildLifecycleFacts(queued, ""); facts != nil {
+	if facts := buildLifecycleFacts(queued, "", nil); facts != nil {
 		t.Fatalf("queued deploy emitted %+v, want no facts", facts)
 	}
-	if facts := buildLifecycleFacts(queued, DeployQueued); facts != nil {
+	if facts := buildLifecycleFacts(queued, DeployQueued, nil); facts != nil {
 		t.Fatalf("deploy observed queued emitted %+v, want no facts", facts)
 	}
 
 	// Canceled while it was still waiting: it never built, so it gets no
 	// build_started and no build_ended either.
-	if facts := buildLifecycleFacts(queued, DeployCanceled); facts != nil {
+	if facts := buildLifecycleFacts(queued, DeployCanceled, nil); facts != nil {
 		t.Fatalf("canceled-while-queued deploy emitted %+v, want no facts", facts)
 	}
 
 	// Leaving the queue: started_at has not been stamped yet (the transition
 	// runs after this), so the fact carries now — never the stale CreatedAt.
-	leaving := buildLifecycleFacts(queued, DeployBuildInProgress)
+	leaving := buildLifecycleFacts(queued, DeployBuildInProgress, nil)
 	if len(leaving) != 1 || leaving[0].Type != EventFactBuildStarted {
 		t.Fatalf("dequeued facts = %+v, want a single build_started", leaving)
 	}
@@ -157,7 +157,7 @@ func TestBuildStartedRidesRealDispatchNotRowCreation(t *testing.T) {
 		ID: "dep-1", AppID: "srv-1", Status: DeployBuildInProgress,
 		CreatedAt: created, StartedAt: &dispatched,
 	}
-	facts := buildLifecycleFacts(started, "")
+	facts := buildLifecycleFacts(started, "", nil)
 	if len(facts) != 1 || !facts[0].At.Equal(dispatched) {
 		t.Fatalf("facts = %+v, want one build_started at %s", facts, dispatched)
 	}
@@ -2116,5 +2116,54 @@ func TestReconcileFirstDeploySurvivesResync(t *testing.T) {
 		t.Fatalf("first-ever deploy closed %q with nothing to supersede it "+
 			"(release generation %d vs deploy row generation %d)",
 			deploys[0].Status, app.Status.ReleaseGeneration, deploys[0].Generation)
+	}
+}
+
+// TestBuildFactsForTerminalSkip (w6/m123): a deploy observed straight from
+// queued at build_failed was never seen executing. With the operator's
+// recorded build window the facts ride the real dispatch time; without it the
+// honest answer is no build facts at all — never a start fabricated from the
+// failure's observation time.
+func TestBuildFactsForTerminalSkip(t *testing.T) {
+	created := time.Date(2026, 8, 27, 19, 56, 7, 0, time.UTC)
+	queued := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployQueued, CreatedAt: created}
+
+	if facts := buildLifecycleFacts(queued, DeployBuildFailed, nil); facts != nil {
+		t.Fatalf("skip without evidence emitted %+v, want none", facts)
+	}
+
+	start := time.Date(2026, 8, 27, 19, 57, 15, 0, time.UTC)
+	facts := buildLifecycleFacts(queued, DeployBuildFailed, &start)
+	if len(facts) != 2 || facts[0].Type != EventFactBuildStarted || !facts[0].At.Equal(start) {
+		t.Fatalf("facts = %+v, want build_started at the recorded window's start", facts)
+	}
+	if facts[1].Type != EventFactBuildEnded || facts[1].Status != EventStatusFailed {
+		t.Fatalf("facts = %+v, want build_ended(failed)", facts)
+	}
+}
+
+// TestRecordedBuildRun pins the generation attribution (w6/m123): only the
+// row's own release generation may trust the window, and an unparsable window
+// reads as absent rather than as garbage timestamps.
+func TestRecordedBuildRun(t *testing.T) {
+	app := &appv1alpha1.App{}
+	app.Status.BuildRun = &appv1alpha1.BuildRunStatus{
+		Generation: 3,
+		StartedAt:  "2026-08-27T19:56:10Z",
+		FinishedAt: "2026-08-27T19:57:18Z",
+	}
+	start, finish, ok := recordedBuildRun(app, 3)
+	if !ok || !finish.After(start) {
+		t.Fatalf("recordedBuildRun = %v..%v ok=%v, want a valid window", start, finish, ok)
+	}
+	if _, _, ok := recordedBuildRun(app, 4); ok {
+		t.Fatal("another generation must not inherit the window")
+	}
+	if _, _, ok := recordedBuildRun(app, 0); ok {
+		t.Fatal("a generation-less row must not match")
+	}
+	app.Status.BuildRun.StartedAt = "not-a-time"
+	if _, _, ok := recordedBuildRun(app, 3); ok {
+		t.Fatal("an unparsable window must read as absent")
 	}
 }

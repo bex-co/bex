@@ -80,3 +80,30 @@ func TestDeployStatusVocabularyAndTransitionTable(t *testing.T) {
 		}
 	}
 }
+
+// TestDeployStatusStampingSplit is w6/m123: a terminal failure can be reached
+// by a forward skip straight from queued, so its transition time is not the
+// moment work began — only in-progress (and live) transitions may stamp
+// started_at from the clock. DeployStatusStartsExecution keeps answering the
+// separate question "did work begin at all", which the build facts rely on.
+func TestDeployStatusStampingSplit(t *testing.T) {
+	for _, s := range []string{DeployBuildInProgress, DeployPreDeployInProgress, DeployUpdateInProgress, DeployLive} {
+		if !DeployStatusStampsDispatch(s) {
+			t.Errorf("%s must stamp started_at from the clock", s)
+		}
+	}
+	for _, s := range []string{DeployQueued, DeployCanceled, DeployDeactivated,
+		DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed} {
+		if DeployStatusStampsDispatch(s) {
+			t.Errorf("%s must not stamp started_at from the clock", s)
+		}
+	}
+	for _, s := range []string{DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed} {
+		if !DeployStatusStartsExecution(s) || !DeployFailureStatus(s) {
+			t.Errorf("%s must both start execution and classify as a failure", s)
+		}
+	}
+	if DeployFailureStatus(DeployCanceled) || DeployFailureStatus(DeployLive) {
+		t.Error("canceled/live are not failure statuses")
+	}
+}

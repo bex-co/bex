@@ -132,7 +132,7 @@ func newQueuedBehindFailureFixture(
 	// CreateApp opens the service's own first deploy (trigger=create, gen 1) —
 	// exactly the deploy the live repro's wrong branch failed on.
 	first := onlyDeploy(t, st, app.ID)
-	if won, err := st.TransitionDeploy(ctx, first.ID, DeployBuildInProgress, "", "", ""); err != nil || !won {
+	if won, err := st.TransitionDeploy(ctx, first.ID, DeployBuildInProgress, "", "", "", nil); err != nil || !won {
 		t.Fatalf("start first build: won=%v err=%v", won, err)
 	}
 	second, err := createSecond(st, app.ID)

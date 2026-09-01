@@ -32,6 +32,7 @@ import (
 	"path"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -429,6 +430,22 @@ type Observation struct {
 	Image      string  // set when Phase == PhaseSucceeded (<registry>/<name>:<revision>, or kpack's canonical digest)
 	Message    string  // failure detail (PhaseFailed) or capacity reason (PhaseWaiting)
 	RunSeconds float64 // terminal build run duration from the Job's own status timestamps (0 = unknown / kpack)
+	// StartedAt/FinishedAt are the terminal build's execution window from the
+	// Job's own status (see jobRunWindow); zero when the Job never reported
+	// them (and always for kpack). The failure path projects them onto the App
+	// status so the deploy row's timestamps stay truthful even when the first
+	// observation of the build is already terminal (w6/m123).
+	StartedAt  time.Time
+	FinishedAt time.Time
+	// FailedStep is the tenant-facing name of the build phase whose container
+	// failed ("clone", "docker build", "image push", …), read from the failed
+	// pod's container statuses. Empty when the pod was already reaped or no
+	// failed container was found.
+	FailedStep string
+	// Tail is the failing container's own captured output (bounded; see
+	// failureTail) from the termination message captureFailureTail arranges.
+	// Empty when unavailable — the failure message must stand without it.
+	Tail string
 	// Fault attributes a PhaseFailed build (docs/ADR060 D2). Empty for
 	// non-terminal phases.
 	Fault Fault
@@ -556,12 +573,20 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 	}
 	switch {
 	case execution.JobHasCondition(cur, batchv1.JobComplete):
-		return Observation{Phase: PhaseSucceeded, Image: image, RunSeconds: jobRunSeconds(cur), Created: created}, nil
+		start, finish := jobRunWindow(cur)
+		return Observation{Phase: PhaseSucceeded, Image: image, RunSeconds: windowSeconds(start, finish),
+			StartedAt: start, FinishedAt: finish, Created: created}, nil
 	case execution.JobHasCondition(cur, batchv1.JobFailed):
+		start, finish := jobRunWindow(cur)
+		step, tail := failureDetail(ctx, o, cur.Name)
 		return Observation{
 			Phase:      PhaseFailed,
 			Message:    execution.JobFailureMessage(cur, "unknown build failure"),
-			RunSeconds: jobRunSeconds(cur),
+			RunSeconds: windowSeconds(start, finish),
+			StartedAt:  start,
+			FinishedAt: finish,
+			FailedStep: step,
+			Tail:       tail,
 			Fault:      faultFromJob(execution.JobFailedReason(cur)),
 			Created:    created,
 		}, nil
@@ -572,18 +597,100 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 	return Observation{Phase: PhaseBuilding, Created: created}, nil
 }
 
-// jobRunSeconds is a finished build Job's run duration from its own status
-// timestamps (0 when either is unset). Reading the Job's clock, not the
-// operator's, is what makes the duration survive a manager restart mid-build.
-func jobRunSeconds(j *batchv1.Job) float64 {
-	if j.Status.StartTime == nil || j.Status.CompletionTime == nil {
+// jobRunWindow is a terminal build Job's execution window from the Job's own
+// status: StartTime → CompletionTime for a completed Job, StartTime → the
+// JobFailed condition's transition time for a failed one — Kubernetes sets
+// CompletionTime only on success, so the failure path used to read a zero
+// duration (w6/m123: a 68-second build reported one microsecond). Zero times
+// when the Job never reported them. Reading the Job's clock, not the
+// operator's, is what makes the window survive a manager restart mid-build.
+func jobRunWindow(j *batchv1.Job) (start, finish time.Time) {
+	if j.Status.StartTime != nil {
+		start = j.Status.StartTime.Time
+	}
+	if j.Status.CompletionTime != nil {
+		return start, j.Status.CompletionTime.Time
+	}
+	return start, execution.JobFailedAt(j)
+}
+
+// windowSeconds is a jobRunWindow's duration (0 = unknown or invalid).
+func windowSeconds(start, finish time.Time) float64 {
+	if start.IsZero() || finish.IsZero() {
 		return 0
 	}
-	s := j.Status.CompletionTime.Sub(j.Status.StartTime.Time).Seconds()
-	if s < 0 {
-		return 0
+	if s := finish.Sub(start).Seconds(); s > 0 {
+		return s
 	}
-	return s
+	return 0
+}
+
+// buildStepNames maps each build container to the tenant-facing name of its
+// phase, kept beside the containers themselves so a renamed phase cannot
+// silently break the failure message's step attribution.
+var buildStepNames = map[string]string{
+	"clone":                "clone",
+	cacheRestorePhase:      "build cache restore",
+	"prepare-native-build": "build preparation",
+	"buildkit":             "docker build",
+	pushContainer:          "image push",
+	"sign":                 "image signing",
+	cacheSavePhase:         "build cache save",
+}
+
+// failureDetail reads the failing phase and its captured output tail off the
+// failed build pod's container statuses — the FallbackToLogsOnError capture
+// captureFailureTail arranges, which nothing read before w6/m123. Best-effort
+// by design: a reaped pod (Job TTL, a gone node) or a List error yields
+// ("", ""), and the caller's message must stand without it. When backoff spent
+// a second attempt, the most recently finished failed container wins.
+func failureDetail(ctx context.Context, o Options, jobName string) (step, tail string) {
+	pods, err := listJobPods(ctx, o.Client, o.Namespace, jobName)
+	if err != nil {
+		return "", ""
+	}
+	var at time.Time
+	for i := range pods {
+		statuses := make([]corev1.ContainerStatus, 0,
+			len(pods[i].Status.InitContainerStatuses)+len(pods[i].Status.ContainerStatuses))
+		statuses = append(statuses, pods[i].Status.InitContainerStatuses...)
+		statuses = append(statuses, pods[i].Status.ContainerStatuses...)
+		for _, cs := range statuses {
+			t := cs.State.Terminated
+			if t == nil || t.ExitCode == 0 || t.FinishedAt.Time.Before(at) {
+				continue
+			}
+			at = t.FinishedAt.Time
+			step = cs.Name
+			if s, ok := buildStepNames[cs.Name]; ok {
+				step = s
+			}
+			tail = failureTail(t.Message)
+		}
+	}
+	return step, tail
+}
+
+// failureTailBytes bounds how much of the failing container's output enters
+// the tenant-facing failure reason. The termination message itself is already
+// capped by the kubelet (4 KiB / 80 lines); the failure reason is a sentence
+// surfaced on the deploy row, the dashboard, and the failure email, so it
+// keeps only the end — errors conclude output, they don't open it.
+const failureTailBytes = 800
+
+func failureTail(msg string) string {
+	msg = strings.TrimSpace(msg)
+	if len(msg) <= failureTailBytes {
+		return msg
+	}
+	msg = msg[len(msg)-failureTailBytes:]
+	if i := strings.IndexByte(msg, '\n'); i >= 0 && i < len(msg)-1 {
+		msg = msg[i+1:] // drop the partial first line the cut left behind
+	}
+	for len(msg) > 0 && !utf8.RuneStart(msg[0]) {
+		msg = msg[1:]
+	}
+	return msg
 }
 
 // jobNameLabel is the label the Job controller stamps on every pod it creates.
