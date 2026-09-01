@@ -275,10 +275,11 @@ func TestRecoveryInfoUnreadableBackupsAreAnErrorNotEmpty(t *testing.T) {
 }
 
 func TestRecoverCreatesNewInstanceLeavingSourceUntouched(t *testing.T) {
-	svc, cl := newService()
+	svc, cl := newServiceCNPG()
 	seedDatabaseSpec(t, cl, "src-db", appv1alpha1.DatabaseSpec{
 		Plan: "basic-1gb", Version: "16", DatabaseName: "orders_data", DatabaseUser: "orders_owner",
 	}, true)
+	seedCNPGCluster(t, cl, "src-db", "2026-07-01T00:00:00Z")
 	ctx := context.Background()
 
 	v, err := svc.Recover(ctx, "src-db", RecoverRequest{Name: "restored-db", TargetTime: "2026-07-09T10:00:00Z"})
@@ -333,6 +334,100 @@ func TestRecoverRejectsBadInput(t *testing.T) {
 	if _, err := svc.Recover(ctx, "ok-db", RecoverRequest{Name: "y", TargetTime: "not-a-time"}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("recover with bad targetTime should be ErrBadRequest, got %v", err)
 	}
+}
+
+// newServiceCNPGClusterForbidden builds a Service whose client refuses every
+// CNPG Cluster Get with forbidden — standing in for the production RBAC denial
+// that caused w6/m117 — while everything else reads normally.
+func newServiceCNPGClusterForbidden() (*Service, client.Client) {
+	forbidden := apierrors.NewForbidden(
+		schema.GroupResource{Group: "postgresql.cnpg.io", Resource: "clusters"}, "",
+		errors.New("RBAC: no access to clusters"))
+	cl := fake.NewClientBuilder().WithScheme(cnpgScheme()).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+				if obj.GetObjectKind().GroupVersionKind() == cnpgClusterGVK {
+					return forbidden
+				}
+				return c.Get(ctx, key, obj, opts...)
+			},
+		}).Build()
+	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}}, cl
+}
+
+// TestRecoveryInfoUnreadableClusterIsAnErrorNotEmpty: the window read holds the
+// same honesty contract as the backup list — a Cluster Get that fails (RBAC,
+// CRD unavailable, transient) is an error, never "no window yet". This is the
+// other half of the silent degradation that shipped unnoticed (w6/m117).
+func TestRecoveryInfoUnreadableClusterIsAnErrorNotEmpty(t *testing.T) {
+	svc, cl := newServiceCNPGClusterForbidden()
+	seedDatabaseSpec(t, cl, "blind-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+
+	if _, err := svc.RecoveryInfo(context.Background(), "blind-db"); err == nil {
+		t.Fatal("a denied Cluster read must return an error, not an empty recovery window")
+	}
+}
+
+// TestRecoverRefusesAnUnsubstantiatedWindow — w6/m117 t003: BackupsEnabled says
+// backups are configured, not that anything restorable exists. Without an
+// established firstRecoverabilityPoint, Recover must refuse — before any
+// billing gate and before anything billable is created — and an unreadable
+// window must surface as the read's error, never as "no backups" or a pass.
+func TestRecoverRefusesAnUnsubstantiatedWindow(t *testing.T) {
+	ctx := context.Background()
+	sourceOnly := func(t *testing.T, cl client.Client) {
+		t.Helper()
+		var dbs appv1alpha1.DatabaseList
+		if err := cl.List(ctx, &dbs); err != nil {
+			t.Fatalf("list databases: %v", err)
+		}
+		if len(dbs.Items) != 1 {
+			t.Fatalf("a refused recover left %d databases, want the source alone", len(dbs.Items))
+		}
+	}
+
+	t.Run("no CNPG Cluster yet refuses before the billing gates", func(t *testing.T) {
+		svc, cl := newServiceCNPG()
+		src := seedDatabaseSpec(t, cl, "young-db", appv1alpha1.DatabaseSpec{Name: "young", Plan: "basic-1gb"}, true)
+		src.Labels = map[string]string{core.LabelTenant: "tea-a", core.LabelWorkspace: "tea-a"}
+		if err := cl.Update(ctx, src); err != nil {
+			t.Fatalf("label source: %v", err)
+		}
+		svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+		gate := &rejectingPaymentGate{}
+		svc.Payment = gate
+
+		_, err := svc.Recover(ctxAs("user-a"), "young-db", RecoverRequest{Name: "restored"})
+		if !errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("recover without a window => %v, want ErrBadRequest", err)
+		}
+		if len(gate.calls) != 0 {
+			t.Fatalf("the refusal must precede the billing gates; the payment gate saw %v", gate.calls)
+		}
+		sourceOnly(t, cl)
+	})
+
+	t.Run("Cluster present but window not open", func(t *testing.T) {
+		svc, cl := newServiceCNPG()
+		seedDatabaseSpec(t, cl, "fresh-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+		seedCNPGCluster(t, cl, "fresh-db", "")
+
+		if _, err := svc.Recover(ctx, "fresh-db", RecoverRequest{Name: "restored"}); !errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("recover before the first recoverability point => %v, want ErrBadRequest", err)
+		}
+		sourceOnly(t, cl)
+	})
+
+	t.Run("an unreadable window is an error, not a refusal or a pass", func(t *testing.T) {
+		svc, cl := newServiceCNPGClusterForbidden()
+		seedDatabaseSpec(t, cl, "blind-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+
+		_, err := svc.Recover(ctx, "blind-db", RecoverRequest{Name: "restored"})
+		if err == nil || errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("an unreadable window => %v, want a non-BadRequest error", err)
+		}
+		sourceOnly(t, cl)
+	})
 }
 
 func TestExportsCreateAndList(t *testing.T) {
@@ -778,6 +873,7 @@ func TestPoolerConnectionStrings(t *testing.T) {
 func TestRESTRecoveryAndAccessShapes(t *testing.T) {
 	svc, cl := newServiceCNPG()
 	seedDatabaseSpec(t, cl, "shape-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb", Public: true}, true)
+	seedCNPGCluster(t, cl, "shape-db", "2026-08-01T00:00:00Z")
 
 	// recovery-info uses Render's canonical POST.
 	var info RecoveryInfoView
