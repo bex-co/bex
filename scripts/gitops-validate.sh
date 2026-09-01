@@ -240,12 +240,9 @@ if yq -N 'select(.kind == "Secret" or .kind == "Certificate" or .kind == "Issuer
   echo "FAIL: onbex TLS GitOps may render only the TLSStore; certificate material and issuance stay out of band" >&2
   fail=1
 fi
-default_tls_namespace_arg="$(yq -N '
-  .additionalArguments[] |
-  select(. == "--providers.kubernetescrd.defaulttlsresourcesnamespace=traefik")
-' deploy/gitops/base/values/traefik.values.yaml | tr -d '\n')"
-if [ "$default_tls_namespace_arg" != '--providers.kubernetescrd.defaulttlsresourcesnamespace=traefik' ]; then
-  echo "FAIL: Traefik default TLS resources are not reserved to the traefik namespace" >&2
+if grep -qiF -- '--providers.kubernetescrd.defaulttlsresourcesnamespace=' \
+  deploy/gitops/base/values/traefik.values.yaml; then
+  echo "FAIL: pinned Traefik v3.7.5 does not support defaultTLSResourcesNamespace" >&2
   fail=1
 fi
 prod_tls_app="$(yq -N '
