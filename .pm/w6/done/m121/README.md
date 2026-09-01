@@ -1,6 +1,6 @@
 # w6 · m121 — CORS preflight advertises a stale method + header list, so 53 mutating REST routes and two real request headers are unreachable from the origin bex itself allowlists
 
-**Worker:** worker6 **Goal:** the preflight bex returns describes the router bex actually serves, so its Render-compatible REST surface is usable from a browser instead of read-only **Status:** todo (t001–t007 done; t008 awaits deployment + live production DoD)
+**Worker:** worker6 **Goal:** the preflight bex returns describes the router bex actually serves, so its Render-compatible REST surface is usable from a browser instead of read-only **Status:** done
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE**                                                                            | 20m | t004       |
 | t006 | Simplify — **DONE**                                                                                 | 20m | t005       |
 | t007 | Test coverage — **DONE**                                                                            | 30m | t005       |
-| t008 | Closeout                                                                                 | 10m | t006, t007 |
+| t008 | Closeout — **DONE**                                                                      | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -30,7 +30,15 @@
 - The working tree now derives each preflight answer from the composed root + REST muxes, advertises the requested routed method plus `OPTIONS`, adds `Idempotency-Key`, deliberately excludes `X-Api-Key` and browser-owned `Last-Event-ID`, and sets `Max-Age: 7200`.
 - Live Chrome 152 cross-origin EventSource capture settled `Last-Event-ID`: first GET had no cursor; the reconnect GET carried `Last-Event-ID: cursor-1`; no OPTIONS request occurred. The signed-in production variant could not run because QA credentials are unset, and is not claimed.
 - `go test ./...` passes in `lego/backend`; `make lint-backend` reports zero issues. The structural guard enumerates the real mux and has an executable stale-router/throwaway-verb failure case.
-- **Closeout is intentionally still open.** Production was re-read after implementation and still returns `Access-Control-Allow-Methods: GET, POST, OPTIONS` and the old header list for DELETE, PATCH and PUT. Repository policy forbids commit/push without `$ship`, so t008's deployed browser DoD has not happened.
+- Shipped as `797b6a4829e6fc801c7e08f4b2d860a6b77ca16b` (`fix(api): derive CORS preflights from routes`). Descendant production run [33465032732](https://github.com/bex-co/bex/actions/runs/33465032732), at `c69893ba9dfa847968e583d35bfcde673d2aa1cd`, passed the backend/operator/dashboard/controller suites, built and signed every image, passed every blocking critical-vulnerability gate, and rolled bex plus the dashboard successfully. Its formal conclusion was `cancelled` only afterward, at `Post CVE scan — OpenSandbox server HIGH+CRITICAL (report)`; every deploy step through the final credential scrub had already completed successfully.
+
+## Production closeout evidence (2026-08-31)
+
+- Raw production `OPTIONS` from `Origin: https://dashboard.bex.co` returned 204 and the routed method plus `OPTIONS`: `DELETE, OPTIONS` for `/v1/postgres/dpg-cors-probe`, `PATCH, OPTIONS` for the same routed resource, and `PUT, OPTIONS` for `/v1/projects/prj-cors-probe/service-links`.
+- Every allowed preflight returned `Access-Control-Allow-Headers: Authorization, Content-Type, Idempotency-Key, X-Session-Token`, `Access-Control-Max-Age: 7200`, credentials + the dashboard origin, and `Vary: Origin` / `Vary: Access-Control-Request-Method` while the edge preserved `Vary: Accept-Encoding`. Neither `X-Api-Key` nor `Last-Event-ID` was advertised. A non-allowlisted `Origin: https://cors.invalid` received no `Access-Control-Allow-*` headers.
+- A raw preflight for `POST /v1/webhooks/whk-cors-probe/events/whd-cors-probe/resend` with `Access-Control-Request-Headers: Idempotency-Key` returned `POST, OPTIONS` and the allowlist above.
+- Signed-in Chrome 152 loaded `https://dashboard.bex.co/`, established an authenticated cross-origin `GET /v1/services` control at 200, then completed real browser requests against two DELETE families (`/v1/services/{id}/custom-domains/{name}` and `/v1/postgres/{id}`), one PATCH route (`/v1/projects/{id}`), one PUT route (`/v1/projects/{id}/service-links`), and webhook resend with `Idempotency-Key`. Each nonexistent probe reached its handler and resolved as 404 rather than throwing `Failed to fetch`; captured request traffic included the `idempotency-key` header.
+- The temporary authenticated Playwright storage-state file was deleted immediately after the checks.
 
 ## Source + Goal linkage
 
