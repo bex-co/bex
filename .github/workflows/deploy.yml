@@ -571,6 +571,24 @@ jobs:
           BEX_ONBEX_TLS_KEY: ${{ secrets.BEX_ONBEX_TLS_KEY }}
         run: bash scripts/onbex-default-tls-secret.sh
 
+      # Bootstrap the Git-owned TLSStore immediately after its out-of-band
+      # Secret. Argo adopts the same manifest below, but waiting for a newly
+      # created child Application made the first trusted fallback dependent on
+      # its asynchronous refresh interval.
+      - name: apply and verify onbex.co fallback TLS store
+        if: ${{ env.SUPERSEDED != 'true' }}
+        run: |
+          kubectl apply -k deploy/gitops/charts/onbex-default-tls
+          for attempt_index in {1..18}; do
+            if bash scripts/onbex-default-tls-verify.sh notfound.onbex.co; then
+              exit 0
+            fi
+            if [ "$attempt_index" -lt 18 ]; then
+              sleep 10
+            fi
+          done
+          exit 1
+
       # Mirror only archives whose upstream bytes and resulting OCI manifests
       # match deploy/helm-artifacts.lock. Argo consumes these packages by digest,
       # never by an upstream chart-repository version label. GHCR chart packages
