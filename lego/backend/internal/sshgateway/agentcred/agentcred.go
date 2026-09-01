@@ -508,7 +508,6 @@ func validateReceivePack(body io.Reader, branch string) (io.Reader, error) {
 			return nil, agentsession.ErrForbidden
 		}
 		line := strings.TrimSuffix(string(packet), "\n")
-		fields := strings.Fields(line)
 		// receive-pack permits zero or more `shallow <oid>` declarations
 		// before the command list. They describe clone history boundaries and
 		// do not name a ref, so preserve them while still validating and
@@ -536,7 +535,7 @@ func validateReceivePack(body io.Reader, branch string) (io.Reader, error) {
 			}
 			line = line[:nul]
 		}
-		fields = strings.Fields(line)
+		fields := strings.Fields(line)
 		if len(fields) != 3 || fields[2] != "refs/heads/"+branch || !validObjectID(fields[0]) || !validObjectID(fields[1]) || allZero(fields[1]) {
 			return nil, agentsession.ErrForbidden
 		}

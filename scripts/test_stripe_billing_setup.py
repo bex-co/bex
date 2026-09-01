@@ -1,10 +1,9 @@
 """Offline contract tests for scripts/stripe-billing-setup.py."""
 
 import importlib.util
-import unittest
 from decimal import Decimal
 from pathlib import Path
-from unittest import mock
+from unittest import TestCase, main, mock
 
 
 SCRIPT = Path(__file__).with_name("stripe-billing-setup.py")
@@ -13,7 +12,7 @@ SETUP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SETUP)
 
 
-class StripeBillingSetupTest(unittest.TestCase):
+class StripeBillingSetupTest(TestCase):
     def test_stripe_rejects_api_error_json_even_when_cli_exits_zero(self):
         result = mock.Mock(returncode=0, stdout='{"error":{"message":"denied"}}', stderr="")
         with mock.patch.object(SETUP.subprocess, "run", return_value=result):
@@ -38,19 +37,20 @@ class StripeBillingSetupTest(unittest.TestCase):
     def test_pricing_catalog_has_expected_paid_dimensions(self):
         dimensions = SETUP.parse_pricing()
         names = {name for name, _, _ in dimensions}
-        self.assertEqual(14, len(dimensions))
+        self.assertEqual(15, len(dimensions))
         self.assertIn("instance_seconds.service.starter", names)
         self.assertIn("instance_seconds.postgres.basic-1gb", names)
         self.assertIn("instance_seconds.key_value.standard", names)
         self.assertIn("egress_gib", names)
         self.assertIn("build_seconds", names)
         self.assertIn("storage_gb_hours", names)
+        self.assertIn("disk_gb_hours", names)
         self.assertIn("sandbox_compute_seconds", names)
         self.assertFalse(any(name.endswith(".free") for name in names))
 
     def test_workspace_plan_fees_are_not_usage_meters(self):
         names = {name for name, _, _ in SETUP.parse_pricing()}
-        self.assertEqual(14, len(names))
+        self.assertEqual(15, len(names))
         self.assertTrue(all("workspace" not in name for name in names))
         sheet = SETUP.PRICING.read_text()
         self.assertIn("usdPerMonth: 17.50", sheet)
@@ -287,4 +287,4 @@ class StripeBillingSetupTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    main()
