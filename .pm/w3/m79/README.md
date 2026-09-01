@@ -1,6 +1,6 @@
 # w3 · m79 — Run the full agent-session stack locally on `dev-N`
 
-**Worker:** worker1 **Goal:** a developer can bring the entire [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md) agent-session stack up end to end on the shared local kind/CAPD `bex` cluster — live sandbox, streamed turn, draft PR — via one opt-in path on `scripts/dev-env.sh N`. **Status:** in progress (audited 2026-08-30; t001–t007 and t009–t010 done; dev-3's auth/OpenFGA/OpenBao/OpenSandbox/gateway substrate is live, but its dashboard is down and the status capability check has no `BEX_API_TOKEN`; the required real GitHub App repository + draft-PR leg still lacks developer-supplied App credentials/installation, so t008/t011 remain open)
+**Worker:** worker3 **Goal:** a developer can bring the entire [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md) agent-session stack up end to end on the shared local kind/CAPD `bex` cluster — live sandbox, streamed turn, draft PR — via one opt-in path on `scripts/dev-env.sh N`. **Status:** in progress (audited 2026-08-31; t001–t010 done, including green component/capability checks and a real-model repo-less session; t012 still needs developer-supplied GitHub App credentials + installation to prove the draft-PR delivery leg, then t011 closes the milestone)
 
 ## Tasks (in order)
 
@@ -13,10 +13,11 @@
 | t005 | In-cluster ssh-gateway: image + Deployment/SA/RBAC/host-key/DB-role/Service — **DONE** | 60m | t001, t002            |
 | t006 | Reverse hop (gateway → host bex-api `:8091`) + `:8081`/`:8083` port-forwards — **DONE** | 30m | t005                  |
 | t007 | `dev-env.sh N agents` overlay: orchestrate the above + inject bex-api env — **DONE** | 60m | t001, t003, t004, t006 |
-| t008 | `status`/verify agent stack + end-to-end create-session smoke                     | 45m | t007                  |
+| t008 | `status`/verify agent stack + end-to-end repo-less session smoke — **DONE**        | 45m | t007                  |
 | t009 | Simplify — **DONE**                                                               | 20m | t008                  |
 | t010 | Test coverage: `dev-env.test.sh` derivation for the new ports/env — **DONE**       | 30m | t008                  |
-| t011 | Closeout                                                                          | 10m | t009, t010            |
+| t012 | Real GitHub App delivery smoke: local session opens a draft PR                    | 45m | t008                  |
+| t011 | Closeout                                                                          | 10m | t009, t010, t012      |
 
 ## Definition of done
 
