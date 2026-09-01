@@ -1,18 +1,18 @@
 # w2 · m85 — Valid TLS for unknown `*.onbex.co` hosts
 
-**Worker:** worker2 **Goal:** make every first-level `onbex.co` hostname complete a browser-trusted TLS handshake, including hosts that have no App route and should return 404 **Status:** todo
+**Worker:** worker2 **Goal:** make every first-level `onbex.co` hostname complete a browser-trusted TLS handshake, including hosts that have no App route and should return 404 **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                        | est | depends_on      |
 | ---- | ------------------------------------------------------------ | --- | --------------- |
-| t001 | Add the provider-independent certificate supply path        | 45m | —               |
-| t002 | Validate and install the `*.onbex.co` fallback certificate   | 45m | t001            |
-| t003 | Make Traefik use the wildcard only as its default TLSStore   | 45m | t002            |
-| t004 | Deploy and verify unknown, active, and suspended hosts live  | 30m | t003            |
-| t005 | Simplify the GitOps and secret-provisioning changes          | 20m | t004            |
-| t006 | Test coverage for wildcard/default-certificate invariants    | 45m | t003            |
-| t007 | Closeout                                                     | 15m | t005, t006      |
+| t001 | Add the provider-independent certificate supply path — **DONE** | 45m | —          |
+| t002 | Validate and install the `*.onbex.co` fallback certificate — **DONE** | 45m | t001  |
+| t003 | Make Traefik use the wildcard only as its default TLSStore — **DONE** | 45m | t002  |
+| t004 | Deploy and verify unknown, active, and suspended hosts live — **DONE** | 30m | t003 |
+| t005 | Simplify the GitOps and secret-provisioning changes — **DONE** | 20m | t004       |
+| t006 | Test coverage for wildcard/default-certificate invariants — **DONE** | 45m | t003 |
+| t007 | Closeout — **DONE**                                          | 15m | t005, t006      |
 
 ## Definition of done
 
