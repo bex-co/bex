@@ -68,6 +68,10 @@ var billableMeterNames = func() map[string]struct{} {
 // ⇒ the billing sink is disabled (NewStripe returns nil), byte-identical.
 type StripeConfig struct {
 	SecretKey string // BEX_STRIPE_SECRET_KEY (restricted key) — empty ⇒ disabled
+	// PublishableKey is safe to return only to the authenticated dashboard. It
+	// must be from the same Stripe mode as SecretKey; the composition root
+	// refuses a mismatch before constructing the client.
+	PublishableKey string
 	// BillingEpoch is both the emitter floor and the earliest subscription
 	// backdate. It keeps pre-billing usage outside Stripe rating.
 	BillingEpoch time.Time
@@ -131,6 +135,7 @@ type StripeClient struct {
 	taxCode               string
 	taxBehavior           string
 	testMode              bool
+	publishableKey        string
 	state                 BillingStateStore
 	metrics               *Metrics
 }
@@ -168,6 +173,7 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		taxCode:               cfg.TaxCode,
 		taxBehavior:           cfg.TaxBehavior,
 		testMode:              strings.Contains(cfg.SecretKey, "_test_"),
+		publishableKey:        cfg.PublishableKey,
 		state:                 cfg.State,
 		metrics:               cfg.Metrics,
 	}

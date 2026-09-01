@@ -9,6 +9,7 @@ import {
 export interface PlanPickerProps {
   selected: WorkspacePlanId;
   onSelect: (plan: WorkspacePlanId) => void;
+  disabled?: boolean;
 }
 
 /**
@@ -17,7 +18,11 @@ export interface PlanPickerProps {
  * $17.50, Scale $349.30, Enterprise custom. Resource-tier usage is billed
  * separately (ADR046) and stays in the footnote under the cards.
  */
-export function PlanPicker({ selected, onSelect }: PlanPickerProps) {
+export function PlanPicker({
+  selected,
+  onSelect,
+  disabled = false,
+}: PlanPickerProps) {
   const { t } = useTranslations();
   const usageNoteId = useId();
 
@@ -37,19 +42,18 @@ export function PlanPicker({ selected, onSelect }: PlanPickerProps) {
               type="button"
               role="radio"
               aria-checked={checked}
+              disabled={disabled}
               onClick={() => onSelect(plan.id)}
               className={cn(
                 "flex min-h-56 flex-col rounded-xl border p-5 text-left transition-colors",
-                "hover:border-foreground/50",
+                "hover:border-foreground/50 disabled:cursor-not-allowed disabled:opacity-60",
                 checked
                   ? "border-primary ring-2 ring-primary"
                   : "border-border",
               )}
             >
               <div className="mb-2 flex items-baseline justify-between gap-2">
-                <span className="text-lg font-semibold">
-                  {t(plan.nameKey)}
-                </span>
+                <span className="text-lg font-semibold">{t(plan.nameKey)}</span>
                 <span className="text-muted-foreground text-sm font-medium">
                   {t(plan.billingKey)}
                 </span>

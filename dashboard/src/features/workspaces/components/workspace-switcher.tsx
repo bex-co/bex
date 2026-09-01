@@ -1,5 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Check, ChevronsUpDown, CreditCard, Plus, Settings } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  CreditCard,
+  Plus,
+  Settings,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -131,7 +137,12 @@ export function WorkspaceSwitcher() {
             })}
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onSelect={() => void navigate({ to: "/new/workspace" })}
+              onSelect={() =>
+                void navigate({
+                  to: "/new/workspace",
+                  search: { attempt: undefined },
+                })
+              }
             >
               <Plus className="size-4" />
               {t("workspaces.switcherNew")}

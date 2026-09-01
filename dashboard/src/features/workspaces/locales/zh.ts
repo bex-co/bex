@@ -35,7 +35,8 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.planHobbyBilling": {
     message: "$0/月",
-    description: "Workspace plan card billing label (pricing.yaml hobby usdPerMonth)",
+    description:
+      "Workspace plan card billing label (pricing.yaml hobby usdPerMonth)",
   },
   "workspaces.planHobbyDescription": {
     message: "适合刚起步的个人。",
@@ -59,7 +60,8 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.planProBilling": {
     message: "$17.50/月",
-    description: "Workspace plan card billing label (pricing.yaml pro usdPerMonth)",
+    description:
+      "Workspace plan card billing label (pricing.yaml pro usdPerMonth)",
   },
   "workspaces.planProDescription": {
     message: "适合一起交付的小团队。",
@@ -79,7 +81,8 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.planScaleBilling": {
     message: "$349.30/月",
-    description: "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
+    description:
+      "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
   },
   "workspaces.planScaleDescription": {
     message: "适合需要更多角色的成长团队。",
@@ -134,16 +137,35 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "/new/workspace page heading",
   },
   "workspaces.createDescription": {
-    message: "填写 slug 并选择套餐。",
+    message: "选择工作区详情、账单联系人、套餐和付款方式。",
     description: "/new/workspace page subtitle",
+  },
+  "workspaces.detailsTitle": {
+    message: "工作区详情",
+    description: "/new/workspace details section heading",
+  },
+  "workspaces.billingEmail": {
+    message: "账单邮箱",
+    description: "/new/workspace billing email label",
+  },
+  "workspaces.billingEmailHelp": {
+    message: "此工作区的收据和账单通知将发送到这里。",
+    description: "Editable paid-plan billing email help",
+  },
+  "workspaces.billingEmailHobbyHelp": {
+    message: "Hobby 工作区的账单邮箱必须是你的账户邮箱。",
+    description: "Read-only Hobby billing email help",
+  },
+  "workspaces.billingEmailError": {
+    message: "请输入有效的账单邮箱。",
+    description: "Billing email validation error",
   },
   "workspaces.fieldSlug": {
     message: "工作区 slug",
     description: "/new/workspace slug field label",
   },
   "workspaces.fieldSlugHelp": {
-    message:
-      "用于 URL 和资源名称。仅限小写字母、数字和连字符，1–30 个字符。",
+    message: "用于 URL 和资源名称。仅限小写字母、数字和连字符，1–30 个字符。",
     description: "/new/workspace slug helper text",
   },
   "workspaces.paymentTitle": {
@@ -151,9 +173,36 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "/new/workspace payment panel heading",
   },
   "workspaces.paymentDescription": {
-    message:
-      "此套餐上的付费计算与用量需要绑定当前工作区的银行卡。卡片上的 $17.50 / $349.30 是目录中的工作区月费（相对 Render 七折），创建时不会作为 Stripe 订单行收取。",
-    description: "/new/workspace payment panel copy (current-workspace chicken-egg)",
+    message: "每个工作区独立计费。此付款方式仅属于即将创建的工作区。",
+    description: "/new/workspace workspace-specific payment copy",
+  },
+  "workspaces.paymentRequired": {
+    message: "此工作区必须添加付款方式。",
+    description: "Required payment policy copy",
+  },
+  "workspaces.paymentOptional": {
+    message: "你可以现在添加付款方式，也可以暂时跳过。",
+    description: "Optional payment policy copy",
+  },
+  "workspaces.paymentSelfHosted": {
+    message: "此自托管安装未启用付款收集。",
+    description: "Billing-off create-flow copy",
+  },
+  "workspaces.paymentAdd": {
+    message: "添加付款方式",
+    description: "Open Payment Element action",
+  },
+  "workspaces.paymentSave": {
+    message: "保存付款方式",
+    description: "Confirm SetupIntent action",
+  },
+  "workspaces.paymentAdded": {
+    message: "已验证此工作区的付款方式。",
+    description: "Successful payment setup state",
+  },
+  "workspaces.paymentError": {
+    message: "无法验证该付款方式，请重试。",
+    description: "Payment Element fallback error",
   },
   "workspaces.fieldName": {
     message: "名称",

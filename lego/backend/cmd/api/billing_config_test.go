@@ -74,9 +74,10 @@ func TestPaymentMethodGateRequiresStripeAndControlPlaneStore(t *testing.T) {
 	}{
 		{name: "invalid value", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "true"}, want: "must be 1"},
 		{name: "missing Stripe", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "1", "BEX_CP_DB_URI": "postgres://db"}, want: "BEX_STRIPE_SECRET_KEY"},
-		{name: "missing database", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "1", "BEX_STRIPE_SECRET_KEY": "rk_test"}, want: "BEX_CP_DB_URI"},
+		{name: "missing database", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "1", "BEX_STRIPE_SECRET_KEY": "rk_test", "BEX_STRIPE_PUBLISHABLE_KEY": "pk_test_x"}, want: "BEX_CP_DB_URI"},
+		{name: "missing publishable key", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "1", "BEX_STRIPE_SECRET_KEY": "rk_test", "BEX_CP_DB_URI": "postgres://db"}, want: "BEX_STRIPE_PUBLISHABLE_KEY"},
 		{name: "all missing Stripe", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "all", "BEX_CP_DB_URI": "postgres://db"}, want: "BEX_STRIPE_SECRET_KEY"},
-		{name: "all missing database", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "all", "BEX_STRIPE_SECRET_KEY": "rk_test"}, want: "BEX_CP_DB_URI"},
+		{name: "all missing database", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "all", "BEX_STRIPE_SECRET_KEY": "rk_test", "BEX_STRIPE_PUBLISHABLE_KEY": "pk_test_x"}, want: "BEX_CP_DB_URI"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			mode, err := paymentMethodGate(envGetter(tc.env))
@@ -93,6 +94,7 @@ func TestPaymentMethodGateRequiresStripeAndControlPlaneStore(t *testing.T) {
 		mode, err := paymentMethodGate(envGetter(map[string]string{
 			"BEX_REQUIRE_PAYMENT_METHOD": value,
 			"BEX_STRIPE_SECRET_KEY":      "rk_test",
+			"BEX_STRIPE_PUBLISHABLE_KEY": "pk_test_x",
 			"BEX_CP_DB_URI":              "postgres://db",
 		}))
 		if err != nil || mode != want {

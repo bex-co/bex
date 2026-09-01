@@ -303,7 +303,13 @@ export const ROUTE_SKELETON_MANIFEST = {
     kind: "render",
     owner: "routes/new.workspace.tsx",
     shape: "workspace-create",
-    regions: ["page-header", "workspace-name", "workspace-plans", "actions"],
+    regions: [
+      "page-header",
+      "workspace-details",
+      "workspace-plans",
+      "payment-method",
+      "actions",
+    ],
   },
   "/project/$projectId": {
     kind: "render",

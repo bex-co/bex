@@ -27,12 +27,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/mail"
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -55,6 +58,11 @@ type Service struct {
 	// mode / the authz sweep) leaves the verbs answering ErrWorkspacesUnavailable
 	// after the Authorize gate — never a nil-deref.
 	Store WorkspaceStore
+	// CreationStore and CreationBilling form the GraphQL-only, pre-tenant
+	// billing workflow. Kept separate from WorkspaceStore so read-only and
+	// legacy test stores do not accidentally gain provisional-financial verbs.
+	CreationStore   WorkspaceCreationStore
+	CreationBilling WorkspaceCreationBilling
 	// Granter/Revoker keep OpenFGA membership in step with the tenant_members
 	// rows: an owner tuple on create, its removal on delete. Both nil when authz
 	// is disabled (the tuples don't exist to write) — the row is still the
@@ -97,6 +105,47 @@ type Service struct {
 	// email/name through the same Identities lookup. Nil => machine callers keep
 	// the earliest-admin-email fallback alone.
 	KeyOwners KeyOwnerReader
+}
+
+type WorkspaceCreationStore interface {
+	CreateWorkspaceCreationAttempt(context.Context, string, string, string, string, bool, time.Time) (store.WorkspaceCreationAttempt, error)
+	GetWorkspaceCreationAttempt(context.Context, string, string) (store.WorkspaceCreationAttempt, error)
+	SetWorkspaceCreationSetup(context.Context, string, string, string, string, bool) (store.WorkspaceCreationAttempt, error)
+	MarkWorkspaceCreationSetupSucceeded(context.Context, string, string, string) (store.WorkspaceCreationAttempt, error)
+	SetWorkspaceCreationSubscription(context.Context, string, string, string) error
+	FinalizeWorkspaceCreation(context.Context, string, string, time.Time) (store.Tenant, error)
+	CancelWorkspaceCreationAttempt(context.Context, string, string) error
+}
+
+type WorkspaceCreationBilling interface {
+	PrepareWorkspaceSetup(context.Context, string, string, string, string, string) (billing.WorkspaceSetup, error)
+	VerifyWorkspaceSetup(context.Context, string, string, string, string) (billing.VerifiedWorkspaceSetup, error)
+	PrepareWorkspaceContract(context.Context, string, string, string, string) (string, error)
+}
+
+type WorkspaceCreationPolicy struct {
+	Mode              string `json:"mode"`
+	PaymentRequired   bool   `json:"paymentRequired"`
+	ProviderAvailable bool   `json:"providerAvailable"`
+}
+
+type WorkspaceCreationAttemptView struct {
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	Plan            string `json:"plan"`
+	BillingEmail    string `json:"billingEmail"`
+	PaymentRequired bool   `json:"paymentRequired"`
+	State           string `json:"state"`
+	ClientSecret    string `json:"clientSecret,omitempty"`
+	PublishableKey  string `json:"publishableKey,omitempty"`
+}
+
+func creationAttemptView(a store.WorkspaceCreationAttempt) WorkspaceCreationAttemptView {
+	return WorkspaceCreationAttemptView{
+		ID: a.ID, Name: a.Name, Plan: a.Plan,
+		BillingEmail: a.BillingEmail, PaymentRequired: a.PaymentRequired,
+		State: a.State,
+	}
 }
 
 // WorkspaceStore is the slice of the source of truth this feature writes
@@ -220,6 +269,274 @@ func view(t store.Tenant, role string) WorkspaceView {
 		created = t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
 	}
 	return WorkspaceView{ID: t.ID, Name: t.Name, Plan: t.Plan, Role: role, CreatedAt: created}
+}
+
+func (s *Service) WorkspaceCreationPolicy(ctx context.Context, plan string) (WorkspaceCreationPolicy, error) {
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return WorkspaceCreationPolicy{}, err
+	}
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return WorkspaceCreationPolicy{}, err
+	}
+	normalized, err := normalizePlan(plan)
+	if err != nil {
+		return WorkspaceCreationPolicy{}, err
+	}
+	return s.workspaceCreationPolicy(normalized), nil
+}
+
+func (s *Service) workspaceCreationPolicy(normalizedPlan string) WorkspaceCreationPolicy {
+	mode := "off"
+	required := false
+	if s.Payment != nil {
+		mode = "paid"
+		required = workspacePaidPlan(normalizedPlan)
+		if s.PaymentAllPlans {
+			mode = "all"
+			required = true
+		}
+	}
+	return WorkspaceCreationPolicy{Mode: mode, PaymentRequired: required, ProviderAvailable: s.CreationBilling != nil}
+}
+
+func normalizeBillingEmail(value string) (string, error) {
+	email := strings.ToLower(strings.TrimSpace(value))
+	if email == "" || len(email) > 254 {
+		return "", fmt.Errorf("%w: billing email is required", core.ErrBadRequest)
+	}
+	parsed, err := mail.ParseAddress(email)
+	if err != nil || parsed.Address != email || !strings.Contains(email, "@") {
+		return "", fmt.Errorf("%w: billing email is invalid", core.ErrBadRequest)
+	}
+	return email, nil
+}
+
+func (s *Service) authorizeWorkspaceCreation(ctx context.Context) (core.Identity, error) {
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return core.Identity{}, err
+	}
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return core.Identity{}, err
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok || id.Subject == "" {
+		return core.Identity{}, core.ErrForbidden
+	}
+	return id, nil
+}
+
+func (s *Service) validateWorkspaceCreation(ctx context.Context, id core.Identity, name, plan, billingEmail string) (string, string, error) {
+	if !nameRE.MatchString(name) {
+		return "", "", fmt.Errorf("%w: name must be a DNS label of 1-30 chars ([a-z0-9-])", core.ErrBadRequest)
+	}
+	normalizedPlan, err := normalizePlan(plan)
+	if err != nil {
+		return "", "", err
+	}
+	email, err := normalizeBillingEmail(billingEmail)
+	if err != nil {
+		return "", "", err
+	}
+	if normalizedPlan == store.PlanHobby && s.Identities != nil {
+		if attrs, ok := s.Identities.Lookup(ctx, id.Subject); ok && attrs.Email != "" {
+			accountEmail, normalizeErr := normalizeBillingEmail(attrs.Email)
+			if normalizeErr != nil || email != accountEmail {
+				return "", "", fmt.Errorf("%w: Hobby billing email must match the account email", core.ErrBadRequest)
+			}
+		}
+	}
+	if err := s.requirePlanEntitlement(ctx, id.Subject, "", normalizedPlan); err != nil {
+		return "", "", err
+	}
+	if err := s.guardPerUserWorkspaceCap(ctx, id.Subject, normalizedPlan); err != nil {
+		return "", "", err
+	}
+	return normalizedPlan, email, nil
+}
+
+func (s *Service) prepareWorkspaceCreationGuards(ctx context.Context, name, plan, billingEmail string) (core.Identity, string, string, error) {
+	id, err := s.authorizeWorkspaceCreation(ctx)
+	if err != nil {
+		return core.Identity{}, "", "", err
+	}
+	normalizedPlan, email, err := s.validateWorkspaceCreation(ctx, id, name, plan, billingEmail)
+	return id, normalizedPlan, email, err
+}
+
+// PrepareWorkspaceCreation reserves an invisible workspace id and, when the
+// policy requires it (or the user elects to add one), creates that workspace's
+// own Stripe Customer + SetupIntent. No current-workspace billing state is read.
+func (s *Service) PrepareWorkspaceCreation(ctx context.Context, name, plan, billingEmail, resumeID string, collectPaymentMethod bool) (WorkspaceCreationAttemptView, error) {
+	id, normalizedPlan, email, err := s.prepareWorkspaceCreationGuards(ctx, name, plan, billingEmail)
+	if err != nil {
+		return WorkspaceCreationAttemptView{}, err
+	}
+	if s.CreationStore == nil {
+		return WorkspaceCreationAttemptView{}, core.ErrWorkspacesUnavailable
+	}
+	policy := s.workspaceCreationPolicy(normalizedPlan)
+	var attempt store.WorkspaceCreationAttempt
+	if resumeID != "" {
+		attempt, err = s.CreationStore.GetWorkspaceCreationAttempt(ctx, resumeID, id.Subject)
+		if err != nil {
+			return WorkspaceCreationAttemptView{}, mapWorkspaceCreationStoreErr(err)
+		}
+		if attempt.Name != name || attempt.Plan != normalizedPlan || attempt.BillingEmail != email || attempt.PaymentRequired != policy.PaymentRequired {
+			return WorkspaceCreationAttemptView{}, core.ErrConflict
+		}
+	} else {
+		attempt, err = s.CreationStore.CreateWorkspaceCreationAttempt(ctx, id.Subject, name, normalizedPlan, email, policy.PaymentRequired, time.Now().Add(24*time.Hour))
+		if err != nil {
+			return WorkspaceCreationAttemptView{}, mapWorkspaceCreationStoreErr(err)
+		}
+	}
+	result := creationAttemptView(attempt)
+	if !policy.PaymentRequired && !collectPaymentMethod {
+		return result, nil
+	}
+	if s.CreationBilling == nil {
+		return WorkspaceCreationAttemptView{}, fmt.Errorf("%w: workspace payment setup is unavailable", core.ErrBillingUnavailable)
+	}
+	setup, err := s.CreationBilling.PrepareWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.BillingEmail, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
+	if err != nil {
+		return WorkspaceCreationAttemptView{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+	}
+	attempt, err = s.CreationStore.SetWorkspaceCreationSetup(ctx, attempt.ID, id.Subject, setup.CustomerID, setup.SetupIntentID, setup.Livemode)
+	if err != nil {
+		return WorkspaceCreationAttemptView{}, mapWorkspaceCreationStoreErr(err)
+	}
+	result = creationAttemptView(attempt)
+	result.ClientSecret = setup.ClientSecret
+	result.PublishableKey = setup.PublishableKey
+	return result, nil
+}
+
+func (s *Service) ResumeWorkspaceCreation(ctx context.Context, attemptID string) (WorkspaceCreationAttemptView, error) {
+	id, err := s.authorizeWorkspaceCreation(ctx)
+	if err != nil {
+		return WorkspaceCreationAttemptView{}, err
+	}
+	if s.CreationStore == nil {
+		return WorkspaceCreationAttemptView{}, core.ErrNotFound
+	}
+	attempt, err := s.CreationStore.GetWorkspaceCreationAttempt(ctx, attemptID, id.Subject)
+	if err != nil {
+		return WorkspaceCreationAttemptView{}, mapWorkspaceCreationStoreErr(err)
+	}
+	result := creationAttemptView(attempt)
+	if attempt.State == store.WorkspaceCreationSetupPending && s.CreationBilling != nil {
+		setup, setupErr := s.CreationBilling.PrepareWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.BillingEmail, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
+		if setupErr != nil {
+			return WorkspaceCreationAttemptView{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, setupErr)
+		}
+		result.ClientSecret = setup.ClientSecret
+		result.PublishableKey = setup.PublishableKey
+	}
+	return result, nil
+}
+
+func (s *Service) FinalizeWorkspaceCreation(ctx context.Context, attemptID string) (WorkspaceView, error) {
+	id, err := s.authorizeWorkspaceCreation(ctx)
+	if err != nil {
+		return WorkspaceView{}, err
+	}
+	if s.CreationStore == nil {
+		return WorkspaceView{}, core.ErrNotFound
+	}
+	attempt, err := s.CreationStore.GetWorkspaceCreationAttempt(ctx, attemptID, id.Subject)
+	if err != nil {
+		return WorkspaceView{}, mapWorkspaceCreationStoreErr(err)
+	}
+	if attempt.State == store.WorkspaceCreationFinalized {
+		tenant, getErr := s.Store.GetTenant(ctx, attempt.WorkspaceID)
+		if getErr != nil {
+			return WorkspaceView{}, getErr
+		}
+		return view(tenant, "admin"), nil
+	}
+	if _, _, err := s.validateWorkspaceCreation(ctx, id, attempt.Name, attempt.Plan, attempt.BillingEmail); err != nil {
+		return WorkspaceView{}, err
+	}
+
+	if attempt.State == store.WorkspaceCreationSetupPending {
+		if s.CreationBilling == nil {
+			return WorkspaceView{}, core.ErrBillingUnavailable
+		}
+		verified, verifyErr := s.CreationBilling.VerifyWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
+		if verifyErr != nil {
+			if billing.IsInputError(verifyErr) {
+				return WorkspaceView{}, core.NewPaymentRequiredError()
+			}
+			return WorkspaceView{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, verifyErr)
+		}
+		attempt, err = s.CreationStore.MarkWorkspaceCreationSetupSucceeded(ctx, attempt.ID, id.Subject, verified.PaymentMethodID)
+		if err != nil {
+			return WorkspaceView{}, mapWorkspaceCreationStoreErr(err)
+		}
+	}
+	if attempt.PaymentRequired && attempt.State != store.WorkspaceCreationSetupSucceeded {
+		return WorkspaceView{}, core.NewPaymentRequiredError()
+	}
+	if attempt.State == store.WorkspaceCreationSetupSucceeded && attempt.ProviderSubscriptionID == "" {
+		if s.CreationBilling == nil {
+			return WorkspaceView{}, core.ErrBillingUnavailable
+		}
+		subscriptionID, contractErr := s.CreationBilling.PrepareWorkspaceContract(ctx, attempt.ID, attempt.WorkspaceID, attempt.ProviderCustomerID, attempt.ProviderPaymentMethodID)
+		if contractErr != nil {
+			return WorkspaceView{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, contractErr)
+		}
+		if err := s.CreationStore.SetWorkspaceCreationSubscription(ctx, attempt.ID, id.Subject, subscriptionID); err != nil {
+			return WorkspaceView{}, mapWorkspaceCreationStoreErr(err)
+		}
+	}
+
+	// Establish the tuple before the tenant becomes visible. If the SQL
+	// transaction fails, revoke the orphan tuple; the production OpenFGA client
+	// supplies both sides. A nil revoker retains the legacy test/store behavior.
+	preGranted := s.Granter != nil && s.Revoker != nil
+	if preGranted {
+		if err := s.Granter.GrantWorkspaceAdmin(ctx, attempt.WorkspaceID, "user:"+id.Subject); err != nil {
+			return WorkspaceView{}, fmt.Errorf("workspace %s: granting admin failed: %w", attempt.WorkspaceID, err)
+		}
+	}
+	tenant, err := s.CreationStore.FinalizeWorkspaceCreation(ctx, attempt.ID, id.Subject, time.Now())
+	if err != nil {
+		if preGranted {
+			_ = s.Revoker.RevokeWorkspaceMember(ctx, attempt.WorkspaceID, "user:"+id.Subject, "admin")
+		}
+		return WorkspaceView{}, mapWorkspaceCreationStoreErr(err)
+	}
+	if s.Granter != nil && !preGranted {
+		if err := s.Granter.GrantWorkspaceAdmin(ctx, tenant.ID, "user:"+id.Subject); err != nil {
+			_ = s.Store.DeleteTenant(ctx, tenant.ID)
+			return WorkspaceView{}, fmt.Errorf("workspace %s: granting admin failed: %w", tenant.ID, err)
+		}
+	}
+	return view(tenant, "admin"), nil
+}
+
+func (s *Service) CancelWorkspaceCreation(ctx context.Context, attemptID string) error {
+	id, err := s.authorizeWorkspaceCreation(ctx)
+	if err != nil {
+		return err
+	}
+	if s.CreationStore == nil {
+		return core.ErrNotFound
+	}
+	return mapWorkspaceCreationStoreErr(s.CreationStore.CancelWorkspaceCreationAttempt(ctx, attemptID, id.Subject))
+}
+
+func mapWorkspaceCreationStoreErr(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, store.ErrNotFound):
+		return core.NewNotFoundError("WORKSPACE_CREATION_NOT_FOUND", "workspace creation attempt not found", nil)
+	case errors.Is(err, store.ErrConflict):
+		return core.NewConflictError("WORKSPACE_CREATION_STALE", "workspace creation attempt is stale or no longer resumable", nil)
+	default:
+		return err
+	}
 }
 
 // List returns the caller's workspaces (the dashboard switcher / owners list).
@@ -538,19 +855,12 @@ func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView,
 	if err := s.requirePlanEntitlement(ctx, id.Subject, "", plan); err != nil {
 		return WorkspaceView{}, err
 	}
-	if workspacePaidPlan(plan) && (s.Payment != nil || s.Billing != nil) {
-		// The new tenant has no billing marker yet. Use the caller's existing
-		// workspace as the account-level payment/dunning checkpoint; onboarding
-		// creates that Hobby workspace before this mutation is reachable in the
-		// production API. If no checkpoint exists, fail closed rather than
-		// persisting an authoritative paid plan without proof of eligibility.
-		billingWorkspace, ok := s.Tenant(ctx)
-		if !ok || billingWorkspace == "" {
-			return WorkspaceView{}, core.NewPaymentRequiredError()
-		}
-		if err := s.RequirePlanBilling(ctx, billingWorkspace, plan); err != nil {
-			return WorkspaceView{}, err
-		}
+	policy := s.workspaceCreationPolicy(plan)
+	if policy.PaymentRequired {
+		// The legacy plan-only mutation cannot prove a payment method for the
+		// workspace it has not created. Never borrow another workspace's marker;
+		// interactive clients must use prepareWorkspaceCreation/finalize.
+		return WorkspaceView{}, core.NewPaymentRequiredError()
 	}
 	// Per-user plan cap (Render allows five free Hobby workspaces, unlimited
 	// paid). Checked before the write; a race past it is bounded and benign

@@ -875,16 +875,24 @@ export function WorkspaceCreatePageSkeleton() {
           <Skeleton className="h-8 w-56" />
           <Skeleton className="h-5 w-96 max-w-full" />
         </Region>
-        <Region name="workspace-name">
-          <FieldRowsSkeleton rows={1} />
+        <Region name="workspace-details" className="space-y-4">
+          <Skeleton className="h-7 w-44" />
+          <FieldRowsSkeleton rows={2} />
         </Region>
         <Region name="workspace-plans" className="space-y-2">
           <Skeleton className="h-4 w-24" />
-          <div className="grid gap-4 md:grid-cols-3">
-            {Array.from({ length: 3 }, (_, index) => (
-              <Skeleton key={index} className="h-48 w-full rounded-xl" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {Array.from({ length: 4 }, (_, index) => (
+              <Skeleton key={index} className="h-56 w-full rounded-xl" />
             ))}
           </div>
+        </Region>
+        <Region name="payment-method" className="space-y-3">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-40" />
+            <Skeleton className="h-4 w-[32rem] max-w-full" />
+          </div>
+          <Skeleton className="h-24 w-full rounded-lg" />
         </Region>
         <Region name="actions" className="flex justify-end gap-2 border-t pt-4">
           <Skeleton className="h-9 w-20" />

@@ -329,6 +329,19 @@ let failDeployOnce = process.env.LOCAL_BEX_FAIL_DEPLOY_ONCE === "1";
 // the `all` payment gate, so the sign-up payment wall (/setup/payment) and its
 // root-level redirect can be reviewed locally (ADR075 D7 rev. 2026-08-29).
 const paymentWall = process.env.LOCAL_BEX_PAYMENT_WALL === "1";
+// Workspace-create billing fixtures (m90). `all` requires a payment method on
+// every plan, `paid` only on Pro/Scale/Enterprise, and `off` keeps the
+// Stripe-less self-host path. The local provider advances directly to
+// setup_succeeded when Add payment method is clicked: no Stripe key or fake
+// card iframe is ever embedded in local development.
+const workspacePaymentMode = ["all", "paid", "off"].includes(
+  process.env.LOCAL_BEX_WORKSPACE_PAYMENT_MODE,
+)
+  ? process.env.LOCAL_BEX_WORKSPACE_PAYMENT_MODE
+  : "off";
+const WORKSPACE_CREATION_ATTEMPTS = new Map();
+let failWorkspaceFinalizeOnce =
+  process.env.LOCAL_BEX_FAIL_WORKSPACE_FINALIZE_ONCE === "1";
 
 // Secret Deploy Hook URLs (w2/m33). These are synthetic dev-only values, kept
 // per service so the Settings control can reveal/copy/rotate offline.
@@ -1968,6 +1981,77 @@ function resolveGraphQL({ operationName, variables = {} }) {
     // offline, including the Hobby-plan-cap inline error.
     case "Workspaces":
       return { workspaces: WORKSPACES };
+    case "WorkspaceCreationPolicy": {
+      const paid = variables.plan !== "hobby";
+      return {
+        workspaceCreationPolicy: {
+          __typename: "WorkspaceCreationPolicy",
+          mode: workspacePaymentMode,
+          paymentRequired:
+            workspacePaymentMode === "all" ||
+            (workspacePaymentMode === "paid" && paid),
+          providerAvailable: workspacePaymentMode !== "off",
+        },
+      };
+    }
+    case "WorkspaceCreationAttempt":
+      return {
+        workspaceCreationAttempt:
+          WORKSPACE_CREATION_ATTEMPTS.get(variables.id) ?? null,
+      };
+    case "PrepareWorkspaceCreation": {
+      const existing = variables.attemptId
+        ? WORKSPACE_CREATION_ATTEMPTS.get(variables.attemptId)
+        : null;
+      if (existing) return { prepareWorkspaceCreation: existing };
+      const paymentRequired =
+        workspacePaymentMode === "all" ||
+        (workspacePaymentMode === "paid" && variables.plan !== "hobby");
+      const id = `wca-local${Date.now().toString(36)}`;
+      const attempt = {
+        __typename: "WorkspaceCreationAttempt",
+        id,
+        workspaceId: `tea-local-pending-${Date.now().toString(36)}`,
+        name: variables.name,
+        plan: variables.plan,
+        billingEmail: variables.billingEmail,
+        paymentRequired,
+        state: variables.collectPaymentMethod ? "setup_succeeded" : "prepared",
+        expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+        clientSecret: "",
+        publishableKey: "",
+      };
+      WORKSPACE_CREATION_ATTEMPTS.set(id, attempt);
+      return { prepareWorkspaceCreation: attempt };
+    }
+    case "FinalizeWorkspaceCreation": {
+      const attempt = WORKSPACE_CREATION_ATTEMPTS.get(variables.attemptId);
+      if (!attempt) throw new Error("workspace creation attempt not found");
+      if (attempt.paymentRequired && attempt.state !== "setup_succeeded") {
+        throw new Error("payment method required");
+      }
+      if (failWorkspaceFinalizeOnce) {
+        failWorkspaceFinalizeOnce = false;
+        throw new Error("local fixture: retry workspace finalization");
+      }
+      const prior = WORKSPACES.find((w) => w.id === attempt.workspaceId);
+      if (prior) return { finalizeWorkspaceCreation: prior };
+      const created = {
+        __typename: "Workspace",
+        id: attempt.workspaceId,
+        name: attempt.name,
+        plan: attempt.plan,
+        role: "admin",
+        createdAt: new Date().toISOString(),
+      };
+      WORKSPACES.push(created);
+      attempt.state = "finalized";
+      return { finalizeWorkspaceCreation: created };
+    }
+    case "CancelWorkspaceCreation": {
+      WORKSPACE_CREATION_ATTEMPTS.delete(variables.attemptId);
+      return { cancelWorkspaceCreation: true };
+    }
     case "CreateWorkspace": {
       const plan = variables.plan || "hobby";
       if (plan === "hobby") {
@@ -2965,7 +3049,7 @@ const server = createServer((req, res) => {
       identity: {
         id: "local-dev-user",
         schema_id: "default",
-        traits: { email: "dev@localhost" },
+        traits: { email: "dev@localhost.test" },
       },
       ui: {
         action: `http://localhost:${PORT}/self-service/settings?flow=local-dev-settings-flow`,
@@ -2992,7 +3076,7 @@ const server = createServer((req, res) => {
             attributes: {
               name: "traits.email",
               type: "email",
-              value: "dev@localhost",
+              value: "dev@localhost.test",
               required: true,
               disabled: false,
               node_type: "input",
@@ -3070,7 +3154,7 @@ const server = createServer((req, res) => {
       active: true,
       identity: {
         id: "local-dev-user",
-        traits: { email: "dev@localhost" },
+        traits: { email: "dev@localhost.test" },
       },
     });
   }

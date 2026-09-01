@@ -25,6 +25,66 @@ mutation CreateWorkspace($name: String!, $plan: String) {
   }
 }
 
+query WorkspaceCreationPolicy($plan: String!) {
+  workspaceCreationPolicy(plan: $plan) {
+    mode
+    paymentRequired
+    providerAvailable
+  }
+}
+
+query WorkspaceCreationAttempt($id: String!) {
+  workspaceCreationAttempt(id: $id) {
+    id
+    name
+    plan
+    billingEmail
+    paymentRequired
+    state
+    clientSecret
+    publishableKey
+  }
+}
+
+mutation PrepareWorkspaceCreation(
+  $name: String!
+  $plan: String!
+  $billingEmail: String!
+  $attemptId: String
+  $collectPaymentMethod: Boolean
+) {
+  prepareWorkspaceCreation(
+    name: $name
+    plan: $plan
+    billingEmail: $billingEmail
+    attemptId: $attemptId
+    collectPaymentMethod: $collectPaymentMethod
+  ) {
+    id
+    name
+    plan
+    billingEmail
+    paymentRequired
+    state
+    clientSecret
+    publishableKey
+  }
+}
+
+mutation FinalizeWorkspaceCreation($attemptId: String!) {
+  finalizeWorkspaceCreation(attemptId: $attemptId) {
+    id
+    name
+    plan
+    role
+    createdAt
+  }
+}
+
+mutation CancelWorkspaceCreation($attemptId: String!) {
+  cancelWorkspaceCreation(attemptId: $attemptId)
+}
+
 mutation RenameWorkspace($id: String!, $name: String!) {
   renameWorkspace(id: $id, name: $name) {
     id

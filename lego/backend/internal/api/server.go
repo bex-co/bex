@@ -389,9 +389,11 @@ type Deps struct {
 	// Workspace lifecycle (w6/m1): the control-plane store seam + the OpenFGA
 	// grant/revoke sides + the projector nudge. All nil when BEX_CP_DB_URI is
 	// unset — the workspace verbs then answer ErrWorkspacesUnavailable.
-	WorkspaceStore   workspaces.WorkspaceStore
-	WorkspaceGranter workspaces.WorkspaceGranter
-	WorkspaceRevoker workspaces.WorkspaceRevoker
+	WorkspaceStore           workspaces.WorkspaceStore
+	WorkspaceCreationStore   workspaces.WorkspaceCreationStore
+	WorkspaceCreationBilling workspaces.WorkspaceCreationBilling
+	WorkspaceGranter         workspaces.WorkspaceGranter
+	WorkspaceRevoker         workspaces.WorkspaceRevoker
 	// EnterpriseEntitlement is the operator-approved allow-list for the custom
 	// Enterprise workspace tier. Nil keeps that tier unavailable by default.
 	EnterpriseEntitlement workspaces.EnterpriseEntitlement
@@ -567,6 +569,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 	workspaceSvc := &workspaces.Service{
 		Base:                  base,
 		Store:                 d.WorkspaceStore,
+		CreationStore:         d.WorkspaceCreationStore,
+		CreationBilling:       d.WorkspaceCreationBilling,
 		Granter:               d.WorkspaceGranter,
 		Revoker:               d.WorkspaceRevoker,
 		EnterpriseEntitlement: d.EnterpriseEntitlement,

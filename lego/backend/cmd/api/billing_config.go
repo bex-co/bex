@@ -88,8 +88,27 @@ func paymentMethodGate(getenv func(string) string) (paymentMethodMode, error) {
 	if getenv("BEX_STRIPE_SECRET_KEY") == "" {
 		return paymentMethodOff, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD=%s requires BEX_STRIPE_SECRET_KEY so a refused workspace can add a payment method", value)
 	}
+	if _, err := stripePublishableKey(getenv, getenv("BEX_STRIPE_SECRET_KEY"), true); err != nil {
+		return paymentMethodOff, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD=%s: %w", value, err)
+	}
 	if getenv("BEX_CP_DB_URI") == "" {
 		return paymentMethodOff, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD=%s requires BEX_CP_DB_URI for the webhook-stamped payment marker", value)
 	}
 	return mode, nil
+}
+
+func stripePublishableKey(getenv func(string) string, secretKey string, required bool) (string, error) {
+	publishable := strings.TrimSpace(getenv("BEX_STRIPE_PUBLISHABLE_KEY"))
+	if publishable == "" {
+		if required {
+			return "", fmt.Errorf("BEX_STRIPE_PUBLISHABLE_KEY is required for Stripe Payment Element")
+		}
+		return "", nil
+	}
+	secretTest := strings.Contains(secretKey, "_test")
+	if (secretTest && !strings.HasPrefix(publishable, "pk_test_")) ||
+		(!secretTest && !strings.HasPrefix(publishable, "pk_live_")) {
+		return "", fmt.Errorf("BEX_STRIPE_PUBLISHABLE_KEY must match BEX_STRIPE_SECRET_KEY test/live mode")
+	}
+	return publishable, nil
 }

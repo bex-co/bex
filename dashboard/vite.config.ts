@@ -17,7 +17,11 @@ import { visualizer } from "rollup-plugin-visualizer";
 // runtime deps must stay in ONE chunk to avoid a split-init cycle.
 function vendorChunk(id: string): string | undefined {
   if (!id.includes("node_modules")) return undefined;
-  if (/[/\\]node_modules[/\\](react|react-dom|scheduler|use-sync-external-store)[/\\]/.test(id)) {
+  if (
+    /[/\\]node_modules[/\\](react|react-dom|scheduler|use-sync-external-store)[/\\]/.test(
+      id,
+    )
+  ) {
     return "vendor-react";
   }
   if (/[/\\]node_modules[/\\]@radix-ui[/\\]/.test(id)) return "vendor-radix";
@@ -347,13 +351,14 @@ function buildSecurityHeaders(
     // blocks that fetch and every page hangs on "Select a workspace".
     "Content-Security-Policy": [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline' ${[...scriptOrigins].join(" ")}`,
+      `script-src 'self' 'unsafe-inline' https://js.stripe.com ${[...scriptOrigins].join(" ")}`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
+      "img-src 'self' data: https://*.stripe.com",
       "font-src 'self'",
       process.env.NODE_ENV === "production"
         ? "connect-src 'self' https: wss:"
         : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
+      "frame-src https://js.stripe.com https://hooks.stripe.com",
       "frame-ancestors 'none'",
     ].join("; "),
   };

@@ -238,6 +238,15 @@ func (s *PGStore) BeginAccountDeletion(ctx context.Context, subject, email strin
 		if err != nil {
 			return err
 		}
+		// A pending workspace-create handle is a financial capability bound to
+		// this subject. Retire it in the same tombstone transaction so a deleted
+		// identity can never return and finalize its old attempt.
+		if _, err := tx.Exec(ctx, `
+			UPDATE workspace_creation_attempts
+			SET state='cleanup_pending', expires_at=now(), cleanup_claimed_until=NULL, updated_at=now()
+			WHERE owner_subject=$1 AND state NOT IN ('finalized','cleanup_pending','expired')`, subject); err != nil {
+			return err
+		}
 		return cleanupAccountEmail(ctx, tx, email, deletion.DeletedMarker)
 	})
 	if err != nil {
