@@ -1,6 +1,6 @@
 # w6 · m117 — The Recovery card reports "No backups yet" for databases with proven backups, because two failed Kubernetes reads degrade silently to "nothing"
 
-**Worker:** worker6 **Goal:** the disaster-recovery surface distinguishes "there are no backups" from "I could not read the backups", and never renders a restore point it has no evidence for **Status:** in progress (t001+t002 done, landed in `94c0a185`; t003 half-done — the dashboard fallback shipped, the API-side refusal of an unsubstantiated restore has not)
+**Worker:** worker6 **Goal:** the disaster-recovery surface distinguishes "there are no backups" from "I could not read the backups", and never renders a restore point it has no evidence for **Status:** in progress — code complete 2026-08-31 (t001–t003, t005, t006 done; t004 done except the live probe re-run; t007 closeout open: needs the Recover gate shipped + deployed, then live verification)
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | ---- | ---------------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Resolve the fork: do the CNPG Backup objects still exist, or can bex-api not read them?    | 30m | —          | — **DONE**
 | t002 | Stop reporting an unreadable cluster as an empty one — propagate both read failures        | 45m | t001       | — **DONE**
-| t003 | Make the Recovery card honest, and stop offering a restore it cannot substantiate          | 45m | t002       | — partially done in `94c0a185` (dashboard "No backup yet" fallback landed); the API-side refusal of an unsubstantiated restore is still open — `Recover` gates only on `Status.BackupsEnabled`, never on `firstRecoverabilityPoint`
-| t004 | Render parity                                                                              | 20m | t003       |
-| t005 | Simplify                                                                                   | 20m | t004       |
-| t006 | Test coverage                                                                              | 30m | t004       |
+| t003 | Make the Recovery card honest, and stop offering a restore it cannot substantiate          | 45m | t002       | — **DONE** (dashboard leg in `94c0a185`; API-side refusal landed 2026-08-31 — `Recover` now requires an established `firstRecoverabilityPoint`, refused before any billing gate or create)
+| t004 | Render parity                                                                              | 20m | t003       | — docs + cross-surface legs **DONE** (ADR018/ADR009 updated; one `RecoveryInfoView` across REST/GraphQL/MCP); probe re-run folded into t007
+| t005 | Simplify                                                                                   | 20m | t004       | — **DONE** (one spelling of the CNPG window read: `recoveryWindowStart`)
+| t006 | Test coverage                                                                              | 30m | t004       | — **DONE** (all four states + refusal-before-gates pinned)
 | t007 | Closeout                                                                                   | 10m | t005, t006 |
 
 ## Definition of done

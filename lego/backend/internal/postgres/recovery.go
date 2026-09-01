@@ -121,28 +121,18 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	if !info.Enabled {
 		return info, nil
 	}
-	// The recovery window comes from the CNPG Cluster status. A read that FAILS is
-	// not an empty window: reporting one told tenants with nightly backups they had
-	// none (w6/m117). Distinguish a genuinely-absent Cluster (NotFound — the window
-	// isn't established yet, no error) from a read we could not perform at all
-	// (403/CRD-unavailable/transient), which is an honest error, not a false empty.
-	cluster := &unstructured.Unstructured{}
-	cluster.SetGroupVersionKind(cnpgClusterGVK)
-	switch err := s.Client.Get(ctx, client.ObjectKey{Namespace: d.Namespace, Name: name}, cluster); {
-	case err == nil:
-		if p, ok, _ := unstructured.NestedString(cluster.Object, "status", "firstRecoverabilityPoint"); ok && p != "" {
-			info.EarliestRecoveryTime = p
-			// Latest recoverable point ≈ now, but ONLY once the window is actually
-			// open. Before the first recoverability point there is nothing to restore
-			// to, so we report no latest rather than the wall clock — the one field
-			// that used to touch no Kubernetes read and so survived every failure to
-			// contradict the empty backup list beside it.
-			info.LatestRecoveryTime = s.Now().UTC().Format(time.RFC3339)
-		}
-	case apierrors.IsNotFound(err):
-		// No CNPG Cluster yet (a brand-new database): no window, but not an error.
-	default:
-		return RecoveryInfoView{}, fmt.Errorf("read recovery window for %q: %w", name, err)
+	windowStart, err := s.recoveryWindowStart(ctx, d.Namespace, name)
+	if err != nil {
+		return RecoveryInfoView{}, err
+	}
+	if windowStart != "" {
+		info.EarliestRecoveryTime = windowStart
+		// Latest recoverable point ≈ now, but ONLY once the window is actually
+		// open. Before the first recoverability point there is nothing to restore
+		// to, so we report no latest rather than the wall clock — the one field
+		// that used to touch no Kubernetes read and so survived every failure to
+		// contradict the empty backup list beside it.
+		info.LatestRecoveryTime = s.Now().UTC().Format(time.RFC3339)
 	}
 	backups, err := s.listBackups(ctx, d.Namespace, name)
 	if err != nil {
@@ -150,6 +140,29 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	}
 	info.Backups = backups
 	return info, nil
+}
+
+// recoveryWindowStart reads the PITR window's opening point — CNPG's
+// firstRecoverabilityPoint — off the Cluster status. It is the ONE spelling of
+// this read, shared by reporting (RecoveryInfo) and provisioning (Recover), so
+// the two can never disagree about what a failed read means (w6/m117). "" means
+// the window is not yet established: the Cluster is absent (NotFound — a
+// brand-new database) or does not report a point yet (a missing or empty field,
+// deliberately not distinguished — both mean "nothing restorable yet"). A read
+// that FAILS is an error — RBAC, an unavailable CRD, a transient fault — and is
+// never presented as either an empty or an established window.
+func (s *Service) recoveryWindowStart(ctx context.Context, namespace, name string) (string, error) {
+	cluster := &unstructured.Unstructured{}
+	cluster.SetGroupVersionKind(cnpgClusterGVK)
+	switch err := s.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cluster); {
+	case err == nil:
+		point, _, _ := unstructured.NestedString(cluster.Object, "status", "firstRecoverabilityPoint")
+		return point, nil
+	case apierrors.IsNotFound(err):
+		return "", nil
+	default:
+		return "", fmt.Errorf("read recovery window for %q: %w", name, err)
+	}
 }
 
 // listBackups lists the CNPG Backup objects for a database, mapping each to a
@@ -217,6 +230,20 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	}
 	if !src.Status.BackupsEnabled {
 		return PostgresView{}, fmt.Errorf("%w: %q has no backups to recover from", core.ErrBadRequest, name)
+	}
+	// BackupsEnabled proves backups are CONFIGURED, not that anything restorable
+	// exists yet. Require the established window too (w6/m117 t003): without a
+	// firstRecoverabilityPoint there is no point in time to restore to, and
+	// proceeding provisioned a new billable database that could never bootstrap.
+	// Refuse HERE — before the plan/billing gates and the Create — so nothing
+	// billable is created against an unsubstantiated window; and a window we
+	// could not read surfaces as the read's error, never as absent or present.
+	windowStart, err := s.recoveryWindowStart(ctx, src.Namespace, src.Name)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	if windowStart == "" {
+		return PostgresView{}, fmt.Errorf("%w: %q has no restore point yet; recovery becomes available once its first backup completes", core.ErrBadRequest, name)
 	}
 	plan := req.Plan
 	if plan == "" {
