@@ -195,7 +195,9 @@ export type Billing = {
 
 export type BillingAmount = {
   __typename: 'BillingAmount';
+  amountDueUsd: Maybe<Scalars['String']['output']>;
   amountUsd: Maybe<Scalars['String']['output']>;
+  creditsAppliedUsd: Maybe<Scalars['String']['output']>;
   currency: Maybe<Scalars['String']['output']>;
   periodEnd: Maybe<Scalars['String']['output']>;
   periodStart: Maybe<Scalars['String']['output']>;
@@ -223,7 +225,9 @@ export type BillingHostedSession = {
 
 export type BillingInvoice = {
   __typename: 'BillingInvoice';
+  amountDueUsd: Maybe<Scalars['String']['output']>;
   amountUsd: Maybe<Scalars['String']['output']>;
+  creditsAppliedUsd: Maybe<Scalars['String']['output']>;
   currency: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   periodEnd: Maybe<Scalars['String']['output']>;
@@ -329,6 +333,7 @@ export type BlueprintSync = {
   __typename: 'BlueprintSync';
   commitId: Maybe<Scalars['String']['output']>;
   completedAt: Maybe<Scalars['String']['output']>;
+  errorMessage: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   startedAt: Maybe<Scalars['String']['output']>;
   state: Maybe<Scalars['String']['output']>;
@@ -423,6 +428,7 @@ export type DnsRecord = {
 export type Database = {
   __typename: 'Database';
   backupsEnabled: Maybe<Scalars['Boolean']['output']>;
+  connectionPool: Maybe<Scalars['String']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   dashboardUrl: Maybe<Scalars['String']['output']>;
   databaseName: Maybe<Scalars['String']['output']>;
@@ -485,12 +491,6 @@ export type DatabaseLogEntry = {
   type: Maybe<Scalars['String']['output']>;
 };
 
-export type DatabaseParameterSpec = {
-  __typename: 'DatabaseParameterSpec';
-  name: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['String']['output']>;
-};
-
 export type DatabaseParameterOverride = {
   __typename: 'DatabaseParameterOverride';
   description: Maybe<Scalars['String']['output']>;
@@ -498,6 +498,12 @@ export type DatabaseParameterOverride = {
   setting: Maybe<Scalars['String']['output']>;
   source: Maybe<Scalars['String']['output']>;
   unit: Maybe<Scalars['String']['output']>;
+};
+
+export type DatabaseParameterSpec = {
+  __typename: 'DatabaseParameterSpec';
+  name: Maybe<Scalars['String']['output']>;
+  value: Maybe<Scalars['String']['output']>;
 };
 
 export type DatabaseProcess = {
@@ -1002,6 +1008,7 @@ export type Mutation = {
   cancelCronJobRun: Maybe<CronRun>;
   cancelDeploy: Maybe<Deploy>;
   cancelJob: Maybe<Job>;
+  cancelWorkspaceCreation: Maybe<Scalars['Boolean']['output']>;
   changeWorkspaceMemberRole: Maybe<WorkspaceMember>;
   changeWorkspacePlan: Maybe<Workspace>;
   claimGit: Maybe<GitClaim>;
@@ -1050,6 +1057,7 @@ export type Mutation = {
   disconnectGit: Maybe<Scalars['Boolean']['output']>;
   executeDatabaseQuery: Maybe<DatabaseQueryResult>;
   failoverDatabase: Maybe<Scalars['Boolean']['output']>;
+  finalizeWorkspaceCreation: Maybe<Workspace>;
   inviteWorkspaceMember: Maybe<WorkspaceInvite>;
   linkEnvGroup: Maybe<Scalars['Boolean']['output']>;
   markPushNotificationRead: Scalars['Boolean']['output'];
@@ -1057,6 +1065,7 @@ export type Mutation = {
   patchEnvGroupEnvironment: Maybe<EnvGroupEnvironmentPatchResult>;
   patchServiceEnvironment: EnvironmentPatchResult;
   pinAgentSession: Maybe<AgentSession>;
+  prepareWorkspaceCreation: Maybe<WorkspaceCreationAttempt>;
   recoverDatabase: Maybe<Database>;
   regenerateDeployHook: Maybe<DeployHook>;
   registerNotificationDeviceSubscription: Maybe<NotificationDeviceSubscription>;
@@ -1107,6 +1116,7 @@ export type Mutation = {
   setImage: Maybe<Service>;
   setKeyValueIpAllowList: Maybe<KeyValue>;
   setKeyValueMaxmemoryPolicy: Maybe<KeyValue>;
+  setKeyValuePersistenceMode: Maybe<KeyValue>;
   setMaintenanceMode: Maybe<Service>;
   setMaxShutdownDelay: Maybe<Service>;
   setNotificationsToSend: Maybe<Service>;
@@ -1204,6 +1214,11 @@ export type MutationCancelDeployArgs = {
 export type MutationCancelJobArgs = {
   jobId: Scalars['String']['input'];
   serviceId: Scalars['String']['input'];
+};
+
+
+export type MutationCancelWorkspaceCreationArgs = {
+  attemptId: Scalars['String']['input'];
 };
 
 
@@ -1564,6 +1579,11 @@ export type MutationFailoverDatabaseArgs = {
 };
 
 
+export type MutationFinalizeWorkspaceCreationArgs = {
+  attemptId: Scalars['String']['input'];
+};
+
+
 export type MutationInviteWorkspaceMemberArgs = {
   email: Scalars['String']['input'];
   role: Scalars['String']['input'];
@@ -1608,6 +1628,15 @@ export type MutationPatchServiceEnvironmentArgs = {
 
 export type MutationPinAgentSessionArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type MutationPrepareWorkspaceCreationArgs = {
+  attemptId?: InputMaybe<Scalars['String']['input']>;
+  billingEmail: Scalars['String']['input'];
+  collectPaymentMethod?: InputMaybe<Scalars['Boolean']['input']>;
+  name: Scalars['String']['input'];
+  plan: Scalars['String']['input'];
 };
 
 
@@ -1921,6 +1950,13 @@ export type MutationSetKeyValueMaxmemoryPolicyArgs = {
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   maxmemoryPolicy: Scalars['String']['input'];
+};
+
+
+export type MutationSetKeyValuePersistenceModeArgs = {
+  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
+  id: Scalars['String']['input'];
+  persistenceMode: Scalars['String']['input'];
 };
 
 
@@ -2245,6 +2281,13 @@ export type NotificationWebPushSubscription = {
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
+export type OutboundIPs = {
+  __typename: 'OutboundIPs';
+  dedicatedIpId: Maybe<Scalars['String']['output']>;
+  ips: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  type: Maybe<Scalars['String']['output']>;
+};
+
 export type ParameterInput = {
   name: Scalars['String']['input'];
   value: Scalars['String']['input'];
@@ -2466,6 +2509,8 @@ export type Query = {
   webhookEndpoints: Maybe<Array<Maybe<WebhookEndpoint>>>;
   webhookEventTypes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   workspaceBillingReadiness: Maybe<WorkspaceBillingReadiness>;
+  workspaceCreationAttempt: Maybe<WorkspaceCreationAttempt>;
+  workspaceCreationPolicy: Maybe<WorkspaceCreationPolicy>;
   workspaceEnvironments: Maybe<Array<Maybe<Environment>>>;
   workspaceInvites: Maybe<Array<Maybe<WorkspaceInvite>>>;
   workspaceLimits: Maybe<ResourceLimits>;
@@ -2614,6 +2659,7 @@ export type QueryDatabaseLogsArgs = {
 export type QueryDatabaseParameterOverridesArgs = {
   id: Scalars['String']['input'];
 };
+
 
 export type QueryDatabaseParameterSpecArgs = {
   id: Scalars['String']['input'];
@@ -2995,6 +3041,16 @@ export type QueryWorkspaceBillingReadinessArgs = {
 };
 
 
+export type QueryWorkspaceCreationAttemptArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryWorkspaceCreationPolicyArgs = {
+  plan: Scalars['String']['input'];
+};
+
+
 export type QueryWorkspaceEnvironmentsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -3144,6 +3200,7 @@ export type Service = {
   id: Maybe<Scalars['String']['output']>;
   idleTTLSeconds: Maybe<Scalars['Int']['output']>;
   imagePath: Maybe<Scalars['String']['output']>;
+  immutableName: Maybe<Scalars['String']['output']>;
   internalAddress: Maybe<Scalars['String']['output']>;
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
@@ -3155,6 +3212,7 @@ export type Service = {
   nextRunAt: Maybe<Scalars['String']['output']>;
   notificationsToSend: Maybe<Scalars['String']['output']>;
   notifyOnFail: Maybe<Scalars['String']['output']>;
+  outboundIps: Maybe<OutboundIPs>;
   ownerId: Maybe<Scalars['String']['output']>;
   phase: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
@@ -3162,6 +3220,7 @@ export type Service = {
   projectId: Maybe<Scalars['String']['output']>;
   publicRoutingNotice: Maybe<Scalars['String']['output']>;
   publishPath: Maybe<Scalars['String']['output']>;
+  pushDeliveryMethod: Maybe<Scalars['String']['output']>;
   region: Maybe<Scalars['String']['output']>;
   registryCredentialId: Maybe<Scalars['String']['output']>;
   renderSubdomainPolicy: Maybe<Scalars['String']['output']>;
@@ -3404,6 +3463,25 @@ export type WorkspaceBillingReadiness = {
   subscriptionReady: Maybe<Scalars['Boolean']['output']>;
   tax: Maybe<BillingTaxReadiness>;
   workspaceId: Maybe<Scalars['String']['output']>;
+};
+
+export type WorkspaceCreationAttempt = {
+  __typename: 'WorkspaceCreationAttempt';
+  billingEmail: Maybe<Scalars['String']['output']>;
+  clientSecret: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
+  paymentRequired: Maybe<Scalars['Boolean']['output']>;
+  plan: Maybe<Scalars['String']['output']>;
+  publishableKey: Maybe<Scalars['String']['output']>;
+  state: Maybe<Scalars['String']['output']>;
+};
+
+export type WorkspaceCreationPolicy = {
+  __typename: 'WorkspaceCreationPolicy';
+  mode: Maybe<Scalars['String']['output']>;
+  paymentRequired: Maybe<Scalars['Boolean']['output']>;
+  providerAvailable: Maybe<Scalars['Boolean']['output']>;
 };
 
 export type WorkspaceInvite = {

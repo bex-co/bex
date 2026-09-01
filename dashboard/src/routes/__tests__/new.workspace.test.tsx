@@ -10,11 +10,28 @@ import {
 } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NewWorkspacePage } from "../new.workspace";
-import type { BillingReadiness } from "@/features/usage/hooks/use-billing-onboarding";
 
-const create = vi.fn();
-vi.mock("@/features/workspaces/hooks/use-create-workspace", () => ({
-  useCreateWorkspace: () => ({ create, busy: false, error: null }),
+const prepare = vi.fn();
+const finalize = vi.fn();
+const cancel = vi.fn();
+const creationState = {
+  policy: {
+    mode: "off",
+    paymentRequired: false,
+    providerAvailable: false,
+  },
+  attempt: null,
+};
+vi.mock("@/features/workspaces/hooks/use-workspace-creation-billing", () => ({
+  useWorkspaceCreationBilling: () => ({
+    ...creationState,
+    policyLoading: false,
+    prepare,
+    finalize,
+    cancel,
+    busy: false,
+    error: null,
+  }),
 }));
 
 const setCurrentWorkspaceId = vi.fn();
@@ -23,31 +40,6 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
     setCurrentWorkspaceId,
     currentWorkspaceId: "tea-current",
   }),
-}));
-
-const billingState: {
-  readiness: BillingReadiness | null;
-  loading: boolean;
-  error: Error | undefined;
-} = {
-  readiness: null,
-  loading: false,
-  error: undefined,
-};
-
-vi.mock("@/features/usage/hooks/use-billing-onboarding", () => ({
-  useBillingOnboarding: () => ({
-    ...billingState,
-    checkoutBusy: false,
-    portalBusy: false,
-    openCheckout: vi.fn(),
-    openPortal: vi.fn(),
-    refetch: vi.fn(),
-  }),
-}));
-
-vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
-  useCapabilities: () => ({ canManageBilling: true }),
 }));
 
 vi.mock("@/common/components/dashboard-layout", () => ({
@@ -71,48 +63,37 @@ function renderPage() {
   const router = createRouter({
     routeTree: rootRoute.addChildren([newRoute, homeRoute]),
     history: createMemoryHistory({ initialEntries: ["/new/workspace"] }),
-    context: { client: {} as never, session: null },
+    context: {
+      client: {} as never,
+      session: {
+        identity: { traits: { email: "user@example.com" } },
+      } as never,
+    },
   });
   return { ...render(<RouterProvider router={router} />), router };
 }
 
-function gatedReadiness(ready: boolean): BillingReadiness {
-  return {
-    workspaceId: "tea-current",
-    mode: "test",
-    customerReady: true,
-    subscriptionReady: true,
-    paymentMethodReady: ready,
-    paymentMethodBrand: "",
-    paymentMethodLast4: "",
-    paymentMethodRequired: true,
-    paymentMethodOnboardingRequired: false,
-    lifecycle: {
-      status: "healthy",
-      reason: "",
-      graceDeadline: "",
-      enforcementOwned: false,
-      recoveryPending: false,
-      allowedActions: ["update_payment_method"],
-      updatedAt: "",
-    },
-    tax: {
-      configured: false,
-      enabled: false,
-      reason: "",
-      productTaxCode: "",
-      taxBehavior: "",
-      registrationCount: 0,
-    },
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  billingState.readiness = null;
-  billingState.loading = false;
-  billingState.error = undefined;
-  create.mockResolvedValue({
+  creationState.policy = {
+    mode: "off",
+    paymentRequired: false,
+    providerAvailable: false,
+  };
+  creationState.attempt = null;
+  prepare.mockResolvedValue({
+    id: "wca-attempt",
+    workspaceId: "tea-returned-id",
+    name: "acme",
+    plan: "hobby",
+    billingEmail: "user@example.com",
+    paymentRequired: false,
+    state: "prepared",
+    expiresAt: "2026-09-01T00:00:00Z",
+    clientSecret: "",
+    publishableKey: "",
+  });
+  finalize.mockResolvedValue({
     id: "tea-returned-id",
     name: "acme",
     plan: "hobby",
@@ -131,6 +112,10 @@ describe("NewWorkspacePage", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Workspace slug")).toBeInTheDocument();
+    expect(screen.getByLabelText("Billing Email")).toHaveValue(
+      "user@example.com",
+    );
+    expect(screen.getByLabelText("Billing Email")).toHaveAttribute("readonly");
     expect(
       screen.getByText(/Used in URLs and resource names/),
     ).toBeInTheDocument();
@@ -141,8 +126,10 @@ describe("NewWorkspacePage", () => {
     renderPage();
 
     await user.type(await screen.findByLabelText("Workspace slug"), "Acme HQ");
-    expect(screen.getByRole("button", { name: "Create Workspace" })).toBeDisabled();
-    expect(create).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Create Workspace" }),
+    ).toBeDisabled();
+    expect(prepare).not.toHaveBeenCalled();
   });
 
   it("selects the returned workspace before landing on its home context", async () => {
@@ -158,52 +145,71 @@ describe("NewWorkspacePage", () => {
   });
 
   it("does not switch or navigate when create fails", async () => {
-    create.mockResolvedValueOnce(null);
+    finalize.mockResolvedValueOnce(null);
     const user = userEvent.setup();
     const { router } = renderPage();
 
     await user.type(await screen.findByLabelText("Workspace slug"), "acme");
     await user.click(screen.getByRole("button", { name: "Create Workspace" }));
 
-    await waitFor(() => expect(create).toHaveBeenCalled());
+    await waitFor(() => expect(finalize).toHaveBeenCalled());
     expect(router.state.location.pathname).toBe("/new/workspace");
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Workspace slug")).toHaveValue("acme");
   });
 
-  it("does not show a payment panel on Hobby and allows create without a card", async () => {
-    billingState.readiness = gatedReadiness(false);
+  it("always shows Payment Method and allows optional Hobby creation", async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.type(await screen.findByLabelText("Workspace slug"), "acme");
-    expect(screen.queryByRole("heading", { name: "Payment Method" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Workspace" })).toBeEnabled();
+    expect(
+      screen.getByRole("heading", { name: "Payment Method" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create Workspace" }),
+    ).toBeEnabled();
   });
 
   it("disables Create on Pro when the paid-intent gate is on and billing is not ready", async () => {
-    billingState.readiness = gatedReadiness(false);
-    const user = userEvent.setup();
-    renderPage();
-
-    await user.type(await screen.findByLabelText("Workspace slug"), "acme");
-    await user.click(screen.getByRole("radio", { name: /Pro/ }));
-    expect(screen.getByRole("heading", { name: "Payment Method" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Workspace" })).toBeDisabled();
-    expect(create).not.toHaveBeenCalled();
-  });
-
-  it("allows Pro create when the paid-intent gate is off", async () => {
-    billingState.readiness = {
-      ...gatedReadiness(false),
-      paymentMethodRequired: false,
+    creationState.policy = {
+      mode: "all",
+      paymentRequired: true,
+      providerAvailable: true,
     };
     const user = userEvent.setup();
     renderPage();
 
     await user.type(await screen.findByLabelText("Workspace slug"), "acme");
     await user.click(screen.getByRole("radio", { name: /Pro/ }));
-    expect(screen.getByRole("heading", { name: "Payment Method" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Workspace" })).toBeEnabled();
+    expect(
+      screen.getByRole("heading", { name: "Payment Method" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create Workspace" }),
+    ).toBeDisabled();
+    expect(finalize).not.toHaveBeenCalled();
+  });
+
+  it("allows Pro create when the paid-intent gate is off", async () => {
+    creationState.policy = {
+      mode: "off",
+      paymentRequired: false,
+      providerAvailable: false,
+    };
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(await screen.findByLabelText("Workspace slug"), "acme");
+    await user.click(screen.getByRole("radio", { name: /Pro/ }));
+    expect(
+      screen.getByRole("heading", { name: "Payment Method" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create Workspace" }),
+    ).toBeEnabled();
+    expect(screen.getByLabelText("Billing Email")).not.toHaveAttribute(
+      "readonly",
+    );
   });
 });

@@ -102,12 +102,16 @@ var (
 	// (^dsk-[0-9a-z]{20}$ in its API), so a Render client's id parsing works
 	// unchanged against bex. w1/m84, docs/ADR082-persistent-disks.md.
 	Disk = Kind{prefix: "dsk", desc: "persistent service disk"}
+	// WorkspaceCreationAttempt is an opaque, short-lived handle for the
+	// pre-tenant billing flow. It is never a workspace id and never appears in
+	// tenant/resource APIs.
+	WorkspaceCreationAttempt = Kind{prefix: "wca", desc: "workspace creation attempt"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, Job, SSHKey, SSHSession, BlueprintSync, AgentSession, Disk}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, Job, SSHKey, SSHSession, BlueprintSync, AgentSession, Disk, WorkspaceCreationAttempt}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

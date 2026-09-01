@@ -106,6 +106,7 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/new/workspace",
       replace: true,
+      search: { attempt: undefined },
     });
   });
 });

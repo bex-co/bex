@@ -799,6 +799,7 @@ func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore
 	// App CRs. The OpenFGA checker (when wired) is both the grant and revoke
 	// side, keeping workspace:tea-<id> tuples in step with tenant_members.
 	deps.WorkspaceStore = st
+	deps.WorkspaceCreationStore = st
 	deps.WorkspaceKick = rec.Kick
 	if g, ok := authzChecker.(workspaces.WorkspaceGranter); ok {
 		deps.WorkspaceGranter = g
@@ -896,9 +897,14 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 		log.Fatalf("bex-api: %v", err)
 	}
 	if stripeEnabled {
+		publishableKey, publishableErr := stripePublishableKey(os.Getenv, stripeSecretKey, requirePaymentMethod != paymentMethodOff)
+		if publishableErr != nil {
+			log.Fatalf("bex-api: %v", publishableErr)
+		}
 		billingMetrics.SetEnabled(true)
 		stripeClient := billing.NewStripe(billing.StripeConfig{
 			SecretKey:             stripeSecretKey,
+			PublishableKey:        publishableKey,
 			BaseURL:               os.Getenv("BEX_STRIPE_API_URL"),
 			BillingEpoch:          billingEpoch,
 			CompCouponID:          os.Getenv("BEX_STRIPE_COMP_COUPON_ID"),
@@ -912,6 +918,10 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 		usageSvc.Billing = stripeClient
 		deps.Billing = stripeClient
 		deps.BillingState = st
+		if publishableKey != "" {
+			deps.WorkspaceCreationBilling = stripeClient
+			go (&billing.WorkspaceCreationCleaner{Store: st, Provider: stripeClient, Metrics: billingMetrics}).Run(ctx)
+		}
 		if requirePaymentMethod != paymentMethodOff {
 			base.Payment = &billing.PaymentGate{Store: st}
 			// ADR075 D7: "all" widens RequirePlanBilling to the free tier too.

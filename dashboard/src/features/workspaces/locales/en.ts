@@ -35,7 +35,8 @@ const enWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.planHobbyBilling": {
     message: "$0/mo",
-    description: "Workspace plan card billing label (pricing.yaml hobby usdPerMonth)",
+    description:
+      "Workspace plan card billing label (pricing.yaml hobby usdPerMonth)",
   },
   "workspaces.planHobbyDescription": {
     message: "For individuals getting started.",
@@ -59,7 +60,8 @@ const enWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.planProBilling": {
     message: "$17.50/mo",
-    description: "Workspace plan card billing label (pricing.yaml pro usdPerMonth)",
+    description:
+      "Workspace plan card billing label (pricing.yaml pro usdPerMonth)",
   },
   "workspaces.planProDescription": {
     message: "For small teams shipping together.",
@@ -79,7 +81,8 @@ const enWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.planScaleBilling": {
     message: "$349.30/mo",
-    description: "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
+    description:
+      "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
   },
   "workspaces.planScaleDescription": {
     message: "For growing teams that need extra roles.",
@@ -135,8 +138,28 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     description: "/new/workspace page heading",
   },
   "workspaces.createDescription": {
-    message: "Give it a slug and pick a plan.",
+    message: "Choose its details, billing contact, plan, and payment method.",
     description: "/new/workspace page subtitle",
+  },
+  "workspaces.detailsTitle": {
+    message: "Workspace Details",
+    description: "/new/workspace details section heading",
+  },
+  "workspaces.billingEmail": {
+    message: "Billing Email",
+    description: "/new/workspace billing email label",
+  },
+  "workspaces.billingEmailHelp": {
+    message: "Receipts and billing notices for this workspace go here.",
+    description: "Editable paid-plan billing email help",
+  },
+  "workspaces.billingEmailHobbyHelp": {
+    message: "For Hobby workspaces, billing email is your account email.",
+    description: "Read-only Hobby billing email help",
+  },
+  "workspaces.billingEmailError": {
+    message: "Enter a valid billing email.",
+    description: "Billing email validation error",
   },
   "workspaces.fieldSlug": {
     message: "Workspace slug",
@@ -153,8 +176,36 @@ const enWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.paymentDescription": {
     message:
-      "A card on your current workspace is required for paid compute and usage on this plan. The $17.50 / $349.30 lines on the cards are catalog workspace fees (30% off Render) and are not charged as a Stripe line item when you create.",
-    description: "/new/workspace payment panel copy (current-workspace chicken-egg)",
+      "Billing is unique to each workspace. This payment method belongs only to the new workspace.",
+    description: "/new/workspace workspace-specific payment copy",
+  },
+  "workspaces.paymentRequired": {
+    message: "A payment method is required for this workspace.",
+    description: "Required payment policy copy",
+  },
+  "workspaces.paymentOptional": {
+    message: "Add a payment method now, or continue without one.",
+    description: "Optional payment policy copy",
+  },
+  "workspaces.paymentSelfHosted": {
+    message: "Payment collection is disabled on this self-hosted installation.",
+    description: "Billing-off create-flow copy",
+  },
+  "workspaces.paymentAdd": {
+    message: "Add payment method",
+    description: "Open Payment Element action",
+  },
+  "workspaces.paymentSave": {
+    message: "Save payment method",
+    description: "Confirm SetupIntent action",
+  },
+  "workspaces.paymentAdded": {
+    message: "Payment method verified for this workspace.",
+    description: "Successful payment setup state",
+  },
+  "workspaces.paymentError": {
+    message: "We couldn't verify that payment method. Try again.",
+    description: "Payment Element fallback error",
   },
   "workspaces.fieldName": {
     message: "Name",

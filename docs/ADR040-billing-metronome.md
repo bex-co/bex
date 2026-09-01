@@ -47,6 +47,8 @@ Payment onboarding augments that existing contract; it never creates another Sub
 
 The signed `checkout.session.completed` webhook is the source of truth, not the browser redirect. Its handler retrieves the Checkout Session, SetupIntent, PaymentMethod, Customer, and unique Subscription from Stripe; verifies test/live mode and both workspace/Subscription relationships; then idempotently sets the Customer and Subscription default payment method. Replayed delivery converges on the same defaults. A Customer Portal session is likewise created only after `can_manage_billing` authorization (billing role or admin) and unique Customer/Subscription resolution, using an operator-owned configuration that enables payment-method and invoice management but not Subscription cancellation or plan changes.
 
+**Workspace creation uses a pre-tenant SetupIntent (w4/m90).** An authenticated subject first reserves an opaque creation attempt and `tea-*` outside the tenant table. When policy requires or the user requests collection, the server creates exactly one Customer with the submitted billing email and attempt/workspace metadata, then one dynamically configured SetupIntent. Stripe.js receives only the publishable key and SetupIntent client secret. Finalization re-reads a succeeded Intent, verifies its Customer-bound PaymentMethod and mode, prepares the one metered contract, and atomically inserts the tenant, owner membership, billing mapping, lifecycle marker, and billing email. Until that transaction commits the workspace cannot appear in ordinary workspace reads. Attempts are subject-bound, expiring, idempotent, and reclaimed by a leased cleanup worker that cancels any provisional Subscription and deletes the provisional Customer. This flow does not borrow an existing workspace's Customer or payment marker and does not rely on a browser redirect as proof.
+
 ### 3. Seal, emit, then stamp
 
 The m47 outbox remains:
@@ -132,6 +134,7 @@ The dashboard consumes the GraphQL contract with its existing Kratos HttpOnly se
 | Variable | Meaning |
 | --- | --- |
 | `BEX_STRIPE_SECRET_KEY` | Restricted runtime API key. Unset disables all Stripe behavior and network access. Requires `BEX_CP_DB_URI`. |
+| `BEX_STRIPE_PUBLISHABLE_KEY` | Browser-safe `pk_test_*` or `pk_live_*` key for the workspace-create Payment Element. Required whenever workspace creation requires Stripe; mode must match the secret key. |
 | `BEX_STRIPE_API_URL` | Test/stub endpoint override; production leaves it unset. |
 | `BEX_STRIPE_SEAL_HOURS` | Finality horizon in hours; default 48, minimum 1. Parsed only when Stripe is enabled. |
 | `BEX_STRIPE_EPOCH` | RFC3339 billing-start floor/backdate; unset while enabled defaults to `now − 34d`. Malformed while enabled fails startup. |

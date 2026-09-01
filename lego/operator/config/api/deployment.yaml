@@ -199,6 +199,12 @@ spec:
                   name: bex-stripe
                   key: BEX_STRIPE_SECRET_KEY
                   optional: true
+            - name: BEX_STRIPE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-stripe
+                  key: BEX_STRIPE_PUBLISHABLE_KEY
+                  optional: true
             # ADR046 paid-intent gate. Kept in the same optional out-of-band
             # bundle so enabling it cannot race the Stripe key it requires.
             - name: BEX_REQUIRE_PAYMENT_METHOD

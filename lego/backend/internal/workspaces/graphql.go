@@ -43,6 +43,29 @@ var workspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var workspaceCreationPolicyGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "WorkspaceCreationPolicy",
+	Fields: graphql.Fields{
+		"mode":              gqlutil.StrField(func(v WorkspaceCreationPolicy) any { return v.Mode }),
+		"paymentRequired":   gqlutil.BoolField(func(v WorkspaceCreationPolicy) any { return v.PaymentRequired }),
+		"providerAvailable": gqlutil.BoolField(func(v WorkspaceCreationPolicy) any { return v.ProviderAvailable }),
+	},
+})
+
+var workspaceCreationAttemptGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "WorkspaceCreationAttempt",
+	Fields: graphql.Fields{
+		"id":              gqlutil.StrField(func(v WorkspaceCreationAttemptView) any { return v.ID }),
+		"name":            gqlutil.StrField(func(v WorkspaceCreationAttemptView) any { return v.Name }),
+		"plan":            gqlutil.StrField(func(v WorkspaceCreationAttemptView) any { return v.Plan }),
+		"billingEmail":    gqlutil.StrField(func(v WorkspaceCreationAttemptView) any { return v.BillingEmail }),
+		"paymentRequired": gqlutil.BoolField(func(v WorkspaceCreationAttemptView) any { return v.PaymentRequired }),
+		"state":           gqlutil.StrField(func(v WorkspaceCreationAttemptView) any { return v.State }),
+		"clientSecret":    gqlutil.StrField(func(v WorkspaceCreationAttemptView) any { return v.ClientSecret }),
+		"publishableKey":  gqlutil.StrField(func(v WorkspaceCreationAttemptView) any { return v.PublishableKey }),
+	},
+})
+
 // resourceCapGQLType is the used/limit pair for one resource kind (w7/m9), plus
 // terminating: how many of `used` are finishing deletion (w6/m129) — the count
 // that reconciles this figure with the resource list, which drops those rows but
@@ -74,6 +97,20 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type:    graphql.NewList(workspaceGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context) },
 		},
+		"workspaceCreationPolicy": &graphql.Field{
+			Type: workspaceCreationPolicyGQLType,
+			Args: graphql.FieldConfigArgument{"plan": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.WorkspaceCreationPolicy(p.Context, p.Args["plan"].(string))
+			},
+		},
+		"workspaceCreationAttempt": &graphql.Field{
+			Type: workspaceCreationAttemptGQLType,
+			Args: graphql.FieldConfigArgument{"id": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ResumeWorkspaceCreation(p.Context, p.Args["id"].(string))
+			},
+		},
 		// workspaceLimits returns the named workspace's resource usage vs. cap
 		// (w7/m9): "3/5 services" visibility surface. Authorizes can_view on the
 		// workspace (the same membership source as the workspaces list).
@@ -92,6 +129,37 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 // GraphQLMutation contributes the lifecycle mutations to the root Mutation.
 func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
+		"prepareWorkspaceCreation": &graphql.Field{
+			Type: workspaceCreationAttemptGQLType,
+			Args: graphql.FieldConfigArgument{
+				"name":                 gqlutil.ReqArg(graphql.String),
+				"plan":                 gqlutil.ReqArg(graphql.String),
+				"billingEmail":         gqlutil.ReqArg(graphql.String),
+				"attemptId":            gqlutil.Arg(graphql.String),
+				"collectPaymentMethod": gqlutil.Arg(graphql.Boolean),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				collect, _ := p.Args["collectPaymentMethod"].(bool)
+				return s.PrepareWorkspaceCreation(p.Context, p.Args["name"].(string), p.Args["plan"].(string), p.Args["billingEmail"].(string), gqlutil.Str(p.Args, "attemptId"), collect)
+			},
+		},
+		"finalizeWorkspaceCreation": &graphql.Field{
+			Type: workspaceGQLType,
+			Args: graphql.FieldConfigArgument{"attemptId": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.FinalizeWorkspaceCreation(p.Context, p.Args["attemptId"].(string))
+			},
+		},
+		"cancelWorkspaceCreation": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{"attemptId": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				if err := s.CancelWorkspaceCreation(p.Context, p.Args["attemptId"].(string)); err != nil {
+					return false, err
+				}
+				return true, nil
+			},
+		},
 		"createWorkspace": &graphql.Field{
 			Type: workspaceGQLType,
 			Args: graphql.FieldConfigArgument{

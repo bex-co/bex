@@ -26,6 +26,8 @@ class StripeBillingSecretTest(unittest.TestCase):
         )
         if require_payment_method is not None:
             env["BEX_REQUIRE_PAYMENT_METHOD"] = require_payment_method
+            if require_payment_method in ("1", "all"):
+                env["BEX_STRIPE_PUBLISHABLE_KEY"] = "pk_test_offline_fixture"
         return subprocess.run(
             ["bash", str(SCRIPT)],
             capture_output=True,

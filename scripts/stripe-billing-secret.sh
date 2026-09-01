@@ -5,6 +5,7 @@
 #
 # Values come from the environment or the repo-local, gitignored .env:
 #   BEX_STRIPE_SECRET_KEY       dedicated rk_test_*/rk_live_* runtime key
+#   BEX_STRIPE_PUBLISHABLE_KEY  matching pk_test_*/pk_live_* Stripe.js key
 #   BEX_REQUIRE_PAYMENT_METHOD  1 = ADR046 paid-intent gating; all = every plan
 #                               incl. free tier (ADR075 D7); default 0
 #   BEX_STRIPE_WEBHOOK_SECRET  whsec_* for /v1/webhooks/stripe
@@ -62,6 +63,21 @@ case "$BEX_STRIPE_SECRET_KEY" in
     ;;
 esac
 
+BEX_REQUIRE_PAYMENT_METHOD="${BEX_REQUIRE_PAYMENT_METHOD:-0}"
+case "$BEX_REQUIRE_PAYMENT_METHOD" in
+  0|1|all) ;;
+  *) echo "error: BEX_REQUIRE_PAYMENT_METHOD must be 0, 1, or all" >&2; exit 1 ;;
+esac
+if [ "$BEX_REQUIRE_PAYMENT_METHOD" != 0 ]; then
+  require BEX_STRIPE_PUBLISHABLE_KEY
+fi
+if [ -n "${BEX_STRIPE_PUBLISHABLE_KEY:-}" ]; then
+  case "$stripe_mode:$BEX_STRIPE_PUBLISHABLE_KEY" in
+    test:pk_test_*|live:pk_live_*) ;;
+    *) echo "error: BEX_STRIPE_PUBLISHABLE_KEY must match the restricted key's test/live mode" >&2; exit 1 ;;
+  esac
+fi
+
 # The test endpoint created by the operator setup flow is also kept in the
 # macOS login keychain. This fallback keeps whsec_* out of shell history and
 # .env; it is test-only by construction and is never consulted for rk_live_*.
@@ -76,7 +92,6 @@ esac
 
 BEX_STRIPE_SEAL_HOURS="${BEX_STRIPE_SEAL_HOURS:-48}"
 BEX_STRIPE_COMP_COUPON_ID="${BEX_STRIPE_COMP_COUPON_ID:-bex-comp-100}"
-BEX_REQUIRE_PAYMENT_METHOD="${BEX_REQUIRE_PAYMENT_METHOD:-0}"
 BEX_STRIPE_DUNNING_ENABLED="${BEX_STRIPE_DUNNING_ENABLED:-0}"
 BEX_STRIPE_GRACE_PERIOD="${BEX_STRIPE_GRACE_PERIOD:-168h}"
 BEX_STRIPE_RECONCILE_INTERVAL="${BEX_STRIPE_RECONCILE_INTERVAL:-5m}"
@@ -86,10 +101,6 @@ esac
 case "$BEX_STRIPE_DUNNING_ENABLED" in
   0|1) ;;
   *) echo "error: BEX_STRIPE_DUNNING_ENABLED must be 0 or 1" >&2; exit 1 ;;
-esac
-case "$BEX_REQUIRE_PAYMENT_METHOD" in
-  0|1|all) ;;
-  *) echo "error: BEX_REQUIRE_PAYMENT_METHOD must be 0, 1, or all" >&2; exit 1 ;;
 esac
 # Live dunning is an operator choice since w4/m81 t002 (the w7/m52 test-only
 # fence is lifted): BEX_STRIPE_ALLOW_LIVE=1 remains the single deliberate live
@@ -178,6 +189,7 @@ if [ "${DRY_RUN:-0}" = "1" ]; then
   optional_keys=""
   [ -n "${BEX_STRIPE_PORTAL_CONFIGURATION_ID:-}" ] && optional_keys="$optional_keys BEX_STRIPE_PORTAL_CONFIGURATION_ID"
   [ -n "${BEX_STRIPE_TAX_CODE:-}" ] && optional_keys="$optional_keys BEX_STRIPE_TAX_CODE BEX_STRIPE_TAX_BEHAVIOR"
+  [ -n "${BEX_STRIPE_PUBLISHABLE_KEY:-}" ] && optional_keys="$optional_keys BEX_STRIPE_PUBLISHABLE_KEY"
   echo "would apply Secret $namespace/$secret_name (keys: BEX_STRIPE_SECRET_KEY BEX_REQUIRE_PAYMENT_METHOD BEX_STRIPE_WEBHOOK_SECRET BEX_STRIPE_EPOCH BEX_STRIPE_SEAL_HOURS BEX_STRIPE_COMP_COUPON_ID BEX_STRIPE_DUNNING_ENABLED BEX_STRIPE_GRACE_PERIOD BEX_STRIPE_RECONCILE_INTERVAL$optional_keys)"
   echo "mode=$stripe_mode epoch=$BEX_STRIPE_EPOCH seal_hours=$BEX_STRIPE_SEAL_HOURS coupon=$BEX_STRIPE_COMP_COUPON_ID payment_gate=$BEX_REQUIRE_PAYMENT_METHOD dunning=$BEX_STRIPE_DUNNING_ENABLED grace=$BEX_STRIPE_GRACE_PERIOD reconcile=$BEX_STRIPE_RECONCILE_INTERVAL tax_configured=$([ -n "${BEX_STRIPE_TAX_CODE:-}" ] && echo true || echo false)"
   exit 0
@@ -196,6 +208,7 @@ trap cleanup EXIT
 
 {
   printf 'BEX_STRIPE_SECRET_KEY=%s\n' "$BEX_STRIPE_SECRET_KEY"
+  [ -z "${BEX_STRIPE_PUBLISHABLE_KEY:-}" ] || printf 'BEX_STRIPE_PUBLISHABLE_KEY=%s\n' "$BEX_STRIPE_PUBLISHABLE_KEY"
   printf 'BEX_REQUIRE_PAYMENT_METHOD=%s\n' "$BEX_REQUIRE_PAYMENT_METHOD"
   printf 'BEX_STRIPE_WEBHOOK_SECRET=%s\n' "$BEX_STRIPE_WEBHOOK_SECRET"
   printf 'BEX_STRIPE_EPOCH=%s\n' "$BEX_STRIPE_EPOCH"

@@ -11,12 +11,11 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 - `bash scripts/dev-env.sh 4 down` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
 - `bash scripts/dev-env.sh 4 clean` — reclaim `logs/` and `bin/` (refuses while the environment is up)
 
-`up` prints the dashboard command to point at it once bex-api is running. One shared
-implementation serves every workstream since `w1/m72`; `.pm/w4/dev-4/` keeps only
-`ports.env` (a generated record of the derivation), this README, and `.gitignore`.
+`up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w4/dev-4/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
 ## Milestones
 
+- [x] **m90** — Workspace-scoped billing email + payment method at creation (9 tasks) ← user request 2026-08-31 after live authenticated comparison of `dashboard.bex.co/new/workspace` and `dashboard.render.com/new/workspace`; closes the shape-only/current-workspace shortcut left by w9/m88 — done 2026-08-31 (account-prefilled billing email plus workspace-local Stripe Payment Element/SetupIntent, resumable subject-bound attempts, server-verified idempotent finalization, bounded cleanup, authenticated Render parity evidence, and real Stripe test-mode success/cancel/retry), moved to `done/m90/`
 - [x] **m89** — Honest agent-session states and a real error taxonomy (8 tasks) ← from `/pm-brainstorm` 2026-08-28 findings 3+4: 17 `ErrAgentSessionsUnavailable` sites collapse into one "aren't configured — ask your operator" alert (hit live in dev-1 from a transient etcd timeout), and a normally-starting session renders failure copy.
 - [x] **m1** — Platform auth: Ory Kratos + Hydra on the cluster (+ ADR) (9 tasks) ← from brainstorm 2026-07-05
 - [x] **m2** — bex-api auth: Hydra introspection + Kratos sessions (6 tasks) ← from brainstorm 2026-07-05, needs m1

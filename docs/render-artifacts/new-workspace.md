@@ -1,30 +1,46 @@
 # Create workspace (`/new/workspace`) — Render vs bex
 
-Pinned **2026-08-19** for `w9/m88`. Complements [workspace-lifecycle.md](workspace-lifecycle.md) (switcher / settings) and [workspace-plan-change.md](workspace-plan-change.md) (plan-card anatomy). Unauthenticated hits of both dashboards bounce to login with `next=/new/workspace` (`.playwright-mcp/render-new-workspace.png`, `bex-new-workspace.png`). This note records the **signed-in create form**, not that login wall.
+Pinned **2026-08-31** for `w4/m90`. Complements [workspace-lifecycle.md](workspace-lifecycle.md) (switcher/settings) and [workspace-plan-change.md](workspace-plan-change.md) (plan-card anatomy).
 
-> Playwright MCP was not connected in the implementation session, so a fresh authenticated screenshot pair was not captured here. The Render layout below is from the 2026-07-12 authenticated plan-change capture plus Render's documented create steps (plan type + payment method, then Create Workspace). The bex layout is the shipped `/new/workspace` page (`dashboard/src/routes/new.workspace.tsx`). When MCP is available, dump authenticated full-page shots as `.playwright-mcp/bex-new-workspace-auth.png` and `render-new-workspace-auth.png` (bare filenames).
+Authenticated desktop and narrow-mobile captures were taken from both products:
 
-## bex's shipped shape
+- Render: `.playwright-mcp/render-new-workspace-auth.png` and `.playwright-mcp/render-new-workspace-auth-mobile.png`
+- bex local parity build: `.playwright-mcp/bex-new-workspace-auth.png` and `.playwright-mcp/bex-new-workspace-auth-mobile.png`
 
-- **Route:** `GET /new/workspace` (chrome on, `FormPageSkeleton` pending). Create still GraphQL `createWorkspace(name, plan)` only.
-- **Heading:** page-level `h1` **Create a workspace** (not a nested settings card).
-- **Slug:** labelled **Workspace slug**, helper that it is used in URLs/resource names, live `WORKSPACE_NAME_RE` (DNS label 1–30). Not Render's freeform display name.
-- **Plans:** 2×2 radiogroup, Hobby preselected. Catalog fees from `lego/backend/internal/pricing/pricing.yaml` (ADR030, 30% off Render): **`$0/mo` / `$17.50/mo` / `$349.30/mo` / Custom terms**. Capability bullets from `store.LimitsFor` (Hobby: 1 member, 25 services, 5 Hobby/user; Pro/Scale unlimited members/services; Scale extra roles). Usage footnote: resource tiers billed separately. Same `PlanPicker` as the change-plan dialog.
-- **Payment Method:** shown for Pro / Scale / Enterprise. Reuses `BillingOnboardingView` against the **current** workspace (the new `tea-*` does not exist yet). Create is disabled only when `paymentMethodRequired` (the `BEX_REQUIRE_PAYMENT_METHOD` gate, now on `workspaceBillingReadiness`) and that workspace is not `paymentMethodReady`. Hobby never gated. **No** licensed Stripe Price for $17.50 / $349.30 is attached on create (`BillableMeterNames` stays usage-only).
-- **Footer:** Cancel → `/`, Create Workspace → select returned id → `/`. Failure stays on the form with an inline error.
-- **Switcher:** Billing → `/billing`, Workspace Settings, name + plan sublabel, **+ New Workspace**.
+The captures are local QA artifacts and intentionally remain outside source control.
+
+## Render reference behavior
+
+- **Workspace Details** contains required `Name` and `Billing Email` fields. Billing email is prefilled from the signed-in account.
+- Hobby resets billing email to the account email and disables editing. Pro and Scale allow a different valid email.
+- **Payment Method** is present for every plan and says billing is unique to each workspace.
+- `Add Card` opens Stripe-hosted fields. The card is optional for Hobby and required for paid plans; the create action cannot complete a required-card plan without it.
+- Workspace creation is dashboard-internal. Render's public REST API has read-only owner/workspace endpoints and its MCP surface has no workspace-create mutation.
+
+## bex behavior after m90
+
+- **Workspace Details** contains required `Workspace slug` and `Billing Email`. The latter comes from the authenticated Kratos identity. Hobby is read-only/account-email; paid plans accept a different valid address. The server repeats both email validation and Hobby ownership validation.
+- The four plan cards retain the ADR030 catalog: **$0 / $17.50 / $349.30 / Custom terms**. These are intentionally 30% below Render's $0 / $25 / $499 / contact pricing.
+- **Payment Method** is always present and belongs only to the reserved workspace. It never reads, copies, or gates on the current workspace's Customer or readiness marker.
+- A server policy controls collection: `all` requires a verified payment method for every plan; `paid` requires one for Pro, Scale, and Enterprise while keeping Hobby optional; `off` leaves self-hosted creation usable without Stripe.
+- When collection is requested, the server reserves an opaque attempt and `tea-*`, creates that workspace's Stripe Customer using the submitted email, and creates a SetupIntent. The browser receives only Stripe's publishable key and client secret, and renders the Payment Element. Raw PAN/CVC never enters bex state.
+- Finalization re-reads the succeeded SetupIntent and Customer-bound PaymentMethod, binds the Customer/Subscription defaults, then atomically creates the tenant, owner membership, billing mapping, payment marker, and stored billing email. The workspace is selected only after that transaction returns.
+- The attempt is subject-bound, expiring, resumable after redirect/refresh, and idempotent on finalization. Cancelled or abandoned attempts stay outside `tenants` and are reclaimed by a leased cleanup worker, so they are never visible as usable workspaces.
+- The legacy `createWorkspace(name, plan)` GraphQL mutation remains the explicit billing-off compatibility path. When policy requires collection it returns stable `PAYMENT_REQUIRED`; clients must use `prepareWorkspaceCreation` followed by `finalizeWorkspaceCreation`. REST and MCP workspace mutations remain absent to match Render's public surface.
 
 ## Comparison
 
 | Topic | Render | bex | Verdict |
 | --- | --- | --- | --- |
-| Page `h1`, slug/name, large plan cards, Create/Cancel | Authenticated `/new/workspace` | Same anatomy | Match (shape) |
-| Plan prices | `$0` / `$25` / `$499` / contact | `$0` / `$17.50` / `$349.30` / Custom terms | **Deliberate** — catalog 30% off, not a bug |
-| Included bandwidth / custom domains / build minutes on cards | Render plan marketing | Omitted — those are usage meters, not workspace SKUs | Deliberate |
-| Name | Freeform | DNS-label slug | Deliberate (App CR names); follow-up only if we add a display name |
-| Payment panel | Card-on-file for paid plans; charges the workspace SKU | Panel + ADR046 card gate; **no** SKU collection | Shape match, collection follow-up (`.pm/w9/050.md`) |
-| Enterprise | Disabled “Get in touch” | Selectable | Deliberate (no sales flow); follow-up in `.pm/w9/050.md` |
-| Switcher | Billing, settings, name+plan, New Workspace | Same, Billing at `/billing` not `/w/{id}/billing` | Match enough; per-`tea` billing URL not invented |
-| REST / MCP create | None | None (`/v1/owners` read-only; MCP `list_workspaces` only) | Match |
+| Required, account-prefilled billing email | Hobby read-only; paid editable | Same, with server validation | Match |
+| Payment Method region | Always visible; workspace-specific | Always visible; reserved-workspace-specific | Match |
+| Card policy | Optional Hobby, required paid | `paid` matches; production `all` also requires Hobby | Intentional stricter production policy |
+| Provider collection | Stripe-hosted card fields | Stripe Payment Element + SetupIntent | Match in security boundary |
+| Failure/retry | Form remains recoverable | Opaque resumable attempt; idempotent finalize; bounded cleanup | Match with explicit server guarantees |
+| Plan prices | `$0` / `$25` / `$499` / contact | `$0` / `$17.50` / `$349.30` / Custom terms | Deliberate ADR030 difference |
+| Name | Freeform | DNS-label slug | Deliberate App-CR naming constraint |
+| Enterprise | Contact sales | Self-serve selectable | Known deliberate divergence (`.pm/w9/050.md`) |
+| Licensed monthly workspace SKU | Render plan charge | No licensed monthly SKU; usage-meter contract only | Deliberate current billing model |
+| REST / MCP create | None | None | Match |
 
-Do not treat the 30%-off sticker as drift to “fix” back to Render’s $25 / $499.
+Do not change bex's catalog to Render's price points as a parity fix, and do not reintroduce the pre-m90 current-workspace billing shortcut.

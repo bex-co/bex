@@ -98,7 +98,10 @@ describe("WorkspaceSwitcher", () => {
     await user.click(
       await screen.findByRole("menuitem", { name: "+ New Workspace" }),
     );
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/new/workspace" });
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/new/workspace",
+      search: { attempt: undefined },
+    });
   });
 
   it("shows each workspace's plan as a sublabel", async () => {
