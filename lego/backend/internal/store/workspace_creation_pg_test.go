@@ -40,7 +40,7 @@ func TestWorkspaceCreationPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	if _, err := pool.Exec(ctx, `TRUNCATE workspace_creation_attempts, tenants CASCADE`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE workspace_creation_attempts, account_deletions, tenants CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	st := NewPGStore(pool)
