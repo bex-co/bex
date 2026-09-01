@@ -1222,10 +1222,7 @@ func (s *Service) hasCompletedBackup(ctx context.Context, d *appv1alpha1.Databas
 	if err := s.Client.List(ctx, list, client.InNamespace(d.Namespace), client.MatchingLabels{labelCNPGCluster: d.Name}); err != nil {
 		return false
 	}
-	serverName := d.Status.BackupServerName
-	if serverName == "" {
-		serverName = d.Name
-	}
+	serverName := effectiveBackupServerName(d)
 	for i := range list.Items {
 		backup := &list.Items[i]
 		phase, _, _ := unstructured.NestedString(backup.Object, "status", "phase")

@@ -40,44 +40,45 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// cnpgScheme is a scheme that also knows the CNPG Cluster + Backup unstructured
-// types, so recovery-info and export paths exercise real client Get/List calls
-// (the recovery window read + the backup list).
-func cnpgScheme() *runtime.Scheme {
+// postgresResourceScheme includes the unstructured Barman ObjectStore and CNPG
+// Backup types exercised by recovery and export tests.
+func postgresResourceScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
-	scheme.AddKnownTypeWithName(cnpgClusterGVK, &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(cnpgClusterGVK.GroupVersion().WithKind("ClusterList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(barmanCloudObjectStoreGVK, &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(cnpgBackupGVK, &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(cnpgBackupGVK.GroupVersion().WithKind("BackupList"), &unstructured.UnstructuredList{})
 	return scheme
 }
 
-// newServiceCNPG builds a Service whose fake client knows the CNPG unstructured
-// types, so the recovery/export paths exercise real client calls.
-func newServiceCNPG(objs ...client.Object) (*Service, client.Client) {
-	cl := fake.NewClientBuilder().WithScheme(cnpgScheme()).WithObjects(objs...).Build()
+// newServicePostgresResources builds a Service backed by those resource types.
+func newServicePostgresResources(objs ...client.Object) (*Service, client.Client) {
+	cl := fake.NewClientBuilder().WithScheme(postgresResourceScheme()).WithObjects(objs...).Build()
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}}, cl
 }
 
-// seedCNPGCluster creates a CNPG Cluster for a database. A non-empty
-// firstRecoverabilityPoint marks the PITR window as established (there is
-// something to restore to); empty leaves the window closed but the Cluster
-// present, the honest "backups enabled, none yet" state.
-func seedCNPGCluster(t *testing.T, cl client.Client, name, firstRecoverabilityPoint string) {
+// seedBarmanRecoveryWindow creates the shared ObjectStore with one server's
+// status. Non-empty bounds mark the PITR window as established; empty bounds
+// leave it closed, the honest "backups enabled, none yet" state.
+func seedBarmanRecoveryWindow(t *testing.T, cl client.Client, serverName, firstRecoverabilityPoint, lastSuccessfulBackupTime string) {
 	t.Helper()
-	c := &unstructured.Unstructured{}
-	c.SetGroupVersionKind(cnpgClusterGVK)
-	c.SetNamespace("default")
-	c.SetName(name)
+	store := &unstructured.Unstructured{}
+	store.SetGroupVersionKind(barmanCloudObjectStoreGVK)
+	store.SetNamespace("default")
+	store.SetName(tenantBackupObjectStoreName)
 	if firstRecoverabilityPoint != "" {
-		if err := unstructured.SetNestedField(c.Object, firstRecoverabilityPoint, "status", "firstRecoverabilityPoint"); err != nil {
+		if err := unstructured.SetNestedField(store.Object, firstRecoverabilityPoint, "status", "serverRecoveryWindow", serverName, "firstRecoverabilityPoint"); err != nil {
 			t.Fatalf("set firstRecoverabilityPoint: %v", err)
 		}
 	}
-	if err := cl.Create(context.Background(), c); err != nil {
-		t.Fatalf("seed cnpg cluster: %v", err)
+	if lastSuccessfulBackupTime != "" {
+		if err := unstructured.SetNestedField(store.Object, lastSuccessfulBackupTime, "status", "serverRecoveryWindow", serverName, "lastSuccessfulBackupTime"); err != nil {
+			t.Fatalf("set lastSuccessfulBackupTime: %v", err)
+		}
+	}
+	if err := cl.Create(context.Background(), store); err != nil {
+		t.Fatalf("seed Barman ObjectStore: %v", err)
 	}
 }
 
@@ -111,7 +112,7 @@ func seedDatabaseSpec(t *testing.T, cl client.Client, name string, spec appv1alp
 		Spec:       spec,
 		Status: appv1alpha1.DatabaseStatus{
 			Phase: appv1alpha1.DBPhaseReady, Host: name + "-rw.default.svc", Port: 5432,
-			SecretName: name + "-app", BackupsEnabled: backupsEnabled,
+			SecretName: name + "-app", BackupsEnabled: backupsEnabled, BackupServerName: name,
 		},
 	}
 	dbn := spec.EffectiveDatabaseName(name)
@@ -193,14 +194,17 @@ func TestRecoveryInfoDisabledForFreePlan(t *testing.T) {
 	}
 }
 
-// TestRecoveryInfoReportsAWindowWhenOneExists: with a readable CNPG Cluster that
-// has a firstRecoverabilityPoint and a completed Backup, the Recovery card's three
-// facts agree — earliest, latest and the backup list all say backups exist. This
-// is the state the live probe (w6/m117) could not produce because the reads 403'd.
+// TestRecoveryInfoReportsAWindowWhenOneExists: with a readable Barman ObjectStore
+// that has a complete recovery window and a completed Backup, the Recovery
+// card's three facts agree — earliest, latest and the list all say backups exist.
 func TestRecoveryInfoReportsAWindowWhenOneExists(t *testing.T) {
-	svc, cl := newServiceCNPG()
-	seedDatabaseSpec(t, cl, "paid-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
-	seedCNPGCluster(t, cl, "paid-db", "2026-08-21T03:00:00Z")
+	svc, cl := newServicePostgresResources()
+	db := seedDatabaseSpec(t, cl, "paid-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+	db.Status.BackupServerName = "tea-a-paid-db"
+	if err := cl.Update(context.Background(), db); err != nil {
+		t.Fatalf("set backup server name: %v", err)
+	}
+	seedBarmanRecoveryWindow(t, cl, "tea-a-paid-db", "2026-08-21T03:00:00Z", "2026-09-01T03:00:00Z")
 	seedCNPGBackup(t, cl, "paid-db", "paid-db-backup-20260821030000", "completed")
 
 	info, err := svc.RecoveryInfo(context.Background(), "paid-db")
@@ -211,52 +215,54 @@ func TestRecoveryInfoReportsAWindowWhenOneExists(t *testing.T) {
 		t.Fatal("a backed-up database should report recovery enabled")
 	}
 	if info.EarliestRecoveryTime != "2026-08-21T03:00:00Z" {
-		t.Errorf("earliest = %q, want the cluster's firstRecoverabilityPoint", info.EarliestRecoveryTime)
+		t.Errorf("earliest = %q, want the ObjectStore's firstRecoverabilityPoint", info.EarliestRecoveryTime)
 	}
-	if info.LatestRecoveryTime == "" {
-		t.Error("an established window must report a latest recoverable point")
+	if info.LatestRecoveryTime != "2026-09-01T03:00:00Z" {
+		t.Errorf("latest = %q, want the ObjectStore's lastSuccessfulBackupTime", info.LatestRecoveryTime)
 	}
 	if len(info.Backups) != 1 || info.Backups[0].Status != "completed" {
 		t.Errorf("backups = %+v, want one completed backup", info.Backups)
 	}
 }
 
-// TestRecoveryInfoNoWindowYetIsHonest: a backed-up database whose CNPG Cluster has
-// not yet established a recoverability point reports NO latest restore point. The
-// card must never name a precise restore point beside an empty backup list — the
-// self-contradiction that shipped unnoticed (w6/m117). latestRecoveryTime used to
-// be the wall clock, present unconditionally; now it is gated on a real window.
+// TestRecoveryInfoNoWindowYetIsHonest pins the all-or-nothing window invariant:
+// neither bound is reported until both authoritative bounds exist.
 func TestRecoveryInfoNoWindowYetIsHonest(t *testing.T) {
-	svc, cl := newServiceCNPG()
-	seedDatabaseSpec(t, cl, "fresh-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
-	seedCNPGCluster(t, cl, "fresh-db", "") // cluster present, window not open yet
+	for _, tc := range []struct {
+		name, start, end string
+	}{
+		{name: "empty status"},
+		{name: "partial status", start: "2026-08-21T03:00:00Z"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl := newServicePostgresResources()
+			seedDatabaseSpec(t, cl, "fresh-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+			seedBarmanRecoveryWindow(t, cl, "fresh-db", tc.start, tc.end)
 
-	info, err := svc.RecoveryInfo(context.Background(), "fresh-db")
-	if err != nil {
-		t.Fatalf("RecoveryInfo => %v", err)
-	}
-	if !info.Enabled {
-		t.Fatal("a backed-up plan should report recovery enabled")
-	}
-	if info.LatestRecoveryTime != "" || info.EarliestRecoveryTime != "" {
-		t.Errorf("no window established, yet reported earliest=%q latest=%q",
-			info.EarliestRecoveryTime, info.LatestRecoveryTime)
-	}
-	if len(info.Backups) != 0 {
-		t.Errorf("backups = %+v, want none", info.Backups)
+			info, err := svc.RecoveryInfo(context.Background(), "fresh-db")
+			if err != nil {
+				t.Fatalf("RecoveryInfo => %v", err)
+			}
+			if !info.Enabled {
+				t.Fatal("a backed-up plan should report recovery enabled")
+			}
+			if info.LatestRecoveryTime != "" || info.EarliestRecoveryTime != "" {
+				t.Errorf("no complete window established, yet reported earliest=%q latest=%q",
+					info.EarliestRecoveryTime, info.LatestRecoveryTime)
+			}
+			if len(info.Backups) != 0 {
+				t.Errorf("backups = %+v, want none", info.Backups)
+			}
+		})
 	}
 }
 
-// TestRecoveryInfoUnreadableBackupsAreAnErrorNotEmpty: when the Backup list cannot
-// be read at all (here a forbidden response, standing in for the production RBAC
-// denial that caused this bug), recovery-info must fail loudly rather than return
-// the SAME empty shape as a database that genuinely has no backups. That silent
-// degradation is exactly what told tenants with nightly backups they had none.
+// A failed Backup list must remain distinguishable from a verified empty list.
 func TestRecoveryInfoUnreadableBackupsAreAnErrorNotEmpty(t *testing.T) {
 	forbidden := apierrors.NewForbidden(
 		schema.GroupResource{Group: "postgresql.cnpg.io", Resource: "backups"}, "",
 		errors.New("RBAC: no access to backups"))
-	cl := fake.NewClientBuilder().WithScheme(cnpgScheme()).
+	cl := fake.NewClientBuilder().WithScheme(postgresResourceScheme()).
 		WithInterceptorFuncs(interceptor.Funcs{
 			List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
 				if list.GetObjectKind().GroupVersionKind().Group == cnpgBackupGVK.Group {
@@ -267,7 +273,7 @@ func TestRecoveryInfoUnreadableBackupsAreAnErrorNotEmpty(t *testing.T) {
 		}).Build()
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
 	seedDatabaseSpec(t, cl, "unreadable-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
-	seedCNPGCluster(t, cl, "unreadable-db", "2026-08-21T03:00:00Z")
+	seedBarmanRecoveryWindow(t, cl, "unreadable-db", "2026-08-21T03:00:00Z", "2026-09-01T03:00:00Z")
 
 	if _, err := svc.RecoveryInfo(context.Background(), "unreadable-db"); err == nil {
 		t.Fatal("a denied Backup list must return an error, not a false empty backup list")
@@ -275,11 +281,11 @@ func TestRecoveryInfoUnreadableBackupsAreAnErrorNotEmpty(t *testing.T) {
 }
 
 func TestRecoverCreatesNewInstanceLeavingSourceUntouched(t *testing.T) {
-	svc, cl := newServiceCNPG()
+	svc, cl := newServicePostgresResources()
 	seedDatabaseSpec(t, cl, "src-db", appv1alpha1.DatabaseSpec{
 		Plan: "basic-1gb", Version: "16", DatabaseName: "orders_data", DatabaseUser: "orders_owner",
 	}, true)
-	seedCNPGCluster(t, cl, "src-db", "2026-07-01T00:00:00Z")
+	seedBarmanRecoveryWindow(t, cl, "src-db", "2026-07-01T00:00:00Z", "2026-07-10T00:00:00Z")
 	ctx := context.Background()
 
 	v, err := svc.Recover(ctx, "src-db", RecoverRequest{Name: "restored-db", TargetTime: "2026-07-09T10:00:00Z"})
@@ -336,17 +342,16 @@ func TestRecoverRejectsBadInput(t *testing.T) {
 	}
 }
 
-// newServiceCNPGClusterForbidden builds a Service whose client refuses every
-// CNPG Cluster Get with forbidden — standing in for the production RBAC denial
-// that caused w6/m117 — while everything else reads normally.
-func newServiceCNPGClusterForbidden() (*Service, client.Client) {
+// newServiceRecoveryWindowForbidden refuses Barman ObjectStore reads while
+// leaving the rest of the fake client usable.
+func newServiceRecoveryWindowForbidden() (*Service, client.Client) {
 	forbidden := apierrors.NewForbidden(
-		schema.GroupResource{Group: "postgresql.cnpg.io", Resource: "clusters"}, "",
-		errors.New("RBAC: no access to clusters"))
-	cl := fake.NewClientBuilder().WithScheme(cnpgScheme()).
+		schema.GroupResource{Group: "barmancloud.cnpg.io", Resource: "objectstores"}, "",
+		errors.New("RBAC: no access to objectstores"))
+	cl := fake.NewClientBuilder().WithScheme(postgresResourceScheme()).
 		WithInterceptorFuncs(interceptor.Funcs{
 			Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-				if obj.GetObjectKind().GroupVersionKind() == cnpgClusterGVK {
+				if obj.GetObjectKind().GroupVersionKind() == barmanCloudObjectStoreGVK {
 					return forbidden
 				}
 				return c.Get(ctx, key, obj, opts...)
@@ -355,22 +360,29 @@ func newServiceCNPGClusterForbidden() (*Service, client.Client) {
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}}, cl
 }
 
-// TestRecoveryInfoUnreadableClusterIsAnErrorNotEmpty: the window read holds the
-// same honesty contract as the backup list — a Cluster Get that fails (RBAC,
-// CRD unavailable, transient) is an error, never "no window yet". This is the
-// other half of the silent degradation that shipped unnoticed (w6/m117).
-func TestRecoveryInfoUnreadableClusterIsAnErrorNotEmpty(t *testing.T) {
-	svc, cl := newServiceCNPGClusterForbidden()
+// A failed ObjectStore read must remain distinguishable from a verified window
+// whose server entry is empty.
+func TestRecoveryInfoUnreadableObjectStoreIsAnErrorNotEmpty(t *testing.T) {
+	svc, cl := newServiceRecoveryWindowForbidden()
 	seedDatabaseSpec(t, cl, "blind-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
 
 	if _, err := svc.RecoveryInfo(context.Background(), "blind-db"); err == nil {
-		t.Fatal("a denied Cluster read must return an error, not an empty recovery window")
+		t.Fatal("a denied ObjectStore read must return an error, not an empty recovery window")
+	}
+}
+
+func TestRecoveryInfoMissingObjectStoreIsAnErrorNotEmpty(t *testing.T) {
+	svc, cl := newServicePostgresResources()
+	seedDatabaseSpec(t, cl, "misprojected-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+
+	if _, err := svc.RecoveryInfo(context.Background(), "misprojected-db"); err == nil {
+		t.Fatal("a missing shared ObjectStore must return an error, not an empty recovery window")
 	}
 }
 
 // TestRecoverRefusesAnUnsubstantiatedWindow — w6/m117 t003: BackupsEnabled says
 // backups are configured, not that anything restorable exists. Without an
-// established firstRecoverabilityPoint, Recover must refuse — before any
+// established ObjectStore recovery window, Recover must refuse — before any
 // billing gate and before anything billable is created — and an unreadable
 // window must surface as the read's error, never as "no backups" or a pass.
 func TestRecoverRefusesAnUnsubstantiatedWindow(t *testing.T) {
@@ -386,8 +398,8 @@ func TestRecoverRefusesAnUnsubstantiatedWindow(t *testing.T) {
 		}
 	}
 
-	t.Run("no CNPG Cluster yet refuses before the billing gates", func(t *testing.T) {
-		svc, cl := newServiceCNPG()
+	t.Run("missing shared ObjectStore is an error before the billing gates", func(t *testing.T) {
+		svc, cl := newServicePostgresResources()
 		src := seedDatabaseSpec(t, cl, "young-db", appv1alpha1.DatabaseSpec{Name: "young", Plan: "basic-1gb"}, true)
 		src.Labels = map[string]string{core.LabelTenant: "tea-a", core.LabelWorkspace: "tea-a"}
 		if err := cl.Update(ctx, src); err != nil {
@@ -398,8 +410,8 @@ func TestRecoverRefusesAnUnsubstantiatedWindow(t *testing.T) {
 		svc.Payment = gate
 
 		_, err := svc.Recover(ctxAs("user-a"), "young-db", RecoverRequest{Name: "restored"})
-		if !errors.Is(err, core.ErrBadRequest) {
-			t.Fatalf("recover without a window => %v, want ErrBadRequest", err)
+		if err == nil || errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("recover with a missing ObjectStore => %v, want a non-BadRequest read error", err)
 		}
 		if len(gate.calls) != 0 {
 			t.Fatalf("the refusal must precede the billing gates; the payment gate saw %v", gate.calls)
@@ -407,10 +419,10 @@ func TestRecoverRefusesAnUnsubstantiatedWindow(t *testing.T) {
 		sourceOnly(t, cl)
 	})
 
-	t.Run("Cluster present but window not open", func(t *testing.T) {
-		svc, cl := newServiceCNPG()
+	t.Run("ObjectStore present but window not open", func(t *testing.T) {
+		svc, cl := newServicePostgresResources()
 		seedDatabaseSpec(t, cl, "fresh-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
-		seedCNPGCluster(t, cl, "fresh-db", "")
+		seedBarmanRecoveryWindow(t, cl, "fresh-db", "", "")
 
 		if _, err := svc.Recover(ctx, "fresh-db", RecoverRequest{Name: "restored"}); !errors.Is(err, core.ErrBadRequest) {
 			t.Fatalf("recover before the first recoverability point => %v, want ErrBadRequest", err)
@@ -419,7 +431,7 @@ func TestRecoverRefusesAnUnsubstantiatedWindow(t *testing.T) {
 	})
 
 	t.Run("an unreadable window is an error, not a refusal or a pass", func(t *testing.T) {
-		svc, cl := newServiceCNPGClusterForbidden()
+		svc, cl := newServiceRecoveryWindowForbidden()
 		seedDatabaseSpec(t, cl, "blind-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
 
 		_, err := svc.Recover(ctx, "blind-db", RecoverRequest{Name: "restored"})
@@ -431,7 +443,7 @@ func TestRecoverRefusesAnUnsubstantiatedWindow(t *testing.T) {
 }
 
 func TestExportsCreateAndList(t *testing.T) {
-	svc, cl := newServiceCNPG()
+	svc, cl := newServicePostgresResources()
 	seedDatabaseSpec(t, cl, "exp-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
 	seedDatabaseSpec(t, cl, "free-db", appv1alpha1.DatabaseSpec{Plan: "free"}, false)
 	ctx := context.Background()
@@ -621,7 +633,7 @@ func TestCreateUserReplacesLegacyCredentialAndClearsTombstone(t *testing.T) {
 }
 
 func TestCreateUserPatchFailureCleansUnreferencedCredential(t *testing.T) {
-	scheme := cnpgScheme()
+	scheme := postgresResourceScheme()
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "create-retry-db", Namespace: "default"},
 		Spec:       appv1alpha1.DatabaseSpec{Name: "create-retry-db", Plan: "free"},
@@ -665,7 +677,7 @@ func TestCreateUserPatchFailureCleansUnreferencedCredential(t *testing.T) {
 }
 
 func TestConcurrentCreateUserReturnsOnlyReferencedCredential(t *testing.T) {
-	scheme := cnpgScheme()
+	scheme := postgresResourceScheme()
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "concurrent-db", Namespace: "default"},
 		Spec:       appv1alpha1.DatabaseSpec{Name: "concurrent-db", Plan: "free"},
@@ -741,7 +753,7 @@ func TestConcurrentCreateUserReturnsOnlyReferencedCredential(t *testing.T) {
 }
 
 func TestDeleteUserSecretFailureLeavesRevocationRetryable(t *testing.T) {
-	scheme := cnpgScheme()
+	scheme := postgresResourceScheme()
 	secretName := "delete-retry-db-user-generation"
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "delete-retry-db", Namespace: "default"},
@@ -787,7 +799,7 @@ func TestDeleteUserSecretFailureLeavesRevocationRetryable(t *testing.T) {
 }
 
 func TestDeleteUserPatchFailureRemainsRetryable(t *testing.T) {
-	scheme := cnpgScheme()
+	scheme := postgresResourceScheme()
 	secretName := "patch-retry-db-user-generation"
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "patch-retry-db", Namespace: "default"},
@@ -871,9 +883,9 @@ func TestPoolerConnectionStrings(t *testing.T) {
 // --- adapter shape smoke tests ---
 
 func TestRESTRecoveryAndAccessShapes(t *testing.T) {
-	svc, cl := newServiceCNPG()
+	svc, cl := newServicePostgresResources()
 	seedDatabaseSpec(t, cl, "shape-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb", Public: true}, true)
-	seedCNPGCluster(t, cl, "shape-db", "2026-08-01T00:00:00Z")
+	seedBarmanRecoveryWindow(t, cl, "shape-db", "2026-08-01T00:00:00Z", "2026-08-02T00:00:00Z")
 
 	// recovery-info uses Render's canonical POST.
 	var info RecoveryInfoView

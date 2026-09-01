@@ -528,6 +528,10 @@ const enDatabases: Record<string, TranslationEntry> = {
       "Backups aren't enabled for this plan, so recovery isn't available. Upgrade to a plan with backups to enable point-in-time recovery.",
     description: "Recovery panel state when the plan has no backups",
   },
+  "databases.recoveryUnavailable": {
+    message: "Could not read recovery information. Please try again.",
+    description: "Recovery panel state when backup metadata could not be read",
+  },
   "databases.recoveryEarliest": {
     message: "Earliest restore point",
     description: "Recovery panel field (earliest recoverable time)",
@@ -536,13 +540,18 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Latest restore point",
     description: "Recovery panel field (latest recoverable time)",
   },
-  "databases.recoveryNoBackupYet": {
-    message: "No backup yet",
-    description: "Recovery panel value when the first backup hasn't landed",
+  "databases.recoveryWindowNotEstablished": {
+    message: "Not established yet",
+    description: "Recovery panel value before the PITR window is established",
   },
   "databases.recoveryRestore": {
     message: "Restore to new instance",
     description: "Recovery panel button that opens the restore dialog",
+  },
+  "databases.recoveryRestoreUnavailable": {
+    message:
+      "Restore becomes available once the first recoverability point is established.",
+    description: "Reason restore is disabled before the PITR window opens",
   },
   "databases.recoveryCreateExport": {
     message: "Create export",

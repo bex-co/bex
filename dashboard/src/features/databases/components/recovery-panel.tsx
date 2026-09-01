@@ -43,6 +43,7 @@ export function RecoveryPanel({ id }: { id: string }) {
     exports,
     exportInProgress,
     loading,
+    error,
     exporting,
     recovering,
     createExport,
@@ -51,8 +52,13 @@ export function RecoveryPanel({ id }: { id: string }) {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [targetTime, setTargetTime] = useState("");
+  const recoveryWindowEstablished = Boolean(
+    info.earliestRecoveryTime && info.latestRecoveryTime,
+  );
+  const canRestore = recoveryWindowEstablished && !error;
 
   async function handleRestore() {
+    if (!canRestore) return;
     // datetime-local yields "YYYY-MM-DDTHH:mm"; send RFC3339 (append seconds+Z).
     const iso = targetTime ? `${targetTime}:00Z` : undefined;
     const recoveredDatabaseId = await recover({
@@ -77,9 +83,13 @@ export function RecoveryPanel({ id }: { id: string }) {
         <CardDescription>{t("databases.recoveryDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {loading && !info.enabled ? (
+        {loading && !info.enabled && !error ? (
           <p className="text-sm text-muted-foreground">
             {t("databases.loading")}
+          </p>
+        ) : error ? (
+          <p className="text-sm text-destructive" role="alert">
+            {t("databases.recoveryUnavailable")}
           </p>
         ) : !info.enabled ? (
           <p className="text-sm text-muted-foreground">
@@ -95,7 +105,7 @@ export function RecoveryPanel({ id }: { id: string }) {
                 value={
                   <LocalDateTime
                     value={info.earliestRecoveryTime}
-                    fallback={t("databases.recoveryNoBackupYet")}
+                    fallback={t("databases.recoveryWindowNotEstablished")}
                   />
                 }
               />
@@ -104,14 +114,22 @@ export function RecoveryPanel({ id }: { id: string }) {
                 value={
                   <LocalDateTime
                     value={info.latestRecoveryTime}
-                    fallback={t("databases.recoveryNoBackupYet")}
+                    fallback={t("databases.recoveryWindowNotEstablished")}
                   />
                 }
               />
             </dl>
 
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => setRestoreOpen(true)}>
+              <Button
+                onClick={() => setRestoreOpen(true)}
+                disabled={!canRestore}
+                title={
+                  canRestore
+                    ? undefined
+                    : t("databases.recoveryRestoreUnavailable")
+                }
+              >
                 <DatabaseBackup />
                 {t("databases.recoveryRestore")}
               </Button>
@@ -133,6 +151,11 @@ export function RecoveryPanel({ id }: { id: string }) {
                 {t("databases.recoveryCreateExport")}
               </Button>
             </div>
+            {!recoveryWindowEstablished ? (
+              <p className="text-sm text-muted-foreground">
+                {t("databases.recoveryRestoreUnavailable")}
+              </p>
+            ) : null}
 
             <BackupList
               title={t("databases.recoveryBackups")}
@@ -148,7 +171,7 @@ export function RecoveryPanel({ id }: { id: string }) {
         )}
       </CardContent>
 
-      <Dialog open={restoreOpen} onOpenChange={setRestoreOpen}>
+      <Dialog open={restoreOpen && canRestore} onOpenChange={setRestoreOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("databases.recoveryRestoreTitle")}</DialogTitle>

@@ -20,7 +20,7 @@ const recover = vi.fn();
 function windowInfo(): RecoveryInfo {
   return {
     enabled: true,
-    earliestRecoveryTime: null,
+    earliestRecoveryTime: "2026-07-13T12:00:00Z",
     latestRecoveryTime: "2026-07-14T12:00:00Z",
     backups: [] as BackupItem[],
   };
@@ -30,7 +30,13 @@ const state: {
   exports: ExportItem[];
   exportInProgress: boolean;
   info: RecoveryInfo;
-} = { exports: [], exportInProgress: false, info: windowInfo() };
+  error: Error | undefined;
+} = {
+  exports: [],
+  exportInProgress: false,
+  info: windowInfo(),
+  error: undefined,
+};
 
 vi.mock("@/features/databases/hooks/use-recovery", () => ({
   useRecovery: () => ({
@@ -38,6 +44,7 @@ vi.mock("@/features/databases/hooks/use-recovery", () => ({
     exports: state.exports,
     exportInProgress: state.exportInProgress,
     loading: false,
+    error: state.error,
     exporting: false,
     recovering: false,
     createExport,
@@ -49,28 +56,32 @@ beforeEach(() => {
   state.exports = [];
   state.exportInProgress = false;
   state.info = windowInfo();
+  state.error = undefined;
   createExport.mockReset();
   recover.mockReset();
   navigate.mockReset();
 });
 
 describe("RecoveryPanel restore window", () => {
-  it("shows exact restore-point boundaries, with a fallback before the first backup", () => {
+  it("shows exact restore-point boundaries once the window is established", () => {
     render(<RecoveryPanel id="db" />);
 
-    expect(screen.getByText("No backup yet")).toBeInTheDocument();
-    // The latest boundary renders as an exact timestamp, not a relative age —
-    // computed via the shared formatter so this holds in any runner timezone.
+    expect(
+      screen.getByText(formatDateTime("2026-07-13T12:00:00Z")!),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(formatDateTime("2026-07-14T12:00:00Z")!),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Restore to new instance" }),
+    ).toBeEnabled();
   });
 
-  it("falls back identically on BOTH boundaries when no window is established", () => {
+  it("shows honest boundaries and disables restore until a window is established", async () => {
     // The backend now omits latestRecoveryTime until the PITR window is actually
     // open (w6/m117): the card must never name a precise "latest restore point"
-    // beside "No backup yet" and an empty backup list. Both boundaries share the
-    // one fallback so they can never contradict each other.
+    // beside an unestablished earliest boundary and an empty backup list. Both
+    // boundaries share one fallback so they can never contradict each other.
     state.info = {
       enabled: true,
       earliestRecoveryTime: null,
@@ -79,7 +90,41 @@ describe("RecoveryPanel restore window", () => {
     };
     render(<RecoveryPanel id="db" />);
 
-    expect(screen.getAllByText("No backup yet")).toHaveLength(2);
+    expect(screen.getAllByText("Not established yet")).toHaveLength(2);
+    const restore = screen.getByRole("button", {
+      name: "Restore to new instance",
+    });
+    expect(restore).toBeDisabled();
+    expect(restore).toHaveAttribute(
+      "title",
+      "Restore becomes available once the first recoverability point is established.",
+    );
+    expect(
+      screen.getByText(
+        "Restore becomes available once the first recoverability point is established.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.setup().click(restore);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("distinguishes an unreadable recovery source from a plan without backups", () => {
+    state.info = {
+      enabled: false,
+      earliestRecoveryTime: null,
+      latestRecoveryTime: null,
+      backups: [],
+    };
+    state.error = new Error("forbidden");
+
+    render(<RecoveryPanel id="db" />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Could not read recovery information. Please try again.",
+    );
+    expect(
+      screen.queryByText(/Backups aren't enabled for this plan/),
+    ).not.toBeInTheDocument();
   });
 });
 

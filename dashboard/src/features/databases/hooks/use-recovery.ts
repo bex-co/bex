@@ -89,13 +89,14 @@ export function useRecovery(id: string) {
   });
   const raw = infoQuery.data?.databaseRecoveryInfo;
   const enabled = raw?.enabled ?? false;
+  const recoveryInfoUnavailable = Boolean(infoQuery.error);
   // Exports only exist for backed-up databases — skip the round-trip otherwise
-  // (the panel hides the exports list when recovery is disabled anyway).
+  // (the panel hides the exports list when recovery is disabled or unreadable).
   const exportsQuery = useQuery(DatabaseExportsDocument, {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
-    skip: !enabled,
+    skip: !enabled || recoveryInfoUnavailable,
   });
   const {
     data: exportsData,
@@ -123,11 +124,21 @@ export function useRecovery(id: string) {
   );
 
   useEffect(() => {
+    if (!enabled || recoveryInfoUnavailable) {
+      stopPolling();
+      return stopPolling;
+    }
     // Fast while an export is running, baseline cadence otherwise so the list
     // still reflects exports started elsewhere.
     startPolling(exportInProgress ? 5_000 : RESOURCE_POLL_INTERVAL_MS);
     return stopPolling;
-  }, [exportInProgress, startPolling, stopPolling]);
+  }, [
+    enabled,
+    exportInProgress,
+    recoveryInfoUnavailable,
+    startPolling,
+    stopPolling,
+  ]);
 
   const createExport = useCallback(async () => {
     try {
@@ -172,6 +183,7 @@ export function useRecovery(id: string) {
     exports,
     exportInProgress,
     loading: infoQuery.loading,
+    error: infoQuery.error,
     exporting,
     recovering,
     createExport,
