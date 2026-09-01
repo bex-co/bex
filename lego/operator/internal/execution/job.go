@@ -19,6 +19,7 @@ package execution
 import (
 	"context"
 	"fmt"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -128,4 +129,17 @@ func JobFailedReason(j *batchv1.Job) string {
 		}
 	}
 	return ""
+}
+
+// JobFailedAt is when the Job's JobFailed condition became true (zero when the
+// Job has not failed). Kubernetes sets CompletionTime only on success, so this
+// is a failed Job's own end-of-run timestamp — the build path derives a failed
+// build's real duration from it instead of reading zero (w6/m123).
+func JobFailedAt(j *batchv1.Job) time.Time {
+	for _, c := range j.Status.Conditions {
+		if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
+			return c.LastTransitionTime.Time
+		}
+	}
+	return time.Time{}
 }

@@ -34,6 +34,22 @@
 # /var/log/pods file-glob templating a file-based tailer needs. The trade is a
 # little more apiserver read load, acceptable at platform scale.
 #
+# EXCEPTION — build pods tail FILES, not the API (w6/m123): the API tailer
+# opens its follow stream per discovered container, and a container that has
+# not started yet answers "waiting to start"; the tailer then retries on a
+# growing backoff. Long-running app containers don't care, but a build's
+# phases are SEQUENTIAL init containers — buildkit starts minutes into the
+# pod's life (after clone / cache-restore) and a failing one can exit within
+# a second, entirely inside the backoff gap; once the pod is terminal it is
+# not tailed at all, so those lines are simply lost. Live evidence: the clone
+# phase's output ships (it is running when the pod is discovered) while a
+# fast-failing buildkit's never does — a tenant with a wrong dockerfilePath
+# saw an 11-line build log with zero buildkit output. The kubelet's on-disk
+# log file exists from the instant a container starts and survives until the
+# pod is deleted (the build Job's TTL is an hour), so a file tailer that
+# attaches late still reads every line from position zero, and `stage.cri`
+# restores each line's original timestamp. Hence `alloy.mounts.varlog` below.
+#
 # NOTE (the cluster-specific knobs, like prometheus.yaml's): the App pod-label
 # name (app.bex.co/app => Alloy meta key __meta_kubernetes_pod_label_app_bex_co_app),
 # the tenant App namespaces, and the Loki push URL. If any differs on a cluster,
@@ -122,6 +138,11 @@ spec:
           tolerations:
             - operator: Exists
         alloy:
+          # Build logs are tailed from the node's own pod log files — see the
+          # "EXCEPTION — build pods tail FILES" note at the top of this file —
+          # so every replica mounts the kubelet's /var/log read-only.
+          mounts:
+            varlog: true
           # Node scoping (see NODE SCOPING note above) reads K8S_NODE_NAME via
           # sys.env() in the discovery.kubernetes field selector. Inject it
           # ourselves from the downward API rather than relying on a chart
@@ -413,6 +434,11 @@ spec:
               // from the pod's own namespace — overridden by app.bex.co/app-namespace
               // when the build Job runs in a separate BEX_BUILD_NAMESPACE so the
               // stream lands under the App's namespace, not the build namespace.
+              //
+              // FILE-BASED tailing, deliberately not loki.source.kubernetes —
+              // sequential init containers defeat the API tailer; see the
+              // "EXCEPTION — build pods tail FILES" note at the top of this
+              // file (w6/m123).
 
               discovery.relabel "build_pods" {
                 targets = discovery.kubernetes.pods.targets
@@ -449,14 +475,33 @@ spec:
                   source_labels = ["__meta_kubernetes_pod_container_name"]
                   target_label  = "container"
                 }
+                // The kubelet's per-container log path:
+                // /var/log/pods/<ns>_<pod>_<uid>/<container>/*.log — the source
+                // labels join as "uid/container", and the glob absorbs the
+                // ns_pod_ prefix and per-restart file names.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+                  separator     = "/"
+                  target_label  = "__path__"
+                  replacement   = "/var/log/pods/*$1/*.log"
+                }
               }
 
-              loki.source.kubernetes "build_pods" {
-                targets    = discovery.relabel.build_pods.output
+              local.file_match "build_pods" {
+                path_targets = discovery.relabel.build_pods.output
+              }
+
+              loki.source.file "build_pods" {
+                targets    = local.file_match.build_pods.targets
                 forward_to = [loki.process.build_logs.receiver]
               }
 
               loki.process "build_logs" {
+                // On-disk pod logs are CRI-framed ("<rfc3339> stdout|stderr P|F
+                // <line>"); this restores the message and its ORIGINAL
+                // timestamp, which is what keeps a late-attached tail
+                // time-accurate instead of stamping lines at read time.
+                stage.cri { }
                 // Drop pods that somehow lack a build label (defensive guard).
                 stage.drop {
                   source              = "app"

@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -431,6 +432,95 @@ func TestBuildTimeoutClassification(t *testing.T) {
 	}
 	if obs.Phase != PhaseFailed || obs.Fault != FaultTimeout {
 		t.Fatalf("observation = %+v, want PhaseFailed with FaultTimeout", obs)
+	}
+}
+
+// TestBuildFailureWindowFromJobClock pins w6/m123's timing truth: a failed Job
+// has no CompletionTime (Kubernetes sets it only on success), so the window
+// must come from StartTime → the JobFailed condition's transition time — the
+// path that used to report a 68-second build as zero seconds.
+func TestBuildFailureWindowFromJobClock(t *testing.T) {
+	o := opts()
+	start := metav1.NewTime(time.Date(2026, 8, 27, 19, 56, 10, 0, time.UTC))
+	finish := metav1.NewTime(start.Add(68 * time.Second))
+	j := BuildJob(o, o.ImageRef())
+	j.Status.StartTime = &start
+	j.Status.Conditions = []batchv1.JobCondition{{
+		Type: batchv1.JobFailed, Status: corev1.ConditionTrue,
+		Reason: batchv1.JobReasonPodFailurePolicy, Message: "boom",
+		LastTransitionTime: finish,
+	}}
+	o.Client = fakeClient(j)
+	obs, err := EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
+	}
+	if obs.RunSeconds != 68 {
+		t.Errorf("RunSeconds = %v, want 68", obs.RunSeconds)
+	}
+	if !obs.StartedAt.Equal(start.Time) || !obs.FinishedAt.Equal(finish.Time) {
+		t.Errorf("window = %s..%s, want %s..%s", obs.StartedAt, obs.FinishedAt, start, finish)
+	}
+}
+
+// TestBuildFailureReadsTerminationTail: the failing container's captured
+// output (TerminationMessagePolicy FallbackToLogsOnError — captureFailureTail)
+// reaches the observation as the failing step's tenant-facing name and its
+// tail. Nothing read this capture before w6/m123.
+func TestBuildFailureReadsTerminationTail(t *testing.T) {
+	o := opts()
+	j := completedJob(o, batchv1.JobFailed)
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: j.Name + "-abcde", Namespace: o.Namespace,
+			Labels: map[string]string{jobNameLabel: j.Name},
+		},
+		Status: corev1.PodStatus{
+			InitContainerStatuses: []corev1.ContainerStatus{
+				{Name: "clone", State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 0}}},
+				{Name: "buildkit", State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+					ExitCode:   ExitTenantError,
+					Message:    "error: failed to read dockerfile: open NoSuchDockerfile: no such file or directory",
+					FinishedAt: metav1.NewTime(time.Date(2026, 8, 27, 19, 57, 15, 0, time.UTC)),
+				}}},
+			},
+		},
+	}
+	o.Client = fakeClient(j, pod)
+	obs, err := EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
+	}
+	if obs.FailedStep != "docker build" {
+		t.Errorf("FailedStep = %q, want the buildkit phase's tenant-facing name", obs.FailedStep)
+	}
+	if !strings.Contains(obs.Tail, "NoSuchDockerfile") {
+		t.Errorf("Tail = %q, want the container's own error", obs.Tail)
+	}
+
+	// A reaped pod must degrade to an empty tail, never an error — the failure
+	// message stands without it.
+	o.Client = fakeClient(completedJob(o, batchv1.JobFailed))
+	obs, err = EnsureBuild(context.Background(), o)
+	if err != nil || obs.Tail != "" || obs.FailedStep != "" {
+		t.Fatalf("reaped-pod observation: tail=%q step=%q err=%v, want empty", obs.Tail, obs.FailedStep, err)
+	}
+}
+
+// TestFailureTailKeepsTheEnd: the bound keeps the end of the output (errors
+// conclude output, they don't open it) and drops the partial line a byte cut
+// leaves behind.
+func TestFailureTailKeepsTheEnd(t *testing.T) {
+	long := strings.Repeat("progress line\n", 200) + "the actual error"
+	got := failureTail(long)
+	if len(got) > failureTailBytes {
+		t.Fatalf("tail is %d bytes, bound is %d", len(got), failureTailBytes)
+	}
+	if !strings.HasSuffix(got, "the actual error") {
+		t.Fatalf("tail lost the trailing error: %q", got)
+	}
+	if !strings.HasPrefix(got, "progress line") {
+		t.Fatalf("tail starts mid-line: %q", got)
 	}
 }
 

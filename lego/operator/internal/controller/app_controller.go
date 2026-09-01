@@ -865,7 +865,15 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 			recordBuildInfraFailure(app.Labels[labelWorkspace])
 		}
 		r.meterBuildSignals(ctx, app, buildNs)
-		return halt(r.fail(ctx, app, view.reason, fmt.Errorf("%s: %s", view.message, obs.Message)))
+		// The Job/pod identity and Kubernetes' own verdict stay in the operator
+		// log, where they are useful; the tenant-facing message carries the
+		// failing step's own captured output instead (w6/m123 — the raw Job
+		// text leaked the bex-build namespace, the internal Job naming scheme,
+		// and PodFailurePolicy internals to the tenant).
+		logf.FromContext(ctx).Info("build failed",
+			"app", app.Name, "fault", string(obs.Fault), "step", obs.FailedStep, "jobMessage", obs.Message)
+		stampBuildRun(app, obs)
+		return halt(r.fail(ctx, app, view.reason, errors.New(buildFailureMessage(view, obs))))
 	case build.PhaseWaiting:
 		// Dispatched, but no pod placed yet — capacity wait. Report BuildQueued so
 		// the control plane's build budget restarts on the queued→building edge

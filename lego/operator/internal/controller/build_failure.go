@@ -16,6 +16,9 @@ limitations under the License.
 package controller
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -66,4 +69,53 @@ func viewForBuildFault(f build.Fault) buildFaultView {
 		return v
 	}
 	return unclassifiedBuildFailure
+}
+
+// buildFailureMessage composes the sentence a tenant reads for a terminal
+// build failure (w6/m123). House style is the runtime crash-loop message (the
+// CrashLoopBackOff branch in app_controller.go): name the symptom, say where
+// to look, add the one hint that usually explains it — never internals. The
+// raw Kubernetes Job text (build namespace, Job/pod names, exit codes,
+// PodFailurePolicy rule indices) stays in the operator log; it must not enter
+// the string this returns.
+func buildFailureMessage(v buildFaultView, obs build.Observation) string {
+	switch obs.Fault {
+	case build.FaultInfra:
+		// A tenant cannot act on an infrastructure tail (it names registry
+		// endpoints and platform components), so this class carries guidance
+		// instead of output — with or without a captured tail.
+		return v.message + " — this was not caused by a change in your code; trigger a new deploy to retry, and contact support if it keeps happening"
+	case build.FaultTimeout:
+		// A deadline reap kills the pods rather than letting one exit, so
+		// there is never a failing container's tail to quote here.
+		return fmt.Sprintf("%s (%d minutes) — reduce work done at build time, or enable the build cache so unchanged layers are reused",
+			v.message, int(build.BuildTimeout.Minutes()))
+	}
+	// FaultTenant and the unclassified fallback: quote the failing step's own
+	// output when the capture survived, otherwise point at the build logs.
+	step := ""
+	if obs.FailedStep != "" {
+		step = " in the " + obs.FailedStep + " step"
+	}
+	if obs.Tail == "" {
+		return fmt.Sprintf("%s%s — check the build logs for the failing step's output", v.message, step)
+	}
+	return fmt.Sprintf("%s%s:\n%s", v.message, step, obs.Tail)
+}
+
+// stampBuildRun records a failed build's execution window on the App status
+// (w6/m123). Called just before r.fail so it rides the same status update as
+// the Build condition — the two can never be observed apart. A window the Job
+// never reported writes nothing: bex-api treats an absent window as "start
+// unknown" and leaves the deploy row's started_at honestly null rather than
+// fabricating one at observation time.
+func stampBuildRun(app *appv1alpha1.App, obs build.Observation) {
+	if obs.StartedAt.IsZero() || obs.FinishedAt.IsZero() {
+		return
+	}
+	app.Status.BuildRun = &appv1alpha1.BuildRunStatus{
+		Generation: releaseGeneration(app),
+		StartedAt:  obs.StartedAt.UTC().Format(time.RFC3339),
+		FinishedAt: obs.FinishedAt.UTC().Format(time.RFC3339),
+	}
 }

@@ -594,7 +594,7 @@ func (r *Reconciler) settleAbandonedDeploys(ctx context.Context, d DesiredApp, o
 		}
 		status := timedOutDeployStatus(deploy)
 		reason := abandonedDeployReason(status)
-		ok, err := r.Store.TransitionDeploy(ctx, deploy.ID, status, "", reason, "")
+		ok, err := r.Store.TransitionDeploy(ctx, deploy.ID, status, "", reason, "", nil)
 		if err != nil {
 			log.Printf("controlplane: settle abandoned deploy %s to %s: %v", deploy.ID, status, err)
 			continue
@@ -656,7 +656,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		// missed its final observation. Its own stored phase is enough to close
 		// the build lifecycle, but the current release's pre-deploy/image evidence
 		// must not be copied onto it.
-		for _, fact := range buildLifecycleFacts(open, status) {
+		for _, fact := range buildLifecycleFacts(open, status, buildRunStart(cur, open)) {
 			if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
 				log.Printf("controlplane: record lifecycle fact %s: %v", fact.SourceKey, err)
 			}
@@ -677,7 +677,15 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// w9/011: a failing close carries its actionable cause rather than an opaque
 	// terminal state; deployCloseFailureReason owns the sourcing order.
 	failureReason, failureCode := deployCloseFailureReason(cur, open, status, matchesObservedRelease)
-	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode)
+	// w6/m123: a build_failed close reached by a phase skip stamps started_at
+	// from the operator's recorded build window (generation-attributed, so it
+	// is this row's own even when the release has moved past it) — never from
+	// this transition's clock, which is the failure's observation time.
+	var startedAt *time.Time
+	if status == DeployBuildFailed {
+		startedAt = buildRunStart(cur, open)
+	}
+	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode, startedAt)
 	if err != nil {
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
 		return
@@ -745,7 +753,7 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 func (r *Reconciler) recordLifecycleFacts(ctx context.Context, d DesiredApp, open Deploy, cur *appv1alpha1.App, newStatus string) {
 	var facts []ServiceEventFact
 	if d.Repo != "" {
-		facts = append(facts, buildLifecycleFacts(open, newStatus)...)
+		facts = append(facts, buildLifecycleFacts(open, newStatus, buildRunStart(cur, open))...)
 	}
 	facts = append(facts, preDeployLifecycleFacts(open, cur)...)
 	for _, fact := range facts {
@@ -763,8 +771,8 @@ func (r *Reconciler) recordLifecycleFacts(ctx context.Context, d DesiredApp, ope
 // from where the deploy has reached — a build phase means still building (no
 // ended fact yet), any later phase means the build succeeded, build_failed means
 // it failed, and a cancel while still building means it was canceled.
-func buildLifecycleFacts(open Deploy, newStatus string) []ServiceEventFact {
-	at, dispatched := buildStartedAt(open, newStatus)
+func buildLifecycleFacts(open Deploy, newStatus string, observedStart *time.Time) []ServiceEventFact {
+	at, dispatched := buildStartedAt(open, newStatus, observedStart)
 	if !dispatched {
 		return nil
 	}
@@ -799,7 +807,7 @@ func buildLifecycleFacts(open Deploy, newStatus string) []ServiceEventFact {
 // and canceled after the build finished emits build_ended(succeeded). open
 // must be the deploy row exactly as it stood before the cancel closed it.
 func CanceledBuildLifecycleFacts(open Deploy) []ServiceEventFact {
-	return buildLifecycleFacts(open, DeployCanceled)
+	return buildLifecycleFacts(open, DeployCanceled, nil)
 }
 
 // buildStartedAt is when the deploy's BuildKit Job actually got dispatched, and
@@ -813,12 +821,15 @@ func CanceledBuildLifecycleFacts(open Deploy) []ServiceEventFact {
 // entire wait, on the Events timeline, the build_started webhook payload, and
 // the metrics build marker alike.
 //
-// started_at is stamped by TransitionDeploy on the first executing phase, which
-// IS the dispatch point, so it wins whenever the row already carries one. A
-// never-queued deploy keeps riding CreatedAt: it is dispatched as the row opens,
-// and that path must keep emitting the fact even when a fast build reaches a
-// terminal status before any pass observes it mid-build.
-func buildStartedAt(open Deploy, newStatus string) (time.Time, bool) {
+// started_at is stamped by TransitionDeploy on the first dispatch-observing
+// phase, which IS the dispatch point, so it wins whenever the row already
+// carries one. A never-queued deploy keeps riding CreatedAt: it is dispatched
+// as the row opens, and that path must keep emitting the fact even when a fast
+// build reaches a terminal status before any pass observes it mid-build. A
+// queued row observed straight at a terminal failure (w6/m123) reports the
+// operator's recorded build window when there is one — observedStart — and
+// otherwise reports no build at all, matching the row's own null started_at.
+func buildStartedAt(open Deploy, newStatus string, observedStart *time.Time) (time.Time, bool) {
 	if open.StartedAt != nil {
 		return *open.StartedAt, true
 	}
@@ -828,14 +839,24 @@ func buildStartedAt(open Deploy, newStatus string) (time.Time, bool) {
 	}
 	if open.Status == DeployQueued {
 		// Never dispatched yet, so whether there is a build to report is
-		// exactly whether this status would stamp started_at.
+		// exactly whether this status means execution began.
 		if !DeployStatusStartsExecution(eff) {
 			return time.Time{}, false
 		}
-		// Leaving the queue on THIS pass. recordLifecycleFacts runs before the
-		// TransitionDeploy that stamps started_at from clock_timestamp(), so
-		// now is that same instant — CreatedAt is the stale queued-at time.
-		return time.Now().UTC(), true
+		// Leaving the queue on THIS pass into an in-progress/live status.
+		// recordLifecycleFacts runs before the TransitionDeploy that stamps
+		// started_at from clock_timestamp(), so now is that same instant —
+		// CreatedAt is the stale queued-at time.
+		if DeployStatusStampsDispatch(eff) {
+			return time.Now().UTC(), true
+		}
+		// A terminal failure reached straight from queued: the dispatch was
+		// never observed, so the only honest start is the operator's recorded
+		// build window.
+		if observedStart != nil {
+			return observedStart.UTC(), true
+		}
+		return time.Time{}, false
 	}
 	if eff == DeployQueued {
 		return time.Time{}, false
@@ -1157,6 +1178,33 @@ func recordedBuildFailure(app *appv1alpha1.App, generation int64) (string, bool)
 		return "", false
 	}
 	return cond.Message, true
+}
+
+// recordedBuildRun reads the operator's recorded build execution window
+// (status.buildRun, w6/m123) for one deploy row's release generation. Like
+// recordedBuildFailure, the Generation attribution is what lets a row trust
+// the window even after status.releaseGeneration has moved past it.
+func recordedBuildRun(app *appv1alpha1.App, generation int64) (start, finish time.Time, ok bool) {
+	br := app.Status.BuildRun
+	if br == nil || generation == 0 || br.Generation != generation {
+		return time.Time{}, time.Time{}, false
+	}
+	start, serr := time.Parse(time.RFC3339, br.StartedAt)
+	finish, ferr := time.Parse(time.RFC3339, br.FinishedAt)
+	if serr != nil || ferr != nil {
+		return time.Time{}, time.Time{}, false
+	}
+	return start, finish, true
+}
+
+// buildRunStart is recordedBuildRun's start as the nullable evidence value
+// buildLifecycleFacts and TransitionDeploy take; nil when no window matches
+// the row's generation.
+func buildRunStart(app *appv1alpha1.App, open Deploy) *time.Time {
+	if start, _, ok := recordedBuildRun(app, open.Generation); ok {
+		return &start
+	}
+	return nil
 }
 
 func appReleaseGeneration(app *appv1alpha1.App) int64 {

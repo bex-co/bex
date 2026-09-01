@@ -53,13 +53,38 @@ func DeployStatuses() []string { return slices.Clone(deployStatusVocabulary) }
 func IsOpenDeployStatus(status string) bool { return slices.Contains(openDeployStatuses, status) }
 
 // DeployStatusStartsExecution reports whether reaching status means the deploy's
-// work has actually begun — the condition TransitionDeploy stamps started_at on.
-// A queued deploy is waiting behind another build and has dispatched nothing;
-// canceled/deactivated are exits that can be reached without ever executing.
-// Shared with the build_started event fact so the timeline cannot disagree with
-// the deploy row about when a build began (w6/035).
+// work has actually begun. A queued deploy is waiting behind another build and
+// has dispatched nothing; canceled/deactivated are exits that can be reached
+// without ever executing. Shared with the build_started event fact so the
+// timeline cannot disagree with the deploy row about when a build began
+// (w6/035). Note it says nothing about WHEN the work began: a terminal failure
+// reached by a phase skip executed at some earlier, unobserved time — see
+// DeployStatusStampsDispatch for the stamping half (w6/m123).
 func DeployStatusStartsExecution(status string) bool {
 	return status != DeployQueued && status != DeployCanceled && status != DeployDeactivated
+}
+
+// DeployFailureStatus reports whether status is a terminal failure. These can
+// be reached by a forward skip straight from queued (the backend samples
+// Kubernetes state; a build can fail entirely between two passes), so the
+// transition's own clock is not evidence of when their work began.
+func DeployFailureStatus(status string) bool {
+	switch status {
+	case DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed:
+		return true
+	}
+	return false
+}
+
+// DeployStatusStampsDispatch reports whether TransitionDeploy may stamp
+// started_at from its own clock on reaching status: entering an in-progress
+// (or live) status IS the dispatch moment being observed, while a terminal
+// failure arrived at by a skip is not — stamping it collapsed a 68-second
+// failed build into a one-microsecond duration (w6/m123). Failure closes
+// stamp only observed evidence (the operator's recorded build window), or
+// honestly nothing.
+func DeployStatusStampsDispatch(status string) bool {
+	return DeployStatusStartsExecution(status) && !DeployFailureStatus(status)
 }
 
 // IsTerminalDeployStatus reports whether status is a known terminal state.

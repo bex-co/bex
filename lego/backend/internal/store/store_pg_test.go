@@ -1061,7 +1061,7 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 		t.Fatalf("image-pull deploy fixture = %+v (err %v)", failureDeploys, err)
 	}
 	failedDeploy := failureDeploys[0]
-	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, "", "bounded operator diagnosis", EventReasonImagePullBackoff); err != nil || !won {
+	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, "", "bounded operator diagnosis", EventReasonImagePullBackoff, nil); err != nil || !won {
 		t.Fatalf("image-pull transition = (%v, %v)", won, err)
 	}
 	failureEvents, err := s.ListServiceEvents(ctx, failureApp.ID, core.ServiceTarget(failureApp.Name), failureApp.TenantID, ServiceEventFilter{
@@ -1074,7 +1074,7 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	if failureFact.DeployID != failedDeploy.ID || failureFact.Image != failureApp.Image || failureFact.ReasonCode != EventReasonImagePullBackoff {
 		t.Fatalf("image-pull fact = %+v, want deploy/image/bounded reason", failureFact)
 	}
-	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, "", "retry", EventReasonImagePullBackoff); err != nil || won {
+	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, "", "retry", EventReasonImagePullBackoff, nil); err != nil || won {
 		t.Fatalf("image-pull retry = (%v, %v), want terminal no-op", won, err)
 	}
 }

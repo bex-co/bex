@@ -178,7 +178,13 @@ func ensureBuildpack(ctx context.Context, o Options) (Observation, error) {
 			}
 			return Observation{Phase: PhaseSucceeded, Image: canonicalKpackImage(o, latest)}, nil
 		case corev1.ConditionFalse:
-			return Observation{Phase: PhaseFailed, Message: kpackFailureMessage(ctx, o.Client, cur, condition)}, nil
+			// The kpack message is the buildpack builder's own words (condition
+			// text / step logs) — tenant-appropriate output, unlike the Job
+			// path's Kubernetes condition text. Carry it as the quoted tail so
+			// the composed failure reason keeps showing it (w6/m123).
+			msg := kpackFailureMessage(ctx, o.Client, cur, condition)
+			return Observation{Phase: PhaseFailed, Message: msg,
+				FailedStep: "buildpack build", Tail: failureTail(msg)}, nil
 		}
 	}
 	return Observation{Phase: PhaseBuilding}, nil
