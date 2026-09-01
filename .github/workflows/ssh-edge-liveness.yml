@@ -17,7 +17,8 @@ name: Production edge liveness
 # w6/m131/t004 took that slot: request-logs-liveness below. Same shape, same
 # failure class — an acceptance script (scripts/logs-verify.sh) that was written,
 # never scheduled, and so never noticed that type=request had been silently empty
-# for every tenant service in production. Two probes, one carrier, one schedule.
+# for every tenant service in production. w2/m85 adds the public fallback-TLS
+# synthetic to the same carrier. Three probes, one schedule.
 
 on:
   workflow_dispatch:
@@ -26,6 +27,10 @@ on:
         description: "SSH edge to probe (host:port)"
         required: false
         default: ssh.bex.co:22
+      host:
+        description: "Unknown first-level onbex.co hostname to probe"
+        required: false
+        default: notfound.onbex.co
   schedule:
     # Every six hours. "Unnoticed for weeks" is the bar this must beat; a dead
     # edge now surfaces within hours, not on the next human's manual check.
@@ -36,7 +41,7 @@ permissions:
   issues: write
 
 jobs:
-  ssh-liveness:
+  public-edge-liveness:
     runs-on: [self-hosted, Linux, ARM64]
     env:
       GH_TOKEN: ${{ github.token }}
@@ -84,10 +89,57 @@ jobs:
             gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "$SSH_EDGE completed the version exchange and sent KEXINIT again."
           fi
-      - name: Fail the run when the edge is down
-        if: steps.probe.outputs.down == 'true'
+      - name: Probe trusted wildcard TLS and intentional 404
+        id: tls_probe
+        if: always()
+        env:
+          ONBEX_PROBE_HOST: ${{ github.event.inputs.host || 'notfound.onbex.co' }}
         run: |
-          echo "::error::$SSH_EDGE did not send KEXINIT — SSH is down" >&2
+          if bash scripts/onbex-default-tls-verify.sh "$ONBEX_PROBE_HOST" > tls-probe.txt 2>&1; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "down=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat tls-probe.txt
+      - name: Open a fallback-TLS tracking issue
+        if: always() && steps.tls_probe.outputs.down == 'true'
+        env:
+          ONBEX_PROBE_HOST: ${{ github.event.inputs.host || 'notfound.onbex.co' }}
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label onbex-fallback-tls-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -z "$existing" ]]; then
+            gh label create onbex-fallback-tls-down --repo "$GITHUB_REPOSITORY" \
+              --color B60205 --description "Unknown onbex.co hosts lack trusted fallback TLS" --force
+            {
+              printf 'The public fallback TLS synthetic failed for `%s`. This checks browser trust, the exact `*.onbex.co` SAN, at least 30 days of validity, and the intentional HTTP 404.\n\n' "$ONBEX_PROBE_HOST"
+              printf 'Probe output:\n\n```\n%s\n```\n\n' "$(cat tls-probe.txt)"
+              printf 'Rotate the externally issued certificate through `BEX_ONBEX_TLS_CERT_FILE` / `BEX_ONBEX_TLS_KEY_FILE`, run `scripts/gh-secrets.sh`, and dispatch `deploy.yml`. bex does not call a DNS provider.\n'
+            } > issue-body.md
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "onbex.co fallback TLS is invalid or expiring" \
+              --label onbex-fallback-tls-down --body-file issue-body.md
+          fi
+      - name: Close the fallback-TLS issue after recovery
+        if: always() && steps.tls_probe.outputs.down == 'false'
+        env:
+          ONBEX_PROBE_HOST: ${{ github.event.inputs.host || 'notfound.onbex.co' }}
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label onbex-fallback-tls-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "$ONBEX_PROBE_HOST again has trusted wildcard TLS and returns the intentional 404."
+          fi
+      - name: Fail the run when a public edge is unhealthy
+        if: always() && (steps.probe.outputs.down == 'true' || steps.tls_probe.outputs.down == 'true')
+        env:
+          ONBEX_PROBE_HOST: ${{ github.event.inputs.host || 'notfound.onbex.co' }}
+        run: |
+          if [[ "${{ steps.probe.outputs.down }}" == true ]]; then
+            echo "::error::$SSH_EDGE did not send KEXINIT — SSH is down" >&2
+          fi
+          if [[ "${{ steps.tls_probe.outputs.down }}" == true ]]; then
+            echo "::error::$ONBEX_PROBE_HOST fallback TLS is invalid, expiring, or no longer returns 404" >&2
+          fi
           exit 1
 
   # w6/m131/t004. The request-log pipeline's silent-zero failure: type=request
