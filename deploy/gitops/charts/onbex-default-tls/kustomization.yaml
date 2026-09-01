@@ -4,6 +4,4 @@ namespace: traefik
 commonAnnotations:
   argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 resources:
-  - issuer.yaml
-  - certificate.yaml
   - tlsstore.yaml

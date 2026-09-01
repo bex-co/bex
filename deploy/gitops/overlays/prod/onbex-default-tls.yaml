@@ -1,6 +1,5 @@
-# Production-only fallback TLS. HTTP-01 cannot issue wildcards, and local/CAPD
-# must never require the production Cloudflare credential. The parent sync wave
-# follows cert-manager (wave 1) and the shared HTTP-01 ClusterIssuers (wave 2).
+# Production-only fallback TLS. The externally issued certificate is installed
+# before this Application; local/CAPD never require production key material.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

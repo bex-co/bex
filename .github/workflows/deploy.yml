@@ -171,6 +171,15 @@ jobs:
         with:
           version: v1.36.1
 
+      # Reject absent, malformed, untrusted, mismatched, or near-expiry
+      # certificate material before image builds and GitOps write-back. The
+      # installer repeats these checks immediately before its cluster write.
+      - name: validate onbex.co fallback TLS certificate
+        env:
+          BEX_ONBEX_TLS_CERT: ${{ secrets.BEX_ONBEX_TLS_CERT }}
+          BEX_ONBEX_TLS_KEY: ${{ secrets.BEX_ONBEX_TLS_KEY }}
+        run: bash scripts/onbex-default-tls-secret.sh --validate-only
+
       # --- 1. build + push the operator image ---
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -552,15 +561,15 @@ jobs:
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
 
-      # The wildcard Certificate is GitOps-owned, but its zone-scoped DNS token
-      # is not. Install/rotate the namespace-local credential before Argo sees
-      # the production child Application. stdin keeps the token out of argv and
-      # logs; the protected production-deploy environment gates access to it.
-      - name: install onbex.co DNS-01 credential
+      # The externally issued wildcard is not Git-owned. Validate and install
+      # it before Argo sees the TLSStore. The protected environment scopes the
+      # material to this job; stdin keeps the private key out of argv and logs.
+      - name: install onbex.co fallback TLS certificate
         if: ${{ env.SUPERSEDED != 'true' }}
         env:
-          BEX_ONBEX_DNS_API_TOKEN: ${{ secrets.BEX_ONBEX_DNS_API_TOKEN }}
-        run: bash scripts/onbex-dns01-secret.sh
+          BEX_ONBEX_TLS_CERT: ${{ secrets.BEX_ONBEX_TLS_CERT }}
+          BEX_ONBEX_TLS_KEY: ${{ secrets.BEX_ONBEX_TLS_KEY }}
+        run: bash scripts/onbex-default-tls-secret.sh
 
       # Mirror only archives whose upstream bytes and resulting OCI manifests
       # match deploy/helm-artifacts.lock. Argo consumes these packages by digest,
