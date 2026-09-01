@@ -189,7 +189,7 @@ export function globalMetadata(
   const description = i18n.t("common.headDescription", { lng: language });
   const imageAlt = i18n.t("common.headImageAlt", { lng: language });
   const normalizedOrigin = normalizeDashboardOrigin(origin);
-  const image = absoluteMetadataUrl(normalizedOrigin, "/logo.png");
+  const image = absoluteMetadataUrl(normalizedOrigin, "/logo.webp");
   const meta: MetaTag[] = [
     { charSet: "utf-8" },
     {
