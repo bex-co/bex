@@ -153,7 +153,7 @@ def run(args: argparse.Namespace, expectations: list[Expectation]) -> int:
                 os._exit(127)
             except PermissionError:
                 os._exit(126)
-            except BaseException:
+            except OSError:
                 os._exit(125)
 
         set_window_size(master_fd, args.rows, args.cols)
@@ -174,6 +174,7 @@ def run(args: argparse.Namespace, expectations: list[Expectation]) -> int:
                     try:
                         os.waitpid(pid, 0)
                     except ChildProcessError:
+                        # The child was already reaped by the nonblocking poll.
                         pass
                     return 124
 
@@ -223,6 +224,7 @@ def run(args: argparse.Namespace, expectations: list[Expectation]) -> int:
             try:
                 os.waitpid(pid, 0)
             except ChildProcessError:
+                # The child was already reaped by the nonblocking poll.
                 pass
             return 130
         except Exception:
@@ -231,13 +233,13 @@ def run(args: argparse.Namespace, expectations: list[Expectation]) -> int:
             try:
                 os.waitpid(pid, 0)
             except ChildProcessError:
+                # The child was already reaped by the nonblocking poll.
                 pass
             return 125
         finally:
             os.close(master_fd)
 
-    if child_status is None:
-        _, child_status = os.waitpid(pid, 0)
+    assert child_status is not None
     exit_status = normalized_exit_status(child_status)
     if pending < len(expectations):
         print(f"FAIL pty marker {expectations[pending].name} missing", file=sys.stderr)

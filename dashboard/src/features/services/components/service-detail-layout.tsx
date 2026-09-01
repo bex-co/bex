@@ -120,11 +120,7 @@ export function ServiceDetailLayout({
         <div
           className="min-h-0 flex-1 overflow-auto"
           data-route-skeleton={
-            !service
-              ? base === "/static"
-                ? "static-active-tab"
-                : "service-active-tab"
-              : undefined
+            base === "/static" ? "static-active-tab" : "service-active-tab"
           }
         >
           <ServiceDetailHeaderSkeleton />

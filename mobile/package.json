@@ -75,5 +75,9 @@
     "knip": "6.33.0",
     "prettier": "^3.7.4",
     "typescript": "~6.0.3"
+  },
+  "resolutions": {
+    "metro": "0.84.5",
+    "uuid": "11.1.1"
   }
 }

@@ -1,9 +1,8 @@
 """Offline contract tests for Stripe billing reconciliation."""
 
 import importlib.util
-import unittest
 from pathlib import Path
-from unittest import mock
+from unittest import TestCase, main, mock
 
 
 MODULE = Path(__file__).with_name("stripe_billing_reconcile.py")
@@ -13,7 +12,7 @@ assert SPEC.loader
 SPEC.loader.exec_module(RECONCILE)
 
 
-class LiveModeGateTest(unittest.TestCase):
+class LiveModeGateTest(TestCase):
     # w4/m81 t005: this tool is read-only, so a live key is permitted — but
     # only under the explicit BEX_STRIPE_ALLOW_LIVE=1 go-live decision, and
     # every Stripe/local object must match the key's mode.
@@ -54,7 +53,7 @@ def row(kind, quantity, event, state="emitted", transaction="tx-1"):
     }
 
 
-class ReconcileTest(unittest.TestCase):
+class ReconcileTest(TestCase):
     def test_normalization_matches_stripe_twelve_decimal_payload(self):
         self.assertEqual(
             "1.423845122568",
@@ -173,4 +172,4 @@ class ReconcileTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    main()

@@ -81,7 +81,7 @@ func run(args []string, recipient string) error {
 	return os.Remove(inPath)
 }
 
-func encrypt(in io.Reader, outPath string, to age.Recipient) error {
+func encrypt(in io.Reader, outPath string, to age.Recipient) (retErr error) {
 	// 0644, not 0600: the upload stage reads this from the shared EmptyDir as a
 	// DIFFERENT uid with every capability (including DAC_OVERRIDE) dropped, so
 	// an owner-only file is unreadable there and the Job fails with nothing
@@ -91,7 +91,12 @@ func encrypt(in io.Reader, outPath string, to age.Recipient) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close() //nolint:errcheck // Close is checked explicitly below
+	// A writable file can report delayed write failures only from Close. Join
+	// that result into every return path so even an earlier encryption failure
+	// cannot hide a failed final flush.
+	defer func() {
+		retErr = errors.Join(retErr, out.Close())
+	}()
 
 	w, err := age.Encrypt(out, to)
 	if err != nil {
@@ -109,5 +114,5 @@ func encrypt(in io.Reader, outPath string, to age.Recipient) error {
 	if err := out.Sync(); err != nil {
 		return err
 	}
-	return out.Close()
+	return nil
 }

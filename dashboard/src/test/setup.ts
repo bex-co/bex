@@ -85,6 +85,7 @@ if (typeof window !== "undefined") {
 
   // Mock ResizeObserver
   global.ResizeObserver = class ResizeObserver {
+    constructor(_callback: ResizeObserverCallback) {}
     observe() {}
     unobserve() {}
     disconnect() {}

@@ -197,7 +197,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	// the datastore's OWN namespace (ADR043 D8). Querying the shared one for a
 	// migrated datastore returns an empty series rather than an error — the same
 	// silent-empty failure the App-side metrics path already had to fix.
-	namespace := s.Namespace
+	var namespace string
 	// The same silent-empty class applies to the RESOURCE half of the matchers
 	// (w5/m71): the caller's raw input only AUTHORIZES the read — every matcher
 	// below is built from the resolved CR's metadata.name, so the identity the
