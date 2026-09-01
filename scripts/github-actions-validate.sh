@@ -45,6 +45,14 @@ third_party_refs() {
     | awk '{print $2}' | grep -v '^\./' | sort -u
 }
 
+collect_workflow_files() {
+  if [ "$canonical_tree" -eq 1 ]; then
+    find .github/workflows lego/operator/.github/workflows -name '*.yml' 2>/dev/null | LC_ALL=C sort
+  else
+    find "$WORKFLOWS_DIR" -name '*.yml' 2>/dev/null | LC_ALL=C sort
+  fi
+}
+
 # 1. SHA-pin enforcement: every third-party ref must be a full 40-hex commit SHA.
 unpinned="$(third_party_refs | grep -vE '@[0-9a-f]{40}$' || true)"
 if [ -n "$unpinned" ]; then
@@ -105,53 +113,52 @@ if [ -n "$invalid_kubeconfig_lifetimes" ]; then
   exit 1
 fi
 
-# 4b. ADR050 Tier A decrypt custody (w8/m30 t005). A workflow that runs a
+# 4b. ADR050 Tier A decrypt custody. A workflow that runs a
 # scripts/restore-*.sh with dotenv loading disabled supplies the script's whole
 # environment itself — and since 2026-08-04 every Tier A snapshot is
-# age-encrypted, so omitting AGE_BACKUP_PRIVATE_KEY fails the restore at the
-# decrypt step (run 32814333448: the drill's env list predated encryption).
+# age-encrypted, so omitting AGE_BACKUP_PRIVATE_KEY fails at the decrypt step.
 # Derived from the tree so a future etcd/KeyValue restore workflow is caught
 # the day it is added.
 restore_workflows() {
-  grep -lE 'scripts/restore-[a-z]+\.sh' "$WORKFLOWS_DIR"/*.yml 2>/dev/null || true
+  local workflow
+  while IFS= read -r workflow; do
+    grep -lE 'scripts/restore-[a-z]+\.sh' "$workflow" 2>/dev/null || true
+  done < <(collect_workflow_files)
 }
-keyless_restores=""
-ageless_restores=""
-for wf in $(restore_workflows); do
+restore_workflow_files=()
+while IFS= read -r wf; do
+  [ -n "$wf" ] && restore_workflow_files+=("$wf")
+done < <(restore_workflows)
+keyless_restores=()
+ageless_restores=()
+for wf in "${restore_workflow_files[@]}"; do
   grep -Fq 'RESTORE_SKIP_DOTENV' "$wf" || continue
-  grep -Fq 'AGE_BACKUP_PRIVATE_KEY' "$wf" || keyless_restores="$keyless_restores $wf"
+  grep -Fq 'AGE_BACKUP_PRIVATE_KEY' "$wf" || keyless_restores+=("$wf")
   if ! grep -Eq '^[[:space:]]+RESTORE_AGE_IMAGE:[[:space:]]+[^[:space:]#]+@sha256:[0-9a-f]{64}([[:space:]#]|$)' "$wf"; then
     if ! grep -Fq 'AGE_LINUX_ARM64_SHA256: c6878a324421b69e3e20b00ba17c04bc5c6dab0030cfe55bf8f68fa8d9e9093a' "$wf" \
       || ! grep -Fq 'age-v${AGE_VERSION}-linux-arm64.tar.gz' "$wf" \
       || ! grep -Fq 'sha256sum --check --strict' "$wf" \
       || ! grep -Fq '>>"$GITHUB_PATH"' "$wf"; then
-      ageless_restores="$ageless_restores $wf"
+      ageless_restores+=("$wf")
     fi
   fi
 done
-if [ -n "$keyless_restores" ]; then
+if [ "${#keyless_restores[@]}" -gt 0 ]; then
   echo "FAIL: these workflows run a restore script with RESTORE_SKIP_DOTENV but never pass" >&2
   echo "      AGE_BACKUP_PRIVATE_KEY, so an .age snapshot fails at the decrypt step (ADR050):" >&2
-  printf '  %s\n' $keyless_restores >&2
+  printf '  %s\n' "${keyless_restores[@]}" >&2
   exit 1
 fi
-if [ -n "$ageless_restores" ]; then
+if [ "${#ageless_restores[@]}" -gt 0 ]; then
   echo "FAIL: these workflows can receive an encrypted restore but provide neither" >&2
   echo "      a digest-pinned RESTORE_AGE_IMAGE nor a checksum-pinned age CLI:" >&2
-  printf '  %s\n' $ageless_restores >&2
+  printf '  %s\n' "${ageless_restores[@]}" >&2
   exit 1
 fi
 
 # 5. Self-hosted runner custody (ADR083, .pm/DO_NOT_DO.md #CI-RUNNERS). All CI
 # jobs run on operator-custodied self-hosted runners; a security scan that
 # "remediates" by reverting to GitHub-hosted ubuntu-* is the wrong fix.
-collect_workflow_files() {
-  if [ "$canonical_tree" -eq 1 ]; then
-    find .github/workflows lego/operator/.github/workflows -name '*.yml' 2>/dev/null | LC_ALL=C sort
-  else
-    find "$WORKFLOWS_DIR" -name '*.yml' 2>/dev/null | LC_ALL=C sort
-  fi
-}
 hosted_runners=""
 missing_self_hosted=""
 for wf in $(collect_workflow_files); do
@@ -301,7 +308,7 @@ if [ "$(admin_conf_fetchers | wc -l | tr -d ' ')" -lt 3 ]; then
   exit 1
 fi
 
-if [ "$(restore_workflows | wc -l | tr -d ' ')" -lt 1 ]; then
+if [ "${#restore_workflow_files[@]}" -lt 1 ]; then
   echo "FAIL: expected at least 1 workflow running scripts/restore-*.sh — the age-key check (4b) has gone vacuous" >&2
   exit 1
 fi
