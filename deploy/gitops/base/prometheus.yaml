@@ -110,11 +110,8 @@ spec:
             receivers:
               - name: platform
                 email_configs:
-                  # Must be a DELIVERABLE mailbox someone reads. The original
-                  # placeholder (platform-alerts@bex.co) pointed at a domain
-                  # with no MX record, so 512 notifications — including two
-                  # days of critical BackupCronJobStale — were accepted by
-                  # SendGrid and delivered nowhere (w8/m30 t004, 2026-08-25).
+                  # This must remain a deliverable mailbox the operator reads;
+                  # Alertmanager cannot detect a recipient domain with no MX.
                   - to: puncsky@gmail.com # operator on-call inbox; non-secret
                     send_resolved: true
         server:

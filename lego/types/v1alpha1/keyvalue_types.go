@@ -24,6 +24,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
+// AnnotationPreserveKeyValueBackups makes a KeyValue deletion retain its S3
+// backup prefix. Namespace cutovers reuse the globally unique resource id, so
+// the retiring and replacement CRs share that prefix. Normal tenant deletes
+// must omit this annotation and continue to purge retained backups.
+const AnnotationPreserveKeyValueBackups = "app.bex.co/preserve-backups-on-delete"
+
 // ValidKeyValueName reports whether name is a valid user-facing managed
 // key-value name. Keeping this next to KeyValueSpec.Name makes the CRD contract
 // and every API/Blueprint writer share one validation rule — the same shape

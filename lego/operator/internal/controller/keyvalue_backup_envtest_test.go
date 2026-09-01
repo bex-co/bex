@@ -32,6 +32,7 @@ import (
 	controllerconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -93,7 +94,7 @@ var _ = Describe("KeyValue backup reconciliation events", func() {
 		Eventually(func(g Gomega) {
 			var jobs batchv1.JobList
 			g.Expect(k8sClient.List(ctx, &jobs, client.InNamespace(paidNN.Namespace), client.MatchingLabels{
-				labelKeyValue: paidNN.Name, "app.bex.co/component": keyValueBackupPurgeComponent,
+				labelKeyValue: paidNN.Name, execution.LabelComponent: keyValueBackupPurgeComponent,
 			})).To(Succeed())
 			g.Expect(jobs.Items).To(HaveLen(1))
 			purge = jobs.Items[0]
@@ -117,15 +118,11 @@ var _ = Describe("KeyValue backup reconciliation events", func() {
 	})
 
 	It("preserves the backup prefix when the migration annotation is set", func() {
-		// The 2026-08-21/22 cutover deletes purged keyvalue/<id>/ out from under
-		// the recreated instances (w8/m30 t003). A migration delete carries
-		// annotKVPreserveBackups and must finalize WITHOUT ever creating a purge
-		// Job; the unannotated delete case must still purge.
 		nn := types.NamespacedName{Name: "backup-event-preserved", Namespace: "default"}
 		kv := &appv1alpha1.KeyValue{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: nn.Name, Namespace: nn.Namespace,
-				Annotations: map[string]string{annotKVPreserveBackups: "true"},
+				Annotations: map[string]string{appv1alpha1.AnnotationPreserveKeyValueBackups: "true"},
 			},
 			Spec: appv1alpha1.KeyValueSpec{Name: "backup-event-preserved", Plan: "starter"},
 		}
@@ -149,7 +146,7 @@ var _ = Describe("KeyValue backup reconciliation events", func() {
 		}, 15*time.Second, 100*time.Millisecond).Should(BeTrue())
 		var jobs batchv1.JobList
 		Expect(k8sClient.List(ctx, &jobs, client.InNamespace(nn.Namespace), client.MatchingLabels{
-			labelKeyValue: nn.Name, "app.bex.co/component": keyValueBackupPurgeComponent,
+			labelKeyValue: nn.Name, execution.LabelComponent: keyValueBackupPurgeComponent,
 		})).To(Succeed())
 		Expect(jobs.Items).To(BeEmpty(), "a preserve-annotated delete must never create a purge Job")
 	})

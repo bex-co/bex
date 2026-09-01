@@ -121,9 +121,8 @@ jobs:
           BAO_UNSEAL_KEY_2: ${{ secrets.BAO_UNSEAL_KEY_2 }}
           BAO_UNSEAL_KEY_3: ${{ secrets.BAO_UNSEAL_KEY_3 }}
           BAO_ROOT_TOKEN: ${{ secrets.BAO_ROOT_TOKEN }}
-          # ADR050 Tier A: snapshots are age-encrypted since 2026-08-04; the
-          # restore script needs the out-of-band private half to decrypt before
-          # its integrity check. Missing this failed run 32814333448 (2026-08-25).
+          # ADR050 Tier A: the restore needs the out-of-band private half before
+          # it can validate the encrypted snapshot.
           AGE_BACKUP_PRIVATE_KEY: ${{ secrets.AGE_BACKUP_PRIVATE_KEY }}
           RESTORE_SKIP_DOTENV: "1"
         run: |
