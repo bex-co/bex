@@ -1,6 +1,6 @@
 # w3 · m46 — Static-site Render-parity fixes (suspend page · delete-row projection · clear-cache deploy · SPA-fallback reconciliation)
 
-**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** implementation complete + locally verified (t001–t007 done); **t009 remains open after the 2026-08-30 audit** — the original stuck fixture now returns 404 on service/routes/deploys/headers, but current source still serves a deleting App by ID until finalization, advertises its withdrawn URL, and defines no tenant-visible finalizer bound. The cross-surface contract and fresh live timing proof required by t009 are unimplemented; t008 waits on them.
+**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** implementation complete + locally verified (t001–t007 done); **t009 remains open after the 2026-08-31 audit** — the original stuck fixture now returns 404 on service/routes/deploys/headers, but current source still serves a deleting App by ID until finalization, advertises its withdrawn URL, and defines no tenant-visible finalizer bound. The cross-surface contract and fresh live timing proof required by t009 are unimplemented; t008 waits on them.
 
 ## Tasks (in order)
 
@@ -16,7 +16,7 @@
 | t009 | Deleted static site's by-id detail never 404s, so the "Unknown" page persists | 45m | t002                         |
 | t008 | Closeout                                                                 | 10m | t007, t009                   |
 
-## Implementation summary (t001–t007 done 2026-08-21, uncommitted pending `/ship`)
+## Implementation summary (t001–t007 done 2026-08-21, landed in `167eecf5`)
 
 - **t001 (suspend cert):** the operator no longer removes a static site's Ingress on suspend — it keeps the host Ingress + TLS cert pointed at the static-server (`reconcileStaticIngress`, `app_controller.go`); the resolver already drops suspended sites, so the static-server serves its ordinary 404 over the **managed** cert instead of Traefik's default self-signed cert. The dashboard "URL and certificates are kept" copy is now truthful. Envtest `keeps the host Ingress + certificate on the static-server when suspended` (5.3s, passing). Documented in ADR029 § Suspend/resume.
 - **t002 (lingering delete row):** `apps.Service.List` now excludes Apps with a `DeletionTimestamp`, so a deleted static site leaves the Overview list at once (matching Render + the already-404 by-id Get) instead of lingering as "Unknown". Test `TestListOmitsDeletingApp`.
@@ -24,7 +24,7 @@
 - **t004 (SPA fallback):** decided **keep-by-design** (extension-less miss → root `index.html`; asset miss → 404) and documented the deliberate Render divergence in ADR029 § Default SPA fallback + the ADR018 static-site row. Behavior already covered by `TestImplicitSPAFallback`.
 - **t005/t006/t007:** parity swept across all four surfaces (docs updated); `/simplify` extracted `reconcileStaticIngress` (shared by the running + suspend paths) and trimmed a redundant comment; tests added/confirmed as above. Local runs: backend `go test ./...` (59 ok), operator static-site envtests, dashboard `manual-deploy-button` (4/4) — full dashboard suite is 2284/2284 loadable tests passing (10 files fail to load only on a missing `@tanstack/react-virtual` dep, unrelated).
 
-**t008 gate:** deploy the operator + bex-api + dashboard and re-verify on a live `onbex.co` static site (suspend → managed-cert 404, delete → row gone, clear-cache menu deploy). Not closeable until that observable end state holds.
+**t008 gate:** complete t009's deleting-App by-id contract, deploy the resulting operator + bex-api + dashboard, and re-verify on a live `onbex.co` static site (suspend → managed-cert 404, delete → list and detail both gone, clear-cache menu deploy). Not closeable until that observable end state holds.
 
 ## Definition of done
 
