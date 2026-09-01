@@ -968,11 +968,11 @@ func (s *Server) features() []any {
 //	POST /graphql                              (auth)   GraphQL
 //	     /mcp                                  (auth)   MCP (streamable-http)
 func (s *Server) Handler() (http.Handler, error) {
-	mux, err := s.rootMux()
+	muxes, err := s.composedMuxes()
 	if err != nil {
 		return nil, err
 	}
-	// withBodyLimit is applied PER ROUTE inside rootMux, never as a blanket outer
+	// withBodyLimit is applied PER ROUTE inside composedMuxes, never as a blanket outer
 	// wrapper (codex F11): buffering every non-GET body at the top read up to
 	// MaxBodyBytes for each request BEFORE the route's cheap admission (the
 	// unauthenticated webhook/deploy-hook IP limiters, the auth gate) could shed
@@ -982,25 +982,48 @@ func (s *Server) Handler() (http.Handler, error) {
 	// final body; it self-exempts streaming (text/event-stream) responses so the
 	// SSE live-tail / agent-session / sandbox-exec proxies still flush per event
 	// (w9/m61).
-	return withGzip(withSecurityHeaders(s.TrustedProxies, withCORS(s.CORSOrigin, mux))), nil
+	return s.wrapMuxes(muxes), nil
 }
 
-// rootMux builds the composed top-level mux: the directly-mounted always-public
-// routes (healthz, the CLI device-flow routes, the two webhook intakes, deploy
-// hooks, RFC 9728 discovery) plus the three auth-gated wildcards (/v1/, /graphql,
-// /mcp). Split out of Handler() (which only adds the body-limit/CORS/security
-// wrappers) so the completeness guard (alwayspublic_guard_test.go, w7/m60) can
-// enumerate the raw mux and force every directly-mounted route to be a classified
-// always-public inventory entry — the CI census internal/api/CLAUDE.md documents.
+const restMountPattern = "/v1/"
+
+type serverMuxes struct {
+	root *http.ServeMux
+	rest *http.ServeMux
+}
+
+func (m serverMuxes) corsRoutes() corsRoutes {
+	return corsRoutes{
+		root: m.root,
+		delegated: map[string]*http.ServeMux{
+			restMountPattern: m.rest,
+		},
+	}
+}
+
+func (s *Server) wrapMuxes(m serverMuxes) http.Handler {
+	return withGzip(withSecurityHeaders(s.TrustedProxies, withCORS(s.CORSOrigin, m.corsRoutes())))
+}
+
+// rootMux exposes the raw top-level mux to completeness guards. The assembly
+// lives in composedMuxes; Handler only adds the CORS/security/gzip wrappers.
 func (s *Server) rootMux() (*http.ServeMux, error) {
+	muxes, err := s.composedMuxes()
+	return muxes.root, err
+}
+
+// composedMuxes returns both routing layers needed by Handler: the root mux it
+// serves and the method-qualified REST mux mounted behind root's /v1/ wildcard.
+// CORS consults both so its answer comes from the actual registered routes.
+func (s *Server) composedMuxes() (serverMuxes, error) {
 	authGate, err := s.newAuthGate()
 	if err != nil {
-		return nil, err
+		return serverMuxes{}, err
 	}
 	auth := authGate.middleware
 	schema, err := s.newSchema()
 	if err != nil {
-		return nil, err
+		return serverMuxes{}, err
 	}
 	s.schema = schema
 
@@ -1063,7 +1086,7 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	restMux := s.restHandler(cliAuth)
 	rest, err := newRenderRequestValidator(restMux)
 	if err != nil {
-		return nil, err
+		return serverMuxes{}, err
 	}
 	// bodyLimit is innermost: auth (bearer/cookie — never the body) and the
 	// identity-keyed rate limiter both admit the request before its body is
@@ -1071,7 +1094,7 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	// server reading up to MaxBodyBytes (codex F11). The operation-class gate
 	// sits outside the OpenAPI validator so a read-only token is refused
 	// before schema work runs.
-	mux.Handle("/v1/", auth(rl(bodyLimit(s.withScopeClassREST(restMux, rest)))))
+	mux.Handle(restMountPattern, auth(rl(bodyLimit(s.withScopeClassREST(restMux, rest)))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies).
@@ -1097,7 +1120,7 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 		})
 	}
 
-	return mux, nil
+	return serverMuxes{root: mux, rest: restMux}, nil
 }
 
 // rateLimitMiddleware returns the rate-limiting middleware when a RateLimiter

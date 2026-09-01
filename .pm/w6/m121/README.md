@@ -1,18 +1,18 @@
 # w6 · m121 — CORS preflight advertises a stale method + header list, so 53 mutating REST routes and two real request headers are unreachable from the origin bex itself allowlists
 
-**Worker:** worker6 **Goal:** the preflight bex returns describes the router bex actually serves, so its Render-compatible REST surface is usable from a browser instead of read-only **Status:** todo
+**Worker:** worker6 **Goal:** the preflight bex returns describes the router bex actually serves, so its Render-compatible REST surface is usable from a browser instead of read-only **Status:** todo (t001–t007 done; t008 awaits deployment + live production DoD)
 
 ## Tasks (in order)
 
 | id   | title                                                                                  | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Derive `Access-Control-Allow-Methods` from the verbs the router registers                | 45m | —          |
-| t002 | Fix `Access-Control-Allow-Headers`; add `Idempotency-Key`, keep `X-Api-Key` out, set Max-Age | 45m | t001       |
-| t003 | Live-verify whether a cross-origin `EventSource` reconnect preflights `Last-Event-ID`    | 30m | —          |
-| t004 | Drift guard: assert the preflight is a superset of the router, enumerated from the mux   | 40m | t001, t002 |
-| t005 | Render parity                                                                            | 20m | t004       |
-| t006 | Simplify                                                                                 | 20m | t005       |
-| t007 | Test coverage                                                                            | 30m | t005       |
+| t001 | Derive `Access-Control-Allow-Methods` from the verbs the router registers — **DONE**                | 45m | —          |
+| t002 | Fix `Access-Control-Allow-Headers`; add `Idempotency-Key`, keep `X-Api-Key` out, set Max-Age — **DONE** | 45m | t001       |
+| t003 | Live-verify whether a cross-origin `EventSource` reconnect preflights `Last-Event-ID` — **DONE**    | 30m | —          |
+| t004 | Drift guard: assert the preflight is a superset of the router, enumerated from the mux — **DONE**   | 40m | t001, t002 |
+| t005 | Render parity — **DONE**                                                                            | 20m | t004       |
+| t006 | Simplify — **DONE**                                                                                 | 20m | t005       |
+| t007 | Test coverage — **DONE**                                                                            | 30m | t005       |
 | t008 | Closeout                                                                                 | 10m | t006, t007 |
 
 ## Definition of done
@@ -24,6 +24,13 @@
 - **`X-Api-Key` is NOT in `Allow-Headers`,** and a comment at the list records why (it is outbound-only — `internal/sshgateway/modelproxy/modelproxy.go:380,384` — so the raw grep count that suggests otherwise does not mislead the next reader).
 - **Drift fails the build.** Adding a route on a verb the preflight does not advertise makes `cd lego/backend && go test ./internal/api/...` fail, rather than silently 404-ing browser clients. Demonstrate by adding a throwaway route on a new verb and watching the test go red.
 - **The origin allowlist is untouched.** A request carrying a non-allowlisted `Origin` still receives **no** CORS headers at all, and the `Vary: Origin` / `Vary: Accept-Encoding` behavior preserved by `e2394e52` still holds.
+
+## Implementation evidence (2026-08-31)
+
+- The working tree now derives each preflight answer from the composed root + REST muxes, advertises the requested routed method plus `OPTIONS`, adds `Idempotency-Key`, deliberately excludes `X-Api-Key` and browser-owned `Last-Event-ID`, and sets `Max-Age: 7200`.
+- Live Chrome 152 cross-origin EventSource capture settled `Last-Event-ID`: first GET had no cursor; the reconnect GET carried `Last-Event-ID: cursor-1`; no OPTIONS request occurred. The signed-in production variant could not run because QA credentials are unset, and is not claimed.
+- `go test ./...` passes in `lego/backend`; `make lint-backend` reports zero issues. The structural guard enumerates the real mux and has an executable stale-router/throwaway-verb failure case.
+- **Closeout is intentionally still open.** Production was re-read after implementation and still returns `Access-Control-Allow-Methods: GET, POST, OPTIONS` and the old header list for DELETE, PATCH and PUT. Repository policy forbids commit/push without `$ship`, so t008's deployed browser DoD has not happened.
 
 ## Source + Goal linkage
 
@@ -61,7 +68,7 @@
 
 - **Header list, measured (settles `060`'s Unverified line).** Advertised: `Authorization, Content-Type, X-Session-Token`. Also measured: **no** `Access-Control-Max-Age` (every preflight costs a round trip) and no `Access-Control-Expose-Headers`. Against the 37 distinct headers handlers actually read (`grep -rhoE '\.Header\.Get\("[^"]+"\)' internal/ --include='*.go' | grep -v _test`), filtered to ones an inbound browser would send:
   - `Idempotency-Key` — **confirmed gap**, read at `internal/webhooks/rest.go:213`. Its route's verb (POST) is allowed but the header is not, so a browser client silently loses idempotency.
-  - `Last-Event-ID` — read at `internal/logs/rest.go:159` (SSE log-stream resume), absent from the list. Whether browsers preflight it for `EventSource` reconnects is **not tested** — that is t003.
+  - `Last-Event-ID` — read at `internal/logs/rest.go:159` (SSE log-stream resume), absent from the list. This was untested in the source run; t003 resolved it above with a live Chrome reconnect capture: browser-owned `Last-Event-ID` does not preflight.
   - `X-Api-Key` — **ruled out; do not "fix" it.** Only `internal/sshgateway/modelproxy/modelproxy.go:380,384`, where the gateway sets a credential on an **outbound** upstream request. It is not an inbound auth header.
   - Deliberately excluded: webhook-signature headers (`webhook-id`/`webhook-timestamp`/`webhook-signature`, `Stripe-Signature`, `X-Hub-Signature-256`, `X-GitHub-*`) are server-to-server and never browser-sent; `X-Vault-Token`, `X-Goog-Api-Key`, `OPEN-SANDBOX-API-KEY` are outbound; `X-Forwarded-*`, `Cookie`, `Origin`, `Accept-Encoding`, `Content-Length` are infrastructure- or browser-managed.
 
@@ -79,4 +86,4 @@
 
 - **Consumer, checked:** the dashboard does not exercise the broken path, which is why this survived. `grep -rn "method: *['\"]DELETE" dashboard/src` returns **zero** hits; a database delete goes through `dashboard/src/features/databases/hooks/use-delete-database.ts` → `databases.graphql`. The 55th run deleted its own fixture with `mutation { deleteDatabase(id:) }` → `{"data":{"deleteDatabase":true}}`, and the REST GET 404'd within 1 second.
 
-- **Unverified — carry as work, not as observation:** whether a third-party browser client of the REST API exists in production today; whether `BEX_API_CORS_ORIGIN` is set to anything beyond the dashboard in production (never read — the hunts observed only the dashboard origin being echoed); and whether `EventSource` reconnects actually preflight `Last-Event-ID` (t003).
+- **Still unverified:** whether a third-party browser client of the REST API exists in production today, and whether `BEX_API_CORS_ORIGIN` is set to anything beyond the dashboard in production (never read — the hunts observed only the dashboard origin being echoed). The `EventSource` reconnect question is resolved by t003 above.

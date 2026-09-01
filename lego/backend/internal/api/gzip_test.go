@@ -33,6 +33,12 @@ func jsonHandler(body string) http.Handler {
 	})
 }
 
+func withTestCORS(origin, pattern string, next http.Handler) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle(pattern, next)
+	return withCORS(origin, corsRoutes{root: mux})
+}
+
 func TestWithGzip_CompressesJSONWhenAccepted(t *testing.T) {
 	body := strings.Repeat(`{"k":"v"},`, 500) // repetitive => highly compressible
 	rec := httptest.NewRecorder()
@@ -76,7 +82,7 @@ func TestWithGzip_CompressesJSONWhenAccepted(t *testing.T) {
 // Vary: Accept-Encoding whenever CORS was configured.)
 func TestWithGzip_VarySurvivesCORS(t *testing.T) {
 	body := strings.Repeat(`{"k":"v"},`, 200)
-	handler := withGzip(withCORS("https://dash.example", jsonHandler(body)))
+	handler := withGzip(withTestCORS("https://dash.example", "/graphql", jsonHandler(body)))
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/graphql", nil)
@@ -90,18 +96,8 @@ func TestWithGzip_VarySurvivesCORS(t *testing.T) {
 		t.Fatalf("Content-Encoding = %q, want gzip", got)
 	}
 	vary := res.Header.Values("Vary")
-	var haveAE, haveOrigin bool
-	for _, v := range vary {
-		for _, tok := range strings.Split(v, ",") {
-			switch strings.ToLower(strings.TrimSpace(tok)) {
-			case "accept-encoding":
-				haveAE = true
-			case "origin":
-				haveOrigin = true
-			}
-		}
-	}
-	if !haveAE || !haveOrigin {
+	tokens := commaFoldedTokens(strings.Join(vary, ","))
+	if !tokens["accept-encoding"] || !tokens["origin"] {
 		t.Fatalf("Vary = %v, want to advertise both Accept-Encoding and Origin", vary)
 	}
 }
@@ -177,7 +173,8 @@ func TestWithGzip_SSEUntouchedThroughComposedChain(t *testing.T) {
 			fl.Flush()
 		}
 	})
-	handler := withGzip(withSecurityHeaders(nil, withCORS("https://dash.example", sse)))
+	handler := withGzip(withSecurityHeaders(nil,
+		withTestCORS("https://dash.example", "/v1/logs/subscribe", sse)))
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe", nil)
