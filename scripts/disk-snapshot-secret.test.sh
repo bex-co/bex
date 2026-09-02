@@ -13,7 +13,9 @@ failures=0
 pass() { echo "PASS  $1"; }
 fail() { echo "FAIL  $1" >&2; failures=$((failures + 1)); }
 
-run() { env -i PATH="$PATH" HOME="$HOME" "$@" 2>&1 || true; }
+# BEX_ENV_FILE=/dev/null: the script sources the repo's .env, and after a real
+# provision that file carries every value these refusal tests assert is absent.
+run() { env -i PATH="$PATH" HOME="$HOME" BEX_ENV_FILE=/dev/null "$@" 2>&1 || true; }
 
 # --- usage ---
 out="$(run bash "$SCRIPT" 2>&1 || true)"
@@ -116,11 +118,22 @@ else
 fi
 
 # 2. The Job runs beside its App (ADR043 D8) and nothing projects the credential,
-#    so it must be installed into every tenant namespace.
-if grep -q "for ns in \$(tenant_namespaces)" "$SCRIPT"; then
-  pass "operator Secret is installed into every tenant namespace"
+#    so it must be installed into every tenant namespace — AND into bex-system,
+#    where the manager manifest's secretKeyRef reads the age recipient from it
+#    (w2/m86: tenant-only left DiskSnapshots unconfigured on every
+#    manifest-armed cluster, so no backup CronJob was ever created).
+if [ "$(grep -c 'for ns in "\$namespace" \$(tenant_namespaces)' "$SCRIPT")" -ge 2 ]; then
+  pass "operator Secret and age Secret are installed into bex-system and every tenant namespace"
 else
-  fail "operator Secret must reach tenant namespaces; bex-system alone leaves Jobs in CreateContainerConfigError"
+  fail "operator Secret must reach bex-system (manager secretKeyRef) and every tenant namespace"
+fi
+
+# 2b. The write Secret must carry the age RECIPIENT beside the AWS pair — the
+#     manager arms BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY through it.
+if grep -q "printf 'BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY=%s" "$SCRIPT"; then
+  pass "operator Secret carries the age recipient the manager secretKeyRef reads"
+else
+  fail "operator Secret must include BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY for the manager secretKeyRef"
 fi
 
 # 3. age-keygen writes comment lines above the key; storing the file makes the

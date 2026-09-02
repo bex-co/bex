@@ -32,10 +32,15 @@ case "$COMMAND" in
   *) echo "usage: $0 {provision|verify|install}" >&2; exit 2 ;;
 esac
 
-if [ -f .env ]; then
+# BEX_ENV_FILE lets the offline guard tests (disk-snapshot-secret.test.sh)
+# point this at /dev/null: after a real provision has upserted values into the
+# operator's .env, sourcing it here would satisfy every refusal the tests
+# assert. Operators never set it.
+ENV_FILE="${BEX_ENV_FILE:-.env}"
+if [ -f "$ENV_FILE" ]; then
   set -a
-  # shellcheck disable=SC1091
-  source ./.env
+  # shellcheck disable=SC1090,SC1091
+  source "$ENV_FILE"
   set +a
 fi
 
@@ -226,9 +231,13 @@ ensure_user_and_keys() {
 # already depends on filippo.io/age) via `go run`. The private half is written
 # ONLY into the Kubernetes Secret; it never reaches stdout or .env.
 ensure_age_keypair() {
+  # `|| true`: on a cluster that has never held the Secret, kubectl exits 1 and
+  # pipefail would abort the whole provision HERE — after the IAM keys were
+  # minted but before they reach .env, orphaning a pair Wasabi shows only once
+  # (exactly what happened on the first prod provision, w2/m86).
   local existing
   existing="$("${KUBE[@]}" -n "$namespace" get secret "$age_secret_name" -o json 2>/dev/null \
-    | jq -r '.data.private // ""')"
+    | jq -r '.data.private // ""' || true)"
   if [ -n "$existing" ]; then
     echo "kept existing disk age keypair: $namespace/$age_secret_name"
     require_nonempty BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY "${BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY:-}"
@@ -292,21 +301,28 @@ install_secrets() {
   # DiskSnapshotStore.S3Secret. Naming them BEX_DISK_SNAPSHOT_* instead makes
   # the Job fail at upload with "no EC2 IMDS role found", which is what the
   # w1/m87/t004 drill caught.
+  # The age RECIPIENT (public) key rides in this Secret too: the manager
+  # manifest arms BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY through a secretKeyRef on
+  # bex-system/$write_secret_name (lego/operator/config/manager/manager.yaml),
+  # so without this entry the operator's DiskSnapshots never reports
+  # configured and NO backup CronJob is ever created — found by the w2/m86
+  # prod arming, where this Secret existed nowhere in bex-system at all.
   {
     printf 'AWS_ACCESS_KEY_ID=%s\n' "${BEX_DISK_SNAPSHOT_ACCESS_KEY:-}"
     printf 'AWS_SECRET_ACCESS_KEY=%s\n' "${BEX_DISK_SNAPSHOT_SECRET_KEY:-}"
+    printf 'BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY=%s\n' "${BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY:-}"
   } >"$env_file"
-  # Installed into EVERY tenant namespace, not just bex-system: the Job runs
-  # beside the App (ADR043 D8 co-location) and there is no projection for disk
-  # snapshots the way BackupSourceNamespace projects the KeyValue credential.
-  # A Secret only in bex-system leaves every backup Job in
-  # CreateContainerConfigError — also found by the drill.
-  for ns in $(tenant_namespaces); do
+  # Installed into bex-system (the manager's secretKeyRef, above) AND every
+  # tenant namespace: the Job runs beside the App (ADR043 D8 co-location) and
+  # there is no projection for disk snapshots the way BackupSourceNamespace
+  # projects the KeyValue credential. A Secret only in bex-system leaves every
+  # backup Job in CreateContainerConfigError — found by the w1/m87 drill.
+  for ns in "$namespace" $(tenant_namespaces); do
     "${KUBE[@]}" -n "$ns" create secret generic "$write_secret_name" \
       --from-env-file="$env_file" \
       --dry-run=client -o yaml | "${KUBE[@]}" apply -f - >/dev/null
   done
-  echo "installed $write_secret_name (operator: write + purge) into every tenant namespace"
+  echo "installed $write_secret_name (operator: write + purge + age recipient) into bex-system and every tenant namespace"
 
   # bex-api: LIST only. No age key, no write authority.
   {
