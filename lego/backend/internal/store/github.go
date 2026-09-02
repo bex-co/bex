@@ -38,11 +38,88 @@ type GitConnection struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
+// GitConnectionLimitError reports an atomic quota refusal. It is typed so the
+// GitHub service can preserve its public GIT_CONNECTION_LIMIT dialect without
+// making this storage package depend on API errors.
+type GitConnectionLimitError struct {
+	Count int
+	Limit int
+}
+
+func (e *GitConnectionLimitError) Error() string {
+	return fmt.Sprintf("git connection limit reached: %d of %d", e.Count, e.Limit)
+}
+
+// BindGitConnection serializes admission for one workspace and performs the
+// ownership check, quota check, and write in one transaction. The transaction-
+// scoped advisory lock works across API replicas and distinct pool connections;
+// same-workspace reconnects are detected before counting and remain exempt.
+func (s *PGStore) BindGitConnection(ctx context.Context, c GitConnection, maxConnections int) (GitConnection, error) {
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, c.WorkspaceID); err != nil {
+			return err
+		}
+
+		var owner string
+		err := tx.QueryRow(ctx,
+			`SELECT workspace_id FROM git_connections WHERE installation_id = $1 FOR UPDATE`,
+			c.InstallationID,
+		).Scan(&owner)
+		switch {
+		case err == nil && owner != c.WorkspaceID:
+			return ErrConflict
+		case err == nil:
+			return tx.QueryRow(ctx,
+				`UPDATE git_connections SET account_login = $2, created_at = now()
+				  WHERE installation_id = $1 RETURNING created_at`,
+				c.InstallationID, c.AccountLogin,
+			).Scan(&c.CreatedAt)
+		case !errors.Is(err, pgx.ErrNoRows):
+			return err
+		}
+
+		if maxConnections > 0 {
+			var count int
+			if err := tx.QueryRow(ctx,
+				`SELECT count(*) FROM git_connections WHERE workspace_id = $1`, c.WorkspaceID,
+			).Scan(&count); err != nil {
+				return err
+			}
+			if count >= maxConnections {
+				return &GitConnectionLimitError{Count: count, Limit: maxConnections}
+			}
+		}
+
+		err = tx.QueryRow(ctx,
+			`INSERT INTO git_connections (workspace_id, installation_id, account_login)
+			 VALUES ($1, $2, $3)
+			 ON CONFLICT (installation_id) DO UPDATE
+			   SET account_login = EXCLUDED.account_login, created_at = now()
+			   WHERE git_connections.workspace_id = EXCLUDED.workspace_id
+			 RETURNING created_at`,
+			c.WorkspaceID, c.InstallationID, c.AccountLogin,
+		).Scan(&c.CreatedAt)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrConflict
+		}
+		return err
+	})
+	if err != nil {
+		var limit *GitConnectionLimitError
+		if errors.As(err, &limit) {
+			return GitConnection{}, limit
+		}
+		return GitConnection{}, classify("git connection", err)
+	}
+	return c, nil
+}
+
 // UpsertGitConnection records a connection, keyed by installation (ADR075). A
 // re-connect of the same installation refreshes its workspace binding and
 // account login; a new installation adds a row to the workspace's set. The
-// caller (internal/github) enforces the one-workspace-per-installation and
-// per-workspace-count invariants before this write.
+// This low-level helper retains the one-workspace-per-installation invariant,
+// but deliberately has no quota parameter. Production callback admission uses
+// BindGitConnection; direct callers use this only where no quota is required.
 // SECURITY (finding-4): the ON CONFLICT update is conditional on workspace_id
 // matching so concurrent claims by two workspaces cannot silently transfer the
 // installation. A cross-workspace conflict returns ErrConflict instead of

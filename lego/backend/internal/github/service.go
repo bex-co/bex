@@ -35,7 +35,9 @@ import (
 // nil => the control-plane store is off (BEX_CP_DB_URI unset) and every verb
 // reports core.ErrGitHubUnavailable.
 type ConnectionStore interface {
-	UpsertGitConnection(ctx context.Context, c store.GitConnection) (store.GitConnection, error)
+	// BindGitConnection atomically enforces installation ownership and the
+	// workspace connection quota while inserting or refreshing one binding.
+	BindGitConnection(ctx context.Context, c store.GitConnection, maxConnections int) (store.GitConnection, error)
 	GetGitConnection(ctx context.Context, workspaceID string) (store.GitConnection, error)
 	// ListGitConnections returns a workspace's full connection set, oldest first
 	// (ADR078) — the multi-account aggregate the repo picker and list surface read.
@@ -379,39 +381,24 @@ func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, 
 	if err != nil {
 		return Connection{}, mapGitHubErr(err)
 	}
-	// SECURITY (w1/m65 F2): GetInstallation authenticates as the App, which can
-	// look up EVERY installation of itself — so its success proves the
-	// installation exists, NOT that the caller's workspace owns it. Enforce a
-	// unique installation->workspace binding: an installation already connected by
-	// a DIFFERENT workspace cannot be re-claimed here (a re-connect by the SAME
-	// workspace is idempotent). This blocks a workspace admin from binding another
-	// tenant's installation and minting tokens for its private repositories. (A
-	// The mandatory user-OAuth proof has already established that the initiating
-	// user administers this installation; this uniqueness check independently
-	// prevents the same installation from being attached to two workspaces.)
-	reconnect := false
-	if existing, lookupErr := s.Store.GitConnectionByInstallation(ctx, installationID); lookupErr == nil {
-		if existing.WorkspaceID != workspaceID {
-			return Connection{}, fmt.Errorf("%w: this GitHub installation is already connected to another workspace", core.ErrConflict)
-		}
-		reconnect = true // same workspace re-binding: idempotent, quota-exempt
-	} else if !errors.Is(lookupErr, store.ErrNotFound) {
-		return Connection{}, lookupErr
-	}
-	// ADR078 §2: a NEW binding (not an idempotent re-connect) is subject to the
-	// per-workspace connection cap, so one tenant cannot fan out unbounded
-	// installations — each of which ListRepos then fans a GitHub round trip over.
-	if !reconnect {
-		if err := s.connectionQuota(ctx, workspaceID); err != nil {
-			return Connection{}, err
-		}
-	}
-	row, err := s.Store.UpsertGitConnection(ctx, store.GitConnection{
+	// SECURITY: ownership, same-workspace reconnect exemption, quota admission,
+	// and insert are one store transaction. A standalone count here lets two
+	// callbacks at limit-1 both pass and exceed the configured bound.
+	row, err := s.Store.BindGitConnection(ctx, store.GitConnection{
 		WorkspaceID:    workspaceID,
 		InstallationID: installationID,
 		AccountLogin:   inst.AccountLogin,
-	})
+	}, s.MaxConnections)
 	if err != nil {
+		var limit *store.GitConnectionLimitError
+		if errors.As(err, &limit) {
+			return Connection{}, core.NewConflictError("GIT_CONNECTION_LIMIT",
+				fmt.Sprintf("workspace already has %d connected GitHub installations (limit %d); disconnect one or raise the limit", limit.Count, limit.Limit),
+				map[string]any{"count": limit.Count, "limit": limit.Limit})
+		}
+		if errors.Is(err, store.ErrConflict) {
+			return Connection{}, fmt.Errorf("%w: this GitHub installation is already connected to another workspace", core.ErrConflict)
+		}
 		return Connection{}, err
 	}
 	return s.connectedView(row), nil
@@ -500,25 +487,6 @@ func (s *Service) Disconnect(ctx context.Context, ownerID string, installationID
 		return nil
 	}
 	return err
-}
-
-// connectionQuota refuses a NEW connection that would push a workspace past its
-// per-workspace cap (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR078 §2).
-// MaxConnections <= 0 disables the cap (tests, store-off, self-host opt-out).
-func (s *Service) connectionQuota(ctx context.Context, workspace string) error {
-	if s.MaxConnections <= 0 {
-		return nil
-	}
-	count, err := s.Store.CountGitConnections(ctx, workspace)
-	if err != nil {
-		return err
-	}
-	if count >= s.MaxConnections {
-		return core.NewConflictError("GIT_CONNECTION_LIMIT",
-			fmt.Sprintf("workspace already has %d connected GitHub installations (limit %d); disconnect one or raise the limit", count, s.MaxConnections),
-			map[string]any{"count": count, "limit": s.MaxConnections})
-	}
-	return nil
 }
 
 // ListRepos returns the repositories across ALL of ownerID's connected

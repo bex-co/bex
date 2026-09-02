@@ -109,6 +109,87 @@ func TestPGGitConnectionsMultiPerWorkspace(t *testing.T) {
 	_, _ = st.Pool.Exec(ctx, `DELETE FROM tenants WHERE id IN ('tea-ws1','tea-ws2')`)
 }
 
+// Two stores model callbacks landing on different API replicas. The workspace
+// advisory lock must make the count+insert decision serial even across pools.
+func TestBindGitConnectionQuotaIsAtomicAcrossPools(t *testing.T) {
+	storeA := newReplayTestStore(t)
+	storeB := newReplayTestStore(t)
+	ctx := context.Background()
+	const workspaceID = "tea-git-quota-race"
+	_, _ = storeA.Pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, workspaceID)
+	seedGitTenant(t, storeA, workspaceID)
+	t.Cleanup(func() {
+		_, _ = storeA.Pool.Exec(context.Background(), `DELETE FROM tenants WHERE id = $1`, workspaceID)
+	})
+	if _, err := storeA.BindGitConnection(ctx, GitConnection{
+		WorkspaceID: workspaceID, InstallationID: 7001, AccountLogin: "first",
+	}, 2); err != nil {
+		t.Fatalf("seed connection: %v", err)
+	}
+
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	for i, candidate := range []*PGStore{storeA, storeB} {
+		installationID := int64(7002 + i)
+		go func() {
+			<-start
+			_, err := candidate.BindGitConnection(ctx, GitConnection{
+				WorkspaceID: workspaceID, InstallationID: installationID, AccountLogin: "candidate",
+			}, 2)
+			results <- err
+		}()
+	}
+	close(start)
+	successes, limits := 0, 0
+	for range 2 {
+		err := <-results
+		if err == nil {
+			successes++
+			continue
+		}
+		var limit *GitConnectionLimitError
+		if errors.As(err, &limit) {
+			limits++
+			continue
+		}
+		t.Fatalf("unexpected bind result: %v", err)
+	}
+	if successes != 1 || limits != 1 {
+		t.Fatalf("race results: successes=%d limits=%d", successes, limits)
+	}
+	if count, err := storeA.CountGitConnections(ctx, workspaceID); err != nil || count != 2 {
+		t.Fatalf("connection count = %d, %v; want hard limit 2", count, err)
+	}
+
+	// At the limit, refreshing an existing installation remains exempt while a
+	// genuinely new binding racing it is still refused.
+	reconnect := make(chan error, 1)
+	newBinding := make(chan error, 1)
+	start = make(chan struct{})
+	go func() {
+		<-start
+		_, err := storeA.BindGitConnection(ctx, GitConnection{
+			WorkspaceID: workspaceID, InstallationID: 7001, AccountLogin: "refreshed",
+		}, 2)
+		reconnect <- err
+	}()
+	go func() {
+		<-start
+		_, err := storeB.BindGitConnection(ctx, GitConnection{
+			WorkspaceID: workspaceID, InstallationID: 7004, AccountLogin: "new",
+		}, 2)
+		newBinding <- err
+	}()
+	close(start)
+	if err := <-reconnect; err != nil {
+		t.Fatalf("same-workspace reconnect: %v", err)
+	}
+	var limit *GitConnectionLimitError
+	if err := <-newBinding; !errors.As(err, &limit) {
+		t.Fatalf("new binding at limit = %v, want GitConnectionLimitError", err)
+	}
+}
+
 func TestDeleteTenantCascadesGitConnections(t *testing.T) {
 	st := newReplayTestStore(t)
 	ctx := context.Background()

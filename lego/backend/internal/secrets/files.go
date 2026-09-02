@@ -402,17 +402,8 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 	if err != nil {
 		return err
 	}
-	// codex-security round-19 #7: CAS through updateMapCAS (like DeleteEnvVar)
-	// instead of a bare readMap+storeMap, so a concurrent SetSecretFile/
-	// DeleteSecretFile between the read and this write can't be clobbered.
-	var nameFound bool
-	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
-		if _, ok := current[name]; !ok {
-			return false
-		}
-		nameFound = true
-		delete(current, name)
-		return true
+	nameFound, err := s.deleteMapKeyAfterProjection(ctx, filesPath(service), name, func(current map[string]string) error {
+		return s.materializeFiles(ctx, a, current)
 	})
 	if err != nil {
 		return err
@@ -420,7 +411,7 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 	if !nameFound {
 		return core.ErrNotFound
 	}
-	return s.materializeFiles(ctx, a, files)
+	return nil
 }
 
 // --- core.SecretFileReader: the seam apps' GraphQL uses to nest secret files ----
