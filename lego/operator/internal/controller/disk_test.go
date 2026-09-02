@@ -145,11 +145,22 @@ func TestDiskChildNamesStayWithinKubernetesLimits(t *testing.T) {
 	long := strings.Repeat("a", 63)
 	for _, name := range []string{"blog", long} {
 		pvc, secret := diskPVCName(name), diskLUKSSecretName(name)
-		if len(pvc) > 63 || len(secret) > 63 {
-			t.Fatalf("names too long for %q: pvc=%d secret=%d", name, len(pvc), len(secret))
+		if len(pvc) > 63 {
+			t.Fatalf("claim name too long for %q: pvc=%d", name, len(pvc))
 		}
-		if pvc == secret {
-			t.Fatalf("claim and passphrase collided on %q: %q", name, pvc)
+		// Secrets are DNS-1123 subdomains, not labels.
+		if len(secret) > 253 {
+			t.Fatalf("passphrase Secret name too long for %q: secret=%d", name, len(secret))
+		}
+		// Load-bearing correspondence: the encrypted StorageClass mounts the
+		// node-publish secret as `${pvc.name}-luks`, so the kubelet fetches
+		// exactly claim+suffix. Any other derivation (the original code
+		// truncated with the suffix inside the budget, shifting the cut point
+		// for names ≥54 chars) makes every long-named App's disk fail to
+		// mount once encryption is on — silently, as a missing-Secret mount
+		// error the tenant cannot see past.
+		if want := pvc + "-luks"; secret != want {
+			t.Fatalf("passphrase Secret for %q is %q, want the claim name plus -luks (%q) — the CSI class template depends on it", name, secret, want)
 		}
 	}
 	// Two long names sharing a prefix must not collide onto one volume.

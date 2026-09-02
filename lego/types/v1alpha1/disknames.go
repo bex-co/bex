@@ -40,26 +40,34 @@ const DiskLUKSSecretSuffix = "-luks"
 // (docs/ADR082-persistent-disks.md D6). A second, hand-copied spelling of this
 // rule would fail silently — an empty graph, not an error — for precisely the
 // long-named apps the truncation exists to serve.
-func DiskPVCName(appName string) string { return DiskChildName(DiskPVCPrefix, appName, "") }
+func DiskPVCName(appName string) string { return DiskChildName(DiskPVCPrefix, appName) }
 
-// DiskLUKSSecretName is the disk's passphrase Secret. The digest is placed
-// before the suffix so the "-luks" marker survives truncation.
+// DiskLUKSSecretName is the disk's passphrase Secret: the PVC's name plus
+// "-luks", by construction and NOT via DiskChildName. The encrypted
+// StorageClass (deploy/gitops/base/disk-storageclass.yaml) templates its
+// node-publish secret as `${pvc.name}-luks`, so the kubelet fetches exactly
+// pvc+suffix — a Secret name derived any other way (an earlier version ran the
+// truncation with the suffix inside it, shifting the cut point) silently
+// diverges for long App names and every mount of their disks fails. Secret
+// names are DNS-1123 subdomains (253 chars), so appending to a 63-char claim
+// name is always legal. Verified against the live class on production,
+// 2026-09-02 (w2/m86).
 func DiskLUKSSecretName(appName string) string {
-	return DiskChildName(DiskPVCPrefix, appName, DiskLUKSSecretSuffix)
+	return DiskPVCName(appName) + DiskLUKSSecretSuffix
 }
 
-// DiskChildName is the naming rule every object in the disk plane shares:
-// "<prefix><app><suffix>", truncated with an 8-hex digest of the full App name
-// when it would exceed a DNS-1123 label. The digest sits before the suffix so a
-// role marker like "-luks" survives truncation. The operator also names its
+// DiskChildName is the naming rule every workload object in the disk plane
+// shares: "<prefix><app>", truncated with an 8-hex digest of the full App name
+// when it would exceed a DNS-1123 label. The operator names its
 // backup/purge/restore workloads through it; only the PVC crosses the module
 // boundary, but one rule for the whole plane means a long-named app's objects
-// stay recognizably siblings.
-func DiskChildName(prefix, appName, suffix string) string {
-	if len(prefix)+len(appName)+len(suffix) <= 63 {
-		return prefix + appName + suffix
+// stay recognizably siblings. (The LUKS Secret deliberately does NOT use this
+// rule — see DiskLUKSSecretName.)
+func DiskChildName(prefix, appName string) string {
+	if len(prefix)+len(appName) <= 63 {
+		return prefix + appName
 	}
 	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
-	keep := 63 - len(prefix) - len(suffix) - len(sum) - 1
-	return prefix + appName[:keep] + "-" + sum + suffix
+	keep := 63 - len(prefix) - len(sum) - 1
+	return prefix + appName[:keep] + "-" + sum
 }

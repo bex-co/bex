@@ -249,14 +249,17 @@ spec:
             value: bex-activator
           - name: BEX_ACTIVATOR_PORT
             value: "8888"
-          # Persistent service disks (ADR082). Unset selects the cluster's
-          # default StorageClass, which is what lets one manifest serve both
-          # production (hcloud-volumes) and the CAPD mock (local-path). Set it
-          # to hcloud-volumes-luks — deploy/gitops/base/disk-storageclass.yaml —
-          # once that class's two node prerequisites are verified live; the
-          # class file records them.
-          # - name: BEX_DISK_STORAGE_CLASS
-          #   value: hcloud-volumes-luks
+          # Persistent service disks (ADR082). BEX_DISK_STORAGE_CLASS is
+          # deliberately NOT set here: unset selects the cluster's default
+          # StorageClass, which is what lets this base serve the CAPD mock
+          # (local-path — hcloud-volumes-luks does not exist there, and naming a
+          # nonexistent class strands every disk PVC Pending). Production sets
+          # it to hcloud-volumes-luks in the prod overlay
+          # (../prod/kustomization.yaml), the same home as the other prod-only
+          # env; both of the class's recorded prerequisites were verified live
+          # 2026-09-02 (w2/m86) — cryptsetup ships inside the hcloud-csi-driver
+          # v2.22.0 image, and the kubelet (not the CSI ServiceAccount) fetches
+          # the per-disk passphrase Secret under the node authorizer.
           # Nightly disk snapshots (ADR082 D5). Hetzner has no volume snapshots
           # at any level, so each disk-bearing App gets a CronJob that streams
           # its volume (tar | gzip | age, one pass, nothing staged) into a

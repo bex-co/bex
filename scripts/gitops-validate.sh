@@ -532,6 +532,7 @@ bash scripts/cnpg-backup-guard.sh --self-test || fail=1
 # exclusively in the referenced out-of-band Secret. Local must stay disabled
 # because its overlay deliberately omits the credential-backed ObjectStores.
 prod_operator_render="$(kubectl kustomize lego/operator/config/prod)"
+default_operator_render="$(kubectl kustomize lego/operator/config/default)"
 tenant_backup_env="$(yq -N '
   select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
   .spec.template.spec.containers[] | select(.name == "manager") |
@@ -549,7 +550,7 @@ if [ "$tenant_backup_env" != "$expected_tenant_backup_env" ]; then
   echo "FAIL: prod tenant backup env contract is '$tenant_backup_env' (want '$expected_tenant_backup_env')" >&2
   fail=1
 fi
-if kubectl kustomize lego/operator/config/default | yq -e '
+if yq -e '
   select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
   .spec.template.spec.containers[] | select(.name == "manager") |
   .env[] | select(.name == "BEX_DB_BACKUP_DESTINATION" or
@@ -557,8 +558,51 @@ if kubectl kustomize lego/operator/config/default | yq -e '
                   .name == "BEX_DB_BACKUP_S3_SECRET" or
                   .name == "BEX_KV_BACKUP_DESTINATION" or
                   .name == "BEX_KV_BACKUP_ENDPOINT" or
-                  .name == "BEX_KV_BACKUP_S3_SECRET")' - >/dev/null 2>&1; then
+                  .name == "BEX_KV_BACKUP_S3_SECRET")' - <<<"$default_operator_render" >/dev/null 2>&1; then
   echo "FAIL: default/local operator config must leave tenant datastore backups disabled" >&2
+  fail=1
+fi
+
+# w2/m86: persistent-disk encryption at rest is a three-file contract — the
+# LUKS StorageClass, the prod operator env that names it, and the operator's
+# Secret derivation the class's ${pvc.name}-luks template resolves against.
+# Each failure mode is silent at review time and fatal at mount time (a disk
+# that never attaches, not a disk that quietly skips encryption), so pin all
+# three sides here.
+echo "==> persistent-disk LUKS class contract (ADR082 D3, w2/m86)"
+DISK_SC="deploy/gitops/base/disk-storageclass.yaml"
+disk_sc_name="$(yq '.metadata.name' "$DISK_SC")"
+[ "$disk_sc_name" = "hcloud-volumes-luks" ] \
+  || { echo "FAIL: $DISK_SC class name is '$disk_sc_name' (want hcloud-volumes-luks)" >&2; fail=1; }
+# One tuple pins the rest of the class shape. The template halves MUST stay
+# ${pvc.name}-luks / ${pvc.namespace}: the operator mints the Secret as
+# DiskPVCName+"-luks" in the App's namespace (appv1alpha1.DiskLUKSSecretName),
+# and the kubelet fetches whatever this template resolves to. Any drift
+# strands every encrypted disk unmountable; a lost allowVolumeExpansion kills
+# the grow-only resize story.
+disk_sc_shape="$(yq -N '
+  .provisioner + "|" +
+  (.allowVolumeExpansion | tostring) + "|" +
+  .parameters."csi.storage.k8s.io/node-publish-secret-name" + "|" +
+  .parameters."csi.storage.k8s.io/node-publish-secret-namespace"' "$DISK_SC")"
+expected_disk_sc_shape='csi.hetzner.cloud|true|${pvc.name}-luks|${pvc.namespace}'
+[ "$disk_sc_shape" = "$expected_disk_sc_shape" ] \
+  || { echo "FAIL: $DISK_SC LUKS class shape is '$disk_sc_shape' (want '$expected_disk_sc_shape' — provisioner|expansion|secret-name template|secret-namespace template)" >&2; fail=1; }
+# Production provisions disks on the encrypted class; the local/default render
+# must NOT name it (the class cannot exist without the hcloud CSI driver, and a
+# nonexistent class strands every mock disk PVC Pending).
+prod_disk_class="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  .spec.template.spec.containers[] | select(.name == "manager") |
+  [.env[] | select(.name == "BEX_DISK_STORAGE_CLASS") | .value] | .[0] // ""' \
+  - <<<"$prod_operator_render" | tr -d '\n')"
+[ "$prod_disk_class" = "$disk_sc_name" ] \
+  || { echo "FAIL: prod operator BEX_DISK_STORAGE_CLASS is '$prod_disk_class' (want '$disk_sc_name' — encryption at rest must stay on)" >&2; fail=1; }
+if yq -e '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  .spec.template.spec.containers[] | select(.name == "manager") |
+  .env[] | select(.name == "BEX_DISK_STORAGE_CLASS")' - <<<"$default_operator_render" >/dev/null 2>&1; then
+  echo "FAIL: default/local operator config must not set BEX_DISK_STORAGE_CLASS (the CAPD mock has no hcloud class)" >&2
   fail=1
 fi
 
@@ -592,7 +636,7 @@ check_base_domain_agreement() {
   fi
 }
 check_base_domain_agreement "config/prod" "$prod_operator_render"
-check_base_domain_agreement "config/default" "$(kubectl kustomize lego/operator/config/default)"
+check_base_domain_agreement "config/default" "$default_operator_render"
 
 # Agreement alone is not enough: three EMPTY values agree perfectly, and that is
 # exactly how platform hosting has been deleted twice (e0468cf2 2026-08-08,

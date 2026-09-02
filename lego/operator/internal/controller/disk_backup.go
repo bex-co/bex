@@ -105,10 +105,10 @@ func (d DiskSnapshotStore) restorable() bool {
 }
 
 func diskBackupName(appName string) string {
-	return appv1alpha1.DiskChildName(diskBackupPrefix, appName, "")
+	return appv1alpha1.DiskChildName(diskBackupPrefix, appName)
 }
 func diskPurgeName(appName string) string {
-	return appv1alpha1.DiskChildName(diskPurgePrefix, appName, "")
+	return appv1alpha1.DiskChildName(diskPurgePrefix, appName)
 }
 
 // diskBackupSchedule spreads tenant snapshots across 02:00–02:59 UTC — an hour
@@ -337,7 +337,7 @@ const (
 )
 
 func diskRestoreName(appName string) string {
-	return appv1alpha1.DiskChildName(diskRestorePrefix, appName, "")
+	return appv1alpha1.DiskChildName(diskRestorePrefix, appName)
 }
 
 // reconcileDiskRestore runs a requested restore to completion.

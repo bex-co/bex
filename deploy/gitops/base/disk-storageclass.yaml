@@ -14,20 +14,35 @@
 # shared platform-wide passphrase would mean one compromised key unlocks every
 # tenant's disk.
 #
-# NOT YET THE DEFAULT. The operator selects a class through
-# BEX_DISK_STORAGE_CLASS, which ships unset — disks then use the cluster's
-# default class (hcloud-volumes in production, local-path on the CAPD mock).
-# Two prerequisites must be verified on a live cluster before pointing the
-# operator at this class, because getting either wrong makes every disk fail to
-# mount rather than fail to encrypt:
+# LIVE IN PRODUCTION since w2/m86: the prod operator overlay
+# (lego/operator/config/prod/kustomization.yaml) sets BEX_DISK_STORAGE_CLASS to
+# this class, so every disk created after that flip is LUKS-encrypted. The CAPD
+# mock leaves the env unset (this class cannot exist without the hcloud CSI
+# driver) and keeps its default local-path class. Disks created before the flip
+# stay on hcloud-volumes — a claim's class is immutable.
 #
-#   1. cryptsetup must be present on the CAPH node image — the CSI node plugin
-#      shells out to it to open the LUKS device.
-#   2. The hcloud-csi node ServiceAccount must be able to read Secrets in tenant
-#      namespaces, since that is where the per-disk passphrase lives.
+# The two prerequisites this file used to gate the flip on were both verified
+# live on production, 2026-09-02 (evidence: .pm/w2/m86), and both resolve in
+# the platform's favor:
 #
-# Track that verification before flipping the env var; until then the class is
-# an inert, unreferenced object.
+#   1. cryptsetup ships INSIDE the hcloud-csi-driver v2.22.0 image (alpine
+#      apk: cryptsetup 2.8.6, confirmed in the running node plugin) — the CAPH
+#      node image needs nothing. The driver formats LUKS1 and resizes the open
+#      mapping without re-authentication; the drill observed a 10→11Gi grow
+#      apply online (mapping + ext4, pod running), though finish-on-restart
+#      remains the documented contract (ADR082 D4 — the maintainers do not
+#      claim online expansion).
+#   2. The per-disk passphrase Secret is fetched by the KUBELET, not the CSI
+#      ServiceAccount: external-provisioner templates ${pvc.name}-luks into
+#      the PV's nodePublishSecretRef, and the kubelet reads it under the node
+#      authorizer. No tenant-namespace RBAC grant exists or is needed.
+#
+# The ${pvc.name}-luks template below is a CONTRACT with the operator's Secret
+# naming: appv1alpha1.DiskLUKSSecretName is defined as DiskPVCName + "-luks"
+# precisely so the kubelet's lookup and the minted Secret can never diverge
+# (they did, for App names ≥54 chars, until w2/m86 fixed the derivation).
+# scripts/gitops-validate.sh pins both template parameters and the prod env
+# agreement.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
