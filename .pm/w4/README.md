@@ -75,6 +75,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 - [ ] **035** — Correct ADR018's stale shared-hosting security update (sub-hour; `.pm/DO_NOT_DO.md` `#PSL` is canonical)
 - [ ] **038** — `GET /v1/projects` rejects a missing `ownerId` with an opaque `bad request` where every validator-gated sibling names the offending parameter (sub-hour; REST DX/parity; from the 2026-09-02 `/qa-find-bugs` hunt)
 - [ ] **039** — Webhook event picker renders `service_moved` as a raw enum under "Other" (missing humanized label in `webhooks/event-catalog.ts`; sub-hour copy fix; surface missed by w6/m134's DoD; from the 2026-09-02 `/qa-find-bugs` hunt)
+- [ ] **040** — Generate Blueprint can't export env-group linkage (`fromGroup`/`envVarGroups`) — breaks w8/m22's "no-op round trip" for stacks using env groups; code-confirmed, live-verify-then-promote; from the 2026-09-02 `/qa-find-bugs` hunt
 
 _(`037` done 2026-08-29 — `/workspace/settings` now omits the Danger Zone navigation link, loading skeleton, and Delete Workspace card when the caller has only one workspace; two-or-more-workspace behavior is unchanged; a `local-bex` browser walk verified desktop and 390px-mobile states after deleting from two workspaces to one; focused coverage plus the full dashboard typecheck, lint, and 2,839-test suite are green; note moved to `done/`.)_
 
