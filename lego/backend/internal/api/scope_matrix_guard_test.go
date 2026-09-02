@@ -190,6 +190,10 @@ func TestMintAndSensitiveHeuristics(t *testing.T) {
 			if class != core.OpClassSensitive {
 				t.Errorf("%s: env-group value read must be sensitive, got %s", op, class)
 			}
+		case op == "REST POST /v1/env-groups/{id}/services/{serviceId}" || op == "GQL Mutation.linkEnvGroup" || op == "MCP link_env_group":
+			if class != core.OpClassSensitive {
+				t.Errorf("%s: env-group workload materialization must be sensitive, got %s", op, class)
+			}
 		}
 	}
 }

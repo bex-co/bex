@@ -782,11 +782,7 @@ func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarVi
 	// checked) so a revocation inside PositiveTTL cannot reveal one last value.
 	// A legacy group with no recorded workspace re-asserts against the acting
 	// workspace, mirroring the cached path's fallback.
-	if m.workspace != "" {
-		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(m.workspace)); err != nil {
-			return EnvVarView{}, err
-		}
-	} else if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
+	if err := s.authorizeGroupSensitiveFresh(ctx, m); err != nil {
 		return EnvVarView{}, err
 	}
 	env, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
@@ -903,11 +899,7 @@ func (s *Service) GetEnvGroupFile(ctx context.Context, gid, name string) (Secret
 	// inside PositiveTTL cannot ride a cached positive to one last read.
 	// A legacy group with no recorded workspace re-asserts against the acting
 	// workspace, mirroring the cached path's fallback.
-	if m.workspace != "" {
-		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(m.workspace)); err != nil {
-			return SecretFileView{}, err
-		}
-	} else if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
+	if err := s.authorizeGroupSensitiveFresh(ctx, m); err != nil {
 		return SecretFileView{}, err
 	}
 	files, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
@@ -950,6 +942,21 @@ func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1
 	}
 	if a.Labels[core.LabelTenant] != m.workspace {
 		return core.ErrForbidden
+	}
+	// A link materializes every group value inside caller-controlled workload
+	// code, so it is a sensitive read even though the API response stays masked.
+	// Reassert against the group's own workspace immediately before adding its
+	// Secret refs; a write-only OAuth grant or a freshly revoked developer must
+	// not turn App control into indirect secret disclosure.
+	if err := s.authorizeGroupSensitiveFresh(ctx, m); err != nil {
+		return err
+	}
+	// Keep the idempotency decision behind the sensitive gate. In particular, a
+	// Blueprint re-apply may already control an App linked by an earlier caller;
+	// returning before this check would let a write-only caller retain the link
+	// while replacing the workload with exfiltration code.
+	if slices.Contains(m.links, service) {
+		return nil
 	}
 	if err := validateGroupServiceEnvironment(m.environment, service, a.Labels); err != nil {
 		return err
@@ -1242,19 +1249,12 @@ func (s *Service) LinkEnvGroup(ctx context.Context, name, service string) error 
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	gid, m, found, err := s.findGroupByName(ctx, name)
+	gid, _, found, err := s.findGroupByName(ctx, name)
 	if err != nil {
 		return err
 	}
 	if !found {
 		return fmt.Errorf("%w: env group %q does not exist", core.ErrBadRequest, name)
-	}
-	// Skip the patch (and the roll) when the service is already linked — a re-link
-	// would bump restartedAt and break stack re-apply idempotency.
-	for _, svc := range m.links {
-		if svc == service {
-			return nil
-		}
 	}
 	return s.linkFetched(ctx, gid, service, a)
 }
@@ -1446,6 +1446,17 @@ func (s *Service) fetchGroup(ctx context.Context, relation, gid string) (meta, e
 		return meta{}, err
 	}
 	return m, nil
+}
+
+// authorizeGroupSensitiveFresh is the sink-adjacent, uncached authorization
+// shared by direct value reveals and indirect workload materialization. A
+// legacy group without recorded ownership falls back to the acting workspace,
+// matching authorizeGroup's pre-attribution behavior.
+func (s *Service) authorizeGroupSensitiveFresh(ctx context.Context, m meta) error {
+	if m.workspace != "" {
+		return s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(m.workspace))
+	}
+	return s.AuthorizeFresh(ctx, core.RelCanViewSensitive)
 }
 
 // boundWorkspace resolves the workspace ListEnvGroups/GroupNames/findGroupByName

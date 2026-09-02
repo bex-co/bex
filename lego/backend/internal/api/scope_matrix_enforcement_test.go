@@ -177,13 +177,30 @@ func TestScopeClassEnforcementReadToken(t *testing.T) {
 }
 
 func TestScopeClassEnforcementWriteToken(t *testing.T) {
-	h, _, _ := scopedAPI(t, "identity-1", "dcr-client", "openid "+core.ScopeWrite,
+	h, srv, _ := scopedAPI(t, "identity-1", "dcr-client", "openid "+core.ScopeWrite,
 		[]string{bexResource}, map[string]bool{"dcr-client": false})
 
 	if got := do(t, h, http.MethodPost, "/v1/services/web/suspend", testToken, "").Code; got != http.StatusAccepted {
 		t.Fatalf("suspend with bex.write = %d, want 202", got)
 	}
 	assertRESTInsufficientScope(t, do(t, h, http.MethodGet, "/v1/services/web/env-vars", testToken, ""), core.ScopeSensitive)
+	assertRESTInsufficientScope(t, do(t, h, http.MethodPost, "/v1/env-groups/evg-test/services/web", testToken, ""), core.ScopeSensitive)
+	assertGQLInsufficientScope(t, do(t, h, http.MethodPost, "/graphql", testToken,
+		`{"query":"mutation { linkEnvGroup(id:\"evg-test\", serviceId:\"web\") }"}`), core.ScopeSensitive)
+
+	cs := mcpSessionIdentity(t, srv, core.Identity{
+		Subject: "identity-1", Method: "oauth2", ClientID: "dcr-client", Human: true,
+		CanonicalScopes: core.ScopeWrite, AcceptedAudience: bexResource,
+	})
+	link, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "link_env_group", Arguments: map[string]any{"id": "evg-test", "serviceId": "web"},
+	})
+	if err != nil {
+		t.Fatalf("link_env_group transport: %v", err)
+	}
+	if link == nil || !link.IsError || !strings.Contains(fmtMCP(link), core.InsufficientScopeCode) {
+		t.Fatalf("link_env_group = %s, want INSUFFICIENT_SCOPE", fmtMCP(link))
+	}
 	// Mint class is write at dispatch; AuthorizeMintClass still refuses a
 	// third-party client (plain 403, not INSUFFICIENT_SCOPE).
 	w := do(t, h, http.MethodPost, "/v1/api-keys", testToken, `{"name":"x"}`)

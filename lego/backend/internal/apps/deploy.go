@@ -1437,6 +1437,15 @@ func (s *Service) preflightBlueprintEnv(ctx context.Context, st parsedStack) err
 	if len(groupLinks) == 0 {
 		return nil
 	}
+	// A fromGroup link makes every referenced group value available to workload
+	// code. Gate that materialization before any Blueprint resource is written;
+	// checking only in LinkEnvGroup is too late for a re-apply that first replaces
+	// the code of an App which is already linked. GroupNames and LinkEnvGroup are
+	// both constrained to this acting workspace, so this is the target group's
+	// workspace and the later sink-adjacent check reasserts it from stored metadata.
+	if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
+		return err
+	}
 	// A fromGroup target must exist: declared in-file, or already in the workspace.
 	existing, err := s.EnvGroups.GroupNames(ctx)
 	if err != nil {
