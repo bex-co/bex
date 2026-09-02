@@ -1282,6 +1282,43 @@ func TestDeleteManagedAppDeletesRowThenCR(t *testing.T) {
 	gone(t, cl, "web")
 }
 
+type appDeletePurger struct {
+	err   error
+	calls int
+}
+
+func (p *appDeletePurger) PurgeApp(context.Context, *appv1alpha1.App) error {
+	p.calls++
+	return p.err
+}
+
+// A failed external purge must leave the durable App row in place. Besides
+// making the same delete retryable, the row's (tenant_id,name) uniqueness keeps
+// a replacement from inheriting the old name-keyed OpenBao paths.
+func TestDeleteManagedAppKeepsRowUntilSecretPurgeSucceeds(t *testing.T) {
+	rec := &recordingStore{}
+	purger := &appDeletePurger{err: errors.New("injected OpenBao failure")}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	svc.SecretsEraser = purger
+
+	if err := svc.Delete(context.Background(), "web"); err == nil {
+		t.Fatal("Delete unexpectedly succeeded while secret purge failed")
+	}
+	if len(rec.deleteCalls) != 0 {
+		t.Fatalf("row deleted before secret cleanup: %v", rec.deleteCalls)
+	}
+	getApp(t, cl, "web")
+
+	purger.err = nil
+	if err := svc.Delete(context.Background(), "web"); err != nil {
+		t.Fatalf("retry Delete: %v", err)
+	}
+	if purger.calls != 2 || len(rec.deleteCalls) != 1 || rec.deleteCalls[0] != "srv-1" {
+		t.Fatalf("retry did not purge then delete row: purges=%d deletes=%v", purger.calls, rec.deleteCalls)
+	}
+	gone(t, cl, "web")
+}
+
 func TestDeleteUnmanagedAppSkipsStore(t *testing.T) {
 	rec := &recordingStore{}
 	a := sampleApp("hand")

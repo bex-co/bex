@@ -254,6 +254,21 @@ func (s *callbackGitHubStore) UpsertGitConnection(_ context.Context, conn store.
 	return conn, nil
 }
 
+func (s *callbackGitHubStore) BindGitConnection(_ context.Context, conn store.GitConnection, maxConnections int) (store.GitConnection, error) {
+	for workspaceID, existing := range s.connections {
+		if existing.InstallationID == conn.InstallationID && workspaceID != conn.WorkspaceID {
+			return store.GitConnection{}, store.ErrConflict
+		}
+	}
+	if existing, ok := s.connections[conn.WorkspaceID]; !ok || existing.InstallationID != conn.InstallationID {
+		if maxConnections > 0 && len(s.connections) >= maxConnections {
+			return store.GitConnection{}, &store.GitConnectionLimitError{Count: len(s.connections), Limit: maxConnections}
+		}
+	}
+	s.connections[conn.WorkspaceID] = conn
+	return conn, nil
+}
+
 func (s *callbackGitHubStore) GetGitConnection(_ context.Context, workspaceID string) (store.GitConnection, error) {
 	conn, ok := s.connections[workspaceID]
 	if !ok {

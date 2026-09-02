@@ -394,14 +394,8 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if err != nil {
 		return err
 	}
-	var keyFound bool
-	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
-		if _, ok := current[key]; !ok {
-			return false
-		}
-		keyFound = true
-		delete(current, key)
-		return true
+	keyFound, err := s.deleteMapKeyAfterProjection(ctx, envPath(service), key, func(current map[string]string) error {
+		return s.materializeEnv(ctx, a, current)
 	})
 	if err != nil {
 		return err
@@ -409,7 +403,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if !keyFound {
 		return core.ErrNotFound
 	}
-	return s.materializeEnv(ctx, a, env)
+	return nil
 }
 
 // SeedEnvVars is the blueprint apply path's seam (w1/m35): it seeds a service's
@@ -620,6 +614,62 @@ func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(cur
 		return current, nil
 	}
 	return nil, fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
+}
+
+// deleteMapKeyAfterProjection makes deletion converge in the opposite order
+// from ordinary writes: first remove the value from the Kubernetes projection
+// and roll the workload, then commit the reduced OpenBao map. OpenBao therefore
+// remains the durable retry anchor if either the derived Secret update or App
+// patch fails. A retry also re-projects an already-absent key before returning
+// not-found, repairing an older attempt that committed its source CAS first.
+//
+// Versioned stores retain the existing lost-update guarantee. A racing writer
+// makes PutCAS conflict; the loop re-reads its map, removes only this key, and
+// projects the fresh desired set before trying again.
+func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key string, project func(map[string]string) error) (bool, error) {
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		current, err := s.readMap(ctx, path)
+		if err != nil {
+			return false, err
+		}
+		_, found := current[key]
+		delete(current, key)
+		if err := project(current); err != nil {
+			return found, err
+		}
+		if !found {
+			return false, nil
+		}
+		return true, s.storeMap(ctx, path, current)
+	}
+
+	for attempt := 0; attempt <= casMaxRetries; attempt++ {
+		snapshot, err := versioned.GetVersioned(ctx, path)
+		if err != nil {
+			return false, envSourceUnavailable()
+		}
+		current := core.CloneStringMap(snapshot.Data)
+		if current == nil {
+			current = map[string]string{}
+		}
+		_, found := current[key]
+		delete(current, key)
+		if err := project(current); err != nil {
+			return found, err
+		}
+		if !found {
+			return false, nil
+		}
+		if _, err := versioned.PutCAS(ctx, path, current, snapshot.Version); err != nil {
+			if errors.Is(err, core.ErrConflict) && attempt < casMaxRetries {
+				continue
+			}
+			return true, err
+		}
+		return true, nil
+	}
+	return false, fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
 }
 
 // envVarViews renders an env map as a key-sorted slice.

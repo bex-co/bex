@@ -257,9 +257,9 @@ type IntentStore interface {
 	// reconciler's write-back closes the row once the CR reaches Running/Failed.
 	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error)
 	// DeleteApp removes the apps row — the single writer of intent for a
-	// store-managed App's existence. The projector deletes the orphaned App CR
-	// on its next pass, so the row delete (not a bare CR delete) is what keeps
-	// the deletion from being resurrected on resync. ErrNotFound for unknown ids.
+	// store-managed App's existence. Delete keeps this durable row until every
+	// external, name-keyed secret has been purged, then removes it before the CR.
+	// ErrNotFound for unknown ids.
 	DeleteApp(ctx context.Context, id string) error
 	// Persistent service disks (docs/ADR082-persistent-disks.md). The row is
 	// intent — the projector turns it into spec.disk — and simultaneously the
@@ -2126,11 +2126,12 @@ func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1al
 
 // Delete removes a service — the single implementation the three adapters
 // delegate to. With the store on and the App store-managed (it carries the
-// store's app-id label), it deletes the apps row first: the row is the single
-// writer of that App's existence, so a resync can't resurrect the CR (a bare CR
-// delete would be). It then deletes the CR directly too, so the removal
-// converges immediately instead of waiting a resync period — the projector is
-// idempotent, a CR with no row is deleted again as a harmless no-op. Store-less
+// store's app-id label), it keeps the apps row as a durable retry anchor while
+// deleting every external, name-keyed secret. The still-present row also blocks
+// a same-name replacement from inheriting a partially purged OpenBao path. Only
+// after cleanup succeeds is the row removed, followed by the CR; once the row is
+// gone the projector makes a failed CR delete converge without resurrection.
+// Store-less
 // (or a hand-applied App with no row) deletes the CR directly, the same split
 // suspend/resume follow. The operator's ownerRefs cascade everything it derived
 // (Deployment/Service/Ingress/CronJob/NetworkPolicy); the one orphan left is the
@@ -2150,16 +2151,6 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	if err := s.AuthorizeAppFresh(ctx, core.RelCanCreate, a); err != nil {
 		return err
 	}
-	if s.Store != nil {
-		if id := managedAppID(a); id != "" {
-			// An already-gone row is the intended end state, not an error (a
-			// resync may have raced us) — treat it like RemoveDomain does and
-			// fall through to delete the orphaned CR.
-			if err := s.Store.DeleteApp(ctx, id); err != nil && !errors.Is(err, store.ErrNotFound) {
-				return fmt.Errorf("delete source of truth: %w", err)
-			}
-		}
-	}
 	// Remove the private-repo clone Secret bex-api wrote for it (docs/github-
 	// integration.md) — the operator doesn't own it (no ownerRef), so the CR
 	// delete cascade wouldn't. Best-effort: an absent Secret (public app) is fine.
@@ -2176,6 +2167,16 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	if s.SecretsEraser != nil {
 		if err := s.SecretsEraser.PurgeApp(ctx, a); err != nil {
 			return fmt.Errorf("purge app secrets: %w", err)
+		}
+	}
+	if s.Store != nil {
+		if id := managedAppID(a); id != "" {
+			// An already-gone row is the intended end state, not an error (a
+			// prior attempt may have completed the cleanup and row delete) —
+			// fall through to delete the orphaned CR.
+			if err := s.Store.DeleteApp(ctx, id); err != nil && !errors.Is(err, store.ErrNotFound) {
+				return fmt.Errorf("delete source of truth: %w", err)
+			}
 		}
 	}
 	// IgnoreNotFound: the CR may already be gone (a racing projector pass, or a

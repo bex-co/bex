@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,10 +34,37 @@ import (
 // workspace may hold several connections, one per GitHub account. conns is a flat
 // slice so len(conns) still reads as "how many connections exist in total".
 type fakeStore struct {
+	mu    sync.Mutex
 	conns []store.GitConnection
 	// txns is the subject-bound connect-transaction table (w1/m67 F3), keyed by
 	// nonce. Consumption deletes, mirroring the store's single-statement claim.
 	txns map[string]store.GitHubConnectTransaction
+}
+
+func (f *fakeStore) BindGitConnection(_ context.Context, c store.GitConnection, maxConnections int) (store.GitConnection, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i := range f.conns {
+		if f.conns[i].InstallationID != c.InstallationID {
+			continue
+		}
+		if f.conns[i].WorkspaceID != c.WorkspaceID {
+			return store.GitConnection{}, store.ErrConflict
+		}
+		f.conns[i] = c
+		return c, nil
+	}
+	count := 0
+	for _, existing := range f.conns {
+		if existing.WorkspaceID == c.WorkspaceID {
+			count++
+		}
+	}
+	if maxConnections > 0 && count >= maxConnections {
+		return store.GitConnection{}, &store.GitConnectionLimitError{Count: count, Limit: maxConnections}
+	}
+	f.conns = append(f.conns, c)
+	return c, nil
 }
 
 // firstFor returns a workspace's oldest connection (insertion order), the
@@ -606,6 +634,87 @@ func TestConnectRejectsForeignInstallation(t *testing.T) {
 	// Re-connecting the SAME workspace to the SAME installation stays idempotent.
 	if _, err := svc.connectWithWorkspace(ctx, "tea-a", 42); err != nil {
 		t.Fatalf("idempotent re-connect: %v", err)
+	}
+}
+
+func TestConcurrentConnectsCannotExceedWorkspaceQuota(t *testing.T) {
+	st := newFakeStore()
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "tea-a", InstallationID: 1, AccountLogin: "first"})
+	svc := &Service{
+		Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "next"},
+		Store: st, MaxConnections: 2,
+	}
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	var wg sync.WaitGroup
+	for _, installationID := range []int64{2, 3} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, err := svc.connectWithWorkspace(context.Background(), "tea-a", installationID)
+			results <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+
+	successes, limits := 0, 0
+	for err := range results {
+		if err == nil {
+			successes++
+			continue
+		}
+		var coded *core.CodedError
+		if errors.As(err, &coded) && coded.Code == "GIT_CONNECTION_LIMIT" {
+			limits++
+			continue
+		}
+		t.Fatalf("unexpected connect result: %v", err)
+	}
+	if successes != 1 || limits != 1 {
+		t.Fatalf("concurrent results: successes=%d limits=%d", successes, limits)
+	}
+	if count, _ := st.CountGitConnections(context.Background(), "tea-a"); count != 2 {
+		t.Fatalf("workspace connection count = %d, want hard limit 2", count)
+	}
+}
+
+func TestConcurrentReconnectRemainsQuotaExempt(t *testing.T) {
+	st := newFakeStore()
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "tea-a", InstallationID: 1, AccountLogin: "first"})
+	svc := &Service{
+		Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "refreshed"},
+		Store: st, MaxConnections: 1,
+	}
+	start := make(chan struct{})
+	results := make(chan struct {
+		id  int64
+		err error
+	}, 2)
+	for _, installationID := range []int64{1, 2} {
+		go func() {
+			<-start
+			_, err := svc.connectWithWorkspace(context.Background(), "tea-a", installationID)
+			results <- struct {
+				id  int64
+				err error
+			}{installationID, err}
+		}()
+	}
+	close(start)
+	for range 2 {
+		result := <-results
+		if result.id == 1 && result.err != nil {
+			t.Fatalf("same-workspace reconnect was not quota-exempt: %v", result.err)
+		}
+		if result.id == 2 {
+			var coded *core.CodedError
+			if !errors.As(result.err, &coded) || coded.Code != "GIT_CONNECTION_LIMIT" {
+				t.Fatalf("new binding result = %v, want GIT_CONNECTION_LIMIT", result.err)
+			}
+		}
 	}
 }
 
