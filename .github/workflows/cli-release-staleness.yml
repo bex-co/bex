@@ -17,7 +17,9 @@ permissions:
 
 jobs:
   staleness:
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-production
+      labels: [self-hosted, Linux, ARM64]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

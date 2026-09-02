@@ -14,9 +14,13 @@
 #  4. Workflows fetching admin.conf pin the SSH host and keep the fetched
 #     kubeconfig alive until their last cluster command.
 #  5. Self-hosted runner custody (ADR083, `.pm/DO_NOT_DO.md` #CI-RUNNERS): every
-#     job `runs-on` must target self-hosted labels and install tools without
-#     sudo, which the deliberately unprivileged runner account does not have.
-#  6. Public-fork isolation: any self-hosted job in a `pull_request` workflow
+#     job `runs-on` must target ARM64 self-hosted labels through exactly one of
+#     the non-overlapping `bex-ci` / `bex-production` runner groups and install
+#     tools without sudo, which the deliberately unprivileged runner account
+#     does not have.
+#  6. Trust separation: credential-bearing jobs must use `bex-production`, and
+#     production-group jobs in a `pull_request` workflow must reject PR events.
+#  7. Public-fork isolation: any self-hosted job in a `pull_request` workflow
 #     must either reject fork PRs by repository identity or reject all PR events.
 #
 # Setting WORKFLOWS_DIR overrides the scanned tree; the self-test
@@ -126,50 +130,76 @@ restore_workflows() {
   done < <(collect_workflow_files)
 }
 restore_workflow_files=()
+restore_workflow_count=0
 while IFS= read -r wf; do
-  [ -n "$wf" ] && restore_workflow_files+=("$wf")
+  if [ -n "$wf" ]; then
+    restore_workflow_files+=("$wf")
+    restore_workflow_count=$((restore_workflow_count + 1))
+  fi
 done < <(restore_workflows)
 keyless_restores=()
 ageless_restores=()
-for wf in "${restore_workflow_files[@]}"; do
-  grep -Fq 'RESTORE_SKIP_DOTENV' "$wf" || continue
-  grep -Fq 'AGE_BACKUP_PRIVATE_KEY' "$wf" || keyless_restores+=("$wf")
-  if ! grep -Eq '^[[:space:]]+RESTORE_AGE_IMAGE:[[:space:]]+[^[:space:]#]+@sha256:[0-9a-f]{64}([[:space:]#]|$)' "$wf"; then
-    if ! grep -Fq 'AGE_LINUX_ARM64_SHA256: c6878a324421b69e3e20b00ba17c04bc5c6dab0030cfe55bf8f68fa8d9e9093a' "$wf" \
-      || ! grep -Fq 'age-v${AGE_VERSION}-linux-arm64.tar.gz' "$wf" \
-      || ! grep -Fq 'sha256sum --check --strict' "$wf" \
-      || ! grep -Fq '>>"$GITHUB_PATH"' "$wf"; then
-      ageless_restores+=("$wf")
+keyless_restore_count=0
+ageless_restore_count=0
+if [ "$restore_workflow_count" -gt 0 ]; then
+  for wf in "${restore_workflow_files[@]}"; do
+    grep -Fq 'RESTORE_SKIP_DOTENV' "$wf" || continue
+    if ! grep -Fq 'AGE_BACKUP_PRIVATE_KEY' "$wf"; then
+      keyless_restores+=("$wf")
+      keyless_restore_count=$((keyless_restore_count + 1))
     fi
-  fi
-done
-if [ "${#keyless_restores[@]}" -gt 0 ]; then
+    if ! grep -Eq '^[[:space:]]+RESTORE_AGE_IMAGE:[[:space:]]+[^[:space:]#]+@sha256:[0-9a-f]{64}([[:space:]#]|$)' "$wf"; then
+      if ! grep -Fq 'AGE_LINUX_ARM64_SHA256: c6878a324421b69e3e20b00ba17c04bc5c6dab0030cfe55bf8f68fa8d9e9093a' "$wf" \
+        || ! grep -Fq 'age-v${AGE_VERSION}-linux-arm64.tar.gz' "$wf" \
+        || ! grep -Fq 'sha256sum --check --strict' "$wf" \
+        || ! grep -Fq '>>"$GITHUB_PATH"' "$wf"; then
+        ageless_restores+=("$wf")
+        ageless_restore_count=$((ageless_restore_count + 1))
+      fi
+    fi
+  done
+fi
+if [ "$keyless_restore_count" -gt 0 ]; then
   echo "FAIL: these workflows run a restore script with RESTORE_SKIP_DOTENV but never pass" >&2
   echo "      AGE_BACKUP_PRIVATE_KEY, so an .age snapshot fails at the decrypt step (ADR050):" >&2
   printf '  %s\n' "${keyless_restores[@]}" >&2
   exit 1
 fi
-if [ "${#ageless_restores[@]}" -gt 0 ]; then
+if [ "$ageless_restore_count" -gt 0 ]; then
   echo "FAIL: these workflows can receive an encrypted restore but provide neither" >&2
   echo "      a digest-pinned RESTORE_AGE_IMAGE nor a checksum-pinned age CLI:" >&2
   printf '  %s\n' "${ageless_restores[@]}" >&2
   exit 1
 fi
 
-# 5. Self-hosted runner custody (ADR083, .pm/DO_NOT_DO.md #CI-RUNNERS). All CI
-# jobs run on operator-custodied self-hosted runners; a security scan that
-# "remediates" by reverting to GitHub-hosted ubuntu-* is the wrong fix.
+# 5. Self-hosted runner custody and trust-pool separation (ADR083,
+# .pm/DO_NOT_DO.md #CI-RUNNERS). All jobs stay on operator-custodied ARM64
+# self-hosted runners. GitHub runner-group membership is exclusive, so requiring
+# `bex-ci` or `bex-production` here makes a workflow fail closed instead of
+# falling back to the old shared default pool.
 hosted_runners=""
-missing_self_hosted=""
+invalid_runner_contract=""
 for wf in $(collect_workflow_files); do
   if grep -E '^[[:space:]]*runs-on:[[:space:]]+ubuntu' "$wf" >/dev/null 2>&1; then
     hosted_runners="$hosted_runners $wf"
   fi
-  while IFS= read -r line; do
-    if ! printf '%s' "$line" | grep -q 'self-hosted'; then
-      missing_self_hosted="$missing_self_hosted ${wf}:${line}"
-    fi
-  done < <(grep -E '^[[:space:]]*runs-on:' "$wf" 2>/dev/null || true)
+  violations="$(awk -v file="$wf" '
+    /^[[:space:]]*runs-on:/ {
+      if ($0 !~ /^    runs-on:[[:space:]]*$/) {
+        print file ":" NR ": runs-on must be a group/labels mapping"
+        next
+      }
+      if ((getline group_line) <= 0 || group_line !~ /^      group: bex-(ci|production)[[:space:]]*$/) {
+        print file ":" NR ": missing approved bex-ci or bex-production group"
+        next
+      }
+      if ((getline labels_line) <= 0 || labels_line !~ /^      labels: \[self-hosted, Linux, ARM64\][[:space:]]*$/) {
+        print file ":" NR ": missing canonical self-hosted ARM64 labels"
+      }
+    }
+  ' "$wf")"
+  [ -z "$violations" ] || invalid_runner_contract="${invalid_runner_contract}${invalid_runner_contract:+
+}${violations}"
 done
 if [ -n "$hosted_runners" ]; then
   echo "FAIL: workflows must not use GitHub-hosted ubuntu runners — bex CI is self-hosted (ADR083, .pm/DO_NOT_DO.md #CI-RUNNERS):" >&2
@@ -177,9 +207,9 @@ if [ -n "$hosted_runners" ]; then
   echo "      Reverting to ubuntu-latest is a rejected remediation; split runner pools or add ephemeral self-hosted runners instead." >&2
   exit 1
 fi
-if [ -n "$missing_self_hosted" ]; then
-  echo "FAIL: every job runs-on must include the self-hosted label (ADR083, .pm/DO_NOT_DO.md #CI-RUNNERS):" >&2
-  printf '  %s\n' $missing_self_hosted >&2
+if [ -n "$invalid_runner_contract" ]; then
+  echo "FAIL: every job must select exactly one approved self-hosted runner group and the canonical ARM64 labels:" >&2
+  printf '%s\n' "$invalid_runner_contract" >&2
   exit 1
 fi
 sudo_workflows="$(grep -lE '(^|[[:space:]])sudo([[:space:]]|$)' $(collect_workflow_files) 2>/dev/null || true)"
@@ -189,7 +219,59 @@ if [ -n "$sudo_workflows" ]; then
   exit 1
 fi
 
-# 6. Public-fork isolation. A public fork can control code reached by `make`,
+# 6. Credential boundary. Repository/environment secrets and write-capable job
+# tokens never land on a host that runs PR code. A top-level secret or write
+# permission applies to every job in that workflow; job-local credentials apply
+# only to that job. A production-group job inside a mixed-event workflow must
+# also reject pull_request before GitHub schedules it.
+runner_trust_violations() {
+  local wf
+  for wf in $(collect_workflow_files); do
+    awk -v file="$wf" '
+      function check_job() {
+        if (job == "" || block !~ /\n    runs-on:/) return
+        production = block ~ /\n    runs-on:\n      group: bex-production\n/
+        credentialed = workflow_credentialed \
+          || block ~ /\$\{\{[[:space:]]*secrets\./ \
+          || block ~ /\n    environment:/ \
+          || block ~ /\n    permissions:[[:space:]]*write-all([[:space:]]|$)/ \
+          || block ~ /\n      [A-Za-z0-9_-]+:[[:space:]]*write([[:space:]]|$)/
+        excludes_pr = block ~ /github\.event_name[[:space:]]*!=[[:space:]]*[^[:space:]]*pull_request/
+        excludes_pr_target = block ~ /github\.event_name[[:space:]]*!=[[:space:]]*[^[:space:]]*pull_request_target/
+        if (credentialed && !production) {
+          print file ":" job ": credential-bearing job must use bex-production"
+        }
+        if (production && ((has_pull_request && !excludes_pr) || (has_pull_request_target && !excludes_pr_target))) {
+          print file ":" job ": bex-production job must reject pull_request events"
+        }
+      }
+      !in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*write([[:space:]]|$)/ { workflow_credentialed = 1 }
+      !in_jobs && /^permissions:[[:space:]]*write-all([[:space:]]|$)/ { workflow_credentialed = 1 }
+      !in_jobs && /\$\{\{[[:space:]]*secrets\./ { workflow_credentialed = 1 }
+      /^  pull_request:[[:space:]]*$/ { has_pull_request = 1 }
+      /^  pull_request_target:[[:space:]]*$/ { has_pull_request_target = 1 }
+      /^jobs:[[:space:]]*$/ { in_jobs = 1; next }
+      in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ {
+        check_job()
+        job = $1
+        sub(/:$/, "", job)
+        block = "\n" $0
+        next
+      }
+      in_jobs && job != "" { block = block "\n" $0 }
+      END { check_job() }
+    ' "$wf"
+  done
+}
+
+trust_violations="$(runner_trust_violations)"
+if [ -n "$trust_violations" ]; then
+  echo "FAIL: CI and production runner trust classes overlap:" >&2
+  printf '%s\n' "$trust_violations" >&2
+  exit 1
+fi
+
+# 7. Public-fork isolation. A public fork can control code reached by `make`,
 # package-manager, and test steps without editing the workflow itself. Every
 # self-hosted job in a pull_request workflow therefore has to prove one of two
 # things before GitHub schedules it: the PR head belongs to this repository, or
@@ -197,7 +279,7 @@ fi
 # the repository's "Require approval for all external contributors" setting;
 # neither control substitutes for the other.
 pull_request_workflows() {
-  grep -lE '^  pull_request:' "$WORKFLOWS_DIR"/*.yml 2>/dev/null || true
+  grep -lE '^  pull_request(_target)?:' "$WORKFLOWS_DIR"/*.yml 2>/dev/null || true
 }
 
 unguarded_pr_jobs() {
@@ -208,8 +290,13 @@ unguarded_pr_jobs() {
         if (job == "" || block !~ /\n    runs-on:/) return
         same_repository = block ~ /github\.event\.pull_request\.head\.repo\.full_name[[:space:]]*==[[:space:]]*github\.repository/
         excludes_pr = block ~ /github\.event_name[[:space:]]*!=[[:space:]]*[^[:space:]]*pull_request/
-        if (!same_repository && !excludes_pr) print file ":" job
+        excludes_pr_target = block ~ /github\.event_name[[:space:]]*!=[[:space:]]*[^[:space:]]*pull_request_target/
+        if (!same_repository \
+          && ((has_pull_request && !excludes_pr) \
+            || (has_pull_request_target && !excludes_pr_target))) print file ":" job
       }
+      /^  pull_request:[[:space:]]*$/ { has_pull_request = 1 }
+      /^  pull_request_target:[[:space:]]*$/ { has_pull_request_target = 1 }
       /^jobs:[[:space:]]*$/ { in_jobs = 1; next }
       in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ {
         check_job()
@@ -236,7 +323,7 @@ fi
 # The remaining checks pin the canonical tree's reviewed inventory + deploy.yml
 # wiring; they don't apply to a fixture dir, so stop here under an override.
 if [ "$canonical_tree" -eq 0 ]; then
-  echo "PASS: third-party refs SHA-pinned, Node 20 absent, self-hosted runner custody and public-fork isolation intact (fixture: $WORKFLOWS_DIR)"
+  echo "PASS: third-party refs SHA-pinned, Node 20 absent, self-hosted runner trust separation and public-fork isolation intact (fixture: $WORKFLOWS_DIR)"
   exit 0
 fi
 

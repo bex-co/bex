@@ -9,7 +9,9 @@ permissions:
 jobs:
   cilium-live-matrix:
     # The product image currently targets the production arm64 node pool.
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-ci
+      labels: [self-hosted, Linux, ARM64]
     timeout-minutes: 60
     env:
       # GOWORK=off: lego/go.work requires go >= 1.26.0 (lego/cli) while this
