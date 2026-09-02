@@ -1,6 +1,6 @@
 # w2 · m86 — Disk encryption-at-rest: enable the LUKS storage class (ADR082 D3)
 
-**Worker:** worker2 **Goal:** every tenant disk created after the flip provisions on the LUKS-encrypted storage class, closing the encryption-at-rest gap ADR082 explicitly left open **Status:** in progress (t001–t003, t005–t007 done; t004 open on its post-rollout operator-path leg; t008 gated on it)
+**Worker:** worker2 **Goal:** every tenant disk created after the flip provisions on the LUKS-encrypted storage class, closing the encryption-at-rest gap ADR082 explicitly left open **Status:** in progress (t001–t003, t005–t007 done; t004's flip + operator-path App proof done live and the prod snapshot store armed — its final snapshot/restore leg, and t008, wait on the next `/ship` deploying the fixed operator image)
 
 ## Tasks (in order)
 
@@ -22,6 +22,10 @@
 - `BEX_DISK_STORAGE_CLASS` is set in the production deploy chain via the `.env.example` → `scripts/gh-secrets.sh` → workflow pattern; nothing secret is committed.
 - ADR082 §D3 and the ADR018 disks row state exactly which disks are encrypted (created after the flip), that pre-flip disks remain on the default class, and the snapshot-restore migration path for them.
 - If either live prereq fails (no `cryptsetup` on the node image, CSI ServiceAccount cannot read the passphrase Secret), the failure is diagnosed and fixed in this milestone — the flip does not ship with a broken mount path.
+
+## Progress record 2 (2026-09-02, post-rollout)
+
+The env reached the prod operator via CI+Argo; the operator-path drill then proved the DoD's headline live: a hand-applied App produced a **Bound PVC on `hcloud-volumes-luks`** with `Recreate` + eviction guard and a LUKS mapper mount, and the backup CronJob appeared once the snapshot store was armed (this session: `provision` fixed + run, all six `verify` separation checks PASS, operator+bex-api restarted per the runbook). Four latent defects surfaced and were fixed in-milestone — two in the runbook script (first-run pipefail abort orphaning IAM keys; the `bex-system/bex-disk-snapshot` secretKeyRef contract never implemented, so no manifest-armed cluster could ever create a backup CronJob) and two in the operator's snapshot Jobs (ro claim source EBUSYs beside the app's rw LUKS mount; uid-65532 container cannot read a real ext4 volume on **any** class) — each envtest- or guard-test-pinned. Out-of-scope discoveries filed: `w2/032` (bex-api prod rollouts wedged on missing `BEX_STRIPE_PUBLISHABLE_KEY` — user-held value), `w2/033` (snapshot Secrets don't reach post-provision tenant namespaces or `default`). **Remaining:** next `/ship` rolls the fixed operator image → run the runbook's end-to-end verification (snapshot on a running LUKS App, restore, purge) → t008 closeout.
 
 ## Progress record (2026-09-02)
 

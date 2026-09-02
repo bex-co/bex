@@ -97,6 +97,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- **032** — bex-api prod rollouts are wedged: startup validation demands `BEX_STRIPE_PUBLISHABLE_KEY` ← filed from the w2/m86 drill 2026-09-02: every new bex-api pod CrashLoops at boot, so bex-api changes silently never reach production (old pods keep serving, no outage); needs the user-held Stripe publishable key in the prod env chain
+- **033** — Disk-snapshot Secrets don't reach new tenant namespaces (no projection) nor the bootstrap apps namespace ← filed from the w2/m86 drill 2026-09-02: `tea-*` namespaces created after a `disk-snapshot-secret.sh` run get no backup credential, so their disk backups die in `CreateContainerConfigError` until the script re-runs
 - **030** — Hetzner volume-price re-check (ADR082 verification) ← from `/pm-brainstorm for w2` 2026-09-01 #5: the disk meter's €/GB-month cost basis was never confirmed via an authenticated Hetzner `GET /v1/pricing`; needs an operator-supplied `HCLOUD_TOKEN`, no code change
 - **031** — Repair ADR018 stale board cross-references ← from `/pm-brainstorm for w2` 2026-09-01 #6: the ledger cites `.pm/w9/050.md` (nonexistent) and `.pm/w2/025.md` (moved to `FUTURE-MAYBE.md` 2026-08-23); fix the pointers so future parity rounds don't re-derive settled state
 
