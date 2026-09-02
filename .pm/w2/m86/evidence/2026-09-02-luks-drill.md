@@ -75,3 +75,71 @@ Validator negative-tested: breaking the template or the prod env each fails
 `gitops-validate.sh`. The env reaches the production operator on the next
 `/ship`-driven deploy; the post-rollout check is: create a disk-bearing App,
 confirm its PVC's class is `hcloud-volumes-luks` and its nightly snapshot runs.
+
+---
+
+# Part 2 — operator-path drill after rollout (same day, later)
+
+The shipped env reached the production operator via CI + Argo (~12 h after the
+push). The operator-path drill then ran in the bootstrap apps namespace
+(`default` — the operator's codex-#4 guard rightly refused a scratch
+namespace).
+
+## Proven live, through the operator
+
+- App `luksdrill` (`private_service`, tier `starter`, `spec.disk` 10 GB at
+  `/var/data`) → **PVC `disk-luksdrill` Bound on `hcloud-volumes-luks`**,
+  `DiskReady`, pod mounting `/dev/mapper/scsi-0HC_Volume_106777231` —
+  the DoD's headline clause, via `BEX_DISK_STORAGE_CLASS`, no manual PVC.
+- Deployment shape exact: `strategy=Recreate`,
+  `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"`.
+- Backup CronJob `dskbak-luksdrill` created once the store was armed
+  (schedule `0 2 * * *` UTC).
+- App delete → full child cleanup: PVC, LUKS Secret, CronJob all gone.
+
+## Four defects found (all fixed this session, none shipped-broken to tenants)
+
+1. **`scripts/disk-snapshot-secret.sh` provision died on first-ever runs** —
+   the age-keypair probe (`kubectl get secret | jq`) + `pipefail` aborted after
+   minting the Wasabi IAM keys but before persisting them (secrets shown once,
+   orphaned). Fixed with `|| true`; recovery = delete keys in Wasabi IAM,
+   re-run.
+2. **The manager's secretKeyRef contract was never implemented** — manager.yaml
+   arms `BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY` from `bex-system/bex-disk-snapshot`,
+   but the script installed that Secret into tenant namespaces only and without
+   the age-recipient entry. On any manifest-armed cluster `DiskSnapshots` never
+   reported configured ⇒ **no backup CronJob was ever created**. Script now
+   installs the bex-system copy with all three entries; guard test added.
+3. **Backup Job's ro claim source can't publish beside the running app on
+   LUKS** — `MountVolume.SetUp failed … mount -o ro /dev/mapper/… Resource
+   busy`: an ro superblock cannot coexist with the app's rw mount of the same
+   mapper device. Fixed: claim source publishes rw, container bind stays ro
+   (`disk_backup.go`), envtest-pinned.
+4. **Snapshot/restore container ran as uid 65532 and died on the first real
+   ext4 volume** — `open /disk/lost+found: permission denied` (root-owned
+   0700; tenant files carry arbitrary uids). NOT LUKS-specific: latent for
+   every disk on any class; masked on CAPD by 777 `local-path` hostPath dirs.
+   Fixed: volume-touching Jobs run as root with exactly
+   `DAC_OVERRIDE`/`CHOWN`/`FOWNER` (PSS-baseline-allowed), envtest-pinned.
+
+Also armed and verified this session: bucket `bex-disk-snapshots` + both scoped
+IAM identities (`verify`: all six separation checks PASS), Secrets in
+bex-system + every `tea-*` namespace (+ a manual copy in `default`, which the
+script's loop does not cover — filed as an inbox note along with the
+no-projection gap for tenant namespaces created after a provision run).
+
+## Observed while restarting bex-api (unrelated to disks, filed separately)
+
+bex-api's new pods CrashLoop on startup validation:
+`BEX_REQUIRE_PAYMENT_METHOD=all: BEX_STRIPE_PUBLISHABLE_KEY is required for
+Stripe Payment Element` — prod bex-api rollouts have been wedged since the
+billing-gate change landed (old pods keep serving; no outage). Needs the
+publishable key added to the prod env chain — user-held value.
+
+## Remaining for closeout (post-next-`/ship`)
+
+The snapshot/restore fixes (3, 4) live in the operator image; after the next
+deploy rolls it: create a disk-bearing App, trigger `dskbak-<app>`, confirm the
+object lands, mutate, set `spec.disk.restoreSnapshot`, confirm pre-snapshot
+state returns, delete, confirm purge — the runbook §Verifying end to end. Then
+`/pm done w2/m86/t008`.
