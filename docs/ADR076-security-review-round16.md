@@ -21,7 +21,7 @@ Twelve findings are fixed in place with regression tests; one is a standing acce
 | 9 | Snapshot PUT in argv | low | **Fixed (partial)** — create-once `If-None-Match:*` on the presigned PUT + matching hibernate `curl` header; URL still in argv until a broker/helper |
 | 10 | Shared onbex.co tenant suffix | low | **Accepted residual** — onbex.co PSL (eleventh report); `.pm/DO_NOT_DO.md` `#PSL` forbids in-repo "remediation" |
 | 11 | Mutable datastore export tooling | low | **Fixed (partial)** — CNPG export images pinned per CRD enum; KeyValue encrypt uses the pinned FiloSottile/age release (no `apk add`); wider inventory remains ADR060 §D7 |
-| 12 | Unbounded git webhook replay ledger | low | **Fixed** — 90-day retention sweep + `created_at` index (migration `0092`) |
+| 12 | Unbounded git webhook replay ledger | low | **Superseded fix** — migration `0104`: post-match claims, exact per-workspace cap, signing-epoch leases, safe retired-epoch purge |
 | 13 | API-key revoke ignores UnbindKey | low | **Fixed** — unbind before Hydra delete; fail closed on unbind errors |
 
 ## Finding 1 (high) — installer authenticates checksums
@@ -92,7 +92,7 @@ Unchanged and **must not** be "fixed" in-repo. `.pm/DO_NOT_DO.md` `#PSL` forbids
 
 Successful distinct signed bodies accumulated forever in `git_webhook_replays`.
 
-**Fix.** Migration `0092` indexes `created_at`. Daily `PurgeGitWebhookReplays` with `DefaultGitWebhookReplayRetention` (90d) runs from `cmd/api`. Duplicate suppression stays atomic inside the horizon.
+**Superseded fix.** The original 90-day purge was removed because a captured body remains valid for as long as its HMAC key does; deleting its claim by wall-clock age reopened replay. Migration `0104` instead assigns claims to a tenant scope and authenticated signing-secret epoch. The handler claims only after repository/branch matching and enforces an exact 100,000-row cap per workspace across live epochs. Every API replica leases each epoch it accepts; maintenance purges a rotated epoch only after no live lease remains, so storage is bounded without expiring a claim whose signature is still accepted. Pre-`0104` rows remain in a finite legacy partition because their scope and epoch cannot be reconstructed safely.
 
 ## Finding 13 (low) — revoke fails closed on unbind
 

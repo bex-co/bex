@@ -362,8 +362,15 @@ func main() {
 	if st != nil {
 		srv.WebhookReplays = st
 		srv.CLIRefreshes = st
-		// Replay claims are retained while the configured webhook key remains
-		// valid; aging them out would make an old signed body claimable again.
+		// Replay claims are partitioned by the authenticated signing-secret epoch.
+		// Every replica leases the epochs it still accepts; only after all leases
+		// retire may maintenance purge that epoch without making an accepted old
+		// signature replayable again (codex-security U9MUKo finding 4).
+		epochs := store.GitWebhookReplayEpochs(cfg.WebhookSecret, cfg.GitHubWebhookSecret)
+		if _, err := st.MaintainGitWebhookReplayEpochs(ctx, epochs, time.Now()); err != nil {
+			log.Fatalf("bex-api: register git webhook replay epochs: %v", err)
+		}
+		go st.RunGitWebhookReplayMaintenance(ctx, epochs)
 	}
 	// Membership rows and exact OpenFGA roles are joined by a transactional
 	// Postgres outbox. Drain it independently of request retries so an invite or

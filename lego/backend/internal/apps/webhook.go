@@ -22,10 +22,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,8 +86,8 @@ type GitWebhook struct {
 // WebhookReplayGuard is the durable replay ledger the mutating git-webhook
 // deliveries claim before acting. Implemented by *store.PGStore.
 type WebhookReplayGuard interface {
-	ClaimGitWebhookDelivery(ctx context.Context, digest string) (bool, error)
-	ReleaseGitWebhookDelivery(ctx context.Context, digest string) error
+	ClaimGitWebhookDelivery(ctx context.Context, claim store.GitWebhookReplayClaim) (bool, error)
+	ReleaseGitWebhookDelivery(ctx context.Context, claim store.GitWebhookReplayClaim) error
 }
 
 // InstallationResolver maps a GitHub App installation id to the workspace that
@@ -314,10 +316,30 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
 		return
 	}
+	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
+	candidates, err := h.repoCandidates(r.Context(), urls, scope)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	if ev.Deleted || isZeroSHA(ev.After) {
+		candidates = branchCandidates(candidates, branch)
+	}
+	// A valid delivery for a repository/branch bex does not track must not
+	// allocate a permanent replay row. There is no mutation to deduplicate, and
+	// a later App creation should still be allowed to consume a redelivery.
+	if len(candidates) == 0 {
+		if ev.Deleted || isZeroSHA(ev.After) {
+			core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
+		} else {
+			core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
+		}
+		return
+	}
 	// codex round-8 #9: claim the exact signed bytes before either mutation
 	// branch. Everything below may mutate Apps (redeploy or branch-delete
 	// handling); without the claim a captured delivery replays.
-	w, finishClaim, ok := h.claimReplay(r.Context(), w, key, body)
+	w, finishClaim, ok := h.claimReplay(r.Context(), w, key, replayScope(key, scope, ev.Installation.ID), body)
 	if !ok {
 		return
 	}
@@ -326,15 +348,10 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// `after`) carries no commit to build — record branch_deleted and disable
 	// auto-deploy for services tracking it rather than attempting a redeploy.
 	if ev.Deleted || isZeroSHA(ev.After) {
-		urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
-		h.writeBranchDeleted(r.Context(), w, urls, branch, ev.DeliveryKey, scope)
+		h.writeBranchDeletedCandidates(r.Context(), w, candidates, branch, ev.DeliveryKey)
 		return
 	}
-	redeployed, tenants, err := h.redeployMatching(r.Context(), ev, branch, scope)
-	if err != nil {
-		core.WriteErr(w, err)
-		return
-	}
+	redeployed, tenants := h.redeployCandidates(r.Context(), ev, branch, candidates)
 	// Trigger blueprint auto-sync for workspaces whose apps share this repo.
 	// Runs in a goroutine so the webhook response is not blocked.
 	if h.Svc.Blueprints != nil && len(tenants) > 0 {
@@ -375,27 +392,34 @@ func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []
 		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
 		return
 	}
-	// codex round-8 #9: branch-delete handling mutates Apps (facts +
-	// autoDeploy-off patches), so it claims the delivery like the push path.
-	w, finishClaim, ok := h.claimReplay(r.Context(), w, key, body)
-	if !ok {
+	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
+	if branch == "" {
+		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
 		return
 	}
-	defer finishClaim()
-	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
 	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
-	h.writeBranchDeleted(r.Context(), w, urls, branch, deliveryKey(r, body), scope)
-}
-
-// writeBranchDeleted records branch_deleted for every matching service and
-// writes the shared `{branchDeleted: [...]}` response — the one tail both the
-// `delete` event and the push-with-deleted path funnel through.
-func (h *GitWebhook) writeBranchDeleted(ctx context.Context, w http.ResponseWriter, urls []string, branch, deliveryKey, scope string) {
-	deleted, err := h.recordBranchDeleted(ctx, urls, branch, deliveryKey, scope)
+	candidates, err := h.repoCandidates(r.Context(), urls, scope)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
 	}
+	candidates = branchCandidates(candidates, branch)
+	if len(candidates) == 0 {
+		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
+		return
+	}
+	// codex round-8 #9: branch-delete handling mutates Apps (facts +
+	// autoDeploy-off patches), so it claims the delivery like the push path.
+	w, finishClaim, ok := h.claimReplay(r.Context(), w, key, replayScope(key, scope, ev.Installation.ID), body)
+	if !ok {
+		return
+	}
+	defer finishClaim()
+	h.writeBranchDeletedCandidates(r.Context(), w, candidates, branch, deliveryKey(r, body))
+}
+
+func (h *GitWebhook) writeBranchDeletedCandidates(ctx context.Context, w http.ResponseWriter, candidates []appv1alpha1.App, branch, deliveryKey string) {
+	deleted := h.recordBranchDeletedCandidates(ctx, candidates, branch, deliveryKey)
 	core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": deleted})
 }
 
@@ -423,6 +447,35 @@ func replayDigest(key verifiedKey, body []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// replayScope attributes each claim to the tenant that can cause it. In
+// multitenant operation scope is the installation-bound workspace. The
+// fallbacks exist only for the supported single-tenant configurations.
+func replayScope(key verifiedKey, workspace string, installationID int64) string {
+	if workspace != "" {
+		return "workspace:" + workspace
+	}
+	if key == keyGitHubApp && installationID != 0 {
+		return "github-installation:" + strconv.FormatInt(installationID, 10)
+	}
+	if key == keyGitHubApp {
+		return "github:single-tenant"
+	}
+	return "manual:single-tenant"
+}
+
+func (h *GitWebhook) replayClaim(key verifiedKey, scope string, body []byte) store.GitWebhookReplayClaim {
+	keyClass, secret := store.GitWebhookReplayKeyManual, h.Secret
+	if key == keyGitHubApp {
+		keyClass, secret = store.GitWebhookReplayKeyGitHub, h.GitHubSecret
+	}
+	return store.GitWebhookReplayClaim{
+		Scope:    scope,
+		KeyClass: keyClass,
+		Epoch:    store.GitWebhookSigningEpoch(keyClass, secret),
+		Digest:   replayDigest(key, body),
+	}
+}
+
 // claimReplay durably claims the signed body before a mutation branch runs
 // (codex round-8 #9). ok=false means the response is already written (the claim
 // errored, or the body was already processed — a replay — answered 200 so the
@@ -432,13 +485,17 @@ func replayDigest(key verifiedKey, body []byte) string {
 // that retry must not be swallowed by a claim whose work never happened). A
 // delivery that completed — even with per-app failures, which this handler
 // deliberately 200-swallows — keeps its claim: that IS the processed state.
-func (h *GitWebhook) claimReplay(ctx context.Context, w http.ResponseWriter, key verifiedKey, body []byte) (http.ResponseWriter, func(), bool) {
+func (h *GitWebhook) claimReplay(ctx context.Context, w http.ResponseWriter, key verifiedKey, scope string, body []byte) (http.ResponseWriter, func(), bool) {
 	if h.Replays == nil {
 		return w, func() {}, true
 	}
-	digest := replayDigest(key, body)
-	fresh, err := h.Replays.ClaimGitWebhookDelivery(ctx, digest)
+	claim := h.replayClaim(key, scope, body)
+	fresh, err := h.Replays.ClaimGitWebhookDelivery(ctx, claim)
 	if err != nil {
+		if errors.Is(err, store.ErrGitWebhookReplayCapacity) || errors.Is(err, store.ErrGitWebhookReplayEpochRetired) {
+			core.WriteErrStatus(w, http.StatusServiceUnavailable, err.Error())
+			return w, func() {}, false
+		}
 		core.WriteErr(w, err)
 		return w, func() {}, false
 	}
@@ -451,7 +508,7 @@ func (h *GitWebhook) claimReplay(ctx context.Context, w http.ResponseWriter, key
 		if rec.status >= http.StatusInternalServerError {
 			releaseCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
 			defer cancel()
-			_ = h.Replays.ReleaseGitWebhookDelivery(releaseCtx, digest)
+			_ = h.Replays.ReleaseGitWebhookDelivery(releaseCtx, claim)
 		}
 	}, true
 }
@@ -506,21 +563,49 @@ func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, bra
 	if branch == "" {
 		return []string{}, nil
 	}
+	candidates, err := h.repoCandidates(ctx, urls, scope)
+	if err != nil {
+		return nil, err
+	}
+	return h.recordBranchDeletedCandidates(ctx, branchCandidates(candidates, branch), branch, deliveryKey), nil
+}
+
+// repoCandidates resolves the non-mutating repository/workspace match before a
+// replay claim is allocated. This keeps unrelated valid pushes out of the
+// durable ledger and supplies a stable candidate snapshot to the mutation pass.
+func (h *GitWebhook) repoCandidates(ctx context.Context, urls []string, scope string) ([]appv1alpha1.App, error) {
 	var list appv1alpha1.AppList
 	if err := h.Svc.Client.List(ctx, &list); err != nil {
 		return nil, err
 	}
-	affected := []string{}
+	candidates := make([]appv1alpha1.App, 0)
 	for i := range list.Items {
 		a := &list.Items[i]
-		// codex #7: an app-signed delivery is confined to its installation's
-		// workspace; skip Apps outside it. scope=="" (manual key) matches all.
 		if scope != "" && a.Labels[core.LabelTenant] != scope {
 			continue
 		}
-		if a.Spec.Repo == "" || !repoURLsMatch(a.Spec.Repo, urls...) || !branchMatches(a.Spec.Branch, branch) {
+		if a.Spec.Repo == "" || !repoURLsMatch(a.Spec.Repo, urls...) {
 			continue
 		}
+		candidates = append(candidates, *a)
+	}
+	return candidates, nil
+}
+
+func branchCandidates(candidates []appv1alpha1.App, branch string) []appv1alpha1.App {
+	matched := make([]appv1alpha1.App, 0, len(candidates))
+	for i := range candidates {
+		if branchMatches(candidates[i].Spec.Branch, branch) {
+			matched = append(matched, candidates[i])
+		}
+	}
+	return matched
+}
+
+func (h *GitWebhook) recordBranchDeletedCandidates(ctx context.Context, candidates []appv1alpha1.App, branch, deliveryKey string) []string {
+	affected := []string{}
+	for i := range candidates {
+		a := &candidates[i]
 		h.recordBranchDeletedFact(ctx, a, branch, deliveryKey)
 		if a.Spec.AutoDeploy {
 			if err := h.disableAutoDeploy(ctx, a); err != nil {
@@ -529,7 +614,7 @@ func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, bra
 		}
 		affected = append(affected, a.Name)
 	}
-	return affected, nil
+	return affected
 }
 
 // recordBranchDeletedFact appends the closed branch_deleted fact — the deleted
@@ -568,23 +653,21 @@ func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App
 // signature already authorized this call. It also returns a set of tenant IDs
 // whose Apps share this repo (used for blueprint auto-sync post-response).
 func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch, scope string) (redeployed []string, tenants map[string]struct{}, err error) {
-	var list appv1alpha1.AppList
-	if err := h.Svc.Client.List(ctx, &list); err != nil {
+	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
+	candidates, err := h.repoCandidates(ctx, urls, scope)
+	if err != nil {
 		return nil, nil, err
 	}
+	redeployed, tenants = h.redeployCandidates(ctx, ev, branch, candidates)
+	return redeployed, tenants, nil
+}
+
+func (h *GitWebhook) redeployCandidates(ctx context.Context, ev pushEvent, branch string, candidates []appv1alpha1.App) (redeployed []string, tenants map[string]struct{}) {
 	paths := ev.changedPaths()
 	redeployed = []string{}
 	tenants = map[string]struct{}{}
-	for i := range list.Items {
-		a := &list.Items[i]
-		// codex #7: an app-signed delivery is confined to its installation's
-		// workspace; skip Apps outside it. scope=="" (manual key) matches all.
-		if scope != "" && a.Labels[core.LabelTenant] != scope {
-			continue
-		}
-		if a.Spec.Repo == "" || !repoMatches(a.Spec.Repo, ev) {
-			continue
-		}
+	for i := range candidates {
+		a := &candidates[i]
 		// Collect tenant IDs for all apps sharing this repo (for blueprint auto-sync).
 		if t := a.Labels[core.LabelTenant]; t != "" {
 			tenants[t] = struct{}{}
@@ -629,7 +712,7 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch,
 		}
 		redeployed = append(redeployed, a.Name)
 	}
-	return redeployed, tenants, nil
+	return redeployed, tenants
 }
 
 func commitHasSkipPhrase(message string) bool {

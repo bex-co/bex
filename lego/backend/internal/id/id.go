@@ -85,8 +85,9 @@ var (
 	// Webhook / WebhookDelivery are bex-chosen prefixes (w3/m11 outbound event
 	// webhooks) — Render's public docs don't expose its webhook-endpoint id
 	// spelling, so these follow the RegistryCredential precedent.
-	Webhook         = Kind{prefix: "whk", desc: "outbound webhook endpoint"}
-	WebhookDelivery = Kind{prefix: "whd", desc: "outbound webhook delivery"}
+	Webhook            = Kind{prefix: "whk", desc: "outbound webhook endpoint"}
+	WebhookDelivery    = Kind{prefix: "whd", desc: "outbound webhook delivery"}
+	WebhookReplayLease = Kind{prefix: "wrl", desc: "git webhook replay epoch lease"}
 	// Job is a one-off job run in a service's container (Render's /services/{id}/jobs).
 	// Prefix "job" matches Render's observed id prefix from the live API.
 	Job        = Kind{prefix: "job", desc: "one-off job"}
@@ -111,7 +112,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, Job, SSHKey, SSHSession, BlueprintSync, AgentSession, Disk, WorkspaceCreationAttempt}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, AgentSession, Disk, WorkspaceCreationAttempt}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }
