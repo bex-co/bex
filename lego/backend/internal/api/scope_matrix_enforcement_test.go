@@ -40,6 +40,7 @@ func scopedAPI(t *testing.T, sub, clientID, scope string, aud []string, platform
 	srv.HydraAdminURL = hydra.url
 	srv.OAuthResource = bexResource
 	srv.OAuthRequireAudience = true
+	srv.OAuthPlatformClients = hydra.platformClientIDs
 	h, err := srv.Handler()
 	if err != nil {
 		t.Fatalf("Handler: %v", err)

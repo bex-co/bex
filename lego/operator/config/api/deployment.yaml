@@ -114,24 +114,25 @@ spec:
             - name: BEX_OAUTH_RESOURCE
               value: https://api.bex.co/mcp
             # codex F6: narrows the empty-audience exception to bex-provisioned
-            # OAuth clients (the Hydra client-metadata marker
-            # `bex.co/platform-client`, stamped by scripts/auth-bootstrap-client.sh).
+            # OAuth clients in the operator-owned registry below.
             # Without it, a consented token from ANY self-registered client
             # authorizes the human's full workspace rights here — a cross-tenant
             # escalation.
             # ACTIVATED 2026-08-13 (w1/m68 t007, docs/ADR012-auth.md §7) after
-            # verifying the LIVE Hydra records for the official Render CLI and
-            # bex-mobile clients both carry the marker. Flipping back to "0"
-            # reopens the audience-less-token escalation; only do so if the
-            # platform clients lose the marker (their legitimately audience-less
-            # device-flow logins would otherwise be refused).
+            # verifying the official Render CLI and bex-mobile IDs. Flipping
+            # back to "0" reopens the audience-less-token escalation.
             - name: BEX_OAUTH_REQUIRE_AUDIENCE
               value: "1"
+            # Operator-owned platform-client registry. Public DCR requests
+            # cannot choose these fixed IDs, and Hydra metadata is never
+            # consulted as a trust anchor.
+            - name: BEX_OAUTH_PLATFORM_CLIENTS
+              value: 429024F5E608930E2A65EF92591A25CC,bex-mobile
             # Round-14 #1 (docs/ADR069-security-review-round14.md): the
             # control-plane capability scope — an API-audience HUMAN token
             # must carry it (identity-only scopes never are API authority).
-            # Machine API-key tokens and bex-provisioned platform clients
-            # (the marker the bootstrap script stamps) are exempt. Must equal
+            # Machine API-key tokens and registry-listed platform clients are
+            # exempt. Must equal
             # the dashboard's OAUTH_API_SCOPE; default "bex.api" on both
             # sides, spelled out here so the coupling is visible.
             - name: BEX_OAUTH_API_SCOPE

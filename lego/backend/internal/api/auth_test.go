@@ -79,9 +79,8 @@ func fakeHydraURL(t *testing.T) string {
 // fakeHumanHydra is fakeHydra for tests that need testToken to be a HUMAN
 // token from a bex-provisioned client — the only OAuth class that may mint
 // durable credentials (round-7 F3): introspection answers sub "identity-1"
-// (≠ client_id "platform-cli"), and the client record carries the
-// `bex.co/platform-client` marker the introspection path now resolves for
-// every human token.
+// (≠ client_id "platform-cli"). The caller must separately install that ID in
+// the operator-owned registry.
 func fakeHumanHydra(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -94,9 +93,6 @@ func fakeHumanHydra(t *testing.T) *httptest.Server {
 				return
 			}
 			_, _ = fmt.Fprint(w, `{"active":false}`)
-		case r.URL.Path == "/admin/clients/platform-cli" && r.Method == http.MethodGet:
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = fmt.Fprint(w, `{"metadata":{"bex.co/platform-client":true}}`)
 		default:
 			http.NotFound(w, r)
 		}

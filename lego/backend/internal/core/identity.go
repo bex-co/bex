@@ -56,7 +56,7 @@ type Identity struct {
 	Name string
 	// CanonicalScopes is the sorted, space-separated closed OAuth capability
 	// set Hydra granted this human token (bex.read / bex.write / bex.sensitive,
-	// plus bex.api when retained for a platform-marked client). Empty for
+	// plus bex.api when retained for a registry-listed platform client). Empty for
 	// Kratos sessions and machine API keys, which are not human-delegation
 	// grants and must not acquire one from a default. Never a bearer token.
 	CanonicalScopes string
@@ -65,10 +65,9 @@ type Identity struct {
 	// no matching audience (audience-less platform device-flow) or the caller
 	// is not an OAuth human. Arbitrary extra audiences are discarded.
 	AcceptedAudience string
-	// PlatformClient is true only after a successful Hydra-admin lookup of the
-	// bex.co/platform-client marker on the cache-miss path. False for sessions,
-	// machine keys, third-party human tokens, and lookup-not-needed grants.
-	// A lookup error never records false — introspection fails closed instead.
+	// PlatformClient is true only when client_id belongs to the operator-owned
+	// platform registry. False for sessions, machine keys, third-party human
+	// tokens, and classification-not-needed grants.
 	PlatformClient bool
 }
 
@@ -91,15 +90,12 @@ func WithIdentity(ctx context.Context, id Identity) context.Context {
 }
 
 // PlatformClientResolver reports whether an OAuth client id is one the
-// platform provisioned itself (`bex.co/platform-client` metadata, stamped by
-// scripts/auth-bootstrap-client.sh — the official Render CLI, bex-mobile).
-// Implemented by the composition root against Hydra's admin API; consumed by
-// Base.AuthorizeMintClass so a delegated human token can prove it comes from
-// a bex-issued client. Errors mean "cannot establish trust", never "false".
-//
-// IsPlatformClient may serve a short positive TTL cache (audience / scope
-// classification). IsPlatformClientFresh always re-reads Hydra and is required
-// at durable-credential mint boundaries (codex round-16 #4).
+// platform provisioned itself. The composition root resolves membership from
+// operator-owned configuration outside Hydra's DCR-writable client record;
+// Base.AuthorizeMintClass consumes it so a delegated human token can prove it
+// comes from a bex-issued client. Errors mean "cannot establish trust", never
+// "false". Both methods remain for interface compatibility; an immutable
+// registry answers them identically.
 type PlatformClientResolver interface {
 	IsPlatformClient(ctx context.Context, clientID string) (bool, error)
 	IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error)

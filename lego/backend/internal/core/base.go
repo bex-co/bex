@@ -312,7 +312,7 @@ type Base struct {
 	// Meaningless while Payment is nil.
 	PaymentAllPlans bool
 	// PlatformClients proves an OAuth client id is one bex provisioned itself;
-	// the composition root wires it from Hydra's admin API. Consumed by
+	// the composition root wires it from operator-owned configuration. Consumed by
 	// AuthorizeMintClass; nil => a delegated (OAuth) caller can never pass that
 	// gate — fail closed (codex round-7 F3).
 	PlatformClients PlatformClientResolver
@@ -926,9 +926,8 @@ func (b *Base) AuthorizeMintClass(ctx context.Context) error {
 		if b.PlatformClients == nil {
 			return ErrForbidden // trust cannot be established — fail closed
 		}
-		// Fresh Hydra read (codex round-16 #4): a positive platformClients cache
-		// entry must not authorize minting an API key / SSH key / deploy-hook
-		// credential after the OAuth client loses its platform marker.
+		// Use the resolver's strongest path. The current operator-owned registry is
+		// immutable, so it has no upstream marker or positive cache to go stale.
 		platform, err := b.PlatformClients.IsPlatformClientFresh(ctx, id.ClientID)
 		if err != nil {
 			return fmt.Errorf("%w: %v", ErrAuthzUnavailable, err)

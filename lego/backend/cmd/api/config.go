@@ -102,6 +102,9 @@ type Config struct {
 	// w1/m67 F1: narrow the empty-audience token exception to bex-provisioned
 	// OAuth clients. Opt-in — see the F6 warning loadConfig emits when off.
 	OAuthRequireAudience bool
+	// BEX_OAUTH_PLATFORM_CLIENTS is the operator-owned comma-separated registry
+	// of platform client IDs. It is deliberately outside Hydra client records.
+	OAuthPlatformClients []string
 	OAuthAPIScope        string
 
 	// Tenant secrets (docs/ADR013-secrets.md).
@@ -296,6 +299,11 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.OAuthIssuer = getenv("BEX_OAUTH_ISSUER")
 	cfg.OAuthResource = getenv("BEX_OAUTH_RESOURCE")
 	cfg.OAuthRequireAudience = getenv("BEX_OAUTH_REQUIRE_AUDIENCE") == "1"
+	for _, clientID := range strings.Split(getenv("BEX_OAUTH_PLATFORM_CLIENTS"), ",") {
+		if clientID = strings.TrimSpace(clientID); clientID != "" {
+			cfg.OAuthPlatformClients = append(cfg.OAuthPlatformClients, clientID)
+		}
+	}
 	cfg.OAuthAPIScope = getenv("BEX_OAUTH_API_SCOPE")
 	// codex F6: an opt-in security control that ships off is invisible — a LOUD
 	// WARNING on every start, not a fail-closed refusal (a hard refusal would
@@ -303,7 +311,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	if cfg.OAuthResource != "" && !cfg.OAuthRequireAudience {
 		p.warnf("WARNING: BEX_OAUTH_REQUIRE_AUDIENCE is off while BEX_OAUTH_RESOURCE=%q — an audience-less token "+
 			"from ANY self-registered OAuth client a user consents to carries that user's full workspace rights here (codex F6, cross-tenant). "+
-			"Activate: re-run scripts/auth-bootstrap-client.sh (stamps bex.co/platform-client), then set it to 1 "+
+			"Activate: configure BEX_OAUTH_PLATFORM_CLIENTS with the operator-provisioned client IDs, then set it to 1 "+
 			"(docs/ADR012-auth.md §7)", cfg.OAuthResource)
 	}
 

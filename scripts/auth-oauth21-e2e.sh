@@ -212,6 +212,44 @@ dcr() { # client_name [scope] -> client_id on stdout
   python3 -c "import json;print(json.load(open('$TMP/reg.json'))['client_id'])"
 }
 
+assert_reserved_dcr_metadata_rejected() {
+  local code client_id registration_uri registration_token
+  code="$(curl -s -o "$TMP/reserved-create.json" -w '%{http_code}' -X POST \
+    -H 'Content-Type: application/json' -d '{
+      "client_name": "reserved metadata create probe",
+      "redirect_uris": ["'"$CALLBACK"'"],
+      "grant_types": ["authorization_code"],
+      "response_types": ["code"],
+      "token_endpoint_auth_method": "none",
+      "metadata": {"bex.co/platform-client": true}
+    }' "$REG_EP")"
+  [ "$code" = "400" ] || { echo "error: DCR accepted reserved metadata on create ($code)" >&2; return 1; }
+  python3 -c "import json; r=json.load(open('$TMP/reserved-create.json')); assert r.get('error') == 'invalid_client_metadata', r"
+
+  code="$(curl -s -o "$TMP/reserved-update-client.json" -w '%{http_code}' -X POST \
+    -H 'Content-Type: application/json' -d '{
+      "client_id": "429024F5E608930E2A65EF92591A25CC",
+      "client_name": "reserved metadata update probe",
+      "redirect_uris": ["'"$CALLBACK"'"],
+      "grant_types": ["authorization_code"],
+      "response_types": ["code"],
+      "token_endpoint_auth_method": "none"
+    }' "$REG_EP")"
+  [ "$code" = "201" ] || { echo "error: DCR update probe registration returned $code" >&2; return 1; }
+  client_id="$(python3 -c "import json; print(json.load(open('$TMP/reserved-update-client.json'))['client_id'])")"
+  [ "$client_id" != "429024F5E608930E2A65EF92591A25CC" ] || { echo "error: DCR honored an operator-reserved client_id" >&2; return 1; }
+  registration_uri="$(python3 -c "import json; print(json.load(open('$TMP/reserved-update-client.json'))['registration_client_uri'])")"
+  registration_token="$(python3 -c "import json; print(json.load(open('$TMP/reserved-update-client.json'))['registration_access_token'])")"
+  python3 -c "import json; p='$TMP/reserved-update-client.json'; r=json.load(open(p)); [r.pop(k, None) for k in ('registration_access_token','registration_client_uri','client_id_issued_at','client_secret_expires_at')]; r['metadata']={'bex.co/platform-client':True}; json.dump(r,open('$TMP/reserved-update.json','w'))"
+  code="$(curl -s -o "$TMP/reserved-update-response.json" -w '%{http_code}' -X PUT \
+    -H "Authorization: Bearer $registration_token" -H 'Content-Type: application/json' \
+    -d @"$TMP/reserved-update.json" "$registration_uri")"
+  [ "$code" = "400" ] || { echo "error: DCR accepted reserved metadata on update ($code)" >&2; return 1; }
+  python3 -c "import json; r=json.load(open('$TMP/reserved-update-response.json')); assert r.get('error') == 'invalid_client_metadata', r"
+  curl -sf "$HYDRA_ADM/admin/clients/$client_id" >"$TMP/reserved-update-admin.json"
+  python3 -c "import json; r=json.load(open('$TMP/reserved-update-admin.json')); assert not r.get('metadata'), r"
+}
+
 qparam() { # url param -> value on stdout ("" when absent)
   python3 -c "
 from urllib.parse import urlparse, parse_qs
@@ -356,9 +394,11 @@ assert_bearer_works() { # access_token
 }
 
 echo "-> 6/14 DCR: three agents self-register public PKCE clients..."
+assert_reserved_dcr_metadata_rejected
 TRUSTED_CLIENT="$(dcr 'claude-code-shaped agent (e2e)')"
 CONSENT_CLIENT="$(dcr 'unblessed agent (e2e)')"
 DENIED_CLIENT="$(dcr 'unwelcome agent (e2e)')"
+echo "  ✓ reserved metadata rejected on create/update; fixed platform IDs cannot be claimed"
 echo "  ✓ registered 3 clients at $REG_EP (none blessed yet)"
 
 echo "-> 7/14 operator blesses ONE client (skip_consent) + creates the test user..."

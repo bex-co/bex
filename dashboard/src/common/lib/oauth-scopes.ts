@@ -48,12 +48,6 @@ export function hasGranularCapability(scopes: readonly string[]): boolean {
   );
 }
 
-export function isPlatformMarked(
-  metadata: Record<string, unknown> | undefined | null,
-): boolean {
-  return metadata?.["bex.co/platform-client"] === true;
-}
-
 /** Intersect requested scopes with the closed vocabulary. Third-party grants
  *  never keep the bex.api umbrella alias. */
 export function grantableScopes(

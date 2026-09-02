@@ -12,7 +12,6 @@ import {
   GRANULAR_SCOPES,
   grantableScopes,
   hasGranularCapability,
-  isPlatformMarked,
 } from "@/common/lib/oauth-scopes";
 import { safeHttpHref } from "@/common/lib/external-url";
 
@@ -40,8 +39,8 @@ import { safeHttpHref } from "@/common/lib/external-url";
 // inside the server block), so none of this — or the env it reads — reaches
 // the client bundle; only `ConsentView` (below) crosses the wire. Env is
 // deliberately NOT VITE_-prefixed: `HYDRA_ADMIN_URL` (e.g. in-cluster
-// http://hydra-admin.auth.svc:4445) and `OAUTH_TRUSTED_CLIENTS`
-// (comma-separated client_ids).
+// http://hydra-admin.auth.svc:4445), `OAUTH_TRUSTED_CLIENTS`, and
+// `OAUTH_PLATFORM_CLIENTS` (comma-separated client_ids).
 
 /** How long Hydra remembers an accepted consent, so a returning user's client
  * isn't re-challenged within the window. */
@@ -125,6 +124,17 @@ function redirectToConsentError(
 function trustedClients(): Set<string> {
   return new Set(
     (process.env.OAUTH_TRUSTED_CLIENTS ?? "")
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean),
+  );
+}
+
+/** Operator-owned platform registry. Public DCR clients cannot write this
+ * server-only deployment configuration. */
+function platformClients(): Set<string> {
+  return new Set(
+    (process.env.OAUTH_PLATFORM_CLIENTS ?? "")
       .split(",")
       .map((c) => c.trim())
       .filter(Boolean),
@@ -244,9 +254,7 @@ function pkceSatisfied(consent: OAuth2ConsentRequest): boolean {
  * (no bex.api.read derivation).
  */
 function platformClient(consent: OAuth2ConsentRequest): boolean {
-  return isPlatformMarked(
-    consent.client?.metadata as Record<string, unknown> | undefined,
-  );
+  return platformClients().has(consent.client?.client_id ?? "");
 }
 
 function audienceScopeSatisfied(consent: OAuth2ConsentRequest): boolean {
@@ -374,7 +382,10 @@ export async function handleConsent(
   // First-party/public clients are not exempt: an API audience always needs a
   // granular capability, and the native client must reach this explicit gate.
   if (!audienceScopeSatisfied(consent)) {
-    return { errorCode: "scope_required", requiredScopes: [...GRANULAR_SCOPES] };
+    return {
+      errorCode: "scope_required",
+      requiredScopes: [...GRANULAR_SCOPES],
+    };
   }
 
   if (isTrusted(consent)) {
@@ -472,7 +483,11 @@ export async function handleConsentDecision(
 
   const hydra = hydraAdmin();
   if (!hydra) {
-    return redirectToConsentError(url.origin, consentChallenge, "not_configured");
+    return redirectToConsentError(
+      url.origin,
+      consentChallenge,
+      "not_configured",
+    );
   }
 
   if (!csrfTokenMatches(csrfToken, consentChallenge, session.id)) {
@@ -486,10 +501,18 @@ export async function handleConsentDecision(
     return refuse("consent refused: stale or unknown challenge");
   }
   if (!pkceSatisfied(consent)) {
-    return redirectToConsentError(url.origin, consentChallenge, "pkce_required");
+    return redirectToConsentError(
+      url.origin,
+      consentChallenge,
+      "pkce_required",
+    );
   }
   if (!audienceScopeSatisfied(consent)) {
-    return redirectToConsentError(url.origin, consentChallenge, "scope_required");
+    return redirectToConsentError(
+      url.origin,
+      consentChallenge,
+      "scope_required",
+    );
   }
   if (consent.subject && consent.subject !== session.identity?.id) {
     return redirectToConsentError(url.origin, consentChallenge, "wrong_user");

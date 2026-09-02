@@ -534,10 +534,9 @@ func configureServerAuthOptions(srv *api.Server, cfg *Config) {
 	srv.OAuthIssuer = cfg.OAuthIssuer
 	srv.OAuthResource = cfg.OAuthResource
 	// w1/m67 F1: narrow the empty-audience token exception to bex-provisioned
-	// OAuth clients. Opt-in because it must not precede the operator step that
-	// stamps the platform-client marker (scripts/auth-bootstrap-client.sh) — see
-	// docs/ADR012-auth.md §7.
+	// OAuth clients from the operator-owned registry — see docs/ADR012-auth.md §7.
 	srv.OAuthRequireAudience = cfg.OAuthRequireAudience
+	srv.OAuthPlatformClients = cfg.OAuthPlatformClients
 	// w8/m27: BEX_OAUTH_API_SCOPE is retained for deployment compatibility but
 	// is ignored as a second semantic matrix. Third-party human API-audience
 	// tokens must carry the closed granular vocabulary (bex.read / bex.write /
@@ -548,10 +547,9 @@ func configureServerAuthOptions(srv *api.Server, cfg *Config) {
 	// one stayed off through three remediation rounds while the fail-open posture
 	// remained the deployed default. The narrowed audience check (auth.go) is
 	// implemented; ENABLING it (BEX_OAUTH_REQUIRE_AUDIENCE=1) is an operator step
-	// gated on scripts/auth-bootstrap-client.sh having stamped the
-	// bex.co/platform-client marker first — flipping it before that 401s the
-	// official Render CLI + bex-mobile device-flow logins, which legitimately
-	// request no audience. So this is a LOUD WARNING on every start, not a
+	// gated on BEX_OAUTH_PLATFORM_CLIENTS naming the official Render CLI and
+	// bex-mobile IDs first — omitting them 401s their legitimately audience-less
+	// device-flow logins. So this is a LOUD WARNING on every start, not a
 	// fail-closed refusal: a hard refusal would either crashloop the API when
 	// the flag is off, or force BEX_ALLOW_INSECURE_AUTHZ=1 (which would also
 	// disable the OpenFGA fail-closed above). Track: docs/ADR055 F6 disposition.

@@ -154,12 +154,12 @@ type Server struct {
 	OAuthIssuer   string
 	OAuthResource string
 	// OAuthRequireAudience (BEX_OAUTH_REQUIRE_AUDIENCE=1) narrows the empty-audience
-	// token exception to bex-provisioned OAuth clients (w1/m67 F1). Off by default:
-	// it must not be enabled before auth-bootstrap-client.sh has stamped the
-	// platform-client marker on the Render CLI + mobile clients, or their
-	// legitimately audience-less logins would be refused. See auth.go's
-	// requireAudience field and docs/ADR012-auth.md §7.
+	// token exception to bex-provisioned OAuth clients (w1/m67 F1).
 	OAuthRequireAudience bool
+	// OAuthPlatformClients is the operator-owned client-ID registry used for
+	// platform-only compatibility and durable-credential minting. It must never
+	// be derived from a Hydra client record.
+	OAuthPlatformClients []string
 	// OAuthAPIScope is retained for constructor/env compatibility
 	// (BEX_OAUTH_API_SCOPE). The closed vocabulary is not overridable: a
 	// deployment cannot invent a second semantic matrix. Discovery advertises
@@ -1169,10 +1169,11 @@ func (s *Server) newAuthGate() (*oryAuth, error) {
 		touch = s.APIKeys.TouchAPIKey
 	}
 	gate := newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.OAuthRequireAudience, s.AuthAdmission, s.Onboard, touch, s.apiScope())
+	gate.setPlatformClientIDs(s.OAuthPlatformClients)
 	gate.revocations = s.OAuthRevocations
 	// The durable-credential mint verbs' class gate (round-7 F3) resolves
-	// platform clients through the same Hydra admin API + TTL cache the audience
-	// rule uses. Every feature service shares this one Base.
+	// platform clients through the same operator-owned registry the audience rule
+	// uses. Every feature service shares this one Base.
 	if s.APIKeys != nil && s.APIKeys.Base != nil && s.APIKeys.Base.PlatformClients == nil {
 		s.APIKeys.Base.PlatformClients = gate
 	}
