@@ -274,18 +274,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Optional model override for the selected agent.",
     description: "Composer (advanced) — model field helper text",
   },
-  "agentSessions.modelEndpointLabel": {
-    message: "Model endpoint",
-    description: "Composer (advanced) — model endpoint input label",
-  },
-  "agentSessions.modelEndpointPlaceholder": {
-    message: "https://api.example.com",
-    description: "Composer (advanced) — model endpoint input placeholder",
-  },
-  "agentSessions.modelEndpointHint": {
-    message: "Optional custom HTTPS endpoint for the model provider.",
-    description: "Composer (advanced) — model endpoint field helper text",
-  },
   "agentSessions.egressLabel": {
     message: "Egress allowlist",
     description: "Composer (advanced) — extra egress hostnames textarea label",

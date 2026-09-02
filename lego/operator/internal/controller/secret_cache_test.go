@@ -105,6 +105,18 @@ var _ = Describe("Namespace-scoped Secret cache", func() {
 					Resources: []string{"pods", "services"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
+				{
+					// Build-artifact reclamation (finalizer path) lists and deletes
+					// ServiceAccounts through the uncached BuildClient. Without this
+					// grant every App another spec leaves behind in "default" fails
+					// reconcile on that read forever, and controller-runtime's backoff
+					// on the single worker starves this spec's own App (~50% suite
+					// flake, .pm/w1/074.md). Same shape as the ReplicaSet grant above;
+					// the cluster-wide Secret denial this spec pins stays intact.
+					APIGroups: []string{""},
+					Resources: []string{"serviceaccounts"},
+					Verbs:     []string{"get", "list", "watch", "delete"},
+				},
 			},
 		}
 		Expect(admin.Create(ctx, clusterRole)).To(Succeed())

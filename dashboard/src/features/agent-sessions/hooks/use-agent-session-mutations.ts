@@ -36,7 +36,6 @@ export interface CreateAgentSessionInput {
   branch: string;
   agent: string;
   model?: string;
-  modelEndpoint?: string;
   /** The initial fire-and-forget prompt. */
   task: string;
   /** Platform-registered sandbox image; omitted ⇒ the default template. */
@@ -203,7 +202,6 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
               agentConfig: {
                 agent: input.agent,
                 model: input.model || undefined,
-                modelEndpoint: input.modelEndpoint || undefined,
                 task: input.task,
                 template: input.template || undefined,
               },

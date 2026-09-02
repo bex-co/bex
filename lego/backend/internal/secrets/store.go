@@ -143,13 +143,13 @@ func sanitizeVersionedStoreError(action string, err error) error {
 
 // NewOpenBaoStore returns the production core.SecretKV talking to the
 // cluster-internal OpenBao at addr. The ServiceAccount token used to log in is
-// the pod's projected token by default; BEX_OPENBAO_JWT_PATH overrides that path
+// the pod's projected token by default; a non-empty jwtPath (BEX_OPENBAO_JWT_PATH,
+// read by cmd/api's config load — cmd/ is the only env reader) overrides that path
 // so bex-api can run off-cluster (local dev, scripts/secrets-verify.sh) against a
 // token minted with `kubectl create token bex-api`.
-func NewOpenBaoStore(addr string) core.SecretKV {
-	jwtPath := baoJWTPath
-	if p := os.Getenv("BEX_OPENBAO_JWT_PATH"); p != "" {
-		jwtPath = p
+func NewOpenBaoStore(addr, jwtPath string) core.SecretKV {
+	if jwtPath == "" {
+		jwtPath = baoJWTPath
 	}
 	return &openBaoStore{
 		addr:    strings.TrimSuffix(addr, "/"),

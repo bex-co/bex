@@ -581,7 +581,7 @@ describe("NewSessionComposer", () => {
     expect(screen.getByLabelText("Egress allowlist")).toBeInTheDocument();
   });
 
-  it("anchors a model-endpoint code to the model endpoint field and opens Configuration", async () => {
+  it("surfaces a model-endpoint code as a form-level error (no endpoint field)", async () => {
     create.mockRejectedValue(
       new AgentSessionError(
         "AGENT_SESSION_MODEL_ENDPOINT_INVALID",
@@ -596,11 +596,16 @@ describe("NewSessionComposer", () => {
 
     await user.click(screen.getByRole("button", { name: "Start session" }));
 
+    // The endpoint is pinned server-side to the selected agent's registered
+    // provider, so the composer renders no endpoint field (.pm/w1/079.md);
+    // the i18n-resolved message surfaces as the form-level error alert.
     expect(
-      await screen.findByText("The model endpoint must be a valid HTTPS URL."),
+      await screen.findByText("Couldn't start the session"),
     ).toBeInTheDocument();
-    // Configuration auto-opened → the model endpoint input is on screen.
-    expect(screen.getByLabelText("Model endpoint")).toBeInTheDocument();
+    expect(
+      screen.getByText("The model endpoint must be a valid HTTPS URL."),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Model endpoint")).not.toBeInTheDocument();
   });
 
   it("surfaces a non-field-anchored code as a form-level error alert", async () => {
