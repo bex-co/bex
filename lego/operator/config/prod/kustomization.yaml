@@ -65,6 +65,23 @@ patches:
         value:
           name: BEX_BACKUP_AGE_PUBLIC_KEY
           value: age1vw2pwheyy0ufvpt72pkhqrfnrx7f5sg0t3xl5key0n8ncv354pcqq8k3n7
+      # Persistent service disks provision on the LUKS-encrypted class
+      # (deploy/gitops/base/disk-storageclass.yaml), closing ADR082 D3's
+      # encryption-at-rest gap. Prod-only for the same reason as the backup
+      # coordinates above: the class exists only where the hcloud CSI driver
+      # runs, and naming it on the CAPD mock would strand every disk PVC.
+      # Both recorded prerequisites were verified live on production
+      # 2026-09-02 (w2/m86): cryptsetup ships inside the hcloud-csi-driver
+      # v2.22.0 image (the node image needs nothing), and the per-disk
+      # passphrase Secret is fetched by the kubelet under the node authorizer
+      # (no CSI ServiceAccount RBAC). Disks created before this flip stay on
+      # hcloud-volumes — a claim's class is immutable; migrate via
+      # snapshot-restore if ever needed.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_DISK_STORAGE_CLASS
+          value: hcloud-volumes-luks
   - target:
       group: apps
       version: v1
