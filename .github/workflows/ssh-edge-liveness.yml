@@ -42,7 +42,9 @@ permissions:
 
 jobs:
   public-edge-liveness:
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-production
+      labels: [self-hosted, Linux, ARM64]
     env:
       GH_TOKEN: ${{ github.token }}
       # Same workspace/toolchain split as backend-test.yml: the backend module
@@ -155,7 +157,9 @@ jobs:
   # Loki's label index (no line scan, no API credential, no fixture) and needs
   # only cluster access.
   request-logs-liveness:
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-production
+      labels: [self-hosted, Linux, ARM64]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

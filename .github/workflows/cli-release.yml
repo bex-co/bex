@@ -8,7 +8,9 @@ permissions: {}
 
 jobs:
   authorize:
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-production
+      labels: [self-hosted, Linux, ARM64]
     permissions:
       contents: read
     steps:
@@ -40,7 +42,9 @@ jobs:
 
   release:
     needs: authorize
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-production
+      labels: [self-hosted, Linux, ARM64]
     # Configure required reviewers and protected-main-only deployment rules on
     # this environment. Publication authority is unavailable until approval.
     environment: production-release

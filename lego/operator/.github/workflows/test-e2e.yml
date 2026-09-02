@@ -11,7 +11,9 @@ jobs:
     permissions:
       contents: read
     name: Run on Ubuntu
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-ci
+      labels: [self-hosted, Linux, ARM64]
     steps:
       - name: Clone the code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

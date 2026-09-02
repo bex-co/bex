@@ -107,7 +107,7 @@ As of this writing, `:22` (SSH, gated by `bex`) and `:6443`/`:443` (kube-API, ga
 
 ### 5. Production CI runs on self-hosted GitHub Actions runners — accepted
 
-All workflows target self-hosted runners (`[self-hosted, Linux, ARM64]`). That trades GitHub-hosted ephemeral VMs for operator-custodied hosts with a larger compromise blast radius (production secrets land on the same machines that also run PR tests unless runner pools are split). **Accepted** by operator decision 2026-08-23; residual risks, mandatory repository settings (fork PRs off self-hosted), and follow-ups (split pools, ephemeral runners) are recorded in [ADR083-security-review-round20.md](ADR083-security-review-round20.md). ADR080's protected-environment gates (`production-deploy`, `production-cluster`, `production-restore`, etc.) remain load-bearing workflow-side controls. `scripts/github-actions-validate.sh` and `.pm/DO_NOT_DO.md` `#CI-RUNNERS` fail closed on any revert to GitHub-hosted `ubuntu-*`.
+All workflows target operator-custodied ARM64 self-hosted runners. Since 2026-09-02, each runner-backed job must select either the `bex-ci` group for PR-capable/read-only work or the `bex-production` group for secrets, write-capable tokens, release authorization, or live production access; a missing group leaves the job queued rather than falling back to a shared pool. This closes the cross-trust persistence path while preserving the self-hosted decision accepted on 2026-08-23. The remaining persistent-host risks, mandatory runner registration rules, fork restrictions, and optional ephemeral-runner follow-up are recorded in [ADR083-security-review-round20.md](ADR083-security-review-round20.md). ADR080's protected-environment gates (`production-deploy`, `production-cluster`, `production-restore`, etc.) remain load-bearing workflow-side controls. `scripts/github-actions-validate.sh` and `.pm/DO_NOT_DO.md` `#CI-RUNNERS` reject GitHub-hosted `ubuntu-*`, the old shared-pool syntax, unknown groups, credentials on `bex-ci`, and PR-reachable `bex-production` jobs.
 
 ## Consequences & known gaps
 
@@ -126,5 +126,5 @@ All workflows target self-hosted runners (`[self-hosted, Linux, ARM64]`). That t
 ## Follow-ups
 
 - (If ever wanted) a network second layer via Tailscale/WireGuard, not the removed static-CIDR firewall — see [.pm/DO_NOT_DO.md](../.pm/DO_NOT_DO.md).
-- Split self-hosted runner pools (`ci` vs `production` labels) and/or ephemeral runners — [ADR083](ADR083-security-review-round20.md).
+- Consider ephemeral runners within each existing trust group — [ADR083](ADR083-security-review-round20.md).
 - Migrate as many `.env` platform secrets as possible _downstream_ into [ADR016-sealed-secrets.md](ADR016-sealed-secrets.md) / [OpenBao](ADR013-secrets.md), leaving `.env` holding only the irreducible bootstrap set (`bex` key, `HCLOUD_TOKEN`, TF-state, OpenBao unseal).

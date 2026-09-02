@@ -10,14 +10,18 @@ permissions:
 
 jobs:
   render-schema:
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-ci
+      labels: [self-hosted, Linux, ARM64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Compare Render's published schemas with reviewed pins
         run: scripts/render-schema-drift.sh
 
   render-mcp:
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-ci
+      labels: [self-hosted, Linux, ARM64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0

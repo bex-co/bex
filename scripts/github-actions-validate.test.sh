@@ -65,19 +65,43 @@ assert "node 20 fails" 1 "$(body "      - uses: $PINNED
           node-version: '20'")"
 
 # --- ADR083 / #CI-RUNNERS: self-hosted runner custody -----------------------
-job_body() { printf 'jobs:\n  x:\n    runs-on: %s\n    steps:\n%s' "$1" "$2"; }
+job_body() {
+  printf 'jobs:\n  x:\n    runs-on:\n      group: %s\n      labels: [self-hosted, Linux, ARM64]\n    steps:\n%s' "$1" "$2"
+}
 # RED: GitHub-hosted ubuntu-latest is a rejected remediation.
-assert "ubuntu-latest fails" 1 "$(job_body "ubuntu-latest" "      - uses: $PINNED")" \
+assert "ubuntu-latest fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s' "$PINNED")" \
   "GitHub-hosted ubuntu runners"
-# GREEN: the canonical self-hosted label passes.
-assert "self-hosted label passes" 0 "$(job_body "[self-hosted, Linux, ARM64]" "      - uses: $PINNED")"
+# RED: the legacy shared label pool no longer passes.
+assert "shared self-hosted pool fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$PINNED")" \
+  "must select exactly one approved self-hosted runner group"
+# RED: an arbitrary runner group cannot silently create a third trust class.
+assert "unknown runner group fails" 1 "$(job_body "default" "      - uses: $PINNED")" \
+  "missing approved bex-ci or bex-production group"
+# GREEN: both canonical self-hosted groups pass the structural contract.
+assert "CI runner group passes" 0 "$(job_body "bex-ci" "      - uses: $PINNED")"
+assert "production runner group passes" 0 "$(job_body "bex-production" "      - uses: $PINNED")"
 # RED: the runner account deliberately has no sudo; tools belong in RUNNER_TEMP.
-assert "sudo workflow fails" 1 "$(job_body "[self-hosted, Linux, ARM64]" "      - uses: $PINNED
+assert "sudo workflow fails" 1 "$(job_body "bex-ci" "      - uses: $PINNED
       - run: sudo apt-get install shellcheck")" "must not require sudo"
+
+# RED: secrets and write-capable tokens must never land on the PR-capable pool.
+assert "secret on CI runner fails" 1 "$(job_body "bex-ci" "      - env:
+          TOKEN: \${{ secrets.PRODUCTION_TOKEN }}
+        run: ./deploy")" "credential-bearing job must use bex-production"
+assert "write token on CI runner fails" 1 "$(printf 'jobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [self-hosted, Linux, ARM64]\n    permissions:\n      contents: write\n    steps:\n      - uses: %s' "$PINNED")" \
+  "credential-bearing job must use bex-production"
+assert "write-all token on CI runner fails" 1 "$(printf 'permissions: write-all\njobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$PINNED")" \
+  "credential-bearing job must use bex-production"
+assert "environment on CI runner fails" 1 "$(printf 'jobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [self-hosted, Linux, ARM64]\n    environment: production-deploy\n    steps:\n      - uses: %s' "$PINNED")" \
+  "credential-bearing job must use bex-production"
+# GREEN: the same credential material is allowed only on the production pool.
+assert "secret on production runner passes" 0 "$(job_body "bex-production" "      - env:
+          TOKEN: \${{ secrets.PRODUCTION_TOKEN }}
+        run: ./deploy")"
 
 # --- Public-fork isolation --------------------------------------------------
 pr_job_body() {
-  printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$1" "$PINNED"
+  printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on:\n      group: %s\n      labels: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$1" "${2:-bex-ci}" "$PINNED"
 }
 # RED: a pull_request job without a repository-identity gate can schedule fork
 # code on a persistent self-hosted runner.
@@ -87,6 +111,12 @@ assert "unguarded fork PR job fails" 1 "$(pr_job_body "name: unguarded")" \
 assert "same-repository PR guard passes" 0 "$(pr_job_body "if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository")"
 # GREEN: a job in a mixed-event workflow may instead exclude all PR events.
 assert "PR-excluded self-hosted job passes" 0 "$(pr_job_body "if: github.event_name != 'pull_request'")"
+# RED: even a same-repository gate cannot schedule PR work onto production.
+assert "same-repository PR on production runner fails" 1 "$(pr_job_body "if: github.event.pull_request.head.repo.full_name == github.repository" "bex-production")" \
+  "bex-production job must reject pull_request events"
+# GREEN: a production job may live in a mixed-event workflow only when it
+# rejects pull_request before scheduling (the infra.yml terraform shape).
+assert "PR-excluded production job passes" 0 "$(pr_job_body "if: github.event_name != 'pull_request'" "bex-production")"
 
 # --- w1/m68 F3: host-key pin coverage for admin.conf fetchers ---------------
 # RED: a workflow that fetches admin.conf over SSH without wiring the pin. This

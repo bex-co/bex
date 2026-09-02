@@ -73,7 +73,9 @@ jobs:
   # Dependabot (w1/006 — dependency CVEs): this catches secrets in the repo itself.
   secret-scan:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-ci
+      labels: [self-hosted, Linux, ARM64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -121,7 +123,9 @@ jobs:
   # never cancelled; only a not-yet-started one is skipped. ---
   check-supersession:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-ci
+      labels: [self-hosted, Linux, ARM64]
     outputs:
       superseded: ${{ steps.check.outputs.superseded }}
     steps:
@@ -152,7 +156,9 @@ jobs:
     # environments + branch policies (the infra.yml `production-infra` pattern),
     # which are the authoritative control but live in repo settings, not YAML.
     if: needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on:
+      group: bex-production
+      labels: [self-hosted, Linux, ARM64]
     # codex-security round-19 #2: the comment above named the infra.yml
     # `production-infra` pattern as authoritative but this job never actually
     # carried an `environment:` — unlike infra.yml/snapshot.yml/cli-release.yml,
