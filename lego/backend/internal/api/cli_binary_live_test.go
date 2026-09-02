@@ -67,6 +67,7 @@ func liveCLIServer(t *testing.T) *httptest.Server {
 	srv.HydraAdminURL = hydra.url
 	srv.OAuthResource = bexResource
 	srv.OAuthRequireAudience = true
+	srv.OAuthPlatformClients = hydra.platformClientIDs
 	h, err := srv.Handler()
 	if err != nil {
 		t.Fatalf("Handler: %v", err)

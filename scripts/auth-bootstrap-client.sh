@@ -173,7 +173,7 @@ CLI_TOKEN_LIFESPAN=168h
 # The public client id is not an authority boundary; bex-api still requires
 # granular capabilities for every human OAuth token. The mobile client below
 # deliberately keeps explicit consent because its HTTPS callback is public.
-render_body="$(printf '{"client_id":"%s","client_name":"bex CLI","grant_types":["%s","refresh_token"],"scope":"openid offline_access bex.read bex.write bex.sensitive","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true},"device_authorization_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
+render_body="$(printf '{"client_id":"%s","client_name":"bex CLI","grant_types":["%s","refresh_token"],"scope":"openid offline_access bex.read bex.write bex.sensitive","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"device_authorization_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
   "$RENDER_CLI_CLIENT_ID" "$DEVICE_GRANT" "$CLI_TOKEN_LIFESPAN" "$CLI_TOKEN_LIFESPAN")"
 render_code="$(printf '%s' "$render_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
   -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$RENDER_CLI_CLIENT_ID")"
@@ -212,7 +212,7 @@ done
 # not an https universal link — see MOBILE_REDIRECT_URI note above); PKCE S256
 # is required on every authorization. skip_consent=true: it is a first-party
 # app and the token still requires granular capabilities at bex-api.
-mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"audience":["%s"],"scope":"openid offline_access bex.read bex.write","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true}}' \
+mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"audience":["%s"],"scope":"openid offline_access bex.read bex.write","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true}' \
   "$MOBILE_CLIENT_ID" "$MOBILE_REDIRECT_URI" "$MOBILE_AUDIENCE")"
 mobile_code="$(printf '%s' "$mobile_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
   -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$MOBILE_CLIENT_ID")"

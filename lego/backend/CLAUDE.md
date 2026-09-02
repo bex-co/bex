@@ -83,7 +83,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_OPENSANDBOX_URL`, `BEX_SANDBOX_IMAGE` (default `docker.io/library/alpine:3@sha256:…`) | OpenSandbox lifecycle + `/v1/sandboxes*` surface; the base sandbox template image, digest-pinned like every image bex runs (w7/m85) |
 | bex-api | `BEX_AGENT_SETUP_REGISTRIES` | setup egress FQDN allowlist (npm/PyPI/Go/…) override |
 | bex-api | `BEX_WEBHOOK_SECRET`, `…_RETENTION_DAYS` `90`, `…_KEEP` `1000`, `…_MAX_DELIVERIES…` `10000`, `…_BACKOFF`, `BEX_GITHUB_APP_*`, `…_WEBHOOK_SECRET`, `BEX_SMTP_*`, `…_REQUIRE_VERIFIED_INVITE_EMAIL` (on unless `0`), `BEX_DASHBOARD_URL`, `BEX_MCP_STDIO` | webhooks/GitHub/SMTP/invite/dashboard/MCP (see ADRs: 006, 026, 024) |
-| bex-api | `BEX_OAUTH_ISSUER`, `…_RESOURCE`, `…_REQUIRE_AUDIENCE`, `…_API_SCOPE` (compat, closed vocab `bex.read/write/sensitive`) | OAuth 2.1 discovery + audience/scope rules ([ADR012] §7) |
+| bex-api | `BEX_OAUTH_ISSUER`, `…_RESOURCE`, `…_REQUIRE_AUDIENCE`, `…_PLATFORM_CLIENTS`, `…_API_SCOPE` (compat, closed vocab `bex.read/write/sensitive`) | OAuth 2.1 discovery + audience/scope rules; `…_PLATFORM_CLIENTS` is the operator-owned client-ID registry ([ADR012] §7) |
 | bex-api | `BEX_RATE_LIMIT` `500`, `…_BURST`, `…_AUTH_FAILURE_LIMIT` `60`, `…_MAX_INFLIGHT` `64`, `…_DEVICE_LIMIT` `30`, `…_WEBHOOK_LIMIT` `600`, `…_TRUSTED_PROXY_CIDRS` | token-bucket rates + trusted proxy CIDRs |
 | bex-api | `BEX_MAX_BODY_BYTES` `2MiB`, `…_QUERY_HOURS` `720`, `…_SSE_CONNS` `100/5/20`, `…_LOG_STREAM_REVALIDATE_INTERVAL` `1m` | body/query/SSE/log-tail bounds |
 

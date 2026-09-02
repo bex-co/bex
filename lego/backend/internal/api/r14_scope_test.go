@@ -39,8 +39,8 @@ func TestIdentityScopedAudienceTokenFromThirdPartyClientIsRefused(t *testing.T) 
 	if got := authStatusScoped(t, h, bexResource, true, DefaultAPIScope); got != http.StatusUnauthorized {
 		t.Errorf("identity-scoped audience token from a third-party client = %d, want 401", got)
 	}
-	if h.clientLookups.Load() == 0 {
-		t.Error("the decision must consult Hydra's client record — the scope exemption is proven, not inferred from the token")
+	if h.clientLookups.Load() != 0 {
+		t.Error("the decision must not consult attacker-writable Hydra client metadata")
 	}
 }
 
@@ -54,12 +54,11 @@ func TestLegacyAPIScopeDoesNotAdmitThirdPartyHuman(t *testing.T) {
 
 func TestScopeRuleKeepsLegitimateCallers(t *testing.T) {
 	for _, tc := range []struct {
-		name             string
-		sub, clientID    string
-		scope            string
-		aud              []string
-		platform         map[string]bool
-		wantClientLookup bool
+		name          string
+		sub, clientID string
+		scope         string
+		aud           []string
+		platform      map[string]bool
 	}{
 		{
 			name: "third-party client with a granular capability",
@@ -71,10 +70,9 @@ func TestScopeRuleKeepsLegitimateCallers(t *testing.T) {
 		{
 			name: "bex-provisioned client without a granular scope yet",
 			sub:  "identity-1", clientID: "bex-mobile",
-			scope:            identityScopes,
-			aud:              []string{bexResource},
-			platform:         map[string]bool{"bex-mobile": true},
-			wantClientLookup: true,
+			scope:    identityScopes,
+			aud:      []string{bexResource},
+			platform: map[string]bool{"bex-mobile": true},
 		},
 		{
 			name: "api key (client_credentials) with an audience",
@@ -85,9 +83,8 @@ func TestScopeRuleKeepsLegitimateCallers(t *testing.T) {
 		{
 			name: "audience-less device-flow token",
 			sub:  "identity-1", clientID: "render-cli",
-			scope:            identityScopes,
-			platform:         map[string]bool{"render-cli": true},
-			wantClientLookup: true,
+			scope:    identityScopes,
+			platform: map[string]bool{"render-cli": true},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -95,9 +92,8 @@ func TestScopeRuleKeepsLegitimateCallers(t *testing.T) {
 			if got := authStatusScoped(t, h, bexResource, true, DefaultAPIScope); got != http.StatusOK {
 				t.Errorf("status = %d, want 200", got)
 			}
-			if lookups := h.clientLookups.Load(); tc.wantClientLookup != (lookups > 0) {
-				t.Errorf("client lookups = %d, wantLookup = %v — the extra Hydra call must be paid only where the exemption is actually needed",
-					lookups, tc.wantClientLookup)
+			if lookups := h.clientLookups.Load(); lookups != 0 {
+				t.Errorf("Hydra client metadata lookups = %d, want 0", lookups)
 			}
 		})
 	}

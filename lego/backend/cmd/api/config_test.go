@@ -274,6 +274,18 @@ func TestLoadConfigOAuthAudienceWarning(t *testing.T) {
 	}
 }
 
+func TestLoadConfigPlatformClientRegistry(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{
+		"BEX_OAUTH_PLATFORM_CLIENTS": " render-cli, bex-mobile, ,render-cli ",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := strings.Join(cfg.OAuthPlatformClients, ","); got != "render-cli,bex-mobile,render-cli" {
+		t.Errorf("OAuthPlatformClients = %q, want trimmed non-empty IDs", got)
+	}
+}
+
 // TestLoadConfigStdioSkipsServingKnobs pins the gating: a local agent's
 // leftover env must never fail the stdio subprocess, exactly as the inline
 // reads it replaced were skipped after the stdio return.

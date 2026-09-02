@@ -17,7 +17,9 @@ limitations under the License.
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -28,14 +30,13 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// classHydra serves both endpoints the narrowed audience rule needs: token
-// introspection (with a caller-chosen subject/client/audience) and the client
-// record whose metadata says whether bex provisioned that client.
+// classHydra serves token introspection with a caller-chosen
+// subject/client/audience. Its admin client endpoint deliberately claims every
+// client is platform-marked; authorization must never consult it.
 type classHydra struct {
-	url string
-	// clientLookups counts GET /admin/clients/{id}, so a test can prove the
-	// lookup is only paid on the narrow path that actually needs it.
-	clientLookups atomic.Int32
+	url               string
+	platformClientIDs []string
+	clientLookups     atomic.Int32
 }
 
 func newClassHydra(t *testing.T, sub, clientID string, aud []string, platformClients map[string]bool) *classHydra {
@@ -48,6 +49,11 @@ func newClassHydra(t *testing.T, sub, clientID string, aud []string, platformCli
 func newClassHydraScoped(t *testing.T, sub, clientID, scope string, aud []string, platformClients map[string]bool) *classHydra {
 	t.Helper()
 	h := &classHydra{}
+	for clientID, platform := range platformClients {
+		if platform {
+			h.platformClientIDs = append(h.platformClientIDs, clientID)
+		}
+	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -68,14 +74,9 @@ func newClassHydraScoped(t *testing.T, sub, clientID, scope string, aud []string
 		case strings.HasPrefix(r.URL.Path, "/admin/clients/") && r.Method == http.MethodGet:
 			h.clientLookups.Add(1)
 			id := strings.TrimPrefix(r.URL.Path, "/admin/clients/")
-			marked, known := platformClients[id]
-			if !known {
-				http.NotFound(w, r)
-				return
-			}
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"client_id": id,
-				"metadata":  map[string]any{platformClientMarker: marked},
+				"metadata":  map[string]any{"bex.co/platform-client": true},
 			})
 		default:
 			http.NotFound(w, r)
@@ -94,7 +95,9 @@ func authStatus(t *testing.T, h *classHydra, resource string, requireAudience bo
 // (round-14 #1); "" keeps the scope rule inert (the m67 expectations).
 func authStatusScoped(t *testing.T, h *classHydra, resource string, requireAudience bool, apiScope string) int {
 	t.Helper()
-	mw := newOryAuth(h.url, "", resource, "", "", requireAudience, nil, nil, nil, apiScope).middleware(echoIdentity)
+	auth := newOryAuth(h.url, "", resource, "", "", requireAudience, nil, nil, nil, apiScope)
+	auth.setPlatformClientIDs(h.platformClientIDs)
+	mw := auth.middleware(echoIdentity)
 	r := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
 	r.Header.Set("Authorization", "Bearer "+testToken)
 	w := httptest.NewRecorder()
@@ -116,8 +119,8 @@ func TestAudienceLessHumanTokenFromThirdPartyClientIsRefused(t *testing.T) {
 	if got := authStatus(t, h, bexResource, true); got != http.StatusUnauthorized {
 		t.Errorf("audience-less human token from a third-party client = %d, want 401", got)
 	}
-	if h.clientLookups.Load() == 0 {
-		t.Error("the decision must consult Hydra's client record, not infer the class from the token alone")
+	if h.clientLookups.Load() != 0 {
+		t.Error("attacker-writable Hydra client metadata must not be consulted")
 	}
 }
 
@@ -125,12 +128,11 @@ func TestAudienceLessHumanTokenFromThirdPartyClientIsRefused(t *testing.T) {
 // that carries no audience or a correct one.
 func TestNarrowedAudienceRuleKeepsLegitimateCallers(t *testing.T) {
 	for _, tc := range []struct {
-		name             string
-		sub, clientID    string
-		scope            string
-		aud              []string
-		platform         map[string]bool
-		wantClientLookup bool
+		name          string
+		sub, clientID string
+		scope         string
+		aud           []string
+		platform      map[string]bool
 	}{
 		{
 			// client_credentials API key: Hydra returns sub == client_id, no audience.
@@ -140,11 +142,10 @@ func TestNarrowedAudienceRuleKeepsLegitimateCallers(t *testing.T) {
 		},
 		{
 			// The official Render CLI's device flow: a human subject, no audience —
-			// admitted because auth-bootstrap-client.sh marks the client as ours.
+			// admitted because the operator registry names the fixed client ID.
 			name: "human token from a bex-provisioned client",
 			sub:  "identity-1", clientID: "render-cli",
-			platform:         map[string]bool{"render-cli": true},
-			wantClientLookup: true,
+			platform: map[string]bool{"render-cli": true},
 		},
 		{
 			// An MCP/agent client that requested the resource AND a granular
@@ -161,17 +162,15 @@ func TestNarrowedAudienceRuleKeepsLegitimateCallers(t *testing.T) {
 			if got := authStatus(t, h, bexResource, true); got != http.StatusOK {
 				t.Errorf("status = %d, want 200", got)
 			}
-			if lookups := h.clientLookups.Load(); tc.wantClientLookup != (lookups > 0) {
-				t.Errorf("client lookups = %d, wantLookup = %v — the extra Hydra call must be paid only on the narrow path that needs it",
-					lookups, tc.wantClientLookup)
+			if lookups := h.clientLookups.Load(); lookups != 0 {
+				t.Errorf("Hydra client metadata lookups = %d, want 0", lookups)
 			}
 		})
 	}
 }
 
 // The rule is inert unless both a resource is configured and the operator has
-// enabled it, so a deployment that has not yet stamped the platform-client
-// marker cannot lock out the official CLI.
+// enabled it, preserving the existing rollout gate.
 func TestNarrowedAudienceRuleIsOffByDefault(t *testing.T) {
 	h := newClassHydra(t, "identity-1", "dcr-client", nil, map[string]bool{"dcr-client": false})
 
@@ -183,13 +182,44 @@ func TestNarrowedAudienceRuleIsOffByDefault(t *testing.T) {
 	}
 }
 
-// An unreachable Hydra must fail the request closed rather than silently
-// downgrade an unknown client to "not platform" (or, worse, to "platform").
-func TestPlatformClientLookupFailureFailsClosed(t *testing.T) {
-	h := newClassHydra(t, "identity-1", "dcr-client", nil, map[string]bool{"dcr-client": false})
-	broken := &classHydra{url: h.url + "/nonexistent-base"}
+func TestPlatformClientTrustComesOnlyFromOperatorRegistry(t *testing.T) {
+	auth := newOryAuth("http://hydra.invalid", "", "", "", "", true, nil, nil, nil, "")
+	auth.setPlatformClientIDs([]string{"render-cli"})
 
-	if got := authStatus(t, broken, bexResource, true); got != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503 when the client record cannot be read", got)
+	for clientID, want := range map[string]bool{
+		"render-cli": true,
+		"dcr-client": false,
+		"":           false,
+	} {
+		got, err := auth.IsPlatformClientFresh(context.Background(), clientID)
+		if err != nil || got != want {
+			t.Errorf("IsPlatformClientFresh(%q) = %v, %v; want %v, nil", clientID, got, err, want)
+		}
+	}
+}
+
+func TestOperatorRegistryIsTheMintClassAuthority(t *testing.T) {
+	auth := newOryAuth("http://hydra.invalid", "", "", "", "", true, nil, nil, nil, "")
+	auth.setPlatformClientIDs([]string{"render-cli"})
+	base := &core.Base{PlatformClients: auth}
+
+	for _, tc := range []struct {
+		name     string
+		clientID string
+		want     error
+	}{
+		{name: "operator-listed client", clientID: "render-cli"},
+		{name: "self-registered client with asserted marker", clientID: "dcr-client", want: core.ErrForbidden},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := core.WithIdentity(context.Background(), core.Identity{
+				Subject: "user-a", Method: "oauth2", ClientID: tc.clientID,
+				Human: true, CanonicalScopes: core.ScopeWrite,
+			})
+			err := base.AuthorizeMintClass(ctx)
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("AuthorizeMintClass() = %v, want %v", err, tc.want)
+			}
+		})
 	}
 }

@@ -68,6 +68,11 @@ spec:
             # empty by default — unknown clients are denied.
             - name: OAUTH_TRUSTED_CLIENTS
               value: ""
+            # Operator-owned platform-client registry used for the bex.api
+            # compatibility alias. Never derive this from DCR-writable client
+            # metadata. Keep aligned with bex-api's BEX_OAUTH_PLATFORM_CLIENTS.
+            - name: OAUTH_PLATFORM_CLIENTS
+              value: 429024F5E608930E2A65EF92591A25CC,bex-mobile
             # The control-plane capability OAuth scope (round-14 #1,
             # docs/ADR069-security-review-round14.md): a client requesting an
             # access-token audience must also request this scope, or consent

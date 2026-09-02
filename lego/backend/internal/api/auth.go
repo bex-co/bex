@@ -93,20 +93,15 @@ type oryAuth struct {
 	// as a platform-only compatibility alias) is not overridable: a deployment
 	// cannot invent a second semantic matrix via BEX_OAUTH_API_SCOPE.
 	apiScope string
-	// platformClients caches, per client_id, whether Hydra's client record carries
-	// the `bex.co/platform-client` marker that scripts/auth-bootstrap-client.sh
-	// stamps on the clients bex itself provisions (the official Render CLI's
-	// device-flow client, bex-mobile). It is consulted only on the narrow path
-	// where the answer changes a decision — a HUMAN token with an empty audience
-	// while `resource` is configured — so ordinary API-key and audience-carrying
-	// traffic costs no extra Hydra call, and even that path pays at most one
-	// lookup per client per TTL.
-	platformClients *core.TTLCache[bool]
+	// platformClients is the operator-owned registry of OAuth client IDs bex
+	// provisions itself (the official Render CLI and bex-mobile). It is kept
+	// outside Hydra client records so trust cannot depend on public-registration
+	// input or an upstream metadata-filtering policy.
+	platformClients map[string]struct{}
 	// requireAudience turns the narrowed rule on (BEX_OAUTH_REQUIRE_AUDIENCE=1).
-	// Default off is deliberate and temporary: enforcing it before an operator has
-	// re-run auth-bootstrap-client.sh (so the provisioned platform clients carry
-	// the marker) would reject the official Render CLI's device-flow logins, which
-	// legitimately request no audience. Activation runbook: docs/ADR012-auth.md §7.
+	// Enforcing it without configuring the platform registry would reject the
+	// official Render CLI's legitimately audience-less device-flow logins.
+	// Activation runbook: docs/ADR012-auth.md §7.
 	requireAudience bool
 	// Issuer pinning (w6/m6): when set (Hydra's public issuer, e.g.
 	// https://oauth.bex.co), a token whose introspected `iss` is non-empty must
@@ -197,7 +192,7 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL 
 		onboard:         onboard,
 		client:          &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
 		cache:           core.NewTTLCache[cachedIdentity](),
-		platformClients: core.NewTTLCache[bool](),
+		platformClients: make(map[string]struct{}),
 		requireAudience: requireAudience,
 		admission:       admission,
 		touch:           touch,
@@ -205,56 +200,24 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL 
 	}
 }
 
-// platformClient reports whether client_id is one bex provisioned itself, per
-// Hydra's own client record — the authoritative source, not an inference from
-// the token's shape. scripts/auth-bootstrap-client.sh stamps
-// `metadata: {"bex.co/platform-client": true}` on the Render CLI and bex-mobile
-// clients; a self-registered (DCR) client cannot set it, because DCR bodies do
-// not carry bex's metadata key through Hydra's registration endpoint into an
-// operator-provisioned marker namespace.
-//
-// Errors are returned, never swallowed into "not platform": an unreachable Hydra
-// must fail the request closed (503, like introspection itself), not silently
-// downgrade a trusted client to an untrusted one.
-func (a *oryAuth) platformClient(ctx context.Context, clientID string) (bool, error) {
-	if clientID == "" {
-		return false, nil
-	}
-	if ok, cached := a.platformClients.Get(clientID); cached {
-		return ok, nil
-	}
-	return a.platformClientFresh(ctx, clientID)
-}
-
-// platformClientFresh always re-reads Hydra and refreshes the cache. Used by
-// durable-credential mint (AuthorizeMintClass) so a revoked platform marker
-// cannot authorize minting for PositiveTTL (codex round-16 #4).
-func (a *oryAuth) platformClientFresh(ctx context.Context, clientID string) (bool, error) {
-	if clientID == "" {
-		return false, nil
-	}
-	var out struct {
-		Metadata map[string]any `json:"metadata"`
-	}
-	if err := core.DoJSON(ctx, a.client, http.MethodGet,
-		a.hydraAdminURL+"/admin/clients/"+url.PathEscape(clientID),
-		"", nil, http.StatusOK, &out); err != nil {
-		var status *core.HTTPStatusError
-		if errors.As(err, &status) && status.Code == http.StatusNotFound {
-			// A token for a client Hydra no longer knows is not a platform client.
-			a.platformClients.Put(clientID, false, time.Now().Add(core.PositiveTTL))
-			return false, nil
+// setPlatformClientIDs installs the operator-owned client registry. The copy
+// prevents later mutation by the composition root from changing live auth.
+func (a *oryAuth) setPlatformClientIDs(clientIDs []string) {
+	a.platformClients = make(map[string]struct{}, len(clientIDs))
+	for _, clientID := range clientIDs {
+		if clientID = strings.TrimSpace(clientID); clientID != "" {
+			a.platformClients[clientID] = struct{}{}
 		}
-		return false, err
 	}
-	marked, _ := out.Metadata[platformClientMarker].(bool)
-	a.platformClients.Put(clientID, marked, time.Now().Add(core.PositiveTTL))
-	return marked, nil
 }
 
-// platformClientMarker is the Hydra client-metadata key auth-bootstrap-client.sh
-// stamps on bex-provisioned OAuth clients.
-const platformClientMarker = "bex.co/platform-client"
+// platformClient reports membership in the operator-owned registry. ctx is
+// accepted for PlatformClientResolver compatibility; lookup is local and
+// deterministic, so the cached and fresh interfaces are identical.
+func (a *oryAuth) platformClient(_ context.Context, clientID string) (bool, error) {
+	_, ok := a.platformClients[clientID]
+	return ok && clientID != "", nil
+}
 
 // DefaultAPIScope is the platform-client compatibility alias for the closed
 // capability vocabulary (w8/m27). Third-party human tokens cannot use it as
@@ -269,16 +232,16 @@ func scopeGranted(granted, want string) bool {
 	return core.ContainsScope(granted, want)
 }
 
-// IsPlatformClient exposes the cached platform-client lookup as a
+// IsPlatformClient exposes the operator-owned platform-client lookup as a
 // core.PlatformClientResolver for non-mint audience/scope classification.
 func (a *oryAuth) IsPlatformClient(ctx context.Context, clientID string) (bool, error) {
 	return a.platformClient(ctx, clientID)
 }
 
-// IsPlatformClientFresh always re-reads Hydra (codex round-16 #4) so
-// AuthorizeMintClass cannot mint on a stale positive cache entry.
+// IsPlatformClientFresh uses the same immutable operator registry. There is no
+// attacker-writable upstream state or positive cache that can become stale.
 func (a *oryAuth) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
-	return a.platformClientFresh(ctx, clientID)
+	return a.platformClient(ctx, clientID)
 }
 
 // invalidate evicts a token whose upstream state changed. A human CLI logout
@@ -409,7 +372,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 }
 
 // introspectFresh bypasses the positive token cache for durable credential
-// minting. AuthorizeMintClass already refreshes the platform-client marker; this
+// minting. AuthorizeMintClass rechecks the platform-client registry; this
 // companion check refreshes the bearer itself so a revoked token cannot mint an
 // API key during PositiveTTL.
 func (a *oryAuth) introspectFresh(r *http.Request, token string) (core.Identity, error) {
@@ -527,10 +490,9 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	// (w8/m27), independent of BEX_OAUTH_RESOURCE and of whether aud contains
 	// the resource. An audience-less or identity-only third-party human token
 	// must not hold full authority. Legacy bex.api (and identity-only grants)
-	// remain compatibility-only for Hydra clients carrying bex.co/platform-client.
-	// Machine tokens never enter this branch. The platform lookup is paid only
-	// when the exemption is actually needed — a third-party token that already
-	// carries a granular capability costs no extra Hydra call.
+	// remain compatibility-only for clients in the operator-owned platform registry.
+	// Machine tokens never enter this branch. Registry membership is checked only
+	// when the exemption is actually needed.
 	platform := false
 	needPlatform := human && !grant.HasGranular()
 	emptyAudHuman := a.requireAudience && a.resource != "" && len(out.Aud) == 0 && human

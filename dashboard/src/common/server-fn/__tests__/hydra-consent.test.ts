@@ -95,11 +95,13 @@ const rejects = (calls: { url: string; init?: RequestInit }[]) =>
 beforeEach(() => {
   process.env.HYDRA_ADMIN_URL = ADMIN;
   delete process.env.OAUTH_TRUSTED_CLIENTS;
+  delete process.env.OAUTH_PLATFORM_CLIENTS;
 });
 afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env.HYDRA_ADMIN_URL;
   delete process.env.OAUTH_TRUSTED_CLIENTS;
+  delete process.env.OAUTH_PLATFORM_CLIENTS;
 });
 
 /** A consent GET as the browser makes it: session cookie, challenge in the query. */
@@ -329,7 +331,8 @@ describe("handleConsent (GET)", () => {
     expect(view).not.toBeInstanceOf(Response);
   });
 
-  it("requires a granular capability even for a platform-marked public client", async () => {
+  it("requires a granular capability even for a registry-listed platform client", async () => {
+    process.env.OAUTH_PLATFORM_CLIENTS = "bex-mobile";
     mockUpstreams({
       lookupBody: consentRequest({
         requested_scope: ["openid", "offline_access"],
@@ -337,7 +340,6 @@ describe("handleConsent (GET)", () => {
           client_id: "bex-mobile",
           client_name: "bex mobile",
           skip_consent: false,
-          metadata: { "bex.co/platform-client": true },
         },
       }),
     });
@@ -384,25 +386,41 @@ describe("handleConsent (GET)", () => {
     const calls = mockUpstreams({
       lookupBody: consentRequest({
         skip: true,
-        requested_scope: [
-          "openid",
-          "offline_access",
-          "bex.read",
-          "bex.api",
-        ],
+        requested_scope: ["openid", "offline_access", "bex.read", "bex.api"],
       }),
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
     expect((res as Response).status).toBe(302);
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect(body.grant_scope).toEqual([
-      "openid",
-      "offline_access",
-      "bex.read",
-    ]);
+    expect(body.grant_scope).toEqual(["openid", "offline_access", "bex.read"]);
   });
 
-  it("refuses a platform-marked skip_consent bex.api-only grant", async () => {
+  it("ignores a self-asserted platform marker and trusts only the operator registry", async () => {
+    const marked = consentRequest({
+      skip: true,
+      requested_scope: ["openid", "bex.read", "bex.api"],
+      client: {
+        client_id: "dcr-client",
+        skip_consent: true,
+        metadata: { "bex.co/platform-client": true },
+      },
+    });
+    const untrustedCalls = mockUpstreams({ lookupBody: marked });
+    await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(
+      JSON.parse(accepts(untrustedCalls)[0].init?.body as string).grant_scope,
+    ).toEqual(["openid", "bex.read"]);
+
+    process.env.OAUTH_PLATFORM_CLIENTS = "dcr-client";
+    const trustedCalls = mockUpstreams({ lookupBody: marked });
+    await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(
+      JSON.parse(accepts(trustedCalls)[0].init?.body as string).grant_scope,
+    ).toEqual(["openid", "bex.read", "bex.api"]);
+  });
+
+  it("refuses a registry-listed platform client's bex.api-only grant", async () => {
+    process.env.OAUTH_PLATFORM_CLIENTS = "bex-mobile";
     const calls = mockUpstreams({
       lookupBody: consentRequest({
         skip: true,
@@ -411,7 +429,6 @@ describe("handleConsent (GET)", () => {
           client_id: "bex-mobile",
           client_name: "bex mobile",
           skip_consent: true,
-          metadata: { "bex.co/platform-client": true },
         },
       }),
     });
@@ -477,11 +494,7 @@ describe("handleConsentDecision (POST)", () => {
     expect(res.status).toBe(303);
     expect(res.headers.get("Location")).toBe("https://oauth.bex.co/continue");
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect(body.grant_scope).toEqual([
-      "openid",
-      "offline_access",
-      "bex.read",
-    ]);
+    expect(body.grant_scope).toEqual(["openid", "offline_access", "bex.read"]);
     expect(body.grant_access_token_audience).toEqual([
       "https://api.bex.co/mcp",
     ]);
@@ -527,11 +540,7 @@ describe("handleConsentDecision (POST)", () => {
 
     expect(res.status).toBe(303);
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect(body.grant_scope).toEqual([
-      "openid",
-      "offline_access",
-      "bex.read",
-    ]);
+    expect(body.grant_scope).toEqual(["openid", "offline_access", "bex.read"]);
   });
 
   it("denies: rejects the request with access_denied and never accepts", async () => {
@@ -737,9 +746,7 @@ describe("PKCE S256 enforcement (w1/m66 F8)", () => {
       expect(res.status).toBe(303);
       const location = new URL(res.headers.get("location")!);
       expect(location.pathname).toBe("/auth/consent");
-      expect(location.searchParams.get("consent_error")).toBe(
-        "pkce_required",
-      );
+      expect(location.searchParams.get("consent_error")).toBe("pkce_required");
       expect(location.searchParams.get("consent_challenge")).toBe(CHALLENGE);
       expect(accepts(calls)).toHaveLength(0);
     });

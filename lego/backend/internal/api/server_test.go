@@ -319,11 +319,6 @@ func TestRenderCLILogoutImmediatelyInvalidatesCachedAccessToken(t *testing.T) {
 				"sub":    "human-a", "client_id": cliauth.RenderCLIClientID,
 				"scope": "openid offline_access bex.read bex.write bex.sensitive",
 			})
-		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/admin/clients/"):
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"client_id": cliauth.RenderCLIClientID,
-				"metadata":  map[string]any{platformClientMarker: true},
-			})
 		case r.Method == http.MethodDelete && r.URL.Path == "/admin/oauth2/auth/sessions/consent":
 			if r.URL.Query().Get("subject") != "human-a" || r.URL.Query().Get("client") != cliauth.RenderCLIClientID {
 				t.Fatalf("wrong revoke scope: %s", r.URL.RawQuery)

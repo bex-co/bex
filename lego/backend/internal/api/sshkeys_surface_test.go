@@ -106,9 +106,10 @@ func TestSSHKeysRESTGraphQLMCPParity(t *testing.T) {
 	srv := NewServer(base, Deps{SSHKeysStore: st})
 	// round-7 F3: create enrolls a durable credential, so only a mint-eligible
 	// caller class succeeds — the parity test rides a human token from a
-	// platform-marked client (fakeHumanHydra); a machine or third-party token
+	// registry-listed platform client (fakeHumanHydra); a machine or third-party token
 	// gets 403 on all three surfaces alike.
 	srv.HydraAdminURL = fakeHumanHydra(t).URL
+	srv.OAuthPlatformClients = []string{"platform-cli"}
 	h := buildHandler(t, srv)
 	restPublicKey, gqlPublicKey, mcpPublicKey := surfacePublicKey(t), surfacePublicKey(t), surfacePublicKey(t)
 
