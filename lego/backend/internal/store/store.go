@@ -568,6 +568,9 @@ type Store interface {
 // errors happens here.
 type PGStore struct {
 	Pool *pgxpool.Pool
+	// gitWebhookReplayInstance identifies this API process's signing-epoch
+	// leases. It is process-local and never exposed as a public resource id.
+	gitWebhookReplayInstance string
 
 	// cliRefreshOnce/cliRefreshLocal back IdempotentCLIRefresh's replica-local
 	// response cache (codex-security 2026-08 F2): token responses are never
@@ -577,7 +580,9 @@ type PGStore struct {
 	cliRefreshLocal *cliRefreshTTLCache
 }
 
-func NewPGStore(pool *pgxpool.Pool) *PGStore { return &PGStore{Pool: pool} }
+func NewPGStore(pool *pgxpool.Pool) *PGStore {
+	return &PGStore{Pool: pool, gitWebhookReplayInstance: ids.New(ids.WebhookReplayLease)}
+}
 
 // Ping reports whether the database is reachable — the /healthz check.
 func (s *PGStore) Ping(ctx context.Context) error { return s.Pool.Ping(ctx) }

@@ -25,6 +25,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // codex round-8 #9: the HMAC authenticates the delivery's bytes, not its
@@ -38,28 +40,34 @@ type fakeReplayGuard struct {
 	mu       sync.Mutex
 	claims   map[string]bool
 	claimErr error
+	capacity bool
 }
 
-func (f *fakeReplayGuard) ClaimGitWebhookDelivery(_ context.Context, digest string) (bool, error) {
+func (f *fakeReplayGuard) ClaimGitWebhookDelivery(_ context.Context, claim store.GitWebhookReplayClaim) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.claimErr != nil {
 		return false, f.claimErr
 	}
+	if f.capacity {
+		return false, store.ErrGitWebhookReplayCapacity
+	}
 	if f.claims == nil {
 		f.claims = map[string]bool{}
 	}
-	if f.claims[digest] {
+	key := claim.Digest
+	if f.claims[key] {
 		return false, nil
 	}
-	f.claims[digest] = true
+	f.claims[key] = true
 	return true, nil
 }
 
-func (f *fakeReplayGuard) ReleaseGitWebhookDelivery(_ context.Context, digest string) error {
+func (f *fakeReplayGuard) ReleaseGitWebhookDelivery(_ context.Context, claim store.GitWebhookReplayClaim) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	delete(f.claims, digest)
+	key := claim.Digest
+	delete(f.claims, key)
 	return nil
 }
 
@@ -214,7 +222,7 @@ func TestWebhookReplayClaimReleasedOnHardFailure(t *testing.T) {
 	body := []byte(`{"ref":"refs/heads/main"}`)
 
 	// 2xx: the claim stays — a completed delivery IS the processed state.
-	w, finish, ok := h.claimReplay(context.Background(), httptest.NewRecorder(), keyManual, body)
+	w, finish, ok := h.claimReplay(context.Background(), httptest.NewRecorder(), keyManual, "manual:single-tenant", body)
 	if !ok {
 		t.Fatal("first claim must succeed")
 	}
@@ -227,7 +235,7 @@ func TestWebhookReplayClaimReleasedOnHardFailure(t *testing.T) {
 	// 5xx: the claim is released so the host's retry can process.
 	replays2 := &fakeReplayGuard{}
 	h2 := &GitWebhook{Replays: replays2}
-	w2, finish2, ok2 := h2.claimReplay(context.Background(), httptest.NewRecorder(), keyManual, body)
+	w2, finish2, ok2 := h2.claimReplay(context.Background(), httptest.NewRecorder(), keyManual, "manual:single-tenant", body)
 	if !ok2 {
 		t.Fatal("second claim must succeed (fresh guard)")
 	}
@@ -235,6 +243,64 @@ func TestWebhookReplayClaimReleasedOnHardFailure(t *testing.T) {
 	finish2()
 	if n := replays2.claimed(); n != 0 {
 		t.Fatalf("claims after 502 = %d, want 0 (released for the retry)", n)
+	}
+}
+
+// A valid push to a repository bex does not track is a no-op before replay
+// admission, so ordinary activity on other installation-granted repositories
+// cannot grow the ledger.
+func TestWebhookUnmatchedRepositoryDoesNotClaimReplay(t *testing.T) {
+	svc, _ := newService(nil, autoDeployApp("api", "https://github.com/x/tracked"))
+	replays := &fakeReplayGuard{}
+	h := &GitWebhook{Svc: svc, GitHubSecret: "gh-key", Replays: replays}
+
+	rec := postPushDelivery(t, h, "gh-key", "push", "d-1", pushBody(t, "https://github.com/x/unrelated", "refs/heads/main"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unmatched push => %d: %s", rec.Code, rec.Body)
+	}
+	if n := replays.claimed(); n != 0 {
+		t.Fatalf("unmatched push claims = %d, want 0", n)
+	}
+}
+
+func TestWebhookReplayCapacityFailsClosed(t *testing.T) {
+	const repo = "https://github.com/x/app"
+	svc, cl := newService(nil, autoDeployApp("api", repo))
+	replays := &fakeReplayGuard{capacity: true}
+	h := &GitWebhook{Svc: svc, GitHubSecret: "gh-key", Replays: replays}
+
+	rec := postPushDelivery(t, h, "gh-key", "push", "d-1", pushBody(t, repo, "refs/heads/main"))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("capacity response = %d, want 503: %s", rec.Code, rec.Body)
+	}
+	if getApp(t, cl, "api").Spec.RestartedAt != "" {
+		t.Fatal("capacity exhaustion must fail before mutation")
+	}
+}
+
+func TestWebhookSigningKeyRotationCreatesNewEpochAndRejectsOldSignature(t *testing.T) {
+	const repo = "https://github.com/x/app"
+	svc, _ := newService(nil, autoDeployApp("api", repo))
+	replays := &fakeReplayGuard{}
+	body := pushBody(t, repo, "refs/heads/main")
+
+	oldHandler := &GitWebhook{Svc: svc, GitHubSecret: "old-key", Replays: replays}
+	if rec := postPushDelivery(t, oldHandler, "old-key", "push", "d-1", body); rec.Code != http.StatusOK {
+		t.Fatalf("old epoch delivery = %d: %s", rec.Code, rec.Body)
+	}
+	newHandler := &GitWebhook{Svc: svc, GitHubSecret: "new-key", Replays: replays}
+	if rec := postPushDelivery(t, newHandler, "old-key", "push", "d-2", body); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("old signature after rotation = %d, want 401", rec.Code)
+	}
+	if rec := postPushDelivery(t, newHandler, "new-key", "push", "d-3", body); rec.Code != http.StatusOK || !isReplay(rec) {
+		t.Fatalf("same body under overlapping new epoch = %d %s, want replayed 200", rec.Code, rec.Body)
+	}
+	newBody := pushBody(t, repo, "refs/heads/release")
+	if rec := postPushDelivery(t, newHandler, "new-key", "push", "d-4", newBody); rec.Code != http.StatusOK || isReplay(rec) {
+		t.Fatalf("distinct delivery under new epoch = %d %s, want fresh 200", rec.Code, rec.Body)
+	}
+	if n := replays.claimed(); n != 2 {
+		t.Fatalf("claims across old/new epochs = %d, want 2 before lease retirement", n)
 	}
 }
 
