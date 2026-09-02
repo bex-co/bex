@@ -57,9 +57,8 @@ import {
 import type { ComposerDocument } from "@/features/agent-sessions/lib/composer-document";
 
 /** Configuration fields a coded create failure anchors its message to. */
-const ERROR_FIELDS: Record<string, "egress" | "modelEndpoint" | undefined> = {
+const ERROR_FIELDS: Record<string, "egress" | undefined> = {
   AGENT_SESSION_EGRESS_ALLOWLIST_INVALID: "egress",
-  AGENT_SESSION_MODEL_ENDPOINT_INVALID: "modelEndpoint",
 };
 
 const EXAMPLE_KEYS = [
@@ -69,7 +68,7 @@ const EXAMPLE_KEYS = [
 
 /**
  * The prompt-box composer: the visual center of `/agents`. Agent and repo live
- * on the toolbar; Advanced keeps branch / model / endpoint / egress. A repo is
+ * on the toolbar; Advanced keeps branch / model / egress. A repo is
  * optional — a repo-less prompt starts a chat-only session. The Connect GitHub
  * callout appears only when the composer targets a repo but the workspace has
  * no GitHub App repos connected.
@@ -127,7 +126,6 @@ export function NewSessionComposer() {
       branch: "",
       agent: "claude",
       model: "",
-      modelEndpoint: "",
       egress: "",
     },
   });
@@ -137,10 +135,7 @@ export function NewSessionComposer() {
 
   const source = useMemo(() => ({ repos, sessions }), [repos, sessions]);
 
-  function failInConfig(
-    field: "branch" | "egress" | "modelEndpoint",
-    message: string,
-  ) {
+  function failInConfig(field: "branch" | "egress", message: string) {
     form.setError(field, { message });
     setConfigOpen(true);
   }
@@ -190,7 +185,6 @@ export function NewSessionComposer() {
         branch,
         agent: values.agent,
         model: values.model.trim() || undefined,
-        modelEndpoint: values.modelEndpoint.trim() || undefined,
         task: prompt,
         egressAllowlist,
       });

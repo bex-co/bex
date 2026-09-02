@@ -32,10 +32,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -45,7 +42,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -84,127 +80,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
-
-func envOr(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return def
-}
-
-// modelProxyPort derives the sessionegress model-proxy port from the
-// BEX_AGENT_MODEL_PROXY_URL origin (ADR062), so the egress narrowing and the
-// agentsessions Service always agree on the port. Empty ⇒ 0 and agent-session
-// mutation stays unavailable; a URL without an explicit port defaults to the
-// gateway's :8084 listener. A malformed URL or port fails startup.
-func modelProxyPort(raw string) uint16 {
-	if raw == "" {
-		return 0
-	}
-	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" {
-		log.Fatalf("bex-api: bad BEX_AGENT_MODEL_PROXY_URL %q: %v", raw, err)
-	}
-	port := u.Port()
-	if port == "" {
-		return 8084
-	}
-	n, err := strconv.ParseUint(port, 10, 16)
-	if err != nil || n == 0 {
-		log.Fatalf("bex-api: bad BEX_AGENT_MODEL_PROXY_URL port %q", port)
-	}
-	return uint16(n)
-}
-
-// rateLimitEnv parses one of the requests/min rate-limit env pairs: the fill
-// rate (startup-fatal when malformed) plus its best-effort burst companion.
-func rateLimitEnv(limitVar, limitDef, burstVar, burstDef string) (float64, int) {
-	raw := envOr(limitVar, limitDef)
-	rpm, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		log.Fatalf("bex-api: bad %s %q: %v", limitVar, raw, err)
-	}
-	return rpm, intEnv(burstVar, burstDef)
-}
-
-// intEnv parses an integer tuning knob best-effort: unset ⇒ the default,
-// malformed ⇒ 0 (each such knob's documented disabled/default sentinel).
-func intEnv(name, def string) int {
-	n, _ := strconv.Atoi(envOr(name, def))
-	return n
-}
-
-// positiveIntEnv parses an integer ≥ 1 tuning knob, warning (so the caller
-// keeps its default) when the variable is set but invalid; unset is silently
-// ok=false.
-func positiveIntEnv(name string, def any) (int, bool) {
-	v := os.Getenv(name)
-	if v == "" {
-		return 0, false
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil || n < 1 {
-		log.Printf("%s=%q invalid (want integer ≥ 1); using default %v", name, v, def)
-		return 0, false
-	}
-	return n, true
-}
-
-// zeroableDurationEnv parses a duration tuning knob that accepts an explicit
-// disabling zero: unset ⇒ def; a valid non-negative duration ⇒ that value (0 is
-// a legal "disabled"); malformed or negative ⇒ warn and keep def.
-func zeroableDurationEnv(name string, def time.Duration) time.Duration {
-	v := os.Getenv(name)
-	if v == "" {
-		return def
-	}
-	d, err := time.ParseDuration(v)
-	if err != nil || d < 0 {
-		log.Printf("%s=%q invalid (want a non-negative Go duration, 0 to disable); using default %s", name, v, def)
-		return def
-	}
-	return d
-}
-
-// signedDurationEnv parses a duration knob whose NEGATIVE value disables the
-// feature rather than being invalid (the revalidation watchdogs): unset ⇒ def;
-// a valid duration ⇒ that value, sign included; malformed ⇒ startup-fatal.
-func signedDurationEnv(name string, def time.Duration) time.Duration {
-	v := os.Getenv(name)
-	if v == "" {
-		return def
-	}
-	d, err := time.ParseDuration(v)
-	if err != nil {
-		log.Fatalf("bex-api: bad %s %q: %v", name, v, err)
-	}
-	return d
-}
-
-// zeroableIntEnv parses an integer tuning knob that accepts an explicit
-// disabling zero: unset ⇒ def; a valid n ≥ 0 ⇒ n (0 disables); invalid ⇒ def.
-func zeroableIntEnv(name string, def int) int {
-	v := os.Getenv(name)
-	if v == "" {
-		return def
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil || n < 0 {
-		log.Printf("%s=%q invalid (want an integer >= 0, 0 to disable); using default %d", name, v, def)
-		return def
-	}
-	return n
-}
-
-// minuteDurationEnv parses a duration env var with a floor of one minute,
-// startup-fatal when malformed or shorter.
-func minuteDurationEnv(name, def string) time.Duration {
-	d, err := time.ParseDuration(envOr(name, def))
-	if err != nil || d < time.Minute {
-		log.Fatalf("bex-api: %s must be a duration >= 1m: %v", name, err)
-	}
-	return d
-}
 
 func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Template {
 	return map[string]sandbox.Template{
@@ -255,23 +130,31 @@ const drainWindow = 15 * time.Second
 
 func main() {
 	ctx := ctrl.SetupSignalHandler()
-	cpDBURI := os.Getenv("BEX_CP_DB_URI")
-	dashboardURL := os.Getenv("BEX_DASHBOARD_URL")
-	sandboxExecSecret := os.Getenv("BEX_SANDBOX_EXEC_SECRET")
-	requirePaymentMethod, err := paymentMethodGate(os.Getenv)
+	// Parse + validate the ENTIRE environment contract first (.pm/w1/070.md):
+	// a malformed knob aborts HERE — before store.Migrate runs, any worker
+	// loop starts, or either listener binds — instead of crashlooping the pod
+	// through repeated migrations and partial serving. loadConfig collects
+	// every problem, so one restart shows the whole fix list; cmd/ is the only
+	// env reader.
+	cfg, warnings, err := loadConfig(os.Getenv, time.Now(), os.Args)
 	if err != nil {
 		log.Fatalf("bex-api: %v", err)
 	}
+	for _, w := range warnings {
+		log.Print(w)
+	}
+	cpDBURI := cfg.CPDBURI
+	dashboardURL := cfg.DashboardURL
 	mobilePush, err := pushtransport.New(pushtransport.Config{
-		Provider: os.Getenv("BEX_PUSH_PROVIDER"), AccessToken: os.Getenv("BEX_EXPO_PUSH_ACCESS_TOKEN"),
-		Endpoint: os.Getenv("BEX_EXPO_PUSH_URL"),
+		Provider: cfg.PushProvider, AccessToken: cfg.ExpoPushAccessToken,
+		Endpoint: cfg.ExpoPushURL,
 	})
 	if err != nil {
 		log.Fatalf("bex-api: push config: %v", err)
 	}
 	webPush, err := pushtransport.NewWebPush(pushtransport.WebPushConfig{
-		PublicKey: os.Getenv("BEX_WEBPUSH_VAPID_PUBLIC_KEY"), PrivateKey: os.Getenv("BEX_WEBPUSH_VAPID_PRIVATE_KEY"),
-		Subscriber: os.Getenv("BEX_WEBPUSH_SUBSCRIBER"),
+		PublicKey: cfg.WebPushVAPIDPublicKey, PrivateKey: cfg.WebPushVAPIDPrivateKey,
+		Subscriber: cfg.WebPushSubscriber,
 	})
 	if err != nil {
 		log.Fatalf("bex-api: web push config: %v", err)
@@ -287,19 +170,19 @@ func main() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(appv1alpha1.AddToScheme(scheme))
 
-	cfg := ctrl.GetConfigOrDie() // in-cluster, or KUBECONFIG for local dev
-	cl, err := client.New(cfg, client.Options{Scheme: scheme})
+	kubeCfg := ctrl.GetConfigOrDie() // in-cluster, or KUBECONFIG for local dev
+	cl, err := client.New(kubeCfg, client.Options{Scheme: scheme})
 	if err != nil {
 		log.Fatalf("kube client: %v", err)
 	}
 	// Clientset just for the pod-log + metrics-server subresources (the reads
 	// controller-runtime's client can't serve); wired into the logs/metrics deps.
-	cs, err := kubernetes.NewForConfig(cfg)
+	cs, err := kubernetes.NewForConfig(kubeCfg)
 	if err != nil {
 		log.Fatalf("kube clientset: %v", err)
 	}
 
-	base := &core.Base{Client: cl, Namespace: envOr("BEX_API_NAMESPACE", "default")}
+	base := &core.Base{Client: cl, Namespace: cfg.Namespace}
 
 	// One readiness flag for the whole pod (w1/m52): the public server's
 	// /readyz answers 200 until SIGTERM, then 503 while both servers keep
@@ -313,10 +196,10 @@ func main() {
 		WebhookMetrics:   webhookMetrics,
 		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
 		// unset falls back to deriving the platform host from an App's status URLs.
-		BaseDomain: os.Getenv("BEX_BASE_DOMAIN"),
+		BaseDomain: cfg.BaseDomain,
 		// BEX_REGION is the explicit platform placement surfaced in Render
 		// resource metadata. Empty is honestly omitted.
-		Region:        os.Getenv("BEX_REGION"),
+		Region:        cfg.Region,
 		PodLogs:       logs.NewPodLogSource(cs),
 		PodLogsFollow: logs.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe (always pod logs)
 		// Resource metrics (cpu/memory) via metrics-server — the snapshot fallback
@@ -327,33 +210,33 @@ func main() {
 	if webPush != nil {
 		deps.WebPushVAPIDPublicKey = webPush.PublicKey()
 	}
-	promURL := wireObservability(&deps)
+	wireObservability(&deps, cfg)
 	// Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's admin API,
 	// Kratos sessions optional. Handler() fails fast without the Hydra URL. nil key
 	// store (stdio mode without a Hydra URL) keeps the api-key verbs answering
 	// ErrAPIKeysUnavailable instead of dialing nowhere.
-	hydraAdminURL := os.Getenv("BEX_HYDRA_ADMIN_URL")
+	hydraAdminURL := cfg.HydraAdminURL
 	if hydraAdminURL != "" {
 		deps.APIKeys = apikeys.NewHydraAPIKeys(hydraAdminURL)
 	}
 	// Tenant secrets (docs/ADR013-secrets.md): the env-vars API stores values in OpenBao
 	// KV v2, wired only when BEX_OPENBAO_URL is set — else the env-vars verbs 503
 	// and the rest of the API is byte-for-byte unchanged.
-	if bao := os.Getenv("BEX_OPENBAO_URL"); bao != "" {
-		deps.Secrets = secrets.NewOpenBaoStore(bao)
+	if cfg.OpenBaoURL != "" {
+		deps.Secrets = secrets.NewOpenBaoStore(cfg.OpenBaoURL, cfg.OpenBaoJWTPath)
 	}
-	ghClient := wireGitHubApp(&deps)
+	ghClient := wireGitHubApp(&deps, cfg)
 	// Owner/member identity attributes (w6/m2): Kratos' admin API, distinct from
 	// the public BEX_KRATOS_URL session whoami above — looking up OTHER members'
 	// email/MFA needs the admin API, not a session. Unset => those fields omitted.
-	kratosAdminURL := os.Getenv("BEX_KRATOS_ADMIN_URL")
+	kratosAdminURL := cfg.KratosAdminURL
 	if kratosAdminURL != "" {
 		deps.Identities = workspaces.NewKratosIdentities(kratosAdminURL)
 	}
 	oryAccountCleaner := accounts.NewOryCleaner(hydraAdminURL, kratosAdminURL)
 	deps.AccountOAuth = oryAccountCleaner
 	deps.AccountKratos = oryAccountCleaner
-	authzChecker := wireAuthz(base, cpDBURI)
+	authzChecker := wireAuthz(base, cfg)
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
 	// bex-api owns bex-db — run migrations, the projector (apps rows -> App CRs),
@@ -372,43 +255,39 @@ func main() {
 	var stripeLifecycleWorker *billing.Worker
 	var stripeLifecycleReconciler *billing.Reconciler
 	var stripeBillingAdmin store.BillingAdmin
-	if cpDBURI != "" && !mcpStdio() {
+	if cpDBURI != "" && !cfg.MCPStdio {
 		// The datastore (Database/KeyValue) projection namespace; falls back to
 		// BEX_API_NAMESPACE so the two agree unless explicitly split.
-		appsNS := envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)
+		appsNS := cfg.CPAppsNamespace
 		pool := openControlPlaneDB(ctx, cpDBURI)
 		defer pool.Close()
 
 		st = store.NewPGStore(pool)
 		rec = store.NewReconciler(cl, st)
 		rec.Metrics = store.NewReconcilerMetrics(metricRegistry)
-		if d := os.Getenv("BEX_CP_RESYNC"); d != "" {
-			v, err := time.ParseDuration(d)
-			if err != nil {
-				log.Fatalf("bex-api: bad BEX_CP_RESYNC %q: %v", d, err)
-			}
-			rec.Resync = v
+		if cfg.CPResyncSet {
+			rec.Resync = cfg.CPResync
 		}
 		// rec.Run is started after NewServer below, so CloneSecrets is set before
 		// the first reconcile pass (w2/m11).
-		granter := wireControlPlaneFeatures(&deps, base, st, rec, authzChecker)
+		granter := wireControlPlaneFeatures(cfg, &deps, base, st, rec, authzChecker)
 
 		// Usage metering (w8/m1) + retention (m4): the loop rolls usage_hourly
 		// rows up every hour (needs Prometheus; skipped without it) and compacts
 		// months older than the hot window into usage_monthly daily. The hot
 		// window is BEX_USAGE_RETENTION_MONTHS calendar months (current month
 		// included; default 3, minimum 1) — docs/ADR023-usage-metering.md.
-		usageSvc := usage.NewService(base, st, promURL, nil)
-		if n, ok := positiveIntEnv("BEX_USAGE_RETENTION_MONTHS", usage.DefaultRetentionMonths); ok {
-			usageSvc.RetentionMonths = n
+		usageSvc := usage.NewService(base, st, cfg.PromURL, nil)
+		if cfg.UsageRetentionSet {
+			usageSvc.RetentionMonths = cfg.UsageRetention
 		}
 		// build_seconds counts Jobs where the operator runs them — must match the
 		// manager's own BEX_BUILD_NAMESPACE, the same way Cancel's Job identity
 		// does (deps.DeployBuildNamespace below).
-		usageSvc.BuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
+		usageSvc.BuildNamespace = cfg.BuildNamespace
 		deps.Usage = usageSvc
 
-		stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin = wireStripeBilling(ctx, &deps, base, cl, st, appsNS, usageSvc, billingMetrics, requirePaymentMethod, dashboardURL)
+		stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin = wireStripeBilling(ctx, cfg, &deps, base, cl, st, appsNS, usageSvc, billingMetrics)
 
 		go usageSvc.Run(ctx)
 
@@ -417,21 +296,21 @@ func main() {
 		// cadence/shape as usage's compaction loop above. The write side is
 		// base.Audit (wired above); this Service is the read verb + sweep only.
 		auditSvc := &audit.Service{Base: base, Store: st}
-		if n, ok := positiveIntEnv("BEX_AUDIT_RETENTION_DAYS", audit.DefaultRetentionDays); ok {
-			auditSvc.RetentionDays = n
+		if cfg.AuditRetentionSet {
+			auditSvc.RetentionDays = cfg.AuditRetention
 		}
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
 
-		startControlPlaneServer(ctx, st, rec, granter, stripeBillingAdmin, metricRegistry, ghClient, deps.Secrets, sandboxExecSecret, appsNS, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, ghClient, deps.Secrets, ready)
 	}
 
 	// Invite delivery (w4/m12): the members feature emails invites over the same
 	// SMTP relay Kratos's courier uses (SendGrid in prod, Mailpit locally). Unset
 	// BEX_SMTP_ADDR/BEX_SMTP_FROM => mailer nil, invites recorded but not emailed.
 	// BEX_DASHBOARD_URL is the origin the invite link points at.
-	if m := mailer.New(os.Getenv("BEX_SMTP_ADDR"), os.Getenv("BEX_SMTP_FROM"),
-		os.Getenv("BEX_SMTP_USERNAME"), os.Getenv("BEX_SMTP_PASSWORD")); m != nil {
+	if m := mailer.New(cfg.SMTPAddr, cfg.SMTPFrom,
+		cfg.SMTPUsername, cfg.SMTPPassword); m != nil {
 		deps.Mailer = m
 	}
 	deps.InviteBaseURL = dashboardURL
@@ -439,21 +318,18 @@ func main() {
 	// browser back to dashboard settings on success and with a bounded error code
 	// on state/install failures.
 	deps.DashboardURL = dashboardURL
-	deps.DeployHookBaseURL = os.Getenv("BEX_API_PUBLIC_URL")
-	deps.SSHHost = os.Getenv("BEX_SSH_HOST")
+	deps.DeployHookBaseURL = cfg.APIPublicURL
+	deps.SSHHost = cfg.SSHHost
 	// ADR062/ADR064 model proxy: the internal gateway origin agent model traffic is
 	// routed through so the BYO key never enters the sandbox. Unset keeps session
 	// mutation unavailable. Set before wireSandboxes so session egress derives its
 	// port from this one value (single source of truth).
-	deps.AgentModelProxyURL = os.Getenv("BEX_AGENT_MODEL_PROXY_URL")
-	wireSandboxes(ctx, &deps, cl, st, sandboxExecSecret)
-	wireAgentSessions(&deps)
-	wireDiskSnapshots(&deps)
+	deps.AgentModelProxyURL = cfg.AgentModelProxyURL
+	wireSandboxes(ctx, cfg, &deps, cl, st)
+	wireAgentSessions(&deps, cfg)
+	wireDiskSnapshots(&deps, cfg)
 	srv := api.NewServer(base, deps)
-	if mode := strings.TrimSpace(os.Getenv("BEX_ENV_GROUP_NAME_CLAIM_AUDIT")); mode != "" {
-		if mode != "dry-run" && mode != "apply" {
-			log.Fatalf("bex-api: BEX_ENV_GROUP_NAME_CLAIM_AUDIT must be dry-run or apply")
-		}
+	if mode := cfg.EnvGroupNameClaimAudit; mode != "" {
 		report, auditErr := envgroups.AuditNameClaims(ctx, deps.Secrets, mode == "dry-run")
 		if auditErr != nil {
 			log.Fatalf("bex-api: environment-group name-claim audit: %v", auditErr)
@@ -465,10 +341,7 @@ func main() {
 	// OpenBao tenant onto their own workspace-prefixed tenants. See
 	// docs/runbooks/env-group-path-migration.md before ever running apply
 	// mode against a production store.
-	if mode := strings.TrimSpace(os.Getenv("BEX_ENV_GROUP_PATH_MIGRATION")); mode != "" {
-		if mode != "dry-run" && mode != "apply" {
-			log.Fatalf("bex-api: BEX_ENV_GROUP_PATH_MIGRATION must be dry-run or apply")
-		}
+	if mode := cfg.EnvGroupPathMigration; mode != "" {
 		report, migrateErr := envgroups.MigratePaths(ctx, deps.Secrets, mode == "dry-run")
 		if migrateErr != nil {
 			log.Fatalf("bex-api: environment-group path migration: %v", migrateErr)
@@ -507,16 +380,16 @@ func main() {
 		go stripeLifecycleReconciler.Run(ctx)
 	}
 
-	wireReconcilers(ctx, srv, rec, st, cl, base)
-	startDeliveryWorkers(ctx, srv, st, deps.Mailer, mobilePush, webPush, pushMetrics, webhookMetrics)
-	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
+	wireReconcilers(ctx, srv, rec, st, cl, base, cfg)
+	startDeliveryWorkers(ctx, cfg, srv, st, deps.Mailer, mobilePush, webPush, pushMetrics, webhookMetrics)
+	srv.CORSOrigin = cfg.CORSOrigin
 	srv.HydraAdminURL = hydraAdminURL
-	srv.KratosURL = os.Getenv("BEX_KRATOS_URL")
-	configureServerAuthOptions(srv, cpDBURI)
+	srv.KratosURL = cfg.KratosURL
+	configureServerAuthOptions(srv, cfg)
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
 	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.
-	if mcpStdio() {
+	if cfg.MCPStdio {
 		log.Printf("bex-api: serving MCP over stdio (namespace %s)", base.Namespace)
 		if err := srv.RunStdio(ctx); err != nil {
 			log.Fatalf("bex-api mcp stdio: %v", err)
@@ -531,20 +404,20 @@ func main() {
 		log.Fatalf("bex-api: deploy-hook token index backfill: %v", err)
 	}
 
-	configureRateLimiters(srv)
+	configureRateLimiters(srv, cfg)
 
-	srv.MaxBodyBytes = int64(intEnv("BEX_MAX_BODY_BYTES", "2097152"))
+	srv.MaxBodyBytes = cfg.MaxBodyBytes
 
-	maxQueryHours := intEnv("BEX_MAX_QUERY_HOURS", "720")
+	maxQueryHours := cfg.MaxQueryHours
 	srv.Logs.MaxQueryHours = maxQueryHours
-	srv.Logs.MaxSSEConns = int64(intEnv("BEX_MAX_SSE_CONNS", "100"))
-	srv.Logs.MaxSSEConnsPerSubject = intEnv("BEX_MAX_SSE_CONNS_PER_SUBJECT", "5")
-	srv.Logs.MaxSSEConnsPerWorkspace = intEnv("BEX_MAX_SSE_CONNS_PER_WORKSPACE", "20")
+	srv.Logs.MaxSSEConns = cfg.MaxSSEConns
+	srv.Logs.MaxSSEConnsPerSubject = cfg.MaxSSEConnsPerSubject
+	srv.Logs.MaxSSEConnsPerWorkspace = cfg.MaxSSEConnsPerWorkspace
 	// w4/034: the live log tail's authorization watchdog cadence — every
 	// established SSE/WebSocket/NDJSON subscription re-runs a FRESH
 	// can_view_logs check on this interval so a revocation ends the stream
 	// within one interval, not at the next admission. Negative disables.
-	srv.Logs.RevalidateInterval = signedDurationEnv("BEX_LOG_STREAM_REVALIDATE_INTERVAL", logs.DefaultRevalidateInterval)
+	srv.Logs.RevalidateInterval = cfg.LogStreamRevalidateInterval
 	srv.Metrics.MaxQueryHours = maxQueryHours
 	srv.Events.MaxQueryHours = maxQueryHours
 
@@ -561,7 +434,7 @@ func main() {
 	root.Handle("GET /readyz", ready.Handler())
 	root.Handle("/", handler)
 
-	addr := envOr("BEX_API_ADDR", ":8090")
+	addr := cfg.APIAddr
 	httpSrv := newHTTPServer(addr, root)
 	log.Printf("bex-api listening on %s (namespace %s)", addr, base.Namespace)
 	// Serve in a goroutine and block on ctx (SIGTERM/SIGINT via
@@ -575,9 +448,8 @@ func main() {
 	}
 }
 
-// wireObservability wires the optional log and metric history sources, and
-// returns the Prometheus base URL the usage-metering block reuses.
-func wireObservability(deps *api.Deps) string {
+// wireObservability wires the optional log and metric history sources.
+func wireObservability(deps *api.Deps, cfg *Config) {
 	// Durable log history, wired only when BEX_LOKI_URL is set: QueryLogs/Logs
 	// then read Loki (history survives pod restarts) instead of live pod logs.
 	// Unset => the pod-log path runs byte-identical to before (docs/ADR010-observability.md).
@@ -585,7 +457,7 @@ func wireObservability(deps *api.Deps) string {
 	// It also backs the request-log split (type=request) and the structured
 	// filters/label discovery — the labels live in the store, not in a pod's
 	// stdout, so unset means those are refused (503), never silently ignored.
-	if lokiURL := os.Getenv("BEX_LOKI_URL"); lokiURL != "" {
+	if lokiURL := cfg.LokiURL; lokiURL != "" {
 		deps.LogHistory = logs.NewLokiSource(lokiURL, nil)
 		deps.LogLabelValues = logs.NewLokiLabelValuesSource(lokiURL, nil)
 		// Host/path-filtered request metrics are served from the same Traefik
@@ -598,7 +470,7 @@ func wireObservability(deps *api.Deps) string {
 	// they 503) and resource-metrics history (cpu/memory/instance_count via
 	// cAdvisor, preferred over the metrics-server snapshot; Prometheus set but
 	// unreachable surfaces the query error, it does not silently fall back).
-	promURL := os.Getenv("BEX_PROM_URL")
+	promURL := cfg.PromURL
 	if promURL != "" {
 		deps.RequestMetrics = metrics.NewPrometheusRequestSource(promURL, nil)
 		deps.ResourceMetricsRange = metrics.NewPrometheusResourceSource(promURL, nil)
@@ -612,37 +484,24 @@ func wireObservability(deps *api.Deps) string {
 		deps.ReplicationLag = metrics.NewPrometheusReplicationLagSource(promURL, nil)
 		deps.KeyValueStats = metrics.NewPrometheusKeyValueStatsSource(promURL, nil)
 	}
-	return promURL
 }
 
-// wireAuthz installs the OpenFGA checker on base and enforces the fail-closed
-// posture a multi-tenant API requires.
+// wireAuthz installs the OpenFGA checker on base; the fail-closed posture a
+// multi-tenant API requires is validated in loadConfig.
 //
 // Authorization (docs/ADR012-auth.md): unset => authz disabled (every verb allowed,
 // the pre-m4 behavior); set => every verb checks OpenFGA, fail closed. NOT
 // wired in stdio mode: that transport's trust boundary is the subprocess itself
 // (no auth gate, so no identity — a wired checker would deny all).
-func wireAuthz(base *core.Base, cpDBURI string) core.Checker {
+func wireAuthz(base *core.Base, cfg *Config) core.Checker {
 	var authzChecker core.Checker
-	if fga := os.Getenv("BEX_OPENFGA_URL"); fga != "" && !mcpStdio() {
-		authzChecker = authz.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
+	if cfg.OpenFGAURL != "" && !cfg.MCPStdio {
+		authzChecker = authz.NewOpenFGAChecker(cfg.OpenFGAURL, cfg.OpenFGAToken)
 		base.Authz = authzChecker
 	}
-	// w1/m53 + w1/m65 F16: with the store on but OpenFGA off, checkAuthz allows
-	// every relation (fail-open). This is worse than "roles unenforced within a
-	// workspace": the explicit-workspace verbs (workspaces/members/projects) call
-	// AuthorizeOn/AuthorizeOnTarget with an arbitrary workspace object and do NOT
-	// pass through the membership-resolving WithWorkspace path, so cross-tenant
-	// isolation does NOT hold either — any authenticated caller can read/mutate
-	// another workspace. A multi-tenant API must therefore FAIL CLOSED (refuse to
-	// start) rather than warn. BEX_ALLOW_INSECURE_AUTHZ=1 is the documented
-	// single-member/local-dev override (mirrors BEX_CP_INSECURE for BEX_CP_TOKEN).
-	if base.Authz == nil && cpDBURI != "" && !mcpStdio() {
-		if os.Getenv("BEX_ALLOW_INSECURE_AUTHZ") != "1" {
-			log.Fatal("BEX_OPENFGA_URL is unset while the control-plane store is on (BEX_CP_DB_URI set): authorization would be FAIL-OPEN — every workspace member gets admin-equivalent rights AND explicit-workspace verbs bypass membership resolution, so cross-tenant isolation does not hold. Refusing to start a multi-tenant API without enforced authorization. Set BEX_OPENFGA_URL, or set BEX_ALLOW_INSECURE_AUTHZ=1 to override in single-member/local dev only (docs/ADR012-auth.md).")
-		}
-		log.Printf("WARNING: BEX_OPENFGA_URL is unset while the control-plane store is on and BEX_ALLOW_INSECURE_AUTHZ=1 — authorization is FAIL-OPEN (every member admin-equivalent; explicit-workspace verbs bypass membership isolation). Safe ONLY for a single-member workspace / local dev.")
-	}
+	// w1/m53 + w1/m65 F16: the store-on/OpenFGA-off FAIL-CLOSED posture (and
+	// its BEX_ALLOW_INSECURE_AUTHZ=1 single-member/local-dev override) is
+	// enforced by loadConfig, before any side effect.
 	return authzChecker
 }
 
@@ -668,23 +527,23 @@ func openControlPlaneDB(ctx context.Context, cpDBURI string) *pgxpool.Pool {
 
 // configureServerAuthOptions applies the OAuth discovery and webhook-key
 // settings, warning loudly about the audience check that ships off.
-func configureServerAuthOptions(srv *api.Server, cpDBURI string) {
+func configureServerAuthOptions(srv *api.Server, cfg *Config) {
 	// OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/ADR012-auth.md): the Hydra
 	// public issuer + this API's canonical resource URI. Both unset => no
 	// metadata endpoint, no audience check — behavior identical to before.
-	srv.OAuthIssuer = os.Getenv("BEX_OAUTH_ISSUER")
-	srv.OAuthResource = os.Getenv("BEX_OAUTH_RESOURCE")
+	srv.OAuthIssuer = cfg.OAuthIssuer
+	srv.OAuthResource = cfg.OAuthResource
 	// w1/m67 F1: narrow the empty-audience token exception to bex-provisioned
 	// OAuth clients. Opt-in because it must not precede the operator step that
 	// stamps the platform-client marker (scripts/auth-bootstrap-client.sh) — see
 	// docs/ADR012-auth.md §7.
-	srv.OAuthRequireAudience = os.Getenv("BEX_OAUTH_REQUIRE_AUDIENCE") == "1"
+	srv.OAuthRequireAudience = cfg.OAuthRequireAudience
 	// w8/m27: BEX_OAUTH_API_SCOPE is retained for deployment compatibility but
 	// is ignored as a second semantic matrix. Third-party human API-audience
 	// tokens must carry the closed granular vocabulary (bex.read / bex.write /
 	// bex.sensitive). bex.api remains a platform-client compatibility alias
 	// only. See docs/ADR012-auth.md §7.
-	srv.OAuthAPIScope = os.Getenv("BEX_OAUTH_API_SCOPE")
+	srv.OAuthAPIScope = cfg.OAuthAPIScope
 	// codex F6: an opt-in security control that ships off is invisible, and this
 	// one stayed off through three remediation rounds while the fail-open posture
 	// remained the deployed default. The narrowed audience check (auth.go) is
@@ -696,29 +555,24 @@ func configureServerAuthOptions(srv *api.Server, cpDBURI string) {
 	// fail-closed refusal: a hard refusal would either crashloop the API when
 	// the flag is off, or force BEX_ALLOW_INSECURE_AUTHZ=1 (which would also
 	// disable the OpenFGA fail-closed above). Track: docs/ADR055 F6 disposition.
-	if srv.OAuthResource != "" && !srv.OAuthRequireAudience {
-		log.Printf("WARNING: BEX_OAUTH_REQUIRE_AUDIENCE is off while BEX_OAUTH_RESOURCE=%q — an audience-less token "+
-			"from ANY self-registered OAuth client a user consents to carries that user's full workspace rights here (codex F6, cross-tenant). "+
-			"Activate: re-run scripts/auth-bootstrap-client.sh (stamps bex.co/platform-client), then set it to 1 "+
-			"(docs/ADR012-auth.md §7)", srv.OAuthResource)
-	}
-	srv.WebhookSecret = os.Getenv("BEX_WEBHOOK_SECRET")
+	// (That warning is emitted by loadConfig with the other startup warnings.)
+	srv.WebhookSecret = cfg.WebhookSecret
 	// The GitHub App's app-wide webhook signs pushes with its own secret — a
 	// second accepted key so installed repos redeploy hands-free
 	// (docs/ADR026-github-integration.md).
-	srv.GitHubWebhookSecret = os.Getenv("BEX_GITHUB_WEBHOOK_SECRET")
-	if err := validateWebhookReplayConfig(srv.WebhookSecret, srv.GitHubWebhookSecret, srv.WebhookReplays); err != nil {
+	srv.GitHubWebhookSecret = cfg.GitHubWebhookSecret
+	if err := validateWebhookReplayConfig(srv.WebhookSecret, srv.GitHubWebhookSecret, srv.WebhookReplays != nil); err != nil {
 		log.Fatal(err)
 	}
 	// codex #4: in multitenant mode (control-plane store active), reject the shared
 	// manual webhook secret because it carries no per-workspace binding and would
 	// authorize cross-tenant deployment mutations. The GitHub App key is unaffected.
-	srv.MultitenantWebhook = cpDBURI != ""
+	srv.MultitenantWebhook = cfg.CPDBURI != ""
 }
 
-func validateWebhookReplayConfig(manualSecret, githubSecret string, replays apps.WebhookReplayGuard) error {
-	if (manualSecret != "" || githubSecret != "") && replays == nil {
-		return errors.New("bex-api: Git webhooks require BEX_CP_DB_URI for durable replay protection")
+func validateWebhookReplayConfig(manualSecret, githubSecret string, durableReplays bool) error {
+	if (manualSecret != "" || githubSecret != "") && !durableReplays {
+		return errors.New("Git webhooks require BEX_CP_DB_URI for durable replay protection")
 	}
 	return nil
 }
@@ -727,17 +581,17 @@ func validateWebhookReplayConfig(manualSecret, githubSecret string, replays apps
 // zero-config push-to-deploy. Wired only when all three BEX_GITHUB_APP_* vars
 // are set (and the key parses) — else the git-connect verbs 503. The store
 // half (git_connections) is wired inside the BEX_CP_DB_URI block below.
-func wireGitHubApp(deps *api.Deps) *github.Client {
+func wireGitHubApp(deps *api.Deps, cfg *Config) *github.Client {
 	var ghClient *github.Client
-	if appID, key, slug := os.Getenv("BEX_GITHUB_APP_ID"), os.Getenv("BEX_GITHUB_APP_PRIVATE_KEY"), os.Getenv("BEX_GITHUB_APP_SLUG"); appID != "" && key != "" && slug != "" {
+	if appID, key, slug := cfg.GitHubAppID, cfg.GitHubAppPrivateKey, cfg.GitHubAppSlug; appID != "" && key != "" && slug != "" {
 		var err error
 		ghClient, err = github.NewClient(github.Config{
 			AppID: appID, PrivateKey: key, Slug: slug,
 			// F2: both OAuth credentials enable the mandatory installation-admin
 			// proof on new browser bindings. Both absent leaves existing connections
 			// usable but makes every callback fail closed; a partial pair is fatal.
-			ClientID:     os.Getenv("BEX_GITHUB_APP_CLIENT_ID"),
-			ClientSecret: os.Getenv("BEX_GITHUB_APP_CLIENT_SECRET"),
+			ClientID:     cfg.GitHubAppClientID,
+			ClientSecret: cfg.GitHubAppClientSecret,
 		})
 		if err != nil {
 			log.Fatalf("bex-api: github app config: %v", err)
@@ -764,7 +618,7 @@ func wireGitHubApp(deps *api.Deps) *github.Client {
 // wireControlPlaneFeatures wires the control-plane store into the feature deps
 // and adapts the authz checker's role grant/revoke sides, returning the
 // membership granter shared by the tenant service and the internal CP API.
-func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore, rec *store.Reconciler, authzChecker core.Checker) store.MembershipGranter {
+func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *store.PGStore, rec *store.Reconciler, authzChecker core.Checker) store.MembershipGranter {
 	deps.Store = st // single writer of intent: suspend/resume write the row first
 	deps.OAuthRevocations = st
 	deps.AccountStore = st
@@ -772,7 +626,7 @@ func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore
 	deps.DeployStore = st  // deploy history (w2/m5): list/get/trigger read+write the same rows
 	// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
 	// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
-	deps.DeployBuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
+	deps.DeployBuildNamespace = cfg.BuildNamespace
 	deps.GitHubStore = st        // git connections (w2/m8): connect/disconnect/list read+write git_connections
 	deps.EventStore = st         // service events: deploy + audit + typed observed/Git facts
 	deps.EventFacts = st         // typed observed/Git event facts (w3/m19), written outside the operator
@@ -875,8 +729,7 @@ func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore
 	// address that genuinely can't be verified retains an explicit path. Set
 	// BEX_REQUIRE_VERIFIED_INVITE_EMAIL=0 only for local dev without a
 	// verification UX (docs/ADR024-members.md).
-	tenantSvc.RequireVerifiedInviteEmail = os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL") != "0" &&
-		!strings.EqualFold(os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL"), "false")
+	tenantSvc.RequireVerifiedInviteEmail = cfg.RequireVerifiedInviteEmail
 	base.Workspace = tenantSvc
 	deps.Onboard = tenantSvc
 	deps.KeyBinder = tenantSvc
@@ -888,30 +741,25 @@ func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore
 // surface's invoice read-back. BEX_STRIPE_SECRET_KEY unset means no client,
 // emitter, reader, or public Stripe webhook: estimate-only behavior stays
 // unchanged.
-func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl client.Client, st *store.PGStore, appsNS string, usageSvc *usage.Service, billingMetrics *billing.Metrics, requirePaymentMethod paymentMethodMode, dashboardURL string) (*billing.Worker, *billing.Reconciler, store.BillingAdmin) {
+func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *core.Base, cl client.Client, st *store.PGStore, appsNS string, usageSvc *usage.Service, billingMetrics *billing.Metrics) (*billing.Worker, *billing.Reconciler, store.BillingAdmin) {
 	var stripeLifecycleWorker *billing.Worker
 	var stripeLifecycleReconciler *billing.Reconciler
 	var stripeBillingAdmin store.BillingAdmin
-	stripeSecretKey, billingEpoch, stripeEnabled, err := stripeBillingGate(os.Getenv, time.Now())
-	if err != nil {
-		log.Fatalf("bex-api: %v", err)
-	}
+	requirePaymentMethod := cfg.RequirePaymentMethod
+	stripeSecretKey, billingEpoch, stripeEnabled := cfg.StripeSecretKey, cfg.StripeEpoch, cfg.StripeEnabled
 	if stripeEnabled {
-		publishableKey, publishableErr := stripePublishableKey(os.Getenv, stripeSecretKey, requirePaymentMethod != paymentMethodOff)
-		if publishableErr != nil {
-			log.Fatalf("bex-api: %v", publishableErr)
-		}
+		publishableKey := cfg.StripePublishableKey
 		billingMetrics.SetEnabled(true)
 		stripeClient := billing.NewStripe(billing.StripeConfig{
 			SecretKey:             stripeSecretKey,
 			PublishableKey:        publishableKey,
-			BaseURL:               os.Getenv("BEX_STRIPE_API_URL"),
+			BaseURL:               cfg.StripeAPIURL,
 			BillingEpoch:          billingEpoch,
-			CompCouponID:          os.Getenv("BEX_STRIPE_COMP_COUPON_ID"),
-			DashboardURL:          dashboardURL,
-			PortalConfigurationID: os.Getenv("BEX_STRIPE_PORTAL_CONFIGURATION_ID"),
-			TaxCode:               os.Getenv("BEX_STRIPE_TAX_CODE"),
-			TaxBehavior:           os.Getenv("BEX_STRIPE_TAX_BEHAVIOR"),
+			CompCouponID:          cfg.StripeCompCouponID,
+			DashboardURL:          cfg.DashboardURL,
+			PortalConfigurationID: cfg.StripePortalConfigurationID,
+			TaxCode:               cfg.StripeTaxCode,
+			TaxBehavior:           cfg.StripeTaxBehavior,
 			State:                 st,
 			Metrics:               billingMetrics,
 		})
@@ -940,8 +788,8 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 		emitter.Metrics = billingMetrics
 		emitter.Epoch = billingEpoch
 		emitter.RequirePaymentMethod = requirePaymentMethod != paymentMethodOff
-		if n, ok := positiveIntEnv("BEX_STRIPE_SEAL_HOURS", billing.DefaultSealHours); ok {
-			emitter.SealHours = time.Duration(n) * time.Hour
+		if cfg.StripeSealHoursSet {
+			emitter.SealHours = time.Duration(cfg.StripeSealHours) * time.Hour
 		}
 		// w7/m57: never seal shorter than the usage rollup's catch-up window, or
 		// an exported row could still be rewritten and never re-emitted.
@@ -950,19 +798,20 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 			emitter.SealHours = clamped
 		}
 		var lifecycle *billing.Lifecycle
-		if dunningGate(os.Getenv, stripeClient.ExpectedLivemode()) {
+		if cfg.StripeDunningEnabled {
 			// The mode threads through so webhook events from the other mode
 			// are rejected; BEX_STRIPE_ALLOW_LIVE at the installer remains the
-			// single deliberate live gate.
-			grace := minuteDurationEnv("BEX_STRIPE_GRACE_PERIOD", "168h")
-			reconcileEvery := minuteDurationEnv("BEX_STRIPE_RECONCILE_INTERVAL", "5m")
+			// single deliberate live gate. (dunningGate itself ran in
+			// loadConfig.)
+			grace := cfg.StripeGracePeriod
+			reconcileEvery := cfg.StripeReconcileInterval
 			lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS}
 			stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
 			stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			log.Printf("bex-api Stripe dunning enabled (livemode %t, grace %s, reconcile %s)", stripeClient.ExpectedLivemode(), grace, reconcileEvery)
 		}
-		if secret := os.Getenv("BEX_STRIPE_WEBHOOK_SECRET"); secret != "" {
+		if secret := cfg.StripeWebhookSecret; secret != "" {
 			handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession, Metrics: billingMetrics}
 			if lifecycle != nil {
 				handler.OnLifecycle = lifecycle.HandleStripeEvent
@@ -980,20 +829,20 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, ghClient *github.Client, modelKeys core.SecretKV, sandboxExecSecret, appsNS string, ready *serve.Readiness) {
-	cpToken := os.Getenv("BEX_CP_TOKEN")
-	if err := requireCPAuth(cpToken, os.Getenv("BEX_CP_INSECURE")); err != nil {
-		log.Fatalf("control plane: %v", err)
-	}
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, ghClient *github.Client, modelKeys core.SecretKV, ready *serve.Readiness) {
+	// requireCPAuth ran in loadConfig — before migrations — so an empty
+	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
+	// never reaches this point.
+	cpToken := cfg.CPToken
 	internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin, BillingOperations: st, SandboxTenants: st}
 	internalRoot := http.NewServeMux()
 	internalRoot.Handle("GET /metrics", promhttp.HandlerFor(metricRegistry, promhttp.HandlerOpts{}))
 	// ADR047 D2: a gateway-authenticated, internal-only mint verb. The same
 	// sandbox-exec HMAC secret is reused with protocol domain separation; the
 	// route is not mounted on :8090 and never enters the public surface.
-	if sandboxExecSecret != "" {
+	if cfg.SandboxExecSecret != "" {
 		internalRoot.Handle(agentsession.InternalMintPath, &agentsession.Handler{
-			Secret: []byte(sandboxExecSecret),
+			Secret: []byte(cfg.SandboxExecSecret),
 			Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Audit: st},
 			Nonce:  st,
 		})
@@ -1003,7 +852,7 @@ func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.
 		// simply 503s the model proxy and never falls back to sandbox key injection.
 		if modelKeys != nil {
 			internalRoot.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{
-				Secret: []byte(sandboxExecSecret),
+				Secret: []byte(cfg.SandboxExecSecret),
 				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st},
 				Nonce:  st,
 			})
@@ -1013,16 +862,16 @@ func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.
 			// internal-only listener as the mint; wired even when hibernation/keys vary,
 			// since it only needs the store to CAS a live session to failed.
 			internalRoot.Handle(agentsession.InternalModelAuthFailurePath, &agentsession.ModelAuthFailureHandler{
-				Secret: []byte(sandboxExecSecret),
+				Secret: []byte(cfg.SandboxExecSecret),
 				Failer: &agentsession.ModelAuthFailer{Sessions: st, Audit: st},
 				Nonce:  st,
 			})
 		}
 	}
 	internalRoot.Handle("/", internal.Handler())
-	cpAddr := envOr("BEX_CP_ADDR", ":8091")
+	cpAddr := cfg.CPAddr
 	cpSrv := newHTTPServer(cpAddr, internalRoot)
-	log.Printf("bex-api control plane (source of truth) on %s (Apps project into per-tenant <ws> namespaces; Databases/KeyValues stay in %q)", cpAddr, appsNS)
+	log.Printf("bex-api control plane (source of truth) on %s (Apps project into per-tenant <ws> namespaces; Databases/KeyValues stay in %q)", cpAddr, cfg.CPAppsNamespace)
 	go func() {
 		// Same serve-then-graceful-shutdown pattern as the public server
 		// in main: on SIGTERM (ctx cancelled) the internal API drains instead
@@ -1043,9 +892,9 @@ func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.
 // the sandbox verbs 503 and the feature is not registered (byte-identical). The
 // per-workspace tenant-key provider (m32 t006) and template registry are
 // wired as they land; for now a single default "base" template.
-func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *store.PGStore, sandboxExecSecret string) {
-	if osURL := os.Getenv("BEX_OPENSANDBOX_URL"); osURL != "" {
-		deps.SandboxClient = sandbox.NewClient(osURL)
+func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.Client, st *store.PGStore) {
+	if cfg.OpenSandboxURL != "" {
+		deps.SandboxClient = sandbox.NewClient(cfg.OpenSandboxURL)
 		// Both defaults are digest-pinned (w7/m85): a sandbox template names an
 		// image bex RUNS, so a floating tag let two creates months apart start
 		// different code with no record of the change. The tag is retained ahead
@@ -1054,10 +903,7 @@ func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *st
 		// lego/operator/config/api/deployment.yaml, which deploy.yml rewrites to
 		// the digest it just pushed — this default is the floor for a deployment
 		// that omits it, not the production value.
-		deps.SandboxTemplates = sandboxTemplateRegistry(
-			envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b"),
-			envOr("BEX_AGENT_SESSION_IMAGE", "ghcr.io/bex-co/bex-agent-sandbox@sha256:4faafb4ad14e6d76be076fecffe1b02c06d21ec23d9ce1bba780da2af37c698a"),
-		)
+		deps.SandboxTemplates = sandboxTemplateRegistry(cfg.SandboxImage, cfg.AgentSessionImage)
 		deps.SandboxDefaultPlan = sandbox.PlanStarter
 		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
 		// an empty template resolves to this registered default (w3/m32 t009).
@@ -1066,13 +912,13 @@ func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *st
 		// creation. The registry catalog is platform config; the model endpoint is
 		// selected per session by its agent/provider config and validated at create.
 		egress, err := sessionegress.NewManager(cl, sessionegress.Config{
-			SetupRegistryDomains: sessionegress.RegistryConfig(os.Getenv("BEX_AGENT_SETUP_REGISTRIES")),
+			SetupRegistryDomains: sessionegress.RegistryConfig(cfg.AgentSetupRegistries),
 			// ADR062: when the model proxy is on, narrow the session policy to admit
 			// the gateway proxy port instead of the vendor host. The port is derived
 			// from the same deps.AgentModelProxyURL the agentsessions Service uses, so
 			// the two can never disagree on which port to open.
-			ModelProxyPort:       modelProxyPort(deps.AgentModelProxyURL),
-			SnapshotStoreDomains: snapshotStoreEgressDomains(),
+			ModelProxyPort:       cfg.ModelProxyPort,
+			SnapshotStoreDomains: cfg.SnapshotEgressDomains,
 		})
 		if err != nil {
 			log.Fatalf("bex-api: %v", err)
@@ -1083,10 +929,10 @@ func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *st
 		// gateway (which alone holds pods/exec, Option A). Both the shared HMAC
 		// secret and the gateway's internal exec URL must be set, else the exec verb
 		// 503s (create/list/stop are unaffected).
-		if sandboxExecSecret != "" {
-			if gwURL := os.Getenv("BEX_SANDBOX_EXEC_URL"); gwURL != "" {
+		if cfg.SandboxExecSecret != "" {
+			if gwURL := cfg.SandboxExecURL; gwURL != "" {
 				deps.SandboxExec = &sandbox.ExecConfig{
-					Secret:     []byte(sandboxExecSecret),
+					Secret:     []byte(cfg.SandboxExecSecret),
 					GatewayURL: gwURL,
 					Client:     &http.Client{}, // no timeout: the exec stream is long-lived
 					TTL:        60 * time.Second,
@@ -1128,26 +974,19 @@ func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *st
 // the age keypair: this signs a REFERENCE to an object, never its contents, so
 // it has nothing to do with the key that decrypts a snapshot — which stays in
 // the cluster with the restore Job and never reaches bex-api.
-func wireDiskSnapshots(deps *api.Deps) {
-	deps.DiskSnapshots = apps.NewS3DiskSnapshotLister(apps.S3DiskSnapshotConfig{
-		Endpoint:  os.Getenv("BEX_DISK_SNAPSHOT_ENDPOINT"),
-		Bucket:    os.Getenv("BEX_DISK_SNAPSHOT_BUCKET"),
-		Prefix:    os.Getenv("BEX_DISK_SNAPSHOT_PREFIX"),
-		Region:    os.Getenv("BEX_DISK_SNAPSHOT_REGION"),
-		AccessKey: os.Getenv("BEX_DISK_SNAPSHOT_ACCESS_KEY"),
-		SecretKey: os.Getenv("BEX_DISK_SNAPSHOT_SECRET_KEY"),
-	})
-	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
-		deps.DiskSnapshotSecret = []byte(secret)
+func wireDiskSnapshots(deps *api.Deps, cfg *Config) {
+	deps.DiskSnapshots = apps.NewS3DiskSnapshotLister(cfg.DiskSnapshot)
+	if cfg.ShellTicketSecret != "" {
+		deps.DiskSnapshotSecret = []byte(cfg.ShellTicketSecret)
 	}
 }
 
-func wireAgentSessions(deps *api.Deps) {
+func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key
 	// shared only with the isolated gateway and the browser-reachable gateway
 	// WebSocket origin. Either unset => the ticket verb returns 503 and native
 	// `ssh` is unaffected.
-	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
+	if secret := cfg.ShellTicketSecret; secret != "" {
 		deps.ShellTicketSecret = []byte(secret)
 		// Agent attach deliberately reuses the Browser Web Shell trust key and
 		// DB-backed nonce design. The claims are a distinct ticket type and bind
@@ -1157,87 +996,56 @@ func wireAgentSessions(deps *api.Deps) {
 			deps.SandboxExec.DriverGrantSecret = []byte(secret)
 		}
 	}
-	deps.ShellWSURL = os.Getenv("BEX_SHELL_WS_URL")
-	deps.AgentSessionGatewayURL = os.Getenv("BEX_AGENT_SESSION_GATEWAY_URL")
+	deps.ShellWSURL = cfg.ShellWSURL
+	deps.AgentSessionGatewayURL = cfg.AgentSessionGatewayURL
 	// Optional override of the in-cluster Git smart-HTTP proxy origin. The
 	// sandbox receives this non-secret URL, never a GitHub credential.
-	deps.AgentGitProxyURL = os.Getenv("BEX_AGENT_GIT_PROXY_URL")
+	deps.AgentGitProxyURL = cfg.AgentGitProxyURL
 	// Active-tier sandbox lifecycle (ADR059 D2/D6, w2/m67): idle grace before a
 	// finished session's sandbox is reaped (default 30m; 0 ⇒ ADR054 D6 immediate
 	// reap), and the per-workspace concurrent live-sandbox cap (default 5; 0 ⇒
 	// uncapped).
-	deps.AgentSandboxIdleTTL = zeroableDurationEnv("BEX_AGENT_SANDBOX_IDLE_TTL", 30*time.Minute)
+	deps.AgentSandboxIdleTTL = cfg.AgentSandboxIdleTTL
 	// w5/m80 t002: one turn's wall-clock bound, injected into the sandbox as
 	// BEX_AGENT_TURN_TIMEOUT_MS. Default 30m; a 0/invalid value falls back to the
 	// Service's 30m default (the bound is never disabled — that is the 4h-hang bug
 	// this fixes).
-	deps.AgentTurnTimeout = zeroableDurationEnv("BEX_AGENT_TURN_TIMEOUT", 30*time.Minute)
-	deps.AgentMaxLiveSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
-	deps.MaxBlueprintGroupings = zeroableIntEnv("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
+	deps.AgentTurnTimeout = cfg.AgentTurnTimeout
+	deps.AgentMaxLiveSandboxesPerWorkspace = cfg.AgentMaxLiveSandboxesPerWorkspace
+	deps.MaxBlueprintGroupings = cfg.MaxBlueprintGroupings
 	// Round-11 #3: per-workspace env-group quota (default 100; 0 disables).
-	deps.MaxEnvGroupsPerWorkspace = zeroableIntEnv("BEX_MAX_ENV_GROUPS_PER_WORKSPACE", 100)
+	deps.MaxEnvGroupsPerWorkspace = cfg.MaxEnvGroupsPerWorkspace
 	// ADR075 §2: per-workspace GitHub-connection quota (default 10; 0 disables).
-	deps.MaxGitConnectionsPerWorkspace = zeroableIntEnv("BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE", 10)
+	deps.MaxGitConnectionsPerWorkspace = cfg.MaxGitConnectionsPerWorkspace
 	// codex-security geyRc8 F1: per-workspace registry-credential quota.
-	deps.MaxRegistryCredentialsPerWorkspace = zeroableIntEnv("BEX_MAX_REGISTRY_CREDS_PER_WORKSPACE", 50)
+	deps.MaxRegistryCredentialsPerWorkspace = cfg.MaxRegistryCredentialsPerWorkspace
 	// codex-security round 18: custom-domain cardinality quotas (default 100
 	// per service — the round-12 #3 routes/headers scale — and 500 per
 	// workspace; 0 disables). Beyond either, claims are refused with
 	// CUSTOM_DOMAIN_LIMIT.
-	deps.MaxCustomDomainsPerService = zeroableIntEnv("BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE", 100)
-	deps.MaxCustomDomainsPerWorkspace = zeroableIntEnv("BEX_MAX_CUSTOM_DOMAINS_PER_WORKSPACE", 500)
+	deps.MaxCustomDomainsPerService = cfg.MaxCustomDomainsPerService
+	deps.MaxCustomDomainsPerWorkspace = cfg.MaxCustomDomainsPerWorkspace
 	// ADR059 D3/D5 hibernation (w2/m68, armed w2/m77): the object store enables
 	// the Hibernated tier (reclaim → snapshot, resume → rehydrate). All four
 	// required coordinates unset ⇒ the whole tier is off and reclaim stays
 	// Terminate (byte-identical to w2/m67). A partial set is fatal — a typo'd
 	// Secret key must not silently disable hibernation. Unset/delete the
 	// bex-agent-snapshot Secret to roll back.
-	store, err := agentsessions.NewS3SnapshotStore(agentSnapshotConfigFromEnv())
+	store, err := agentsessions.NewS3SnapshotStore(cfg.AgentSnapshot)
 	if err != nil {
+		// loadConfig validated this config before any side effect; a failure
+		// here means the two disagree, which is a bug.
 		log.Fatalf("bex-api: agent-session hibernation config: %v", err)
 	}
 	if store != nil {
 		deps.AgentSnapshotStore = store
-		log.Printf("bex-api: agent-session hibernation enabled (object store %s)", os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"))
+		log.Printf("bex-api: agent-session hibernation enabled (object store %s)", cfg.AgentSnapshot.Bucket)
 	}
-	deps.AgentSnapshotRetentionTTL = zeroableDurationEnv("BEX_AGENT_SNAPSHOT_RETENTION", 7*24*time.Hour)
-	deps.AgentMaxPinnedSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE", 10)
+	deps.AgentSnapshotRetentionTTL = cfg.AgentSnapshotRetentionTTL
+	deps.AgentMaxPinnedSandboxesPerWorkspace = cfg.AgentMaxPinnedSandboxesPerWorkspace
 }
 
-func agentSnapshotConfigFromEnv() agentsessions.S3SnapshotConfig {
-	return agentsessions.S3SnapshotConfig{
-		Endpoint:  os.Getenv("BEX_AGENT_SNAPSHOT_S3_ENDPOINT"),
-		Bucket:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"),
-		Region:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_REGION"),
-		Prefix:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_PREFIX"),
-		AccessKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY"),
-		SecretKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_SECRET_KEY"),
-	}
-}
-
-// snapshotStoreEgressDomains is the Hibernated-tier object-store host the
-// sandbox curl PUT/GET must reach. Empty when the tier is off. A set-but
-// unparseable endpoint is fatal so a typo cannot arm hibernation with a
-// policy that still NXDOMAINs the presigned URL (w2/m77 live walk, curl 6).
-func snapshotStoreEgressDomains() []string {
-	cfg := agentSnapshotConfigFromEnv()
-	if err := cfg.Validate(); err != nil {
-		log.Fatalf("bex-api: agent-session hibernation config: %v", err)
-	}
-	if strings.TrimSpace(cfg.Bucket) == "" {
-		return nil
-	}
-	host, err := sessionegress.SnapshotEndpointHost(cfg.Endpoint)
-	if err != nil {
-		log.Fatalf("bex-api: agent-session snapshot egress: %v", err)
-	}
-	if host == "" {
-		log.Fatal("bex-api: agent-session snapshot egress: snapshot endpoint host is empty")
-	}
-	return []string{host}
-}
-
-func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.Client, base *core.Base) {
+func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.Client, base *core.Base, cfg *Config) {
 	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
 	// - CloneSecrets: the projector mints clone Secrets for private-repo rows
 	//   created via the internal CP API (store/api.go POST /v1/apps).
@@ -1270,10 +1078,9 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 		// namespace apply while ReconcileOnce collects those errors per-workspace
 		// without ever exiting — so the process would come up healthy, provision
 		// nothing, and keep pruning.
-		cpIdentity := os.Getenv("BEX_CP_IDENTITY")
-		if cpIdentity != "" && len(validation.IsValidLabelValue(cpIdentity)) != 0 {
-			log.Fatalf("bex-api: BEX_CP_IDENTITY %q is not a valid Kubernetes label value", cpIdentity)
-		}
+		// (Validated as a Kubernetes label value in loadConfig, before any
+		// side effect.)
+		cpIdentity := cfg.CPIdentity
 		nsRec := store.NewNamespaceReconciler(cl, st)
 		nsRec.Identity = cpIdentity
 		rec.Identity = cpIdentity
@@ -1297,7 +1104,7 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 
 // startDeliveryWorkers starts the outbound-webhook delivery worker and the
 // native-push consumer; each runs only when its wiring is present.
-func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStore, m members.Mailer, mobilePush pushtransport.Transport, webPush *pushtransport.WebPush, pushMetrics *notifications.PushMetrics, webhookMetrics *webhooks.Metrics) {
+func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st *store.PGStore, m members.Mailer, mobilePush pushtransport.Transport, webPush *pushtransport.WebPush, pushMetrics *notifications.PushMetrics, webhookMetrics *webhooks.Metrics) {
 	// Outbound event webhooks (w3/m11): the delivery worker tails the composed
 	// event feed (deploys + audit_events + service_event_facts — the same rows the events feed reads)
 	// through a durable watermark and POSTs signed notifications to subscribed
@@ -1307,20 +1114,14 @@ func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStor
 	// BEX_WEBHOOK_BACKOFF ("5s,10s,1m") overrides the documented retry schedule
 	// — a dev/verification knob, unset in production.
 	if st != nil {
-		backoff, err := webhooks.ParseBackoff(os.Getenv("BEX_WEBHOOK_BACKOFF"))
-		if err != nil {
-			log.Fatalf("bex-api: %v", err)
-		}
+		backoff := cfg.WebhookBackoff
 		// Terminal deliveries are purged on an age + per-endpoint-count policy
 		// (w1/m67 F3): webhook_deliveries doubles as the dashboard's history view,
 		// so without retention a tenant's ordinary activity grew shared storage
 		// forever. 0 keeps the documented defaults.
-		whRetentionDays := intEnv("BEX_WEBHOOK_RETENTION_DAYS", "0")
-		whKeepPerEndpoint := intEnv("BEX_WEBHOOK_RETENTION_KEEP", "0")
-		whMaxDeliveriesPerWorkspace := zeroableIntEnv(
-			"BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE",
-			webhooks.DefaultMaxDeliveriesPerWorkspace,
-		)
+		whRetentionDays := cfg.WebhookRetention
+		whKeepPerEndpoint := cfg.WebhookKeep
+		whMaxDeliveriesPerWorkspace := cfg.MaxWebhookDeliveriesPerWorkspace
 		whWorker := &webhooks.Worker{
 			Store: st, Mailer: m, Emails: srv.Notifications.Identities, Backoff: backoff,
 			RetentionDays: whRetentionDays, RetentionKeepPerEndpoint: whKeepPerEndpoint,
@@ -1343,7 +1144,7 @@ func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStor
 
 // configureRateLimiters wires the trusted-proxy-aware rate limiters and the
 // pre-auth admission budget onto the server.
-func configureRateLimiters(srv *api.Server) {
+func configureRateLimiters(srv *api.Server, cfg *Config) {
 	// Trusted-proxy CIDRs for rate-limit identity (w4/m33 P2 register,
 	// .pm/w4/029.md report #10). In production every public request's TCP peer
 	// is a Traefik pod, so without this every IP-keyed limiter below keys all
@@ -1352,13 +1153,10 @@ func configureRateLimiters(srv *api.Server) {
 	// limiter derives the client IP from X-Forwarded-For/X-Real-IP only when
 	// the immediate peer is inside one of these CIDRs; unset ⇒ peer IP only,
 	// headers ignored (byte-identical to before). Malformed ⇒ fail closed.
-	trustedProxies, err := core.ParseTrustedProxies(os.Getenv("BEX_TRUSTED_PROXY_CIDRS"))
-	if err != nil {
-		log.Fatalf("bex-api: bad BEX_TRUSTED_PROXY_CIDRS: %v", err)
-	}
+	trustedProxies := cfg.TrustedProxies
 
 	// Rate limiting + request caps (w7/m3). BEX_RATE_LIMIT=0 disables the limiter.
-	rpm, burst := rateLimitEnv("BEX_RATE_LIMIT", "500", "BEX_RATE_BURST", "0")
+	rpm, burst := cfg.RateLimitRPM, cfg.RateLimitBurst
 	srv.RateLimiter = api.NewRateLimiter(rpm, burst) // nil when rpm=0 (disabled)
 	if srv.RateLimiter != nil && srv.APIKeys != nil && srv.APIKeys.Base != nil {
 		srv.RateLimiter.Workspace = srv.APIKeys.Base.Workspace
@@ -1372,7 +1170,7 @@ func configureRateLimiters(srv *api.Server) {
 	// needs the env-derived rpm/burst, so there's no reason its configuration
 	// should wait until after Handler() the way its consumer's construction
 	// must.
-	deviceRPM, deviceBurst := rateLimitEnv("BEX_DEVICE_RATE_LIMIT", "30", "BEX_DEVICE_RATE_BURST", "0")
+	deviceRPM, deviceBurst := cfg.DeviceRateRPM, cfg.DeviceRateBurst
 	srv.DeviceRateLimiter = cliauth.NewDeviceRateLimiter(deviceRPM, deviceBurst)
 
 	// Webhook intake rate limiting (w7/m60). The two unauthenticated intakes
@@ -1383,13 +1181,13 @@ func configureRateLimiters(srv *api.Server) {
 	// delivery pattern hits 10 req/s from one source IP, and both senders retry, so
 	// an unlucky burst-shed self-heals — only an abusive flood is turned away.
 	// BEX_WEBHOOK_RATE_LIMIT=0 disables it (byte-identical to before m60).
-	webhookRPM, webhookBurst := rateLimitEnv("BEX_WEBHOOK_RATE_LIMIT", "600", "BEX_WEBHOOK_RATE_BURST", "0")
+	webhookRPM, webhookBurst := cfg.WebhookRateRPM, cfg.WebhookRateBurst
 	srv.WebhookRateLimiter = api.NewRateLimiter(webhookRPM, webhookBurst) // nil when rpm=0
 
 	// Deploy-hook lookup limiting is a distinct IP budget outside the auth gate.
 	// The hook's inner 6/min token bucket handles a leaked valid credential; this
 	// outer cap sheds random-token enumeration before any Kubernetes API lookup.
-	deployHookLookupRPM, deployHookLookupBurst := rateLimitEnv("BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT", "60", "BEX_DEPLOY_HOOK_LOOKUP_RATE_BURST", "10")
+	deployHookLookupRPM, deployHookLookupBurst := cfg.DeployHookLookupRPM, cfg.DeployHookLookupBurst
 	srv.DeployHookLookupRateLimiter = api.NewRateLimiter(deployHookLookupRPM, deployHookLookupBurst)
 
 	// Pre-auth admission (w1/m67 F1). The per-caller limiter above runs INSIDE
@@ -1400,12 +1198,8 @@ func configureRateLimiters(srv *api.Server) {
 	// request/concurrency partition, so one stolen valid session is shed before
 	// upstream I/O without throttling unrelated SSR users behind the same IP.
 	// BEX_AUTH_FAILURE_LIMIT=0 + BEX_AUTH_MAX_INFLIGHT=0 disables both.
-	authFailureRPM, authFailureBurst := rateLimitEnv("BEX_AUTH_FAILURE_LIMIT", "60", "BEX_AUTH_FAILURE_BURST", "0")
-	authMaxInflight, err := strconv.Atoi(envOr("BEX_AUTH_MAX_INFLIGHT", "64"))
-	if err != nil {
-		log.Fatalf("bex-api: bad BEX_AUTH_MAX_INFLIGHT: %v", err)
-	}
-	srv.AuthAdmission = api.NewAuthAdmission(authFailureRPM, authFailureBurst, authMaxInflight)
+	authFailureRPM, authFailureBurst := cfg.AuthFailureRPM, cfg.AuthFailureBurst
+	srv.AuthAdmission = api.NewAuthAdmission(authFailureRPM, authFailureBurst, cfg.AuthMaxInflight)
 	if srv.AuthAdmission != nil {
 		srv.AuthAdmission.TrustedProxies = trustedProxies
 	}
@@ -1454,13 +1248,4 @@ func waitForDB(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 	return err
-}
-
-// mcpStdio reports whether the binary should run as a stdio MCP server rather
-// than the HTTP service: subcommand `mcp-stdio` or BEX_MCP_STDIO=1.
-func mcpStdio() bool {
-	if os.Getenv("BEX_MCP_STDIO") == "1" {
-		return true
-	}
-	return len(os.Args) > 1 && os.Args[1] == "mcp-stdio"
 }

@@ -273,18 +273,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "所选智能体的可选模型覆盖。",
     description: "Composer (advanced) — model field helper text",
   },
-  "agentSessions.modelEndpointLabel": {
-    message: "模型端点",
-    description: "Composer (advanced) — model endpoint input label",
-  },
-  "agentSessions.modelEndpointPlaceholder": {
-    message: "https://api.example.com",
-    description: "Composer (advanced) — model endpoint input placeholder",
-  },
-  "agentSessions.modelEndpointHint": {
-    message: "模型提供方的可选自定义 HTTPS 端点。",
-    description: "Composer (advanced) — model endpoint field helper text",
-  },
   "agentSessions.egressLabel": {
     message: "出站允许列表",
     description: "Composer (advanced) — extra egress hostnames textarea label",

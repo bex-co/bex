@@ -22,7 +22,6 @@ export interface ComposerValues {
   branch: string;
   agent: AgentOption;
   model: string;
-  modelEndpoint: string;
   /** Raw textarea — one hostname per line (also accepts commas). */
   egress: string;
 }

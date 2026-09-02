@@ -362,7 +362,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	var secretsStore core.SecretKV
 	var envGroupID string
 	if baoURL := os.Getenv("BEX_TEST_OPENBAO_URL"); baoURL != "" {
-		secretsStore = secrets.NewOpenBaoStore(baoURL)
+		secretsStore = secrets.NewOpenBaoStore(baoURL, os.Getenv("BEX_OPENBAO_JWT_PATH"))
 		secretsSvc := &secrets.Service{Base: base, Store: secretsStore}
 		aliceCtx := core.WithIdentity(ctx, core.Identity{Subject: "alice", Method: "session"})
 		if _, err := secretsSvc.SetEnvVar(aliceCtx, "worker", "FOO", secrets.EnvVarWrite{Value: "bar"}); err != nil {

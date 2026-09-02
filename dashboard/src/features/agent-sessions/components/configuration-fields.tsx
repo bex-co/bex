@@ -17,8 +17,11 @@ export interface ConfigurationFieldsProps {
 }
 
 /**
- * The Advanced popover body: branch override, model, model endpoint, and
- * egress allowlist. The agent select lives on the composer toolbar. Reads the
+ * The Advanced popover body: branch override, model, and egress allowlist.
+ * The agent select lives on the composer toolbar. (The model endpoint is NOT
+ * configurable: the backend pins it to the selected agent's registered
+ * provider and rejects anything else, so a field here could only ever produce
+ * an error — .pm/w1/079.md.) Reads the
  * composer's form off `FormProvider` context so values and server-anchored
  * errors round-trip without threading the form instance down.
  */
@@ -59,27 +62,6 @@ export function ConfigurationFields({
               />
             </FormControl>
             <FormDescription>{t("agentSessions.modelHint")}</FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        name="modelEndpoint"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t("agentSessions.modelEndpointLabel")}</FormLabel>
-            <FormControl>
-              <Input
-                {...field}
-                autoComplete="off"
-                inputMode="url"
-                placeholder={t("agentSessions.modelEndpointPlaceholder")}
-              />
-            </FormControl>
-            <FormDescription>
-              {t("agentSessions.modelEndpointHint")}
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}

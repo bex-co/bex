@@ -169,6 +169,14 @@ func invalidAllowlist(reason, entry, message string) error {
 	return core.NewBadRequestError("AGENT_SESSION_EGRESS_ALLOWLIST_INVALID", message, params)
 }
 
+// Validate reports the configuration errors NewManager would surface, so
+// cmd/api can reject a malformed environment during config load — before any
+// startup side effect — rather than after migrations have run (.pm/w1/070.md).
+func (c Config) Validate() error {
+	_, err := c.normalized()
+	return err
+}
+
 func (c Config) normalized() (Config, error) {
 	if len(c.SetupRegistryDomains) == 0 {
 		c.SetupRegistryDomains = slices.Clone(registryDomains)

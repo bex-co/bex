@@ -579,6 +579,22 @@ cmd_up() {
   preflight
   refresh_kubeconfig
 
+  # A stale dashboard/.env (written by `yarn local-bex`) silently breaks every
+  # SSR GraphQL query: a .env VITE_SSR_API_URL beats an UNSET shell var, so a
+  # dashboard started without the printed command's explicit VITE_SSR_API_URL
+  # points SSR at a port nothing serves — every detail page cold-loads as
+  # "Something went wrong" until the client self-heals (.pm/w1/080.md).
+  if [ -f dashboard/.env ] && grep -q '^VITE_SSR_API_URL=' dashboard/.env; then
+    local pinned_ssr
+    pinned_ssr=$(sed -n 's/^VITE_SSR_API_URL=//p' dashboard/.env | tail -1)
+    if [ "$pinned_ssr" != "http://localhost:$BEX_API_PORT/graphql" ]; then
+      echo "WARNING: dashboard/.env pins VITE_SSR_API_URL=$pinned_ssr — not this env's http://localhost:$BEX_API_PORT/graphql."
+      echo "         Start the dashboard with the exact command printed below (its explicit"
+      echo "         VITE_SSR_API_URL wins over .env); omitting it leaves every SSR GraphQL"
+      echo "         query failing with ECONNREFUSED and detail pages flashing an error."
+    fi
+  fi
+
   echo "==> control-plane platform label"
   # Base values select bex.co/pool=platform; local Ory overlays add a
   # control-plane selector because OrbStack cannot route worker pods reliably.
@@ -957,8 +973,18 @@ cmd_agent_up() {
   for img in bex-lego:dev opensandbox-server:0.2.2-local \
     opensandbox-controller:v0.2.0-bex bex-agent-sandbox:dev; do
     for node in $(kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); do
-      docker exec "$node" ctr -n k8s.io images ls -q 2>/dev/null |
-        grep -qx "docker.io/library/$img" && continue
+      case " $AGENT_RELOAD_IMAGES " in
+      *" $img "*)
+        # Rebuilt with a new ID: the node's same-named tag is stale — replace
+        # it (the by-name skip below would otherwise keep the old code running
+        # while the rollout "succeeds", .pm/w1/081.md).
+        docker exec "$node" ctr -n k8s.io images rm "docker.io/library/$img" >/dev/null 2>&1 || true
+        ;;
+      *)
+        docker exec "$node" ctr -n k8s.io images ls -q 2>/dev/null |
+          grep -qx "docker.io/library/$img" && continue
+        ;;
+      esac
       echo "    $img -> $node"
       docker save "$img" | docker exec -i "$node" ctr -n k8s.io images import - >/dev/null
     done
@@ -1058,20 +1084,71 @@ EOF
 # a local Dockerfile: deploy/opensandbox/server.Dockerfile pins its python base by
 # a single-architecture DIGEST, so on Apple Silicon it yields an amd64 image a
 # local arm64 containerd cannot exec. The other three build natively.
+#
+# An image is rebuilt when it is missing, when any file under its build source
+# is newer than the image (a code change must reach the cluster — the old
+# build-only-when-absent guard silently ran stale gateway/bex-api code,
+# .pm/w1/081.md), or when AGENT_REBUILD=1 forces it. Images whose ID actually
+# changed are recorded in AGENT_RELOAD_IMAGES so the node-load loop below
+# replaces the same-named stale copy in each node's containerd; the
+# config-revision stamp on the Deployments then rolls the pods.
+
+# image_stale <image> <src>... — true when the image is missing, AGENT_REBUILD=1,
+# or any file under a src path is newer than the image's Created timestamp.
+image_stale() {
+  local img="$1"
+  shift
+  if [ "${AGENT_REBUILD:-0}" = "1" ]; then return 0; fi
+  local created
+  created=$(docker image inspect -f '{{.Created}}' "$img" 2>/dev/null) || return 0
+  created="${created%%.*}Z" # trim fractional seconds for find(1)'s -newermt
+  local src
+  for src in "$@"; do
+    if [ -n "$(find "$src" -newermt "$created" -print -quit 2>/dev/null)" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# agent_mark_reload <image> <previous-id> — record the image for force-reload
+# when the rebuild produced a different image ID (a fully-cached rebuild of an
+# unchanged tree is a no-op and must not churn the nodes).
+agent_mark_reload() {
+  local now
+  now=$(docker image inspect -f '{{.Id}}' "$1")
+  if [ "$now" != "$2" ]; then AGENT_RELOAD_IMAGES="$AGENT_RELOAD_IMAGES $1"; fi
+  return 0
+}
+
 agent_build_images() {
-  docker image inspect bex-agent-sandbox:dev >/dev/null 2>&1 ||
+  AGENT_RELOAD_IMAGES=""
+  local before
+  if image_stale bex-agent-sandbox:dev lego; then
+    before=$(docker image inspect -f '{{.Id}}' bex-agent-sandbox:dev 2>/dev/null || true)
     (cd lego && docker build -q -f agent-image/Dockerfile -t bex-agent-sandbox:dev . >/dev/null)
-  docker image inspect bex-lego:dev >/dev/null 2>&1 ||
+    agent_mark_reload bex-agent-sandbox:dev "$before"
+  fi
+  if image_stale bex-lego:dev lego; then
+    before=$(docker image inspect -f '{{.Id}}' bex-lego:dev 2>/dev/null || true)
     (cd lego && docker build -q -t bex-lego:dev . >/dev/null)
-  docker image inspect opensandbox-server:0.2.2-local >/dev/null 2>&1 ||
+    agent_mark_reload bex-lego:dev "$before"
+  fi
+  if image_stale opensandbox-server:0.2.2-local deploy/opensandbox "$AGENT_TEMPLATES/opensandbox-server.local.Dockerfile"; then
+    before=$(docker image inspect -f '{{.Id}}' opensandbox-server:0.2.2-local 2>/dev/null || true)
     docker build -q -f "$AGENT_TEMPLATES/opensandbox-server.local.Dockerfile" \
       -t opensandbox-server:0.2.2-local deploy/opensandbox >/dev/null
+    agent_mark_reload opensandbox-server:0.2.2-local "$before"
+  fi
   # The chart's image helper prepends "v" to a semver-looking tag, so the built
   # tag must already carry it or the Deployment references an image that is not
   # on the node.
-  docker image inspect opensandbox-controller:v0.2.0-bex >/dev/null 2>&1 ||
+  if image_stale opensandbox-controller:v0.2.0-bex deploy/opensandbox; then
+    before=$(docker image inspect -f '{{.Id}}' opensandbox-controller:v0.2.0-bex 2>/dev/null || true)
     docker build -q -f deploy/opensandbox/controller.Dockerfile \
       -t opensandbox-controller:v0.2.0-bex deploy/opensandbox >/dev/null
+    agent_mark_reload opensandbox-controller:v0.2.0-bex "$before"
+  fi
 }
 
 # agent_seed_openbao — dev-mode OpenBao needs no init/unseal, only the kubernetes

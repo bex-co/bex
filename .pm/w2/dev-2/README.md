@@ -65,6 +65,7 @@ command):
 
 ```sh
 cd dashboard && VITE_API_URL=http://localhost:54020/graphql \
+  VITE_SSR_API_URL=http://localhost:54020/graphql \
   VITE_KRATOS_PUBLIC_URL=http://localhost:51020 yarn dev --port 50020
 ```
 
@@ -189,6 +190,7 @@ Start the dashboard with the stream origin pointed at the gateway:
 cd dashboard && HYDRA_ADMIN_URL=http://localhost:52020 \
   HYDRA_PUBLIC_URL=http://localhost:58020 \
   VITE_API_URL=http://localhost:54020/graphql \
+  VITE_SSR_API_URL=http://localhost:54020/graphql \
   VITE_KRATOS_PUBLIC_URL=http://localhost:51020 \
   VITE_KRATOS_SSR_URL=http://localhost:51020 \
   VITE_AGENT_STREAM_URL=http://localhost:62020 \
