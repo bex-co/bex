@@ -842,9 +842,6 @@ func (b *Base) AuthorizeFreshOn(ctx context.Context, relation, object string) er
 // object a plain Authorize resolves. A workspace-resolution error is returned as
 // a refusal, matching Authorize.
 func (b *Base) AuthorizeFresh(ctx context.Context, relation string) error {
-	if b.Authz == nil {
-		return nil
-	}
 	object, err := b.callerWorkspace(ctx)
 	if err != nil {
 		return err

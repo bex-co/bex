@@ -61,6 +61,11 @@ var scopeClassOverrides = map[string]string{
 	"MCP get_env_group_var":                            core.OpClassSensitive,
 	"MCP get_env_group_secret_file":                    core.OpClassSensitive,
 
+	// Linking materializes every environment-group value in App workload code.
+	"REST POST /v1/env-groups/{id}/services/{serviceId}": core.OpClassSensitive,
+	"GQL Mutation.linkEnvGroup":                          core.OpClassSensitive,
+	"MCP link_env_group":                                 core.OpClassSensitive,
+
 	// Datastore connection info, SQL text, dump URLs, live query text.
 	"REST GET /v1/postgres/{id}/connection-info":  core.OpClassSensitive,
 	"REST POST /v1/postgres/{id}/query":           core.OpClassSensitive,

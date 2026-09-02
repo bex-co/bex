@@ -367,6 +367,53 @@ func TestDeployStackAppliesEnvGroupsLinksAndSeeds(t *testing.T) {
 	}
 }
 
+func TestDeployStackFromGroupRequiresSensitiveBeforeWrites(t *testing.T) {
+	const manifest = `
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: attacker:1}
+    envVars:
+      - {fromGroup: shared}
+`
+	groups := newFakeEnvGroups("shared")
+	seeder := &fakeSeeder{}
+	existing := sampleApp("web")
+	existing.Spec.Image = "trusted:1"
+	existing.Spec.EnvFromSecrets = []string{"evg-shared-env"}
+	svc, cl := newBlueprintEnvService(groups, seeder, existing)
+	writeOnly := core.WithIdentity(context.Background(), core.Identity{
+		Subject: "writer", Method: "oauth2", Human: true,
+		CanonicalScopes: core.ScopeRead + " " + core.ScopeWrite,
+	})
+
+	if _, err := svc.DeployStack(writeOnly, DeployRequest{Manifest: manifest}); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("write-only Blueprint fromGroup: %v, want ErrForbidden", err)
+	}
+	if len(groups.applied) != 0 || len(groups.links) != 0 || len(seeder.seeds) != 0 {
+		t.Fatalf("sensitive denial occurred after writes: groups=%v links=%v seeds=%v", groups.applied, groups.links, seeder.seeds)
+	}
+	var app appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &app); err != nil {
+		t.Fatalf("get unchanged service: %v", err)
+	}
+	if app.Spec.Image != "trusted:1" {
+		t.Fatalf("sensitive denial replaced linked workload image with %q", app.Spec.Image)
+	}
+
+	allowed := core.WithIdentity(context.Background(), core.Identity{
+		Subject: "developer", Method: "oauth2", Human: true,
+		CanonicalScopes: core.ScopeRead + " " + core.ScopeWrite + " " + core.ScopeSensitive,
+	})
+	if _, err := svc.DeployStack(allowed, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("write+sensitive Blueprint fromGroup: %v", err)
+	}
+	if len(groups.links) != 1 || groups.links[0] != "shared->web" {
+		t.Fatalf("allowed Blueprint did not link group: %v", groups.links)
+	}
+}
+
 func TestDeployStackSeedsSuppliedSyncFalsePrompt(t *testing.T) {
 	groups := newFakeEnvGroups()
 	seeder := &fakeSeeder{}
