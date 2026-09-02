@@ -1,6 +1,6 @@
 # w6 · m123 — A failed build tells the tenant nothing true: the failure reason is Kubernetes internals, the duration is 0s, and buildkit's error never reaches the log
 
-**Worker:** worker6 **Goal:** a tenant whose build fails reads a sentence that names the cause, over a duration that matches reality, with the failing phase's own error in the log **Status:** in_progress
+**Worker:** worker6 **Goal:** a tenant whose build fails reads a sentence that names the cause, over a duration that matches reality, with the failing phase's own error in the log **Status:** done
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | ---- | ----------------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Stop shipping the raw Job message; use the failure tail the build already captures           | 60m | —          | — **DONE**
 | t002 | Stop stamping `started_at` from a terminal-skip transition, and carry the real duration      | 60m | —          | — **DONE**
-| t003 | Find out why buildkit's output never reaches the build log, and fix it                       | 60m | —          |
-| t004 | Render parity                                                                                | 25m | t001, t002, t003 |
-| t005 | Simplify                                                                                     | 20m | t004       |
-| t006 | Test coverage                                                                                | 40m | t004       |
-| t007 | Closeout                                                                                     | 15m | t005, t006 |
+| t003 | Find out why buildkit's output never reaches the build log, and fix it                       | 60m | —          | — **DONE**
+| t004 | Render parity                                                                                | 25m | t001, t002, t003 | — **DONE**
+| t005 | Simplify                                                                                     | 20m | t004       | — **DONE**
+| t006 | Test coverage                                                                                | 40m | t004       | — **DONE**
+| t007 | Closeout                                                                                     | 15m | t005, t006 | — **DONE**
 
 ## Definition of done
 
@@ -120,3 +120,17 @@ t001 + t002 are implemented, tested, and green locally (`make test`, backend `go
 - **Dashboard:** no change needed — `formatDeployDuration` returns null for an absent `startedAt` (renders an em-dash), and `0s` came only from the collapsed timestamps.
 
 **Remains for closeout:** deploy operator + backend + shipper config, then t003's live acceptance (the fixture's log carries buildkit's error; a successful build shows progress output), t004's parity probes (REST/GraphQL/MCP, deploy detail page, and the **email** — never opened by the hunt), t005/t006 residue if any, and t007's live DoD re-run + board close.
+
+## Closed 2026-09-02 — DoD verified live on production
+
+Deployed in `bcd05c6cf` (platform images from `9ba9f912a538`, pin `8cbb595d6`). Fixture recreated per the DoD: free `web_service` `qa-20260901-badbuild` (`srv-dabs7s4v798c73fir27g`) on the public repo with `dockerfilePath: ./NoSuchDockerfile`, deploy `dep-dabs7s4v798c73fir280`.
+
+- **The failure reason names the cause.** `failureReason` = `build failed in the docker build step:` + buildkit's own tail ending `error: failed to solve: failed to read dockerfile: open ./NoSuchDockerfile: no such file or directory` — and contains **none** of `PodFailurePolicy`, `bex-build/`, `bld-tea-`, `FailJob rule`, `exit code 90`.
+- **The duration is real.** `createdAt 06:36:32.52Z` → `startedAt 06:37:28Z` (the operator's recorded build window applied to the queued→build_failed skip) → `finishedAt 06:37:51.99Z`. The deploy detail page shows **Duration: 23s** and the Events tab renders `Deploy ended … 23s` — not `0s` — plus `Build started` / `Build ended (Failed)` facts at the evidenced times.
+- **The log carries the failing phase's error.** The build log holds buildkit's own `#1 [internal] load build definition from ./NoSuchDockerfile` … `error: failed to solve: failed to read dockerfile` lines (zero buildkit output before the fix).
+- **The banner sorts first.** `==> Building from …@main` lands at `06:37:28`, **before** the clone and buildkit output it introduces; `==> Build failed` closes the log.
+- **Class split survives.** Tenant vs infra still produce distinct condition reasons and tenant sentences (`TestBuildFailureClassesStayDistinct`); the FaultInfra / FaultTimeout tenant strings were not triggered live and remain code+test-verified — recorded plainly.
+- **Successful deploys untouched.** Fresh control `qa-20260901-hello` (`srv-dabs8rcv798c73fir2e0`, native build) went live with distinct real timestamps (`06:38:37` → `06:39:51` → `06:40:51`) and **82 buildkit step-progress lines** in its build log; pre-existing history re-read as a second control (live/deactivated distinct starts; canceled still has no `startedAt`).
+- **Parity (t004).** REST `/v1/services/{id}/deploys`, GraphQL `deploys(serviceId:…)`, and MCP `list_deploys` returned identical `failureReason`/`startedAt`/`finishedAt`. Deploy detail page and Events tab render the cause untruncated (screenshots `m123-verify-deploy-detail.png`, `m123-verify-events-tab.png`, session-local under `.playwright-mcp/`). **Email:** unexercised (no QA-mailbox access); it rides m79's channel off the same `failure_reason` column every verified surface reads. ADR018: no row — this restores parity rather than diverging.
+- **t005/t006.** Simplify ran as a manual review pass over the diff (no behaviour-preserving change worth landing beyond what shipped; the `buildFaultViews` single-table invariant intact); test coverage per the implementation update, all suites green (`make test`, backend `go test ./...` vs real Postgres, `make lint`).
+- **Cleanup.** Both fixtures deleted; `GET` → **404** each.
