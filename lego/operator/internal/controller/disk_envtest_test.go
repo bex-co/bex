@@ -400,11 +400,24 @@ var _ = Describe("Persistent disk snapshots", func() {
 		Expect(container.Command).To(Equal([]string{"/disk-snapshot"}))
 		Expect(container.Args).To(Equal([]string{"backup"}))
 
-		// The volume is mounted READ-ONLY: a backup must not be able to modify
-		// the data it is copying.
+		// The CONTAINER's bind is read-only — a backup must not be able to
+		// modify the data it is copying — but the claim SOURCE must not be:
+		// a read-only source makes the CSI node-publish ro, and on the LUKS
+		// class that direct ro mapper mount is refused (EBUSY) while the
+		// service's own pod holds the device rw, so a running app could never
+		// be backed up (w2/m86 prod drill).
 		Expect(container.VolumeMounts).To(HaveLen(1))
 		Expect(container.VolumeMounts[0].ReadOnly).To(BeTrue())
 		Expect(pod.Volumes[0].PersistentVolumeClaim.ClaimName).To(Equal(diskPVCName(app.Name)))
+		Expect(pod.Volumes[0].PersistentVolumeClaim.ReadOnly).To(BeFalse(),
+			"a ro claim source cannot node-publish beside the app's rw LUKS mount")
+
+		// Root + DAC bypass, or the backup cannot read a real ext4 volume
+		// (root-owned lost+found, arbitrary tenant uids) — the operator image
+		// itself is USER 65532.
+		Expect(container.SecurityContext.RunAsUser).To(HaveValue(BeEquivalentTo(0)))
+		Expect(container.SecurityContext.Capabilities.Add).To(ConsistOf(
+			corev1.Capability("DAC_OVERRIDE"), corev1.Capability("CHOWN"), corev1.Capability("FOWNER")))
 
 		// Encryption is not optional: the recipient must reach the Job, and the
 		// DECRYPT half must not.
@@ -565,6 +578,12 @@ var _ = Describe("Persistent disk restore", func() {
 		// The volume is mounted WRITABLE here — unlike a backup, this rewrites it.
 		Expect(container.VolumeMounts).To(HaveLen(1))
 		Expect(container.VolumeMounts[0].ReadOnly).To(BeFalse())
+		// Root + CHOWN/FOWNER/DAC_OVERRIDE: the wipe removes root-owned
+		// entries and the extract re-creates archived ownership — impossible
+		// at the image's own uid 65532 (w2/m86 drill).
+		Expect(container.SecurityContext.RunAsUser).To(HaveValue(BeEquivalentTo(0)))
+		Expect(container.SecurityContext.Capabilities.Add).To(ConsistOf(
+			corev1.Capability("DAC_OVERRIDE"), corev1.Capability("CHOWN"), corev1.Capability("FOWNER")))
 		// One attempt: re-running a destructive restore automatically would
 		// repeat the wipe.
 		Expect(*job.Spec.BackoffLimit).To(BeEquivalentTo(0))

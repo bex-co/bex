@@ -226,11 +226,41 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		container.VolumeMounts = []corev1.VolumeMount{{
 			Name: diskVolumeName, MountPath: diskSnapshotMountPath, ReadOnly: readOnly,
 		}}
+		// Volume-touching commands run as root with exactly the DAC bypass a
+		// backup needs. The operator image is USER 65532, and a non-root uid
+		// cannot read a real ext4 volume: lost+found is root-owned 0700, and
+		// tenant files carry whatever uid the service wrote them with — so
+		// every backup died with "permission denied" on the first real PVC
+		// (found live by the w2/m86 prod drill; the CAPD e2e's local-path
+		// volume is a 777 hostPath dir, which hid it). fsGroup is not an
+		// alternative: kubelet would recursively chown/chmod the tenant's
+		// files at publish time. All three added capabilities are on the PSS
+		// baseline allowlist (tenant namespaces enforce baseline); restore
+		// additionally needs CHOWN/FOWNER to re-create archived ownership, and
+		// backup's read-only bind makes the write caps inert there.
+		container.SecurityContext = &corev1.SecurityContext{
+			RunAsUser:                ptr.To(int64(0)),
+			RunAsGroup:               ptr.To(int64(0)),
+			AllowPrivilegeEscalation: ptr.To(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+				Add:  []corev1.Capability{"DAC_OVERRIDE", "CHOWN", "FOWNER"},
+			},
+			SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+		}
+		// The claim SOURCE is deliberately never ReadOnly, only the container's
+		// bind above. A read-only source makes the CSI node-publish itself ro,
+		// and on the LUKS class that is a direct `mount -o ro` of the mapper
+		// device — which the kernel refuses (EBUSY) while the service's own pod
+		// holds the same device rw, so a running app's nightly backup could
+		// never mount (found live by the w2/m86 prod drill). Publishing rw
+		// shares the existing superblock; the container still sees a read-only
+		// bind, which is the guarantee that matters.
 		podSpec.Volumes = []corev1.Volume{{
 			Name: diskVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: diskPVCName(app.Name), ReadOnly: readOnly,
+					ClaimName: diskPVCName(app.Name),
 				},
 			},
 		}}

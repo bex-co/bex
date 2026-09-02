@@ -66,6 +66,13 @@ These are not obvious from the code and each one failed _late_ the first time �
 - **`restoreSnapshot` takes the full object key** — `<workspace>/<app>/<timestamp>.tar.gz.age` — not just the filename. A bare filename is refused by the prefix-confinement check that stops one disk restoring another's snapshot.
 - **The restore Job is named per-App and is not recreated while it exists.** Changing `spec.disk.restoreSnapshot` after a failed attempt has no effect until the old Job is deleted.
 
+The first **production** arming (w2/m86, 2026-09-02 — everything above came from the CAPD drill, whose `local-path` volumes are 777 hostPath directories) added four more, each also invisible until it failed late:
+
+- **A first-ever `provision` used to die between minting and persisting the IAM keys.** The age-keypair probe (`kubectl get secret | jq`) exits non-zero on a cluster that has never held the Secret, and `set -o pipefail` aborted the whole run there — after Wasabi had shown the new access keys the one time it ever will. Recovery is the script's own message (delete the keys in Wasabi IAM, re-run); the probe now tolerates absence.
+- **The operator's copy of `bex-disk-snapshot` must ALSO exist in `bex-system`, carrying `BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY`.** The manager manifest arms the recipient key through a `secretKeyRef` on that Secret, and the script previously installed it into tenant namespaces only, with the AWS keys only — so on any manifest-armed cluster `DiskSnapshots` never reported configured and **no backup CronJob was ever created**. The script now installs the bex-system copy with all three entries.
+- **The snapshot Job must node-publish the claim read-write** (the container's bind stays read-only). A `ReadOnly` claim source becomes a direct `mount -o ro` of the LUKS mapper device, which the kernel refuses (`EBUSY`) while the service's pod holds the same device rw — a running app could never be backed up on the encrypted class.
+- **The snapshot/restore container must run as root with `DAC_OVERRIDE`/`CHOWN`/`FOWNER`** (all PSS-baseline-allowed; the operator image itself is `USER 65532`). A real ext4 volume has a root-owned 0700 `lost+found` and tenant files carry arbitrary uids, so a non-root backup dies with `permission denied` on its first object — on **any** class, not just LUKS.
+
 ### If your object store is on a private network
 
 Tenant namespaces carry an `allow-internet-egress` policy that permits `0.0.0.0/0` **except** RFC1918 ranges. Wasabi is public so production is unaffected, but a self-hosted MinIO on a private address is unreachable from the backup Job by design (ADR043). Either give the store a publicly-routable address or add an explicit egress allowance for it.
