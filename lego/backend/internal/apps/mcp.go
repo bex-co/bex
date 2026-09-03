@@ -362,11 +362,12 @@ type previewBlueprintArgs struct {
 	Path   string `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
 }
 
-// generateBlueprintArgs is generate_blueprint's input (w8/m22).
+// generateBlueprintArgs is generate_blueprint's input (w8/m22 + w4/040).
 type generateBlueprintArgs struct {
 	ServiceIDs  []string `json:"serviceIds,omitempty" jsonschema:"service ids (srv-…) to export"`
 	PostgresIDs []string `json:"postgresIds,omitempty" jsonschema:"Postgres ids (dpg-…) to export"`
 	KeyValueIDs []string `json:"keyValueIds,omitempty" jsonschema:"Key Value ids (red-…) to export"`
+	EnvGroupIDs []string `json:"envGroupIds,omitempty" jsonschema:"Environment group ids (evg-…) to export as root envVarGroups + fromGroup links"`
 }
 
 // createBlueprintArgs is create_blueprint's input (w2/m62).
@@ -978,13 +979,14 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "generate_blueprint",
-		Description: "Export selected existing resources (services, Postgres, Key Value) as a render.yaml Blueprint manifest — Render's dashboard-only Generate Blueprint as an API. Env vars keep literal values; secret-backed ones emit sync:false name-only (no secret value is ever included); datastore wiring emits fromDatabase/fromService references when the target is in the same selection. The manifest is self-validated against bex's own Blueprint contract before it is returned, and creating it as a blueprint against a repo adopts the same resources by name. bex extension (Render has no generate API).",
+		Description: "Export selected existing resources (services, Postgres, Key Value, environment groups) as a render.yaml Blueprint manifest — Render's dashboard-only Generate Blueprint as an API. Env vars keep literal values; secret-backed ones emit sync:false name-only (no secret value is ever included); datastore wiring emits fromDatabase/fromService references when the target is in the same selection; selected env groups emit root envVarGroups (keys as generateValue) and per-service fromGroup links (unselected linked groups degrade to sync:false keys). The manifest is self-validated against bex's own Blueprint contract before it is returned, and creating it as a blueprint against a repo adopts the same resources by name. bex extension (Render has no generate API).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in generateBlueprintArgs) (*mcp.CallToolResult, GenerateBlueprintResult, error) {
 		out, err := s.GenerateBlueprint(ctx, GenerateBlueprintRequest{
 			OwnerID:     core.NamedWorkspace(ctx),
 			ServiceIDs:  in.ServiceIDs,
 			PostgresIDs: in.PostgresIDs,
 			KeyValueIDs: in.KeyValueIDs,
+			EnvGroupIDs: in.EnvGroupIDs,
 		})
 		return nil, out, err
 	})

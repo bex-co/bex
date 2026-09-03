@@ -26,6 +26,11 @@ vi.mock("@/features/databases/hooks/use-databases", () => ({
 vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
   useKeyValues: () => ({ keyValues: [] }),
 }));
+vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
+  useEnvGroups: () => ({
+    groups: [{ id: "evg-1", name: "shared-config" }],
+  }),
+}));
 
 beforeEach(() => generate.mockClear());
 
@@ -42,6 +47,7 @@ describe("GenerateBlueprintDialog", () => {
 
     await user.click(screen.getByText("web"));
     await user.click(screen.getByText("app-db"));
+    await user.click(screen.getByText("shared-config"));
     expect(button).toBeEnabled();
     await user.click(button);
 
@@ -51,6 +57,7 @@ describe("GenerateBlueprintDialog", () => {
         serviceIds: ["srv-1"],
         postgresIds: ["dpg-1"],
         keyValueIds: [],
+        envGroupIds: ["evg-1"],
       },
     });
     expect(await screen.findByText(/services:/)).toBeInTheDocument();

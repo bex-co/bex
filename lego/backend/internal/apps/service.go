@@ -190,6 +190,10 @@ type Service struct {
 	// generation (w8/m22) — never values. nil ⇒ those vars are omitted from
 	// generated manifests.
 	EnvNames EnvNameSource
+	// EnvGroupExport lists selected env groups' names + env key names for
+	// Blueprint generation (w4/040) — never values. nil ⇒ env-group selection
+	// and fromGroup linkage are omitted from generated manifests.
+	EnvGroupExport EnvGroupExportSource
 	// CreateSecrets, when set (OpenBao is wired), persists and materializes what
 	// a service is born with: the official CLI's create-time secretFiles payload
 	// and the create request's literal env vars (w6/m45). nil makes a create

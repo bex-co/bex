@@ -1111,6 +1111,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"serviceIds":  gqlutil.Arg(graphql.NewList(graphql.String)),
 				"postgresIds": gqlutil.Arg(graphql.NewList(graphql.String)),
 				"keyValueIds": gqlutil.Arg(graphql.NewList(graphql.String)),
+				"envGroupIds": gqlutil.Arg(graphql.NewList(graphql.String)),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.GenerateBlueprint(p.Context, GenerateBlueprintRequest{
@@ -1118,6 +1119,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					ServiceIDs:  gqlutil.StringList(p.Args["serviceIds"]),
 					PostgresIDs: gqlutil.StringList(p.Args["postgresIds"]),
 					KeyValueIDs: gqlutil.StringList(p.Args["keyValueIds"]),
+					EnvGroupIDs: gqlutil.StringList(p.Args["envGroupIds"]),
 				})
 			},
 		},

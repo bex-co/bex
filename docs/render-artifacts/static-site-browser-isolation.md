@@ -11,7 +11,7 @@ The harness maps two sibling hosts per suffix to one loopback HTTPS server. Tena
 | Service Worker registration | origin-local | origin-local |
 | Canonical PSL exact entry | `onrender.com` present | `onbex.co` absent |
 
-This is a genuine browser-domain divergence, not a REST/GraphQL/MCP/dashboard schema gap. The capture is retained as evidence of why `onbex.co` cannot be a shared tenant suffix. As of 2026-08-08 production leaves `BEX_BASE_DOMAIN` unset, both serving processes reject ordinary registrable domains, and custom domains remain available.
+This is a genuine browser-domain divergence, not a REST/GraphQL/MCP/dashboard schema gap. The capture is retained as evidence of the cross-tenant cookie risk on `onbex.co`. **Current posture (corrected 2026-08-18; [`.pm/DO_NOT_DO.md` `#PSL`](../../.pm/DO_NOT_DO.md)):** the risk is accepted before open signup; production keeps `BEX_BASE_DOMAIN=onbex.co` (unsetting caused the second production outage). Interim tenant guidance is host-only / `__Host-` cookies. Neither emptying the base domain nor submitting `onbex.co` to the PSL is currently authorized. Manager/static-server still refuse an ordinary registrable _replacement_ that is not a PRIVATE-section Public Suffix.
 
 Reproduce the historical unsafe behavior diagnostically:
 

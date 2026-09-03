@@ -580,6 +580,11 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "服务已被唤醒",
     description: "Event label — service_woken",
   },
+  "webhooks.event.service_moved": {
+    message: "服务已移动",
+    description:
+      "Event label — service_moved (bex extension: project/environment placement change)",
+  },
   "webhooks.event.server_restarted": {
     message: "服务器已重启",
     description: "Event label — server_restarted",

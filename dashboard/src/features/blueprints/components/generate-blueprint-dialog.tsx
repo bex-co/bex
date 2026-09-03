@@ -17,6 +17,7 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
+import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
 import { GenerateBlueprintDocument } from "@/graphql/definitions";
 
 function SelectableList({
@@ -53,9 +54,10 @@ function SelectableList({
 }
 
 /**
- * Render's "Generate Blueprint" for bex (w8/m22): select existing resources,
- * preview the generated render.yaml (secret values omitted as sync:false),
- * copy or download it. Nothing is persisted server-side.
+ * Render's "Generate Blueprint" for bex (w8/m22 + w4/040): select existing
+ * resources (including env groups), preview the generated render.yaml (secret
+ * values omitted as sync:false / generateValue), copy or download it. Nothing
+ * is persisted server-side.
  */
 export function GenerateBlueprintDialog({
   open,
@@ -69,6 +71,7 @@ export function GenerateBlueprintDialog({
   const { services } = useServices();
   const { databases } = useDatabases();
   const { keyValues } = useKeyValues();
+  const { groups: envGroups } = useEnvGroups();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [manifest, setManifest] = useState<string | null>(null);
   const [generate, { loading }] = useLazyQuery(GenerateBlueprintDocument, {
@@ -87,8 +90,16 @@ export function GenerateBlueprintDialog({
     () => keyValues.filter((k) => selected.has(k.id)).map((k) => k.id),
     [keyValues, selected],
   );
+  const envGroupIds = useMemo(
+    () => envGroups.filter((g) => selected.has(g.id)).map((g) => g.id),
+    [envGroups, selected],
+  );
   const selectionEmpty =
-    serviceIds.length + postgresIds.length + keyValueIds.length === 0;
+    serviceIds.length +
+      postgresIds.length +
+      keyValueIds.length +
+      envGroupIds.length ===
+    0;
 
   function toggle(id: string, next: boolean) {
     setSelected((current) => {
@@ -111,6 +122,7 @@ export function GenerateBlueprintDialog({
           serviceIds,
           postgresIds,
           keyValueIds,
+          envGroupIds,
         },
       });
       const out = res.data?.generateBlueprint;
@@ -170,6 +182,12 @@ export function GenerateBlueprintDialog({
             <SelectableList
               label={t("blueprints.previewKeyValue")}
               items={keyValues}
+              selected={selected}
+              onToggle={toggle}
+            />
+            <SelectableList
+              label={t("blueprints.previewEnvGroups")}
+              items={envGroups}
               selected={selected}
               onToggle={toggle}
             />

@@ -2792,6 +2792,7 @@ export type QueryEnvironmentsArgs = {
 
 
 export type QueryGenerateBlueprintArgs = {
+  envGroupIds?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   keyValueIds?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   postgresIds?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;

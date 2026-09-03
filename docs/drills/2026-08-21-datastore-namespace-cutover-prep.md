@@ -59,7 +59,7 @@ The restored instance carried the source's own database name, confirming the arc
 - NetworkPolicies `allow-beancount-forum-data-egress`, `allow-datastore-control-ingress`
 - Copied datastore Secrets in `<ws>`: `dpg-…-app` ×3, `red-d9p49kdrtmes73c34ovg`
 
-**Keep — do not remove:** the Ingresses `…-beancount-forum-ms`, `…-tianpan-forum`, `…-blockeden-forum`. Per the 2026-08-09 correction they are the only routing for those hosts; production runs with `BEX_BASE_DOMAIN` unset by deliberate security decision.
+**Keep — do not remove:** the Ingresses `…-beancount-forum-ms`, `…-tianpan-forum`, `…-blockeden-forum`. Per the 2026-08-09 correction they may still be the only routing for those hosts if operator-owned routes are absent; production keeps `BEX_BASE_DOMAIN=onbex.co` ([`.pm/DO_NOT_DO.md` `#PSL`](../../.pm/DO_NOT_DO.md)).
 
 **Excluded from the migration set:** `red-da4086iii7bs73drbqh0` (`blockeden-forum-redis`, plan standard) was created independently on 2026-08-21 and is **already** in the tenant namespace, `Ready`. It needs no cutover, and is incidental evidence that provisioning into `<ws>` now works.
 

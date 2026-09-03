@@ -63,13 +63,32 @@ describe("catalogEntries (w1/m49/t002)", () => {
     const entries = catalogEntries(["deploy_started", "service_resumed"]);
     expect(entries.map((e) => e.groupKey)).toEqual(["deploy", "suspension"]);
   });
+
+  it("humanizes service_moved as a known single (not Other/raw)", () => {
+    const entries = catalogEntries(["service_moved", "zz_mystery_event"]);
+    expect(entries).toEqual([
+      {
+        groupKey: null,
+        events: [
+          { type: "service_moved", labelKey: "webhooks.event.service_moved" },
+        ],
+      },
+      {
+        groupKey: "other",
+        events: [{ type: "zz_mystery_event", labelKey: null }],
+      },
+    ]);
+  });
 });
 
 describe("EventPicker", () => {
   it("renders human labels for known keys and raw text for unknown ones", () => {
-    render(<Harness eventTypes={[...VOCAB, "zz_mystery_event"]} />);
+    render(
+      <Harness eventTypes={[...VOCAB, "service_moved", "zz_mystery_event"]} />,
+    );
     expect(screen.getByText("Deploy Started")).toBeInTheDocument();
     expect(screen.getByText("Plan Changed")).toBeInTheDocument();
+    expect(screen.getByText("Service Moved")).toBeInTheDocument();
     expect(screen.getByText("zz_mystery_event")).toBeInTheDocument();
     expect(screen.getByText("Other")).toBeInTheDocument();
   });
