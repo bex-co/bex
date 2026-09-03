@@ -454,22 +454,43 @@ func (t *tenantService) TenantForKey(ctx context.Context, clientID string) (stri
 	return t.Tenant(ctx, core.Identity{Subject: clientID, Method: methodOAuth2})
 }
 
-// UnbindKey implements apikeys.KeyBinder: removes the client's tenant_members
-// row + its FGA developer membership.
-// SECURITY (finding-3): RevokeWorkspaceMember failures are not discarded.
-// Reporting success while a developer tuple survives leaves a cached bearer
-// valid for PositiveTTL (30s). The caller (RevokeAPIKey) treats this error as
-// fail-closed and does not proceed to Hydra deletion.
+// UnbindKey implements apikeys.KeyBinder: removes the client's FGA developer
+// membership and its tenant_members row.
+//
+// SECURITY: the OpenFGA tuple is revoked BEFORE the local binding is deleted,
+// and neither its failure nor a failed tenant lookup is discarded. The tuple is
+// what still authorizes an already-minted token (a client-credentials token's
+// subject is the client id itself, so it needs no local row to be an FGA
+// subject); the tenant_members row is the retry's only way back to the tenant.
+// The old order deleted the row first, so a failed revoke stranded a live
+// developer tuple whose owner row was already gone — a renewable credential the
+// normal retry could no longer finish revoking (codex finding-4, CWE-613). Now a
+// failed revoke leaves BOTH intact: the caller (RevokeAPIKey) withholds the
+// Hydra delete and a retry re-resolves the tenant and completes. Revoke is
+// idempotent, so once the tuple is gone the subsequent local delete — or its
+// retry — converges cleanly with no orphaned authority.
 func (t *tenantService) UnbindKey(ctx context.Context, clientID string) error {
-	// Remember the tenant before unbinding so the FGA tuple can be removed.
+	// Resolve the tenant while its binding still exists, then revoke the FGA
+	// tuple, then drop the local row.
 	tenant, foundErr := t.store.TenantForIdentity(ctx, clientID)
+	switch {
+	case foundErr == nil:
+		if t.granter != nil {
+			if err := t.granter.RevokeWorkspaceMember(ctx, tenant.ID, "user:"+clientID, "developer"); err != nil {
+				return fmt.Errorf("revoke key membership: %w", err)
+			}
+		}
+	case errors.Is(foundErr, store.ErrNotFound):
+		// No binding row — nothing to revoke in FGA either; fall through to the
+		// idempotent local delete (e.g. a retry after a prior partial revoke).
+	default:
+		// A transient lookup failure must not lead to deleting the local row
+		// while a developer tuple may still be live. Fail closed; the caller
+		// retries once the store is reachable again.
+		return foundErr
+	}
 	if err := t.store.UnbindClient(ctx, clientID); err != nil {
 		return err
-	}
-	if t.granter != nil && foundErr == nil {
-		if err := t.granter.RevokeWorkspaceMember(ctx, tenant.ID, "user:"+clientID, "developer"); err != nil {
-			return fmt.Errorf("revoke key membership: %w", err)
-		}
 	}
 	return nil
 }

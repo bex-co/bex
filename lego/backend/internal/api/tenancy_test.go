@@ -144,11 +144,12 @@ func (f *fakeTenantStore) AcceptInvitesForEmail(_ context.Context, email, subjec
 // authz.openfgaChecker (which structurally satisfies both interfaces) — that
 // parity is what makes ensureGranted's check-before-grant path testable at all.
 type fakeGranter struct {
-	mu       sync.Mutex
-	failNext int
-	tuples   map[string]bool // "relation:tenantID:subject" -> live
-	granted  []string        // successful grants, in call order
-	revoked  []string
+	mu         sync.Mutex
+	failNext   int
+	failRevoke bool            // when set, RevokeWorkspaceMember fails and leaves the tuple
+	tuples     map[string]bool // "relation:tenantID:subject" -> live
+	granted    []string        // successful grants, in call order
+	revoked    []string
 }
 
 func newFakeGranter() *fakeGranter { return &fakeGranter{tuples: map[string]bool{}} }
@@ -186,6 +187,10 @@ func (g *fakeGranter) GrantWorkspaceRole(_ context.Context, tenantID, subject, r
 func (g *fakeGranter) RevokeWorkspaceMember(_ context.Context, tenantID, subject, relation string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.failRevoke {
+		// Model a real OpenFGA failure: the tuple stays live.
+		return errors.New("fga revoke failed")
+	}
 	tuple := relation + ":" + tenantID + ":" + subject
 	delete(g.tuples, tuple)
 	g.revoked = append(g.revoked, tuple)
@@ -478,6 +483,51 @@ func TestUnbindKeyNeverBoundIsNoop(t *testing.T) {
 	}
 	if len(granter.revoked) != 0 {
 		t.Errorf("revoked = %v, want none (nothing to revoke)", granter.revoked)
+	}
+}
+
+// TestUnbindKeyFailClosedLeavesBindingWhenRevokeFails pins codex finding-4: a
+// failed OpenFGA revoke must not have already deleted the local binding, or the
+// surviving developer tuple would be stranded with no owner row for a retry to
+// resolve. Both the row and the tuple stay put and the error surfaces (so
+// RevokeAPIKey withholds the Hydra delete); a retry then converges.
+func TestUnbindKeyFailClosedLeavesBindingWhenRevokeFails(t *testing.T) {
+	st := newFakeTenantStore()
+	granter := newFakeGranter()
+	ts := NewTenantService(st, granter)
+	ctx := context.Background()
+	ten, err := st.CreateTenantWithMember(ctx, "identity-owner", store.PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ts.BindKey(ctx, "client-1", ten.ID); err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	tuple := "developer:" + ten.ID + ":user:client-1"
+
+	granter.failRevoke = true
+	if err := ts.UnbindKey(ctx, "client-1"); err == nil {
+		t.Fatal("UnbindKey must fail closed when the FGA revoke fails")
+	}
+	// The local binding must survive so a retry can still resolve the tenant...
+	if _, err := st.TenantForIdentity(ctx, "client-1"); err != nil {
+		t.Errorf("binding row was deleted despite a failed revoke: %v", err)
+	}
+	// ...and the developer tuple must survive too (the revoke did not take effect).
+	if !granter.tuples[tuple] {
+		t.Error("developer tuple was removed despite a failed revoke")
+	}
+
+	// A retry after OpenFGA recovers converges: tuple revoked, row gone.
+	granter.failRevoke = false
+	if err := ts.UnbindKey(ctx, "client-1"); err != nil {
+		t.Fatalf("retry UnbindKey: %v", err)
+	}
+	if granter.tuples[tuple] {
+		t.Error("developer tuple survived the successful retry")
+	}
+	if _, err := st.TenantForIdentity(ctx, "client-1"); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("binding row after successful retry: want ErrNotFound, got %v", err)
 	}
 }
 

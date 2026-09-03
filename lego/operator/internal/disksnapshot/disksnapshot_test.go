@@ -138,6 +138,105 @@ func TestRoundTripRestoresTheTreeExactly(t *testing.T) {
 	}
 }
 
+// tarEntry is one member of a decoded snapshot — its type and, for a regular
+// file or symlink, the bytes/target the archive carries for it.
+type tarEntry struct {
+	typeflag byte
+	body     string
+	linkname string
+}
+
+// readArchive decrypts, ungzips, and untars a Backup stream into a name->entry
+// map, so a test can assert on what the snapshot actually contains rather than
+// only that a round trip succeeded.
+func readArchive(t *testing.T, raw []byte, identity string) map[string]tarEntry {
+	t.Helper()
+	key, err := age.ParseX25519Identity(strings.TrimSpace(identity))
+	if err != nil {
+		t.Fatalf("parse identity: %v", err)
+	}
+	decrypted, err := age.Decrypt(bytes.NewReader(raw), key)
+	if err != nil {
+		t.Fatalf("decrypt: %v", err)
+	}
+	gz, err := gzip.NewReader(decrypted)
+	if err != nil {
+		t.Fatalf("gzip: %v", err)
+	}
+	defer func() { _ = gz.Close() }()
+	out := map[string]tarEntry{}
+	tr := tar.NewReader(gz)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("read archive: %v", err)
+		}
+		body, err := io.ReadAll(tr)
+		if err != nil {
+			t.Fatalf("read %s: %v", header.Name, err)
+		}
+		out[header.Name] = tarEntry{typeflag: header.Typeflag, body: string(body), linkname: header.Linkname}
+	}
+	return out
+}
+
+// A symlink whose target lies OUTSIDE the volume — the shape a tenant would use
+// to point at /proc/self/environ and capture the backup process's own S3
+// credential (codex finding-3) — must be archived as a symlink, never followed
+// and copied, so the target's bytes never enter the snapshot.
+func TestBackupNeverFollowsSymlinksOutOfTheVolume(t *testing.T) {
+	recipient, identity := newKeypair(t)
+
+	secretDir := t.TempDir()
+	secret := "AWS_SECRET_ACCESS_KEY=super-secret-do-not-capture"
+	mustWrite(t, filepath.Join(secretDir, "environ"), []byte(secret), 0o600)
+
+	volume := t.TempDir()
+	mustWrite(t, filepath.Join(volume, "app.conf"), []byte("key = value\n"), 0o644)
+	target := filepath.Join(secretDir, "environ")
+	if err := os.Symlink(target, filepath.Join(volume, "leak")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	var archive bytes.Buffer
+	if err := Backup(volume, &archive, recipient); err != nil {
+		t.Fatalf("Backup: %v", err)
+	}
+
+	entries := readArchive(t, archive.Bytes(), identity)
+	leak, ok := entries["leak"]
+	if !ok {
+		t.Fatal("the symlink entry is missing from the snapshot")
+	}
+	if leak.typeflag != tar.TypeSymlink {
+		t.Fatalf("leak archived as typeflag %q, want a symlink (%q)", leak.typeflag, tar.TypeSymlink)
+	}
+	if leak.linkname != target {
+		t.Errorf("leak linkname = %q, want %q", leak.linkname, target)
+	}
+	for name, entry := range entries {
+		if strings.Contains(entry.body, secret) {
+			t.Fatalf("entry %q captured the out-of-volume secret contents", name)
+		}
+	}
+
+	// A full round trip restores it as a symlink, not the secret file's contents.
+	dst := t.TempDir()
+	if err := Restore(dst, bytes.NewReader(archive.Bytes()), identity); err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	fi, err := os.Lstat(filepath.Join(dst, "leak"))
+	if err != nil {
+		t.Fatalf("lstat restored link: %v", err)
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("restored entry is not a symlink; the target was followed")
+	}
+}
+
 func TestExtractTreeRejectsEscapingSymlinkTargets(t *testing.T) {
 	for _, link := range []string{"/etc", "../outside"} {
 		t.Run(link, func(t *testing.T) {
