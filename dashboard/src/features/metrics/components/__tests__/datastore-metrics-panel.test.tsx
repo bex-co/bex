@@ -145,6 +145,23 @@ describe("DatastoreMetricsPanel", () => {
     expect(screen.getByText("Capacity 10 KiB")).toBeInTheDocument();
   });
 
+  // w4/m91: the Capacity label reflects the datastore's logical/billed disk size
+  // (bex-api now sources disk_capacity from StorageGB, not the physical PVC). A
+  // near-full 1 GB Postgres shows "Capacity 1 GiB" against ~810 MiB used, so its
+  // fullness reads truthfully instead of ~8% of a fixed 10 GiB PVC floor.
+  it("shows the logical/billed capacity, so a near-full 1 GB datastore reads near-full", () => {
+    const gib = 1024 * 1024 * 1024;
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
+      if (metric === "disk") return seriesResult("bytes", [0.79 * gib]);
+      if (metric === "disk_capacity") return seriesResult("bytes", [gib]);
+      return emptyResult();
+    });
+
+    render(<DatastoreMetricsPanel kind="database" resource="dpg-abc" />);
+
+    expect(screen.getByText("Capacity 1 GiB")).toBeInTheDocument();
+  });
+
   it("renders the active-connections chart for a database resource", () => {
     mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
       if (metric === "db_connections")

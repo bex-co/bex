@@ -1,18 +1,32 @@
 # w4 · m91 — Managed-datastore disk metrics show the logical (billed) capacity, not the physical PVC floor
 
-**Worker:** worker4 **Goal:** the Metrics disk panel judges fullness against the datastore's billed/autoscaled disk size, so a user near their quota sees that they are near it — instead of the fixed 10 GiB physical PVC that makes an 81%-full 1 GB database look 8% full **Status:** todo
+**Worker:** worker4 **Goal:** the Metrics disk panel judges fullness against the datastore's billed/autoscaled disk size, so a user near their quota sees that they are near it — instead of the fixed 10 GiB physical PVC that makes an 81%-full 1 GB database look 8% full **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                       | est | depends_on       |
 | ---- | ----------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Backend: `disk_capacity` returns the datastore's logical provisioned size, not `kubelet_volume_stats_capacity_bytes` | 50m | —                |
-| t002 | Dashboard: DatastoreMetricsPanel capacity label + reference line reflect the logical size                    | 30m | t001             |
-| t003 | KeyValue parity (+ scope compute-service disks)                                                              | 30m | t001             |
-| t004 | Render parity                                                                                                | 25m | t001, t002, t003 |
-| t005 | Simplify                                                                                                     | 20m | t004             |
-| t006 | Test coverage                                                                                                | 40m | t004             |
-| t007 | Closeout                                                                                                     | 15m | t005, t006       |
+| t001 | Backend: `disk_capacity` returns the datastore's logical provisioned size, not `kubelet_volume_stats_capacity_bytes` | 50m | — — **DONE**     |
+| t002 | Dashboard: DatastoreMetricsPanel capacity label + reference line reflect the logical size                    | 30m | t001 — **DONE**  |
+| t003 | KeyValue parity (+ scope compute-service disks)                                                              | 30m | t001 — **DONE**  |
+| t004 | Render parity                                                                                                | 25m | t001, t002, t003 — **DONE** |
+| t005 | Simplify                                                                                                     | 20m | t004 — **DONE**  |
+| t006 | Test coverage                                                                                                | 40m | t004 — **DONE**  |
+| t007 | Closeout                                                                                                     | 15m | t005, t006 — **DONE** |
+
+## Outcome (2026-09-02)
+
+Shipped. The user-facing `disk_capacity` DatastoreMetric now reports the datastore's **logical/billed** disk size instead of `kubelet_volume_stats_capacity_bytes` (the physical PVC, a fixed 10 GiB Hetzner Cloud-Volume floor), so an 81%-full 1 GB Postgres reads ~81% of ~1 GiB instead of ~8% of 10 GiB.
+
+- **Single source of truth.** New `tiers.Postgres.EffectiveStorageGB` / `tiers.Valkey.EffectiveStorageGB` (`lego/types/tiers/tiers.go`) compute `max(plan floor, spec.storageGB, status.allocatedStorageGB)` — the billed/autoscaled high-water. `postgres.DatabaseStorageHighWater` (which drives Details "Storage") now delegates to it, so the metric and the Details/autoscaling numbers **cannot drift**. `metrics.DatastoreMetrics` (`datastore.go`) resolves the logical GB per kind and returns a flat, config-shaped `disk_capacity` series (`logicalDiskCapacitySeries`, `StorageGB × 1 GiB`), the same single-point way `cpu_limit`/`memory_limit` are — needing no Prometheus source. **Service disks folded in** (t003): a service's `spec.disk.sizeGB` high-water shares the same split, so `kind=service` capacity is now logical too.
+- **`disk` USED is unchanged** — still `kubelet_volume_stats_used_bytes`; only the capacity denominator changed. `NewPrometheusDiskUsageSource` was simplified to used-only and the now-dead `DiskUsageRequest.Metric`/capacity branch removed.
+- **All three surfaces agree.** REST `/v1/metrics/disk-capacity`, GraphQL `datastoreMetrics(DISK_CAPACITY)`, and MCP `get_datastore_metrics` all route through the one verb — pinned byte-identical by `TestDiskCapacityIdenticalAcrossRESTGraphQLMCP`.
+- **Ops alert stays physical.** `PersistentVolumeFillingUp` deliberately keeps `kubelet_volume_stats_capacity_bytes` (operations care about the real volume). A new promtool unit test (`deploy/gitops/base/rules/alerts_test.yml`) pins that it fires on the physical series and that a managed 1 GB Postgres on the 10 GiB floor (8% physical) does **not** fire it. Validated locally with promtool 2.55.1 (`promtool test rules` SUCCESS, 43 rules).
+- **Dashboard** (t002): the panel already renders `latestValue(disk_capacity)` as the "Capacity" label + reference line, so it reflects the logical value automatically; the misleading en/zh locale annotation ("the PVC's total capacity") was corrected to "the datastore's billed/provisioned disk size". Regression test added.
+- **Render parity** recorded in `docs/ADR018-render-parity.md` (Metrics row): matches Render charting managed-Postgres disk usage against the plan's disk size; ops-alert divergence noted as deliberate.
+- **Suites:** operator `make test`, backend `go test ./...` (61 pkgs), `make lint` (0 issues, all four modules + dead-code), dashboard typecheck + lint + `yarn test` (2871), and the promtool alert pack — all green.
+
+**Live-verification residual (carried, same constraint as m28/m31/m32/m81):** the DoD's live checks against the specific prod databases (`dpg-d9nqg95cavls73fp8m20` 1 GB → ~1 GiB, `dpg-d9rs3ee0ccis738kc7c0` 5 GB → ~5 GiB) and a live KeyValue instance were **not** run this session — no cluster/prod access. The behavior is pinned exhaustively offline (logical size = `max(plan, spec, allocated)` for Postgres 1/5 GB, spec-override, and autoscaled high-water; KeyValue; service disk; cross-surface identity; ops-alert stays physical). The remaining step is an operator running the Metrics → Disk panel against those live datastores.
 
 ## Definition of done
 

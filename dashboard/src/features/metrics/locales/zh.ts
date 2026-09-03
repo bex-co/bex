@@ -232,7 +232,7 @@ const zhMetrics: Record<string, TranslationEntry> = {
   "metrics.diskCapacityLabel": {
     message: "容量 {value}",
     description:
-      "Disk usage chart header annotation showing the PVC's total capacity",
+      "Disk usage chart header annotation showing the datastore's billed/provisioned disk size",
   },
   "metrics.connectionsTitle": {
     message: "活跃连接数",

@@ -427,21 +427,22 @@ func NewMonthToDateBandwidthSource(base string, hc *http.Client) MonthToDateBand
 // --- Datastore metrics: PVC stats + CNPG's postgres_exporter over Prometheus ---
 
 // NewPrometheusDiskUsageSource returns the production DiskUsageSource — PVC
-// used/capacity bytes via query_range over kubelet's volume-stats series
+// USED bytes via query_range over kubelet's volume-stats series
 // (deploy/gitops/base/prometheus.yaml's kubernetes-kubelet job, already scraped
 // cluster-wide for the PersistentVolumeFillingUp alert, so no new scrape config
-// is needed for this series).
+// is needed for this series). Capacity is no longer sourced here (w4/m91): the
+// user-facing disk_capacity metric reports the datastore's logical/billed size
+// from its spec, because the physical PVC (kubelet_volume_stats_capacity_bytes)
+// is a fixed Hetzner floor that misrepresents fullness. That kubelet capacity
+// series stays untouched for the ops-side PersistentVolumeFillingUp alert, which
+// correctly cares about the real volume filling.
 func NewPrometheusDiskUsageSource(base string, hc *http.Client) DiskUsageSource {
 	if hc == nil {
 		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req DiskUsageRequest) ([]MetricSeries, error) {
-		metric := "kubelet_volume_stats_used_bytes"
-		if req.Metric == MetricDiskCapacity {
-			metric = "kubelet_volume_stats_capacity_bytes"
-		}
-		q := fmt.Sprintf(`%s{namespace=%q,persistentvolumeclaim=~%q}`, metric, req.Namespace, req.PVCPattern)
+		q := fmt.Sprintf(`kubelet_volume_stats_used_bytes{namespace=%q,persistentvolumeclaim=~%q}`, req.Namespace, req.PVCPattern)
 		series, err := promQueryRange(ctx, hc, base, q, req.Start, req.End, stepSeconds(req.Resolution))
 		if err != nil {
 			return nil, err
