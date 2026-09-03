@@ -225,6 +225,23 @@ func (c PostgresCatalog) IDs() []string {
 // backend tool descriptions; the dashboard mirror is guarded against it.
 func (c PostgresCatalog) DiskAutoscalingCapGB() int32 { return c.diskAutoscalingCapGB }
 
+// EffectiveStorageGB is a managed Postgres instance's logical, billed/provisioned
+// disk size in GB: the largest of the plan's included floor, the requested
+// override (spec.storageGB), and the operator-allocated grow-only high-water
+// (status.allocatedStorageGB). This is the value the user is billed for and that
+// the dashboard's Details "Storage" and autoscaling ("N GB current") show — NOT
+// the physical PVC capacity, which on Hetzner is a fixed floor above it. It is
+// the single source of truth for both the grow-only resize floor
+// (postgres.DatabaseStorageHighWater) and the user-facing disk_capacity metric,
+// so the two can never drift.
+func (c PostgresCatalog) EffectiveStorageGB(planID string, requestedGB, allocatedGB int32) int32 {
+	plan, ok := c.ByID(planID)
+	if !ok {
+		plan = c.Default()
+	}
+	return max(plan.StorageGB, requestedGB, allocatedGB)
+}
+
 // --- Valkey ---
 
 // Default returns the plan an empty/unknown KeyValue spec.plan resolves to
@@ -244,6 +261,19 @@ func (c ValkeyCatalog) IDs() []string {
 		ids[i] = t.ID
 	}
 	return ids
+}
+
+// EffectiveStorageGB is a managed Key Value instance's logical, billed/provisioned
+// disk size in GB — the Valkey sibling of PostgresCatalog.EffectiveStorageGB, with
+// the same grow-only high-water semantics (plan floor, spec.storageGB override,
+// status.allocatedStorageGB). NOT the physical data-<name> PVC size, which shares
+// the same fixed Hetzner floor.
+func (c ValkeyCatalog) EffectiveStorageGB(planID string, requestedGB, allocatedGB int32) int32 {
+	plan, ok := c.ByID(planID)
+	if !ok {
+		plan = c.Default()
+	}
+	return max(plan.StorageGB, requestedGB, allocatedGB)
 }
 
 // --- loading ---

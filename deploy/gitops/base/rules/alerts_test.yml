@@ -479,6 +479,43 @@ tests:
               summary: "bex-system/bex-api-abc (api) is CrashLoopBackOff"
               description: "Platform container has been CrashLoopBackOff for >10m. Debug: kubectl -n bex-system describe pod bex-api-abc; kubectl -n bex-system logs bex-api-abc -c api --previous"
 
+  # PersistentVolumeFillingUp: the OPS alert stays on the PHYSICAL PVC
+  # (kubelet_volume_stats_capacity_bytes), fires above 85%, respects the 15m
+  # for-duration. w4/m91 repointed the USER-FACING disk_capacity metric at a
+  # datastore's logical/billed size — this ops alert deliberately keeps the
+  # physical series, because operations care about the real volume filling. This
+  # test pins that split: a genuinely-full platform PVC fires, while a managed
+  # 1 GB Postgres sitting on the fixed 10 GiB Hetzner floor (8% physical, though
+  # ~81% of its logical size) must NOT fire here.
+  - name: PersistentVolumeFillingUp evaluates the physical PVC above 85% for 15m
+    interval: 1m
+    input_series:
+      # 90% full platform PVC (above 85%) — fires after 15m.
+      - series: 'kubelet_volume_stats_used_bytes{namespace="bex-system", persistentvolumeclaim="loki-0"}'
+        values: "9000000000x30"
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="bex-system", persistentvolumeclaim="loki-0"}'
+        values: "10000000000x30"
+      # A managed 1 GB Postgres on the 10 GiB physical floor: ~8% physical — must
+      # NOT fire, even though its logical disk_capacity would read ~81% full.
+      - series: 'kubelet_volume_stats_used_bytes{namespace="tenant-a", persistentvolumeclaim="pg-1"}'
+        values: "850000000x30"
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="tenant-a", persistentvolumeclaim="pg-1"}'
+        values: "10000000000x30"
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: PersistentVolumeFillingUp
+        exp_alerts: [] # not yet 15m for the 90% PVC
+      - eval_time: 16m
+        alertname: PersistentVolumeFillingUp
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-system
+              persistentvolumeclaim: loki-0
+            exp_annotations:
+              summary: "PVC bex-system/loki-0 is 90% full"
+              description: "A platform PVC (etcd/Loki/OpenBao/Prometheus PVs — hcloud-csi on prod, local-path on the mock) is >85% full. Debug: kubectl -n bex-system get pvc loki-0; grow the volume or prune data."
+
   # ZotRegistryFillingUp: fires above 70% (not at 65%), respects the 10m for-duration.
   - name: ZotRegistryFillingUp threshold and for-duration
     interval: 1m

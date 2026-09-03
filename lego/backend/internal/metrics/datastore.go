@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -76,20 +77,22 @@ const (
 	MetricKVConnections = "kv_connections"
 )
 
-// DiskUsageRequest is the backend-neutral disk-usage ask for a managed
-// datastore's backing PVC(s).
+// DiskUsageRequest is the backend-neutral disk-USED ask for a managed datastore's
+// backing PVC(s). Capacity no longer routes here (w4/m91): disk_capacity reports
+// the datastore's logical/billed size, computed from its spec, not the physical
+// PVC — so this source serves only the used series (kubelet_volume_stats_used_bytes).
 type DiskUsageRequest struct {
 	Namespace  string
 	Resource   string // Database or KeyValue name (the "resource" label)
 	PVCPattern string // regex matching the resource's PVC name(s)
-	Metric     string // MetricDisk | MetricDiskCapacity
 	Start, End time.Time
 	Resolution time.Duration
 }
 
-// DiskUsageSource reads PVC usage/capacity history (kubelet volume stats). nil
-// => disk/disk_capacity report core.ErrMetricsUnavailable — there is no
-// metrics-server fallback for PVC stats (unlike cpu/memory).
+// DiskUsageSource reads PVC used-bytes history (kubelet volume stats). nil =>
+// disk reports core.ErrMetricsUnavailable — there is no metrics-server fallback
+// for PVC stats (unlike cpu/memory). disk_capacity does NOT depend on this
+// source (w4/m91): it is a config-shaped logical value like cpu_limit.
 type DiskUsageSource func(ctx context.Context, req DiskUsageRequest) ([]MetricSeries, error)
 
 // DBConnectionsRequest is the backend-neutral active-connections ask for one
@@ -182,6 +185,30 @@ func pvcPattern(kind, resource string) string {
 	}
 }
 
+// bytesPerGiB converts a logical StorageGB — which the operator provisions as a
+// binary "<n>Gi" volume (database_controller.go / keyvalue_controller.go) — into
+// bytes, so the reported capacity matches the volume the plan actually sizes.
+const bytesPerGiB = 1 << 30
+
+// logicalDiskCapacitySeries builds the config-shaped disk_capacity series from a
+// datastore's logical (billed/autoscaled) storage size — the value the user is
+// billed for and that Details "Storage" + the autoscaling section show, NOT the
+// physical PVC floor (kubelet_volume_stats_capacity_bytes, a fixed 10 GiB on
+// Hetzner regardless of the logical size). Reported the same single-current-point
+// way cpu_limit/memory_limit are (service.go), so it needs no Prometheus source.
+// storageGB <= 0 (a datastore whose plan/spec/status resolve to no size) yields
+// an empty series rather than a fake zero, matching resourceLimitMetric.
+func logicalDiskCapacitySeries(resource string, storageGB int32, now time.Time) []MetricSeries {
+	if storageGB <= 0 {
+		return nil
+	}
+	return []MetricSeries{{
+		Labels: map[string]string{"resource": resource},
+		Unit:   unitBytes,
+		Points: []MetricPoint{{Timestamp: now.UTC().Format(time.RFC3339), Value: float64(storageGB) * bytesPerGiB}},
+	}}
+}
+
 // DatastoreMetrics is the disk/db_connections/replication_lag read — the
 // Database/KeyValue-scoped sibling of Metrics. It fails with core.ErrNotFound
 // for an unknown resource, core.ErrForbidden for a metric the resource kind
@@ -204,6 +231,10 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	// query authorizes is the identity it measures. `var` (not := q.Resource)
 	// keeps that structural: a branch that forgets the assignment measures "".
 	var resource string
+	// logicalDiskGB is the datastore's billed/provisioned disk size (GB), resolved
+	// from the CR the same way Details "Storage" is, so disk_capacity matches it
+	// instead of the physical PVC floor. Set per kind alongside namespace/resource.
+	var logicalDiskGB int32
 	switch q.Kind {
 	case DatastoreDatabase:
 		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, q.Resource)
@@ -213,6 +244,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		namespace = db.Namespace
 		resource = db.Name
 		isHA = db.Status.HighAvailabilityEnabled
+		logicalDiskGB = tiers.Postgres.EffectiveStorageGB(db.Spec.Plan, db.Spec.StorageGB, db.Status.AllocatedStorageGB)
 		if q.Metric == MetricKVMemory || q.Metric == MetricKVConnections {
 			return nil, fmt.Errorf("metric %q is key-value-only, not valid for a database resource", q.Metric)
 		}
@@ -223,6 +255,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		namespace = kv.Namespace
 		resource = kv.Name
+		logicalDiskGB = tiers.Valkey.EffectiveStorageGB(kv.Spec.Plan, kv.Spec.StorageGB, kv.Status.AllocatedStorageGB)
 		if q.Metric == MetricDBConnections || q.Metric == MetricReplicationLag {
 			return nil, fmt.Errorf("metric %q is Postgres-only, not valid for a key-value resource", q.Metric)
 		}
@@ -251,6 +284,16 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		if app.Spec.Disk == nil {
 			return nil, nil
 		}
+		// A service disk shares the datastore split: its logical/billed size is
+		// spec.disk.sizeGB (grown only by the operator's allocated high-water),
+		// while its PVC sits on the same fixed Hetzner floor. Report the logical
+		// size, matching the Disk tab's stated size — there is no plan floor here,
+		// the size is set directly on the disk.
+		allocatedGB := int32(0)
+		if app.Status.Disk != nil {
+			allocatedGB = app.Status.Disk.AllocatedSizeGB
+		}
+		logicalDiskGB = max(app.Spec.Disk.SizeGB, allocatedGB)
 	default:
 		// An unknown kind names no resource to authorize against (there is no
 		// AuthorizeDatabase/AuthorizeKeyValue call to make) — fall back to a
@@ -267,7 +310,16 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		return nil, err
 	}
 	switch q.Metric {
-	case MetricDisk, MetricDiskCapacity:
+	case MetricDiskCapacity:
+		// Logical/billed capacity — the size the plan provisions and the user is
+		// billed for, NOT kubelet_volume_stats_capacity_bytes (the physical PVC,
+		// a fixed Hetzner floor that made an 81%-full 1 GB database read 8% full).
+		// Config-shaped, so it needs no Prometheus source; the ops-side
+		// PersistentVolumeFillingUp alert keeps evaluating the physical series.
+		return logicalDiskCapacitySeries(resource, logicalDiskGB, s.Now()), nil
+	case MetricDisk:
+		// Disk USED stays kubelet-backed — it was always accurate; only the
+		// capacity denominator was wrong.
 		if s.DiskUsage == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
@@ -275,7 +327,6 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			Namespace:  namespace,
 			Resource:   resource,
 			PVCPattern: pvcPattern(q.Kind, resource),
-			Metric:     q.Metric,
 			Start:      q.Start,
 			End:        q.End,
 			Resolution: q.Resolution,

@@ -232,7 +232,7 @@ const enMetrics: Record<string, TranslationEntry> = {
   "metrics.diskCapacityLabel": {
     message: "Capacity {value}",
     description:
-      "Disk usage chart header annotation showing the PVC's total capacity",
+      "Disk usage chart header annotation showing the datastore's billed/provisioned disk size",
   },
   "metrics.connectionsTitle": {
     message: "Active Connections",

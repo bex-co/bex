@@ -856,13 +856,12 @@ func pluralIsAre(n int) string {
 // DatabaseStorageHighWater is the floor a storage resize may not go below: the
 // largest of the plan's included storage, the requested size, and the size
 // already allocated. Exported because the Blueprint apply path in internal/apps
-// enforces the same grow-only rule and must not drift from it.
+// enforces the same grow-only rule and must not drift from it — and the
+// user-facing disk_capacity metric (metrics.DatastoreMetrics) reports the same
+// value, so both route through tiers.Postgres.EffectiveStorageGB, the single
+// source of truth for a datastore's logical/billed disk size.
 func DatabaseStorageHighWater(d *appv1alpha1.Database) int32 {
-	plan, ok := tiers.Postgres.ByID(d.Spec.Plan)
-	if !ok {
-		plan = tiers.Postgres.Default()
-	}
-	return max(plan.StorageGB, d.Spec.StorageGB, d.Status.AllocatedStorageGB)
+	return tiers.Postgres.EffectiveStorageGB(d.Spec.Plan, d.Spec.StorageGB, d.Status.AllocatedStorageGB)
 }
 
 func validateDatabaseStorageResize(d *appv1alpha1.Database, requested *int32) error {

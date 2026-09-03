@@ -27,9 +27,11 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -96,25 +98,30 @@ func TestAutoscaleTargetPresentAndOmitted(t *testing.T) {
 
 // --- t002: disk usage ---
 
-func staticDiskUsage(byPattern map[string][]MetricSeries) DiskUsageSource {
-	return func(_ context.Context, req DiskUsageRequest) ([]MetricSeries, error) {
-		return byPattern[req.Metric], nil
+// staticDiskUsage serves a fixed disk-USED series regardless of the request.
+// Capacity no longer routes through the source (w4/m91) — it is the datastore's
+// logical size — so this only ever answers the used series.
+func staticDiskUsage(used []MetricSeries) DiskUsageSource {
+	return func(_ context.Context, _ DiskUsageRequest) ([]MetricSeries, error) {
+		return used, nil
 	}
 }
 
 func TestDatastoreDiskUsageForDatabaseAndKeyValue(t *testing.T) {
 	used := []MetricSeries{{Labels: map[string]string{"instance": "pg-1"}, Points: []MetricPoint{{Value: 1 << 20}}}}
-	capacity := []MetricSeries{{Labels: map[string]string{"instance": "pg-1"}, Points: []MetricPoint{{Value: 10 << 20}}}}
 	svc := newService(nil, nil, sampleDatabase("pg", false), sampleKeyValue("kv"))
-	svc.DiskUsage = staticDiskUsage(map[string][]MetricSeries{MetricDisk: used, MetricDiskCapacity: capacity})
+	svc.DiskUsage = staticDiskUsage(used)
 
 	dbSeries, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreDatabase, Resource: "pg", Metric: MetricDisk})
 	if err != nil || len(dbSeries) != 1 || dbSeries[0].Points[0].Value != 1<<20 {
 		t.Fatalf("database disk usage: %v %+v", err, dbSeries)
 	}
+	// disk_capacity is now the datastore's logical StorageGB (the plan-default
+	// size here), converted to bytes — not the physical PVC the source reports.
 	kvSeries, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreKeyValue, Resource: "kv", Metric: MetricDiskCapacity})
-	if err != nil || len(kvSeries) != 1 || kvSeries[0].Points[0].Value != 10<<20 {
-		t.Fatalf("keyvalue disk capacity: %v %+v", err, kvSeries)
+	wantKV := float64(tiers.Valkey.Default().StorageGB) * bytesPerGiB
+	if err != nil || len(kvSeries) != 1 || kvSeries[0].Points[0].Value != wantKV {
+		t.Fatalf("keyvalue disk capacity: %v %+v (want %v)", err, kvSeries, wantKV)
 	}
 }
 
@@ -303,9 +310,7 @@ func TestDatastoreDisplayNameFailsClosed(t *testing.T) {
 
 func TestRESTDatastoreMetrics(t *testing.T) {
 	svc := newService(nil, nil, sampleDatabase("pg", false))
-	svc.DiskUsage = staticDiskUsage(map[string][]MetricSeries{
-		MetricDisk: {{Labels: map[string]string{"instance": "pg-1"}, Unit: unitBytes, Points: []MetricPoint{{Value: 5}}}},
-	})
+	svc.DiskUsage = staticDiskUsage([]MetricSeries{{Labels: map[string]string{"instance": "pg-1"}, Unit: unitBytes, Points: []MetricPoint{{Value: 5}}}})
 
 	var series []renderMetricSeries
 	rec := serveREST(svc, "/v1/metrics/disk?resource=pg")
@@ -381,7 +386,7 @@ func TestPrometheusDiskUsageRoundTrip(t *testing.T) {
 	}))
 	defer ts.Close()
 	series, err := NewPrometheusDiskUsageSource(ts.URL, ts.Client())(context.Background(), DiskUsageRequest{
-		Namespace: "default", Resource: "pg", PVCPattern: `^pg-\d+$`, Metric: MetricDisk,
+		Namespace: "default", Resource: "pg", PVCPattern: `^pg-\d+$`,
 		Start: time.Unix(1_000_000, 0), End: time.Unix(1_000_120, 0), Resolution: 60 * time.Second,
 	})
 	if err != nil || len(series) != 1 || series[0].Points[0].Value != 1048576 || series[0].Labels["instance"] != "pg-1" || series[0].Unit != unitBytes {
@@ -494,5 +499,166 @@ func TestDatastoreServiceUnknownResourceIsNotFound(t *testing.T) {
 		Kind: DatastoreService, Resource: "nope", Metric: MetricDisk,
 	}); err != core.ErrNotFound {
 		t.Errorf("unknown service => ErrNotFound, got %v", err)
+	}
+}
+
+// --- w4/m91: disk_capacity is the logical/billed size, not the physical PVC ---
+
+// pgWithStorage builds a Database with an explicit plan, spec override, and
+// allocated high-water so the logical-size resolution can be pinned exactly.
+func pgWithStorage(name, plan string, specGB, allocatedGB int32) *appv1alpha1.Database {
+	d := sampleDatabase(name, false)
+	d.Spec.Plan = plan
+	d.Spec.StorageGB = specGB
+	d.Status.AllocatedStorageGB = allocatedGB
+	return d
+}
+
+// physicalPVCSource answers any disk read with a fixed "physical PVC" capacity —
+// the pre-w4/m91 kubelet_volume_stats_capacity_bytes value (a fixed 10 GiB
+// Hetzner floor). Wiring it and still getting the logical size proves
+// disk_capacity never reads the source: if it regressed to the kubelet series,
+// every assertion below would see this bogus value instead.
+func physicalPVCSource(capacityBytes float64) DiskUsageSource {
+	return func(_ context.Context, _ DiskUsageRequest) ([]MetricSeries, error) {
+		return []MetricSeries{{Labels: map[string]string{"instance": "pvc-0"}, Unit: unitBytes, Points: []MetricPoint{{Value: capacityBytes}}}}, nil
+	}
+}
+
+func TestDiskCapacityIsLogicalSizeNotPhysicalPVC(t *testing.T) {
+	const gib = float64(bytesPerGiB)
+	cases := []struct {
+		name    string
+		db      *appv1alpha1.Database
+		wantGiB float64
+	}{
+		{"basic-256mb reads its 1 GiB floor", pgWithStorage("pg1", "basic-256mb", 0, 0), 1},
+		{"basic-1gb reads its 5 GiB floor", pgWithStorage("pg5", "basic-1gb", 0, 0), 5},
+		{"spec override grows past the plan floor", pgWithStorage("pgo", "basic-256mb", 20, 0), 20},
+		{"autoscaled allocated high-water wins", pgWithStorage("pga", "basic-1gb", 5, 15), 15},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := newService(nil, nil, tc.db)
+			svc.DiskUsage = physicalPVCSource(10 * gib) // bogus physical value; must be ignored
+			series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+				Kind: DatastoreDatabase, Resource: tc.db.Name, Metric: MetricDiskCapacity,
+			})
+			if err != nil || len(series) != 1 || len(series[0].Points) != 1 {
+				t.Fatalf("disk_capacity: %v %+v", err, series)
+			}
+			if got := series[0].Points[0].Value; got != tc.wantGiB*gib {
+				t.Errorf("disk_capacity = %v bytes, want %v GiB (%v bytes) — not the 10 GiB physical PVC", got, tc.wantGiB, tc.wantGiB*gib)
+			}
+			if series[0].Unit != unitBytes {
+				t.Errorf("unit = %q, want %q", series[0].Unit, unitBytes)
+			}
+		})
+	}
+}
+
+// disk_capacity is config-shaped: it needs no Prometheus source (like cpu_limit).
+// disk (USED), which was always accurate, still requires the kubelet source.
+func TestDiskCapacityNeedsNoSourceButUsedStillDoes(t *testing.T) {
+	svc := newService(nil, nil, pgWithStorage("pg", "basic-1gb", 0, 0)) // DiskUsage nil
+	series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+		Kind: DatastoreDatabase, Resource: "pg", Metric: MetricDiskCapacity,
+	})
+	if err != nil || len(series) != 1 || series[0].Points[0].Value != 5*float64(bytesPerGiB) {
+		t.Fatalf("disk_capacity without a source should be the logical size: %v %+v", err, series)
+	}
+	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+		Kind: DatastoreDatabase, Resource: "pg", Metric: MetricDisk,
+	}); err != core.ErrMetricsUnavailable {
+		t.Errorf("disk (used) without a source => ErrMetricsUnavailable, got %v", err)
+	}
+}
+
+// KeyValue rides the same logical-size path: capacity equals its StorageGB, not
+// the physical data-<name> PVC.
+func TestKeyValueDiskCapacityIsLogicalStorage(t *testing.T) {
+	kv := sampleKeyValue("cache")
+	kv.Spec.Plan = "free" // 1 GiB floor
+	kv.Spec.StorageGB = 3 // grown past it
+	svc := newService(nil, nil, kv)
+	svc.DiskUsage = physicalPVCSource(10 * float64(bytesPerGiB))
+	series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+		Kind: DatastoreKeyValue, Resource: "cache", Metric: MetricDiskCapacity,
+	})
+	if err != nil || len(series) != 1 || series[0].Points[0].Value != 3*float64(bytesPerGiB) {
+		t.Fatalf("kv disk_capacity should equal the logical StorageGB: %v %+v", err, series)
+	}
+}
+
+// A service's attached disk (ADR082) shares the same split, so its capacity is
+// spec.disk.sizeGB (grown by the allocated high-water), not the 10 GiB PVC.
+func TestServiceDiskCapacityIsLogicalSize(t *testing.T) {
+	app := sampleAppWithDisk("web", &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 1})
+	app.Status.Disk = &appv1alpha1.DiskStatus{AllocatedSizeGB: 4} // autoscaled up
+	svc := newService(nil, nil, app)
+	svc.DiskUsage = physicalPVCSource(10 * float64(bytesPerGiB))
+	series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+		Kind: DatastoreService, Resource: "web", Metric: MetricDiskCapacity,
+	})
+	if err != nil || len(series) != 1 || series[0].Points[0].Value != 4*float64(bytesPerGiB) {
+		t.Fatalf("service disk_capacity should be the logical high-water, not the 10 GiB PVC: %v %+v", err, series)
+	}
+}
+
+// All three API surfaces resolve disk_capacity through the same verb, so they
+// must return byte-identical logical bytes (DoD: REST/GraphQL/MCP agree).
+func TestDiskCapacityIdenticalAcrossRESTGraphQLMCP(t *testing.T) {
+	svc := newService(nil, nil, pgWithStorage("pg", "basic-1gb", 0, 0)) // 5 GiB
+	want := 5 * float64(bytesPerGiB)
+
+	// Service verb — the shared seam every adapter calls.
+	series, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{
+		Kind: DatastoreDatabase, Resource: "pg", Metric: MetricDiskCapacity,
+	})
+	if err != nil || len(series) != 1 || series[0].Points[0].Value != want {
+		t.Fatalf("verb disk_capacity: %v %+v", err, series)
+	}
+
+	// REST.
+	var rest []renderMetricSeries
+	rec := serveREST(svc, "/v1/metrics/disk-capacity?resource=pg&kind=database")
+	if rec.Code != 200 {
+		t.Fatalf("REST disk-capacity => %d %s", rec.Code, rec.Body.String())
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &rest)
+	if len(rest) != 1 || rest[0].Values[0].Value != want {
+		t.Fatalf("REST disk_capacity = %+v, want %v", rest, want)
+	}
+
+	// GraphQL.
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `{ datastoreMetrics(query: {resource: "pg", name: "DISK_CAPACITY"}) { unit values { value } } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	gqlFirst := res.Data.(map[string]any)["datastoreMetrics"].([]any)[0].(map[string]any)
+	if gqlFirst["values"].([]any)[0].(map[string]any)["value"].(float64) != want {
+		t.Errorf("GraphQL disk_capacity = %+v, want %v", gqlFirst, want)
+	}
+
+	// MCP.
+	cs := mcpSession(t, svc)
+	result, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_datastore_metrics", Arguments: map[string]any{
+		"resource": "pg", "kind": "database", "metricTypes": []string{MetricDiskCapacity},
+	}})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP get_datastore_metrics: err %v isError %v", err, result != nil && result.IsError)
+	}
+	var mcpOut getMetricsResult
+	b, _ := json.Marshal(result.StructuredContent)
+	if err := json.Unmarshal(b, &mcpOut); err != nil {
+		t.Fatalf("MCP structured content: %v", err)
+	}
+	if len(mcpOut.Series) != 1 || mcpOut.Series[0].Points[0].Value != want {
+		t.Fatalf("MCP disk_capacity = %+v, want %v", mcpOut, want)
 	}
 }
