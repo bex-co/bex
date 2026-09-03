@@ -45,7 +45,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	crbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -3352,7 +3351,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	}
 	spec := corev1.PodSpec{
 		RestartPolicy:                corev1.RestartPolicyNever,
-		AutomountServiceAccountToken: ptr.To(false),
+		AutomountServiceAccountToken: new(false),
 	}
 	// Secret files reach the cron run's container the same way as a Deployment's.
 	if vol, mount := secretFileMounts(app); vol != nil {
@@ -3675,7 +3674,7 @@ func tlsSecretName(appName string, i int, host string) string {
 // (PSS baseline only, not restricted; see docs/ADR022-tenant-isolation.md).
 func tenantSecCtx() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: ptr.To(false),
+		AllowPrivilegeEscalation: new(false),
 		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 	}

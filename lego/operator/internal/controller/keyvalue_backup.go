@@ -28,7 +28,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -273,7 +272,7 @@ test -s /backup/dump.rdb`},
 		Schedule:                   keyValueBackupSchedule(kv.Name),
 		TimeZone:                   &timeZone,
 		ConcurrencyPolicy:          batchv1.ForbidConcurrent,
-		Suspend:                    ptr.To(kv.Spec.Suspended),
+		Suspend:                    new(kv.Spec.Suspended),
 		StartingDeadlineSeconds:    &startingDeadline,
 		FailedJobsHistoryLimit:     &failedHistory,
 		SuccessfulJobsHistoryLimit: &successfulHistory,
@@ -281,12 +280,12 @@ test -s /backup/dump.rdb`},
 			ObjectMeta: metav1.ObjectMeta{Labels: labels},
 			Spec: batchv1.JobSpec{
 				BackoffLimit:          &backoff,
-				ActiveDeadlineSeconds: ptr.To(keyValueBackupDeadlineSeconds),
+				ActiveDeadlineSeconds: new(keyValueBackupDeadlineSeconds),
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{Labels: labels},
 					Spec: corev1.PodSpec{
 						RestartPolicy:                corev1.RestartPolicyNever,
-						AutomountServiceAccountToken: ptr.To(false),
+						AutomountServiceAccountToken: new(false),
 						InitContainers:               initContainers,
 						Containers: []corev1.Container{{
 							Name:    "upload",
@@ -397,12 +396,12 @@ func (r *KeyValueReconciler) keyValueBackupPurgeJob(kv *appv1alpha1.KeyValue) *b
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: kv.Namespace, Labels: labels},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:          &backoff,
-			ActiveDeadlineSeconds: ptr.To(keyValueBackupDeadlineSeconds),
+			ActiveDeadlineSeconds: new(keyValueBackupDeadlineSeconds),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                corev1.RestartPolicyNever,
-					AutomountServiceAccountToken: ptr.To(false),
+					AutomountServiceAccountToken: new(false),
 					Containers: []corev1.Container{{
 						Name:    "purge",
 						Image:   publish.DefaultAWSCLIImage,

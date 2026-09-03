@@ -26,12 +26,10 @@ jobs:
       group: bex-ci
       labels: [self-hosted, Linux, ARM64]
     env:
-      # Same workspace/toolchain split as backend-test.yml/operator-test.yml:
-      # lego/go.work requires go >= 1.26.0 (lego/cli) while this job installs
-      # the 1.25 line from lego/backend/go.mod and setup-go pins
-      # GOTOOLCHAIN=local. The schema-dump `go test` the codegen script runs
-      # resolves the backend module standalone via its `replace …/lego/types`
-      # directive, so run it with the workspace off.
+      # GOWORK=off, same as backend-test.yml/operator-test.yml: the schema-dump
+      # `go test` the codegen script runs resolves the backend module standalone
+      # via its `replace …/lego/types` directive (Go version from
+      # lego/backend/go.mod, the 1.26 line), so run it with the workspace off.
       GOWORK: "off"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

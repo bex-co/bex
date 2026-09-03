@@ -37,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -310,7 +309,7 @@ func TestKeyValuePVCExpansionAndStorageClassFailure(t *testing.T) {
 			pvc := &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					StorageClassName: ptr.To(kvStorageClass),
+					StorageClassName: new(kvStorageClass),
 					Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("1Gi"),
 					}},
@@ -361,7 +360,7 @@ func TestKeyValuePVCExpansionBlockedByNamespaceQuota(t *testing.T) {
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: ptr.To(kvStorageClass),
+			StorageClassName: new(kvStorageClass),
 			Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}},

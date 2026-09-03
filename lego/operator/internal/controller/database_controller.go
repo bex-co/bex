@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1423,7 +1422,7 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                corev1.RestartPolicyNever,
-					AutomountServiceAccountToken: ptr.To(false),
+					AutomountServiceAccountToken: new(false),
 					Containers: []corev1.Container{{
 						Name:  "purge",
 						Image: publish.DefaultAWSCLIImage,

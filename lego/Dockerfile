@@ -8,7 +8,7 @@
 # /ssh-gateway), and the Key Value backup CronJob's encrypt stage runs
 # /backup-encrypt out of this same image (w7/m85 — it used to download the age
 # release into an alpine container standing next to the plaintext RDB).
-FROM golang:1.25@sha256:d7ae6dbb143c4eb97788a53a2bfa879cdde91f793c1d44d9f3bc7cb0df2e4e5f AS builder
+FROM golang:1.26@sha256:9d2f36f06329b2a141b9db99ffa32765cf695ee57b813ca29e245e8670bcbfff AS builder
 ARG TARGETOS
 ARG TARGETARCH
 

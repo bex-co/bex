@@ -38,7 +38,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
@@ -944,9 +943,9 @@ fi
 		// Unconfined seccomp/AppArmor remains scoped to this one container; the
 		// default OCI worker process sandbox still isolates Dockerfile RUN PIDs.
 		SecurityContext: &corev1.SecurityContext{
-			RunAsUser:                ptr.To(int64(0)),
-			RunAsGroup:               ptr.To(int64(0)),
-			AllowPrivilegeEscalation: ptr.To(true),
+			RunAsUser:                new(int64(0)),
+			RunAsGroup:               new(int64(0)),
+			AllowPrivilegeEscalation: new(true),
 			Capabilities: &corev1.Capabilities{Add: []corev1.Capability{
 				"AUDIT_WRITE", "CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID",
 				"KILL", "MKNOD", "NET_ADMIN", "NET_BIND_SERVICE", "NET_RAW",
@@ -1013,7 +1012,7 @@ fi
 	podSpec.InitContainers = append(podSpec.InitContainers, buildkit)
 	execution.HardenPod(&podSpec)
 	execution.TolerateBuildPool(&podSpec)
-	podSpec.SecurityContext.FSGroup = ptr.To(int64(0))
+	podSpec.SecurityContext.FSGroup = new(int64(0))
 	// No safe-to-evict pin: buildPodFailurePolicy absorbs eviction rather than
 	// preventing it, so pinning would only block node consolidation.
 	annotations := map[string]string{
@@ -1366,7 +1365,7 @@ func captureFailureTail(spec *corev1.PodSpec) {
 
 func restrictedContainerSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: ptr.To(false),
+		AllowPrivilegeEscalation: new(false),
 		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 	}

@@ -149,9 +149,9 @@ func kvResources(plan tiers.ValkeyTier) corev1.ResourceRequirements {
 
 func valkeySecCtx() *corev1.SecurityContext {
 	security := tenantSecCtx()
-	security.RunAsNonRoot = ptr.To(true)
-	security.RunAsUser = ptr.To(valkeyRunAsUser)
-	security.RunAsGroup = ptr.To(valkeyRunAsGroup)
+	security.RunAsNonRoot = new(true)
+	security.RunAsUser = new(valkeyRunAsUser)
+	security.RunAsGroup = new(valkeyRunAsGroup)
 	return security
 }
 
@@ -375,7 +375,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 			}
 		}
 		auth.Data["username"] = []byte(kvDefaultUser)
-		auth.Immutable = ptr.To(true)
+		auth.Immutable = new(true)
 		return controllerutil.SetControllerReference(kv, auth, r.Scheme)
 	}); err != nil {
 		result, failErr := r.kvFail(ctx, kv, "CredentialSecretFailed", err)
@@ -398,7 +398,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 	}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.secretClient(), connection, func() error {
 		connection.Data = desiredData
-		connection.Immutable = ptr.To(true)
+		connection.Immutable = new(true)
 		return controllerutil.SetControllerReference(kv, connection, r.Scheme)
 	}); err != nil {
 		result, failErr := r.kvFail(ctx, kv, "SecretFailed", err)
@@ -579,7 +579,7 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 						corev1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dGi", intent.storageGB)),
 					},
 				},
-				StorageClassName: ptr.To(kvStorageClass),
+				StorageClassName: new(kvStorageClass),
 			},
 		}}
 	}
@@ -641,9 +641,9 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 	// Harden the managed Valkey pod the same way tenant Deployments are (w1/m53):
 	// drop ALL caps, no privilege escalation, RuntimeDefault seccomp, and no
 	// ServiceAccount token mounted (Valkey never talks to the apiserver).
-	spec.AutomountServiceAccountToken = ptr.To(false)
+	spec.AutomountServiceAccountToken = new(false)
 	spec.SecurityContext = &corev1.PodSecurityContext{
-		FSGroup:             ptr.To(valkeyRunAsGroup),
+		FSGroup:             new(valkeyRunAsGroup),
 		FSGroupChangePolicy: ptr.To(corev1.FSGroupChangeOnRootMismatch),
 	}
 	spec.Containers = []corev1.Container{{
