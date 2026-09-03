@@ -191,6 +191,12 @@ const PHASE_STATUS: Record<string, ServiceStatus> = {
   // failed either. Non-destructive on purpose (w6/m52): the red "Failed" badge
   // it used to share told the user their own Cancel had broken something.
   canceled: { key: "canceled", variant: "secondary" },
+  // Phase Deleting means the delete was accepted and the finalizer is tearing
+  // the service down. By-id reads 404 the moment deletion is accepted (w3/m81),
+  // so the dashboard normally redirects on the not-found rather than reaching
+  // this — it keeps a mid-teardown service reading honestly (muted "Deleting",
+  // not the generic red-herring "Unknown") for any transient window it is seen.
+  deleting: { key: "deleting", variant: "secondary" },
   failed: { key: "failed", variant: "destructive" },
 };
 
@@ -231,8 +237,17 @@ export function isConvergingPhase(s: Pick<ServiceView, "phase">): boolean {
 }
 
 // The App phases that are still moving, in the same lower-cased vocabulary
-// PHASE_STATUS above is keyed on.
-const CONVERGING_PHASES = new Set(["", "pending", "building", "deploying"]);
+// PHASE_STATUS above is keyed on. "deleting" is included so a service observed
+// mid-teardown keeps polling until the by-id read resolves to not-found (w3/m81)
+// — which fires the detail route's redirect — instead of freezing on a stale
+// cached row the way the m81 fixture did for 2+ hours.
+const CONVERGING_PHASES = new Set([
+  "",
+  "pending",
+  "building",
+  "deploying",
+  "deleting",
+]);
 
 /**
  * True when an eligible free public web App is auto-sleeping rather than
@@ -240,6 +255,17 @@ const CONVERGING_PHASES = new Set(["", "pending", "building", "deploying"]);
  */
 export function isSleeping(s: ServiceView): boolean {
   return deriveStatus(s).key === "sleeping";
+}
+
+/**
+ * True while the service is being torn down (w3/m81). Keyed on the raw phase,
+ * NOT `deriveStatus`'s key — `deriveStatus` folds suspension over phase, so a
+ * suspended-then-deleting service would resolve to "suspended" and skip the
+ * dead-URL suppression the header needs. Centralizes the phase-casing here (the
+ * `isConvergingPhase` rule) so a caller never re-spells the "deleting" literal.
+ */
+export function isDeleting(s: Pick<ServiceView, "phase">): boolean {
+  return s.phase.toLowerCase() === "deleting";
 }
 
 /** Stat-tile counts computed from the live list (total / running / suspended). */

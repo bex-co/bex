@@ -115,6 +115,23 @@ describe("service detail, dead id (w6/m44 — regression of w9/m55)", () => {
     );
   });
 
+  // w3/m81: once a service's deletion is accepted, bex-api returns the SAME
+  // "app not found" for its by-id read that a never-existed id gets — so the
+  // detail route lands on the existing not-found path (redirect + "was deleted")
+  // instead of rendering `phase: Deleting` plus a dead URL. This pins that the
+  // deleting-service contract is served by the not-found branch, not a new one.
+  it("redirects with the deleted toast when a deleting service reads not-found", async () => {
+    serverState.error = new Error("app not found");
+    const router = renderDetail();
+
+    expect(await screen.findByText("home page")).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(toastError).toHaveBeenCalledWith(
+      "That resource doesn't exist or was deleted.",
+      { id: "resource-not-found" },
+    );
+  });
+
   it("redirects home when the id resolves to nothing with no error at all", async () => {
     const router = renderDetail();
 

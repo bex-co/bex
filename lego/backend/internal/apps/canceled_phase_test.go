@@ -19,11 +19,13 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -63,22 +65,31 @@ func TestCanceledPhaseReachesEverySurface(t *testing.T) {
 	}
 }
 
-// TestDeletingPhaseStillWinsOverCanceled: a service being torn down reports
-// Deleting whatever the operator last wrote, including the new Canceled — the
-// tenant-facing phase must never be the stale value (ADR018's delete row).
-func TestDeletingPhaseStillWinsOverCanceled(t *testing.T) {
+// TestDeletingServiceIsNotFoundByID pins the w3/m81 read contract: once an App's
+// deletion is accepted, the by-id Get is absent (core.ErrNotFound) — it must not
+// keep serving `phase: Deleting` plus a withdrawn URL the way the m81 fixture
+// (srv-da7tf87krsvc73c3mcng) did for 2+ hours. The shared projection still labels
+// a deleting App Deleting (superseding the last operator phase, Canceled here)
+// and drops its dead URL, as defense-in-depth for any caller that reaches the
+// pure view() without the verb-level gate.
+func TestDeletingServiceIsNotFoundByID(t *testing.T) {
 	a := sampleApp("web")
 	a.Status.Phase = appv1alpha1.PhaseCanceled
+	a.Status.URL = "https://web.onbex.co"
 	now := metav1.NewTime(time.Unix(1_000_000, 0))
 	a.DeletionTimestamp = &now
 	a.Finalizers = []string{"app.bex.co/finalizer"}
 	svc, _ := newService(nil, a)
 
-	v, err := svc.Get(context.Background(), "web")
-	if err != nil {
-		t.Fatalf("Get: %v", err)
+	if _, err := svc.Get(context.Background(), "web"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("Get on a deleting service: got %v, want core.ErrNotFound (absent, like List and Render's GET 404)", err)
 	}
+
+	v := view(a)
 	if v.Phase != "Deleting" {
-		t.Fatalf("phase = %q, want Deleting for an App under deletion", v.Phase)
+		t.Fatalf("view phase = %q, want Deleting for an App under deletion", v.Phase)
+	}
+	if v.URL != "" {
+		t.Fatalf("view URL = %q, want empty for a deleting App (route/cert withdrawn)", v.URL)
 	}
 }

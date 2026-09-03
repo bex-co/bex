@@ -1013,6 +1013,24 @@ func (b *Base) AppWorkspace(ctx context.Context, a *appv1alpha1.App) string {
 // exhausted. Per-candidate denial rows are capped at
 // maxFallbackCandidateAudits per request, with one aggregate row past the cap
 // (w4/015 — see the constant's doc for the latency/amplification rationale).
+// NotFoundIfDeleting implements the m81 read contract: once an App's deletion
+// has been accepted (Kubernetes has stamped a DeletionTimestamp), every by-id
+// tenant read reports it as absent — ErrNotFound, indistinguishable from a
+// service that never existed — so the detail surfaces agree with List (which
+// already drops deleting Apps) and with Render (a deleted service reaches GET
+// 404). This is what keeps a by-id read from advertising a withdrawn URL while
+// the operator's finalizer tears down the App's S3/TLS/registry state
+// (docs/ADR006-bex-api.md § Reads while a deletion finalizes). Read verbs call
+// it right after AuthorizeApp; WRITE verbs deliberately do not — a terminating
+// resource still needs its finalizer-safe, operator-side teardown, and the
+// backend never legitimately mutates one.
+func NotFoundIfDeleting(a *appv1alpha1.App) error {
+	if a == nil || a.DeletionTimestamp.IsZero() {
+		return nil
+	}
+	return ErrNotFound
+}
+
 func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
 	verb := callerVerb(verbFrameSkip)
 	acting, actingErr := b.resolveWorkspace(ctx)

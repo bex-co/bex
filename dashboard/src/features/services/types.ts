@@ -380,6 +380,12 @@ export type ServiceStatusKey =
   // one ever succeeded. Deliberately not folded into "failed" — see PHASE_STATUS
   // in lib/status.ts (w6/m52).
   | "canceled"
+  // "deleting" = the service's deletion has been accepted and its finalizer is
+  // tearing it down. By-id reads return not-found the instant deletion is
+  // accepted (w3/m81), so the dashboard normally redirects rather than showing
+  // this — it exists so a service ever observed mid-teardown reads honestly
+  // (a muted "Deleting" badge, no dead URL) instead of the generic "Unknown".
+  | "deleting"
   | "failed"
   | "unknown";
 

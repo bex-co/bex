@@ -293,6 +293,12 @@ func (s *Service) List(ctx context.Context, service string, filter ListFilter) (
 	if err != nil {
 		return nil, err
 	}
+	// A deleting service is absent from every by-id surface, its deploy history
+	// included (w3/m81): reads agree with List and Render's GET 404 rather than
+	// serving the history of a resource that is being torn down.
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return nil, err
+	}
 	if s.Store == nil {
 		return nil, core.ErrDeploysUnavailable
 	}
@@ -329,6 +335,10 @@ func (s *Service) List(ctx context.Context, service string, filter ListFilter) (
 func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
 	if err != nil {
+		return DeployView{}, err
+	}
+	// Absent once deletion is accepted, same by-id contract as the list (w3/m81).
+	if err := core.NotFoundIfDeleting(a); err != nil {
 		return DeployView{}, err
 	}
 	if s.Store == nil {

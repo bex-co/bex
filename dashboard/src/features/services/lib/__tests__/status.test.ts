@@ -5,6 +5,7 @@ import {
   computeStats,
   isSuspended,
   isSleeping,
+  isConvergingPhase,
 } from "@/features/services/lib/status";
 import type { ServicesQuery, ServerQuery } from "@/graphql/definitions";
 import type { ServiceView } from "@/features/services/types";
@@ -399,6 +400,16 @@ describe("deriveStatus", () => {
     expect(deriveStatus(svc({ phase: "WeirdNewPhase" })).key).toBe("unknown");
   });
 
+  // w3/m81: a service observed mid-teardown must read as a muted "Deleting", not
+  // fall through to the generic "Unknown" the m81 fixture showed for 2+ hours.
+  it("shows a deleting service as Deleting, never Unknown", () => {
+    expect(deriveStatus(svc({ phase: "Deleting" }))).toEqual({
+      key: "deleting",
+      variant: "secondary",
+    });
+    expect(deriveStatus(svc({ phase: "deleting" })).key).toBe("deleting");
+  });
+
   // Only a free web service has the public activator route that makes Sleeping
   // and its wake-on-request promise true. Other Hibernated services are either
   // resuming from manual suspension or stale data from before that eligibility
@@ -463,6 +474,23 @@ describe("deriveStatus", () => {
         );
       }
     });
+  });
+});
+
+describe("isConvergingPhase", () => {
+  it("keeps polling through the moving phases, including deleting", () => {
+    for (const phase of ["", "pending", "building", "deploying", "deleting"]) {
+      expect(isConvergingPhase({ phase })).toBe(true);
+    }
+  });
+
+  // w3/m81: "deleting" is converging so a service seen mid-teardown keeps
+  // polling until the by-id read resolves to not-found (which redirects), rather
+  // than freezing on the stale cached row the fixture did for 2+ hours.
+  it("treats a settled phase as done so the poll can stop", () => {
+    for (const phase of ["running", "failed", "canceled", "hibernated"]) {
+      expect(isConvergingPhase({ phase })).toBe(false);
+    }
   });
 });
 
