@@ -16,17 +16,19 @@ limitations under the License.
 
 package apps
 
-// blueprint_generate.go: Render's "Generate Blueprint" for bex (w8/m22) —
-// serialize selected live resources back into a render.yaml the platform's
-// own validator accepts. The emit set is exactly what the ADR049 capability
-// registry marks translated/equivalent; secret VALUES never appear (env vars
-// backed by secrets emit `sync: false` name-only, or the fromDatabase/
-// fromService reference form when the wiring is derivable and the target is
-// in the same selection). Every generated manifest is self-checked through
-// the real compiler+parser before it is returned.
+// blueprint_generate.go: Render's "Generate Blueprint" for bex (w8/m22 +
+// w4/040) — serialize selected live resources back into a render.yaml the
+// platform's own validator accepts. The emit set is exactly what the ADR049
+// capability registry marks translated/equivalent; secret VALUES never appear
+// (env vars backed by secrets emit `sync: false` name-only, or the
+// fromDatabase/fromService/fromGroup reference form when the wiring is
+// derivable and the target is in the same selection; selected env groups emit
+// root envVarGroups with generateValue keys). Every generated manifest is
+// self-checked through the real compiler+parser before it is returned.
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -44,12 +46,20 @@ type EnvNameSource interface {
 	ListEnvVarNames(ctx context.Context, service string) ([]string, error)
 }
 
+// EnvGroupExportSource returns an env group's display name and env-var key
+// names for Blueprint generation (w4/040) — never values. *envgroups.Service
+// satisfies it. nil ⇒ env-group selection / fromGroup linkage are omitted.
+type EnvGroupExportSource interface {
+	ExportEnvGroup(ctx context.Context, gid string) (name string, keys []string, err error)
+}
+
 // GenerateBlueprintRequest selects the resources to export.
 type GenerateBlueprintRequest struct {
 	OwnerID     string
 	ServiceIDs  []string
 	PostgresIDs []string
 	KeyValueIDs []string
+	EnvGroupIDs []string
 }
 
 // GenerateBlueprintResult is the generated manifest plus the filename the
@@ -100,7 +110,7 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
 		return GenerateBlueprintResult{}, err
 	}
-	if len(req.ServiceIDs)+len(req.PostgresIDs)+len(req.KeyValueIDs) == 0 {
+	if len(req.ServiceIDs)+len(req.PostgresIDs)+len(req.KeyValueIDs)+len(req.EnvGroupIDs) == 0 {
 		return GenerateBlueprintResult{}, fmt.Errorf("%w: select at least one resource to generate a Blueprint from", core.ErrBadRequest)
 	}
 
@@ -125,13 +135,29 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 		kvDisplayByID[kv.Name] = kv.Spec.Name
 	}
 
+	// Selected env groups: explicit EnvGroupIDs only (same contract as
+	// postgresIds/keyValueIds — never auto-include links from services).
+	selectedGroups := map[string]exportedEnvGroup{} // gid → export
+	groupCache := map[string]exportedEnvGroup{}     // gid → export (selected + unselected resolve)
+	if s.EnvGroupExport != nil {
+		for _, gid := range req.EnvGroupIDs {
+			eg, err := s.resolveEnvGroupExport(ctx, gid, groupCache)
+			if err != nil {
+				return GenerateBlueprintResult{}, err
+			}
+			selectedGroups[gid] = eg
+		}
+	} else if len(req.EnvGroupIDs) > 0 {
+		return GenerateBlueprintResult{}, fmt.Errorf("%w: environment groups are unavailable", core.ErrSecretsUnavailable)
+	}
+
 	var services []map[string]any
 	for _, id := range req.ServiceIDs {
 		a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, id)
 		if err != nil {
 			return GenerateBlueprintResult{}, err
 		}
-		entry, err := s.generateServiceEntry(ctx, a, dbDisplayByID, kvDisplayByID)
+		entry, err := s.generateServiceEntry(ctx, a, dbDisplayByID, kvDisplayByID, selectedGroups, groupCache)
 		if err != nil {
 			return GenerateBlueprintResult{}, err
 		}
@@ -152,6 +178,13 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 		}
 		doc["databases"] = out
 	}
+	if len(req.EnvGroupIDs) > 0 {
+		var out []map[string]any
+		for _, gid := range req.EnvGroupIDs {
+			out = append(out, generateEnvGroupEntry(selectedGroups[gid]))
+		}
+		doc["envVarGroups"] = out
+	}
 
 	raw, err := yaml.Marshal(doc)
 	if err != nil {
@@ -171,7 +204,37 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 	return GenerateBlueprintResult{Manifest: manifest, Filename: CanonicalBlueprintFilename}, nil
 }
 
-func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, dbDisplayByID, kvDisplayByID map[string]string) (map[string]any, error) {
+// exportedEnvGroup is the Blueprint-facing projection of one env group.
+type exportedEnvGroup struct {
+	name string
+	keys []string
+}
+
+func (s *Service) resolveEnvGroupExport(ctx context.Context, gid string, cache map[string]exportedEnvGroup) (exportedEnvGroup, error) {
+	if eg, ok := cache[gid]; ok {
+		return eg, nil
+	}
+	name, keys, err := s.EnvGroupExport.ExportEnvGroup(ctx, gid)
+	if err != nil {
+		return exportedEnvGroup{}, err
+	}
+	eg := exportedEnvGroup{name: name, keys: keys}
+	cache[gid] = eg
+	return eg, nil
+}
+
+func generateEnvGroupEntry(eg exportedEnvGroup) map[string]any {
+	vars := make([]map[string]any, 0, len(eg.keys))
+	for _, key := range eg.keys {
+		// generateValue (not empty literals): re-apply to an existing group
+		// keeps live values; a fresh workspace mints secrets once. Emitting
+		// empty value: would wipe on ApplyEnvGroup.
+		vars = append(vars, map[string]any{"key": key, "generateValue": true})
+	}
+	return map[string]any{"name": eg.name, "envVars": vars}
+}
+
+func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, dbDisplayByID, kvDisplayByID map[string]string, selectedGroups map[string]exportedEnvGroup, groupCache map[string]exportedEnvGroup) (map[string]any, error) {
 	svcType := effectiveType(a.Spec.Type)
 	entry := map[string]any{
 		// The manifest-facing PUBLIC name, never the tenant-prefixed CR object
@@ -277,7 +340,10 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		entry["preDeployCommand"] = a.Spec.PreDeployCommand
 	}
 
-	envVars := s.generateEnvVars(ctx, a, dbDisplayByID, kvDisplayByID)
+	envVars, err := s.generateEnvVars(ctx, a, dbDisplayByID, kvDisplayByID, selectedGroups, groupCache)
+	if err != nil {
+		return nil, err
+	}
 	if len(envVars) > 0 {
 		entry["envVars"] = envVars
 	}
@@ -288,8 +354,10 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 // their value; a SecretKeyRef into a SELECTED datastore's connection Secret
 // becomes the reference form; every other secret-backed var — including the
 // mutable-store vars whose names the EnvNames seam lists — emits
-// `sync: false` name-only. No secret value is ever read.
-func (s *Service) generateEnvVars(ctx context.Context, a *appv1alpha1.App, dbDisplayByID, kvDisplayByID map[string]string) []map[string]any {
+// `sync: false` name-only. Linked env groups (Spec.EnvFromSecrets) emit
+// fromGroup when selected, else degrade each group key to sync:false (same
+// dangling-free rule as unselected datastores). No secret value is ever read.
+func (s *Service) generateEnvVars(ctx context.Context, a *appv1alpha1.App, dbDisplayByID, kvDisplayByID map[string]string, selectedGroups map[string]exportedEnvGroup, groupCache map[string]exportedEnvGroup) ([]map[string]any, error) {
 	var out []map[string]any
 	seen := map[string]bool{}
 	for _, env := range a.Spec.Env {
@@ -320,7 +388,47 @@ func (s *Service) generateEnvVars(ctx context.Context, a *appv1alpha1.App, dbDis
 			}
 		}
 	}
-	return out
+	if s.EnvGroupExport != nil {
+		for _, secret := range a.Spec.EnvFromSecrets {
+			gid, ok := envGroupIDFromSecret(secret)
+			if !ok {
+				continue
+			}
+			if eg, selected := selectedGroups[gid]; selected {
+				out = append(out, map[string]any{"fromGroup": eg.name})
+				continue
+			}
+			// Unselected linked group: expand keys as sync:false (no dangling
+			// fromGroup). Authz denial fails closed; missing group is skipped.
+			eg, err := s.resolveEnvGroupExport(ctx, gid, groupCache)
+			if err != nil {
+				if errors.Is(err, core.ErrNotFound) {
+					continue
+				}
+				return nil, err
+			}
+			for _, key := range eg.keys {
+				if key == "" || seen[key] {
+					continue
+				}
+				seen[key] = true
+				out = append(out, map[string]any{"key": key, "sync": false})
+			}
+		}
+	}
+	return out, nil
+}
+
+// envGroupIDFromSecret reverses envgroups.envSecretName (<gid>-env).
+func envGroupIDFromSecret(secret string) (string, bool) {
+	if !strings.HasSuffix(secret, "-env") {
+		return "", false
+	}
+	gid := strings.TrimSuffix(secret, "-env")
+	if !strings.HasPrefix(gid, "evg-") {
+		return "", false
+	}
+	return gid, true
 }
 
 // datastoreReference reverses deploy.go's resolveDatabaseRef/resolveKeyValueRef

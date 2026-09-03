@@ -374,6 +374,27 @@ func (s *Service) GetEnvGroup(ctx context.Context, gid string) (EnvGroupView, er
 	return s.viewFromMeta(ctx, gid, m)
 }
 
+// ExportEnvGroup returns a group's display name and env-var key names for
+// Blueprint generation (w4/040) — never values. Sensitive scope matches
+// GenerateBlueprint's resource gates.
+func (s *Service) ExportEnvGroup(ctx context.Context, gid string) (name string, keys []string, err error) {
+	m, err := s.authorizeGroup(ctx, core.RelCanViewSensitive, gid)
+	if err != nil {
+		return "", nil, err
+	}
+	view, err := s.viewFromMeta(ctx, gid, m)
+	if err != nil {
+		return "", nil, err
+	}
+	keys = make([]string, 0, len(view.EnvVars))
+	for _, v := range view.EnvVars {
+		if v.Key != "" {
+			keys = append(keys, v.Key)
+		}
+	}
+	return view.Name, keys, nil
+}
+
 // CreateEnvGroup atomically creates a group in req.OwnerID's workspace ("" =>
 // the caller's default), optionally populated with vars/files and linked to
 // services. Every value, filename, Environment, and service link is validated

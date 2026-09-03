@@ -31,6 +31,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -40,6 +41,21 @@ type fakeEnvNames struct{ names map[string][]string }
 
 func (f fakeEnvNames) ListEnvVarNames(_ context.Context, service string) ([]string, error) {
 	return f.names[service], nil
+}
+
+type fakeEnvGroupExport struct {
+	groups map[string]struct {
+		name string
+		keys []string
+	}
+}
+
+func (f fakeEnvGroupExport) ExportEnvGroup(_ context.Context, gid string) (string, []string, error) {
+	g, ok := f.groups[gid]
+	if !ok {
+		return "", nil, core.ErrNotFound
+	}
+	return g.name, g.keys, nil
 }
 
 func generateFixtureService() *Service {
@@ -239,6 +255,104 @@ func TestGenerateBlueprintEmptySelectionRejected(t *testing.T) {
 	svc := generateFixtureService()
 	if _, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{}); err == nil {
 		t.Fatal("empty selection must be rejected")
+	}
+}
+
+func TestGenerateBlueprintEnvGroupsRoundTrip(t *testing.T) {
+	svc := generateFixtureService()
+	web := &appv1alpha1.App{}
+	if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, web); err != nil {
+		t.Fatal(err)
+	}
+	web.Spec.EnvFromSecrets = []string{"evg-shared-env"}
+	if err := svc.Client.Update(context.Background(), web); err != nil {
+		t.Fatal(err)
+	}
+	svc.EnvGroupExport = fakeEnvGroupExport{groups: map[string]struct {
+		name string
+		keys []string
+	}{
+		"evg-shared": {name: "shared-config", keys: []string{"API_TOKEN", "LOG_LEVEL"}},
+	}}
+
+	out, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{
+		ServiceIDs:  []string{"web"},
+		PostgresIDs: []string{"dpg-abc123"},
+		KeyValueIDs: []string{"red-xyz789"},
+		EnvGroupIDs: []string{"evg-shared"},
+	})
+	if err != nil {
+		t.Fatalf("GenerateBlueprint: %v", err)
+	}
+	for _, want := range []string{
+		"envVarGroups:", "name: shared-config", "fromGroup: shared-config",
+		"key: API_TOKEN", "generateValue: true",
+	} {
+		if !strings.Contains(out.Manifest, want) {
+			t.Errorf("generated manifest missing %q:\n%s", want, out.Manifest)
+		}
+	}
+	if strings.Contains(out.Manifest, "evg-") {
+		t.Errorf("manifest must not leak env-group ids:\n%s", out.Manifest)
+	}
+	if strings.Contains(out.Manifest, "secret-value") || strings.Contains(out.Manifest, "sk_live") {
+		t.Errorf("manifest must never emit secret values:\n%s", out.Manifest)
+	}
+	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest); err != nil || !v.Valid {
+		t.Fatalf("generated env-group manifest must self-validate: %+v err=%v\n%s", v, err, out.Manifest)
+	}
+}
+
+func TestGenerateBlueprintUnselectedEnvGroupFallsBackToSyncFalse(t *testing.T) {
+	svc := generateFixtureService()
+	web := &appv1alpha1.App{}
+	if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, web); err != nil {
+		t.Fatal(err)
+	}
+	web.Spec.EnvFromSecrets = []string{"evg-shared-env"}
+	if err := svc.Client.Update(context.Background(), web); err != nil {
+		t.Fatal(err)
+	}
+	svc.EnvGroupExport = fakeEnvGroupExport{groups: map[string]struct {
+		name string
+		keys []string
+	}{
+		"evg-shared": {name: "shared-config", keys: []string{"API_TOKEN"}},
+	}}
+
+	out, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{
+		ServiceIDs: []string{"web"},
+	})
+	if err != nil {
+		t.Fatalf("GenerateBlueprint: %v", err)
+	}
+	if strings.Contains(out.Manifest, "fromGroup") || strings.Contains(out.Manifest, "envVarGroups") {
+		t.Errorf("unselected env group must not emit fromGroup/envVarGroups:\n%s", out.Manifest)
+	}
+	if !strings.Contains(out.Manifest, "API_TOKEN") || !strings.Contains(out.Manifest, "sync: false") {
+		t.Errorf("unselected group keys must degrade to sync:false:\n%s", out.Manifest)
+	}
+	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest); err != nil || !v.Valid {
+		t.Fatalf("degraded env-group manifest must still validate: %+v err=%v", v, err)
+	}
+}
+
+func TestGenerateBlueprintEnvGroupsOnlySelection(t *testing.T) {
+	svc := generateFixtureService()
+	svc.EnvGroupExport = fakeEnvGroupExport{groups: map[string]struct {
+		name string
+		keys []string
+	}{
+		"evg-shared": {name: "shared-config", keys: []string{"API_TOKEN"}},
+	}}
+	out, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{
+		EnvGroupIDs: []string{"evg-shared"},
+	})
+	if err != nil {
+		t.Fatalf("GenerateBlueprint: %v", err)
+	}
+	if !strings.Contains(out.Manifest, "envVarGroups:") || strings.Contains(out.Manifest, "services:") {
+		t.Errorf("env-group-only selection should emit only envVarGroups:\n%s", out.Manifest)
 	}
 }
 

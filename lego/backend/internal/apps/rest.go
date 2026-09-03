@@ -1249,6 +1249,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			ServiceIDs  []string `json:"serviceIds"`
 			PostgresIDs []string `json:"postgresIds"`
 			KeyValueIDs []string `json:"keyValueIds"`
+			EnvGroupIDs []string `json:"envGroupIds"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
 			return nil, err
@@ -1258,6 +1259,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			ServiceIDs:  body.ServiceIDs,
 			PostgresIDs: body.PostgresIDs,
 			KeyValueIDs: body.KeyValueIDs,
+			EnvGroupIDs: body.EnvGroupIDs,
 		})
 	}))
 	mux.HandleFunc("POST /v1/blueprints/preview", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {

@@ -126,12 +126,14 @@ query GenerateBlueprint(
   $serviceIds: [String]
   $postgresIds: [String]
   $keyValueIds: [String]
+  $envGroupIds: [String]
 ) {
   generateBlueprint(
     ownerId: $ownerId
     serviceIds: $serviceIds
     postgresIds: $postgresIds
     keyValueIds: $keyValueIds
+    envGroupIds: $envGroupIds
   ) {
     manifest
     filename

@@ -587,6 +587,11 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Service Woke Up",
     description: "Event label — service_woken",
   },
+  "webhooks.event.service_moved": {
+    message: "Service Moved",
+    description:
+      "Event label — service_moved (bex extension: project/environment placement change)",
+  },
   "webhooks.event.server_restarted": {
     message: "Server Restarted",
     description: "Event label — server_restarted",

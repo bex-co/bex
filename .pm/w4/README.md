@@ -72,9 +72,13 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **035** — Correct ADR018's stale shared-hosting security update (sub-hour; `.pm/DO_NOT_DO.md` `#PSL` is canonical)
-- [ ] **039** — Webhook event picker renders `service_moved` as a raw enum under "Other" (missing humanized label in `webhooks/event-catalog.ts`; sub-hour copy fix; surface missed by w6/m134's DoD; from the 2026-09-02 `/qa-find-bugs` hunt)
-- [ ] **040** — Generate Blueprint can't export env-group linkage (`fromGroup`/`envVarGroups`) — breaks w8/m22's "no-op round trip" for stacks using env groups; code-confirmed, live-verify-then-promote; from the 2026-09-02 `/qa-find-bugs` hunt
+_(empty — all open notes closed 2026-09-03: `035` ADR018 shared-hosting posture, `039` webhook `service_moved` label, `040` Generate Blueprint env-group export.)_
+
+_(`040` done 2026-09-03 — Generate Blueprint now accepts `envGroupIds` on REST/GraphQL/MCP, emits root `envVarGroups` + per-service `fromGroup` for selected groups (keys as `generateValue`), and degrades unselected linked groups to `sync: false` keys; dashboard Generate dialog gained env-group multi-select; note moved to `done/`.)_
+
+_(`039` done 2026-09-03 — webhook event picker humanizes `service_moved` as "Service Moved" via `event-catalog.ts` SINGLES + en/zh locales; no longer raw under Other; note moved to `done/`.)_
+
+_(`035` done 2026-09-03 — ADR018 (+ ADR029 and linked evidence/runbook wording) now states shared hosting remains enabled under `#PSL`, not the outage-causing unset-base-domain remediation; note moved to `done/`.)_
 
 _(`038` done 2026-09-03 — `GET /v1/projects` without `ownerId` now returns `400 {"error":"bad request: invalid query parameter \"ownerId\""}` instead of the opaque bare `bad request`, so a REST/CLI caller learns which param bex requires — matching the validator-gated siblings and the deliberately-parallel `GET /v1/environments`. One-line handler change in `lego/backend/internal/projects/rest.go:79` (`fmt.Errorf("%w: invalid query parameter %q", core.ErrBadRequest, "ownerId")`) plus a `rest_test.go` assertion that the missing-`ownerId` 400 body names `ownerId`. The intentional required-`ownerId` divergence from Render is untouched (that parity question stays with `w6/m126`); GraphQL/MCP need no change. `go test ./internal/projects/` + `go vet` + backend `go build ./...` green; note moved to `done/`.)_
 

@@ -29,7 +29,7 @@ Static hosting has three independent security domains:
 
 | Boundary | Attacker capability | Current contract |
 | --- | --- | --- |
-| Browser site boundary | A malicious tenant controls HTML/JavaScript on one platform origin | Shared platform hosts are disabled unless `BEX_BASE_DOMAIN` is a canonical non-ICANN Public Suffix entry; custom domains remain available |
+| Browser site boundary | A malicious tenant controls HTML/JavaScript on one platform origin | Shared platform hosts remain enabled (`BEX_BASE_DOMAIN=onbex.co`); the cross-tenant cookie risk is accepted before open signup ([`.pm/DO_NOT_DO.md` `#PSL`](../.pm/DO_NOT_DO.md)). Interim guidance: host-only / `__Host-` cookies. A private-PSL replacement suffix may ship later; unsetting the base domain is not authorized |
 | Kubernetes routing authority | A tenant workload or compromised tenant-facing API/gateway identity can call the API server with only its effective RBAC | Those identities cannot mutate Services or Ingresses; fail-closed admission accepts tenant ExternalName aliases only from the operator, with an App controller owner and one of two fixed destinations |
 | Object-store blast radius | The shared static-server or an ephemeral publish/purge Job is compromised | The server identity is read-only on `bex-static`; the publisher identity is write/delete-capable only on `bex-static`; neither can enumerate the account or reach `bex-tfstate` backups or another bucket |
 
@@ -45,9 +45,9 @@ Tenant-facing ServiceAccounts are separately denied Service and Ingress mutation
 
 ### Browser platform-domain contract
 
-Dashboard, API, Kratos, and Hydra stay on `*.bex.co`. Shared tenant platform hosts are currently disabled because `onbex.co` is an ordinary registrable domain: browsers allow one tenant to set `Domain=onbex.co` cookies received by siblings. Custom domains remain available and are the domain owner's cookie-policy responsibility.
+Dashboard, API, Kratos, and Hydra stay on `*.bex.co`. Shared tenant platform hosts use `onbex.co` via `BEX_BASE_DOMAIN`. That domain is an ordinary registrable domain (not on the Public Suffix List), so browsers allow one tenant to set `Domain=onbex.co` cookies received by siblings — a real cross-tenant cookie risk that is **accepted** before open signup. Neither unsetting `BEX_BASE_DOMAIN` nor submitting `onbex.co` to the PSL is currently authorized (unsetting caused the second production outage; `scripts/gitops-validate.sh` rejects an empty production hosting suffix). Canonical decision: [`.pm/DO_NOT_DO.md` `#PSL`](../.pm/DO_NOT_DO.md). Custom domains remain available and are the domain owner's cookie-policy responsibility. Interim tenant guidance is host-only cookies, preferably `Secure; HttpOnly; SameSite=Lax` with the `__Host-` prefix.
 
-Both the manager and static-server fail startup when a non-empty `BEX_BASE_DOMAIN` is not an exact PRIVATE-section entry in `golang.org/x/net/publicsuffix`; ICANN suffixes and ordinary eTLD+1 domains are rejected. Production manifests leave it unset until a dedicated suffix is registered. [`static-site-browser-isolation.mjs`](../scripts/static-site-browser-isolation.mjs) is the release gate for a candidate `BEX_HOSTING_SUFFIX` and defaults to requiring that real Chrome reject its parent cookie. Host-only cookies, preferably `Secure; HttpOnly; SameSite=Lax` with the `__Host-` prefix, remain defense in depth rather than the isolation boundary.
+Both the manager and static-server fail startup when a non-empty `BEX_BASE_DOMAIN` is set to an ordinary ICANN eTLD+1 that is not an exact PRIVATE-section entry in `golang.org/x/net/publicsuffix` — that gate refuses an unsafe _replacement_ suffix, and does not authorize emptying the configured base domain. Production keeps `onbex.co` configured. [`static-site-browser-isolation.mjs`](../scripts/static-site-browser-isolation.mjs) is the release gate for a future dedicated `BEX_HOSTING_SUFFIX` candidate and defaults to requiring that real Chrome reject its parent cookie.
 
 ## Object store
 

@@ -49,8 +49,12 @@ const GROUPS: Record<string, string[]> = {
   ],
 };
 
-/** Keys Render lists as bare rows (no group); anything else unknown → "other". */
-const SINGLES = new Set<string>(["branch_deleted", "job_run_ended"]);
+/** Keys Render lists as bare rows (no group); bex-native singles join here too. */
+const SINGLES = new Set<string>([
+  "branch_deleted",
+  "job_run_ended",
+  "service_moved",
+]);
 
 const EVENT_GROUP: ReadonlyMap<string, string> = new Map(
   Object.entries(GROUPS).flatMap(([group, events]) =>

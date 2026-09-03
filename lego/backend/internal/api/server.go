@@ -669,11 +669,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 	var envNames apps.EnvNameSource
 	var createSecrets apps.CreateSecretsSeeder
 	var envGroupApplier apps.EnvGroupApplier
+	var envGroupExport apps.EnvGroupExportSource
 	if d.Secrets != nil {
 		envSeeder = secretsSvc
 		envNames = secretsSvc
 		createSecrets = secrets.NewCreateSecretsSeeder(secretsSvc)
 		envGroupApplier = envGroupsSvc
+		envGroupExport = envGroupsSvc
 	}
 	billingSvc := &billing.Service{Base: base, Provider: d.Billing, State: d.BillingState}
 	var environmentEnvGroups environments.EnvGroupIndex
@@ -776,7 +778,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
 	}
 	srv := &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
+		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
 		Metrics: &metrics.Service{
 			Base:                       base,
