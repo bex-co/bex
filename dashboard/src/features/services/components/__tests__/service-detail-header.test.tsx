@@ -122,6 +122,20 @@ describe("ServiceDetailHeader", () => {
     ).toHaveAttribute("href", "https://app.onbex.co");
   });
 
+  // w3/m81: a deleting service's route/certificate are withdrawn, so its URL is
+  // dead. The header must read "Deleting" and never render that URL as a live
+  // link, even if the wire still carries it (the m81 fixture served a dead link
+  // for 2+ hours). By-id reads 404 the instant deletion is accepted, so this is
+  // the belt-and-suspenders for any transient render before the redirect.
+  it("shows a deleting service as Deleting with no live URL link", async () => {
+    renderHeader(svc({ phase: "Deleting", url: "https://app.onbex.co" }));
+
+    expect(await screen.findByText("Deleting")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "https://app.onbex.co" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("names service phase and latest deploy status separately and shows runtime", async () => {
     renderHeader(svc({ phase: "Building", runtime: "node" }), {
       latestDeploy: { id: "dep-failed", status: "build_failed" },

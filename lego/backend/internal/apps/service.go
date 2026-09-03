@@ -853,8 +853,18 @@ func view(a *appv1alpha1.App) AppView {
 		subdomainPolicy = ""
 	}
 	phase := string(a.Status.Phase)
+	url := a.Status.URL
+	urls := a.Status.URLs
 	if !a.DeletionTimestamp.IsZero() {
+		// A deleting App's route and certificate are withdrawn by the ownerRef
+		// cascade within seconds, so its serving URL is dead. Never project it.
+		// By-id verbs already 404 in this state (core.NotFoundIfDeleting), so this
+		// is defense-in-depth that keeps the shared projection itself honest — a
+		// deleting App, if ever projected, reads Deleting with no URL, never the
+		// stale Running/dead-URL pair the w3/m81 fixture served for 2+ hours.
 		phase = "Deleting"
+		url = ""
+		urls = nil
 	}
 	return AppView{
 		ID:                  appID,
@@ -863,13 +873,13 @@ func view(a *appv1alpha1.App) AppView {
 		DisplayName:         a.Spec.DisplayName,
 		Type:                svcType,
 		Phase:               phase,
-		URL:                 a.Status.URL,
+		URL:                 url,
 		PublicRoutingNotice: publicRoutingNotice(a),
 		// The contract-level derivation (types/v1alpha1) the operator's slug
 		// Service answers — surfaced string and resolvable hostname cannot
 		// drift (ADR041 D2/D4).
 		InternalAddress:      a.Spec.InternalAddress(a.Name),
-		URLs:                 a.Status.URLs,
+		URLs:                 urls,
 		Image:                a.Status.Image,
 		SourceImage:          a.Spec.Image,
 		RegistryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
@@ -939,7 +949,10 @@ func suspenders(suspended bool) []string {
 func (s *Service) view(a *appv1alpha1.App) AppView {
 	v := view(a)
 	v.NextRunAt = s.nextCronRunAt(a)
-	if v.URL == "" {
+	// Don't synthesize the pending intent URL for a deleting App — its host is
+	// being torn down, so the derived URL would be as dead as the withdrawn
+	// status.URL that view() already blanks (w3/m81).
+	if v.URL == "" && a.DeletionTimestamp.IsZero() {
 		v.URL = s.pendingPublicURL(a)
 	}
 	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.ServiceDashboardRoute(v.Type), v.ID)
@@ -1211,6 +1224,16 @@ func tierDisplayName(id string) string {
 func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
+		return AppView{}, err
+	}
+	// A deleting App is absent from every by-id surface, matching List and
+	// Render's GET 404 (w3/m81): the moment a DeletionTimestamp is set the detail
+	// read must not keep serving `phase: Deleting` plus a now-withdrawn URL while
+	// the finalizer tears down the resource. The `terminating` quota counter
+	// (workspaceLimits, w6/m129) is the aggregate signal that cleanup is still in
+	// flight; a stuck finalizer surfaces to operators as a DeletionStalled App
+	// condition (docs/ADR029 § Deletion and finalizer bound).
+	if err := core.NotFoundIfDeleting(a); err != nil {
 		return AppView{}, err
 	}
 	v := s.view(a)
@@ -4082,6 +4105,10 @@ func (s *Service) ListRoutes(ctx context.Context, name string) ([]StaticRouteVie
 	if err != nil {
 		return nil, err
 	}
+	// Absent once deletion is accepted, same by-id contract as Get (w3/m81).
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return nil, err
+	}
 	if err := requireStaticSite(a, name); err != nil {
 		return nil, err
 	}
@@ -4116,6 +4143,10 @@ func (s *Service) SetRoutes(ctx context.Context, name string, routes []StaticRou
 func (s *Service) ListHeaders(ctx context.Context, name string) ([]StaticHeaderView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
+		return nil, err
+	}
+	// Absent once deletion is accepted, same by-id contract as Get (w3/m81).
+	if err := core.NotFoundIfDeleting(a); err != nil {
 		return nil, err
 	}
 	if err := requireStaticSite(a, name); err != nil {

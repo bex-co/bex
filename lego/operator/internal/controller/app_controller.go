@@ -78,6 +78,27 @@ const (
 	// being torn down, a Secret a controller has not derived yet.
 	settleRequeue = 2 * time.Second
 
+	// finalizerOverrunAfter bounds how long App finalization may run before the
+	// operator surfaces it as stalled. Ordinary deletion clears in 1–15s; the one
+	// long pole is a static site's object-prefix purge Job, itself capped at a
+	// 15-minute activeDeadlineSeconds (publish.PurgeJob). Past this window a
+	// still-pending or erroring finalizer is a genuine overrun (a missing publish
+	// Secret, a Job wedged on admission, an S3 outage), not a slow-but-healthy
+	// teardown, so it is stamped DeletionStalled and its requeue backs off from
+	// settleRequeue to childHealthRequeue (w3/m81, docs/ADR029 § Deletion and
+	// finalizer bound). AppReconciler.FinalizerOverrunAfter overrides it so the
+	// failure path is tested without a multi-minute sleep.
+	finalizerOverrunAfter = 15 * time.Minute
+
+	// conditionDeletionStalled is the App status condition the operator stamps
+	// (Status=True) when finalization overruns finalizerOverrunAfter. Conditions
+	// are a free-form list, so this needs no CRD enum. Its presence is the
+	// actionable operator signal (`kubectl get app -o yaml` / describe); by-id
+	// tenant reads are already NotFound and the resource still counts against the
+	// workspace `terminating` quota (w6/m129) until the finalizer clears.
+	conditionDeletionStalled      = "DeletionStalled"
+	reasonCleanupExceededDeadline = "CleanupExceededDeadline"
+
 	// Ready-condition reasons for the two halves of a source build. They are a
 	// shared vocabulary, not local strings: the control plane keys on them to
 	// tell "waiting for capacity" from "building" and gives each its own phase
@@ -339,6 +360,11 @@ type AppReconciler struct {
 	// controller-runtime default of one serializes otherwise independent Apps.
 	// Values below 1 retain controller-runtime's safe default of one worker.
 	MaxConcurrentReconciles int
+	// FinalizerOverrunAfter overrides finalizerOverrunAfter — the window past
+	// which a still-running App finalization is surfaced as DeletionStalled
+	// (w3/m81). Zero uses the constant; a small value lets tests exercise the
+	// overrun path without a multi-minute wall-clock wait.
+	FinalizerOverrunAfter time.Duration
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=apps,verbs=get;list;watch;create;update;patch;delete
@@ -4295,6 +4321,56 @@ func appPodRequests(_ context.Context, object client.Object) []reconcile.Request
 	return []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: object.GetNamespace(), Name: name}}}
 }
 
+// finalizerOverrunWindow returns the window past which a still-running App
+// finalization is surfaced as stalled. FinalizerOverrunAfter is a test seam so
+// the overrun path can be exercised without a multi-minute wall-clock wait.
+func (r *AppReconciler) finalizerOverrunWindow() time.Duration {
+	if r.FinalizerOverrunAfter > 0 {
+		return r.FinalizerOverrunAfter
+	}
+	return finalizerOverrunAfter
+}
+
+// deletionOverran reports whether finalization has run past its bound. It keys
+// on the App's own DeletionTimestamp — the wall-clock instant Kubernetes
+// accepted the delete — so no extra status field is needed to remember when
+// teardown began, and a manager restart mid-teardown still measures from the
+// same origin.
+func (r *AppReconciler) deletionOverran(app *appv1alpha1.App) bool {
+	if app.DeletionTimestamp.IsZero() {
+		return false
+	}
+	return time.Since(app.DeletionTimestamp.Time) >= r.finalizerOverrunWindow()
+}
+
+// recordDeletionStalled stamps the DeletionStalled condition so a wedged
+// finalizer (a static-content purge that keeps failing, a missing publish
+// Secret, an S3 outage) is observable to operators within a bounded window
+// instead of leaving the App Terminating and hidden indefinitely — the 2+-hour
+// hang w3/m81 was promoted to close. It deliberately never force-removes the
+// finalizer: the resource stays absent from tenant by-id reads (NotFound) and
+// keeps counting against the workspace `terminating` quota (w6/m129) until
+// cleanup succeeds, so no object prefix is silently orphaned behind
+// scripts/delete-audit.sh. Idempotent — the message is a stable step label
+// (the underlying error is logged separately), so meta.SetStatusCondition
+// writes once and no-ops on later stalled passes.
+func (r *AppReconciler) recordDeletionStalled(ctx context.Context, app *appv1alpha1.App, blockedStep string) {
+	changed := meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type:               conditionDeletionStalled,
+		Status:             metav1.ConditionTrue,
+		Reason:             reasonCleanupExceededDeadline,
+		ObservedGeneration: app.Generation,
+		Message: fmt.Sprintf("app finalization has not completed within %s of deletion (%s); the finalizer is retained so no data is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
+			r.finalizerOverrunWindow(), blockedStep),
+	})
+	if !changed {
+		return
+	}
+	logf.FromContext(ctx).Error(nil, "App finalization stalled past its bound; surfaced as DeletionStalled",
+		"app", app.Name, "window", r.finalizerOverrunWindow(), "step", blockedStep)
+	r.updateStatusRetrying(ctx, app, "recordDeletionStalled")
+}
+
 // handleAppDeletion runs the finalizer teardown for an App being deleted:
 // cleans up build artifacts, cert-manager TLS Secrets, static-site S3 content,
 // and Zot registry images that ownerRefs can't cascade to. Extracted from
@@ -4317,12 +4393,24 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		externalPending, err := r.reclaimAppExternalArtifacts(ctx, app, ns, cl)
 		errs = append(errs, err)
 		cleanupErr := errors.Join(errs...)
+		// A finalization that outruns its bound is surfaced, not hidden (w3/m81):
+		// stamp DeletionStalled and back the requeue off from settleRequeue to
+		// childHealthRequeue so a wedged App stops hot-looping. The finalizer is
+		// still retained on every non-terminal branch below.
+		overran := r.deletionOverran(app)
 		if cleanupErr != nil {
+			if overran {
+				r.recordDeletionStalled(ctx, app, "external/execution cleanup returned errors")
+			}
 			log.Error(cleanupErr, "App finalization cleanup blocked; preserving registry credentials",
 				"app", app.Name, "executionPending", executionPending, "externalPending", externalPending)
 			return ctrl.Result{}, cleanupErr
 		}
 		if executionPending || externalPending {
+			if overran {
+				r.recordDeletionStalled(ctx, app, "external resource cleanup still pending")
+				return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
+			}
 			log.Info("App finalization cleanup pending; preserving registry credentials",
 				"app", app.Name, "executionPending", executionPending, "externalPending", externalPending)
 			return ctrl.Result{RequeueAfter: settleRequeue}, nil
@@ -4334,10 +4422,17 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		// registry/RBAC failure destroys the only credential that can retry safely.
 		credentialsPending, err := r.revokeAppRegistryCredentials(ctx, app, ns, cl)
 		if err != nil {
+			if overran {
+				r.recordDeletionStalled(ctx, app, "registry credential revocation returned an error")
+			}
 			log.Error(err, "App finalization credential revocation blocked", "app", app.Name)
 			return ctrl.Result{}, err
 		}
 		if credentialsPending {
+			if overran {
+				r.recordDeletionStalled(ctx, app, "registry credential revocation still pending")
+				return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
+			}
 			log.Info("App finalization credential revocation pending", "app", app.Name)
 			return ctrl.Result{RequeueAfter: settleRequeue}, nil
 		}

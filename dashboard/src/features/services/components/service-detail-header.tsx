@@ -42,7 +42,7 @@ import {
   SERVICE_TYPE_LABEL,
 } from "@/features/services/lib/service-type";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
-import { isSleeping } from "@/features/services/lib/status";
+import { isSleeping, isDeleting } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
 import {
@@ -92,7 +92,11 @@ export function ServiceDetailHeader({
     ? repoBrowseUrl(service.repo, service.branch)
     : null;
   // Never place a non-http(s) scheme into an href (codex-security target #4).
-  const safeServiceUrl = safeHttpHref(service.url);
+  // A deleting service's route/certificate are withdrawn, so its URL is dead —
+  // never render it as a live link (w3/m81). The backend already blanks the URL
+  // in that state and by-id reads 404, so this is belt-and-suspenders for any
+  // transient/stale render.
+  const safeServiceUrl = isDeleting(service) ? null : safeHttpHref(service.url);
 
   return (
     <div className="space-y-2 border-b px-4 py-3 sm:px-6">
