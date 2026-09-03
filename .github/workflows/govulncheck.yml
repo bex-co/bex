@@ -15,11 +15,14 @@ name: govulncheck (Go workspace)
 #   - GO-2026-5970 (golang.org/x/text < v0.39.0, reachable) — FIXED by bumping
 #     x/text to v0.39.0 in lego/operator + lego/backend.
 #   - GO-2026-5856 (crypto/tls ECH privacy leak, fixed in go1.25.12 / go1.26.5) —
-#     resolved by scanning under the `1.25` Go line the release image builds with
-#     (lego/Dockerfile `FROM golang:1.25`; setup-go's latest 1.25.x is >= 1.25.12),
+#     resolved by scanning under the `1.26` Go line the release image builds with
+#     (lego/Dockerfile `FROM golang:1.26`; setup-go's latest 1.26.x is >= 1.26.5),
 #     so what govulncheck sees is the stdlib production actually ships.
+#   - GO-2026-6354 / GO-2026-6355 (golang.org/x/crypto/ssh DoS, reachable via the
+#     ssh-gateway) — FIXED by bumping x/crypto to v0.56.0, which requires go 1.26;
+#     that bump is what moved the platform (and this scan) from the 1.25 line.
 #
-# Go version: pinned to the `1.25` line to MATCH lego/Dockerfile, never a newer
+# Go version: pinned to the `1.26` line to MATCH lego/Dockerfile, never a newer
 # toolchain — a newer Go would hide a stdlib vuln the release image still carries.
 # Tool pin: govulncheck@v1.1.4 via `go install`, integrity-verified against the Go
 # checksum database (GOSUMDB, on by default) — the go-install equivalent of the
@@ -51,27 +54,23 @@ jobs:
       labels: [self-hosted, Linux, ARM64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Resolve the newest 1.25.x from go.dev (the golang:1.25 line)
+      - name: Resolve the newest 1.26.x from go.dev (the golang:1.26 line)
         id: goline
-        # The scan must run the SAME newest-1.25.x stdlib the release image
-        # ships (lego/Dockerfile `FROM golang:1.25`). Neither the runner's
+        # The scan must run the SAME newest-1.26.x stdlib the release image
+        # ships (lego/Dockerfile `FROM golang:1.26`). Neither the runner's
         # pre-installed toolchain nor setup-go's version manifest can be
         # trusted for that on a patch-release day — both lag go.dev by
         # hours-to-days, and the scan then flags stdlib vulns the image no
-        # longer carries (2026-08-13: manifest resolved 1.25.12, even with
-        # check-latest, while go.dev and golang:1.25 were on 1.25.13).
+        # longer carries.
         #
         # go.dev's default `mode=json` feed is only the two currently
-        # supported majors. As of 2026-08-19 that is 1.26 + 1.27, so 1.25
-        # is gone from current-releases even though `golang:1.25` is still
-        # what production builds. Query `include=all` for the newest 1.25.x
-        # patch (1.25.14 at the time of this comment). Moving the image
-        # (and this pin) to 1.26 is a separate Dockerfile change — not a
-        # reason to scan a newer stdlib than production ships.
+        # supported majors; query `include=all` so this keeps resolving the
+        # newest 1.26.x patch even once 1.26 ages out of current-releases,
+        # for as long as `golang:1.26` is what production builds.
         run: |
-          v=$(curl -fsSL 'https://go.dev/dl/?mode=json&include=all' | jq -r '[.[] | select(.stable) | .version | select(startswith("go1.25."))][0] // empty' | sed 's/^go//')
+          v=$(curl -fsSL 'https://go.dev/dl/?mode=json&include=all' | jq -r '[.[] | select(.stable) | .version | select(startswith("go1.26."))][0] // empty' | sed 's/^go//')
           if [ -z "$v" ]; then
-            echo "no stable 1.25.x in go.dev's archive feed" >&2
+            echo "no stable 1.26.x in go.dev's archive feed" >&2
             exit 1
           fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
@@ -83,13 +82,10 @@ jobs:
       - name: Install govulncheck (pinned, checksum-DB verified)
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Scan the Go platform modules (fail on any reachable vuln)
-        # GOWORK=off: lego/go.work requires go >= 1.26.0 (lego/cli and its
-        # pinned upstream render-oss/cli), which would make the go command
-        # silently switch to a 1.26 toolchain and scan a stdlib the release
-        # image (golang:1.25) does not ship. Each platform module resolves
-        # standalone via its `replace …/lego/types => ../types` directive —
-        # exactly how lego/Dockerfile builds them — so disabling the workspace
-        # keeps this scan on the same stdlib production runs.
+        # GOWORK=off: scan each platform module exactly as lego/Dockerfile
+        # builds it — standalone, with no go.work in play — so it resolves via
+        # its own `replace …/lego/types => ../types` directive against the same
+        # module graph production ships, not the workspace's unioned versions.
         run: |
           rc=0
           for mod in types operator backend; do

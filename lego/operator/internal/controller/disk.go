@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -210,7 +209,7 @@ func (r *AppReconciler) createDiskPVC(ctx context.Context, app *appv1alpha1.App)
 	// local-path) work without pretending to have Hetzner volumes, while
 	// production names the encrypted hcloud class explicitly.
 	if r.DiskStorageClass != "" {
-		pvc.Spec.StorageClassName = ptr.To(r.DiskStorageClass)
+		pvc.Spec.StorageClassName = new(r.DiskStorageClass)
 	}
 	if err := controllerutil.SetControllerReference(app, pvc, r.Scheme); err != nil {
 		return err

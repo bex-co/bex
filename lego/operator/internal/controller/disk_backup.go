@@ -169,8 +169,8 @@ func (r *AppReconciler) diskBackupCronJobSpec(app *appv1alpha1.App) batchv1.Cron
 		// A second run while one is still uploading would read the volume twice
 		// and race the retention sweep.
 		ConcurrencyPolicy:          batchv1.ForbidConcurrent,
-		FailedJobsHistoryLimit:     ptr.To(int32(3)),
-		SuccessfulJobsHistoryLimit: ptr.To(int32(3)),
+		FailedJobsHistoryLimit:     new(int32(3)),
+		SuccessfulJobsHistoryLimit: new(int32(3)),
 		JobTemplate: batchv1.JobTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: labels},
 			Spec:       r.diskSnapshotJobSpec(app, labels, "backup", nil),
@@ -219,7 +219,7 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 	}
 	podSpec := corev1.PodSpec{
 		RestartPolicy:                corev1.RestartPolicyNever,
-		AutomountServiceAccountToken: ptr.To(false),
+		AutomountServiceAccountToken: new(false),
 	}
 	if mountsVolume {
 		readOnly := command == "backup"
@@ -283,8 +283,8 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 	podSpec.Containers = []corev1.Container{container}
 
 	spec := batchv1.JobSpec{
-		BackoffLimit:          ptr.To(int32(2)),
-		ActiveDeadlineSeconds: ptr.To(diskBackupDeadlineSeconds),
+		BackoffLimit:          new(int32(2)),
+		ActiveDeadlineSeconds: new(diskBackupDeadlineSeconds),
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: labels},
 			Spec:       podSpec,
@@ -327,7 +327,7 @@ func (r *AppReconciler) purgeDiskSnapshots(ctx context.Context, app *appv1alpha1
 		Name: diskPurgeName(app.Name), Namespace: app.Namespace, Labels: labels,
 	}}
 	job.Spec = r.diskSnapshotJobSpec(app, labels, "purge", nil)
-	job.Spec.TTLSecondsAfterFinished = ptr.To(int32(3600))
+	job.Spec.TTLSecondsAfterFinished = new(int32(3600))
 	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
 		return err
 	}
@@ -461,7 +461,7 @@ func (r *AppReconciler) scaleDownForRestore(ctx context.Context, app *appv1alpha
 		return nil
 	}
 	base := dep.DeepCopy()
-	dep.Spec.Replicas = ptr.To(int32(0))
+	dep.Spec.Replicas = new(int32(0))
 	return r.Patch(ctx, dep, client.MergeFrom(base))
 }
 
@@ -500,7 +500,7 @@ func (r *AppReconciler) createDiskRestoreJob(ctx context.Context, app *appv1alph
 	})
 	// One attempt. A restore is destructive and re-running it automatically
 	// would repeat the wipe; an owner decides whether to try again.
-	job.Spec.BackoffLimit = ptr.To(int32(0))
+	job.Spec.BackoffLimit = new(int32(0))
 	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
 		return err
 	}

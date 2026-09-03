@@ -58,7 +58,7 @@ Build/test the CLI from its own module (its releases are the `bex-cli/v*` tag tr
 cd lego/cli && go build ./... && go test ./...
 ```
 
-> **Go-version split:** `cli/` and its pinned upstream `render-oss/cli` require Go 1.26, so `go.work` declares `go 1.26.0` and local workspace builds use the 1.26 toolchain. The three platform modules stay on `go 1.25.7`, and the shipped image still compiles them per-module with `golang:1.25` — the Docker build copies no `go.work`, so it is unaffected by the workspace bump.
+> **Go version:** all four modules are on the `go 1.26` line (`go.work` declares `go 1.26.0`); `cli/` and its pinned upstream `render-oss/cli` set the floor, and the platform modules moved to 1.26 with the `golang.org/x/crypto` v0.56.0 bump (v0.56.0 requires Go 1.26; it fixes the reachable ssh-gateway DoS the govulncheck gate flagged). The shipped image compiles the platform modules per-module with `golang:1.26` — the Docker build copies no `go.work`, so it is unaffected by the workspace file.
 
 > **Codegen footgun:** the CRD types live in `types/`, not `operator/`. `make manifests generate` runs controller-gen against `../types/...`; the deepcopy lands in `types/v1alpha1/zz_generated.deepcopy.go` and the CRD YAML in `operator/config/crd/bases/`. Both are generated — never hand-edit. Details in [`operator/CLAUDE.md`](operator/CLAUDE.md).
 

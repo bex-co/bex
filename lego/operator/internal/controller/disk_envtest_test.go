@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -83,7 +82,7 @@ var _ = Describe("Persistent disk admission", func() {
 		}, "cannot run more than one instance"),
 		Entry("with autoscaling enabled", func(a *appv1alpha1.App) {
 			a.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{
-				Enabled: true, MinReplicas: 1, MaxReplicas: 3, TargetCPUPercent: ptr.To(int32(70)),
+				Enabled: true, MinReplicas: 1, MaxReplicas: 3, TargetCPUPercent: new(int32(70)),
 			}
 		}, "cannot use autoscaling"),
 		Entry("mounted at a relative path", func(a *appv1alpha1.App) {
@@ -258,7 +257,7 @@ var _ = Describe("Persistent disk reconcile", func() {
 			sc := &storagev1.StorageClass{
 				ObjectMeta:           metav1.ObjectMeta{Name: className},
 				Provisioner:          "example.com/mock",
-				AllowVolumeExpansion: ptr.To(true),
+				AllowVolumeExpansion: new(true),
 			}
 			if err := k8sClient.Create(ctx, sc); err != nil {
 				Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
@@ -317,7 +316,7 @@ var _ = Describe("Persistent disk reconcile", func() {
 		sc := &storagev1.StorageClass{
 			ObjectMeta:           metav1.ObjectMeta{Name: className},
 			Provisioner:          "example.com/mock",
-			AllowVolumeExpansion: ptr.To(false),
+			AllowVolumeExpansion: new(false),
 		}
 		if err := k8sClient.Create(ctx, sc); err != nil {
 			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())

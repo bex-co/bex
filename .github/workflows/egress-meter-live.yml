@@ -14,15 +14,15 @@ jobs:
       labels: [self-hosted, Linux, ARM64]
     timeout-minutes: 60
     env:
-      # GOWORK=off: lego/go.work requires go >= 1.26.0 (lego/cli) while this
-      # job pins the 1.25 line the release image ships; the operator module
-      # resolves standalone via its types/ replace (see operator-test.yml).
+      # GOWORK=off: build the operator module standalone via its types/ replace
+      # (see operator-test.yml), exactly as the release image does — not through
+      # the workspace. Go version follows lego/operator/go.mod (the 1.26 line).
       GOWORK: "off"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.25.6"
+          go-version-file: lego/operator/go.mod
           cache-dependency-path: lego/operator/go.sum
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:

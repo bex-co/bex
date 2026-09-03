@@ -30,8 +30,8 @@ import (
 func TestAppSpecIdentityClassificationIsExhaustive(t *testing.T) {
 	typeOfSpec := reflect.TypeFor[appv1alpha1.AppSpec]()
 	want := make(map[string]bool, typeOfSpec.NumField())
-	for i := range typeOfSpec.NumField() {
-		want[typeOfSpec.Field(i).Name] = true
+	for field := range typeOfSpec.Fields() {
+		want[field.Name] = true
 	}
 
 	var missing, extra []string
@@ -333,8 +333,7 @@ func mutateIdentityTestField(value reflect.Value) {
 		m.SetMapIndex(key, val)
 		value.Set(m)
 	case reflect.Struct:
-		for i := range value.NumField() {
-			field := value.Field(i)
+		for _, field := range value.Fields() {
 			if field.CanSet() {
 				mutateIdentityTestField(field)
 				return

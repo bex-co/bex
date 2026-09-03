@@ -50,7 +50,8 @@ func TestPrometheusQueryHonorsCancellationDuringResponseBody(t *testing.T) {
 	}
 }
 
-func ptr32(v int32) *int32 { return &v }
+//go:fix inline
+func ptr32(v int32) *int32 { return new(v) }
 
 // fakePodMetricsList builds a minimal metrics-server PodMetricsList JSON body.
 func fakePodMetricsList(items []struct{ cpu, mem string }) []byte {

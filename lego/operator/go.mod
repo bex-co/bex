@@ -1,6 +1,6 @@
 module github.com/bex-co/bex/lego/operator
 
-go 1.25.7
+go 1.26.0
 
 require (
 	filippo.io/age v1.3.1
@@ -42,7 +42,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.33.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.45.7 // indirect
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/sync v0.22.0
 )
 

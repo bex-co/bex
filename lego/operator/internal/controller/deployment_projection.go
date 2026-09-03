@@ -23,7 +23,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -313,7 +312,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	// Timer (2) of the three named on rolloutBudgetSeconds. Unset, Kubernetes
 	// defaults this to 600s, which would cut Render's 15-minute window to 10
 	// for reasons nobody chose.
-	dep.Spec.ProgressDeadlineSeconds = ptr.To(rolloutBudgetSeconds)
+	dep.Spec.ProgressDeadlineSeconds = new(rolloutBudgetSeconds)
 
 	// restart = roll the template (same mechanism as kubectl rollout restart,
 	// recorded in the contract). Never removed once set — removal would itself
@@ -343,7 +342,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	// existing pod template already carries, so writing it rolls nothing.
 	dep.Spec.Template.Spec.TerminationGracePeriodSeconds = terminationGracePeriodSeconds(app.Spec.MaxShutdownDelaySeconds)
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets
-	dep.Spec.Template.Spec.AutomountServiceAccountToken = ptr.To(false)
+	dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
 	// Last, always: above is what bex chooses, this is what Kubernetes would have
 	// chosen for the rest. See server_defaults.go.
 	applyPodSpecServerDefaults(&dep.Spec.Template.Spec)

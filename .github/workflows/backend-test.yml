@@ -42,12 +42,11 @@ jobs:
       group: bex-ci
       labels: [self-hosted, Linux, ARM64]
     env:
-      # Same workspace/toolchain split as operator-test.yml: lego/go.work
-      # requires go >= 1.26.0 (lego/cli) while this job installs the 1.25 line
-      # the release image ships and setup-go pins GOTOOLCHAIN=local. The
-      # backend module resolves standalone via `replace …/lego/types =>
-      # ../types` — exactly how the image build compiles it — so test with
-      # the workspace off, matching prod.
+      # GOWORK=off, same as operator-test.yml: the backend module resolves
+      # standalone via `replace …/lego/types => ../types` — exactly how the
+      # release image (lego/Dockerfile golang:1.26, no go.work) compiles it —
+      # so test with the workspace off, matching prod. Go version follows
+      # lego/backend/go.mod (the 1.26 line); setup-go pins GOTOOLCHAIN=local.
       GOWORK: "off"
     services:
       postgres:

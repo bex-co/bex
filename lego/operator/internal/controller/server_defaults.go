@@ -86,7 +86,7 @@ const (
 // it says what bex chooses, and this says what Kubernetes would have chosen.
 func applyPodSpecServerDefaults(spec *corev1.PodSpec) {
 	if spec.TerminationGracePeriodSeconds == nil {
-		spec.TerminationGracePeriodSeconds = ptr.To(defaultTerminationGracePeriodSeconds)
+		spec.TerminationGracePeriodSeconds = new(defaultTerminationGracePeriodSeconds)
 	}
 	if spec.RestartPolicy == "" {
 		// Always is the POD default and is INVALID on a Job/CronJob template, so a
