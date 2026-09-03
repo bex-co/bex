@@ -1,6 +1,6 @@
 # w3 · m46 — Static-site Render-parity fixes (suspend page · delete-row projection · clear-cache deploy · SPA-fallback reconciliation)
 
-**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** implementation complete + locally verified (t001–t007 done); **t009 remains open after the 2026-08-31 audit** — the original stuck fixture now returns 404 on service/routes/deploys/headers, but current source still serves a deleting App by ID until finalization, advertises its withdrawn URL, and defines no tenant-visible finalizer bound. The cross-surface contract and fresh live timing proof required by t009 are unimplemented; t008 waits on them.
+**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** implementation complete + locally verified (t001–t007 done); t008 awaits live closeout of the original four behaviors. The later deleting-App by-id/finalizer defect outgrew a task and was promoted to [m81](../m81/README.md) instead of distorting this milestone's finished closing-task chain.
 
 ## Tasks (in order)
 
@@ -13,8 +13,7 @@
 | t005 | Render parity sweep across REST/GraphQL/MCP/UI                           | 30m | t001, t002, t003, t004       — **DONE** |
 | t006 | Simplify the changed code                                                | 20m | t005                         — **DONE** |
 | t007 | Test coverage for the shipped behavior                                   | 40m | t005                         — **DONE** |
-| t009 | Deleted static site's by-id detail never 404s, so the "Unknown" page persists | 45m | t002                         |
-| t008 | Closeout                                                                 | 10m | t007, t009                   |
+| t008 | Closeout                                                                 | 10m | t007                         |
 
 ## Implementation summary (t001–t007 done 2026-08-21, landed in `167eecf5`)
 
@@ -24,14 +23,14 @@
 - **t004 (SPA fallback):** decided **keep-by-design** (extension-less miss → root `index.html`; asset miss → 404) and documented the deliberate Render divergence in ADR029 § Default SPA fallback + the ADR018 static-site row. Behavior already covered by `TestImplicitSPAFallback`.
 - **t005/t006/t007:** parity swept across all four surfaces (docs updated); `/simplify` extracted `reconcileStaticIngress` (shared by the running + suspend paths) and trimmed a redundant comment; tests added/confirmed as above. Local runs: backend `go test ./...` (59 ok), operator static-site envtests, dashboard `manual-deploy-button` (4/4) — full dashboard suite is 2284/2284 loadable tests passing (10 files fail to load only on a missing `@tanstack/react-virtual` dep, unrelated).
 
-**t008 gate:** complete t009's deleting-App by-id contract, deploy the resulting operator + bex-api + dashboard, and re-verify on a live `onbex.co` static site (suspend → managed-cert 404, delete → list and detail both gone, clear-cache menu deploy). Not closeable until that observable end state holds.
+**t008 gate:** deploy the operator + bex-api + dashboard and re-verify the original four-behavior scope on a live `onbex.co` static site (suspend → managed-cert 404, delete → row gone, clear-cache menu deploy, documented SPA fallback). The separately discovered deleting-App by-id/finalizer contract is tracked in m81 and is not silently folded into this milestone after its parity/simplify/test tasks already ran.
 
 ## Definition of done
 
 Each of the four inconsistencies is resolved with an observable end state, verified against the live `onbex.co` edge where applicable:
 
 1. A **suspended** static site no longer presents Traefik's default self-signed cert with a bare `404 page not found`: either it serves a branded suspended page over the valid managed (Let's Encrypt) cert, or — if the maintenance-page route is out of scope — the dashboard Settings copy no longer claims "Its URL and certificates are kept" while suspended. Resume restores normal serving (regression-tested).
-2. **Deleting** a static site removes its row from the Overview / resource list promptly (no lingering `Unknown` row once the URL + detail already 404).
+2. **Deleting** a static site removes its row from the Overview / resource list promptly, with no lingering `Unknown` row in the list. Direct by-id visibility while finalization is still running is the broader lifecycle contract tracked in m81.
 3. Render's **Clear build cache & deploy** (`clearCache`) is reachable from the dashboard Manual Deploy menu **and** MCP `trigger_deploy` (closing the adapter gap already noted at `lego/backend/internal/api/mcp_parity.go:120`), matching REST/GraphQL.
 4. The default **SPA fallback** (extension-less miss → `/index.html`) divergence from Render's default-404 is an explicit, documented decision in `docs/ADR029-static-sites.md` + the ADR018 parity ledger — kept by design, matched to Render, or made configurable — not an undocumented drift.
 
