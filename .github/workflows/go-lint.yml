@@ -50,12 +50,13 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/cli/go.mod
-          cache-dependency-path: |
-            lego/go.work.sum
-            lego/cli/go.sum
-            lego/operator/go.sum
-            lego/backend/go.sum
-            lego/types/go.sum
+          # cache: false — this job's Go build cache (a custom golangci-lint
+          # built from source plus whole-program dead-code analysis across all
+          # four modules) is large enough that the post-run cache SAVE outlived
+          # the ephemeral self-hosted runner: the lint itself passes, then the
+          # job hangs in "Post Run setup-go" until the runner recycles and the
+          # job is orphaned. Skip the save (same rationale as govulncheck.yml).
+          cache: false
       - name: lint and dead-code analysis (operator + backend + types + cli)
         working-directory: lego/operator
         run: make lint
