@@ -239,9 +239,9 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		// additionally needs CHOWN/FOWNER to re-create archived ownership, and
 		// backup's read-only bind makes the write caps inert there.
 		container.SecurityContext = &corev1.SecurityContext{
-			RunAsUser:                ptr.To(int64(0)),
-			RunAsGroup:               ptr.To(int64(0)),
-			AllowPrivilegeEscalation: ptr.To(false),
+			RunAsUser:                new(int64(0)),
+			RunAsGroup:               new(int64(0)),
+			AllowPrivilegeEscalation: new(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 				Add:  []corev1.Capability{"DAC_OVERRIDE", "CHOWN", "FOWNER"},
