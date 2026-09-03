@@ -2143,7 +2143,9 @@ for required_operator_workload_guard in \
   "!has(v.hostPath)" \
   "!c.?securityContext.?privileged.orValue(false)" \
   "bex-kubeconfig" \
-  "bex-ca"; do
+  "bex-ca" \
+  "variables.target.metadata.name.startsWith('dskbak-')" \
+  "['DAC_OVERRIDE', 'CHOWN', 'FOWNER']"; do
   grep -qF "$required_operator_workload_guard" deploy/gitops/base/operator-workload-admission.yaml || {
     echo "FAIL: operator workload admission lost '$required_operator_workload_guard'" >&2
     fail=1

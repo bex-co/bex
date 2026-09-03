@@ -64,6 +64,23 @@ spec:
            namespaceObject.metadata.name == variables.workspace)))
     - name: crownSecrets
       expression: "['bex-kubeconfig', 'bex-ca', 'bex-etcd', 'bex-proxy', 'bex-sa']"
+    # The disk snapshot/restore Jobs (ADR082 D5, w2/m86) are the one
+    # operator-authored workload class whose FUNCTION is a DAC bypass: a backup
+    # must read every file on a tenant volume regardless of owning uid
+    # (root-owned lost+found included), and a restore must re-create archived
+    # ownership. They are name-scoped here — only this service account is
+    # constrained by this policy, and the operator already mounts these same
+    # PVCs legitimately, so permitting exactly DAC_OVERRIDE/CHOWN/FOWNER on
+    # exactly these Jobs widens a compromised operator's reach by nothing that
+    # matters while making backups possible at all. Purge (dskprg-) mounts no
+    # volume and stays fully restricted.
+    - name: diskSnapshotVolumeWorkload
+      expression: >-
+        (request.resource.resource == 'cronjobs' || request.resource.resource == 'jobs') &&
+        (variables.target.metadata.name.startsWith('dskbak-') ||
+         variables.target.metadata.name.startsWith('dskrst-'))
+    - name: diskSnapshotCaps
+      expression: "['DAC_OVERRIDE', 'CHOWN', 'FOWNER']"
   validations:
     - expression: variables.canonicalNamespace
       reason: Forbidden
@@ -118,13 +135,19 @@ spec:
       message: operator-authored workloads in isolated execution namespaces must run in a pod user namespace (hostUsers=false)
     # Outside the execution boundary (tenant hosting + legacy bootstrap), every
     # container is restricted: no added capabilities, no privilege escalation,
-    # RuntimeDefault seccomp at the container or pod level.
+    # RuntimeDefault seccomp at the container or pod level. Sole exception:
+    # the name-scoped disk snapshot/restore Jobs may add exactly the three
+    # DAC-bypass capabilities their function requires (see
+    # diskSnapshotVolumeWorkload above); everything else about them — no
+    # escalation, seccomp, non-privileged, no host access — stays enforced.
     - expression: >-
         request.operation == 'DELETE' ||
         variables.untrustedExecutionNamespace ||
         (variables.pod.containers.all(c,
            !c.?securityContext.?allowPrivilegeEscalation.orValue(false) &&
-           c.?securityContext.?capabilities.?add.orValue([]).size() == 0 &&
+           (variables.diskSnapshotVolumeWorkload ?
+             c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.diskSnapshotCaps) :
+             c.?securityContext.?capabilities.?add.orValue([]).size() == 0) &&
            (c.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault' ||
             variables.pod.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault')) &&
          (!has(variables.pod.initContainers) || variables.pod.initContainers.all(c,
@@ -133,7 +156,7 @@ spec:
            (c.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault' ||
             variables.pod.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault'))))
       reason: Forbidden
-      message: operator-authored containers outside the execution boundary must be restricted (no added capabilities, no privilege escalation, RuntimeDefault seccomp)
+      message: operator-authored containers outside the execution boundary must be restricted (no added capabilities, no privilege escalation, RuntimeDefault seccomp; disk snapshot/restore Jobs may add only their DAC-bypass set)
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
