@@ -22,9 +22,7 @@ jobs:
   mobile:
     # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on:
-      group: bex-ci
-      labels: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
     env:
       # GOWORK=off, same as backend-test.yml/operator-test.yml: the schema-dump
       # `go test` the codegen script runs resolves the backend module standalone

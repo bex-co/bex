@@ -47,9 +47,7 @@ jobs:
     # skipped before any secret is touched. Defense in depth alongside GitHub-side
     # protected environments (see infra.yml).
     if: github.ref == 'refs/heads/main'
-    runs-on:
-      group: bex-production
-      labels: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
     # codex-security round-19 #1: this job's own comments named "GitHub-side
     # protected environments (see infra.yml)" as the authoritative control, but
     # unlike infra.yml's `terraform` job it carried no `environment:` — so the

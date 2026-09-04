@@ -16,9 +16,7 @@ permissions:
 
 jobs:
   freshness:
-    runs-on:
-      group: bex-production
-      labels: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

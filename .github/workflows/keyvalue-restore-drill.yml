@@ -46,9 +46,7 @@ concurrency:
 jobs:
   restore:
     if: github.ref == 'refs/heads/main'
-    runs-on:
-      group: bex-production
-      labels: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
     timeout-minutes: 30
     environment: production-restore
     steps:
