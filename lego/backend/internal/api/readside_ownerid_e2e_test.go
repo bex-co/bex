@@ -289,6 +289,9 @@ func (f *fakeGitHubAPIClient) ListRepos(context.Context, int64) ([]github.Repo, 
 func (f *fakeGitHubAPIClient) ListBranches(context.Context, int64, string, string) ([]string, error) {
 	return nil, nil
 }
+func (f *fakeGitHubAPIClient) ListRepoTree(context.Context, string, string, string, string, string) ([]github.RepoTreeEntry, error) {
+	return nil, nil
+}
 func (f *fakeGitHubAPIClient) MintInstallationToken(context.Context, int64) (github.InstallationToken, error) {
 	return github.InstallationToken{}, nil
 }

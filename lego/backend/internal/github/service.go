@@ -28,6 +28,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"golang.org/x/sync/singleflight"
 )
 
 // ConnectionStore is the Service's seam to the control-plane store — the narrow
@@ -65,6 +66,7 @@ type APIClient interface {
 	GetInstallation(ctx context.Context, installationID int64) (Installation, error)
 	ListRepos(ctx context.Context, installationID int64) ([]Repo, error)
 	ListBranches(ctx context.Context, installationID int64, owner, repo string) ([]string, error)
+	ListRepoTree(ctx context.Context, token, owner, repo, path, ref string) ([]RepoTreeEntry, error)
 	MintInstallationToken(ctx context.Context, installationID int64) (InstallationToken, error)
 	RepoAccessible(ctx context.Context, token, owner, repo string) (bool, error)
 	GetCommit(ctx context.Context, token, owner, repo, ref string) (Commit, error)
@@ -110,10 +112,18 @@ type Service struct {
 	// (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR078 §2; default 10, 0 disables).
 	// Bounds one tenant's connection fan-out — and therefore the per-connection
 	// GitHub round trips ListRepos makes.
-	MaxConnections int
+	MaxConnections         int
+	runtimeDetectionOnce   sync.Once
+	runtimeDetectionCache  *core.TTLCache[RuntimeDetection]
+	runtimeDetectionFlight singleflight.Group
 }
 
-const maxGitHubInventoryFanout = 4
+const (
+	maxGitHubInventoryFanout   = 4
+	runtimeDetectionCacheTTL   = 30 * time.Second
+	runtimeDetectionUnknownTTL = 5 * time.Second
+	repoTreeProbeTimeout       = 5 * time.Second
+)
 
 // Connection is the neutral connection view every adapter renders. InstallURL is
 // always populated (the connect CTA the human clicks); the rest are set only
@@ -604,6 +614,98 @@ func (s *Service) ListBranches(ctx context.Context, ownerID, repoURL string) ([]
 		branches = []string{}
 	}
 	return branches, nil
+}
+
+// RepoTreeProbe is the typed result of the best-effort repository listing used
+// by runtime detection. Unknown is deliberately data, not an error: a missing
+// directory, empty repository, rate limit, or GitHub outage must leave the
+// create wizard on its existing manual runtime selection path.
+type RepoTreeProbe struct {
+	Entries []RepoTreeEntry
+	Unknown bool
+}
+
+type repoTreeTarget struct {
+	workspaceID string
+	owner       string
+	repo        string
+	branch      string
+	rootDir     string
+}
+
+func (t repoTreeTarget) cacheKey() string {
+	return strings.Join([]string{t.workspaceID, t.owner, t.repo, t.branch, t.rootDir}, "\x00")
+}
+
+func (s *Service) repoTreeTarget(ctx context.Context, repoURL, branch, rootDir string) (repoTreeTarget, bool, error) {
+	if !s.configured() {
+		return repoTreeTarget{}, false, nil
+	}
+	rootDir = strings.TrimSpace(rootDir)
+	if !store.ValidRootDir(rootDir) {
+		return repoTreeTarget{}, false, fmt.Errorf("%w: rootDir must be a relative path with no '..' components", core.ErrBadRequest)
+	}
+	owner, repo, ok := githubOwnerRepo(repoURL)
+	branch = strings.TrimSpace(branch)
+	if !ok || branch == "" {
+		return repoTreeTarget{}, false, nil
+	}
+	return repoTreeTarget{
+		workspaceID: s.WorkspaceOrDefault(ctx),
+		owner:       owner,
+		repo:        repo,
+		branch:      branch,
+		rootDir:     rootDir,
+	}, true, nil
+}
+
+// ProbeRepoTree returns the immediate files at rootDir on branch for a repo in
+// ownerID's connected GitHub installation. It is member-readable like ListRepos
+// and ListBranches. Expected probe failures collapse to Unknown so transport
+// adapters never need to understand GitHub's rate-limit or contents dialect.
+func (s *Service) ProbeRepoTree(ctx context.Context, ownerID, repoURL, branch, rootDir string) (RepoTreeProbe, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return RepoTreeProbe{}, err
+	}
+	target, ok, err := s.repoTreeTarget(ctx, repoURL, branch, rootDir)
+	if err != nil {
+		return RepoTreeProbe{}, err
+	}
+	if !ok {
+		return RepoTreeProbe{Unknown: true}, nil
+	}
+	return s.probeRepoTree(ctx, target)
+}
+
+func (s *Service) probeRepoTree(ctx context.Context, target repoTreeTarget) (RepoTreeProbe, error) {
+	ctx, cancel := context.WithTimeout(ctx, repoTreeProbeTimeout)
+	defer cancel()
+	row, err := s.Store.GetGitConnectionByOwner(ctx, target.workspaceID, target.owner)
+	if errors.Is(err, store.ErrNotFound) {
+		return RepoTreeProbe{Unknown: true}, nil
+	}
+	if err != nil {
+		return RepoTreeProbe{}, err
+	}
+	tok, err := s.GitHub.MintInstallationToken(ctx, row.InstallationID)
+	if err != nil {
+		return RepoTreeProbe{Unknown: true}, nil
+	}
+	entries, err := s.GitHub.ListRepoTree(ctx, tok.Token, target.owner, target.repo, target.rootDir, target.branch)
+	if err != nil {
+		return RepoTreeProbe{Unknown: true}, nil
+	}
+	files := make([]RepoTreeEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Type == "file" && entry.Name != "" {
+			files = append(files, entry)
+		}
+	}
+	if len(files) == 0 {
+		return RepoTreeProbe{Unknown: true}, nil
+	}
+	return RepoTreeProbe{Entries: files}, nil
 }
 
 // githubOwnerRepo extracts owner + repo when repoURL is a real github.com origin.

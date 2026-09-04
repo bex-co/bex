@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -180,6 +181,34 @@ func TestMintSessionInstallationTokenNarrowsRepositoryAndPermissions(t *testing.
 	}
 	if _, err := client.MintSessionInstallationToken(context.Background(), 42, "owner/repo"); err == nil {
 		t.Fatal("repository owner must not reach GitHub's name-only narrowing field")
+	}
+}
+
+func TestListRepoTreeFetchesNestedDirectoryAtRef(t *testing.T) {
+	keyPEM, _ := testKeyPEM(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/repos/acme/mono/contents/services/api" {
+			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
+		}
+		if r.URL.Query().Get("ref") != "feature/runtime detection" {
+			t.Fatalf("ref = %q", r.URL.Query().Get("ref"))
+		}
+		if r.Header.Get("Authorization") != "token ghs-tree" {
+			t.Fatalf("authorization = %q", r.Header.Get("Authorization"))
+		}
+		fmt.Fprint(w, `[{"name":"go.mod","type":"file"},{"name":"nested","type":"dir"}]`)
+	}))
+	defer server.Close()
+
+	client, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+	client.baseURL = server.URL
+	entries, err := client.ListRepoTree(context.Background(), "ghs-tree", "acme", "mono", "services/api", "feature/runtime detection")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []RepoTreeEntry{{Name: "go.mod", Type: "file"}, {Name: "nested", Type: "dir"}}
+	if !reflect.DeepEqual(entries, want) {
+		t.Fatalf("entries = %+v, want %+v", entries, want)
 	}
 }
 

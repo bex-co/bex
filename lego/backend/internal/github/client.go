@@ -54,10 +54,12 @@ const (
 	maxInventoryItems       = 10_000
 	maxInventoryPageBytes   = 8 << 20
 	maxInventoryTotalBytes  = 64 << 20
+	maxRepoTreeBytes        = 2 << 20
 	inventoryRequestTimeout = 30 * time.Second
 )
 
 var errInventoryBound = errors.New("github: inventory request exceeded safety bound")
+var errRepoTreeBound = errors.New("github: repo tree response exceeded safety bound")
 
 // Config is the GitHub App configuration read once at startup from
 // BEX_GITHUB_APP_ID / BEX_GITHUB_APP_PRIVATE_KEY / BEX_GITHUB_APP_SLUG. Any
@@ -165,6 +167,14 @@ type Repo struct {
 	// can group repos by GitHub account. The client itself leaves them zero.
 	AccountLogin   string `json:"accountLogin,omitempty"`
 	InstallationID int64  `json:"installationId,omitempty"`
+}
+
+// RepoTreeEntry is one immediate child returned by GitHub's contents API. The
+// service keeps only Type == "file" before runtime detection; retaining Type at
+// this seam prevents a same-named directory from masquerading as a manifest.
+type RepoTreeEntry struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 // APIError is a non-2xx GitHub response. Callers map it to a clean bex error
@@ -729,6 +739,49 @@ func (c *Client) ListBranches(ctx context.Context, installationID int64, owner, 
 		return nil, err
 	}
 	return branches, nil
+}
+
+// ListRepoTree returns one non-recursive directory listing at path and ref.
+// The contents response is bounded because this runs interactively from the
+// create wizard and must not let one repository occupy an API worker with an
+// unbounded body. A missing path remains an *APIError{Status: 404}; the service
+// converts it (and other probe failures) to its typed unknown outcome.
+func (c *Client) ListRepoTree(ctx context.Context, token, owner, repo, path, ref string) ([]RepoTreeEntry, error) {
+	contentsPath := c.baseURL + "/repos/" + neturl.PathEscape(owner) + "/" + neturl.PathEscape(repo) + "/contents"
+	if path != "" {
+		parts := strings.Split(path, "/")
+		for i := range parts {
+			parts[i] = neturl.PathEscape(parts[i])
+		}
+		contentsPath += "/" + strings.Join(parts, "/")
+	}
+	contentsURL := contentsPath + "?ref=" + neturl.QueryEscape(ref)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, contentsURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	setTokenAuth(req, token)
+	req.Header.Set("Accept", acceptHeader)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("github: list repo tree: %w", err)
+	}
+	defer resp.Body.Close()
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxRepoTreeBytes+1))
+	if readErr != nil {
+		return nil, fmt.Errorf("github: read repo tree response: %w", readErr)
+	}
+	if len(body) > maxRepoTreeBytes {
+		return nil, errRepoTreeBound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, &APIError{Status: resp.StatusCode, Body: string(body)}
+	}
+	var entries []RepoTreeEntry
+	if err := json.Unmarshal(body, &entries); err != nil {
+		return nil, fmt.Errorf("github: decode repo tree response: %w", err)
+	}
+	return entries, nil
 }
 
 func sameOrigin(base, candidate string) bool {

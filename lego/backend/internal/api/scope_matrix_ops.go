@@ -261,6 +261,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.registryCredential":                                     core.OpClassRead,
 	"GQL Query.registryCredentials":                                    core.OpClassRead,
 	"GQL Query.repoBranches":                                           core.OpClassRead,
+	"GQL Query.repoRuntimeDetection":                                   core.OpClassRead,
 	"GQL Query.repos":                                                  core.OpClassRead,
 	"GQL Query.sandboxes":                                              core.OpClassRead,
 	"GQL Query.secretFiles":                                            core.OpClassSensitive,

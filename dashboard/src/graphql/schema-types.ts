@@ -2488,6 +2488,7 @@ export type Query = {
   registryCredential: Maybe<RegistryCredential>;
   registryCredentials: Maybe<Array<Maybe<RegistryCredential>>>;
   repoBranches: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  repoRuntimeDetection: Maybe<RepoRuntimeDetection>;
   repos: Maybe<Array<Maybe<Repo>>>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
@@ -2944,6 +2945,14 @@ export type QueryRepoBranchesArgs = {
 };
 
 
+export type QueryRepoRuntimeDetectionArgs = {
+  branch: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
+  rootDir?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryReposArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
@@ -3120,6 +3129,12 @@ export type Repo = {
   id: Maybe<Scalars['Float']['output']>;
   installationId: Maybe<Scalars['Float']['output']>;
   private: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type RepoRuntimeDetection = {
+  __typename: 'RepoRuntimeDetection';
+  matchedManifest: Maybe<Scalars['String']['output']>;
+  runtime: Maybe<Scalars['String']['output']>;
 };
 
 export type ResourceCap = {

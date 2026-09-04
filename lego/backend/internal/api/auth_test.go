@@ -190,6 +190,10 @@ func (callbackGitHubClient) ListBranches(context.Context, int64, string, string)
 	return nil, nil
 }
 
+func (callbackGitHubClient) ListRepoTree(context.Context, string, string, string, string, string) ([]github.RepoTreeEntry, error) {
+	return nil, nil
+}
+
 func (callbackGitHubClient) MintInstallationToken(context.Context, int64) (github.InstallationToken, error) {
 	return github.InstallationToken{}, nil
 }
