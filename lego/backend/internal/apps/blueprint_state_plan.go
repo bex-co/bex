@@ -87,7 +87,17 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		// resources as fresh creates in the pre-sync plan an approver reviews
 		// (round-21 finding 7). Databases and key-value stores below already key
 		// by their manifest-facing Spec.Name.
-		resolver.services[appServiceName(app)] = app
+		//
+		// Two Apps resolving to one public name (a legacy bare-named CR beside
+		// its store-managed twin) would otherwise let list order pick which spec
+		// the plan diffs against; refuse, the way the datastore loops below do,
+		// so the plan never describes a different object than apply touches
+		// (w6/m125).
+		name := appServiceName(app)
+		if _, duplicate := resolver.services[name]; duplicate {
+			return nil, fmt.Errorf("%w: service name %q is already used more than once in this workspace", core.ErrConflict, name)
+		}
+		resolver.services[name] = app
 	}
 	databases, err := s.listWorkspaceDatabases(ctx, tenantID)
 	if err != nil {

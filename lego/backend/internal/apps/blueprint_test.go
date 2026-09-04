@@ -295,6 +295,195 @@ func TestValidateBlueprintCurrentStatePlanResolvesStoreManagedService(t *testing
 	}
 }
 
+// planActionsForTest returns the authorized current-state actions for a
+// manifest planned in workspace tea-a, failing the test on any other outcome.
+func planActionsForTest(ctx context.Context, t *testing.T, svc *Service, manifest string) []BlueprintPlanAction {
+	t.Helper()
+	validation, err := svc.ValidateBlueprint(ctx, "tea-a", manifest)
+	if err != nil || !validation.Valid || validation.Plan == nil {
+		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", validation, err)
+	}
+	if validation.Plan.Mode != "current_state" {
+		t.Fatalf("plan mode = %q, want current_state", validation.Plan.Mode)
+	}
+	return validation.Plan.Actions
+}
+
+func parseBlueprintStackForTest(t *testing.T, manifest string) parsedStack {
+	t.Helper()
+	source, ir, problems := CompileBlueprintIR(manifest)
+	if len(problems) > 0 {
+		t.Fatalf("CompileBlueprintIR() problems = %+v", problems)
+	}
+	st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
+	if err != nil {
+		t.Fatalf("parseCompiledStack: %v", err)
+	}
+	return st
+}
+
+// w6/m125: the live fixture that exposed round-21 finding 7, driven through
+// the seams production uses. The service is created by the stack apply path
+// (so the persisted spec is whatever createFromStack really stores, not a
+// hand-built one), then re-planned: an unchanged manifest is a no-op, a
+// changed one is an update naming the real field, a new sibling is a create in
+// the same plan, and the update predicts the apply — the same App moves in
+// place and no second one appears. Services report a true no-op rather than
+// the conservative update env groups use: their spec is fully readable, so a
+// zero diff is provable.
+func TestValidateBlueprintCurrentStatePlanPredictsStoreManagedApply(t *testing.T) {
+	const manifest = `services:
+  - type: web
+    name: qa-bp
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    repo: https://github.com/render-examples/express-hello-world
+    branch: main
+`
+	svc, cl := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, &recordingStore{})
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+
+	if before := planActionsForTest(ctx, t, svc, manifest); len(before) != 1 || before[0].Operation != BlueprintPlanCreate {
+		t.Fatalf("plan before apply = %+v, want one create", before)
+	}
+
+	st := parseBlueprintStackForTest(t, manifest)
+	if _, err := svc.applyBlueprintCreate(ctx, st.services[0].req, st.services[0].fields); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	created := getTenantApp(t, cl, "tea-a", "qa-bp")
+	if created.Labels[core.LabelServiceName] != "qa-bp" || created.Name == "qa-bp" {
+		t.Fatalf("fixture must be a tenant-prefixed store-managed App, got name=%q labels=%v", created.Name, created.Labels)
+	}
+
+	unchanged := planActionsForTest(ctx, t, svc, manifest)
+	if len(unchanged) != 1 || unchanged[0].Operation != BlueprintPlanNoop || unchanged[0].ResourceID != "srv-test" {
+		t.Fatalf("re-plan of the unchanged manifest = %+v, want one noop on srv-test", unchanged)
+	}
+
+	changed := strings.Replace(manifest, "npm install", "npm ci", 1)
+	updated := planActionsForTest(ctx, t, svc, changed)
+	if len(updated) != 1 || updated[0].Operation != BlueprintPlanUpdate || updated[0].ResourceID != "srv-test" {
+		t.Fatalf("re-plan of the changed manifest = %+v, want one update on srv-test", updated)
+	}
+	if reflect.DeepEqual(unchanged, updated) {
+		t.Fatal("changed and unchanged manifests planned identically")
+	}
+	paths := map[string]bool{}
+	for _, change := range updated[0].ChangedFields {
+		paths[change.Path] = true
+		if strings.Contains(change.Path, "npm") {
+			t.Fatalf("plan leaked a manifest value: %q", change.Path)
+		}
+	}
+	if !paths["buildCommand"] {
+		t.Fatalf("update changedFields = %+v, want buildCommand", updated[0].ChangedFields)
+	}
+
+	mixed := changed + `  - type: web
+    name: qa-bp-new
+    runtime: image
+    image: {url: nginx:1}
+`
+	ops := map[string]BlueprintPlanOperation{}
+	for _, action := range planActionsForTest(ctx, t, svc, mixed) {
+		ops[action.Name] = action.Operation
+	}
+	if len(ops) != 2 || ops["qa-bp"] != BlueprintPlanUpdate || ops["qa-bp-new"] != BlueprintPlanCreate {
+		t.Fatalf("mixed plan operations = %v, want qa-bp update + qa-bp-new create", ops)
+	}
+
+	st = parseBlueprintStackForTest(t, changed)
+	if _, err := svc.applyBlueprintCreate(ctx, st.services[0].req, st.services[0].fields); err != nil {
+		t.Fatalf("re-apply: %v", err)
+	}
+	after := getTenantApp(t, cl, "tea-a", "qa-bp")
+	if after.Spec.BuildCommand != "npm ci" || after.Labels[store.LabelAppID] != created.Labels[store.LabelAppID] {
+		t.Fatalf("re-apply: buildCommand=%q appID=%q, want npm ci on the original app %q", after.Spec.BuildCommand, after.Labels[store.LabelAppID], created.Labels[store.LabelAppID])
+	}
+	var apps appv1alpha1.AppList
+	if err := cl.List(ctx, &apps, client.InNamespace("tea-a")); err != nil || len(apps.Items) != 1 {
+		t.Fatalf("apps after re-apply = %d (err %v), want exactly one", len(apps.Items), err)
+	}
+	if settled := planActionsForTest(ctx, t, svc, changed); len(settled) != 1 || settled[0].Operation != BlueprintPlanNoop {
+		t.Fatalf("plan after re-apply = %+v, want noop", settled)
+	}
+}
+
+// w6/m125: the two neighbours of the store-managed case. A legacy hand-applied
+// App carries no service-name label, so its object name IS the public name and
+// must still resolve; an App labelled for another workspace must never match,
+// even when it sits in the listed namespace.
+func TestValidateBlueprintCurrentStatePlanLegacyAndForeignServices(t *testing.T) {
+	legacy := sampleApp("web")
+	legacy.Namespace = "tea-a"
+	legacy.Labels = map[string]string{core.LabelTenant: "tea-a"}
+	legacy.Spec.Image = "nginx:1"
+	legacy.Spec.Type = appv1alpha1.TypeWebService
+	legacy.Spec.Runtime = "image"
+
+	foreign := sampleApp(core.CRName("tea-b", "api"))
+	foreign.Namespace = "tea-a" // misfiled on purpose: only the tenant label may exclude it
+	foreign.Labels = map[string]string{core.LabelTenant: "tea-b", core.LabelServiceName: "api"}
+	foreign.Spec.Image = "nginx:1"
+	foreign.Spec.Type = appv1alpha1.TypeWebService
+	foreign.Spec.Runtime = "image"
+
+	svc, _ := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, &recordingStore{}, legacy, foreign)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+	byName := map[string]BlueprintPlanAction{}
+	for _, action := range planActionsForTest(ctx, t, svc, `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+  - name: api
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+`) {
+		byName[action.Name] = action
+	}
+	if got := byName["web"]; got.Operation != BlueprintPlanNoop || got.ResourceID != "web" {
+		t.Fatalf("legacy bare-named App = %+v, want noop resolved by object name", got)
+	}
+	if got := byName["api"]; got.Operation != BlueprintPlanCreate || got.ResourceID != "" {
+		t.Fatalf("App labelled for another workspace = %+v, want create", got)
+	}
+}
+
+// w6/m125: a legacy bare-named App beside its store-managed twin would leave
+// list order deciding which spec the plan diffs against. The services loop
+// refuses the way the datastore loops always have.
+func TestValidateBlueprintCurrentStatePlanRejectsDuplicateServiceName(t *testing.T) {
+	legacy := sampleApp("web")
+	legacy.Namespace = "tea-a"
+	legacy.Labels = map[string]string{core.LabelTenant: "tea-a"}
+
+	managed := sampleApp(core.CRName("tea-a", "web"))
+	managed.Namespace = "tea-a"
+	managed.Labels = map[string]string{
+		core.LabelTenant:      "tea-a",
+		core.LabelServiceName: "web",
+		store.LabelAppID:      "srv-web",
+		store.LabelManagedBy:  store.ManagedByValue,
+	}
+
+	svc, _ := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, &recordingStore{}, legacy, managed)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+	_, err := svc.ValidateBlueprint(ctx, "tea-a", `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+`)
+	if !errors.Is(err, core.ErrConflict) || !strings.Contains(err.Error(), `service name "web"`) {
+		t.Fatalf("duplicate service name: err = %v, want %v naming the service", err, core.ErrConflict)
+	}
+}
+
 func TestValidateBlueprintBadYAML(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	const bad = `services:
