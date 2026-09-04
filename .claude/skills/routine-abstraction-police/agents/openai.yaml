@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Abstraction Police"
+  short_description: "Fix module layering violations"
+  default_prompt: "Use $routine-abstraction-police to audit module boundaries and fix layering violations."

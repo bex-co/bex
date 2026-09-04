@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Logic Bugfixer"
+  short_description: "Model tricky logic to find bugs"
+  default_prompt: "Use $routine-logic-bugfixer to model a tricky logic domain and fix the bugs it surfaces."
