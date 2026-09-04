@@ -961,12 +961,28 @@ var syncBlueprintResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SyncBlueprintResult",
 	Fields: graphql.Fields{
 		"blueprint": gqlutil.Typed(blueprintGQLType, func(r SyncBlueprintResult) any { return r.Blueprint }),
-		// services and databases from the stack apply — summary only (poll via server/postgres for full state).
+		// The stack apply's resources — summary only (poll via server/postgres for
+		// full state). Every kind the plan can act on is reported (w6/064):
+		// databases set the names-only precedent, keyValues and envGroups follow it.
 		"services": gqlutil.Typed(graphql.NewList(serviceGQLType), func(r SyncBlueprintResult) any { return r.Stack.Services }),
 		"databases": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any {
 			names := make([]string, len(r.Stack.Databases))
 			for i, d := range r.Stack.Databases {
 				names[i] = d.Name
+			}
+			return names
+		})},
+		"keyValues": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any {
+			names := make([]string, len(r.Stack.KeyValues))
+			for i, kv := range r.Stack.KeyValues {
+				names[i] = kv.Name
+			}
+			return names
+		})},
+		"envGroups": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any {
+			names := make([]string, len(r.Stack.EnvGroups))
+			for i, g := range r.Stack.EnvGroups {
+				names[i] = g.Name
 			}
 			return names
 		})},

@@ -25,12 +25,15 @@ import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { periodLabel } from "@/features/usage/lib/period";
 import {
+  billingWindow,
   currentPeriod,
   groupByCategory,
   money,
   projectMonthEnd,
+  projectPeriodEnd,
   usd,
   type ChargeCategory,
 } from "@/features/usage/lib/charges";
@@ -181,6 +184,13 @@ export interface ChargesCardProps {
   invoicedUsd: string | null;
   /** What Stripe actually collects after credits and comp discounts; shown when it differs. */
   amountDueUsd?: string | null;
+  /**
+   * RFC3339 bounds of the subscription period `invoicedUsd` accrued over.
+   * Stripe rates the subscription period (e.g. the 16th → the 16th), not the
+   * calendar month, so a rated total must be projected over this window.
+   */
+  ratedPeriodStart?: string | null;
+  ratedPeriodEnd?: string | null;
   loading: boolean;
   /** The period on screen, "YYYY-MM". Projection only applies to the current one. */
   period: string;
@@ -199,11 +209,14 @@ export function ChargesCard({
   estimatedCost,
   invoicedUsd,
   amountDueUsd = null,
+  ratedPeriodStart = null,
+  ratedPeriodEnd = null,
   loading,
   period,
   now = new Date(),
 }: ChargesCardProps) {
   const { t } = useTranslations();
+  const hydrated = useIsHydrated();
   const [expandAll, setExpandAll] = useState(false);
 
   const categories = useMemo(
@@ -234,7 +247,27 @@ export function ChargesCard({
     rated != null && due != null && due !== rated ? due : null;
 
   const isCurrentMonth = period === "" || period === currentPeriod(now);
-  const projected = isCurrentMonth ? projectMonthEnd(total, now) : null;
+  // A rated total accrued over Stripe's subscription period, not the calendar
+  // month; projecting it over the month's elapsed fraction understated the
+  // figure ~2.4× on a mid-month-anchored subscription (w6/050). Each total is
+  // projected over the window it actually covers — the subscription period for
+  // the rated figure (and only when its bounds are known), the calendar month
+  // for the category-sum fallback.
+  //
+  // Gated behind `hydrated` because `now` defaults to a live clock read,
+  // evaluated independently at SSR and at hydration — a continuously-changing
+  // elapsed ratio rendered as text can never agree between the two passes
+  // (React #418, w6/049). SSR emits no projection row; it appears once the
+  // client render owns the clock, the same deferral `LocalDateTime` uses
+  // (w6/030).
+  const ratedWindow = billingWindow(ratedPeriodStart, ratedPeriodEnd);
+  const projected =
+    !hydrated || !isCurrentMonth
+      ? null
+      : rated != null
+        ? ratedWindow &&
+          projectPeriodEnd(total, now, ratedWindow.start, ratedWindow.end)
+        : projectMonthEnd(total, now);
 
   return (
     <Card>
@@ -287,7 +320,15 @@ export function ChargesCard({
 
         <dl className="space-y-1 border-t pt-4">
           <div className="flex items-baseline justify-between gap-4">
-            <dt className="font-medium">
+            {/* `isCurrentMonth` reads the same live clock as the projection but
+                only flips at a month boundary — and only for an explicit
+                period, which the page never hydrates with (it starts on
+                period="", clock-independent). A mount-gate would flash the
+                wrong label on every load to guard that unreachable sub-second
+                race, so the divergence is suppressed instead; the trade is
+                that a straddling render would keep the server's label
+                (w6/049). */}
+            <dt className="font-medium" suppressHydrationWarning>
               {isCurrentMonth
                 ? t("usage.totalToDate")
                 : t("usage.totalForPeriod")}
@@ -306,10 +347,16 @@ export function ChargesCard({
           )}
           {projected != null && (
             <div className="flex items-baseline justify-between gap-4 text-sm text-muted-foreground">
+              {/* A subscription period need not align with the calendar month
+                  (it can span two), so a rated projection names the billing
+                  period rather than a month it may not cover (w6/050). */}
               <dt>
-                {t("usage.projectedTotal", {
-                  month: periodLabel(currentPeriod(now)).split(" ")[0] ?? "",
-                })}
+                {rated != null
+                  ? t("usage.projectedTotalBillingPeriod")
+                  : t("usage.projectedTotal", {
+                      month:
+                        periodLabel(currentPeriod(now)).split(" ")[0] ?? "",
+                    })}
               </dt>
               <dd className="font-mono tabular-nums">{money(projected)} USD</dd>
             </div>

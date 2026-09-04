@@ -163,12 +163,18 @@ type EnvironmentAssigner interface {
 }
 
 // StackResult is the set of resources one stack deploy created (or converged):
-// databases are applied first (dependents reference them via fromDatabase),
-// then services. Both are individually pollable to Ready via their status.
+// env groups first (fromGroup links need them), then databases (dependents
+// reference them via fromDatabase), then services. Datastores and services are
+// individually pollable to Ready via their status. Every resource kind the
+// validation plan can act on is reported back (w6/064) — envGroups is a bex
+// name choice: Render's public API declares no blueprint apply-result shape
+// (its sync object carries only id/commit/state), so the field follows the
+// GET /v1/env-groups vocabulary.
 type StackResult struct {
 	Services  []AppView           `json:"services"`
 	Databases []StackDatabaseView `json:"databases"`
 	KeyValues []StackKeyValueView `json:"keyValues"`
+	EnvGroups []StackEnvGroupView `json:"envGroups"`
 }
 
 // StackDatabaseView is the minimal managed-Postgres projection a stack deploy
@@ -185,6 +191,15 @@ type StackKeyValueView struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Status string `json:"status"`
+}
+
+// StackEnvGroupView is the minimal env-group projection a stack deploy returns
+// — stable id + name, the StackDatabaseView precedent minus the status a group
+// (applied synchronously, nothing to poll) does not have. Full contents remain
+// the env-groups feature's GET /v1/env-groups/{envGroupId} surface.
+type StackEnvGroupView struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // --- manifest shape (render.yaml Blueprint vocabulary) ---
@@ -663,7 +678,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
 	ctx = core.WithConfirm(ctx, req.Confirm)
 	res := StackResult{}
-	if err := s.applyStackEnvGroups(ctx, st.envGroups, assignments); err != nil {
+	if err := s.applyStackEnvGroups(ctx, st.envGroups, assignments, &res); err != nil {
 		return res, err
 	}
 	if err := s.applyStackDatastores(ctx, st, assignments, databases, keyValues, databaseIDs, kvCRNames, &res); err != nil {
@@ -770,10 +785,14 @@ func (s *Service) stackDatastoreSnapshots(ctx context.Context, st parsedStack) (
 	return dbRes.databases, kvRes.keyValues, nil
 }
 
-// applyStackEnvGroups applies the stack's env groups. Env groups first: a
-// service's fromGroup links one, which needs the group (and its projection
-// Secret) to exist before the service is patched.
-func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, assignments map[string]core.EnvironmentAssignment) error {
+// applyStackEnvGroups applies the stack's env groups, appending each applied
+// group's id+name view onto res (the applyStackDatastores contract, w6/064).
+// Env groups first: a service's fromGroup links one, which needs the group (and
+// its projection Secret) to exist before the service is patched.
+func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, assignments map[string]core.EnvironmentAssignment, res *StackResult) error {
+	if len(envGroups) == 0 {
+		return nil // nothing declared — and the EnvGroups seam may not be wired
+	}
 	for _, g := range envGroups {
 		if err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates); err != nil {
 			return fmt.Errorf("env group %q: %w", g.name, err)
@@ -785,6 +804,16 @@ func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnv
 				}
 			}
 		}
+	}
+	// One identity read after the loop: ApplyEnvGroup mints an id for a group it
+	// creates but reports only error, so the ids exist to read only once every
+	// declared group has been applied.
+	ids, err := s.EnvGroups.GroupIDsByName(ctx)
+	if err != nil {
+		return fmt.Errorf("resolving applied env group ids: %w", err)
+	}
+	for _, g := range envGroups {
+		res.EnvGroups = append(res.EnvGroups, StackEnvGroupView{ID: ids[g.name], Name: g.name})
 	}
 	return nil
 }

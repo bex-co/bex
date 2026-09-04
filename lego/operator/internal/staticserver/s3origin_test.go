@@ -23,6 +23,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	smithy "github.com/aws/smithy-go"
 )
 
 func TestS3OriginCheckVerifiesSignedListAccess(t *testing.T) {
@@ -120,5 +122,15 @@ func TestS3OriginCheckFailsClosedOnDeniedCredential(t *testing.T) {
 	}
 	if err := origin.Check(context.Background()); err == nil || !strings.Contains(err.Error(), "verify read access") {
 		t.Fatalf("Check() = %v, want actionable access failure", err)
+	}
+}
+
+func TestIsNotFoundRecognizesKeyTooLong(t *testing.T) {
+	// Defense in depth for w6/047: the handler rejects over-long keys up front,
+	// but should one ever reach the store, its KeyTooLongError client error means
+	// "can never exist" and must map to ErrNotFound (404), not a 502.
+	err := fmt.Errorf("get %q: %w", "key", &smithy.GenericAPIError{Code: "KeyTooLongError", Message: "your key is too long"})
+	if !isNotFound(err) {
+		t.Errorf("isNotFound(KeyTooLongError) = false, want true")
 	}
 }

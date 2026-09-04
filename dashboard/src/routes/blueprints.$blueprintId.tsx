@@ -187,7 +187,7 @@ export function BlueprintDetailPage() {
   const { sync, busy: syncBusy } = useSyncBlueprint();
   const { update, busy: updateBusy } = useUpdateBlueprint();
   const { disconnect, busy: disconnectBusy } = useDisconnectBlueprint();
-  const { syncs } = useBlueprintSyncs(blueprintId);
+  const { syncs, loading: syncsLoading } = useBlueprintSyncs(blueprintId);
 
   const [confirming, setConfirming] = useState(false);
   // Pre-sync plan (w8/m21 t002): fetched only while the dialog is open — an
@@ -417,7 +417,7 @@ export function BlueprintDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {syncs.length > 0 ? (
+                  {syncs.length > 0 || syncsLoading ? (
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -432,30 +432,59 @@ export function BlueprintDetailPage() {
                           <TableHead>{t("blueprints.syncColError")}</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody>
-                        {syncs.map((run) => (
-                          <TableRow key={run.id}>
-                            <TableCell className="font-mono text-xs">
-                              {run.commitId ? run.commitId.slice(0, 8) : "—"}
-                            </TableCell>
-                            <TableCell>
-                              <BlueprintStatusBadge status={run.state} />
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              <RelativeAge value={run.startedAt} />
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              <RelativeAge value={run.completedAt} />
-                            </TableCell>
-                            <TableCell
-                              className="max-w-xs truncate text-muted-foreground"
-                              title={run.errorMessage ?? undefined}
-                            >
-                              {run.errorMessage ?? "—"}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
+                      {syncs.length > 0 ? (
+                        <TableBody>
+                          {syncs.map((run) => (
+                            <TableRow key={run.id}>
+                              <TableCell className="font-mono text-xs">
+                                {run.commitId ? run.commitId.slice(0, 8) : "—"}
+                              </TableCell>
+                              <TableCell>
+                                <BlueprintStatusBadge status={run.state} />
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                <RelativeAge value={run.startedAt} />
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                <RelativeAge value={run.completedAt} />
+                              </TableCell>
+                              <TableCell
+                                className="max-w-xs truncate text-muted-foreground"
+                                title={run.errorMessage ?? undefined}
+                              >
+                                {run.errorMessage ?? "—"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      ) : (
+                        // The syncs query is not awaited by the route's title
+                        // loader, so a fresh visit has a real in-flight window.
+                        // Reserve the ready table's shape (same header, three
+                        // representative rows) instead of flashing the empty
+                        // copy (w6/043).
+                        <TableBody
+                          aria-hidden="true"
+                          data-skeleton-region="sync-history-rows"
+                          className="animate-pulse motion-reduce:animate-none"
+                        >
+                          {Array.from({ length: 3 }, (_, row) => (
+                            <TableRow key={row}>
+                              {Array.from({ length: 5 }, (_, column) => (
+                                <TableCell key={column}>
+                                  <Skeleton
+                                    className={
+                                      column === 0
+                                        ? "h-4 w-20 max-w-full"
+                                        : "h-4 w-16 max-w-full"
+                                    }
+                                  />
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      )}
                     </Table>
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -501,35 +530,35 @@ export function BlueprintDetailPage() {
         onConfirm={() => void handleSync()}
       >
         {syncPreviewLoading ? (
-            <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              {t("blueprints.syncPreviewLoading")}
-            </div>
-          ) : syncPreview?.found && syncPreview.validation?.valid === true ? (
-            <div className="space-y-3">
-              <BlueprintPlanSummary
-                plan={syncPreview.validation.plan}
-                pricing={syncPreview.validation.estimatedPricing}
-              />
-            </div>
-          ) : syncPreview ? (
-            <div className="space-y-2 rounded-md border border-destructive/50 p-3 text-sm">
-              <p className="font-medium text-destructive">
-                {t("blueprints.syncPreviewInvalid")}
-              </p>
-              <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                {(syncPreview.validation?.errors ?? [syncPreview.error])
-                  .filter((e): e is string => !!e)
-                  .map((e, i) => (
-                    <li key={i}>{e}</li>
-                  ))}
-              </ul>
-            </div>
-          ) : syncPreviewError ? (
-            <p className="text-sm text-amber-600 dark:text-amber-500">
-              {t("blueprints.syncPreviewUnavailable")}
+          <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            {t("blueprints.syncPreviewLoading")}
+          </div>
+        ) : syncPreview?.found && syncPreview.validation?.valid === true ? (
+          <div className="space-y-3">
+            <BlueprintPlanSummary
+              plan={syncPreview.validation.plan}
+              pricing={syncPreview.validation.estimatedPricing}
+            />
+          </div>
+        ) : syncPreview ? (
+          <div className="space-y-2 rounded-md border border-destructive/50 p-3 text-sm">
+            <p className="font-medium text-destructive">
+              {t("blueprints.syncPreviewInvalid")}
             </p>
-          ) : null}
+            <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+              {(syncPreview.validation?.errors ?? [syncPreview.error])
+                .filter((e): e is string => !!e)
+                .map((e, i) => (
+                  <li key={i}>{e}</li>
+                ))}
+            </ul>
+          </div>
+        ) : syncPreviewError ? (
+          <p className="text-sm text-amber-600 dark:text-amber-500">
+            {t("blueprints.syncPreviewUnavailable")}
+          </p>
+        ) : null}
       </ConfirmDialog>
 
       <ConfirmDialog

@@ -17,8 +17,22 @@ describe("useTranslations", () => {
   it("interpolates params into the message", () => {
     const { result } = renderHook(() => useTranslations());
 
-    expect(result.current.t("metrics.requestsCount", { count: "7,266" })).toBe(
-      "7,266 requests",
+    expect(
+      result.current.t("metrics.requestsCount", {
+        count: 7266,
+        formatted: "7,266",
+      }),
+    ).toBe("7,266 requests");
+  });
+
+  it("resolves native plural keys from a numeric count", () => {
+    const { result } = renderHook(() => useTranslations());
+
+    expect(result.current.t("webhooks.selectedCount", { count: 1 })).toBe(
+      "1 event selected",
+    );
+    expect(result.current.t("webhooks.selectedCount", { count: 4 })).toBe(
+      "4 events selected",
     );
   });
 
@@ -74,6 +88,28 @@ describe("useTranslations", () => {
 
       expect(errorSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not warn for a plural base key called with a numeric count", () => {
+      const { result } = renderHook(() => useTranslations());
+
+      // Only "deploys.listCount_one"/"_other" exist in the catalog; the base
+      // key is how native plurals are called (w6/062).
+      result.current.t("deploys.listCount", { count: 3 });
+
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("warns when a plural key is called without a numeric count", () => {
+      const { result } = renderHook(() => useTranslations());
+
+      result.current.t("deploys.listCount");
+
+      expect(warnSpy).toHaveBeenCalledOnce();
+      expect(warnSpy.mock.calls[0][0]).toMatch(
+        /pluralized \(_one\/_other\) and needs a numeric/,
+      );
     });
   });
 });

@@ -187,7 +187,14 @@ export function RoutesEditor({
                     value={r.type}
                     onValueChange={(v) => update(i, { type: v })}
                   >
-                    <SelectTrigger size="sm">
+                    {/* The <th>s label cells, not the controls inside them, so
+                        each control carries the column heading as its own
+                        accessible name; placeholders stay literal examples
+                        (path syntax / header literals, untranslated). */}
+                    <SelectTrigger
+                      size="sm"
+                      aria-label={t("services.routeType")}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -204,6 +211,7 @@ export function RoutesEditor({
                   <Input
                     value={r.source}
                     onChange={(e) => update(i, { source: e.target.value })}
+                    aria-label={t("services.routeSource")}
                     placeholder="/old/*"
                     className="font-mono text-xs"
                   />
@@ -212,6 +220,7 @@ export function RoutesEditor({
                   <Input
                     value={r.destination}
                     onChange={(e) => update(i, { destination: e.target.value })}
+                    aria-label={t("services.routeDestination")}
                     placeholder="/index.html"
                     className="font-mono text-xs"
                   />
@@ -298,9 +307,12 @@ export function HeadersEditor({
             {draft.map((h, i) => (
               <TableRow key={i}>
                 <TableCell>
+                  {/* Same pattern as RoutesEditor: the column heading doubles
+                      as each control's accessible name. */}
                   <Input
                     value={h.path}
                     onChange={(e) => update(i, { path: e.target.value })}
+                    aria-label={t("services.headerPath")}
                     placeholder="/*"
                     className="font-mono text-xs"
                   />
@@ -309,6 +321,7 @@ export function HeadersEditor({
                   <Input
                     value={h.name}
                     onChange={(e) => update(i, { name: e.target.value })}
+                    aria-label={t("services.headerName")}
                     placeholder="X-Frame-Options"
                     className="font-mono text-xs"
                   />
@@ -317,6 +330,7 @@ export function HeadersEditor({
                   <Input
                     value={h.value}
                     onChange={(e) => update(i, { value: e.target.value })}
+                    aria-label={t("services.headerValue")}
                     placeholder="DENY"
                     className="font-mono text-xs"
                   />

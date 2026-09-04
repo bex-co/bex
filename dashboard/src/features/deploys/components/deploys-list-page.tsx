@@ -40,6 +40,7 @@ import {
 } from "../lib/deploy-status";
 import {
   deployMatchesSearch,
+  deployRowTimestamp,
   formatDeployDuration,
   formatDeployTimestamp,
 } from "../lib/deploy-presentation";
@@ -114,13 +115,9 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
     [deploys, search],
   );
 
-  const countKey = hasMore
-    ? visibleDeploys.length === 1
-      ? "deploys.listCountLoadedOne"
-      : "deploys.listCountLoadedMany"
-    : visibleDeploys.length === 1
-      ? "deploys.listCountOne"
-      : "deploys.listCountMany";
+  // Native plural keys (w6/062): `_one`/`_other` are resolved by i18next from
+  // the numeric `count` param passed at the render site.
+  const countKey = hasMore ? "deploys.listCountLoaded" : "deploys.listCount";
 
   let body;
   if (error && deploys.length === 0) {
@@ -171,8 +168,12 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
         <TableBody>
           {visibleDeploys.map((d) => {
             const preDeploy = preDeployStatusKey(d.preDeployStatus);
-            const createdAt = hydrated
-              ? formatDeployTimestamp(d.createdAt)
+            // Verb + instant follow the deploy's terminal state (w6/051): a
+            // canceled or failed row must not read "Deployed", and a shipped
+            // row shows when it went live, not when its row was opened.
+            const rowStamp = deployRowTimestamp(d);
+            const timestamp = hydrated
+              ? formatDeployTimestamp(rowStamp.iso)
               : null;
             const hasListAction =
               isCancelableDeployStatus(d.status) || d.status === "deactivated";
@@ -211,9 +212,11 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                       </p>
                     ) : null}
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      {createdAt ? (
+                      {timestamp ? (
                         <span>
-                          {t("deploys.deployedAt", { timestamp: createdAt })}
+                          {t(rowStamp.key as Parameters<typeof t>[0], {
+                            timestamp,
+                          })}
                         </span>
                       ) : null}
                       {preDeploy ? (
@@ -269,7 +272,7 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
           <CardTitle>{t("deploys.listTitle")}</CardTitle>
           {!loading ? (
             <p className="text-xs text-muted-foreground" aria-live="polite">
-              {t(countKey as Parameters<typeof t>[0], {
+              {t(countKey, {
                 count: visibleDeploys.length,
               })}
             </p>

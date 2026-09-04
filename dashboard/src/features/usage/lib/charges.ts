@@ -75,15 +75,59 @@ export function groupByCategory(
 }
 
 /**
- * Linear month-to-date projection: spend so far, scaled by how much of the
- * month remains. Only meaningful while the month is still running, so callers
- * pass null for a historical period.
+ * Linear projection of where spend lands at the close of a billing window:
+ * spend so far, scaled by how much of the window remains. The window is an
+ * explicit parameter because the numerator does not always accrue from the
+ * 1st — Stripe rates the subscription period (e.g. the 16th → the 16th), and
+ * dividing that total by the calendar month's elapsed fraction understated
+ * the projection ~2.4× (w6/050). Callers pass the window the spend actually
+ * covers.
+ */
+export function projectPeriodEnd(
+  spentUsd: number,
+  now: Date,
+  start: Date,
+  end: Date,
+): number | null {
+  const startMs = start.getTime();
+  const endMs = end.getTime();
+  if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) {
+    return null;
+  }
+  const elapsed = now.getTime() - startMs;
+  // Guard the first moments of a window, where the ratio explodes, and a
+  // window that has already closed, where extrapolation is meaningless.
+  if (elapsed <= 0 || now.getTime() >= endMs || spentUsd <= 0) return null;
+  return (spentUsd * (endMs - startMs)) / elapsed;
+}
+
+/**
+ * The calendar-month window — right for the fallback total summed from the
+ * charge tree, whose meters accrue from the 1st. Only meaningful while the
+ * month is still running, so callers pass null for a historical period.
  */
 export function projectMonthEnd(spentUsd: number, now: Date): number | null {
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
-  const elapsed = now.getTime() - start;
-  // Guard the first moments of a month, where the ratio explodes.
-  if (elapsed <= 0 || spentUsd <= 0) return null;
-  return (spentUsd * (end - start)) / elapsed;
+  return projectPeriodEnd(
+    spentUsd,
+    now,
+    new Date(now.getFullYear(), now.getMonth(), 1),
+    new Date(now.getFullYear(), now.getMonth() + 1, 1),
+  );
+}
+
+/**
+ * Parse the RFC3339 bounds Stripe reports for a rated total into a projection
+ * window. null when either bound is missing or unparseable — a rated total
+ * with an unknowable window must not be projected at all, rather than
+ * projected over the wrong (calendar-month) one.
+ */
+export function billingWindow(
+  startIso: string | null | undefined,
+  endIso: string | null | undefined,
+): { start: Date; end: Date } | null {
+  if (!startIso || !endIso) return null;
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return { start, end };
 }

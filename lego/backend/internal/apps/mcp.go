@@ -315,19 +315,21 @@ type deployArgs struct {
 }
 
 // renderStack is the deploy tool's result for a multi-resource render.yaml: the
-// services + databases one deploy call created (databases applied first, then
-// services — dependents reference databases via fromDatabase). A single-service
-// render.yaml returns a one-element services list and no databases. Poll each
-// service to a live URL via get_service; poll databases via get_postgres.
+// services + databases + key values + env groups one deploy call created
+// (env groups and databases applied first, then services — dependents reference
+// them via fromGroup/fromDatabase). A single-service render.yaml returns a
+// one-element services list and nothing else. Poll each service to a live URL
+// via get_service; poll databases via get_postgres.
 type renderStack struct {
 	Services  []renderService     `json:"services"`
 	Databases []StackDatabaseView `json:"databases,omitempty"`
 	KeyValues []StackKeyValueView `json:"keyValues,omitempty"`
+	EnvGroups []StackEnvGroupView `json:"envGroups,omitempty"`
 }
 
 // toRenderStack maps a StackResult onto the MCP deploy result shape.
 func toRenderStack(res StackResult) renderStack {
-	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases, KeyValues: res.KeyValues}
+	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases, KeyValues: res.KeyValues, EnvGroups: res.EnvGroups}
 }
 
 // validateBlueprintArgs is validate_bex_yml's input; the wire name remains

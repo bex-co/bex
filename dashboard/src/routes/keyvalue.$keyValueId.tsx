@@ -32,6 +32,13 @@ import { KeyValueMaxmemoryPolicySection } from "@/features/keyvalue/components/k
 import { KeyValueNameRow } from "@/features/keyvalue/components/key-value-name-row";
 import { KeyValueDetailNavigation } from "@/features/keyvalue/components/key-value-detail-navigation";
 import { KeyValueLogViewer } from "@/features/keyvalue/components/key-value-log-viewer";
+import { DEFAULT_DATASTORE_LOG_RANGE } from "@/features/logs/lib/datastore-log-range";
+import {
+  parseRangeSearch,
+  rangeFromSearch,
+  rangeToSearch,
+  type RangeSearch,
+} from "@/features/metrics/lib/range";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { KeyValueDocument } from "@/graphql/definitions";
@@ -56,10 +63,14 @@ export const Route = createFileRoute("/keyvalue/$keyValueId")({
   beforeLoad: requireAuth(),
   validateSearch: (
     search: Record<string, unknown>,
-  ): { tab?: "logs" | "metrics" } =>
-    search.tab === "logs" || search.tab === "metrics"
+  ): { tab?: "logs" | "metrics" } & RangeSearch => ({
+    ...(search.tab === "logs" || search.tab === "metrics"
       ? { tab: search.tab }
-      : {},
+      : {}),
+    // The Logs tab's time range persists in the shared `range`/`rangeStart`/
+    // `rangeEnd` URL shape (w6/065) so it survives a reload and is shareable.
+    ...parseRangeSearch(search),
+  }),
   loader: ({ context, params, cause }) =>
     loadRouteResource(
       () =>
@@ -83,7 +94,8 @@ export const Route = createFileRoute("/keyvalue/$keyValueId")({
 
 export function KeyValueDetailPage() {
   const { keyValueId } = Route.useParams();
-  const { tab } = Route.useSearch();
+  const search = Route.useSearch();
+  const { tab } = search;
   const { t } = useTranslations();
   const navigate = useNavigate();
   const router = useRouter();
@@ -182,7 +194,20 @@ export function KeyValueDetailPage() {
             </div>
           ) : keyValue && tab === "logs" ? (
             <div className="mx-auto w-full max-w-4xl space-y-6">
-              <KeyValueLogViewer resource={keyValue.id} />
+              <KeyValueLogViewer
+                resource={keyValue.id}
+                range={rangeFromSearch(search, DEFAULT_DATASTORE_LOG_RANGE)}
+                onRangeChange={(range) =>
+                  // Functional form: committed verbatim, so rangeToSearch's
+                  // explicit undefineds actually clear stale custom bounds
+                  // (w7/m42); the spread keeps `tab: "logs"` in place.
+                  void navigate({
+                    to: ".",
+                    search: (prev) => ({ ...prev, ...rangeToSearch(range) }),
+                    replace: true,
+                  })
+                }
+              />
             </div>
           ) : keyValue && tab === "metrics" ? (
             <div className="mx-auto w-full max-w-4xl space-y-6">
@@ -271,10 +296,18 @@ function MetadataCard({
           label: t("keyvalue.metaPublic"),
           value: keyValue.public ? t("keyvalue.yes") : t("keyvalue.no"),
         },
-        {
-          label: t("keyvalue.metaExternalHost"),
-          value: keyValue.externalHost ?? "—",
-        },
+        // Render shows external connection details only when public access is
+        // on; the backend sends "" (not null) for a private store (w6/052), so
+        // gate on truthiness and omit the row entirely — the region-row
+        // pattern below.
+        ...(keyValue.externalHost
+          ? [
+              {
+                label: t("keyvalue.metaExternalHost"),
+                value: keyValue.externalHost,
+              },
+            ]
+          : []),
         ...(keyValue.region
           ? [
               {

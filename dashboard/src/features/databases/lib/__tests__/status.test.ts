@@ -106,6 +106,34 @@ describe("toDatabaseDetailView", () => {
     expect(d.region).toBeNull();
   });
 
+  it("normalizes the private-database empty-string externalHost to null (w6/052)", () => {
+    const d = toDatabaseDetailView({
+      __typename: "Database",
+      id: "db3",
+      name: "db3",
+      plan: "free",
+      version: "18",
+      status: "available",
+      databaseName: "db3",
+      databaseUser: "db3_user",
+      diskSizeGB: 1,
+      diskAutoscalingEnabled: false,
+      highAvailabilityEnabled: false,
+      suspended: "not_suspended",
+      createdAt: null,
+      updatedAt: null,
+      // bex-api sends "" (not null) when public access is off.
+      externalHost: "",
+      public: false,
+      poolerEnabled: null,
+      backupsEnabled: null,
+      ipAllowList: null,
+      region: null,
+      readReplicas: null,
+    });
+    expect(d.externalHost).toBeNull();
+  });
+
   it("carries region through from the wire type when configured (w9/m42/t004)", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",

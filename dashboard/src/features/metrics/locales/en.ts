@@ -50,10 +50,15 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Service events",
     description: "Accessible label for the event-marker strip above a chart",
   },
-  "metrics.eventMarkerCluster": {
+  "metrics.eventMarkerCluster_one": {
+    message: "{count} event",
+    description:
+      "Accessible label for a clustered chart event marker (count badge, singular)",
+  },
+  "metrics.eventMarkerCluster_other": {
     message: "{count} events",
     description:
-      "Accessible label for a clustered chart event marker (count badge)",
+      "Accessible label for a clustered chart event marker (count badge, plural)",
   },
   "metrics.eventMarkerHint": {
     message: "Click to view details",
@@ -158,15 +163,15 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Percentile dropdown option that overlays p50/p90/p99 on one chart",
   },
-  "metrics.requestCount": {
-    message: "{count} request",
+  "metrics.requestsCount_one": {
+    message: "{formatted} request",
     description:
-      "Aggregate request count beside the Total Requests section title (singular)",
+      "Aggregate request count beside the Total Requests section title (singular; {formatted} is the locale-formatted count)",
   },
-  "metrics.requestsCount": {
-    message: "{count} requests",
+  "metrics.requestsCount_other": {
+    message: "{formatted} requests",
     description:
-      "Aggregate request count beside the Total Requests section title",
+      "Aggregate request count beside the Total Requests section title (plural; {formatted} is the locale-formatted count)",
   },
   "metrics.outboundBandwidth": {
     message: "Outbound Bandwidth",

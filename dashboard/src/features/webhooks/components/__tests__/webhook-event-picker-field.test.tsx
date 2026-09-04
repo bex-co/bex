@@ -64,7 +64,7 @@ describe("WebhookEventPickerField", () => {
       screen.getByRole("checkbox", { name: "Deploy Started" }),
     ).toBeChecked();
     expect(screen.getByTestId("event-count")).toHaveTextContent(
-      "1 events selected",
+      "1 event selected",
     );
   });
 });

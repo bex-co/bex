@@ -517,7 +517,9 @@ export function EnvironmentEditor({
     try {
       const value = await (kind === "env" ? revealEnv(name) : revealFile(name));
       await navigator.clipboard.writeText(value);
-      toast.success(t("services.envCopySuccess"));
+      // Named after the one value that moved — the bulk envCopySuccess toast
+      // belongs to exportEnvironment's full dotenv export only (w6/044).
+      toast.success(t("services.envCopyOneSuccess", { name }));
     } catch {
       toast.error(
         t(
@@ -696,6 +698,24 @@ export function EnvironmentEditor({
         empty={{
           title: t("services.secretFilesEmptyTitle"),
           body: t("services.secretFilesEmptyBody"),
+          // In read mode the panel's only enabling control (Edit) lives under
+          // the Environment Variables header — so the empty state carries its
+          // own affordance that enters the draft with a blank file row (w6/057).
+          action: !draft ? (
+            <PermissionTooltip reason={createReason}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={loading || Boolean(errorKind) || createDenied}
+                onClick={() => {
+                  beginEdit();
+                  addSecretFile();
+                }}
+              >
+                <FilePlus2 /> {t("services.secretFileAdd")}
+              </Button>
+            </PermissionTooltip>
+          ) : undefined,
         }}
         loading={loading}
         notice={uploadError}
@@ -778,9 +798,15 @@ export function EnvironmentEditor({
                 {t("services.environmentUnsavedTitle")}
               </p>
               <p className="text-muted-foreground text-sm" aria-live="polite">
-                {t("services.environmentUnsavedSummary", {
-                  variables: patch.envVars.length,
-                  files: patch.secretFiles.length,
+                {/* Two counts, two plural decisions — one i18next `count` can
+                    only drive one, so the sentence is two pluralized halves
+                    composed here (w6/062). */}
+                {t("services.environmentUnsavedVariables", {
+                  count: patch.envVars.length,
+                })}
+                {" · "}
+                {t("services.environmentUnsavedFiles", {
+                  count: patch.secretFiles.length,
                 })}
               </p>
               {saveError ? (
@@ -917,7 +943,7 @@ function EnvironmentSection({
   notice?: string | null;
   loading: boolean;
   isEmpty: boolean;
-  empty: { title: string; body: string };
+  empty: { title: string; body: string; action?: React.ReactNode };
   children: React.ReactNode;
 }) {
   return (
@@ -945,7 +971,11 @@ function EnvironmentSection({
           <div className="divide-y">
             {children}
             {isEmpty ? (
-              <EmptyCopy title={empty.title} body={empty.body} />
+              <EmptyCopy
+                title={empty.title}
+                body={empty.body}
+                action={empty.action}
+              />
             ) : null}
           </div>
         )}
@@ -1007,7 +1037,7 @@ function SensitiveViewItem({
             size="icon"
             variant="ghost"
             disabled={loading || revealDisabled}
-            aria-label={t("services.envCopy")}
+            aria-label={t("services.envCopyOne", { name })}
             onClick={() => void onCopy()}
           >
             <Clipboard />
@@ -1150,6 +1180,10 @@ function FileDraftItem({
   onContent: () => void;
 }) {
   const { t } = useTranslations();
+  // A pristine new row's empty name is invalid but hasn't been gotten *wrong*
+  // yet — the rule renders as neutral helper text until the user types or
+  // leaves the field, and only then in error styling (w6/057).
+  const [touched, setTouched] = useState(false);
   if (row.deleted) {
     return (
       <StagedDeleteRow
@@ -1160,6 +1194,7 @@ function FileDraftItem({
       />
     );
   }
+  const showError = Boolean(error) && (touched || row.name !== "");
   return (
     <div className="grid min-w-0 gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-start">
       <div className="min-w-0 space-y-1">
@@ -1168,18 +1203,23 @@ function FileDraftItem({
           disabled={disabled}
           aria-describedby={disabled ? permissionDescriptionID : undefined}
           onChange={(event) => onChange({ name: event.target.value })}
+          onBlur={() => setTouched(true)}
           className="min-w-0 font-mono text-sm"
           aria-label={t("services.secretFileColName")}
-          aria-invalid={Boolean(error)}
+          aria-invalid={showError}
           placeholder={t("services.secretFileNamePlaceholder")}
         />
-        {error ? (
+        {showError ? (
           <p className="text-destructive text-xs" role="alert">
             {error === "duplicate"
               ? t("services.secretFileDuplicateName")
               : error === "content"
                 ? t("services.secretFileContentRequired")
                 : t("services.secretFileInvalidName")}
+          </p>
+        ) : isNewDraftRow(row) ? (
+          <p className="text-muted-foreground text-xs">
+            {t("services.secretFileNameHint")}
           </p>
         ) : null}
       </div>
@@ -1243,11 +1283,20 @@ function AddVariableMenu({
   );
 }
 
-function EmptyCopy({ title, body }: { title: string; body: string }) {
+function EmptyCopy({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="py-6 text-center">
       <p className="font-medium">{title}</p>
       <p className="text-muted-foreground mt-1 text-sm">{body}</p>
+      {action ? <div className="mt-3 flex justify-center">{action}</div> : null}
     </div>
   );
 }

@@ -790,6 +790,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
     description: "Secret-files add-file validation message for an invalid name",
   },
+  "services.secretFileNameHint": {
+    message: "只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
+    description:
+      "Neutral file-name rule under a new secret-file row before the user types or blurs — same rule as secretFileInvalidName but helper styling, not an error",
+  },
   "services.secretFileDeleteConfirmTitle": {
     message: "删除 {name}？",
     description: "Secret-file delete-confirmation dialog title",
@@ -883,6 +888,16 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.envGroupEmptyContents": {
     message: "暂无变量或文件。",
     description: "Env-groups: shown when a group has no vars or secret files",
+  },
+  "services.envGroupKeyOverridden": {
+    message: "已被此服务自身的 {key} 环境变量覆盖",
+    description:
+      "Tooltip on a linked group's key badge when a service variable of the same name shadows it at runtime (service wins)",
+  },
+  "services.envGroupOverriddenNote": {
+    message: "带删除线的键已被此服务自身的环境变量覆盖。",
+    description:
+      "Legend under a linked group's key list when at least one key is shadowed by a service variable",
   },
   "services.envGroupLink": {
     message: "链接",
@@ -1370,8 +1385,14 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainOwnershipGuidance": {
     message:
-      "请先创建这条完全一致的 TXT 记录以证明所有权。验证成功前，平台不会路由此域名。",
-    description: "持久自定义域名所有权 TXT 挑战上方的说明",
+      "请先添加这条 TXT 记录以证明所有权；验证成功前，平台不会路由此域名。此主机名下每个域名各有一条 TXT 记录——请将此值作为新增记录添加，并保留已有的 bex-domain-verification 值。",
+    description:
+      "持久自定义域名所有权 TXT 挑战上方的说明——必须说明主机名是共享的（每个域名一条记录），以免用户在单值 DNS 编辑框里覆盖其他域名的验证记录",
+  },
+  "services.domainOwnershipSiblingsNote": {
+    message: "此服务的其他域名共用此 TXT 主机名——请保留它们的记录：",
+    description:
+      "Intro to the list of sibling domains' TXT values at the same shared ownership host",
   },
   "services.domainTrafficRecordTitle": {
     message: "流量记录",
@@ -1876,12 +1897,12 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.buildCommandLabel": {
     message: "构建命令",
     description:
-      "Build & Deploy: build-command field label (static_site settings)",
+      "Build & Deploy: build-command field label (all service types' settings + the New Service form)",
   },
   "services.buildCommandHint": {
-    message:
-      "生成静态输出的命令（例如 npm run build）。留空则使用运行时默认值。",
-    description: "Build & Deploy: build-command help text",
+    message: "构建此服务的命令（例如 npm run build）。留空则使用运行时默认值。",
+    description:
+      "Build & Deploy: build-command help text — shown for every service type, so it must not assume static-site output",
   },
   "services.buildCommandConfirmEmpty": {
     message: "运行时默认值",
@@ -3281,7 +3302,7 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "最近的部署和服务变更。",
     description: "Events tab card description",
   },
-  "services.eventsCount": {
+  "services.eventsCount_other": {
     message: "最近 {count} 条事件",
     description: "Accessible label for the number of visible service events",
   },
@@ -3904,9 +3925,15 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "放弃已恢复的更改",
     description: "Button that throws away a recovered env draft",
   },
-  "services.environmentUnsavedSummary": {
-    message: "{variables} 个变量操作 · {files} 个文件操作",
-    description: "Combined draft operation count",
+  "services.environmentUnsavedVariables_other": {
+    message: "{count} 个变量操作",
+    description:
+      "Draft variable-operation count, composed with the file count at the call site",
+  },
+  "services.environmentUnsavedFiles_other": {
+    message: "{count} 个文件操作",
+    description:
+      "Draft file-operation count, composed with the variable count at the call site",
   },
   "services.environmentSaveOptions": {
     message: "环境保存选项",
@@ -3983,6 +4010,16 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.envCopySuccess": {
     message: "环境已复制",
     description: "Toast after the complete dotenv export is copied",
+  },
+  "services.envCopyOne": {
+    message: "复制 {name}",
+    description:
+      "aria-label of the per-row copy button for one env var or secret file — distinct from the bulk envCopy dotenv export",
+  },
+  "services.envCopyOneSuccess": {
+    message: "{name} 已复制",
+    description:
+      "Toast after one env var value or secret file's contents is copied — distinct from the bulk envCopySuccess",
   },
   "services.envAddVariable": {
     message: "添加变量",

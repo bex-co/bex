@@ -77,7 +77,10 @@ export function toDatabaseDetailView(
             }
           : null,
       })),
-    externalHost: d.externalHost ?? null,
+    // bex-api's contract for a private database is empty-string, not null
+    // (w6/052) — normalize to null so truthiness checks and row-omission
+    // work the same for both encodings.
+    externalHost: d.externalHost || null,
     backupsEnabled: d.backupsEnabled ?? false,
   };
 }

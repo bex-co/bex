@@ -303,6 +303,36 @@ describe("CustomDomainsSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("lists sibling TXT values sharing the ownership host so none get overwritten (w6/055)", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([apexDomain, wwwSiblingDomain]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+
+    // Both pending rows are open; each shows its own TXT value once as the
+    // record to add, plus once more inside the sibling row's keep-these list.
+    expect(
+      screen.getAllByText("bex-domain-verification=test-apex"),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByText("bex-domain-verification=test-www"),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByText(
+        "Other domains on this service share this TXT host — keep their records in place:",
+      ),
+    ).toHaveLength(2);
+  });
+
+  it("shows no sibling TXT note for a lone pending claim (w6/055)", () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
+    render(<CustomDomainsSection serviceId="web" />);
+    expect(screen.queryByText(/share this TXT host/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText("bex-domain-verification=test-api"),
+    ).toBeInTheDocument();
+  });
+
   it("re-checks a pending domain from the DNS panel", async () => {
     mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
     const user = userEvent.setup();

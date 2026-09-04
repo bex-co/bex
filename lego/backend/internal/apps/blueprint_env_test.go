@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -602,5 +603,153 @@ func assertNoApps(t *testing.T, cl client.Client) {
 	_ = cl.List(context.Background(), &apps)
 	if len(apps.Items) != 0 {
 		t.Errorf("all-or-nothing: %d apps created, want zero", len(apps.Items))
+	}
+}
+
+// --- apply result reporting (w6/064) --------------------------------------------
+
+// allKindsManifest declares one resource of every kind the validation plan can
+// act on: an env group, a database, a key value, and a web service. The apply
+// result must report each kind back — the planner counts env_var_group as an
+// action, so it is a reportable outcome.
+const allKindsManifest = `
+envVarGroups:
+  - name: settings
+    envVars:
+      - {key: LOG_LEVEL, value: info}
+databases:
+  - name: db
+    plan: basic-256mb
+services:
+  - name: cache
+    type: redis
+    ipAllowList: []
+    plan: free
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+`
+
+// TestDeployStackResultReportsEveryKind is the w6/064 regression at the
+// StackResult (REST wire shape) level: a manifest declaring an env group used
+// to apply it and then report {"services":…,"databases":…,"keyValues":…} with
+// no env-group field at all — applyStackEnvGroups never received the result.
+func TestDeployStackResultReportsEveryKind(t *testing.T) {
+	groups := newFakeEnvGroups()
+	svc, _ := newBlueprintEnvService(groups, &fakeSeeder{})
+
+	res, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: allKindsManifest})
+	if err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if len(res.EnvGroups) != 1 || res.EnvGroups[0].Name != "settings" || res.EnvGroups[0].ID != "evg-settings" {
+		t.Errorf("envGroups = %+v, want [{ID:evg-settings Name:settings}]", res.EnvGroups)
+	}
+	// The `type: redis` entry is a key value, not a service — so one service (web).
+	if len(res.Databases) != 1 || len(res.KeyValues) != 1 || len(res.Services) != 1 {
+		t.Errorf("result = %d databases / %d keyValues / %d services, want 1/1/1", len(res.Databases), len(res.KeyValues), len(res.Services))
+	}
+
+	// REST is StackResult marshalled as-is: the raw wire object must carry the
+	// envGroups key (named after the GET /v1/env-groups vocabulary — Render's
+	// public API declares no blueprint apply-result shape to mirror).
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	body := fmt.Sprintf(`{"bexYaml":%q}`, allKindsManifest)
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/deploy", strings.NewReader(body)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("deploy Blueprint => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	var wire map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &wire); err != nil {
+		t.Fatalf("unmarshal deploy result: %v", err)
+	}
+	for _, kind := range []string{"services", "databases", "keyValues", "envGroups"} {
+		if _, ok := wire[kind]; !ok {
+			t.Errorf("REST deploy result missing %q: %s", kind, rec.Body)
+		}
+	}
+	var restGroups []StackEnvGroupView
+	if err := json.Unmarshal(wire["envGroups"], &restGroups); err != nil {
+		t.Fatalf("unmarshal envGroups: %v", err)
+	}
+	if len(restGroups) != 1 || restGroups[0].Name != "settings" || restGroups[0].ID != "evg-settings" {
+		t.Errorf("REST envGroups = %+v, want the applied group's id+name", restGroups)
+	}
+}
+
+// TestSyncBlueprintGraphQLReportsKeyValuesAndEnvGroups is w6/064's GraphQL leg:
+// syncBlueprint's result used to expose only services + databases, dropping the
+// keyValues REST and MCP both report AND the (new) envGroups — both follow the
+// databases field's names-only precedent.
+func TestSyncBlueprintGraphQLReportsKeyValuesAndEnvGroups(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID:       "blp-1",
+		TenantID: "tea-a",
+		Repo:     "https://github.com/a/app",
+		Branch:   "main",
+		Path:     CanonicalBlueprintFilename,
+		Manifest: allKindsManifest,
+		Status:   "active",
+		Name:     "app",
+	})
+	groups := newFakeEnvGroups()
+	svc := &Service{
+		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:      fs,
+		EnvGroups:       groups,
+		EnvSeeder:       &fakeSeeder{},
+		DomainOwnership: allowDomainOwnership{},
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	schema := blueprintSchema(t, svc)
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		Context:       ctx,
+		RequestString: `mutation { syncBlueprint(id: "blp-1") { databases keyValues envGroups } }`,
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("GraphQL syncBlueprint: %v", res.Errors)
+	}
+	got := res.Data.(map[string]any)["syncBlueprint"].(map[string]any)
+	if names, _ := got["databases"].([]any); len(names) != 1 || names[0] != "db" {
+		t.Errorf("databases = %v, want [db]", got["databases"])
+	}
+	if names, _ := got["keyValues"].([]any); len(names) != 1 || names[0] != "cache" {
+		t.Errorf("keyValues = %v, want [cache]", got["keyValues"])
+	}
+	if names, _ := got["envGroups"].([]any); len(names) != 1 || names[0] != "settings" {
+		t.Errorf("envGroups = %v, want [settings]", got["envGroups"])
+	}
+}
+
+// TestMCPDeployReportsEveryKind is w6/064's MCP leg: the deploy tool's
+// renderStack maps StackResult field by field, so the env-group views must be
+// carried through explicitly — confirmed here rather than assumed.
+func TestMCPDeployReportsEveryKind(t *testing.T) {
+	groups := newFakeEnvGroups()
+	svc, _ := newBlueprintEnvService(groups, &fakeSeeder{})
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+
+	got := call("deploy", map[string]any{"bexYaml": allKindsManifest})
+	if services, _ := got["services"].([]any); len(services) != 1 {
+		t.Errorf("services = %v, want the single web service", got["services"])
+	}
+	databases, _ := got["databases"].([]any)
+	if len(databases) != 1 || databases[0].(map[string]any)["name"] != "db" {
+		t.Errorf("databases = %v, want [{name:db …}]", got["databases"])
+	}
+	keyValues, _ := got["keyValues"].([]any)
+	if len(keyValues) != 1 || keyValues[0].(map[string]any)["name"] != "cache" {
+		t.Errorf("keyValues = %v, want [{name:cache …}]", got["keyValues"])
+	}
+	envGroups, _ := got["envGroups"].([]any)
+	if len(envGroups) != 1 || envGroups[0].(map[string]any)["name"] != "settings" || envGroups[0].(map[string]any)["id"] != "evg-settings" {
+		t.Errorf("envGroups = %v, want [{id:evg-settings name:settings}]", got["envGroups"])
 	}
 }

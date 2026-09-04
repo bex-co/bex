@@ -27,10 +27,15 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: "Something went wrong loading environments. Try again shortly.",
     description: "Error state shown when the environments query fails",
   },
-  "environments.resourceCount": {
-    message: "{count} resource(s)",
+  "environments.resourceCount_one": {
+    message: "{count} resource",
     description:
-      "Count of visible services+databases+key-value instances assigned to an environment, next to its name",
+      "Count of visible services+databases+key-value instances assigned to an environment, next to its name (singular)",
+  },
+  "environments.resourceCount_other": {
+    message: "{count} resources",
+    description:
+      "Count of visible services+databases+key-value instances assigned to an environment, next to its name (plural)",
   },
   "environments.manageButton": {
     message: "Manage resources",
@@ -318,7 +323,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.assignmentHint": {
     message:
-      "A resource joins a Project only through an Environment. Selecting a Project alone narrows the list below — pick or create an Environment to actually add this resource to it.",
+      "A resource joins a Project only through an Environment. Selecting a Project alone narrows the list below — select an Environment to actually add this resource to it. If the Project has none yet, create one from the Project's page first.",
     description: "Shared create-form Environment-assignment hint",
   },
 };

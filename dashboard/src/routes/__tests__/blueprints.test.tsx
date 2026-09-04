@@ -238,6 +238,63 @@ describe("BlueprintDetailPage", () => {
     ).toBeInTheDocument();
   });
 
+  // w6/043: the syncs query is independent of the route's blocking title
+  // loader, so a fresh visit has an in-flight window where zero rows have
+  // arrived yet. The card must not read "No syncs yet." during that window.
+  describe("Sync History loading window", () => {
+    it("shows a table-shaped skeleton, not the empty copy, while syncs are loading", async () => {
+      blueprintDetailState.blueprint = bp();
+      blueprintSyncsState.loading = true;
+      renderDetailPage();
+
+      await screen.findAllByText("hello-go");
+      expect(screen.queryByText("No syncs yet.")).not.toBeInTheDocument();
+      const skeletonBody = document.querySelector(
+        '[data-skeleton-region="sync-history-rows"]',
+      );
+      expect(skeletonBody).toBeInTheDocument();
+      // Structural parity with the ready state: the real header plus
+      // placeholder rows spanning the same five columns.
+      expect(screen.getByText("Commit")).toBeInTheDocument();
+      const skeletonRows = skeletonBody?.querySelectorAll("tr") ?? [];
+      expect(skeletonRows.length).toBeGreaterThan(0);
+      expect(skeletonRows[0].children).toHaveLength(5);
+    });
+
+    it("shows the empty copy only once settled with zero syncs", async () => {
+      blueprintDetailState.blueprint = bp();
+      blueprintSyncsState.loading = false;
+      renderDetailPage();
+
+      expect(await screen.findByText("No syncs yet.")).toBeInTheDocument();
+      expect(
+        document.querySelector('[data-skeleton-region="sync-history-rows"]'),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps the real rows during a cache-and-network refetch", async () => {
+      blueprintDetailState.blueprint = bp();
+      blueprintSyncsState.loading = true;
+      blueprintSyncsState.syncs = [
+        {
+          id: "bsr-1",
+          commitId: "deadbeef",
+          state: "success",
+          startedAt: "2026-08-20T00:00:00Z",
+          completedAt: "2026-08-20T00:01:00Z",
+          errorMessage: null,
+        },
+      ];
+      renderDetailPage();
+
+      expect(await screen.findByText("deadbeef")).toBeInTheDocument();
+      expect(screen.queryByText("No syncs yet.")).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[data-skeleton-region="sync-history-rows"]'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("shows the failure reason for an error-state sync row and nothing extraneous for a success row (w6/m50)", async () => {
     blueprintDetailState.blueprint = bp();
     blueprintSyncsState.syncs = [
@@ -400,11 +457,15 @@ describe("BlueprintDetailPage", () => {
     });
 
     // Name edit PATCHes only the name.
-    await user.click(screen.getByRole("button", { name: /edit blueprint name/i }));
+    await user.click(
+      screen.getByRole("button", { name: /edit blueprint name/i }),
+    );
     const nameInput = screen.getByRole("textbox", { name: /blueprint name/i });
     await user.clear(nameInput);
     await user.type(nameInput, "renamed");
-    await user.click(screen.getByRole("button", { name: /save blueprint name/i }));
+    await user.click(
+      screen.getByRole("button", { name: /save blueprint name/i }),
+    );
     expect(update).toHaveBeenCalledWith("blp-abc123", { name: "renamed" });
 
     // Branch has no edit affordance.

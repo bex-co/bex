@@ -302,7 +302,13 @@ const enUsage: Record<string, TranslationEntry> = {
   },
   "usage.projectedTotal": {
     message: "Projected total for {month}",
-    description: "Charge-tree straight-line projection of month-end spend",
+    description:
+      "Charge-tree straight-line projection of month-end spend, for the estimate fallback whose total accrues over the calendar month",
+  },
+  "usage.projectedTotalBillingPeriod": {
+    message: "Projected for this billing period",
+    description:
+      "Charge-tree straight-line projection of a Stripe-rated total. The subscription period need not align with the calendar month (it can span two), so no month is named (w6/050).",
   },
   "usage.chargeFree": {
     message: "Included",

@@ -348,7 +348,7 @@ describe("HomePage", () => {
 
     const card = (await screen.findByText("storefront")).closest("a");
     expect(
-      within(card!).getByText("1 resource(s) need attention"),
+      within(card!).getByText("1 resource needs attention"),
     ).toBeInTheDocument();
   });
 
@@ -369,10 +369,10 @@ describe("HomePage", () => {
 
     const card = (await screen.findByText("storefront")).closest("a");
     expect(
-      within(card!).getByText("1 resource(s) in progress"),
+      within(card!).getByText("1 resource in progress"),
     ).toBeInTheDocument();
     expect(
-      within(card!).queryByText("1 resource(s) need attention"),
+      within(card!).queryByText("1 resource needs attention"),
     ).not.toBeInTheDocument();
   });
 

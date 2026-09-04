@@ -50,7 +50,7 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "服务事件",
     description: "Accessible label for the event-marker strip above a chart",
   },
-  "metrics.eventMarkerCluster": {
+  "metrics.eventMarkerCluster_other": {
     message: "{count} 个事件",
     description:
       "Accessible label for a clustered chart event marker (count badge)",
@@ -158,15 +158,10 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Percentile dropdown option that overlays p50/p90/p99 on one chart",
   },
-  "metrics.requestCount": {
-    message: "{count} 个请求",
+  "metrics.requestsCount_other": {
+    message: "{formatted} 个请求",
     description:
-      "Aggregate request count beside the Total Requests section title (singular)",
-  },
-  "metrics.requestsCount": {
-    message: "{count} 个请求",
-    description:
-      "Aggregate request count beside the Total Requests section title",
+      "Aggregate request count beside the Total Requests section title ({formatted} is the locale-formatted count)",
   },
   "metrics.outboundBandwidth": {
     message: "出站带宽",

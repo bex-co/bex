@@ -217,11 +217,7 @@ export function SessionDetailHeader({
             </span>
           ) : null}
           <span>{t("agentSessions.metaDuration", { duration })}</span>
-          <span>
-            {session.turns === 1
-              ? t("agentSessions.metaTurn", { turns: session.turns })
-              : t("agentSessions.metaTurns", { turns: session.turns })}
-          </span>
+          <span>{t("agentSessions.metaTurns", { count: session.turns })}</span>
           {session.isHibernated ? (
             <span>
               {t("agentSessions.hibernatedStorage", {

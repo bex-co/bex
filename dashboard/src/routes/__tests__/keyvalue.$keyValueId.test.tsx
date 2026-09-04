@@ -7,7 +7,8 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { KeyValueDetailPage } from "../keyvalue.$keyValueId";
+import { KeyValueDetailPage, Route } from "../keyvalue.$keyValueId";
+import type { RangeSearch } from "@/features/metrics/lib/range";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 const keyValueState: {
@@ -147,6 +148,38 @@ beforeEach(() => {
   datastoreMetricsCalls.length = 0;
 });
 
+describe("key value detail tab search contract", () => {
+  const validate = Route.options.validateSearch as (
+    search: Record<string, unknown>,
+  ) => { tab?: "logs" | "metrics" } & RangeSearch;
+
+  it("keeps the linkable tabs and round-trips the log range (w6/065)", () => {
+    expect(validate({ tab: "metrics" })).toEqual({ tab: "metrics" });
+    expect(validate({ tab: "bogus" })).toEqual({});
+    // A picked preset survives a reload alongside the tab key…
+    expect(validate({ tab: "logs", range: "24h" })).toEqual({
+      tab: "logs",
+      range: "24h",
+    });
+    // …a custom window keeps its bounds…
+    expect(
+      validate({
+        tab: "logs",
+        range: "custom",
+        rangeStart: "2026-07-01T00:00:00.000Z",
+        rangeEnd: "2026-07-01T06:00:00.000Z",
+      }),
+    ).toEqual({
+      tab: "logs",
+      range: "custom",
+      rangeStart: "2026-07-01T00:00:00.000Z",
+      rangeEnd: "2026-07-01T06:00:00.000Z",
+    });
+    // …and malformed ranges drop out (default behavior preserved).
+    expect(validate({ tab: "logs", range: "6h" })).toEqual({ tab: "logs" });
+  });
+});
+
 describe("KeyValueDetailPage", () => {
   it("renders an available store's metadata and Render's bottom danger actions", async () => {
     keyValueState.keyValue = kv({ status: "available", suspended: false });
@@ -211,6 +244,27 @@ describe("KeyValueDetailPage", () => {
 
     expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/keyvalue/sessions-cache");
+  });
+
+  it("omits the External host row entirely for a private store (w6/052)", async () => {
+    // The backend contract for no public access is empty-string, not null —
+    // the row must not render as a labelled blank (or a dash) either way.
+    keyValueState.keyValue = kv({ public: false, externalHost: "" });
+    renderPage();
+
+    await screen.findByRole("heading", { name: "sessions-cache" });
+    expect(screen.queryByText("External host")).not.toBeInTheDocument();
+  });
+
+  it("renders the External host row when public access is on", async () => {
+    keyValueState.keyValue = kv({
+      public: true,
+      externalHost: "sessions-cache.kv.bex.co",
+    });
+    renderPage();
+
+    expect(await screen.findByText("External host")).toBeInTheDocument();
+    expect(screen.getByText("sessions-cache.kv.bex.co")).toBeInTheDocument();
   });
 
   it("renders the Region row when region is configured (w9/m42/t004)", async () => {

@@ -121,7 +121,18 @@ export function NewServicePage() {
                 <Label>{t("services.createTypePickerTitle")}</Label>
                 <ServiceTypePicker
                   value={form.serviceType}
-                  onChange={(serviceType) => set({ serviceType })}
+                  onChange={(serviceType) => {
+                    set({ serviceType });
+                    // Mirror the choice into ?type= so the route's head()
+                    // re-runs and the tab title tracks the <h1> (w6/045).
+                    // replace + retained search params: same match stays
+                    // mounted, so the in-progress form state survives.
+                    void navigate({
+                      to: ".",
+                      search: (current) => ({ ...current, type: serviceType }),
+                      replace: true,
+                    });
+                  }}
                 />
               </div>
 

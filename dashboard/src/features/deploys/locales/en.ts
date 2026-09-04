@@ -89,7 +89,23 @@ const enDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.deployedAt": {
     message: "Deployed {timestamp}",
-    description: "Deploy row: created/deployed timestamp",
+    description:
+      "Deploy row: when a live/deactivated deploy went live (its finish time; createdAt fallback)",
+  },
+  "deploys.createdAt": {
+    message: "Created {timestamp}",
+    description:
+      "Deploy row: creation time for a deploy that hasn't finished (created/queued/in-progress)",
+  },
+  "deploys.canceledAt": {
+    message: "Canceled {timestamp}",
+    description:
+      "Deploy row: when a canceled deploy was canceled (its finish time; createdAt fallback)",
+  },
+  "deploys.failedAt": {
+    message: "Failed {timestamp}",
+    description:
+      "Deploy row: when a build/pre-deploy/update failure landed (its finish time; createdAt fallback)",
   },
   "deploys.notYet": {
     message: "—",
@@ -249,23 +265,23 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploys tab: empty state when client-side search has no match",
   },
-  "deploys.listCountOne": {
+  "deploys.listCount_one": {
     message: "{count} deploy",
-    description: "Deploys tab: complete singular deploy count",
+    description: "Deploys tab: complete deploy count (singular)",
   },
-  "deploys.listCountMany": {
+  "deploys.listCount_other": {
     message: "{count} deploys",
-    description: "Deploys tab: complete plural deploy count",
+    description: "Deploys tab: complete deploy count (plural)",
   },
-  "deploys.listCountLoadedOne": {
+  "deploys.listCountLoaded_one": {
     message: "{count} deploy loaded",
     description:
-      "Deploys tab: singular loaded count when more server pages remain",
+      "Deploys tab: loaded count when more server pages remain (singular)",
   },
-  "deploys.listCountLoadedMany": {
+  "deploys.listCountLoaded_other": {
     message: "{count} deploys loaded",
     description:
-      "Deploys tab: plural loaded count when more server pages remain",
+      "Deploys tab: loaded count when more server pages remain (plural)",
   },
   "deploys.listLoadMore": {
     message: "Load more",

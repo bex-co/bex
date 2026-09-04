@@ -32,7 +32,10 @@ export function toKeyValueView(
     version: d.version ?? null,
     createdAt: d.createdAt ?? null,
     updatedAt: "updatedAt" in d ? (d.updatedAt ?? null) : null,
-    externalHost: d.externalHost ?? null,
+    // bex-api's contract for a private store is empty-string, not null
+    // (w6/052) — normalize to null so truthiness checks and row-omission
+    // work the same for both encodings.
+    externalHost: d.externalHost || null,
     public: d.public ?? false,
     suspended: isSuspended(d.suspended ?? null),
     region: "region" in d ? d.region || null : null,

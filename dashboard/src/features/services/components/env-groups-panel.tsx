@@ -27,6 +27,7 @@ import {
 } from "@/features/env-groups/hooks/use-env-groups";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-group-dialog";
+import { useEnvVarKeys } from "@/features/services/hooks/use-env-vars";
 import { useServer } from "@/features/services/hooks/use-server";
 
 /**
@@ -51,6 +52,12 @@ export function EnvGroupsPanel({
   const { service, loading: serviceLoading } = useServer(serviceId, {
     poll: false,
   });
+  // The service's own env-var keys, to flag linked-group keys the service
+  // overrides at runtime (w6/067; last envFrom source wins — the service's).
+  // Same query the environment editor on this page runs, so Apollo shares it.
+  // Display-only: fail-open to "no markers" while loading or on error.
+  const { keys: serviceEnvKeys } = useEnvVarKeys(serviceId);
+  const serviceKeys = new Set(serviceEnvKeys.map((entry) => entry.key));
   const [internalCreateOpen, setInternalCreateOpen] = useState(false);
   const createOpen = createOpenProp ?? internalCreateOpen;
   const setCreateOpen = onCreateOpenChange ?? setInternalCreateOpen;
@@ -103,6 +110,7 @@ export function EnvGroupsPanel({
                       key={group.id}
                       group={group}
                       serviceId={serviceId}
+                      serviceKeys={serviceKeys}
                       onLink={linkGroup}
                       onUnlink={unlinkGroup}
                       busy={busy}
@@ -130,6 +138,7 @@ export function EnvGroupsPanel({
                       key={group.id}
                       group={group}
                       serviceId={serviceId}
+                      serviceKeys={serviceKeys}
                       onLink={linkGroup}
                       onUnlink={unlinkGroup}
                       busy={busy}
@@ -158,18 +167,27 @@ export function EnvGroupsPanel({
 function EnvGroupItem({
   group,
   serviceId,
+  serviceKeys,
   onLink,
   onUnlink,
   busy,
 }: {
   group: EnvGroupView;
   serviceId: string;
+  /** The service's own env-var keys — a linked group's matching key is
+   *  overridden at runtime (service wins), so it's marked here (w6/067). */
+  serviceKeys: ReadonlySet<string>;
   onLink: (id: string, serviceId: string) => Promise<boolean>;
   onUnlink: (id: string, serviceId: string) => Promise<boolean>;
   busy: boolean;
 }) {
   const { t } = useTranslations();
   const linked = group.serviceLinks.includes(serviceId);
+  // Only a *linked* group actually feeds the service, so only there can a
+  // duplicate key be shadowed by the service's own variable.
+  const overridden = linked
+    ? group.envVarKeys.filter((key) => serviceKeys.has(key))
+    : [];
 
   return (
     <li className="flex flex-col items-stretch gap-4 py-4 first:pt-4 last:pb-4 sm:flex-row sm:items-start sm:justify-between">
@@ -193,18 +211,44 @@ function EnvGroupItem({
             {t("services.envGroupEmptyContents")}
           </p>
         ) : (
-          <div className="flex flex-wrap gap-1">
-            {group.envVarKeys.map((key) => (
-              <Badge key={`k-${key}`} variant="secondary" className="font-mono">
-                {key}
-              </Badge>
-            ))}
-            {group.secretFileNames.map((name) => (
-              <Badge key={`f-${name}`} variant="outline" className="font-mono">
-                {name}
-              </Badge>
-            ))}
-          </div>
+          <>
+            <div className="flex flex-wrap gap-1">
+              {group.envVarKeys.map((key) =>
+                overridden.includes(key) ? (
+                  <Badge
+                    key={`k-${key}`}
+                    variant="outline"
+                    className="text-muted-foreground font-mono"
+                    title={t("services.envGroupKeyOverridden", { key })}
+                  >
+                    <s>{key}</s>
+                  </Badge>
+                ) : (
+                  <Badge
+                    key={`k-${key}`}
+                    variant="secondary"
+                    className="font-mono"
+                  >
+                    {key}
+                  </Badge>
+                ),
+              )}
+              {group.secretFileNames.map((name) => (
+                <Badge
+                  key={`f-${name}`}
+                  variant="outline"
+                  className="font-mono"
+                >
+                  {name}
+                </Badge>
+              ))}
+            </div>
+            {overridden.length > 0 && (
+              <p className="text-muted-foreground text-xs">
+                {t("services.envGroupOverriddenNote")}
+              </p>
+            )}
+          </>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">

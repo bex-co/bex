@@ -772,6 +772,16 @@ func (r *Reconciler) recordLifecycleFacts(ctx context.Context, d DesiredApp, ope
 // ended fact yet), any later phase means the build succeeded, build_failed means
 // it failed, and a cancel while still building means it was canceled.
 func buildLifecycleFacts(open Deploy, newStatus string, observedStart *time.Time) []ServiceEventFact {
+	// A row born with a resolved image runs no BuildKit Job, so it emits neither
+	// fact (w6/061): the call sites' d.Repo guard discriminates per SERVICE, but
+	// a rollback on a repo-backed service is an image-backed DEPLOY —
+	// CreateRollbackDeploy stamps the restored image at open, and the image
+	// column is never written again (TransitionDeploy backfills only
+	// resolved_image), so a non-empty Image is exactly "this deploy skipped the
+	// build". It gets the same silence an image-backed service's deploys do.
+	if open.Image != "" {
+		return nil
+	}
 	at, dispatched := buildStartedAt(open, newStatus, observedStart)
 	if !dispatched {
 		return nil

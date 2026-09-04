@@ -26,7 +26,7 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "加载环境时出错，请稍后重试。",
     description: "Error state shown when the environments query fails",
   },
-  "environments.resourceCount": {
+  "environments.resourceCount_other": {
     message: "{count} 项资源",
     description:
       "Count of visible services+databases+key-value instances assigned to an environment, next to its name",
@@ -312,7 +312,7 @@ const zhEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.assignmentHint": {
     message:
-      "资源只能通过环境加入项目。仅选择项目只会缩小下方环境列表的范围——需要选择或创建一个环境，才能真正将此资源加入项目。",
+      "资源只能通过环境加入项目。仅选择项目只会缩小下方环境列表的范围——需要选择一个环境，才能真正将此资源加入项目。如果该项目还没有环境，请先在项目页面创建一个。",
     description: "Shared create-form Environment-assignment hint",
   },
 };

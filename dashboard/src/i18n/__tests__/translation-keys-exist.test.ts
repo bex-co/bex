@@ -37,6 +37,10 @@ function callSites(): Site[] {
     if (
       path.includes("/locales/") ||
       path.includes("__tests__") ||
+      // Vite normalizes a same-directory glob match to "./<file>", which the
+      // "__tests__" substring check above misses — but everything sharing this
+      // directory IS a __tests__ file.
+      path.startsWith("./") ||
       path.endsWith("use-translations.ts")
     )
       continue;
@@ -59,6 +63,11 @@ describe("translation keys exist", () => {
     const missing = new Map<string, Set<string>>();
     for (const { key, file } of callSites()) {
       if (key in en) continue;
+      // Native-plural base key (w6/062): `t("ns.key", { count })` resolves via
+      // the `_one`/`_other` suffixed entries; the base key itself is never in
+      // the catalog. Require BOTH forms — English uses both, so authoring only
+      // half the pair is a bug this test should still catch.
+      if (`${key}_one` in en && `${key}_other` in en) continue;
       const files = missing.get(key) ?? new Set<string>();
       files.add(file);
       missing.set(key, files);
@@ -69,6 +78,9 @@ describe("translation keys exist", () => {
     const report = [...missing.entries()]
       .map(([key, files]) => `  ${key}  ←  ${[...files].sort().join(", ")}`)
       .sort();
-    expect(report, `translation keys with no message:\n${report.join("\n")}`).toEqual([]);
+    expect(
+      report,
+      `translation keys with no message:\n${report.join("\n")}`,
+    ).toEqual([]);
   });
 });
