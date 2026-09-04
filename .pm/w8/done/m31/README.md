@@ -1,6 +1,6 @@
 # w8 · m31 — In-place GitHub "Credentials" menu on the service source picker (Render /web/new parity)
 
-**Worker:** worker8 **Goal:** the GitHub tab of `ServiceSourcePicker` (on `/services/new`, create-Blueprint, and Settings→Update Source) carries an in-place "Credentials (N)" control that lists connected accounts/orgs and lets the user connect another, disconnect, and open "Configure in GitHub" — matching Render's `/web/new` credentials dropdown — without leaving the page or losing the in-progress create form. **Status:** in progress — t001–t005 DONE (code, docs, simplify, tests landed and green); t006 (live DoD verification + closeout) remains, blocked on a live environment with a GitHub App configured.
+**Worker:** worker8 **Goal:** the GitHub tab of `ServiceSourcePicker` (on `/services/new`, create-Blueprint, and Settings→Update Source) carries an in-place "Credentials (N)" control that lists connected accounts/orgs and lets the user connect another, disconnect, and open "Configure in GitHub" — matching Render's `/web/new` credentials dropdown — without leaving the page or losing the in-progress create form. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Render parity — verify the menu matches render.com's `/web/new` credentials dropdown; confirm REST/GraphQL/MCP unchanged; record the deliberate new-tab-install divergence — **DONE** | 20m | t002       |
 | t004 | Simplify — `/simplify` over the milestone's changed code (behavior-preserving) — **DONE**               | 30m | t003       |
 | t005 | Test coverage — credentials menu list/connect/disconnect/claim, focus refetch, disconnected/unavailable states — **DONE** | 45m | t003       |
-| t006 | Closeout — verify DoD live, sync status, move to done/                                                  | 15m | t005       |
+| t006 | Closeout — verify DoD live, sync status, move to done/ — **DONE**                                       | 15m | t005       |
 
 ## Implementation evidence (2026-08-29)
 
@@ -20,7 +20,7 @@
 - **t004 (simplify):** extracted the duplicated `isUnavailable` predicate into `dashboard/src/features/git/lib/errors.ts` (`isGitHubUnavailable`), now shared by both the new menu and the Settings `ConnectGithubCard`.
 - **t005 (tests):** `use-connect-git.test.ts` (3 tests — new-tab opens a tab and doesn't navigate the page; same-tab navigates; failure closes the pre-opened tab) + `git-credentials-menu.test.tsx` (7 tests — count trigger, account list/repo counts/Configure+Open links, per-account disconnect via confirm, connect-another, claim, disconnected Connect, unavailable + error states). Existing picker-rendering tests (service-source-card, services.new, blueprints-new) updated to mock the now-transitively-pulled `useGitConnections`/`useClaimGit`/`useDisconnectGit`.
 - **Verification:** `yarn typecheck` + `yarn lint` clean; the 7 affected test files green (105 tests); the one full-suite failure (`new-session-composer`) is a pre-existing ProseMirror-init flake — passes deterministically in isolation, mocks `use-repos` wholesale, and imports none of this milestone's code.
-- **t006 (open):** the DoD is stated "on a live environment"; live verification with a configured GitHub App is owed before this milestone moves to `done/`.
+- **t006 (done 2026-09-03):** live DoD verified on `dashboard.bex.co` as the QA user — `/services/new` and `/blueprints/new` both show **Credentials (1)** for `bex-co` with **73 repos**, Open/Configure-in-GitHub, Disconnect, Connect another, and Claim; screenshot `.playwright-mcp/w8-m31-credentials.png`. Disconnect/Connect-another not clicked live (destructive); covered by unit tests. Milestone moved to `done/m31/`.
 - **Parallel-work reconciliation (2026-08-29):** a concurrent session shipped `5505d956 feat(dashboard): manage GitHub connections during service creation` — an inline `GitHubConnectionsMenu` in the source picker covering the same intent but as a **subset** (connect + per-account Configure-in-GitHub only; no disconnect, no claim, no repo counts, same-tab connect). Rebasing onto it, this milestone's superset `GitCredentialsMenu` was kept (it adds **disconnect in place** and repo counts — the parts the user explicitly asked for and the Render screenshot shows), upstream's inline menu + its now-orphaned `services.createGitConn*` locale keys were removed, and upstream's responsive search/menu row layout + route-skeleton were retained. Tests reconciled to mock both `useGitConnection` (picker gate) and `useGitConnections` (menu).
 
 ## Definition of done
