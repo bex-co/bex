@@ -6,17 +6,18 @@
   "vite": false,
   "entry": [
     "src/router.tsx",
+    "src/start.ts",
     "src/routes/**/*.{ts,tsx}",
     "src/**/*.{test,spec}.{ts,tsx}",
     "server/**/*.{ts,tsx}",
     "scripts/*.{js,mjs}",
-    "vite.config.ts"
+    "vite.config.ts",
   ],
   "project": [
     "src/**/*.{ts,tsx}",
     "src/**/*.css",
     "server/**/*.{ts,tsx}",
     "scripts/*.{js,mjs}",
-    "*.{ts,tsx,js,mjs}"
-  ]
+    "*.{ts,tsx,js,mjs}",
+  ],
 }

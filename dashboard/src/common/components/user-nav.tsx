@@ -37,7 +37,7 @@ import {
   persistLanguage,
   type SupportedLanguage,
 } from "@/i18n";
-import { ensureLanguage } from "@/i18n/init";
+import { switchLanguage } from "@/i18n/init";
 
 interface UserAvatarButtonProps {
   userInitial: string;
@@ -96,12 +96,10 @@ export function UserNav() {
   const currentLanguage = i18n.language as SupportedLanguage;
   const handleLanguage = (lang: SupportedLanguage) => {
     persistLanguage(lang);
-    // Register the lazy catalog before switching (w9/m60 t003) — matching the
-    // globe LanguageSwitcher. Without this, a first-ever switch to a non-default
-    // language sets `i18n.language` but renders the English fallback, and
-    // `__root.tsx`'s `if (i18n.language !== language)` guard then skips the load
-    // on later navigations, so the catalog can stay unloaded all session (w6/m103).
-    void ensureLanguage(lang).then(() => i18n.changeLanguage(lang));
+    // `switchLanguage` registers the lazy catalog before changing, so a
+    // first-ever switch to a non-default language actually renders it instead of
+    // the English fallback with `i18n.language` already moved (w6/m103 Bug A).
+    void switchLanguage(lang);
   };
 
   const identity = session?.identity;
