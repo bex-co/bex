@@ -209,16 +209,19 @@ for lifespan_field in \
 done
 
 # ---- First-party desktop / editor client (bex Desktop, Zed) ----------------
-# The editor signs in with the same device-code flow as the CLI, but as its own
-# client so token audience, telemetry, revocation, and per-grant lifespans are
-# decoupled from the CLI. Grants/scopes/skip_consent are identical to the CLI:
-# the client id is not an authority boundary (bex-api still enforces per-token
-# granular capabilities, docs/ADR012-auth.md), so this grants no more than the
-# CLI — it only identifies the surface. skip_consent rides every upsert for the
-# same reason as the CLI (the device flow strands at a never-completing consent
-# step without it).
-desktop_body="$(printf '{"client_id":"%s","client_name":"bex Desktop (Zed)","grant_types":["%s","refresh_token"],"scope":"openid offline_access bex.read bex.write bex.sensitive","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"device_authorization_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
-  "$DESKTOP_CLIENT_ID" "$DEVICE_GRANT" "$CLI_TOKEN_LIFESPAN" "$CLI_TOKEN_LIFESPAN")"
+# The editor is a desktop GUI app, so it uses the standard native-app flow —
+# OAuth 2.0 Authorization Code + PKCE with an RFC 8252 loopback redirect — NOT
+# the device grant (that is for input-constrained/browserless surfaces like the
+# CLI). Its own client so token audience, telemetry, revocation, and lifespans
+# are decoupled from the CLI; the client id is not an authority boundary
+# (bex-api still enforces per-token granular capabilities, docs/ADR012-auth.md),
+# so this grants no more than the CLI. skip_consent rides every upsert
+# (first-party): the editor bounces straight back after login with no consent
+# screen. Loopback redirects are registered path-only — Hydra accepts any port
+# on 127.0.0.1/localhost (RFC 8252 §7.3, verified on Hydra v26), so the editor's
+# ephemeral callback port always matches.
+desktop_body="$(printf '{"client_id":"%s","client_name":"bex Desktop (Zed)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["http://127.0.0.1/callback","http://localhost/callback"],"scope":"openid offline_access bex.read bex.write bex.sensitive","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"authorization_code_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
+  "$DESKTOP_CLIENT_ID" "$CLI_TOKEN_LIFESPAN" "$CLI_TOKEN_LIFESPAN")"
 desktop_code="$(printf '%s' "$desktop_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
   -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$DESKTOP_CLIENT_ID")"
 if [ "$desktop_code" = "404" ]; then
@@ -233,20 +236,20 @@ else
   exit 1
 fi
 
-# Same round-trip guard as the CLI client: assert both grant lifespans stuck.
+# Hydra ignores unknown JSON fields, so assert the loopback redirect and
+# public-client posture round-trip instead of trusting the PUT status alone.
 stored_desktop_client="$(curl -sf "$REST_ADMIN/admin/clients/$DESKTOP_CLIENT_ID")" || {
   echo "error: reading back $DESKTOP_CLIENT_ID failed" >&2
   exit 1
 }
-for lifespan_field in \
-  device_authorization_grant_access_token_lifespan \
-  refresh_token_grant_access_token_lifespan; do
-  if ! printf '%s' "$stored_desktop_client" \
-      | grep -q "\"$lifespan_field\":\"$CLI_TOKEN_LIFESPAN"; then
-    echo "error: $DESKTOP_CLIENT_ID $lifespan_field did not round-trip (hydra too old for per-client lifespans?)" >&2
-    exit 1
-  fi
-done
+printf '%s' "$stored_desktop_client" | grep -Fq '"http://127.0.0.1/callback"' || {
+  echo "error: $DESKTOP_CLIENT_ID loopback redirect did not round-trip" >&2
+  exit 1
+}
+printf '%s' "$stored_desktop_client" | grep -Fq '"token_endpoint_auth_method":"none"' || {
+  echo "error: $DESKTOP_CLIENT_ID is not a public client" >&2
+  exit 1
+}
 
 # ---- First-party native mobile client (ADR012 §8b) -------------------------
 # A store-distributed app cannot keep a client secret. The reverse-domain
