@@ -1,6 +1,6 @@
 # w6 · m117 — The Recovery card reports "No backups yet" for databases with proven backups, because two failed Kubernetes reads degrade silently to "nothing"
 
-**Worker:** worker6 **Goal:** the disaster-recovery surface distinguishes "there are no backups" from "I could not read the backups", and never renders a restore point it has no evidence for **Status:** in progress — corrective implementation complete in the 2026-09-01 worktree (t001–t006 done; t007 needs ship/deploy plus the live API probe)
+**Worker:** worker6 **Goal:** the disaster-recovery surface distinguishes "there are no backups" from "I could not read the backups", and never renders a restore point it has no evidence for **Status:** done — deployed, 2/2 API replicas Ready, and all three production recovery reports exactly match cluster ground truth
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity | 20m | t003 | — **DONE** (ADR018/ADR009 updated; one `RecoveryInfoView` across REST/GraphQL/MCP; live probe owned by t007) |
 | t005 | Simplify | 20m | t004 | — **DONE** (one authoritative `recoveryWindow` read shared by reporting and provisioning) |
 | t006 | Test coverage | 30m | t004 | — **DONE** (ObjectStore-keyed window, both read failures, all four states, dashboard, and refusal-before-gates pinned) |
-| t007 | Closeout | 10m | t005, t006 |
+| t007 | Closeout | 10m | t005, t006 | — **DONE** (2026-09-03: deployed build verified; 3/3 live windows and 39/39 backup records match cluster ground truth) |
 
 ## Definition of done
 
@@ -22,6 +22,12 @@
 - **Restore is not offered when it cannot succeed.** `Restore to new instance` is enabled today whenever `enabled` is true; `Recover` (`recovery.go:199`) gates only on `!src.Status.BackupsEnabled`, so with backups enabled but unreadable it passes validation, passes `RequirePlanBilling`, and provisions a **new paid database** that cannot bootstrap. Verify the new behavior refuses before creating anything billable. (Not executed this run — running it would have created a paid resource on a production workspace.)
 - `cd lego/backend && go test ./internal/postgres/...` covers the unreadable-ObjectStore case explicitly, asserting it is distinguishable from the empty case. The existing tests could not see this: `listBackups`' old doc called the empty return "best-effort … an unavailable CNPG CRD (e.g. envtest) yields an empty list", which was exactly the production failure mode dressed as a test convenience.
 - Re-run this milestone's probe against all three databases and confirm the reported state matches what the cluster actually holds, whichever way `t001` resolves.
+
+## Resolution (2026-09-03)
+
+Production runs 2/2 Ready `bex-api` replicas at digest `sha256:5423ab0b8fb6f6b16f53f23af2e1fdcda5ee018589d601561aa46fe9f755f1de`, pinned from `c3a0a122`, which contains m117's `e75b08ea`. The Stripe publishable-key rollout blocker in `w6/069` is resolved, the supplied key matches the live Secret, and the m117 ObjectStore/Backup RBAC is effective.
+
+The authenticated live probe returned HTTP 200 for all three production databases. Every API recovery window exactly equals its `ObjectStore/bex-tenant-postgres.status.serverRecoveryWindow` entry, and every API backup list exactly equals the cluster's completed CNPG Backup ids: 13/13 per database, 39/39 total. Current-main focused verification is green (`go test ./internal/postgres/...`; dashboard Recovery panel 7/7), including simulated unreadable ObjectStore and Backup-list states, honest empty/partial states, removal of the synthetic latest timestamp, UI error/restore gating, and refusal before billing or resource creation. The live Recovery card loads the established window with Restore enabled. No separate backup-operations incident is needed because the backups and recovery windows are healthy.
 
 ## Source + Goal linkage
 
