@@ -368,15 +368,15 @@ const zhAuth: Record<string, TranslationEntry> = {
       "Consent page subtext when the browser's session belongs to a different account than the one that started this authorization",
   },
   "auth.deviceSuccessTitle": {
-    message: "bex CLI 已连接",
+    message: "设备已连接",
     description: "Device authorization success page title",
   },
   "auth.deviceTitle": {
-    message: "连接 bex CLI",
-    description: "bex CLI device verification route document title",
+    message: "连接设备",
+    description: "Device verification route document title",
   },
   "auth.deviceConfirmSubtitle": {
-    message: "一台通过 bex CLI 登录的设备正在请求访问你的账户。",
+    message: "一台你正在登录的设备正在请求访问你的账户。",
     description: "Device confirm page hero subtitle",
   },
   "auth.deviceConfirmHeading": {
@@ -384,11 +384,11 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Device confirm page card heading",
   },
   "auth.deviceConfirmDescription": {
-    message: "请确认下方代码与你的 CLI 显示的一致：",
+    message: "请确认下方代码与你的设备上显示的一致：",
     description: "Device confirm page card description above the code",
   },
   "auth.deviceConfirmHint": {
-    message: "仅当你本人在终端发起此请求时才应授权。",
+    message: "仅当你本人发起此登录时才应授权。",
     description:
       "Device confirm page footnote warning against unsolicited requests",
   },
@@ -407,7 +407,7 @@ const zhAuth: Record<string, TranslationEntry> = {
   },
   "auth.deviceExpiredSubtitle": {
     message:
-      "此页面需要来自 `bex login` 的设备代码，或该代码已过期。请在终端中重新运行该命令。",
+      "此页面需要设备代码，或该代码已过期。请在你的设备上重新发起登录。",
     description:
       "Device confirm page subtext when there is no live device request to confirm",
   },
@@ -427,7 +427,7 @@ const zhAuth: Record<string, TranslationEntry> = {
       "Device confirm page heading when the device request names a client bex did not expect",
   },
   "auth.deviceRefusedSubtitle": {
-    message: "此设备请求无法验证。请在终端中重新运行 `bex login`。",
+    message: "此设备请求无法验证。请在你的设备上重新发起登录。",
     description:
       "Device confirm page subtext when the device request names a client bex did not expect",
   },
@@ -436,8 +436,8 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Device authorization success page subtitle",
   },
   "auth.deviceSuccessHint": {
-    message: "请返回终端继续。",
-    description: "Device authorization success page terminal hint",
+    message: "请返回你正在登录的应用继续。",
+    description: "Device authorization success page hint",
   },
   "auth.deviceSuccessWaiting": {
     message: "正在等待浏览器授权…",

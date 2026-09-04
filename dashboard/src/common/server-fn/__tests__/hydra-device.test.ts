@@ -10,6 +10,7 @@ vi.mock("@/common/server-fn/session", () => ({
 }));
 
 import {
+  DESKTOP_CLIENT_ID,
   handleDeviceConfirm,
   handleDeviceVerification,
   RENDER_CLI_CLIENT_ID,
@@ -187,6 +188,34 @@ describe("handleDeviceConfirm", () => {
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({
       user_code: "ABCDEF",
     });
+  });
+
+  it("pairs the grant for the first-party bex-desktop client", async () => {
+    fetchSessionMock.mockResolvedValue({
+      session: { id: "session-abc", active: true, identity: { id: "id-1" } },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          redirect_to: `${PUBLIC}/oauth2/device/verify?device_verifier=v&client_id=${DESKTOP_CLIENT_ID}`,
+        }),
+      ),
+    );
+    const form = new FormData();
+    form.set("user_code", "ABCDEF");
+    form.set("device_challenge", "challenge-1");
+    const response = await handleDeviceConfirm(
+      new Request(`${DASHBOARD}/auth/device`, {
+        method: "POST",
+        body: form,
+        headers: { origin: DASHBOARD },
+      }),
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toContain(
+      `client_id=${DESKTOP_CLIENT_ID}`,
+    );
   });
 
   it("fails closed for expired/replayed codes and foreign clients by redirecting into the shell error page (w10/m8 t001)", async () => {

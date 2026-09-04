@@ -6,6 +6,20 @@ import {
 } from "@/common/server-fn/bounded-body";
 
 const RENDER_CLI_CLIENT_ID = "429024F5E608930E2A65EF92591A25CC";
+const DESKTOP_CLIENT_ID = "bex-desktop";
+
+/** The device grant is confined to bex's first-party device clients (the CLI
+ * and the desktop/editor), plus any operator-registered platform clients
+ * (OAUTH_PLATFORM_CLIENTS, comma-separated). A self-registered third-party
+ * client that somehow reached the accept redirect is refused as unexpected. */
+function allowedDeviceClients(): Set<string> {
+  const allowed = new Set<string>([RENDER_CLI_CLIENT_ID, DESKTOP_CLIENT_ID]);
+  for (const id of (process.env.OAUTH_PLATFORM_CLIENTS ?? "").split(",")) {
+    const trimmed = id.trim();
+    if (trimmed) allowed.add(trimmed);
+  }
+  return allowed;
+}
 
 // The device-confirm form carries only a user_code + device_challenge, so
 // anything past a few KiB is abuse — bound it before buffering (codex-security
@@ -231,7 +245,7 @@ async function acceptDevicePairing(
   const publicOrigin = new URL(hydra.public).origin;
   if (
     redirect.origin !== publicOrigin ||
-    redirect.searchParams.get("client_id") !== RENDER_CLI_CLIENT_ID
+    !allowedDeviceClients().has(redirect.searchParams.get("client_id") ?? "")
   ) {
     return redirectToDeviceError(origin, "unexpected_client");
   }
@@ -239,4 +253,4 @@ async function acceptDevicePairing(
   return Response.redirect(redirect.toString(), 302);
 }
 
-export { RENDER_CLI_CLIENT_ID };
+export { RENDER_CLI_CLIENT_ID, DESKTOP_CLIENT_ID };

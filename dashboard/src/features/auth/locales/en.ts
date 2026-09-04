@@ -377,16 +377,15 @@ const enAuth: Record<string, TranslationEntry> = {
       "Consent page subtext when the browser's session belongs to a different account than the one that started this authorization",
   },
   "auth.deviceSuccessTitle": {
-    message: "bex CLI connected",
+    message: "Device connected",
     description: "Device authorization success page title",
   },
   "auth.deviceTitle": {
-    message: "Connect bex CLI",
-    description: "bex CLI device verification route document title",
+    message: "Connect a device",
+    description: "Device verification route document title",
   },
   "auth.deviceConfirmSubtitle": {
-    message:
-      "A device signed in with the bex CLI wants access to your account.",
+    message: "A device you are signing in wants access to your account.",
     description: "Device confirm page hero subtitle",
   },
   "auth.deviceConfirmHeading": {
@@ -394,12 +393,11 @@ const enAuth: Record<string, TranslationEntry> = {
     description: "Device confirm page card heading",
   },
   "auth.deviceConfirmDescription": {
-    message: "Confirm the code below matches what your CLI displayed:",
+    message: "Confirm the code below matches the one shown on your device:",
     description: "Device confirm page card description above the code",
   },
   "auth.deviceConfirmHint": {
-    message:
-      "Only authorize this if you started the request from your terminal.",
+    message: "Only authorize this if you started this sign-in yourself.",
     description:
       "Device confirm page footnote warning against unsolicited requests",
   },
@@ -418,7 +416,7 @@ const enAuth: Record<string, TranslationEntry> = {
   },
   "auth.deviceExpiredSubtitle": {
     message:
-      "This page needs a device code from `bex login`, or the code has expired. Start the command again from your terminal.",
+      "This page needs a device code, or the code has expired. Start sign-in again from your device.",
     description:
       "Device confirm page subtext when there is no live device request to confirm",
   },
@@ -439,7 +437,7 @@ const enAuth: Record<string, TranslationEntry> = {
   },
   "auth.deviceRefusedSubtitle": {
     message:
-      "This device request could not be verified. Start `bex login` again from your terminal.",
+      "This device request could not be verified. Start sign-in again from your device.",
     description:
       "Device confirm page subtext when the device request names a client bex did not expect",
   },
@@ -448,8 +446,8 @@ const enAuth: Record<string, TranslationEntry> = {
     description: "Device authorization success page subtitle",
   },
   "auth.deviceSuccessHint": {
-    message: "Return to your terminal to continue.",
-    description: "Device authorization success page terminal hint",
+    message: "Return to the app you're signing in to continue.",
+    description: "Device authorization success page hint",
   },
   "auth.deviceSuccessWaiting": {
     message: "Waiting for browser authorization…",
