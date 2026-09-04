@@ -53,9 +53,7 @@ function bexAt(meta: unknown, field: "at" | "endAt"): unknown {
  * Duplicate echoes of the same instant collapse; invalid or missing optional
  * timing is skipped — never treated as transcript corruption.
  */
-export function sourceTimestampsMs(
-  part: Record<string, unknown>,
-): number[] {
+export function sourceTimestampsMs(part: Record<string, unknown>): number[] {
   const raw = [
     part[SOURCE_TIME_FIELD],
     bexAt(part.providerMetadata, "at"),
@@ -177,76 +175,14 @@ export function toolPartInfo(part: Record<string, unknown>): ToolPartInfo {
   };
 }
 
-export interface UnwrappedTool {
-  name: string;
-  state: string;
-  /** A shell command line, when the (unwrapped) input carries one. */
-  command?: string;
-  /** The tool arguments after unwrapping the ACP dynamic-tool envelope. */
-  args?: unknown;
-  /** The tool output, with trivial acks (`{ok:true}`) dropped as noise. */
-  output?: unknown;
-  errorText?: string;
-}
-
-/**
- * Unwraps the shipped provider's opaque ACP tool part into a human-renderable
- * shape. `@mcpc-tech/acp-ai-provider` collapses every ACP `tool_call` into ONE
- * dynamic tool named `acp.acp_provider_agent_dynamic_tool`, discarding the ACP
- * `title`/`kind` and stuffing the real call into `input = {toolCallId, toolName,
- * args}` with `output = rawOutput` — so a naive render dumps `{"command":"ls"}`
- * and `{"ok":true}` as raw JSON. This restores the real tool name from the
- * envelope, lifts a `command` up for shell-line rendering, and drops trivial
- * output acks. A non-enveloped tool part (e.g. the local mock's `acp_agent` with
- * a plain input) passes through unchanged.
- */
-export function unwrapAcpTool(info: ToolPartInfo): UnwrappedTool {
-  let name = info.name;
-  let args = info.input;
-  const envelope = asRecord(info.input);
-  if (
-    envelope &&
-    typeof envelope.toolName === "string" &&
-    "args" in envelope &&
-    "toolCallId" in envelope
-  ) {
-    name = envelope.toolName;
-    args = envelope.args;
-  }
-  const argRecord = asRecord(args);
+/** Shell command displayed inline beside the driver's tool title. */
+export function toolCommand(input: unknown): string | undefined {
+  const argRecord = asRecord(input);
   // First non-empty of command/commandLine (an empty `command` must not mask a
   // real `commandLine`, and a blank string is not a renderable command).
-  const command = argRecord
+  return argRecord
     ? (nonEmpty(str(argRecord.command)) ?? nonEmpty(str(argRecord.commandLine)))
     : undefined;
-  return {
-    name,
-    state: info.state,
-    command,
-    // Once a command is lifted out, the remaining arg object is just `{command}`
-    // — don't also dump it as JSON.
-    args: command ? undefined : args,
-    output: isTrivialAck(info.output) ? undefined : info.output,
-    errorText: info.errorText,
-  };
-}
-
-/**
- * True for an output that carries no information a reader needs — a bare success
- * ack like `{ok:true}`, `{success:true}`, `true`, or an empty object. These are
- * the ACP `rawOutput` acks that otherwise render as noise `{"ok":true}` blobs.
- */
-export function isTrivialAck(output: unknown): boolean {
-  if (output === undefined || output === null || output === true) return true;
-  const record = asRecord(output);
-  if (!record) return false;
-  const keys = Object.keys(record);
-  if (keys.length === 0) return true;
-  return keys.every(
-    (k) =>
-      (k === "ok" || k === "success" || k === "status") &&
-      (record[k] === true || record[k] === "ok" || record[k] === "success"),
-  );
 }
 
 /** The concrete UI message type the column renders (default parts + the typed

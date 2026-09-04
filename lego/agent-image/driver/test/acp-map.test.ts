@@ -24,7 +24,10 @@ import {
   stampSourceTimestamp,
 } from "../src/timestamp.js";
 
-function clock(start = "2026-08-19T00:00:00.000Z", stepMs = 1000): () => string {
+function clock(
+  start = "2026-08-19T00:00:00.000Z",
+  stepMs = 1000,
+): () => string {
   let ms = Date.parse(start);
   return () => {
     const iso = new Date(ms).toISOString();
@@ -37,6 +40,68 @@ function atOf(part: Record<string, unknown>): string {
   assert.ok(isUtcTimestamp(part.at), `missing at on ${String(part.type)}`);
   return part.at;
 }
+
+test("unrendered ACP content and future variants stay observable", () => {
+  const mapper = createUpdateMapper();
+  for (const sessionUpdate of [
+    "agent_message_chunk",
+    "agent_thought_chunk",
+  ] as const) {
+    const update: SessionUpdate = {
+      sessionUpdate,
+      content: { type: "image", data: "aGVsbG8=", mimeType: "image/png" },
+    };
+    const chunks = mapper.map(update);
+    assert.ok(
+      chunks.some(
+        (chunk) =>
+          chunk.type === "data-acp-info" &&
+          chunk.transient &&
+          chunk.data === update,
+      ),
+    );
+  }
+  const future = {
+    sessionUpdate: "future_update",
+    value: "visible",
+  } as unknown as SessionUpdate;
+  assert.ok(
+    mapper
+      .map(future)
+      .some(
+        (chunk) =>
+          chunk.type === "data-acp-future-update" &&
+          chunk.transient &&
+          chunk.data === future,
+      ),
+  );
+  const content = {
+    type: "content" as const,
+    content: { type: "text" as const, text: "tool details" },
+  };
+  assert.ok(
+    mapper
+      .map({
+        sessionUpdate: "tool_call",
+        toolCallId: "details",
+        title: "Inspect",
+        content: [content],
+      })
+      .some(
+        (chunk) =>
+          chunk.type === "data-acp-info" &&
+          chunk.transient &&
+          JSON.stringify(chunk.data).includes("tool details"),
+      ),
+  );
+  assert.deepEqual(
+    mapper.map({
+      sessionUpdate: "user_message_chunk",
+      content: { type: "text", text: "echo" },
+    }),
+    [],
+  );
+});
 
 test("stampSourceTimestamp assigns ISO-8601 UTC once and preserves replay", () => {
   const first = stampSourceTimestamp(
@@ -107,13 +172,21 @@ test("mapper stamps text, reasoning, tool, plan, diff, and terminal parts", () =
   chunks.push(...mapper.flush());
 
   const byType = Object.fromEntries(
-    ["reasoning-start", "data-acp-plan", "tool-input-start", "data-acp-diff", "data-acp-terminal", "text-start"].map(
-      (type) => [type, chunks.find((c) => c.type === type)],
-    ),
+    [
+      "reasoning-start",
+      "data-acp-plan",
+      "tool-input-start",
+      "data-acp-diff",
+      "data-acp-terminal",
+      "text-start",
+    ].map((type) => [type, chunks.find((c) => c.type === type)]),
   );
   for (const [type, chunk] of Object.entries(byType)) {
     assert.ok(chunk, `missing ${type}`);
-    assert.ok(isUtcTimestamp((chunk as { at?: unknown }).at), `${type} has no at`);
+    assert.ok(
+      isUtcTimestamp((chunk as { at?: unknown }).at),
+      `${type} has no at`,
+    );
   }
 
   const reasoningEnd = chunks.find((c) => c.type === "reasoning-end") as {
@@ -121,7 +194,10 @@ test("mapper stamps text, reasoning, tool, plan, diff, and terminal parts", () =
     providerMetadata?: { bex?: { at?: string; endAt?: string } };
   };
   assert.ok(reasoningEnd);
-  assert.equal(reasoningEnd.providerMetadata?.bex?.at, atOf(byType["reasoning-start"] as Record<string, unknown>));
+  assert.equal(
+    reasoningEnd.providerMetadata?.bex?.at,
+    atOf(byType["reasoning-start"] as Record<string, unknown>),
+  );
   assert.ok(isUtcTimestamp(reasoningEnd.providerMetadata?.bex?.endAt));
   assert.notEqual(
     reasoningEnd.providerMetadata?.bex?.at,

@@ -521,10 +521,8 @@ type DisplayBlock =
 
 function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   const blocks: DisplayBlock[] = [];
-  // ACP plans are full-state SNAPSHOTS re-sent on every update, arriving as
-  // separate id-less `data-acp` parts. Render ONE plan block updated in place to
-  // the latest snapshot — never a stack of stale snapshots each frozen at its
-  // own (often in_progress) state (ADR051 glue #1).
+  // Plans are snapshots. Coalesce replayed snapshots within each turn; a
+  // durable replay can combine multiple turns into one assistant message.
   let planBlock: Extract<DisplayBlock, { type: "plan" }> | null = null;
 
   const pushStep = (step: ActivityStep, index: number, part: PartLike) => {
@@ -630,19 +628,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
     }
 
     if (isToolPart(part)) {
-      const info = toolPartInfo(part);
-      pushStep(
-        {
-          kind: "tool",
-          name: info.name,
-          state: info.state,
-          input: info.input,
-          output: info.output,
-          errorText: info.errorText,
-        },
-        index,
-        part,
-      );
+      pushStep({ kind: "tool", ...toolPartInfo(part) }, index, part);
       return;
     }
 

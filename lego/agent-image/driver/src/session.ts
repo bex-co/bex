@@ -301,7 +301,6 @@ export async function runHeadlessTurn(
         const sanitized = publish(chunk as UIMessagePart);
         const written = await turnLog.appendPart(sanitized);
         if (written === 0) logTruncated = true;
-        logBytes += written;
       }
       if (turnError) throw turnError;
     };

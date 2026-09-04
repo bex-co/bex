@@ -62,7 +62,6 @@ export function createUpdateMapper(
   const now = options.now ?? utcNow;
   let open: TextBlock | null = null;
   let sequence = 0;
-  const startedTools = new Set<string>();
   const toolNames = new Map<string, string>();
   // One publication instant per map()/flush() so start/delta/end in the same
   // ACP update share a clock reading; the fake test clock then advances per update.
@@ -93,7 +92,11 @@ export function createUpdateMapper(
 
   // openDelta appends a delta to the current text/reasoning block, opening one
   // (and closing a mismatched-kind block) as needed.
-  const openDelta = (out: UIMessageChunk[], kind: TextBlock["kind"], delta: string): void => {
+  const openDelta = (
+    out: UIMessageChunk[],
+    kind: TextBlock["kind"],
+    delta: string,
+  ): void => {
     if (open && open.kind !== kind) closeOpen(out);
     if (!open) {
       const id = nextId(kind === "text" ? "txt" : "rsn");
@@ -118,15 +121,30 @@ export function createUpdateMapper(
     title: string,
     input: unknown,
   ): void => {
-    if (startedTools.has(toolCallId)) return;
-    startedTools.add(toolCallId);
+    if (toolNames.has(toolCallId)) return;
     toolNames.set(toolCallId, title);
-    out.push({ type: "tool-input-start", toolCallId, toolName: title, dynamic: true, title });
-    out.push({ type: "tool-input-available", toolCallId, toolName: title, input: input ?? {}, dynamic: true, title });
+    out.push({
+      type: "tool-input-start",
+      toolCallId,
+      toolName: title,
+      dynamic: true,
+      title,
+    });
+    out.push({
+      type: "tool-input-available",
+      toolCallId,
+      toolName: title,
+      input: input ?? {},
+      dynamic: true,
+      title,
+    });
   };
 
-  const toolTitle = (toolCallId: string, title?: string | null, kind?: string | null): string =>
-    title || toolNames.get(toolCallId) || kind || toolCallId;
+  const toolTitle = (
+    toolCallId: string,
+    title?: string | null,
+    kind?: string | null,
+  ): string => title || toolNames.get(toolCallId) || kind || toolCallId;
 
   const map = (update: SessionUpdate): UIMessageChunk[] => {
     publishedAt = now();
@@ -135,34 +153,56 @@ export function createUpdateMapper(
       case "agent_message_chunk": {
         const content = update.content;
         if (content.type === "text") openDelta(out, "text", content.text);
+        else {
+          closeOpen(out);
+          out.push({ type: "data-acp-info", data: update, transient: true });
+        }
         break;
       }
       case "agent_thought_chunk": {
         const content = update.content;
         if (content.type === "text") openDelta(out, "reasoning", content.text);
+        else {
+          closeOpen(out);
+          out.push({ type: "data-acp-info", data: update, transient: true });
+        }
         break;
       }
       case "plan": {
         closeOpen(out);
-        out.push({ type: "data-acp-plan", id: PLAN_PART_ID, data: { entries: update.entries } });
+        out.push({
+          type: "data-acp-plan",
+          id: PLAN_PART_ID,
+          data: { entries: update.entries },
+        });
         break;
       }
-      case "tool_call": {
-        closeOpen(out);
-        ensureToolStarted(out, update.toolCallId, toolTitle(update.toolCallId, update.title, update.kind), update.rawInput);
-        emitToolOutcome(out, update.toolCallId, update.status, update.rawOutput, update.content);
-        break;
-      }
+      case "tool_call":
       case "tool_call_update": {
         closeOpen(out);
-        ensureToolStarted(out, update.toolCallId, toolTitle(update.toolCallId, update.title, update.kind), update.rawInput);
-        emitToolOutcome(out, update.toolCallId, update.status, update.rawOutput, update.content);
+        ensureToolStarted(
+          out,
+          update.toolCallId,
+          toolTitle(update.toolCallId, update.title, update.kind),
+          update.rawInput,
+        );
+        emitToolOutcome(
+          out,
+          update.toolCallId,
+          update.status,
+          update.rawOutput,
+          update.content,
+        );
         break;
       }
       case "available_commands_update": {
         closeOpen(out);
         // Ephemeral: the command palette is transient UI, not conversation.
-        out.push({ type: "data-acp-available-commands", data: { availableCommands: update.availableCommands }, transient: true });
+        out.push({
+          type: "data-acp-available-commands",
+          data: { availableCommands: update.availableCommands },
+          transient: true,
+        });
         break;
       }
       case "user_message_chunk":
@@ -172,7 +212,11 @@ export function createUpdateMapper(
         // Explicit, not silent: any other ACP variant rides a transient part so
         // it is observable without polluting the durable transcript.
         closeOpen(out);
-        out.push({ type: `data-acp-${kebab(update.sessionUpdate)}`, data: update, transient: true });
+        out.push({
+          type: `data-acp-${kebab(update.sessionUpdate)}`,
+          data: update,
+          transient: true,
+        });
         break;
       }
     }
@@ -186,31 +230,65 @@ export function createUpdateMapper(
     toolCallId: string,
     status: string | null | undefined,
     rawOutput: unknown,
-    content: ReadonlyArray<{ type: string; [key: string]: unknown }> | null | undefined,
+    content:
+      | ReadonlyArray<{ type: string; [key: string]: unknown }>
+      | null
+      | undefined,
   ): void => {
     for (const item of content ?? []) {
       if (item.type === "diff") {
         out.push({
           type: "data-acp-diff",
-          data: { path: item.path, oldText: item.oldText, newText: item.newText, toolCallId },
+          data: {
+            path: item.path,
+            oldText: item.oldText,
+            newText: item.newText,
+            toolCallId,
+          },
         });
       } else if (item.type === "terminal") {
         out.push({
           type: "data-acp-terminal",
-          data: { terminalId: item.terminalId, output: item.output, toolCallId },
+          data: {
+            terminalId: item.terminalId,
+            output: item.output,
+            toolCallId,
+          },
+        });
+      } else {
+        out.push({
+          type: "data-acp-info",
+          data: { toolCallId, content: item },
+          transient: true,
         });
       }
     }
     if (status === "failed") {
-      out.push({ type: "tool-output-error", toolCallId, errorText: toolErrorText(rawOutput), dynamic: true });
+      out.push({
+        type: "tool-output-error",
+        toolCallId,
+        errorText: toolErrorText(rawOutput),
+        dynamic: true,
+      });
       return;
     }
     if (rawOutput !== undefined && rawOutput !== null) {
-      out.push({ type: "tool-output-available", toolCallId, output: rawOutput, dynamic: true, preliminary: status !== "completed" });
+      out.push({
+        type: "tool-output-available",
+        toolCallId,
+        output: rawOutput,
+        dynamic: true,
+        preliminary: status !== "completed",
+      });
       return;
     }
     if (status === "completed") {
-      out.push({ type: "tool-output-available", toolCallId, output: {}, dynamic: true });
+      out.push({
+        type: "tool-output-available",
+        toolCallId,
+        output: {},
+        dynamic: true,
+      });
     }
   };
 
@@ -227,6 +305,7 @@ export function createUpdateMapper(
 
 function toolErrorText(rawOutput: unknown): string {
   if (typeof rawOutput === "string") return rawOutput;
-  if (rawOutput && typeof rawOutput === "object") return JSON.stringify(rawOutput);
+  if (rawOutput && typeof rawOutput === "object")
+    return JSON.stringify(rawOutput);
   return "tool call failed";
 }

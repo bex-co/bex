@@ -244,7 +244,7 @@ function modelProxyRoutesCovered(): boolean {
   return true;
 }
 
-test("one headless turn streams raw ACP data and commits in the worktree", async () => {
+test("one headless turn maps every fixture update and commits in the worktree", async () => {
   const config = await tempConfig();
   execFileSync("git", ["init", "-q"], { cwd: config.cwd });
   execFileSync("git", ["config", "user.name", "bex test"], { cwd: config.cwd });
@@ -271,6 +271,22 @@ test("one headless turn streams raw ACP data and commits in the worktree", async
   // The ACP updates map to typed UI-message chunks — no generic `data-acp`
   // re-wrap, and no synthetic single-tool collapse.
   const types = hub.history.map((part) => part.type);
+  assert.ok(types.includes("text-delta"));
+  assert.ok(types.includes("tool-output-available"));
+  assert.deepEqual(
+    hub.history.find((part) => part.type === "data-acp-available-commands")
+      ?.data,
+    {
+      availableCommands: [
+        { name: "review", description: "Review the changes" },
+      ],
+    },
+  );
+  assert.equal(
+    hub.history.find((part) => part.type === "data-acp-current-mode-update")
+      ?.transient,
+    true,
+  );
   assert.ok(types.includes("data-acp-plan"), "plan maps to a typed data part");
   assert.ok(types.includes("data-acp-diff"), "diff maps to a typed data part");
   assert.ok(

@@ -175,6 +175,14 @@ lines.on("line", async (line) => {
       const delay = Number(process.env.ACP_FIXTURE_DELAY_MS || 0);
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
       update(sessionId, {
+        sessionUpdate: "available_commands_update",
+        availableCommands: [{ name: "review", description: "Review the changes" }],
+      });
+      update(sessionId, {
+        sessionUpdate: "current_mode_update",
+        currentModeId: "code",
+      });
+      update(sessionId, {
         sessionUpdate: "plan",
         entries: [
           { content: "edit and commit", priority: "high", status: "in_progress" },
