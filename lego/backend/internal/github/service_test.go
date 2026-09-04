@@ -197,6 +197,9 @@ type fakeClient struct {
 	branches      []string
 	branchesErr   error
 	gotBranchRepo []string // (owner, repo) ListBranches was called with
+	tree          []RepoTreeEntry
+	treeErr       error
+	gotTree       []string // (token, owner, repo, path, ref)
 	token         string
 	tokenErr      error
 	repoOK        bool // RepoAccessible result
@@ -240,6 +243,11 @@ func (c *fakeClient) ListRepos(_ context.Context, installationID int64) ([]Repo,
 func (c *fakeClient) ListBranches(_ context.Context, _ int64, owner, repo string) ([]string, error) {
 	c.gotBranchRepo = []string{owner, repo}
 	return c.branches, c.branchesErr
+}
+
+func (c *fakeClient) ListRepoTree(_ context.Context, token, owner, repo, path, ref string) ([]RepoTreeEntry, error) {
+	c.gotTree = []string{token, owner, repo, path, ref}
+	return c.tree, c.treeErr
 }
 
 func (c *fakeClient) MintInstallationToken(_ context.Context, installationID int64) (InstallationToken, error) {

@@ -41,14 +41,22 @@ var gitConnectionGQLType = graphql.NewObject(graphql.ObjectConfig{
 var repoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Repo",
 	Fields: graphql.Fields{
-		"id":            gqlutil.FloatField(func(r Repo) any { return r.ID }),
-		"fullName":      gqlutil.StrField(func(r Repo) any { return r.FullName }),
-		"private":       gqlutil.BoolField(func(r Repo) any { return r.Private }),
+		"id":             gqlutil.FloatField(func(r Repo) any { return r.ID }),
+		"fullName":       gqlutil.StrField(func(r Repo) any { return r.FullName }),
+		"private":        gqlutil.BoolField(func(r Repo) any { return r.Private }),
 		"defaultBranch":  gqlutil.StrField(func(r Repo) any { return r.DefaultBranch }),
 		"htmlUrl":        gqlutil.StrField(func(r Repo) any { return r.HTMLURL }),
 		"cloneUrl":       gqlutil.StrField(func(r Repo) any { return r.CloneURL }),
 		"accountLogin":   gqlutil.StrField(func(r Repo) any { return r.AccountLogin }),
 		"installationId": gqlutil.FloatField(func(r Repo) any { return r.InstallationID }),
+	},
+})
+
+var repoRuntimeDetectionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "RepoRuntimeDetection",
+	Fields: graphql.Fields{
+		"runtime":         gqlutil.OptionalStrField(func(d RuntimeDetection) any { return d.Runtime }),
+		"matchedManifest": gqlutil.OptionalStrField(func(d RuntimeDetection) any { return d.MatchedManifest }),
 	},
 })
 
@@ -111,6 +119,31 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					return nil, err
 				}
 				return branches, nil
+			},
+		},
+		// repoRuntimeDetection is dashboard-only repo introspection. Render has
+		// no public REST or MCP counterpart; expected GitHub failures resolve to
+		// nullable fields so service creation always retains its manual fallback.
+		"repoRuntimeDetection": &graphql.Field{
+			Type: repoRuntimeDetectionGQLType,
+			Args: graphql.FieldConfigArgument{
+				"repo":    gqlutil.ReqArg(graphql.String),
+				"branch":  gqlutil.ReqArg(graphql.String),
+				"rootDir": gqlutil.Arg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				detection, err := s.DetectRepoRuntime(
+					p.Context,
+					gqlutil.Str(p.Args, "ownerId"),
+					gqlutil.Str(p.Args, "repo"),
+					gqlutil.Str(p.Args, "branch"),
+					gqlutil.Str(p.Args, "rootDir"),
+				)
+				if err != nil {
+					return nil, err
+				}
+				return detection, nil
 			},
 		},
 	}

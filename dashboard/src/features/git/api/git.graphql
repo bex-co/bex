@@ -32,6 +32,26 @@ query RepoBranches($repo: String!, $ownerId: String) {
   repoBranches(repo: $repo, ownerId: $ownerId)
 }
 
+# Best-effort runtime inference for the connected-repo create wizard. Nullable
+# fields mean the directory could not be read or carried no unambiguous signal;
+# the UI then keeps its manual selection without surfacing an error.
+query RepoRuntimeDetection(
+  $repo: String!
+  $branch: String!
+  $rootDir: String
+  $ownerId: String
+) {
+  repoRuntimeDetection(
+    repo: $repo
+    branch: $branch
+    rootDir: $rootDir
+    ownerId: $ownerId
+  ) {
+    runtime
+    matchedManifest
+  }
+}
+
 # Every GitHub account/org this workspace has connected (ADR075). Empty list ⇒
 # not connected; each row's installUrl is the bare "configure grants" deep link.
 query GitConnections($ownerId: String) {

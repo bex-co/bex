@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
 import { useBuildRuntimeFields } from "@/features/services/hooks/use-build-runtime-fields";
 import { useServiceNameDraft } from "@/features/services/hooks/use-service-name-draft";
+import { useRepoRuntimeDetection } from "@/features/services/hooks/use-repo-runtime-detection";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
 import {
@@ -100,6 +101,17 @@ export function useNewServiceForm(search: {
     onRepoDefaultBranch: (branch) =>
       set((current) => ({ branch: current.branch || branch })),
   });
+
+  const detectedRuntime = useRepoRuntimeDetection({
+    repo:
+      fields.tab === "github" ? (fields.selectedRepo?.htmlUrl ?? null) : null,
+    branch: fields.branch,
+    rootDir: fields.rootDir,
+  });
+  const setDetectedRuntime = build.setDetectedRuntime;
+  useEffect(() => {
+    if (detectedRuntime) setDetectedRuntime(detectedRuntime);
+  }, [detectedRuntime, setDetectedRuntime]);
 
   const form: NewServiceForm = {
     ...fields,

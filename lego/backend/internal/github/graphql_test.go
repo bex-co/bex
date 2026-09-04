@@ -66,9 +66,12 @@ func TestGraphQLResolversRoundTrip(t *testing.T) {
 	st := newFakeStore()
 	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 	svc := &Service{
-		Base:   &core.Base{Namespace: "default"},
-		GitHub: &fakeClient{login: "octo", repos: []Repo{{ID: 1, FullName: "octo/app", Private: true}}},
-		Store:  st,
+		Base: &core.Base{Namespace: "default"},
+		GitHub: &fakeClient{
+			login: "octo", token: "ghs", repos: []Repo{{ID: 1, FullName: "octo/app", Private: true}},
+			tree: []RepoTreeEntry{{Name: "go.mod", Type: "file"}},
+		},
+		Store: st,
 	}
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
@@ -80,7 +83,7 @@ func TestGraphQLResolversRoundTrip(t *testing.T) {
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
 		Context:       context.Background(),
-		RequestString: `{ gitConnection { connected accountLogin installUrl } repos { fullName private } }`,
+		RequestString: `{ gitConnection { connected accountLogin installUrl } repos { fullName private } repoRuntimeDetection(repo: "https://github.com/octo/app", branch: "main", rootDir: "cmd/api") { runtime matchedManifest } }`,
 	})
 	if len(res.Errors) != 0 {
 		t.Fatalf("graphql errors: %v", res.Errors)
@@ -93,6 +96,40 @@ func TestGraphQLResolversRoundTrip(t *testing.T) {
 	repos := data["repos"].([]any)
 	if len(repos) != 1 || repos[0].(map[string]any)["private"] != true {
 		t.Errorf("repos = %v", repos)
+	}
+	detection := data["repoRuntimeDetection"].(map[string]any)
+	if detection["runtime"] != "go" || detection["matchedManifest"] != "go.mod" {
+		t.Errorf("repoRuntimeDetection = %v", detection)
+	}
+}
+
+func TestGraphQLRuntimeDetectionUnknownAndDenied(t *testing.T) {
+	st := newFakeStore()
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
+	query := `{ repoRuntimeDetection(repo: "https://github.com/octo/app", branch: "main") { runtime matchedManifest } }`
+
+	unknown := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "ghs", treeErr: &APIError{Status: 429}}, Store: st}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: unknown.GraphQLQuery()})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: query})
+	if len(res.Errors) != 0 {
+		t.Fatalf("unknown probe GraphQL errors = %v", res.Errors)
+	}
+	detection := res.Data.(map[string]any)["repoRuntimeDetection"].(map[string]any)
+	if detection["runtime"] != nil || detection["matchedManifest"] != nil {
+		t.Fatalf("unknown detection = %v, want nullable fields", detection)
+	}
+
+	denied := &Service{Base: &core.Base{Namespace: "default", Authz: allowChecker{}}, GitHub: &fakeClient{}, Store: st}
+	deniedSchema, err := graphql.NewSchema(graphql.SchemaConfig{Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: denied.GraphQLQuery()})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res = graphql.Do(graphql.Params{Schema: deniedSchema, Context: withIdentity(context.Background()), RequestString: query})
+	if len(res.Errors) != 1 || res.Data.(map[string]any)["repoRuntimeDetection"] != nil {
+		t.Fatalf("denied result data=%v errors=%v", res.Data, res.Errors)
 	}
 }
 

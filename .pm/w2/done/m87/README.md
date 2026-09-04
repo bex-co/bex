@@ -1,20 +1,20 @@
 # w2 · m87 — New Service wizard runtime auto-detection
 
-**Worker:** worker2 **Goal:** picking a repo (or changing Root Directory) in the New Service wizard pre-selects the correct runtime, matching Render's repo-inference behavior — closing the parity ledger's last open unowned gap-backlog row **Status:** todo
+**Worker:** worker2 **Goal:** picking a repo (or changing Root Directory) in the New Service wizard pre-selects the correct runtime, matching Render's repo-inference behavior — closing the parity ledger's last open unowned gap-backlog row **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                    | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Backend repo-tree probe: fetch the repo tree at a Root Directory via the GitHub connection | 45m | —          |
-| t002 | Detection heuristic: manifest → runtime mapping mirroring Render's precedence              | 30m | t001       |
-| t003 | Expose detection as a dashboard-facing GraphQL query                                       | 30m | t002       |
-| t004 | Wizard integration: auto-select on repo pick, re-infer on Root Directory change            | 45m | t003       |
-| t005 | Live verification against real repos (one per runtime + an ambiguous case)                 | 30m | t004       |
-| t006 | Render parity                                                                              | 30m | t005       |
-| t007 | Simplify                                                                                   | 20m | t006       |
-| t008 | Test coverage                                                                              | 45m | t006       |
-| t009 | Closeout                                                                                   | 15m | t007, t008 |
+| t001 | Backend repo-tree probe: fetch the repo tree at a Root Directory via the GitHub connection — **DONE** | 45m | —          |
+| t002 | Detection heuristic: manifest → runtime mapping mirroring Render's precedence — **DONE**              | 30m | t001       |
+| t003 | Expose detection as a dashboard-facing GraphQL query — **DONE**                                       | 30m | t002       |
+| t004 | Wizard integration: auto-select on repo pick, re-infer on Root Directory change — **DONE**            | 45m | t003       |
+| t005 | Live verification against real repos (one per runtime + an ambiguous case) — **DONE**      | 30m | t004       |
+| t006 | Render parity — **DONE**                                                                   | 30m | t005       |
+| t007 | Simplify — **DONE**                                                                        | 20m | t006       |
+| t008 | Test coverage — **DONE**                                                                   | 45m | t006       |
+| t009 | Closeout — **DONE**                                                                        | 15m | t007, t008 |
 
 ## Definition of done
 

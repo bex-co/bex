@@ -41,6 +41,10 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
   useInstanceTypes: () => instanceTypesState,
 }));
 
+vi.mock("@/features/services/hooks/use-repo-runtime-detection", () => ({
+  useRepoRuntimeDetection: () => null,
+}));
+
 const create = vi.fn();
 const clearNameConflict = vi.fn();
 const createServiceState: { capLimit: string | null; nameConflict: boolean } = {
