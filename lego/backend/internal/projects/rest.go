@@ -73,10 +73,25 @@ func (s *Service) renderProject(ctx context.Context, p ProjectView) (renderProje
 	return toRenderProject(p, ids), nil
 }
 
-// RegisterREST mounts the project CRUD endpoints.
-func (s *Service) RegisterREST(mux *http.ServeMux) {
-	identity := func(p ProjectView) ProjectView { return p }
+// projectEnvironmentInput mirrors Render's projectPOSTEnvironmentInput so the
+// strict Render decoder accepts a full create body (w6/m126 t002). bex does not
+// yet provision these — see the POST handler for why the field is accepted but
+// not honored.
+type projectEnvironmentInput struct {
+	Name                    string                  `json:"name"`
+	ProtectedStatus         string                  `json:"protectedStatus"`
+	NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled"`
+	IPAllowList             []core.IPAllowListEntry `json:"ipAllowList"`
+}
 
+// RegisterREST mounts the project CRUD endpoints. Every handler that returns a
+// project funnels its result through renderProject so the wire shape is Render's
+// `project` object (id, name, owner, environmentIds, createdAt, updatedAt) — one
+// shape per resource, whichever verb produced it (w6/m126). The read paths
+// always did this; the five write paths (POST, PATCH, and the three link PUTs)
+// used to emit the internal ProjectView instead, which is the defect this
+// milestone closes.
+func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/projects", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		ownerID := r.URL.Query().Get("ownerId")
 		if ownerID == "" {
@@ -107,11 +122,26 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		req, err := core.DecodeBody[struct {
 			Name    string `json:"name"`
 			OwnerID string `json:"ownerId"`
+			// Render's projectPOSTInput requires an `environments` array and
+			// creates those environments with the project. bex records the
+			// divergence (w6/m126 t002, docs/ADR018-render-parity.md §Projects):
+			// a project is created on its own and its environments are created
+			// separately via POST /v1/environments. The field is accepted — not
+			// rejected as an unknown field by the strict Render decoder — so a
+			// client that mints its types from Render's schema (the official CLI,
+			// DO_NOT_DO #31) is not 400'd. It is not honored, and the response's
+			// environmentIds truthfully reports the project's real (initially
+			// empty) environment set rather than faking the requested ones.
+			Environments []projectEnvironmentInput `json:"environments"`
 		}](r)
 		if err != nil || strings.TrimSpace(req.Name) == "" || req.OwnerID == "" {
 			return nil, core.ErrBadRequest
 		}
-		return s.Create(r.Context(), req.OwnerID, strings.TrimSpace(req.Name))
+		p, err := s.Create(r.Context(), req.OwnerID, strings.TrimSpace(req.Name))
+		if err != nil {
+			return nil, err
+		}
+		return s.renderProject(r.Context(), p)
 	}))
 
 	mux.HandleFunc("GET /v1/projects/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
@@ -129,7 +159,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil || strings.TrimSpace(req.Name) == "" {
 			return nil, core.ErrBadRequest
 		}
-		return s.Rename(r.Context(), r.PathValue("id"), strings.TrimSpace(req.Name))
+		p, err := s.Rename(r.Context(), r.PathValue("id"), strings.TrimSpace(req.Name))
+		if err != nil {
+			return nil, err
+		}
+		return s.renderProject(r.Context(), p)
 	}))
 
 	mux.HandleFunc("DELETE /v1/projects/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
@@ -139,8 +173,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// The three link routes replace a project's full membership list for one
 	// resource kind; an absent array clears it. Legacy service names remain
 	// accepted on service-links during the stable-id transition, and
-	// databaseIds/keyValueIds are immutable CR names (w1/m31 extension).
-	mux.HandleFunc("PUT /v1/projects/{id}/service-links", core.HandleLinks[core.ServiceLinks](s.SetServices, identity))
-	mux.HandleFunc("PUT /v1/projects/{id}/database-links", core.HandleLinks[core.DatabaseLinks](s.SetDatabases, identity))
-	mux.HandleFunc("PUT /v1/projects/{id}/keyvalue-links", core.HandleLinks[core.KeyValueLinks](s.SetKeyValues, identity))
+	// databaseIds/keyValueIds are immutable CR names (w1/m31 extension). Each
+	// projects its result through renderProject (via HandleLinksMapped, whose
+	// ctx+error view the plain HandleLinks cannot express) so the reply is the
+	// same Render shape a read returns (w6/m126).
+	mux.HandleFunc("PUT /v1/projects/{id}/service-links", core.HandleLinksMapped[core.ServiceLinks](s.SetServices, s.renderProject))
+	mux.HandleFunc("PUT /v1/projects/{id}/database-links", core.HandleLinksMapped[core.DatabaseLinks](s.SetDatabases, s.renderProject))
+	mux.HandleFunc("PUT /v1/projects/{id}/keyvalue-links", core.HandleLinksMapped[core.KeyValueLinks](s.SetKeyValues, s.renderProject))
 }

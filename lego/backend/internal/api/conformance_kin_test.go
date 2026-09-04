@@ -66,6 +66,14 @@ func loadRenderSpec(t *testing.T) *renderSpec {
 // response validator enforces the complete schema, including enums, formats,
 // ranges, unions, and additionalProperties behavior.
 func (rs *renderSpec) validate(operationID string, body []byte) []string {
+	return rs.validateStatus(operationID, http.StatusOK, body)
+}
+
+// validateStatus is validate for a success response documented under a status
+// other than 200 — a create's 201 (create-project) reads its schema from the
+// 201 response object, not the 200 one, so a plain validate() would report the
+// operation as having no resolvable response.
+func (rs *renderSpec) validateStatus(operationID string, status int, body []byte) []string {
 	route, ok := rs.routes[operationID]
 	if !ok {
 		return []string{fmt.Sprintf("unknown operationId %q in pinned spec", operationID)}
@@ -76,7 +84,7 @@ func (rs *renderSpec) validate(operationID string, body []byte) []string {
 			Request: req,
 			Route:   route,
 		},
-		Status: http.StatusOK,
+		Status: status,
 		Header: http.Header{"Content-Type": {"application/json"}},
 		Options: &openapi3filter.Options{
 			MultiError: true,
