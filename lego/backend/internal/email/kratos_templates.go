@@ -72,9 +72,9 @@ var kratosCourierEmails = []kratosCourierEmail{
 		message: Message{
 			Title:      "Verify your email",
 			Paragraphs: []string{"Enter this code on the verification page to confirm your email address:"},
-			Reference: &Reference{
-				Label: "Verification code:",
-				Token: kratosCodeSentinel,
+			Code: &Code{
+				Label: "Verification code",
+				Value: kratosCodeSentinel,
 				Desc:  "It expires in 60 minutes.",
 			},
 			CTA: &CTA{
@@ -107,9 +107,9 @@ var kratosCourierEmails = []kratosCourierEmail{
 		message: Message{
 			Title:      "Recover your account",
 			Paragraphs: []string{"Enter this code on the account recovery page to continue:"},
-			Reference: &Reference{
-				Label: "Recovery code:",
-				Token: kratosCodeSentinel,
+			Code: &Code{
+				Label: "Recovery code",
+				Value: kratosCodeSentinel,
 				Desc:  "It expires in 60 minutes.",
 			},
 			Footer: []string{"If you didn't request account recovery, you can safely ignore this email —\nyour password was not changed."},

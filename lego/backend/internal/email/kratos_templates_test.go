@@ -95,6 +95,14 @@ func TestKratosCourierTemplatesShape(t *testing.T) {
 			t.Fatalf("rendered templates missing Kratos action %s", action)
 		}
 	}
+	// The codes ship as the Code panel (kratos_templates.go uses Code, not
+	// Reference, for them): each action is the sole content of its monospace
+	// span, so what a reader copies is exactly the code.
+	for _, action := range []string{"{{ .VerificationCode }}", "{{ .RecoveryCode }}"} {
+		if !strings.Contains(s, ">"+action+"</span>") {
+			t.Fatalf("%s is not rendered as an unbroken Code panel value", action)
+		}
+	}
 	// Both branded halves are present: the HTML card and the override path.
 	if !strings.Contains(s, "template_override_path: /conf/courier-templates") {
 		t.Fatal("missing courier template_override_path")
