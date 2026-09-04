@@ -1,18 +1,18 @@
 # w6 · m126 — Creating a project returns the internal view, not Render's project shape — 5 of 7 project handlers skip the mapper, and conformance only checks reads
 
-**Worker:** worker6 **Goal:** creating, renaming or re-linking a project returns the same Render-shaped object that reading it does, so a client can rely on one shape per resource **Status:** todo
+**Worker:** worker6 **Goal:** creating, renaming or re-linking a project returns the same Render-shaped object that reading it does, so a client can rely on one shape per resource **Status:** done — every project handler now funnels through `renderProject` (POST/PATCH inline like the reads; the three link PUTs via the new ctx+error `core.HandleLinksMapped`, since `renderProject` reads `environmentIds` and so cannot use the context-free `HandleMapped`/`HandleLinks` view). `internal/api` now validates project create/update/read responses against the pinned Render schema and drift-guards every write's key set against a read (`TestProjectResponsesConformToRenderSchema`, `TestProjectWriteResponsesMatchReadShape`) — reverting any write handler to the internal view turns CI red (demonstrated). **t002 decision — divergence recorded (not born-empty):** `POST /v1/projects` accepts Render's required `environments` array (so a Render-shaped/CLI client is not 400'd by the strict decoder) but does not provision them; the response's `environmentIds` truthfully reports the project's real, initially-empty set. Recorded in [ADR018](../../../docs/ADR018-render-parity.md). GraphQL/MCP were already internally consistent (all project verbs return the bex-native `ProjectView` on those extension surfaces); only REST, the Render-public-schema-bound surface, had the drift.
 
 ## Tasks (in order)
 
-| id   | title                                                                                    | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Emit Render's project shape from every project handler, not only the two reads               | 50m | —          |
-| t002 | Decide what `POST /v1/projects` does about Render's required `environments` input            | 40m | —          |
-| t003 | Close the conformance gap: project operations, and CREATE/UPDATE response bodies             | 50m | t001       |
-| t004 | Render parity                                                                                 | 25m | t001, t002, t003 |
-| t005 | Simplify                                                                                      | 20m | t004       |
-| t006 | Test coverage                                                                                 | 40m | t004       |
-| t007 | Closeout                                                                                      | 15m | t005, t006 |
+| id   | title                                                                                    | est | depends_on |     |
+| ---- | ------------------------------------------------------------------------------------------ | --- | ---------- | --- |
+| t001 | Emit Render's project shape from every project handler, not only the two reads               | 50m | —          | — **DONE** |
+| t002 | Decide what `POST /v1/projects` does about Render's required `environments` input            | 40m | —          | — **DONE** (divergence recorded: input accepted, not provisioned) |
+| t003 | Close the conformance gap: project operations, and CREATE/UPDATE response bodies             | 50m | t001       | — **DONE** |
+| t004 | Render parity                                                                                 | 25m | t001, t002, t003 | — **DONE** (GraphQL/MCP already consistent; REST corrected) |
+| t005 | Simplify                                                                                      | 20m | t004       | — **DONE** (`HandleLinks` now delegates to `HandleLinksMapped` — one implementation) |
+| t006 | Test coverage                                                                                 | 40m | t004       | — **DONE** |
+| t007 | Closeout                                                                                      | 15m | t005, t006 | — **DONE** |
 
 ## Definition of done
 

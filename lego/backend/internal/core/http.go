@@ -408,8 +408,23 @@ func (b EnvGroupLinks) IDs() []string { return b.EnvGroupIDs }
 
 // HandleLinks adapts the full-replace link routes: decode B, normalize an
 // absent list to empty (a missing key clears the membership, it is not a
-// no-op), call the setter with the path id, and write the projected 200.
+// no-op), call the setter with the path id, and write the projected 200. Use
+// this when the projection is context-free and cannot fail (environments'
+// toRenderEnvironment); use HandleLinksMapped when it needs the request context
+// or can error.
 func HandleLinks[B interface{ IDs() []string }, T, V any](set func(context.Context, string, []string) (T, error), view func(T) V) http.HandlerFunc {
+	return HandleLinksMapped[B](set, func(_ context.Context, v T) (V, error) { return view(v), nil })
+}
+
+// HandleLinksMapped is HandleLinks for a setter whose render projection needs
+// the request context and can fail — projects' renderProject reads a project's
+// environment membership to populate Render's required environmentIds, a
+// ctx+error shape the context-free view hook above cannot express (w6/m126).
+// Wiring the projection into the helper itself is what makes it structurally
+// impossible for a link write path to regress to emitting the internal view,
+// the way the two-arg HandleLinks does for environments. Same decode +
+// absent-list-clears semantics.
+func HandleLinksMapped[B interface{ IDs() []string }, T, V any](set func(context.Context, string, []string) (T, error), view func(context.Context, T) (V, error)) http.HandlerFunc {
 	return HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		body, err := DecodeBody[B](r)
 		if err != nil {
@@ -423,7 +438,7 @@ func HandleLinks[B interface{ IDs() []string }, T, V any](set func(context.Conte
 		if err != nil {
 			return nil, err
 		}
-		return view(v), nil
+		return view(r.Context(), v)
 	})
 }
 
