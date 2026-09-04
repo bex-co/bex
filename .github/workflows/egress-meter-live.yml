@@ -9,9 +9,7 @@ permissions:
 jobs:
   cilium-live-matrix:
     # The product image currently targets the production arm64 node pool.
-    runs-on:
-      group: bex-ci
-      labels: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
     timeout-minutes: 60
     env:
       # GOWORK=off: build the operator module standalone via its types/ replace

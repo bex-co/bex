@@ -1,12 +1,12 @@
 # ADR083: Security review round 20 — self-hosted GitHub Actions disposition
 
 - **Status**: Accepted (2026-08-23); cross-trust runner bridge resolved (2026-09-02)
-- **Trigger**: operator decision to migrate every workflow from GitHub-hosted (`ubuntu-latest` / `ubuntu-24.04-arm`) to self-hosted runners, now split between the `bex-ci` and `bex-production` runner groups
+- **Trigger**: operator decision to migrate every workflow from GitHub-hosted (`ubuntu-latest` / `ubuntu-24.04-arm`) to self-hosted runners, now split between the `bex-ci` and `bex-production` trust-pool runner labels
 - **Lineage**: twentieth pass in the ADR028 → … → ADR080 lineage; re-confirms ADR080 residuals (onbex.co PSL, secretless-build split) unchanged
 
 ## Summary
 
-All repository workflows target self-hosted runners. That trades GitHub-hosted runners' per-job ephemeral VMs for persistent hosts the operator owns — a deliberate custody shift, not a code defect. Since 2026-09-02, every runner-backed job also names one of two GitHub runner groups: PR-capable and credential-free work uses `bex-ci`; production credentials and write-capable tokens use `bex-production`. A missing group or eligible runner leaves the job queued, so the workflow fails closed rather than falling back to a shared pool.
+All repository workflows target self-hosted runners. That trades GitHub-hosted runners' per-job ephemeral VMs for persistent hosts the operator owns — a deliberate custody shift, not a code defect. Since 2026-09-02, every runner-backed job also carries one of two trust-pool runner labels: PR-capable and credential-free work uses `bex-ci`; production credentials and write-capable tokens use `bex-production`. The pools are **labels, not GitHub runner groups** — runner groups are a paid-plan feature, and the first (group-addressed) cut of this split failed every job in every workflow within seconds on this free-plan organization (deploy runs 33602459228 → 33662397423, 2026-09-02). With labels, a pool with no eligible runner leaves the job queued, so the workflow fails safe rather than falling back to a shared pool.
 
 The remaining persistence risks are **accepted** for bex.co production CI, with the mitigations and operator obligations listed. They do not reopen the removed static-CIDR firewall (`.pm/DO_NOT_DO.md`); a Tailscale/WireGuard second layer remains optional follow-up, and self-hosted runners are now the documented path to it ([ADR019-infra-credentials.md](ADR019-infra-credentials.md) §Decision 5).
 
@@ -14,7 +14,7 @@ The remaining persistence risks are **accepted** for bex.co production CI, with 
 | --- | --- | --- | --- |
 | 1 | Self-hosted runners are persistent — job isolation is weaker than GitHub-hosted ephemeral VMs | high | **Accepted residual** — operator hardens hosts; ephemeral-runner follow-up optional |
 | 2 | Untrusted `pull_request` jobs can execute repository-controlled code on the runner fleet | high | **Accepted residual** — fork PRs must stay off self-hosted; same-repo PRs rely on branch protection + review |
-| 3 | Production credentialed jobs (`deploy`, `infra`, `app-cluster`, `snapshot`, restore drills, live cluster probes, `cli-release`) share hosts with lower-trust jobs | high | **Resolved 2026-09-02** — workflows require non-overlapping `bex-ci` / `bex-production` runner groups; policy tests reject shared-pool regressions |
+| 3 | Production credentialed jobs (`deploy`, `infra`, `app-cluster`, `snapshot`, restore drills, live cluster probes, `cli-release`) share hosts with lower-trust jobs | high | **Resolved 2026-09-02** — workflows require non-overlapping `bex-ci` / `bex-production` pool labels; policy tests reject shared-pool regressions; completes when the fleet re-label (`docs/runbooks/runner-pool-relabel.md`) is executed — until then jobs queue |
 | 4 | Runner host compromise equals platform takeover (HCLOUD, SSH admin.conf, OpenBao root + Shamir quorum, auth bootstrap secrets, `contents: write` git push) | critical | **Accepted residual** — bounded by ADR080 environment gates + main-ref guards; host custody is the new trust anchor |
 | 5 | Docker layer / toolchain cache poisoning across sequential jobs | medium | **Accepted residual** — `docker/setup-buildx-action` + pinned downloads; no shared cache hardening in YAML |
 | 6 | ARM64 runner fleet required | low | **Accepted residual** — operator provisions Linux ARM64 self-hosted runners with Docker |
@@ -25,18 +25,14 @@ The remaining persistence risks are **accepted** for bex.co production CI, with 
 Every runner-backed job under `.github/workflows/` and `lego/operator/.github/workflows/` now uses one of these forms:
 
 ```yaml
-runs-on:
-  group: bex-ci
-  labels: [self-hosted, Linux, ARM64]
+runs-on: [self-hosted, Linux, ARM64, bex-ci]
 ```
 
 ```yaml
-runs-on:
-  group: bex-production
-  labels: [self-hosted, Linux, ARM64]
+runs-on: [self-hosted, Linux, ARM64, bex-production]
 ```
 
-Both groups retain the operator's ARM64 constraint. Docker Buildx still emits `linux/amd64` platform images for production deploys.
+Both pools retain the operator's ARM64 constraint. Docker Buildx still emits `linux/amd64` platform images for production deploys.
 
 Workflows that previously relied on GitHub-hosted preinstalls (`kubectl`, `helm`, `yq` on `ubuntu-latest`) now install pinned tool versions in-job (`azure/setup-kubectl`, `azure/setup-helm`, checksum-pinned `yq` curl installs in `gitops.yml` / `clusterapi-validate.yml`; `deploy.yml` / `app-cluster.yml` / `openbao-restore-drill.yml` carry `setup-kubectl` where they previously assumed the hosted image).
 
@@ -63,14 +59,14 @@ Sixteen workflows run on `pull_request` (tests, lint, credential-less `infra val
 
 Low-trust jobs (PR tests) and high-trust jobs (`build-and-deploy` with OpenBao unseal material) originally shared the same `runs-on` label. A poisoned PR job that landed on the same host before a production deploy could exfiltrate secrets injected into the next job's environment.
 
-**Resolved 2026-09-02.** Every runner-backed workflow job now selects an explicit GitHub runner group:
+**Resolved 2026-09-02.** Every runner-backed workflow job now carries an explicit trust-pool runner label:
 
 - `bex-ci` carries PR-capable tests, validation, and other read-only jobs.
 - `bex-production` carries repository/environment secrets, write-capable tokens, release authorization, cluster access, deploys, infrastructure, snapshots, and restore drills.
 - A `bex-production` job in a mixed-event workflow must reject `pull_request` before scheduling; `infra.yml`'s `terraform` job is the canonical example.
-- `scripts/github-actions-validate.sh` rejects the former scalar shared-pool syntax, unknown groups, missing ARM64 self-hosted labels, credentials on `bex-ci`, and PR-reachable `bex-production` jobs. Its self-test proves each red and green case.
+- `scripts/github-actions-validate.sh` rejects the bare shared-pool label set, unapproved pool labels, the dead runner-group mapping syntax, GitHub-hosted runners, credentials on `bex-ci`, and PR-reachable `bex-production` jobs. Its self-test proves each red and green case.
 
-GitHub organization settings must define both groups, grant this repository access, and place each physical host in exactly one trust class. Operators must not run separate `actions-runner` registrations for both groups on the same machine. If either group is absent, its jobs intentionally remain queued.
+Each physical host must carry exactly one pool label — the sequence, API commands, and verification are in `docs/runbooks/runner-pool-relabel.md`. Operators must never label one machine into both pools. Until a pool has a labeled runner, its jobs intentionally remain queued. (The first cut used GitHub runner _groups_; the org's free plan does not have them, and group-addressed jobs fail instantly instead of queuing — recorded here so the group form is never reintroduced.)
 
 ## Finding 4 (critical) — runner compromise blast radius
 
@@ -86,7 +82,7 @@ A compromised `bex-production` runner process can read every secret GitHub injec
 
 ## Finding 6 (low) — ARM64 runner fleet
 
-All jobs target the `[self-hosted, Linux, ARM64]` labels inside either `bex-ci` or `bex-production`. Jobs queue until an operator-registered ARM64 runner in the selected group is online.
+All jobs target the `[self-hosted, Linux, ARM64]` labels plus their `bex-ci` or `bex-production` pool label. Jobs queue until an operator-registered ARM64 runner carrying the selected pool label is online.
 
 **Accepted.**
 
@@ -98,8 +94,8 @@ Unchanged standing residual from ADR080 #8. `.pm/DO_NOT_DO.md` `#PSL` holds the 
 
 These are required for the accepted dispositions above to be meaningful:
 
-1. Create organization runner groups named exactly `bex-ci` and `bex-production`, grant this repository access, and register each physical host into only one group. Never install agents for both groups on one machine.
-2. Before first use of the split groups, reprovision the production hosts and rotate credentials that previously landed on shared runners.
+1. Label each self-hosted runner with exactly one of `bex-ci` / `bex-production` (org Settings → Actions → Runners, or the runner-labels API — `docs/runbooks/runner-pool-relabel.md`). Never label one machine into both pools.
+2. Before first use of the split pools, reprovision the production hosts and rotate credentials that previously landed on shared runners.
 3. Register self-hosted runners only from hosts the operator controls; limit runner registration to organization administrators.
 4. Block fork PR workflows from self-hosted runners (repository Actions settings).
 5. Keep ADR080's protected environments (`production-deploy`, `production-cluster`, `production-restore`, `production-infra`, `production-snapshot`, `production-release`) configured with required reviewers.

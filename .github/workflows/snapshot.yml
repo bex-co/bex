@@ -25,9 +25,7 @@ concurrency:
 
 jobs:
   bake:
-    runs-on:
-      group: bex-production
-      labels: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
     # Ref guard (codex-security round-6 #1): this job holds HCLOUD_TOKEN and
     # executes repository scripts + the Packer template from the dispatched
     # ref, so restrict dispatch to reviewed main — the same guard the other

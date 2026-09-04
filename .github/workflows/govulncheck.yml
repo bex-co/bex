@@ -49,9 +49,7 @@ jobs:
   govulncheck:
     # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on:
-      group: bex-ci
-      labels: [self-hosted, Linux, ARM64]
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Resolve the newest 1.26.x from go.dev (the golang:1.26 line)

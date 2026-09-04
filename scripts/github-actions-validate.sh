@@ -14,12 +14,14 @@
 #  4. Workflows fetching admin.conf pin the SSH host and keep the fetched
 #     kubeconfig alive until their last cluster command.
 #  5. Self-hosted runner custody (ADR083, `.pm/DO_NOT_DO.md` #CI-RUNNERS): every
-#     job `runs-on` must target ARM64 self-hosted labels through exactly one of
-#     the non-overlapping `bex-ci` / `bex-production` runner groups and install
-#     tools without sudo, which the deliberately unprivileged runner account
-#     does not have.
+#     job `runs-on` must be the scalar [self-hosted, Linux, ARM64, <pool>] form
+#     carrying exactly one of the non-overlapping `bex-ci` / `bex-production`
+#     pool labels (GitHub runner *groups* are a paid-plan feature; naming one on
+#     this free-plan org fails every job in seconds, while an unmatched label
+#     queues, which is the intended fail-safe) and install tools without sudo,
+#     which the deliberately unprivileged runner account does not have.
 #  6. Trust separation: credential-bearing jobs must use `bex-production`, and
-#     production-group jobs in a `pull_request` workflow must reject PR events.
+#     production-pool jobs in a `pull_request` workflow must reject PR events.
 #  7. Public-fork isolation: any self-hosted job in a `pull_request` workflow
 #     must either reject fork PRs by repository identity or reject all PR events.
 #
@@ -174,9 +176,13 @@ fi
 
 # 5. Self-hosted runner custody and trust-pool separation (ADR083,
 # .pm/DO_NOT_DO.md #CI-RUNNERS). All jobs stay on operator-custodied ARM64
-# self-hosted runners. GitHub runner-group membership is exclusive, so requiring
-# `bex-ci` or `bex-production` here makes a workflow fail closed instead of
-# falling back to the old shared default pool.
+# self-hosted runners. Each runner host carries exactly one of the `bex-ci` /
+# `bex-production` labels, so requiring the label here schedules a job only
+# onto its trust class -- and a not-yet-labeled fleet queues jobs (fail-safe)
+# instead of running them on the wrong host. Runner *groups* are NOT the
+# mechanism: they are a GitHub paid-plan feature, and naming one on this
+# free-plan org failed every job at scheduling (observed 2026-09-02, runs
+# 33602459228..33662397423).
 hosted_runners=""
 invalid_runner_contract=""
 for wf in $(collect_workflow_files); do
@@ -185,17 +191,19 @@ for wf in $(collect_workflow_files); do
   fi
   violations="$(awk -v file="$wf" '
     /^[[:space:]]*runs-on:/ {
-      if ($0 !~ /^    runs-on:[[:space:]]*$/) {
-        print file ":" NR ": runs-on must be a group/labels mapping"
+      if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64, bex-(ci|production)\][[:space:]]*$/) next
+      if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64\][[:space:]]*$/) {
+        print file ":" NR ": missing bex-ci or bex-production pool label"
         next
       }
-      if ((getline group_line) <= 0 || group_line !~ /^      group: bex-(ci|production)[[:space:]]*$/) {
-        print file ":" NR ": missing approved bex-ci or bex-production group"
+      if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64, [A-Za-z0-9_-]+\][[:space:]]*$/) {
+        print file ":" NR ": unapproved pool label (only bex-ci or bex-production exist)"
         next
       }
-      if ((getline labels_line) <= 0 || labels_line !~ /^      labels: \[self-hosted, Linux, ARM64\][[:space:]]*$/) {
-        print file ":" NR ": missing canonical self-hosted ARM64 labels"
-      }
+      print file ":" NR ": runs-on must be the scalar [self-hosted, Linux, ARM64, <pool>] label form"
+    }
+    /^[[:space:]]+group: bex-(ci|production)[[:space:]]*$/ {
+      print file ":" NR ": runner-group syntax cannot schedule on this org; use the pool label form"
     }
   ' "$wf")"
   [ -z "$violations" ] || invalid_runner_contract="${invalid_runner_contract}${invalid_runner_contract:+
@@ -208,7 +216,7 @@ if [ -n "$hosted_runners" ]; then
   exit 1
 fi
 if [ -n "$invalid_runner_contract" ]; then
-  echo "FAIL: every job must select exactly one approved self-hosted runner group and the canonical ARM64 labels:" >&2
+  echo "FAIL: every job must carry exactly one approved trust-pool label on the canonical self-hosted ARM64 runs-on:" >&2
   printf '%s\n' "$invalid_runner_contract" >&2
   exit 1
 fi
@@ -222,7 +230,7 @@ fi
 # 6. Credential boundary. Repository/environment secrets and write-capable job
 # tokens never land on a host that runs PR code. A top-level secret or write
 # permission applies to every job in that workflow; job-local credentials apply
-# only to that job. A production-group job inside a mixed-event workflow must
+# only to that job. A production-pool job inside a mixed-event workflow must
 # also reject pull_request before GitHub schedules it.
 runner_trust_violations() {
   local wf
@@ -230,7 +238,7 @@ runner_trust_violations() {
     awk -v file="$wf" '
       function check_job() {
         if (job == "" || block !~ /\n    runs-on:/) return
-        production = block ~ /\n    runs-on:\n      group: bex-production\n/
+        production = block ~ /\n    runs-on: \[self-hosted, Linux, ARM64, bex-production\]/
         credentialed = workflow_credentialed \
           || block ~ /\$\{\{[[:space:]]*secrets\./ \
           || block ~ /\n    environment:/ \

@@ -1,14 +1,14 @@
 # w2 · m88 — Split self-hosted CI runner pools by trust level
 
-**Worker:** worker2 **Goal:** PR-facing CI jobs and production-credentialed deploy jobs never share a runner host — a poisoned CI runner can no longer be the machine that later holds deploy credentials **Status:** todo
+**Worker:** worker2 **Goal:** PR-facing CI jobs and production-credentialed deploy jobs never share a runner host — a poisoned CI runner can no longer be the machine that later holds deploy credentials **Status:** in progress — t001–t003 done 2026-09-02 (label-based pools: the group-addressed first cut could never schedule — runner groups are a paid-plan feature and this org is free-plan, so every job failed in seconds; all 33 jobs now carry `[self-hosted, Linux, ARM64, bex-ci|bex-production]`, validator + self-test rewritten and green, runbook at `docs/runbooks/runner-pool-relabel.md`). t004 open on the operator fleet re-label (org runner labels need `admin:org`); t005/t006 gated on t004.
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on |
 | ---- | ------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Define the trust-pool label scheme + fleet re-label runbook                     | 30m | —          |
-| t002 | Update every workflow's `runs-on` to its trust pool                             | 45m | t001       |
-| t003 | Enforce pool-per-trust in `scripts/github-actions-validate.sh`                  | 30m | t002       |
+| t001 | Define the trust-pool label scheme + fleet re-label runbook — **DONE**                     | 30m | —          |
+| t002 | Update every workflow's `runs-on` to its trust pool — **DONE**                             | 45m | t001       |
+| t003 | Enforce pool-per-trust in `scripts/github-actions-validate.sh` — **DONE**                  | 30m | t002       |
 | t004 | Verify green runs on both pools; record the split in ADR083 + ADR019            | 30m | t003       |
 | t005 | Simplify                                                                        | 20m | t004       |
 | t006 | Test coverage                                                                   | 30m | t004       |

@@ -66,20 +66,25 @@ assert "node 20 fails" 1 "$(body "      - uses: $PINNED
 
 # --- ADR083 / #CI-RUNNERS: self-hosted runner custody -----------------------
 job_body() {
-  printf 'jobs:\n  x:\n    runs-on:\n      group: %s\n      labels: [self-hosted, Linux, ARM64]\n    steps:\n%s' "$1" "$2"
+  printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, %s]\n    steps:\n%s' "$1" "$2"
 }
 # RED: GitHub-hosted ubuntu-latest is a rejected remediation.
 assert "ubuntu-latest fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s' "$PINNED")" \
   "GitHub-hosted ubuntu runners"
 # RED: the legacy shared label pool no longer passes.
 assert "shared self-hosted pool fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$PINNED")" \
-  "must select exactly one approved self-hosted runner group"
-# RED: an arbitrary runner group cannot silently create a third trust class.
-assert "unknown runner group fails" 1 "$(job_body "default" "      - uses: $PINNED")" \
-  "missing approved bex-ci or bex-production group"
-# GREEN: both canonical self-hosted groups pass the structural contract.
-assert "CI runner group passes" 0 "$(job_body "bex-ci" "      - uses: $PINNED")"
-assert "production runner group passes" 0 "$(job_body "bex-production" "      - uses: $PINNED")"
+  "missing bex-ci or bex-production pool label"
+# RED: an arbitrary fourth label cannot silently create a third trust class.
+assert "unknown pool label fails" 1 "$(job_body "default" "      - uses: $PINNED")" \
+  "unapproved pool label"
+# RED: the runner-group mapping form is the syntax that killed all CI on
+# 2026-09-02 (groups are a paid-plan feature; group jobs fail instantly instead
+# of queuing) -- it must never come back.
+assert "runner-group mapping syntax fails" 1 "$(printf 'jobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$PINNED")" \
+  "runner-group syntax cannot schedule on this org"
+# GREEN: both canonical pool labels pass the structural contract.
+assert "CI pool label passes" 0 "$(job_body "bex-ci" "      - uses: $PINNED")"
+assert "production pool label passes" 0 "$(job_body "bex-production" "      - uses: $PINNED")"
 # RED: the runner account deliberately has no sudo; tools belong in RUNNER_TEMP.
 assert "sudo workflow fails" 1 "$(job_body "bex-ci" "      - uses: $PINNED
       - run: sudo apt-get install shellcheck")" "must not require sudo"
@@ -88,11 +93,11 @@ assert "sudo workflow fails" 1 "$(job_body "bex-ci" "      - uses: $PINNED
 assert "secret on CI runner fails" 1 "$(job_body "bex-ci" "      - env:
           TOKEN: \${{ secrets.PRODUCTION_TOKEN }}
         run: ./deploy")" "credential-bearing job must use bex-production"
-assert "write token on CI runner fails" 1 "$(printf 'jobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [self-hosted, Linux, ARM64]\n    permissions:\n      contents: write\n    steps:\n      - uses: %s' "$PINNED")" \
+assert "write token on CI runner fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-ci]\n    permissions:\n      contents: write\n    steps:\n      - uses: %s' "$PINNED")" \
   "credential-bearing job must use bex-production"
-assert "write-all token on CI runner fails" 1 "$(printf 'permissions: write-all\njobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$PINNED")" \
+assert "write-all token on CI runner fails" 1 "$(printf 'permissions: write-all\njobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-ci]\n    steps:\n      - uses: %s' "$PINNED")" \
   "credential-bearing job must use bex-production"
-assert "environment on CI runner fails" 1 "$(printf 'jobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [self-hosted, Linux, ARM64]\n    environment: production-deploy\n    steps:\n      - uses: %s' "$PINNED")" \
+assert "environment on CI runner fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-ci]\n    environment: production-deploy\n    steps:\n      - uses: %s' "$PINNED")" \
   "credential-bearing job must use bex-production"
 # GREEN: the same credential material is allowed only on the production pool.
 assert "secret on production runner passes" 0 "$(job_body "bex-production" "      - env:
@@ -101,7 +106,7 @@ assert "secret on production runner passes" 0 "$(job_body "bex-production" "    
 
 # --- Public-fork isolation --------------------------------------------------
 pr_job_body() {
-  printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on:\n      group: %s\n      labels: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$1" "${2:-bex-ci}" "$PINNED"
+  printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on: [self-hosted, Linux, ARM64, %s]\n    steps:\n      - uses: %s' "$1" "${2:-bex-ci}" "$PINNED"
 }
 # RED: a pull_request job without a repository-identity gate can schedule fork
 # code on a persistent self-hosted runner.
