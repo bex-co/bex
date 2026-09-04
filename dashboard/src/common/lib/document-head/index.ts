@@ -1,5 +1,5 @@
 import type { TOptions } from "i18next";
-import i18n from "@/i18n/init";
+import { getActiveI18n } from "@/i18n/request-scope";
 import type { SupportedLanguage } from "@/i18n";
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
 
@@ -43,7 +43,10 @@ export function formatDashboardTitle(
 }
 
 export function translatedText(key: string, options?: TOptions): string {
-  return i18n.t(key, options);
+  // Read through the active instance (per-request on the server) so a title
+  // resolved during one request's render never reflects a concurrent request's
+  // language (w6/m103 Bug B).
+  return getActiveI18n().t(key, options);
 }
 
 export function translatedTitle(key: string, options?: TOptions): string {
@@ -186,8 +189,9 @@ export function globalMetadata(
   origin: string | null | undefined,
   language: SupportedLanguage,
 ): DashboardHead {
-  const description = i18n.t("common.headDescription", { lng: language });
-  const imageAlt = i18n.t("common.headImageAlt", { lng: language });
+  const activeI18n = getActiveI18n();
+  const description = activeI18n.t("common.headDescription", { lng: language });
+  const imageAlt = activeI18n.t("common.headImageAlt", { lng: language });
   const normalizedOrigin = normalizeDashboardOrigin(origin);
   const image = absoluteMetadataUrl(normalizedOrigin, "/logo.webp");
   const meta: MetaTag[] = [

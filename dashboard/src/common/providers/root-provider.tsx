@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/common/providers/theme-provider";
 import { VisualViewportHeight } from "@/common/providers/visual-viewport-height";
 import { WorkspaceProvider } from "@/features/workspaces/context";
 import { PaymentRequiredProvider } from "@/features/usage/context/payment-required";
-import i18n from "@/i18n/init";
+import { getActiveI18n } from "@/i18n/request-scope";
 
 // Lazy so react-intl/formatjs (only OryToaster needs it) ships as its own async
 // chunk instead of sitting in the always-mounted entry chunk (w9/m60 t004). The
@@ -28,8 +28,11 @@ export const RootProvider = ({
   initialWorkspaceId?: string | null;
   onWorkspaceChange?: () => void;
 }) => {
+  // Per-request instance on the server, shared singleton on the client
+  // (i18n/request-scope) — so a concurrent SSR request's language change can
+  // never reach this request's tree (w6/m103 Bug B).
   return (
-    <I18nextProvider i18n={i18n}>
+    <I18nextProvider i18n={getActiveI18n()}>
       <ThemeProvider>
         <WorkspaceProvider
           initialWorkspaceId={initialWorkspaceId}
