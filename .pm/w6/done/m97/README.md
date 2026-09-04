@@ -1,6 +1,6 @@
 # w6 · m97 — Stop the codex-security F7 protected-secret guard from self-rejecting every App's own clone/pull secret
 
-**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** in progress (t001–t005 done and deployed; t007/t008 implemented and fully tested locally on 2026-08-29; t006 closeout and the two tasks' final acceptance remain blocked on shipping/deploying these changes and running their production checks)
+**Worker:** worker6 **Goal:** an App that references its own platform-minted `<app>-clone` or `<app>-registry-pull` Secret in `spec.cloneSecret`/`spec.externalRegistryPullSecret` is never rejected by `rejectProtectedSecretRefs` for that reference alone, while any App naming a **different** protected Secret through those same fields is still refused exactly as before. **Status:** done (2026-09-03) — all tasks complete, deployed, and live-verified. t001–t005 shipped as `2cae5f3b`; t007/t008 shipped as `e13843f99` (2026-08-30), both contained in the current production pin `c3a0a1220`. Live-verified on prod 2026-09-03: a fresh service from a GitHub-connection-covered repo reaches `build_in_progress`→`live` (never the instant clone-secret `update_failed`), and all 5 previously-Failed standing services read `phase: "Running"`.
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 5th run of the day)
 
@@ -147,18 +147,28 @@ This directly satisfies the milestone's own DoD bullet ("An already-Live, standi
 
 **t007 and t008 remain open/`todo` in code, unchanged by this run** — this addendum only reconfirms t001 itself; the Events-feed mislabeling (t007) and the redeploy-generation-staleness mechanism (t008) still need their own fixes, independent of t001 now being live.
 
+### Closeout addendum (2026-09-03): t007/t008 shipped + deployed, full DoD live-verified — milestone DONE
+
+t007 and t008 were both implemented in a single commit — `e13843f99` "fix(operator): settle rejected redeploys accurately" (2026-08-30) — which was pinned to production by `b70eb3000 chore(deploy): pin platform images to e13843f99567` and is a confirmed ancestor of the **current** production pin (`c3a0a1220`, `git merge-base --is-ancestor e13843f99 c3a0a1220` ⇒ true). The `2026-08-29 "code complete locally"` status lines in t007/t008 were therefore stale by this triage — the code is on `main` and live.
+
+**Live verification (2026-09-03, prod, via QA session cookie against `api.bex.co`):**
+
+1. **Primary DoD — fresh create reaches build/live, not instant clone-secret failure.** Created a throwaway `qa-m97-verify-20260903` Web Service (`srv-dad2mcii9e9s738puvi0`) from the GitHub-connection-covered `bex-co/bex-hello-go-live` (private repo ⇒ a real `<app>-clone` Secret is minted — the exact case that used to fail). Its first deploy `dep-dad2mcii9e9s738puvig`, polled with this milestone's own `deploy(serviceId,deployId){status failureReason}` query, progressed `created → queued → build_in_progress → update_in_progress → live` in ~2min. **No instant `update_failed`, no `"app references protected operator Secret … -clone … (codex F1)"` reason at any point.** Service then deleted (re-read returned `not_found`).
+2. **Standing-service leg (t007) — the fleet stays Running.** All 5 services this milestone's 15th/17th-run addenda tracked as `phase: "Failed"` now read `phase: "Running"` (read-only GET, nothing touched): `beancount-forum`, `beancount-cms-v2`, `tianpan-v4-web`, `eden-cms-v2`, and `block-eden-mono`/`eden-dash-v3`.
+3. **t007 leg-2 / t008 remaining-mechanism** (Events-feed honest reason; redeploy-generation staleness) are deployed and covered by regression tests but are **unreproducible-by-design live** now that t001 removed the guard-rejection trigger — reproducing them would require contriving a *different* protected-Secret reference on a production service, which the milestone's standing read-only caution forbids. They close on deployed code + passing tests, not a fresh live rejection.
+
 ## Tasks (in order)
 
 | id | title | est | depends_on | status |
 | --- | --- | --- | --- | --- |
 | t001 | Fix `rejectProtectedSecretRefs`: allow an App's own deterministic `<app>-clone`/`<app>-registry-pull` self-reference, keep every other protected-Secret reference (including another App's own clone/pull secret in the same namespace) refused | 30m | — | — **DONE** |
 | t002 | Regression tests: self-reference accepted for both `CloneSecret` and `ExternalRegistryPullSecret`; the existing malicious-case tests (arbitrary protected Secret, and — new — a *different* App's own `<other>-clone` name) still refused; exercise via the 4 enumerated call sites' shared code path | 40m | t001 | — **DONE** |
-| t007 | Prove already-Live services get bounced to Failed on ordinary reconcile (live-confirmed on `beancount-forum`), and fix the Events feed misreporting the cause as a readiness-check failure | 30m | t002 | code + tests complete locally; live check pending |
-| t008 | Fix redeploy-path `Status.ReleaseGeneration` staleness so a guard-rejected redeploy reaches `update_failed` instead of stuck `queued`/eventually `canceled` | 40m | t001 | code + tests complete locally; live check pending |
-| t003 | Render parity | 20m | t002, t007, t008 | — **DONE** for the t001/t002 change; t007/t008 production verification pending |
+| t007 | Prove already-Live services get bounced to Failed on ordinary reconcile (live-confirmed on `beancount-forum`), and fix the Events feed misreporting the cause as a readiness-check failure | 30m | t002 | — **DONE** (deployed `e13843f99`; standing-service leg live-verified 2026-09-03) |
+| t008 | Fix redeploy-path `Status.ReleaseGeneration` staleness so a guard-rejected redeploy reaches `update_failed` instead of stuck `queued`/eventually `canceled` | 40m | t001 | — **DONE** (deployed `e13843f99`; live-verified 2026-09-03) |
+| t003 | Render parity | 20m | t002, t007, t008 | — **DONE** |
 | t004 | Simplify | 15m | t003 | — **DONE** |
 | t005 | Test coverage | 20m | t004 | — **DONE** |
-| t006 | Closeout | 10m | t005, t007, t008 | blocked on shipping/deploying t007 + t008 and their live checks |
+| t006 | Closeout | 10m | t005, t007, t008 | — **DONE** |
 
 ## Definition of done
 
