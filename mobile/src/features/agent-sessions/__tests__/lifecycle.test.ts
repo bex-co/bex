@@ -29,6 +29,34 @@ describe("agent-session lifecycle", () => {
     expect(isTerminalPhase("canceling")).toBe(false);
   });
 
+  it("maps the ADR059 hibernation phases instead of falling back to unknown", () => {
+    const hibernating = sessionPhaseView("hibernating");
+    expect(hibernating.labelKey).toBe("agentSessions.phase.hibernating");
+    expect(hibernating.tone).toBe("active");
+    expect(hibernating.terminal).toBe(false);
+    expect(hibernating.cancelable).toBe(true);
+
+    const hibernated = sessionPhaseView("hibernated");
+    expect(hibernated.labelKey).toBe("agentSessions.phase.hibernated");
+    // Resting, past all live work: sorts and gates like a terminal state, and
+    // the supervision-only phone never offers reclaim on it.
+    expect(hibernated.terminal).toBe(true);
+    expect(hibernated.cancelable).toBe(false);
+  });
+
+  it("sorts a hibernated session below active work, above nothing live", () => {
+    const ordered = orderSessions([
+      { phase: "hibernated", updatedAt: "2026-01-05T00:00:00Z" },
+      { phase: "running", updatedAt: "2026-01-01T00:00:00Z" },
+      { phase: "completed", updatedAt: "2026-01-02T00:00:00Z" },
+    ]);
+    expect(ordered.map((s) => s.phase)).toEqual([
+      "running",
+      "hibernated",
+      "completed",
+    ]);
+  });
+
   it("falls back to an unknown, non-cancelable view for junk phases", () => {
     const view = sessionPhaseView("nonsense");
     expect(view.labelKey).toBe("agentSessions.phase.unknown");

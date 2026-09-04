@@ -13,9 +13,12 @@ export interface SessionPhaseView {
   cancelable: boolean;
 }
 
-// The eight server phases (agentsessions/models.go:25-34). Only non-terminal,
-// non-canceling phases are cancelable — a completed/failed/canceled session
-// cannot be canceled again, matching the server's idempotent Cancel.
+// The ten server phases (agentsessions/models.go:29-40), including the ADR059
+// hibernation pair. Only non-terminal, non-canceling phases are cancelable — a
+// completed/failed/canceled session cannot be canceled again, matching the
+// server's idempotent Cancel. `hibernated` mirrors the server's finishedPhase
+// (past all live work): it groups with the terminal states for ordering and
+// shows a resting label, but the phone never offers destructive reclaim on it.
 const PHASES: Record<string, SessionPhaseView> = {
   creating: {
     labelKey: "agentSessions.phase.creating",
@@ -61,6 +64,24 @@ const PHASES: Record<string, SessionPhaseView> = {
   },
   canceled: {
     labelKey: "agentSessions.phase.canceled",
+    tone: "neutral",
+    terminal: true,
+    cancelable: false,
+  },
+  // ADR059 (w2/m68). `hibernating` is the transient snapshot-upload window —
+  // still a live session, so it stays cancelable and sorts with the active
+  // group. `hibernated` is the durable pod-less resting state: not terminal on
+  // the server (a Resume can rehydrate it), but past all live work, so it sorts
+  // and gates like a terminal state and the supervision-only phone never offers
+  // the snapshot-reclaiming Cancel on it.
+  hibernating: {
+    labelKey: "agentSessions.phase.hibernating",
+    tone: "active",
+    terminal: false,
+    cancelable: true,
+  },
+  hibernated: {
+    labelKey: "agentSessions.phase.hibernated",
     tone: "neutral",
     terminal: true,
     cancelable: false,

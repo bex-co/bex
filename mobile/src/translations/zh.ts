@@ -346,6 +346,8 @@ export const zh = {
       failed: "已失败",
       canceling: "取消中",
       canceled: "已取消",
+      hibernating: "休眠中",
+      hibernated: "已休眠",
       unknown: "未知",
     },
     composer: {
