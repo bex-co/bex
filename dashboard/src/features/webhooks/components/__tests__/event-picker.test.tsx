@@ -190,7 +190,7 @@ describe("EventPicker", () => {
     );
     expect(screen.queryByText("Deploy Started")).not.toBeInTheDocument();
     expect(screen.getByTestId("event-count")).toHaveTextContent(
-      "1 events selected",
+      "1 event selected",
     );
 
     await user.click(

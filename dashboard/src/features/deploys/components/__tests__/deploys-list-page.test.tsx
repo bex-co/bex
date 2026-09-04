@@ -9,6 +9,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { DeploysListPage } from "../deploys-list-page";
+import { formatDeployTimestamp } from "../../lib/deploy-presentation";
 import type { DeployRow, UseDeploysResult } from "../../hooks/use-deploys";
 
 const state: UseDeploysResult = {
@@ -204,6 +205,72 @@ describe("DeploysListPage", () => {
     );
     // The created deploy never started, so its Duration reads as an em-dash.
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+  });
+
+  it("labels rows by terminal state — Canceled/Failed rows never read 'Deployed' (w6/051)", async () => {
+    state.deploys = [
+      // createdAt 00:00, finishedAt 00:01:30 from the row() defaults.
+      row({ id: "dep-shipped", status: "live" }),
+      row({
+        id: "dep-canceled",
+        status: "canceled",
+        finishedAt: "2026-07-16T00:00:45Z",
+        preDeployStatus: "",
+      }),
+      row({
+        id: "dep-broken",
+        status: "build_failed",
+        finishedAt: "2026-07-16T00:02:09Z",
+        preDeployStatus: "",
+      }),
+      row({
+        id: "dep-waiting",
+        status: "queued",
+        startedAt: null,
+        finishedAt: null,
+        preDeployStatus: "",
+      }),
+    ];
+
+    renderPage();
+
+    // The live deploy is stamped with its finish time, not createdAt.
+    const deployedAt = formatDeployTimestamp("2026-07-16T00:01:30Z")!;
+    expect(
+      await screen.findByText(`Deployed ${deployedAt}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Canceled ${formatDeployTimestamp("2026-07-16T00:00:45Z")!}`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Failed ${formatDeployTimestamp("2026-07-16T00:02:09Z")!}`,
+      ),
+    ).toBeInTheDocument();
+    // The queued deploy hasn't finished — it shows when it was created.
+    expect(
+      screen.getByText(
+        `Created ${formatDeployTimestamp("2026-07-16T00:00:00Z")!}`,
+      ),
+    ).toBeInTheDocument();
+    // Exactly one row earned the "Deployed" verb.
+    expect(screen.getAllByText(/^Deployed /)).toHaveLength(1);
+  });
+
+  it("falls back to createdAt for a live deploy without a stored finish time", async () => {
+    state.deploys = [
+      row({ id: "dep-legacy", status: "live", finishedAt: null }),
+    ];
+
+    renderPage();
+
+    expect(
+      await screen.findByText(
+        `Deployed ${formatDeployTimestamp("2026-07-16T00:00:00Z")!}`,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("keeps the row action button outside the deploy-detail link (action-click isolation)", async () => {

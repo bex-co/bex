@@ -23,11 +23,25 @@ import { useKeyValueLogs } from "../hooks/use-key-value-logs";
 
 const ALL_INSTANCES = "all";
 
-export function KeyValueLogViewer({ resource }: { resource: string }) {
+// `range`/`onRangeChange` are the URL-persisted selection threaded down from
+// the hosting route (`keyvalue.$keyValueId`, w6/065) — this is a component,
+// not a route, so persistence has to come from its host. A standalone mount
+// (unit tests) falls back to local state.
+export function KeyValueLogViewer({
+  resource,
+  range: rangeProp,
+  onRangeChange,
+}: {
+  resource: string;
+  range?: RangeSelection;
+  onRangeChange?: (range: RangeSelection) => void;
+}) {
   const { t } = useTranslations();
-  const [range, setRange] = useState<RangeSelection>(
+  const [localRange, setLocalRange] = useState<RangeSelection>(
     DEFAULT_DATASTORE_LOG_RANGE,
   );
+  const range = rangeProp ?? localRange;
+  const setRange = onRangeChange ?? setLocalRange;
   const [text, setText] = useState("");
   const [instance, setInstance] = useState("");
   const debouncedText = useDebounce(text, 300);

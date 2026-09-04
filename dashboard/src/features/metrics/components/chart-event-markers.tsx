@@ -114,7 +114,7 @@ export function ChartEventStrip({
                   single
                     ? markerLabel(single, t)
                     : t("metrics.eventMarkerCluster", {
-                        count: String(cluster.markers.length),
+                        count: cluster.markers.length,
                       })
                 }
                 className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

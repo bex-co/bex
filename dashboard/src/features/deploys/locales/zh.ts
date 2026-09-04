@@ -89,7 +89,23 @@ const zhDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.deployedAt": {
     message: "部署于 {timestamp}",
-    description: "Deploy row: created/deployed timestamp",
+    description:
+      "Deploy row: when a live/deactivated deploy went live (its finish time; createdAt fallback)",
+  },
+  "deploys.createdAt": {
+    message: "创建于 {timestamp}",
+    description:
+      "Deploy row: creation time for a deploy that hasn't finished (created/queued/in-progress)",
+  },
+  "deploys.canceledAt": {
+    message: "取消于 {timestamp}",
+    description:
+      "Deploy row: when a canceled deploy was canceled (its finish time; createdAt fallback)",
+  },
+  "deploys.failedAt": {
+    message: "失败于 {timestamp}",
+    description:
+      "Deploy row: when a build/pre-deploy/update failure landed (its finish time; createdAt fallback)",
   },
   "deploys.notYet": {
     message: "—",
@@ -248,23 +264,13 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploys tab: empty state when client-side search has no match",
   },
-  "deploys.listCountOne": {
+  "deploys.listCount_other": {
     message: "{count} 个部署",
-    description: "Deploys tab: complete singular deploy count",
+    description: "Deploys tab: complete deploy count",
   },
-  "deploys.listCountMany": {
-    message: "{count} 个部署",
-    description: "Deploys tab: complete plural deploy count",
-  },
-  "deploys.listCountLoadedOne": {
+  "deploys.listCountLoaded_other": {
     message: "已加载 {count} 个部署",
-    description:
-      "Deploys tab: singular loaded count when more server pages remain",
-  },
-  "deploys.listCountLoadedMany": {
-    message: "已加载 {count} 个部署",
-    description:
-      "Deploys tab: plural loaded count when more server pages remain",
+    description: "Deploys tab: loaded count when more server pages remain",
   },
   "deploys.listLoadMore": {
     message: "加载更多",

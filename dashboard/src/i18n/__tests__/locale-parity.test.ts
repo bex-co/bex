@@ -51,14 +51,42 @@ describe("locale key parity", () => {
   it.each(NAMESPACES)("$name: en and zh have the same keys", ({ en, zh }) => {
     const enKeys = Object.keys(en ?? {});
     const zhKeys = Object.keys(zh ?? {});
+    // Native plurals (w6/062): en authors `key_one` + `key_other`; zh has only
+    // one plural category, so its catalog carries only `key_other`. An en-only
+    // `key_one` is therefore expected parity, not drift, as long as both
+    // languages have the `key_other` it pairs with.
+    const isEnPluralOne = (k: string) => {
+      if (!k.endsWith("_one")) return false;
+      const other = `${k.slice(0, -"_one".length)}_other`;
+      return Boolean(en?.[other] && zh?.[other]);
+    };
     const onlyEn = enKeys
-      .filter((k) => !zh?.[k] && !ALLOW_ONLY_EN.has(k))
+      .filter((k) => !zh?.[k] && !ALLOW_ONLY_EN.has(k) && !isEnPluralOne(k))
       .sort();
     const onlyZh = zhKeys
       .filter((k) => !en?.[k] && !ALLOW_ONLY_ZH.has(k))
       .sort();
     expect(onlyEn, "keys in en but missing from zh").toEqual([]);
     expect(onlyZh, "keys in zh but missing from en").toEqual([]);
+  });
+
+  it.each(NAMESPACES)("$name: plural keys are well-formed", ({ en, zh }) => {
+    // en: a `_one` form must have its `_other` sibling (English needs both).
+    for (const k of Object.keys(en ?? {})) {
+      if (!k.endsWith("_one")) continue;
+      const other = `${k.slice(0, -"_one".length)}_other`;
+      expect(
+        en?.[other],
+        `en has "${k}" but not its plural sibling "${other}"`,
+      ).toBeDefined();
+    }
+    // zh: no `_one` forms — Chinese's only cardinal plural category is
+    // "other", so a zh `_one` entry is unreachable (do not mechanically
+    // double zh when adding a pluralized string).
+    const zhOnes = Object.keys(zh ?? {})
+      .filter((k) => k.endsWith("_one"))
+      .sort();
+    expect(zhOnes, "zh must carry only the _other plural form").toEqual([]);
   });
 
   it.each(NAMESPACES)("$name: keys share one consistent prefix", ({ en }) => {

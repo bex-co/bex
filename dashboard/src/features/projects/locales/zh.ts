@@ -71,12 +71,12 @@ const zhProjects: Record<string, TranslationEntry> = {
     message: "所有资源运行正常",
     description: "Project card status line when every resource is healthy",
   },
-  "projects.cardInProgress": {
+  "projects.cardInProgress_other": {
     message: "{count} 项资源正在进行中",
     description:
       "Project card status line when resources are provisioning or deploying without a failure",
   },
-  "projects.cardUnhealthy": {
+  "projects.cardUnhealthy_other": {
     message: "{count} 项资源需要处理",
     description:
       "Project card status line when one or more resources are unhealthy",
@@ -287,7 +287,8 @@ const zhProjects: Record<string, TranslationEntry> = {
     description: "Delete-project confirmation dialog title",
   },
   "projects.deleteConfirmBody": {
-    message: "项目下的环境及其配置将被删除。其服务、数据库和键值存储将变为未分组状态，不会被删除。",
+    message:
+      "项目下的环境及其配置将被删除。其服务、数据库和键值存储将变为未分组状态，不会被删除。",
     description: "Delete-project confirmation dialog body",
   },
   "projects.deleteSuccess": {

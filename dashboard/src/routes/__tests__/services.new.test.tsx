@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
+  HeadContent,
+  Outlet,
   RouterProvider,
   createRouter,
   createRootRoute,
@@ -9,7 +11,11 @@ import {
   createMemoryHistory,
 } from "@tanstack/react-router";
 import { NewServicePage } from "../services.new";
-import { parseNewServiceSearch } from "@/features/services/lib/create-context";
+import { translatedTitleHead } from "@/common/lib/document-head";
+import {
+  parseNewServiceSearch,
+  serviceTypeCreateCopy,
+} from "@/features/services/lib/create-context";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
@@ -238,6 +244,38 @@ function renderPage(initialEntry = "/") {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([newRoute, serviceRoute, deployRoute]),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
+    context: { client: {} as never, session: null },
+  });
+  return { ...render(<RouterProvider router={router} />), router };
+}
+
+/** Like renderPage, but with the real route's head() resolver and a root that
+ *  renders HeadContent — so document.title tracks ?type= exactly as in the app
+ *  (w6/045). */
+function renderPageWithHead(initialEntry = "/") {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <>
+        <HeadContent />
+        <Outlet />
+      </>
+    ),
+  });
+  const newRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: NewServicePage,
+    validateSearch: parseNewServiceSearch,
+    // Same resolver as routes/services.new.tsx.
+    head: ({ match }) =>
+      translatedTitleHead(
+        serviceTypeCreateCopy(match.search?.type).titleKey,
+        match,
+      ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([newRoute]),
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
     context: { client: {} as never, session: null },
   });
@@ -907,6 +945,79 @@ describe("NewServicePage", () => {
       expect(
         screen.queryByRole("heading", { level: 1, name: "New Service" }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  // w6/045: w6/m43 made the tab title and <h1> agree on initial load, but
+  // clicking a Service Type radio only updated in-memory state — head() reads
+  // match.search.type, so document.title stayed frozen at the load-time type.
+  // The radio's onChange now mirrors the choice into ?type= (replace: true).
+  describe("tab title follows the Service Type radio", () => {
+    it("updates ?type=, the tab title, and the heading together on a radio click", async () => {
+      const user = userEvent.setup();
+      const { router } = renderPageWithHead();
+      await screen.findAllByRole("radiogroup");
+      await waitFor(() =>
+        expect(document.title).toBe("New Web Service ・ bex Dashboard"),
+      );
+
+      await user.click(screen.getByRole("radio", { name: /Private Service/i }));
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: "New Private Service" }),
+      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(router.state.location.search).toMatchObject({
+          type: "private_service",
+        }),
+      );
+      await waitFor(() =>
+        expect(document.title).toBe("New Private Service ・ bex Dashboard"),
+      );
+    });
+
+    it("replaces history and keeps other search params on a type switch", async () => {
+      const user = userEvent.setup();
+      const { router } = renderPageWithHead(
+        "/?projectId=prj-platform&environmentId=env-production",
+      );
+      await screen.findAllByRole("radiogroup");
+
+      await user.click(screen.getByRole("radio", { name: /Cron Job/i }));
+
+      await waitFor(() =>
+        expect(router.state.location.search).toMatchObject({
+          type: "cron_job",
+          projectId: "prj-platform",
+          environmentId: "env-production",
+        }),
+      );
+      // replace: true — no extra history entry for the same form page.
+      expect(router.history.length).toBe(1);
+    });
+
+    it("keeps in-progress form state across a type switch (no remount)", async () => {
+      const user = userEvent.setup();
+      const { router } = renderPageWithHead();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      expect(screen.getByLabelText("Name")).toHaveValue("web-frontend");
+
+      await user.click(
+        screen.getByRole("radio", { name: /Background Worker/i }),
+      );
+
+      await waitFor(() =>
+        expect(router.state.location.search).toMatchObject({
+          type: "background_worker",
+        }),
+      );
+      // The selected repo and derived name survive the search-param update.
+      expect(screen.getByLabelText("Name")).toHaveValue("web-frontend");
+      expect(
+        screen.getByRole("radio", { name: /Background Worker/i }),
+      ).toHaveAttribute("aria-checked", "true");
     });
   });
 

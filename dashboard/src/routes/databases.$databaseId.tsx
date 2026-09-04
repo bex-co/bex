@@ -34,6 +34,13 @@ import { DatabaseNameRow } from "@/features/databases/components/database-name-r
 import { DatabaseDetailNavigation } from "@/features/databases/components/database-detail-navigation";
 import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
 import { PostgresLogViewer } from "@/features/databases/components/postgres-log-viewer";
+import { DEFAULT_DATASTORE_LOG_RANGE } from "@/features/logs/lib/datastore-log-range";
+import {
+  parseRangeSearch,
+  rangeFromSearch,
+  rangeToSearch,
+  type RangeSearch,
+} from "@/features/metrics/lib/range";
 import type { DatabaseDetailView } from "@/features/databases/types";
 import { DatabaseDocument } from "@/graphql/definitions";
 import {
@@ -92,8 +99,14 @@ export const Route = createFileRoute("/databases/$databaseId")({
   pendingComponent: DatabaseDetailPage,
   pendingMs: 0,
   beforeLoad: requireAuth(),
-  validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
-    search.tab === "logs" ? { tab: "logs" } : {},
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: "logs" } & RangeSearch => ({
+    ...(search.tab === "logs" ? { tab: "logs" as const } : {}),
+    // The Logs tab's time range persists in the shared `range`/`rangeStart`/
+    // `rangeEnd` URL shape (w6/065) so it survives a reload and is shareable.
+    ...parseRangeSearch(search),
+  }),
   loader: ({ context, params, cause }) =>
     loadRouteResource(
       () =>
@@ -117,7 +130,8 @@ export const Route = createFileRoute("/databases/$databaseId")({
 
 function DatabaseDetailPage() {
   const { databaseId } = Route.useParams();
-  const { tab } = Route.useSearch();
+  const search = Route.useSearch();
+  const { tab } = search;
   const { t } = useTranslations();
   const navigate = useNavigate();
   const router = useRouter();
@@ -214,7 +228,20 @@ function DatabaseDetailPage() {
             </div>
           ) : database && tab === "logs" ? (
             <div className="mx-auto w-full max-w-4xl space-y-6">
-              <PostgresLogViewer resource={database.id} />
+              <PostgresLogViewer
+                resource={database.id}
+                range={rangeFromSearch(search, DEFAULT_DATASTORE_LOG_RANGE)}
+                onRangeChange={(range) =>
+                  // Functional form: committed verbatim, so rangeToSearch's
+                  // explicit undefineds actually clear stale custom bounds
+                  // (w7/m42); the spread keeps `tab: "logs"` in place.
+                  void navigate({
+                    to: ".",
+                    search: (prev) => ({ ...prev, ...rangeToSearch(range) }),
+                    replace: true,
+                  })
+                }
+              />
             </div>
           ) : database ? (
             <div className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
@@ -366,10 +393,18 @@ function MetadataCard({
           label: t("databases.metaPublic"),
           value: database.public ? t("databases.yes") : t("databases.no"),
         },
-        {
-          label: t("databases.metaExternalHost"),
-          value: database.externalHost ?? "—",
-        },
+        // Render shows external connection details only when public access is
+        // on; the backend sends "" (not null) for a private database (w6/052),
+        // so gate on truthiness and omit the row entirely — the region-row
+        // pattern below.
+        ...(database.externalHost
+          ? [
+              {
+                label: t("databases.metaExternalHost"),
+                value: database.externalHost,
+              },
+            ]
+          : []),
         ...(database.region
           ? [
               {

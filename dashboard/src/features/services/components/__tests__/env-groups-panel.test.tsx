@@ -10,6 +10,9 @@ const mockCreateGroup = vi.fn();
 const mockDeleteGroup = vi.fn();
 const mockLinkGroup = vi.fn();
 const mockUnlinkGroup = vi.fn();
+// The service's own env-var keys, used to mark linked-group keys the service
+// overrides (w6/067). Empty by default = no overrides.
+const mockUseEnvVarKeys = vi.fn();
 
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: (id: string) => ({
@@ -18,6 +21,10 @@ vi.mock("@/features/services/hooks/use-server", () => ({
     error: undefined,
     refetch: vi.fn(),
   }),
+}));
+
+vi.mock("@/features/services/hooks/use-env-vars", () => ({
+  useEnvVarKeys: (...a: unknown[]) => mockUseEnvVarKeys(...a),
 }));
 
 vi.mock(
@@ -62,6 +69,12 @@ beforeEach(() => {
   mockDeleteGroup.mockReset().mockResolvedValue(true);
   mockLinkGroup.mockReset().mockResolvedValue(true);
   mockUnlinkGroup.mockReset().mockResolvedValue(true);
+  mockUseEnvVarKeys.mockReset().mockReturnValue({
+    keys: [],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  });
 });
 
 describe("EnvGroupsPanel", () => {
@@ -175,6 +188,79 @@ describe("EnvGroupsPanel", () => {
       secretFiles: [],
       serviceIds: ["web"],
     });
+  });
+
+  it("marks a linked group's keys that the service's own variables override (w6/067)", () => {
+    mockUseEnvVarKeys.mockReturnValue({
+      keys: [{ id: "SHARED_KEY", key: "SHARED_KEY" }],
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    mockUseEnvGroups.mockReturnValue(
+      groupsResult([
+        {
+          id: "eg1",
+          name: "shared",
+          ownerId: "tea-1",
+          environmentId: null,
+          createdAt: null,
+          updatedAt: null,
+          revision: null,
+          serviceLinks: ["web"],
+          envVarKeys: ["GROUP_ONLY", "SHARED_KEY"],
+          secretFileNames: [],
+        },
+      ]),
+    );
+    render(<EnvGroupsPanel serviceId="web" />);
+
+    // The colliding key is struck through with a title explaining why; the
+    // group-only key stays unmarked.
+    const shared = screen.getByText("SHARED_KEY");
+    expect(shared.tagName).toBe("S");
+    expect(shared.closest("[title]")).toHaveAttribute(
+      "title",
+      "Overridden by this service's own SHARED_KEY environment variable",
+    );
+    expect(screen.getByText("GROUP_ONLY").tagName).not.toBe("S");
+    expect(
+      screen.getByText(
+        "Struck-through keys are overridden by this service's own environment variables.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not mark keys on a group that is not linked to this service (w6/067)", () => {
+    mockUseEnvVarKeys.mockReturnValue({
+      keys: [{ id: "SHARED_KEY", key: "SHARED_KEY" }],
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    mockUseEnvGroups.mockReturnValue(
+      groupsResult([
+        {
+          id: "eg1",
+          name: "shared",
+          ownerId: "tea-1",
+          environmentId: null,
+          createdAt: null,
+          updatedAt: null,
+          revision: null,
+          serviceLinks: ["other"],
+          envVarKeys: ["SHARED_KEY"],
+          secretFileNames: [],
+        },
+      ]),
+    );
+    render(<EnvGroupsPanel serviceId="web" />);
+
+    // An unlinked group feeds nothing into this service, so nothing shadows.
+    expect(screen.getByText("SHARED_KEY").tagName).not.toBe("S");
+    expect(
+      screen.queryByText(/overridden by this service/i),
+    ).not.toBeInTheDocument();
   });
 
   it("does not expose workspace-destructive group deletion", () => {

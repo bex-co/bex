@@ -101,6 +101,68 @@ export function parseCustomRange(
   return typeof made === "string" ? null : made;
 }
 
+/**
+ * The shared URL shape for a persisted range selection (w6/065): `range` names
+ * a preset id or `"custom"`, with `rangeStart`/`rangeEnd` carrying a custom
+ * window's ISO bounds. This is the same key vocabulary the Logs page's
+ * LogSearch uses (features/logs/lib/log-search.ts) — minus its Logs-specific
+ * `r` Render alias — so Metrics and the datastore log viewers stay
+ * deep-linkable in one spelling.
+ */
+export interface RangeSearch {
+  range?: RangePresetID | "custom";
+  rangeStart?: string;
+  rangeEnd?: string;
+}
+
+/**
+ * Validates the shared range keys off a raw URL search object. Malformed or
+ * unknown values drop out entirely (a bad link renders the surface's default
+ * range), and a custom range is kept only when both bounds reconstruct a valid
+ * window — mirroring parseLogSearch's range handling.
+ */
+export function parseRangeSearch(search: Record<string, unknown>): RangeSearch {
+  if (search.range === "custom") {
+    const start =
+      typeof search.rangeStart === "string" ? search.rangeStart : undefined;
+    const end =
+      typeof search.rangeEnd === "string" ? search.rangeEnd : undefined;
+    if (start && end && parseCustomRange(start, end)) {
+      return { range: "custom", rangeStart: start, rangeEnd: end };
+    }
+    return {};
+  }
+  const preset = parseRangePreset(search.range);
+  return preset ? { range: preset.id } : {};
+}
+
+/** Restores the selection a validated RangeSearch names, else the caller's
+ *  surface default (absent/dropped params keep today's behavior). */
+export function rangeFromSearch(
+  search: RangeSearch,
+  defaultRange: RangeSelection,
+): RangeSelection {
+  if (search.range === "custom" && search.rangeStart && search.rangeEnd) {
+    const custom = parseCustomRange(search.rangeStart, search.rangeEnd);
+    if (custom) return custom;
+  }
+  return parseRangePreset(search.range) ?? defaultRange;
+}
+
+/**
+ * Serializes a selection into the shared URL keys. Every key is written
+ * explicitly — `undefined` for the non-custom case — because the router
+ * retains params an update merely omits (w7/m42), so switching custom → preset
+ * must actively clear the stale bounds.
+ */
+export function rangeToSearch(range: RangeSelection): RangeSearch {
+  return {
+    range: range.id,
+    rangeStart: isCustomRange(range) ? range.startTime : undefined,
+    rangeEnd: isCustomRange(range) ? range.endTime : undefined,
+  };
+}
+
 // A relative window is just a span + a bucket size — the preset `id` is a
 // picker/URL concern, so consumers with a fixed window (e.g. the Scaling
 // page's 48h Recent Metrics, w7/m43) can pass a bare window without minting a

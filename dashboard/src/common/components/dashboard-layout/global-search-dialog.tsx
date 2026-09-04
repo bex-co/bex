@@ -183,135 +183,151 @@ function SearchResults({
     matchesQuery(`${r.name} ${r.id} ${t("envGroups.resourceType")}`, query),
   );
 
+  // shouldFilter={false} means cmdk never prunes an itemless group for us — an
+  // unguarded group would float its heading over zero children (w6/046). Render
+  // each group only when it has content, and the separator only between two.
+  const showNavigation = filteredPages.length > 0;
+  const showResources =
+    filteredProjects.length > 0 ||
+    filteredServices.length > 0 ||
+    filteredDatabases.length > 0 ||
+    filteredKeyValues.length > 0 ||
+    filteredEnvGroups.length > 0 ||
+    (loading && resourceCount === 0);
+
   return (
     <>
-      <CommandGroup heading={t("common.topbarNavigation")}>
-        {filteredPages.map((page) => (
-          <CommandItem
-            key={page.label}
-            value={page.label}
-            onSelect={() => select(page.run)}
-          >
-            <page.icon />
-            {page.label}
-          </CommandItem>
-        ))}
-      </CommandGroup>
-      <CommandSeparator />
-      <CommandGroup heading={t("common.topbarResources")}>
-        {loading && resourceCount === 0 ? (
-          <CommandItem disabled>{t("common.loading")}</CommandItem>
-        ) : null}
-        {filteredProjects.map((project) => (
-          <CommandItem
-            key={`project:${project.id}`}
-            value={`${project.name} ${project.id} ${t("common.topbarProjectResource")}`}
-            onSelect={() =>
-              select(() => {
-                void navigate({
-                  to: "/project/$projectId",
-                  params: { projectId: project.id },
-                });
-              })
-            }
-          >
-            <FolderKanban />
-            <SearchResultLabel
-              name={project.name}
-              kind={t("common.topbarProjectResource")}
-            />
-          </CommandItem>
-        ))}
-        {filteredServices.map((service) => (
-          <CommandItem
-            key={`service:${service.id}`}
-            value={`${service.name} ${service.id} ${t("common.topbarServiceResource")}`}
-            onSelect={() =>
-              select(() => {
-                // Canonical base per type — routing a static_site through
-                // /services/<id> costs an extra bounce navigation.
-                if (serviceBaseForType(service.type) === "/static") {
+      {showNavigation ? (
+        <CommandGroup heading={t("common.topbarNavigation")}>
+          {filteredPages.map((page) => (
+            <CommandItem
+              key={page.label}
+              value={page.label}
+              onSelect={() => select(page.run)}
+            >
+              <page.icon />
+              {page.label}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      ) : null}
+      {showNavigation && showResources ? <CommandSeparator /> : null}
+      {showResources ? (
+        <CommandGroup heading={t("common.topbarResources")}>
+          {loading && resourceCount === 0 ? (
+            <CommandItem disabled>{t("common.loading")}</CommandItem>
+          ) : null}
+          {filteredProjects.map((project) => (
+            <CommandItem
+              key={`project:${project.id}`}
+              value={`${project.name} ${project.id} ${t("common.topbarProjectResource")}`}
+              onSelect={() =>
+                select(() => {
                   void navigate({
-                    to: "/static/$serviceId",
-                    params: { serviceId: service.id },
+                    to: "/project/$projectId",
+                    params: { projectId: project.id },
                   });
-                } else {
+                })
+              }
+            >
+              <FolderKanban />
+              <SearchResultLabel
+                name={project.name}
+                kind={t("common.topbarProjectResource")}
+              />
+            </CommandItem>
+          ))}
+          {filteredServices.map((service) => (
+            <CommandItem
+              key={`service:${service.id}`}
+              value={`${service.name} ${service.id} ${t("common.topbarServiceResource")}`}
+              onSelect={() =>
+                select(() => {
+                  // Canonical base per type — routing a static_site through
+                  // /services/<id> costs an extra bounce navigation.
+                  if (serviceBaseForType(service.type) === "/static") {
+                    void navigate({
+                      to: "/static/$serviceId",
+                      params: { serviceId: service.id },
+                    });
+                  } else {
+                    void navigate({
+                      to: "/services/$serviceId",
+                      params: { serviceId: service.id },
+                    });
+                  }
+                })
+              }
+            >
+              <Globe2 />
+              <SearchResultLabel
+                name={service.name}
+                kind={t("common.topbarServiceResource")}
+              />
+            </CommandItem>
+          ))}
+          {filteredDatabases.map((database) => (
+            <CommandItem
+              key={`database:${database.id}`}
+              value={`${database.name} ${database.id} ${t("databases.resourceType")}`}
+              onSelect={() =>
+                select(() => {
                   void navigate({
-                    to: "/services/$serviceId",
-                    params: { serviceId: service.id },
+                    to: "/databases/$databaseId",
+                    params: { databaseId: database.id },
                   });
-                }
-              })
-            }
-          >
-            <Globe2 />
-            <SearchResultLabel
-              name={service.name}
-              kind={t("common.topbarServiceResource")}
-            />
-          </CommandItem>
-        ))}
-        {filteredDatabases.map((database) => (
-          <CommandItem
-            key={`database:${database.id}`}
-            value={`${database.name} ${database.id} ${t("databases.resourceType")}`}
-            onSelect={() =>
-              select(() => {
-                void navigate({
-                  to: "/databases/$databaseId",
-                  params: { databaseId: database.id },
-                });
-              })
-            }
-          >
-            <Database />
-            <SearchResultLabel
-              name={database.name}
-              kind={t("databases.resourceType")}
-            />
-          </CommandItem>
-        ))}
-        {filteredKeyValues.map((keyValue) => (
-          <CommandItem
-            key={`keyvalue:${keyValue.id}`}
-            value={`${keyValue.name} ${keyValue.id} ${t("keyvalue.resourceType")}`}
-            onSelect={() =>
-              select(() => {
-                void navigate({
-                  to: "/keyvalue/$keyValueId",
-                  params: { keyValueId: keyValue.id },
-                });
-              })
-            }
-          >
-            <KeyRound />
-            <SearchResultLabel
-              name={keyValue.name}
-              kind={t("keyvalue.resourceType")}
-            />
-          </CommandItem>
-        ))}
-        {filteredEnvGroups.map((group) => (
-          <CommandItem
-            key={`env-group:${group.id}`}
-            value={`${group.name} ${group.id} ${t("envGroups.resourceType")}`}
-            onSelect={() =>
-              select(() => {
-                void navigate({
-                  to: "/env-groups/$groupId",
-                  params: { groupId: group.id },
-                });
-              })
-            }
-          >
-            <Boxes />
-            <SearchResultLabel
-              name={group.name}
-              kind={t("envGroups.resourceType")}
-            />
-          </CommandItem>
-        ))}
-      </CommandGroup>
+                })
+              }
+            >
+              <Database />
+              <SearchResultLabel
+                name={database.name}
+                kind={t("databases.resourceType")}
+              />
+            </CommandItem>
+          ))}
+          {filteredKeyValues.map((keyValue) => (
+            <CommandItem
+              key={`keyvalue:${keyValue.id}`}
+              value={`${keyValue.name} ${keyValue.id} ${t("keyvalue.resourceType")}`}
+              onSelect={() =>
+                select(() => {
+                  void navigate({
+                    to: "/keyvalue/$keyValueId",
+                    params: { keyValueId: keyValue.id },
+                  });
+                })
+              }
+            >
+              <KeyRound />
+              <SearchResultLabel
+                name={keyValue.name}
+                kind={t("keyvalue.resourceType")}
+              />
+            </CommandItem>
+          ))}
+          {filteredEnvGroups.map((group) => (
+            <CommandItem
+              key={`env-group:${group.id}`}
+              value={`${group.name} ${group.id} ${t("envGroups.resourceType")}`}
+              onSelect={() =>
+                select(() => {
+                  void navigate({
+                    to: "/env-groups/$groupId",
+                    params: { groupId: group.id },
+                  });
+                })
+              }
+            >
+              <Boxes />
+              <SearchResultLabel
+                name={group.name}
+                kind={t("envGroups.resourceType")}
+              />
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      ) : null}
     </>
   );
 }

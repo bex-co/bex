@@ -185,8 +185,10 @@ func TestCancelImageBackedAppStampsCanceledReleaseNoJob(t *testing.T) {
 func TestCancelMidBuildEmitsBuildEndedCanceled(t *testing.T) {
 	ds := newFakeStore()
 	started := time.Date(2026, 8, 27, 23, 55, 6, 0, time.UTC)
+	// Image "" — a repo build's row is born without one (CreateDeploy stamps the
+	// service's spec.image); a row born WITH one skips the build entirely (w6/061).
 	ds.byApp["srv-1"] = []store.Deploy{{
-		ID: "dep-1", AppID: "srv-1", Image: "web:v1", Generation: 2,
+		ID: "dep-1", AppID: "srv-1", Generation: 2,
 		Status: store.DeployBuildInProgress, CreatedAt: started, StartedAt: &started,
 	}}
 	app := sampleApp("web", "srv-1")
@@ -228,7 +230,7 @@ func TestCancelMidBuildEmitsBuildEndedCanceled(t *testing.T) {
 	// (source_key) DO NOTHING (event_facts.go), so re-deriving from the same
 	// pre-cancel snapshot and re-inserting is a no-op.
 	for _, fact := range store.CanceledBuildLifecycleFacts(store.Deploy{
-		ID: "dep-1", AppID: "srv-1", Image: "web:v1", Generation: 2,
+		ID: "dep-1", AppID: "srv-1", Generation: 2,
 		Status: store.DeployBuildInProgress, CreatedAt: started, StartedAt: &started,
 	}) {
 		if _, err := ds.InsertServiceEventFact(context.Background(), fact); err != nil {
@@ -247,7 +249,7 @@ func TestCancelMidBuildEmitsBuildEndedCanceled(t *testing.T) {
 func TestCancelQueuedEmitsNoBuildFacts(t *testing.T) {
 	ds := newFakeStore()
 	ds.byApp["srv-1"] = []store.Deploy{{
-		ID: "dep-1", AppID: "srv-1", Image: "web:v1", Generation: 2,
+		ID: "dep-1", AppID: "srv-1", Generation: 2,
 		Status: store.DeployQueued, OverlapPending: true, CreatedAt: time.Now(),
 	}}
 	app := sampleApp("web", "srv-1")
@@ -263,6 +265,37 @@ func TestCancelQueuedEmitsNoBuildFacts(t *testing.T) {
 	}
 }
 
+// TestCancelRollbackDeployEmitsNoBuildFacts is w6/061 on the Cancel verb's own
+// buildLifecycleFacts derivation: a rollback deploy on a repo-backed service is
+// born with the restored image and runs no build, so canceling it mid-rollout
+// must emit neither build_started nor build_ended — before the per-deploy
+// guard, the a.Spec.Repo gate here manufactured a build_started +
+// build_ended(succeeded) pair for a build that never existed.
+func TestCancelRollbackDeployEmitsNoBuildFacts(t *testing.T) {
+	ds := newFakeStore()
+	started := time.Date(2026, 8, 27, 12, 28, 57, 0, time.UTC)
+	ds.byApp["srv-1"] = []store.Deploy{{
+		ID: "dep-rb", AppID: "srv-1", Trigger: "rollback", Generation: 3,
+		Image: "web:gen-1@sha256:c0dd", ResolvedImage: "web:gen-1@sha256:c0dd", RollbackOf: "dep-old",
+		Status: store.DeployUpdateInProgress, CreatedAt: started, StartedAt: &started,
+	}}
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://example.invalid/acme/web.git"
+	svc, _ := newService(ds, app)
+
+	got, err := svc.Cancel(context.Background(), "web", "dep-rb")
+	if err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	if got.Status != store.DeployCanceled {
+		t.Fatalf("canceled deploy = %+v", got)
+	}
+	if len(ds.facts) != 0 {
+		t.Errorf("canceled rollback deploy emitted build facts %+v, want none — no build ever ran", ds.facts)
+	}
+}
+
 // TestCancelAfterBuildFinishedEmitsBuildEndedSucceeded is the other adjacent
 // class the fix must not disturb: a deploy canceled once its build already
 // finished (now sitting in a later phase, e.g. update_in_progress) reports its
@@ -272,7 +305,7 @@ func TestCancelAfterBuildFinishedEmitsBuildEndedSucceeded(t *testing.T) {
 	ds := newFakeStore()
 	started := time.Date(2026, 8, 27, 23, 52, 24, 0, time.UTC)
 	ds.byApp["srv-1"] = []store.Deploy{{
-		ID: "dep-1", AppID: "srv-1", Image: "web:v1", Generation: 2,
+		ID: "dep-1", AppID: "srv-1", Generation: 2,
 		Status: store.DeployUpdateInProgress, CreatedAt: started, StartedAt: &started,
 	}}
 	app := sampleApp("web", "srv-1")

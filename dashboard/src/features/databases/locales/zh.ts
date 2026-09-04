@@ -1141,11 +1141,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "查询失败。请检查语句后重试。",
     description: "SQL console fallback error",
   },
-  "databases.sqlReturnedRows": {
+  "databases.sqlReturnedRows_other": {
     message: "返回 {count} 行",
     description: "SQL console SELECT result count",
   },
-  "databases.sqlAffectedRows": {
+  "databases.sqlAffectedRows_other": {
     message: "影响 {count} 行",
     description: "SQL console write result count",
   },

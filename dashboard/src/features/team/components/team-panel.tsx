@@ -103,7 +103,7 @@ export function TeamPanel() {
                     used: seats.used,
                     limit: seats.limit,
                   })
-                : t("team.seatCount", { used: seats.used })}
+                : t("team.seatCount", { count: seats.used })}
             </span>
           ) : null}
         </CardTitle>

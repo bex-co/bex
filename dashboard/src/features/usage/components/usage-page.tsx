@@ -132,6 +132,8 @@ export function UsagePage() {
                 estimatedCost={summary?.estimatedCost ?? null}
                 invoicedUsd={billing?.currentCost?.amountUsd ?? null}
                 amountDueUsd={billing?.currentCost?.amountDueUsd ?? null}
+                ratedPeriodStart={billing?.currentCost?.periodStart ?? null}
+                ratedPeriodEnd={billing?.currentCost?.periodEnd ?? null}
                 loading={loading}
                 period={period ?? ""}
               />

@@ -295,7 +295,13 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.projectedTotal": {
     message: "{month} 预计合计",
-    description: "Charge-tree straight-line projection of month-end spend",
+    description:
+      "Charge-tree straight-line projection of month-end spend, for the estimate fallback whose total accrues over the calendar month",
+  },
+  "usage.projectedTotalBillingPeriod": {
+    message: "本计费周期预计合计",
+    description:
+      "Charge-tree straight-line projection of a Stripe-rated total. The subscription period need not align with the calendar month (it can span two), so no month is named (w6/050).",
   },
   "usage.chargeFree": {
     message: "已包含",

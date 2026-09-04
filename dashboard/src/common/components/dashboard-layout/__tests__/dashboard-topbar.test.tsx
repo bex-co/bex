@@ -310,6 +310,48 @@ describe("dashboard topbar navigation", () => {
     expect(screen.queryByText("session-cache")).not.toBeInTheDocument();
   });
 
+  // w6/046: with shouldFilter={false}, cmdk never prunes an itemless group —
+  // the "Navigation" heading floated over zero children whenever a query
+  // matched only resources (and "Resources" had the mirror-image artifact).
+  it("hides the Navigation heading when a query matches only resources (w6/046)", async () => {
+    const user = userEvent.setup();
+    const router = buildRouter("/", GlobalSearch);
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole("button", { name: "Search" });
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    await screen.findByPlaceholderText("Search pages and resources…");
+    // Both headings render for the empty query…
+    expect(screen.getByText("Navigation")).toBeInTheDocument();
+    expect(screen.getByText("Resources")).toBeInTheDocument();
+    expect(document.querySelector("[cmdk-separator]")).toBeInTheDocument();
+    // …but "db" matches only the primary-db database, zero navigation pages.
+    await user.type(screen.getByRole("combobox"), "db");
+
+    expect(await screen.findByText("primary-db")).toBeInTheDocument();
+    expect(screen.getByText("Resources")).toBeInTheDocument();
+    expect(screen.queryByText("Navigation")).not.toBeInTheDocument();
+    expect(document.querySelector("[cmdk-separator]")).toBeNull();
+  });
+
+  it("hides the Resources heading when a query matches only navigation pages (w6/046)", async () => {
+    const user = userEvent.setup();
+    const router = buildRouter("/", GlobalSearch);
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole("button", { name: "Search" });
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    await screen.findByPlaceholderText("Search pages and resources…");
+    // "webhooks" matches only the Webhooks nav page — no resource name, id,
+    // or type-label contains it.
+    await user.type(screen.getByRole("combobox"), "webhooks");
+
+    expect(await screen.findByText("Webhooks")).toBeInTheDocument();
+    expect(screen.getByText("Navigation")).toBeInTheDocument();
+    expect(screen.queryByText("Resources")).not.toBeInTheDocument();
+    expect(document.querySelector("[cmdk-separator]")).toBeNull();
+  });
+
   it("shows the empty state when the query matches nothing (w6/m50)", async () => {
     const user = userEvent.setup();
     const router = buildRouter("/", GlobalSearch);

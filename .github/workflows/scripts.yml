@@ -130,6 +130,7 @@ jobs:
           scripts/lib/image-digest-exists.sh
           scripts/disk-snapshot-secret.sh scripts/disk-snapshot-secret.test.sh
           scripts/request-logs-liveness.sh
+          scripts/funnel-counters.sh
       - name: Restore script hermetic safety tests
         run: bash scripts/restore.test.sh
       # ADR082 D5: the disk-snapshot provisioner's refusals — a shared bucket, a

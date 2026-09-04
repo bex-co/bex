@@ -17,6 +17,17 @@ const refetchEnv = vi.fn();
 const refetchFiles = vi.fn();
 const save = vi.fn();
 const trigger = vi.fn();
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
+// Mutable so individual tests can render the secret-files empty state.
+let fileNames: Array<{ id: string; name: string }> = [];
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: (...a: unknown[]) => toastSuccess(...a),
+    error: (...a: unknown[]) => toastError(...a),
+  },
+}));
 
 vi.mock("@/features/services/hooks/use-env-vars", () => ({
   useEnvVarKeys: () => ({
@@ -34,7 +45,7 @@ vi.mock("@/features/services/hooks/use-env-vars", () => ({
 
 vi.mock("@/features/services/hooks/use-secret-files", () => ({
   useSecretFileNames: () => ({
-    names: [{ id: "token.txt", name: "token.txt" }],
+    names: fileNames,
     loading: false,
     error: undefined,
     refetch: refetchFiles,
@@ -70,6 +81,9 @@ function renderEditor() {
 
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  fileNames = [{ id: "token.txt", name: "token.txt" }];
+  toastSuccess.mockReset();
+  toastError.mockReset();
   revealEnv
     .mockReset()
     .mockImplementation(async (key: string) => `${key}-value`);
@@ -332,8 +346,75 @@ describe("ServiceEnvironmentEditor", () => {
     expect(edit).toBeEnabled();
     await user.click(edit);
     expect(screen.getByRole("button", { name: "Add variable" })).toBeEnabled();
-    expect(screen.getAllByRole("button", { name: "Delete" }).length).toBeGreaterThan(
-      0,
+    expect(
+      screen.getAllByRole("button", { name: "Delete" }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("names the per-row copy button and toast after the one value copied (w6/044)", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    // The bulk "Copy env vars" label belongs to the Export menu only — no
+    // per-row button may borrow it.
+    const copyAlpha = await screen.findByRole("button", { name: "Copy ALPHA" });
+    expect(
+      screen.queryByRole("button", { name: "Copy env vars" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(copyAlpha);
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith("ALPHA copied"),
     );
+    expect(revealEnv).toHaveBeenCalledWith("ALPHA");
+
+    // The secret-file row is not an env var at all — its copy is named and
+    // toasted by file name too.
+    await user.click(screen.getByRole("button", { name: "Copy token.txt" }));
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith("token.txt copied"),
+    );
+    expect(revealFile).toHaveBeenCalledWith("token.txt");
+    expect(toastSuccess).not.toHaveBeenCalledWith("Environment copied");
+  });
+
+  it("enters the draft from the Secret Files empty state's own affordance (w6/057)", async () => {
+    fileNames = [];
+    const user = userEvent.setup();
+    renderEditor();
+
+    // Read mode: the empty state carries its own Add control (the enabling
+    // Edit button lives under the Environment Variables header).
+    expect(await screen.findByText("No secret files")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add secret file" }));
+
+    // Edit mode entered with a blank file row already staged.
+    expect(screen.getByRole("textbox", { name: "File name" })).toHaveValue("");
+    expect(
+      screen.getByRole("button", { name: "Save and deploy" }),
+    ).toBeInTheDocument();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("shows the file-name rule as neutral help until the field is touched (w6/057)", async () => {
+    fileNames = [];
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(
+      await screen.findByRole("button", { name: "Add secret file" }),
+    );
+
+    const nameInput = screen.getByRole("textbox", { name: "File name" });
+    const rule =
+      "Use letters, digits, dot, dash and underscore; not '.' or '..'.";
+    // Pristine: the rule is visible but neutral — no alert, no aria-invalid.
+    expect(screen.getByText(rule)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(nameInput).toHaveAttribute("aria-invalid", "false");
+
+    // Typing an invalid name upgrades the same rule to error styling.
+    await user.type(nameInput, "bad/name");
+    expect(await screen.findByRole("alert")).toHaveTextContent(rule);
+    expect(nameInput).toHaveAttribute("aria-invalid", "true");
   });
 });

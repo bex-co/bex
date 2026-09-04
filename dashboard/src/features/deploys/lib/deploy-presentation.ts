@@ -16,6 +16,37 @@ export function formatDeployTimestamp(iso: string | null): string | null {
   return formatDateTime(iso);
 }
 
+/**
+ * The deploy row's subtitle timestamp (w6/051): the verb follows the deploy's
+ * terminal state instead of stamping every row "Deployed", and a finished
+ * deploy (shipped, failed, or canceled) is stamped with its finish time —
+ * falling back to createdAt when no finish time was stored. Rows that haven't
+ * finished (created/queued/in-progress, or an unrecognized status) show their
+ * creation time under a "Created" verb.
+ */
+export function deployRowTimestamp(deploy: {
+  status: string;
+  createdAt: string | null;
+  finishedAt: string | null;
+}): { key: string; iso: string | null } {
+  const finished = deploy.finishedAt ?? deploy.createdAt;
+  switch (deploy.status) {
+    // A deactivated deploy is a former live one — its finish time is when it
+    // went live, so it keeps the "Deployed" verb like Render's history rows.
+    case "live":
+    case "deactivated":
+      return { key: "deploys.deployedAt", iso: finished };
+    case "canceled":
+      return { key: "deploys.canceledAt", iso: finished };
+    case "build_failed":
+    case "pre_deploy_failed":
+    case "update_failed":
+      return { key: "deploys.failedAt", iso: finished };
+    default:
+      return { key: "deploys.createdAt", iso: deploy.createdAt };
+  }
+}
+
 export function formatDeployDuration(
   startedAt: string | null,
   finishedAt: string | null,

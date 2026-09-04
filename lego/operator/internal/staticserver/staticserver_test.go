@@ -18,8 +18,10 @@ package staticserver
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -38,6 +40,11 @@ func newFakeOrigin(objs map[string]Object) *fakeOrigin {
 
 func (f *fakeOrigin) Get(_ context.Context, key string) (Object, error) {
 	f.gets[key]++
+	// Emulate the store's key cap: real S3 answers a key past 1024 bytes with a
+	// KeyTooLongError client error, not a clean not-found (w6/047).
+	if len(key) > maxObjectKeyBytes {
+		return Object{}, errors.New("api error KeyTooLongError: your key is too long")
+	}
 	obj, ok := f.objs[key]
 	if !ok {
 		return Object{}, ErrNotFound
@@ -215,6 +222,42 @@ func TestImplicitSPAFallback(t *testing.T) {
 	}
 	if rec := do(h, http.MethodGet, "/missing.png"); rec.Code != http.StatusNotFound {
 		t.Errorf("asset miss => %d, want 404", rec.Code)
+	}
+}
+
+func TestOverlongPathIs404NotOriginError(t *testing.T) {
+	// The store caps object keys at maxObjectKeyBytes; a request path whose
+	// derived key is longer can never match an object, so it must be a hard 404
+	// with no origin round trip — not even the SPA fallback — rather than a 502
+	// "origin error" from the store's key-length complaint (w6/047).
+	pad := maxObjectKeyBytes - len(key("")) // longest legal site-relative key
+	deep := strings.Repeat("a", pad-len(".html")) + ".html"
+	h, origin := newTestHandler(t, Site{}, map[string]Object{
+		key(deep):         {Body: []byte("deep"), ContentType: "text/html"},
+		key("index.html"): {Body: []byte("SPA"), ContentType: "text/html"},
+	})
+
+	// Control: a long-but-legal path (key exactly at the cap) still serves.
+	if rec := do(h, http.MethodGet, "/"+deep); rec.Code != http.StatusOK || rec.Body.String() != "deep" {
+		t.Fatalf("GET key at cap => %d %q, want 200 deep", rec.Code, rec.Body)
+	}
+
+	for _, p := range []string{
+		"/" + strings.Repeat("a", pad+1-len(".html")) + ".html",   // asset-like, one byte past the cap
+		"/" + strings.Repeat("a", pad+1),                          // extension-less: still no SPA fallback
+		"/" + strings.Repeat("a", pad+1-len("/index.html")) + "/", // legal raw key, but index.html defaulting crosses the cap
+	} {
+		if rec := do(h, http.MethodGet, p); rec.Code != http.StatusNotFound {
+			t.Errorf("GET overlong %d-byte path => %d (body %q), want 404", len(p), rec.Code, rec.Body)
+		}
+	}
+	if n := origin.gets[key("index.html")]; n != 0 {
+		t.Errorf("SPA fallback fetched index.html %d times for impossible keys, want 0", n)
+	}
+	for k, n := range origin.gets {
+		if len(k) > maxObjectKeyBytes {
+			t.Errorf("origin saw impossible %d-byte key (%d gets)", len(k), n)
+		}
 	}
 }
 

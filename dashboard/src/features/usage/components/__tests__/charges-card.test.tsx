@@ -12,10 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { act, type ReactElement } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ChargesCard } from "@/features/usage/components/charges-card";
-import { groupByCategory, projectMonthEnd } from "@/features/usage/lib/charges";
+import {
+  billingWindow,
+  groupByCategory,
+  projectMonthEnd,
+  projectPeriodEnd,
+} from "@/features/usage/lib/charges";
 import type {
   EstimatedCost,
   ResourceEstimate,
@@ -93,6 +101,77 @@ describe("projectMonthEnd", () => {
 
   it("returns null at the very start of a month, where the ratio explodes", () => {
     expect(projectMonthEnd(10, new Date(2026, 6, 1, 0, 0, 0))).toBeNull();
+  });
+});
+
+describe("projectPeriodEnd", () => {
+  // The w6/050 live shape: a subscription period anchored on the 16th. $30.01
+  // over 11 of its 31 days projects to ~$84.57 — the calendar-month math
+  // (26 of 31 August days elapsed) said $35.78, understating it ~2.4×.
+  const AUG_16 = new Date(2026, 7, 16);
+  const SEP_16 = new Date(2026, 8, 16);
+
+  it("scales spend by the elapsed fraction of the given window", () => {
+    expect(
+      projectPeriodEnd(30.01, new Date(2026, 7, 27), AUG_16, SEP_16),
+    ).toBeCloseTo(84.57, 1);
+  });
+
+  it("handles a window spanning two months with now in the second", () => {
+    // Sep 5 is 20 days into the Aug 16 → Sep 16 window.
+    expect(
+      projectPeriodEnd(30.01, new Date(2026, 8, 5), AUG_16, SEP_16),
+    ).toBeCloseTo(46.52, 1);
+  });
+
+  it("matches the calendar-month projection when the window is the month", () => {
+    expect(
+      projectPeriodEnd(
+        10,
+        MID_JULY,
+        new Date(2026, 6, 1),
+        new Date(2026, 7, 1),
+      ),
+    ).toBe(projectMonthEnd(10, MID_JULY));
+  });
+
+  it("returns null at or before the window start, where the ratio explodes", () => {
+    expect(projectPeriodEnd(30.01, AUG_16, AUG_16, SEP_16)).toBeNull();
+    expect(
+      projectPeriodEnd(30.01, new Date(2026, 7, 10), AUG_16, SEP_16),
+    ).toBeNull();
+  });
+
+  it("returns null once the window has closed — nothing left to project", () => {
+    expect(projectPeriodEnd(30.01, SEP_16, AUG_16, SEP_16)).toBeNull();
+    expect(
+      projectPeriodEnd(30.01, new Date(2026, 8, 20), AUG_16, SEP_16),
+    ).toBeNull();
+  });
+
+  it("returns null for an empty or inverted window", () => {
+    expect(
+      projectPeriodEnd(30.01, new Date(2026, 7, 27), AUG_16, AUG_16),
+    ).toBeNull();
+    expect(
+      projectPeriodEnd(30.01, new Date(2026, 7, 27), SEP_16, AUG_16),
+    ).toBeNull();
+  });
+});
+
+describe("billingWindow", () => {
+  it("parses a valid RFC3339 pair", () => {
+    const w = billingWindow("2026-08-16T00:00:00Z", "2026-09-16T00:00:00Z");
+    expect(w).not.toBeNull();
+    expect(w!.start.toISOString()).toBe("2026-08-16T00:00:00.000Z");
+    expect(w!.end.toISOString()).toBe("2026-09-16T00:00:00.000Z");
+  });
+
+  it("returns null when either bound is missing or unparseable", () => {
+    expect(billingWindow("", "2026-09-16T00:00:00Z")).toBeNull();
+    expect(billingWindow("2026-08-16T00:00:00Z", "")).toBeNull();
+    expect(billingWindow(null, null)).toBeNull();
+    expect(billingWindow("not-a-date", "2026-09-16T00:00:00Z")).toBeNull();
   });
 });
 
@@ -309,6 +388,74 @@ describe("ChargesCard", () => {
     ).toBeInTheDocument();
   });
 
+  // w6/050: Stripe's rated total covers the subscription period (anchored on
+  // the subscription's day-of-month), not the calendar month, so its
+  // projection must use that window.
+  it("projects a rated total over its subscription period, not the calendar month", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource()], "10.00")}
+        invoicedUsd="12.34"
+        ratedPeriodStart={new Date(2026, 6, 6).toISOString()}
+        ratedPeriodEnd={new Date(2026, 7, 6).toISOString()}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+
+    // July 6 → Aug 6 is 31 days with 10 elapsed: $12.34 × 31/10 ⇒ $38.25.
+    expect(
+      screen.getByText("Projected for this billing period"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("$38.25 USD")).toBeInTheDocument();
+    // The calendar-month math (15 of July's 31 days) would have said $25.50
+    // and named a month the window only partly covers.
+    expect(screen.queryByText("$25.50 USD")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Projected total for July/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not project a rated total whose period bounds are unknown", () => {
+    // Projecting over the calendar month would be wrong by construction, so
+    // an unknowable window means no projection at all.
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource()], "10.00")}
+        invoicedUsd="12.34"
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+
+    expect(screen.queryByText(/Projected/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the calendar-month window and label for the estimate fallback", () => {
+    // The category sum accrues from the 1st, so the month is its right
+    // window even when Stripe period bounds happen to be present.
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource()], "10.00")}
+        invoicedUsd={null}
+        ratedPeriodStart={new Date(2026, 6, 6).toISOString()}
+        ratedPeriodEnd={new Date(2026, 7, 6).toISOString()}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+
+    // $4.90 (the category sum) × 31/15 ⇒ $10.13.
+    expect(screen.getByText(/Projected total for July/)).toBeInTheDocument();
+    expect(screen.getByText("$10.13 USD")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Projected for this billing period"),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not project a month that has already ended", () => {
     render(
       <ChargesCard
@@ -393,5 +540,95 @@ describe("ChargesCard", () => {
     expect(
       screen.queryByText(/an estimate, not an invoice/i),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * SSR-render `serverNode`, then hydrate that exact markup as `clientNode`, and
+ * report the server HTML, the settled DOM text, and any React #418s
+ * (`recovered`). Distinct nodes simulate `now = new Date()` being evaluated
+ * independently in each pass — the production path every test above bypasses
+ * by injecting a fixed `now` (w6/049).
+ */
+function ssrThenHydrate(
+  serverNode: ReactElement,
+  clientNode: ReactElement = serverNode,
+) {
+  const html = renderToString(serverNode);
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  document.body.appendChild(container);
+  const recovered: unknown[] = [];
+  // React logs the mismatch as well; onRecoverableError is the assertable
+  // channel, so keep the console quiet.
+  const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  let root: ReturnType<typeof hydrateRoot> | undefined;
+  act(() => {
+    root = hydrateRoot(container, clientNode, {
+      onRecoverableError: (e) => recovered.push(e),
+    });
+  });
+  const afterHydrate = container.textContent ?? "";
+  act(() => root?.unmount());
+  container.remove();
+  errSpy.mockRestore();
+  return { html, afterHydrate, recovered };
+}
+
+describe("ChargesCard across the SSR/hydration boundary (w6/049)", () => {
+  const props = {
+    estimatedCost: estimate([resource()]),
+    invoicedUsd: null,
+    loading: false,
+    period: "",
+  };
+
+  it("emits no projection during SSR and hydrates cleanly across two clock reads", () => {
+    const { html, afterHydrate, recovered } = ssrThenHydrate(
+      <ChargesCard {...props} now={MID_JULY} />,
+      <ChargesCard {...props} now={new Date(2026, 6, 16, 1, 0, 0)} />,
+    );
+
+    // The SSR pass bakes no clock-derived projection into the markup…
+    expect(html).not.toContain("Projected");
+    // …so the hour between the two clock reads — which would price the
+    // projection at $10.13 server-side vs $10.10 client-side — cannot
+    // mismatch as text (React error #418).
+    expect(recovered).toHaveLength(0);
+    // The row appears after hydration, priced from the client's clock only.
+    expect(afterHydrate).toContain("Projected total for July");
+    expect(afterHydrate).toContain("$10.10 USD");
+  });
+
+  it("covers the real default-clock path: each pass reads its own new Date()", () => {
+    // No `now` prop at all — the default parameter runs twice, at genuinely
+    // different instants, exactly as in production.
+    const { html, afterHydrate, recovered } = ssrThenHydrate(
+      <ChargesCard {...props} />,
+    );
+
+    expect(html).not.toContain("Projected");
+    expect(recovered).toHaveLength(0);
+    expect(afterHydrate).toContain("Projected total for");
+  });
+
+  it("tolerates a month boundary between the SSR and hydration clock reads", () => {
+    // The total-row label flips from "month to date" to "for the period" at
+    // the boundary. It carries suppressHydrationWarning rather than a mount
+    // gate (gating would flash the wrong label on every load to guard a
+    // sub-second once-a-month race that the real page — which always hydrates
+    // with period="" — cannot even reach), so the divergence must not raise a
+    // #418. Under suppression React keeps the server's label rather than
+    // patching it, so no exact-label assertion here — the absence of a
+    // recoverable error is the guarantee.
+    const juneProps = { ...props, period: "2026-06" };
+    const { afterHydrate, recovered } = ssrThenHydrate(
+      <ChargesCard {...juneProps} now={new Date(2026, 5, 30, 23, 59, 59)} />,
+      <ChargesCard {...juneProps} now={new Date(2026, 6, 1, 0, 0, 1)} />,
+    );
+
+    expect(recovered).toHaveLength(0);
+    expect(afterHydrate).toMatch(/Total (month to date|for the period)/);
+    expect(afterHydrate).not.toContain("Projected");
   });
 });

@@ -61,6 +61,13 @@ var ErrOverloaded = errors.New("staticserver: origin fetch capacity reached")
 // for real static assets, far below the pod memory budget.
 const maxOriginObjectBytes = 32 << 20 // 32 MiB
 
+// maxObjectKeyBytes is the object store's hard cap on an object key's length
+// (S3 caps keys at 1024 bytes, counting the site's revision prefix). A longer
+// derived key can never name an existing object, so the handler answers 404 up
+// front rather than letting the store's key-length client error surface as a
+// 502 "origin error" (w6/047).
+const maxObjectKeyBytes = 1024
+
 // DefaultCacheBytes is the default in-memory object cache budget (main.go may
 // override it via BEX_STATIC_CACHE_BYTES).
 const DefaultCacheBytes = 256 << 20 // 256 MiB
@@ -185,6 +192,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reqPath = normalizePath(target)
 	}
 
+	// The store cannot hold a key past maxObjectKeyBytes, so a path whose
+	// derived key (after index.html defaulting) is longer can never match an
+	// object — nor plausibly be an SPA route. Answer 404 without an origin
+	// round trip instead of misreporting the store's key-length client error
+	// as an origin failure (w6/047).
+	if len(site.keyFor(lookupPath(reqPath))) > maxObjectKeyBytes {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
 	obj, servedPath, err := h.fetch(r.Context(), site, reqPath)
 	if errors.Is(err, ErrNotFound) {
 		// SPA fallback: an explicit "/*" rewrite route (Render's SPA rule) already
@@ -253,12 +270,18 @@ func safeRedirectTarget(target string) bool {
 // fetch resolves reqPath to an object, applying index.html defaulting for "/"
 // and directory-style paths. Returns the served key path for content typing.
 func (h *Handler) fetch(ctx context.Context, site Site, reqPath string) (Object, string, error) {
-	lookup := reqPath
-	if lookup == "/" || strings.HasSuffix(lookup, "/") {
-		lookup = strings.TrimSuffix(lookup, "/") + "/index.html"
-	}
+	lookup := lookupPath(reqPath)
 	obj, err := h.get(ctx, site, lookup)
 	return obj, lookup, err
+}
+
+// lookupPath applies index.html defaulting: "/" and directory-style paths
+// resolve to the index.html beneath them.
+func lookupPath(reqPath string) string {
+	if reqPath == "/" || strings.HasSuffix(reqPath, "/") {
+		return strings.TrimSuffix(reqPath, "/") + "/index.html"
+	}
+	return reqPath
 }
 
 // spaFallback fetches the site's root index.html for extension-less misses so a

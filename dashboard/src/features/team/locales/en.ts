@@ -174,10 +174,15 @@ const enTeam: Record<string, TranslationEntry> = {
     description:
       "Seat usage in the Team card title on a limited plan — accepted members plus pending invites over the plan cap",
   },
-  "team.seatCount": {
-    message: "{used} seats used",
+  "team.seatCount_one": {
+    message: "{count} seat used",
     description:
-      "Seat count in the Team card title on an unlimited plan (no cap to show)",
+      "Seat count in the Team card title on an unlimited plan (no cap to show, singular)",
+  },
+  "team.seatCount_other": {
+    message: "{count} seats used",
+    description:
+      "Seat count in the Team card title on an unlimited plan (no cap to show, plural)",
   },
   "team.seatsFullBody": {
     message:

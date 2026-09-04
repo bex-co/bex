@@ -86,7 +86,25 @@ export function isValidCron(s: string): boolean {
   return fields.every((field, i) => validField(field, FIELDS[i]));
 }
 
-const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+// A whole-field named token (MON, JAN) rewritten to its numeric form via the
+// same lookup tables resolveValue uses, so describeCron's digit-based phrase
+// branches treat "0 0 * * MON" exactly like "0 0 * * 1". Compound terms
+// (ranges, lists, steps) pass through untouched — the numeric phrase branches
+// don't describe those shapes either.
+function canonicalField(field: string, spec: FieldSpec): string {
+  const named = spec.names?.[field.toLowerCase()];
+  return named === undefined ? field : String(named);
+}
 
 function hhmm(hour: string, minute: string): string {
   return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
@@ -99,16 +117,20 @@ function hhmm(hour: string, minute: string): string {
 export function describeCron(s: string): string | null {
   const t = s.trim();
   if (!isValidCron(t)) return null;
-  const [minute, hour, dom, month, dow] = t.split(/\s+/);
+  const [minute, hour, dom, rawMonth, rawDow] = t.split(/\s+/);
+  const month = canonicalField(rawMonth, FIELDS[3]);
+  const dow = canonicalField(rawDow, FIELDS[4]);
   const allDates = dom === "*" && month === "*" && dow === "*";
 
   if (minute === "*" && hour === "*" && allDates) return "Every minute";
 
   const stepMinute = /^\*\/(\d+)$/.exec(minute);
-  if (stepMinute && hour === "*" && allDates) return `Every ${stepMinute[1]} minutes`;
+  if (stepMinute && hour === "*" && allDates)
+    return `Every ${stepMinute[1]} minutes`;
 
   const stepHour = /^\*\/(\d+)$/.exec(hour);
-  if (/^\d+$/.test(minute) && stepHour && allDates) return `Every ${stepHour[1]} hours`;
+  if (/^\d+$/.test(minute) && stepHour && allDates)
+    return `Every ${stepHour[1]} hours`;
 
   if (/^\d+$/.test(minute) && hour === "*" && allDates) {
     return minute === "0" ? "Every hour" : `Every hour at minute ${minute}`;

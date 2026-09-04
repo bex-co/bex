@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   deployMatchesSearch,
+  deployRowTimestamp,
   formatDeployDuration,
   formatDeployTimestamp,
 } from "../deploy-presentation";
@@ -37,6 +38,59 @@ describe("deploy presentation", () => {
         "2026-07-16T00:00:00.900Z",
       ),
     ).toBe("1s");
+  });
+
+  it("labels each terminal state with its own verb and finish time (w6/051)", () => {
+    const createdAt = "2026-08-08T19:00:00Z";
+    const finishedAt = "2026-08-08T19:24:00Z";
+
+    // A shipped deploy is stamped when it went live, not when its row opened.
+    expect(
+      deployRowTimestamp({ status: "live", createdAt, finishedAt }),
+    ).toEqual({ key: "deploys.deployedAt", iso: finishedAt });
+    // A deactivated deploy was live once — it keeps the "Deployed" verb.
+    expect(
+      deployRowTimestamp({ status: "deactivated", createdAt, finishedAt }),
+    ).toEqual({ key: "deploys.deployedAt", iso: finishedAt });
+    expect(
+      deployRowTimestamp({ status: "canceled", createdAt, finishedAt }),
+    ).toEqual({ key: "deploys.canceledAt", iso: finishedAt });
+    for (const status of [
+      "build_failed",
+      "pre_deploy_failed",
+      "update_failed",
+    ]) {
+      expect(deployRowTimestamp({ status, createdAt, finishedAt })).toEqual({
+        key: "deploys.failedAt",
+        iso: finishedAt,
+      });
+    }
+  });
+
+  it("falls back to createdAt when a finished deploy stored no finish time", () => {
+    const createdAt = "2026-08-08T19:00:00Z";
+    expect(
+      deployRowTimestamp({ status: "live", createdAt, finishedAt: null }),
+    ).toEqual({ key: "deploys.deployedAt", iso: createdAt });
+    expect(
+      deployRowTimestamp({ status: "canceled", createdAt, finishedAt: null }),
+    ).toEqual({ key: "deploys.canceledAt", iso: createdAt });
+  });
+
+  it("stamps unfinished (and unknown-status) deploys with their creation time", () => {
+    const createdAt = "2026-08-08T19:00:00Z";
+    for (const status of [
+      "created",
+      "queued",
+      "build_in_progress",
+      "pre_deploy_in_progress",
+      "update_in_progress",
+      "something_new",
+    ]) {
+      expect(
+        deployRowTimestamp({ status, createdAt, finishedAt: null }),
+      ).toEqual({ key: "deploys.createdAt", iso: createdAt });
+    }
   });
 
   it("searches id, full commit SHA, and message case-insensitively", () => {

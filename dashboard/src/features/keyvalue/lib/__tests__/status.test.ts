@@ -69,6 +69,25 @@ describe("toKeyValueViews", () => {
     expect(v.suspended).toBe(true);
     expect(v.updatedAt).toBeNull();
   });
+
+  it("normalizes the private-store empty-string externalHost to null (w6/052)", () => {
+    // bex-api sends "" (not null) when public access is off.
+    const v = toKeyValueView({
+      __typename: "KeyValue",
+      id: "kv1",
+      name: "kv1",
+      plan: "starter",
+      version: "8",
+      status: "available",
+      suspended: "not_suspended",
+      createdAt: null,
+      updatedAt: null,
+      region: null,
+      externalHost: "",
+      public: false,
+    });
+    expect(v.externalHost).toBeNull();
+  });
 });
 
 describe("deriveStatus", () => {

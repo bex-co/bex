@@ -1164,13 +1164,21 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "The query failed. Check the statement and try again.",
     description: "SQL console fallback error",
   },
-  "databases.sqlReturnedRows": {
-    message: "{count} rows returned",
-    description: "SQL console SELECT result count",
+  "databases.sqlReturnedRows_one": {
+    message: "{count} row returned",
+    description: "SQL console SELECT result count (singular)",
   },
-  "databases.sqlAffectedRows": {
+  "databases.sqlReturnedRows_other": {
+    message: "{count} rows returned",
+    description: "SQL console SELECT result count (plural)",
+  },
+  "databases.sqlAffectedRows_one": {
+    message: "{count} row affected",
+    description: "SQL console write result count (singular)",
+  },
+  "databases.sqlAffectedRows_other": {
     message: "{count} rows affected",
-    description: "SQL console write result count",
+    description: "SQL console write result count (plural)",
   },
   "databases.sqlTruncated": {
     message: "Result capped at {limit} rows",

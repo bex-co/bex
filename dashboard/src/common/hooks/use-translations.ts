@@ -8,6 +8,13 @@ import { en } from "@/i18n";
  * In dev, warns on keys that skip the `namespace.` prefix convention and on
  * keys missing from the `en` resources (the source of truth for what keys
  * exist), since a typo'd key otherwise silently renders itself as the value.
+ *
+ * Pluralization convention (w6/062): a count-bearing string is authored as
+ * `"ns.key_one"` + `"ns.key_other"` in `en` (zh gets only `_other` — Chinese
+ * has a single plural category) and called as `t("ns.key", { count })` with a
+ * NUMERIC count; i18next resolves the suffix natively. The base key never
+ * exists in the catalog, so the dev guard accepts it when its `_other` variant
+ * does — and warns when such a key is called without a numeric `count`.
  */
 export function useTranslations() {
   const { t: i18nT, i18n } = useTranslation();
@@ -25,9 +32,19 @@ export function useTranslations() {
           );
         }
         if (!(key in en)) {
-          console.warn(
-            `Translation key "${key}" was not found in the en resources.`,
-          );
+          if (`${key}_other` in en) {
+            // A native-plural key: only its `_one`/`_other` variants exist.
+            if (typeof params?.count !== "number") {
+              console.warn(
+                `Translation key "${key}" is pluralized (_one/_other) and ` +
+                  `needs a numeric \`count\` param to resolve.`,
+              );
+            }
+          } else {
+            console.warn(
+              `Translation key "${key}" was not found in the en resources.`,
+            );
+          }
         }
       }
 

@@ -409,9 +409,13 @@ const enWebhooks: Record<string, TranslationEntry> = {
     description: "Delivery-history pagination button",
   },
   // --- event picker (w1/m49/t002) ---
-  "webhooks.selectedCount": {
+  "webhooks.selectedCount_one": {
+    message: "{count} event selected",
+    description: "Event-picker live selection counter (singular)",
+  },
+  "webhooks.selectedCount_other": {
     message: "{count} events selected",
-    description: "Event-picker live selection counter",
+    description: "Event-picker live selection counter (plural)",
   },
   "webhooks.searchEvents": {
     message: "Search for events",

@@ -805,6 +805,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Use letters, digits, dot, dash and underscore; not '.' or '..'.",
     description: "Secret-files add-file validation message for an invalid name",
   },
+  "services.secretFileNameHint": {
+    message: "Use letters, digits, dot, dash and underscore; not '.' or '..'.",
+    description:
+      "Neutral file-name rule under a new secret-file row before the user types or blurs — same rule as secretFileInvalidName but helper styling, not an error",
+  },
   "services.secretFileDeleteConfirmTitle": {
     message: "Remove {name}?",
     description: "Secret-file delete-confirmation dialog title",
@@ -899,6 +904,17 @@ const enServices: Record<string, TranslationEntry> = {
   "services.envGroupEmptyContents": {
     message: "No variables or files yet.",
     description: "Env-groups: shown when a group has no vars or secret files",
+  },
+  "services.envGroupKeyOverridden": {
+    message: "Overridden by this service's own {key} environment variable",
+    description:
+      "Tooltip on a linked group's key badge when a service variable of the same name shadows it at runtime (service wins)",
+  },
+  "services.envGroupOverriddenNote": {
+    message:
+      "Struck-through keys are overridden by this service's own environment variables.",
+    description:
+      "Legend under a linked group's key list when at least one key is shadowed by a service variable",
   },
   "services.envGroupLink": {
     message: "Link",
@@ -1396,9 +1412,15 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.domainOwnershipGuidance": {
     message:
-      "First, create this exact TXT record to prove ownership. The domain is not routed until verification succeeds.",
+      "First, add this TXT record to prove ownership; the domain is not routed until verification succeeds. This host holds one TXT record per domain — add this value as an additional record and keep any bex-domain-verification values already there.",
     description:
-      "Guidance above the durable custom-domain ownership TXT challenge",
+      "Guidance above the durable custom-domain ownership TXT challenge — must say the host is shared (one record per domain) so users don't overwrite a sibling domain's proof in a single-value DNS edit box",
+  },
+  "services.domainOwnershipSiblingsNote": {
+    message:
+      "Other domains on this service share this TXT host — keep their records in place:",
+    description:
+      "Intro to the list of sibling domains' TXT values at the same shared ownership host",
   },
   "services.domainTrafficRecordTitle": {
     message: "Traffic record",
@@ -1914,12 +1936,13 @@ const enServices: Record<string, TranslationEntry> = {
   "services.buildCommandLabel": {
     message: "Build Command",
     description:
-      "Build & Deploy: build-command field label (static_site settings)",
+      "Build & Deploy: build-command field label (all service types' settings + the New Service form)",
   },
   "services.buildCommandHint": {
     message:
-      "The command that builds your site's static output (e.g., npm run build). Leave blank to use the runtime default.",
-    description: "Build & Deploy: build-command help text",
+      "The command that builds your service (e.g., npm run build). Leave blank to use the runtime default.",
+    description:
+      "Build & Deploy: build-command help text — shown for every service type, so it must not assume static-site output",
   },
   "services.buildCommandConfirmEmpty": {
     message: "Runtime default",
@@ -3342,9 +3365,15 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Recent deploys and service changes.",
     description: "Events tab card description",
   },
-  "services.eventsCount": {
+  "services.eventsCount_one": {
+    message: "{count} recent event",
+    description:
+      "Accessible label for the number of visible service events (singular)",
+  },
+  "services.eventsCount_other": {
     message: "{count} recent events",
-    description: "Accessible label for the number of visible service events",
+    description:
+      "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsEmptyTitle": {
     message: "No activity yet",
@@ -3968,9 +3997,25 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Discard restored changes",
     description: "Button that throws away a recovered env draft",
   },
-  "services.environmentUnsavedSummary": {
-    message: "{variables} variable operations · {files} file operations",
-    description: "Combined draft operation count",
+  "services.environmentUnsavedVariables_one": {
+    message: "{count} variable operation",
+    description:
+      "Draft variable-operation count, composed with the file count at the call site (singular)",
+  },
+  "services.environmentUnsavedVariables_other": {
+    message: "{count} variable operations",
+    description:
+      "Draft variable-operation count, composed with the file count at the call site (plural)",
+  },
+  "services.environmentUnsavedFiles_one": {
+    message: "{count} file operation",
+    description:
+      "Draft file-operation count, composed with the variable count at the call site (singular)",
+  },
+  "services.environmentUnsavedFiles_other": {
+    message: "{count} file operations",
+    description:
+      "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
   "services.environmentSaveOptions": {
     message: "Environment save options",
@@ -4048,6 +4093,16 @@ const enServices: Record<string, TranslationEntry> = {
   "services.envCopySuccess": {
     message: "Environment copied",
     description: "Toast after the complete dotenv export is copied",
+  },
+  "services.envCopyOne": {
+    message: "Copy {name}",
+    description:
+      "aria-label of the per-row copy button for one env var or secret file — distinct from the bulk envCopy dotenv export",
+  },
+  "services.envCopyOneSuccess": {
+    message: "{name} copied",
+    description:
+      "Toast after one env var value or secret file's contents is copied — distinct from the bulk envCopySuccess",
   },
   "services.envAddVariable": {
     message: "Add variable",

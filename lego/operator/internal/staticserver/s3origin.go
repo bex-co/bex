@@ -127,7 +127,11 @@ func isNotFound(err error) bool {
 	var apiErr smithy.APIError
 	if errors.As(err, &apiErr) {
 		switch apiErr.ErrorCode() {
-		case "NoSuchKey", "NotFound", "404":
+		// KeyTooLongError is S3's answer to a key past its length cap — a key
+		// that can never exist, so it maps to not-found like the rest. The
+		// handler rejects such keys up front (w6/047); this covers a store
+		// with a lower cap.
+		case "NoSuchKey", "NotFound", "404", "KeyTooLongError":
 			return true
 		}
 	}

@@ -402,7 +402,7 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     description: "Delivery-history pagination button",
   },
   // --- event picker (w1/m49/t002) ---
-  "webhooks.selectedCount": {
+  "webhooks.selectedCount_other": {
     message: "已选择 {count} 个事件",
     description: "Event-picker live selection counter",
   },

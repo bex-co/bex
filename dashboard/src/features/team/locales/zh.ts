@@ -171,8 +171,8 @@ const zhTeam: Record<string, TranslationEntry> = {
     description:
       "Seat usage in the Team card title on a limited plan — accepted members plus pending invites over the plan cap",
   },
-  "team.seatCount": {
-    message: "已用 {used} 个席位",
+  "team.seatCount_other": {
+    message: "已用 {count} 个席位",
     description:
       "Seat count in the Team card title on an unlimited plan (no cap to show)",
   },

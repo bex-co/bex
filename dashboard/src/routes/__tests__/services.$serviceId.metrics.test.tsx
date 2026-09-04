@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ServiceMetricsPage } from "../services.$serviceId.metrics";
+import { Route, ServiceMetricsPage } from "../services.$serviceId.metrics";
+import type { RangeSearch } from "@/features/metrics/lib/range";
 import type { ServiceView } from "@/features/services/types";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
 
@@ -36,6 +37,35 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 beforeEach(() => {
   serverState.service = null;
   serverState.loading = false;
+});
+
+describe("metrics range search contract (w6/065)", () => {
+  const validate = Route.options.validateSearch as (
+    search: Record<string, unknown>,
+  ) => RangeSearch;
+
+  it("round-trips a picked preset and a valid custom window through the URL", () => {
+    expect(validate({ range: "30d" })).toEqual({ range: "30d" });
+    expect(
+      validate({
+        range: "custom",
+        rangeStart: "2026-07-01T00:00:00.000Z",
+        rangeEnd: "2026-07-01T06:00:00.000Z",
+      }),
+    ).toEqual({
+      range: "custom",
+      rangeStart: "2026-07-01T00:00:00.000Z",
+      rangeEnd: "2026-07-01T06:00:00.000Z",
+    });
+  });
+
+  it("drops malformed values so the 12h default still applies", () => {
+    expect(validate({})).toEqual({});
+    expect(validate({ range: "6h" })).toEqual({}); // retired id
+    expect(validate({ range: "custom" })).toEqual({}); // no bounds
+    // The Logs page's `r` Render alias is deliberately not honored here.
+    expect(validate({ r: "1h" })).toEqual({});
+  });
 });
 
 describe("ServiceMetricsPage (w5/m48 — static sites get no pod metrics)", () => {

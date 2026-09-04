@@ -410,13 +410,13 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Duration {duration}",
     description: "Detail header — elapsed session wall-clock",
   },
-  "agentSessions.metaTurn": {
-    message: "{turns} turn",
+  "agentSessions.metaTurns_one": {
+    message: "{count} turn",
     description: "Detail header — number of prompt turns taken (singular)",
   },
-  "agentSessions.metaTurns": {
-    message: "{turns} turns",
-    description: "Detail header — number of prompt turns taken",
+  "agentSessions.metaTurns_other": {
+    message: "{count} turns",
+    description: "Detail header — number of prompt turns taken (plural)",
   },
   "agentSessions.metaDelivery": {
     message: "Delivery {mode}",
@@ -693,17 +693,31 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Working…",
     description: "Activity-group summary while any tool step is still pending",
   },
-  "agentSessions.activityEdited": {
+  "agentSessions.activityEdited_one": {
+    message: "Edited {count} file",
+    description:
+      "Activity-group summary when the turn edited files (diffs, singular)",
+  },
+  "agentSessions.activityEdited_other": {
     message: "Edited {count} files",
     description: "Activity-group summary when the turn edited files (diffs)",
   },
-  "agentSessions.activityRan": {
+  "agentSessions.activityRan_one": {
+    message: "Ran {count} command",
+    description:
+      "Activity-group summary when the turn ran commands/terminals (singular)",
+  },
+  "agentSessions.activityRan_other": {
     message: "Ran {count} commands",
     description: "Activity-group summary when the turn ran commands/terminals",
   },
-  "agentSessions.activitySteps": {
+  "agentSessions.activitySteps_one": {
+    message: "{count} step",
+    description: "Activity-group summary fallback — the step count (singular)",
+  },
+  "agentSessions.activitySteps_other": {
     message: "{count} steps",
-    description: "Activity-group summary fallback — the step count",
+    description: "Activity-group summary fallback — the step count (plural)",
   },
   "agentSessions.scrollToBottom": {
     message: "Scroll to latest",

@@ -99,15 +99,16 @@ func TestBuildEndedStatus(t *testing.T) {
 }
 
 // TestBuildLifecycleFacts proves build_started rides the deploy's creation time
-// and build_ended appears (with an outcome) only once the build is over.
+// and build_ended appears (with an outcome) only once the build is over. The
+// row's Image is empty — a genuine repo build's row is born without one
+// (CreateDeploy stamps the service's spec.image, "" for a repo-backed service).
 func TestBuildLifecycleFacts(t *testing.T) {
 	created := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
-	open := Deploy{ID: "dep-1", AppID: "srv-1", Image: "reg/x:1", Status: DeployBuildInProgress, CreatedAt: created}
+	open := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployBuildInProgress, CreatedAt: created}
 
 	building := buildLifecycleFacts(open, "", nil)
 	if len(building) != 1 || building[0].Type != EventFactBuildStarted ||
-		building[0].SourceKey != "deploy:dep-1:build_started" || !building[0].At.Equal(created) ||
-		building[0].Image != "reg/x:1" {
+		building[0].SourceKey != "deploy:dep-1:build_started" || !building[0].At.Equal(created) {
 		t.Fatalf("still-building facts = %+v, want a single build_started at created_at", building)
 	}
 
@@ -115,6 +116,33 @@ func TestBuildLifecycleFacts(t *testing.T) {
 	if len(failed) != 2 || failed[1].Type != EventFactBuildEnded ||
 		failed[1].SourceKey != "deploy:dep-1:build_ended" || failed[1].Status != EventStatusFailed {
 		t.Fatalf("failed-build facts = %+v, want build_started + build_ended(failed)", failed)
+	}
+}
+
+// TestBuildLifecycleFactsImageBornRowEmitsNothing is the w6/061 regression: a
+// deploy row born with a resolved image (a rollback — CreateRollbackDeploy
+// stamps the restored image at open) runs no BuildKit Job, so it must emit
+// neither build_started nor build_ended in ANY phase, including the terminal
+// ones its 5-second convergence sprints through. Before the per-deploy guard,
+// the call sites' per-service d.Repo check let a rollback on a repo-backed
+// service report a phantom build on the Events timeline, the build webhooks,
+// and the metrics build marker alike.
+func TestBuildLifecycleFactsImageBornRowEmitsNothing(t *testing.T) {
+	created := time.Date(2026, 8, 27, 12, 28, 57, 0, time.UTC)
+	rollback := Deploy{
+		ID: "dep-rb", AppID: "srv-1", Trigger: TriggerRollback,
+		Image: "reg/x:gen-1@sha256:c0dd", ResolvedImage: "reg/x:gen-1@sha256:c0dd",
+		RollbackOf: "dep-old", Status: DeployUpdateInProgress,
+		CreatedAt: created, StartedAt: &created,
+	}
+	for _, newStatus := range []string{"", DeployUpdateInProgress, DeployLive, DeployUpdateFailed, DeployCanceled} {
+		if facts := buildLifecycleFacts(rollback, newStatus, nil); facts != nil {
+			t.Errorf("image-born deploy observed at %q emitted %+v, want no build facts", newStatus, facts)
+		}
+	}
+	// Same rule through the Cancel verb's derivation (the third call site).
+	if facts := CanceledBuildLifecycleFacts(rollback); facts != nil {
+		t.Errorf("canceled image-born deploy emitted %+v, want no build facts", facts)
 	}
 }
 
@@ -1189,6 +1217,133 @@ func TestRecordDeploySupersededMidBuildEmitsBuildEndedCanceled(t *testing.T) {
 	ended, ok := st.eventFacts["deploy:"+deployID+":build_ended"]
 	if !ok || ended.Type != EventFactBuildEnded || ended.Status != EventStatusCanceled {
 		t.Fatalf("build_ended = %+v, ok=%v, want present with status canceled", ended, ok)
+	}
+}
+
+// TestReconcileRollbackDeployEmitsNoBuildFacts is the w6/061 live repro driven
+// through recordLifecycleFacts' own call site: on a repo-backed service, a
+// rollback deploy converging to live must emit neither build_started nor
+// build_ended — its row was born with the restored image, so no BuildKit Job
+// ever ran. The service's own repo build (the same capture's control) must
+// still close its pair, proving the guard discriminates per deploy, not per
+// service.
+func TestReconcileRollbackDeployEmitsNoBuildFacts(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	row, _ := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Repo: "https://example.com/acme/web.git",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+	})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("create projection: %v", err)
+	}
+	deploys, err := st.ListDeploys(ctx, row.ID, DeployFilter{})
+	if err != nil || len(deploys) != 1 {
+		t.Fatalf("deploys after create = %+v (err %v), want the single create row", deploys, err)
+	}
+	buildDeployID := deploys[0].ID
+
+	// The repo build converges live (generation 1).
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	app.Status.ReleaseGeneration = 1
+	app.Status.ActiveRevision = "rev-1"
+	app.Status.Image = "reg/web:gen-1@sha256:c0dd"
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe live: %v", err)
+	}
+
+	// Roll back to it: the new row is born with the restored image (the
+	// CreateRollbackDeploy contract), then converges live as generation 2.
+	rb, err := st.CreateRollbackDeploy(ctx, row.ID, "reg/web:gen-1@sha256:c0dd", buildDeployID, 2, CommitInfo{})
+	if err != nil {
+		t.Fatalf("create rollback deploy: %v", err)
+	}
+	app = getApp(t, cl)
+	app.Status.ReleaseGeneration = 2
+	app.Status.ActiveRevision = "rev-2"
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe rollback live: %v", err)
+	}
+
+	got, err := st.GetDeploy(ctx, row.ID, rb.ID)
+	if err != nil || got.Status != DeployLive {
+		t.Fatalf("rollback deploy = %+v (err %v), want live", got, err)
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	// The control: the genuine repo build closed its pair.
+	if _, ok := st.eventFacts["deploy:"+buildDeployID+":build_started"]; !ok {
+		t.Errorf("repo build's build_started missing — the control must keep emitting")
+	}
+	if ended := st.eventFacts["deploy:"+buildDeployID+":build_ended"]; ended.Status != EventStatusSucceeded {
+		t.Errorf("repo build's build_ended = %+v, want succeeded", ended)
+	}
+	// The regression: the rollback ran no build, so it reports none.
+	for _, key := range []string{"deploy:" + rb.ID + ":build_started", "deploy:" + rb.ID + ":build_ended"} {
+		if fact, ok := st.eventFacts[key]; ok {
+			t.Errorf("rollback deploy emitted phantom %s = %+v, want no build facts", key, fact)
+		}
+	}
+}
+
+// TestRecordDeploySupersededRollbackEmitsNoBuildFacts covers the second
+// buildLifecycleFacts call site (recordDeploy's generation-mismatch branch)
+// for w6/061: a rollback row settled canceled by a newer release must stay as
+// silent as its live-converging sibling — it never built, so there is no pair
+// to close. TestRecordDeploySupersededMidBuildEmitsBuildEndedCanceled keeps
+// proving a genuinely-building superseded row still closes its pair.
+func TestRecordDeploySupersededRollbackEmitsNoBuildFacts(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	row, _ := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Repo: "https://example.com/acme/web.git",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+	})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("create projection: %v", err)
+	}
+	deploys, _ := st.ListDeploys(ctx, row.ID, DeployFilter{})
+	if len(deploys) != 1 {
+		t.Fatalf("deploys after create = %+v, want one", deploys)
+	}
+	if _, err := st.TransitionDeploy(ctx, deploys[0].ID, DeployCanceled, "", "", "", nil); err != nil {
+		t.Fatalf("clear the create row: %v", err)
+	}
+
+	rb, err := st.CreateRollbackDeploy(ctx, row.ID, "reg/web:gen-1@sha256:c0dd", deploys[0].ID, 2, CommitInfo{})
+	if err != nil {
+		t.Fatalf("create rollback deploy: %v", err)
+	}
+	// A newer release generation lands without ever adopting the rollback row —
+	// the missed-observation case the supersede branch settles canceled.
+	app := getApp(t, cl)
+	app.Status.ReleaseGeneration = 4
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe supersede: %v", err)
+	}
+
+	got, err := st.GetDeploy(ctx, row.ID, rb.ID)
+	if err != nil || got.Status != DeployCanceled {
+		t.Fatalf("superseded rollback deploy = %+v (err %v), want canceled", got, err)
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	for _, key := range []string{"deploy:" + rb.ID + ":build_started", "deploy:" + rb.ID + ":build_ended"} {
+		if fact, ok := st.eventFacts[key]; ok {
+			t.Errorf("superseded rollback emitted phantom %s = %+v, want no build facts", key, fact)
+		}
 	}
 }
 

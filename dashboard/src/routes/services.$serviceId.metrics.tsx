@@ -6,6 +6,9 @@ import { MetricsFilters } from "@/features/metrics/components/metrics-filters";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import {
   DEFAULT_RANGE_PRESET,
+  parseRangeSearch,
+  rangeFromSearch,
+  rangeToSearch,
   type RangeSelection,
 } from "@/features/metrics/lib/range";
 import { toChartEventMarkers } from "@/features/metrics/lib/chart-events";
@@ -19,11 +22,29 @@ import { ServiceMetricsSkeleton } from "@/common/components/route-skeletons";
 export const Route = createFileRoute("/services/$serviceId/metrics")({
   component: RouteComponent,
   pendingComponent: ServiceMetricsSkeleton,
+  // The time range persists to the URL in the Logs page's param shape
+  // (`range`, `rangeStart`/`rangeEnd` — w6/065) so a picked window survives a
+  // reload and can be linked to a teammate. No `r` alias here: that is a
+  // Logs-specific Render-compatibility shim.
+  validateSearch: parseRangeSearch,
 });
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
-  return <ServiceMetricsPage serviceId={serviceId} />;
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  return (
+    <ServiceMetricsPage
+      serviceId={serviceId}
+      range={rangeFromSearch(search, DEFAULT_RANGE_PRESET)}
+      onRangeChange={(range) =>
+        // Functional form, deliberately: its return is committed verbatim, so
+        // rangeToSearch's explicit undefineds actually clear stale custom
+        // bounds (the w7/m42 lesson from the Logs route).
+        void navigate({ search: () => rangeToSearch(range), replace: true })
+      }
+    />
+  );
 }
 
 // The metrics tab. The service chrome (DashboardLayout + header + nav) and the
@@ -33,9 +54,23 @@ function RouteComponent() {
 // only time + the event-timeline controls; Percentage/Total, Status Code, and
 // Percentile live on the cards they alter. Exported taking `serviceId` as a
 // prop (the ServiceScalingPage pattern) so a routing test can mount it without
-// the file Route's param context.
-export function ServiceMetricsPage({ serviceId }: { serviceId: string }) {
-  const [range, setRange] = useState<RangeSelection>(DEFAULT_RANGE_PRESET);
+// the file Route's param context. `range`/`onRangeChange` are the URL-persisted
+// selection threaded from the route above (w6/065; static.$serviceId.metrics
+// threads the same pair); a host that doesn't persist (unit tests) falls back
+// to local state.
+export function ServiceMetricsPage({
+  serviceId,
+  range: rangeProp,
+  onRangeChange,
+}: {
+  serviceId: string;
+  range?: RangeSelection;
+  onRangeChange?: (range: RangeSelection) => void;
+}) {
+  const [localRange, setLocalRange] =
+    useState<RangeSelection>(DEFAULT_RANGE_PRESET);
+  const range = rangeProp ?? localRange;
+  const setRange = onRangeChange ?? setLocalRange;
   // Render hides the timeline until its toolbar toggle reveals it.
   const [timelineShown, setTimelineShown] = useState(false);
   const [eventFilter, setEventFilter] = useState<EventTimelineFilter>("all");

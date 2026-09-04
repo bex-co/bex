@@ -268,12 +268,13 @@ export function NetworkMetricsCard({
             <div className="flex items-center gap-2">
               {requestCount > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  {t(
-                    requestCount === 1
-                      ? "metrics.requestCount"
-                      : "metrics.requestsCount",
-                    { count: requestCount.toLocaleString() },
-                  )}
+                  {t("metrics.requestsCount", {
+                    // `count` (numeric) drives the native `_one`/`_other`
+                    // plural pick; `formatted` is what the message renders
+                    // ("7,266 requests").
+                    count: requestCount,
+                    formatted: requestCount.toLocaleString(),
+                  })}
                 </span>
               )}
               <Select

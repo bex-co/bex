@@ -6,6 +6,9 @@ import {
   makeCustomRange,
   parseCustomRange,
   parseRangePreset,
+  parseRangeSearch,
+  rangeFromSearch,
+  rangeToSearch,
   resolutionForSpan,
   resolveRange,
 } from "../range";
@@ -93,6 +96,68 @@ describe("custom range (w5/m56)", () => {
       parseCustomRange("2026-07-02T00:00:00Z", "2026-07-01T00:00:00Z"),
     ).toBeNull();
     expect(parseCustomRange(undefined, undefined)).toBeNull();
+  });
+});
+
+describe("range URL search params (w6/065)", () => {
+  it("round-trips a picked preset through serialize → validate → restore", () => {
+    const preset = parseRangePreset("24h")!;
+
+    const validated = parseRangeSearch(
+      rangeToSearch(preset) as Record<string, unknown>,
+    );
+
+    expect(validated).toEqual({ range: "24h" });
+    expect(rangeFromSearch(validated, DEFAULT_RANGE_PRESET)).toBe(preset);
+  });
+
+  it("round-trips a custom absolute window with its bounds intact", () => {
+    const custom = parseCustomRange(
+      "2026-07-01T00:00:00.000Z",
+      "2026-07-01T06:00:00.000Z",
+    )!;
+
+    const validated = parseRangeSearch(
+      rangeToSearch(custom) as Record<string, unknown>,
+    );
+
+    expect(validated).toEqual({
+      range: "custom",
+      rangeStart: "2026-07-01T00:00:00.000Z",
+      rangeEnd: "2026-07-01T06:00:00.000Z",
+    });
+    expect(rangeFromSearch(validated, DEFAULT_RANGE_PRESET)).toEqual(custom);
+  });
+
+  it("serializes every key explicitly so a preset write clears stale custom bounds", () => {
+    // The router retains params an update merely omits (w7/m42) — the
+    // undefineds must be present, not absent (toStrictEqual checks that).
+    expect(rangeToSearch(parseRangePreset("4h")!)).toStrictEqual({
+      range: "4h",
+      rangeStart: undefined,
+      rangeEnd: undefined,
+    });
+  });
+
+  it("drops malformed values so a bad link falls back to the surface default", () => {
+    expect(parseRangeSearch({})).toEqual({});
+    expect(parseRangeSearch({ range: "6h" })).toEqual({}); // retired id
+    expect(parseRangeSearch({ range: ["1h"] })).toEqual({});
+    // custom without bounds, and custom with a backwards window
+    expect(parseRangeSearch({ range: "custom" })).toEqual({});
+    expect(
+      parseRangeSearch({
+        range: "custom",
+        rangeStart: "2026-07-02T00:00:00Z",
+        rangeEnd: "2026-07-01T00:00:00Z",
+      }),
+    ).toEqual({});
+    // the Logs-specific `r` Render alias deliberately does not spread here
+    expect(parseRangeSearch({ r: "15m" })).toEqual({});
+
+    expect(rangeFromSearch({}, DEFAULT_RANGE_PRESET)).toBe(
+      DEFAULT_RANGE_PRESET,
+    );
   });
 });
 
