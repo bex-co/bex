@@ -61,7 +61,7 @@ Key entry points:
 
 ## Rules
 
-- **Never `git commit`/`push` unless user runs `/ship` (Claude) or `$ship` (Codex).**
+- **Never `git commit`/`push` unless user runs `/ship` (Claude) or `$ship` (Codex), or explicitly requests a `routine-*` run.** A routine request authorizes planning, fixing, verification, and invoking ship in the same run without first filing a `.pm` milestone. Honor explicit audit-only or no-ship limits; follow the ship skill’s safety rules.
 - Never commit/print `.env` or `*.kubeconfig`.
 - **Skill layout:** canonical `.claude/skills/<name>/SKILL.md`; `.agents/skills/<name>` is `../../.claude/skills/<name>` symlink; no `.claude/commands/`. Validate: `bash scripts/skill-layout-validate.sh`.
 - **`.env.example` mirrors `.env` names** (no values). `cp .env.example .env` must never fall out of date; `scripts/gh-secrets.sh` pushes `.env` → GitHub secrets.
