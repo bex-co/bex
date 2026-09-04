@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Shipped-Feature Inliner"
+  short_description: "Remove flags for shipped features"
+  default_prompt: "Use $routine-flag-inliner to inline fully-shipped feature gates and delete flag machinery."

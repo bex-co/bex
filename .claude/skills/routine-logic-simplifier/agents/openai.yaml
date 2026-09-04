@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Logic Simplifier"
+  short_description: "Simplify convoluted business logic"
+  default_prompt: "Use $routine-logic-simplifier to sweep for convoluted logic and simplify it behavior-preservingly."

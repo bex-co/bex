@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Dead-Code Removal"
+  short_description: "Delete provably unreachable code"
+  default_prompt: "Use $routine-dead-code to sweep and delete provably unreachable code."

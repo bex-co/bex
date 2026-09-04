@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Crash Fuzzer"
+  short_description: "Find and fix real app crashes"
+  default_prompt: "Use $routine-crash-fuzzer to sweep platform logs for crashes and fuzz untrusted-input parsers."

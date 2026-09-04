@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Abstraction Flattener"
+  short_description: "Flatten over-engineered abstractions"
+  default_prompt: "Use $routine-abstraction-flattener to flatten over-engineered abstractions to direct code."

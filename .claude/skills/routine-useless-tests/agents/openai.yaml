@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Useless-Test Pruner"
+  short_description: "Delete tests that can't fail"
+  default_prompt: "Use $routine-useless-tests to find tests that cannot fail and delete or strengthen them."

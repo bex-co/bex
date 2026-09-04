@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Dup Unifier"
+  short_description: "Merge duplicated implementations"
+  default_prompt: "Use $routine-dup-unifier to merge duplicated implementations into one canonical helper."

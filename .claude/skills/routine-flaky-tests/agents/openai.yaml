@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Flaky-Test Fixer"
+  short_description: "Root-cause flaky CI tests"
+  default_prompt: "Use $routine-flaky-tests to mine CI history for flaky tests and fix their root causes."
