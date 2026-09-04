@@ -21,6 +21,9 @@ package mcputil
 
 import (
 	"context"
+	"errors"
+	"log"
+	"runtime/debug"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -29,7 +32,7 @@ import (
 
 // AddTool registers an MCP tool, mapping the handler's error through
 // core.MCPError so a *core.CodedError's stable code survives into the tool
-// result.
+// result, and isolating a handler panic to the one call rather than the process.
 //
 // The wrap must happen here, at registration, because the code cannot be
 // recovered any later: the SDK's AddTool converts a handler error into a
@@ -39,8 +42,23 @@ import (
 // calls instead of the SDK directly.
 func AddTool[In, Out any](s *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
 	mcp.AddTool(s, t, func( //nolint:forbidigo // the seam itself: it wraps the handler, then delegates
-		ctx context.Context, req *mcp.CallToolRequest, in In) (*mcp.CallToolResult, Out, error) {
-		res, out, err := h(ctx, req, in)
+		ctx context.Context, req *mcp.CallToolRequest, in In) (res *mcp.CallToolResult, out Out, err error) {
+		// Transport-boundary panic isolation. REST (net/http's conn.serve) and
+		// GraphQL (graphql-go's per-field resolve) already turn a handler panic
+		// into a single-request 500 / field error; the MCP SDK invokes each tool
+		// handler in a goroutine with no recover of its own, so without this one a
+		// lone handler panic crashes the whole bex-api process — a crash loop any
+		// authenticated MCP client could trigger. Convert it into the same
+		// generic, text-redacted "internal error" core.MCPError returns for any
+		// unclassified failure (parity with WriteErr); the raw panic value and
+		// stack are logged here for diagnosis and never reach the client.
+		defer func() {
+			if p := recover(); p != nil {
+				log.Printf("bex-api mcp: tool %q handler panic: %v\n%s", t.Name, p, debug.Stack())
+				res, err = nil, errors.New("internal error")
+			}
+		}()
+		res, out, err = h(ctx, req, in)
 		return res, out, core.MCPError(err)
 	})
 }

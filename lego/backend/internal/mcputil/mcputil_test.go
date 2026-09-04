@@ -101,6 +101,49 @@ func TestAddToolRedactsUnclassifiedErrors(t *testing.T) {
 	}
 }
 
+// TestAddToolRecoversHandlerPanic pins the transport-boundary panic isolation
+// the seam adds. The MCP SDK runs a tool handler with no recover of its own, so
+// a handler panic would otherwise crash the whole bex-api process — a crash loop
+// any authenticated MCP client could trigger — rather than fail the single call
+// the way REST (net/http) and GraphQL (graphql-go) already do. A panicking
+// handler must surface as the redacted generic "internal error" (its raw text
+// never leaking), and the process must stay up to serve the next call.
+func TestAddToolRecoversHandlerPanic(t *testing.T) {
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0.0.1"}, nil)
+	mcputil.AddTool(srv, &mcp.Tool{Name: "panicking_tool", Description: "always panics"},
+		func(context.Context, *mcp.CallToolRequest, args) (*mcp.CallToolResult, any, error) {
+			panic(`boom: pq: constraint "x" host=10.0.0.5`)
+		})
+
+	ct, st := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(t.Context(), st, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "0.0.1"}, nil)
+	session, err := client.Connect(t.Context(), ct, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "panicking_tool"})
+	if err != nil {
+		t.Fatalf("call tool: %v", err)
+	}
+	if !res.IsError {
+		t.Fatal("expected an error result from a panicking handler")
+	}
+	var sb strings.Builder
+	for _, c := range res.Content {
+		if text, ok := c.(*mcp.TextContent); ok {
+			sb.WriteString(text.Text)
+		}
+	}
+	if got := sb.String(); got != "internal error" {
+		t.Fatalf("panic surfaced as %q, want redacted %q", got, "internal error")
+	}
+}
+
 // TestAddToolDoesNotDoubleWrap protects the six adapters that already called
 // core.MCPError themselves: their output must stay byte-identical rather than
 // becoming "CODE: CODE: msg".
