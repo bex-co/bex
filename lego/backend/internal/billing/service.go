@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -265,5 +266,14 @@ func classifyProviderError(err error) error {
 	if isStateError(err) {
 		return fmt.Errorf("%w: %v", core.ErrConflict, err)
 	}
+	// Neither a caller-input nor a workspace-state error: an operator/integration
+	// failure (a missing catalog price, a Stripe outage, a permissions gap). It
+	// classifies as the public ErrBillingUnavailable, which sanitizeGraphQLErrors
+	// deliberately does NOT log — and the dashboard's hosted-session hook shows a
+	// generic toast — so without logging here the cause is invisible on every
+	// surface. A workspace whose checkout dead-ends because a BillableMeterNames
+	// dimension was added without rerunning scripts/stripe-billing-setup.py (the
+	// disk_gb_hours live-catalog gap) must be diagnosable from bex-api logs.
+	log.Printf("bex-api billing: hosted-session provider error: %v", err)
 	return fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
 }
