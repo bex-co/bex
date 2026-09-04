@@ -1,0 +1,46 @@
+# w5 · m66 — Simplify the ACP call chain (direct `@agentclientprotocol/sdk` client + typed parts)
+
+**Worker:** worker5 **Goal:** Drop the fake-LanguageModel detour in the agent-session driver — `@mcpc-tech/acp-ai-provider` + `streamText` + the lossy `toUIMessageStream()` + the `.fullStream` `raw`→`data-acp` re-wrap. The driver drives the official **`@agentclientprotocol/sdk` `ClientSideConnection`** directly and maps each ACP `session/update` → a **typed** UI-message part in one `sessionUpdate()` pass (framed by `ai@6`'s `createUIMessageStream` writer); the client renders typed parts directly, deleting `unwrapAcpTool` + most of `classifyAcpData`. **AI SDK v6 throughout — NO harness layer, NO sandbox provider, NO v7.** **Status:** done
+
+> **t001 decision (2026-08-14) — Vercel AI SDK harness layer REJECTED.** Two disqualifying findings (full detail in [t001](done/t001.md#gate-findings-2026-08-14-desk-half)): (1) `@ai-sdk/harness` needs `ai@7`, forcing a v6→v7 major upgrade cascading to dashboard + mobile; (2) decisively, it is a sandbox-**orchestration** framework (`HarnessAgent` host provisions a sandbox + installs a bridge it reaches over WebSocket; only `@ai-sdk/sandbox-vercel` exists) — architecturally opposite to bex, where the driver already runs _inside_ the OpenSandbox pod. Adopting it would ADD architecture (bespoke sandbox provider + bridge + WS + v7), the opposite of simplification, and conflict with ADR047's single-hop model. **Pivot:** the real simplification is to remove the AI-SDK-LanguageModel indirection entirely and drive ACP directly — the plan below. The genuinely valuable outcome (typed plan/diff/terminal + real tool parts, no lossy round-trip) is delivered without any of that cost.
+
+## Tasks (in order)
+
+| id   | title                                                                                        | est | depends_on |
+| ---- | -------------------------------------------------------------------------------------------- | --- | ---------- |
+| t001 | Decision spike: reject Vercel harness layer, choose direct `@agentclientprotocol/sdk` — **DONE** | 45m | —          |
+| t002 | Driver: replace provider + `streamText` with `ClientSideConnection` + a typed `session/update` mapper — **DONE** | 90m | t001       |
+| t003 | Client: render typed parts directly; delete `unwrapAcpTool` + collapse `classifyAcpData` — **DONE** | 60m | t002       |
+| t004 | Consumer consistency: dashboard + mobile + gateway/transcript byte-transparency + REST/GraphQL/MCP unchanged — **DONE** | 30m | t003       |
+| t005 | Simplify — **DONE** | 30m | t004 |
+| t006 | Test coverage — offline mapping tests vs `fixtures/acp-agent.mjs` (extended); no live cluster — **DONE** | 50m | t004       |
+| t007 | Closeout — **DONE** | 10m | t005, t006 |
+
+## Definition of done
+
+- The driver (`lego/agent-image/driver/`) no longer depends on `@mcpc-tech/acp-ai-provider` or `streamText`/`toUIMessageStream`. It drives `@agentclientprotocol/sdk` `ClientSideConnection` (`initialize` → `newSession`|`loadSession` → `prompt` → `cancel`), implementing the `Client` handlers (`sessionUpdate`, `requestPermission`, and any terminal/fs handlers the agent requires).
+- A single `sessionUpdate()` mapper converts every ACP update to a typed UI-message part: `agent_message_chunk`→`text`, `agent_thought_chunk`→`reasoning`, `tool_call`/`tool_call_update`→proper `tool-*` parts carrying the real `title`/`kind` (no `acp_provider_agent_dynamic_tool` collapse), plan/diff/terminal→`data-acp-plan`/`data-acp-diff`/`data-acp-terminal`. No ACP variant is silently dropped (`available_commands` and unknowns are handled explicitly — logged and/or surfaced, not discarded).
+- The dual-stream consumption (`consumeUI`+`consumeRaw`), `rawUIMessagePart`, and the generic `data-acp` re-wrap are deleted (`session.ts`).
+- The client renders the typed parts directly; `unwrapAcpTool` is deleted and `classifyAcpData` is removed or reduced to a thin typed switch. The transcript renders identically to before (plan checklist, diff/terminal/tool activity groups).
+- Byte-transparency preserved: driver still emits `x-vercel-ai-ui-message-stream: v1` via `createUIMessageStream`; gateway (`agentattach.go`), bex-api, the transcript tee/store, and the ADR051 Completer are unchanged. `useChat`/`@ai-sdk/react` stay on AI SDK **v6**.
+- Offline tests (against the extended `fixtures/acp-agent.mjs`, no cluster/model key) assert the typed parts, the absence of generic `data-acp`, real tool titles, and that no fixture variant is dropped. Live verification (a real `claude-code-acp` turn) is a documented follow-up, not a gate for merge.
+
+## Source + Goal linkage
+
+- **Source:** inbox note [`w3/018`](../../../w3/done/018.md) (promoted; moved w3→w5 per user direction); Vercel `@ai-sdk/harness-acp` changelog + the t001 desk investigation that rejected it; `docs/ADR047-cloud-coding-agent-sessions.md` D3/D9, `docs/ADR051-agent-session-transcript.md`. Code map: `lego/agent-image/driver/src/{acp.ts,session.ts,server.ts,stream-hub.ts}`, `dashboard/src/features/agent-sessions/lib/acp-parts.ts` + `session-conversation-impl.tsx`.
+- **Goal linkage:** pillar 5 (cloud coding-agent sessions, ADR047) — removes the largest indirection in the conversation plane (a third-party fake-LanguageModel provider + `streamText` detour + a lossy dual-stream round-trip) and its client-side reconstruction, hardening + shrinking bex's core AI-native surface.
+- **Expected outcome:** ACP updates map to typed UI parts in one place; deleted — the third-party provider, `streamText`/`toUIMessageStream`, `consumeUI`+`consumeRaw`, `rawUIMessagePart`, generic `data-acp`, client `unwrapAcpTool`, guessy `classifyAcpData`, and the provider's silent-drop of `available_commands`. Real tool titles/kinds reach the UI natively.
+- **Why now:** the harness-layer changelog prompted a look at this chain; investigating it (t001) both ruled out the harness layer for bex's architecture AND surfaced that the official ACP SDK is already a dependency and the fixture harness already exists — so the real simplification is cheap, offline-testable, and stays on v6.
+- **Render-parity task scope:** re-scoped (t004) — no Render agent-session conversation API exists to compare against (bex extension, ADR047 D9); t004 instead verifies cross-**consumer** consistency (dashboard + mobile consume the same UI-message stream) + byte-transparency + that REST/GraphQL/MCP agent-session field shapes are unchanged.
+
+## Closeout evidence — 2026-09-04
+
+- Revalidated the current implementation rather than relying on old DONE labels. `acp.ts` owns the direct SDK initialize/create/load/prompt/cancel lifecycle and permission handler; terminal/fs capabilities are explicitly false so adapters perform those operations themselves. `session.ts` consumes one `createUIMessageStream`; the driver and dashboard remain on AI SDK v6.
+- Finished the missing deletion: removed `unwrapAcpTool`, `UnwrappedTool`, `isTrivialAck`, obsolete command/unknown activity variants, duplicate mapper membership state, and unused log-byte updates. Native tool titles, shell commands, useful output, errors, and quiet success acknowledgements retain their presentation.
+- Repaired the incomplete no-drop coverage: the ACP JSON-RPC fixture now emits available commands and mode updates. Unsupported message/tool content is explicitly surfaced as transient typed info; user-message echoes are deliberately ignored because the client already owns that message. Unknown variants remain transient typed parts. No generic `data-acp` production shim remains.
+- Driver: `npm run build` and `npm test` pass (72 tests), including fixture commit/delivery, resume, timeout, crash, credential redaction, SSE, typed mapping, and persisted log checks.
+- Dashboard: full `yarn test` passed (390 files, 2,874 tests); after the final direct-output cleanup, the focused agent-session suite passed (22 files, 242 tests). Typecheck and ESLint passed. The unused-file check was rerun after removing temporary browser-preview files.
+- Browser: rendered the real `SessionConversationImpl` with the local typed stream fixture at 1280×900 and 390×844. Expanded plan/thought/activity content contains the tool, diff, and terminal; no horizontal overflow. Screenshots: `.playwright-mcp/m66-desktop.png` and `.playwright-mcp/m66-mobile.png` (local artifacts). This is offline fixture verification, not a live model turn.
+- Consumer/byte audit: gateway `TestAgentAttachReplaysThenSplicesLiveAndTees`, `TestReadSSEDataBounded`, and `TestAgentAttachTerminalSessionReplaysThenDone` pass. Driver SSE retains the v1 header; gateway frames and stores payload bytes verbatim. This change does not edit gateway, transcript store, Completer, or REST/GraphQL/MCP code.
+- Mobile has lifecycle/result views but no transcript consumer yet. Its existing [w11/m7/t002](../../../w11/m7/t002.md) now explicitly records the native tool and typed data-part contract; no separate mobile refactor is claimed here.
+- Follow-up: run a real `claude-code-acp` turn with an authorized model key and record tool/plan/diff/terminal output, resume, and cancellation. Per the agreed DoD, this is not a merge gate. The rejected harness spike's live acceptance steps are superseded by its recorded decision and the direct-SDK plan.

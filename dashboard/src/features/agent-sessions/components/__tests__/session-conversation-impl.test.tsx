@@ -128,7 +128,9 @@ describe("SessionConversationImpl", () => {
       screen.queryByText("Agent resumed with its restored conversation state."),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Agent restarted — the original task was re-delivered."),
+      screen.queryByText(
+        "Agent restarted — the original task was re-delivered.",
+      ),
     ).not.toBeInTheDocument();
   });
 
@@ -360,28 +362,20 @@ describe("SessionConversationImpl", () => {
     expect(container.querySelector(".animate-spin")).toBeNull();
   });
 
-  it("unwraps the opaque ACP dynamic tool instead of dumping raw JSON", async () => {
-    // The shipped provider collapses ACP tools into one dynamic tool whose input
-    // is {toolCallId, toolName, args}; a naive render dumped `{"command":"ls"}` /
-    // `{"ok":true}`. The unwrap recovers the real name + command and drops the
-    // trivial ack (ADR051 glue #2).
-    const ENVELOPE_TOOL: UIMessageChunk[] = [
+  it("renders native tool titles and inline commands without trivial ack noise", async () => {
+    const TOOL: UIMessageChunk[] = [
       { type: "start", messageId: "asm-e" },
       {
         type: "tool-input-start",
         toolCallId: "e1",
-        toolName: "acp.acp_provider_agent_dynamic_tool",
+        toolName: "List files",
         dynamic: true,
       },
       {
         type: "tool-input-available",
         toolCallId: "e1",
-        toolName: "acp.acp_provider_agent_dynamic_tool",
-        input: {
-          toolCallId: "e1",
-          toolName: "bash",
-          args: { command: "ls -la" },
-        },
+        toolName: "List files",
+        input: { command: "ls -la" },
         dynamic: true,
       },
       {
@@ -395,7 +389,7 @@ describe("SessionConversationImpl", () => {
     const transport = createAgentSessionTransport({
       sessionId: "as-tool",
       mintTicket,
-      fetch: makeFixtureFetch(ENVELOPE_TOOL, { terminal: true }),
+      fetch: makeFixtureFetch(TOOL, { terminal: true }),
     });
 
     const { container } = render(
@@ -409,11 +403,7 @@ describe("SessionConversationImpl", () => {
     const summary = await screen.findByText("Worked");
     await userEvent.click(summary);
 
-    // Real tool name recovered; the opaque wrapper name never shown.
-    expect(screen.getByText("bash")).toBeInTheDocument();
-    expect(
-      screen.queryByText("acp.acp_provider_agent_dynamic_tool"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("List files")).toBeInTheDocument();
     // Command lifted inline as a compact code line; trivial {ok:true} ack dropped
     // (no raw JSON output blob).
     expect(screen.getByText("ls -la")).toBeInTheDocument();

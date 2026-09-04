@@ -13,7 +13,10 @@ import {
   formatStreamDuration,
   useStreamDuration,
 } from "@/features/agent-sessions/lib/stream-duration";
-import { unwrapAcpTool } from "@/features/agent-sessions/lib/acp-parts";
+import {
+  toolCommand,
+  type ToolPartInfo,
+} from "@/features/agent-sessions/lib/acp-parts";
 
 // One folded activity block: the consecutive tool parts and ACP
 // command/terminal/diff parts of a single assistant turn, merged into a single
@@ -25,18 +28,9 @@ import { unwrapAcpTool } from "@/features/agent-sessions/lib/acp-parts";
 
 /** One renderable step inside an activity group. */
 export type ActivityStep =
-  | {
-      kind: "tool";
-      name: string;
-      state: string;
-      input?: unknown;
-      output?: unknown;
-      errorText?: string;
-    }
-  | { kind: "command"; title?: string; command?: string }
+  | ({ kind: "tool" } & ToolPartInfo)
   | { kind: "terminal"; output?: string }
-  | { kind: "diff"; path?: string; oldText?: string; newText?: string }
-  | { kind: "unknown"; data: unknown };
+  | { kind: "diff"; path?: string; oldText?: string; newText?: string };
 
 /** A tool step is pending until it reaches a terminal (output/error) state. */
 function isToolStepPending(step: ActivityStep): boolean {
@@ -116,18 +110,6 @@ export function ActivityGroup({
 function ActivityStepView({ step }: { step: ActivityStep }) {
   const { t } = useTranslations();
 
-  if (step.kind === "command") {
-    const line = step.command ?? step.title ?? "";
-    return (
-      <StepShell icon={<TerminalIcon className="text-primary/60 size-3" />}>
-        <span className="font-semibold">
-          {step.title ?? t("agentSessions.groupCommand")}
-        </span>
-        {line && <code className="truncate">{line}</code>}
-      </StepShell>
-    );
-  }
-
   if (step.kind === "terminal") {
     return (
       <div className="space-y-1">
@@ -153,19 +135,20 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
   }
 
   if (step.kind === "tool") {
-    // unwrapAcpTool recovers the real tool name/command and drops trivial acks
-    // (see its docstring). Rendered as a compact single-line row: a lifted shell
-    // command sits inline (no CodeBlock chrome); only non-trivial args/output get
-    // a bare capped pre below.
-    const tool = unwrapAcpTool({
-      name: step.name,
-      state: step.state,
-      input: step.input,
-      output: step.output,
-      errorText: step.errorText,
-    });
-    const running =
-      tool.state !== "output-available" && tool.state !== "output-error";
+    const command = toolCommand(step.input);
+    const running = isToolStepPending(step);
+    // Bare success acknowledgements add no detail to the visible Done state.
+    const output = step.output;
+    const ack =
+      output == null ||
+      output === true ||
+      (typeof output === "object" &&
+        !Array.isArray(output) &&
+        Object.entries(output).every(
+          ([key, value]) =>
+            ["ok", "success", "status"].includes(key) &&
+            (value === true || value === "ok" || value === "success"),
+        ));
     return (
       <div className="space-y-1">
         <StepShell
@@ -177,26 +160,22 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
             )
           }
         >
-          <span className="font-semibold">{tool.name}</span>
-          {tool.command && (
-            <code className="min-w-0 truncate">{tool.command}</code>
-          )}
+          <span className="font-semibold">{step.name}</span>
+          {command && <code className="min-w-0 truncate">{command}</code>}
           <span className="text-muted-foreground/60 ml-auto shrink-0">
-            {toolStateLabel(tool.state, t)}
+            {toolStateLabel(step.state, t)}
           </span>
         </StepShell>
-        {tool.command === undefined && tool.args !== undefined && (
-          <StepCode code={safeJson(tool.args)} />
+        {command === undefined && step.input !== undefined && (
+          <StepCode code={safeJson(step.input)} />
         )}
-        {tool.output !== undefined && <StepCode code={safeJson(tool.output)} />}
-        {tool.errorText && (
-          <p className="text-destructive text-xs">{tool.errorText}</p>
+        {!ack && <StepCode code={safeJson(output)} />}
+        {step.errorText && (
+          <p className="text-destructive text-xs">{step.errorText}</p>
         )}
       </div>
     );
   }
-
-  return <StepCode code={safeJson(step.data)} />;
 }
 
 // A compact single-line step row (command / tool header).
