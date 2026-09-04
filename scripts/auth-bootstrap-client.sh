@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Seed the permanent platform OAuth2 clients: confidential `bex-bootstrap`, the
-# secretless public client hard-coded by the official Render CLI, and the
-# secretless first-party `bex-mobile` native client. None is a tenant-created
-# API key. Idempotent: re-running resets every client to its intended grants
-# without minting a public-client secret.
+# secretless public client hard-coded by the official Render CLI, the secretless
+# first-party `bex-desktop` editor client (Zed), and the secretless first-party
+# `bex-mobile` native client. None is a tenant-created API key. Idempotent:
+# re-running resets every client to its intended grants without minting a
+# public-client secret.
 #
 # The public clients are always upserted through the admin REST API (curl),
 # never the in-pod `hydra` CLI: they carry fields the CLI cannot express, and
@@ -21,6 +22,7 @@ cd "$(dirname "$0")/.."
 
 CLIENT_ID=bex-bootstrap
 RENDER_CLI_CLIENT_ID=429024F5E608930E2A65EF92591A25CC
+DESKTOP_CLIENT_ID=bex-desktop
 MOBILE_CLIENT_ID=bex-mobile
 # ACCEPTED-RISK: private-use custom-scheme callback (RFC 8252, single slash), not
 # an https universal link. See mobile/src/features/auth/config.ts and ADR012 §
@@ -202,6 +204,46 @@ for lifespan_field in \
   if ! printf '%s' "$stored_render_client" \
       | grep -q "\"$lifespan_field\":\"$CLI_TOKEN_LIFESPAN"; then
     echo "error: $RENDER_CLI_CLIENT_ID $lifespan_field did not round-trip (hydra too old for per-client lifespans?)" >&2
+    exit 1
+  fi
+done
+
+# ---- First-party desktop / editor client (bex Desktop, Zed) ----------------
+# The editor signs in with the same device-code flow as the CLI, but as its own
+# client so token audience, telemetry, revocation, and per-grant lifespans are
+# decoupled from the CLI. Grants/scopes/skip_consent are identical to the CLI:
+# the client id is not an authority boundary (bex-api still enforces per-token
+# granular capabilities, docs/ADR012-auth.md), so this grants no more than the
+# CLI — it only identifies the surface. skip_consent rides every upsert for the
+# same reason as the CLI (the device flow strands at a never-completing consent
+# step without it).
+desktop_body="$(printf '{"client_id":"%s","client_name":"bex Desktop (Zed)","grant_types":["%s","refresh_token"],"scope":"openid offline_access bex.read bex.write bex.sensitive","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"device_authorization_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
+  "$DESKTOP_CLIENT_ID" "$DEVICE_GRANT" "$CLI_TOKEN_LIFESPAN" "$CLI_TOKEN_LIFESPAN")"
+desktop_code="$(printf '%s' "$desktop_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
+  -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$DESKTOP_CLIENT_ID")"
+if [ "$desktop_code" = "404" ]; then
+  desktop_code="$(printf '%s' "$desktop_body" | curl -s -o /dev/null -w '%{http_code}' -X POST \
+    -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients")"
+  [ "$desktop_code" = "201" ] || { echo "error: creating $DESKTOP_CLIENT_ID failed (HTTP $desktop_code)" >&2; exit 1; }
+  echo "created OAuth2 client $DESKTOP_CLIENT_ID"
+elif [ "$desktop_code" = "200" ]; then
+  echo "updated OAuth2 client $DESKTOP_CLIENT_ID"
+else
+  echo "error: upserting $DESKTOP_CLIENT_ID failed (HTTP $desktop_code)" >&2
+  exit 1
+fi
+
+# Same round-trip guard as the CLI client: assert both grant lifespans stuck.
+stored_desktop_client="$(curl -sf "$REST_ADMIN/admin/clients/$DESKTOP_CLIENT_ID")" || {
+  echo "error: reading back $DESKTOP_CLIENT_ID failed" >&2
+  exit 1
+}
+for lifespan_field in \
+  device_authorization_grant_access_token_lifespan \
+  refresh_token_grant_access_token_lifespan; do
+  if ! printf '%s' "$stored_desktop_client" \
+      | grep -q "\"$lifespan_field\":\"$CLI_TOKEN_LIFESPAN"; then
+    echo "error: $DESKTOP_CLIENT_ID $lifespan_field did not round-trip (hydra too old for per-client lifespans?)" >&2
     exit 1
   fi
 done
