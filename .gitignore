@@ -37,3 +37,4 @@ __pycache__/
 # Upstream OpenSandbox checkout created by the controller-patch CI job; on a
 # self-hosted runner this lands inside the reused workspace (never committed).
 .opensandbox-upstream/
+bex-desktop/
