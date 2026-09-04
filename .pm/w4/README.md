@@ -72,7 +72,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-_(empty — all open notes closed 2026-09-03: `035` ADR018 shared-hosting posture, `039` webhook `service_moved` label, `040` Generate Blueprint env-group export.)_
+- [ ] **041** — `POST /v1/projects` opaquely rejects the Render-contract `environments` field (strict-decode vs contract mismatch; major REST/Render-parity gap) ← live `/qa-find-bugs` hunt 2026-09-04
 
 _(`040` done 2026-09-03 — Generate Blueprint now accepts `envGroupIds` on REST/GraphQL/MCP, emits root `envVarGroups` + per-service `fromGroup` for selected groups (keys as `generateValue`), and degrades unselected linked groups to `sync: false` keys; dashboard Generate dialog gained env-group multi-select; note moved to `done/`.)_
 
