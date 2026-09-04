@@ -187,8 +187,12 @@ export function useBillingOnboarding({
       } else {
         window.location.assign(url);
       }
-    } catch {
+    } catch (error) {
       checkoutWindow?.close();
+      // The server already sends a precise, redacted reason (e.g. a Stripe
+      // catalog gap), but the toast is generic — log the real cause so a
+      // dead-ended checkout is diagnosable from the browser console, not lost.
+      console.error("createBillingCheckoutSession failed", error);
       toast.error(t("usage.billingCheckoutError"));
       setCheckoutBusy(false);
     }
@@ -207,7 +211,8 @@ export function useBillingOnboarding({
       const url = result.data?.createBillingPortalSession?.url;
       if (!url) throw new Error("Portal returned no hosted URL");
       window.location.assign(url);
-    } catch {
+    } catch (error) {
+      console.error("createBillingPortalSession failed", error);
       toast.error(t("usage.billingPortalError"));
       setPortalBusy(false);
     }

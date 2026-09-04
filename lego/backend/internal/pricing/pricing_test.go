@@ -82,7 +82,20 @@ workspace:
 	}
 }
 
-func TestBillableMeterNamesMatchesStripeCatalog(t *testing.T) {
+// TestBillableMeterNamesArePinned pins the exact set of billable meter lookup
+// keys the code will demand from Stripe. It guards the CODE side only — it does
+// NOT reach the live Stripe catalog (CI has no Stripe account). That gap is the
+// whole point of the pin: EnsureContract's resolvePriceIDs requires an active
+// Stripe price for EVERY name here, so adding or removing one and shipping
+// without reprovisioning breaks EVERY new subscription (checkout dead-ends on
+// "active price with lookup key X is missing"), while existing subscriptions —
+// which skip resolvePriceIDs — keep working, so it hides until a fresh sign-up.
+// That is exactly how disk_gb_hours shipped unprovisioned into live Stripe.
+//
+// So if this test fails, updating `want` is only half the change: you MUST also
+// run scripts/stripe-billing-setup.py against BOTH test and live Stripe (--live)
+// so the catalog gains the price before the new code deploys.
+func TestBillableMeterNamesArePinned(t *testing.T) {
 	want := []string{
 		"build_seconds",
 		"disk_gb_hours",
@@ -102,7 +115,9 @@ func TestBillableMeterNamesMatchesStripeCatalog(t *testing.T) {
 	}
 	got := Default.BillableMeterNames()
 	if fmt.Sprint(got) != fmt.Sprint(want) {
-		t.Fatalf("BillableMeterNames = %v, want %v", got, want)
+		t.Fatalf("BillableMeterNames = %v, want %v\n"+
+			"If you changed this set, you MUST also run scripts/stripe-billing-setup.py "+
+			"against test AND live Stripe (--live) or every new subscription will fail.", got, want)
 	}
 }
 
