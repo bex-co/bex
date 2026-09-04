@@ -51,10 +51,19 @@ var layout = template.Must(template.New("email").Parse(
 		"@primary@", BrandPrimary,
 		"@primaryfg@", BrandPrimaryForeground,
 		"@border@", BrandBorder,
+		"@muted@", BrandMuted,
 		"@radius@", strconv.Itoa(BrandRadiusPx),
 		"@font@", BrandFontFamily,
+		"@codefont@", codeFontFamily,
 	).Replace(layoutTemplate),
 ))
+
+// codeFontFamily is the monospace stack the Code panel uses. It is not a
+// dashboard token (style.css declares no mono face; the dashboard leans on
+// Tailwind's default), so it lives here rather than in brand_gen.go. Every
+// entry is a system face so the digits render at their full designed weight
+// in each client instead of falling back to a proportional font.
+const codeFontFamily = "ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"
 
 // CTA is a call-to-action: a lead-in line, a button label, and the URL both
 // point at. In text it renders as "Lead:\nURL"; in HTML as a branded button
@@ -78,6 +87,20 @@ type Reference struct {
 	Desc  string
 }
 
+// Code is a one-time code the reader has to read off the email and type or
+// paste somewhere else (a verification or recovery code). In text it renders
+// as "Label: Value" followed by Desc; in HTML as a large, letter-spaced
+// monospace panel so the digits are legible at a glance and the code is
+// distinguishable from the surrounding prose. The value is emitted as ONE
+// unbroken text node — no per-digit spans, no zero-width joiners — so a
+// triple-click, a long-press, or a select-all-on-click copies exactly the
+// code and nothing else.
+type Code struct {
+	Label string
+	Value string
+	Desc  string
+}
+
 // Message is one composed email, independent of how it is rendered. A feature
 // fills it and hands Text()+HTML() to the mailer. Paragraphs and Footer lines
 // may contain "\n"; in HTML those become <br/>, in text they are preserved.
@@ -90,16 +113,21 @@ type Message struct {
 	// Reference is an optional labeled/linked reference shown after the
 	// paragraphs and before the CTA (e.g. the deploy commit).
 	Reference *Reference
-	CTA       *CTA
-	Footer    []string
+	// Code is an optional one-time code shown after the reference and before
+	// the CTA (e.g. the verification code).
+	Code   *Code
+	CTA    *CTA
+	Footer []string
 }
 
-// Text renders the plain-text body: paragraphs, then the CTA as "Lead:\nURL",
-// then the footer as one block — sections joined by a blank line, with a single
-// trailing newline. This layout reproduces bex's historical mail bodies exactly
-// (the members/notifications byte-parity tests pin it).
+// Text renders the plain-text body: paragraphs, then the reference, then the
+// code as "Label: Value\nDesc", then the CTA as "Lead:\nURL", then the footer
+// as one block — sections joined by a blank line, with a single trailing
+// newline. This layout reproduces bex's historical mail bodies exactly (the
+// members/notifications byte-parity tests pin it; the committed Kratos
+// courier plainBody pins the code shape).
 func (m Message) Text() string {
-	sections := make([]string, 0, len(m.Paragraphs)+3)
+	sections := make([]string, 0, len(m.Paragraphs)+4)
 	sections = append(sections, m.Paragraphs...)
 	if r := m.Reference; r != nil {
 		head := r.Label
@@ -112,6 +140,13 @@ func (m Message) Text() string {
 		}
 		if r.URL != "" {
 			parts = append(parts, r.URL)
+		}
+		sections = append(sections, strings.Join(parts, "\n"))
+	}
+	if c := m.Code; c != nil {
+		parts := []string{c.Label + ": " + c.Value}
+		if c.Desc != "" {
+			parts = append(parts, c.Desc)
 		}
 		sections = append(sections, strings.Join(parts, "\n"))
 	}
@@ -133,6 +168,7 @@ func (m Message) HTML() string {
 		Title:      m.Title,
 		Paragraphs: splitLines(m.Paragraphs),
 		Reference:  refData(m.Reference),
+		Code:       codeData(m.Code),
 		CTA:        m.CTA,
 		Footer:     splitLines(m.Footer),
 	}); err != nil {
@@ -147,6 +183,7 @@ type templateData struct {
 	Title      string
 	Paragraphs [][]string
 	Reference  *refView
+	Code       *codeView
 	CTA        *CTA
 	Footer     [][]string
 }
@@ -166,6 +203,24 @@ func refData(r *Reference) *refView {
 	v := &refView{Label: r.Label, Token: r.Token, URL: r.URL}
 	if r.Desc != "" {
 		v.Desc = strings.Split(r.Desc, "\n")
+	}
+	return v
+}
+
+// codeView is the template's view of a Code — Desc pre-split into lines.
+type codeView struct {
+	Label string
+	Value string
+	Desc  []string
+}
+
+func codeData(c *Code) *codeView {
+	if c == nil {
+		return nil
+	}
+	v := &codeView{Label: c.Label, Value: c.Value}
+	if c.Desc != "" {
+		v.Desc = strings.Split(c.Desc, "\n")
 	}
 	return v
 }

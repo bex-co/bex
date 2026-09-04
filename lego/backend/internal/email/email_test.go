@@ -174,6 +174,49 @@ func TestReferenceWithoutURLRendersPlainToken(t *testing.T) {
 	}
 }
 
+// TestCodeRendersAsCopyablePanel pins the one-time-code shape: text keeps the
+// "Label: Value" line the committed Kratos plainBody carries, and HTML shows
+// the code as one unbroken monospace text node in its own panel — the thing
+// a reader has to spot and copy must not be a run of 14px prose.
+func TestCodeRendersAsCopyablePanel(t *testing.T) {
+	m := Message{
+		Title:      "Verify your email",
+		Paragraphs: []string{"Enter this code on the verification page:"},
+		Code:       &Code{Label: "Verification code", Value: "812410", Desc: "It expires in 60 minutes."},
+		CTA:        &CTA{Lead: "Or verify with one click", Label: "Verify email", URL: "https://auth.example/verify?code=812410"},
+	}
+	want := "Enter this code on the verification page:\n\nVerification code: 812410\nIt expires in 60 minutes.\n\nOr verify with one click:\nhttps://auth.example/verify?code=812410\n"
+	if got := m.Text(); got != want {
+		t.Errorf("code text:\n got %q\nwant %q", got, want)
+	}
+	html := m.HTML()
+	// The value is a single text node inside the monospace span: nothing may
+	// be interleaved between the digits (spans, zero-width characters), or a
+	// copy would pick up more than the code.
+	if !strings.Contains(html, ">812410</span>") {
+		t.Errorf("code should be one unbroken text node ending the span:\n%s", html)
+	}
+	if !strings.Contains(html, "font-family:"+codeFontFamily+";") {
+		t.Errorf("code should render in the monospace stack %q:\n%s", codeFontFamily, html)
+	}
+	if !strings.Contains(html, "user-select:all") {
+		t.Error("code span should select as a unit on click")
+	}
+	// The panel sits on the muted background so it reads as a distinct block.
+	if !strings.Contains(html, "background-color:"+BrandMuted+";") {
+		t.Errorf("code panel should use the muted background %q", BrandMuted)
+	}
+	for _, s := range []string{"Verification code", "It expires in 60 minutes."} {
+		if !strings.Contains(html, s) {
+			t.Errorf("HTML missing %q", s)
+		}
+	}
+	// The code is never a link — the CTA carries the URL.
+	if strings.Contains(html, `href="812410"`) || strings.Contains(html, ">812410</a>") {
+		t.Error("code must not render as a link")
+	}
+}
+
 func TestHTMLWordmarkSplitsColorAndResistsAutolink(t *testing.T) {
 	html := Message{Paragraphs: []string{"hi"}}.HTML()
 	// Only ".co" carries the brand color; "bex" stays neutral (foreground).

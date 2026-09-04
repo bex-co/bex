@@ -21,6 +21,17 @@
                 <p style="margin:16px 0 0;font-family:@font@;font-size:14px;line-height:22px;color:@foreground@;">{{.Label}}{{if .Token}} {{if .URL}}<a href="{{.URL}}" style="color:@primary@;font-weight:600;text-decoration:none;">{{.Token}}</a>{{else}}{{.Token}}{{end}}{{end}}</p>
                 {{if .Desc}}<p style="margin:4px 0 0;font-family:@font@;font-size:14px;line-height:22px;color:@mutedfg@;">{{range $i, $line := .Desc}}{{if $i}}<br />{{end}}{{$line}}{{end}}</p>{{end}}
                 {{end}}
+                {{with .Code}}
+                <p style="margin:20px 0 0;font-family:@font@;font-size:12px;line-height:18px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:@mutedfg@;">{{.Label}}</p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 0;">
+                  <tr>
+                    <td style="background-color:@muted@;border:1px solid @border@;border-radius:@radius@px;padding:14px 18px 14px 24px;">
+                      <span style="display:inline-block;font-family:@codefont@;font-size:32px;line-height:40px;font-weight:700;letter-spacing:0.2em;white-space:nowrap;color:@foreground@;-webkit-user-select:all;user-select:all;">{{.Value}}</span>
+                    </td>
+                  </tr>
+                </table>
+                {{if .Desc}}<p style="margin:8px 0 0;font-family:@font@;font-size:14px;line-height:22px;color:@mutedfg@;">{{range $i, $line := .Desc}}{{if $i}}<br />{{end}}{{$line}}{{end}}</p>{{end}}
+                {{end}}
                 {{with .CTA}}
                 <p style="margin:16px 0 0;font-family:@font@;font-size:14px;line-height:22px;color:@foreground@;">{{.Lead}}:</p>
                 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 0;">

@@ -23,7 +23,7 @@ import (
 )
 
 // TestPreview is a developer tool, not an assertion: with EMAIL_PREVIEW_DIR set
-// it renders the three bex-sent email shapes through the real layout and writes
+// it renders the bex-sent email shapes through the real layout and writes
 // them as .html files to inspect in a browser; unset (CI, normal `go test`) it
 // skips and writes nothing. It previews the layout, not the exact per-feature
 // wording — that is byte-pinned by the members/notifications/webhooks tests.
@@ -67,6 +67,20 @@ func TestPreview(t *testing.T) {
 				"bex will keep retrying on an exponential backoff.",
 			},
 		},
+		// The Kratos verification courier shape (kratos_templates.go) with a
+		// concrete code in place of the sentinel, so the Code panel can be
+		// eyeballed next to the other shapes.
+		"verify": {
+			Title:      "Verify your email",
+			Paragraphs: []string{"Enter this code on the verification page to confirm your email address:"},
+			Code:       &Code{Label: "Verification code", Value: "812410", Desc: "It expires in 60 minutes."},
+			CTA: &CTA{
+				Lead:  "Or verify with one click",
+				Label: "Verify email",
+				URL:   "https://auth.bex.co/self-service/verification?code=812410&flow=bdab73b4-be81-42bc-ba87-54bff484f317",
+			},
+			Footer: []string{"If this wasn't you, you can safely ignore this email —\nnothing changes without the code."},
+		},
 	}
 	for name, msg := range shapes {
 		path := filepath.Join(dir, name+".html")
@@ -75,7 +89,7 @@ func TestPreview(t *testing.T) {
 		}
 		t.Logf("wrote %s", path)
 	}
-	// A gallery page that iframes all three so they can be viewed side by side.
+	// A gallery page that iframes all four so they can be viewed side by side.
 	gallery := filepath.Join(dir, "all-email-templates.html")
 	if err := os.WriteFile(gallery, []byte(galleryHTML), 0o644); err != nil {
 		t.Fatalf("write %s: %v", gallery, err)
@@ -83,8 +97,9 @@ func TestPreview(t *testing.T) {
 	t.Logf("wrote %s (open this one)", gallery)
 }
 
-// galleryHTML is a static index that embeds invite/deploy/webhook.html (written
-// alongside it) in iframes — dark chrome so the light email cards stand out.
+// galleryHTML is a static index that embeds invite/deploy/webhook/verify.html
+// (written alongside it) in iframes — dark chrome so the light email cards
+// stand out.
 const galleryHTML = `<!doctype html>
 <html lang="en">
   <head>
@@ -106,12 +121,13 @@ const galleryHTML = `<!doctype html>
   <body>
     <header>
       <h1>bex email templates</h1>
-      <p class="sub">Rendered from internal/email — invite · deploy · webhook</p>
+      <p class="sub">Rendered from internal/email — invite · deploy · webhook · verify</p>
     </header>
     <div class="grid">
       <div class="panel"><p class="label">Workspace invite <span>· members</span></p><iframe src="invite.html" title="invite"></iframe></div>
       <div class="panel"><p class="label">Deploy failed <span>· notifications</span></p><iframe src="deploy.html" title="deploy"></iframe></div>
       <div class="panel"><p class="label">Webhook failing <span>· webhooks</span></p><iframe src="webhook.html" title="webhook"></iframe></div>
+      <div class="panel"><p class="label">Verify your email <span>· kratos courier</span></p><iframe src="verify.html" title="verify"></iframe></div>
     </div>
   </body>
 </html>
