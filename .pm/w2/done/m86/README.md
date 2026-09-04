@@ -1,6 +1,6 @@
 # w2 · m86 — Disk encryption-at-rest: enable the LUKS storage class (ADR082 D3)
 
-**Worker:** worker2 **Goal:** every tenant disk created after the flip provisions on the LUKS-encrypted storage class, closing the encryption-at-rest gap ADR082 explicitly left open **Status:** in progress (t001–t003, t005–t007 done; t004's flip + operator-path App proof done live and the prod snapshot store armed — its final snapshot/restore leg, and t008, wait on the next `/ship` deploying the fixed operator image)
+**Worker:** worker2 **Goal:** every tenant disk created after the flip provisions on the LUKS-encrypted storage class, closing the encryption-at-rest gap ADR082 explicitly left open **Status:** done
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | Verify/bake `cryptsetup` into the CAPH node image — **DONE** (bundled in the csi-driver image; no bake needed) | 45m | —          |
 | t002 | Verify/grant hcloud-csi node Secret access to per-disk LUKS passphrases — **DONE** (kubelet fetches it; no RBAC needed) | 30m | —          |
 | t003 | Flip `BEX_DISK_STORAGE_CLASS=hcloud-volumes-luks` through the protected env chain — **DONE** (prod overlay `config/prod`; local stays unset) | 30m | t001, t002 |
-| t004 | Live end-to-end: create, verify, resize, snapshot, and restore a LUKS-backed disk — mechanism drill PASSED on prod 2026-09-02; operator-path leg pending the next `/ship` rollout | 45m | t003       |
+| t004 | Live end-to-end: create, verify, resize, snapshot, and restore a LUKS-backed disk — **DONE** (running-app snapshot + restore + purge all passed on prod 2026-09-03) | 45m | t003       |
 | t005 | Record the existing-disk stance and encryption claim in ADR082 + ADR018 — **DONE**         | 20m | t004       |
 | t006 | Simplify — **DONE** (dead `suffix` param dropped, default render cached, yq reads batched, online-growth comment hedged) | 20m | t005       |
 | t007 | Test coverage — **DONE** (naming-correspondence test + validator LUKS-contract block, both negative-tested) | 45m | t005       |
-| t008 | Closeout                                                                                   | 15m | t006, t007 |
+| t008 | Closeout — **DONE**                                                                                   | 15m | t006, t007 |
 
 ## Definition of done
 
@@ -22,6 +22,10 @@
 - `BEX_DISK_STORAGE_CLASS` is set in the production deploy chain via the `.env.example` → `scripts/gh-secrets.sh` → workflow pattern; nothing secret is committed.
 - ADR082 §D3 and the ADR018 disks row state exactly which disks are encrypted (created after the flip), that pre-flip disks remain on the default class, and the snapshot-restore migration path for them.
 - If either live prereq fails (no `cryptsetup` on the node image, CSI ServiceAccount cannot read the passphrase Secret), the failure is diagnosed and fixed in this milestone — the flip does not ship with a broken mount path.
+
+## Closeout (2026-09-03)
+
+The fixed operator image rolled with the previous ship; one final platform defense — the `bex-operator-workloads` admission policy's zero-caps rule — correctly denied the snapshot Jobs and gained a name-scoped carve-out (`dskbak-`/`dskrst-` may add exactly `DAC_OVERRIDE`/`CHOWN`/`FOWNER`; `c3a0a1220`, validator-pinned; a hand-applied preview was reverted by Argo within minutes, confirming GitOps custody). The full runbook drill then passed on `hcloud-volumes-luks` through the operator: **running-app** snapshot uploaded (`default/luksdrill2/2026-09-03T07:50:40Z.tar.gz.age`), mutate → restore returned the pre-snapshot marker and discarded the post-snapshot file, delete left zero residue. The enabling `w2/032` fix (user-supplied `BEX_STRIPE_PUBLISHABLE_KEY` patched into `bex-stripe`) also unwedged bex-api rollouts — Argo Synced/Healthy. Evidence: `evidence/2026-09-02-luks-drill.md` parts 1–3.
 
 ## Progress record 2 (2026-09-02, post-rollout)
 

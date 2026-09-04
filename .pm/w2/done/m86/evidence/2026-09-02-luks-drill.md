@@ -143,3 +143,42 @@ deploy rolls it: create a disk-bearing App, trigger `dskbak-<app>`, confirm the
 object lands, mutate, set `spec.disk.restoreSnapshot`, confirm pre-snapshot
 state returns, delete, confirm purge — the runbook §Verifying end to end. Then
 `/pm done w2/m86/t008`.
+
+---
+
+# Part 3 — final end-to-end drill on the fixed operator (2026-09-03)
+
+Prerequisites resolved first: the bex-api rollout wedge (`w2/032`) was fixed by
+patching the user-supplied `BEX_STRIPE_PUBLISHABLE_KEY` (pk_live, mode-checked)
+into `bex-system/bex-stripe` — bex-api rolled 2/2 on the new digest and the
+bex-operator Argo app went **Synced/Healthy** for the first time in days.
+
+The fixed operator image (snapshot rw-publish + root/caps) was live via the
+previous ship. One more platform defense fired, correctly: the
+`bex-operator-workloads` ValidatingAdmissionPolicy denied the snapshot Job's
+added capabilities (zero-caps rule outside the execution boundary). Resolved
+with a **name-scoped carve-out** (`dskbak-`/`dskrst-` Jobs may add exactly
+`DAC_OVERRIDE`/`CHOWN`/`FOWNER`; the `buildkitCaps` precedent) shipped as
+`c3a0a1220` — a hand-applied preview worked, was then reverted by Argo within
+minutes (GitOps custody confirmed the hard way), and the git-landed version
+stuck. gitops-validate pins the carve-out's name anchor and capability list.
+
+Full runbook §Verifying end to end, all on `hcloud-volumes-luks`, all through
+the operator:
+
+1. App `luksdrill2` → PVC Bound on the LUKS class, pod mounting
+   `/dev/mapper/scsi-0HC_Volume_106781992`; `dskbak-luksdrill2` CronJob created.
+2. `marker-v1-pre-snapshot` written; snapshot of the **running** app completed:
+   `wrote default/luksdrill2/2026-09-03T07:50:40Z.tar.gz.age` — the exact case
+   the rw-publish + root fixes exist for.
+3. Mutated (`marker-v2`, added `file2`), set `spec.disk.restoreSnapshot` to the
+   object key: operator scaled the service down, `dskrst-luksdrill2` ran and
+   completed (operator deleted the succeeded Job), `disk-restored` annotation
+   set, service returned — `/var/data/marker` = `marker-v1-pre-snapshot`,
+   `file2` **gone**. Render's restore contract exactly.
+4. App deleted → zero residue (purge ran; PVC, LUKS Secret, CronJob all gone).
+
+One operational note: after the ~40 denial-loop failures, controller-runtime's
+backoff delayed the post-fix retry by several minutes; an annotation nudge plus
+patience covered it. The restore intent stayed durably on the CR the whole
+time — fail-closed, visible, retryable, as designed.
