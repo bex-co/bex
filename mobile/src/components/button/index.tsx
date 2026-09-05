@@ -27,8 +27,9 @@ type ButtonProps = {
 const getButtonStyles = (theme: ColorTheme) => {
   return StyleSheet.create({
     buttonBase: {
-      minHeight: 44,
-      borderRadius: 8,
+      minHeight: 48,
+      borderRadius: 12,
+      paddingVertical: 12,
       paddingHorizontal: 16,
       alignItems: "center",
       justifyContent: "center",
@@ -38,12 +39,14 @@ const getButtonStyles = (theme: ColorTheme) => {
       backgroundColor: theme.primary,
     },
     buttonPrimaryPressed: {
-      backgroundColor: theme.primaryDark,
+      opacity: 0.8,
     },
     buttonPrimaryText: {
-      color: "#ffffff",
+      color: theme.onPrimary,
       fontSize: 16,
       fontWeight: "600",
+      textAlign: "center",
+      flexShrink: 1,
     },
     buttonOutline: {
       backgroundColor: "transparent",
@@ -56,6 +59,8 @@ const getButtonStyles = (theme: ColorTheme) => {
     buttonOutlineText: {
       color: theme.primary,
       fontSize: 16,
+      textAlign: "center",
+      flexShrink: 1,
     },
     buttonLoading: {
       marginRight: 8,
@@ -71,21 +76,23 @@ export const Button = (props: ButtonProps) => {
       switch (type) {
         case "primary":
           return [
-            props.style,
             styles.buttonBase,
             styles.buttonPrimary,
             pressed && styles.buttonPrimaryPressed,
+            props.style,
+            (props.disabled || !props.onPress) && { opacity: 0.45 },
           ];
         case "outline":
           return [
-            props.style,
             styles.buttonBase,
             styles.buttonOutline,
             pressed && styles.buttonOutlinePressed,
+            props.style,
+            (props.disabled || !props.onPress) && { opacity: 0.45 },
           ];
       }
     },
-    [styles, type, props.style],
+    [styles, type, props.style, props.disabled, props.onPress],
   );
 
   const buttonTextStyle = useMemo(() => {
@@ -103,14 +110,17 @@ export const Button = (props: ButtonProps) => {
     <Pressable
       style={pressableStyle}
       onPress={props.onPress}
-      disabled={props.disabled || !props.onPress}
+      disabled={props.disabled || props.loading || !props.onPress}
       accessibilityRole="button"
       accessibilityLabel={props.accessibilityLabel}
-      accessibilityState={{ disabled: props.disabled || !props.onPress }}
+      accessibilityState={{
+        disabled: props.disabled || props.loading || !props.onPress,
+        busy: Boolean(props.loading),
+      }}
     >
       {props.loading ? (
         <ActivityIndicator
-          color={type === "primary" ? theme.white : theme.primary}
+          color={type === "primary" ? theme.onPrimary : theme.primary}
           style={styles.buttonLoading}
         />
       ) : null}

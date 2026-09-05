@@ -1,3 +1,4 @@
+import { ScreenToolbar } from "@/components/screen-toolbar";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
@@ -68,20 +69,19 @@ export function SearchableListModal({
           accessibilityLabel={cancelLabel}
         />
         <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Pressable
-              onPress={onCancel}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={cancelLabel}
-            >
-              <Text style={styles.cancel}>{cancelLabel}</Text>
-            </Pressable>
-            <Text style={styles.title} numberOfLines={1}>
-              {title}
-            </Text>
-            <View style={styles.headerSpacer} />
-          </View>
+          <ScreenToolbar
+            title={title}
+            left={
+              <Pressable
+                onPress={onCancel}
+                style={styles.close}
+                accessibilityRole="button"
+                accessibilityLabel={cancelLabel}
+              >
+                <Ionicons name="close" size={24} color={theme.foreground} />
+              </Pressable>
+            }
+          />
 
           <View style={styles.searchBox}>
             <Ionicons name="search" size={16} color={theme.mutedForeground} />
@@ -168,18 +168,12 @@ const getStyles = (theme: ColorTheme) =>
       borderTopRightRadius: 16,
       paddingBottom: 16,
     },
-    header: {
-      flexDirection: "row",
+    close: {
+      width: 44,
+      minHeight: 44,
       alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.black40,
+      justifyContent: "center",
     },
-    cancel: { color: theme.black80, fontSize: 16, width: 60 },
-    title: { fontSize: 18, fontWeight: "600", color: theme.text01 },
-    headerSpacer: { width: 60 },
     searchBox: {
       flexDirection: "row",
       alignItems: "center",

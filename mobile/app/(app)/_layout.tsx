@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "@/common/theme";
+import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { HapticTab } from "@/components/haptic-tab";
 import { AuthStateScreen } from "@/features/auth/auth-screen";
@@ -71,6 +71,15 @@ function WorkspaceTabs() {
         tabBarButton: HapticTab,
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.mutedForeground,
+        tabBarLabelStyle: {
+          fontSize: fontSizes.xs,
+          fontWeight: fontWeights.semibold,
+        },
+        tabBarItemStyle: { paddingTop: space.xs },
+        tabBarBadgeStyle: {
+          backgroundColor: theme.error,
+          color: theme.isDark ? theme.background : theme.card,
+        },
         tabBarStyle: {
           backgroundColor: theme.card,
           borderTopColor: theme.border,
@@ -83,8 +92,12 @@ function WorkspaceTabs() {
         name="index"
         options={{
           title: t("navigation.status"),
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="pulse" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "pulse" : "pulse-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -92,8 +105,12 @@ function WorkspaceTabs() {
         name="activity"
         options={{
           title: t("navigation.activity"),
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="list" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "time" : "time-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -101,8 +118,12 @@ function WorkspaceTabs() {
         name="sessions"
         options={{
           title: t("navigation.sessions"),
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="sparkles" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "sparkles" : "sparkles-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -111,8 +132,12 @@ function WorkspaceTabs() {
         options={{
           title: t("navigation.notifications"),
           tabBarBadge: unread > 0 ? unread : undefined,
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="notifications" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "notifications" : "notifications-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />

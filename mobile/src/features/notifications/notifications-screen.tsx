@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/button";
 import { DashboardCard } from "@/components/dashboard-card";
@@ -20,6 +21,7 @@ export function NotificationInboxScreen() {
       : state === "error" || state === "revoked"
         ? theme.error
         : theme.warning;
+  const configurable = state !== "unconfigured" && state !== "unavailable";
   const canDisable = state === "enabled" || state === "offline";
   const cardStyle = {
     backgroundColor: theme.card,
@@ -30,55 +32,58 @@ export function NotificationInboxScreen() {
     borderLeftWidth: 3,
   };
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      <TopBar title={t("notifications.title")} showBell={false} />
-      <DashboardScrollView
-        refreshing={false}
-        onRefresh={() => undefined}
-        contentContainerStyle={styles.content}
-      >
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={[styles.safe, { backgroundColor: theme.background }]}
+    >
+      <TopBar />
+      <DashboardScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.body, { color: theme.mutedForeground }]}>
           {t("notifications.body")}
         </Text>
-        <DashboardCard
-          title={t("notifications.settings")}
-          right={
-            <Button
-              type={canDisable ? "outline" : "primary"}
-              style={styles.action}
-              loading={state === "enabling" || state === "checking"}
-              onPress={() => void (canDisable ? disable() : enable())}
-            >
-              {t(canDisable ? "notifications.disable" : "notifications.enable")}
-            </Button>
-          }
-        >
-          <Text style={[styles.state, { color: stateColor }]}>
-            {t(`notifications.states.${state}`)}
-          </Text>
-          <Text style={[styles.body, { color: theme.mutedForeground }]}>
-            {t("notifications.permissionExplanation")}
-          </Text>
-        </DashboardCard>
-        <View style={styles.row}>
-          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>
-            {t("notifications.recent", { count: items.length })}
-          </Text>
-          {unread > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void markAllRead()}
-            >
-              <Text style={[styles.link, { color: theme.primary }]}>
-                {t("notifications.markAllRead")}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
+        {items.length > 0 ? (
+          <View style={styles.row}>
+            <Text style={[styles.sectionTitle, { color: theme.foreground }]}>
+              {t("notifications.recent", { count: items.length })}
+            </Text>
+            {unread > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                style={styles.markRead}
+                onPress={() => void markAllRead()}
+              >
+                <Text style={[styles.link, { color: theme.primary }]}>
+                  {t("notifications.markAllRead")}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
         {items.length === 0 ? (
-          <Text style={[styles.empty, { color: theme.mutedForeground }]}>
-            {t("notifications.empty")}
-          </Text>
+          <DashboardCard>
+            <View style={styles.empty}>
+              <View
+                style={[
+                  styles.emptyIcon,
+                  { backgroundColor: theme.primaryMuted },
+                ]}
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={28}
+                  color={theme.primary}
+                />
+              </View>
+              <Text style={[styles.emptyTitle, { color: theme.foreground }]}>
+                {t("notifications.emptyTitle")}
+              </Text>
+              <Text
+                style={[styles.emptyBody, { color: theme.mutedForeground }]}
+              >
+                {t("notifications.empty")}
+              </Text>
+            </View>
+          </DashboardCard>
         ) : null}
         {items.map((item) => (
           <Pressable
@@ -86,7 +91,12 @@ export function NotificationInboxScreen() {
             accessibilityRole="button"
             accessibilityLabel={t("notifications.open", { title: item.title })}
             onPress={() => void open(item)}
-            style={[styles.item, cardStyle, !item.read && unreadStyle]}
+            style={({ pressed }) => [
+              styles.item,
+              cardStyle,
+              !item.read && unreadStyle,
+              { opacity: pressed ? 0.65 : 1 },
+            ]}
           >
             <Text style={[styles.itemTitle, { color: theme.foreground }]}>
               {item.title}
@@ -101,6 +111,34 @@ export function NotificationInboxScreen() {
             </Text>
           </Pressable>
         ))}
+        <DashboardCard
+          title={t("notifications.settings")}
+          right={
+            configurable ? (
+              <Button
+                type={canDisable ? "outline" : "primary"}
+                style={styles.action}
+                loading={state === "enabling" || state === "checking"}
+                onPress={() => void (canDisable ? disable() : enable())}
+              >
+                {t(
+                  canDisable ? "notifications.disable" : "notifications.enable",
+                )}
+              </Button>
+            ) : null
+          }
+        >
+          <Text style={[styles.state, { color: stateColor }]}>
+            {t(`notifications.states.${state}`)}
+          </Text>
+          <Text style={[styles.body, { color: theme.mutedForeground }]}>
+            {t(
+              configurable
+                ? "notifications.permissionExplanation"
+                : "notifications.benefit",
+            )}
+          </Text>
+        </DashboardCard>
       </DashboardScrollView>
     </SafeAreaView>
   );
@@ -108,7 +146,7 @@ export function NotificationInboxScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { gap: space.md },
+  content: { gap: space.lg },
   body: { fontSize: fontSizes.md, lineHeight: fontSizes.md * 1.5 },
   row: {
     flexDirection: "row",
@@ -116,7 +154,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: space.md,
   },
-  sectionTitle: { fontSize: fontSizes.lg, fontWeight: fontWeights.medium },
+  sectionTitle: {
+    flex: 1,
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.semibold,
+  },
   state: { fontSize: fontSizes.sm, marginBottom: space.sm },
   action: { minWidth: 112, paddingHorizontal: space.lg, flexShrink: 0 },
   item: {
@@ -128,6 +170,20 @@ const styles = StyleSheet.create({
   },
   itemTitle: { fontSize: fontSizes.md, fontWeight: fontWeights.medium },
   timestamp: { fontSize: fontSizes.xs },
-  empty: { textAlign: "center", paddingVertical: space.xxl },
+  empty: { alignItems: "center", paddingVertical: space.xl, gap: space.md },
+  emptyTitle: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.semibold,
+    textAlign: "center",
+  },
+  emptyBody: { fontSize: fontSizes.md, lineHeight: 22, textAlign: "center" },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: space.lg,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  markRead: { minHeight: 44, justifyContent: "center", flexShrink: 1 },
   link: { fontWeight: fontWeights.medium },
 });

@@ -11,6 +11,7 @@ import {
   Animated,
   BackHandler,
   findNodeHandle,
+  Image,
   PanResponder,
   Pressable,
   StyleSheet,
@@ -63,21 +64,13 @@ const getStyles = (theme: ColorTheme) =>
       alignItems: "center",
       gap: space.sm,
       paddingHorizontal: gutter,
-      paddingTop: space.md,
-      paddingBottom: space.sm,
+      minHeight: 60,
+      paddingVertical: space.sm,
     },
     brandMark: {
       width: 32,
       height: 32,
-      borderRadius: 8,
-      backgroundColor: theme.primary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    brandMarkText: {
-      color: theme.white,
-      fontSize: fontSizes.lg,
-      fontWeight: "700",
+      borderRadius: space.sm,
     },
     brandText: {
       fontSize: fontSizes.xl,
@@ -273,9 +266,12 @@ export function AppDrawer({ open, onOpen, onClose, children }: AppDrawerProps) {
           ]}
         >
           <View style={styles.brandRow}>
-            <View style={styles.brandMark}>
-              <Text style={styles.brandMarkText}>b</Text>
-            </View>
+            <Image
+              source={require("@/assets/images/logo.png")}
+              style={styles.brandMark}
+              resizeMode="contain"
+              accessible={false}
+            />
             <Text style={styles.brandText}>bex</Text>
           </View>
           <WorkspaceList onSelected={requestClose} />

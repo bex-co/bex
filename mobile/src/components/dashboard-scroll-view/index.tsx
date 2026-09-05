@@ -11,12 +11,11 @@ import { gutter, space, useTheme } from "@/common/theme";
 const styles = StyleSheet.create({
   content: {
     // Side gutters keep cards off the screen edges — the app-wide inset.
-    // Dashboard cards bring their own bottom margin, so spacing between them
-    // stays uniform without extra spacers.
+    // The container owns spacing; cards do not add a second bottom margin.
     paddingHorizontal: gutter,
     paddingTop: space.md,
     paddingBottom: space.xxl,
-    gap: space.md,
+    gap: space.lg,
     // Fill the frame even when the cards are short, so the whole area stays
     // inside the scrollable content and pull-to-refresh works everywhere.
     flexGrow: 1,
@@ -24,8 +23,8 @@ const styles = StyleSheet.create({
 });
 
 type Props = {
-  refreshing: boolean;
-  onRefresh: () => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
   /** Extra content-container styles (merged after the shared gutters). */
   contentContainerStyle?: StyleProp<ViewStyle>;
   children: ReactNode;
@@ -38,7 +37,7 @@ type Props = {
  * of duplicated ScrollView/RefreshControl boilerplate.
  */
 export function DashboardScrollView({
-  refreshing,
+  refreshing = false,
   onRefresh,
   contentContainerStyle,
   children,
@@ -49,14 +48,18 @@ export function DashboardScrollView({
     <ScrollView
       showsVerticalScrollIndicator={false}
       alwaysBounceVertical
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       contentContainerStyle={[styles.content, contentContainerStyle]}
       indicatorStyle={isDark ? "white" : "default"}
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={isDark ? "white" : "black"}
-        />
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={isDark ? "white" : "black"}
+          />
+        ) : undefined
       }
     >
       {children}

@@ -71,14 +71,22 @@ export function buildResourceGroups(
 export function filterResourceGroups(
   grouped: ReturnType<typeof buildResourceGroups>,
   kind: ResourceKind | "all",
+  search = "",
 ): ReturnType<typeof buildResourceGroups> {
-  if (kind === "all") return grouped;
+  const query = search.trim().toLowerCase();
+  const matches = (resource: ResourceStatusItem) =>
+    (kind === "all" || resource.kind === kind) &&
+    (!query ||
+      `${resource.name} ${resource.type} ${resource.id}`
+        .toLowerCase()
+        .includes(query));
+  if (kind === "all" && !query) return grouped;
   return {
     groups: grouped.groups.map((group) => ({
       ...group,
-      resources: group.resources.filter((resource) => resource.kind === kind),
+      resources: group.resources.filter(matches),
     })),
-    ungrouped: grouped.ungrouped.filter((resource) => resource.kind === kind),
+    ungrouped: grouped.ungrouped.filter(matches),
   };
 }
 
@@ -112,4 +120,25 @@ export function statusTone(
     return "warning";
   }
   return "muted";
+}
+
+/** Count each resource once even when project projections overlap. Unknown
+ * phases stay unknown; an empty workspace never implies healthy resources. */
+export function summarizeResources(
+  grouped: ReturnType<typeof buildResourceGroups>,
+) {
+  const resources = new Map(
+    [
+      ...grouped.groups.flatMap((group) => group.resources),
+      ...grouped.ungrouped,
+    ].map((resource) => [`${resource.kind}:${resource.id}`, resource]),
+  );
+  const summary = { healthy: 0, review: 0, unknown: 0 };
+  for (const resource of resources.values()) {
+    const tone = statusTone(resource.status);
+    summary[
+      tone === "success" ? "healthy" : tone === "muted" ? "unknown" : "review"
+    ]++;
+  }
+  return summary;
 }

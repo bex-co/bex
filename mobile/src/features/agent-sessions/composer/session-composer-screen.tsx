@@ -1,3 +1,4 @@
+import { ScreenToolbar } from "@/components/screen-toolbar";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { router } from "expo-router";
@@ -14,7 +15,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/button";
 import { DashboardCard } from "@/components/dashboard-card";
@@ -220,199 +221,198 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView
-        style={[styles.safe, { backgroundColor: theme.background }]}
-      >
-        <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("agentSessions.composer.close")}
-            onPress={onClose}
-            hitSlop={8}
-            style={styles.headerSide}
-          >
-            <Ionicons name="close" size={24} color={theme.foreground} />
-          </Pressable>
-          <Text
-            numberOfLines={1}
-            style={[styles.headerTitle, { color: theme.foreground }]}
-          >
-            {t("agentSessions.composer.title")}
-          </Text>
-          <View style={[styles.headerSide, styles.headerRight]}>
-            {composing ? (
+      <SafeAreaProvider>
+        <SafeAreaView
+          style={[styles.safe, { backgroundColor: theme.background }]}
+        >
+          <ScreenToolbar
+            title={t("agentSessions.composer.title")}
+            left={
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={t("agentSessions.composer.submit")}
-                accessibilityState={{ disabled: !canGo }}
-                disabled={!canGo}
-                onPress={onSubmit}
+                accessibilityLabel={t("agentSessions.composer.close")}
+                onPress={onClose}
                 hitSlop={8}
-                style={[
-                  styles.sendButton,
-                  {
-                    backgroundColor: canGo ? theme.primary : theme.border,
-                  },
-                ]}
+                style={styles.headerSide}
               >
-                <Ionicons
-                  name="arrow-up"
-                  size={22}
-                  color={canGo ? theme.white : theme.mutedForeground}
-                />
+                <Ionicons name="close" size={24} color={theme.foreground} />
               </Pressable>
-            ) : null}
-          </View>
-        </View>
+            }
+            right={
+              composing ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("agentSessions.composer.submit")}
+                  accessibilityState={{ disabled: !canGo }}
+                  disabled={!canGo}
+                  onPress={onSubmit}
+                  hitSlop={8}
+                  style={[
+                    styles.sendButton,
+                    {
+                      backgroundColor: canGo ? theme.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="arrow-up"
+                    size={22}
+                    color={canGo ? theme.onPrimary : theme.mutedForeground}
+                  />
+                </Pressable>
+              ) : null
+            }
+          />
 
-        {composing ? (
-          <KeyboardAvoidingView
-            style={styles.flex}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-          >
-            <TextInput
-              value={fields.prompt}
-              onChangeText={(prompt) => set({ prompt })}
-              placeholder={t("agentSessions.composer.promptPlaceholder")}
-              placeholderTextColor={theme.mutedForeground}
-              multiline
-              autoFocus
-              style={[styles.prompt, { color: theme.foreground }]}
-              textAlignVertical="top"
-            />
-            {quickRepos.length > 1 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                style={styles.quickRow}
-                contentContainerStyle={styles.quickRowContent}
-              >
-                {quickRepos.map((name) => {
-                  const active = fields.repo === name;
-                  return (
-                    <Pressable
-                      key={name}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={name}
-                      onPress={() => selectRepo(name)}
-                      style={[
-                        styles.quickChip,
-                        {
-                          borderColor: active ? theme.primary : theme.border,
-                          backgroundColor: active
-                            ? theme.primary
-                            : "transparent",
-                        },
-                      ]}
-                    >
-                      <Text
-                        numberOfLines={1}
+          {composing ? (
+            <KeyboardAvoidingView
+              style={styles.flex}
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
+            >
+              <TextInput
+                value={fields.prompt}
+                onChangeText={(prompt) => set({ prompt })}
+                placeholder={t("agentSessions.composer.promptPlaceholder")}
+                placeholderTextColor={theme.mutedForeground}
+                multiline
+                autoFocus
+                style={[styles.prompt, { color: theme.foreground }]}
+                textAlignVertical="top"
+              />
+              {quickRepos.length > 1 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  style={styles.quickRow}
+                  contentContainerStyle={styles.quickRowContent}
+                >
+                  {quickRepos.map((name) => {
+                    const active = fields.repo === name;
+                    return (
+                      <Pressable
+                        key={name}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        accessibilityLabel={name}
+                        onPress={() => selectRepo(name)}
                         style={[
-                          styles.quickChipText,
-                          { color: active ? theme.white : theme.foreground },
+                          styles.quickChip,
+                          {
+                            borderColor: active ? theme.primary : theme.border,
+                            backgroundColor: active
+                              ? theme.primary
+                              : "transparent",
+                          },
                         ]}
                       >
-                        {shortRepo(name)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            ) : null}
-            <View style={styles.pillRow}>
-              <Pill
-                theme={theme}
-                icon={
-                  <View
-                    style={[
-                      styles.repoIcon,
-                      { backgroundColor: theme.primary },
-                    ]}
-                  >
-                    <Ionicons name="cube" size={12} color={theme.white} />
-                  </View>
-                }
-                label={
-                  fields.repo
-                    ? shortRepo(fields.repo)
-                    : t("agentSessions.composer.repo")
-                }
-                accessibilityLabel={t("agentSessions.composer.repo")}
-                onPress={() => setOpenPicker("repo")}
-                shrink
-              />
-              <Pill
-                theme={theme}
-                icon={
-                  <Ionicons
-                    name="git-branch"
-                    size={15}
-                    color={theme.foreground}
-                  />
-                }
-                label={fields.branch || "main"}
-                accessibilityLabel={t("agentSessions.composer.branch")}
-                onPress={() => setOpenPicker("branch")}
-              />
-              <Pill
-                theme={theme}
-                label={agentLabel}
-                accessibilityLabel={t("agentSessions.composer.agent")}
-                onPress={() => setOpenPicker("agent")}
-              />
-            </View>
-          </KeyboardAvoidingView>
-        ) : (
-          <ScrollView contentContainerStyle={styles.content}>
-            {loadingCaps ? (
-              <DashboardCard>
-                <ActivityIndicator color={theme.primary} />
-              </DashboardCard>
-            ) : createdId ? (
-              <DashboardCard>
-                <Text style={[styles.title, { color: theme.foreground }]}>
-                  {t("agentSessions.composer.submitted")}
-                </Text>
-                <Button
-                  onPress={() => {
-                    onClose();
-                    router.push(`/sessions/${createdId}`);
-                  }}
-                  accessibilityLabel={t("agentSessions.composer.openSession")}
-                >
-                  {t("agentSessions.composer.openSession")}
-                </Button>
-              </DashboardCard>
-            ) : (
-              <DashboardCard>
-                <Text style={[styles.title, { color: theme.foreground }]}>
-                  {t("agentSessions.composer.setupTitle")}
-                </Text>
-                <Text style={[styles.body, { color: theme.mutedForeground }]}>
-                  {!caps?.github.connected
-                    ? t("agentSessions.composer.needGithub")
-                    : !caps?.modelKeyReady
-                      ? t("agentSessions.composer.needModelKey")
-                      : t("agentSessions.composer.needDesktop")}
-                </Text>
-                {!caps?.github.connected && caps?.github.installUrl ? (
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.quickChipText,
+                            { color: active ? theme.white : theme.foreground },
+                          ]}
+                        >
+                          {shortRepo(name)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              ) : null}
+              <View style={styles.pillRow}>
+                <Pill
+                  theme={theme}
+                  icon={
+                    <View
+                      style={[
+                        styles.repoIcon,
+                        { backgroundColor: theme.primary },
+                      ]}
+                    >
+                      <Ionicons name="cube" size={12} color={theme.white} />
+                    </View>
+                  }
+                  label={
+                    fields.repo
+                      ? shortRepo(fields.repo)
+                      : t("agentSessions.composer.repo")
+                  }
+                  accessibilityLabel={t("agentSessions.composer.repo")}
+                  onPress={() => setOpenPicker("repo")}
+                  shrink
+                />
+                <Pill
+                  theme={theme}
+                  icon={
+                    <Ionicons
+                      name="git-branch"
+                      size={15}
+                      color={theme.foreground}
+                    />
+                  }
+                  label={fields.branch || "main"}
+                  accessibilityLabel={t("agentSessions.composer.branch")}
+                  onPress={() => setOpenPicker("branch")}
+                />
+                <Pill
+                  theme={theme}
+                  label={agentLabel}
+                  accessibilityLabel={t("agentSessions.composer.agent")}
+                  onPress={() => setOpenPicker("agent")}
+                />
+              </View>
+            </KeyboardAvoidingView>
+          ) : (
+            <ScrollView contentContainerStyle={styles.content}>
+              {loadingCaps ? (
+                <DashboardCard>
+                  <ActivityIndicator color={theme.primary} />
+                </DashboardCard>
+              ) : createdId ? (
+                <DashboardCard>
+                  <Text style={[styles.title, { color: theme.foreground }]}>
+                    {t("agentSessions.composer.submitted")}
+                  </Text>
                   <Button
-                    type="outline"
-                    onPress={() => openGitHub(caps?.github.installUrl)}
-                    accessibilityLabel={t(
-                      "agentSessions.composer.connectGithub",
-                    )}
+                    onPress={() => {
+                      onClose();
+                      router.push(`/sessions/${createdId}`);
+                    }}
+                    accessibilityLabel={t("agentSessions.composer.openSession")}
                   >
-                    {t("agentSessions.composer.connectGithub")}
+                    {t("agentSessions.composer.openSession")}
                   </Button>
-                ) : null}
-              </DashboardCard>
-            )}
-          </ScrollView>
-        )}
-      </SafeAreaView>
+                </DashboardCard>
+              ) : (
+                <DashboardCard>
+                  <Text style={[styles.title, { color: theme.foreground }]}>
+                    {t("agentSessions.composer.setupTitle")}
+                  </Text>
+                  <Text style={[styles.body, { color: theme.mutedForeground }]}>
+                    {!caps?.github.connected
+                      ? t("agentSessions.composer.needGithub")
+                      : !caps?.modelKeyReady
+                        ? t("agentSessions.composer.needModelKey")
+                        : t("agentSessions.composer.needDesktop")}
+                  </Text>
+                  {!caps?.github.connected && caps?.github.installUrl ? (
+                    <Button
+                      type="outline"
+                      onPress={() => openGitHub(caps?.github.installUrl)}
+                      accessibilityLabel={t(
+                        "agentSessions.composer.connectGithub",
+                      )}
+                    >
+                      {t("agentSessions.composer.connectGithub")}
+                    </Button>
+                  ) : null}
+                </DashboardCard>
+              )}
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </SafeAreaProvider>
 
       <SearchableListModal
         visible={openPicker === "repo"}
@@ -520,25 +520,16 @@ function Pill({
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  header: {
-    flexDirection: "row",
+  headerSide: {
+    width: 44,
+    minHeight: 44,
+    justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: gutter,
-    paddingVertical: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  headerSide: { width: 44, justifyContent: "center" },
-  headerRight: { alignItems: "flex-end" },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.medium,
   },
   sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },

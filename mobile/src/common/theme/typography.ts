@@ -21,6 +21,7 @@ export const fontSizes = {
   md: 14,
   lg: 16,
   xl: 18,
+  title: 20,
   xxl: 24,
   display: 28,
   heroSm: 36,
@@ -31,6 +32,8 @@ export const monoMinFontSize = 13;
 export const fontWeights = {
   regular: "400",
   medium: "500",
+  semibold: "600",
+  bold: "700",
 } as const satisfies Record<string, TextStyle["fontWeight"]>;
 
 export const headerActionStyle = (theme: ColorTheme): TextStyle => ({

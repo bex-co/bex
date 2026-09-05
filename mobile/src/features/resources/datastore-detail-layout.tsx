@@ -42,13 +42,16 @@ export function DatastoreDetailLayout({
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={[styles.safe, { backgroundColor: theme.background }]}
+    >
+      <DetailHeader title={title} subtitle={subtitle} />
       <DashboardScrollView
         refreshing={refreshing}
         onRefresh={onRefresh}
         contentContainerStyle={styles.content}
       >
-        <DetailHeader title={title} subtitle={subtitle} />
         {error ? (
           <View
             accessibilityRole="alert"

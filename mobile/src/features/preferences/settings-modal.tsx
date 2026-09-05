@@ -1,3 +1,4 @@
+import { ScreenToolbar } from "@/components/screen-toolbar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -52,22 +53,10 @@ const LANGUAGE_OPTIONS: { value: SupportedLanguage; label: string }[] = [
 const getStyles = (theme: ColorTheme) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.background },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: gutter,
-      paddingVertical: space.sm,
-    },
-    title: {
-      flex: 1,
-      fontSize: fontSizes.xxl,
-      fontWeight: "700",
-      color: theme.foreground,
-    },
     close: {
-      width: 40,
+      width: 44,
       minHeight: 44,
-      alignItems: "flex-end",
+      alignItems: "center",
       justifyContent: "center",
     },
     content: { paddingBottom: space.xxl },
@@ -247,18 +236,19 @@ export function SettingsModal({
           scoped to the modal measures the real insets. */}
       <SafeAreaProvider>
         <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{t("settings.title")}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("settings.close")}
-              hitSlop={12}
-              onPress={onClose}
-              style={styles.close}
-            >
-              <Ionicons name="close" size={26} color={theme.foreground} />
-            </Pressable>
-          </View>
+          <ScreenToolbar
+            title={t("settings.title")}
+            left={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("settings.close")}
+                onPress={onClose}
+                style={styles.close}
+              >
+                <Ionicons name="close" size={24} color={theme.foreground} />
+              </Pressable>
+            }
+          />
 
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.account}>
