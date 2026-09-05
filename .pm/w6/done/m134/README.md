@@ -1,6 +1,6 @@
 # w6 · m134 — Record project/environment reassignments in the service Events feed
 
-**Worker:** worker6 **Goal:** a successful service move between projects or environments leaves one truthful, service-scoped event on REST, GraphQL, MCP, and the dashboard, without colliding with the existing env-var-change event **Status:** in progress — t001–t006 done + shipped in `8ab1e6db`; **2026-08-29: QA-credential blocker removed and the move verified live** (env service-links PUT 200, environment now lists the service) **but `service_moved` is absent because the running image `2a9a7240` predates `8ab1e6db`** — so t007 is now DEPLOY-blocked only, not credential-blocked. Close it once `8ab1e6db` deploys and the move produces the event on the feed + audit log + dashboard (see t007).
+**Worker:** worker6 **Goal:** a successful service move between projects or environments leaves one truthful, service-scoped event on REST, GraphQL, MCP, and the dashboard, without colliding with the existing env-var-change event **Status:** done 2026-09-05 — `8ab1e6db` deployed (ancestor of image pin `4bd6eb2a3129`); the live production move is fully verified (one `service_moved` per move with the before/after placement pair, no-op silent, same `evt`/audit instant in both truth surfaces, REST/GraphQL parity, dashboard Events tab renders both from→to lines). See t007 for the evidence; fixtures created and deleted in-session.
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity — **DONE**                                                          | 30m | t003       |
 | t005 | Simplify — **DONE**                                                               | 20m | t004       |
 | t006 | Test coverage — **DONE**                                                          | 40m | t004       |
-| t007 | Closeout                                                                          | 10m | t006       |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 

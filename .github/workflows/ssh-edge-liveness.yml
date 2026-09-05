@@ -55,6 +55,19 @@ jobs:
         with:
           go-version-file: lego/backend/go.mod
           cache-dependency-path: lego/backend/go.sum
+      # The bex-production pool is not homogeneous: one host lacks the gh CLI,
+      # and the issue-bookkeeping steps below fail on `gh: command not found`
+      # even when the probe itself is healthy (observed run 33961859926,
+      # 2026-09-05). Pinned + checksummed so a compromised release mirror
+      # fails closed rather than executing arbitrary code on the runner.
+      - name: Ensure gh CLI
+        run: |
+          command -v gh >/dev/null && exit 0
+          v=2.100.0
+          curl -fsSL -o "$RUNNER_TEMP/gh.tgz" "https://github.com/cli/cli/releases/download/v${v}/gh_${v}_linux_arm64.tar.gz"
+          echo "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961  $RUNNER_TEMP/gh.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gh.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gh_${v}_linux_arm64/bin" >> "$GITHUB_PATH"
       - name: Probe the SSH edge for KEXINIT
         id: probe
         run: |
@@ -163,6 +176,16 @@ jobs:
       - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
         with:
           version: v1.36.1
+      # Same not-every-host-has-gh guard as public-edge-liveness above — this
+      # job is the one observed failing its close-issue step on the gh-less host.
+      - name: Ensure gh CLI
+        run: |
+          command -v gh >/dev/null && exit 0
+          v=2.100.0
+          curl -fsSL -o "$RUNNER_TEMP/gh.tgz" "https://github.com/cli/cli/releases/download/v${v}/gh_${v}_linux_arm64.tar.gz"
+          echo "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961  $RUNNER_TEMP/gh.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gh.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gh_${v}_linux_arm64/bin" >> "$GITHUB_PATH"
       # Same credential staging as deploy.yml: everything under $RUNNER_TEMP
       # (auto-deleted at job end), never ~/.ssh or a fixed path on the shared
       # self-hosted runner, and the control-plane host key is pinned so the

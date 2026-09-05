@@ -127,8 +127,14 @@ if [[ -n "${BEX_SSH_VERIFY_SERVICE:-}" ]]; then
   service_name="$(jq -er '.name' <<<"$service_json")"
 else
   service_name="ssh-verify-$(date +%s)-$$"
-  create_payload="$(jq -n --arg name "$service_name" '{
-    type:"web_service", name:$name, image:{imagePath:"busybox:1.36.1"}, port:8080,
+  # ownerId is required at the top level of Render's servicePOST schema, which
+  # the pinned OpenAPI validator (w6/m96) now enforces on /v1/services — a create
+  # payload without it 400s ("invalid request body at /image/ownerId") before the
+  # handler runs. Set BEX_SSH_VERIFY_OWNER_ID to the workspace that should own the
+  # disposable fixture, or supply BEX_SSH_VERIFY_SERVICE to reuse an existing one.
+  : "${BEX_SSH_VERIFY_OWNER_ID:?set BEX_SSH_VERIFY_OWNER_ID to the fixture workspace, or set BEX_SSH_VERIFY_SERVICE to reuse an existing service}"
+  create_payload="$(jq -n --arg name "$service_name" --arg owner "$BEX_SSH_VERIFY_OWNER_ID" '{
+    type:"web_service", name:$name, ownerId:$owner, image:{imagePath:"busybox:1.36.1", ownerId:$owner}, port:8080,
     serviceDetails:{
       plan:"starter",numInstances:2,healthCheckPath:"/",runtime:"image",
       envSpecificDetails:{startCommand:"mkdir -p /tmp/site && printf ok >/tmp/site/index.html && exec httpd -f -p 8080 -h /tmp/site"}
