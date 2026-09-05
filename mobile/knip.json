@@ -3,7 +3,8 @@
   "entry": [
     "app/**/*.{ts,tsx}",
     "src/**/__tests__/**/*.{ts,tsx}",
-    "scripts/*.{js,mjs}"
+    "scripts/*.{js,mjs}",
+    "store.config.js"
   ],
   "project": [
     "app/**/*.{ts,tsx}",
