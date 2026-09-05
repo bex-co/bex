@@ -93,7 +93,7 @@ export class LogSession {
     const handoff = this.now().toISOString();
     try {
       const page = await this.transport.history(
-        { ...filters, endTime: handoff, limit: filters.limit ?? 500 },
+        { ...filters, endTime: handoff, limit: filters.limit ?? 100 },
         abort.signal,
       );
       if (generation !== this.generation || abort.signal.aborted) return;

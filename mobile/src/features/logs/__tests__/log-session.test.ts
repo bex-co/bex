@@ -50,6 +50,7 @@ describe("LogSession", () => {
     await subject.start({ resource: "srv-1", types: ["app"] });
 
     expect(transport.historyFilters?.endTime).toBe(boundary);
+    expect(transport.historyFilters?.limit).toBe(100);
     expect(transport.subscriptions[0].startTime).toBe(boundary);
     transport.callbacks?.onLine(historyLine);
     transport.callbacks?.onLine({

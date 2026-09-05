@@ -16,6 +16,18 @@ describe("log query", () => {
     expect(params.getAll("statusCode")).toEqual(["404", "5xx"]);
     expect(params.getAll("method")).toEqual(["GET"]);
     expect(params.get("text")).toBe("timeout & retry");
+    expect(params.get("limit")).toBe("100");
+  });
+
+  it("preserves smaller page sizes and leaves the API default unset", () => {
+    expect(
+      new URLSearchParams(buildLogQuery({ resource: "srv-1", limit: 20 })).get(
+        "limit",
+      ),
+    ).toBe("20");
+    expect(
+      new URLSearchParams(buildLogQuery({ resource: "srv-1" })).get("limit"),
+    ).toBe(null);
   });
 
   it("distinguishes pod-tail filters from store-only filters", () => {
