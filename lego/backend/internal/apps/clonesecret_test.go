@@ -43,6 +43,8 @@ type fakeCloneTokens struct {
 	grantCalls    int
 	lastWorkspace string
 	lastRepo      string
+	validateErr   error
+	validateCalls int
 }
 
 func (f *fakeCloneTokens) CloneToken(_ context.Context, workspaceID, repo string) (string, bool, error) {
@@ -55,6 +57,13 @@ func (f *fakeCloneTokens) CloneToken(_ context.Context, workspaceID, repo string
 func (f *fakeCloneTokens) RepoGranted(_ context.Context, _, _ string) (bool, error) {
 	f.grantCalls++
 	return f.ok, f.err
+}
+
+func (f *fakeCloneTokens) ValidateRepo(_ context.Context, workspaceID, repo string) error {
+	f.validateCalls++
+	f.lastWorkspace = workspaceID
+	f.lastRepo = repo
+	return f.validateErr
 }
 
 func ghService(gh CloneTokenSource, apps ...*appv1alpha1.App) (*Service, client.Client) {

@@ -3383,6 +3383,11 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	if err := s.validateExternalRegistryCredential(ctx, probe); err != nil {
 		return AppView{}, err
 	}
+	if next.repo != "" && next.repo != a.Spec.Repo && s.GitHub != nil {
+		if err := s.GitHub.ValidateRepo(ctx, s.AppWorkspace(ctx, a), next.repo); err != nil {
+			return AppView{}, err
+		}
+	}
 	// Stamp the pending generation before writing the projector-owned source
 	// row. If the following CR patch loses a race or the API becomes unavailable,
 	// a later projector resync still cannot deploy the new source accidentally.

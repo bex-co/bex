@@ -45,6 +45,9 @@ type CloneTokenSource interface {
 	// the installation-token mint the grant check authenticates with, which is
 	// why the read path memoizes it.
 	RepoGranted(ctx context.Context, workspaceID, repoURL string) (granted bool, err error)
+	// ValidateRepo checks source-save access without writing clone credentials.
+	// Public Git remains available without a workspace installation grant.
+	ValidateRepo(ctx context.Context, workspaceID, repoURL string) error
 }
 
 // deployWorkspace resolves the workspace whose GitHub connection owns this App's

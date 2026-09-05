@@ -204,6 +204,8 @@ type fakeClient struct {
 	tokenErr      error
 	repoOK        bool // RepoAccessible result
 	repoErr       error
+	publicRepoOK  bool
+	repoTokens    []string
 	commit        Commit // GetCommit result (w9/001)
 	commitErr     error
 	// gotCommitRef records the (token, owner, repo, ref) GetCommit was called
@@ -261,7 +263,11 @@ func (c *fakeClient) MintInstallationToken(_ context.Context, installationID int
 	return InstallationToken{Token: c.token}, nil
 }
 
-func (c *fakeClient) RepoAccessible(_ context.Context, _, _, _ string) (bool, error) {
+func (c *fakeClient) RepoAccessible(_ context.Context, token, _, _ string) (bool, error) {
+	c.repoTokens = append(c.repoTokens, token)
+	if token == "" && c.publicRepoOK {
+		return true, c.repoErr
+	}
 	return c.repoOK, c.repoErr
 }
 

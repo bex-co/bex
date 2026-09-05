@@ -18,6 +18,8 @@ package github
 
 import (
 	"context"
+	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -114,5 +116,40 @@ func TestRepoGrantedUnionsEveryInstallation(t *testing.T) {
 	// check that produced this milestone's bug in the first place.
 	if granted, err := src.RepoGranted(ctx, core.DefaultTenant, "https://github.com/stranger/repo"); err != nil || granted {
 		t.Errorf("RepoGranted(stranger) = %v,%v; want false,nil", granted, err)
+	}
+}
+
+func TestValidateRepoSourceAccess(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		repo           string
+		workspace      string
+		client         fakeClient
+		wantBadRequest bool
+		wantError      bool
+		wantTokens     []string
+	}{
+		{name: "connected private", repo: "https://github.com/octo/app", workspace: "default", client: fakeClient{token: "installation", repoOK: true}, wantTokens: []string{"installation"}},
+		{name: "unconnected public", repo: "https://github.com/stranger/app", workspace: "default", client: fakeClient{publicRepoOK: true}, wantTokens: []string{""}},
+		{name: "unconnected private or missing", repo: "https://github.com/stranger/app", workspace: "default", wantBadRequest: true, wantTokens: []string{""}},
+		{name: "other workspace connection cannot grant access", repo: "https://github.com/octo/app", workspace: "other", wantBadRequest: true, wantTokens: []string{""}},
+		{name: "connected but ungranted public", repo: "https://github.com/octo/app", workspace: "default", client: fakeClient{token: "installation", publicRepoOK: true}, wantTokens: []string{"installation", ""}},
+		{name: "connected but ungranted private", repo: "https://github.com/octo/app", workspace: "default", client: fakeClient{token: "installation"}, wantBadRequest: true, wantTokens: []string{"installation", ""}},
+		{name: "grant failure is not anonymous fallback", repo: "https://github.com/octo/app", workspace: "default", client: fakeClient{token: "installation", repoErr: &APIError{Status: 503}}, wantError: true, wantTokens: []string{"installation"}},
+		{name: "public lookup failure", repo: "https://github.com/stranger/app", workspace: "default", client: fakeClient{repoErr: &APIError{Status: 503}}, wantError: true, wantTokens: []string{""}},
+		{name: "other git provider", repo: "https://gitlab.com/octo/app", workspace: "default"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore()
+			st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
+			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client}
+			err := svc.DeployTokenSource().ValidateRepo(context.Background(), tc.workspace, tc.repo)
+			if errors.Is(err, core.ErrBadRequest) != tc.wantBadRequest || (err != nil) != (tc.wantBadRequest || tc.wantError) {
+				t.Fatalf("validation error = %v", err)
+			}
+			if !reflect.DeepEqual(tc.client.repoTokens, tc.wantTokens) {
+				t.Fatalf("access checks used tokens %q, want %q", tc.client.repoTokens, tc.wantTokens)
+			}
+		})
 	}
 }

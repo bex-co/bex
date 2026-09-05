@@ -18,10 +18,17 @@ package apps
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -170,5 +177,68 @@ func TestMCPUpdateServiceSwitchesSourceWithoutDeploying(t *testing.T) {
 	}
 	if len(st.deployCalls) != 0 {
 		t.Fatalf("MCP source swap opened deploy rows: %+v", st.deployCalls)
+	}
+}
+
+func TestSourceValidationFailurePreservesAppAndCredentials(t *testing.T) {
+	for _, surface := range []string{"REST", "GraphQL", "MCP"} {
+		t.Run(surface, func(t *testing.T) {
+			app := managedRepoApp("web")
+			app.Labels[core.LabelTenant] = "tea-service-owner"
+			app.Spec.CloneSecret = "web-clone"
+			st := &recordingStore{}
+			svc, cl := newService(st, app)
+			gh := &fakeCloneTokens{validateErr: errors.Join(core.ErrBadRequest, errors.New("repository is not accessible through this workspace's GitHub connections or as public Git"))}
+			svc.GitHub = gh
+			if err := svc.writeCloneSecret(context.Background(), "default", "web-clone", "web", "old-token"); err != nil {
+				t.Fatal(err)
+			}
+			before := getApp(t, cl, "web")
+			if surface == "REST" {
+				mux := http.NewServeMux()
+				svc.RegisterREST(mux)
+				rec := httptest.NewRecorder()
+				mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"repo":"https://github.com/stranger/private","branch":"release"}`)))
+				if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "GitHub connections") {
+					t.Fatalf("response %d: %s", rec.Code, rec.Body.String())
+				}
+			} else if surface == "GraphQL" {
+				res := graphql.Do(graphql.Params{Schema: sourceSwapSchema(t, svc), Context: context.Background(), RequestString: `mutation {setRepo(id:"web",repo:"https://github.com/stranger/private",branch:"release"){repo}}`})
+				if len(res.Errors) != 1 || !strings.Contains(res.Errors[0].Message, "GitHub connections") {
+					t.Fatalf("errors: %v", res.Errors)
+				}
+			} else {
+				ctx := context.Background()
+				server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+				svc.RegisterMCP(server)
+				serverT, clientT := mcp.NewInMemoryTransports()
+				ss, err := server.Connect(ctx, serverT, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = ss.Close() })
+				cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = cs.Close() })
+				res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{"serviceId": "web", "repo": "https://github.com/stranger/private", "branch": "release"}})
+				if err != nil || !res.IsError {
+					t.Fatalf("MCP rejection: result=%v err=%v", res, err)
+				}
+			}
+			if gh.validateCalls != 1 || gh.lastWorkspace != "tea-service-owner" || gh.lastRepo != "https://github.com/stranger/private" {
+				t.Fatalf("wrong validation scope: %+v", gh)
+			}
+			if !reflect.DeepEqual(before, getApp(t, cl, "web")) {
+				t.Fatal("rejected source changed the App or pending marker")
+			}
+			if value, ok := cloneSecretValue(t, cl, "web-clone"); !ok || value != "old-token" {
+				t.Fatal("rejected source changed active clone credentials")
+			}
+			if gh.calls != 0 || len(st.deployCalls) != 0 {
+				t.Fatal("source validation minted deploy credentials or opened a deploy")
+			}
+		})
 	}
 }
