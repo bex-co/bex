@@ -191,7 +191,16 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={[styles.safe, { backgroundColor: theme.background }]}
+    >
+      <DetailHeader
+        title={serviceName || t("service.title")}
+        subtitle={humanizeToken(
+          service?.type || service?.runtime || t("resources.service"),
+        )}
+      />
       <DashboardScrollView
         refreshing={
           serviceQuery.networkStatus === 4 ||
@@ -201,13 +210,6 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
         onRefresh={() => void recovery.manualRetry()}
         contentContainerStyle={styles.content}
       >
-        <DetailHeader
-          title={serviceName || t("service.title")}
-          subtitle={humanizeToken(
-            service?.type || service?.runtime || t("resources.service"),
-          )}
-        />
-
         {anyError ? (
           <View
             accessibilityRole="alert"

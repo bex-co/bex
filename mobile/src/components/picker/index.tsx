@@ -1,3 +1,4 @@
+import { ScreenToolbar } from "@/components/screen-toolbar";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Animated,
@@ -47,25 +48,12 @@ const getStyles = (theme: ColorTheme) =>
       borderTopRightRadius: 16,
       paddingBottom: 34, // Safe area for home indicator
     },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingVertical: 16,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.black40,
-    },
+    headerAction: { minHeight: 44, justifyContent: "center" },
     cancelButton: {
       color: theme.black80,
       fontSize: 16,
     },
     doneButton: headerActionStyle(theme),
-    title: {
-      fontSize: 18,
-      fontWeight: "600",
-      color: theme.text01,
-    },
     wheelContainer: {
       height: WHEEL_HEIGHT,
       position: "relative",
@@ -269,27 +257,34 @@ export const Picker: React.FC<PickerProps> = ({
         <Animated.View
           style={[styles.modalContainer, { transform: [{ translateY }] }]}
         >
-          <View style={styles.header}>
-            <TouchableOpacity
-              testID="picker-cancel"
-              onPress={handleCancel}
-              accessibilityRole="button"
-              accessibilityLabel={cancelButtonText}
-            >
-              <Text style={styles.cancelButton}>{cancelButtonText}</Text>
-            </TouchableOpacity>
-            <Text style={styles.title}>{title}</Text>
-            <TouchableOpacity
-              testID="picker-confirm"
-              onPress={handleDone}
-              disabled={items.length === 0}
-              accessibilityRole="button"
-              accessibilityLabel={confirmButtonText}
-              accessibilityState={{ disabled: items.length === 0 }}
-            >
-              <Text style={styles.doneButton}>{confirmButtonText}</Text>
-            </TouchableOpacity>
-          </View>
+          <ScreenToolbar
+            title={title}
+            textActions
+            left={
+              <TouchableOpacity
+                testID="picker-cancel"
+                style={styles.headerAction}
+                onPress={handleCancel}
+                accessibilityRole="button"
+                accessibilityLabel={cancelButtonText}
+              >
+                <Text style={styles.cancelButton}>{cancelButtonText}</Text>
+              </TouchableOpacity>
+            }
+            right={
+              <TouchableOpacity
+                testID="picker-confirm"
+                style={styles.headerAction}
+                onPress={handleDone}
+                disabled={items.length === 0}
+                accessibilityRole="button"
+                accessibilityLabel={confirmButtonText}
+                accessibilityState={{ disabled: items.length === 0 }}
+              >
+                <Text style={styles.doneButton}>{confirmButtonText}</Text>
+              </TouchableOpacity>
+            }
+          />
 
           <View style={styles.wheelContainer}>
             <View style={styles.selectionIndicator} />

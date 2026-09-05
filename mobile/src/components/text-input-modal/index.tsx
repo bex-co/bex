@@ -9,7 +9,13 @@ import {
   Modal,
   TextInput,
 } from "react-native";
-import { useTheme } from "@/common/theme";
+import {
+  fontSizes,
+  fontWeights,
+  gutter,
+  space,
+  useTheme,
+} from "@/common/theme";
 import { ColorTheme } from "@/types/theme-props";
 
 const getStyles = (theme: ColorTheme) =>
@@ -28,13 +34,13 @@ const getStyles = (theme: ColorTheme) =>
       maxWidth: 400,
     },
     header: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 12,
+      paddingHorizontal: gutter,
+      paddingTop: space.lg,
+      paddingBottom: space.md,
     },
     title: {
-      fontSize: 18,
-      fontWeight: "600",
+      fontSize: fontSizes.xl,
+      fontWeight: fontWeights.semibold,
       color: theme.text01,
       marginBottom: 8,
     },
@@ -44,7 +50,7 @@ const getStyles = (theme: ColorTheme) =>
       lineHeight: 20,
     },
     inputContainer: {
-      paddingHorizontal: 20,
+      paddingHorizontal: gutter,
       paddingBottom: 20,
     },
     input: {
@@ -174,7 +180,9 @@ export const TextInputModal: React.FC<TextInputModalProps> = ({
           style={[styles.modalContainer, { transform: [{ scale }] }]}
         >
           <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+            <Text accessibilityRole="header" style={styles.title}>
+              {title}
+            </Text>
             {message && <Text style={styles.message}>{message}</Text>}
           </View>
           <View style={styles.inputContainer}>

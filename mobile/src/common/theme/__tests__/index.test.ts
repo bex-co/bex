@@ -78,7 +78,7 @@ describe("themes", () => {
     const { colorTheme } = themes.light;
     expect(colorTheme.white).toBe("#ffffff");
     expect(colorTheme.black).toBe("#202420");
-    expect(colorTheme.primary).toBe("#388a36");
+    expect(colorTheme.primary).toBe("#2f7d32");
   });
 
   it("dark theme has expected color properties", () => {
@@ -134,5 +134,27 @@ describe("themes", () => {
   it("dark theme has charcoal background", () => {
     expect(themes.dark.colorTheme.navBg).toBe("#191d19");
     expect(themes.dark.colorTheme.activeBackgroundColor).toBe("#191d19");
+  });
+});
+
+describe("primary action legibility", () => {
+  const luminance = (hex: string) => {
+    const values = [1, 3, 5]
+      .map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255)
+      .map((value) =>
+        value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4,
+      );
+    return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+  };
+  it("keeps primary button text above 4.5:1 in both color schemes", () => {
+    for (const theme of Object.values(themes)) {
+      const foreground = luminance(theme.colorTheme.onPrimary);
+      const background = luminance(theme.colorTheme.primary);
+      expect(
+        (Math.max(foreground, background) + 0.05) /
+          (Math.min(foreground, background) + 0.05) >=
+          4.5,
+      ).toBe(true);
+    }
   });
 });

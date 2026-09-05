@@ -27,7 +27,7 @@ export const getSystemColorScheme = (): "light" | "dark" =>
   Appearance.getColorScheme() === "dark" ? "dark" : "light";
 
 const shared = {
-  primary: "#388a36",
+  primary: "#2f7d32",
   primaryLight: "#57a957",
   primaryDark: "#246523",
   secondary: "#596579",
@@ -46,6 +46,7 @@ const lightTheme: ColorTheme = {
   border: "#d8ddd8",
   mutedForeground: "#677067",
   primaryMuted: "#e1f0e1",
+  onPrimary: "#ffffff",
   overlay: "rgba(0,0,0,0.5)",
   white: "#ffffff",
   black: "#202420",
@@ -84,6 +85,7 @@ const darkTheme: ColorTheme = {
   border: "#343a34",
   mutedForeground: "#a3aca3",
   primaryMuted: "#223922",
+  onPrimary: "#111411",
   overlay: "rgba(0,0,0,0.65)",
   white: "#191d19",
   black: "#f1f4f1",

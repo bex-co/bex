@@ -11,7 +11,10 @@ export const en = {
     notifications: "Alerts",
   },
   notifications: {
-    title: "Notifications",
+    benefit: "Get important service and deployment updates on your phone.",
+    emptyTitle: "No alerts yet",
+
+    title: "Alerts",
     body: "Recent operational alerts stored on this device.",
     settings: "Push notifications",
     permissionExplanation:
@@ -20,7 +23,8 @@ export const en = {
     disable: "Disable",
     recent: "Recent (%{count})",
     markAllRead: "Mark all read",
-    empty: "No notifications on this device yet.",
+    empty:
+      "Service and deployment updates will appear here when received on this device.",
     open: "Open notification: %{title}",
     states: {
       checking: "Checking permission…",
@@ -36,15 +40,20 @@ export const en = {
     },
   },
   status: {
+    overview: "Resource health",
+    healthy: "Healthy",
+    review: "Review",
+    unknown: "Unknown",
+
     title: "Status",
-    body: "Resource health and latest deploys.",
+    body: "Check your services and spot what needs attention.",
   },
   usageGlance: {
     title: "Month-to-date usage",
     states: {
-      complete: "Complete evidence",
-      partial: "Partial evidence",
-      unknown: "Coverage unknown",
+      complete: "Complete data",
+      partial: "Partial data",
+      unknown: "Coverage unconfirmed",
       unavailable: "Unavailable",
       "healthy-empty": "Complete · no usage",
     },
@@ -55,15 +64,17 @@ export const en = {
       storage_gb_seconds: "Datastore storage",
       sandbox_compute_seconds: "Agent compute",
     },
-    empty: "Complete evidence reports no non-zero usage.",
-    noEvidence: "No usage totals are available; coverage is not proven.",
-    through: "Common evidence through %{time}",
-    degraded: "Degraded sources: %{sources}",
+    empty: "Complete data reports no non-zero usage.",
+    noEvidence: "Usage totals are not available yet.",
+    through: "Usage confirmed through %{time}",
+    degraded: "Some usage sources are delayed: %{sources}",
     refreshUnavailable:
       "Refresh is unavailable. Showing the last received totals.",
     loading: "Loading month-to-date usage…",
   },
   activity: {
+    explore: "Explore service activity",
+
     title: "Activity",
     body: "Choose a service to inspect deploys, events, metrics, and read-only live logs.",
     timelineTitle: "Deploys and events",
@@ -72,6 +83,11 @@ export const en = {
     loadMore: "Load earlier activity",
   },
   resources: {
+    search: "Search resources",
+    clearSearch: "Clear search",
+    resetFilters: "Clear filters",
+    noMatches: "No matching resources",
+
     service: "Service",
     unknownStatus: "unknown",
     updatedAt: "Updated %{time}",
@@ -90,7 +106,7 @@ export const en = {
     emptyTitle: "No resources",
     emptyBody: "This workspace has no supervised resources yet.",
     emptyFilter: "No resources match this filter.",
-    ungrouped: "Other resources",
+    ungrouped: "Workspace resources",
     latestDeploy: "Latest deploy %{id}",
     resourceAccessibility: "%{name}, %{type}, status %{status}",
   },
@@ -355,7 +371,13 @@ export const en = {
     gated: "Requires ADR047 phase 1",
   },
   agentSessions: {
-    unavailable: "Agent sessions need desktop configuration.",
+    heading: "Your agents, at a glance",
+    description: "Follow progress, review results, or start a new task.",
+    newShort: "New",
+    loading: "Loading sessions…",
+    refreshError: "Could not refresh. Showing previously loaded sessions.",
+
+    unavailable: "Sessions could not be loaded. Try again.",
     emptyTitle: "No agent sessions yet",
     emptyBody: "Assign a coding-agent task to a repository from your phone.",
     phase: {
@@ -390,7 +412,7 @@ export const en = {
       setupTitle: "Finish setup on desktop",
       needGithub: "Connect GitHub on desktop to open pull requests.",
       needModelKey: "Add an agent model key on desktop to run sessions.",
-      needDesktop: "Agent sessions need desktop configuration.",
+      needDesktop: "Sessions could not be loaded. Try again.",
       connectGithub: "Connect GitHub",
     },
     detail: {
@@ -571,6 +593,8 @@ export const en = {
     },
   },
   common: {
+    back: "Go back",
+
     cancel: "Cancel",
     notFoundTitle: "This screen does not exist",
     backToStatus: "Back to Status",

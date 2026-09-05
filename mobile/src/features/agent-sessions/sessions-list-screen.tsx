@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Button } from "@/components/button";
 import { DashboardCard } from "@/components/dashboard-card";
 import { DashboardScrollView } from "@/components/dashboard-scroll-view";
 import { TopBar } from "@/components/top-bar";
@@ -56,9 +57,9 @@ export function SessionsListScreen() {
       case "active":
         return theme.primary;
       case "danger":
-        return theme.warning;
+        return theme.error;
       case "success":
-        return theme.foreground;
+        return theme.success;
       default:
         return theme.mutedForeground;
     }
@@ -68,9 +69,11 @@ export function SessionsListScreen() {
   const refreshing = networkStatus === NetworkStatus.refetch;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={[styles.safe, { backgroundColor: theme.background }]}
+    >
       <TopBar
-        title={t("navigation.sessions")}
         right={
           <View style={styles.headerRight}>
             {loading && data ? (
@@ -78,11 +81,19 @@ export function SessionsListScreen() {
             ) : null}
             <Pressable
               accessibilityRole="button"
+              testID="new-agent-session"
               accessibilityLabel={t("agentSessions.composer.new")}
               onPress={() => setComposing(true)}
-              hitSlop={12}
+              hitSlop={4}
+              style={[
+                styles.newButton,
+                { backgroundColor: theme.primaryMuted },
+              ]}
             >
-              <Ionicons name="add" size={24} color={theme.primary} />
+              <Ionicons name="add" size={20} color={theme.primary} />
+              <Text style={[styles.newLabel, { color: theme.primary }]}>
+                {t("agentSessions.newShort")}
+              </Text>
             </Pressable>
           </View>
         }
@@ -95,9 +106,38 @@ export function SessionsListScreen() {
         onRefresh={() => void recovery.manualRetry()}
         contentContainerStyle={styles.content}
       >
+        <View style={styles.intro}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.introTitle, { color: theme.foreground }]}
+          >
+            {t("agentSessions.heading")}
+          </Text>
+          <Text style={[styles.emptyBody, { color: theme.mutedForeground }]}>
+            {t("agentSessions.description")}
+          </Text>
+        </View>
+        {error && data ? (
+          <Text
+            accessibilityRole="alert"
+            style={[styles.notice, { color: theme.warning }]}
+          >
+            {t("agentSessions.refreshError")}
+          </Text>
+        ) : null}
         {initialLoading ? (
           <DashboardCard>
-            <ActivityIndicator color={theme.primary} />
+            <View style={styles.loading}>
+              <ActivityIndicator
+                accessibilityLabel={t("agentSessions.loading")}
+                color={theme.primary}
+              />
+              <Text
+                style={[styles.emptyBody, { color: theme.mutedForeground }]}
+              >
+                {t("agentSessions.loading")}
+              </Text>
+            </View>
           </DashboardCard>
         ) : error && !data ? (
           <DashboardCard>
@@ -107,15 +147,41 @@ export function SessionsListScreen() {
             >
               {t("agentSessions.unavailable")}
             </Text>
+            <Button
+              type="outline"
+              style={{ marginTop: space.lg }}
+              onPress={() => void recovery.manualRetry()}
+              loading={refreshing}
+            >
+              {t("auth.retry")}
+            </Button>
           </DashboardCard>
         ) : sessions.length === 0 ? (
           <DashboardCard>
+            <View
+              style={[
+                styles.emptyIcon,
+                { backgroundColor: theme.primaryMuted },
+              ]}
+            >
+              <Ionicons
+                name="sparkles-outline"
+                size={28}
+                color={theme.primary}
+              />
+            </View>
             <Text style={[styles.emptyTitle, { color: theme.foreground }]}>
               {t("agentSessions.emptyTitle")}
             </Text>
             <Text style={[styles.emptyBody, { color: theme.mutedForeground }]}>
               {t("agentSessions.emptyBody")}
             </Text>
+            <Button
+              style={{ marginTop: space.xl }}
+              onPress={() => setComposing(true)}
+            >
+              {t("agentSessions.composer.new")}
+            </Button>
           </DashboardCard>
         ) : (
           <DashboardCard>
@@ -126,17 +192,30 @@ export function SessionsListScreen() {
                   key={session.id}
                   accessibilityRole="button"
                   onPress={() => router.push(`/sessions/${session.id}`)}
-                  style={[
+                  style={({ pressed }) => [
                     styles.row,
+                    { opacity: pressed ? 0.65 : 1 },
                     index > 0 && {
                       borderTopColor: theme.border,
                       borderTopWidth: StyleSheet.hairlineWidth,
                     },
                   ]}
                 >
+                  <View
+                    style={[
+                      styles.sessionIcon,
+                      { backgroundColor: theme.primaryMuted },
+                    ]}
+                  >
+                    <Ionicons
+                      name="git-branch-outline"
+                      size={20}
+                      color={theme.primary}
+                    />
+                  </View>
                   <View style={styles.rowMain}>
                     <Text
-                      numberOfLines={1}
+                      numberOfLines={2}
                       style={[styles.repo, { color: theme.foreground }]}
                     >
                       {session.repo}
@@ -179,9 +258,41 @@ export function SessionsListScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  content: { gap: space.md },
+  content: { gap: space.lg },
+  intro: { gap: space.xs },
+  introTitle: { fontSize: fontSizes.xl, fontWeight: fontWeights.semibold },
+  newButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    minHeight: 44,
+    paddingHorizontal: space.md,
+    borderRadius: space.md,
+  },
+  newLabel: { fontSize: fontSizes.md, fontWeight: fontWeights.semibold },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: space.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: space.lg,
+  },
+  sessionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: space.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loading: {
+    minHeight: 140,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: space.sm,
+  },
   notice: { fontSize: fontSizes.sm, lineHeight: fontSizes.sm * 1.5 },
-  emptyTitle: { fontSize: fontSizes.md, fontWeight: fontWeights.medium },
+  emptyTitle: { fontSize: fontSizes.xl, fontWeight: fontWeights.semibold },
   emptyBody: {
     fontSize: fontSizes.sm,
     lineHeight: fontSizes.sm * 1.5,
@@ -195,9 +306,19 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   rowMain: { flex: 1, gap: 2 },
-  repo: { fontSize: fontSizes.md, fontWeight: fontWeights.medium },
+  repo: { fontSize: fontSizes.lg, fontWeight: fontWeights.semibold },
   branch: { fontSize: fontSizes.sm },
   meta: { fontSize: fontSizes.xs },
-  rowRight: { flexDirection: "row", alignItems: "center", gap: space.xs },
-  phase: { fontSize: fontSizes.xs, fontWeight: fontWeights.medium },
+  rowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    maxWidth: "35%",
+    flexShrink: 1,
+  },
+  phase: {
+    flexShrink: 1,
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.medium,
+  },
 });

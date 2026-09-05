@@ -11,7 +11,10 @@ export const zh = {
     notifications: "提醒",
   },
   notifications: {
-    title: "通知",
+    benefit: "在手机上接收重要的服务和部署动态。",
+    emptyTitle: "暂无提醒",
+
+    title: "提醒",
     body: "此设备上保存的近期运维提醒。",
     settings: "推送通知",
     permissionExplanation:
@@ -20,7 +23,7 @@ export const zh = {
     disable: "停用",
     recent: "最近通知（%{count}）",
     markAllRead: "全部标为已读",
-    empty: "此设备还没有通知。",
+    empty: "此设备收到的服务和部署动态将显示在这里。",
     open: "打开通知：%{title}",
     states: {
       checking: "正在检查权限…",
@@ -36,17 +39,22 @@ export const zh = {
     },
   },
   status: {
+    overview: "资源健康状况",
+    healthy: "健康",
+    review: "需关注",
+    unknown: "未知",
+
     title: "状态",
-    body: "资源健康状态和最新部署。",
+    body: "检查服务状态，及时发现需要关注的问题。",
   },
   usageGlance: {
     title: "本月至今用量",
     states: {
-      complete: "证据完整",
-      partial: "证据不完整",
-      unknown: "覆盖情况未知",
+      complete: "数据完整",
+      partial: "部分数据",
+      unknown: "覆盖情况待确认",
       unavailable: "不可用",
-      "healthy-empty": "证据完整 · 无用量",
+      "healthy-empty": "数据完整 · 无用量",
     },
     meters: {
       instance_seconds: "运行时间",
@@ -55,14 +63,16 @@ export const zh = {
       storage_gb_seconds: "数据存储用量",
       sandbox_compute_seconds: "智能体计算用量",
     },
-    empty: "完整证据表明没有非零用量。",
-    noEvidence: "没有可用的用量总计；覆盖情况尚未得到证明。",
-    through: "共同证据截至 %{time}",
-    degraded: "降级的数据源：%{sources}",
+    empty: "此期间没有记录到用量。",
+    noEvidence: "暂无可用的用量总计。",
+    through: "用量已确认至 %{time}",
+    degraded: "部分用量数据源存在延迟：%{sources}",
     refreshUnavailable: "刷新不可用。正在显示上次收到的总计。",
     loading: "正在加载本月至今用量…",
   },
   activity: {
+    explore: "查看服务动态",
+
     title: "动态",
     body: "选择服务以查看部署、事件、指标和只读实时日志。",
     timelineTitle: "部署和事件",
@@ -71,6 +81,11 @@ export const zh = {
     loadMore: "加载更早的动态",
   },
   resources: {
+    search: "搜索资源",
+    clearSearch: "清除搜索",
+    resetFilters: "清除筛选",
+    noMatches: "没有匹配的资源",
+
     service: "服务",
     unknownStatus: "未知",
     updatedAt: "更新于 %{time}",
@@ -88,7 +103,7 @@ export const zh = {
     emptyTitle: "没有资源",
     emptyBody: "此工作区还没有可监督的资源。",
     emptyFilter: "没有符合此筛选条件的资源。",
-    ungrouped: "其他资源",
+    ungrouped: "工作区资源",
     latestDeploy: "最新部署 %{id}",
     resourceAccessibility: "%{name}，%{type}，状态 %{status}",
   },
@@ -334,7 +349,13 @@ export const zh = {
     gated: "需要 ADR047 第一阶段",
   },
   agentSessions: {
-    unavailable: "智能体会话需要在桌面端完成配置。",
+    heading: "一览智能体进展",
+    description: "跟进进度、查看结果或启动新任务。",
+    newShort: "新建",
+    loading: "正在加载会话…",
+    refreshError: "刷新失败。显示上次加载的会话。",
+
+    unavailable: "无法加载会话。请重试。",
     emptyTitle: "还没有智能体会话",
     emptyBody: "从手机上为某个代码仓库分派一个编码智能体任务。",
     phase: {
@@ -540,6 +561,8 @@ export const zh = {
     },
   },
   common: {
+    back: "返回",
+
     cancel: "取消",
     notFoundTitle: "此页面不存在",
     backToStatus: "返回状态",

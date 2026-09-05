@@ -68,7 +68,10 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
       : [];
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={[styles.safe, { backgroundColor: theme.background }]}
+    >
       <DetailHeader
         title={session?.repo ?? sessionId}
         subtitle={session?.branch ?? ""}

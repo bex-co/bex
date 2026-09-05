@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   View,
   ViewStyle,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ColorTheme } from "@/types/theme-props";
@@ -22,28 +23,30 @@ const getStyles = (theme: ColorTheme) =>
   StyleSheet.create({
     card: {
       backgroundColor: theme.card,
-      borderRadius: space.md,
+      borderRadius: space.lg,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
       paddingVertical: space.lg,
-      marginBottom: space.md,
       overflow: "hidden",
     },
     header: {
       flexDirection: "row",
       alignItems: "center",
+      flexWrap: "wrap",
+      gap: space.sm,
       paddingHorizontal: gutter,
       marginBottom: space.md,
     },
     title: {
       flex: 1,
-      fontSize: fontSizes.xl,
-      fontWeight: fontWeights.medium,
+      fontSize: fontSizes.lg,
+      fontWeight: fontWeights.semibold,
       color: theme.text01,
     },
     seeAll: {
       flexDirection: "row",
       alignItems: "center",
+      minHeight: 44,
     },
     seeAllText: {
       fontSize: fontSizes.md,
@@ -73,7 +76,7 @@ type DashboardCardProps = {
 };
 
 /**
- * Monarch-style rounded dashboard card with an optional header row
+ * Rounded dashboard card with an optional header row
  * (title, actions slot, and a "see all →" affordance). Colors come from
  * theme tokens so it reads correctly in light and dark.
  */
@@ -88,12 +91,20 @@ export function DashboardCard({
   const styles = useThemeStyle(getStyles);
   const theme = useTheme().colorTheme;
   const { t } = useTranslations();
+  const { width, fontScale } = useWindowDimensions();
+  const stackHeader =
+    (width < 360 || fontScale > 1.3) && Boolean(right || onSeeAll);
   const hasHeader = Boolean(title || onSeeAll || right);
 
   return (
     <View style={[styles.card, style]}>
       {hasHeader && (
-        <View style={styles.header}>
+        <View
+          style={[
+            styles.header,
+            stackHeader && { flexDirection: "column", alignItems: "stretch" },
+          ]}
+        >
           {title ? (
             <Text style={styles.title}>{title}</Text>
           ) : (

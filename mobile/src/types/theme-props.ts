@@ -11,6 +11,7 @@ export interface ColorTheme {
   border: string;
   mutedForeground: string;
   primaryMuted: string;
+  onPrimary: string;
   overlay: string;
   primary: string;
   primaryLight: string;

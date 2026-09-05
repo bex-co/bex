@@ -7,10 +7,12 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Button } from "@/components/button";
 import { DashboardCard } from "@/components/dashboard-card";
 import { DashboardScrollView } from "@/components/dashboard-scroll-view";
 import { TopBar } from "@/components/top-bar";
@@ -40,6 +42,7 @@ import {
 } from "@/features/usage/usage-glance-card";
 import {
   buildResourceGroups,
+  summarizeResources,
   filterResourceGroups,
   type ResourceKind,
   type ResourceStatusItem,
@@ -65,6 +68,7 @@ export function ResourceStatusScreen({
   const [filter, setFilter] = useState<ResourceKind | "all">(
     activityOnly ? "service" : "all",
   );
+  const [search, setSearch] = useState("");
   const [freshAt, setFreshAt] = useState<Date | null>(null);
   const { data, loading, error, refetch, networkStatus } = useQuery(
     MobileResourceStatusDocument,
@@ -96,10 +100,11 @@ export function ResourceStatusScreen({
   const freshness = useFreshness(freshAt, { staleAfterMs: 65_000 });
 
   useEffect(() => {
-    if (data && networkStatus === NetworkStatus.ready) setFreshAt(new Date());
-  }, [data, networkStatus]);
+    if (data && !error && networkStatus === NetworkStatus.ready)
+      setFreshAt(new Date());
+  }, [data, error, networkStatus]);
 
-  const grouped = useMemo(() => {
+  const allGroups = useMemo(() => {
     const services: ResourceStatusItem[] = (data?.services ?? []).flatMap(
       (service) =>
         service?.id
@@ -178,16 +183,25 @@ export function ResourceStatusScreen({
           ]
         : [],
     );
-    return filterResourceGroups(
-      buildResourceGroups(projects, [...services, ...databases, ...keyValues]),
-      filter,
-    );
-  }, [data, filter, t]);
+    return buildResourceGroups(projects, [
+      ...services,
+      ...databases,
+      ...keyValues,
+    ]);
+  }, [data, t]);
+
+  const grouped = useMemo(
+    () => filterResourceGroups(allGroups, filter, search),
+    [allGroups, filter, search],
+  );
+  const summary = useMemo(() => summarizeResources(allGroups), [allGroups]);
 
   const shownGroups = grouped.groups.filter((group) => group.resources.length);
   const resourceCount =
     shownGroups.reduce((sum, group) => sum + group.resources.length, 0) +
     grouped.ungrouped.length;
+  const hasFilters =
+    Boolean(search.trim()) || (!activityOnly && filter !== "all");
   const initialLoading = loading && !data;
   const refreshing = networkStatus === NetworkStatus.refetch;
   const usageCopy = useMemo<UsageGlanceCopy>(
@@ -222,9 +236,11 @@ export function ResourceStatusScreen({
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={[styles.safe, { backgroundColor: theme.background }]}
+    >
       <TopBar
-        title={t(activityOnly ? "activity.title" : "status.title")}
         right={
           loading && data ? <ActivityIndicator color={theme.primary} /> : null
         }
@@ -236,29 +252,112 @@ export function ResourceStatusScreen({
         onRefresh={() => void recovery.manualRetry()}
         contentContainerStyle={styles.content}
       >
-        <Text style={[styles.freshness, { color: theme.mutedForeground }]}>
-          {freshAt
-            ? `${t(freshness.label)} · ${t("resources.updatedAt", {
-                time: formatTimestamp(freshAt.toISOString(), language),
-              })}`
-            : t(freshness.label)}
-        </Text>
+        <View style={styles.intro}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.sectionTitle, { color: theme.foreground }]}
+          >
+            {t(activityOnly ? "activity.explore" : "status.overview")}
+          </Text>
+          <Text style={[styles.activityHint, { color: theme.mutedForeground }]}>
+            {t(activityOnly ? "activity.body" : "status.body")}
+          </Text>
+        </View>
         {!activityOnly ? (
-          usageQuery.loading && !usageQuery.data && !usageQuery.previousData ? (
-            <DashboardCard title={t("usageGlance.title")}>
-              <ActivityIndicator
-                accessibilityLabel={t("usageGlance.loading")}
-                color={theme.primary}
+          <DashboardCard>
+            <View style={styles.summary}>
+              {(["healthy", "review", "unknown"] as const).map((key) => (
+                <View key={key} style={styles.summaryItem}>
+                  <Text
+                    style={[
+                      styles.summaryValue,
+                      {
+                        color:
+                          key === "healthy"
+                            ? theme.success
+                            : key === "review" && summary[key] > 0
+                              ? theme.warning
+                              : theme.foreground,
+                      },
+                    ]}
+                  >
+                    {data ? summary[key] : "—"}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.summaryLabel,
+                      { color: theme.mutedForeground },
+                    ]}
+                  >
+                    {t(`status.${key}`)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <View
+              style={[styles.summaryFooter, { borderTopColor: theme.border }]}
+            >
+              <Ionicons
+                name={
+                  error || freshness.status !== "fresh"
+                    ? "time-outline"
+                    : "sync-outline"
+                }
+                size={14}
+                color={theme.mutedForeground}
               />
-            </DashboardCard>
-          ) : (
-            <UsageGlanceCard
-              summary={usageQuery.data?.usage ?? usageQuery.previousData?.usage}
-              unavailable={Boolean(usageQuery.error)}
-              copy={usageCopy}
-            />
-          )
+              <Text
+                style={[styles.freshness, { color: theme.mutedForeground }]}
+              >
+                {error
+                  ? t("resources.partialError")
+                  : freshAt
+                    ? `${t(freshness.label)} · ${t("resources.updatedAt", {
+                        time: formatTimestamp(freshAt.toISOString(), language),
+                      })}`
+                    : t(freshness.label)}
+              </Text>
+            </View>
+          </DashboardCard>
         ) : null}
+        <View
+          style={[
+            styles.search,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color={theme.mutedForeground}
+          />
+          <TextInput
+            testID="resource-search"
+            value={search}
+            onChangeText={setSearch}
+            accessibilityLabel={t("resources.search")}
+            placeholder={t("resources.search")}
+            placeholderTextColor={theme.mutedForeground}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            style={[styles.searchInput, { color: theme.foreground }]}
+          />
+          {search ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("resources.clearSearch")}
+              onPress={() => setSearch("")}
+              style={styles.clearSearch}
+            >
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={theme.mutedForeground}
+              />
+            </Pressable>
+          ) : null}
+        </View>
         {!activityOnly ? (
           <View
             accessibilityRole="tablist"
@@ -270,6 +369,7 @@ export function ResourceStatusScreen({
               return (
                 <Pressable
                   key={candidate}
+                  testID={`resource-filter-${candidate}`}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: selectedFilter }}
                   accessibilityLabel={t(`resources.filters.${candidate}`)}
@@ -300,11 +400,7 @@ export function ResourceStatusScreen({
               );
             })}
           </View>
-        ) : (
-          <Text style={[styles.activityHint, { color: theme.mutedForeground }]}>
-            {t("activity.body")}
-          </Text>
-        )}
+        ) : null}
 
         {error ? (
           <View
@@ -314,6 +410,13 @@ export function ResourceStatusScreen({
             <Text style={{ color: theme.warning }}>
               {data ? t("resources.partialError") : t("resources.loadError")}
             </Text>
+            <Button
+              type="outline"
+              onPress={() => void recovery.manualRetry()}
+              loading={refreshing}
+            >
+              {t("auth.retry")}
+            </Button>
           </View>
         ) : null}
 
@@ -326,16 +429,28 @@ export function ResourceStatusScreen({
               </Text>
             </View>
           </DashboardCard>
-        ) : resourceCount === 0 ? (
+        ) : error && !data ? null : resourceCount === 0 ? (
           <DashboardCard>
             <Text style={[styles.emptyTitle, { color: theme.foreground }]}>
-              {t("resources.emptyTitle")}
+              {t(hasFilters ? "resources.noMatches" : "resources.emptyTitle")}
             </Text>
             <Text style={{ color: theme.mutedForeground }}>
-              {filter === "all"
+              {!hasFilters
                 ? t("resources.emptyBody")
                 : t("resources.emptyFilter")}
             </Text>
+            {hasFilters ? (
+              <Button
+                type="outline"
+                style={{ marginTop: space.lg }}
+                onPress={() => {
+                  setSearch("");
+                  setFilter(activityOnly ? "service" : "all");
+                }}
+              >
+                {t("resources.resetFilters")}
+              </Button>
+            ) : null}
           </DashboardCard>
         ) : (
           <>
@@ -354,6 +469,22 @@ export function ResourceStatusScreen({
             ) : null}
           </>
         )}
+        {!activityOnly ? (
+          usageQuery.loading && !usageQuery.data && !usageQuery.previousData ? (
+            <DashboardCard title={t("usageGlance.title")}>
+              <ActivityIndicator
+                accessibilityLabel={t("usageGlance.loading")}
+                color={theme.primary}
+              />
+            </DashboardCard>
+          ) : (
+            <UsageGlanceCard
+              summary={usageQuery.data?.usage ?? usageQuery.previousData?.usage}
+              unavailable={Boolean(usageQuery.error)}
+              copy={usageCopy}
+            />
+          )
+        ) : null}
       </DashboardScrollView>
     </SafeAreaView>
   );
@@ -381,7 +512,6 @@ function ResourceGroupCard({
 function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
-  const canOpen = true;
   const href =
     resource.kind === "service"
       ? `/services/${encodeURIComponent(resource.id)}`
@@ -390,8 +520,7 @@ function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
         : `/key-values/${encodeURIComponent(resource.id)}`;
   return (
     <Pressable
-      disabled={!canOpen}
-      accessibilityRole={canOpen ? "link" : "text"}
+      accessibilityRole="link"
       accessibilityLabel={t("resources.resourceAccessibility", {
         name: resource.name,
         type: resource.type,
@@ -440,13 +569,11 @@ function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
       </View>
       <View style={styles.statusColumn}>
         <StatusBadge status={resource.status} compact />
-        {canOpen ? (
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={theme.mutedForeground}
-          />
-        ) : null}
+        <Ionicons
+          name="chevron-forward"
+          size={18}
+          color={theme.mutedForeground}
+        />
       </View>
     </Pressable>
   );
@@ -454,8 +581,47 @@ function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { gap: space.md },
-  freshness: { fontSize: fontSizes.sm, marginBottom: space.xs },
+  content: { gap: space.lg },
+  intro: { gap: space.xs },
+  sectionTitle: { fontSize: fontSizes.xl, fontWeight: fontWeights.semibold },
+  summary: { flexDirection: "row", gap: space.sm },
+  summaryItem: { flex: 1, gap: space.xs },
+  summaryValue: {
+    fontSize: fontSizes.display,
+    fontWeight: fontWeights.semibold,
+    fontVariant: ["tabular-nums"],
+  },
+  summaryLabel: { fontSize: fontSizes.sm },
+  summaryFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: space.lg,
+    paddingTop: space.md,
+  },
+  search: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: space.md,
+    paddingLeft: space.md,
+    minHeight: 48,
+    gap: space.sm,
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: fontSizes.lg,
+    paddingVertical: space.md,
+  },
+  clearSearch: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  freshness: { flex: 1, fontSize: fontSizes.xs, lineHeight: 18 },
   activityHint: {
     fontSize: fontSizes.md,
     lineHeight: fontSizes.md * 1.5,
@@ -463,14 +629,19 @@ const styles = StyleSheet.create({
   },
   filters: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   filter: {
-    minHeight: 36,
+    minHeight: 44,
     justifyContent: "center",
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: space.md,
     paddingVertical: space.xs,
   },
-  notice: { borderWidth: 1, borderRadius: space.sm, padding: space.md },
+  notice: {
+    gap: space.md,
+    borderWidth: 1,
+    borderRadius: space.sm,
+    padding: space.md,
+  },
   loading: {
     minHeight: 140,
     alignItems: "center",
@@ -487,7 +658,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: gutter,
-    paddingVertical: space.sm,
+    paddingVertical: space.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: space.md,
   },
@@ -499,7 +670,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   resourceCopy: { flex: 1, minWidth: 0 },
-  resourceName: { fontSize: fontSizes.md, fontWeight: fontWeights.medium },
+  resourceName: { fontSize: fontSizes.lg, fontWeight: fontWeights.semibold },
   meta: { fontSize: fontSizes.sm, marginTop: 2 },
   statusColumn: {
     flexShrink: 1,
