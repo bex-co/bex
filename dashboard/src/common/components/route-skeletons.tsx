@@ -1,5 +1,11 @@
 import { useRouterState, useSearch } from "@tanstack/react-router";
-import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/common/components/ui/card";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   CardSkeleton,
@@ -1523,9 +1529,12 @@ export function ServiceEnvironmentSkeleton() {
 
 export function ServiceSettingsSkeleton({
   staticSite = false,
+  sourceKind,
 }: {
   staticSite?: boolean;
+  sourceKind?: "repo" | "image";
 }) {
+  const { t } = useTranslations();
   const sections = staticSite
     ? [
         "general",
@@ -1569,10 +1578,19 @@ export function ServiceSettingsSkeleton({
             <Card>
               <CardHeader className="flex-row items-start justify-between gap-4">
                 <div className="space-y-1.5">
-                  <Skeleton className="h-5 w-20" />
-                  <Skeleton className="h-4 w-72 max-w-full" />
+                  <Skeleton className="h-4 w-20" />
+                  <CardDescription className="relative">
+                    <span className="invisible">
+                      {t(
+                        sourceKind === "image"
+                          ? "services.sourceImageDescription"
+                          : "services.sourceRepoDescription",
+                      )}
+                    </span>
+                    <Skeleton className="absolute inset-0" />
+                  </CardDescription>
                 </div>
-                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-8 w-full" />
               </CardHeader>
               <CardContent>
                 <div
@@ -1580,13 +1598,15 @@ export function ServiceSettingsSkeleton({
                   data-skeleton-region="source-fields"
                 >
                   <div className="space-y-1">
-                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-5 w-16" />
                     <Skeleton className="h-5 w-4/5" />
                   </div>
-                  <div className="space-y-1">
-                    <Skeleton className="h-4 w-14" />
-                    <Skeleton className="h-5 w-2/5" />
-                  </div>
+                  {sourceKind !== "image" ? (
+                    <div className="space-y-1">
+                      <Skeleton className="h-5 w-14" />
+                      <Skeleton className="h-5 w-2/5" />
+                    </div>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>

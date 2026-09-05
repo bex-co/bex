@@ -1,4 +1,8 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  getRouteApi,
+  useRouter,
+} from "@tanstack/react-router";
 import {
   Card,
   CardHeader,
@@ -45,8 +49,18 @@ import { SECTION_NAVIGATION_STICKY_CLASS } from "@/common/components/section-nav
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
   component: RouteComponent,
-  pendingComponent: ServiceSettingsSkeleton,
+  pendingComponent: ServiceSettingsPending,
 });
+
+function ServiceSettingsPending() {
+  const parent = getRouteApi("/services/$serviceId").useLoaderData();
+  const service = parent?.state === "ready" ? parent.resource : undefined;
+  return (
+    <ServiceSettingsSkeleton
+      sourceKind={service ? (service.repo ? "repo" : "image") : undefined}
+    />
+  );
+}
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();

@@ -1,6 +1,6 @@
 # w5 · m76 — Dashboard "Update Source" card: swap a service's backing repo/branch/image from Settings
 
-**Worker:** worker5 **Goal:** the last open GitHub-integration parity item (ADR026 §8 plan item 1) closes — a service's backing source (repo + branch, or container image) is viewable and editable from its dashboard Settings page, driving the already-shipped `PATCH /v1/services/{id}` fields, with save-without-deploy semantics **Status:** in progress — t001–t005 DONE locally; 2026-09-04 live audit found missing repository-access validation, now fixed locally; t006 awaits this fix’s ship + production verification
+**Worker:** worker5 **Goal:** the last open GitHub-integration parity item (ADR026 §8 plan item 1) closes — a service's backing source (repo + branch, or container image) is viewable and editable from its dashboard Settings page, driving the already-shipped `PATCH /v1/services/{id}` fields, with save-without-deploy semantics **Status:** done
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Render parity — mirror Render's Update Source dialog semantics; record any divergence — **DONE** | 20m | t002       |
 | t004 | Simplify — `/simplify` over the milestone's changed code — **DONE**                         | 30m | t003       |
 | t005 | Test coverage — swap transitions, validation, dialog wiring — **DONE**                      | 45m | t003       |
-| t006 | Closeout — verify DoD, sync status, move to done/                                          | 15m | t005       |
+| t006 | Closeout — verify DoD, sync status, move to done/ — **DONE** | 15m | t005       |
 
 ## Definition of done
 
@@ -19,7 +19,7 @@ On a live environment: a repo-backed service's Settings page shows its Source (`
 
 ## Source + Goal linkage
 
-- **Source:** [docs/ADR026-github-integration.md](../../../docs/ADR026-github-integration.md) §8 "Render-parity status & remaining plan" item 1 (2026-08-21), grounded in the live Render-dashboard walk: Render's Settings → Source **Edit** (May-2026 "Update Source" changelog) swaps repo/branch or repo↔image; bex already has the API half (`PATCH /v1/services/{id}` accepts `repo`/`branch`/`image` since w1/073 matched Render's PATCH field set) but no dashboard affordance.
+- **Source:** [docs/ADR026-github-integration.md](../../../../docs/ADR026-github-integration.md) §8 "Render-parity status & remaining plan" item 1 (2026-08-21), grounded in the live Render-dashboard walk: Render's Settings → Source **Edit** (May-2026 "Update Source" changelog) swaps repo/branch or repo↔image; bex already has the API half (`PATCH /v1/services/{id}` accepts `repo`/`branch`/`image` since w1/073 matched Render's PATCH field set) but no dashboard affordance.
 - **Goal linkage:** Render parity (ADR018) on the service-configuration surface; completes the GitHub-integration parity plan — after this, ADR026 §8's "remaining" list is empty except the unscheduled grant-staleness polish.
 - **Expected outcome:** a mis-pointed or migrated service is fixed from the UI in seconds (today it needs a raw API call); the ADR026 §8 plan item closes.
 - **Why now:** it is the single remaining functional gap from the 2026-08-21 parity audit, small and well-bounded, and the m74 account-grouped repo picker it reuses just shipped.
@@ -52,9 +52,26 @@ On a live environment: a repo-backed service's Settings page shows its Source (`
 - **Local verification:** complete backend `go test ./...` passed (optional integration services were not started locally); the final apps/GitHub packages passed again after adding the MCP rejection case. `make lint-backend` reports zero issues. Dashboard `yarn lint` (including typecheck) and all 394 test files / 2,899 tests passed, including the new rejected-draft test. Repository-wide Markdown formatting and `git diff --check` passed.
 - **Cleanup:** scratch service deleted through `deleteService`; subsequent REST GET returned 404. Isolated browser contexts were closed and the audit login storage file removed. No existing service was edited.
 
-### Remaining closeout gates
+### Closeout gates recorded on 2026-09-04 (resolved below)
 
 1. Ship the local access-validation fix and its tests, then verify its production rollout. The repository requires an explicit `$ship` invocation before commit/push.
 2. Re-run the live rejected-private/missing and accepted-public cases after rollout; confirm the error is visible and the rejected save leaves source/deploy history unchanged.
 3. Start with a healthy scratch service, repeat repo↔image saves, and prove the healthy active artifact stays in place until a manual deploy successfully activates the new source. The prior audit's 503 cannot satisfy this gate.
 4. Complete the desktop/mobile pending-versus-ready geometry check and record the final evidence, then move t006 and the milestone to `done/`.
+
+
+## Completed closeout verification (2026-09-05)
+
+- **Access fix shipped:** `88e052053` (`fix(services): validate repository access before source updates`). Deploy run `33994179845`, attempt 2, passed its test and image-scan gates. The production API successfully rolled out image digest `dee4585cee48d49e1eef46c230632c988412fb17eddcf6a2dfe69b33d2765e77`; the live checks below ran against that version. The broader platform workflow was still completing unrelated rollout steps when this verification finished.
+- **Healthy scratch:** `srv-dae9lb988i5c7399e9m0` (`qa-m76-source-20260905`) built the connected private repo `bex-co/bex-hello-go-live` and served HTTP 200 with `m76-baseline — pushed v3`. The scratch has `WHOAMI_PORT_NUMBER=3000` so the [whoami image's documented port setting](https://github.com/traefik/whoami#flags) matches the service port for the image half of the test.
+- **Repo → image save:** Settings saved `traefik/whoami:v1.11`; deploy history stayed byte-identical, `autoDeploy` stayed false, and the response stayed `m76-baseline — pushed v3`. Kubernetes observed generation 3 with pending-source generation 3 while release generation remained 2. Deployment generation 2, pod UID `fb066d6b-85a9-4dbf-8c27-e96649dea59c`, and the active image digest all stayed unchanged.
+- **Explicit image deploy:** dashboard Manual Deploy → Deploy latest image created `dep-dae9nm3r12dc73ba7co0`, reached `live`, activated `traefik/whoami:v1.11` at release generation 4, and `/bench` returned HTTP 200 with `1`.
+- **Image → repo save:** the connected-account picker saved `bex-co/bex-hello-go-live` / `main`. History, active deployment, pod UID `f13da5f8-fa08-493b-98be-13545553808f`, release generation 4, and `/bench` response `1` stayed unchanged.
+- **Explicit repo deploy:** dashboard Manual Deploy → Deploy latest commit created `dep-dae9ogbr12dc73ba7cu0`, resolved commit `7ad20c989b805b440a88ce2d61b7c283bd44bf2c`, built a new artifact, reached `live` at release generation 6, and restored HTTP 200 with `m76-baseline — pushed v3`. The replacement pod is `240ec243-7caf-47cd-8c99-6ffae7324125`.
+- **Source geometry repaired:** real-CSS side-by-side renders found and fixed label/description heights and action width. Repo pending/ready cards match at 888×192 desktop and 358×272 mobile; image cards match at 888×192 and 358×212. The child pending wrapper reads the existing parent loader resource to omit Branch for known image sources, with no new request. Before parent data exists, the initial loader retains its representative unknown-source geometry. Evidence is limited to Source regions rather than full-route transition timing; screenshots live in ignored `.playwright-mcp/m76-source-{image-}comparison-{1440,390}.png`.
+- **Verification:** 59 focused settings/skeleton/manifest tests and typecheck passed; full dashboard lint and 397 files / 2,995 tests passed. Simplify reuse, quality, and efficiency reviews found no remaining issue.
+- **Separate finding:** source success/fallback-error toasts reuse Root Directory copy; filed as `w5/051` per t006's new-findings rule. Server validation refusal messages already override the generic fallback.
+
+- **Production validation:** Settings refused `https://github.com/m76-unconnected-owner/private-repo` with “repository is not accessible through this workspace's GitHub connections or as public Git” and actionable connection/public-repository guidance. The rejected draft stayed open; source fields and complete deploy history were byte-identical. Settings then accepted public `https://github.com/traefik/whoami` / `master`, and the GitHub picker restored connected private `bex-co/bex-hello-go-live` / `main`. Neither save created a deploy or changed `autoDeploy`; the active endpoint still returned HTTP 200 with `m76-baseline — pushed v3`. Evidence: ignored `m76-access-verification.json` and `m76-production-rejection.png`.
+- **Final geometry assertions:** card, header, content, and action bounds and positions match within 0.1px for repo/image at 1440px and 390px. Translated invisible description text preserves the ready layout's intrinsic wrapping and button width. Final dashboard lint/typecheck and all 397 files / 2,995 tests passed after this correction.
+- **Cleanup:** deleted the scratch service through GraphQL; REST GET returned 404. Isolated browsers closed and this audit's authentication storage was removed. All six tasks are complete; the milestone moved to `w5/done/m76/` with no stub.
