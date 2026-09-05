@@ -51,7 +51,7 @@ export function LogViewer({
       types: selectedType === "all" ? undefined : [selectedType],
       text: text.trim() || undefined,
       direction: "backward",
-      limit: 500,
+      limit: 100,
     }),
     [resource, selectedType, text],
   );
@@ -168,7 +168,7 @@ export function LogViewer({
           if (!state.paused) list.current?.scrollToEnd({ animated: false });
         }}
         ListEmptyComponent={
-          state.phase !== "catching_up" ? (
+          !state.error && state.phase !== "catching_up" ? (
             <Text style={[styles.empty, { color: theme.mutedForeground }]}>
               {t("logs.empty")}
             </Text>

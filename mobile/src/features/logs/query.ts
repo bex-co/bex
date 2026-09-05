@@ -16,7 +16,9 @@ export function buildLogQuery(filters: LogFilters): string {
   if (filters.text) params.append("text", filters.text);
   if (filters.startTime) params.append("startTime", filters.startTime);
   if (filters.endTime) params.append("endTime", filters.endTime);
-  if (filters.limit) params.append("limit", String(filters.limit));
+  // The REST schema caps each page at 100, independently of the live buffer.
+  if (filters.limit)
+    params.append("limit", String(Math.min(filters.limit, 100)));
   if (filters.direction) params.append("direction", filters.direction);
 
   for (const key of repeatedKeys) {
