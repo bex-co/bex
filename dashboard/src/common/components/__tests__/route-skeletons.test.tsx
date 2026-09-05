@@ -207,6 +207,44 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     expect(fields?.children).toHaveLength(2);
     expect(fields?.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(4);
     expect(fields?.querySelector(".h-9")).toBeNull();
+    for (const field of fields?.children ?? []) {
+      expect(field.firstElementChild).toHaveClass("h-5");
+    }
+    const heading = source?.querySelector('[data-slot="card-header"]');
+    expect(heading?.lastElementChild).toHaveClass("h-8", "w-full");
+    expect(heading?.querySelector(".space-y-1\\.5")?.children[0]).toHaveClass(
+      "h-4",
+    );
+    const description = heading?.querySelector(
+      '[data-slot="card-description"]',
+    );
+    expect(description).toHaveClass("relative");
+    expect(description?.querySelector("span")).toHaveClass("invisible");
+    expect(description?.querySelector("span")).toHaveTextContent(
+      "The Git repository and branch this service builds from.",
+    );
+    expect(description?.querySelector('[data-slot="skeleton"]')).toHaveClass(
+      "absolute",
+      "inset-0",
+    );
+  });
+
+  it("omits the branch region for a known image source", () => {
+    const { container } = render(
+      <ServiceSettingsSkeleton sourceKind="image" />,
+    );
+    const fields = container.querySelector(
+      '[data-skeleton-region="source-fields"]',
+    );
+    const description = container.querySelector(
+      '[data-skeleton-region="source"] [data-slot="card-description"] span',
+    );
+    expect(description).toHaveClass("invisible");
+    expect(description).toHaveTextContent(
+      "The prebuilt container image this service deploys.",
+    );
+    expect(fields?.children).toHaveLength(1);
+    expect(fields?.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(2);
   });
 
   it("keeps account settings mobile navigation and desktop rail together", () => {
