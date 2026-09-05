@@ -6,16 +6,30 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "dba70c4b-4aae-4bf9-a461-a19bcae69b3a"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "dba70c4b-4aae-4bf9-a461-a19bcae69b3a"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "dba70c4b-4aae-4bf9-a461-a19bcae69b3a"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6809027049",
+        "metadataPath": "store.config.js"
+      }
+    }
   }
 }
