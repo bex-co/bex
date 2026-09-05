@@ -816,6 +816,31 @@ func (t tokenSource) RepoGranted(ctx context.Context, workspaceID, repoURL strin
 	return granted, err
 }
 
+// ValidateRepo checks a source edit before any App or clone Secret is changed.
+// An unconnected GitHub repo is usable only when GitHub serves it anonymously;
+// other Git hosts retain the create flow's public-Git behavior.
+func (t tokenSource) ValidateRepo(ctx context.Context, workspaceID, repoURL string) error {
+	owner, repo, ok := githubOwnerRepo(repoURL)
+	if !ok || !t.s.configured() {
+		return nil
+	}
+	granted, err := t.RepoGranted(ctx, workspaceID, repoURL)
+	if err != nil {
+		return fmt.Errorf("checking repository access: %w", err)
+	}
+	if granted {
+		return nil
+	}
+	public, err := t.s.GitHub.RepoAccessible(ctx, "", owner, repo)
+	if err != nil {
+		return fmt.Errorf("checking public repository access: %w", err)
+	}
+	if !public {
+		return fmt.Errorf("%w: repository is not accessible through this workspace's GitHub connections or as public Git; connect its owner and grant repository access, or use a public repository", core.ErrBadRequest)
+	}
+	return nil
+}
+
 // DeployTokenSource returns the deploy path's clone-token seam (wired onto
 // apps.Service in the composition root).
 func (s *Service) DeployTokenSource() tokenSource { return tokenSource{s} }

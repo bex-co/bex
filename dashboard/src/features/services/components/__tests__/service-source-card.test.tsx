@@ -34,7 +34,12 @@ vi.mock("@/features/services/hooks/use-set-repo", () => ({
   useSetRepo: () => ({ setRepo, busy: false }),
 }));
 vi.mock("@/features/services/hooks/use-repos", () => ({
-  useRepos: () => ({ repos, loading: false, error: undefined, refetch: vi.fn() }),
+  useRepos: () => ({
+    repos,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/services/hooks/use-repo-branches", () => ({
   useRepoBranches: () => ({ branches: ["main", "release"], loading: false }),
@@ -84,6 +89,36 @@ beforeEach(() => {
 });
 
 describe("ServiceSourceCard", () => {
+  it("keeps the source draft open when the backend rejects access", async () => {
+    const user = userEvent.setup();
+    setRepo.mockResolvedValueOnce(false);
+    render(
+      <ServiceSourceCard
+        serviceId="srv-1"
+        repo="https://github.com/acme/api"
+        branch="main"
+        imagePath={null}
+        registryCredentialId={null}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const input = screen.getByDisplayValue("https://github.com/acme/api");
+    await user.clear(input);
+    await user.type(input, "https://github.com/unconnected/private");
+    await user.click(screen.getByRole("button", { name: "Update source" }));
+
+    await waitFor(() =>
+      expect(setRepo).toHaveBeenCalledWith("srv-1", {
+        repo: "https://github.com/unconnected/private",
+        branch: "main",
+      }),
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(input).toHaveValue("https://github.com/unconnected/private");
+    expect(setImage).not.toHaveBeenCalled();
+  });
+
   it("shows a repo and branch, then atomically repoints both from the grouped picker", async () => {
     const user = userEvent.setup();
     render(
