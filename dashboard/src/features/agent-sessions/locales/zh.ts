@@ -581,6 +581,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "暂无对话。",
     description: "Shown when a session has produced no transcript parts",
   },
+  "agentSessions.turnError": {
+    message: "第 {turn} 轮失败",
+    description:
+      "Recorded failure of an earlier turn; subsequent turns remain readable",
+  },
   "agentSessions.continuitySessionLoad": {
     message: "智能体已恢复其保存的会话状态。",
     description:

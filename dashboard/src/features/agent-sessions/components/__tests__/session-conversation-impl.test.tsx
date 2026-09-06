@@ -134,6 +134,105 @@ describe("SessionConversationImpl", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("replays a historical failure through the real SDK and renders later native continuity and answer", async () => {
+    const onChatStateChange = vi.fn();
+    const transcript: UIMessageChunk[] = [
+      { type: "start", messageId: "asm-recovered" },
+      {
+        type: "data-user-prompt",
+        data: {
+          turn: 4,
+          text: "failed attempt",
+          settled: true,
+          complete: true,
+        },
+      },
+      {
+        type: "data-bex-turn-error",
+        data: { turn: 4, errorText: "session/load: Query closed [REDACTED]" },
+      },
+      {
+        type: "data-user-prompt",
+        data: {
+          turn: 5,
+          text: "resume successfully",
+          settled: true,
+          complete: true,
+        },
+      },
+      { type: "data-bex-continuity", data: { rung: "session-load" } },
+      { type: "text-start", id: "recovered" },
+      { type: "text-delta", id: "recovered", delta: "MARIGOLD742/37" },
+      { type: "text-end", id: "recovered" },
+      { type: "finish" },
+    ];
+    render(
+      <SessionConversationImpl
+        sessionId="as-recovered"
+        isTerminal
+        onChatStateChange={onChatStateChange}
+        transport={createAgentSessionTransport({
+          sessionId: "as-recovered",
+          mintTicket,
+          fetch: makeFixtureFetch(transcript, { terminal: true }),
+        })}
+      />,
+    );
+
+    expect(await screen.findByText("MARIGOLD742/37")).toBeInTheDocument();
+    const failure = screen.getByText(
+      "Turn 4 failed: session/load: Query closed [REDACTED]",
+    );
+    const hint = screen.getByText(
+      "Agent resumed with its restored conversation state.",
+    );
+    expect(
+      failure.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("Some assistant output could not be preserved"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("The conversation stream is unavailable right now."),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("Session ended.")).toBeInTheDocument(),
+    );
+    expect(onChatStateChange.mock.lastCall?.[0]).not.toBeNull();
+  });
+
+  it("keeps current raw errors fatal in the SDK stream", async () => {
+    const onChatStateChange = vi.fn();
+    const transcript: UIMessageChunk[] = [
+      { type: "start", messageId: "asm-current-error" },
+      { type: "error", errorText: "current turn failed" },
+      { type: "text-start", id: "unreachable" },
+      { type: "text-delta", id: "unreachable", delta: "must not render" },
+      { type: "text-end", id: "unreachable" },
+      { type: "finish" },
+    ];
+    render(
+      <SessionConversationImpl
+        sessionId="as-current-error"
+        isTerminal
+        onChatStateChange={onChatStateChange}
+        transport={createAgentSessionTransport({
+          sessionId: "as-current-error",
+          mintTicket,
+          fetch: makeFixtureFetch(transcript, { terminal: true }),
+        })}
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        onChatStateChange.mock.calls.some(([handle]) => handle !== null),
+      ).toBe(true);
+      expect(onChatStateChange.mock.lastCall?.[0]).toBeNull();
+    });
+    expect(screen.queryByText("must not render")).not.toBeInTheDocument();
+    expect(screen.queryByText("Session ended.")).not.toBeInTheDocument();
+  });
+
   it("renders durable user prompts in turn order after refresh", async () => {
     const transcript = [
       { type: "start", messageId: "asm-durable" },

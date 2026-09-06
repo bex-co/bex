@@ -598,6 +598,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "No conversation yet.",
     description: "Shown when a session has produced no transcript parts",
   },
+  "agentSessions.turnError": {
+    message: "Turn {turn} failed",
+    description:
+      "Recorded failure of an earlier turn; subsequent turns remain readable",
+  },
   "agentSessions.continuitySessionLoad": {
     message: "Agent resumed with its restored conversation state.",
     description:

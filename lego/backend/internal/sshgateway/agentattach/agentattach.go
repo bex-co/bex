@@ -573,11 +573,12 @@ replay:
 			// adapter has already opened one response message so durable prompts and
 			// all turns remain one ordered part stream; forwarding the nested
 			// structural chunks makes AI SDK duplicate cumulative messages.
-			if len(turns) > 0 && structuralUIChunk(part.Part) {
+			payload, skip := replayUIChunk(part, turn, len(turns) > 0)
+			if skip {
 				replayedBytes += int64(len(part.Part))
 				continue
 			}
-			if err := sse.frame(string(part.Part)); err != nil {
+			if err := sse.frame(string(payload)); err != nil {
 				// Client gone or stalled past the write deadline: stop now so the
 				// deferred limiter release + this return free the reader's memory.
 				return
@@ -606,6 +607,32 @@ replay:
 	}
 	finishConversation(sse, turns)
 	sse.done()
+}
+
+// Decode once for both replay adaptations: structural chunks belong to the
+// enclosing message, and old errors are content rather than fatal SDK errors.
+func replayUIChunk(part store.AgentSessionTranscriptPart, currentTurn int, adaptedReplay bool) ([]byte, bool) {
+	if !adaptedReplay && part.Turn >= currentTurn {
+		return part.Part, false
+	}
+	var chunk struct {
+		Type      string `json:"type"`
+		ErrorText string `json:"errorText"`
+	}
+	if json.Unmarshal(part.Part, &chunk) != nil {
+		return part.Part, false
+	}
+	if adaptedReplay && (chunk.Type == "start" || chunk.Type == "finish") {
+		return nil, true
+	}
+	if part.Turn >= currentTurn || chunk.Type != "error" {
+		return part.Part, false
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"type": "data-bex-turn-error",
+		"data": map[string]any{"turn": part.Turn, "errorText": chunk.ErrorText},
+	})
+	return payload, false
 }
 
 func structuralUIChunk(part []byte) bool {
