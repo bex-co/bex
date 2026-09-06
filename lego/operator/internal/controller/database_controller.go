@@ -632,7 +632,9 @@ func upsertOwned(ctx context.Context, c client.Client, scheme *runtime.Scheme, o
 	o.SetName(name)
 	o.SetNamespace(owner.GetNamespace())
 	_, err := controllerutil.CreateOrUpdate(ctx, c, o, func() error {
-		o.Object["spec"] = spec
+		if err := projectUnstructuredSpec(o, spec); err != nil {
+			return err
+		}
 		return controllerutil.SetControllerReference(owner, o, scheme)
 	})
 	return err
@@ -843,7 +845,9 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 			inheritedLabels[labelEnvironment] = env
 		}
 		spec["inheritedMetadata"] = map[string]any{"labels": inheritedLabels}
-		cluster.Object["spec"] = spec
+		if err := projectUnstructuredSpec(cluster, spec); err != nil {
+			return err
+		}
 		setLifecycleAnnotations(cluster, db.Spec.Suspended, db.Spec.RestartedAt)
 		return controllerutil.SetControllerReference(db, cluster, r.Scheme)
 	})
@@ -898,7 +902,7 @@ func (r *DatabaseReconciler) settleSuspended(ctx context.Context, db *appv1alpha
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
 		Message: "postgres suspended (hibernated; PVC and config kept)", ObservedGeneration: db.Generation,
 	})
-	if err := r.Status().Update(ctx, db); err != nil {
+	if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
 		return ctrl.Result{}, err
 	}
 	if exportRequeue > 0 {
@@ -1009,7 +1013,7 @@ func (r *DatabaseReconciler) reconcileTenantBackupStore(ctx context.Context, db 
 		// is deliberately NOT owned by any one of them — an ownerReference would
 		// delete the store the moment its first Database went away and silently
 		// break every sibling's archiving.
-		return unstructured.SetNestedMap(target.Object, spec, "spec")
+		return projectUnstructuredSpec(target, spec)
 	}); err != nil {
 		return fmt.Errorf("projecting ObjectStore into %s: %w", db.Namespace, err)
 	}
@@ -1092,7 +1096,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "MajorVersionUpgradeFailed",
 			Message: clusterState.message, ObservedGeneration: db.Generation,
 		})
-		if err := r.Status().Update(ctx, db); err != nil {
+		if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
@@ -1103,7 +1107,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "MajorVersionUpgrade",
 			Message: clusterState.message, ObservedGeneration: db.Generation,
 		})
-		if err := r.Status().Update(ctx, db); err != nil {
+		if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
@@ -1125,7 +1129,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Provisioned",
 			Message: "postgres ready", ObservedGeneration: db.Generation,
 		})
-		if err := r.Status().Update(ctx, db); err != nil {
+		if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
 			return ctrl.Result{}, err
 		}
 		logf.FromContext(ctx).Info("database ready", "name", db.Name, "host", db.Status.Host)
@@ -1140,7 +1144,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Provisioning",
 		Message: "waiting for CloudNativePG", ObservedGeneration: db.Generation,
 	})
-	if err := r.Status().Update(ctx, db); err != nil {
+	if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{RequeueAfter: soonerRequeue(10*time.Second, exportRequeue)}, nil
@@ -1327,7 +1331,7 @@ func (r *DatabaseReconciler) rejectDatabaseStorageShrink(ctx context.Context, db
 		Message:            fmt.Sprintf("Postgres storage is grow-only: requested %d GB is below the allocated %d GB", requested, current),
 		ObservedGeneration: db.Generation,
 	})
-	return r.Status().Update(ctx, db)
+	return updateStatusIfChanged(ctx, r.Client, db)
 }
 
 // SetupWithManager wires the controller. It owns the CNPG Cluster (unstructured)

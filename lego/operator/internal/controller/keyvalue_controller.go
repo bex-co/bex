@@ -391,7 +391,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 		kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
 		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
 			Reason: "ConnectionSecretRebuilding", Message: "rebuilding immutable connection information", ObservedGeneration: kv.Generation})
-		if err := r.Status().Update(ctx, kv); err != nil {
+		if err := updateStatusIfChanged(ctx, r.Client, kv); err != nil {
 			return nil, ctrl.Result{}, true, err
 		}
 		return nil, ctrl.Result{RequeueAfter: time.Second}, true, nil
@@ -801,7 +801,7 @@ func (r *KeyValueReconciler) applyKeyValueStorageState(
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: state.reason,
 		Message: state.message, ObservedGeneration: kv.Generation,
 	})
-	if err := r.Status().Update(ctx, kv); err != nil {
+	if err := updateStatusIfChanged(ctx, r.Client, kv); err != nil {
 		return ctrl.Result{}, true, err
 	}
 	return ctrl.Result{RequeueAfter: state.requeue}, true, nil
@@ -832,7 +832,7 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reason,
 			Message: message, ObservedGeneration: kv.Generation,
 		})
-		if err := r.Status().Update(ctx, kv); err != nil {
+		if err := updateStatusIfChanged(ctx, r.Client, kv); err != nil {
 			return ctrl.Result{}, err
 		}
 		logf.FromContext(ctx).Info("keyvalue reconciled", "name", kv.Name, "host", kv.Status.Host, "suspended", kv.Spec.Suspended)
@@ -848,7 +848,7 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 		Message: message, ObservedGeneration: kv.Generation,
 	})
-	if err := r.Status().Update(ctx, kv); err != nil {
+	if err := updateStatusIfChanged(ctx, r.Client, kv); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{RequeueAfter: kvStorageRequeue}, nil
@@ -912,7 +912,7 @@ func (r *KeyValueReconciler) rejectKeyValueStorageShrink(ctx context.Context, kv
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
 		Message: message, ObservedGeneration: kv.Generation,
 	})
-	return r.Status().Update(ctx, kv)
+	return updateStatusIfChanged(ctx, r.Client, kv)
 }
 
 // reconcileKeyValueStorage converges the Valkey PVC toward desiredGB in three

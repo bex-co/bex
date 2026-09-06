@@ -28,7 +28,9 @@ spec:
       # policy and before source NAT.
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      # No tolerations: production tenant nodes are the only untainted pool.
+      # No build-only toleration: meter serving App traffic on the untainted
+      # tenant pool. Build pools are tainted; their Jobs are billed by
+      # build_seconds, not tenant egress bytes (ADR060 D8).
       # Platform/control-plane nodes cannot run tenant Apps and need no meter.
       priorityClassName: system-node-critical
       terminationGracePeriodSeconds: 20

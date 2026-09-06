@@ -390,6 +390,25 @@ What bex actually promises per store — internal engineering objectives, not cu
 
 The nightly-snapshot RPOs hold when last night's job succeeded; the `BackupCronJobStale` / `PlatformDatabaseBackupStale` alerts (>26 h, above) bound how long a silently failing backup — and therefore a silently growing RPO — can go unnoticed. The WAL-based RPOs assume archiving is healthy, bounded by the same alert.
 
+## Managed-Database recovery drill
+
+`lego/backend/internal/postgres/recovery_drill_test.go` is an opt-in live verifier for the **bex `Database.spec.recovery` path**. The generic `restore-postgres.sh` driver creates a CNPG recovery Cluster directly, so its green does not prove the operator's source-archive projection. Keep both checks: a completed Backup row alone is not restore evidence.
+
+Run against an existing workspace namespace with quota and node/storage headroom for **two disposable basic-256mb PostgreSQL 16 databases**:
+
+```bash
+BEX_PG_DRILL_NAMESPACE="tea-<workspace-id>" \
+KUBECONFIG=/path/to/app-cluster.kubeconfig \
+go -C lego/backend test -tags=e2e ./internal/postgres \
+  -run '^TestManagedPostgresRecoveryDrill$' -count=1 -v -timeout=40m
+```
+
+This command creates new source and target resource IDs through the canonical backend id package; it never restores over an existing database. It checks source Ready, the connection Secret, delegated Barman Role, ObjectStore, referenced backup credential, and quota charge. It writes one marker into the disposable source, takes a fresh plugin backup, then creates a second managed Database using **only `sourceDatabase`**, deliberately omitting the explicit archive-generation override that masked the original restore bug. Passing requires the exact marker to be read from the recovered database.
+
+Cleanup runs after success or failure. It requests deletion with UID preconditions for both created Databases, waits for the operator's archive-purge finalizers, and verifies their CNPG Clusters and PVCs disappear. Cleanup errors fail the drill and identify the disposable IDs for follow-up. Existing tenant databases and shared namespace backup Secrets/ObjectStores are not modified. The process allows 24 minutes for the drill and a separate 12-minute cleanup window; the outer Go timeout must exceed both. No database passwords, kubeconfig contents, or tenant records are printed.
+
+Repeat this verifier on the tenant-Postgres cadence below and after changing Database recovery projection, backup RBAC, or the Barman plugin. The archive restore and exact-marker check are the completion criteria; provisioning alone is insufficient.
+
 ## Re-drill cadence
 
 **Owner:** the platform operator. **Next scheduled all-store re-drill: 2027-07-31** (annual anniversary of the scripted baseline). When that date arrives — or when any per-store trigger below fires earlier — file a `.pm` inbox note to schedule the drill; a drill that deviates from the scripts re-earns its record here.
@@ -399,7 +418,7 @@ The nightly-snapshot RPOs hold when last night's job succeeded; the `BackupCronJ
 | etcd | 2026-08-04 | Annually or after any control-plane topology/script change | Encrypted production snapshot decrypted and extracted through scripted Path A; shared CI key custody re-proven 2026-08-26 |
 | OpenBao | 2026-08-26 | Annually or after an OpenBao/image/script change | Encrypted fresh snapshot restored into isolated Raft, unsealed with original keys, verified, and torn down |
 | paid KeyValue | 2026-09-01 | Annually or after Valkey major/image, snapshot-job, or restore-script changes | Scheduled encrypted snapshot restored with AOF off, rewritten/restarted with AOF on, verified, and torn down |
-| tenant Postgres | 2026-07-31 | Annually or after a CNPG/plugin major or restore-script change | PostgreSQL 16 marker restored through the shared ObjectStore driver |
+| tenant Postgres | 2026-09-05 | Annually or after CNPG/plugin, recovery projection, backup RBAC, or restore-script changes | [Managed Database exact-marker recovery passed twice](drills/2026-09-05-managed-postgres-recovery.md), including provisioning and cleanup |
 | bex-db/auth DBs | 2026-08-25 | Annually or after a CNPG/plugin major, backup-transport, or restore-script change | Fresh production archives recovered through the generic driver |
 
 Once [ADR050](ADR050-encrypted-platform-backups.md) encryption/credential-scoping is enabled, every Tier A (etcd/OpenBao/KeyValue) re-drill must prove **decrypt-then-restore** (not just restore), and every store's re-drill must run against its **write-only writer credential** for the backup and its **read-only reader credential** for the restore — enabling either is itself a re-drill trigger.

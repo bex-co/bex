@@ -36,7 +36,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -632,7 +631,7 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "BuildCanceled",
 		Message: "build canceled before a release became available", ObservedGeneration: app.Generation,
 	})
-	return ctrl.Result{}, r.Status().Update(ctx, app)
+	return ctrl.Result{}, updateStatusIfChanged(ctx, r.Client, app)
 }
 
 // resolveDeployImage settles which image this pass deploys — prebuilt, a reused
@@ -1985,10 +1984,7 @@ func (r *AppReconciler) reconcileDiskLifecycle(ctx context.Context, app *appv1al
 	if !restoring {
 		return ctrl.Result{}, false, nil
 	}
-	if r.statusSettled(ctx, app) {
-		return ctrl.Result{RequeueAfter: diskRestorePoll}, true, nil
-	}
-	return ctrl.Result{RequeueAfter: diskRestorePoll}, true, r.Status().Update(ctx, app)
+	return ctrl.Result{RequeueAfter: diskRestorePoll}, true, updateStatusIfChanged(ctx, r.Client, app)
 }
 
 // holdHibernateForRouting reports whether this pass must keep the App's pods
@@ -2212,10 +2208,7 @@ func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, im
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 		Message: message, ObservedGeneration: app.Generation,
 	})
-	if r.statusSettled(ctx, app) {
-		return ctrl.Result{}, nil
-	}
-	return ctrl.Result{}, r.Status().Update(ctx, app)
+	return ctrl.Result{}, updateStatusIfChanged(ctx, r.Client, app)
 }
 
 // markRunning stamps the Running terminal shared by the web and worker paths:
@@ -2232,7 +2225,7 @@ func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, d
 	})
 	// A settled Running app re-stamps identical status on every steady-state
 	// pass (childHealthRequeue): skip the no-op PUT and its log line.
-	if !r.statusSettled(ctx, app) {
+	if !statusUnchanged(ctx, r.Client, app) {
 		if err := r.Status().Update(ctx, app); err != nil {
 			return err
 		}
@@ -2375,7 +2368,7 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
 			Message: "worker suspended (scaled to 0)", ObservedGeneration: app.Generation,
 		})
-		if err := r.Status().Update(ctx, app); err != nil {
+		if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -2428,7 +2421,7 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 		})
 	}
 	// Best-effort progress stamp: the 5s requeue below re-writes it if lost.
-	if err := r.Status().Update(ctx, app); err != nil {
+	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 		logf.FromContext(ctx).V(1).Info("rollout progress status write failed; requeue re-stamps",
 			"app", app.Name, "error", err.Error())
 	}
@@ -2653,7 +2646,9 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 		o.SetName(name)
 		o.SetNamespace(app.Namespace)
 		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, o, func() error {
-			o.Object["spec"] = redirectRegexHTTPMiddlewareSpec(source, redirects[source])
+			if err := projectUnstructuredSpec(o, redirectRegexHTTPMiddlewareSpec(source, redirects[source])); err != nil {
+				return err
+			}
 			labels := o.GetLabels()
 			if labels == nil {
 				labels = map[string]string{}
@@ -2884,7 +2879,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// Skip the write when nothing changed, the same guard markRunning and
 	// hibernated already use — a re-published static site otherwise re-stamps a
 	// byte-identical status (and logs) on every event.
-	if r.statusSettled(ctx, app) {
+	if statusUnchanged(ctx, r.Client, app) {
 		return ctrl.Result{}, nil
 	}
 	if err := r.Status().Update(ctx, app); err != nil {
@@ -3145,7 +3140,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 			Message: "cron scheduled: " + app.Spec.Schedule, ObservedGeneration: app.Generation,
 		})
 	}
-	if err := r.Status().Update(ctx, app); err != nil {
+	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 		return ctrl.Result{}, err
 	}
 	logf.FromContext(ctx).Info("cron reconciled (kubernetes)", "name", app.Name, "schedule", app.Spec.Schedule, "runs", len(runs))
@@ -3363,6 +3358,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	container := corev1.Container{
 		Name:            "app",
 		Image:           image,
+		ImagePullPolicy: pullPolicyFor(image),
 		Env:             appEnv(app, port),
 		EnvFrom:         envFromSources(app),
 		Resources:       resourcesForTier(app.Spec.Tier),
@@ -3420,7 +3416,7 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
 			Message: "sandbox paused (snapshot kept)", ObservedGeneration: app.Generation,
 		})
-		if err := r.Status().Update(ctx, app); err != nil {
+		if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -3438,7 +3434,7 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Resumed",
 				Message: "sandbox resumed", ObservedGeneration: app.Generation,
 			})
-			if err := r.Status().Update(ctx, app); err != nil {
+			if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 				return ctrl.Result{}, err
 			}
 			log.Info("app resumed (opensandbox)", "name", app.Name, "url", app.Status.URL)
@@ -3473,7 +3469,7 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
 		Message: "revision running", ObservedGeneration: app.Generation,
 	})
-	if err := r.Status().Update(ctx, app); err != nil {
+	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 		return ctrl.Result{}, err
 	}
 	if old != "" && old != id {
@@ -3886,18 +3882,6 @@ func (r *AppReconciler) awaitRegistryCredActive(ctx context.Context, app *appv1a
 	return ctrl.Result{}, false
 }
 
-// statusSettled reports whether the App's in-memory status already matches the
-// stored object's, so a steady-state terminal pass can skip its no-op status
-// PUT (the same diff-before-write discipline as setPhase; the Get is served by
-// the informer cache).
-func (r *AppReconciler) statusSettled(ctx context.Context, app *appv1alpha1.App) bool {
-	var stored appv1alpha1.App
-	if err := r.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
-		return false
-	}
-	return apiequality.Semantic.DeepEqual(stored.Status, app.Status)
-}
-
 // setPhase stamps a transitional phase + Ready=False condition. The write is
 // skipped when the persisted phase and condition already match: a no-op pass
 // re-stamping an unchanged state would otherwise issue a status write per
@@ -3928,7 +3912,7 @@ func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p ap
 // resourceVersion cannot clobber a concurrent projector spec change.
 func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alpha1.App, site string) {
 	for range statusWriteAttempts {
-		if err := r.Status().Update(ctx, app); err == nil {
+		if err := updateStatusIfChanged(ctx, r.Client, app); err == nil {
 			return
 		} else if !apierrors.IsConflict(err) {
 			logf.FromContext(ctx).Error(err, "app status write failed; durable markers may be stale",
@@ -3968,7 +3952,7 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 		ObservedGeneration: obj.GetGeneration(),
 	})
 	for range statusWriteAttempts {
-		if err := r.Status().Update(ctx, obj); err == nil {
+		if err := updateStatusIfChanged(ctx, r, obj); err == nil {
 			return
 		} else if !apierrors.IsConflict(err) {
 			logf.FromContext(ctx).Error(err, "status write failed; durable failure marker may be lost",

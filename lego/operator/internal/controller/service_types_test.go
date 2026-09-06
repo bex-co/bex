@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -88,10 +89,17 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 	})
 
 	Context("cron_job", func() {
-		const name = "cron-app"
-		nn := types.NamespacedName{Name: name, Namespace: "default"}
+		var name string
+		var fixtureNumber int
+		var nn types.NamespacedName
 		var r *AppReconciler
-		BeforeEach(func() { r = newReconciler() })
+		BeforeEach(func() {
+			// Owned Jobs survive deletion in envtest; isolate each spec's run history.
+			fixtureNumber++
+			name = fmt.Sprintf("cron-app-%d", fixtureNumber)
+			nn = types.NamespacedName{Name: name, Namespace: "default"}
+			r = newReconciler()
+		})
 		AfterEach(func() {
 			if app := (&appv1alpha1.App{}); k8sClient.Get(ctx, nn, app) == nil {
 				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
@@ -109,7 +117,7 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 					Type:     appv1alpha1.TypeCronJob,
 					Schedule: "*/5 * * * *",
 					Command:  "npm run report",
-					Image:    "busybox:latest", Port: 3000,
+					Image:    "busybox:gen-7", Port: 3000,
 				},
 			}
 			Expect(k8sClient.Create(ctx, app)).To(Succeed())
@@ -120,7 +128,8 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			Expect(k8sClient.Get(ctx, nn, cj)).To(Succeed())
 			Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
 			Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
-			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image).To(Equal("busybox:latest"))
+			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image).To(Equal("busybox:gen-7"))
+			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].ImagePullPolicy).To(Equal(corev1.PullAlways))
 			By("spec.command overrides the image's entrypoint via a shell")
 			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command).
 				To(Equal([]string{"/bin/sh", "-c", "npm run report"}))
@@ -139,6 +148,7 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			job := &batchv1.Job{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: jobName, Namespace: "default"}, job)).To(Succeed())
 			Expect(job.Labels).To(HaveKeyWithValue(labelApp, name))
+			Expect(job.Spec.Template.Spec.Containers[0].ImagePullPolicy).To(Equal(corev1.PullAlways))
 
 			By("run history shows the run once the Job reports Complete")
 			now := metav1.Now()
