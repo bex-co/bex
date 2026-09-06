@@ -73,17 +73,6 @@ func (s *Service) renderProject(ctx context.Context, p ProjectView) (renderProje
 	return toRenderProject(p, ids), nil
 }
 
-// projectEnvironmentInput mirrors Render's projectPOSTEnvironmentInput so the
-// strict Render decoder accepts a full create body (w6/m126 t002). bex does not
-// yet provision these — see the POST handler for why the field is accepted but
-// not honored.
-type projectEnvironmentInput struct {
-	Name                    string                  `json:"name"`
-	ProtectedStatus         string                  `json:"protectedStatus"`
-	NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled"`
-	IPAllowList             []core.IPAllowListEntry `json:"ipAllowList"`
-}
-
 // RegisterREST mounts the project CRUD endpoints. Every handler that returns a
 // project funnels its result through renderProject so the wire shape is Render's
 // `project` object (id, name, owner, environmentIds, createdAt, updatedAt) — one
@@ -119,25 +108,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 
 	mux.HandleFunc("POST /v1/projects", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
-		req, err := core.DecodeBody[struct {
-			Name    string `json:"name"`
-			OwnerID string `json:"ownerId"`
-			// Render's projectPOSTInput requires an `environments` array and
-			// creates those environments with the project. bex records the
-			// divergence (w6/m126 t002, docs/ADR018-render-parity.md §Projects):
-			// a project is created on its own and its environments are created
-			// separately via POST /v1/environments. The field is accepted — not
-			// rejected as an unknown field by the strict Render decoder — so a
-			// client that mints its types from Render's schema (the official CLI,
-			// DO_NOT_DO #31) is not 400'd. It is not honored, and the response's
-			// environmentIds truthfully reports the project's real (initially
-			// empty) environment set rather than faking the requested ones.
-			Environments []projectEnvironmentInput `json:"environments"`
-		}](r)
-		if err != nil || strings.TrimSpace(req.Name) == "" || req.OwnerID == "" {
+		var req struct {
+			Name         string             `json:"name"`
+			OwnerID      string             `json:"ownerId"`
+			Environments []EnvironmentInput `json:"environments"`
+		}
+		if err := core.DecodeJSON(r, &req); err != nil {
+			if strings.HasPrefix(err.Error(), "request body contains unknown field ") {
+				return nil, fmt.Errorf("%w: %s", core.ErrBadRequest, err)
+			}
 			return nil, core.ErrBadRequest
 		}
-		p, err := s.Create(r.Context(), req.OwnerID, strings.TrimSpace(req.Name))
+		if strings.TrimSpace(req.Name) == "" || req.OwnerID == "" {
+			return nil, core.ErrBadRequest
+		}
+		p, err := s.CreateWithEnvironments(r.Context(), req.OwnerID, strings.TrimSpace(req.Name), req.Environments)
 		if err != nil {
 			return nil, err
 		}

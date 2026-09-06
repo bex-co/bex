@@ -38,7 +38,7 @@ describe("IdleTimeoutRow", () => {
         idleTTLSeconds={900}
       />,
     );
-    const control = screen.getByRole("combobox");
+    const control = screen.getByRole("combobox", { name: "Idle timeout" });
     expect(control).toBeInTheDocument();
     // the current value renders as its human label (15 min), not raw seconds
     expect(control).toHaveTextContent("15 min");
@@ -53,8 +53,12 @@ describe("IdleTimeoutRow", () => {
         idleTTLSeconds={0}
       />,
     );
-    expect(screen.getByRole("combobox")).toBeInTheDocument();
-    expect(screen.getByRole("combobox")).toHaveTextContent("Platform default");
+    expect(
+      screen.getByRole("combobox", { name: "Idle timeout" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Idle timeout" }),
+    ).toHaveTextContent("Platform default");
   });
 
   it.each(["private_service", "background_worker", "cron_job", "static_site"])(

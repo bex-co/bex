@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -330,32 +331,89 @@ func (s *Service) Get(ctx context.Context, id string) (ProjectView, error) {
 	return s.view(ctx, p)
 }
 
+// EnvironmentInput describes an environment created atomically with a project.
+type EnvironmentInput struct {
+	Name                    string                  `json:"name"`
+	ProtectedStatus         string                  `json:"protectedStatus"`
+	NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled"`
+	IPAllowList             []core.IPAllowListEntry `json:"ipAllowList"`
+}
+
 // Create creates a new project in the workspace named by workspaceID.
 func (s *Service) Create(ctx context.Context, workspaceID, name string) (ProjectView, error) {
+	return s.CreateWithEnvironments(ctx, workspaceID, name, nil)
+}
+
+// CreateWithEnvironments creates the project and requested environments in one transaction.
+func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name string, environments []EnvironmentInput) (ProjectView, error) {
 	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(workspaceID)); err != nil {
 		return ProjectView{}, err
 	}
 	if s.Store == nil {
 		return ProjectView{}, ErrProjectsUnavailable
 	}
+	for i := range environments {
+		e := &environments[i]
+		e.Name = strings.TrimSpace(e.Name)
+		if e.Name == "" {
+			return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/name", core.ErrBadRequest, i)
+		}
+		if e.ProtectedStatus != "" || e.NetworkIsolationEnabled || e.IPAllowList != nil {
+			if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+				return ProjectView{}, err
+			}
+			if e.ProtectedStatus != "" && e.ProtectedStatus != core.ProtectedStatusProtected && e.ProtectedStatus != core.ProtectedStatusUnprotected {
+				return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/protectedStatus", core.ErrBadRequest, i)
+			}
+			if err := core.ValidateAllowList(e.IPAllowList); err != nil {
+				return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/ipAllowList", core.ErrBadRequest, i)
+			}
+		}
+	}
+	if _, ok := s.Store.(groupingQuotaStore); !ok && len(environments) > 0 {
+		return ProjectView{}, ErrProjectsUnavailable
+	}
 	// codex-security round 12, finding 5: direct creates share the Blueprint
 	// grouping quota. Enforced transactionally (count + insert in one tx) when
 	// the store offers the runner; a store without it falls back to the plain
 	// create (test fakes) — the production store always has it.
-	if runner, ok := s.Store.(groupingQuotaStore); ok && s.MaxGroupings > 0 {
+	if runner, ok := s.Store.(groupingQuotaStore); ok && (s.MaxGroupings > 0 || len(environments) > 0) {
 		var p store.Project
 		err := runner.RunGroupingTx(ctx, func(g store.GroupingStore) error {
-			projects, _, err := g.CountWorkspaceGroupings(ctx, workspaceID)
+			projects, environmentCount, err := g.CountWorkspaceGroupings(ctx, workspaceID)
 			if err != nil {
 				return err
 			}
-			if projects >= s.MaxGroupings {
+			if s.MaxGroupings > 0 && projects >= s.MaxGroupings {
 				return core.NewConflictError("BLUEPRINT_GROUPING_LIMIT",
 					fmt.Sprintf("workspace already has the maximum number of projects (%d); remove unused projects or raise the limit", s.MaxGroupings),
 					map[string]any{"ownerId": workspaceID, "limit": s.MaxGroupings})
 			}
+			if s.MaxGroupings > 0 && len(environments) > 0 && len(environments) > s.MaxGroupings-environmentCount {
+				return core.NewConflictError("BLUEPRINT_GROUPING_LIMIT", "requested environments exceed the workspace environment limit",
+					map[string]any{"ownerId": workspaceID, "limit": s.MaxGroupings})
+			}
 			p, err = g.CreateProject(ctx, workspaceID, name)
-			return err
+			if err != nil {
+				return err
+			}
+			for _, input := range environments {
+				e, err := g.CreateEnvironment(ctx, p.ID, workspaceID, input.Name)
+				if err != nil {
+					return store.MapError(err)
+				}
+				if input.ProtectedStatus == "" && !input.NetworkIsolationEnabled && input.IPAllowList == nil {
+					continue
+				}
+				status := input.ProtectedStatus
+				if status == "" {
+					status = core.ProtectedStatusUnprotected
+				}
+				if err := g.SetEnvironmentACL(ctx, e.ID, status, input.NetworkIsolationEnabled, input.IPAllowList); err != nil {
+					return err
+				}
+			}
+			return nil
 		})
 		if err != nil {
 			return ProjectView{}, conflictOrMapError(err, name)

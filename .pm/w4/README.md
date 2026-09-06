@@ -72,10 +72,10 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **044** — Give Settings' Idle timeout dropdown an accessible name (20m) ← repeated live `$qa-find-bugs` hunt 2026-09-05, second run
-- [ ] **042** — Give the environment-group service selector a persistent accessible name (20m) ← repeated live `/qa-find-bugs` passes 2026-09-05
-- [ ] **043** — Name Manual Scaling's instance controls and check the shared CPU/memory consumers (40m) ← repeated live `/qa-find-bugs` passes 2026-09-05
-- [ ] **041** — `POST /v1/projects` opaquely rejects the Render-contract `environments` field (strict-decode vs contract mismatch; major REST/Render-parity gap) ← live `/qa-find-bugs` hunt 2026-09-04
+- [x] **044** — Give Settings' Idle timeout dropdown an accessible name (20m) ← repeated live `$qa-find-bugs` hunt 2026-09-05, second run — done 2026-09-05; resolution and verification in `done/044.md`
+- [x] **042** — Give the environment-group service selector a persistent accessible name (20m) ← repeated live `/qa-find-bugs` passes 2026-09-05 — done 2026-09-05; resolution and verification in `done/042.md`
+- [x] **043** — Name Manual Scaling's instance controls and check the shared CPU/memory consumers (40m) ← repeated live `/qa-find-bugs` passes 2026-09-05 — done 2026-09-05; resolution and verification in `done/043.md`
+- [x] **041** — `POST /v1/projects` opaquely rejects the Render-contract `environments` field (strict-decode vs contract mismatch; major REST/Render-parity gap) ← live `/qa-find-bugs` hunt 2026-09-04 — done 2026-09-05; resolution and verification in `done/041.md`
 
 _(`040` done 2026-09-03 — Generate Blueprint now accepts `envGroupIds` on REST/GraphQL/MCP, emits root `envVarGroups` + per-service `fromGroup` for selected groups (keys as `generateValue`), and degrades unselected linked groups to `sync: false` keys; dashboard Generate dialog gained env-group multi-select; note moved to `done/`.)_
 

@@ -52,6 +52,7 @@ function validate(form: FormState): string | null {
 // (w7/m43).
 export function SliderInput({
   id,
+  label,
   value,
   min,
   max,
@@ -59,6 +60,7 @@ export function SliderInput({
   onChange,
 }: {
   id: string;
+  label: string;
   value: number;
   min: number;
   max: number;
@@ -71,6 +73,7 @@ export function SliderInput({
         {min}
       </span>
       <Slider
+        thumbLabels={[label]}
         min={min}
         max={max}
         step={1}
@@ -82,6 +85,7 @@ export function SliderInput({
       <span className="w-6 shrink-0 text-xs text-muted-foreground">{max}</span>
       <Input
         id={id}
+        aria-label={label}
         type="number"
         min={min}
         max={max}
@@ -348,6 +352,7 @@ export function AutoscalingSection({
                 <div className="flex items-center gap-2">
                   <SliderInput
                     id="target-cpu"
+                    label={t("services.scalingCPUTitle")}
                     value={form.targetCPUPercent}
                     min={UTIL_MIN}
                     max={UTIL_MAX}
@@ -381,6 +386,7 @@ export function AutoscalingSection({
                 <div className="flex items-center gap-2">
                   <SliderInput
                     id="target-mem"
+                    label={t("services.scalingMemoryTitle")}
                     value={form.targetMemoryPercent}
                     min={UTIL_MIN}
                     max={UTIL_MAX}

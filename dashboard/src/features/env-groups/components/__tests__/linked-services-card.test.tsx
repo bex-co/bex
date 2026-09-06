@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -76,7 +76,14 @@ describe("LinkedServicesCard — w6/m48 workspace-scope compatibility", () => {
       serviceEnvironmentById: new Map(),
     });
 
-    expect(await screen.findByText("Select a service")).toBeInTheDocument();
+    const selector = await screen.findByRole("combobox", {
+      name: "Select a service",
+    });
+    fireEvent.keyDown(selector, { key: "ArrowDown" });
+    fireEvent.click(await screen.findByRole("option", { name: "api" }));
+    expect(
+      screen.getByRole("combobox", { name: "Select a service" }),
+    ).toHaveTextContent("api");
     expect(
       screen.getByRole("button", { name: /link service/i }),
     ).toBeInTheDocument();
