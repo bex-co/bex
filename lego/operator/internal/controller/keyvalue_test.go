@@ -463,15 +463,20 @@ func TestKeyValueStorageShrinkIsRejectedBeforePVCMutation(t *testing.T) {
 }
 
 var _ = Describe("KeyValue Controller", func() {
-	const name = "smoke-kv"
+	var name string
+	var fixtureNumber int
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: name, Namespace: "default"}
+	var nn types.NamespacedName
 
 	// k8sClient is only set in BeforeSuite — build the reconciler lazily, never
 	// in the container body. KvDomain is left empty so the reconcile takes the
 	// internal-only path.
 	var r *KeyValueReconciler
 	BeforeEach(func() {
+		// envtest has no garbage collector: each spec must own distinct children.
+		fixtureNumber++
+		name = fmt.Sprintf("smoke-kv-%d", fixtureNumber)
+		nn = types.NamespacedName{Name: name, Namespace: "default"}
 		r = &KeyValueReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
 	})
 	reconcileN := func() {
@@ -521,7 +526,7 @@ var _ = Describe("KeyValue Controller", func() {
 		firstPw := string(sec.Data["password"])
 		Expect(firstPw).NotTo(BeEmpty())
 		Expect(string(sec.Data["uri"])).To(ContainSubstring("redis://default:"), "internal URI form")
-		Expect(string(sec.Data["host"])).To(Equal("smoke-kv.default.svc"))
+		Expect(string(sec.Data["host"])).To(Equal(name + ".default.svc"))
 		Expect(sec.Immutable).NotTo(BeNil())
 		Expect(*sec.Immutable).To(BeTrue(), "client-facing connection Secret is immutable")
 		auth := &corev1.Secret{}
@@ -543,7 +548,7 @@ var _ = Describe("KeyValue Controller", func() {
 
 		By("recording status coordinates")
 		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
-		Expect(kv.Status.Host).To(Equal("smoke-kv.default.svc"))
+		Expect(kv.Status.Host).To(Equal(name + ".default.svc"))
 		Expect(kv.Status.SecretName).To(Equal(name))
 		Expect(kv.Status.CredentialSecretName).To(Equal(name + "-auth"))
 		Expect(kv.Status.Port).To(Equal(int32(kvPort)))

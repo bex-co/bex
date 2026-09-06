@@ -9,11 +9,21 @@
 # on every CI run, so a floating tag reintroduced anywhere turns the build red
 # instead of waiting for round seven.
 #
-# Three syntaxes, one policy — an image reference must carry `@sha256:<64hex>`:
+# Four syntaxes, one policy — an image reference must carry `@sha256:<64hex>`:
 #
 #   1. Dockerfile   `FROM <ref>`               (also `--from=<ref>` mounts)
 #   2. Go           string literals that are image references
 #   3. manifests    `image:`, kustomize `images:` edits, Helm `repository:`/`tag:`
+#   4. workflows    literal image references in `docker run`
+#
+# Reviewed boundaries (w7/041, 2026-09-05): local fixture-only shell harnesses
+# stay outside this scan. Credential-custody helpers are not covered by that
+# rationale: agent-snapshot-secret.sh and backup-s3-credentials.sh pin their
+# AWS_CLI_IMAGE defaults and reject non-digest overrides before invoking Docker.
+# The JSON toolchain inventory is covered by TestToolchainInventoryMatchesCommittedPins.
+# Static etcd/OpenBao backup jobs download age by a committed release checksum,
+# verified before execution; gitops-validate.sh enforces that separate binary
+# contract. A runtime binary download is not an unpinned container image.
 #
 # FAIL CLOSED is the whole point. Two rules keep it that way:
 #
@@ -305,9 +315,9 @@ scan_manifests() {
 # Narrow by design: a workflow step that starts a container is part of the same
 # supply chain as a `services:` block (backend-test.yml runs OpenFGA this way
 # precisely because a service container cannot pass its `run` subcommand), so it
-# gets the same rule. Developer harnesses under scripts/ are NOT covered — they
-# run on a laptop against local fixtures, never in the pipeline that builds a
-# shipped artifact.
+# gets the same rule. Local fixture harnesses under scripts/ are outside this
+# scan; credential-custody helpers enforce their own digest-only image contract
+# before Docker runs. See the reviewed boundaries at the top of this file.
 scan_workflow_containers() {
   local path ref
   while IFS= read -r path; do

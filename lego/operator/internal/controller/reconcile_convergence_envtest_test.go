@@ -61,43 +61,53 @@ import (
 // which is the OperationResultNone the definition of done asks for; the RV
 // snapshot is kept alongside it as the second, independent half.
 //
-// Exemptions: one, named — the owner's own status subresource, see
-// writeRecorder below. Every write to an OWNED object that a converged reconcile
-// used to issue has been removed rather than exempted, including the blind
-// Deletes of optional objects that never exist (deleteOptionalObject).
+// Status writes are counted for the cron and datastore fixtures below. Web
+// fixtures without kubelet rollout progress still exercise owned objects only.
+// Ready and suspended datastores are explicitly constructed to cover both
+// status convergence and real lifecycle transitions (w7/033).
 //
 // Known limits, so the green is read correctly:
-//   - The apps/batch/core kinds are real here, so the Deployment, StatefulSet,
-//     Service and CronJob greens are solid. The CRDs are NOT: testdata/crds
-//     holds stubs with x-kubernetes-preserve-unknown-fields and no defaults, and
-//     envtest runs no admission webhooks. So this file says nothing about the
-//     four kinds upsertOwned replaces `spec` on wholesale — Traefik Middleware,
-//     CNPG Pooler and ScheduledBackup, cert-manager Certificate — nor about the
-//     CNPG Cluster, whose live mutating webhook fills in spec fields this
-//     operator does not know. Each could reproduce the exact bug just fixed.
-//     Checkable in minutes against a live cluster; filed as `.pm/w7/032.md`
-//     rather than silently assumed.
-//   - Two per-pass paths no shape reaches: reconcileTenantBackupStore (a backed-
-//     up Database) and reconcileExecutionNetworkPolicy (a separate build
-//     namespace). Also in `032`.
+//   - Built-in resources use real schema defaults. Third-party CRDs remain
+//     stubs without webhooks; the Database case injects representative live
+//     CNPG defaults and asserts zero subsequent writes. Unit request-count
+//     tests cover the other shared unstructured projections and ObjectStore.
+//     These test ownership preservation, not upstream admission validation.
+//   - reconcileExecutionNetworkPolicy now only deletes a legacy policy; it
+//     no longer has the per-pass spec projection originally noted in w7/032.
 //   - Objects no shape below reaches (kpack, build Jobs, the static publish
 //     path) are Create-once rather than CreateOrUpdate-per-pass, so they cannot
 //     churn the way this invariant tests for.
 
 // writeRecorder wraps a client.Client and records every mutating call made
 // through it.
-//
-// Status() is deliberately NOT wrapped, and that is an exemption rather than an
-// oversight. A redundant status write is the same defect on a different object —
-// several terminals write the owner's status unconditionally — but it is out of
-// this milestone's scope (the DoD is owned objects and CreateOrUpdate), and
-// envtest cannot judge it honestly anyway: no kubelet runs here, so a rollout
-// never becomes ready and the condition churn a never-settling reconcile
-// produces is a property of the test environment, not of the product. Measured
-// and filed as `.pm/w7/033.md`.
 type writeRecorder struct {
 	client.Client
-	writes []string
+	writes       []string
+	recordStatus bool
+}
+
+// Status recording is opt-in for fixtures that have a stable lifecycle state.
+func (w *writeRecorder) Status() client.SubResourceWriter {
+	return &statusWriteRecorder{SubResourceWriter: w.Client.Status(), owner: w}
+}
+
+type statusWriteRecorder struct {
+	client.SubResourceWriter
+	owner *writeRecorder
+}
+
+func (w *statusWriteRecorder) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	if w.owner.recordStatus {
+		w.owner.record("status update", obj)
+	}
+	return w.SubResourceWriter.Update(ctx, obj, opts...)
+}
+
+func (w *statusWriteRecorder) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	if w.owner.recordStatus {
+		w.owner.record("status patch", obj)
+	}
+	return w.SubResourceWriter.Patch(ctx, obj, patch, opts...)
 }
 
 func (w *writeRecorder) record(verb string, obj client.Object) {
@@ -218,10 +228,10 @@ func divergence(
 	rec *writeRecorder,
 	run func() (ctrl.Result, error),
 	owner client.Object,
-	ns string,
 	wantKinds ...string,
 ) []string {
 	GinkgoHelper()
+	ns := owner.GetNamespace()
 	reconcileToFixedPoint(run)
 	before := ownedResourceVersions(ctx, owner, ns)
 	owned := make([]string, 0, len(before))
@@ -286,7 +296,7 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 				Schedule: "*/5 * * * *",
 			}},
 		} {
-			rec := &writeRecorder{Client: k8sClient}
+			rec := &writeRecorder{Client: k8sClient, recordStatus: tc.spec.Type == appv1alpha1.TypeCronJob}
 			r := &AppReconciler{
 				Client: rec, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
 				BaseDomain: "example.test", ClusterIssuer: "letsencrypt-staging",
@@ -301,7 +311,7 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 				return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 			}
 			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
-			Expect(divergence(ctx, rec, run, app, namespace, tc.owns...)).To(BeEmpty(),
+			Expect(divergence(ctx, rec, run, app, tc.owns...)).To(BeEmpty(),
 				"%s: a converged App reconcile must write nothing and change no owned object", tc.name)
 
 			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
@@ -322,7 +332,7 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 				S3Secret:        "bex-kv-backup-s3",
 			}},
 		} {
-			rec := &writeRecorder{Client: k8sClient}
+			rec := &writeRecorder{Client: k8sClient, recordStatus: true}
 			r := &KeyValueReconciler{Client: rec, Scheme: k8sClient.Scheme(), Backup: tc.backup}
 			nn := types.NamespacedName{Name: tc.name, Namespace: namespace}
 			kv := &appv1alpha1.KeyValue{
@@ -334,17 +344,43 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 				return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 			}
 			Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
-			Expect(divergence(ctx, rec, run, kv, namespace, tc.owns...)).To(BeEmpty(),
+			Expect(divergence(ctx, rec, run, kv, tc.owns...)).To(BeEmpty(),
 				"%s: a converged KeyValue reconcile must write nothing and change no owned object", tc.name)
 
+			// Supply the StatefulSet-controller observation absent in envtest.
+			sts := &appsv1.StatefulSet{}
+			Expect(k8sClient.Get(ctx, nn, sts)).To(Succeed())
+			pvc := sts.Spec.VolumeClaimTemplates[0].DeepCopy()
+			pvc.ObjectMeta = metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: namespace}
+			pvc.Spec.VolumeName = "pv-" + kv.Name
+			Expect(k8sClient.Create(ctx, pvc)).To(Succeed())
+			DeferCleanup(func() { Expect(k8sClient.Delete(ctx, pvc)).To(Succeed()) })
+			pvc.Status.Phase = corev1.ClaimBound
+			pvc.Status.Capacity = pvc.Spec.Resources.Requests.DeepCopy()
+			Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
+			sts.Status = appsv1.StatefulSetStatus{
+				ObservedGeneration: sts.Generation, Replicas: 1, CurrentReplicas: 1,
+				UpdatedReplicas: 1, ReadyReplicas: 1, AvailableReplicas: 1,
+				CurrentRevision: "ready", UpdateRevision: "ready",
+			}
+			Expect(k8sClient.Status().Update(ctx, sts)).To(Succeed())
+			Expect(divergence(ctx, rec, run, kv, tc.owns...)).To(BeEmpty())
 			Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+			Expect(kv.Status.Phase).To(Equal(appv1alpha1.KVPhaseReady))
+
+			kv.Spec.Suspended = true
+			Expect(k8sClient.Update(ctx, kv)).To(Succeed())
+			Expect(divergence(ctx, rec, run, kv, tc.owns...)).To(BeEmpty())
+			Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+			Expect(kv.Status.Phase).To(Equal(appv1alpha1.KVPhaseReady))
+			Expect(kv.Status.Conditions).To(ContainElement(HaveField("Reason", reasonSuspended)))
 			deleteOwner(ctx, kv, run)
 		}
 	})
 
 	It("writes nothing on a redundant Database reconcile", func() {
 		const name = "dpg-converge"
-		rec := &writeRecorder{Client: k8sClient}
+		rec := &writeRecorder{Client: k8sClient, recordStatus: true}
 		r := &DatabaseReconciler{Client: rec, Scheme: k8sClient.Scheme()}
 		nn := types.NamespacedName{Name: name, Namespace: namespace}
 		db := &appv1alpha1.Database{
@@ -356,10 +392,26 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 			return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 		}
 		Expect(k8sClient.Get(ctx, nn, db)).To(Succeed())
-		Expect(divergence(ctx, rec, run, db, namespace, "Cluster")).To(BeEmpty(),
+		Expect(divergence(ctx, rec, run, db, "Cluster")).To(BeEmpty(),
 			"a converged Database reconcile must write nothing and change no owned object")
 
+		cluster := &unstructured.Unstructured{}
+		cluster.SetGroupVersionKind(cnpgClusterGVK)
+		Expect(k8sClient.Get(ctx, nn, cluster)).To(Succeed())
+		// Simulate the live CNPG webhook defaults absent from the stub CRD.
+		Expect(unstructured.SetNestedField(cluster.Object, true, "spec", "enablePDB")).To(Succeed())
+		Expect(unstructured.SetNestedField(cluster.Object, "logical", "spec", "postgresql", "parameters", "wal_level")).To(Succeed())
+		Expect(unstructured.SetNestedField(cluster.Object, "UTF8", "spec", "bootstrap", "initdb", "encoding")).To(Succeed())
+		Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+		rec.reset()
+		_, err := run()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(rec.sorted()).To(BeEmpty(), "webhook-defaulted Cluster must cause zero update requests")
+		Expect(unstructured.SetNestedField(cluster.Object, int64(1), "status", "readyInstances")).To(Succeed())
+		Expect(k8sClient.Status().Update(ctx, cluster)).To(Succeed())
+		Expect(divergence(ctx, rec, run, db, "Cluster")).To(BeEmpty())
 		Expect(k8sClient.Get(ctx, nn, db)).To(Succeed())
+		Expect(db.Status.Phase).To(Equal(appv1alpha1.DBPhaseReady))
 		deleteOwner(ctx, db, run)
 	})
 

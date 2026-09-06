@@ -232,6 +232,40 @@ func TestTenantBackupStoreProjectsCredentialAndObjectStore(t *testing.T) {
 	if retention != "30d" {
 		t.Errorf("projected ObjectStore retentionPolicy = %q, want the source's 30d", retention)
 	}
+	// Defaults on the tenant copy must not cause another spec PUT, while a
+	// source policy withdrawal must still propagate. Count both secret and
+	// ObjectStore writes so the entire backup projection has to converge.
+	if err := unstructured.SetNestedField(projectedStore.Object, int64(2), "spec", "configuration", "wal", "maxParallel"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Update(ctx, projectedStore); err != nil {
+		t.Fatal(err)
+	}
+	recorder := &writeRecorder{Client: cl}
+	secretRecorder := &writeRecorder{Client: secretCl}
+	r.Client, r.SecretClient = recorder, secretRecorder
+	if err := r.reconcileTenantBackupStore(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	if len(recorder.writes) != 0 || len(secretRecorder.writes) != 0 {
+		t.Fatalf("redundant backup projection writes: %v %v", recorder.writes, secretRecorder.writes)
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(sourceStore), sourceStore); err != nil {
+		t.Fatal(err)
+	}
+	unstructured.RemoveNestedField(sourceStore.Object, "spec", "retentionPolicy")
+	if err := cl.Update(ctx, sourceStore); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.reconcileTenantBackupStore(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(projectedStore), projectedStore); err != nil {
+		t.Fatal(err)
+	}
+	if _, found, _ := unstructured.NestedFieldNoCopy(projectedStore.Object, "spec", "retentionPolicy"); found {
+		t.Fatal("withdrawn source retention policy lingered in tenant ObjectStore")
+	}
 	// No ownerReference: the store is shared by every Database in the namespace,
 	// so binding it to one would delete it when that one goes away and silently
 	// break every sibling's archiving.
