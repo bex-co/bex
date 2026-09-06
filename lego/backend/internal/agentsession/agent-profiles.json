@@ -5,7 +5,9 @@
       "id": "claude",
       "executable": "/usr/local/bin/claude-code-acp",
       "args": [],
-      "env": {},
+      "env": {
+        "CLAUDE_CODE_EAGER_FLUSH": "1"
+      },
       "modelEndpoint": "https://api.anthropic.com/v1",
       "modelProxy": {
         "baseUrlEnv": "ANTHROPIC_BASE_URL",

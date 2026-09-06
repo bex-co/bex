@@ -16,14 +16,29 @@
  */
 
 import { appendFileSync, closeSync, writeFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import readline from "node:readline";
 
 if (
   process.env.ACP_FIXTURE_REQUIRE_MODEL_KEY === "1" &&
   process.env.ANTHROPIC_API_KEY !== "test-model-key-never-log"
 ) {
-  throw new Error("expected model credential was not isolated to the ACP child");
+  throw new Error(
+    "expected model credential was not isolated to the ACP child",
+  );
+}
+
+if (process.env.ACP_FIXTURE_ORPHAN_STDIO === "1") {
+  const descendant = spawn(
+    process.execPath,
+    ["-e", "setInterval(() => {}, 1000)"],
+    { stdio: "inherit" },
+  );
+  writeFileSync(
+    process.env.ACP_FIXTURE_PID_LOG,
+    `${process.pid}\n${descendant.pid}\n`,
+  );
+  process.exit(23);
 }
 
 function record(method) {
@@ -60,17 +75,24 @@ function commitFixture() {
   if (committed.status !== 0) throw new Error(committed.stderr.toString());
 }
 
+let rejectedLoad = false;
 const lines = readline.createInterface({ input: process.stdin });
 lines.on("line", async (line) => {
   const message = JSON.parse(line);
   record(message.method);
   switch (message.method) {
     case "initialize":
+      if (process.env.ACP_FIXTURE_PID_LOG)
+        appendFileSync(process.env.ACP_FIXTURE_PID_LOG, `${process.pid}\n`);
       if (process.env.ACP_FIXTURE_HANG_INITIALIZE === "1") break;
       if (process.env.ACP_FIXTURE_REQUIRE_TYPED_FAILURE === "1") {
         const capabilities =
-          message.params.clientCapabilities?._meta?.jetbrains?.air?.capabilities;
-        if (!Array.isArray(capabilities) || !capabilities.includes("sessionFailure")) {
+          message.params.clientCapabilities?._meta?.jetbrains?.air
+            ?.capabilities;
+        if (
+          !Array.isArray(capabilities) ||
+          !capabilities.includes("sessionFailure")
+        ) {
           throw new Error("expected typed session-failure capability");
         }
       }
@@ -98,6 +120,18 @@ lines.on("line", async (line) => {
       break;
     }
     case "session/new":
+      if (rejectedLoad)
+        throw new Error(
+          "failed load poisoned the adapter; a fresh process is required",
+        );
+      if (process.env.ACP_FIXTURE_FAIL_NEW === "1") {
+        send({
+          jsonrpc: "2.0",
+          id: message.id,
+          error: { code: -32603, message: "fresh session creation failed" },
+        });
+        break;
+      }
       if (process.env.ACP_FIXTURE_CLOSE_INPUT_AFTER_SESSION === "1") {
         // Reproduce an adapter that loses its ACP input while staying alive.
         // fd 0 alone leaves libuv's already-open Pipe handle writable on Linux,
@@ -121,10 +155,50 @@ lines.on("line", async (line) => {
       // deterministically observes EPIPE instead of racing into the pipe buffer.
       result(message.id, { sessionId: "fixture-session" });
       break;
-    case "session/load":
+    case "session/load": {
+      const mode = process.env.ACP_FIXTURE_LOAD_ERROR;
+      if (mode === "timeout") break;
+      if (mode) {
+        rejectedLoad = true;
+        const errors = {
+          missing: {
+            code: -32002,
+            message: "Resource not found",
+            data: { uri: "session:prior-session" },
+          },
+          missingLocalized: { code: -32002, message: "Sitzung nicht gefunden" },
+          corrupt: {
+            code: -32603,
+            message: "Saved session state is corrupt",
+            data: `near ${process.env.ANTHROPIC_API_KEY}`,
+          },
+          closed: {
+            code: -32603,
+            message: "Query closed before response received",
+          },
+          auth: { code: -32000, message: "Authentication required" },
+          wrappedAuth: {
+            code: -32603,
+            message: "Query closed before response received",
+            data: "provider authentication failed",
+          },
+          routing: { code: -32603, message: "model proxy routing failed" },
+          unknown: { code: -32603, message: "unknown session failure" },
+          cancelled: { code: -32800, message: "Request cancelled" },
+        };
+        send({ jsonrpc: "2.0", id: message.id, error: errors[mode] });
+        break;
+      }
       result(message.id, {});
       break;
+    }
     case "session/prompt": {
+      if (process.env.ACP_FIXTURE_PROMPT_LOG) {
+        writeFileSync(
+          process.env.ACP_FIXTURE_PROMPT_LOG,
+          JSON.stringify(message.params.prompt),
+        );
+      }
       if (process.env.ACP_FIXTURE_CRASH === "1") {
         if (process.env.ACP_FIXTURE_CRASH_WITH_CREDENTIAL === "1") {
           console.error(process.env.ANTHROPIC_API_KEY);
@@ -176,7 +250,9 @@ lines.on("line", async (line) => {
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
       update(sessionId, {
         sessionUpdate: "available_commands_update",
-        availableCommands: [{ name: "review", description: "Review the changes" }],
+        availableCommands: [
+          { name: "review", description: "Review the changes" },
+        ],
       });
       update(sessionId, {
         sessionUpdate: "current_mode_update",
@@ -185,7 +261,11 @@ lines.on("line", async (line) => {
       update(sessionId, {
         sessionUpdate: "plan",
         entries: [
-          { content: "edit and commit", priority: "high", status: "in_progress" },
+          {
+            content: "edit and commit",
+            priority: "high",
+            status: "in_progress",
+          },
         ],
       });
       update(sessionId, {
@@ -223,11 +303,16 @@ lines.on("line", async (line) => {
           sessionUpdate: "tool_call_update",
           toolCallId: "tool-1",
           status: "in_progress",
-          rawOutput: { stdout: `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}` },
+          rawOutput: {
+            stdout: `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`,
+          },
         });
         update(sessionId, {
           sessionUpdate: "agent_message_chunk",
-          content: { type: "text", text: `the key is ${process.env.ANTHROPIC_API_KEY}` },
+          content: {
+            type: "text",
+            text: `the key is ${process.env.ANTHROPIC_API_KEY}`,
+          },
         });
       }
       update(sessionId, {

@@ -159,3 +159,14 @@ func TestAgentProfileLookupCannotMutateReleaseContract(t *testing.T) {
 		t.Fatal("lookup mutated shared release contract")
 	}
 }
+
+func TestClaudeRuntimeEnvPreservesNativeTranscriptBeforeExit(t *testing.T) {
+	_, envJSON := AgentProfileRuntimeJSON("claude")
+	var env map[string]string
+	if err := json.Unmarshal([]byte(envJSON), &env); err != nil {
+		t.Fatal(err)
+	}
+	if env["CLAUDE_CODE_EAGER_FLUSH"] != "1" {
+		t.Fatal("Claude must flush native session state before returning the result the driver terminates on")
+	}
+}
