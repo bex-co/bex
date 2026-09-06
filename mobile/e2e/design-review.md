@@ -6,6 +6,9 @@ API and authentication contracts.
 
 ## Changes
 
+- Environment-variable viewing and editing stay on the dashboard. Mobile service
+  details omit the card and its read, refresh, reveal, and update requests; the
+  native OAuth scope remains read/write only.
 - Top-level pages share one compact row: a hamburger menu, the current workspace
   name in 20-point semibold, and the page action. The menu opens the drawer with
   a 44-point target; workspace selection lives inside the drawer. Long names

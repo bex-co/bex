@@ -8,6 +8,8 @@ experience.
 - Mobile is supervision-first. Do not add service creation, desktop settings,
   blueprint/topology/admin flows, bulk secret management, or Web Shell as a
   primary workflow.
+- Environment-variable viewing and editing belong to the dashboard. Mobile
+  service details must not render an environment card or request keys or values.
 - Never add delete, PITR, failover, workspace deletion, or dangerous permission
   modes. `src/__tests__/mobile-scope-policy.test.ts` enforces the route/action
   vocabulary.
