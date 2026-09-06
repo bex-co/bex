@@ -517,7 +517,8 @@ type DisplayBlock =
   // The driver's ADR047 D3 continuity annotation: which ladder rung primed a
   // fresh agent generation. Rendered as an honest system line so the UI never
   // implies conversational fidelity the agent doesn't have (w5/m84).
-  | { type: "continuity"; key: string; rung: string };
+  | { type: "continuity"; key: string; rung: string }
+  | { type: "turn-error"; key: string; turn: number; errorText: string };
 
 function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   const blocks: DisplayBlock[] = [];
@@ -561,6 +562,24 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
       // because replay intentionally adapts all raw chunks into one AI-SDK
       // assistant message.
       planBlock = null;
+      return;
+    }
+
+    if (part.type === "data-bex-turn-error") {
+      const data = part.data as Record<string, unknown> | undefined;
+      if (
+        data &&
+        Number.isSafeInteger(data.turn) &&
+        (data.turn as number) > 0 &&
+        typeof data.errorText === "string"
+      ) {
+        blocks.push({
+          type: "turn-error",
+          key: `turn-error-${index}`,
+          turn: data.turn as number,
+          errorText: capText(data.errorText),
+        });
+      }
       return;
     }
 
@@ -721,6 +740,15 @@ const MessageRow = memo(function MessageRow({
               />
             );
           }
+          if (block.type === "turn-error") {
+            return (
+              <TurnErrorNote
+                key={block.key}
+                turn={block.turn}
+                errorText={block.errorText}
+              />
+            );
+          }
           if (block.type === "continuity") {
             return <ContinuityNote key={block.key} rung={block.rung} />;
           }
@@ -755,6 +783,25 @@ function ContinuityNote({ rung }: { rung: string }) {
   const key = CONTINUITY_MESSAGES[rung];
   if (!key) return null;
   return <TerminalStatusLine label={t(key)} />;
+}
+
+function TurnErrorNote({
+  turn,
+  errorText,
+}: {
+  turn: number;
+  errorText: string;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="text-destructive flex items-start gap-2 pt-2 text-xs">
+      <AlertCircle aria-hidden className="mt-0.5 size-3 shrink-0" />
+      <p className="min-w-0 whitespace-pre-wrap wrap-anywhere">
+        {t("agentSessions.turnError", { turn })}
+        {errorText ? `: ${errorText}` : ""}
+      </p>
+    </div>
+  );
 }
 
 function DurableUserTurn({

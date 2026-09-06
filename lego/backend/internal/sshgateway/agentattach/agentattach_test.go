@@ -19,6 +19,7 @@ package agentattach
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -1308,5 +1309,111 @@ func TestAgentAttachLimitRejectionLeavesGaugeUntouched(t *testing.T) {
 	}
 	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": "identity"}); got != 1 {
 		t.Fatalf("limit_rejections_total{identity} = %v, want 1", got)
+	}
+}
+
+func TestAgentAttachHistoricalErrorsDoNotAbortLaterTurns(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-00000000000000000002b"
+	st := newFakeAttachStore()
+	st.turns[session] = []store.AgentSessionTurn{
+		{SessionID: session, Turn: 1, Prompt: "first attempt"},
+		{SessionID: session, Turn: 2, Prompt: "try again", TranscriptComplete: true},
+	}
+	originalError := `{"type":"error","errorText":"saved session could not load"}`
+	continuity := `{"type":"data-bex-continuity","data":{"rung":"transcript-reprime"}}`
+	answer := `{"type":"text-delta","id":"answer","delta":"The remembered codeword is cedar."}`
+	currentError := `{"type":"error","errorText":"current turn failed"}`
+	originals := []store.AgentSessionTranscriptPart{
+		{Turn: 1, PartIndex: 0, Part: []byte(originalError)},
+		{Turn: 2, PartIndex: 0, Part: []byte(continuity)},
+		{Turn: 2, PartIndex: 1, Part: []byte(answer)},
+		{Turn: 2, PartIndex: 2, Part: []byte(currentError)},
+	}
+	if err := st.AppendAgentSessionTranscript(context.Background(), session, originals); err != nil {
+		t.Fatal(err)
+	}
+	gw := newAttachGateway(st, fixedPodIP{err: errors.New("pod gone")}, secret, 8787)
+	// Exact original-byte quota: the larger projected historical error must not
+	// consume additional transcript quota and hide later content.
+	for _, part := range originals {
+		gw.MaxTranscriptBytes += int64(len(part.Part))
+	}
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+	ticket, err := agentsessionticket.Mint(secret, agentsessionticket.Claims{
+		Subject: "alice", SessionID: session, Workspace: "tea-a", Turn: 2,
+		Action: agentsessionticket.ActionRead, IssuedAt: 1_800_000_000, ExpiresAt: 1_800_000_090,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, ticket)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("HTTP %d: %s", resp.StatusCode, body)
+	}
+	payloads := dataPayloads(string(body))
+	var observed []string
+	for _, payload := range payloads {
+		var part struct {
+			Type string `json:"type"`
+			Data struct {
+				Turn      int    `json:"turn"`
+				ErrorText string `json:"errorText"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(payload), &part); err != nil {
+			t.Fatal(err)
+		}
+		switch part.Type {
+		case "data-bex-turn-error":
+			if part.Data.Turn != 1 || part.Data.ErrorText != "saved session could not load" {
+				t.Fatalf("historical error = %s", payload)
+			}
+			observed = append(observed, "historical-error")
+		case "data-bex-continuity":
+			if payload != continuity {
+				t.Fatalf("continuity changed: %s", payload)
+			}
+			observed = append(observed, "continuity")
+		case "text-delta":
+			if payload != answer {
+				t.Fatalf("answer changed: %s", payload)
+			}
+			observed = append(observed, "answer")
+		case "error":
+			if payload != currentError {
+				t.Fatalf("historical error remained fatal: %s", payload)
+			}
+			observed = append(observed, "current-error")
+		}
+	}
+	if strings.Join(observed, ",") != "historical-error,continuity,answer,current-error" {
+		t.Fatalf("replay order=%v; body=%s", observed, body)
+	}
+	if !strings.HasSuffix(strings.TrimSpace(string(body)), "data: [DONE]") {
+		t.Fatalf("missing terminal sentinel: %s", body)
+	}
+	stored, err := st.AgentSessionTranscript(context.Background(), session, -1, gw.MaxTranscriptBytes, 0)
+	if err != nil || len(stored) != len(originals) {
+		t.Fatalf("stored transcript=%+v err=%v", stored, err)
+	}
+	for i, part := range stored {
+		if string(part.Part) != string(originals[i].Part) {
+			t.Fatalf("replay mutated stored part %d", i)
+		}
+	}
+	if st.appendBatches.Load() != 1 {
+		t.Fatal("replay wrote transcript storage")
 	}
 }

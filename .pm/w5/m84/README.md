@@ -1,14 +1,14 @@
 # w5 · m84 — Agent-context continuity across sandbox generations (resume / steer / redispatch)
 
-**Worker:** worker5 **Goal:** a resumed or steered agent session remembers its conversation — the fresh agent process is primed per the ADR047 D3 continuity ladder instead of cold-starting while the dashboard replays history it doesn't have. **Status:** in progress — redispatch, resume-then-steer, and setup-task retry verified live; direct snapshot follow-up exposed missing native-load fallback. repair and review complete; t002/t006 await verification on the deployed repair.
+**Worker:** worker5 **Goal:** a resumed or steered agent session remembers its conversation — the fresh agent process is primed per the ADR047 D3 continuity ladder instead of cold-starting while the dashboard replays history it doesn't have. **Status:** in progress — native restoration and missing-state fallback now verified live; historical error replay hides later turns in the dashboard. replay presentation repair and reviews complete; t003/t006 await production UI verification.
 
 ## Tasks (in order)
 
 | id   | title                                                                                  | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Driver: transcript re-priming + task re-delivery (ladder rungs 2–3) — **DONE**                     | 60m | —          |
-| t002 | Rung 1: snapshot carries agent session-state dirs + ACP `session/load` when advertised  | 60m | t001       |
-| t003 | Surface the applied rung: turn annotation + dashboard restored/fresh-context hint — **DONE**       | 45m | t001       |
+| t002 | Rung 1: snapshot carries agent session-state dirs + ACP `session/load` when advertised — **DONE** | 60m | t001       |
+| t003 | Surface the applied rung: turn annotation + dashboard restored/fresh-context hint       | 45m | t001       |
 | t004 | Simplify — `/simplify` over the changed code — **DONE** | 30m | t002, t003 |
 | t005 | Test coverage — ladder selection, preamble bounds, no double-render, empty-snapshot resume — **DONE** | 45m | t004       |
 | t006 | Live E2E: production resume + steer-redispatch answer a context-dependent prompt        | 45m | t005       |
@@ -75,3 +75,23 @@ A pre-rollout native-history audit found an additional replay bug: the pinned ad
 
 
 The replay guard passed all 119 driver tests and build. Two new regression cases cover successful native loading and historical assistant/tool replay followed by recoverable load failure. Both assert that historical bytes are absent from the hub, POST mirror, and new-turn JSONL, while current prompt text/tools remain present. Setup command metadata remains supported. The flag remains active through failed-attempt cleanup to exclude late historical notifications. Simplify quality/efficiency reviews found no further changes needed. Final local image after this guard: `0c9f2ab7fd3da836ae7efe3328f19f787c669f9e458e9811b2fd4fd6c91d7679`.
+
+
+The final replay repair shipped as `04e8fa215cf56f2fd3073cd04f7d911097487b91`. Its production workflow `34002482856` passed secret scanning and all four suites (backend with CI integration services, dashboard, operator, OpenSandbox controller) before starting image builds. Final reuse review also accepted the dedicated loading phase and existing fixture/helper reuse.
+
+
+### Repaired production restoration (2026-09-06 UTC)
+
+Workflow `34002482856` completed successfully. GitOps write-back `ee13635e69492f3bc032d5160e3a9b0ec63fe852` pins source `04e8fa215cf56f2fd3073cd04f7d911097487b91`. API image `d9be56f5a148470b061795b0aea6e31cc1957e114871ebbaf61d5d3f5102aa62` and agent image `b9dbcaa578cf9004d13baec16a223767c006c7512b392aa46280b7c48907199d` were verified, including full API rollout and the scratch pod's actual image.
+
+- Legacy snapshot → turn 6, sandbox `2aa6981e-e627-45f4-a10e-818e7553e972`, completed 01:41:02 UTC. Native loading produced the same query-closed error; the redacted runtime diagnostic recorded fresh-process recovery. Annotation `transcript-reprime` at 01:40:56.684 UTC; answer exactly MARIGOLD-742 and 37. Nine parts, complete, not truncated. The repaired turn wrote native transcript files and hibernated at 01:41:48 UTC (9,452-byte snapshot).
+- Repaired snapshot → turn 7, sandbox `ec41c9c8-8fb7-4bd9-b3bc-9c81cca83da0`, completed 01:42:47 UTC. Annotation `session-load` at 01:42:45.356 UTC; answer exactly MARIGOLD-742 and 37. Nine parts, complete, not truncated; native history did not duplicate into the new turn. Local evidence: `.playwright-mcp/m84-fallback-result.json`, `.playwright-mcp/m84-native-result.json`.
+
+The native hint capture revealed a separate replay presentation defect: the page shows turns 1–3 and stops at turn 4's historical error, despite all seven turns existing durably. A reproduction with the installed AI SDK confirmed raw error chunks abort message assembly. Earlier-turn errors must become nonfatal conversation entries while current errors remain fatal. Backend/dashboard/mobile parity is being repaired; t003/t004/t005 are reopened and the milestone remains live.
+
+
+### Historical-error replay repair validation
+
+Earlier-turn errors are projected only while serving replay as `data-bex-turn-error` with the historical turn and original redacted error text. Stored transcript bytes and quota accounting are unchanged; current-turn and transport errors remain fatal. The dashboard renders a bounded, localized failure entry without mislabeling it as an incomplete transcript. Mobile has no transcript/ACP stream consumer; its current-failure overview remains unchanged and all 342 unit tests passed.
+
+Gateway real HTTP/SSE regression verifies historical error → later continuity → later answer ordering, terminal-error behavior, original-byte quota, and no replay persistence mutation; the original implementation fails it. The whole gateway package passed the race detector. The full backend unit suite passed. All 2,997 dashboard tests in 397 files passed, including an actual AI SDK/useChat transport regression that reproduces the failed-turn-to-later-answer path. Simplify consolidated structural filtering and historical error projection into one JSON decode; reuse, quality, and efficiency reviews found no further cleanups.
