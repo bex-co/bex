@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { loadAgentProfiles, validateAgentProfiles } from "../src/profiles.js";
 import { loadConfig } from "../src/config.js";
+import { createCredentialManager } from "../src/credentials.js";
 
 const cases = JSON.parse(
   readFileSync(
@@ -72,4 +73,23 @@ test("driver resolves profile facts and rejects runtime overrides", () => {
     },
   ])
     assert.throws(() => loadConfig(env));
+});
+
+// claude-code-acp 0.16.2 pins claude-agent-sdk 0.2.44. Its native transcript
+// writer batches for 100ms unless this flag makes the result await flush;
+// the driver terminates the process immediately after that result boundary.
+test("Claude native transcript flush stays enabled in the child environment", () => {
+  const config = loadConfig({ BEX_AGENT_PROFILE: "claude" });
+  const credentials = createCredentialManager(config, {});
+  assert.equal(credentials.agentEnvironment().CLAUDE_CODE_EAGER_FLUSH, "1");
+  for (const env of [{}, { CLAUDE_CODE_EAGER_FLUSH: "0" }]) {
+    assert.throws(
+      () =>
+        loadConfig({
+          BEX_AGENT_PROFILE: "claude",
+          BEX_AGENT_ENV_JSON: JSON.stringify(env),
+        }),
+      /must match the selected release profile/,
+    );
+  }
 });

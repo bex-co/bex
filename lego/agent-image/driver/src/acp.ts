@@ -28,6 +28,7 @@ import {
   type SessionUpdate,
 } from "@agentclientprotocol/sdk";
 import type { AgentDriverConfig } from "./config.js";
+import { describeError } from "./errors.js";
 
 const maximumConnectTimeoutMs = 60_000;
 const openAIBaseURLEnv = "OPENAI_BASE_URL";
@@ -50,7 +51,7 @@ type ACPChildProcess = ChildProcessByStdio<Writable, Readable, Readable>;
 // speaks ACP directly through the official SDK.
 export interface SessionProvider {
   sessionId: string;
-  resume: "new" | "loaded" | "unsupported";
+  resume: "new" | "loaded" | "unsupported" | "load-failed";
   prompt(text: string): Promise<PromptResponse>;
   cancel(): Promise<void>;
   cleanup(): Promise<void>;
@@ -125,11 +126,59 @@ function autoApprove(
   return { outcome: { outcome: "selected", optionId: option.optionId } };
 }
 
+class SessionStateUnavailable extends Error {}
+
+function canRebuildSession(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("code" in error)) return false;
+  if (error.code !== -32002 && error.code !== -32603) return false;
+  const detail = describeError(error);
+  // Adapters can wrap provider failures in an internal-error envelope. Only
+  // recognized state-loss failures permit a fresh process, never auth/routing.
+  if (
+    /authenticat|authoriz|forbidden|unauthorized|api[ -]?key|credential|routing|proxy|provider|model not found/i.test(
+      detail,
+    )
+  )
+    return false;
+  return (
+    error.code === -32002 ||
+    /\bquery closed before response received\b|\b(?:session|conversation)\b.*\b(?:not found|does not exist|missing|corrupt)\b|\b(?:no|missing|corrupt|invalid)\b.*\b(?:session|conversation)(?: state)?\b/i.test(
+      detail,
+    )
+  );
+}
+
 export async function createSessionProvider(
   config: AgentDriverConfig,
   agentEnv: Record<string, string>,
   options: CreateSessionOptions,
 ): Promise<SessionProvider> {
+  try {
+    return await createSessionAttempt(config, agentEnv, options);
+  } catch (error) {
+    if (!(error instanceof SessionStateUnavailable)) throw error;
+    options.abortSignal?.throwIfAborted();
+    console.warn(
+      `ACP session/load unavailable; rebuilding continuity in a fresh process: ${error.message}`,
+    );
+    // The failed attempt has reaped its process. No recursion: a failure of
+    // initialization, routing, or session/new in the replacement stays fatal.
+    const provider = await createSessionAttempt(
+      { ...config, existingSessionId: "" },
+      agentEnv,
+      options,
+    );
+    provider.resume = "load-failed";
+    return provider;
+  }
+}
+
+async function createSessionAttempt(
+  config: AgentDriverConfig,
+  agentEnv: Record<string, string>,
+  options: CreateSessionOptions,
+): Promise<SessionProvider> {
+  options.abortSignal?.throwIfAborted();
   const child: ACPChildProcess = spawn(config.command, config.args, {
     cwd: config.cwd,
     env: { ...process.env, ...agentEnv },
@@ -193,7 +242,7 @@ export async function createSessionProvider(
     else child.once("close", () => resolve());
   });
   const killProcessTree = () => {
-    if (child.exitCode !== null || child.signalCode !== null) return;
+    // The group can outlive its leader and keep inherited ACP pipes open.
     if (process.platform !== "win32" && child.pid !== undefined) {
       try {
         process.kill(-child.pid, "SIGKILL");
@@ -202,17 +251,29 @@ export async function createSessionProvider(
         // A spawn failure has no process group; fall back to the child handle.
       }
     }
-    child.kill("SIGKILL");
+    if (child.exitCode === null && child.signalCode === null)
+      child.kill("SIGKILL");
   };
-  const cleanup = async () => {
-    killProcessTree();
-    await stopped;
+  let cleanupPromise: Promise<void> | undefined;
+  const cleanup = () => {
+    cleanupPromise ??= (async () => {
+      options.abortSignal?.removeEventListener("abort", onAbort);
+      killProcessTree();
+      await stopped;
+    })();
+    return cleanupPromise;
+  };
+  const onAbort = () => {
+    const reason = options.abortSignal?.reason;
+    failTerminal(
+      reason instanceof Error ? reason : new Error("ACP session aborted"),
+    );
+    void cleanup();
   };
   // Guarantee the child dies on turn timeout even if we never returned from
   // connect below (a hung initialize).
-  options.abortSignal?.addEventListener("abort", () => void cleanup(), {
-    once: true,
-  });
+  options.abortSignal?.addEventListener("abort", onAbort, { once: true });
+  if (options.abortSignal?.aborted) onAbort();
 
   const client: Client = {
     async sessionUpdate(params: SessionNotification): Promise<void> {
@@ -274,11 +335,7 @@ export async function createSessionProvider(
   );
   const setupCall = <T>(
     operation: Promise<T>,
-    phase:
-      | "connect"
-      | "provider routing"
-      | "session load"
-      | "session create",
+    phase: "connect" | "provider routing" | "session load" | "session create",
   ) =>
     withTimeout(
       Promise.race([operation, terminal]),
@@ -327,14 +384,20 @@ export async function createSessionProvider(
     let resume: SessionProvider["resume"] = "new";
     const loadSupported = initialize.agentCapabilities?.loadSession === true;
     if (config.existingSessionId && loadSupported) {
-      await setupCall(
-        connection.loadSession({
-          sessionId: config.existingSessionId,
-          cwd: config.cwd,
-          mcpServers: [],
-        }),
-        "session load",
-      );
+      try {
+        await setupCall(
+          connection.loadSession({
+            sessionId: config.existingSessionId,
+            cwd: config.cwd,
+            mcpServers: [],
+          }),
+          "session load",
+        );
+      } catch (error) {
+        options.abortSignal?.throwIfAborted();
+        if (!canRebuildSession(error)) throw error;
+        throw new SessionStateUnavailable(options.redact(describeError(error)));
+      }
       sessionId = config.existingSessionId;
       resume = "loaded";
     } else {

@@ -35,6 +35,7 @@ import {
   type CredentialManager,
 } from "../src/credentials.js";
 import { runHeadlessTurn } from "../src/session.js";
+import { createSessionProvider } from "../src/acp.js";
 import { startDriverServer } from "../src/server.js";
 import { UIMessageStreamHub } from "../src/stream-hub.js";
 import { TurnLogSink } from "../src/turn-log.js";
@@ -1057,3 +1058,206 @@ test("log open and terminal close failures persist failed status", async (t) => 
     });
   }
 });
+
+for (const mode of ["missing", "missingLocalized", "corrupt", "closed"]) {
+  test(`unavailable native session (${mode}) restarts once and re-primes transcript`, async (t) => {
+    const config = await tempConfig({
+      existingSessionId: "prior-session",
+      contextJson: JSON.stringify([
+        {
+          turn: 1,
+          prompt: "Remember the codeword cedar",
+          reply: "I will remember cedar",
+        },
+      ]),
+    });
+    const callsPath = path.join(config.root, "calls.log");
+    const promptPath = path.join(config.root, "prompt.json");
+    const pidPath = path.join(config.root, "pids.log");
+    config.agentEnv = {
+      ACP_FIXTURE_LOAD_SESSION: "1",
+      ACP_FIXTURE_LOAD_ERROR: mode,
+      ACP_FIXTURE_LOG: callsPath,
+      ACP_FIXTURE_PROMPT_LOG: promptPath,
+      ACP_FIXTURE_PID_LOG: pidPath,
+    };
+    const diagnostics: string[] = [];
+    t.mock.method(console, "warn", (...args: unknown[]) => {
+      diagnostics.push(args.join(" "));
+    });
+    const hub = new UIMessageStreamHub();
+    const result = await runHeadlessTurn(config, manager(config), hub, {
+      prompt: "What was the codeword?",
+    });
+    assert.equal(result.resume, "load-failed");
+    assert.equal(result.continuity, "transcript-reprime");
+    assert.equal(
+      config.existingSessionId,
+      "prior-session",
+      "fallback must not mutate the session config",
+    );
+    const calls = (await readFile(callsPath, "utf8")).trim().split("\n");
+    assert.deepEqual(
+      calls.filter((method) =>
+        [
+          "initialize",
+          "session/load",
+          "session/new",
+          "session/prompt",
+        ].includes(method),
+      ),
+      [
+        "initialize",
+        "session/load",
+        "initialize",
+        "session/new",
+        "session/prompt",
+      ],
+    );
+    const prompt = JSON.parse(await readFile(promptPath, "utf8"))[0].text;
+    assert.match(prompt, /Remember the codeword cedar/);
+    assert.ok(prompt.endsWith("What was the codeword?"));
+    assert.doesNotMatch(
+      JSON.stringify(hub.history),
+      /Remember the codeword cedar/,
+    );
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0], /rebuilding continuity in a fresh process/);
+    assert.doesNotMatch(diagnostics[0], /test-model-key-never-log/);
+    if (mode === "corrupt") assert.match(diagnostics[0], /REDACTED/);
+    const pids = (await readFile(pidPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map(Number);
+    assert.equal(new Set(pids).size, 2);
+    for (const pid of pids)
+      assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+  });
+}
+
+for (const mode of [
+  "auth",
+  "wrappedAuth",
+  "routing",
+  "unknown",
+  "cancelled",
+  "timeout",
+]) {
+  test(`session/load ${mode} remains fatal without a fresh-process retry`, async (t) => {
+    const config = await tempConfig({
+      existingSessionId: "prior-session",
+      turnTimeoutMs: mode === "timeout" ? 150 : 1000,
+    });
+    const callsPath = path.join(config.root, "calls.log");
+    config.agentEnv = {
+      ACP_FIXTURE_LOAD_SESSION: "1",
+      ACP_FIXTURE_LOAD_ERROR: mode,
+      ACP_FIXTURE_LOG: callsPath,
+    };
+    const credentials = manager(config);
+    const diagnostics: unknown[] = [];
+    t.mock.method(console, "warn", (...args: unknown[]) => {
+      diagnostics.push(args);
+    });
+    await assert.rejects(
+      createSessionProvider(config, credentials.agentEnvironment(), {
+        onUpdate: () => {},
+        redact: (value) =>
+          credentials.redact(typeof value === "string" ? value : String(value)),
+      }).then((provider) => provider.cleanup()),
+    );
+    const calls = (await readFile(callsPath, "utf8")).trim().split("\n");
+    assert.equal(calls.filter((method) => method === "initialize").length, 1);
+    assert.equal(calls.includes("session/new"), false);
+    assert.equal(diagnostics.length, 0);
+  });
+}
+
+test("an abort between failed load and replacement spawn stays aborted", async (t) => {
+  const config = await tempConfig({ existingSessionId: "prior-session" });
+  const callsPath = path.join(config.root, "calls.log");
+  config.agentEnv = {
+    ACP_FIXTURE_LOAD_SESSION: "1",
+    ACP_FIXTURE_LOAD_ERROR: "closed",
+    ACP_FIXTURE_LOG: callsPath,
+  };
+  const controller = new AbortController();
+  const reason = new Error("fixture cancellation");
+  t.mock.method(console, "warn", () => controller.abort(reason));
+  const credentials = manager(config);
+  await assert.rejects(
+    createSessionProvider(config, credentials.agentEnvironment(), {
+      onUpdate: () => {},
+      redact: (value) => String(value),
+      abortSignal: controller.signal,
+    }).then((provider) => provider.cleanup()),
+    reason,
+  );
+  const calls = (await readFile(callsPath, "utf8")).trim().split("\n");
+  assert.equal(calls.filter((method) => method === "initialize").length, 1);
+  assert.equal(calls.includes("session/new"), false);
+});
+
+test("replacement session/new failure is not retried recursively", async (t) => {
+  const config = await tempConfig({ existingSessionId: "prior-session" });
+  const callsPath = path.join(config.root, "calls.log");
+  config.agentEnv = {
+    ACP_FIXTURE_LOAD_SESSION: "1",
+    ACP_FIXTURE_LOAD_ERROR: "closed",
+    ACP_FIXTURE_FAIL_NEW: "1",
+    ACP_FIXTURE_LOG: callsPath,
+  };
+  t.mock.method(console, "warn", () => {});
+  await assert.rejects(
+    runHeadlessTurn(config, manager(config), new UIMessageStreamHub()),
+  );
+  const calls = (await readFile(callsPath, "utf8")).trim().split("\n");
+  assert.equal(calls.filter((method) => method === "initialize").length, 2);
+  assert.equal(calls.filter((method) => method === "session/new").length, 1);
+  assert.equal(
+    JSON.parse(await readFile(config.statusPath, "utf8")).state,
+    "failed",
+  );
+});
+
+test(
+  "cleanup kills inherited-stdio descendants after their ACP parent exits",
+  { skip: process.platform === "win32", timeout: 3000 },
+  async (t) => {
+    const config = await tempConfig();
+    const pidPath = path.join(config.root, "pids.log");
+    config.agentEnv = {
+      ACP_FIXTURE_ORPHAN_STDIO: "1",
+      ACP_FIXTURE_PID_LOG: pidPath,
+    };
+    t.after(async () => {
+      // Also keep a failing regression test from leaving an orphan behind.
+      const pids = (await readFile(pidPath, "utf8").catch(() => ""))
+        .trim()
+        .split("\n")
+        .map(Number);
+      for (const pid of pids) {
+        if (pid > 0)
+          try {
+            process.kill(pid, "SIGKILL");
+          } catch {}
+      }
+    });
+    const credentials = manager(config);
+    await assert.rejects(
+      createSessionProvider(config, credentials.agentEnvironment(), {
+        onUpdate: () => {},
+        redact: (value) => String(value),
+      }).then((provider) => provider.cleanup()),
+      /ACP agent exited/,
+    );
+    // A resolved cleanup proves both stdio pipes closed, including the copies
+    // held by the orphan. Killing only the exited parent never resolves this.
+    const pids = (await readFile(pidPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map(Number);
+    assert.equal(pids.length, 2);
+    assert.throws(() => process.kill(pids[0], 0), { code: "ESRCH" });
+  },
+);
