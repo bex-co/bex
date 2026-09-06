@@ -60,3 +60,18 @@ The driver also recovers recognized missing/corrupt native state by cleaning up 
 All 117 driver tests and the TypeScript build passed. New regression tests exercise missing/corrupt/localized state errors, the observed query-closed error, exactly one replacement process, transcript re-priming without replay duplication, redacted diagnostics, authentication/routing/unknown-error rejection, cancellation/timeouts, replacement failure, and inherited-stdio descendant cleanup. Profile tests verify eager flushing reaches the child environment and cannot be disabled by runtime overrides. Dashboard agent-session tests passed 242 tests in 22 files. Backend profile/sandbox tests passed; full backend unit suite was rerun after the manifest update (real PostgreSQL coverage remains the successful fresh-container m77 run in this session).
 
 The three simplify reviews found no reuse or quality changes needed; the efficiency finding about orphaned descendant pipes was fixed and re-reviewed. Final local image `bex-agent-m84-final` built successfully with digest `a9794aa1ecdb726f544ff2cd7f06ba34c0118b9459f26a2bfc3d48fc38ade266`. The milestone remains open until the repaired images pass production restoration checks.
+
+
+### Repair shipment and legacy snapshot
+
+Repair shipped as `522d8f9bbc85f3da91cc6d2987dbe56da4edf56f`; production workflow `34001608697`. Both platform and agent image must advance together because the backend and driver enforce the same release profile environment.
+
+Before rollout, the original-image session completed turn 5 at 00:34:24 UTC, again answering MARIGOLD-742 and 37 with `transcript-reprime`, then hibernated at 00:35:10 UTC (5,938-byte snapshot). This preserves a real pre-repair snapshot for the repaired loader's first live test.
+
+Deployment prerequisite note: run `33999536851` was superseded and skipped image rollout; all tests and CVE gates passed and final credential scrub completed. After it remained in post-scan cache work, cancellation was requested to release the production queue. The repair run retains every normal test/build/security/rollout gate.
+
+
+A pre-rollout native-history audit found an additional replay bug: the pinned adapter's `loadSession` invokes `replaySessionHistory`, which emits prior assistant/tool notifications before loading returns. The driver forwarded those through the new turn's mapper, duplicating durable/displayed history. Current-turn output must exclude setup/load notifications, including a partial load replay followed by fallback. Run `34001608697` was canceled during its test jobs before any image build or production mutation so the complete fix can follow all gates together.
+
+
+The replay guard passed all 119 driver tests and build. Two new regression cases cover successful native loading and historical assistant/tool replay followed by recoverable load failure. Both assert that historical bytes are absent from the hub, POST mirror, and new-turn JSONL, while current prompt text/tools remain present. Setup command metadata remains supported. The flag remains active through failed-attempt cleanup to exclude late historical notifications. Simplify quality/efficiency reviews found no further changes needed. Final local image after this guard: `0c9f2ab7fd3da836ae7efe3328f19f787c669f9e458e9811b2fd4fd6c91d7679`.

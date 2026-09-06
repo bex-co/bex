@@ -277,6 +277,9 @@ async function createSessionAttempt(
 
   const client: Client = {
     async sessionUpdate(params: SessionNotification): Promise<void> {
+      // Native load replays the old conversation to ACP clients. bex already
+      // owns that history; mapping it here would charge it to the new turn.
+      if (loadingSession) return;
       if (promptInFlight) {
         promptFailure ??= typedSessionFailure(params.update, options.redact);
       }
@@ -326,6 +329,7 @@ async function createSessionAttempt(
     Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>,
   );
   const connection = new ClientSideConnection(() => client, stream);
+  let loadingSession = false;
   let promptInFlight = false;
   let promptFailure: Error | undefined;
 
@@ -384,6 +388,7 @@ async function createSessionAttempt(
     let resume: SessionProvider["resume"] = "new";
     const loadSupported = initialize.agentCapabilities?.loadSession === true;
     if (config.existingSessionId && loadSupported) {
+      loadingSession = true;
       try {
         await setupCall(
           connection.loadSession({
@@ -398,6 +403,7 @@ async function createSessionAttempt(
         if (!canRebuildSession(error)) throw error;
         throw new SessionStateUnavailable(options.redact(describeError(error)));
       }
+      loadingSession = false;
       sessionId = config.existingSessionId;
       resume = "loaded";
     } else {

@@ -1261,3 +1261,51 @@ test(
     assert.throws(() => process.kill(pids[0], 0), { code: "ESRCH" });
   },
 );
+
+for (const failsLoad of [false, true]) {
+  test(`native load history is excluded from the new turn (load fails=${failsLoad})`, async (t) => {
+    const config = await tempConfig({
+      existingSessionId: "prior-session",
+      contextJson: JSON.stringify([
+        { turn: 1, prompt: "Earlier question", reply: "Earlier answer" },
+      ]),
+    });
+    config.agentEnv = {
+      ACP_FIXTURE_LOAD_SESSION: "1",
+      ACP_FIXTURE_REPLAY_LOAD: "1",
+      ACP_FIXTURE_SETUP_METADATA: "1",
+      ...(failsLoad ? { ACP_FIXTURE_LOAD_ERROR: "closed" } : {}),
+    };
+    t.mock.method(console, "warn", () => {});
+    const hub = new UIMessageStreamHub();
+    const mirror: Record<string, unknown>[] = [];
+    const result = await runHeadlessTurn(config, manager(config), hub, {
+      onPart: (part) => {
+        mirror.push(part);
+      },
+    });
+    assert.equal(result.resume, failsLoad ? "load-failed" : "loaded");
+    assert.equal(
+      result.continuity,
+      failsLoad ? "transcript-reprime" : "session-load",
+    );
+    for (const body of [
+      JSON.stringify(hub.history),
+      JSON.stringify(mirror),
+      await readFile(config.sessionLogPath, "utf8"),
+    ]) {
+      assert.doesNotMatch(
+        body,
+        /historical-answer-from-prior-turn|historical-tool/,
+      );
+      assert.match(body, /Task committed/);
+      assert.match(body, /tool-1/);
+    }
+    if (failsLoad)
+      assert.match(
+        JSON.stringify(hub.history),
+        /setup-command/,
+        "fresh-session setup metadata remains available",
+      );
+  });
+}
