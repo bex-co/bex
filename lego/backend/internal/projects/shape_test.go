@@ -22,9 +22,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -158,22 +161,34 @@ func TestWritePathsResolveEnvironmentMembership(t *testing.T) {
 	}
 }
 
-// TestCreateAcceptsRenderEnvironmentsInputUnderStrictDecode is w6/m126 t002:
-// Render's projectPOSTInput requires an `environments` array, and the Render
-// intersection routes strict-decode (reject unknown fields). The POST body must
-// therefore ACCEPT the full Render create shape — including the nested
-// environment objects and their ACL triple — so a client that mints its types
-// from Render's schema (the official CLI) is not 400'd. bex records the
-// divergence: it does not provision the environments, so the response's
-// environmentIds truthfully reports [] rather than faking the requested one.
+// TestCreateAcceptsRenderEnvironmentsInputUnderStrictDecode verifies real persisted environments and ACLs.
 func TestCreateAcceptsRenderEnvironmentsInputUnderStrictDecode(t *testing.T) {
-	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: newFakeProjectStore()}
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := ctxAs("user-a")
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := store.NewPGStore(pool)
+	workspace, err := st.CreateWorkspace(ctx, "project-inline", store.PlanHobby, "user-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = pool.Exec(ctx, "DELETE FROM tenants WHERE id = $1", workspace.ID) }()
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	body := `{"name":"api","ownerId":"tea-1","environments":[` +
-		`{"name":"production","protectedStatus":"unprotected","networkIsolationEnabled":false,` +
-		`"ipAllowList":[{"cidrBlock":"10.0.0.0/8","description":"office"}]}]}`
+	body := `{"name":"api","ownerId":"` + workspace.ID + `","environments":[` +
+		`{"name":"production","protectedStatus":"protected","networkIsolationEnabled":true,` +
+		`"ipAllowList":[{"cidrBlock":"10.0.0.0/8","description":"office"}]},{"name":"staging"}]}`
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/projects", strings.NewReader(body))
 	// The composed server sets this on every Render-contract route; setting it
@@ -187,8 +202,49 @@ func TestCreateAcceptsRenderEnvironmentsInputUnderStrictDecode(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(got.EnvironmentIDs) != 0 {
-		t.Fatalf("environmentIds = %v, want [] — bex does not provision POST environments (t002 divergence)", got.EnvironmentIDs)
+	if len(got.EnvironmentIDs) != 2 {
+		t.Fatalf("environmentIds = %v, want two persisted environments", got.EnvironmentIDs)
+	}
+	envs, err := st.ListEnvironments(ctx, got.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(envs) != 2 {
+		t.Fatalf("persisted environments = %+v", envs)
+	}
+	byName := map[string]store.Environment{}
+	for _, e := range envs {
+		if !slices.Contains(got.EnvironmentIDs, e.ID) {
+			t.Fatalf("response omitted environment %s", e.ID)
+		}
+		byName[e.Name] = e
+	}
+	production := byName["production"]
+	if production.ProtectedStatus != core.ProtectedStatusProtected || !production.NetworkIsolationEnabled || !slices.Equal(production.IPAllowList, []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8", Description: "office"}}) {
+		t.Fatalf("production ACL = %+v", production)
+	}
+	staging := byName["staging"]
+	if staging.ID == "" || staging.ProtectedStatus != core.ProtectedStatusUnprotected || !slices.Equal(staging.IPAllowList, core.DefaultEnvironmentAllowList()) {
+		t.Fatalf("staging defaults = %+v", staging)
+	}
+	// A duplicate name fails after the project and first environment insert.
+	// The transaction must roll all of them back.
+	_, err = svc.CreateWithEnvironments(ctx, workspace.ID, "rollback", []EnvironmentInput{{Name: "same"}, {Name: "same"}})
+	if err == nil {
+		t.Fatal("duplicate environment names succeeded")
+	}
+	projects, err := st.ListProjects(ctx, workspace.ID)
+	if err != nil || len(projects) != 1 {
+		t.Fatalf("failed create leaked project: %+v, %v", projects, err)
+	}
+	svc.MaxGroupings = 2
+	_, err = svc.CreateWithEnvironments(ctx, workspace.ID, "overquota", []EnvironmentInput{{Name: "a"}, {Name: "b"}})
+	if err == nil {
+		t.Fatal("environment quota was not enforced")
+	}
+	projects, err = st.ListProjects(ctx, workspace.ID)
+	if err != nil || len(projects) != 1 {
+		t.Fatalf("quota rejection leaked project: %+v, %v", projects, err)
 	}
 
 	// The strict decoder must still be active: a genuinely unknown field is
@@ -197,6 +253,9 @@ func TestCreateAcceptsRenderEnvironmentsInputUnderStrictDecode(t *testing.T) {
 	rec2 := httptest.NewRecorder()
 	req2 := httptest.NewRequest(http.MethodPost, "/v1/projects", strings.NewReader(`{"name":"api2","ownerId":"tea-1","bogus":true}`))
 	mux.ServeHTTP(rec2, req2.WithContext(core.WithStrictJSONDecoding(ctxAs("user-a"))))
+	if !strings.Contains(rec2.Body.String(), "bogus") {
+		t.Fatalf("unknown field not named: %s", rec2.Body.String())
+	}
 	if rec2.Code != http.StatusBadRequest {
 		t.Fatalf("POST with unknown field = %d, want 400 — strict decoding must stay active", rec2.Code)
 	}

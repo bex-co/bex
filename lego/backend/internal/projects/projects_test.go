@@ -597,3 +597,43 @@ func TestDeleteAbortsBeforeRemovingProjectIfEnvironmentClearFails(t *testing.T) 
 		t.Errorf("project should still exist after the aborted delete: %v", err)
 	}
 }
+
+// Inline ACL creation retains the admin gate of standalone environment creation.
+type denyManageChecker struct{}
+
+func (denyManageChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	return relation != core.RelCanManage, nil
+}
+
+func TestCreateInlineEnvironmentValidationAndAuthorization(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		input      EnvironmentInput
+		denyManage bool
+		want       error
+	}{
+		{"empty name", EnvironmentInput{Name: " "}, false, core.ErrBadRequest},
+		{"invalid status", EnvironmentInput{Name: "prod", ProtectedStatus: "invalid"}, false, core.ErrBadRequest},
+		{"invalid CIDR", EnvironmentInput{Name: "prod", IPAllowList: []core.IPAllowListEntry{{CIDRBlock: "invalid"}}}, false, core.ErrBadRequest},
+		{"protected", EnvironmentInput{Name: "prod", ProtectedStatus: core.ProtectedStatusProtected}, true, core.ErrForbidden},
+		{"isolated", EnvironmentInput{Name: "prod", NetworkIsolationEnabled: true}, true, core.ErrForbidden},
+		{"deny all", EnvironmentInput{Name: "prod", IPAllowList: []core.IPAllowListEntry{}}, true, core.ErrForbidden},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeProjectStore()
+			base := &core.Base{Authz: allowChecker{}}
+			if tc.denyManage {
+				base.Authz = denyManageChecker{}
+			}
+			svc := &Service{Base: base, Store: st}
+			_, err := svc.CreateWithEnvironments(ctxAs("user-a"), "tea-1", "project", []EnvironmentInput{tc.input})
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("Create error = %v, want %v", err, tc.want)
+			}
+			ps, err := st.ListProjects(ctxAs("user-a"), "tea-1")
+			if err != nil || len(ps) != 0 {
+				t.Fatalf("rejected create wrote projects: %+v, %v", ps, err)
+			}
+		})
+	}
+}

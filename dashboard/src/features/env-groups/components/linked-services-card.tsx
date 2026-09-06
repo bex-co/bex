@@ -80,7 +80,10 @@ export function LinkedServicesCard({
               onValueChange={setSelected}
               disabled={busy}
             >
-              <SelectTrigger className="min-w-56">
+              <SelectTrigger
+                aria-label={t("envGroups.selectService")}
+                className="min-w-56"
+              >
                 <SelectValue placeholder={t("envGroups.selectService")} />
               </SelectTrigger>
               <SelectContent>

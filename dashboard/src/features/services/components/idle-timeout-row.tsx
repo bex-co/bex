@@ -89,7 +89,11 @@ export function IdleTimeoutRow({
           if (next !== idleTTLSeconds) void setIdleTimeout(serviceId, next);
         }}
       >
-        <SelectTrigger size="sm" className="w-full sm:w-40">
+        <SelectTrigger
+          aria-label={t("services.settingsIdleTimeout")}
+          size="sm"
+          className="w-full sm:w-40"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

@@ -78,6 +78,7 @@ export function ManualScalingSection({
           </p>
           <SliderInput
             id="manual-instances"
+            label={t("services.scalingManualInstances")}
             value={value}
             min={INSTANCE_MIN}
             max={maxInstances}

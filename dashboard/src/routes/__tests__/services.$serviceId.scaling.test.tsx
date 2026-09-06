@@ -141,6 +141,10 @@ describe("ServiceScalingPage (w7/m43)", () => {
 
     expect(await screen.findByText("Autoscaling")).toBeInTheDocument();
     expect(screen.getByText("Manual Scaling")).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Instances" })).toHaveAttribute(
+      "aria-valuenow",
+      "2",
+    );
     expect(screen.getByText("Recent Metrics")).toBeInTheDocument();
     expect(screen.getByText("View all metrics.")).toBeInTheDocument();
   });
@@ -153,6 +157,23 @@ describe("ServiceScalingPage (w7/m43)", () => {
     expect(screen.queryByText("Manual Scaling")).not.toBeInTheDocument();
     // Recent Metrics shows in both states.
     expect(screen.getByText("Recent Metrics")).toBeInTheDocument();
+  });
+
+  it("names CPU and memory controls independently and preserves range thumb names", async () => {
+    autoscalingState.enabled = true;
+    autoscalingState.targetCPUPercent = 60;
+    autoscalingState.targetMemoryPercent = 70;
+    renderScaling();
+    await screen.findByText("Autoscaling");
+    for (const name of [
+      "Target CPU Utilization",
+      "Target Memory Utilization",
+    ]) {
+      expect(screen.getByRole("slider", { name })).toBeInTheDocument();
+      expect(screen.getByRole("spinbutton", { name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole("slider", { name: "Minimum" })).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Maximum" })).toBeInTheDocument();
   });
 
   it.each(["cron_job", "static_site"] as const)(
@@ -174,7 +195,7 @@ describe("ServiceScalingPage (w7/m43)", () => {
     const save = screen.getByRole("button", { name: "Save Changes" });
     expect(save).toBeDisabled();
 
-    fireEvent.change(screen.getByRole("spinbutton"), {
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Instances" }), {
       target: { value: "5" },
     });
     expect(save).toBeEnabled();
@@ -188,7 +209,7 @@ describe("ServiceScalingPage (w7/m43)", () => {
     renderScaling();
     await screen.findByText("Manual Scaling");
 
-    const input = screen.getByRole("spinbutton");
+    const input = screen.getByRole("spinbutton", { name: "Instances" });
     fireEvent.change(input, { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
 
@@ -201,7 +222,7 @@ describe("ServiceScalingPage (w7/m43)", () => {
     renderScaling();
     await screen.findByText("Manual Scaling");
 
-    const input = screen.getByRole("spinbutton");
+    const input = screen.getByRole("spinbutton", { name: "Instances" });
     fireEvent.change(input, { target: { value: "250" } });
     expect(input).toHaveValue(100);
     fireEvent.change(input, { target: { value: "0" } });
