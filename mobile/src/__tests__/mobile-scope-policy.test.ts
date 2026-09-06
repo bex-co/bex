@@ -56,7 +56,6 @@ const allowedMutationNames = new Set([
   "MobileResumePostgres",
   "MobileSuspendKeyValue",
   "MobileResumeKeyValue",
-  "MobilePatchSingleEnvVar",
   "MobileRunCronJob",
   "MobileCancelCronRun",
   "MobileRegisterNotificationDeviceSubscription",
@@ -95,7 +94,6 @@ const allowedGraphqlOperations: Record<string, string> = {
     "query|cursor,limit,serviceId|cronJobRuns,finishedAt,id,startedAt,status",
   MobileDeployHistory:
     "query|cursor,limit,serviceId|commitCreatedAt,commitId,commitMessage,createdAt,deploys,failureReason,finishedAt,id,image,preDeployStatus,rollbackOf,serviceId,startedAt,status,trigger,updatedAt",
-  MobileEnvVarKeys: "query|serviceId|envVarKeys,id,key,revision,service",
   MobileKeyValueInsights:
     "query|id|datastoreMetrics,field,labels,time,unit,value,values",
   MobileKeyValueLifecycle:
@@ -107,8 +105,6 @@ const allowedGraphqlOperations: Record<string, string> = {
     "query||createdAt,deviceId,lastRegisteredAt,notificationDeviceSubscriptions,platform,preferenceRef,provider,pushNotificationsAvailable,updatedAt",
   MobileNotificationInbox:
     "query|limit|body,deepLink,event,id,notificationInbox,occurredAt,readAt,title,unreadPushNotificationCount",
-  MobilePatchSingleEnvVar:
-    "mutation|key,revision,serviceId,value|envVarKeys,patchServiceEnvironment,rolledOut",
   MobilePostgresCapacity:
     "query|id|datastoreMetrics,field,labels,time,unit,value,values",
   MobilePostgresLifecycle:
@@ -132,8 +128,6 @@ const allowedGraphqlOperations: Record<string, string> = {
   MobileResumePostgres:
     "mutation|id|id,resumeDatabase,status,suspended,updatedAt",
   MobileResumeService: "mutation|id|id,phase,resumeService,suspended,updatedAt",
-  MobileRevealEnvVar:
-    "query|key,serviceId|envVar,id,key,revision,service,value",
   MobileRollbackService:
     "mutation|deployId,serviceId|createdAt,id,rollbackOf,rollbackService,serviceId,status,trigger",
   MobileRunCronJob: "mutation|id|finishedAt,id,runCronJob,startedAt,status",
@@ -174,6 +168,10 @@ const forbiddenSensitiveFields = new Set([
   "databaseConnectionInfo",
   "databaseTopQueries",
   "databaseUsers",
+  "envVar",
+  "envVarKeys",
+  "envVars",
+  "patchServiceEnvironment",
   "estimatedCost",
   "externalConnectionString",
   "internalConnectionString",
@@ -417,6 +415,22 @@ describe("ADR048 mobile scope", () => {
       "field:databaseConnectionInfo",
       "field:password",
       "mutation:deleteService",
+    ]);
+  });
+
+  it("keeps environment-variable reads and edits on the dashboard", () => {
+    expect(
+      forbiddenGraphqlControls([
+        'query Keys { service(id: "srv-one") { envVarKeys { key revision } } }',
+        'query Reveal { service(id: "srv-one") { envVar(key: "TOKEN") { value } } }',
+        'query List { envVars(serviceId: "srv-one") { envVar { key } } }',
+        'mutation Edit { patchServiceEnvironment(serviceId: "srv-one") { rolledOut } }',
+      ]),
+    ).toEqual([
+      "field:envVar",
+      "field:envVarKeys",
+      "field:envVars",
+      "field:patchServiceEnvironment",
     ]);
   });
 });

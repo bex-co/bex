@@ -31,10 +31,6 @@ import {
   type CronRunsCardHandle,
 } from "@/features/cron/cron-runs-card";
 import {
-  EnvironmentCard,
-  type EnvironmentCardHandle,
-} from "@/features/environment/environment-card";
-import {
   appendUnique,
   knownEventType,
   mergeTimeline,
@@ -59,7 +55,6 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   const recoveryEnvironment = useRecoveryEnvironment();
-  const environmentRef = useRef<EnvironmentCardHandle>(null);
   const cronRunsRef = useRef<CronRunsCardHandle>(null);
   const pollInterval = recoveryAvailable(recoveryEnvironment) ? 30_000 : 0;
   const serviceQuery = useQuery(MobileServiceSupervisionDocument, {
@@ -89,7 +84,6 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
         serviceQuery.refetch(),
         deployQuery.refetch(),
         eventQuery.refetch(),
-        environmentRef.current?.refresh() ?? Promise.resolve(),
         cronRunsRef.current?.refresh() ?? Promise.resolve(),
       ]);
     },
@@ -233,11 +227,6 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
         ) : service ? (
           <>
             <ServiceIdentityCard service={service} />
-            <EnvironmentCard
-              ref={environmentRef}
-              serviceId={serviceId}
-              serviceLabel={serviceName || serviceId}
-            />
             {service.id ? (
               <ServiceActionsCard
                 service={serviceLifecycleResource(service)}
