@@ -120,6 +120,14 @@ lines.on("line", async (line) => {
       break;
     }
     case "session/new":
+      if (process.env.ACP_FIXTURE_SETUP_METADATA === "1") {
+        update("fixture-session", {
+          sessionUpdate: "available_commands_update",
+          availableCommands: [
+            { name: "setup-command", description: "Current session command" },
+          ],
+        });
+      }
       if (rejectedLoad)
         throw new Error(
           "failed load poisoned the adapter; a fresh process is required",
@@ -156,6 +164,21 @@ lines.on("line", async (line) => {
       result(message.id, { sessionId: "fixture-session" });
       break;
     case "session/load": {
+      if (process.env.ACP_FIXTURE_REPLAY_LOAD === "1") {
+        update(message.params.sessionId, {
+          sessionUpdate: "agent_message_chunk",
+          content: { type: "text", text: "historical-answer-from-prior-turn" },
+        });
+        update(message.params.sessionId, {
+          sessionUpdate: "tool_call",
+          toolCallId: "historical-tool",
+          title: "historical-tool-result",
+          kind: "read",
+          status: "completed",
+          rawInput: { path: "old.txt" },
+          rawOutput: { text: "historical-tool-result" },
+        });
+      }
       const mode = process.env.ACP_FIXTURE_LOAD_ERROR;
       if (mode === "timeout") break;
       if (mode) {
@@ -192,6 +215,8 @@ lines.on("line", async (line) => {
       result(message.id, {});
       break;
     }
+    case "session/cancel":
+      break; // Notification: no JSON-RPC response.
     case "session/prompt": {
       if (process.env.ACP_FIXTURE_PROMPT_LOG) {
         writeFileSync(
