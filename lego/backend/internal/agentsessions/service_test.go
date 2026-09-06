@@ -343,6 +343,24 @@ func (f *fakeStore) AgentSessionTranscriptTurnMaxIndex(_ context.Context, id str
 	return max, ok, nil
 }
 
+func (f *fakeStore) AgentSessionTranscriptProgress(ctx context.Context, id string, turn int, indexes []int64) (int64, []int64, error) {
+	total, err := f.AgentSessionTranscriptBytes(ctx, id)
+	if err != nil {
+		return 0, nil, err
+	}
+	wanted := make(map[int64]bool, len(indexes))
+	for _, index := range indexes {
+		wanted[index] = true
+	}
+	var existing []int64
+	for _, p := range f.transcript[id] {
+		if p.Turn == turn && wanted[p.PartIndex] {
+			existing = append(existing, p.PartIndex)
+		}
+	}
+	return total, existing, nil
+}
+
 func (f *fakeStore) AgentSessionTurns(_ context.Context, id string) ([]store.AgentSessionTurn, error) {
 	out := make([]store.AgentSessionTurn, 0, len(f.turns[id]))
 	for _, turn := range f.turns[id] {

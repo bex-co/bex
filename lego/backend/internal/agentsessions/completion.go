@@ -650,28 +650,34 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		c.markTurnTranscript(ctx, record, !parseTruncated, parseTruncated, reason)
 		return
 	}
-	// Cumulative quota (w1/m65 F10): the harvest shares the session transcript
-	// cap with the gateway's live tee — seed from the already-stored bytes and
-	// keep only the parts that fit, so steered/reharvested turns can never grow
-	// the stored transcript past it.
-	storedBytes, err := c.Store.AgentSessionTranscriptBytes(ctx, record.ID)
+	// Charge only missing identities. Historical concurrent batch writers could
+	// leave holes below the largest stored ordinal, so prefix suppression alone
+	// would permanently lose those parts. The parsed log caps this lookup at
+	// maxTranscriptParts, regardless of the durable transcript's size.
+	indexes := make([]int64, len(parts))
+	for i, p := range parts {
+		indexes[i] = p.PartIndex
+	}
+	storedBytes, existing, err := c.Store.AgentSessionTranscriptProgress(ctx, record.ID, record.Turns, indexes)
 	if err != nil {
-		log.Printf("agent-session completer: transcript bytes failed (session=%s): %v", record.ID, err)
+		log.Printf("agent-session completer: transcript progress failed (session=%s): %v", record.ID, err)
 		return
 	}
-	// Early exit: if already at or over quota, skip the filtering loop entirely.
-	quota := c.transcriptQuota()
-	if storedBytes >= quota {
-		c.markTurnTranscript(ctx, record, false, true, reasonQuotaExceeded)
-		return
+	seen := make(map[int64]bool, len(existing))
+	for _, index := range existing {
+		seen[index] = true
 	}
-	kept, quotaTruncated := filterPartsByQuota(parts, storedBytes, quota)
+	missing := parts[:0]
+	for _, p := range parts {
+		if !seen[p.PartIndex] {
+			missing = append(missing, p)
+			seen[p.PartIndex] = true
+		}
+	}
+	parts = missing
+	kept, quotaTruncated := filterPartsByQuota(parts, storedBytes, c.transcriptQuota())
 	if quotaTruncated {
 		log.Printf("agent-session completer: transcript quota reached, truncating harvest (session=%s)", record.ID)
-	}
-	if len(kept) == 0 {
-		c.markTurnTranscript(ctx, record, false, true, reasonQuotaExceeded)
-		return
 	}
 	if err := c.Store.AppendAgentSessionTranscript(ctx, record.ID, kept); err != nil {
 		log.Printf("agent-session completer: transcript append failed (session=%s parts=%d): %v", record.ID, len(kept), err)

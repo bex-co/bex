@@ -30,6 +30,10 @@ export interface AgentProfile {
   args: string[];
   env: Record<string, string>;
   modelEndpoint: string;
+  npmPackage: string;
+  authentication: "environment";
+  permissionPolicy: "sandbox-auto-approve";
+  sessionState: string[];
   modelProxy: ModelProxyRoute;
 }
 
@@ -38,13 +42,22 @@ export interface AgentProfileManifest {
   profiles: AgentProfile[];
 }
 
-const envNamePattern = /^[A-Z_][A-Z0-9_]*$/;
+const envNamePattern = /^[A-Z_][A-Z0-9_]*(?![\s\S])/;
 
 function manifestPath(): string {
   const here = path.dirname(fileURLToPath(import.meta.url));
   for (const candidate of [
     path.join(here, "..", "agent-profiles.json"),
-    path.join(here, "..", "..", "agent-profiles.json"),
+    path.join(
+      here,
+      "..",
+      "..",
+      "..",
+      "backend",
+      "internal",
+      "agentsession",
+      "agent-profiles.json",
+    ),
   ]) {
     if (existsSync(candidate)) return candidate;
   }
@@ -54,42 +67,113 @@ function manifestPath(): string {
 let cached: AgentProfileManifest | undefined;
 
 export function loadAgentProfiles(): AgentProfileManifest {
-  if (cached) return cached;
+  if (cached) return structuredClone(cached);
   const raw = readFileSync(manifestPath(), "utf8");
   const manifest = JSON.parse(raw) as AgentProfileManifest;
   validateAgentProfiles(manifest);
   cached = manifest;
-  return manifest;
+  return structuredClone(manifest);
 }
 
 export function validateAgentProfiles(manifest: AgentProfileManifest): void {
-  if (!manifest.version || manifest.version < 1) {
-    throw new Error("agent profiles manifest version must be >= 1");
+  if (
+    manifest.version !== 1 ||
+    !Array.isArray(manifest.profiles) ||
+    !manifest.profiles.length
+  ) {
+    throw new Error(
+      "agent profiles manifest must have version 1 and nonempty profiles",
+    );
   }
   const seen = new Set<string>();
+  const commands = new Set<string>();
   for (const profile of manifest.profiles) {
-    const id = profile.id.trim().toLowerCase();
-    if (!id) throw new Error("agent profile id is required");
+    const id = profile.id;
+    if (typeof id !== "string" || !/^[a-z][a-z0-9-]*(?![\s\S])/.test(id))
+      throw new Error("invalid agent profile id");
     if (seen.has(id)) throw new Error(`duplicate agent profile id ${id}`);
     seen.add(id);
-    if (!path.isAbsolute(profile.executable)) {
-      throw new Error(`profile ${id}: executable must be an absolute path`);
+    if (
+      typeof profile.executable !== "string" ||
+      !/^\/usr\/local\/bin\/[a-zA-Z0-9_-]+(?![\s\S])/.test(
+        profile.executable,
+      ) ||
+      commands.has(profile.executable)
+    ) {
+      throw new Error(
+        `profile ${id}: executable must be a unique installed adapter path`,
+      );
     }
-    for (const key of Object.keys(profile.env ?? {})) {
-      if (!envNamePattern.test(key)) {
-        throw new Error(`profile ${id}: env key ${key} is invalid`);
-      }
+    commands.add(profile.executable);
+    if (
+      !Array.isArray(profile.args) ||
+      profile.args.some((arg) => typeof arg !== "string" || arg.includes("\0"))
+    ) {
+      throw new Error(`profile ${id}: args must be strings`);
     }
-    if (!profile.modelEndpoint?.trim()) {
-      throw new Error(`profile ${id}: modelEndpoint is required`);
+    if (
+      !profile.env ||
+      Array.isArray(profile.env) ||
+      typeof profile.env !== "object"
+    )
+      throw new Error(`profile ${id}: env is required`);
+    for (const [key, value] of Object.entries(profile.env)) {
+      if (
+        !envNamePattern.test(key) ||
+        typeof value !== "string" ||
+        value.includes("\0")
+      )
+        throw new Error(`profile ${id}: env key/value is invalid`);
     }
+    if (
+      typeof profile.npmPackage !== "string" ||
+      !/^@[a-z0-9-]+\/[a-z0-9-]+@\d+\.\d+\.\d+(?![\s\S])/.test(
+        profile.npmPackage,
+      )
+    )
+      throw new Error(`profile ${id}: exact npm package pin is required`);
+    if (
+      profile.authentication !== "environment" ||
+      profile.permissionPolicy !== "sandbox-auto-approve"
+    )
+      throw new Error(
+        `profile ${id}: unsupported authentication or permission policy`,
+      );
+    if (
+      !Array.isArray(profile.sessionState) ||
+      !profile.sessionState.length ||
+      profile.sessionState.some(
+        (value) =>
+          typeof value !== "string" ||
+          !/^\.[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*(?![\s\S])/.test(value),
+      )
+    )
+      throw new Error(`profile ${id}: unsafe session state path`);
+    if (
+      typeof profile.modelEndpoint !== "string" ||
+      !/^https:\/\/[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]+(?:\/[a-zA-Z0-9_-]+)*(?![\s\S])/.test(
+        profile.modelEndpoint,
+      )
+    )
+      throw new Error(`profile ${id}: invalid model endpoint`);
+    const route = profile.modelProxy;
+    if (
+      !route ||
+      ![route.baseUrlEnv, route.credentialEnv].every(
+        (name) => typeof name === "string" && envNamePattern.test(name),
+      ) ||
+      route.baseUrlEnv === route.credentialEnv ||
+      typeof route.baseUrlSuffix !== "string" ||
+      !/^(?:\/[a-zA-Z0-9_-]+)*(?![\s\S])/.test(route.baseUrlSuffix)
+    )
+      throw new Error(`profile ${id}: incomplete model proxy routing`);
     for (const name of [
-      profile.modelProxy.baseUrlEnv,
-      profile.modelProxy.credentialEnv,
+      "BEX_AGENT_MODEL_API_KEY",
+      route.baseUrlEnv,
+      route.credentialEnv,
     ]) {
-      if (!envNamePattern.test(name)) {
-        throw new Error(`profile ${id}: model proxy env ${name} is invalid`);
-      }
+      if (Object.hasOwn(profile.env, name))
+        throw new Error(`profile ${id}: bootstrap env overrides model routing`);
     }
   }
 }
@@ -100,20 +184,4 @@ export function lookupAgentProfile(
 ): AgentProfile | undefined {
   const id = agent.trim().toLowerCase();
   return manifest.profiles.find((profile) => profile.id === id);
-}
-
-export function allowedExecutables(
-  manifest: AgentProfileManifest = loadAgentProfiles(),
-): Set<string> {
-  return new Set(manifest.profiles.map((profile) => profile.executable));
-}
-
-export function lookupModelProxyRoute(
-  executable: string,
-  manifest: AgentProfileManifest = loadAgentProfiles(),
-): ModelProxyRoute | undefined {
-  const profile = manifest.profiles.find(
-    (item) => item.executable === executable,
-  );
-  return profile?.modelProxy;
 }

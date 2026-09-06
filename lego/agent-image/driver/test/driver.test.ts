@@ -37,6 +37,7 @@ import {
 import { runHeadlessTurn } from "../src/session.js";
 import { startDriverServer } from "../src/server.js";
 import { UIMessageStreamHub } from "../src/stream-hub.js";
+import { TurnLogSink } from "../src/turn-log.js";
 import { isUtcTimestamp } from "../src/timestamp.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -114,14 +115,14 @@ function manager(config: AgentDriverConfig): CredentialManager {
 test("configuration accepts only operator-owned adapter paths", () => {
   const config = loadConfig({
     BEX_AGENT_COMMAND: "/usr/local/bin/gemini",
-    BEX_AGENT_ARGS: '["--experimental-acp"]',
+    BEX_AGENT_ARGS: '["--acp"]',
     BEX_AGENT_CWD: "/tmp/repo",
     BEX_AGENT_LISTEN_PORT: "9000",
-    BEX_AGENT_ENV_JSON: '{"MODE":"auto"}',
+    BEX_AGENT_ENV_JSON: "{}",
   });
   assert.equal(config.command, "/usr/local/bin/gemini");
-  assert.deepEqual(config.args, ["--experimental-acp"]);
-  assert.deepEqual(config.agentEnv, { MODE: "auto" });
+  assert.deepEqual(config.args, ["--acp"]);
+  assert.deepEqual(config.agentEnv, {});
   assert.deepEqual(config.scrubRoots, [
     "/tmp/repo",
     "/home/bex",
@@ -990,5 +991,69 @@ test("snapshot scrub forgets credentials even when persisted cleanup fails", asy
     assert.equal(credentials.configured(), false);
   } finally {
     await listener.close();
+  }
+});
+
+test("turn log flush precedes scrub, evidence and succeeded status", async (t) => {
+  const config = await tempConfig();
+  const credentials = manager(config);
+  const originalScrub = credentials.scrubPersistedState.bind(credentials);
+  let sawCompleteLog = false;
+  t.mock.method(credentials, "scrubPersistedState", async () => {
+    const records = (await readFile(config.sessionLogPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    assert.equal(records.at(-1).part.type, "finish");
+    assert.equal(
+      JSON.parse(await readFile(config.statusPath, "utf8")).state,
+      "running",
+    );
+    sawCompleteLog = true;
+    return originalScrub();
+  });
+  const frames: string[] = [];
+  const hub = new UIMessageStreamHub();
+  await runHeadlessTurn(config, credentials, hub, {
+    onPart: (part, frame) => {
+      assert.equal(frame, `data: ${JSON.stringify(part)}\n\n`);
+      frames.push(frame!);
+    },
+  });
+  assert.equal(sawCompleteLog, true);
+  assert.equal(frames.length, hub.history.length);
+  assert.equal(
+    JSON.parse(await readFile(config.statusPath, "utf8")).state,
+    "succeeded",
+  );
+});
+
+test("log open and terminal close failures persist failed status", async (t) => {
+  for (const operation of ["open", "close"] as const) {
+    await t.test(operation, async (t) => {
+      const config = await tempConfig();
+      if (operation === "open") config.sessionLogPath = config.cwd;
+      else {
+        const close = TurnLogSink.prototype.close;
+        const failure = new Error("injected terminal log failure");
+        t.mock.method(
+          TurnLogSink.prototype,
+          "close",
+          async function (this: TurnLogSink) {
+            await close.call(this);
+            throw failure;
+          },
+        );
+      }
+      await assert.rejects(
+        runHeadlessTurn(config, manager(config), new UIMessageStreamHub()),
+      );
+      const status = JSON.parse(await readFile(config.statusPath, "utf8"));
+      assert.equal(status.state, "failed");
+      assert.match(
+        status.error,
+        operation === "open" ? /directory|EISDIR/ : /terminal log failure/,
+      );
+    });
   }
 });

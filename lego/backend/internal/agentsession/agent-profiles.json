@@ -12,10 +12,10 @@
         "baseUrlSuffix": "",
         "credentialEnv": "ANTHROPIC_API_KEY"
       },
-      "sessionState": [
-        ".claude",
-        ".claude.json"
-      ]
+      "sessionState": [".claude", ".claude.json"],
+      "npmPackage": "@zed-industries/claude-code-acp@0.16.2",
+      "authentication": "environment",
+      "permissionPolicy": "sandbox-auto-approve"
     },
     {
       "id": "codex",
@@ -31,16 +31,15 @@
         "baseUrlSuffix": "/v1",
         "credentialEnv": "OPENAI_API_KEY"
       },
-      "sessionState": [
-        ".codex"
-      ]
+      "sessionState": [".codex"],
+      "npmPackage": "@agentclientprotocol/codex-acp@1.4.0",
+      "authentication": "environment",
+      "permissionPolicy": "sandbox-auto-approve"
     },
     {
       "id": "gemini",
       "executable": "/usr/local/bin/gemini",
-      "args": [
-        "--acp"
-      ],
+      "args": ["--acp"],
       "env": {},
       "modelEndpoint": "https://generativelanguage.googleapis.com/v1beta",
       "modelProxy": {
@@ -48,9 +47,10 @@
         "baseUrlSuffix": "",
         "credentialEnv": "GEMINI_API_KEY"
       },
-      "sessionState": [
-        ".gemini"
-      ]
+      "sessionState": [".gemini"],
+      "npmPackage": "@google/gemini-cli@0.55.1",
+      "authentication": "environment",
+      "permissionPolicy": "sandbox-auto-approve"
     }
   ]
 }

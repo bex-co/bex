@@ -23,6 +23,8 @@ async function ensureParent(filename: string): Promise<void> {
   await mkdir(path.dirname(filename), { recursive: true });
 }
 
+const bufferBytes = 64 << 10;
+
 export class TurnLogSink {
   readonly #path: string;
   readonly #credentialManager: CredentialManager;
@@ -32,6 +34,10 @@ export class TurnLogSink {
   #partIndex = 0;
   #openCount = 0;
   #writeCount = 0;
+  #buffer: string[] = [];
+  #bufferBytes = 0;
+  #writing: Promise<void> = Promise.resolve();
+  #closing: Promise<void> | undefined;
 
   constructor(
     path: string,
@@ -49,12 +55,12 @@ export class TurnLogSink {
   get openCount(): number {
     return this.#openCount;
   }
-
   get writeCount(): number {
     return this.#writeCount;
   }
 
   async open(): Promise<void> {
+    if (this.#closing) throw new Error("turn log is closed");
     if (this.#handle) return;
     await ensureParent(this.#path);
     this.#handle = await open(this.#path, "a", 0o600);
@@ -62,27 +68,60 @@ export class TurnLogSink {
   }
 
   async appendPart(part: UIMessagePart): Promise<number> {
-    if (!this.#handle || this.#remaining <= 0) return 0;
+    if (!this.#handle || this.#closing) throw new Error("turn log is not open");
+    const partIndex = this.#partIndex++;
+    if (this.#remaining <= 0) return 0;
     const record = JSON.stringify({
       at: new Date().toISOString(),
       type: "ui-message",
       turn: this.#turn,
-      partIndex: this.#partIndex,
+      partIndex,
       part,
     });
     const line = `${this.#credentialManager.redact(record)}\n`;
     const bytes = Buffer.byteLength(line);
     if (bytes > this.#remaining) return 0;
-    await this.#handle.write(line);
-    this.#writeCount += 1;
     this.#remaining -= bytes;
-    this.#partIndex += 1;
+    if (this.#bufferBytes + bytes > bufferBytes) {
+      await this.#flush();
+      if (this.#closing) throw new Error("turn log closed during append");
+    }
+    // Large individual records bypass the bounded accumulation buffer.
+    if (bytes >= bufferBytes) {
+      await this.#write(line);
+    } else {
+      this.#buffer.push(line);
+      this.#bufferBytes += bytes;
+    }
     return bytes;
   }
 
-  async close(): Promise<void> {
-    if (!this.#handle) return;
-    await this.#handle.close();
-    this.#handle = null;
+  #write(contents: string): Promise<void> {
+    this.#writing = this.#writing.then(async () => {
+      await this.#handle!.writeFile(contents);
+      this.#writeCount += 1;
+    });
+    return this.#writing;
+  }
+
+  #flush(): Promise<void> {
+    if (this.#bufferBytes === 0) return this.#writing;
+    const contents = this.#buffer.join("");
+    this.#buffer = [];
+    this.#bufferBytes = 0;
+    return this.#write(contents);
+  }
+
+  close(): Promise<void> {
+    this.#closing ??= (async () => {
+      try {
+        await this.#flush();
+      } finally {
+        const handle = this.#handle;
+        this.#handle = null;
+        await handle?.close();
+      }
+    })();
+    return this.#closing;
   }
 }
