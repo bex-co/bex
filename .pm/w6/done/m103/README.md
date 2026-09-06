@@ -1,6 +1,6 @@
 # w6 · m103 — Fix i18n language-switch regression and the SSR i18n singleton race causing hydration mismatches for non-English sessions
 
-**Worker:** worker6 **Goal:** switching the dashboard's UI language actually renders in that language on the very next interaction, and every full page load for a non-English session serializes SSR HTML in that session's own language — never another concurrent request's — so hydration never mismatches on language. **Status:** implementation complete + locally verified (2026-09-03). Bug A done (t001). Bug B (SSR per-request isolation) implemented (t002) and verified against a local **production** SSR build: the concurrency race dropped from **95/192 (~49%) to 0/480**, and 5 consecutive zh-cookie reloads show **zero React #418**. t002–t006 done; only **t007 closeout** remains, gated on prod deploy + the live re-verify (incl. the `w6/030` `/env-groups/<id>` re-check, which needs an authenticated deployed session). See the 2026-09-03 implementation addendum below.
+**Worker:** worker6 **Goal:** switching the dashboard's UI language actually renders in that language on the very next interaction, and every full page load for a non-English session serializes SSR HTML in that session's own language — never another concurrent request's — so hydration never mismatches on language. **Status:** done 2026-09-05 — deployed (image pin `88e0520539f5`, contains fix `f6c4506e`) and FULLY LIVE-VERIFIED on `dashboard.bex.co`: Bug A switches immediately (中文 click → whole UI Chinese, no reload), Bug B has zero cross-request contamination (8 concurrent zh/en rounds, 0 bad) and zero React #418 across 5 zh reloads, and the `w6/030` `/env-groups/<id>` re-check shows 0 #418 across 3 zh loads. See t007 for evidence.
 
 ## Background (found live, 2026-08-25/26 `/qa-find-bugs` hunt, 11th run)
 
@@ -107,7 +107,7 @@ Both bugs were re-verified against the live tree by direct reads (not taken on t
 | t004 | Render parity | 20m | t003 | — **DONE** (2026-09-03) |
 | t005 | Simplify | 15m | t004 | — **DONE** (2026-09-03 — extracted shared `switchLanguage`) |
 | t006 | Test coverage | 20m | t004 | — **DONE** (2026-09-03) |
-| t007 | Closeout | 10m | t006 | pending prod deploy + live re-verify (incl. `w6/030` re-check) |
+| t007 | Closeout | 10m | t006 | — **DONE** (2026-09-05, fully live-verified on prod) |
 
 ## Definition of done
 
