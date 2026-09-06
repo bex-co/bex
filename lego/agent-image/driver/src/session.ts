@@ -14,13 +14,7 @@
  * limitations under the License.
  */
 
-import {
-  mkdir,
-  readFile,
-  rename,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createUIMessageStream } from "ai";
 import { createSessionProvider, type SessionProvider } from "./acp.js";
@@ -43,7 +37,7 @@ interface RunTurnOptions {
   prompt?: string;
   turn?: number;
   closeHub?: boolean;
-  onPart?: (part: UIMessagePart) => void;
+  onPart?: (part: UIMessagePart, frame?: string) => void;
   abortSignal?: AbortSignal;
 }
 
@@ -182,9 +176,6 @@ export async function runHeadlessTurn(
     turn,
     credentialManager,
   );
-  await turnLog.open();
-  if (!prompt)
-    throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
   // Sanitize at the single publication choke point (codex r7 #4): the hub
   // history, attached GET /stream clients, the POST /turn mirror — the
   // gateway's byte-transparent durable transcript tee — and the turn log all
@@ -193,14 +184,13 @@ export async function runHeadlessTurn(
     const sanitized = stampSourceTimestamp(
       credentialManager.redactPart(part) as Record<string, unknown>,
     ) as UIMessagePart;
-    hub.publish(sanitized);
-    if (onPart) onPart(sanitized);
+    const frame = hub.publish(sanitized);
+    if (onPart) onPart(sanitized, frame);
     return sanitized;
   };
   // Read the prior turn's persisted identity BEFORE the running-state write
   // below replaces the status file.
   const resumedFrom = await adoptPersistedSession(config);
-  await writeStatus(config.statusPath, { state: "running" });
 
   let provider: SessionProvider | undefined;
   let providerStopped = false;
@@ -230,12 +220,15 @@ export async function runHeadlessTurn(
     return scrubPromise;
   };
   let promptResponse:
-    Awaited<ReturnType<SessionProvider["prompt"]>> | undefined;
+    | Awaited<ReturnType<SessionProvider["prompt"]>>
+    | undefined;
   const turnAbort = new AbortController();
   let rejectDeadline!: (error: Error) => void;
   const deadline = new Promise<never>((_, reject) => {
     rejectDeadline = reject;
   });
+  // Setup I/O may still be pending when an external abort or deadline arrives.
+  void deadline.catch(() => undefined);
   const abortFromOutside = () => {
     const error = new Error("agent turn terminated for snapshot");
     turnAbort.abort(error);
@@ -251,6 +244,10 @@ export async function runHeadlessTurn(
     rejectDeadline(error);
   }, config.turnTimeoutMs);
   try {
+    if (!prompt)
+      throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
+    await turnLog.open();
+    await writeStatus(config.statusPath, { state: "running" });
     // createUIMessageStream's onError swallows an execute() throw into an error
     // chunk, so the consume loop below would otherwise resolve normally on an
     // agent crash. Capture the error and re-raise it after the stream drains.
@@ -279,7 +276,11 @@ export async function runHeadlessTurn(
             // same restored-vs-rebuilt hint the live stream carried; the
             // preamble itself rides only the ACP prompt, never the stream, so
             // history is never double-rendered.
-            const continuity = resolveContinuity(config, provider.resume, prompt);
+            const continuity = resolveContinuity(
+              config,
+              provider.resume,
+              prompt,
+            );
             continuityRung = continuity.rung;
             if (continuity.rung !== "none") {
               writer.write({
@@ -312,6 +313,8 @@ export async function runHeadlessTurn(
     // files/refs after inspection or re-persist a forgotten credential.
     await stopProvider();
     if (turnAbort.signal.aborted) throw turnAbort.signal.reason;
+    // Harvest and persisted-state scrubbing must see all accepted log records.
+    await turnLog.close();
 
     // Scrub the model credential out of persisted state BEFORE delivery, so a
     // credential the agent wrote into a workspace file is redacted in the pushed
@@ -331,7 +334,6 @@ export async function runHeadlessTurn(
       : null;
     const evidence: EvidenceResult = await extractEvidence(config);
     if (logTruncated) evidence.truncated = true;
-    await turnLog.close();
     const status: StatusRecord = {
       state: "succeeded",
       sessionId: provider!.sessionId,
@@ -346,12 +348,20 @@ export async function runHeadlessTurn(
     return { ...status, usage: promptResponse?.usage ?? {} } as TurnResult;
   } catch (error) {
     if (closeHub) hub.close();
-    await turnLog.close().catch(() => {});
     let terminalError = error;
     try {
       await stopProvider();
     } catch (cleanupError) {
       terminalError = cleanupFailure(terminalError, cleanupError);
+    }
+    try {
+      await turnLog.close();
+    } catch (logError) {
+      if (logError !== error) {
+        terminalError = new Error(
+          `${describeError(terminalError)}; turn log flush failed: ${describeError(logError)}`,
+        );
+      }
     }
     try {
       await scrubOnce();

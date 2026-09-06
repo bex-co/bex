@@ -32,7 +32,8 @@ async function main(): Promise<void> {
   let nextTurn = config.turn;
   let initialTurnOwned = false;
   let activeTurn:
-    Promise<Awaited<ReturnType<typeof runHeadlessTurn>>> | undefined;
+    | Promise<Awaited<ReturnType<typeof runHeadlessTurn>>>
+    | undefined;
   // Capture the control-plane Git proxy's immutable base/session OIDs before a
   // tenant process can run. Live POST /turn calls await the same setup promise.
   const setup = (async () => {
@@ -47,7 +48,7 @@ async function main(): Promise<void> {
   // still runs its single headless turn and closes the stream.
   const controlledTurn = (
     prompt: string,
-    onPart: (part: Record<string, unknown>) => void,
+    onPart: (part: Record<string, unknown>, frame?: string) => void,
     closeHub: boolean,
   ) => {
     if (terminalized) throw new Error("agent session is terminalizing");
@@ -73,7 +74,7 @@ async function main(): Promise<void> {
   };
   const runTurn = async (
     prompt: string,
-    onPart: (part: Record<string, unknown>) => void,
+    onPart: (part: Record<string, unknown>, frame?: string) => void,
   ) => {
     await setup;
     try {

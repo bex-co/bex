@@ -1,0 +1,101 @@
+[
+  {
+    "name": "unknown version",
+    "path": ["version"],
+    "value": 2
+  },
+  {
+    "name": "empty catalog",
+    "path": ["profiles"],
+    "value": []
+  },
+  {
+    "name": "uppercase id",
+    "path": ["profiles", 0, "id"],
+    "value": "Claude"
+  },
+  {
+    "name": "unsafe executable",
+    "path": ["profiles", 0, "executable"],
+    "value": "/usr/local/bin/../bin/bash"
+  },
+  {
+    "name": "undeclared executable",
+    "path": ["profiles", 0, "executable"],
+    "value": "/bin/sh"
+  },
+  {
+    "name": "missing args",
+    "path": ["profiles", 0, "args"],
+    "value": null
+  },
+  {
+    "name": "missing env",
+    "path": ["profiles", 0, "env"],
+    "value": null
+  },
+  {
+    "name": "invalid env",
+    "path": ["profiles", 0, "env"],
+    "value": {
+      "bad-name": "1"
+    }
+  },
+  {
+    "name": "env override",
+    "path": ["profiles", 0, "env"],
+    "value": {
+      "ANTHROPIC_API_KEY": "oops"
+    }
+  },
+  {
+    "name": "unpinned package",
+    "path": ["profiles", 0, "npmPackage"],
+    "value": "@zed-industries/claude-code-acp@latest"
+  },
+  {
+    "name": "unreviewed auth",
+    "path": ["profiles", 0, "authentication"],
+    "value": "interactive"
+  },
+  {
+    "name": "unreviewed permissions",
+    "path": ["profiles", 0, "permissionPolicy"],
+    "value": "ask"
+  },
+  {
+    "name": "unsafe state",
+    "path": ["profiles", 0, "sessionState"],
+    "value": ["../secrets"]
+  },
+  {
+    "name": "invalid endpoint",
+    "path": ["profiles", 0, "modelEndpoint"],
+    "value": "http://localhost"
+  },
+  {
+    "name": "missing route",
+    "path": ["profiles", 0, "modelProxy"],
+    "value": null
+  },
+  {
+    "name": "missing suffix",
+    "path": ["profiles", 0, "modelProxy", "baseUrlSuffix"],
+    "value": null
+  },
+  {
+    "name": "unsafe suffix",
+    "path": ["profiles", 0, "modelProxy", "baseUrlSuffix"],
+    "value": "/../admin"
+  },
+  {
+    "name": "missing credential",
+    "path": ["profiles", 0, "modelProxy", "credentialEnv"],
+    "value": ""
+  },
+  {
+    "name": "env conflict",
+    "path": ["profiles", 0, "modelProxy", "baseUrlEnv"],
+    "value": "ANTHROPIC_API_KEY"
+  }
+]

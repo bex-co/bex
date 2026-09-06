@@ -86,6 +86,7 @@ type Store interface {
 	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
 	CompleteAgentSessionTurn(ctx context.Context, sessionID string, turn int, complete, truncated bool, reason string) error
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
+	AgentSessionTranscriptProgress(ctx context.Context, sessionID string, turn int, indexes []int64) (int64, []int64, error)
 	// Transcript read (ADR065 D2): the poll-shaped seq-keyset page backing the
 	// REST/GraphQL/MCP transcript verb (byte budget + row limit bound one page).
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
@@ -1300,6 +1301,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 		deliver = "1"
 	}
 	env := map[string]string{
+		"BEX_AGENT_PROFILE":          config.Agent,
 		"BEX_AGENT_COMMAND":          agentCommand(config.Agent),
 		"BEX_AGENT_PROMPT":           config.Task,
 		"BEX_AGENT_BRANCH":           record.Branch,

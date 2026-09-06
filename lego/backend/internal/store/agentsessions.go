@@ -879,6 +879,22 @@ func (s *PGStore) AgentSessionTranscriptBytes(ctx context.Context, sessionID str
 	return total, nil
 }
 
+// AgentSessionTranscriptProgress reads cumulative bytes and existing requested
+// ordinals from one snapshot. The result is bounded by indexes, not transcript
+// size. Historical concurrent tees may leave holes, so max(part_index) alone
+// cannot tell a harvest which parts are duplicates.
+func (s *PGStore) AgentSessionTranscriptProgress(ctx context.Context, sessionID string, turn int, indexes []int64) (int64, []int64, error) {
+	var total int64
+	var existing []int64
+	if err := s.Pool.QueryRow(ctx, `
+		SELECT COALESCE(sum(octet_length(part)), 0),
+		       COALESCE(array_agg(part_index) FILTER (WHERE turn=$2 AND part_index=ANY($3)), ARRAY[]::bigint[])
+		FROM agent_session_transcripts WHERE session_id=$1`, sessionID, turn, indexes).Scan(&total, &existing); err != nil {
+		return 0, nil, err
+	}
+	return total, existing, nil
+}
+
 // AgentSessionTranscriptMaxSeq returns the highest stored seq for a session and
 // whether any part exists. The gateway uses it to skip driver-replayed parts it
 // has already persisted, so its live tee resumes exactly where the store ends.

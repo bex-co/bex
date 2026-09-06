@@ -22,89 +22,115 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/semaphore"
+
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 const (
 	defaultTranscriptBatchSize     = 32
 	defaultTranscriptFlushInterval = 100 * time.Millisecond
+	transcriptBatchBytes           = 1 << 20
+	transcriptPendingBytes         = 2 << 20
+	transcriptAppendTimeout        = 5 * time.Second
 )
 
-// transcriptBatcher queues accepted UI-message parts for bounded, batched
-// persistence while the attach loop forwards each part to the browser first.
+// One stream owns enqueue and close. A single writer preserves append order;
+// both queue length and total queued/in-flight bytes are bounded. Slow storage
+// backpressures a full queue, never the first browser frame. After a store error
+// the live stream continues, leaving the entire missing suffix to ADR051 harvest
+// rather than allocating later sequence numbers ahead of a failed batch.
 type transcriptBatcher struct {
-	store     Store
-	sessionID string
-	maxParts  int
-	flushWait time.Duration
-
-	mu         sync.Mutex
-	parts      []store.AgentSessionTranscriptPart
-	flushTimer *time.Timer
-	wg         sync.WaitGroup
-	closed     bool
-	ctx        context.Context
+	ctx       context.Context
+	queue     chan store.AgentSessionTranscriptPart
+	budget    *semaphore.Weighted
+	done      chan struct{}
+	closeOnce sync.Once
 }
 
-func newTranscriptBatcher(ctx context.Context, store Store, sessionID string) *transcriptBatcher {
-	return &transcriptBatcher{
-		store:     store,
-		sessionID: sessionID,
-		maxParts:  defaultTranscriptBatchSize,
-		flushWait: defaultTranscriptFlushInterval,
-		ctx:       ctx,
+func newTranscriptBatcher(ctx context.Context, st Store, sessionID string) *transcriptBatcher {
+	b := &transcriptBatcher{
+		ctx:    ctx,
+		queue:  make(chan store.AgentSessionTranscriptPart, defaultTranscriptBatchSize),
+		budget: semaphore.NewWeighted(transcriptPendingBytes),
+		done:   make(chan struct{}),
 	}
+	go b.run(st, sessionID)
+	return b
 }
 
 func (b *transcriptBatcher) enqueue(part store.AgentSessionTranscriptPart) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if b.closed {
+	size := int64(len(part.Part))
+	if size > maxSSEPartBytes {
+		return
+	} // the stream reader already enforces this
+	if err := b.budget.Acquire(b.ctx, size); err != nil {
 		return
 	}
-	b.parts = append(b.parts, part)
-	if len(b.parts) >= b.maxParts {
-		b.flushLocked(false)
-		return
-	}
-	if b.flushTimer == nil {
-		b.flushTimer = time.AfterFunc(b.flushWait, func() {
-			b.mu.Lock()
-			defer b.mu.Unlock()
-			b.flushLocked(false)
-		})
+	select {
+	case b.queue <- part:
+	case <-b.ctx.Done():
+		b.budget.Release(size)
 	}
 }
 
 func (b *transcriptBatcher) close() {
-	b.mu.Lock()
-	b.closed = true
-	b.flushLocked(true)
-	b.mu.Unlock()
-	b.wg.Wait()
+	b.closeOnce.Do(func() { close(b.queue) })
+	<-b.done
 }
 
-func (b *transcriptBatcher) flushLocked(wait bool) {
-	if b.flushTimer != nil {
-		b.flushTimer.Stop()
-		b.flushTimer = nil
+func (b *transcriptBatcher) run(st Store, sessionID string) {
+	defer close(b.done)
+	timer := time.NewTimer(defaultTranscriptFlushInterval)
+	if !timer.Stop() {
+		<-timer.C
 	}
-	if len(b.parts) == 0 {
-		return
-	}
-	batch := b.parts
-	b.parts = nil
-	if wait {
-		if err := b.store.AppendAgentSessionTranscript(b.ctx, b.sessionID, batch); err != nil {
-			log.Printf("agent attach: transcript batch failed (session=%s parts=%d): %v", b.sessionID, len(batch), err)
+	defer timer.Stop()
+	var tick <-chan time.Time
+	var parts []store.AgentSessionTranscriptPart
+	var bytes int64
+	failed := false
+	flush := func() {
+		if len(parts) == 0 {
+			return
 		}
-		return
-	}
-	b.wg.Add(1)
-	go func() {
-		defer b.wg.Done()
-		if err := b.store.AppendAgentSessionTranscript(b.ctx, b.sessionID, batch); err != nil {
-			log.Printf("agent attach: transcript batch failed (session=%s parts=%d): %v", b.sessionID, len(batch), err)
+		timer.Stop()
+		tick = nil
+		// The request may be canceled by a disconnect. Accepted queued parts still
+		// get one bounded attempt, and every terminal path waits for this writer.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(b.ctx), transcriptAppendTimeout)
+		err := st.AppendAgentSessionTranscript(ctx, sessionID, parts)
+		cancel()
+		if err != nil {
+			failed = true
+			log.Printf("agent attach: transcript batch failed; deferring suffix to harvest (session=%s parts=%d): %v", sessionID, len(parts), err)
 		}
-	}()
+		b.budget.Release(bytes)
+		parts, bytes = nil, 0
+	}
+	for {
+		select {
+		case part, ok := <-b.queue:
+			if !ok {
+				flush()
+				return
+			}
+			size := int64(len(part.Part))
+			if failed {
+				b.budget.Release(size)
+				continue
+			}
+			if len(parts) == 0 {
+				timer.Reset(defaultTranscriptFlushInterval)
+				tick = timer.C
+			}
+			parts = append(parts, part)
+			bytes += size
+			if len(parts) >= defaultTranscriptBatchSize || bytes >= transcriptBatchBytes {
+				flush()
+			}
+		case <-tick:
+			flush()
+		}
+	}
 }

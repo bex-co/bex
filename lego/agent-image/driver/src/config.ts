@@ -16,10 +16,8 @@
 
 import path from "node:path";
 import { describeError } from "./errors.js";
-import {
-  allowedExecutables,
-  lookupModelProxyRoute,
-} from "./profiles.js";
+import { loadAgentProfiles, lookupAgentProfile } from "./profiles.js";
+import { isDeepStrictEqual } from "node:util";
 
 export interface AgentDriverConfig {
   command: string;
@@ -178,13 +176,24 @@ export function loadConfig(
     env.BEX_AGENT_STATUS_FILE || "/var/run/bex-agent/status.json";
   const modelCredential = env.BEX_AGENT_MODEL_API_KEY || "";
 
-  const command = env.BEX_AGENT_COMMAND || "/usr/local/bin/claude-code-acp";
-  const allowedCommands = allowedExecutables();
-  if (!path.isAbsolute(command) || !allowedCommands.has(command)) {
+  const manifest = loadAgentProfiles();
+  const profile = env.BEX_AGENT_PROFILE
+    ? lookupAgentProfile(env.BEX_AGENT_PROFILE, manifest)
+    : env.BEX_AGENT_COMMAND
+      ? manifest.profiles.find(
+          (item) => item.executable === env.BEX_AGENT_COMMAND,
+        )
+      : lookupAgentProfile("claude", manifest);
+  if (
+    !profile ||
+    (env.BEX_AGENT_COMMAND && env.BEX_AGENT_COMMAND !== profile.executable)
+  ) {
     throw new Error(
       "BEX_AGENT_COMMAND must be an installed agent adapter path",
     );
   }
+
+  const command = profile.executable;
 
   // ADR062 model proxy: when a proxy base URL is present, route the selected
   // adapter's provider SDK at it and land the placeholder credential in the var
@@ -195,12 +204,7 @@ export function loadConfig(
   let modelBaseUrlEnvName = "";
   let routedCredentialEnv = "";
   if (modelProxyUrl) {
-    const route = lookupModelProxyRoute(command);
-    if (!route) {
-      throw new Error(
-        `BEX_AGENT_MODEL_PROXY_URL is set but agent ${command} has no model base-URL routing`,
-      );
-    }
+    const route = profile.modelProxy;
     modelBaseUrlEnvName = route.baseUrlEnv;
     modelBaseUrl = modelProxyUrl.replace(/\/+$/, "") + route.baseUrlSuffix;
     routedCredentialEnv = route.credentialEnv;
@@ -218,7 +222,9 @@ export function loadConfig(
   if (env.BEX_AGENT_DELIVER === "1" && !(env.BEX_AGENT_BRANCH || "")) {
     throw new Error("BEX_AGENT_DELIVER=1 requires BEX_AGENT_BRANCH");
   }
-  const agentEnv = jsonObject(env.BEX_AGENT_ENV_JSON, "BEX_AGENT_ENV_JSON");
+  const agentEnv = env.BEX_AGENT_ENV_JSON
+    ? jsonObject(env.BEX_AGENT_ENV_JSON, "BEX_AGENT_ENV_JSON")
+    : { ...profile.env };
   if (
     Object.hasOwn(agentEnv, "BEX_AGENT_MODEL_API_KEY") ||
     Object.hasOwn(agentEnv, credentialEnvName) ||
@@ -229,9 +235,26 @@ export function loadConfig(
     );
   }
 
+  const args = env.BEX_AGENT_ARGS
+    ? jsonArray(env.BEX_AGENT_ARGS, "BEX_AGENT_ARGS")
+    : [...profile.args];
+  if (
+    !isDeepStrictEqual(args, profile.args) ||
+    !isDeepStrictEqual(agentEnv, profile.env)
+  ) {
+    throw new Error(
+      "BEX_AGENT_ARGS and BEX_AGENT_ENV_JSON must match the selected release profile",
+    );
+  }
+  if (modelProxyUrl && credentialEnvName !== profile.modelProxy.credentialEnv) {
+    throw new Error(
+      "model proxy credential environment must match the selected release profile",
+    );
+  }
+
   return {
     command,
-    args: jsonArray(env.BEX_AGENT_ARGS, "BEX_AGENT_ARGS"),
+    args,
     cwd,
     prompt: env.BEX_AGENT_PROMPT || "",
     branch: env.BEX_AGENT_BRANCH || "",

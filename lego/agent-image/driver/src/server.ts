@@ -19,11 +19,15 @@ import type { AgentDriverConfig } from "./config.js";
 import type { CredentialManager } from "./credentials.js";
 import { describeError } from "./errors.js";
 import { DriverGrantVerifier } from "./grant.js";
-import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
+import {
+  encodeUIMessageFrame,
+  type UIMessageStreamHub,
+  type UIMessagePart,
+} from "./stream-hub.js";
 
 export type RunTurn = (
   prompt: string,
-  onPart: (part: UIMessagePart) => void,
+  onPart: (part: UIMessagePart, frame?: string) => void,
 ) => Promise<unknown>;
 
 export interface DriverServerOptions {
@@ -158,8 +162,8 @@ export async function startDriverServer(
           streamHeaders(response);
           // The turn publishes to the hub (attached GET clients) and mirrors
           // each part onto THIS response so the gateway tees and forwards it.
-          await runTurn(prompt, (part) => {
-            if (!response.write(`data: ${JSON.stringify(part)}\n\n`)) {
+          await runTurn(prompt, (part, frame) => {
+            if (!response.write(frame ?? encodeUIMessageFrame(part))) {
               response.destroy(new Error("turn stream client is not draining"));
             }
           });

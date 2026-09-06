@@ -130,8 +130,6 @@ var errReplayOnly = errors.New("agent attach: replay-only ticket, no pod to dial
 // injected sshgateway.NonceGuard.
 type Store interface {
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
-	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
-	AgentSessionTranscriptTurnMaxIndex(ctx context.Context, sessionID string, turn int) (int64, bool, error)
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
@@ -541,6 +539,7 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 	quota := s.transcriptQuota()
 	pageBudget := s.replayPageQuota()
 	var replayedBytes int64
+	replayedTurnIndex := int64(-1)
 	after := int64(-1)
 replay:
 	for {
@@ -566,6 +565,9 @@ replay:
 			if replayedBytes+int64(len(part.Part)) > quota {
 				log.Printf("agent attach: transcript replay truncated at cap (session=%s)", sessionID)
 				break replay
+			}
+			if part.Turn == turn && part.PartIndex > replayedTurnIndex {
+				replayedTurnIndex = part.PartIndex
 			}
 			// Each driver turn carries its own start/finish chunks. The replay
 			// adapter has already opened one response message so durable prompts and
@@ -597,7 +599,7 @@ replay:
 		return
 	}
 	stopHeartbeat := sse.startHeartbeat(ctx, s.heartbeatInterval())
-	err = s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedBytes, len(turns) > 0)
+	err = s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedBytes, replayedTurnIndex, len(turns) > 0)
 	stopHeartbeat()
 	if err != nil {
 		log.Printf("agent attach: live splice ended (session=%s): %v", sessionID, err)
@@ -624,11 +626,7 @@ func finishConversation(sse *agentSSE, turns []store.AgentSessionTurn) {
 // spliceDriverStream reads the driver's /stream (which replays its full history
 // then goes live), tees every part into the durable store under its turn-local
 // driver ordinal, and forwards only the parts beyond the persisted prefix.
-func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, storedBytes int64, adaptedReplay bool) error {
-	storedMaxIndex, _, err := s.Store.AgentSessionTranscriptTurnMaxIndex(ctx, sessionID, turn)
-	if err != nil {
-		return err
-	}
+func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, storedBytes, replayedTurnIndex int64, adaptedReplay bool) error {
 	resp, err := s.dialDriverStream(ctx, podIP)
 	if err != nil {
 		return err
@@ -655,6 +653,13 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 		if payload == "" {
 			continue
 		}
+		ordinal++
+		// Only suppress the prefix this client actually replayed. A DB max-index
+		// query here could include a concurrent writer's not-yet-replayed parts.
+		// Replayed bytes were already charged to the cumulative quota.
+		if ordinal <= replayedTurnIndex {
+			continue
+		}
 		// Per-session byte quota (F10): stop teeing+streaming once the session's
 		// stored transcript would exceed the cumulative cap, so tenant output
 		// can't grow Postgres or the gateway without bound. The client is
@@ -664,15 +669,13 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 			return nil
 		}
 		total += int64(len(payload))
-		ordinal++
 		// Forward first, then tee into a bounded batch so browser delivery is not
 		// blocked on PostgreSQL transaction latency (w5/m77).
-		if ordinal > storedMaxIndex && !(adaptedReplay && structuralUIChunk([]byte(payload))) {
+		if !(adaptedReplay && structuralUIChunk([]byte(payload))) {
 			if err := sse.frame(payload); err != nil {
 				// Client gone or stalled past the write deadline. The batcher still
 				// persists accepted parts; stop forwarding (the Completer's headless
 				// recorder captures the remainder at session end).
-				batcher.close()
 				return err
 			}
 		}
@@ -780,6 +783,7 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		})
 	}
 	stopHeartbeat()
+	batcher.close()
 	sse.done()
 }
 
