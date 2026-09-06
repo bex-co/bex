@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "100079123243",
+    "project_id": "mobile-bex",
+    "storage_bucket": "mobile-bex.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:100079123243:android:aec594ed92f2f57d90a36e",
+        "android_client_info": {
+          "package_name": "co.bex.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnUjKsEJNgPN_s7ynyzC17HlO9_7_U7pY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

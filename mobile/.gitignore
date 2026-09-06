@@ -79,3 +79,11 @@ dist
 
 # Temporary files directory for agents (Claude Code, GitHub Copilot)
 tmp/
+
+# Private service-account keys (FCM V1 sender, Play Console submissions).
+# google-services.json is NOT secret and is committed on purpose; these are.
+mobile-bex-*.json
+*firebase-adminsdk*.json
+*-service-account*.json
+fcm-*.json
+play-*.json
