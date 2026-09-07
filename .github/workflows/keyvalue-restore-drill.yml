@@ -110,6 +110,7 @@ jobs:
           TF_STATE_ACCESS_KEY: ${{ secrets.TF_STATE_ACCESS_KEY }}
           TF_STATE_SECRET_KEY: ${{ secrets.TF_STATE_SECRET_KEY }}
           AGE_BACKUP_PRIVATE_KEY: ${{ secrets.AGE_BACKUP_PRIVATE_KEY }}
+          AGE_BACKUP_PRIVATE_KEY_PREVIOUS: ${{ secrets.AGE_BACKUP_PRIVATE_KEY_PREVIOUS }}
           RESTORE_SKIP_DOTENV: "1"
         run: |
           set -euo pipefail

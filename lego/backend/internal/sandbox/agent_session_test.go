@@ -44,7 +44,7 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
 	placeholder := agentsession.ModelKeyPlaceholder("ags-session")
-	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", placeholder, []string{"docs.example.com"}, map[string]string{"BEX_AGENT_PROMPT": "do it"})
+	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", placeholder, []string{"docs.example.com"}, map[string]string{"BEX_AGENT_PROMPT": "do it", "BEX_AGENT_TURN": "2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.ID != "sandbox-1" || create.Metadata[metadataOwner] != "alice" || create.Metadata[metadataWorkspace] != "tea-a" ||
+	if create.Metadata[agentsession.LabelDispatchTurn] != "2" || created.ID != "sandbox-1" || create.Metadata[metadataOwner] != "alice" || create.Metadata[metadataWorkspace] != "tea-a" ||
 		create.Metadata[metadataRegime] != metadataSandboxRegime || create.Metadata[metadataNetworkPolicy] != string(NetworkPolicyDenyAll) ||
 		create.Metadata[metadataAgentSession] != "ags-session" || create.Metadata[agentsession.LabelRepository] != bindings[agentsession.LabelRepository] ||
 		create.Metadata[agentsession.LabelBranch] != bindings[agentsession.LabelBranch] {

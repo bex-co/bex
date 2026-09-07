@@ -62,7 +62,7 @@ func completerFixture(status string, statusErr error) (*Completer, *fakeStore, *
 	st := newFakeStore()
 	config, _ := json.Marshal(AgentConfig{Agent: "codex", Task: "fix the tests"})
 	row, _ := st.CreateAgentSession(context.Background(), store.AgentSession{WorkspaceID: "tea-a", Repo: "bex-co/example", Branch: "bex-agent/s1", AgentConfig: config})
-	row, _ = st.RecordAgentSessionDispatch(context.Background(), row.ID, "sandbox-1", PhaseRunning, "running", "")
+	row, _ = st.RecordAgentSessionDispatch(context.Background(), row.ID, "sandbox-1", PhaseRunning, "running", "", row.Turns)
 	lc := &fakeLifecycle{status: status, statusErr: statusErr}
 	pr := &fakePR{pr: github.PullRequest{Number: 7, HTMLURL: "https://github.com/bex-co/example/pull/7", State: "open", Draft: true}}
 	c := &Completer{Store: st, Sandbox: lc, GitHub: pr, Connections: fakeConn{conn: store.GitConnection{InstallationID: 42, AccountLogin: "bex-co"}}, APIPublicURL: "https://api.bex.co"}

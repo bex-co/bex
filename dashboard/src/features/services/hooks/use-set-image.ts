@@ -29,8 +29,8 @@ export function useSetImage(): UseSetImageResult {
       registryCredentialId: registryCredentialId ?? null,
     }),
     {
-      success: "services.buildDeploySuccess",
-      error: "services.buildDeployError",
+      success: "services.sourceUpdateSuccess",
+      error: "services.sourceUpdateError",
     },
   );
 

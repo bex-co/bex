@@ -149,7 +149,10 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
 				VALUES ($1, 1, $2, '')`, in.ID, in.InitialPrompt)
 		}
-		return err
+		if err != nil {
+			return err
+		}
+		return insertAgentDispatch(ctx, tx, row, "")
 	})
 	if err != nil {
 		return AgentSession{}, classify("agent session", err)
@@ -174,9 +177,9 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 	var out AgentSession
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var turns int
-		var currentPhase string
+		var currentPhase, previousSandboxID string
 		var archivedAt *time.Time
-		if err := tx.QueryRow(ctx, `SELECT turns, phase, archived_at FROM agent_sessions WHERE id=$1 FOR UPDATE`, id).Scan(&turns, &currentPhase, &archivedAt); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT turns, phase, archived_at, sandbox_id FROM agent_sessions WHERE id=$1 FOR UPDATE`, id).Scan(&turns, &currentPhase, &archivedAt, &previousSandboxID); err != nil {
 			return err
 		}
 		// Recheck after taking the row lock. Two concurrent Steers can both pass
@@ -199,7 +202,13 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 			    failure_reason='', updated_at=now()
 			WHERE id=$1
 			RETURNING `+agentSessionColumns, id, phase, status))
-		return err
+		if err != nil {
+			return err
+		}
+		if phase == "redispatching" {
+			return insertAgentDispatch(ctx, tx, out, previousSandboxID)
+		}
+		return nil
 	})
 	if err != nil {
 		if errors.Is(err, ErrAgentSessionPromptQuota) || errors.Is(err, ErrAgentSessionTurnState) {
@@ -715,20 +724,35 @@ func (s *PGStore) CountPinnedAgentSessions(ctx context.Context, workspaceID stri
 // delivery mode ("resume" or "redispatch"). Prompt acceptance already advanced
 // the turn counter transactionally.
 //
-// It is CAS-guarded against a session a concurrent Cancel already took terminal
-// (w2/m64): sandbox provisioning runs in the background after the create/steer
-// verb has returned, so a Cancel can land while a sandbox is still coming up. The
-// `phase NOT IN ('canceling','canceled')` guard makes the record a no-op in that
-// race — the update matches no row and returns ErrNotFound — so the caller tears
-// the just-created sandbox back down instead of resurrecting the session or
-// orphaning the sandbox.
-func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID, phase, status, deliveryMode string) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
-		    phase=$3, status=$4, delivery_mode=$5, failure_reason='', updated_at=now()
-		WHERE id=$1 AND phase NOT IN ('canceling', 'canceled')
-		RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
+// Binding and abandonment serialize on the session and dispatch intent. Only
+// the accepted turn in its provisioning phase can bind; cancellation, recovery,
+// and newer turns fence out stale workers. Successful binding removes the intent
+// in the same transaction so recovery cannot mistake its sandbox for an orphan.
+func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID, phase, status, deliveryMode string, turn int) (AgentSession, error) {
+	var out AgentSession
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		// Lock in the same order as abandonment: session, then intent.
+		if err := tx.QueryRow(ctx, `SELECT id FROM agent_sessions WHERE id=$1 AND turns=$2
+			AND phase IN ('creating','redispatching') FOR UPDATE`, id, turn).Scan(new(string)); err != nil {
+			return err
+		}
+		var abandoned bool
+		if err := tx.QueryRow(ctx, `SELECT abandoned FROM agent_session_dispatches WHERE session_id=$1 AND turn=$2 FOR UPDATE`, id, turn).Scan(&abandoned); err != nil {
+			return err
+		}
+		if abandoned {
+			return ErrNotFound
+		}
+		var err error
+		out, err = scanAgentSession(tx.QueryRow(ctx, `UPDATE agent_sessions
+			SET sandbox_id=$2, phase=$3, status=$4, delivery_mode=$5, failure_reason='', updated_at=now()
+			WHERE id=$1 RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `DELETE FROM agent_session_dispatches WHERE session_id=$1 AND turn=$2`, id, turn)
+		return err
+	})
 	if err != nil {
 		return AgentSession{}, classify("agent session", err)
 	}

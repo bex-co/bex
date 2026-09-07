@@ -106,8 +106,11 @@ func lokiRequestQueryFor(req RequestMetricsRequest) string {
 	switch req.Metric {
 	case MetricHTTPLatency:
 		pipeline := lokiRequestPipeline(req, true)
-		return fmt.Sprintf("quantile_over_time(%s, %s%s | unwrap latency_ns [%ds]) / %s",
-			strconv.FormatFloat(lokiQuantile(req.Quantile), 'g', -1, 64), selector, pipeline, window, lokiLatencyNanoDivisor)
+		// Aggregate samples inside the quantile, retaining only the requested
+		// group. Otherwise every parsed path/stream gets its own percentile and
+		// host-only reads can exceed Loki's series limit.
+		return fmt.Sprintf("quantile_over_time(%s, %s%s | unwrap latency_ns [%ds]) by (%s) / %s",
+			strconv.FormatFloat(lokiQuantile(req.Quantile), 'g', -1, 64), selector, pipeline, window, lokiGroupLabel(req.GroupBy), lokiLatencyNanoDivisor)
 	case MetricHTTPRequests:
 		inner := fmt.Sprintf("rate(%s%s [%ds])", selector, lokiRequestPipeline(req, false), window)
 		if g := lokiGroupLabel(req.GroupBy); g != "" {

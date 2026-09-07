@@ -26,7 +26,14 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
+type fakeDispatch struct {
+	intent    store.AgentDispatch
+	next      time.Time
+	abandoned bool
+}
+
 type fakeStore struct {
+	dispatches map[string]fakeDispatch
 	rows       map[string]store.AgentSession
 	getCalls   int
 	now        time.Time
@@ -44,6 +51,7 @@ type fakeStore struct {
 func newFakeStore() *fakeStore {
 	return &fakeStore{
 		rows:       map[string]store.AgentSession{},
+		dispatches: map[string]fakeDispatch{},
 		now:        time.Unix(1_800_000_000, 0).UTC(),
 		transcript: map[string]map[int64]store.AgentSessionTranscriptPart{},
 		turns:      map[string]map[int]store.AgentSessionTurn{},
@@ -403,6 +411,7 @@ func (f *fakeStore) CreateAgentSession(_ context.Context, in store.AgentSession)
 		in.Turns = 1
 		f.rows[in.ID] = in
 	}
+	f.addDispatch(in)
 	return in, nil
 }
 
@@ -411,10 +420,18 @@ func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, deliver
 	if !ok {
 		return store.AgentSession{}, store.ErrNotFound
 	}
+	previousSandboxID := row.SandboxID
 	f.recordTurn(id, row.Turns+1, prompt, delivery)
 	row.Turns++
 	row.SandboxID, row.Phase, row.Status = "", phase, status
 	f.rows[id] = row
+	if phase == PhaseRedispatching {
+		f.addDispatch(row)
+		key := dispatchKey(row.ID, row.Turns)
+		d := f.dispatches[key]
+		d.intent.PreviousSandboxID = previousSandboxID
+		f.dispatches[key] = d
+	}
 	return row, nil
 }
 func (f *fakeStore) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
@@ -515,7 +532,7 @@ func (f *fakeStore) ListAgentSessionsByPhases(_ context.Context, phases []string
 	}
 	return out, nil
 }
-func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID, phase, status, deliveryMode string) (store.AgentSession, error) {
+func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID, phase, status, deliveryMode string, turn int) (store.AgentSession, error) {
 	row, ok := f.rows[id]
 	if !ok {
 		return store.AgentSession{}, store.ErrNotFound
@@ -523,9 +540,14 @@ func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID,
 	// Mirror the store's CAS guard: a session a concurrent Cancel already took
 	// terminal matches no row, so a racing background dispatch tears its sandbox
 	// back down instead of resurrecting the session (w2/m64).
-	if row.Phase == PhaseCanceling || row.Phase == PhaseCanceled {
+	if row.Turns != turn || (row.Phase != PhaseCreating && row.Phase != PhaseRedispatching) {
 		return store.AgentSession{}, store.ErrNotFound
 	}
+	intent, ok := f.dispatches[dispatchKey(id, turn)]
+	if !ok || intent.abandoned {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	delete(f.dispatches, dispatchKey(id, turn))
 	if sandboxID != "" {
 		row.SandboxID = sandboxID
 	}
@@ -1986,4 +2008,52 @@ func TestEvidenceRemainsOnTheWire(t *testing.T) {
 	if view.Evidence == nil || len(view.Evidence.CommandLog) != 1 || view.Evidence.Commits != 2 {
 		t.Fatalf("evidence dropped from the wire view: %+v", view.Evidence)
 	}
+}
+
+func dispatchKey(id string, turn int) string { return fmt.Sprintf("%s/%d", id, turn) }
+func (f *fakeStore) addDispatch(row store.AgentSession) {
+	f.dispatches[dispatchKey(row.ID, row.Turns)] = fakeDispatch{intent: store.AgentDispatch{SessionID: row.ID, Turn: row.Turns, WorkspaceID: row.WorkspaceID}, next: f.now.Add(dispatchTimeout)}
+}
+func (f *fakeStore) ListAgentDispatchesDue(_ context.Context, now time.Time) ([]store.AgentDispatch, error) {
+	var out []store.AgentDispatch
+	for _, d := range f.dispatches {
+		if !d.next.After(now) {
+			out = append(out, d.intent)
+		}
+	}
+	return out, nil
+}
+func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispatch, now time.Time, reason string) error {
+	key := dispatchKey(d.SessionID, d.Turn)
+	intent, ok := f.dispatches[key]
+	if !ok {
+		return store.ErrNotFound
+	}
+	intent.abandoned = true
+	f.dispatches[key] = intent
+	row := f.rows[d.SessionID]
+	if row.Turns == d.Turn && row.SandboxID == "" && (row.Phase == PhaseCreating || row.Phase == PhaseRedispatching) {
+		row.Phase = PhaseFailed
+		row.Status = PhaseFailed
+		row.FailureReason = reason
+		row.UpdatedAt = now
+		f.rows[row.ID] = row
+	}
+	if turn, ok := f.turns[d.SessionID][d.Turn]; ok && turn.CompletedAt == nil {
+		return f.CompleteAgentSessionTurn(ctx, d.SessionID, d.Turn, false, false, reason)
+	}
+	return nil
+}
+func (f *fakeStore) DeferAgentDispatchCleanup(_ context.Context, d store.AgentDispatch, next time.Time) error {
+	key := dispatchKey(d.SessionID, d.Turn)
+	intent := f.dispatches[key]
+	intent.next = next
+	f.dispatches[key] = intent
+	return nil
+}
+func (f *fakeLifecycle) CleanupAgentDispatches(context.Context, []store.AgentDispatch) error {
+	if f.created > 0 {
+		f.canceled++
+	}
+	return nil
 }

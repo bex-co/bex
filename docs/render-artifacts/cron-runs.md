@@ -74,3 +74,7 @@ The cron-job runs panel now reaches the two previously dashboard-unconsumed verb
 | Run detail (`cronJobRun`) | ✅ match | A history row expands to a detail read via `cronJobRun(serviceId, runId)` — status, absolute start/finish timestamps, computed duration, and the run id (the row shows only relative start + duration). A stale/unknown run id renders an explicit error, never a blank panel. |
 
 Cross-surface: the UI's semantics equal the REST/MCP verbs — `runCronJob` = MCP `run_cron_job` = `POST .../runs`; `cronJobRun` = MCP `get_cron_job_run` = `GET .../runs/{runId}`. No new drift filed. Verified by the dashboard suite (`use-cron-runs`/`cron-runs-section` trigger, active-run rejection, detail-expand, and detail-error tests); the live browser walk was infra-blocked in-session (dev-5 unraisable) and is folded into the shared w5/m60 deferral note.
+
+## Deferred m60 walkthrough closeout (2026-09-06)
+
+The remaining notification/registry checks from `w5/029` passed on production with disposable fixtures, now deleted; see `w5/done/029.md` for exact outcomes and artifacts. The dated 2026-08-08 cron Trigger Run and run-detail proof is retained there. No fresh terminal cron-run capture is claimed by this follow-up.

@@ -1825,6 +1825,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the Root Directory. Please try again.",
     description: "Toast after setRootDir fails",
   },
+  "services.sourceUpdateSuccess": {
+    message: "Source updated.",
+    description:
+      "Toast after a repository, branch, or image source update succeeds",
+  },
+  "services.sourceUpdateError": {
+    message: "Couldn't update the source. Please try again.",
+    description:
+      "Fallback toast when a source update fails without a server reason",
+  },
   "services.sourceTitle": {
     message: "Source",
     description: "Source card title",

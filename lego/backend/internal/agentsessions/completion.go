@@ -277,6 +277,7 @@ func (c *Completer) Reconcile(ctx context.Context) {
 	}
 	c.reapIdleSandboxes(ctx)
 	c.sweepExpiredHibernations(ctx)
+	c.recoverDispatches(ctx)
 }
 
 // sweepExpiredHibernations deletes the snapshots + finalizes the rows of
