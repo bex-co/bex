@@ -81,6 +81,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **048** — Billing/usage page never surfaces `usage.coverage`, presenting a partial/degraded metering estimate as authoritative ← continuous live `$qa-find-bugs w4` 2026-09-06 (40–50m; dashboard-only, add `coverage` to the query + a "Partial data" caveat mirroring the metrics degraded badge)
+
 - [ ] **047** — Projects/Overview resource-list Type column collapses every service type to a generic "Service" badge ← continuous live `$qa-find-bugs w4` 2026-09-06 (20–30m; dashboard-only, delegate service rows to the existing `ServiceTypeBadge`)
 
 - [ ] **046** — Key Value eviction-policy selector is blank for underscore API values ← live QA pass 5 (40–50m; dashboard mapping)
