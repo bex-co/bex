@@ -99,6 +99,13 @@ const defaultMaxLiveBodyBytes = 256 << 20 // 256 MiB
 type Object struct {
 	Body        []byte
 	ContentType string // from the origin; may be empty (then inferred from extension)
+	// negative marks a cached confirmed miss. A revision prefix is immutable,
+	// so "this key does not exist" is as permanent as any object within the
+	// revision — caching it keeps the lookup-before-rules order (w4/m94) from
+	// re-asking the origin for the same SPA deep link or redirect path on
+	// every request, and from letting those misses exhaust the per-site fetch
+	// slots real objects need.
+	negative bool
 }
 
 // Origin fetches objects from the static-site object store by key.
@@ -177,65 +184,112 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reqPath := normalizePath(r.URL.Path)
+	// requestPath is the visitor's normalized path and stays immutable: custom
+	// headers match against it on every response (Render's request-path
+	// contract, w4/m94), while the (possibly rewritten) served path drives
+	// origin keys, content type, and the default cache policy.
+	requestPath := normalizePath(r.URL.Path)
 
-	// Edge rules run first, in order, first match wins.
-	if act, target := matchRoutes(site.Routes, reqPath); act == actRedirect {
+	// An existing published object wins over both redirect and rewrite rules,
+	// matching Render's documented order. Only a genuine miss advances to the
+	// ordered rules; permission denials, timeouts, capacity and size failures
+	// keep their own classes below rather than degrading into a rule.
+	//
+	// The store cannot hold a key past maxObjectKeyBytes, so a path whose
+	// derived key (after index.html defaulting) is longer can never match an
+	// object — nor plausibly be an SPA route. Treat it as a miss without an
+	// origin round trip instead of misreporting the store's key-length client
+	// error as an origin failure (w6/047).
+	var obj Object
+	var servedPath string
+	err := ErrNotFound
+	overlong := overlongKey(site, requestPath)
+	if !overlong {
+		obj, servedPath, err = h.fetch(r.Context(), site, requestPath)
+	}
+	if err == nil {
+		h.serveObject(w, r, site, obj, servedPath, requestPath)
+		return
+	}
+	if !errors.Is(err, ErrNotFound) {
+		serveOriginError(w, err)
+		return
+	}
+
+	// Miss: edge rules run in order, first match wins.
+	act, target := matchRoutes(site.Routes, requestPath)
+	if act == actRedirect {
 		if !safeRedirectTarget(target) {
 			http.Error(w, "invalid redirect target", http.StatusBadRequest)
 			return
 		}
-		applyHeaders(w.Header(), site.Headers, reqPath)
+		applyHeaders(w.Header(), site.Headers, requestPath)
 		http.Redirect(w, r, target, http.StatusMovedPermanently)
 		return
-	} else if act == actRewrite {
-		reqPath = normalizePath(target)
 	}
 
-	// The store cannot hold a key past maxObjectKeyBytes, so a path whose
-	// derived key (after index.html defaulting) is longer can never match an
-	// object — nor plausibly be an SPA route. Answer 404 without an origin
-	// round trip instead of misreporting the store's key-length client error
-	// as an origin failure (w6/047).
-	if len(site.keyFor(lookupPath(reqPath))) > maxObjectKeyBytes {
+	if act == actNone && overlong {
+		// No rule claimed the over-long path; it can never be an object and is
+		// not plausibly an SPA route either.
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
-	obj, servedPath, err := h.fetch(r.Context(), site, reqPath)
-	if errors.Is(err, ErrNotFound) {
-		// SPA fallback: an explicit "/*" rewrite route (Render's SPA rule) already
-		// rewrote above; if the miss is a bare path with no extension and an
-		// index.html exists at the root, serve it so client-side routing works
-		// even without an explicit route. A missing asset (has an extension)
-		// stays a 404.
-		if fallback, fok := h.spaFallback(r.Context(), site, reqPath); fok {
-			obj, servedPath = fallback, "/index.html"
-		} else {
+	fallbackPath := requestPath
+	if act == actRewrite {
+		fallbackPath = normalizePath(target)
+		if overlongKey(site, fallbackPath) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-	} else if errors.Is(err, ErrObjectTooLarge) {
-		http.Error(w, "object too large", http.StatusRequestEntityTooLarge)
-		return
-	} else if errors.Is(err, ErrOverloaded) {
-		w.Header().Set("Retry-After", "1")
-		http.Error(w, "server busy", http.StatusServiceUnavailable)
-		return
-	} else if err != nil {
-		http.Error(w, "origin error", http.StatusBadGateway)
-		return
+		obj, servedPath, err = h.fetch(r.Context(), site, fallbackPath)
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			serveOriginError(w, err)
+			return
+		}
+		if err == nil {
+			h.serveObject(w, r, site, obj, servedPath, requestPath)
+			return
+		}
 	}
 
+	// SPA fallback: if the miss (after any rewrite) is a bare path with no
+	// extension and an index.html exists at the root, serve it so client-side
+	// routing works even without an explicit route. A missing asset (has an
+	// extension) stays a 404.
+	if fallback, fok := h.spaFallback(r.Context(), site, fallbackPath); fok {
+		h.serveObject(w, r, site, fallback, "/index.html", requestPath)
+		return
+	}
+	http.Error(w, "not found", http.StatusNotFound)
+}
+
+// serveOriginError maps a non-miss fetch failure onto its response class:
+// oversize 413, overload 503 + Retry-After, anything else 502.
+func serveOriginError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, ErrObjectTooLarge):
+		http.Error(w, "object too large", http.StatusRequestEntityTooLarge)
+	case errors.Is(err, ErrOverloaded):
+		w.Header().Set("Retry-After", "1")
+		http.Error(w, "server busy", http.StatusServiceUnavailable)
+	default:
+		http.Error(w, "origin error", http.StatusBadGateway)
+	}
+}
+
+// serveObject writes a successful object response. servedPath (the resolved
+// object) drives content type and cache policy; requestPath (the visitor's
+// path) drives custom header matching.
+func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site, obj Object, servedPath, requestPath string) {
 	// Hold a live-body lease for the whole write: the body stays allocated
 	// until the response reaches the client, so slow clients must count
 	// against the in-flight memory budget even after the fetch gate released
 	// its reservation. HEAD responses carry no body and need no lease. On
 	// exhaustion shed with 503 (before any success header is written) rather
 	// than buffering past the budget.
-	var lease int64
 	if r.Method != http.MethodHead {
-		lease = int64(len(obj.Body))
+		lease := int64(len(obj.Body))
 		if !h.liveBodies.TryAcquire(lease) {
 			w.Header().Set("Retry-After", "1")
 			http.Error(w, "server busy", http.StatusServiceUnavailable)
@@ -248,7 +302,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	hdr.Set("Content-Type", contentType(servedPath, obj.ContentType))
 	hdr.Set("Cache-Control", cacheControl(servedPath))
 	// Custom headers win over the defaults above (last-write for a given key).
-	applyHeaders(hdr, site.Headers, reqPath)
+	applyHeaders(hdr, site.Headers, requestPath)
 
 	w.WriteHeader(http.StatusOK)
 	if r.Method == http.MethodHead {
@@ -273,6 +327,12 @@ func (h *Handler) fetch(ctx context.Context, site Site, reqPath string) (Object,
 	lookup := lookupPath(reqPath)
 	obj, err := h.get(ctx, site, lookup)
 	return obj, lookup, err
+}
+
+// overlongKey reports whether p's derived object key (after index.html
+// defaulting) exceeds the store's key cap and so can never match an object.
+func overlongKey(site Site, p string) bool {
+	return len(site.keyFor(lookupPath(p))) > maxObjectKeyBytes
 }
 
 // lookupPath applies index.html defaulting: "/" and directory-style paths
@@ -306,7 +366,7 @@ func (h *Handler) spaFallback(ctx context.Context, site Site, reqPath string) (O
 func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, error) {
 	key := site.keyFor(reqPath)
 	if obj, ok := h.cache.get(key); ok {
-		return obj, nil
+		return obj, negativeErr(obj)
 	}
 	v, err, _ := h.group.Do(key, func() (any, error) {
 		// A prior leader for this key may have just populated the cache.
@@ -318,6 +378,15 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 		}
 		defer h.gate.release(site.AppID)
 		obj, gerr := h.origin.Get(ctx, key)
+		if errors.Is(gerr, ErrNotFound) {
+			// A confirmed miss is immutable within the revision too; cache it
+			// so it stops costing origin round trips and fetch-gate slots.
+			// Only ErrNotFound: a denial, timeout, or overload is transient
+			// and must be re-asked.
+			miss := Object{negative: true}
+			h.cache.put(site.AppID, key, miss)
+			return miss, nil
+		}
 		if gerr != nil {
 			return Object{}, gerr
 		}
@@ -327,7 +396,16 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 	if err != nil {
 		return Object{}, err
 	}
-	return v.(Object), nil
+	obj := v.(Object)
+	return obj, negativeErr(obj)
+}
+
+// negativeErr maps a cached confirmed miss back onto the ErrNotFound contract.
+func negativeErr(obj Object) error {
+	if obj.negative {
+		return ErrNotFound
+	}
+	return nil
 }
 
 type routeAction int
