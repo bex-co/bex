@@ -91,7 +91,9 @@ if [ -z "$admin_pw" ]; then
 fi
 
 secret_hash() {
-  kubectl -n "$1" get secret "$2" -o json 2>/dev/null | shasum -a 256 | cut -d' ' -f1
+  # `|| true`: a missing secret (every first install) must hash as empty, not
+  # kill the script through pipefail.
+  { kubectl -n "$1" get secret "$2" -o json 2>/dev/null || true; } | shasum -a 256 | cut -d' ' -f1
 }
 
 ensure_ns() {
