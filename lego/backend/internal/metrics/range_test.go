@@ -171,14 +171,19 @@ func TestPromResourceQueryFor(t *testing.T) {
 	// name always has.
 	matchers := `namespace="default",pod=~"web-[a-z0-9]+-[a-z0-9]{5}|web-[a-z0-9]{59}",container!=""`
 
+	// Memory and CPU dedupe cAdvisor's duplicate per-container series across a
+	// restart (`max by (pod, container)` before the sum) so an OOM-restarting
+	// container never double-counts above the pod's real usage (w4/050).
 	req.Metric = MetricCPU
-	if got, want := promResourceQueryFor(req), `sum by (pod) (rate(container_cpu_usage_seconds_total{`+matchers+`}[60s]))`; got != want {
+	if got, want := promResourceQueryFor(req), `sum by (pod) (max by (pod, container) (rate(container_cpu_usage_seconds_total{`+matchers+`}[60s])))`; got != want {
 		t.Errorf("cpu query:\n got %q\nwant %q", got, want)
 	}
 	req.Metric = MetricMemory
-	if got, want := promResourceQueryFor(req), `sum by (pod) (container_memory_working_set_bytes{`+matchers+`})`; got != want {
+	if got, want := promResourceQueryFor(req), `sum by (pod) (max by (pod, container) (container_memory_working_set_bytes{`+matchers+`}))`; got != want {
 		t.Errorf("memory query:\n got %q\nwant %q", got, want)
 	}
+	// Instance count is untouched: the inner `sum by (pod)` already collapses a
+	// pod's duplicated container series to one, so counting pods is correct.
 	req.Metric = MetricInstanceCount
 	if got, want := promResourceQueryFor(req), `count(sum by (pod) (container_memory_working_set_bytes{`+matchers+`}))`; got != want {
 		t.Errorf("instance_count query:\n got %q\nwant %q", got, want)

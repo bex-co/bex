@@ -258,11 +258,28 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
 	switch req.Metric {
 	case MetricMemory:
-		return fmt.Sprintf(`sum by (pod) (container_memory_working_set_bytes{%s})`, matchers)
+		// `max by (pod, container)` before the sum collapses cAdvisor's DUPLICATE
+		// series for one container across a restart: while a container is being
+		// OOM-killed and its replacement starts, cAdvisor briefly reports BOTH
+		// instances (same pod + container labels, different cgroup id), so a bare
+		// `sum by (pod)` added the dying and the new instance and read ABOVE the
+		// pod's real working set — a Guaranteed 512Mi App momentarily showed
+		// ~745 MiB (~145% against the enforced limit) at every OOM restart, which
+		// read as an enforcement gap when the limit was in fact being applied
+		// (w4/050, confirmed on prod: single-instance peak 508.9 MiB vs the
+		// double-counted 743 MiB, and per-pod instance count reaching 2). Taking
+		// the per-container max first yields one truthful value per running
+		// container; the outer sum still adds genuinely distinct containers.
+		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (container_memory_working_set_bytes{%s}))`, matchers)
 	case MetricInstanceCount:
+		// The inner `sum by (pod)` already reduces a pod's (possibly duplicated)
+		// container series to one series per pod, so counting pods is unaffected
+		// by the restart double-count above — no per-container max needed here.
 		return fmt.Sprintf(`count(sum by (pod) (container_memory_working_set_bytes{%s}))`, matchers)
 	default: // cpu
-		return fmt.Sprintf(`sum by (pod) (rate(container_cpu_usage_seconds_total{%s}[%ds]))`,
+		// Same cAdvisor restart double-count guard as memory: dedupe a container's
+		// overlapping instances before summing across containers (w4/050).
+		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (rate(container_cpu_usage_seconds_total{%s}[%ds])))`,
 			matchers, stepSeconds(req.Resolution))
 	}
 }
