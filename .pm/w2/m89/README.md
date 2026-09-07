@@ -1,14 +1,14 @@
 # w2 · m89 — Secretless image build, credentialed deploy (ADR080 F2)
 
-**Worker:** worker2 **Goal:** the CI job that compiles code and builds images runs with zero deploy credentials in scope; a separate environment-gated deploy job consumes the exact built digest — closing ADR080 finding 2, still recorded open by ADR083 **Status:** todo
+**Worker:** worker2 **Goal:** the CI job that compiles code and builds images runs with zero deploy credentials in scope; a separate environment-gated deploy job consumes the exact built digest — closing ADR080 finding 2, still recorded open by ADR083 **Status:** in progress 2026-09-07 — t001–t003 done (split + digest-output handoff + validator check 8 + ADR closures, both validators green locally); t004 awaits the first live run of the split pipeline (triggered by this milestone’s own ship)
 
 ## Tasks (in order)
 
 | id   | title                                                                       | est | depends_on |
 | ---- | ---------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Split `deploy.yml` into a secretless build job and an environment-gated deploy job | 60m | —          |
-| t002 | Image handoff by pinned digest between the jobs                              | 45m | t001       |
-| t003 | Validator + docs: build jobs must reference no deploy secrets                | 30m | t002       |
+| t001 | Split `deploy.yml` into a secretless build job and an environment-gated deploy job — **DONE** | 60m | —          |
+| t002 | Image handoff by pinned digest between the jobs — **DONE**                   | 45m | t001       |
+| t003 | Validator + docs: build jobs must reference no deploy secrets — **DONE**     | 30m | t002       |
 | t004 | Verify a full production deploy through the split pipeline                   | 30m | t003       |
 | t005 | Simplify                                                                     | 20m | t004       |
 | t006 | Test coverage                                                                | 30m | t004       |

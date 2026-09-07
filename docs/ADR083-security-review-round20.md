@@ -116,7 +116,7 @@ When a scanner or agent reports:
 **Legitimate follow-up remediations** (optional, not blocking):
 
 - Ephemeral self-hosted runners (ARC / VM-per-job).
-- ADR080 finding 2: secretless image build separated from credentialed deploy.
+- ADR080 finding 2: secretless image build separated from credentialed deploy — done (w2/m89, validator check 8).
 - Optional Tailscale/WireGuard network second layer ([ADR019](ADR019-infra-credentials.md) §Decision 5).
 
 ## Follow-ups
@@ -124,6 +124,6 @@ When a scanner or agent reports:
 - w2/m88 — **closed 2026-09-07**: label-level split verified live on both pools (evidence: `.pm/w2/done/m88/evidence/2026-09-07-fleet-recovery.md`); host separation + credential rotation rejected by user decision (`.pm/DO_NOT_DO.md` `#RUNNER-HOSTS`). Finding 3's disposition is final: label-level split only.
 
 - Ephemeral self-hosted runners (ARC / VM-per-job) — reduces finding 1/4 without returning to GitHub-hosted; must stay on the single operator Mac per `#RUNNER-HOSTS`.
-- ADR080 finding 2 follow-up: secretless image build separated from credentialed deploy — still open; more valuable on self-hosted than on GitHub-hosted.
+- ADR080 finding 2 follow-up: secretless image build separated from credentialed deploy — **closed 2026-09-07 (w2/m89)**: `deploy.yml` split into a secretless `build` job and an environment-gated `deploy` job with digest handoff; validator check 8 enforces it.
 - Optional Tailscale/WireGuard network second layer with tailnet-joined runners — [ADR019](ADR019-infra-credentials.md) §Decision 5; does not replace findings 1–4, complements SSH/kube exposure policy.
 - onbex.co PSL submission (finding 7): `.pm/w1/050.md` — do not unset `BEX_BASE_DOMAIN` (`.pm/DO_NOT_DO.md` `#PSL`).

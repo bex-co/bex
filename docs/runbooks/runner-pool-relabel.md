@@ -16,11 +16,11 @@ The 2026-09-05 repair adds each service's matching pool label and separates its 
 
 Classified by what each job can touch — secrets, `environment:` gates, and write-capable tokens — not by name. `scripts/github-actions-validate.sh` re-derives the credential side mechanically on every run.
 
-**`bex-production` (12 jobs)** — repository/environment secrets, write tokens, cluster access:
+**`bex-production` (13 jobs)** — repository/environment secrets, write tokens, cluster access:
 
 | workflow | job(s) | evidence |
 | --- | --- | --- |
-| `deploy.yml` | `build-and-deploy` | `environment: production-deploy`; OpenBao unseal keys, TLS certs, SSH + HCLOUD tokens |
+| `deploy.yml` | `build`, `deploy` | `build`: registry-push `GITHUB_TOKEN` (`packages: write`) + cosign OIDC only — secretless by design (w2/m89); `deploy`: `environment: production-deploy`; OpenBao unseal keys, TLS certs, SSH + HCLOUD tokens |
 | `app-cluster.yml` | cluster apply | `environment` gate; HCLOUD + SSH admin.conf |
 | `infra.yml` | `terraform` | `environment: production-infra`; Terraform state credentials |
 | `snapshot.yml` | snapshot bake | `environment: production-snapshot`; `HCLOUD_TOKEN` |

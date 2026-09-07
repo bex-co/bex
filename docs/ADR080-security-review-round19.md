@@ -11,7 +11,7 @@ Seven findings are fixed in place with regression tests. Findings 1/2/4 close a 
 | # | Finding | Severity | Disposition |
 | --- | --- | --- | --- |
 | 1 | App-cluster reconciliation runs without an environment gate | high | **Fixed** — `environment: production-cluster` on `bootstrap-app-cluster`; required reviewers are an operator action |
-| 2 | Platform deployment runs without an environment gate | high | **Fixed** — `environment: production-deploy` on `build-and-deploy`; splitting build from deploy stays a follow-up |
+| 2 | Platform deployment runs without an environment gate | high | **Fixed** — `environment: production-deploy` (this round); the fuller remediation — secretless `build` job split from the environment-gated `deploy` job, digest handoff via job outputs — closed by `w2/m89` (2026-09-07), enforced by `scripts/github-actions-validate.sh` check 8 |
 | 3 | Failed role demotions retain higher workspace authority | medium | **Fixed** — revoke-before-grant + fail-closed pending-reconciliation veto, completed this round |
 | 4 | OpenBao restore drill runs without an environment gate | medium | **Fixed** — `environment: production-restore` on `restore`; required reviewers are an operator action |
 | 5 | Deleting the final environment variable bypasses CAS | medium | **Fixed** — `updateMapCAS`'s empty-map branch now writes through `PutCAS`, never an unconditional `Delete` |
@@ -56,6 +56,6 @@ Unchanged standing residual: ADR055 F9 → ADR072 #1 → ADR061 #4 → ADR063 #3
 ## Follow-ups
 
 - **Operator action**: create the `production-cluster`, `production-deploy`, and `production-restore` GitHub environments (repository Settings → Environments) and attach required reviewers, matching `production-infra`/`production-snapshot`/`production-release`. Without this, findings 1/2/4's code-level fix is present but not yet load-bearing.
-- Finding 2's fuller remediation (secretless build separated from credentialed deploy) remains open.
+- ~~Finding 2's fuller remediation (secretless build separated from credentialed deploy) remains open.~~ **Closed by `w2/m89` (2026-09-07)**: `deploy.yml` split into a secretless `build` job (registry-push `GITHUB_TOKEN` + cosign OIDC only) and an `environment: production-deploy`-gated `deploy` job consuming the build's exact image digests as job outputs; `scripts/github-actions-validate.sh` check 8 fails closed on any image-build job referencing another secret or carrying an environment gate.
 - onbex.co PSL submission (finding 8, fourteenth report): `.pm/w1/050.md` — do not unset `BEX_BASE_DOMAIN` (`.pm/DO_NOT_DO.md` `#PSL`).
 - Self-hosted CI (ADR083, round 20): `.pm/DO_NOT_DO.md` `#CI-RUNNERS` + `scripts/github-actions-validate.sh` — do not revert workflows to `ubuntu-latest`.

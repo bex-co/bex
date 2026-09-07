@@ -23,6 +23,11 @@
 #     production-pool jobs in a `pull_request` workflow must reject PR events.
 #  7. Public-fork isolation: any self-hosted job in a `pull_request` workflow
 #     must either reject fork PRs by repository identity or reject all PR events.
+#  8. Secretless image build (ADR080 F2, w2/m89): a job that builds images with
+#     docker/build-push-action executes repo-controlled code, so it may
+#     reference no secret beyond the registry-push GITHUB_TOKEN and must not
+#     carry an `environment:` gate — deploy credentials belong to a separate
+#     environment-gated job consuming the build's digests.
 #
 # Setting WORKFLOWS_DIR overrides the scanned tree; the self-test
 # (github-actions-validate.test.sh) points it at fixtures to exercise the
@@ -324,6 +329,54 @@ if [ -n "$unguarded_fork_jobs" ]; then
   printf '  %s\n' $unguarded_fork_jobs >&2
   echo "      Require github.event.pull_request.head.repo.full_name == github.repository," >&2
   echo "      or explicitly exclude pull_request events from the job." >&2
+  exit 1
+fi
+
+# 8. Secretless image build (ADR080 F2, closed by w2/m89). An image-build job
+# executes repo-controlled code — Dockerfiles, go builds, yarn scripts — so any
+# secret in its scope is exfiltratable by a poisoned dependency. Its whole
+# credential budget is the registry-push GITHUB_TOKEN; deploy credentials live
+# only in a separate environment-gated job consuming the build's digests. A
+# secret referenced above `jobs:` leaks into every job, so a workflow that
+# builds images must not declare one there either.
+secretless_build_violations() {
+  local wf
+  for wf in $(collect_workflow_files); do
+    awk -v file="$wf" '
+      function check_job() {
+        if (job == "" || block !~ /docker\/build-push-action/) return
+        stripped = block
+        gsub(/\$\{\{[[:space:]]*secrets\.GITHUB_TOKEN[[:space:]]*\}\}/, "", stripped)
+        if (header_secret || stripped ~ /\$\{\{[[:space:]]*secrets\./) {
+          print file ":" job ": image-build job must reference no secret beyond the registry-push GITHUB_TOKEN"
+        }
+        if (block ~ /\n    environment:/) {
+          print file ":" job ": image-build job must not carry an environment gate — deploy credentials belong to the deploy job"
+        }
+      }
+      !in_jobs {
+        header = $0
+        gsub(/\$\{\{[[:space:]]*secrets\.GITHUB_TOKEN[[:space:]]*\}\}/, "", header)
+        if (header ~ /\$\{\{[[:space:]]*secrets\./) header_secret = 1
+      }
+      /^jobs:[[:space:]]*$/ { in_jobs = 1; next }
+      in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ {
+        check_job()
+        job = $1
+        sub(/:$/, "", job)
+        block = "\n" $0
+        next
+      }
+      in_jobs && job != "" { block = block "\n" $0 }
+      END { check_job() }
+    ' "$wf"
+  done
+}
+
+build_secret_violations="$(secretless_build_violations)"
+if [ -n "$build_secret_violations" ]; then
+  echo "FAIL: image builds must stay secretless (ADR080 F2, w2/m89):" >&2
+  printf '%s\n' "$build_secret_violations" >&2
   exit 1
 fi
 

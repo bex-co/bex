@@ -10,8 +10,11 @@ name: deploy (bex via Argo)
 # After this the operator is running; deploy a user App with `kubectl apply`
 # (that's the product runtime — NOT GitOps). CI-only, idempotent.
 #
-# Secrets: same as app-cluster.yml (HCLOUD_TOKEN, BEX_SSH_PRIVATE_KEY).
-# GITHUB_TOKEN (auto) pushes to GHCR. ⚠ Make the GHCR packages public, or add an
+# Two jobs, two credential scopes (ADR080 F2, w2/m89): `build` pushes images
+# with only the auto GITHUB_TOKEN; `deploy` (environment: production-deploy)
+# holds every deploy credential (HCLOUD_TOKEN, BEX_SSH_PRIVATE_KEY, OpenBao,
+# auth secrets, …) and consumes the build's digests as job outputs.
+# ⚠ Make the GHCR packages public, or add an
 # imagePullSecret in bex-system / dashboard, so app-cluster nodes can pull the images.
 # ⚠ If this repo is private, give Argo CD repo credentials (else it can't read git).
 
@@ -112,8 +115,8 @@ jobs:
           gitleaks git --no-banner --redact --exit-code 1 --log-opts="$log_opts" .
 
   # --- supersession pre-check (w1/m59): if a newer deploy-triggering commit has
-  # already landed on main (this run was queued behind it), skip build-and-deploy
-  # BEFORE it wastes an image build — the job is then reported skipped (neutral),
+  # already landed on main (this run was queued behind it), skip build + deploy
+  # BEFORE it wastes an image build — the jobs are then reported skipped (neutral),
   # not failed. Optimization only: the write-back guard below stays the
   # correctness gate (never pin stale images), so scripts/deploy-superseded.sh
   # reporting "not superseded" on any error just lets the build proceed to be
@@ -134,51 +137,36 @@ jobs:
             echo "superseded=false" >> "$GITHUB_OUTPUT"
           fi
 
-  build-and-deploy:
+  # --- build: secretless image build (ADR080 F2, w2/m89) ---
+  # This job executes repo-controlled code (Dockerfiles, go builds, yarn
+  # scripts), so its credential scope is exactly the registry-push token: the
+  # auto GITHUB_TOKEN with packages:write (plus the job OIDC identity cosign
+  # uses for keyless signing). No cluster, SSH, OpenBao, TLS, or auth secret is
+  # reachable here — a supply-chain-poisoned build step has nothing to
+  # exfiltrate beyond its own image push. The environment-gated deploy job
+  # below consumes the exact digests this job emits (never a re-resolved tag).
+  build:
     permissions:
-      contents: write
+      contents: read
       packages: write
       id-token: write
     needs: [test-backend, test-operator, test-dashboard, test-opensandbox-controller, secret-scan, check-supersession]
     # A run superseded before its build starts is skipped here (neutral, no
     # build). A run superseded DURING its build is caught by the write-back guard
-    # (it concludes neutral instead). w1/m59.
+    # in the deploy job (it concludes neutral instead). w1/m59.
     #
-    # Ref guard (scan finding #2): this job checks out the dispatched ref and then
-    # exposes cluster/SSH/OpenBao production secrets, so it must run ONLY from the
-    # reviewed default branch. Without this, a same-repo collaborator could
-    # workflow_dispatch a modified branch and reach production credentials without
-    # merging to main. Defense in depth alongside GitHub-side protected
-    # environments + branch policies (the infra.yml `production-infra` pattern),
-    # which are the authoritative control but live in repo settings, not YAML.
+    # Ref guard (scan finding #2): only the reviewed default branch may build
+    # and publish the production images this run's deploy job will pin.
     if: needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64, bex-production]
-    # codex-security round-19 #2: the comment above named the infra.yml
-    # `production-infra` pattern as authoritative but this job never actually
-    # carried an `environment:` — unlike infra.yml/snapshot.yml/cli-release.yml,
-    # which all do — so the ref guard was the ONLY gate before this job's build,
-    # release, and admin.conf/OpenBao-root/unseal steps ran. Attach it here so a
-    # protected `production-deploy` environment with required reviewers can gate
-    # the credentialed steps exactly like the sibling workflows.
-    #
-    # This does not yet split secretless build from credentialed deploy (the
-    # finding's fuller remediation) — that stays a follow-up; every step in this
-    # job still shares the same environment-scoped secrets.
-    environment: production-deploy
+    outputs:
+      operator_digest: ${{ steps.build_operator.outputs.digest }}
+      dashboard_digest: ${{ steps.build_dashboard.outputs.digest }}
+      opensandbox_digest: ${{ steps.build_opensandbox.outputs.digest }}
+      opensandbox_controller_digest: ${{ steps.build_opensandbox_controller.outputs.digest }}
+      agent_sandbox_digest: ${{ steps.build_agent_sandbox.outputs.digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
-        with:
-          version: v1.36.1
-
-      # Reject absent, malformed, untrusted, mismatched, or near-expiry
-      # certificate material before image builds and GitOps write-back. The
-      # installer repeats these checks immediately before its cluster write.
-      - name: validate onbex.co fallback TLS certificate
-        env:
-          BEX_ONBEX_TLS_CERT: ${{ secrets.BEX_ONBEX_TLS_CERT }}
-          BEX_ONBEX_TLS_KEY: ${{ secrets.BEX_ONBEX_TLS_KEY }}
-        run: bash scripts/onbex-default-tls-secret.sh --validate-only
 
       # --- 1. build + push the operator image ---
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -388,6 +376,52 @@ jobs:
           ignore-unfixed: true
           severity: CRITICAL
 
+  # --- deploy: credentialed rollout, environment-gated (ADR080 F2, w2/m89) ---
+  # Every deploy credential (kubeconfig via HCLOUD+SSH, OpenBao root/unseal,
+  # auth-substrate secrets, TLS material, Argo repo key, contents:write for the
+  # digest write-back, packages:write for the chart mirror) lives only in this
+  # job, behind the protected `production-deploy` environment (codex-security
+  # round-19 #2 — same pattern as infra.yml/snapshot.yml/cli-release.yml). It
+  # never rebuilds anything: it pins and rolls out the exact digests the
+  # secretless build job above emitted, handed over as job outputs.
+  #
+  # Ref guard (scan finding #2): this job must run ONLY from the reviewed
+  # default branch — a same-repo collaborator must not workflow_dispatch a
+  # modified branch into production credentials. Defense in depth alongside
+  # GitHub-side protected environments + branch policies, which are the
+  # authoritative control but live in repo settings, not YAML. (needs: build
+  # already skips this job when the run was superseded before building.)
+  deploy:
+    permissions:
+      contents: write
+      packages: write
+    needs: [build]
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    environment: production-deploy
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+
+      # Reject absent, malformed, untrusted, mismatched, or near-expiry
+      # certificate material before GitOps write-back and rollout. The
+      # installer repeats these checks immediately before its cluster write.
+      - name: validate onbex.co fallback TLS certificate
+        env:
+          BEX_ONBEX_TLS_CERT: ${{ secrets.BEX_ONBEX_TLS_CERT }}
+          BEX_ONBEX_TLS_KEY: ${{ secrets.BEX_ONBEX_TLS_KEY }}
+        run: bash scripts/onbex-default-tls-secret.sh --validate-only
+
+      # helm/oras read the ambient docker credential store; the chart mirror
+      # below pushes to GHCR, so this job needs its own registry login.
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       # --- 1g. GitOps write-back: pin deployed control-plane images ---
       # Argo syncs git, not image tags, so a mutable :latest override never rolls pods on
       # its own AND leaves the running Deployment pinned to a tag whose contents can change
@@ -397,11 +431,11 @@ jobs:
       # `[skip ci]` keeps this commit from re-triggering deploy.yml (it touches deploy/gitops/**).
       - name: pin image digests in GitOps (write-back)
         env:
-          OP_DIGEST: ${{ steps.build_operator.outputs.digest }}
-          DASH_DIGEST: ${{ steps.build_dashboard.outputs.digest }}
-          OPENSANDBOX_DIGEST: ${{ steps.build_opensandbox.outputs.digest }}
-          CONTROLLER_DIGEST: ${{ steps.build_opensandbox_controller.outputs.digest }}
-          AGENT_DIGEST: ${{ steps.build_agent_sandbox.outputs.digest }}
+          OP_DIGEST: ${{ needs.build.outputs.operator_digest }}
+          DASH_DIGEST: ${{ needs.build.outputs.dashboard_digest }}
+          OPENSANDBOX_DIGEST: ${{ needs.build.outputs.opensandbox_digest }}
+          CONTROLLER_DIGEST: ${{ needs.build.outputs.opensandbox_controller_digest }}
+          AGENT_DIGEST: ${{ needs.build.outputs.agent_sandbox_digest }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -681,11 +715,11 @@ jobs:
         if: ${{ env.SUPERSEDED != 'true' }}
         timeout-minutes: 12
         env:
-          BEX_EXPECTED_OPENSANDBOX_IMAGE: ${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}
+          BEX_EXPECTED_OPENSANDBOX_IMAGE: ${{ env.OPENSANDBOX_IMAGE }}@${{ needs.build.outputs.opensandbox_digest }}
           # The upstream Helm chart always renders repository:tag, even when
           # the tag carries an immutable digest. Kubernetes preserves that
           # human-readable tag in the Deployment image string.
-          BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE: ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}@${{ steps.build_opensandbox_controller.outputs.digest }}
+          BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE: ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}@${{ needs.build.outputs.opensandbox_controller_digest }}
         run: |
           deadline=$((SECONDS + 600))
           actual=""
@@ -898,10 +932,10 @@ jobs:
       # Ready DaemonSet would return immediately before Argo observes the digest
       # write-back above.
       - name: wait for PROXY-compatible datastore proxies
-        if: ${{ always() && steps.app_kubeconfig.outcome == 'success' && steps.build_operator.outputs.digest != '' && env.SUPERSEDED != 'true' }}
+        if: ${{ always() && steps.app_kubeconfig.outcome == 'success' && needs.build.outputs.operator_digest != '' && env.SUPERSEDED != 'true' }}
         timeout-minutes: 12
         env:
-          BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}
+          BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ needs.build.outputs.operator_digest }}
         run: |
           for daemonset in bex-pg-sni-proxy bex-kv-sni-proxy; do
             deadline=$((SECONDS + 600))
