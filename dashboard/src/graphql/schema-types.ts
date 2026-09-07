@@ -2513,6 +2513,7 @@ export type Query = {
   workspaceCreationAttempt: Maybe<WorkspaceCreationAttempt>;
   workspaceCreationPolicy: Maybe<WorkspaceCreationPolicy>;
   workspaceEnvironments: Maybe<Array<Maybe<Environment>>>;
+  workspaceInvitePreview: Maybe<WorkspaceInvitePreview>;
   workspaceInvites: Maybe<Array<Maybe<WorkspaceInvite>>>;
   workspaceLimits: Maybe<ResourceLimits>;
   workspaceMembers: Maybe<Array<Maybe<WorkspaceMember>>>;
@@ -3068,6 +3069,11 @@ export type QueryWorkspaceEnvironmentsArgs = {
 };
 
 
+export type QueryWorkspaceInvitePreviewArgs = {
+  token: Scalars['String']['input'];
+};
+
+
 export type QueryWorkspaceInvitesArgs = {
   workspaceId: Scalars['String']['input'];
 };
@@ -3373,6 +3379,8 @@ export type SyncBlueprintResult = {
   __typename: 'SyncBlueprintResult';
   blueprint: Maybe<Blueprint>;
   databases: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  envGroups: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  keyValues: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   services: Maybe<Array<Maybe<Service>>>;
 };
 
@@ -3507,6 +3515,15 @@ export type WorkspaceInvite = {
   expiresAt: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   role: Maybe<Scalars['String']['output']>;
+};
+
+export type WorkspaceInvitePreview = {
+  __typename: 'WorkspaceInvitePreview';
+  alreadyMember: Scalars['Boolean']['output'];
+  inviterEmail: Maybe<Scalars['String']['output']>;
+  role: Maybe<Scalars['String']['output']>;
+  workspaceId: Maybe<Scalars['String']['output']>;
+  workspaceName: Maybe<Scalars['String']['output']>;
 };
 
 export type WorkspaceMember = {

@@ -36,6 +36,7 @@ const mcpWorkspaceIDDescription = "The ID of the Render workspace to use. Reuse 
 // operation and is scoped uniformly here instead of growing adapter-specific
 // ownerId or transport-session state in each feature package.
 var mcpCallerScopedTools = map[string]struct{}{
+	"preview_workspace_invite":     {},
 	"accept_workspace_invite":      {},
 	"add_ssh_key":                  {},
 	"delete_ssh_key":               {},

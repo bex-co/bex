@@ -28,6 +28,23 @@ import (
 
 // RegisterREST mounts the member + invite endpoints under a workspace.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
+	mux.HandleFunc("POST /v1/invites/preview", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Token string `json:"token"`
+		}
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		preview, err := s.PreviewInvite(r.Context(), req.Token)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		core.WriteJSON(w, http.StatusOK, preview)
+	})
+
 	mux.HandleFunc("GET /v1/workspaces/{workspaceId}/members", func(w http.ResponseWriter, r *http.Request) {
 		ms, err := s.List(r.Context(), r.PathValue("workspaceId"))
 		if err != nil {

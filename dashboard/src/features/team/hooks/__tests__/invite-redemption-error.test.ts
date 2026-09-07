@@ -21,7 +21,7 @@ describe("classifyInviteRedemptionError", () => {
     ["INVITE_ALREADY_ACCEPTED", "already-accepted"],
     ["INVITE_EXPIRED", "expired"],
     ["INVITE_INVALID", "terminal"],
-    ["INVITE_PLAN_LIMIT", "terminal"],
+    ["INVITE_PLAN_LIMIT", "plan-limit"],
     ["UNAUTHENTICATED", "terminal"],
     ["FORBIDDEN", "terminal"],
   ] as const)("classifies stable GraphQL code %s", (code, expected) => {

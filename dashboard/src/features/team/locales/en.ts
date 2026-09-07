@@ -215,23 +215,6 @@ const enTeam: Record<string, TranslationEntry> = {
     message: "Couldn't accept that invitation",
     description: "Toast when redeeming an invite token fails",
   },
-  "team.inviteConfirmTitle": {
-    message: "Join this workspace?",
-    description: "Title for the explicit invite-acceptance banner",
-  },
-  "team.inviteConfirmDescription": {
-    message:
-      "Someone invited you to a workspace. Accept only if you recognize the invitation.",
-    description: "Body for the explicit invite-acceptance banner",
-  },
-  "team.inviteConfirmAccept": {
-    message: "Accept invitation",
-    description: "Primary button on the invite-acceptance banner",
-  },
-  "team.inviteConfirmDecline": {
-    message: "Decline",
-    description: "Secondary button that clears a pending invite",
-  },
   "team.revokeInviteSuccess": {
     message: "Invitation revoked",
     description: "Toast after a successful invite revoke",

@@ -224,6 +224,15 @@ func (f *fakeStore) ListInvites(_ context.Context, _ string) ([]store.Invite, er
 	return out, nil
 }
 
+func (f *fakeStore) GetInviteByToken(_ context.Context, token string) (store.Invite, error) {
+	for _, inv := range f.invites {
+		if inv.Token == token {
+			return inv, nil
+		}
+	}
+	return store.Invite{}, store.ErrNotFound
+}
+
 func (f *fakeStore) GetInvite(_ context.Context, _, id string) (store.Invite, error) {
 	inv, ok := f.invites[id]
 	if !ok {
@@ -1096,5 +1105,74 @@ func TestAlreadyMemberRefusalIsOneConflictAcrossSurfaces(t *testing.T) {
 	// without parsing English prose.
 	if ce.Params["email"] != "boss@example.com" {
 		t.Errorf("params[email] = %v, want boss@example.com", ce.Params["email"])
+	}
+}
+
+func TestPreviewInvite(t *testing.T) {
+	const token = "0123456789abcdef0123456789abcdef"
+	for _, tc := range []struct {
+		name                      string
+		accepted, expired, member bool
+		wantErr                   error
+	}{
+		{name: "pending"},
+		{name: "expired", expired: true, wantErr: store.ErrInviteExpired},
+		{name: "used by another account", accepted: true, wantErr: store.ErrInviteAlreadyAccepted},
+		{name: "already joined by email", accepted: true, member: true},
+		{name: "existing membership keeps effective role", member: true},
+		{name: "old link opens current membership", accepted: true, expired: true, member: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore(store.PlanPro)
+			expires := time.Now().Add(time.Hour)
+			if tc.expired {
+				expires = time.Now().Add(-time.Hour)
+			}
+			inv := store.Invite{ID: "inv-1", TenantID: "tea-1", Token: token, Role: "developer", ExpiresAt: expires}
+			if tc.accepted {
+				now := time.Now()
+				inv.AcceptedAt = &now
+			}
+			st.invites[inv.ID] = inv
+			if tc.member {
+				st.seedMember("bob", "viewer")
+			}
+			s := svc(st, newFakeGranter(), nil, nil)
+			view, err := s.PreviewInvite(ctxWith("bob"), token)
+			if tc.wantErr != nil {
+				if err == nil {
+					t.Fatal("expected refusal")
+				}
+				// Preview and acceptance must expose the same stable terminal taxonomy.
+				if fmt.Sprint(err) != fmt.Sprint(mapAcceptInviteErr(tc.wantErr)) {
+					t.Fatalf("got %v", err)
+				}
+			} else {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if view.WorkspaceName != "acme" || view.WorkspaceID != "tea-1" || view.AlreadyMember != tc.member {
+					t.Fatalf("wrong context: %+v", view)
+				}
+				wantRole := "DEVELOPER"
+				if tc.member {
+					wantRole = "VIEWER"
+				}
+				if view.Role != wantRole {
+					t.Fatalf("role = %s", view.Role)
+				}
+			}
+			_, memberPresent := st.members["bob"]
+			if memberPresent != tc.member || (st.invites[inv.ID].AcceptedAt != nil) != tc.accepted {
+				t.Fatal("preview changed membership or invitation")
+			}
+		})
+	}
+	st := newFakeStore(store.PlanPro)
+	s := svc(st, newFakeGranter(), nil, nil)
+	for _, invalid := range []string{"", "bad", token, strings.ToUpper(token)} {
+		if _, err := s.PreviewInvite(ctxWith("bob"), invalid); err == nil {
+			t.Fatal("unknown/malformed token accepted")
+		}
 	}
 }

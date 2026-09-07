@@ -1,4 +1,4 @@
-import { createRootRouteWithContext } from "@tanstack/react-router";
+import { createRootRouteWithContext, redirect } from "@tanstack/react-router";
 import type { RouterContext } from "@/router";
 import NotFoundPage from "@/common/root-route/not-found-page";
 import ErrorPage from "@/common/root-route/error-page";
@@ -9,6 +9,7 @@ import { detectLanguage } from "@/i18n/detect-language";
 import { ensureLanguageOn } from "@/i18n/init";
 import { getActiveI18n } from "@/i18n/request-scope";
 import { getDashboardOrigin, globalMetadata } from "@/common/lib/document-head";
+import { pendingInvitationDestination } from "@/features/invites/redirect-pending-invitation";
 import { getPersistedWorkspaceId } from "@/features/workspaces/lib/selection";
 
 import appCss from "../style.css?inline";
@@ -18,7 +19,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   errorComponent: ErrorPage,
   shellComponent: ShellComponent,
   component: RootComponent,
-  beforeLoad: async () => {
+  beforeLoad: async ({ matches, preload }) => {
     const language = detectLanguage();
     const sessionPromise = fetchSession();
     const dashboardOrigin = getDashboardOrigin();
@@ -43,6 +44,15 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     // other answer (a live session that owes a second factor), and `requireAuth`
     // needs it to redirect to the step-up (w4/m17).
     const { session, aal2Required } = await sessionPromise;
+    const invitation = pendingInvitationDestination({
+      authenticated: Boolean(session),
+      eligible: matches.some(
+        (match) =>
+          match.staticData?.chrome || match.routeId === "/setup/payment",
+      ),
+      preload,
+    });
+    if (invitation) throw redirect({ to: invitation, replace: true });
     return {
       session,
       aal2Required,

@@ -61,6 +61,17 @@ var acceptedInviteGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var invitePreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "WorkspaceInvitePreview",
+	Fields: graphql.Fields{
+		"workspaceId":   gqlutil.StrField(func(v InvitePreview) any { return v.WorkspaceID }),
+		"workspaceName": gqlutil.StrField(func(v InvitePreview) any { return v.WorkspaceName }),
+		"role":          gqlutil.StrField(func(v InvitePreview) any { return v.Role }),
+		"inviterEmail":  gqlutil.StrField(func(v InvitePreview) any { return v.InviterEmail }),
+		"alreadyMember": gqlutil.ReqBoolField(func(v InvitePreview) any { return v.AlreadyMember }),
+	},
+})
+
 var inviteGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceInvite",
 	Fields: graphql.Fields{
@@ -100,6 +111,13 @@ func workspaceIDArg() graphql.FieldConfigArgument {
 // GraphQLQuery contributes the members + pending-invites reads to the root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
+		"workspaceInvitePreview": &graphql.Field{
+			Type: invitePreviewGQLType,
+			Args: graphql.FieldConfigArgument{"token": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.PreviewInvite(p.Context, p.Args["token"].(string))
+			},
+		},
 		"workspaceMembers": &graphql.Field{
 			Type: graphql.NewList(memberGQLType),
 			Args: workspaceIDArg(),

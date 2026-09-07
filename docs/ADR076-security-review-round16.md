@@ -72,7 +72,7 @@ Registration accepted every HTTPS host and HTTP loopback; delivery used the defa
 
 Authenticated dashboard mount auto-called `acceptWorkspaceInvite` from a pending token, so cross-site navigation to a valid invite URL silently joined the attacker's workspace.
 
-**Fix.** `useInviteRedemption` peeks and shows a confirmation banner; only an Accept click consumes the token and mutates. Decline clears storage. Tests assert mount alone does not call the mutation.
+**Fix.** `useInviteRedemption` peeks and shows a confirmation banner; only an Accept click consumes the token and mutates. Decline clears storage. Tests assert mount alone does not call the mutation. The fixed-banner presentation is superseded by [ADR024’s shared invitation review page](ADR024-members.md#invitation-journey-for-new-and-existing-accounts-2026-09-06) (2026-09-06); explicit token acceptance and local-only dismissal remain unchanged.
 
 ## Finding 9 (low) — hibernate PUT create-once
 

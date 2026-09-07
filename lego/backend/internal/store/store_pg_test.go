@@ -2732,6 +2732,14 @@ func TestInviteResendAndTokenAcceptance(t *testing.T) {
 		t.Errorf("GetInvite token = %q (%v), want empty — reads never surface the capability", got.Token, err)
 	}
 
+	// Preview reads the hashed capability without consuming it or exposing it.
+	if got, err := s.GetInviteByToken(ctx, "tok-late"); err != nil || got.ID != inv.ID || got.Token != "" || got.AcceptedAt != nil {
+		t.Fatalf("preview must preserve pending invitation and omit bearer: %+v (%v)", got, err)
+	}
+	if _, err := s.GetInviteByToken(ctx, "unknown-token"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown preview token: %v", err)
+	}
+
 	// RefreshInvite: expiry moves and the token ROTATES (w1/041 — the hash at
 	// rest can't reproduce the old plaintext for the resent mail); the id is
 	// stable and a LAPSED (expired, unaccepted) invite is revived.
@@ -2742,6 +2750,9 @@ func TestInviteResendAndTokenAcceptance(t *testing.T) {
 	resent, err := s.RefreshInvite(ctx, ten.ID, inv.ID, "tok-rotated", fresh)
 	if err != nil {
 		t.Fatalf("refresh: %v", err)
+	}
+	if _, err := s.GetInviteByToken(ctx, "tok-late"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("rotated token still previews: %v", err)
 	}
 	if resent.ID != inv.ID || resent.Token != "tok-rotated" {
 		t.Errorf("refresh churned identity or dropped the fresh token: %+v", resent)

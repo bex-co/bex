@@ -4,6 +4,7 @@ import { getClient } from "./common/apollo/client";
 import { ApolloProvider } from "@apollo/client/react";
 import ErrorPage from "@/common/root-route/error-page";
 import NotFoundPage from "@/common/root-route/not-found-page";
+import { pendingInvitationDestination } from "@/features/invites/redirect-pending-invitation";
 import RoutePending from "@/common/root-route/route-pending";
 
 export type { RouterContext } from "@/common/types/router-context";
@@ -38,9 +39,29 @@ export function getRouter() {
         apolloState: client.cache.extract() as Record<string, string>,
       };
     },
-    hydrate: (data) => {
+    hydrate: async (data) => {
       // console.log("hydrate", data.apolloState);
       client.cache.restore(data.apolloState as Record<string, string>);
+      // Initial hydration trusts the server's beforeLoad result and does not
+      // rerun it. The server cannot read tab storage: resolve pending intent
+      // before mounting billing or an unrelated workspace. A document redirect
+      // keeps the new route's SSR markup consistent; ordinary hydration stays
+      // untouched. Later client navigations use the root beforeLoad redirect.
+      const invitation = pendingInvitationDestination({
+        authenticated: true,
+        eligible: router
+          .matchRoutes(window.location.pathname)
+          .some(
+            (match) =>
+              match.staticData?.chrome || match.routeId === "/setup/payment",
+          ),
+        preload: false,
+      });
+      if (invitation) {
+        window.location.replace(invitation);
+        // Stop hydration of the old document while the new one loads.
+        await new Promise<void>(() => {});
+      }
     },
     Wrap(props) {
       return <ApolloProvider client={client}>{props.children}</ApolloProvider>;

@@ -1,147 +1,235 @@
-import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { INVITE_TOKEN_STORAGE_KEY } from "@/common/lib/invite-token";
 
-const TOKEN = "0123456789abcdef0123456789abcdef";
-const mockUseMutation = vi.fn();
-const mockRefetch = vi.fn();
-const toastSuccess = vi.fn();
-const toastError = vi.fn();
-
-vi.mock("@apollo/client/react", () => ({
-  useMutation: (...args: unknown[]) => mockUseMutation(...args),
-}));
-vi.mock("sonner", () => ({
-  toast: {
-    success: (...args: unknown[]) => toastSuccess(...args),
-    error: (...args: unknown[]) => toastError(...args),
+const mocks = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  query: vi.fn(),
+  select: vi.fn(),
+  previewRefetch: vi.fn(),
+  workspaces: [{ id: "tea-target" }],
+  preview: {
+    data: {
+      workspaceInvitePreview: {
+        workspaceId: "tea-target",
+        workspaceName: "Acme",
+        role: "DEVELOPER",
+        alreadyMember: false,
+      },
+    },
+    loading: false,
+    error: undefined,
   },
 }));
-vi.mock("@/common/hooks/use-translations", () => ({
-  useTranslations: () => ({
-    t: (key: string) => key,
-  }),
+vi.mock("@apollo/client/react", () => ({
+  useMutation: () => [mocks.mutate],
+  useQuery: () => ({ ...mocks.preview, refetch: mocks.previewRefetch }),
+  useApolloClient: () => ({ query: mocks.query }),
 }));
 vi.mock("@/features/workspaces/context/hooks", () => ({
-  useWorkspace: () => ({ refetch: mockRefetch }),
+  useWorkspace: () => ({
+    workspaces: mocks.workspaces,
+    setCurrentWorkspaceId: mocks.select,
+  }),
 }));
-
+vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
 import { useInviteRedemption } from "../use-invite-redemption";
+const TOKEN = "0123456789abcdef0123456789abcdef";
 
-function gqlError(code: string) {
-  return new CombinedGraphQLErrors({
-    data: null,
-    errors: [
-      { message: "copy is not part of the contract", extensions: { code } },
-    ],
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.workspaces = [{ id: "tea-target" }];
+  mocks.preview.data.workspaceInvitePreview.alreadyMember = false;
+  mocks.mutate.mockResolvedValue({
+    data: { acceptWorkspaceInvite: { workspaceId: "tea-target" } },
   });
-}
-
-function serverError(statusCode: number) {
-  return new ServerError(`status ${statusCode}`, {
-    response: new Response(null, { status: statusCode }),
-    bodyText: "",
+  mocks.query.mockResolvedValue({
+    data: {
+      workspaces: [{ id: "tea-target" }],
+      viewerCapabilities: { canView: true },
+    },
   });
-}
+  window.history.replaceState(null, "", "/invite");
+  window.sessionStorage.clear();
+  window.sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, TOKEN);
+});
 
-describe("useInviteRedemption", () => {
-  beforeEach(() => {
-    mockUseMutation.mockReset();
-    mockRefetch.mockReset().mockResolvedValue(undefined);
-    toastSuccess.mockReset();
-    toastError.mockReset();
-    window.sessionStorage.clear();
-    window.history.replaceState(null, "", "/");
-    window.sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, TOKEN);
+describe("invitation redemption", () => {
+  it("never accepts or changes selection on mount", () => {
+    renderHook(() => useInviteRedemption(TOKEN, vi.fn()));
+    expect(mocks.mutate).not.toHaveBeenCalled();
+    expect(mocks.select).not.toHaveBeenCalled();
   });
-
-  it("does not redeem on mount — navigation alone creates no membership", async () => {
-    const mutate = vi.fn();
-    mockUseMutation.mockReturnValue([mutate]);
-
-    const { result } = renderHook(() => useInviteRedemption());
-
-    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
-    expect(mutate).not.toHaveBeenCalled();
-    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBe(TOKEN);
-  });
-
-  it("decline clears the pending capability without calling accept", async () => {
-    const mutate = vi.fn();
-    mockUseMutation.mockReturnValue([mutate]);
-
-    const { result } = renderHook(() => useInviteRedemption());
-    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
-
-    act(() => {
-      result.current.decline();
-    });
-
-    expect(result.current.pendingToken).toBeNull();
-    expect(mutate).not.toHaveBeenCalled();
+  it("selects the joined workspace only after access is confirmed", async () => {
+    const opened = vi.fn();
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, opened));
+    await act(() => result.current.accept());
+    expect(mocks.mutate).toHaveBeenCalledWith({ variables: { token: TOKEN } });
+    expect(mocks.select).toHaveBeenCalledWith("tea-target");
+    expect(opened).toHaveBeenCalledOnce();
     expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBeNull();
   });
-
-  it.each([
-    ["network failure", new TypeError("network failed")],
-    ["raw HTTP 404", serverError(404)],
-    ["raw HTTP 409", serverError(409)],
-  ])("retains the capability after ambiguous %s", async (_label, error) => {
-    const mutate = vi.fn().mockRejectedValue(error);
-    mockUseMutation.mockReturnValue([mutate]);
-
-    const { result } = renderHook(() => useInviteRedemption());
-    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
-
-    await act(async () => {
-      await result.current.accept();
-    });
-
-    await waitFor(() => expect(toastError).toHaveBeenCalled());
-    expect(mutate).toHaveBeenCalledWith({ variables: { token: TOKEN } });
-    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBe(TOKEN);
-    expect(toastError).toHaveBeenCalledWith("team.inviteAcceptError");
+  it("waits for the workspace provider to observe a new membership before selecting it", async () => {
+    mocks.workspaces = [{ id: "tea-personal" }];
+    const opened = vi.fn();
+    const { result, rerender } = renderHook(() =>
+      useInviteRedemption(TOKEN, opened),
+    );
+    await act(() => result.current.accept());
+    expect(mocks.select).not.toHaveBeenCalled();
+    expect(opened).not.toHaveBeenCalled();
+    mocks.workspaces = [{ id: "tea-personal" }, { id: "tea-target" }];
+    rerender();
+    expect(mocks.select).toHaveBeenCalledWith("tea-target");
+    expect(opened).toHaveBeenCalledOnce();
   });
-
-  it("clears a stable terminal outcome using its GraphQL code", async () => {
-    const mutate = vi.fn().mockRejectedValue(gqlError("INVITE_EXPIRED"));
-    mockUseMutation.mockReturnValue([mutate]);
-
-    const { result } = renderHook(() => useInviteRedemption());
-    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
-
-    await act(async () => {
-      await result.current.accept();
-    });
-
-    await waitFor(() => expect(toastError).toHaveBeenCalled());
-    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBeNull();
-    expect(toastError).toHaveBeenCalledWith("team.inviteAcceptExpired");
+  it("opens an email-redeemed membership without replaying acceptance", async () => {
+    mocks.preview.data.workspaceInvitePreview.alreadyMember = true;
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, vi.fn()));
+    await act(() => result.current.accept());
+    expect(mocks.mutate).not.toHaveBeenCalled();
+    expect(mocks.select).toHaveBeenCalledWith("tea-target");
   });
-
-  it("does not restore a spent capability when refresh fails after commit", async () => {
-    const mutate = vi.fn().mockResolvedValue({
+  it("retries access without redeeming twice after a committed join", async () => {
+    mocks.query.mockRejectedValueOnce(new Error("offline"));
+    const opened = vi.fn();
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, opened));
+    await act(() => result.current.accept());
+    expect(result.current.errorKey).toBe("invites.accessPending");
+    expect(mocks.select).not.toHaveBeenCalled();
+    expect(opened).not.toHaveBeenCalled();
+    await act(() => result.current.accept());
+    expect(mocks.mutate).toHaveBeenCalledOnce();
+    expect(opened).toHaveBeenCalledOnce();
+  });
+  it("keeps the current workspace when the joined membership is not visible yet", async () => {
+    mocks.query.mockResolvedValueOnce({
+      data: { workspaces: [{ id: "tea-personal" }] },
+    });
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, vi.fn()));
+    await act(() => result.current.accept());
+    expect(result.current.errorKey).toBe("invites.accessPending");
+    expect(mocks.select).not.toHaveBeenCalled();
+  });
+  it("opens a membership established after preview without an already-used error", async () => {
+    mocks.mutate.mockRejectedValueOnce(
+      new CombinedGraphQLErrors({
+        errors: [
+          { message: "used", extensions: { code: "INVITE_ALREADY_ACCEPTED" } },
+        ],
+      }),
+    );
+    mocks.previewRefetch.mockResolvedValueOnce({
       data: {
-        acceptWorkspaceInvite: {
-          workspaceId: "tea-joined",
-          workspaceName: "Joined",
+        workspaceInvitePreview: {
+          workspaceId: "tea-target",
+          alreadyMember: true,
         },
       },
     });
-    mockUseMutation.mockReturnValue([mutate]);
-    mockRefetch.mockRejectedValue(new Error("refresh failed"));
-
-    const { result } = renderHook(() => useInviteRedemption());
-    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
-
-    await act(async () => {
-      await result.current.accept();
-    });
-
-    await waitFor(() => expect(toastSuccess).toHaveBeenCalled());
-    await waitFor(() => expect(mockRefetch).toHaveBeenCalled());
-    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBeNull();
-    expect(toastError).not.toHaveBeenCalled();
+    const opened = vi.fn();
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, opened));
+    await act(() => result.current.accept());
+    expect(result.current.errorKey).toBeNull();
+    expect(opened).toHaveBeenCalledOnce();
+    expect(mocks.select).toHaveBeenCalledWith("tea-target");
   });
+  it("handles an unavailable membership refresh after ambiguous acceptance", async () => {
+    mocks.mutate.mockRejectedValueOnce(
+      new CombinedGraphQLErrors({
+        errors: [
+          { message: "used", extensions: { code: "INVITE_ALREADY_ACCEPTED" } },
+        ],
+      }),
+    );
+    mocks.previewRefetch.mockRejectedValueOnce(new TypeError("offline"));
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, vi.fn()));
+    await act(() => result.current.accept());
+    expect(result.current.errorKey).toBe("invites.retryError");
+    expect(mocks.select).not.toHaveBeenCalled();
+  });
+  it("waits for effective authorization after membership commits", async () => {
+    mocks.query.mockResolvedValueOnce({
+      data: { workspaces: [{ id: "tea-target" }] },
+    });
+    mocks.query.mockResolvedValueOnce({
+      data: { viewerCapabilities: { canView: false } },
+    });
+    const opened = vi.fn();
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, opened));
+    await act(() => result.current.accept());
+    expect(result.current.errorKey).toBe("invites.accessPending");
+    expect(opened).not.toHaveBeenCalled();
+    await act(() => result.current.accept());
+    expect(mocks.mutate).toHaveBeenCalledOnce();
+    expect(opened).toHaveBeenCalledOnce();
+  });
+  it("stops offering acceptance when an invitation expires after preview", async () => {
+    mocks.mutate.mockRejectedValueOnce(
+      new CombinedGraphQLErrors({
+        errors: [
+          { message: "expired", extensions: { code: "INVITE_EXPIRED" } },
+        ],
+      }),
+    );
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, vi.fn()));
+    await act(() => result.current.accept());
+    expect(result.current.details).toBeNull();
+    expect(result.current.retryable).toBe(false);
+  });
+  it("prevents double clicks and keeps Joining visible during the request", async () => {
+    let finish!: (value: unknown) => void;
+    mocks.mutate.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, vi.fn()));
+    let pending!: Promise<void>;
+    act(() => {
+      pending = result.current.accept();
+      void result.current.accept();
+    });
+    expect(result.current.busy).toBe(true);
+    expect(mocks.mutate).toHaveBeenCalledOnce();
+    await act(async () => {
+      finish({
+        data: { acceptWorkspaceInvite: { workspaceId: "tea-target" } },
+      });
+      await pending;
+    });
+    expect(result.current.busy).toBe(false);
+  });
+  it.each([
+    [new TypeError("offline"), "invites.retryError"],
+    [
+      new CombinedGraphQLErrors({
+        errors: [
+          { message: "expired", extensions: { code: "INVITE_EXPIRED" } },
+        ],
+      }),
+      "invites.expired",
+    ],
+    [
+      new CombinedGraphQLErrors({
+        errors: [
+          { message: "seats", extensions: { code: "INVITE_PLAN_LIMIT" } },
+        ],
+      }),
+      "invites.planLimit",
+    ],
+  ])(
+    "shows inline errors and preserves the invitation for recovery",
+    async (error, key) => {
+      mocks.mutate.mockRejectedValueOnce(error);
+      const { result } = renderHook(() => useInviteRedemption(TOKEN, vi.fn()));
+      await act(() => result.current.accept());
+      expect(result.current.errorKey).toBe(key);
+      expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBe(
+        TOKEN,
+      );
+      expect(mocks.select).not.toHaveBeenCalled();
+    },
+  );
 });

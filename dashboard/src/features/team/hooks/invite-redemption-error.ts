@@ -3,12 +3,12 @@ import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
 export type InviteRedemptionFailure =
   | "already-accepted"
   | "expired"
+  | "plan-limit"
   | "terminal"
   | "ambiguous";
 
 const TERMINAL_CODES = new Set([
   "INVITE_INVALID",
-  "INVITE_PLAN_LIMIT",
   "UNAUTHENTICATED",
   "FORBIDDEN",
 ]);
@@ -28,6 +28,7 @@ export function classifyInviteRedemptionError(
     });
     if (codes.includes("INVITE_ALREADY_ACCEPTED")) return "already-accepted";
     if (codes.includes("INVITE_EXPIRED")) return "expired";
+    if (codes.includes("INVITE_PLAN_LIMIT")) return "plan-limit";
     if (codes.some((code) => TERMINAL_CODES.has(code))) return "terminal";
     return "ambiguous";
   }
