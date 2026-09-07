@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { downloadTextFile } from "@/common/lib/download-file";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
@@ -138,13 +139,7 @@ export function GenerateBlueprintDialog({
 
   function handleDownload() {
     if (!manifest) return;
-    const blob = new Blob([manifest], { type: "application/yaml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "render.yaml";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile("render.yaml", manifest, "application/yaml");
   }
 
   return (

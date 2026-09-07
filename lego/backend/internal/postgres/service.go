@@ -22,6 +22,8 @@ package postgres
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"slices"
 	"strconv"
@@ -198,6 +200,13 @@ type PostgresConnectionInfo struct {
 	InternalConnectionPoolString string `json:"internalConnectionPoolString,omitempty"`
 	ExternalConnectionPoolString string `json:"externalConnectionPoolString,omitempty"`
 	PSQLCommand                  string `json:"psqlCommand"`
+	// ServerCACertificate is the PEM CERTIFICATE bundle of the CNPG cluster's
+	// generated server CA — the trust root a verify-full external client must
+	// install (bex extension, w4/m95; Render's public hosts use a public CA and
+	// need no counterpart). Populated only for public databases: every public
+	// endpoint (primary, pooler, replicas) serves SANs on the same server
+	// certificate chain. Strictly certificate material — never a private key.
+	ServerCACertificate string `json:"serverCaCertificate,omitempty"`
 	// ReadReplicaConnectionStrings has one entry per spec.readReplicas, keyed by
 	// replica name. Each is the full internal (and optionally external) connection
 	// string including the password, for callers that need to query standbys.
@@ -664,6 +673,18 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			"%w: Postgres %q has public access enabled but no external host; configure BEX_DB_DOMAIN and wait for reconciliation",
 			core.ErrUnavailable, d.Name)
 	}
+	// A public database's external strings pin sslmode=verify-full, which no
+	// client can satisfy without the cluster's private server CA — so the CA is
+	// part of the external edge being ready, exactly like ExternalHost above.
+	// Fail actionably rather than hand out an external URL that cannot connect
+	// (w4/m95); never downgrade the TLS mode instead.
+	serverCA := ""
+	if d.Spec.Public {
+		serverCA, err = s.serverCACertificate(ctx, d)
+		if err != nil {
+			return PostgresConnectionInfo{}, err
+		}
+	}
 	user := string(sec.Data["username"])
 	pass := string(sec.Data["password"])
 	dbn := string(sec.Data["dbname"])
@@ -700,6 +721,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			user, pass, d.Status.ExternalHost, dbn)
 		info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql 'host=%s port=5432 dbname=%s user=%s sslmode=verify-full'",
 			pass, d.Status.ExternalHost, dbn, user)
+		info.ServerCACertificate = serverCA
 	}
 	// Pooled strings: same credentials, routed through the PgBouncer pooler.
 	// The hosts come straight from status (the operator's contract) — the backend
@@ -733,6 +755,63 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 		info.ReadReplicaConnectionStrings = rcs
 	}
 	return info, nil
+}
+
+// serverCACertificate reads the CNPG cluster's generated server CA for this
+// Database — the "<cluster>-ca" Secret CNPG maintains beside the cluster in the
+// Database's own namespace (the operator leaves CNPG's default CA in place and
+// only adds public SNI SANs, so this name is the deployed topology's single
+// trust root for the primary, pooler, and replica endpoints alike). Returns
+// strictly re-encoded PEM CERTIFICATE blocks: a missing Secret is an actionable
+// retry, and malformed material or anything that is not a certificate — a
+// private key above all — is refused rather than served.
+func (s *Service) serverCACertificate(ctx context.Context, d *appv1alpha1.Database) (string, error) {
+	var sec corev1.Secret
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: d.Namespace, Name: d.Name + "-ca"}, &sec); err != nil {
+		if apierrors.IsNotFound(err) {
+			return "", fmt.Errorf(
+				"%w: Postgres %q server CA is not provisioned yet; retry shortly",
+				core.ErrUnavailable, d.Name)
+		}
+		return "", fmt.Errorf("reading Postgres %q server CA: %w", d.Name, err)
+	}
+	bundle, err := certificateOnlyPEM(sec.Data["ca.crt"])
+	if err != nil {
+		return "", fmt.Errorf("%w: Postgres %q server CA is malformed: %v", core.ErrUnavailable, d.Name, err)
+	}
+	return bundle, nil
+}
+
+// certificateOnlyPEM validates raw as one or more PEM CERTIFICATE blocks and
+// re-encodes exactly those blocks, so the returned bundle cannot carry a key,
+// headers, or trailing bytes regardless of what the source Secret held.
+func certificateOnlyPEM(raw []byte) (string, error) {
+	var out strings.Builder
+	rest := raw
+	blocks := 0
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" {
+			// Deliberately does not echo the block type: naming what sits in
+			// the Secret would describe non-certificate material to the caller.
+			return "", fmt.Errorf("unexpected non-certificate block")
+		}
+		if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+			return "", fmt.Errorf("invalid certificate: %w", err)
+		}
+		blocks++
+		if err := pem.Encode(&out, &pem.Block{Type: "CERTIFICATE", Bytes: block.Bytes}); err != nil {
+			return "", err
+		}
+	}
+	if blocks == 0 {
+		return "", fmt.Errorf("no certificate material")
+	}
+	return out.String(), nil
 }
 
 // SetPlan changes the managed Postgres database's instance type (spec.plan).

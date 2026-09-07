@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Download, Eye, EyeOff, Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -14,6 +14,7 @@ import {
   AlertTitle,
 } from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { downloadTextFile } from "@/common/lib/download-file";
 import { useConnectionInfo } from "@/features/databases/hooks/use-connection-info";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
@@ -53,7 +54,7 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
 
         {info ? (
           <>
-            <RevealedInfo info={info} />
+            <RevealedInfo id={id} info={info} />
             <Button variant="outline" size="sm" onClick={hide}>
               {t("databases.connHide")}
             </Button>
@@ -74,7 +75,7 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
   );
 }
 
-function RevealedInfo({ info }: { info: ConnectionInfoView }) {
+function RevealedInfo({ id, info }: { id: string; info: ConnectionInfoView }) {
   const { t } = useTranslations();
   const copiedText = t("databases.copied");
   const copyErrorText = t("databases.copyError");
@@ -101,6 +102,45 @@ function RevealedInfo({ info }: { info: ConnectionInfoView }) {
         copiedText={copiedText}
         copyErrorText={copyErrorText}
       />
+      {info.serverCaCertificate ? (
+        <ServerCAField id={id} pem={info.serverCaCertificate} />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The private server CA an external verify-full client must trust (w4/m95).
+ * Certificate-only public material: downloading writes exactly the PEM the API
+ * returned, and the instructions keep sslmode=verify-full rather than ever
+ * suggesting a weaker mode.
+ */
+function ServerCAField({ id, pem }: { id: string; pem: string }) {
+  const { t } = useTranslations();
+  const file = `${id}-ca.pem`;
+  const download = () => downloadTextFile(file, pem, "application/x-pem-file");
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium">
+          {t("databases.connCaLabel")}
+        </span>
+        <Button variant="outline" size="sm" onClick={download}>
+          <Download />
+          {t("databases.connCaDownload")}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {t("databases.connCaHelp", { file })}
+      </p>
+      <div className="overflow-x-auto rounded-md border bg-muted px-3 py-2">
+        <code
+          className="font-mono text-xs whitespace-pre"
+          aria-label={t("databases.connCaSnippet")}
+        >
+          {`PGSSLROOTCERT="/path/to/${file}"`}
+        </code>
+      </div>
     </div>
   );
 }

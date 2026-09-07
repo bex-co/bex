@@ -67,6 +67,7 @@ describe("ConnectionInfoPanel", () => {
       internalConnectionString: "postgresql://u:s3cretpw@db-rw.default:5432/db",
       externalConnectionString: "",
       psqlCommand: "PGPASSWORD=s3cretpw psql …",
+      serverCaCertificate: "",
       readReplicaConnectionStrings: [],
     };
     const user = userEvent.setup();
@@ -94,5 +95,81 @@ describe("ConnectionInfoPanel", () => {
     expect(
       screen.getByText("Couldn't load connection info"),
     ).toBeInTheDocument();
+  });
+
+  // w4/m95: the external string pins sslmode=verify-full against a private
+  // server CA, so a public database's reveal must hand over that CA and the
+  // trust-file instructions — without ever weakening the TLS mode.
+  it("offers the server CA download with verify-full trust instructions", async () => {
+    state.info = {
+      password: "s3cretpw",
+      internalConnectionString: "postgresql://u:s3cretpw@db-rw.default:5432/db",
+      externalConnectionString:
+        "postgresql://u:s3cretpw@db.db.bex.co:5432/db?sslmode=verify-full",
+      psqlCommand: "PGPASSWORD=s3cretpw psql 'host=db.db.bex.co …'",
+      serverCaCertificate:
+        "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n",
+      readReplicaConnectionStrings: [],
+    };
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn(() => "blob:ca");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL,
+      revokeObjectURL,
+    });
+    // jsdom's Blob lacks .text(); capture the constructor input instead.
+    const blobParts: unknown[] = [];
+    vi.stubGlobal(
+      "Blob",
+      class {
+        constructor(parts: unknown[]) {
+          blobParts.push(...parts);
+        }
+      },
+    );
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+    try {
+      render(<ConnectionInfoPanel id="dpg-x" />);
+
+      expect(screen.getByText("Server CA certificate")).toBeInTheDocument();
+      // Instructions reference the per-database filename + PGSSLROOTCERT and
+      // never suggest downgrading the TLS mode.
+      expect(screen.getByText(/Download dpg-x-ca\.pem/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/PGSSLROOTCERT="\/path\/to\/dpg-x-ca\.pem"/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/sslmode=disable|sslmode=require/)).toBeNull();
+
+      await user.click(
+        screen.getByRole("button", { name: /download ca certificate/i }),
+      );
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      expect(blobParts).toEqual([
+        "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n",
+      ]);
+      expect(click).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURL).toHaveBeenCalledWith("blob:ca");
+    } finally {
+      click.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps a coherent panel for an internal-only database (no CA section)", () => {
+    state.info = {
+      password: "pw",
+      internalConnectionString: "postgresql://u:pw@db-rw.default:5432/db",
+      externalConnectionString: "",
+      psqlCommand: "PGPASSWORD=pw psql …",
+      serverCaCertificate: "",
+      readReplicaConnectionStrings: [],
+    };
+    render(<ConnectionInfoPanel id="dpg-x" />);
+    expect(screen.queryByText("Server CA certificate")).toBeNull();
+    expect(screen.getByText("psql command")).toBeInTheDocument();
   });
 });

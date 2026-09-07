@@ -422,6 +422,25 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "psql 命令",
     description: "Connection-info field label (ready-to-run psql command)",
   },
+  "databases.connCaLabel": {
+    message: "服务器 CA 证书",
+    description: "Connection-info field label (private server CA bundle)",
+  },
+  "databases.connCaDownload": {
+    message: "下载 CA 证书",
+    description: "Button downloading the server CA PEM file",
+  },
+  "databases.connCaHelp": {
+    message:
+      "外部连接会使用此数据库的私有服务器 CA 验证证书（仍需保持 sslmode=verify-full）。下载 {file} 后，将客户端指向保存的文件——对 psql 命令或外部连接字符串，加上以下前缀：",
+    description:
+      "Explanation above the PGSSLROOTCERT example; {file} is the downloaded CA filename",
+  },
+  "databases.connCaSnippet": {
+    message: "指向已下载 CA 的环境变量前缀示例",
+    description:
+      "Accessible label for the copyable PGSSLROOTCERT example snippet",
+  },
   "databases.connErrorTitle": {
     message: "无法加载连接信息",
     description: "Connection-info panel error title",

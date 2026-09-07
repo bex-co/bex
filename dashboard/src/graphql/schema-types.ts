@@ -2302,6 +2302,7 @@ export type PostgresConnectionInfo = {
   password: Maybe<Scalars['String']['output']>;
   psqlCommand: Maybe<Scalars['String']['output']>;
   readReplicaConnectionStrings: Maybe<Array<Maybe<ReplicaConnectionStrings>>>;
+  serverCaCertificate: Maybe<Scalars['String']['output']>;
 };
 
 export type Project = {

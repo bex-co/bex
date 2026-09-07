@@ -19,14 +19,22 @@ package postgres
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -74,9 +82,51 @@ func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecord
 	return rec
 }
 
+// seedDatabaseCA writes the CNPG-style "<name>-ca" Secret with a freshly
+// generated self-signed CA — both ca.crt and ca.key, like the real Secret —
+// and returns the certificate PEM so tests can assert exact (and key-free)
+// delivery.
+func seedDatabaseCA(t *testing.T, cl client.Client, name string) string {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: name},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name + "-ca", Namespace: "default"},
+		Data: map[string][]byte{
+			"ca.crt": certPEM,
+			"ca.key": pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}),
+		},
+	}
+	if err := cl.Create(context.Background(), sec); err != nil {
+		t.Fatalf("seed ca secret: %v", err)
+	}
+	return string(certPEM)
+}
+
 // seedDatabase adds a Ready public Database + its CNPG-style "<name>-app" Secret.
 func seedDatabase(t *testing.T, cl client.Client, name string) {
 	t.Helper()
+	seedDatabaseCA(t, cl, name)
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 		Spec:       appv1alpha1.DatabaseSpec{Plan: "free", Public: true},

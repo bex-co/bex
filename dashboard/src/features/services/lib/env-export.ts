@@ -1,3 +1,5 @@
+import { downloadTextFile } from "@/common/lib/download-file";
+
 /**
  * Serializes a complete service environment as a deterministic dotenv file.
  * Keys sort by code point and every value is JSON-quoted, so whitespace,
@@ -16,12 +18,5 @@ export function formatEnvExport(
 }
 
 export function downloadEnvFile(filename: string, contents: string): void {
-  const url = URL.createObjectURL(
-    new Blob([contents], { type: "text/plain;charset=utf-8" }),
-  );
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  downloadTextFile(filename, contents);
 }
