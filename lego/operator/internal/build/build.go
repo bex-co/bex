@@ -338,8 +338,11 @@ type Options struct {
 	// BuildEnv carries selected literal build-time environment. Kpack receives
 	// BP_*/BPE_* entries in Image.spec.build.env; native builds encode all
 	// literals into a BuildKit secret alongside RuntimeEnvSecret.
-	BuildEnv         []corev1.EnvVar
-	RuntimeEnvSecret string // optional Secret whose keys also enter a native build
+	BuildEnv []corev1.EnvVar
+	// RuntimeEnvSecret names the Secret whose keys enter a native build — the
+	// operator's App-owned merged projection of linked group Secrets plus the
+	// service's own Secret (w4/m93). Empty = no Secret-backed build env.
+	RuntimeEnvSecret string
 	Namespace        string // namespace the build Job runs in
 	// Workspace is the owning tenant id (app.bex.co/workspace label value) stamped
 	// on the build Job so per-workspace concurrent-build counting works (w7/m9).

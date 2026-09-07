@@ -122,7 +122,7 @@ func appArtifactOwned(identity execution.ArtifactIdentity, obj client.Object) bo
 		return false
 	}
 	switch obj.GetLabels()[execution.LabelComponent] {
-	case "build", "predeploy", "publish", "copied-secret", "clone-secret", "build-registry-secret", "execution-network-policy":
+	case "build", "predeploy", "publish", "copied-secret", "clone-secret", "build-registry-secret", "native-env-secret", "execution-network-policy":
 		return true
 	default:
 		return false
