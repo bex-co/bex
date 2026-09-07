@@ -135,9 +135,14 @@ describe("ConsentPage", () => {
     )!;
     fireEvent.submit(form, { submitter: approve });
 
-    // What the browser would actually send, with the form in its submitting state.
-    const sent = new FormData(form, approve);
-    expect(sent.get("decision")).toBe("approve");
+    // The submitter must remain a successful control after the submit handler.
+    // FormData(form) excludes submit buttons, so check the decision separately.
+    expect(form).toHaveAttribute("aria-busy", "true");
+    expect(approve).toBeEnabled();
+    expect(approve.form).toBe(form);
+    expect(approve).toHaveAttribute("name", "decision");
+    expect(approve).toHaveValue("approve");
+    const sent = new FormData(form);
     expect(sent.get("consent_challenge")).toBe("challenge-1");
     expect(sent.get("csrf_token")).toBe("csrf-token-1");
   });
