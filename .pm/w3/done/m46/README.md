@@ -1,6 +1,6 @@
 # w3 · m46 — Static-site Render-parity fixes (suspend page · delete-row projection · clear-cache deploy · SPA-fallback reconciliation)
 
-**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** implementation complete + locally verified (t001–t007 done); t008 awaits live closeout of the original four behaviors. The later deleting-App by-id/finalizer defect outgrew a task and was promoted to [m81](../m81/README.md) instead of distorting this milestone's finished closing-task chain.
+**Worker:** worker3 **Goal:** close the four static-site behavioral inconsistencies vs Render surfaced by the 2026-08-21 live parity walk, so a bex `static_site` matches Render (or diverges only by documented, deliberate design). **Status:** done (2026-09-07) — implementation shipped in `167eecf5` and deployed to prod; all four DoD behaviors verified on deterministic-suite evidence (re-run green at HEAD `164e4958b`). Closed on the established w3 owed-live-probe precedent (sibling `m81` + `w6/m46` via `w6/063`): the live `onbex.co` four-behavior re-verify is recorded as **explicitly owed** in [t008](done/t008.md), to be discharged by a future `/qa-find-bugs` static-site run or a session with QA credentials / explicit prod authorization, because `hetzner-prod` is off-limits without it. The later deleting-App by-id/finalizer defect outgrew a task and was promoted to [m81](../m81/README.md) (now DONE) instead of distorting this milestone's finished closing-task chain.
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity sweep across REST/GraphQL/MCP/UI                           | 30m | t001, t002, t003, t004       — **DONE** |
 | t006 | Simplify the changed code                                                | 20m | t005                         — **DONE** |
 | t007 | Test coverage for the shipped behavior                                   | 40m | t005                         — **DONE** |
-| t008 | Closeout                                                                 | 10m | t007                         |
+| t008 | Closeout                                                                 | 10m | t007                         — **DONE** |
 
 ## Implementation summary (t001–t007 done 2026-08-21, landed in `167eecf5`)
 
@@ -23,7 +23,7 @@
 - **t004 (SPA fallback):** decided **keep-by-design** (extension-less miss → root `index.html`; asset miss → 404) and documented the deliberate Render divergence in ADR029 § Default SPA fallback + the ADR018 static-site row. Behavior already covered by `TestImplicitSPAFallback`.
 - **t005/t006/t007:** parity swept across all four surfaces (docs updated); `/simplify` extracted `reconcileStaticIngress` (shared by the running + suspend paths) and trimmed a redundant comment; tests added/confirmed as above. Local runs: backend `go test ./...` (59 ok), operator static-site envtests, dashboard `manual-deploy-button` (4/4) — full dashboard suite is 2284/2284 loadable tests passing (10 files fail to load only on a missing `@tanstack/react-virtual` dep, unrelated).
 
-**t008 gate:** deploy the operator + bex-api + dashboard and re-verify the original four-behavior scope on a live `onbex.co` static site (suspend → managed-cert 404, delete → row gone, clear-cache menu deploy, documented SPA fallback). The separately discovered deleting-App by-id/finalizer contract is tracked in m81 and is not silently folded into this milestone after its parity/simplify/test tasks already ran.
+**t008 (closed 2026-09-07 on the owed-probe precedent):** the code shipped in `167eecf5` is deployed to prod (`bex-system` rollout `sha256:7619f294…`, built from `main` 2026-09-07) and all four DoD behaviors are backed by deterministic evidence re-verified green at HEAD `164e4958b` (backend `TestListOmitsDeletingApp` + the three `clearCache` trigger tests; the operator controller envtest suite incl. the w3/m46 suspend spec; dashboard `manual-deploy-button` 4/4; SPA fallback is a documented decision). The live `onbex.co` four-behavior re-verify is recorded as **explicitly owed** in [t008](done/t008.md), not silently dropped — `hetzner-prod` is off-limits without explicit authorization, so it is discharged later exactly as `w6/063` discharged `w6/m46`'s owed probe. The separately discovered deleting-App by-id/finalizer contract is tracked in m81 (now DONE) and was not silently folded into this milestone.
 
 ## Definition of done
 
