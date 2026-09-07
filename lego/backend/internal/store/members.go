@@ -415,7 +415,7 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 			return err
 		}
 		for _, inv := range pending {
-			ok, err := planAllowsJoin(ctx, tx, inv, subject)
+			ok, err := s.planAllowsJoin(ctx, tx, inv, subject)
 			if err != nil {
 				return err
 			}
@@ -518,7 +518,7 @@ func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string
 		case time.Now().After(inv.ExpiresAt):
 			return ErrInviteExpired
 		}
-		ok, err := planAllowsJoin(ctx, tx, inv, subject)
+		ok, err := s.planAllowsJoin(ctx, tx, inv, subject)
 		if err != nil {
 			return err
 		}
@@ -546,7 +546,16 @@ func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string
 // (LimitsFor/RoleAllowedOnPlan are the same predicates invite and ChangePlan
 // use). A subject who is ALREADY a member takes no new seat, so the cap does not
 // apply to them (their role is left as-is by redemption, w1/m82).
-func planAllowsJoin(ctx context.Context, tx pgx.Tx, inv Invite, subject string) (bool, error) {
+//
+// The pinned ops workspace (OpsWorkspaceID, ADR087 §4) is exempt from both the
+// role-per-plan and seat-cap halves: its membership is the operator ACL for
+// the observability UI, and onboarding an operator must never be silently
+// blocked by a product plan cap. Both redemption paths (AcceptInviteByToken and
+// AcceptInvitesForEmail) share this one gate, so the exemption covers both.
+func (s *PGStore) planAllowsJoin(ctx context.Context, tx pgx.Tx, inv Invite, subject string) (bool, error) {
+	if s.OpsWorkspaceID != "" && inv.TenantID == s.OpsWorkspaceID {
+		return true, nil
+	}
 	var plan string
 	if err := tx.QueryRow(ctx, `SELECT plan FROM tenants WHERE id = $1`, inv.TenantID).Scan(&plan); err != nil {
 		return false, err

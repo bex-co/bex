@@ -15,6 +15,8 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m86** — Platform observability UI: Grafana at obs.bex.co (10 tasks) ← from [docs/ADR087-platform-observability-ui.md](../../docs/ADR087-platform-observability-ui.md) (accepted 2026-09-07, platform-monitoring discussion: GitOps Grafana in `monitoring`, `obs.bex.co`, Hydra OIDC client, ops-workspace consent gate)
+
 - [x] **m85** — Crash-safe agent-session dispatch (6 tasks) — **DONE 2026-09-06**, moved to `done/m85/`; durable acceptance, turn guards, restart/rolling-upgrade recovery and retryable orphan cleanup verified with real-Postgres and sandbox race tests.
 
 - [x] **m84** — Agent-context continuity across sandbox generations (resume / steer / redispatch) (7 tasks) — **DONE: native restoration, missing-state fallback, original-task retry, and replay after a historical failure verified live.** ← from user report 2026-08-30: post-fix resume of `ags-da9mh5vj596c73en5eq0` answered "I need more context. What should I try again?" beneath a fully replayed history — ADR047 D3's continuity promise (`session/load` + transcript fallback) was never implemented agent-side, ADR059's snapshot scope omitted agent session-state dirs, and the setup-failed resume was unspecified. ADR047/051/059 amendments (2026-08-30) define the three-rung continuity ladder this implements: `session/load` → bounded transcript re-priming → `agent_config.task` re-delivery, with an honest restored/fresh-context hint in the dashboard

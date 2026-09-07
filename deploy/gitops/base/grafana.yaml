@@ -1,0 +1,50 @@
+# Grafana — the platform observability UI (docs/ADR087-platform-observability-ui.md).
+# The human front end for the monitoring backends that already run headless in
+# this namespace: Prometheus (prometheus.yaml — metrics history + the alerting
+# brain) and Loki (loki.yaml — durable log history). Before this, an operator
+# read both through kubectl port-forwards and raw PromQL/LogQL; ADR010's logs
+# and metrics remain the CUSTOMER surface served by bex-api — this is the
+# platform-operations audience, deliberately not folded into the product
+# dashboard and deliberately not hosted as a bex App (our operations tooling
+# must not depend on the product it observes).
+#
+# Everything Grafana serves is provisioned as code from the values file —
+# datasources (Prometheus + Loki by in-cluster DNS) and dashboards (committed
+# JSON) — so there is zero click-ops state to lose (ADR087 §1) and the
+# Deployment stays stateless (see the persistence note in the values file).
+#
+# Same multi-source shape as hydra.yaml: the reviewed, mirrored OCI artifact
+# provides the Helm package, the git source (ref: values) provides
+# base/values/grafana.values.yaml. The base values are the LOCAL admin-only
+# shape (ADR087 §5); the prod overlay layers the public obs.bex.co ingress and
+# Hydra generic-OAuth SSO on top (later valueFiles win). Runtime secrets are
+# NOT in git: the break-glass admin login reads Secret `grafana-admin` and the
+# prod OIDC client secret reads Secret `grafana-oauth`, both out-of-band in
+# `monitoring` (SealedSecret custody per docs/ADR016-sealed-secrets.md).
+# sync-wave 2: after the backends it reads (prometheus/loki, wave 1).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: bex-platform
+  sources:
+    - repoURL: oci://ghcr.io/bex-co/bex-charts/grafana
+      path: .
+      targetRevision: "sha256:b929cb66ba5601e57ad7306ff9da6b6454a40fd9b4af81dfe173dca428cf3a98"
+      helm:
+        releaseName: grafana
+        valueFiles:
+          - $values/deploy/gitops/base/values/grafana.values.yaml
+    - repoURL: git@github.com:bex-co/bex.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

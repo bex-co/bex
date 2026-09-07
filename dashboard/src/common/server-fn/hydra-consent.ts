@@ -39,8 +39,10 @@ import { safeHttpHref } from "@/common/lib/external-url";
 // inside the server block), so none of this — or the env it reads — reaches
 // the client bundle; only `ConsentView` (below) crosses the wire. Env is
 // deliberately NOT VITE_-prefixed: `HYDRA_ADMIN_URL` (e.g. in-cluster
-// http://hydra-admin.auth.svc:4445), `OAUTH_TRUSTED_CLIENTS`, and
-// `OAUTH_PLATFORM_CLIENTS` (comma-separated client_ids).
+// http://hydra-admin.auth.svc:4445), `OAUTH_TRUSTED_CLIENTS`,
+// `OAUTH_PLATFORM_CLIENTS` (comma-separated client_ids), and the ops-gate
+// trio `OAUTH_OPS_CLIENTS` / `BEX_OPS_ROLE_URL` / `BEX_OPS_ROLE_TOKEN`
+// (docs/ADR087-platform-observability-ui.md §4).
 
 /** How long Hydra remembers an accepted consent, so a returning user's client
  * isn't re-challenged within the window. */
@@ -121,24 +123,32 @@ function redirectToConsentError(
   return Response.redirect(target.toString(), 303);
 }
 
-function trustedClients(): Set<string> {
+/** One comma-separated client-id env registry, parsed per call (the env is
+ * test-mutable). All three registries below are operator-owned, server-only
+ * deployment configuration — a public DCR registrant cannot write any of them. */
+function clientIdSet(env: string | undefined): Set<string> {
   return new Set(
-    (process.env.OAUTH_TRUSTED_CLIENTS ?? "")
+    (env ?? "")
       .split(",")
       .map((c) => c.trim())
       .filter(Boolean),
   );
 }
 
-/** Operator-owned platform registry. Public DCR clients cannot write this
- * server-only deployment configuration. */
+function trustedClients(): Set<string> {
+  return clientIdSet(process.env.OAUTH_TRUSTED_CLIENTS);
+}
+
+/** Operator-owned platform registry (the bex.api compatibility alias). */
 function platformClients(): Set<string> {
-  return new Set(
-    (process.env.OAUTH_PLATFORM_CLIENTS ?? "")
-      .split(",")
-      .map((c) => c.trim())
-      .filter(Boolean),
-  );
+  return clientIdSet(process.env.OAUTH_PLATFORM_CLIENTS);
+}
+
+/** Ops-gated client registry (docs/ADR087-platform-observability-ui.md §4):
+ * client_ids (today Grafana's) whose consent additionally requires membership
+ * in the pinned ops workspace. */
+function opsClients(): Set<string> {
+  return clientIdSet(process.env.OAUTH_OPS_CLIENTS);
 }
 
 function consentRedirectOrigin(
@@ -271,6 +281,105 @@ function isTrusted(consent: OAuth2ConsentRequest): boolean {
   );
 }
 
+/** Grafana role values the ops-workspace roles map onto (docs/ADR087 §4).
+ * Only these three product roles confer observability access; `contributor`
+ * and `billing` exist in the members model (docs/ADR024-members.md) but are
+ * deliberately absent — absence IS the deny. */
+const OPS_ROLE_CLAIM: Record<string, string> = {
+  admin: "GrafanaAdmin",
+  developer: "Editor",
+  viewer: "Viewer",
+};
+
+/** Bound the server-to-server role lookup: a hung bex-api must fail the flow
+ * (closed, below) rather than hold Hydra's consent redirect open forever. */
+const OPS_ROLE_TIMEOUT_MS = 5_000;
+
+/** id_token claims stamped onto an ops-gated accept. Grafana maps `ops_role`
+ * via role_attribute_path + role_attribute_strict — defense in depth behind
+ * this server-side gate, not the gate itself (docs/ADR087 §4). */
+type OpsIdTokenClaims = {
+  email: string;
+  name: string;
+  ops_role: string;
+};
+
+type OpsGateResult =
+  /** Not an ops-gated client: its accept body must stay byte-identical to the
+   * pre-ADR087 shape — no claims, not even an empty `session` key. */
+  | { verdict: "ungated" }
+  | { verdict: "allow"; idToken: OpsIdTokenClaims }
+  | { verdict: "deny" };
+
+/**
+ * The ops-workspace gate (docs/ADR087-platform-observability-ui.md §4). Kratos
+ * is the CUSTOMER identity pool, so for an ops-gated client (OAUTH_OPS_CLIENTS
+ * — today Grafana at obs.bex.co) authentication alone must never become
+ * access: membership in the pinned ops workspace is resolved through bex-api's
+ * server-only role verb before ANY accept.
+ *
+ * One shared function for both consent entry points — the pkceSatisfied
+ * precedent — because the ops client is registered skip_consent and therefore
+ * normally takes handleConsent's trusted headless path; a gate that lived only
+ * on the human-decision path would never run for it, and one that lived only
+ * on the headless path would drift the moment the registration changed.
+ *
+ * The subject is `consent.subject` — the Kratos identity id Hydra bound at
+ * login — NEVER the request's cookie session: the headless path has no
+ * dashboard cookie at all (Grafana's redirect carries only the challenge).
+ *
+ * Fail closed, always: a listed client with incomplete wiring (missing verb
+ * URL/token), a challenge with no bound subject, a non-200, a network
+ * failure/timeout, or a malformed body all yield `deny` — an ungated accept
+ * would hand every authenticated bex customer the operations portal.
+ */
+async function resolveOpsGate(
+  consent: OAuth2ConsentRequest,
+): Promise<OpsGateResult> {
+  if (!opsClients().has(consent.client?.client_id ?? "")) {
+    return { verdict: "ungated" };
+  }
+
+  const verbUrl = process.env.BEX_OPS_ROLE_URL ?? "";
+  const bearer = process.env.BEX_OPS_ROLE_TOKEN ?? "";
+  const subject = consent.subject ?? "";
+  if (!verbUrl || !bearer || !subject) return { verdict: "deny" };
+
+  let payload: unknown;
+  try {
+    const target = new URL(verbUrl);
+    target.searchParams.set("subject", subject);
+    const res = await fetch(target.toString(), {
+      headers: { Authorization: `Bearer ${bearer}` },
+      signal: AbortSignal.timeout(OPS_ROLE_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      // Release the connection: an unread undici body pins the socket until GC.
+      await res.body?.cancel();
+      return { verdict: "deny" };
+    }
+    payload = await res.json();
+  } catch {
+    // Unparseable BEX_OPS_ROLE_URL, network failure, timeout, non-JSON body —
+    // all the same verdict: never accept on a guess.
+    return { verdict: "deny" };
+  }
+
+  if (typeof payload !== "object" || payload === null) {
+    return { verdict: "deny" };
+  }
+  const { member, role, email, name } = payload as Record<string, unknown>;
+  if (member !== true) return { verdict: "deny" };
+  const opsRole = typeof role === "string" ? OPS_ROLE_CLAIM[role] : undefined;
+  // email/name ride the same response into the id_token (one round trip); a
+  // member body missing them is malformed under the verb's contract, and a
+  // malformed body is a failure, not a partial grant.
+  if (!opsRole || typeof email !== "string" || typeof name !== "string") {
+    return { verdict: "deny" };
+  }
+  return { verdict: "allow", idToken: { email, name, ops_role: opsRole } };
+}
+
 /** Grant the recognized vocabulary (dropping unknown strings and, for a
  *  third-party client, the bex.api umbrella alias), remembered for the window.
  *  The one accept call in the codebase — the headless (trusted) and
@@ -280,6 +389,7 @@ async function acceptConsent(
   hydra: OAuth2Api,
   consentChallenge: string,
   consent: OAuth2ConsentRequest,
+  opsIdToken?: OpsIdTokenClaims,
 ): Promise<string> {
   const { redirect_to } = await hydra.acceptOAuth2ConsentRequest({
     consentChallenge,
@@ -292,6 +402,11 @@ async function acceptConsent(
         consent.requested_access_token_audience ?? [],
       remember: true,
       remember_for: REMEMBER_FOR_SECONDS,
+      // Only an ops-gated accept carries id_token claims (docs/ADR087 §4) —
+      // spread conditionally, never an always-present key, so every non-ops
+      // client's accept body stays byte-identical to the pre-ADR087 wire shape
+      // (no empty `session` field for Hydra to interpret).
+      ...(opsIdToken ? { session: { id_token: opsIdToken } } : {}),
     },
   });
   return redirect_to;
@@ -388,10 +503,36 @@ export async function handleConsent(
     };
   }
 
+  // docs/ADR087 §4: the ops-workspace gate runs after the request-shape gates
+  // (PKCE, audience⇒scope) but BEFORE the trusted accept below — which is
+  // exactly the path the skip_consent Grafana client takes, so a gate placed
+  // any later would never fire for it. A deny is a real Hydra reject
+  // (access_denied back to the client), not a rendered error page: Grafana
+  // sent this browser here and must get an answer to finish its flow. For
+  // every non-ops client resolveOpsGate is an env-lookup no-op ("ungated").
+  const opsGate = await resolveOpsGate(consent);
+  if (opsGate.verdict === "deny") {
+    try {
+      return Response.redirect(
+        await rejectConsent(hydra, consentChallenge),
+        302,
+      );
+    } catch {
+      // The reject itself failed upstream — the same recoverable headless
+      // failure shape as a failed accept; the challenge is still live.
+      return { errorCode: "headless_accept_failed" };
+    }
+  }
+
   if (isTrusted(consent)) {
     try {
       return Response.redirect(
-        await acceptConsent(hydra, consentChallenge, consent),
+        await acceptConsent(
+          hydra,
+          consentChallenge,
+          consent,
+          opsGate.verdict === "allow" ? opsGate.idToken : undefined,
+        ),
         302,
       );
     } catch {
@@ -528,11 +669,29 @@ export async function handleConsentDecision(
     return Response.redirect(back.toString(), 303);
   };
 
+  // docs/ADR087 §4: the ops-workspace gate guards the human path too — the
+  // SAME resolveOpsGate the headless path runs (the pkceSatisfied precedent),
+  // so the "headless and human paths grant identically" invariant survives. An
+  // approve click for an ops-gated client only becomes an accept when the
+  // challenge's subject holds a qualifying ops-workspace role; otherwise the
+  // approval is converted into the same access_denied reject a deny click
+  // produces. Note the subject here is still consent.subject, already proven
+  // above to match the session's identity.
+  const opsGate: OpsGateResult =
+    decision === "approve"
+      ? await resolveOpsGate(consent)
+      : { verdict: "ungated" };
+
   try {
     const redirectTo =
-      decision === "deny"
+      decision === "deny" || opsGate.verdict === "deny"
         ? await rejectConsent(hydra, consentChallenge)
-        : await acceptConsent(hydra, consentChallenge, consent);
+        : await acceptConsent(
+            hydra,
+            consentChallenge,
+            consent,
+            opsGate.verdict === "allow" ? opsGate.idToken : undefined,
+          );
     return Response.redirect(redirectTo, 303);
   } catch {
     return retry();

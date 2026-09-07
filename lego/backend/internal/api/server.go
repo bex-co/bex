@@ -397,7 +397,12 @@ type Deps struct {
 	// EnterpriseEntitlement is the operator-approved allow-list for the custom
 	// Enterprise workspace tier. Nil keeps that tier unavailable by default.
 	EnterpriseEntitlement workspaces.EnterpriseEntitlement
-	WorkspaceKick         func()
+	// OpsWorkspaceID pins the platform ops workspace (BEX_OPS_WORKSPACE,
+	// docs/ADR087-platform-observability-ui.md §4): the workspaces service
+	// refuses to delete it (its membership is the observability-UI operator
+	// ACL). Empty (unset) => no pin, byte-identical behavior.
+	OpsWorkspaceID string
+	WorkspaceKick  func()
 	// WorkspacePreCascadePurgers run in workspaces.Service.Delete BEFORE the
 	// tenant row is dropped (retry-safe teardown of secrets, env groups,
 	// Databases/KeyValues, sandboxes, Stripe); WorkspacePostCascadePurgers run
@@ -574,6 +579,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Granter:               d.WorkspaceGranter,
 		Revoker:               d.WorkspaceRevoker,
 		EnterpriseEntitlement: d.EnterpriseEntitlement,
+		OpsWorkspaceID:        d.OpsWorkspaceID,
 		Kick:                  d.WorkspaceKick,
 		PreCascadePurgers:     d.WorkspacePreCascadePurgers,
 		PostCascadePurgers:    d.WorkspacePostCascadePurgers,

@@ -77,6 +77,18 @@ patches:
       - op: add
         path: /spec/sources/0/helm/valueFiles/-
         value: $values/deploy/gitops/overlays/prod/values/openbao.values.yaml
+  # Grafana: layer the prod values file — public obs.bex.co ingress
+  # (letsencrypt-prod) + Hydra generic-OAuth SSO with strict ops_role mapping
+  # (docs/ADR087-platform-observability-ui.md). Same shape as hydra above.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: grafana
+    patch: |-
+      - op: add
+        path: /spec/sources/0/helm/valueFiles/-
+        value: $values/deploy/gitops/overlays/prod/values/grafana.values.yaml
   # Traefik: layer the prod values file — fixed source-preserving NodePorts sit
   # behind the wholly Terraform-owned, delete-protected bex-traefik LB.
   - target:

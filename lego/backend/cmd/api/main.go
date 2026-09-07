@@ -68,6 +68,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
+	"github.com/bex-co/bex/lego/backend/internal/opsrole"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
@@ -237,6 +238,13 @@ func main() {
 	deps.AccountOAuth = oryAccountCleaner
 	deps.AccountKratos = oryAccountCleaner
 	authzChecker := wireAuthz(base, cfg)
+	// Ops-workspace pin (docs/ADR087-platform-observability-ui.md §4): the id
+	// arms the delete guard (workspaces service, via Deps) and the store-level
+	// guards (invite seat-cap exemption + account-deletion disposition, set on
+	// st below); the internal ops-role verb needs the bearer too and is nil —
+	// never mounted — until both are configured.
+	deps.OpsWorkspaceID = cfg.OpsWorkspace
+	opsRole := opsRoleHandler(cfg, authzChecker, deps.Identities)
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
 	// bex-api owns bex-db — run migrations, the projector (apps rows -> App CRs),
@@ -263,6 +271,10 @@ func main() {
 		defer pool.Close()
 
 		st = store.NewPGStore(pool)
+		// ADR087 §4 store-level guards: invite redemption into the pinned ops
+		// workspace skips seat/plan gating, and account-deletion disposition
+		// classifies a sole-member ops workspace blocked instead of delete.
+		st.OpsWorkspaceID = cfg.OpsWorkspace
 		rec = store.NewReconciler(cl, st)
 		rec.Metrics = store.NewReconcilerMetrics(metricRegistry)
 		if cfg.CPResyncSet {
@@ -302,7 +314,13 @@ func main() {
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
 
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, ghClient, deps.Secrets, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, ghClient, deps.Secrets, opsRole, ready)
+	} else if opsRole != nil && !cfg.MCPStdio {
+		// ADR087 §4: without the control plane there is no :8091 mux to share,
+		// so a configured ops-role verb gets its own minimal cluster-internal
+		// listener (local dev / e2e without BEX_CP_DB_URI). Production always
+		// runs the control plane and takes the branch above.
+		startOpsRoleServer(ctx, cfg, opsRole, ready)
 	}
 
 	// Invite delivery (w4/m12): the members feature emails invites over the same
@@ -811,7 +829,8 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			grace := cfg.StripeGracePeriod
 			reconcileEvery := cfg.StripeReconcileInterval
 			lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: stripeClient.ExpectedLivemode()}
-			enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS}
+			// ADR087 §4: dunning must never suspend the pinned ops workspace.
+			enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS, OpsWorkspaceID: cfg.OpsWorkspace}
 			stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
 			stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			log.Printf("bex-api Stripe dunning enabled (livemode %t, grace %s, reconcile %s)", stripeClient.ExpectedLivemode(), grace, reconcileEvery)
@@ -834,7 +853,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, ghClient *github.Client, modelKeys core.SecretKV, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, ghClient *github.Client, modelKeys core.SecretKV, opsRole *opsrole.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -873,6 +892,12 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			})
 		}
 	}
+	// ADR087 §4: the ops-role verb mounts ONLY here, on the cluster-internal
+	// listener — never the public :8090 mux (api.bex.co routes the whole `/`
+	// prefix straight to :8090, which would leave the static bearer as the
+	// route's only protection). Register is a no-op unless BEX_OPS_WORKSPACE
+	// and BEX_OPS_ROLE_TOKEN are both set (opsRole is then nil).
+	opsrole.Register(internalRoot, opsRole)
 	internalRoot.Handle("/", internal.Handler())
 	cpAddr := cfg.CPAddr
 	cpSrv := newHTTPServer(cpAddr, internalRoot)
@@ -888,6 +913,50 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 		// process exit; acceptable for an internal-only API.
 		if err := serve.UntilShutdown(ctx, cpSrv, serve.Options{Readiness: ready, DrainWindow: drainWindow}); err != nil {
 			log.Fatalf("bex-api control plane: %v", err)
+		}
+	}()
+}
+
+// opsRoleHandler builds the ADR087 §4 ops-role verb when BOTH
+// BEX_OPS_WORKSPACE and BEX_OPS_ROLE_TOKEN are configured; nil otherwise, so
+// the route is never mounted and answers the internal mux's normal 404. The
+// verb reads roles from OpenFGA and identity traits from the same Kratos admin
+// reader the owners/members surface uses; the handler fails closed (503) when
+// either backend is unwired or unreachable.
+func opsRoleHandler(cfg *Config, authzChecker core.Checker, identities workspaces.IdentityReader) *opsrole.Handler {
+	if cfg.OpsWorkspace == "" || cfg.OpsRoleToken == "" {
+		return nil
+	}
+	h := &opsrole.Handler{Workspace: cfg.OpsWorkspace, Token: cfg.OpsRoleToken, Authz: authzChecker}
+	if identities != nil {
+		h.Identity = func(ctx context.Context, subject string) (string, string, bool) {
+			attrs, ok := identities.Lookup(ctx, subject)
+			return attrs.Email, attrs.Name, ok
+		}
+	}
+	return h
+}
+
+// startOpsRoleServer starts the cluster-internal listener with ONLY the ADR087
+// ops-role verb mounted — the control-plane-less shape (local dev / e2e
+// without BEX_CP_DB_URI). With the control plane on, the verb instead shares
+// the :8091 mux (startControlPlaneServer); either way it never touches the
+// public :8090 surface.
+func startOpsRoleServer(ctx context.Context, cfg *Config, h *opsrole.Handler, ready *serve.Readiness) {
+	// loadConfig parses BEX_CP_ADDR under its own copy of the "internal
+	// listener will run" predicate; if the two ever drift, an empty addr here
+	// would make net/http bind ":http" (port 80) — a silent misbind on a
+	// privileged port. Refuse loudly instead.
+	if cfg.CPAddr == "" {
+		log.Fatalf("bex-api ops-role listener: BEX_CP_ADDR empty (loadConfig's listener predicate drifted from startup's)")
+	}
+	internalRoot := http.NewServeMux()
+	opsrole.Register(internalRoot, h)
+	srv := newHTTPServer(cfg.CPAddr, internalRoot)
+	log.Printf("bex-api internal ops-role verb on %s (control plane off)", cfg.CPAddr)
+	go func() {
+		if err := serve.UntilShutdown(ctx, srv, serve.Options{Readiness: ready, DrainWindow: drainWindow}); err != nil {
+			log.Fatalf("bex-api ops-role listener: %v", err)
 		}
 	}()
 }

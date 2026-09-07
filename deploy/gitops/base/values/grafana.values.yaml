@@ -1,0 +1,199 @@
+# Grafana values — the platform observability UI (docs/ADR087-platform-observability-ui.md).
+# This file is the LOCAL/base shape (ADR087 §5): break-glass admin login only,
+# no OIDC, no public host. The prod overlay
+# (overlays/prod/values/grafana.values.yaml) layers the obs.bex.co ingress and
+# Hydra generic-OAuth on top — Argo merges valueFiles in order, later wins.
+#
+# Zero click-ops state (ADR087 §1): datasources and dashboards are provisioned
+# from this file, so a rebuilt pod converges to git with nothing to restore.
+
+fullnameOverride: grafana # => Service `grafana` on :80 (pod :3000)
+
+# STATELESS by choice — contrast loki.yaml/prometheus.yaml, whose PVCs hold
+# telemetry history that exists nowhere else. Everything Grafana needs to serve
+# is file-provisioned above/below, and the telemetry it renders lives in
+# Prometheus/Loki; its embedded sqlite would accumulate only click-ops residue
+# (hand-edited dashboards, annotations, preferences) that ADR087 §1 rules out
+# as state we refuse to depend on. Losing that on a reschedule is the point,
+# not a defect: OIDC org users are simply re-created at next login, and every
+# dashboard change must land here in git to survive — exactly the pressure we
+# want.
+persistence:
+  enabled: false
+
+# Break-glass local admin (ADR087 §3): credentials come from the out-of-band
+# Secret `grafana-admin` in `monitoring` (keys `admin-user`/`admin-password`) —
+# SealedSecret custody in prod (docs/ADR016-sealed-secrets.md), a plain
+# `kubectl -n monitoring create secret generic grafana-admin ...` on the
+# disposable local mock. Never a value in git — the same custody rule as
+# prometheus.yaml's `alertmanager-smtp`. Until the Secret exists the pod waits
+# in CreateContainerConfigError: a deliberate one-time bootstrap step (and,
+# unlike the SMTP key, one local can mint without any external credential).
+admin:
+  existingSecret: grafana-admin
+
+grafana.ini:
+  analytics:
+    check_for_updates: false
+    reporting_enabled: false
+  news:
+    news_feed_enabled: false
+  users:
+    # No self-serve accounts: admission is the ops-workspace consent gate in
+    # prod (ADR087 §4) or the break-glass admin above — never a signup form.
+    allow_sign_up: false
+
+# Datasources as code — the two backends this UI exists to read (ADR087 §1),
+# addressed by stable in-cluster DNS:
+#   Prometheus — Service `prometheus-server` on :80 (prometheus.yaml
+#     fullnameOverride; the same address bex-api uses as BEX_PROM_URL).
+#   Loki — Service `loki` on :3100 (loki.yaml fullnameOverride; the same
+#     address bex-api uses as BEX_LOKI_URL).
+# Fixed uids so the committed dashboard JSON below can reference them
+# deterministically; editable:false keeps the UI from minting runtime state the
+# next sync would silently diverge from.
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-server.monitoring.svc:80
+        isDefault: true
+        editable: false
+        jsonData:
+          timeInterval: 15s # the edge/platform scrape cadence in prometheus.yaml
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki.monitoring.svc:3100
+        editable: false
+
+# Dashboards as code: a file provider reading the ConfigMap the `dashboards:`
+# block renders. The starter set is deliberately small (ADR087 §1 lets it grow
+# — bex-api errors/latency, operator reconciliation, builds, CNPG, capacity)
+# but real: the availability view every incident starts from, built on the
+# exact series the TraefikHigh5xxRatio alert (prometheus.yaml) evaluates plus
+# the log-shipper's type=request stream in Loki, so the dashboard and the
+# pager can never disagree about what "edge errors" means.
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: platform
+        folder: Platform
+        type: file
+        disableDeletion: true
+        editable: false
+        options:
+          path: /var/lib/grafana/dashboards/platform
+
+dashboards:
+  platform:
+    platform-availability:
+      json: |
+        {
+          "uid": "bex-platform-availability",
+          "title": "Platform availability",
+          "tags": ["bex", "platform"],
+          "editable": false,
+          "graphTooltip": 1,
+          "schemaVersion": 39,
+          "refresh": "30s",
+          "time": { "from": "now-6h", "to": "now" },
+          "panels": [
+            {
+              "id": 1,
+              "type": "timeseries",
+              "title": "Edge request rate",
+              "description": "All requests through the Traefik edge (traefik_service_requests_total — the same series behind bex-api's request metrics).",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "reqps", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(rate(traefik_service_requests_total[5m]))",
+                  "legendFormat": "all"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum(rate(traefik_service_requests_total{code=~\"5..\"}[5m]))",
+                  "legendFormat": "5xx"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "type": "timeseries",
+              "title": "Edge 5xx ratio",
+              "description": "Share of edge responses that are 5xx. The TraefikHigh5xxRatio alert (prometheus.yaml) pages at >5% for 10m — the red line.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.05 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(rate(traefik_service_requests_total{code=~\"5..\"}[5m])) / sum(rate(traefik_service_requests_total[5m]))",
+                  "legendFormat": "5xx ratio"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "type": "logs",
+              "title": "Edge 5xx request log",
+              "description": "Traefik access lines for 5xx responses (log-shipper type=request stream). host/path are line-only fields by cardinality design — filter with LogQL | json, never a label.",
+              "gridPos": { "h": 10, "w": 24, "x": 0, "y": 9 },
+              "datasource": { "type": "loki", "uid": "loki" },
+              "options": {
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": false,
+                "enableLogDetails": true,
+                "dedupStrategy": "none"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "{type=\"request\", status=~\"5..\"}"
+                }
+              ]
+            }
+          ]
+        }
+
+# No bats test pod — the same minimal posture as loki.yaml (no canary, no
+# self-monitoring): this exists solely to render the two backends above.
+testFramework:
+  enabled: false
+
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { cpu: 500m, memory: 512Mi }
+
+# w1/m19 t003: platform pool, like every monitoring sibling.
+nodeSelector:
+  bex.co/pool: platform
+tolerations:
+  - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }

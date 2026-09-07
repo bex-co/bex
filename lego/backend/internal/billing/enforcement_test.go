@@ -18,6 +18,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -148,5 +149,63 @@ func TestKubernetesEnforcerPreservesDataAndOnlyRecoversOwnedIntent(t *testing.T)
 	}
 	if len(capture.rowWrites) != 1 || !capture.rowWrites[0] {
 		t.Fatalf("managed App row writes = %v; replaced marker must not resume row", capture.rowWrites)
+	}
+}
+
+// TestEnforceRefusesOpsWorkspace is the ADR087 §4 suspension guard: dunning
+// enforcement against the pinned ops workspace fails with the stable
+// OPS_WORKSPACE_PROTECTED code (409-class conflict) BEFORE touching any CR,
+// while an ordinary workspace — and an unset pin — enforce exactly as before.
+// Recover stays allowed for the ops workspace (un-suspending is always safe).
+func TestEnforceRefusesOpsWorkspace(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	build := func(opsID string) (*KubernetesEnforcer, client.Client, *enforcementCapture) {
+		labels := map[string]string{core.LabelTenant: "tea-ops"}
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+			&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "grafana-adjacent", Namespace: "tea-ops", Labels: labels}},
+		).Build()
+		capture := &enforcementCapture{entries: map[string]store.BillingEnforcement{}}
+		return &KubernetesEnforcer{Client: cl, Store: capture, Namespace: "apps", OpsWorkspaceID: opsID}, cl, capture
+	}
+	state := store.BillingLifecycle{WorkspaceID: "tea-ops", TransitionVersion: 1}
+
+	// Pinned: refused with the coded error, no CR mutated, no marker written.
+	enforcer, cl, capture := build("tea-ops")
+	err := enforcer.Enforce(ctx, state)
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("want ErrConflict, got %v", err)
+	}
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != core.CodeOpsWorkspaceProtected {
+		t.Fatalf("want code %s, got %v", core.CodeOpsWorkspaceProtected, err)
+	}
+	var app appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "tea-ops", Name: "grafana-adjacent"}, &app); err != nil {
+		t.Fatal(err)
+	}
+	if app.Spec.Suspended || len(capture.entries) != 0 {
+		t.Fatalf("refused enforcement still acted: suspended=%v markers=%d", app.Spec.Suspended, len(capture.entries))
+	}
+	// Recovery of the pinned workspace stays allowed.
+	if err := enforcer.Recover(ctx, state); err != nil {
+		t.Fatalf("recover of the ops workspace must stay allowed: %v", err)
+	}
+
+	// Pin naming another workspace, and unset pin: enforcement proceeds.
+	for _, opsID := range []string{"tea-other", ""} {
+		enforcer, cl, _ := build(opsID)
+		if err := enforcer.Enforce(ctx, state); err != nil {
+			t.Fatalf("pin %q must not block enforcement of tea-ops: %v", opsID, err)
+		}
+		var got appv1alpha1.App
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "tea-ops", Name: "grafana-adjacent"}, &got); err != nil {
+			t.Fatal(err)
+		}
+		if !got.Spec.Suspended {
+			t.Fatalf("pin %q: enforcement did not suspend", opsID)
+		}
 	}
 }

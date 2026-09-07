@@ -568,6 +568,14 @@ type Store interface {
 // errors happens here.
 type PGStore struct {
 	Pool *pgxpool.Pool
+	// OpsWorkspaceID pins the platform ops workspace (BEX_OPS_WORKSPACE,
+	// docs/ADR087-platform-observability-ui.md §4). Two store-level guards key
+	// on it: invite redemption exempts it from seat/plan gating
+	// (planAllowsJoin — a cap must never silently block onboarding an
+	// operator), and account-deletion disposition classifies a sole-member ops
+	// workspace as blocked rather than delete (its teardown would lock every
+	// operator out of the observability UI). Empty (unset) => both guards inert.
+	OpsWorkspaceID string
 	// gitWebhookReplayInstance identifies this API process's signing-epoch
 	// leases. It is process-local and never exposed as a public resource id.
 	gitWebhookReplayInstance string

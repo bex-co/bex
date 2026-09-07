@@ -82,6 +82,25 @@ spec:
             # BEX_OAUTH_API_SCOPE (both default to bex.api).
             - name: OAUTH_API_SCOPE
               value: bex.api
+            # Ops-workspace gate for ops-gated OIDC clients (w5/m86,
+            # docs/ADR087-platform-observability-ui.md §4): before ANY accept
+            # for a client listed here, consent resolves the subject's role in
+            # the pinned ops workspace via bex-api's cluster-internal verb and
+            # stamps ops_role/email/name id_token claims; non-members reject
+            # access_denied. Fail closed: a listed client with the URL or token
+            # missing is rejected at consent; unlisted clients are untouched.
+            # The token rides the out-of-band dashboard/bex-ops Secret and must
+            # equal bex-system/bex-ops BEX_OPS_ROLE_TOKEN.
+            - name: OAUTH_OPS_CLIENTS
+              value: bex-obs
+            - name: BEX_OPS_ROLE_URL
+              value: http://bex-api.bex-system.svc:8091/internal/ops-role
+            - name: BEX_OPS_ROLE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bex-ops
+                  key: BEX_OPS_ROLE_TOKEN
+                  optional: true
           ports:
             - name: http
               containerPort: 3000
