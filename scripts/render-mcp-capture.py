@@ -46,7 +46,13 @@ HANDSHAKE = [
 
 
 def run(cmd, **kw):
-    return subprocess.run(cmd, check=True, capture_output=True, text=True, **kw)
+    try:
+        return subprocess.run(cmd, check=True, capture_output=True, text=True, **kw)
+    except subprocess.CalledProcessError as exc:
+        # Preserve compiler diagnostics that capture_output otherwise hides.
+        if exc.stderr:
+            sys.stderr.write(exc.stderr)
+        raise
 
 
 def capture(ref):

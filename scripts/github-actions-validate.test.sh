@@ -77,11 +77,10 @@ assert "shared self-hosted pool fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [s
 # RED: an arbitrary fourth label cannot silently create a third trust class.
 assert "unknown pool label fails" 1 "$(job_body "default" "      - uses: $PINNED")" \
   "unapproved pool label"
-# RED: the runner-group mapping form is the syntax that killed all CI on
-# 2026-09-02 (groups are a paid-plan feature; group jobs fail instantly instead
-# of queuing) -- it must never come back.
+# RED: group-only routing does not satisfy the repository pool-label contract.
+# Org groups exist, but their names do not automatically become runner labels.
 assert "runner-group mapping syntax fails" 1 "$(printf 'jobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$PINNED")" \
-  "runner-group syntax cannot schedule on this org"
+  "runner-group syntax is outside the workflow contract"
 # GREEN: both canonical pool labels pass the structural contract.
 assert "CI pool label passes" 0 "$(job_body "bex-ci" "      - uses: $PINNED")"
 assert "production pool label passes" 0 "$(job_body "bex-production" "      - uses: $PINNED")"

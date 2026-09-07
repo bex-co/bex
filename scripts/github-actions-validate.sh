@@ -16,9 +16,8 @@
 #  5. Self-hosted runner custody (ADR083, `.pm/DO_NOT_DO.md` #CI-RUNNERS): every
 #     job `runs-on` must be the scalar [self-hosted, Linux, ARM64, <pool>] form
 #     carrying exactly one of the non-overlapping `bex-ci` / `bex-production`
-#     pool labels (GitHub runner *groups* are a paid-plan feature; naming one on
-#     this free-plan org fails every job in seconds, while an unmatched label
-#     queues, which is the intended fail-safe) and install tools without sudo,
+#     pool labels (an unmatched label queues; org group membership is managed
+#     independently at runner registration) and install tools without sudo,
 #     which the deliberately unprivileged runner account does not have.
 #  6. Trust separation: credential-bearing jobs must use `bex-production`, and
 #     production-pool jobs in a `pull_request` workflow must reject PR events.
@@ -179,10 +178,9 @@ fi
 # self-hosted runners. Each runner host carries exactly one of the `bex-ci` /
 # `bex-production` labels, so requiring the label here schedules a job only
 # onto its trust class -- and a not-yet-labeled fleet queues jobs (fail-safe)
-# instead of running them on the wrong host. Runner *groups* are NOT the
-# mechanism: they are a GitHub paid-plan feature, and naming one on this
-# free-plan org failed every job at scheduling (observed 2026-09-02, runs
-# 33602459228..33662397423).
+# instead of running them on the wrong host. Existing org runner groups are
+# separate registration metadata; this repository standardizes on labels.
+# Host separation must be verified operationally, not inferred from labels.
 hosted_runners=""
 invalid_runner_contract=""
 for wf in $(collect_workflow_files); do
@@ -203,7 +201,7 @@ for wf in $(collect_workflow_files); do
       print file ":" NR ": runs-on must be the scalar [self-hosted, Linux, ARM64, <pool>] label form"
     }
     /^[[:space:]]+group: bex-(ci|production)[[:space:]]*$/ {
-      print file ":" NR ": runner-group syntax cannot schedule on this org; use the pool label form"
+      print file ":" NR ": runner-group syntax is outside the workflow contract; use the pool label form"
     }
   ' "$wf")"
   [ -z "$violations" ] || invalid_runner_contract="${invalid_runner_contract}${invalid_runner_contract:+

@@ -54,7 +54,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/backend/go.mod
-          cache-dependency-path: lego/backend/go.sum
+          # Multi-GB remote caches stall transfers on this fleet.
+          cache: false
       # The bex-production pool is not homogeneous: one host lacks the gh CLI,
       # and the issue-bookkeeping steps below fail on `gh: command not found`
       # even when the probe itself is healthy (observed run 33961859926,

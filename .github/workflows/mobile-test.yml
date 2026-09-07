@@ -37,7 +37,9 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/backend/go.mod
-          cache-dependency-path: lego/backend/go.sum
+          # Multi-GB remote Go caches outlive signed download URLs and stall
+          # uploads on this fleet; keep the runner-local Go caches instead.
+          cache: false
       - name: enable corepack
         run: corepack enable
       - name: install dependencies

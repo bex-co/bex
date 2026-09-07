@@ -6,7 +6,11 @@ Closes ADR083 finding 3 (high): PR-capable test jobs and production-credentialed
 
 The split is expressed as a fourth runner label — `runs-on: [self-hosted, Linux, ARM64, bex-ci]` or `runs-on: [self-hosted, Linux, ARM64, bex-production]`.
 
-**Do not use GitHub runner groups.** They are a paid-plan (Team/Enterprise) feature; the bex-co organization is on the free plan, where only the built-in `default` group exists. The first cut of this split (2026-09-02, `f9294206`) addressed jobs to `runs-on.group: bex-ci|bex-production` and every job in every workflow failed **within seconds, with zero steps executed and no runner group assigned** (deploy runs 33602459228 → 33662397423) — a group-addressed job fails instantly instead of queuing, so the whole CI matrix went red on every push. An unmatched _label_, by contrast, queues: safe, visible, recoverable. `github-actions-validate.sh` now rejects the group syntax outright.
+Workflows standardize on pool labels; the existing organization groups are separate registration metadata. Live inspection on 2026-09-05 confirmed `bex-ci` (group ID 3) and `bex-production` (group ID 4). The earlier claim that this organization cannot use groups was incorrect. The old scheduling failures alone did not prove a subscription limitation.
+
+The runner source is `bex-co/block-eden-mono`, `projects/github-runner/`. Its Compose configuration originally set `RUNNER_GROUP` but omitted the matching `RUNNER_LABELS` entry. All ten runners were healthy but label-addressed jobs queued. Ephemeral runners must receive both settings on every registration; a one-time API relabel is lost after their next job.
+
+The 2026-09-05 repair adds each service's matching pool label and separates its npm/yarn/pnpm cache volumes. Both pools currently share Docker Desktop's Linux host, so this is a scheduling repair, **not completion of m88 host isolation**. Privileged DinD containers share that host kernel. Keep m88 open until production has a separate host and the required credential rotation and live evidence hold.
 
 ## Pool assignment (the trust classification)
 
@@ -34,24 +38,12 @@ Classified by what each job can touch — secrets, `environment:` gates, and wri
 Ordering rule: **production first**. A `bex-ci` job can never land on a production host (production hosts never receive the `bex-ci` label), so there is no unsafe window; labeling production first unblocks main-branch deploys before PR traffic resumes.
 
 1. **Choose the production host(s):** the machine(s) already entrusted with deploy credentials — the hosts that ran `build-and-deploy` before the split. Every other host becomes `bex-ci`. One machine must never carry both labels (ADR083 operator obligation 1), and per obligation 2, rotate credentials that previously landed on shared runners before first production-pool use.
-2. **Add `bex-production`** to the chosen host(s). Either:
-
-   - **UI:** org **Settings → Actions → Runners →** runner **→ ⚙ → Edit labels** → add `bex-production`; or
-   - **API** (needs a token with `admin:org`, e.g. after `gh auth refresh -h github.com -s admin:org`):
-
-     ```sh
-     gh api orgs/bex-co/actions/runners \
-       --jq '.runners[] | [.id, .name, .status, (.labels|map(.name)|join(","))] | @tsv'
-     gh api -X POST orgs/bex-co/actions/runners/<id>/labels -f 'labels[]=bex-production'
-     ```
-
-   - **On-host** re-registration also works: `./config.sh ... --labels bex-production` (keeps the implicit `self-hosted`/`Linux`/`ARM64`).
-
-3. **Add `bex-ci`** to every remaining host the same way.
+2. **Configure durable registration** in the runner source. Production must use `RUNNER_GROUP=bex-production` and include `bex-production` in `RUNNER_LABELS`; CI must use `RUNNER_GROUP=bex-ci` and include `bex-ci`. Never include both pool labels on one runner. Preserve the existing `self-hosted`, `Linux`, `ARM64`, and organization compatibility labels.
+3. **Apply each service on its intended host** after checking for active jobs: `docker compose up -d --build runner-bex-production` on production, `docker compose up -d --build runner-bex-ci` on CI. These commands also start the emulation prerequisite. Never print `docker compose config` with real credentials; the configuration test uses a dummy token.
 4. **Verify:** push (or re-run a queued run) and confirm placement per job:
 
    ```sh
-   gh run view <run-id> --json jobs \
+   gh api repos/bex-co/bex/actions/runs/<run-id>/jobs \
      --jq '.jobs[] | [.name, .conclusion, .runner_name, (.labels|join(","))] | @tsv'
    ```
 
@@ -60,4 +52,10 @@ Ordering rule: **production first**. A `bex-ci` job can never land on a producti
 ## Failure modes
 
 - **Jobs queue forever** → a pool has no host carrying that exact label (or a label typo). Compare `gh api orgs/bex-co/actions/runners` labels against the two canonical spellings. Queuing is the designed fail-safe, not an error.
-- **Jobs fail in seconds with zero steps** → someone reintroduced the runner-group syntax. `scripts/github-actions-validate.sh` fails closed on it; see the mechanism section above.
+- **Jobs fail in seconds with zero steps** → inspect GitHub annotations and group/repository access settings. Do not infer a plan limitation from this symptom alone; the validator still requires the canonical pool-label form.
+
+## Remote Go cache failures
+
+On 2026-09-05, mobile job `101379637759` attempted to restore a 4.45 GB setup-go cache; after roughly ten minutes Azure rejected the signed request. The setup action remained active after reporting the failure. Operator and CLI tests passed but their cache-save post steps also occupied runners for many minutes. This is the same failure class already documented in `go-lint.yml`.
+
+Backend, mobile, operator, CLI-test and edge-liveness workflows disable the setup-go remote cache. Go still uses its runner-local module and build caches; no test command, failure handling, or production gate is removed. Changes take effect on newly dispatched workflow runs after shipping, not on active jobs.
