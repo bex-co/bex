@@ -28,18 +28,23 @@ import (
 )
 
 // fakeOrigin is an in-memory object store keyed by full object key; it counts
-// gets so tests can assert caching.
+// gets so tests can assert caching, and can serve injected per-key errors so
+// tests can assert failure classes.
 type fakeOrigin struct {
 	objs map[string]Object
 	gets map[string]int
+	errs map[string]error
 }
 
 func newFakeOrigin(objs map[string]Object) *fakeOrigin {
-	return &fakeOrigin{objs: objs, gets: map[string]int{}}
+	return &fakeOrigin{objs: objs, gets: map[string]int{}, errs: map[string]error{}}
 }
 
 func (f *fakeOrigin) Get(_ context.Context, key string) (Object, error) {
 	f.gets[key]++
+	if err, ok := f.errs[key]; ok {
+		return Object{}, err
+	}
 	// Emulate the store's key cap: real S3 answers a key past 1024 bytes with a
 	// KeyTooLongError client error, not a clean not-found (w6/047).
 	if len(key) > maxObjectKeyBytes {
@@ -354,5 +359,258 @@ func TestKeyForLegacyFallback(t *testing.T) {
 	s := Site{AppID: "web", Revision: "rev-1"}
 	if got, want := s.keyFor("/index.html"), "web/rev-1/index.html"; got != want {
 		t.Errorf("keyFor = %q, want %q", got, want)
+	}
+}
+
+// The w4/m94 t001 regression: an existing published object must win over a
+// catch-all rewrite (the UI's own SPA example), preserving its exact body,
+// content type, and cache policy — while a genuine miss still rewrites.
+func TestExistingObjectWinsOverCatchAllRewrite(t *testing.T) {
+	yaml := "services:\n  - type: web\n"
+	h, origin := newTestHandler(t, Site{
+		Routes: []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/*", Destination: "/index.html"}},
+	}, map[string]Object{
+		key("render.yaml"): {Body: []byte(yaml), ContentType: "binary/octet-stream"},
+		key("index.html"):  {Body: []byte("<h1>SPA</h1>"), ContentType: "text/html"},
+	})
+
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		rec := do(h, method, "/render.yaml")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s /render.yaml => %d, want 200", method, rec.Code)
+		}
+		if ct := rec.Header().Get("Content-Type"); ct != "binary/octet-stream" {
+			t.Errorf("%s content-type = %q, want the object's own", method, ct)
+		}
+		if cc := rec.Header().Get("Cache-Control"); cc != "public, max-age=31536000, immutable" {
+			t.Errorf("%s cache-control = %q, want the asset policy", method, cc)
+		}
+		if method == http.MethodGet && rec.Body.String() != yaml {
+			t.Errorf("body = %q, want the original object bytes", rec.Body.String())
+		}
+	}
+
+	// A genuine miss still follows the rewrite.
+	rec := do(h, http.MethodGet, "/qa-route")
+	if rec.Code != http.StatusOK || rec.Body.String() != "<h1>SPA</h1>" {
+		t.Fatalf("GET /qa-route => %d %q, want the rewritten index.html", rec.Code, rec.Body)
+	}
+
+	// The existing-object win costs exactly one origin get; a repeat is cached.
+	if rec := do(h, http.MethodGet, "/render.yaml"); rec.Code != http.StatusOK {
+		t.Fatal("cached repeat failed")
+	}
+	if n := origin.gets[key("render.yaml")]; n != 1 {
+		t.Errorf("render.yaml origin gets = %d, want 1 (cached repeat)", n)
+	}
+}
+
+func TestExistingObjectWinsOverMatchingRedirect(t *testing.T) {
+	yaml := "services: []\n"
+	h, _ := newTestHandler(t, Site{
+		Routes: []appv1alpha1.StaticRoute{
+			{Type: "redirect", Source: "/render.yaml", Destination: "/index.html"},
+			{Type: "redirect", Source: "/qa-old", Destination: "/index.html"},
+		},
+	}, map[string]Object{
+		key("render.yaml"): {Body: []byte(yaml)},
+		key("index.html"):  {Body: []byte("<h1>SPA</h1>"), ContentType: "text/html"},
+	})
+
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		rec := do(h, method, "/render.yaml")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s /render.yaml => %d, want 200 (existing file wins)", method, rec.Code)
+		}
+		if loc := rec.Header().Get("Location"); loc != "" {
+			t.Errorf("%s emitted Location %q for an existing file", method, loc)
+		}
+	}
+
+	// The missing path still redirects.
+	rec := do(h, http.MethodGet, "/qa-old")
+	if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != "/index.html" {
+		t.Fatalf("GET /qa-old => %d Location=%q, want 301 /index.html", rec.Code, rec.Header().Get("Location"))
+	}
+}
+
+// The w4/m94 t002 regression: custom headers match the visitor's request path,
+// not the rewrite destination — and a destination-scoped header must not leak
+// onto rewritten requests.
+func TestHeadersMatchOriginalRequestPathUnderRewrite(t *testing.T) {
+	site := Site{
+		Routes: []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/*", Destination: "/index.html"}},
+		Headers: []appv1alpha1.StaticHeader{
+			{Path: "/qa-route", Name: "X-QA-Path", Value: "request-path"},
+			{Path: "/*", Name: "X-QA-All", Value: "all-paths"},
+			{Path: "/index.html", Name: "X-QA-Dest", Value: "destination-only"},
+		},
+	}
+	h, _ := newTestHandler(t, site, map[string]Object{
+		key("index.html"): {Body: []byte("<h1>SPA</h1>"), ContentType: "text/html"},
+	})
+
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		rec := do(h, method, "/qa-route")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s /qa-route => %d, want 200", method, rec.Code)
+		}
+		if got := rec.Header().Get("X-QA-Path"); got != "request-path" {
+			t.Errorf("%s X-QA-Path = %q, want request-path (matched on the request path)", method, got)
+		}
+		if got := rec.Header().Get("X-QA-All"); got != "all-paths" {
+			t.Errorf("%s X-QA-All = %q, want all-paths", method, got)
+		}
+		if got := rec.Header().Get("X-QA-Dest"); got != "" {
+			t.Errorf("%s X-QA-Dest = %q; a destination-scoped header must not apply to /qa-route", method, got)
+		}
+	}
+
+	// A direct request for the destination still gets its scoped header.
+	rec := do(h, http.MethodGet, "/index.html")
+	if got := rec.Header().Get("X-QA-Dest"); got != "destination-only" {
+		t.Errorf("X-QA-Dest = %q on /index.html itself, want destination-only", got)
+	}
+}
+
+// Pin the previously-working control: with no explicit rule, the implicit SPA
+// fallback already matched headers on the request path. Keep it that way.
+func TestHeadersMatchRequestPathOnImplicitFallback(t *testing.T) {
+	h, _ := newTestHandler(t, Site{
+		Headers: []appv1alpha1.StaticHeader{
+			{Path: "/qa-route", Name: "X-QA-Path", Value: "request-path"},
+			{Path: "/index.html", Name: "X-QA-Dest", Value: "destination-only"},
+		},
+	}, map[string]Object{
+		key("index.html"): {Body: []byte("<h1>SPA</h1>"), ContentType: "text/html"},
+	})
+	rec := do(h, http.MethodGet, "/qa-route")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /qa-route => %d, want 200 (implicit fallback)", rec.Code)
+	}
+	if got := rec.Header().Get("X-QA-Path"); got != "request-path" {
+		t.Errorf("X-QA-Path = %q, want request-path", got)
+	}
+	if got := rec.Header().Get("X-QA-Dest"); got != "" {
+		t.Errorf("X-QA-Dest = %q; must not leak onto /qa-route", got)
+	}
+}
+
+// The first lookup must not turn origin failures into rules or fallbacks:
+// permission denial stays 502, overload stays 503 + Retry-After, an oversized
+// object stays 413 — even with a catch-all rewrite and a matching redirect.
+func TestOriginFailureDoesNotFallThroughToRules(t *testing.T) {
+	cases := []struct {
+		name       string
+		err        error
+		wantCode   int
+		wantHeader string
+	}{
+		{"denial", errors.New("api error AccessDenied"), http.StatusBadGateway, ""},
+		{"overload", ErrOverloaded, http.StatusServiceUnavailable, "Retry-After"},
+		{"oversize", ErrObjectTooLarge, http.StatusRequestEntityTooLarge, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h, origin := newTestHandler(t, Site{
+				Routes: []appv1alpha1.StaticRoute{
+					{Type: "redirect", Source: "/render.yaml", Destination: "/index.html"},
+					{Type: "rewrite", Source: "/*", Destination: "/index.html"},
+				},
+			}, map[string]Object{
+				key("index.html"): {Body: []byte("<h1>SPA</h1>"), ContentType: "text/html"},
+			})
+			origin.errs[key("render.yaml")] = tc.err
+			rec := do(h, http.MethodGet, "/render.yaml")
+			if rec.Code != tc.wantCode {
+				t.Fatalf("GET /render.yaml => %d, want %d (no rule/fallback on %s)", rec.Code, tc.wantCode, tc.name)
+			}
+			if loc := rec.Header().Get("Location"); loc != "" {
+				t.Errorf("origin %s produced a redirect Location %q", tc.name, loc)
+			}
+			if tc.wantHeader != "" && rec.Header().Get(tc.wantHeader) == "" {
+				t.Errorf("missing %s header", tc.wantHeader)
+			}
+		})
+	}
+}
+
+// A rewrite target that misses still degrades exactly as before: origin errors
+// on the rewritten lookup keep their classes, and a missing rewritten asset
+// (with extension) is a 404, not a silent fallback.
+func TestRewriteTargetFailureClasses(t *testing.T) {
+	h, origin := newTestHandler(t, Site{
+		Routes: []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/app", Destination: "/app.html"}},
+	}, map[string]Object{})
+	origin.errs[key("app.html")] = ErrOverloaded
+	if rec := do(h, http.MethodGet, "/app"); rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("rewrite-target overload => %d, want 503", rec.Code)
+	}
+	delete(origin.errs, key("app.html"))
+	if rec := do(h, http.MethodGet, "/app"); rec.Code != http.StatusNotFound {
+		t.Fatalf("missing rewrite target => %d, want 404", rec.Code)
+	}
+}
+
+// Directory-style requests keep index.html defaulting even with a catch-all
+// rewrite saved: /docs/ serves docs/index.html, not the rewrite destination.
+func TestDirectoryIndexWinsOverCatchAllRewrite(t *testing.T) {
+	h, _ := newTestHandler(t, Site{
+		Routes: []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/*", Destination: "/index.html"}},
+	}, map[string]Object{
+		key("docs/index.html"): {Body: []byte("DOCS"), ContentType: "text/html"},
+		key("index.html"):      {Body: []byte("ROOT"), ContentType: "text/html"},
+	})
+	rec := do(h, http.MethodGet, "/docs/")
+	if rec.Code != http.StatusOK || rec.Body.String() != "DOCS" {
+		t.Fatalf("GET /docs/ => %d %q, want the directory index", rec.Code, rec.Body)
+	}
+}
+
+// A confirmed miss is immutable within a revision, so it is negatively cached:
+// repeated requests to the same SPA deep link or redirect path cost exactly one
+// origin round trip and stop consuming fetch-gate slots (w4/m94 follow-through
+// for the lookup-before-rules order).
+func TestConfirmedMissIsNegativelyCached(t *testing.T) {
+	h, origin := newTestHandler(t, Site{
+		Routes: []appv1alpha1.StaticRoute{
+			{Type: "redirect", Source: "/qa-old", Destination: "/index.html"},
+			{Type: "rewrite", Source: "/*", Destination: "/index.html"},
+		},
+	}, map[string]Object{
+		key("index.html"): {Body: []byte("<h1>SPA</h1>"), ContentType: "text/html"},
+	})
+
+	for range 3 {
+		if rec := do(h, http.MethodGet, "/qa-old"); rec.Code != http.StatusMovedPermanently {
+			t.Fatalf("GET /qa-old => %d, want 301", rec.Code)
+		}
+		if rec := do(h, http.MethodGet, "/deep/client/route"); rec.Code != http.StatusOK {
+			t.Fatalf("GET /deep/client/route => %d, want 200", rec.Code)
+		}
+	}
+	if n := origin.gets[key("qa-old")]; n != 1 {
+		t.Errorf("redirect-path miss origin gets = %d, want 1 (negatively cached)", n)
+	}
+	if n := origin.gets[key("deep/client/route")]; n != 1 {
+		t.Errorf("SPA deep-link miss origin gets = %d, want 1 (negatively cached)", n)
+	}
+	if n := origin.gets[key("index.html")]; n != 1 {
+		t.Errorf("rewrite target origin gets = %d, want 1 (positively cached)", n)
+	}
+}
+
+// Only a confirmed miss is cached: transient failures (denial, overload) must
+// be re-asked so recovery is immediate.
+func TestTransientOriginFailureIsNotNegativelyCached(t *testing.T) {
+	h, origin := newTestHandler(t, Site{}, map[string]Object{})
+	origin.errs[key("flaky.txt")] = errors.New("api error AccessDenied")
+	if rec := do(h, http.MethodGet, "/flaky.txt"); rec.Code != http.StatusBadGateway {
+		t.Fatalf("denied => %d, want 502", rec.Code)
+	}
+	delete(origin.errs, key("flaky.txt"))
+	origin.objs[key("flaky.txt")] = Object{Body: []byte("ok")}
+	if rec := do(h, http.MethodGet, "/flaky.txt"); rec.Code != http.StatusOK {
+		t.Fatalf("recovered origin => %d, want 200 (failure must not be cached)", rec.Code)
 	}
 }
