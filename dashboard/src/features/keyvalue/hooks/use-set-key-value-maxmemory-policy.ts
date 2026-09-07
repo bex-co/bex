@@ -6,6 +6,7 @@ import {
   SetKeyValueMaxmemoryPolicyDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { maxmemoryPolicyToUi } from "@/features/keyvalue/lib/labels";
 
 export interface UseSetKeyValueMaxmemoryPolicyResult {
   /** The store's current eviction policy, or "" until the read resolves. */
@@ -41,7 +42,13 @@ export function useSetKeyValueMaxmemoryPolicy(
     SetKeyValueMaxmemoryPolicyDocument,
   );
 
-  const policy = policyQuery.data?.keyValue?.maxmemoryPolicy ?? "";
+  // Normalize the API's underscored read onto the UI's hyphen vocabulary so the
+  // selector shows the saved policy instead of a blank (w4/046). The read-only
+  // display, the edit draft, the cancel/reset baseline, and the dirty check all
+  // read this one value, so they stay consistent.
+  const policy = maxmemoryPolicyToUi(
+    policyQuery.data?.keyValue?.maxmemoryPolicy ?? "",
+  );
 
   const save = useCallback(
     async (next: string): Promise<boolean> => {

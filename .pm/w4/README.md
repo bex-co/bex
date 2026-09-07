@@ -87,7 +87,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [x] **047** — Projects/Overview resource-list Type column collapses every service type to a generic "Service" badge ← continuous live `$qa-find-bugs w4` 2026-09-06 — done 2026-09-07 (resource-table service rows delegate to the shared `ServiceTypeBadge`, so the Type column shows Web/Private/Worker/Cron/Static matching the detail header and Render; database/keyvalue/envgroup keep their generic kind; shipped with 049; live re-probe deferred), moved to `done/047.md`
 
-- [ ] **046** — Key Value eviction-policy selector is blank for underscore API values ← live QA pass 5 (40–50m; dashboard mapping)
+- [x] **046** — Key Value eviction-policy selector is blank for underscore API values ← live QA pass 5 — done 2026-09-07 (new `maxmemoryPolicyToUi` helper maps bex-api's underscored read onto the UI's hyphen option vocabulary at the single `use-set-key-value-maxmemory-policy` hook boundary — `noeviction`/empty/unrecognized pass through untouched — so the detail-page selector shows the saved policy instead of blank; save/wire spelling and the generic Select unchanged; unit table + real-hook wire integration tests; live re-probe deferred), moved to `done/046.md`
 
 - [x] **045** — Language bootstrap throws during ordinary service navigation — retired: fixed concurrently by `4de8ac4db`; moved to `done/045.md` (live post-deploy check pending)
 - [x] **044** — Give Settings' Idle timeout dropdown an accessible name (20m) ← repeated live `$qa-find-bugs` hunt 2026-09-05, second run — done 2026-09-05; resolution and verification in `done/044.md`
