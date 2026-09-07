@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m94** — Preserve static assets and request-path headers under rewrites (7 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06 pass 3; existing files masked and path headers omitted
+
 - [ ] **m93** — Include linked environment groups in native builds (6 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06 pass 2; build omits a group value that runtime receives
 
 - [ ] **m92** — Preserve exact environment values in native builds (6 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06; build/runtime byte mismatch
