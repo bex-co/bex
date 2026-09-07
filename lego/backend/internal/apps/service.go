@@ -822,6 +822,39 @@ func effectiveType(specType string) string {
 	return specType
 }
 
+// effectiveRuntime resolves the Render-facing source runtime a read surface
+// reports (serviceDetails.runtime/env, the runtime-keyed envSpecificDetails, and
+// the GraphQL/MCP runtime field). Every Render service HAS a runtime, but bex's
+// App CR leaves spec.runtime empty for the common Dockerfile build it expresses
+// through spec.builder instead — a hand-applied App, a Blueprint, or a dashboard
+// create that never set Render's `runtime` alias. The official CLI reads
+// serviceDetails.runtime to round-trip a partial `services update`: with none
+// returned it rejects the empty value client-side ("unsupported runtime") or
+// treats an explicit --runtime as a forbidden switch ("cannot switch runtimes
+// via the CLI"), so a Dockerfile web service could not repoint its own
+// healthCheckPath (w4/052). Deriving it here — the one place the read runtime is
+// decided — keeps that string consistent across every surface.
+//
+// The mapping mirrors the operator's effectiveBuilder in reverse and names only
+// a runtime bex can determine unambiguously: an explicit spec.runtime wins, and
+// a repo build under the default/auto/dockerfile builder is "docker" (all three
+// resolve to a Dockerfile build). A static site has no App runtime (bex's
+// runtime enum has no "static"); a prebuilt image or a bare "buildpack"/"native"
+// builder without an explicit runtime names no runtime bex can pin here, so each
+// reads back empty as it did before.
+func effectiveRuntime(spec appv1alpha1.AppSpec, svcType string) string {
+	if spec.Runtime != "" {
+		return spec.Runtime
+	}
+	if svcType != appv1alpha1.TypeStaticSite && spec.Repo != "" {
+		switch spec.Builder {
+		case "", "auto", "dockerfile":
+			return "docker"
+		}
+	}
+	return ""
+}
+
 func view(a *appv1alpha1.App) AppView {
 	name := publicName(a)
 	appID := publicID(a)
@@ -887,7 +920,7 @@ func view(a *appv1alpha1.App) AppView {
 		Image:                a.Status.Image,
 		SourceImage:          a.Spec.Image,
 		RegistryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
-		Runtime:              a.Spec.Runtime,
+		Runtime:              effectiveRuntime(a.Spec, svcType),
 		BuildCommand:         a.Spec.BuildCommand,
 		StartCommand:         a.Spec.StartCommand,
 		Builder:              a.Spec.Builder,

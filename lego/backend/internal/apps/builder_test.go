@@ -28,6 +28,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func TestRenderNativeBuildContractAcrossCreateSurfaces(t *testing.T) {
@@ -132,6 +133,147 @@ func TestRenderDockerDetailsMapToDockerfileBuild(t *testing.T) {
 		app.Spec.DockerfilePath != "docker/Dockerfile.prod" ||
 		app.Spec.StartCommand != "bin/server" {
 		t.Fatalf("spec = %+v", app.Spec)
+	}
+}
+
+// TestEffectiveRuntimeReadBack pins w4/052: bex's App CR leaves spec.runtime
+// empty for a Dockerfile build it expresses through the (default/auto/dockerfile)
+// builder — the shape a dashboard, Blueprint, or hand-applied App produces. The
+// official CLI reads serviceDetails.runtime to round-trip a partial `services
+// update`, so an empty value stranded such a service: `--health-check-path`
+// alone failed client-side ("unsupported runtime \"\""), and adding
+// --runtime docker was rejected as a forbidden switch ("cannot switch runtimes
+// via the CLI"). The read surfaces now derive "docker" for those builds while
+// leaving genuinely runtime-less shapes (prebuilt image, buildpack, static site)
+// empty as before. env mirrors runtime — Render's deprecated response alias.
+func TestEffectiveRuntimeReadBack(t *testing.T) {
+	staticSite := func() *appv1alpha1.App {
+		a := repoApp("web", "https://github.com/x/web", "main")
+		a.Spec.Type = appv1alpha1.TypeStaticSite
+		a.Spec.PublishPath = "dist"
+		return a
+	}
+	buildpack := func() *appv1alpha1.App {
+		a := repoApp("web", "https://github.com/x/web", "main")
+		a.Spec.Builder = "buildpack"
+		return a
+	}
+	nativeGo := func() *appv1alpha1.App {
+		a := repoApp("web", "https://github.com/x/web", "main")
+		a.Spec.Runtime = "go"
+		a.Spec.Builder = "native"
+		return a
+	}
+	autoBuilder := func() *appv1alpha1.App {
+		a := repoApp("web", "https://github.com/x/web", "main")
+		a.Spec.Builder = "auto"
+		return a
+	}
+	dockerfileBuilder := func() *appv1alpha1.App {
+		a := repoApp("web", "https://github.com/x/web", "main")
+		a.Spec.Builder = "dockerfile"
+		return a
+	}
+	cases := []struct {
+		name string
+		app  *appv1alpha1.App
+		want string // "" => runtime/env omitted entirely
+	}{
+		{"repo default builder derives docker", repoApp("web", "https://github.com/x/web", "main"), "docker"},
+		{"repo auto builder derives docker", autoBuilder(), "docker"},
+		{"repo dockerfile builder derives docker", dockerfileBuilder(), "docker"},
+		{"explicit native runtime wins", nativeGo(), "go"},
+		{"buildpack stays empty (bex extension)", buildpack(), ""},
+		{"prebuilt image stays empty", sampleApp("web"), ""},
+		{"static site stays empty", staticSite(), ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := newService(nil, tc.app)
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("GET => %d: %s", rec.Code, rec.Body)
+			}
+			var out renderService
+			if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			runtime, hasRuntime := out.ServiceDetails["runtime"]
+			env, hasEnv := out.ServiceDetails["env"]
+			if tc.want == "" {
+				if hasRuntime || hasEnv {
+					t.Fatalf("serviceDetails runtime=%v env=%v, want both omitted", runtime, env)
+				}
+				return
+			}
+			if runtime != tc.want || env != tc.want {
+				t.Fatalf("serviceDetails runtime=%v env=%v, want both %q", runtime, env, tc.want)
+			}
+		})
+	}
+}
+
+// TestDockerfileServiceRuntimeIsConsistentAcrossSurfaces proves the w4/052
+// derivation is a pure read projection (spec.runtime stays empty) and that REST,
+// GraphQL and MCP all report the derived "docker" runtime with the docker (not
+// buildpack) envSpecificDetails shape, so the CLI reads one coherent service no
+// matter which surface answers.
+func TestDockerfileServiceRuntimeIsConsistentAcrossSurfaces(t *testing.T) {
+	app := repoApp("web", "https://github.com/x/web", "main")
+	app.Spec.DockerfilePath = "docker/Dockerfile.prod"
+	svc, cl := newService(nil, app)
+	ctx := context.Background()
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET => %d: %s", rec.Code, rec.Body)
+	}
+	var out renderService
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.ServiceDetails["runtime"] != "docker" || out.ServiceDetails["env"] != "docker" {
+		t.Fatalf("REST runtime=%v env=%v, want docker", out.ServiceDetails["runtime"], out.ServiceDetails["env"])
+	}
+	esd, _ := out.ServiceDetails["envSpecificDetails"].(map[string]any)
+	if _, ok := esd["dockerfilePath"]; !ok {
+		t.Fatalf("REST envSpecificDetails = %v, want docker shape (dockerfilePath key)", out.ServiceDetails["envSpecificDetails"])
+	}
+	if _, ok := esd["buildCommand"]; ok {
+		t.Fatalf("REST envSpecificDetails carries a buildpack buildCommand key: %v", esd)
+	}
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `{ service(id:"web") { runtime } }`})
+	if len(res.Errors) > 0 {
+		t.Fatal(res.Errors)
+	}
+	if got := res.Data.(map[string]any)["service"].(map[string]any)["runtime"]; got != "docker" {
+		t.Fatalf("GraphQL runtime = %v, want docker", got)
+	}
+
+	// MCP get_service shares toRenderService with REST's GET.
+	_, mcpService, err := svc.serviceTool(svc.Get)(ctx, nil, serviceArgs{ServiceID: "web"})
+	if err != nil {
+		t.Fatalf("MCP get_service: %v", err)
+	}
+	if mcpService.ServiceDetails["runtime"] != "docker" {
+		t.Fatalf("MCP runtime = %v, want docker", mcpService.ServiceDetails["runtime"])
+	}
+
+	if got := getApp(t, cl, "web").Spec.Runtime; got != "" {
+		t.Fatalf("spec.runtime = %q, want empty (a read derivation must not mutate the CR)", got)
 	}
 }
 
