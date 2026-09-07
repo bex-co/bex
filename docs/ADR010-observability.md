@@ -227,7 +227,8 @@ Two groups, all with actionable `description`s (each carries the `kubectl` comma
 | `platform` | `ControlPlaneNodeNotReady` | a control-plane node is NotReady >5m (single CP node = high blast) | critical |
 | `platform` | `NodeNotReady` | a worker node is NotReady >5m | warning |
 | `platform` | `PersistentVolumeFillingUp` | a PVC is >85% full >15m (hcloud-csi/local-path single-copy volumes) | warning |
-| `platform` | `CertificateNotReady` | a cert-manager Certificate is not-Ready >15m | warning |
+| `platform` | `CertificateNotReady` | a **platform** cert-manager Certificate is not-Ready >15m — every not-Ready cert **except** a tenant's own custom-domain cert (which bex can't fix; see the next row) | warning |
+| `platform` | `TenantCustomDomainCertNotReady` | a tenant **custom-domain** cert (`tea-*` ns, `<app>-tls-<host>` for a non-`onbex.co` host) is not-Ready >1h — almost always customer DNS not pointing at bex (e.g. a Cloudflare-proxied apex ⇒ ACME HTTP-01 404s). Routed to the `null` receiver (dashboard-surfaced, **never paged**); the platform `<app>-tls` onbex host cert stays on `CertificateNotReady` because bex owns `*.onbex.co` DNS | info |
 | `platform` | `CertificateExpiringSoon` | a Certificate expires in <14d and hasn't renewed | warning |
 | `bex` | `BackupCronJobStale` | `etcd-backup`/`openbao-backup` last succeeded >26h ago (silent rot) | critical |
 | `bex` | `OpenBaoSealed` | any OpenBao member reports sealed >5m (⇒ 503s the env-vars API) | critical |
@@ -251,6 +252,10 @@ Two groups, all with actionable `description`s (each carries the `kubectl` comma
 3. Confirm Postgres and webhook-worker capacity before raising `BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE`; lowering the bound sheds more webhook projections, while `0` removes the safety boundary entirely.
 
 Capped events do not fail their source mutation and do not appear as attempted or failed delivery history. The source watermark advances in the same transaction as the aggregate admission result, so repeated alerting represents new pressure rather than replay of the same event.
+
+### Severity routing: `info` never pages
+
+The default route sends every alert to the `platform` email receiver — **except** `severity: info`, which a child route terminates at a no-config `null` (black-hole) receiver. `info` is the tier for **customer-actionable** signals that must stay visible to the dashboard/API (and in Alertmanager) but must never wake on-call: the first of them is `TenantCustomDomainCertNotReady`, where a tenant's own custom-domain DNS isn't pointing at bex, so the platform can do nothing but surface it to the tenant. Everything the operator actually owns is `warning`/`critical` and still emails. `scripts/alerts-verify.sh` preserves the `null` receiver when it swaps the email receiver for its capture webhook, so its throwaway Alertmanager still loads the committed route.
 
 ### The receiver secret (out-of-band, never in git)
 

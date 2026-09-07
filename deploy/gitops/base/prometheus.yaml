@@ -107,6 +107,16 @@ spec:
               group_wait: 30s
               group_interval: 5m
               repeat_interval: 4h
+              routes:
+                # severity=info is a customer-actionable signal surfaced on the
+                # dashboard, NOT an operator page (e.g. TenantCustomDomainCertNotReady
+                # — a tenant's own custom-domain DNS isn't pointing at bex). It
+                # terminates here at the black-hole "null" receiver so it never
+                # emails on-call, while still being visible in Prometheus/Alertmanager
+                # for the dashboard/API. Everything else falls through to `platform`.
+                - matchers:
+                    - severity="info"
+                  receiver: "null"
             receivers:
               - name: platform
                 email_configs:
@@ -114,6 +124,9 @@ spec:
                   # Alertmanager cannot detect a recipient domain with no MX.
                   - to: puncsky@gmail.com # operator on-call inbox; non-secret
                     send_resolved: true
+              # Black hole for non-paging (info) alerts: a receiver with no notifier
+              # config delivers nowhere while Alertmanager still tracks the alert.
+              - name: "null"
         server:
           # Covers the dashboard's widest range preset (24h) with headroom;
           # cardinality is tiny (a handful of scrape jobs), so this is
@@ -672,14 +685,52 @@ spec:
                       summary: "Datastore readiness observation is failing"
                       description: "bex_datastore_ready is incomplete, so DatastoreStuckProvisioning cannot be trusted. Check the operator's RBAC for databases/keyvalues and its API connectivity."
 
+                  # cert-manager Certificate readiness, split by RESPONSIBILITY.
+                  # This rule pages the operator (warning) for PLATFORM certs —
+                  # everything a not-Ready cert can be EXCEPT a tenant's own
+                  # custom-domain cert, which is customer-side DNS and handled by
+                  # the info-level (never paged) TenantCustomDomainCertNotReady
+                  # below. The `unless` subtracts exactly that tenant custom-domain
+                  # series set. A tenant's platform host cert is NOT subtracted, so
+                  # bex still pages on its own "*.onbex.co" issuance: the operator
+                  # names the first/platform host "<app>-tls" (no host suffix, so it
+                  # fails the name=~".+-tls-.+" match) and a "<sub>.onbex.co" host
+                  # that lands as a later cert ("<app>-tls-<sub>.onbex.co") is kept
+                  # by the name!~onbex.co guard. (lego/operator .../app_controller.go
+                  # tlsSecretName; "onbex.co" is BEX_BASE_DOMAIN — keep in sync.)
                   - alert: CertificateNotReady
-                    expr: certmanager_certificate_ready_status{condition="True"} == 0
+                    expr: |
+                      (certmanager_certificate_ready_status{condition="True"} == 0)
+                      unless
+                      certmanager_certificate_ready_status{condition="True", namespace=~"tea-.*", name=~".+-tls-.+", name!~".*-tls-.*onbex\\.co.*"}
                     for: 15m
                     labels:
                       severity: warning
                     annotations:
                       summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} is not Ready"
                       description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}; kubectl -n {{ $labels.namespace }} get certificaterequest,order,challenge"
+
+                  # A tenant's CUSTOM-domain cert (namespace tea-*, secret
+                  # "<app>-tls-<host>" for a non-onbex.co host) stuck not-Ready is
+                  # almost always customer-actionable: the domain's DNS isn't
+                  # pointing at bex (e.g. the apex is proxied through Cloudflare), so
+                  # the ACME HTTP-01 solver is never reached (404) and issuance
+                  # stalls indefinitely. That is NOT a platform fault, so it must not
+                  # page on-call — it is surfaced to the tenant on the domain's
+                  # dashboard status (docs/ADR005-custom-domain.md). severity=info is
+                  # routed to the "null" receiver in the Alertmanager config above,
+                  # so it stays visible in Prometheus/Alertmanager (and to the
+                  # dashboard/API) without emailing. Longer `for` so an in-flight
+                  # issuance (DNS propagation + ACME) isn't flagged as stuck.
+                  - alert: TenantCustomDomainCertNotReady
+                    expr: |
+                      certmanager_certificate_ready_status{condition="True", namespace=~"tea-.*", name=~".+-tls-.+", name!~".*-tls-.*onbex\\.co.*"} == 0
+                    for: 1h
+                    labels:
+                      severity: info
+                    annotations:
+                      summary: "Tenant custom-domain certificate {{ $labels.namespace }}/{{ $labels.name }} is not Ready (customer DNS)"
+                      description: "A tenant custom-domain TLS cert has been not-Ready for >1h — almost always customer-side DNS, not a platform fault (so this is surfaced to the tenant, not paged). The domain must resolve to bex: point the apex via ALIAS/ANAME/CNAME-flattening at the app's <name>.onbex.co and keep it DNS-only — a Cloudflare-proxied record makes the ACME HTTP-01 challenge return 404 and the cert never issues. Confirm: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}; kubectl -n {{ $labels.namespace }} get order,challenge. Runbook: docs/ADR005-custom-domain.md"
 
                   - alert: CertificateExpiringSoon
                     expr: |

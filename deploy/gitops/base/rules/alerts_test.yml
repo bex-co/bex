@@ -1,6 +1,8 @@
 # promtool unit tests for the non-obvious alert expressions (w3/m6/t007).
-# Trivial existence/threshold rules (NodeNotReady, BexApiDown, CertificateNotReady)
-# are not tested here — a test would just restate `== 0`; see the milestone notes.
+# Trivial existence/threshold rules (NodeNotReady, BexApiDown) are not tested
+# here — a test would just restate `== 0`; see the milestone notes. Certificate
+# readiness is now split by responsibility (platform pages vs. tenant custom-domain
+# DNS is info-only), which is a real discriminator — see the test at the bottom.
 # Run: promtool test rules alerts_test.yml  (with alerting_rules.yml alongside).
 rule_files:
   - alerting_rules.yml
@@ -911,3 +913,77 @@ tests:
       - eval_time: 38m
         alertname: KratosCourierNotReady
         exp_alerts: []
+
+  # Certificate readiness is split by responsibility: PLATFORM certs page the
+  # operator (CertificateNotReady, warning); a tenant's own custom-domain cert
+  # (namespace tea-*, secret "<app>-tls-<host>" for a non-onbex.co host) is
+  # customer-side DNS and only raises TenantCustomDomainCertNotReady (info, routed
+  # to the null receiver — never paged). This pins the discriminator: the same
+  # not-Ready value (== 0) routes oppositely by namespace + cert name, and the
+  # `unless` must subtract ONLY the custom-domain series from the paging rule.
+  - name: certificate readiness splits platform paging from tenant custom-domain DNS
+    interval: 1m
+    input_series:
+      # Platform cert in a platform namespace — pages.
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="bex-system", name="bex-api-tls"}'
+        values: "0x90"
+      # A tenant's platform host cert ("<app>-tls", no host suffix): bex owns
+      # *.onbex.co DNS, so a stuck one is a platform fault and still pages.
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="tea-abc", name="tea-abc-web-tls"}'
+        values: "0x90"
+      # An onbex.co host that landed as a SECONDARY cert ("<app>-tls-<sub>.onbex.co"):
+      # still platform (kept by the name!~onbex.co guard), still pages.
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="tea-abc", name="tea-abc-web-tls-web.onbex.co"}'
+        values: "0x90"
+      # The tenant's CUSTOM domain ("<app>-tls-<host>"): customer DNS — info only,
+      # and must be subtracted from CertificateNotReady by the `unless`.
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="tea-abc", name="tea-abc-web-tls-blockeden.xyz"}'
+        values: "0x90"
+      # A healthy custom-domain cert (== 1) fires neither alert.
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="tea-abc", name="tea-abc-web-tls-ok.example.com"}'
+        values: "1x90"
+    alert_rule_test:
+      # At 20m: the three platform certs page; the custom domain has not yet been
+      # not-Ready for its 1h window, so the info alert is silent.
+      - eval_time: 20m
+        alertname: TenantCustomDomainCertNotReady
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: CertificateNotReady
+        exp_alerts:
+          - exp_labels: { severity: warning, condition: "True", namespace: bex-system, name: bex-api-tls }
+            exp_annotations:
+              summary: "Certificate bex-system/bex-api-tls is not Ready"
+              description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n bex-system describe certificate bex-api-tls; kubectl -n bex-system get certificaterequest,order,challenge"
+          - exp_labels: { severity: warning, condition: "True", namespace: tea-abc, name: tea-abc-web-tls }
+            exp_annotations:
+              summary: "Certificate tea-abc/tea-abc-web-tls is not Ready"
+              description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls; kubectl -n tea-abc get certificaterequest,order,challenge"
+          - exp_labels: { severity: warning, condition: "True", namespace: tea-abc, name: tea-abc-web-tls-web.onbex.co }
+            exp_annotations:
+              summary: "Certificate tea-abc/tea-abc-web-tls-web.onbex.co is not Ready"
+              description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls-web.onbex.co; kubectl -n tea-abc get certificaterequest,order,challenge"
+      # At 75m: the custom-domain cert now raises the info-only alert, and is STILL
+      # absent from the paging rule (proving `unless` subtracts exactly it).
+      - eval_time: 75m
+        alertname: TenantCustomDomainCertNotReady
+        exp_alerts:
+          - exp_labels: { severity: info, condition: "True", namespace: tea-abc, name: tea-abc-web-tls-blockeden.xyz }
+            exp_annotations:
+              summary: "Tenant custom-domain certificate tea-abc/tea-abc-web-tls-blockeden.xyz is not Ready (customer DNS)"
+              description: "A tenant custom-domain TLS cert has been not-Ready for >1h — almost always customer-side DNS, not a platform fault (so this is surfaced to the tenant, not paged). The domain must resolve to bex: point the apex via ALIAS/ANAME/CNAME-flattening at the app's <name>.onbex.co and keep it DNS-only — a Cloudflare-proxied record makes the ACME HTTP-01 challenge return 404 and the cert never issues. Confirm: kubectl -n tea-abc describe certificate tea-abc-web-tls-blockeden.xyz; kubectl -n tea-abc get order,challenge. Runbook: docs/ADR005-custom-domain.md"
+      - eval_time: 75m
+        alertname: CertificateNotReady
+        exp_alerts:
+          - exp_labels: { severity: warning, condition: "True", namespace: bex-system, name: bex-api-tls }
+            exp_annotations:
+              summary: "Certificate bex-system/bex-api-tls is not Ready"
+              description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n bex-system describe certificate bex-api-tls; kubectl -n bex-system get certificaterequest,order,challenge"
+          - exp_labels: { severity: warning, condition: "True", namespace: tea-abc, name: tea-abc-web-tls }
+            exp_annotations:
+              summary: "Certificate tea-abc/tea-abc-web-tls is not Ready"
+              description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls; kubectl -n tea-abc get certificaterequest,order,challenge"
+          - exp_labels: { severity: warning, condition: "True", namespace: tea-abc, name: tea-abc-web-tls-web.onbex.co }
+            exp_annotations:
+              summary: "Certificate tea-abc/tea-abc-web-tls-web.onbex.co is not Ready"
+              description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls-web.onbex.co; kubectl -n tea-abc get certificaterequest,order,challenge"
