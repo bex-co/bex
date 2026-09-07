@@ -6,7 +6,6 @@ import {
   CreditCard,
   Database,
   FolderKanban,
-  Globe2,
   KeyRound,
   Layers,
   Settings,
@@ -30,6 +29,11 @@ import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useServices } from "@/features/services/hooks/use-services";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
+import {
+  deriveServiceType,
+  SERVICE_TYPE_ICON,
+  SERVICE_TYPE_LABEL,
+} from "@/features/services/lib/service-type";
 
 /**
  * cmdk-backed dialog body — kept in its own module so the persistent header
@@ -237,35 +241,43 @@ function SearchResults({
               />
             </CommandItem>
           ))}
-          {filteredServices.map((service) => (
-            <CommandItem
-              key={`service:${service.id}`}
-              value={`${service.name} ${service.id} ${t("common.topbarServiceResource")}`}
-              onSelect={() =>
-                select(() => {
-                  // Canonical base per type — routing a static_site through
-                  // /services/<id> costs an extra bounce navigation.
-                  if (serviceBaseForType(service.type) === "/static") {
-                    void navigate({
-                      to: "/static/$serviceId",
-                      params: { serviceId: service.id },
-                    });
-                  } else {
-                    void navigate({
-                      to: "/services/$serviceId",
-                      params: { serviceId: service.id },
-                    });
-                  }
-                })
-              }
-            >
-              <Globe2 />
-              <SearchResultLabel
-                name={service.name}
-                kind={t("common.topbarServiceResource")}
-              />
-            </CommandItem>
-          ))}
+          {filteredServices.map((service) => {
+            // Per-type label + icon from the shared service-type helpers — the
+            // same ones the detail header and resource table use — so the
+            // palette names a Cron Job / Private Service by its kind instead of
+            // collapsing every service to a generic "Service" + Globe (w4/049).
+            const typeKey = deriveServiceType(service.type);
+            const TypeIcon = SERVICE_TYPE_ICON[typeKey];
+            const typeLabel = t(SERVICE_TYPE_LABEL[typeKey]);
+            return (
+              <CommandItem
+                key={`service:${service.id}`}
+                // Keep the generic token so typing "service" still matches every
+                // service, and add the specific words so "cron"/"private" match too.
+                value={`${service.name} ${service.id} ${t("common.topbarServiceResource")} ${typeLabel}`}
+                onSelect={() =>
+                  select(() => {
+                    // Canonical base per type — routing a static_site through
+                    // /services/<id> costs an extra bounce navigation.
+                    if (serviceBaseForType(service.type) === "/static") {
+                      void navigate({
+                        to: "/static/$serviceId",
+                        params: { serviceId: service.id },
+                      });
+                    } else {
+                      void navigate({
+                        to: "/services/$serviceId",
+                        params: { serviceId: service.id },
+                      });
+                    }
+                  })
+                }
+              >
+                <TypeIcon />
+                <SearchResultLabel name={service.name} kind={typeLabel} />
+              </CommandItem>
+            );
+          })}
           {filteredDatabases.map((database) => (
             <CommandItem
               key={`database:${database.id}`}
