@@ -186,7 +186,7 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
 
   return (
     <SafeAreaView
-      edges={["top", "left", "right"]}
+      edges={["top", "bottom", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.background }]}
     >
       <DetailHeader

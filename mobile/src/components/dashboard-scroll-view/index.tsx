@@ -1,14 +1,17 @@
-import { ReactNode } from "react";
+import { ReactNode, useContext } from "react";
+import { BottomTabBarHeightContext } from "expo-router/build/react-navigation/bottom-tabs";
 import {
   RefreshControl,
   ScrollView,
   StyleProp,
   StyleSheet,
+  View,
   ViewStyle,
 } from "react-native";
 import { gutter, space, useTheme } from "@/common/theme";
 
 const styles = StyleSheet.create({
+  fill: { flexGrow: 1 },
   content: {
     // Side gutters keep cards off the screen edges — the app-wide inset.
     // The container owns spacing; cards do not add a second bottom margin.
@@ -23,6 +26,8 @@ const styles = StyleSheet.create({
 });
 
 type Props = {
+  /** Stays at the top while keeping the scroll view first in the native tree. */
+  header?: ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
   /** Extra content-container styles (merged after the shared gutters). */
@@ -37,20 +42,35 @@ type Props = {
  * of duplicated ScrollView/RefreshControl boilerplate.
  */
 export function DashboardScrollView({
+  header,
   refreshing = false,
   onRefresh,
   contentContainerStyle,
   children,
 }: Props): React.ReactElement {
-  const isDark = useTheme().colorTheme.isDark;
+  const theme = useTheme().colorTheme;
+  const isDark = theme.isDark;
+  // Only JS tabs provide a height. Native iOS tabs adjust their scroll insets
+  // automatically, and detail screens live outside the tab navigator.
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  const contentStyle = StyleSheet.flatten([
+    styles.content,
+    contentContainerStyle,
+  ]);
+  const paddedContentStyle = [
+    contentStyle,
+    { paddingBottom: Number(contentStyle.paddingBottom ?? 0) + tabBarHeight },
+  ];
 
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       alwaysBounceVertical
+      contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
-      contentContainerStyle={[styles.content, contentContainerStyle]}
+      stickyHeaderIndices={header ? [0] : undefined}
+      contentContainerStyle={header ? styles.fill : paddedContentStyle}
       indicatorStyle={isDark ? "white" : "default"}
       refreshControl={
         onRefresh ? (
@@ -62,7 +82,10 @@ export function DashboardScrollView({
         ) : undefined
       }
     >
-      {children}
+      {header ? (
+        <View style={{ backgroundColor: theme.background }}>{header}</View>
+      ) : null}
+      {header ? <View style={paddedContentStyle}>{children}</View> : children}
     </ScrollView>
   );
 }

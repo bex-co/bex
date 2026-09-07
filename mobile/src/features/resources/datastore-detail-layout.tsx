@@ -43,7 +43,7 @@ export function DatastoreDetailLayout({
   const theme = useTheme().colorTheme;
   return (
     <SafeAreaView
-      edges={["top", "left", "right"]}
+      edges={["top", "bottom", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.background }]}
     >
       <DetailHeader title={title} subtitle={subtitle} />

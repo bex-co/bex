@@ -26,15 +26,16 @@ const routeFiles = sourceFiles(routeRoot, sourceExtensions)
   .sort();
 
 const allowedRoutes = [
+  "(app)/(tabs)/_layout.tsx",
+  "(app)/(tabs)/activity.tsx",
+  "(app)/(tabs)/index.tsx",
+  "(app)/(tabs)/notifications.tsx",
+  "(app)/(tabs)/sessions.tsx",
   "(app)/_layout.tsx",
-  "(app)/activity.tsx",
   "(app)/databases/[databaseId].tsx",
-  "(app)/index.tsx",
   "(app)/key-values/[keyValueId].tsx",
-  "(app)/notifications.tsx",
   "(app)/services/[serviceId].tsx",
   "(app)/services/[serviceId]/logs.tsx",
-  "(app)/sessions.tsx",
   "(app)/sessions/[sessionId].tsx",
   "+not-found.tsx",
   "_layout.tsx",

@@ -1,11 +1,7 @@
-import { Redirect, Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
-import { useTranslations } from "@/common/hooks/use-translations";
-import { HapticTab } from "@/components/haptic-tab";
+import { Redirect, Stack } from "expo-router";
+import { useTheme } from "@/common/theme";
 import { AuthStateScreen } from "@/features/auth/auth-screen";
 import { useAuth } from "@/features/auth/auth-provider";
-import { useNotifications } from "@/features/notifications/notifications-provider";
 import {
   useWorkspace,
   WorkspaceProvider,
@@ -13,12 +9,13 @@ import {
 import { AppDrawerProvider } from "@/components/app-drawer";
 import { NotificationsProvider } from "@/features/notifications/notifications-provider";
 
-function WorkspaceTabs() {
-  const { t } = useTranslations();
+// Deep links to a detail still get a tab screen to return to.
+export const unstable_settings = { initialRouteName: "(tabs)" };
+
+function WorkspaceStack() {
   const theme = useTheme().colorTheme;
   const { status, offline, switching, retry } = useWorkspace();
   const { signOut } = useAuth();
-  const { unread } = useNotifications();
   // A failed or empty workspace load is otherwise a dead end (no drawer behind
   // the gate), so both offer sign-out — the only way to mint a fresh token when
   // the current session lacks capability scope (w11 auth contract).
@@ -59,94 +56,15 @@ function WorkspaceTabs() {
     );
   }
   return (
-    <Tabs
-      // Detail routes (sessions/[sessionId], services/[serviceId], …) are hidden
-      // tabs, not stacked screens. The tab router's default `firstRoute` back
-      // behavior sent every detail's back button to the first tab (Status)
-      // instead of the list it was opened from; `history` retraces the actual
-      // visit order so a session's back returns to Sessions.
-      backBehavior="history"
+    <Stack
+      initialRouteName="(tabs)"
       screenOptions={{
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarActiveTintColor: theme.primary,
-        tabBarInactiveTintColor: theme.mutedForeground,
-        tabBarLabelStyle: {
-          fontSize: fontSizes.xs,
-          fontWeight: fontWeights.semibold,
-        },
-        tabBarItemStyle: { paddingTop: space.xs },
-        tabBarBadgeStyle: {
-          backgroundColor: theme.error,
-          color: theme.isDark ? theme.background : theme.card,
-        },
-        tabBarStyle: {
-          backgroundColor: theme.card,
-          borderTopColor: theme.border,
-          borderTopWidth: 0.5,
-          elevation: 0,
-        },
+        contentStyle: { backgroundColor: theme.background },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t("navigation.status"),
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "pulse" : "pulse-outline"}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="activity"
-        options={{
-          title: t("navigation.activity"),
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "time" : "time-outline"}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="sessions"
-        options={{
-          title: t("navigation.sessions"),
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "sparkles" : "sparkles-outline"}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: t("navigation.notifications"),
-          tabBarBadge: unread > 0 ? unread : undefined,
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "notifications" : "notifications-outline"}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen name="services/[serviceId]" options={{ href: null }} />
-      <Tabs.Screen name="services/[serviceId]/logs" options={{ href: null }} />
-      <Tabs.Screen name="databases/[databaseId]" options={{ href: null }} />
-      <Tabs.Screen name="key-values/[keyValueId]" options={{ href: null }} />
-      <Tabs.Screen name="sessions/[sessionId]" options={{ href: null }} />
-    </Tabs>
+      <Stack.Screen name="(tabs)" />
+    </Stack>
   );
 }
 
@@ -166,7 +84,7 @@ export default function AppLayout() {
     <WorkspaceProvider>
       <NotificationsProvider>
         <AppDrawerProvider>
-          <WorkspaceTabs />
+          <WorkspaceStack />
         </AppDrawerProvider>
       </NotificationsProvider>
     </WorkspaceProvider>
