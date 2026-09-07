@@ -72,7 +72,11 @@ No new divergence filed. Discovery-side note: the Prometheus `metricsFilters` ve
 
 ### Live-proof status (t006)
 
-The shipped code is verified by the CI-enforced automated gates — backend `go test ./...` (40 packages, incl. `TestHostPathFiltersRouteToLogStore`, `TestRESTHostPathFilters`, `TestLokiRequestQueryFor`, `TestLokiRequestMetricsSourceRoundTrip`, `TestHostPathFilterCrossSurfaceParity`) + golangci-lint, and dashboard `yarn typecheck && yarn lint && yarn test` (1,691 tests, incl. the Host/Path dropdown/input, clear, and store-unavailable card states). The **live browser walk was blocked in-session**: the local `dev-5` stack could not be raised (the shared kind cluster is missing the CNPG `postgresql.cnpg.io/v1` CRDs the stack depends on, and it lacks Loki, which the filtered-series path needs). Per the milestone's own fallback, the live filtered-series + store-unavailable walk is deferred to the deployed dashboard post-ship (prod carries real Prometheus + Loki). This note records the deferral honestly rather than claiming an un-run walk.
+The deferred browser walk was performed on production on 2026-09-06 (`w5/done/028.md`). Host discovery listed both actual App hosts; selecting one sent HOST on both network queries, adding `/robots.txt` sent HOST+PATH and rendered filtered series, and clearing the path emptied the input. Evidence: `.playwright-mcp/w5-metrics-result.json` and `w5-metrics-{host,path}.png`.
+
+The host-only latency read exposed a real defect: the old `quantile_over_time` query retained per-path/stream labels and exceeded Loki's 500-series limit. The fix groups raw samples inside the percentile by only the requested axis (`by ()` without grouping), so it computes a service-wide percentile rather than independent per-path percentiles. Against the identical production Loki 12-hour window, the original query failed, the corrected query returned one series, and status grouping returned five. Host/path and status/code/method regression queries plus `go test -race ./internal/metrics` pass.
+
+This separates the evidence accurately: interactions/path rendering were observed through the deployed dashboard; the corrected host-only query was verified directly against live Loki and in local tests. No post-rollout browser capture is claimed here. The optional store-unavailable scenario remains covered by automated tests; production Loki was not disabled for QA.
 
 ## Cross-surface note
 

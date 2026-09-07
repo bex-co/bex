@@ -99,15 +99,19 @@ cat >"$FAKE/age" <<'EOF'
 # downstream gzip integrity check runs on the real fixture bytes.
 set -euo pipefail
 printf 'age %s\n' "$*" >>"$RESTORE_TEST_CALLS"
-out=""; in=""
+out=""; in=""; identity=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -d) shift ;;
-    -i) shift 2 ;;
+    -i) identity="$2"; shift 2 ;;
     -o) out="$2"; shift 2 ;;
     *) in="$1"; shift ;;
   esac
 done
+if [ -n "${RESTORE_TEST_AGE_IDENTITY:-}" ]; then
+  grep -Fxq "$RESTORE_TEST_AGE_IDENTITY" "$identity" || exit 1
+fi
+if [ "${RESTORE_TEST_AGE_FAIL:-0}" = 1 ]; then exit 1; fi
 /bin/cp "$in" "$out"
 EOF
 
@@ -247,6 +251,29 @@ run_dry env DRY_RUN=1 AGE_BACKUP_PRIVATE_KEY=AGE-SECRET-KEY-1TESTONLY \
   --snapshot s3://fixture/keyvalue/red-fixture/2026-08-01T03:00:00Z.rdb.gz.age
 grep -q '^age -d ' "$RESTORE_TEST_CALLS" || fail "age decrypt not invoked for an .age snapshot"
 ok "encrypted .age snapshot is decrypted before the integrity check"
+
+# Both rotation generations must reach age; the identity values never enter argv.
+for identity in AGE-SECRET-KEY-1CURRENTTEST AGE-SECRET-KEY-1PREVIOUSTEST; do
+  run_dry env DRY_RUN=1 AGE_BACKUP_PRIVATE_KEY=AGE-SECRET-KEY-1CURRENTTEST \
+    AGE_BACKUP_PRIVATE_KEY_PREVIOUS=AGE-SECRET-KEY-1PREVIOUSTEST \
+    RESTORE_TEST_AGE_IDENTITY="$identity" \
+    "$HERE/restore-keyvalue.sh" --id red-fixture --target-namespace restore-kv-age \
+    --verify-key fixture --expect value \
+    --snapshot s3://fixture/keyvalue/red-fixture/2026-08-01T03:00:00Z.rdb.gz.age
+  ! grep -q 'AGE-SECRET-KEY' "$RESTORE_TEST_CALLS" || fail "private age identity appeared in argv"
+done
+ok "current and previous age identities decrypt rotation-overlap snapshots"
+
+if env DRY_RUN=1 AGE_BACKUP_PRIVATE_KEY=AGE-SECRET-KEY-1CURRENTTEST \
+  AGE_BACKUP_PRIVATE_KEY_PREVIOUS=AGE-SECRET-KEY-1PREVIOUSTEST RESTORE_TEST_AGE_FAIL=1 \
+  "$HERE/restore-keyvalue.sh" --id red-fixture --target-namespace restore-kv-age \
+  --verify-key fixture --expect value \
+  --snapshot s3://fixture/keyvalue/red-fixture/2026-08-01T03:00:00Z.rdb.gz.age \
+  >"$TMP/output" 2>"$TMP/error"; then
+  fail "failed age decryption fell through to restore"
+fi
+grep -q 'age decryption failed' "$TMP/error" || fail "decryption failure was not specific"
+ok "rotation identities do not bypass decryption failure"
 
 # Without the private key, an .age snapshot fails closed (no silent plaintext path).
 if env DRY_RUN=1 "$HERE/restore-keyvalue.sh" --id red-fixture \

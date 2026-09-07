@@ -169,8 +169,8 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	if err != nil || len(turns) != 1 || turns[0].Turn != 1 || turns[0].Prompt != "test" {
 		t.Fatalf("atomic initial turn = %+v err=%v", turns, err)
 	}
-	record, err = s.SetAgentSessionLifecycle(ctx, record.ID, "sandbox-1", "running", "running", false)
-	if err != nil || record.SandboxID != "sandbox-1" || record.Phase != "running" {
+	record, err = s.RecordAgentSessionDispatch(ctx, record.ID, "sandbox-2", "running", "running", "redispatch", record.Turns)
+	if err != nil || record.SandboxID != "sandbox-2" || record.Phase != "running" {
 		t.Fatalf("bind agent sandbox = %+v err=%v", record, err)
 	}
 	got, err := s.GetAgentSession(ctx, record.ID)
@@ -182,11 +182,8 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 		t.Fatalf("list agent sessions = %+v err=%v", listed, err)
 	}
 
-	// w3/m41 delivery surface: a dispatch bumps the turn counter and delivery
-	// mode; ListAgentSessionsByPhases finds the running turn; Finalize records the
-	// completed result + evidence and is queryable back.
-	record, err = s.RecordAgentSessionDispatch(ctx, record.ID, "sandbox-2", "running", "running", "redispatch")
-	if err != nil || record.SandboxID != "sandbox-2" || record.Turns != 1 || record.DeliveryMode != "redispatch" {
+	// Binding records delivery mode for the already accepted turn.
+	if record.SandboxID != "sandbox-2" || record.Turns != 1 || record.DeliveryMode != "redispatch" {
 		t.Fatalf("dispatch agent session = %+v err=%v", record, err)
 	}
 	running, err := s.ListAgentSessionsByPhases(ctx, []string{"running", "creating"})
@@ -246,7 +243,7 @@ func assertAgentSessionRetryClearsFailure(ctx context.Context, t *testing.T, s *
 	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET failure_reason='stale dispatch failure' WHERE id=$1`, record.ID); err != nil {
 		t.Fatalf("seed stale dispatch failure: %v", err)
 	}
-	record, err = s.RecordAgentSessionDispatch(ctx, record.ID, "retry-"+record.ID, "running", "running", "redispatch")
+	record, err = s.RecordAgentSessionDispatch(ctx, record.ID, "retry-"+record.ID, "running", "running", "redispatch", record.Turns)
 	if err != nil || record.FailureReason != "" {
 		t.Fatalf("successful dispatch retained failure = %+v err=%v", record, err)
 	}

@@ -72,7 +72,7 @@ func TestCompleterPGRecoversTranscriptWithinExactQuota(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := pg.RecordAgentSessionDispatch(ctx, session.ID, "sandbox-1", PhaseRunning, "running", ""); err != nil {
+			if _, err := pg.RecordAgentSessionDispatch(ctx, session.ID, "sandbox-1", PhaseRunning, "running", "", session.Turns); err != nil {
 				t.Fatal(err)
 			}
 			c, _, lifecycle, _, _ := completerFixture(succeededStatus(true), nil)

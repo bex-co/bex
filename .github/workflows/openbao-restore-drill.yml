@@ -124,6 +124,7 @@ jobs:
           # ADR050 Tier A: the restore needs the out-of-band private half before
           # it can validate the encrypted snapshot.
           AGE_BACKUP_PRIVATE_KEY: ${{ secrets.AGE_BACKUP_PRIVATE_KEY }}
+          AGE_BACKUP_PRIVATE_KEY_PREVIOUS: ${{ secrets.AGE_BACKUP_PRIVATE_KEY_PREVIOUS }}
           RESTORE_SKIP_DOTENV: "1"
         run: |
           set -euo pipefail

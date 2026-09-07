@@ -192,7 +192,8 @@ restore_prefer_reader_credential() {
 
 # restore_decrypt_if_age <resolved-uri> <fetched-file> <gz-destination> — reverse
 # the ADR050 Tier A client-side age layer. When the resolved object ends in .age,
-# decrypt with AGE_BACKUP_PRIVATE_KEY (env/.env) into the gz destination the
+# decrypt with AGE_BACKUP_PRIVATE_KEY and optional AGE_BACKUP_PRIVATE_KEY_PREVIOUS
+# (env/.env) into the gz destination the
 # gunzip step expects; otherwise the fetched bytes ARE the gz and are moved into
 # place unchanged (byte-identical to pre-ADR050). A local `age` binary is used
 # when present; otherwise RESTORE_AGE_IMAGE must name a pinned image whose
@@ -207,7 +208,18 @@ restore_decrypt_if_age() {
     restore_die "AGE_BACKUP_PRIVATE_KEY is required to decrypt an .age snapshot (set it in .env)"
   dir="$(cd "$(dirname "$destination")" && pwd)"
   keyfile="$dir/.age-restore-key"
-  ( umask 077; printf '%s\n' "$AGE_BACKUP_PRIVATE_KEY" >"$keyfile" )
+  # age tries every identity in a key file. Keep both rotation generations in
+  # one protected file so old snapshots decrypt without a second process or
+  # partially decrypted output from a failed first attempt.
+  (
+    umask 077
+    {
+      printf '%s\n' "$AGE_BACKUP_PRIVATE_KEY"
+      if [ -n "${AGE_BACKUP_PRIVATE_KEY_PREVIOUS:-}" ]; then
+        printf '%s\n' "$AGE_BACKUP_PRIVATE_KEY_PREVIOUS"
+      fi
+    } >"$keyfile"
+  )
   if command -v age >/dev/null 2>&1; then
     command age -d -i "$keyfile" -o "$destination" "$fetched" \
       || { rm -f "$keyfile"; restore_die "age decryption failed"; }

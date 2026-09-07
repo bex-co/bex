@@ -181,6 +181,9 @@ func TestPGGitWebhookReplayEpochPurgesOnlyAfterLeaseExpires(t *testing.T) {
 	if fresh, err := newReplica.ClaimGitWebhookDelivery(ctx, newClaim); err != nil || !fresh {
 		t.Fatalf("new claim => fresh=%v err=%v", fresh, err)
 	}
+	// Claims refresh leases using the real clock. Anchor simulated expiry after
+	// those writes so a slow database cannot leave the old lease still live.
+	now = time.Now().UTC()
 	if _, err := st.Pool.Exec(ctx, `INSERT INTO git_webhook_replays (digest) VALUES ('legacy-retained') ON CONFLICT DO NOTHING`); err != nil {
 		t.Fatal(err)
 	}

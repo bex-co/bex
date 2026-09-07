@@ -43,6 +43,9 @@ const ticketTTL = 90 * time.Second
 
 type Store interface {
 	CreateAgentSession(context.Context, store.AgentSession) (store.AgentSession, error)
+	ListAgentDispatchesDue(context.Context, time.Time) ([]store.AgentDispatch, error)
+	AbandonAgentDispatch(context.Context, store.AgentDispatch, time.Time, string) error
+	DeferAgentDispatchCleanup(context.Context, store.AgentDispatch, time.Time) error
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
 	ListAgentSessions(context.Context, string, store.AgentSessionListQuery) ([]store.AgentSession, error)
 	ListAgentSessionsByPhases(context.Context, []string) ([]store.AgentSession, error)
@@ -54,7 +57,7 @@ type Store interface {
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
 	BeginAgentSessionTurn(context.Context, string, string, string, string, string) (store.AgentSession, error)
-	RecordAgentSessionDispatch(context.Context, string, string, string, string, string) (store.AgentSession, error)
+	RecordAgentSessionDispatch(context.Context, string, string, string, string, string, int) (store.AgentSession, error)
 	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, error)
 	DeleteAgentSession(context.Context, string) error
 	// Deferred-teardown reaping (ADR054 D6, generalized by ADR059 D2 / w2/m67):
@@ -100,6 +103,7 @@ type TupleWriter interface {
 }
 
 type SandboxLifecycle interface {
+	CleanupAgentDispatches(context.Context, []store.AgentDispatch) error
 	CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error)
 	EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egressAllowlist []string) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
@@ -537,15 +541,14 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		if sandbox.IsCapacityLimit(err) {
 			reason = sandbox.CapacityFailureReason
 		}
-		s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, reason)
+		s.abandonDispatch(ctx, record, spec.turn, reason)
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox provisioning failed")
 		return store.AgentSession{}, err
 	}
 	s.Metrics.observeProvision(provisionRunning, time.Since(provisionStart))
 	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, spec.modelEndpoint, spec.egress); err != nil {
 		log.Printf("agent-session dispatch: egress phase transition failed (session=%s): %v", record.ID, err)
-		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
-		s.setLifecycleIfActive(ctx, record.ID, sb.ID, PhaseFailed, "egress phase transition failed")
+		s.abandonDispatch(ctx, record, spec.turn, "egress phase transition failed")
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox egress transition failed")
 		return store.AgentSession{}, err
 	}
@@ -556,13 +559,13 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	// The CAS in RecordAgentSessionDispatch (see its doc) rejects a session a
 	// concurrent Cancel already took terminal, returning ErrNotFound; we then tear
 	// the just-created sandbox back down rather than orphan it.
-	record, err = s.Store.RecordAgentSessionDispatch(ctx, record.ID, sb.ID, phase, string(sb.Status), spec.delivery)
+	bound, err := s.Store.RecordAgentSessionDispatch(ctx, record.ID, sb.ID, phase, string(sb.Status), spec.delivery, spec.turn)
 	if err != nil {
-		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
+		s.abandonDispatch(ctx, record, spec.turn, "sandbox dispatch record failed")
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox dispatch record failed")
 		return store.AgentSession{}, mapStoreError(record.ID, err)
 	}
-	return record, nil
+	return bound, nil
 }
 
 func (s *Service) settleDispatchTurn(ctx context.Context, sessionID string, turn int, reason string) {
@@ -1461,9 +1464,9 @@ func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSessio
 	// Off the accept path by design — see runRehydrate.
 	s.continuityEnv(ctx, spec.env, record, spec.task)
 	if spec.previousSandboxID != "" {
-		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, spec.previousSandboxID); err != nil {
+		if err := s.Sandbox.CleanupAgentDispatches(ctx, []store.AgentDispatch{{SessionID: record.ID, WorkspaceID: record.WorkspaceID, Turn: spec.turn, PreviousSandboxID: spec.previousSandboxID}}); err != nil {
 			log.Printf("agent-session steer: teardown of previous sandbox failed (session=%s sandbox=%s): %v", record.ID, spec.previousSandboxID, err)
-			s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, "steer teardown failed")
+			s.abandonDispatch(ctx, record, spec.turn, "steer teardown failed")
 			s.settleDispatchTurn(ctx, record.ID, spec.turn, "previous sandbox teardown failed")
 			return
 		}

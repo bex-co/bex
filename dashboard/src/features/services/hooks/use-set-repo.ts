@@ -26,8 +26,8 @@ export function useSetRepo(): UseSetRepoResult {
       branch: branch ?? null,
     }),
     {
-      success: "services.buildDeploySuccess",
-      error: "services.buildDeployError",
+      success: "services.sourceUpdateSuccess",
+      error: "services.sourceUpdateError",
     },
   );
 

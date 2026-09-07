@@ -1789,6 +1789,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新根目录，请重试。",
     description: "Toast after setRootDir fails",
   },
+  "services.sourceUpdateSuccess": {
+    message: "源已更新。",
+    description:
+      "Toast after a repository, branch, or image source update succeeds",
+  },
+  "services.sourceUpdateError": {
+    message: "无法更新源，请重试。",
+    description:
+      "Fallback toast when a source update fails without a server reason",
+  },
   "services.sourceTitle": {
     message: "源",
     description: "Source card title",

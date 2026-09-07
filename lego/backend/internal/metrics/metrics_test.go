@@ -1137,7 +1137,35 @@ func TestLokiRequestQueryFor(t *testing.T) {
 			req: with(func(r *RequestMetricsRequest) {
 				r.Metric, r.Host, r.Path, r.Quantile = MetricHTTPLatency, "web.example.com", "/api", 0.9
 			}),
-			want: `quantile_over_time(0.9, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | request_path="/api" | unwrap latency_ns [60s]) / 1000000000`,
+			want: `quantile_over_time(0.9, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | request_path="/api" | unwrap latency_ns [60s]) by () / 1000000000`,
+		},
+		{
+			name: "latency host-only",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric, r.Host, r.GroupBy = MetricHTTPLatency, "web.example.com", ""
+			}),
+			want: `quantile_over_time(0.95, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | unwrap latency_ns [60s]) by () / 1000000000`,
+		},
+		{
+			name: "latency group by status",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric, r.Host, r.GroupBy = MetricHTTPLatency, "web.example.com", "status"
+			}),
+			want: `quantile_over_time(0.95, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | unwrap latency_ns [60s]) by (status) / 1000000000`,
+		},
+		{
+			name: "latency group by code",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric, r.Host, r.GroupBy = MetricHTTPLatency, "web.example.com", "code"
+			}),
+			want: `quantile_over_time(0.95, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | unwrap latency_ns [60s]) by (status) / 1000000000`,
+		},
+		{
+			name: "latency group by method",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric, r.Host, r.GroupBy = MetricHTTPLatency, "web.example.com", "method"
+			}),
+			want: `quantile_over_time(0.95, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | unwrap latency_ns [60s]) by (method) / 1000000000`,
 		},
 		{
 			name: "bandwidth has no host/path axis",

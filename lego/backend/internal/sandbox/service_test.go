@@ -204,7 +204,7 @@ func TestAgentSessionPolicyPrecedesSandboxCreateAndTransitionUsesDurableAllowlis
 	}
 }
 
-func TestAgentSessionCreateRollsPolicyBackOnSandboxFailure(t *testing.T) {
+func TestAgentSessionCreateFailurePreservesSessionPolicy(t *testing.T) {
 	eg := &fakeSessionEgress{}
 	svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "boom", http.StatusBadGateway)
@@ -214,8 +214,8 @@ func TestAgentSessionCreateRollsPolicyBackOnSandboxFailure(t *testing.T) {
 	if err == nil {
 		t.Fatal("CreateAgentSessionSandbox succeeded against failed upstream")
 	}
-	if len(eg.calls) != 2 || eg.calls[0].op != "setup" || eg.calls[1].op != "delete" {
-		t.Fatalf("egress calls = %#v, want setup then rollback delete", eg.calls)
+	if len(eg.calls) != 1 || eg.calls[0].op != "setup" {
+		t.Fatalf("egress calls = %#v, failed attempt must not delete a newer generation policy", eg.calls)
 	}
 }
 

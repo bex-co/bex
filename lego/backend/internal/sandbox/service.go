@@ -487,6 +487,9 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	if err != nil {
 		return Sandbox{}, fmt.Errorf("%w: invalid agent session binding: %v", core.ErrBadRequest, err)
 	}
+	if turn := driverEnv["BEX_AGENT_TURN"]; turn != "" {
+		bindings[agentsession.LabelDispatchTurn] = turn
+	}
 	namespace := store.SandboxNamespace(workspaceID)
 	if err := s.SessionEgress.PrepareSetup(ctx, namespace, sessionID, modelEndpoint, egressAllowlist); err != nil {
 		return Sandbox{}, err
@@ -514,14 +517,10 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 			env[ModelAPIKeyEnvVar] = modelAPIKey
 		}
 	}
-	sb, err := s.createResolved(ctx, workspaceID, template, tmpl, plan, "", 0, policy, env, bindings)
-	if err != nil {
-		if cleanupErr := s.SessionEgress.Delete(ctx, namespace, sessionID); cleanupErr != nil {
-			return Sandbox{}, errors.Join(err, fmt.Errorf("rollback session egress policy: %w", cleanupErr))
-		}
-		return Sandbox{}, err
-	}
-	return sb, nil
+	// Setup policy belongs to the session, not this attempt. A late failure
+	// must not delete a newer generation's policy; durable dispatch recovery
+	// removes this attempt's sandbox independently.
+	return s.createResolved(ctx, workspaceID, template, tmpl, plan, "", 0, policy, env, bindings)
 }
 
 // EnterAgentSessionPhase narrows one exact session sandbox from setup registry

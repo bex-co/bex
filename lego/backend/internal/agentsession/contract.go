@@ -59,12 +59,13 @@ const (
 	// Pod metadata is the authorization record until the durable session table
 	// (w3/m39) lands. OpenSandbox copies create metadata to labels, so the repo and
 	// branch use fixed-size digests while their exact values arrive in the request.
-	LabelWorkspace  = "bex.co/workspace"
-	LabelRegime     = "app.bex.co/regime"
-	LabelSession    = "bex.co/agent-session"
-	LabelRepository = "bex.co/agent-repository"
-	LabelBranch     = "bex.co/agent-branch"
-	RegimeSandbox   = "sandbox"
+	LabelWorkspace    = "bex.co/workspace"
+	LabelRegime       = "app.bex.co/regime"
+	LabelSession      = "bex.co/agent-session"
+	LabelDispatchTurn = "bex.co/agent-dispatch-turn"
+	LabelRepository   = "bex.co/agent-repository"
+	LabelBranch       = "bex.co/agent-branch"
+	RegimeSandbox     = "sandbox"
 
 	BranchPrefix = "bex-agent/"
 )

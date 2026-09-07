@@ -19,8 +19,8 @@ export function useBranch(): UseBranchResult {
     SetBranchDocument,
     (id: string, branch: string) => ({ id, branch }),
     {
-      success: "services.buildDeploySuccess",
-      error: "services.buildDeployError",
+      success: "services.sourceUpdateSuccess",
+      error: "services.sourceUpdateError",
     },
   );
 

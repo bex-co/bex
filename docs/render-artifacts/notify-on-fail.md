@@ -81,3 +81,7 @@ The per-service notification override **is already wired in the dashboard** — 
 - Slack and preview-environment notification behavior are not implemented. The service endpoint exposes `previewNotificationsEnabled: default` only.
 - bex includes deploy-started email in `all`; Render's public enum does not enumerate individual event types.
 - Email is **plain-text** (the shared `mailer.SMTP` relay), where Render's is HTML; the "View Logs" target is bex's own deploy-detail route. The service name is quoted (`"backend-v2"`) where Render's prose is unquoted — cosmetic.
+
+## Live verification (2026-09-06)
+
+On production, an owned disposable Web Service saved each service policy (`all`, `failure`, `none`, `default`) through Settings → Notifications. After each reload, both the visible option and REST `notificationsToSend` matched the selected value. Evidence: `.playwright-mcp/w5-notifications-result.json` and `w5-notifications-roundtrip.png`; fixture deleted afterward (GET 404). This verifies the shared service-policy control; historical cron trigger/detail evidence remains in `w5/done/029.md`.
