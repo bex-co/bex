@@ -1,6 +1,6 @@
 # w3 · m80 — Session-expiry experience: auth-aware 401 handling, sliding sessions, lossless re-auth
 
-**Worker:** worker3 **Goal:** a mid-session Kratos-session expiry never renders as a platform outage — the dashboard detects the 401, sends the user through sign-in with `next=` back to the exact page, active users rarely hit expiry at all (sliding sessions), and unsaved work survives the round-trip. **Status:** t001–t008 done; production audit 2026-08-30 confirms Kratos serves an active session with an exact 168-hour issued→expiry window, so the lifespan config is live. t009 still awaits the destructive revoke → mounted-page redirect → sign-in return → unsaved-draft restore E2E; the current signed-in browser had no safe reauthentication credential, so that gate was not guessed or bypassed.
+**Worker:** worker3 **Goal:** a mid-session Kratos-session expiry never renders as a platform outage — the dashboard detects the 401, sends the user through sign-in with `next=` back to the exact page, active users rarely hit expiry at all (sliding sessions), and unsaved work survives the round-trip. **Status:** done (2026-09-07). t001–t008 shipped and deterministically tested; t009's destructive live E2E ran on prod `dashboard.bex.co` and passed all four DoD behaviors — mounted-page 401 → `/auth/login?next=…` (not the "bex-api failed" card, network-log confirmed), the 168-hour sliding Kratos window, one-sign-in return to the exact page, and unsaved env-editor edits restored across the round-trip ("Restored unsaved changes" banner). Full reproduction + evidence in [t009](done/t009.md). The re-auth was completed by minting a fresh Kratos session through `scripts/qa-login.sh` so the QA password never entered the browser.
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity: compare render.com session-expiry behavior             | 30m | t003, t005 — **DONE** |
 | t007 | Simplify: run /simplify over the changed code                         | 30m | t006 — **DONE**     |
 | t008 | Test coverage: 401 classification, redirect, draft round-trip         | 45m | t006 — **DONE**     |
-| t009 | Closeout                                                              | 15m | t008                |
+| t009 | Closeout                                                              | 15m | t008 — **DONE**     |
 
 ## Definition of done
 
