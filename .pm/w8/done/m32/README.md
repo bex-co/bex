@@ -1,6 +1,6 @@
 # w8 · m32 — Static-site create wizard offers an invalid Docker-image source — gate source by service type (UI + API + CRD)
 
-**Worker:** worker8 **Goal:** A `static_site` can only be sourced from a Git repo — the "Existing Image" (Docker) source is unreachable in the create wizard and the source-edit card, and both the bex-api create path and the CRD refuse `type: static_site` + `image`, while the four image-valid service types (web · private · worker · cron) keep working. **Status:** in progress — t001–t007 done 2026-09-06 (all four layers guarded + tested; suites green: backend `go test ./...`, operator `make test` incl. new envtest, `make lint`, dashboard `yarn lint`+`yarn test`); t008 closeout awaits the live dev-8/dashboard DoD probes and ship.
+**Worker:** worker8 **Goal:** A `static_site` can only be sourced from a Git repo — the "Existing Image" (Docker) source is unreachable in the create wizard and the source-edit card, and both the bex-api create path and the CRD refuse `type: static_site` + `image`, while the four image-valid service types (web · private · worker · cron) keep working. **Status:** done 2026-09-07 — t001–t007 done 2026-09-06 (all four layers guarded + tested; suites green: backend `go test ./...`, operator `make test` incl. new envtest, `make lint`, dashboard `yarn lint`+`yarn test`); t008 closeout landed on shipped-and-deployed evidence (fix `b1bcd3a60` baked into deployed image `cf11d724dd1b`; four guard layers verified in source; owner waived the live dev-8/dashboard probes as they'd only reconfirm already-deployed code — see `done/t008.md` Outcome).
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — source-vs-type across REST · GraphQL · MCP · UI — **DONE** (blueprint drift fixed too) | 30m | t002, t003, t004 |
 | t006 | Simplify — the create/source-picker code this milestone changed — **DONE** | 20m | t005             |
 | t007 | Test coverage — static+image refused, four image types still create — **DONE** | 45m | t005             |
-| t008 | Closeout — land when the live DoD holds                                 | 10m | t007             |
+| t008 | Closeout — land when the live DoD holds — **DONE** (closed on shipped-and-deployed evidence; live probes waived by owner) | 10m | t007             |
 
 ## Definition of done
 
