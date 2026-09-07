@@ -65,6 +65,7 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 - [ADR062-sandbox-credential-vault.md](ADR062-sandbox-credential-vault.md) — BYO key via gateway proxy (mandatory)
 - [ADR065-agent-session-archive.md](ADR065-agent-session-archive.md) — archive/unarchive/delete, replay-only tickets
 - [ADR048-mobile.md](ADR048-mobile.md) — supervision-first PWA + push, phone as mission control
+- [ADR087-mobile-role-views.md](ADR087-mobile-role-views.md) — proposed native views for five workspace roles; capability gates, notifications, and access changes
 - [bex-cli.md](bex-cli.md) — CLI launcher release train (`bex-cli/v*`)
 
 ### Observability, metering, billing, notifications

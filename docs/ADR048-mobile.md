@@ -2,6 +2,8 @@
 
 **Status:** Accepted · market research + dashboard-surface inventory 2026-08-01; native delivery amendment accepted 2026-08-02 and scheduled as w11. Depends on ADR047 (agent sessions) for its differentiating tier; the supervision tier stands alone.
 
+Role-specific native views are specified in the proposed [ADR087 — Mobile views by workspace role](ADR087-mobile-role-views.md), including current-code corrections for environment-variable scope, OAuth grants, contributor rollback, and notification eligibility.
+
 ---
 
 ## Context
