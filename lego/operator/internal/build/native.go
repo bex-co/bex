@@ -83,9 +83,13 @@ func validateNativeOptions(o Options) error {
 // as the image CMD. The generated file is written by an init container and is
 // never committed to the tenant repository.
 func nativeDockerfile(o Options) string {
-	buildScript := `while IFS='=' read -r key encoded; do
-  [ -n "$key" ] || continue
-  export "$key=$(printf '%s' "$encoded" | base64 -d)"
+	buildScript := `while IFS= read -r record; do
+  [ -n "$record" ] || continue
+  key=${record%%=*}
+  encoded=${record#*=}
+  # The sentinel keeps command substitution from stripping value newlines.
+  value="$(printf '%s' "$encoded" | base64 -d 2>/dev/null && printf '.')" || exit 1
+  export "$key=${value%.}"
 done < /run/secrets/render-env
 ` + o.BuildCommand
 	run := shellJSON(buildScript)
@@ -162,7 +166,10 @@ if [ -d /runtime-env ]; then
   done
 fi
 for key in $BEX_NATIVE_LITERAL_KEYS; do
-  encoded="$(printenv "$key" | base64 | tr -d '\n')"
+  # The sentinel guards value newlines through command substitution; %?. then
+  # drops it together with printenv's own final terminator, nothing else.
+  value="$(printenv "$key"; printf '.')"
+  encoded="$(printf '%s' "${value%?.}" | base64 | tr -d '\n')"
   printf '%s=%s\n' "$key" "$encoded" >> /native/render-env
 done`},
 		Env:          env,
