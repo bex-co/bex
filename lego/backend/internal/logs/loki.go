@@ -360,7 +360,9 @@ type lokiLabelValuesResponse struct {
 // can't tell the backends apart. A request line additionally carries the type /
 // method / statusCode labels the shipper attached, which is what lets the REST
 // adapter render a truthful `type` per line instead of assuming `app`.
-// Unparseable timestamps drop the line rather than fail the query.
+// Unparseable timestamps drop the line rather than fail the query. Each message
+// passes through canonicalHistoryMessage so a historical container record's
+// retained transport terminator matches the live reader's stripped payload.
 func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 	if lr.Status != "" && lr.Status != "success" {
 		return nil, fmt.Errorf("loki status %q", lr.Status)
@@ -375,15 +377,46 @@ func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 			if err != nil {
 				continue
 			}
+			labels := entryLabels(st.Stream, q)
 			out = append(out, LogEntry{
 				Timestamp: time.Unix(0, ns).UTC().Format(time.RFC3339Nano),
-				Message:   pair[1],
-				Labels:    entryLabels(st.Stream, q),
+				Message:   canonicalHistoryMessage(pair[1], labels[LabelType]),
+				Labels:    labels,
 			})
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
 	return q.capToLimit(out), nil
+}
+
+// canonicalHistoryMessage strips the single kubelet transport line terminator a
+// historical container record retains but the live/fallback reader already
+// removed, so one emitted record has one message-byte shape — and therefore one
+// derived log id (render.go's logID hashes Message) — across history and live.
+// Without this, a cron line stored as "qa-cron-success\n" and streamed as
+// "qa-cron-success" keyed as two records and rendered twice on overlap (w4/m96).
+//
+// The live and fallback pod readers scan with bufio.Scanner (service.go), whose
+// ScanLines drops the record's trailing "\n" and a single preceding "\r". Every
+// log-shipper pipeline reads pod stdout through loki.source.kubernetes, which
+// KEEPS that "\n" (Alloy's parseKubernetesLog returns the timestamp-stripped
+// remainder including the LF), so history must apply the same drop to match.
+// The sole exception is type=build, tailed from the node's CRI files via
+// loki.source.file + stage.cri (deploy/gitops/base/log-shipper.yaml), whose
+// records are already terminator-free — it is left byte-for-byte untouched so a
+// framing we have not established is never rewritten.
+//
+// This mirrors ScanLines exactly and is deliberately NOT a TrimSpace/TrimRight:
+// it removes at most one "\n" then one "\r" (LF, CRLF, and ScanLines' EOF dropCR
+// for an unterminated final line). Interior bytes, a JSON string's escaped "\n",
+// and ordinary trailing spaces all survive, and a blank record stays a blank
+// record rather than being dropped.
+func canonicalHistoryMessage(msg, logType string) string {
+	if logType == LogTypeBuild {
+		return msg
+	}
+	msg = strings.TrimSuffix(msg, "\n")
+	return strings.TrimSuffix(msg, "\r")
 }
 
 // entryLabels renders a Loki stream's label set in the shape the adapters expect:

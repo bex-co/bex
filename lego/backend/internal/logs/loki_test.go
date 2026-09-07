@@ -302,6 +302,99 @@ func TestParseLokiStreamsDropsBadAndErrors(t *testing.T) {
 	}
 }
 
+// canonicalHistoryMessage mirrors bufio.ScanLines' dropCR: at most one trailing
+// "\n" then one "\r" leaves, and nothing else does. It is the single boundary
+// (w4/m96) that keeps a historical record's bytes equal to the live reader's.
+func TestCanonicalHistoryMessage(t *testing.T) {
+	cases := []struct{ name, in, logType, want string }{
+		{"lf terminator dropped", "qa-cron-success\n", LogTypeApp, "qa-cron-success"},
+		{"crlf terminator dropped", "qa-cron-success\r\n", LogTypeApp, "qa-cron-success"},
+		{"trailing spaces preserved", "value  \n", LogTypeApp, "value  "},
+		{"blank record stays blank, not dropped", "\n", LogTypeApp, ""},
+		{"unterminated line untouched", "no terminator", LogTypeApp, "no terminator"},
+		{"lone cr at eof dropped (ScanLines parity)", "progress\r", LogTypeApp, "progress"},
+		{"only the trailing terminator, interior lf kept", "a\nb\n", LogTypeApp, "a\nb"},
+		{"json-escaped newline in data is not framing", `{"k":"a\nb"}` + "\n", LogTypeApp, `{"k":"a\nb"}`},
+		{"request access line lf dropped", `{"RequestPath":"/x"}` + "\n", LogTypeRequest, `{"RequestPath":"/x"}`},
+		{"postgres line lf dropped", "LOG:  ready\n", "postgres", "LOG:  ready"},
+		{"keyvalue line lf dropped", "Ready to accept\n", "keyvalue", "Ready to accept"},
+		{"build record left byte-for-byte (file source)", "buildkit step\n", LogTypeBuild, "buildkit step\n"},
+	}
+	for _, c := range cases {
+		if got := canonicalHistoryMessage(c.in, c.logType); got != c.want {
+			t.Errorf("%s: canonicalHistoryMessage(%q, %q) = %q, want %q", c.name, c.in, c.logType, got, c.want)
+		}
+	}
+}
+
+// The filed shape: three cron executions stored WITH the transport LF must read
+// back as three canonical records (not six on live overlap), while a build
+// stream in the same response keeps its framing untouched.
+func TestParseLokiStreamsCanonicalizesContainerFramingExceptBuild(t *testing.T) {
+	body := lokiResp(
+		map[string]any{
+			"stream": `{"app":"web","pod":"web-1","container":"app","type":"app"}`,
+			"values": `[["1751673601000000000","qa-cron-success\n"],["1751673603000000000","kept trailing  \n"]]`,
+		},
+		map[string]any{
+			"stream": `{"app":"web","pod":"bld-1","container":"buildkit","type":"build"}`,
+			"values": `[["1751673602000000000","buildkit step\n"]]`,
+		},
+	)
+	var lr lokiRangeResponse
+	if err := decodeJSON(body, &lr); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	entries, err := parseLokiStreams(lr, LogQuery{App: "web", Limit: 100})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	// oldest-first: app "qa-cron-success", build "buildkit step\n", app "kept trailing  ".
+	want := []string{"qa-cron-success", "buildkit step\n", "kept trailing  "}
+	if len(entries) != len(want) {
+		t.Fatalf("want %d entries, got %d: %+v", len(want), len(entries), entries)
+	}
+	for i, w := range want {
+		if entries[i].Message != w {
+			t.Errorf("entry %d message = %q, want %q", i, entries[i].Message, w)
+		}
+	}
+}
+
+// The whole point of the fix: one emitted record derives ONE id and ONE message
+// across the durable-history read (retained LF) and the live/fallback pod reader
+// (bufio.Scanner). If the historical LF ever returns, this fails.
+func TestHistoryAndLivePayloadAndIDConverge(t *testing.T) {
+	const nanos = 1757222584824789480
+	ts := time.Unix(0, nanos).UTC().Format(time.RFC3339Nano)
+
+	body := lokiResp(map[string]any{
+		"stream": `{"app":"web","pod":"web-1","container":"app","type":"app"}`,
+		"values": fmt.Sprintf(`[["%d","qa-cron-success\n"]]`, nanos),
+	})
+	var lr lokiRangeResponse
+	if err := decodeJSON(body, &lr); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	hist, err := parseLokiStreams(lr, LogQuery{App: "web", Limit: 10})
+	if err != nil || len(hist) != 1 {
+		t.Fatalf("history parse: %+v (err %v)", hist, err)
+	}
+	// Live: the kubelet stream is "<rfc3339> <content>"; ScanLines already
+	// stripped the LF before parseContainerLogLine ever sees the token.
+	live := parseContainerLogLine("web", "web-1", core.AppContainer, LogTypeApp, ts+" qa-cron-success")
+
+	if hist[0].Message != live.Message {
+		t.Fatalf("message diverges: history %q vs live %q", hist[0].Message, live.Message)
+	}
+	if hist[0].Timestamp != live.Timestamp {
+		t.Fatalf("timestamp diverges: history %q vs live %q", hist[0].Timestamp, live.Timestamp)
+	}
+	if logID(hist[0]) != logID(live) {
+		t.Fatalf("log id diverges: history %q vs live %q", logID(hist[0]), logID(live))
+	}
+}
+
 // --- End-to-end over a fake Loki HTTP server ---
 
 // fakeLoki captures the last request (path + query) and replies with body.
