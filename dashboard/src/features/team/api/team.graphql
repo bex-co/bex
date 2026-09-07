@@ -93,3 +93,14 @@ mutation AcceptWorkspaceInvite($token: String!) {
     role
   }
 }
+
+# Authenticated, read-only context for the invitation decision page.
+query WorkspaceInvitePreview($token: String!) {
+  workspaceInvitePreview(token: $token) {
+    workspaceId
+    workspaceName
+    role
+    inviterEmail
+    alreadyMember
+  }
+}

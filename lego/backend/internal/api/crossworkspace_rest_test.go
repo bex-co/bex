@@ -135,6 +135,8 @@ var publicRoutes = map[string]bool{
 // wildcard-free route absent from this set fails the completeness guard, forcing
 // a classification decision rather than silent omission.
 var callerScopedRoutes = map[string]bool{
+	"POST /v1/invites/preview": true, // authenticated bearer preview; membership state is caller-specific
+
 	// Collection lists — scoped to the caller's own workspace (or identity).
 	"GET /v1/services":             true,
 	"GET /v1/postgres":             true,

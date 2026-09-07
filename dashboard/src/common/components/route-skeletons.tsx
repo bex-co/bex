@@ -1,3 +1,4 @@
+import { InvitationFrame } from "@/features/invites/invitation-frame";
 import { useRouterState, useSearch } from "@tanstack/react-router";
 import {
   Card,
@@ -1214,22 +1215,30 @@ export function DeviceSuccessRouteSkeleton() {
   );
 }
 
-export function InviteRouteSkeleton() {
+export function InviteRouteSkeleton({
+  authenticated = true,
+}: { authenticated?: boolean } = {}) {
   return (
-    <PendingFrame
-      route="invite"
-      className="min-h-screen bg-background px-6 py-16"
-    >
-      <Region
-        name="opening"
-        className="mx-auto flex max-w-sm flex-col items-center gap-4"
+    <InvitationFrame>
+      <div
+        data-route-skeleton="invite"
+        aria-busy="true"
+        className="flex flex-1 flex-col gap-6"
       >
-        <Skeleton className="size-6 rounded-full" />
-        <Skeleton className="h-6 w-44" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-4/5" />
-      </Region>
-    </PendingFrame>
+        <div className="space-y-3">
+          {authenticated && <Skeleton className="h-5 w-40" />}
+          <Skeleton className="h-8 w-4/5" />
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-5 w-4/5" />
+          {authenticated && <Skeleton className="h-5 w-3/5" />}
+        </div>
+        <div className="mt-auto space-y-3">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+          {!authenticated && <Skeleton className="h-9 w-full" />}
+        </div>
+      </div>
+    </InvitationFrame>
   );
 }
 

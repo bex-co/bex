@@ -123,6 +123,7 @@ type MembersStore interface {
 	CreateInvite(ctx context.Context, tenantID, email, role, token, invitedBy string, expiresAt time.Time) (store.Invite, error)
 	ListInvites(ctx context.Context, tenantID string) ([]store.Invite, error)
 	GetInvite(ctx context.Context, tenantID, id string) (store.Invite, error)
+	GetInviteByToken(ctx context.Context, token string) (store.Invite, error)
 	DeleteInvite(ctx context.Context, tenantID, id string) error
 	// RefreshInvite pushes an unaccepted invite's expiry forward and installs a
 	// freshly minted token (the resend verb, w1/m33; token rotates since w1/041 —
@@ -582,6 +583,65 @@ func (s *Service) ResendInvite(ctx context.Context, workspaceID, inviteID string
 	}
 	s.sendInvite(ctx, inv, tenant)
 	return inviteView(inv), nil
+}
+
+// InvitePreview is the minimal authenticated context needed to review a link.
+// It exposes no bearer or invitee address; AlreadyMember is caller-specific.
+type InvitePreview struct {
+	WorkspaceID   string `json:"workspaceId"`
+	WorkspaceName string `json:"workspaceName"`
+	Role          string `json:"role"`
+	InviterEmail  string `json:"inviterEmail,omitempty"`
+	AlreadyMember bool   `json:"alreadyMember"`
+}
+
+// PreviewInvite validates a bearer without consuming it or changing membership.
+func (s *Service) PreviewInvite(ctx context.Context, token string) (InvitePreview, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return InvitePreview{}, err
+	}
+	if s.Store == nil {
+		return InvitePreview{}, ErrMembersUnavailable
+	}
+	raw, err := hex.DecodeString(token)
+	if err != nil || len(raw) != 16 || token != strings.ToLower(token) {
+		return InvitePreview{}, mapAcceptInviteErr(store.ErrNotFound)
+	}
+	identity, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return InvitePreview{}, core.ErrForbidden
+	}
+	inv, err := s.Store.GetInviteByToken(ctx, token)
+	if err != nil {
+		return InvitePreview{}, mapAcceptInviteErr(err)
+	}
+	member, memberErr := s.Store.GetTenantMember(ctx, inv.TenantID, identity.Subject)
+	if memberErr != nil && !errors.Is(memberErr, store.ErrNotFound) {
+		return InvitePreview{}, memberErr
+	}
+	alreadyMember := memberErr == nil
+	if !alreadyMember {
+		if inv.AcceptedAt != nil {
+			return InvitePreview{}, mapAcceptInviteErr(store.ErrInviteAlreadyAccepted)
+		}
+		if !inv.ExpiresAt.After(s.Now()) {
+			return InvitePreview{}, mapAcceptInviteErr(store.ErrInviteExpired)
+		}
+	}
+	tenant, err := s.Store.GetTenant(ctx, inv.TenantID)
+	if err != nil {
+		return InvitePreview{}, mapAcceptInviteErr(err)
+	}
+	view := InvitePreview{WorkspaceID: inv.TenantID, WorkspaceName: tenant.Name, Role: wireRole(inv.Role), AlreadyMember: alreadyMember}
+	if alreadyMember {
+		view.Role = wireRole(member.Role)
+	}
+	if s.Identities != nil && inv.InvitedBy != "" {
+		if attrs, ok := s.Identities.LookupIdentity(ctx, inv.InvitedBy); ok {
+			view.InviterEmail = attrs.Email
+		}
+	}
+	return view, nil
 }
 
 // AcceptInvite redeems an invite by its emailed token for the CALLER — the

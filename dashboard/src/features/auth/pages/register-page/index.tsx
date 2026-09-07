@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const search = useSearch({ from: "/auth/sign-up" });
   const flow = useOryFlow("registration", search.flow, {
     loginChallenge: search.login_challenge,
+    returnTo: search.next,
   });
   const { t } = useTranslations();
   const authFeatures = useAuthFeatures();

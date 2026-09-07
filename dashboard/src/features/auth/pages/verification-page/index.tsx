@@ -5,6 +5,7 @@ import { useOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig } from "@/common/lib/ory/config";
 import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { safeNext } from "@/common/lib/safe-next";
+import { peekPendingInviteToken } from "@/common/lib/invite-token";
 import { takeAuthNext } from "@/features/auth/lib/auth-next";
 import { paymentSetupPath } from "@/features/onboarding/lib/payment-setup";
 import { AuthWidgetSkeleton } from "@/common/components/route-skeletons";
@@ -68,7 +69,12 @@ export default function VerificationPage() {
             // this hop even when the query param wins.
             const stashed = takeAuthNext();
             const next = fromQuery !== "/" ? fromQuery : stashed;
-            void navigate({ to: "/", href: paymentSetupPath(next) });
+            void navigate({
+              to: "/",
+              href: peekPendingInviteToken()
+                ? "/invite"
+                : paymentSetupPath(next),
+            });
           }}
         />
       ) : (

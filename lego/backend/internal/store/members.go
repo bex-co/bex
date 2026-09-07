@@ -312,6 +312,17 @@ func (s *PGStore) GetInvite(ctx context.Context, tenantID, id string) (Invite, e
 	return inv, nil
 }
 
+// GetInviteByToken reads invitation context without redeeming the capability.
+// Accepted rows remain readable so existing members can reopen their workspace.
+func (s *PGStore) GetInviteByToken(ctx context.Context, token string) (Invite, error) {
+	inv, err := scanInvite(s.Pool.QueryRow(ctx,
+		`SELECT `+inviteColumns+` FROM tenant_invites WHERE token_hash = $1`, hashInviteToken(token)))
+	if err != nil {
+		return Invite{}, classify("invite", err)
+	}
+	return inv, nil
+}
+
 // RefreshInvite pushes an unaccepted invite's expiry forward and replaces its
 // token — the resend verb's write half (w1/m33). The token rotates (w1/041):
 // with only sha256(token) at rest the old plaintext cannot be re-emailed, so

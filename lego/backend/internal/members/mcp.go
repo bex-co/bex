@@ -66,6 +66,14 @@ type okResult struct {
 // RegisterMCP adds the membership tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "preview_workspace_invite",
+		Description: "Review an invitation's workspace, role, inviter and your membership without accepting it.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in acceptInviteArgs) (*mcp.CallToolResult, InvitePreview, error) {
+		preview, err := s.PreviewInvite(ctx, in.Token)
+		return nil, preview, err
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_workspace_members",
 		Description: "List a workspace's members, their roles, opaque userId (own-…), and email (when the identity provider is configured). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listMembersResult, error) {
