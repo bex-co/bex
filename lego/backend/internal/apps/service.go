@@ -836,17 +836,23 @@ func effectiveType(specType string) string {
 // decided — keeps that string consistent across every surface.
 //
 // The mapping mirrors the operator's effectiveBuilder in reverse and names only
-// a runtime bex can determine unambiguously: an explicit spec.runtime wins, and
-// a repo build under the default/auto/dockerfile builder is "docker" (all three
-// resolve to a Dockerfile build). A static site has no App runtime (bex's
-// runtime enum has no "static"); a prebuilt image or a bare "buildpack"/"native"
-// builder without an explicit runtime names no runtime bex can pin here, so each
-// reads back empty as it did before.
+// a runtime bex can determine unambiguously: an explicit spec.runtime wins; a
+// prebuilt image (image set, no repo build) is "image"; and a repo build under
+// the default/auto/dockerfile builder is "docker" (all three resolve to a
+// Dockerfile build). A static site has no App runtime (bex's runtime enum has no
+// "static"), and a bare "buildpack"/"native" builder without an explicit runtime
+// names no runtime bex can pin here, so each reads back empty as it did before.
 func effectiveRuntime(spec appv1alpha1.AppSpec, svcType string) string {
 	if spec.Runtime != "" {
 		return spec.Runtime
 	}
-	if svcType != appv1alpha1.TypeStaticSite && spec.Repo != "" {
+	if svcType == appv1alpha1.TypeStaticSite {
+		return ""
+	}
+	if spec.Image != "" && spec.Repo == "" {
+		return "image"
+	}
+	if spec.Repo != "" {
 		switch spec.Builder {
 		case "", "auto", "dockerfile":
 			return "docker"

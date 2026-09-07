@@ -398,10 +398,13 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 }
 
 // envSpecificDetails mirrors Render's runtime-keyed envSpecificDetails: the
-// docker shape for image builds, the buildpack shape for every other declared
-// runtime. Absent entirely when the service declares no runtime.
+// docker shape for a Dockerfile build, the buildpack shape for a native runtime.
+// Absent for a service with no build config to carry — a runtime-less legacy App
+// and a prebuilt "image" runtime, whose container is supplied whole via the
+// top-level imagePath rather than built from source (so it has no
+// build/start/dockerfile block to round-trip).
 func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
-	if a.Runtime == "" {
+	if a.Runtime == "" || a.Runtime == "image" {
 		return nil, false
 	}
 	if a.Runtime == "docker" {
