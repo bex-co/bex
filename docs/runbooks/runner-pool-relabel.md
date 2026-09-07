@@ -1,6 +1,6 @@
 # Runbook: split the self-hosted runner fleet into `bex-ci` / `bex-production` pools
 
-Closes ADR083 finding 3 (high): PR-capable test jobs and production-credentialed deploy jobs must never share a runner host. The repo side (workflow `runs-on` labels + `scripts/github-actions-validate.sh` enforcement, `w2/m88`) lands fail-safe — until each host carries its pool label, jobs **queue** instead of running on the wrong host. This runbook is the operator-side half: labeling each physical runner into exactly one pool.
+Bounds ADR083 finding 3 (high): PR-capable test jobs and production-credentialed deploy jobs are routed into disjoint runner pools. The repo side (workflow `runs-on` labels + `scripts/github-actions-validate.sh` enforcement, `w2/m88`) lands fail-safe — until a pool has a runner carrying its label, jobs **queue** instead of running on the wrong pool. This runbook is the operator-side half: labeling each runner into exactly one pool. **Host-level separation was rejected by user decision 2026-09-07** (`.pm/DO_NOT_DO.md` `#RUNNER-HOSTS`): the whole fleet runs on the operator's single Mac as a hard constraint, and the shared-host residual is accepted — do not provision separate production hosts or schedule the associated credential rotation.
 
 ## Mechanism: labels, not runner groups
 
@@ -10,7 +10,7 @@ Workflows standardize on pool labels; the existing organization groups are separ
 
 The runner source is `bex-co/block-eden-mono`, `projects/github-runner/`. Its Compose configuration originally set `RUNNER_GROUP` but omitted the matching `RUNNER_LABELS` entry. All ten runners were healthy but label-addressed jobs queued. Ephemeral runners must receive both settings on every registration; a one-time API relabel is lost after their next job.
 
-The 2026-09-05 repair adds each service's matching pool label and separates its npm/yarn/pnpm cache volumes. Both pools currently share Docker Desktop's Linux host, so this is a scheduling repair, **not completion of m88 host isolation**. Privileged DinD containers share that host kernel. Keep m88 open until production has a separate host and the required credential rotation and live evidence hold.
+The 2026-09-05 repair adds each service's matching pool label and separates its npm/yarn/pnpm cache volumes. Both pools share Docker Desktop's Linux host — privileged DinD containers share that host kernel. That topology is final (`.pm/DO_NOT_DO.md` `#RUNNER-HOSTS` — see intro).
 
 ## Pool assignment (the trust classification)
 
@@ -35,11 +35,11 @@ Classified by what each job can touch — secrets, `environment:` gates, and wri
 
 ## Re-label sequence
 
-Ordering rule: **production first**. A `bex-ci` job can never land on a production host (production hosts never receive the `bex-ci` label), so there is no unsafe window; labeling production first unblocks main-branch deploys before PR traffic resumes.
+Ordering rule: **production first** — a not-yet-labeled pool only queues its jobs, so bringing `runner-bex-production` up first unblocks main-branch deploys before PR traffic resumes; there is no window where a job runs on the wrong pool.
 
-1. **Choose the production host(s):** the machine(s) already entrusted with deploy credentials — the hosts that ran `build-and-deploy` before the split. Every other host becomes `bex-ci`. One machine must never carry both labels (ADR083 operator obligation 1), and per obligation 2, rotate credentials that previously landed on shared runners before first production-pool use.
+1. **Pool sizing on the single operator host** (`.pm/DO_NOT_DO.md` `#RUNNER-HOSTS`): keep each runner container in exactly one pool — today 7× `runner-bex-ci`, 3× `runner-bex-production`.
 2. **Configure durable registration** in the runner source. Production must use `RUNNER_GROUP=bex-production` and include `bex-production` in `RUNNER_LABELS`; CI must use `RUNNER_GROUP=bex-ci` and include `bex-ci`. Never include both pool labels on one runner. Preserve the existing `self-hosted`, `Linux`, `ARM64`, and organization compatibility labels.
-3. **Apply each service on its intended host** after checking for active jobs: `docker compose up -d --build runner-bex-production` on production, `docker compose up -d --build runner-bex-ci` on CI. These commands also start the emulation prerequisite. Never print `docker compose config` with real credentials; the configuration test uses a dummy token.
+3. **Apply both compose services** after checking for active jobs: `docker compose up -d --build runner-bex-production runner-bex-ci`. This also starts the emulation prerequisite. Never print `docker compose config` with real credentials; the configuration test uses a dummy token.
 4. **Verify:** push (or re-run a queued run) and confirm placement per job:
 
    ```sh
@@ -47,7 +47,7 @@ Ordering rule: **production first**. A `bex-ci` job can never land on a producti
      --jq '.jobs[] | [.name, .conclusion, .runner_name, (.labels|join(","))] | @tsv'
    ```
 
-   Done when one CI-pool run (e.g. `test (backend)`) and one production-pool run (a real `deploy (bex via Argo)`) are green **on the intended hosts** — that is `w2/m88` t004's evidence and completes ADR083 finding 3.
+   Done when one CI-pool run (e.g. `test (backend)`) and one production-pool run (a real `deploy (bex via Argo)`) are green **on their intended pools** — that is `w2/m88` t004's evidence; with the `#RUNNER-HOSTS` decision it settles ADR083 finding 3 at the label level.
 
 ## Failure modes
 

@@ -1,6 +1,6 @@
 # w2 · m88 — Split self-hosted CI runner pools by trust level
 
-**Worker:** worker2 **Goal:** PR-facing CI jobs and production-credentialed deploy jobs never share a runner host — a poisoned CI runner can no longer be the machine that later holds deploy credentials **Status:** in progress — t001–t003 implemented. Live inspection 2026-09-05 confirmed org groups `bex-ci` (3) and `bex-production` (4); the prior free-plan explanation was incorrect. The runner Compose source omitted pool labels. A repair in the ignored `external/block-eden-mono/projects/github-runner/` checkout adds durable labels and separates package caches; both pools have been recreated and are picking up jobs. t004 remains open on green-run evidence, separate production-host placement, and credential rotation; t005–t007 await verification.
+**Worker:** worker2 **Goal:** PR-facing CI jobs and production-credentialed deploy jobs never share a runner host — a poisoned CI runner can no longer be the machine that later holds deploy credentials _(goal narrowed 2026-09-07 by user decision `.pm/DO_NOT_DO.md` `#RUNNER-HOSTS`: single-Mac fleet is a hard constraint, so the split is label-level pool routing, and the shared-host residual is accepted)_ **Status:** done 2026-09-07 — label-level pool split live and fail-closed-validated; fleet recovered from full outage (Docker Desktop down + OrbStack zombie fleet crash-looping; 13 stale registrations purged); green-run evidence on both pools (`scripts (test)` 34160723241 on `bex-ci` runner `c57df3d66c97`; deploy 33994179845 `build-and-deploy` on `bex-production` runner `57789c8a59a8`); ADR083 + ADR019 + runbook + validator record the disposition final; host separation + shared-runner credential rotation rejected/waived per `#RUNNER-HOSTS`.
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | Define the trust-pool label scheme + fleet re-label runbook — **DONE**                     | 30m | —          |
 | t002 | Update every workflow's `runs-on` to its trust pool — **DONE**                             | 45m | t001       |
 | t003 | Enforce pool-per-trust in `scripts/github-actions-validate.sh` — **DONE**                  | 30m | t002       |
-| t004 | Verify green runs on both pools; record the split in ADR083 + ADR019            | 30m | t003       |
-| t005 | Simplify                                                                        | 20m | t004       |
-| t006 | Test coverage                                                                   | 30m | t004       |
-| t007 | Closeout                                                                        | 15m | t005, t006 |
+| t004 | Verify green runs on both pools; record the split in ADR083 + ADR019 — **DONE** | 30m | t003       |
+| t005 | Simplify — **DONE**                                                             | 20m | t004       |
+| t006 | Test coverage — **DONE**                                                        | 30m | t004       |
+| t007 | Closeout — **DONE**                                                             | 15m | t005, t006 |
 
 ## Definition of done
 
