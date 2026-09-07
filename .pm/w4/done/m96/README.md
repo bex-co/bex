@@ -1,17 +1,30 @@
 # w4 · m96 — Use the same log message boundary in history and live streaming
 
-**Worker:** worker4 **Goal:** one emitted container log record renders once when historical and live data overlap, while its content and distinct neighboring records remain intact. **Status:** todo
+**Worker:** worker4 **Goal:** one emitted container log record renders once when historical and live data overlap, while its content and distinct neighboring records remain intact. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Canonicalize container-log framing at the durable read boundary | 50m | — |
-| t002 | Verify shared log sources, wire identities, and existing dedupe guarantees | 50m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 20m | t003 |
-| t005 | Test coverage | 35m | t003 |
-| t006 | Closeout | 15m | t004, t005 |
+| t001 | Canonicalize container-log framing at the durable read boundary | 50m | — — **DONE** |
+| t002 | Verify shared log sources, wire identities, and existing dedupe guarantees | 50m | t001 — **DONE** |
+| t003 | Render parity | 20m | t002 — **DONE** |
+| t004 | Simplify | 20m | t003 — **DONE** |
+| t005 | Test coverage | 35m | t003 — **DONE** |
+| t006 | Closeout | 15m | t004, t005 — **DONE** |
+
+## Outcome (2026-09-07)
+
+Shipped. Historical container log records now match the live/fallback reader's message bytes exactly, so one emitted record renders once (not twice on history/live overlap) and derives one stable id across both paths.
+
+- **t001 — one read-boundary normalization.** `parseLokiStreams` (`lego/backend/internal/logs/loki.go`, the single production caller of the durable-history parser) now passes every message through `canonicalHistoryMessage`, which strips the single kubelet transport terminator a historical record retains but `bufio.Scanner`'s `ScanLines` already removed in the live/fallback path — at most one trailing `\n` then one `\r` (LF, CRLF, and ScanLines' EOF `dropCR`). It is deliberately **not** a `TrimSpace`/`TrimRight`: interior bytes, a JSON string's escaped `\n`, and ordinary trailing spaces survive, and a blank record stays blank rather than being dropped.
+- **t002 — source-aware blast radius.** Every log-shipper pipeline reads pod stdout through `loki.source.kubernetes`, which keeps the LF (Alloy `parseKubernetesLog`) — so app, request, platform, postgres, and keyvalue records are all canonicalized. The sole exception is `type=build`, tailed from node CRI files via `loki.source.file` + `stage.cri` (already terminator-free); it is left byte-for-byte untouched so a framing we did not establish is never rewritten. `predeploy` is live-only (no Loki stream), already canonical. No frontend change: `mergeLogLines`/`logLineKey` were correct given their inputs — the fix is purely at the producing boundary.
+- **ID convergence is automatic.** `render.go`'s `logID` hashes the message, so once the historical bytes match live, the historical/live ids converge for the same record with no `render.go` change; resume cursors (timestamp `id:` frames) and Last-Event-ID semantics are untouched.
+- **t003 — parity.** ADR010 records the read-boundary normalization, the `loki.source.kubernetes` vs `stage.cri` (build) distinction, and the id convergence. The Render wire contract is unchanged — same `{id,message,timestamp,labels[]}` object and `{hasMore,nextStartTime,nextEndTime,logs}` envelope, no invented field — so ADR018's logs rows need no change.
+- **t004 — simplify.** The normalization lives in exactly one helper at exactly one boundary; no trim calls scattered across the four dashboard viewers.
+- **t005 — failure-sensitive tests.** Backend: a `canonicalHistoryMessage` table (LF/CRLF/trailing-spaces/blank/unterminated/lone-CR/interior-LF/JSON-escaped-newline/request/postgres/keyvalue/**build-kept**), a `parseLokiStreams` integration proving three retained-LF records read back as three canonical messages while a build stream keeps its terminator, and a cross-source test asserting the historical entry and the live `parseContainerLogLine` entry produce identical message, timestamp, and `logID`. Frontend: the real cron emission deduping across the GraphQL history row and the SSE frame to one line, plus a regression guard that a still-newlined historical message keys differently and double-renders (proving the fix belongs at the backend, not a frontend trim).
+
+**Verification:** backend `go test ./...` green (61 packages, EXIT 0) incl. the new `internal/logs` cases; backend `golangci-lint` 0 issues + `go vet` clean; dashboard `yarn typecheck` + `yarn lint` clean; dashboard tests green (122 in the logs feature). **t006 live re-probe deferred to the next QA pass** — no cluster access this session, the same close-out constraint recorded for m91–m95; the deployed change should repeat the README's cron create → three-execution history/SSE byte-and-count check (three, not six, with Live off/on and reload) → cancel control → cleanup walk.
 
 ## Definition of done
 

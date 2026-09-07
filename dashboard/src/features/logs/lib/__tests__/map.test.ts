@@ -191,6 +191,48 @@ describe("mergeLogLines", () => {
     const merged = mergeLogLines([], [line("x"), line("x"), line("y")]);
     expect(merged.map((l) => l.key)).toEqual(["x", "y"]);
   });
+
+  // w4/m96: the same cron emission arrives on both paths — the historical
+  // GraphQL row and the live SSE frame. Once the backend canonicalizes the
+  // historical record's transport newline (internal/logs/loki.go), both carry
+  // identical message bytes, so the straddling line renders once, not twice.
+  it("dedupes one cron emission across the historical and live wire shapes", () => {
+    const ts = "2026-09-07T05:23:04.824789480Z";
+    const instance = "tea-x-qa-20260906-cron-29812643-lwzhj";
+    const history = toLogLine(
+      gqlEntry({ timestamp: ts, instance, message: "qa-cron-success" }),
+    );
+    const live = fromRenderLog({
+      message: "qa-cron-success",
+      timestamp: ts,
+      labels: [
+        { name: "type", value: "app" },
+        { name: "instance", value: instance },
+      ],
+    });
+    const merged = mergeLogLines([history], [live]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].message).toBe("qa-cron-success");
+  });
+
+  // Regression guard: the frontend key is byte-exact by design, so a historical
+  // record that STILL carried its transport newline (the pre-fix bug) keys
+  // differently and double-renders. This is why the fix belongs at the backend
+  // read boundary, not a frontend trim that would also erase real data newlines.
+  it("would double-render if the historical message kept its transport newline", () => {
+    const ts = "2026-09-07T05:23:04.824789480Z";
+    const instance = "qa-cron-29812643-lwzhj";
+    const historyWithNewline = toLogLine(
+      gqlEntry({ timestamp: ts, instance, message: "qa-cron-success\n" }),
+    );
+    const live = fromRenderLog({
+      message: "qa-cron-success",
+      timestamp: ts,
+      labels: [{ name: "instance", value: instance }],
+    });
+    expect(historyWithNewline.key).not.toBe(live.key);
+    expect(mergeLogLines([historyWithNewline], [live])).toHaveLength(2);
+  });
 });
 
 describe("formatLogTimestamp", () => {
