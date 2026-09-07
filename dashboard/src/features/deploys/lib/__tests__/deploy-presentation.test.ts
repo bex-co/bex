@@ -1,9 +1,9 @@
+import { formatDateTime } from "@/common/lib/format";
 import { describe, expect, it } from "vitest";
 import {
   deployMatchesSearch,
   deployRowTimestamp,
   formatDeployDuration,
-  formatDeployTimestamp,
 } from "../deploy-presentation";
 
 describe("deploy presentation", () => {
@@ -21,12 +21,12 @@ describe("deploy presentation", () => {
     expect(
       formatDeployDuration("2026-07-16T00:01:00Z", "2026-07-16T00:00:00Z"),
     ).toBeNull();
-    expect(formatDeployTimestamp("bad")).toBeNull();
+    expect(formatDateTime("bad")).toBeNull();
   });
 
   it("formats a timestamp in the dashboard's standard style", () => {
     // Zone-less input parses as local time, so this holds in any runner TZ.
-    expect(formatDeployTimestamp("2026-07-16T00:57:00")).toBe(
+    expect(formatDateTime("2026-07-16T00:57:00")).toBe(
       "July 16, 2026 at 12:57 AM",
     );
   });

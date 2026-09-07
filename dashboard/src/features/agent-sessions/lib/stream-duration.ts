@@ -90,7 +90,8 @@ export function elapsedMsFromSource(
   return Math.min(span, MAX_ELAPSED_MS);
 }
 
-function formatBody(ms: number): string {
+/** Exact elapsed label from persisted source timestamps ("12s", "3m 4s"). */
+export function formatElapsedDuration(ms: number): string {
   const total = Math.round(Math.max(0, ms) / 1000);
   if (total < 60) return `${total}s`;
   const mins = Math.floor(total / 60);
@@ -98,14 +99,9 @@ function formatBody(ms: number): string {
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
-/** Exact elapsed label from persisted source timestamps ("12s", "3m 4s"). */
-export function formatElapsedDuration(ms: number): string {
-  return formatBody(ms);
-}
-
 /** Approximate elapsed label ("~12s", "~3m 4s") — arrival-time fallback. */
 export function formatApproxDuration(ms: number): string {
-  return `~${formatBody(ms)}`;
+  return `~${formatElapsedDuration(ms)}`;
 }
 
 export function formatStreamDuration(duration: StreamDuration): string {

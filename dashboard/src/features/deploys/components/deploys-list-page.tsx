@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/common/lib/format";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
@@ -42,7 +43,6 @@ import {
   deployMatchesSearch,
   deployRowTimestamp,
   formatDeployDuration,
-  formatDeployTimestamp,
 } from "../lib/deploy-presentation";
 import { DeployActions } from "./deploy-actions";
 
@@ -172,9 +172,7 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
             // canceled or failed row must not read "Deployed", and a shipped
             // row shows when it went live, not when its row was opened.
             const rowStamp = deployRowTimestamp(d);
-            const timestamp = hydrated
-              ? formatDeployTimestamp(rowStamp.iso)
-              : null;
+            const timestamp = hydrated ? formatDateTime(rowStamp.iso) : null;
             const hasListAction =
               isCancelableDeployStatus(d.status) || d.status === "deactivated";
             return (

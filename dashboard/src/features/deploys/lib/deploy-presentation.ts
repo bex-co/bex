@@ -1,20 +1,8 @@
 /**
  * Presentation helpers shared by deploy-history rows and the deploy-detail
- * header. Keeping timestamp and duration parsing here prevents the two
- * surfaces from disagreeing when a timestamp is absent or malformed.
+ * header. Keeping row timestamp selection and duration parsing here prevents
+ * the two surfaces from disagreeing when a timestamp is absent or malformed.
  */
-
-import { formatDateTime } from "@/common/lib/format";
-
-/**
- * Shared so the deploy-history rows and the deploy-detail header render the same
- * text. Inherits `formatDateTime`'s runtime-timezone caveat: only call it behind
- * a hydration gate (`useIsHydrated`) so the UTC SSR clock is never frozen on
- * screen (w6/m107).
- */
-export function formatDeployTimestamp(iso: string | null): string | null {
-  return formatDateTime(iso);
-}
 
 /**
  * The deploy row's subtitle timestamp (w6/051): the verb follows the deploy's
