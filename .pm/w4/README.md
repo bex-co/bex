@@ -73,7 +73,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **045** — Language bootstrap throws during ordinary service navigation (45m) ← continuous live `$qa-find-bugs w4`, 2026-09-06
+- [x] **045** — Language bootstrap throws during ordinary service navigation — retired: fixed concurrently by `4de8ac4db`; moved to `done/045.md` (live post-deploy check pending)
 - [x] **044** — Give Settings' Idle timeout dropdown an accessible name (20m) ← repeated live `$qa-find-bugs` hunt 2026-09-05, second run — done 2026-09-05; resolution and verification in `done/044.md`
 - [x] **042** — Give the environment-group service selector a persistent accessible name (20m) ← repeated live `/qa-find-bugs` passes 2026-09-05 — done 2026-09-05; resolution and verification in `done/042.md`
 - [x] **043** — Name Manual Scaling's instance controls and check the shared CPU/memory consumers (40m) ← repeated live `/qa-find-bugs` passes 2026-09-05 — done 2026-09-05; resolution and verification in `done/043.md`
