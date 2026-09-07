@@ -17,6 +17,11 @@ limitations under the License.
 package build
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -185,5 +190,78 @@ func TestNativeStaticSiteBuild(t *testing.T) {
 	o.Runtime = "node"
 	if err := validateNativeOptions(o); err == nil {
 		t.Fatal("non-static native build without startCommand must be rejected")
+	}
+}
+
+// Execute the generated shells: fragment assertions miss shell newline loss.
+func TestNativeEnvironmentRoundTrip(t *testing.T) {
+	for _, value := range []string{"", "a", "ab", "abc", "qa-build\n", "two\n\n", "embedded\nline", "literal $HOME quote'."} {
+		for _, literal := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%x/literal=%t", value, literal), func(t *testing.T) {
+				dir := t.TempDir()
+				secret := filepath.Join(dir, "secret")
+				if err := os.Mkdir(secret, 0700); err != nil {
+					t.Fatal(err)
+				}
+				secretValue := value
+				o := nativeOptions()
+				o.BuildCommand = "printf '%s' \"$MESSAGE\""
+				o.BuildEnv = nil
+				if literal {
+					secretValue = "overridden"
+					o.BuildEnv = []corev1.EnvVar{{Name: "MESSAGE", Value: value}}
+				}
+				if err := os.WriteFile(filepath.Join(secret, "MESSAGE"), []byte(secretValue), 0600); err != nil {
+					t.Fatal(err)
+				}
+				prep := nativeBuildPreparer(o)
+				script := strings.NewReplacer("/native", dir, "/runtime-env", secret).Replace(prep.Args[0])
+				cmd := exec.Command("sh", "-eu", "-c", script)
+				cmd.Env = os.Environ()
+				for _, env := range prep.Env {
+					cmd.Env = append(cmd.Env, env.Name+"="+env.Value)
+				}
+				if out, err := cmd.CombinedOutput(); err != nil {
+					t.Fatalf("prepare: %v: %s", err, out)
+				}
+				out, err := runNativeBuildShell(t, o, filepath.Join(dir, "render-env"))
+				if err != nil {
+					t.Fatalf("decode: %v: %s", err, out)
+				}
+				if string(out) != value {
+					t.Fatalf("got %q, want %q", out, value)
+				}
+			})
+		}
+	}
+}
+
+func runNativeBuildShell(t *testing.T, o Options, bundle string) ([]byte, error) {
+	t.Helper()
+	for line := range strings.SplitSeq(nativeDockerfile(o), "\n") {
+		if !strings.HasPrefix(line, "RUN ") {
+			continue
+		}
+		var args []string
+		if err := json.Unmarshal([]byte(line[strings.Index(line, "["):]), &args); err != nil {
+			t.Fatal(err)
+		}
+		args[2] = strings.ReplaceAll(args[2], "/run/secrets/render-env", bundle)
+		return exec.Command(args[0], args[1:]...).CombinedOutput()
+	}
+	t.Fatal("missing native RUN")
+	return nil, nil
+}
+
+func TestNativeEnvironmentRejectsInvalidBase64(t *testing.T) {
+	bundle := filepath.Join(t.TempDir(), "render-env")
+	if err := os.WriteFile(bundle, []byte("MESSAGE=c2VjcmV0!\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	o := nativeOptions()
+	o.BuildCommand = "printf BUILD_RAN"
+	out, err := runNativeBuildShell(t, o, bundle)
+	if err == nil || len(out) != 0 {
+		t.Fatalf("invalid bundle must fail silently before build: err=%v, output=%q", err, out)
 	}
 }
