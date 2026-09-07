@@ -94,9 +94,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w7/dev-7/` keeps onl
 
 ## Inbox
 
-> **2026-09-06:** `023` deferred to `.pm/FUTURE-MAYBE.md` and archived in `done/023.md`; the proxy already exists, while token billing awaits an explicit product/provider contract. `038` closed after three verified database restores, offline clean-image preservation, and exact old ReplicaSet/manifest/blob retirement; see `done/038.md` and the 2026-09-06 drill record.
-
-- `042.md` — investigate recoverable forum uploads and durable storage; 29 existing custom upload references failed the pre-retirement origin check.
+> **2026-09-06:** `023` deferred to `.pm/FUTURE-MAYBE.md` and archived in `done/023.md`; the proxy already exists, while token billing awaits an explicit product/provider contract. `038` closed after three verified database restores, offline clean-image preservation, and exact old ReplicaSet/manifest/blob retirement; see `done/038.md` and the 2026-09-06 drill record. `042` investigation closed — historical upload routing is `nvme4tbfish` / prior Render disks; no attached recovery source today; restore + durable disk deferred to `.pm/FUTURE-MAYBE.md` (`done/042.md`).
 
 > `032` **fixed 2026-09-05**: unstructured child projections preserve admission defaults while removing withdrawn bex-owned fields. CNPG and backup-store request-count tests, full operator suite, lint, and dead-code analysis passed. Moved to `done/`.
 
