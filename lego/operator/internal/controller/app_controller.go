@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"regexp"
 	"slices"
@@ -797,11 +798,13 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if err := r.relocateBuildSecret(ctx, app, buildNs, app.Spec.CloneSecret, "clone secret"); err != nil {
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 	}
-	runtimeSecret := runtimeEnvSecret(app)
+	runtimeSecret := ""
 	if builder == build.BuilderNative {
-		if err := r.relocateBuildSecret(ctx, app, buildNs, runtimeSecret, "native build env"); err != nil {
+		merged, err := r.projectNativeBuildEnv(ctx, app, buildNs)
+		if err != nil {
 			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 		}
+		runtimeSecret = merged
 	}
 	buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, app, buildNs, builder)
 	if err != nil {
@@ -1177,6 +1180,63 @@ func (r *AppReconciler) relocateBuildSecret(ctx context.Context, app *appv1alpha
 		return fmt.Errorf("relocating %s to %s: %w", label, buildNs, err)
 	}
 	return nil
+}
+
+// nativeEnvSecretName is the App-owned merged native-build env Secret. Linked
+// group Secrets and the service's own Secret collapse into one deterministic
+// per-App destination so the build keeps a single BuildKit secret mount and two
+// Apps sharing a group never contend over the shared `<evg>-env` name (w4/m93).
+func nativeEnvSecretName(app string) string { return app + "-native-env" }
+
+// projectNativeBuildEnv merges the App's ordered runtime env sources — linked
+// environment-group Secrets first (each optional, like the runtime envFrom
+// projection), the service's own Secret last so its keys win — into one
+// App-owned Secret next to the build Job, returning its name for the BuildKit
+// secret mount. Literal spec.env entries still travel separately and still win
+// over every Secret source: the preparer appends them after the Secret records
+// and the decoder's later-wins export order matches Kubernetes env precedence.
+// No sources => "" (no mount). A missing group Secret contributes nothing, but
+// any other read failure — including the own Secret missing — fails the build
+// rather than silently building with a partial environment.
+func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs string) (string, error) {
+	// envFromSources owns the source list, order, and optionality — iterating
+	// its output keeps build-time and runtime environments single-sourced.
+	sources := envFromSources(app)
+	if len(sources) == 0 {
+		return "", nil
+	}
+	reader := r.uncachedSecretClient()
+	data := map[string][]byte{}
+	for _, source := range sources {
+		ref := source.SecretRef
+		var src corev1.Secret
+		if err := reader.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: ref.Name}, &src); err != nil {
+			if ref.Optional != nil && *ref.Optional && apierrors.IsNotFound(err) {
+				continue
+			}
+			return "", fmt.Errorf("reading native build env Secret %s/%s: %w", app.Namespace, ref.Name, err)
+		}
+		// rejectProtectedSecretRefs already vets the spec references; re-check at
+		// the read like copyCloneSecret does, so a protected operational Secret
+		// can never be laundered into a mountable merged copy (codex F1/F7).
+		if src.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
+			return "", fmt.Errorf("refusing to project protected operator Secret %s/%s into a native build", app.Namespace, ref.Name)
+		}
+		maps.Copy(data, src.Data)
+	}
+	merged := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: nativeEnvSecretName(app.Name), Namespace: buildNs}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), merged, func() error {
+		if err := checkOwnedArtifact(merged, app); err != nil {
+			return err
+		}
+		merged.Type = corev1.SecretTypeOpaque
+		merged.Data = data
+		merged.Labels = artifactLabels(app, "native-env-secret")
+		return nil
+	}); err != nil {
+		return "", fmt.Errorf("projecting native build env: %w", err)
+	}
+	return merged.Name, nil
 }
 
 // effectiveDeployRef is the git ref a source clone checks out: the tracked
@@ -4631,6 +4691,7 @@ func (r *AppReconciler) knownBuildSecretNames(app *appv1alpha1.App) []string {
 	for _, name := range []string{
 		app.Spec.CloneSecret,
 		runtimeEnvSecret(app),
+		nativeEnvSecretName(app.Name),
 		app.Spec.ExternalRegistryPullSecret,
 		id.PullSecretName(),
 		id.LegacyPullSecretName(),
