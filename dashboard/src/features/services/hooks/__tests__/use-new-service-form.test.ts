@@ -102,6 +102,24 @@ describe("useNewServiceForm runtime detection", () => {
     },
   );
 
+  it("moves an image-tab selection back to GitHub when Static Site is chosen", () => {
+    const { result } = renderHook(() => useNewServiceForm({}));
+    act(() => result.current.setTab("image"));
+    expect(result.current.form.tab).toBe("image");
+
+    // A static site has no image source (ADR029) — the type switch resets the
+    // tab exactly as a manual tab switch would.
+    act(() => result.current.setServiceType("static_site"));
+    expect(result.current.form.serviceType).toBe("static_site");
+    expect(result.current.form.tab).toBe("github");
+    expect(result.current.form.selectedRepo).toBeNull();
+
+    // Image-valid types keep whatever tab is selected.
+    act(() => result.current.setTab("image"));
+    act(() => result.current.setServiceType("background_worker"));
+    expect(result.current.form.tab).toBe("image");
+  });
+
   it("leaves the current selection untouched when detection fails", async () => {
     const { result, rerender } = renderHook(() => useNewServiceForm({}));
     act(() => result.current.set({ selectedRepo: REPO, branch: "main" }));

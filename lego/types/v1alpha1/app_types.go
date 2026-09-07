@@ -271,6 +271,7 @@ const (
 // +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(self.replicas) || self.replicas <= 1",message="a service with spec.disk cannot run more than one instance"
 // +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(self.autoscaling) || !self.autoscaling.enabled",message="a service with spec.disk cannot use autoscaling"
 // +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(oldSelf.disk) || self.disk.sizeGB >= oldSelf.disk.sizeGB",message="spec.disk.sizeGB can only grow; a disk is never shrunk"
+// +kubebuilder:validation:XValidation:rule="!has(self.image) || (has(self.type) ? self.type : 'web_service') != 'static_site'",message="a static_site builds from spec.repo; spec.image is not supported"
 type AppSpec struct {
 	// DisplayName is the free-form, human-facing label for this App. It is
 	// intentionally distinct from the App object's immutable, DNS-safe Name:
@@ -356,7 +357,9 @@ type AppSpec struct {
 	// Image is a prebuilt OCI image to run directly, skipping the build plane.
 	// Constrained at the CRD schema (w1/m53) so a hand-applied CR can't carry an
 	// image reference with whitespace or shell/SSRF-meta characters that bex-api's
-	// ValidImage would reject — host[:port]/repo[:tag][@digest] only.
+	// ValidImage would reject — host[:port]/repo[:tag][@digest] only. Not
+	// supported for a static_site (spec XValidation): a static site is built
+	// from Repo and published to the object-store origin (ADR029).
 	// +optional
 	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9][A-Za-z0-9._/:@-]*$`
 	// +kubebuilder:validation:MaxLength=512

@@ -377,6 +377,11 @@ func TestBlueprintRejectsEveryExistingServiceTypeTransition(t *testing.T) {
 				req.Schedule = "0 * * * *"
 			}
 			if target == appv1alpha1.TypeStaticSite {
+				// A static_site request cannot carry an image (its own create
+				// guard would fire before the immutability check and mask it) —
+				// shape it as the valid repo-built form.
+				req.Image = ""
+				req.Repo = "https://github.com/bex-co/site"
 				req.PublishPath = "dist"
 			}
 			_, err := svc.applyCreate(context.Background(), req)

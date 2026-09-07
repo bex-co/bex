@@ -73,6 +73,23 @@ describe("buildCreateServiceInput", () => {
     expect(input.autoDeploy).toBeUndefined();
   });
 
+  it("never emits an image source for a static site", () => {
+    // Even if the form somehow holds tab === "image" for a static site (the
+    // wizard hides that tab), the payload must not carry the impossible
+    // static+image combination (ADR029; w8/m32).
+    const input = buildCreateServiceInput(
+      form({
+        serviceType: "static_site",
+        tab: "image",
+        image: "nginx:1",
+        publishPath: "dist",
+      }),
+    );
+    expect(input.image).toBeUndefined();
+    expect(input.runtime).toBeUndefined();
+    expect(input.registryCredentialId).toBeUndefined();
+  });
+
   it("prefers an explicit branch over the selected repo's default", () => {
     const repo = {
       cloneUrl: "https://github.com/acme/app.git",
@@ -109,6 +126,26 @@ describe("isSubmittable", () => {
     expect(isSubmittable(form())).toBe(true);
     expect(isSubmittable(form({ gitUrl: "not a url" }))).toBe(false);
     expect(isSubmittable(form({ tab: "image", image: "" }))).toBe(false);
+  });
+
+  it("never lets a static site submit through an image source", () => {
+    // The image tab is unreachable for a static site in the wizard; this pins
+    // the submit gate as the independent backstop (w8/m32).
+    expect(
+      isSubmittable(
+        form({
+          serviceType: "static_site",
+          tab: "image",
+          image: "docker.io/library/nginx:latest",
+          publishPath: "dist",
+          buildCommand: "",
+        }),
+      ),
+    ).toBe(false);
+    // The same image source stays submittable for an image-valid type.
+    expect(
+      isSubmittable(form({ tab: "image", image: "nginx:1", buildCommand: "" })),
+    ).toBe(true);
   });
 
   it("requires build and start commands for a native build only", () => {

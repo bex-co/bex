@@ -1,19 +1,19 @@
 # w8 · m32 — Static-site create wizard offers an invalid Docker-image source — gate source by service type (UI + API + CRD)
 
-**Worker:** worker8 **Goal:** A `static_site` can only be sourced from a Git repo — the "Existing Image" (Docker) source is unreachable in the create wizard and the source-edit card, and both the bex-api create path and the CRD refuse `type: static_site` + `image`, while the four image-valid service types (web · private · worker · cron) keep working. **Status:** todo
+**Worker:** worker8 **Goal:** A `static_site` can only be sourced from a Git repo — the "Existing Image" (Docker) source is unreachable in the create wizard and the source-edit card, and both the bex-api create path and the CRD refuse `type: static_site` + `image`, while the four image-valid service types (web · private · worker · cron) keep working. **Status:** in progress — t001–t007 done 2026-09-06 (all four layers guarded + tested; suites green: backend `go test ./...`, operator `make test` incl. new envtest, `make lint`, dashboard `yarn lint`+`yarn test`); t008 closeout awaits the live dev-8/dashboard DoD probes and ship.
 
 ## Tasks (in order)
 
-| id   | title                                                                     | est | depends_on         |
-| ---- | ------------------------------------------------------------------------- | --- | ------------------ |
-| t001 | Gate create-wizard Source tabs by service type (omit image for static)    | 30m | —                  |
-| t002 | Harden create submit gate + payload builder against static+image          | 30m | t001               |
-| t003 | Backend + CRD guard: reject `type: static_site` with an image source      | 45m | —                  |
-| t004 | Gate the "Update Source" settings card for existing static sites          | 30m | t001               |
-| t005 | Render parity — source-vs-type across REST · GraphQL · MCP · UI            | 30m | t002, t003, t004   |
-| t006 | Simplify — the create/source-picker code this milestone changed           | 20m | t005               |
-| t007 | Test coverage — static+image refused, four image types still create       | 45m | t005               |
-| t008 | Closeout — land when the live DoD holds                                    | 10m | t007               |
+| id   | title                                                                   | est | depends_on       |
+| ---- | ----------------------------------------------------------------------- | --- | ---------------- |
+| t001 | Gate create-wizard Source tabs by service type (omit image for static) — **DONE** | 30m | —                |
+| t002 | Harden create submit gate + payload builder against static+image — **DONE** | 30m | t001             |
+| t003 | Backend + CRD guard: reject `type: static_site` with an image source — **DONE** | 45m | —                |
+| t004 | Gate the "Update Source" settings card for existing static sites — **DONE** (card already unmounted for static; API-side gap closed instead — see task Outcome) | 30m | t001             |
+| t005 | Render parity — source-vs-type across REST · GraphQL · MCP · UI — **DONE** (blueprint drift fixed too) | 30m | t002, t003, t004 |
+| t006 | Simplify — the create/source-picker code this milestone changed — **DONE** | 20m | t005             |
+| t007 | Test coverage — static+image refused, four image types still create — **DONE** | 45m | t005             |
+| t008 | Closeout — land when the live DoD holds                                 | 10m | t007             |
 
 ## Definition of done
 

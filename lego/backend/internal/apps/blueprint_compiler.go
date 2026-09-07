@@ -307,6 +307,22 @@ func blueprintPrebuiltImageProblems(object map[string]any, path []string, locati
 	if !hasImage && !strings.EqualFold(runtime, "image") {
 		return nil
 	}
+	// A static site has no prebuilt-image path at all (ADR029): the schema's
+	// runtime enum is shared, so `runtime: static` + image validates as a
+	// server service — the image field itself is the incompatibility here,
+	// not the build-from-git settings beside it (repo is required for static).
+	if context.kind == blueprintCapabilityStatic {
+		fieldPath := append(append([]string(nil), path...), "image")
+		pointer := renderSchemaPointer(fieldPath)
+		location := lookupBlueprintLocation(pointer, locations)
+		return []BlueprintSourceProblem{{
+			Code:    "BLUEPRINT_CAPABILITY_INCOMPATIBLE",
+			Path:    pointer,
+			Message: "a static site builds from a Git repo; a prebuilt image is not supported",
+			Line:    location.Line,
+			Column:  location.Column,
+		}}
+	}
 	problems := make([]BlueprintSourceProblem, 0, len(prebuiltImageSourceFields))
 	for _, sourceField := range prebuiltImageSourceFields {
 		if _, declared := object[sourceField.blueprintName]; !declared {

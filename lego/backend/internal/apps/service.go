@@ -2370,8 +2370,9 @@ func validateCreateSource(req CreateRequest) error {
 // type: the shutdown grace window only applies to types that run continuously;
 // a cron_job needs a schedule; a private/worker/cron has no public ingress, so it can't carry
 // custom domains (same rule the deploy manifest enforces for private
-// services); and a static_site's publish/edge fields are required for it and
-// rejected for every other type.
+// services); a static_site builds from a Git repo — a prebuilt image is
+// rejected (ADR029; Render parity) — with publish/edge fields required for it
+// and rejected for every other type.
 func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 	if err := validateMaxShutdownDelaySeconds(svcType, req.MaxShutdownDelaySeconds); err != nil {
 		return err
@@ -2393,6 +2394,9 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 	}
 	// A static_site needs a publish directory, and its edge rules must be valid.
 	if svcType == appv1alpha1.TypeStaticSite {
+		if req.Image != "" {
+			return fmt.Errorf("%w: a static_site builds from a Git repo; a prebuilt image is not supported", core.ErrBadRequest)
+		}
 		if strings.TrimSpace(req.PublishPath) == "" {
 			return fmt.Errorf("%w: publishPath is required for a static_site", core.ErrBadRequest)
 		}
@@ -3473,6 +3477,12 @@ func resolveSourcePatch(a *appv1alpha1.App, patch sourcePatch) (sourceFields, er
 		next.image = ""
 	}
 	if patch.Image != nil {
+		// The same rule the create path enforces: a static site is built from
+		// its repo and published to the object-store origin (ADR029), so
+		// repointing one at a prebuilt image would strand it.
+		if a.Spec.Type == appv1alpha1.TypeStaticSite {
+			return sourceFields{}, fmt.Errorf("%w: a static_site builds from a Git repo; a prebuilt image is not supported", core.ErrBadRequest)
+		}
 		next.image = strings.TrimSpace(*patch.Image)
 		if next.image == "" {
 			return sourceFields{}, fmt.Errorf("%w: image path is required", core.ErrBadRequest)

@@ -69,6 +69,12 @@ func TestValidateTypeSpecificCreate(t *testing.T) {
 			wantErr: "bad request: publishPath is required for a static_site",
 		},
 		{
+			name:    "static_site with a prebuilt image",
+			svcType: appv1alpha1.TypeStaticSite,
+			req:     CreateRequest{Image: "docker.io/library/nginx:latest", PublishPath: "dist"},
+			wantErr: "bad request: a static_site builds from a Git repo; a prebuilt image is not supported",
+		},
+		{
 			name:    "static_site with invalid route type",
 			svcType: appv1alpha1.TypeStaticSite,
 			req: CreateRequest{
@@ -120,6 +126,28 @@ func TestValidateTypeSpecificCreate(t *testing.T) {
 			svcType: appv1alpha1.TypeCronJob,
 			req:     CreateRequest{Schedule: "*/5 * * * *"},
 		},
+		// The four image-valid types keep their prebuilt-image source — the
+		// static_site guard above must not over-reach (w8/m32).
+		{
+			name:    "web_service with a prebuilt image",
+			svcType: appv1alpha1.TypeWebService,
+			req:     CreateRequest{Image: "nginx:1"},
+		},
+		{
+			name:    "private_service with a prebuilt image",
+			svcType: appv1alpha1.TypePrivateService,
+			req:     CreateRequest{Image: "nginx:1"},
+		},
+		{
+			name:    "background_worker with a prebuilt image",
+			svcType: appv1alpha1.TypeBackgroundWorker,
+			req:     CreateRequest{Image: "nginx:1"},
+		},
+		{
+			name:    "cron_job with a prebuilt image",
+			svcType: appv1alpha1.TypeCronJob,
+			req:     CreateRequest{Schedule: "*/5 * * * *", Image: "nginx:1"},
+		},
 		{
 			name:    "valid static_site",
 			svcType: appv1alpha1.TypeStaticSite,
@@ -146,6 +174,37 @@ func TestValidateTypeSpecificCreate(t *testing.T) {
 				t.Fatalf("validateTypeSpecificCreate(%s) error is not core.ErrBadRequest: %v", tc.svcType, err)
 			}
 		})
+	}
+}
+
+// TestSpecFromCreateStaticSiteImageParity pins the full create path (w8/m32):
+// a static_site + image request is refused before any spec is assembled —
+// Render's static sites are Git-repo-only (ADR029) — while the four
+// image-valid types still create from the same image.
+func TestSpecFromCreateStaticSiteImageParity(t *testing.T) {
+	_, err := specFromCreate(CreateRequest{
+		Name: "site", Type: appv1alpha1.TypeStaticSite,
+		Image: "docker.io/library/nginx:latest", PublishPath: "dist",
+	})
+	if err == nil || !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "a static_site builds from a Git repo") {
+		t.Fatalf("specFromCreate(static_site+image) = %v, want the static-image bad request", err)
+	}
+	for _, tc := range []struct {
+		svcType  string
+		schedule string
+	}{
+		{svcType: appv1alpha1.TypeWebService},
+		{svcType: appv1alpha1.TypePrivateService},
+		{svcType: appv1alpha1.TypeBackgroundWorker},
+		{svcType: appv1alpha1.TypeCronJob, schedule: "*/5 * * * *"},
+	} {
+		spec, err := specFromCreate(CreateRequest{Name: "svc", Type: tc.svcType, Image: "nginx:1", Schedule: tc.schedule})
+		if err != nil {
+			t.Fatalf("specFromCreate(%s+image): %v", tc.svcType, err)
+		}
+		if spec.Image != "nginx:1" {
+			t.Fatalf("specFromCreate(%s+image) image = %q, want nginx:1", tc.svcType, spec.Image)
+		}
 	}
 }
 

@@ -124,6 +124,30 @@ func TestGraphQLSetImageRejectsInvalidRef(t *testing.T) {
 	}
 }
 
+// TestGraphQLSetImageRejectedForStaticSite: a static_site builds from its
+// repo and publishes to the object-store origin (ADR029; w8/m32) — repointing
+// one at a prebuilt image through Update Source is refused and the source is
+// left unchanged, same rule the create path enforces.
+func TestGraphQLSetImageRejectedForStaticSite(t *testing.T) {
+	app := repoApp("site", "https://github.com/x/site", "main")
+	app.Spec.Type = appv1alpha1.TypeStaticSite
+	app.Spec.PublishPath = "dist"
+	svc, cl := newService(nil, app)
+	schema := sourceSwapSchema(t, svc)
+
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { setImage(id: "site", image: "nginx:stable") { imagePath } }`})
+	if len(res.Errors) == 0 {
+		t.Fatal("setImage on a static_site succeeded; want a bad request")
+	}
+	if !strings.Contains(res.Errors[0].Message, "a static_site builds from a Git repo") {
+		t.Fatalf("setImage on a static_site error = %q, want the static-image message", res.Errors[0].Message)
+	}
+	if spec := getApp(t, cl, "site").Spec; spec.Image != "" || spec.Repo != "https://github.com/x/site" {
+		t.Errorf("rejected setImage still mutated the source: image=%q repo=%q", spec.Image, spec.Repo)
+	}
+}
+
 // TestGraphQLSetRepoThenBranchIsRepoRepoThenBranchOnly: setRepo atomically
 // carries the dialog's repo+branch pair, then setBranch can still change only
 // the branch while preserving the repository.

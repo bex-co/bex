@@ -372,6 +372,67 @@ describe("NewServicePage", () => {
     });
   });
 
+  // w8/m32: a static site builds from a Git repo (ADR029) — the Docker source
+  // must be unreachable for it while the four image-valid types keep all
+  // three tabs.
+  describe("static site source gating", () => {
+    it("offers no Existing Image tab on the static-site deep link", async () => {
+      renderPage("/?type=static_site");
+      expect(
+        await screen.findByRole("tab", { name: /GitHub/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: /Public Git URL/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("tab", { name: /Existing Image/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("docker.io/library/nginx:latest"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps the Existing Image tab for the four image-valid types", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByRole("radiogroup");
+      for (const label of [
+        /Web Service/i,
+        /Private Service/i,
+        /Background Worker/i,
+        /Cron Job/i,
+      ]) {
+        await user.click(screen.getByRole("radio", { name: label }));
+        expect(
+          screen.getByRole("tab", { name: /Existing Image/i }),
+        ).toBeInTheDocument();
+      }
+    });
+
+    it("returns to the GitHub tab when Static Site is chosen from the image tab", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("tab", { name: /Existing Image/i }),
+      );
+      expect(
+        screen.getByPlaceholderText("docker.io/library/nginx:latest"),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("radio", { name: /Static Site/i }));
+      expect(
+        screen.queryByRole("tab", { name: /Existing Image/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("docker.io/library/nginx:latest"),
+      ).not.toBeInTheDocument();
+      // The selection fell back to GitHub — the repo list is visible again.
+      expect(
+        screen.getByPlaceholderText("Search repositories…"),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("repo picker", () => {
     it("auto-fills service name from selected repo slug", async () => {
       const user = userEvent.setup();
