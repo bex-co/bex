@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
+import { offeredInstanceTypes } from "@/features/services/lib/instance-type";
 import { useBuildRuntimeFields } from "@/features/services/hooks/use-build-runtime-fields";
 import { useServiceNameDraft } from "@/features/services/hooks/use-service-name-draft";
 import { useRepoRuntimeDetection } from "@/features/services/hooks/use-repo-runtime-detection";
@@ -113,6 +114,18 @@ export function useNewServiceForm(search: {
     if (detectedRuntime) setDetectedRuntime(detectedRuntime);
   }, [detectedRuntime, setDetectedRuntime]);
 
+  // Background Workers are paid-only (w6/025): Free is not offered to them,
+  // so the plan grid renders the filtered catalog, the default is its first
+  // (cheapest paid) tier, and a Free selection made under another service type
+  // never survives a switch into a worker submission — an override the current
+  // type is not offered falls back to the default.
+  const offeredTypes = offeredInstanceTypes(fields.serviceType, instanceTypes);
+  const planOverride =
+    fields.planOverride != null &&
+    offeredTypes.some((it) => it.id === fields.planOverride)
+      ? fields.planOverride
+      : null;
+
   const form: NewServiceForm = {
     ...fields,
     name: name.name,
@@ -120,7 +133,7 @@ export function useNewServiceForm(search: {
     buildCommand: build.buildCommand,
     startCommand: build.startCommand,
     dockerfilePath: build.dockerfilePath,
-    plan: fields.planOverride ?? instanceTypes[0]?.id ?? "",
+    plan: planOverride ?? offeredTypes[0]?.id ?? "",
   };
 
   // Switching source tab abandons whatever the previous tab had selected.
@@ -142,5 +155,13 @@ export function useNewServiceForm(search: {
     [set],
   );
 
-  return { form, set, setTab, setServiceType, build, name, instanceTypes };
+  return {
+    form,
+    set,
+    setTab,
+    setServiceType,
+    build,
+    name,
+    instanceTypes: offeredTypes,
+  };
 }

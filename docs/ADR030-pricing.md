@@ -1,6 +1,6 @@
 # ADR030 — Price sheet + estimated spend
 
-**Status:** Accepted · 2026-07-13 · revised 2026-08-19 (workspace plan fees at 30% off Render) · revised 2026-07-26 by w7/m50 **Author:** w8/m7
+**Status:** Accepted · 2026-07-13 · revised 2026-08-19 (workspace plan fees at 30% off Render) · revised 2026-07-26 by w7/m50 · revised 2026-09-06 (§7 paid-only Background Workers, w6/025) **Author:** w8/m7
 
 ---
 
@@ -81,6 +81,20 @@ The compute `free` tier is rated `usdPerSecond: 0.0` in `pricing.yaml`. A zero r
 The cap is a resource-sizing fact, not a price, so — consistent with the "no prices in `tiers.yaml`" invariant of §1 — it lives in the reviewed tier catalog rather than here: `lego/types/tiers/tiers.yaml` gives the compute `free` tier `maxInstances: 1` (paid tiers omit the field, so they carry no plan-specific cap, only the platform ceiling `MaxReplicas = 100`). The backend enforces it on every write path that sets an instance count (`Scale`, service create, autoscaling min/max), refuses a plan downgrade that would leave a service above the new cap ("scale down first", never a silent shrink), and the operator's plan-aware `clampReplicas` is the defense-in-depth backstop. See [ADR018 § Manual scale](ADR018-render-parity.md).
 
 This is exact Render parity: Render's free instance types do not support horizontal scaling — running multiple instances is a paid-only feature, and Render's "billed accordingly" per-instance scaling copy applies only to paid instance types. Source: [render-artifacts/free-tier-scaling.md](render-artifacts/free-tier-scaling.md).
+
+### 7. Background Workers are paid-only (no free tier)
+
+**Decided 2026-09-06 (w6/025), superseding the 2026-09-03 keep-Free triage recommendation.** A `background_worker` never runs on the compute `free` tier. bex's picker used to pre-select **Free — 512 MB / 0.1 CPU** for workers while Render's equivalent picker starts at a paid tier (2026-08-21 live QA pass); rather than record the zero-cost worker capacity as a deliberate differentiator, the product call is Render parity: workers must use paid compute.
+
+Enforcement is backend-first, at the two choke points every surface funnels through (`lego/backend/internal/apps/service.go`):
+
+- **Create** — `normalizeTierForType`, called from `specFromCreate`, which REST `POST /v1/services`, GraphQL `createService`, MCP `create_web_service` (its `type` accepts `background_worker`), and the Blueprint apply/validate paths all share. An **omitted** plan on a worker defaults to the catalog's cheapest **paid** rung (`starter`, via `defaultPaidTierID`) instead of the catalog default `free`; an **explicit** free plan is refused with a 400 naming the paid plans a worker may use.
+- **Plan change** — `SetPlan` and its dry-run twin `PreviewSetPlan` (REST `PATCH /v1/services/{id}`, GraphQL `updateServicePlan`, and MCP `update_service` all fold into them) refuse a worker downgrade to free with the same error.
+- **Blueprint probes** — `stackHasPaidPlan` (the ADR046 payment-method gate) and `blueprintEstimatedPricing` resolve plans type-aware, so a plan-less worker trips the paid gate and is priced at the paid default rather than $0.
+
+The dashboard mirrors this as presentation only (`offeredInstanceTypes` in `dashboard/src/features/services/lib/instance-type.ts`): the create form's plan grid and the instance-type picker never offer Free to a worker, the create default is the first paid tier, and a Free selection made under another service type does not survive a switch into a worker submission. The `tiers.yaml` catalog and the `instanceTypes` query are unchanged — free remains in the catalog for the types that keep it (web, private, cron; static sites run no instance).
+
+**Existing free workers — transition, no silent conversion.** Enforcement applies to new writes only: a worker already on `spec.tier: free` (or untiered) keeps running — the operator converts tier → pod resources mechanically and refuses nothing — and is **not** auto-converted to a billed plan. Identify them in the control-plane store with `SELECT id, name, tenant_id FROM apps WHERE type = 'background_worker' AND (tier = '' OR tier = 'free')` — run this against production before rollout and notify the owners of any hits. Their owners choose the transition: move to a paid plan (the picker now offers only paid tiers), change the service type, or delete the worker. The one-way door is deliberate: once such a worker leaves free it cannot return, and no new free worker can be created on any surface. The internal control-plane create API (`store/api.go`) carries no service type and cannot enforce this rule; like the disk and maintenance-mode paid gates, enforcement is a bex-api boundary concern.
 
 ---
 

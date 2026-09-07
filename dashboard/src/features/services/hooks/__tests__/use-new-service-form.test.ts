@@ -3,8 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { GitRuntime } from "@/features/services/lib/runtime";
 
+const instanceTypesState: { instanceTypes: { id: string; name: string }[] } = {
+  instanceTypes: [],
+};
 vi.mock("@/features/services/hooks/use-instance-types", () => ({
-  useInstanceTypes: () => ({ instanceTypes: [] }),
+  useInstanceTypes: () => instanceTypesState,
 }));
 
 vi.mock("@/features/services/hooks/use-service-name-draft", () => ({
@@ -51,6 +54,7 @@ const REPO: RepoView = {
 describe("useNewServiceForm runtime detection", () => {
   beforeEach(() => {
     detectionFailure = false;
+    instanceTypesState.instanceTypes = [];
   });
 
   it("auto-selects on repo pick and re-infers when Root Directory changes", async () => {
@@ -130,5 +134,38 @@ describe("useNewServiceForm runtime detection", () => {
     rerender();
     expect(result.current.form.runtime).toBe("go");
     expect(result.current.form.buildCommand).toBe("go build -o app .");
+  });
+});
+
+describe("useNewServiceForm plan eligibility (w6/025 paid-only workers)", () => {
+  beforeEach(() => {
+    instanceTypesState.instanceTypes = [
+      { id: "free", name: "Free" },
+      { id: "starter", name: "Starter" },
+      { id: "standard", name: "Standard" },
+    ];
+  });
+
+  it("defaults a background worker to the first paid tier and offers no Free", () => {
+    const { result } = renderHook(() =>
+      useNewServiceForm({ type: "background_worker" }),
+    );
+    expect(result.current.form.plan).toBe("starter");
+    expect(result.current.instanceTypes.map((it) => it.id)).toEqual([
+      "starter",
+      "standard",
+    ]);
+  });
+
+  it("never carries a Free selection into a worker submission, and restores it on switching back", () => {
+    const { result } = renderHook(() => useNewServiceForm({}));
+    expect(result.current.form.plan).toBe("free"); // web default: catalog head
+
+    act(() => result.current.set({ planOverride: "free" }));
+    act(() => result.current.setServiceType("background_worker"));
+    expect(result.current.form.plan).toBe("starter");
+
+    act(() => result.current.setServiceType("web_service"));
+    expect(result.current.form.plan).toBe("free");
   });
 });

@@ -1129,7 +1129,9 @@ func (s *Service) requireStackPaymentMethod(ctx context.Context, st parsedStack)
 
 func stackHasPaidPlan(st parsedStack) bool {
 	for _, service := range st.services {
-		tier, err := normalizeTierOrPlan(service.req.Plan)
+		// Type-aware resolution: a plan-less background worker provisions at
+		// the paid default (w6/025), so it must trip the payment-method gate.
+		tier, err := normalizeTierForType(effectiveType(service.req.Type), service.req.Plan)
 		if err == nil && core.PaidPlan(tier) {
 			return true
 		}

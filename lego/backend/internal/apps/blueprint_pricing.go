@@ -40,7 +40,7 @@ func blueprintEstimatedPricing(st parsedStack) *pricing.MonthlyEstimate {
 		if svcType == appv1alpha1.TypeStaticSite {
 			continue
 		}
-		tier, err := normalizeTierOrPlan(svc.req.Plan)
+		tier, err := normalizeTierForType(svcType, svc.req.Plan)
 		if err != nil {
 			continue // parse already rejected invalid plans; never reached on a valid stack
 		}
