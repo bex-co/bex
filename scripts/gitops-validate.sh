@@ -191,7 +191,7 @@ for required in \
   }
 done
 for required in \
-  'BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}' \
+  'BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ needs.build.outputs.operator_digest }}' \
   'bex-pg-sni-proxy bex-kv-sni-proxy' \
   'rollout status "daemonset/${daemonset}"'; do
   grep -qF "$required" .github/workflows/deploy.yml || {
@@ -279,7 +279,7 @@ require_onbex_literal .env.example 'BEX_ONBEX_TLS_KEY_FILE='
 require_onbex_literal scripts/gh-secrets.sh 'set_file BEX_ONBEX_TLS_CERT "${BEX_ONBEX_TLS_CERT_FILE:?set BEX_ONBEX_TLS_CERT_FILE in .env}" production-deploy'
 require_onbex_literal scripts/gh-secrets.sh 'set_file BEX_ONBEX_TLS_KEY "${BEX_ONBEX_TLS_KEY_FILE:?set BEX_ONBEX_TLS_KEY_FILE in .env}" production-deploy'
 deploy_tls_shape="$(yq -N '
-  .jobs."build-and-deploy".steps[] |
+  .jobs."deploy".steps[] |
   select(.name == "install onbex.co fallback TLS certificate") |
   [.env.BEX_ONBEX_TLS_CERT, .env.BEX_ONBEX_TLS_KEY, .run] | join("|")
 ' .github/workflows/deploy.yml | tr -d '\n')"
@@ -288,7 +288,7 @@ if [ "$deploy_tls_shape" != '${{ secrets.BEX_ONBEX_TLS_CERT }}|${{ secrets.BEX_O
   fail=1
 fi
 deploy_tls_preflight_shape="$(yq -N '
-  .jobs."build-and-deploy".steps[] |
+  .jobs."deploy".steps[] |
   select(.name == "validate onbex.co fallback TLS certificate") |
   [.env.BEX_ONBEX_TLS_CERT, .env.BEX_ONBEX_TLS_KEY, .run] | join("|")
 ' .github/workflows/deploy.yml | tr -d '\n')"
@@ -1890,7 +1890,7 @@ for required in \
   '${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}' \
   'file: lego/agent-image/Dockerfile' \
   '${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}' \
-  'AGENT_DIGEST: ${{ steps.build_agent_sandbox.outputs.digest }}' \
+  'AGENT_DIGEST: ${{ needs.build.outputs.agent_sandbox_digest }}' \
   'grep -qF "value: ${AGENT_SANDBOX_IMAGE}@${AGENT_DIGEST}"' \
   'group: bex-production-deploy' \
   'bash scripts/deploy-superseded.sh "$GITHUB_SHA"' \
@@ -1904,7 +1904,7 @@ for required in \
   'wait for OpenSandbox control plane' \
   'BEX_EXPECTED_OPENSANDBOX_IMAGE' \
   'OPENSANDBOX_CONTROLLER_TAG: v0.2.0-bex-snapjobns-terminalpod' \
-  'BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE: ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}@${{ steps.build_opensandbox_controller.outputs.digest }}' \
+  'BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE: ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}@${{ needs.build.outputs.opensandbox_controller_digest }}' \
   'rollout restart' \
   'for deployment in opensandbox-controller-manager opensandbox-server' \
   '.status.availableReplicas'; do

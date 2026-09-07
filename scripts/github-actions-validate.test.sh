@@ -103,6 +103,32 @@ assert "secret on production runner passes" 0 "$(job_body "bex-production" "    
           TOKEN: \${{ secrets.PRODUCTION_TOKEN }}
         run: ./deploy")"
 
+# --- ADR080 F2 / w2/m89: secretless image build ------------------------------
+BUILD_PUSH='docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0'
+# RED: a deploy-class secret in an image-build job is exfiltratable by any
+# poisoned build input — exactly the pre-split deploy.yml shape.
+assert "deploy secret in image-build job fails" 1 "$(job_body "bex-production" "      - uses: $BUILD_PUSH
+      - env:
+          HCLOUD_TOKEN: \${{ secrets.HCLOUD_TOKEN }}
+        run: ./deploy")" "image-build job must reference no secret beyond the registry-push GITHUB_TOKEN"
+# RED: an environment gate on the build job would scope every environment
+# secret into repo-controlled build code.
+assert "environment gate on image-build job fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    environment: production-deploy\n    steps:\n      - uses: %s' "$BUILD_PUSH")" \
+  "image-build job must not carry an environment gate"
+# RED: a workflow-header secret leaks into every job, including the build.
+assert "workflow-header secret with image build fails" 1 "$(printf 'env:\n  TOKEN: ${{ secrets.PRODUCTION_TOKEN }}\njobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    steps:\n      - uses: %s' "$BUILD_PUSH")" \
+  "image-build job must reference no secret beyond the registry-push GITHUB_TOKEN"
+# GREEN: the registry-push GITHUB_TOKEN is the build job's entire credential
+# budget (the post-split deploy.yml build job shape).
+assert "registry-only image-build job passes" 0 "$(job_body "bex-production" "      - env:
+          REGISTRY_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+        run: docker login
+      - uses: $BUILD_PUSH")"
+# GREEN: deploy-class secrets remain legal in a non-build job.
+assert "deploy secret in non-build job passes" 0 "$(job_body "bex-production" "      - env:
+          TOKEN: \${{ secrets.PRODUCTION_TOKEN }}
+        run: ./deploy")"
+
 # --- Public-fork isolation --------------------------------------------------
 pr_job_body() {
   printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on: [self-hosted, Linux, ARM64, %s]\n    steps:\n      - uses: %s' "$1" "${2:-bex-ci}" "$PINNED"
