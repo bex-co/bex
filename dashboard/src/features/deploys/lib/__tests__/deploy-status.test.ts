@@ -40,8 +40,10 @@ describe("deployStatusKey", () => {
     expect(deployStatusKey("surprise")).toBe("deploys.statusUnknown");
   });
 
-  it("allows rollback to current and historical successful deploys only", () => {
-    expect(isRollbackableDeployStatus("live")).toBe(true);
+  it("offers rollback only to a previous (deactivated) deploy, never the current live one", () => {
+    // w4/051: the current live deploy is not a rollback target — rolling back to
+    // it is a no-op restart, and the deploys list already excludes it.
+    expect(isRollbackableDeployStatus("live")).toBe(false);
     expect(isRollbackableDeployStatus("deactivated")).toBe(true);
     expect(isRollbackableDeployStatus("build_failed")).toBe(false);
     expect(isRollbackableDeployStatus("update_in_progress")).toBe(false);

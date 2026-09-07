@@ -789,6 +789,19 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 	if (target.Status != store.DeployLive && target.Status != store.DeployDeactivated) || target.ResolvedImage == "" {
 		return DeployView{}, fmt.Errorf("%w: deploy %q never went live — nothing to roll back to", core.ErrConflict, deployID)
 	}
+	// Rolling back to the currently-live deploy WHEN it is already the running
+	// image is a no-op: it changes no image but still patches RestartedAt + a new
+	// generation, so it silently restarts the service and creates a redundant
+	// deploy (w4/051 — the dashboard detail page offered it, the list did not).
+	// Reject it on every surface. This is narrower than "reject any live target":
+	// a deploy stays DeployLive until a NEWER one goes live (a failed deploy never
+	// deactivates it), so after a failed rollout spec.image can drift off the
+	// still-live last-good deploy — rolling back to it then restores that image
+	// and is a legitimate recovery (TestRollbackRestoresPreviousLiveImage), which
+	// the image comparison preserves.
+	if target.Status == store.DeployLive && target.ResolvedImage == a.Spec.Image {
+		return DeployView{}, fmt.Errorf("%w: deploy %q is already live — nothing to roll back to", core.ErrConflict, deployID)
+	}
 	// Row-first: the projector owns spec.image for store-managed Apps, so the
 	// row updates before the CR patch below — the same writeThroughStore
 	// discipline apps.Service's suspend/plan/scale verbs follow, applied here
