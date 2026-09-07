@@ -69,7 +69,7 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
 
   return (
     <SafeAreaView
-      edges={["top", "left", "right"]}
+      edges={["top", "bottom", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.background }]}
     >
       <DetailHeader

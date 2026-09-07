@@ -240,12 +240,16 @@ export function ResourceStatusScreen({
       edges={["top", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.background }]}
     >
-      <TopBar
-        right={
-          loading && data ? <ActivityIndicator color={theme.primary} /> : null
-        }
-      />
       <DashboardScrollView
+        header={
+          <TopBar
+            right={
+              loading && data ? (
+                <ActivityIndicator color={theme.primary} />
+              ) : null
+            }
+          />
+        }
         refreshing={
           refreshing || usageQuery.networkStatus === NetworkStatus.refetch
         }

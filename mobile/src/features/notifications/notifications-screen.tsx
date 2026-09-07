@@ -36,8 +36,10 @@ export function NotificationInboxScreen() {
       edges={["top", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.background }]}
     >
-      <TopBar />
-      <DashboardScrollView contentContainerStyle={styles.content}>
+      <DashboardScrollView
+        header={<TopBar />}
+        contentContainerStyle={styles.content}
+      >
         <Text style={[styles.body, { color: theme.mutedForeground }]}>
           {t("notifications.body")}
         </Text>

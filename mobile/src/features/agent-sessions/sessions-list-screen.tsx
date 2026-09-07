@@ -73,35 +73,34 @@ export function SessionsListScreen() {
       edges={["top", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.background }]}
     >
-      <TopBar
-        right={
-          <View style={styles.headerRight}>
-            {loading && data ? (
-              <ActivityIndicator color={theme.primary} />
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              testID="new-agent-session"
-              accessibilityLabel={t("agentSessions.composer.new")}
-              onPress={() => setComposing(true)}
-              hitSlop={4}
-              style={[
-                styles.newButton,
-                { backgroundColor: theme.primaryMuted },
-              ]}
-            >
-              <Ionicons name="add" size={20} color={theme.primary} />
-              <Text style={[styles.newLabel, { color: theme.primary }]}>
-                {t("agentSessions.newShort")}
-              </Text>
-            </Pressable>
-          </View>
-        }
-      />
-      {composing ? (
-        <SessionComposer onClose={() => setComposing(false)} />
-      ) : null}
       <DashboardScrollView
+        header={
+          <TopBar
+            right={
+              <View style={styles.headerRight}>
+                {loading && data ? (
+                  <ActivityIndicator color={theme.primary} />
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  testID="new-agent-session"
+                  accessibilityLabel={t("agentSessions.composer.new")}
+                  onPress={() => setComposing(true)}
+                  hitSlop={4}
+                  style={[
+                    styles.newButton,
+                    { backgroundColor: theme.primaryMuted },
+                  ]}
+                >
+                  <Ionicons name="add" size={20} color={theme.primary} />
+                  <Text style={[styles.newLabel, { color: theme.primary }]}>
+                    {t("agentSessions.newShort")}
+                  </Text>
+                </Pressable>
+              </View>
+            }
+          />
+        }
         refreshing={refreshing}
         onRefresh={() => void recovery.manualRetry()}
         contentContainerStyle={styles.content}
@@ -251,6 +250,9 @@ export function SessionsListScreen() {
           </DashboardCard>
         )}
       </DashboardScrollView>
+      {composing ? (
+        <SessionComposer onClose={() => setComposing(false)} />
+      ) : null}
     </SafeAreaView>
   );
 }
