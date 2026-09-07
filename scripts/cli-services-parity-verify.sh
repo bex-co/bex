@@ -16,7 +16,8 @@ case "$MODE" in
 esac
 
 BASELINE_LEGS=(
-  image-create image-update image-delete repo-delete-during-build
+  image-create image-update image-healthcheck image-delete repo-delete-during-build
+  web-builder-roundtrip
   web-create web-update cron-create cron-update static-create static-update
   clone region-guard runtime-guard preview-update preview-create
 )
@@ -92,6 +93,7 @@ PREFIX="cp-${RUN_ID}"
 IMAGE_NAME="${PREFIX}-image"
 DELETE_BUILD_NAME="${PREFIX}-del"
 WEB_NAME="${PREFIX}-web"
+BUILDER_NAME="${PREFIX}-builder"
 CRON_NAME="${PREFIX}-cron"
 STATIC_NAME="${PREFIX}-static"
 CLONE_NAME="${PREFIX}-clone"
@@ -106,7 +108,7 @@ source scripts/cli-service-delete-lib.sh
 
 assert_service_fixture_names \
   "$IMAGE_NAME" "$DELETE_BUILD_NAME" "$WEB_NAME" "${WEB_NAME}-updated" \
-  "$CRON_NAME" "$STATIC_NAME" "$CLONE_NAME" "$BARE_CLONE_NAME" "$PREVIEW_NAME"
+  "$BUILDER_NAME" "$CRON_NAME" "$STATIC_NAME" "$CLONE_NAME" "$BARE_CLONE_NAME" "$PREVIEW_NAME"
 
 cleanup() {
   local rc=$? cleanup_failed=0 path
@@ -129,6 +131,15 @@ trap 'rc=$?; echo "FAIL: service parity verifier stopped at line $LINENO (exit $
 
 api() {
   curl -sf -H "Authorization: Bearer $RENDER_API_KEY" "$API$1"
+}
+
+# Raw JSON POST — used to create the out-of-band service shapes (Dockerfile-via-
+# builder, no runtime) that a dashboard/Blueprint/hand-applied App produces but
+# the CLI's own create flags cannot express, so the CLI's `services update`
+# round-trip can be graded against them (w4/052).
+api_post() {
+  curl -sf -H "Authorization: Bearer $RENDER_API_KEY" -H 'Content-Type: application/json' \
+    -X POST --data "$2" "$API$1"
 }
 
 service_id() {
@@ -196,6 +207,15 @@ assert_service "$IMAGE_ID" '.imagePath == "traefik/whoami:latest" and .ownerId =
   "image update accepts the official CLI nested owner contract" --arg owner "$RENDER_WORKSPACE"
 complete_leg image-update
 
+# w4/052: an image service is created without --runtime, so before the fix GET
+# returned no serviceDetails.runtime and the CLI refused any serviceDetails-field
+# update client-side ("unsupported runtime"). The read now derives runtime
+# "image", so a partial `services update --health-check-path` round-trips.
+"$RENDER_BIN" services update "$IMAGE_ID" --health-check-path /healthz --confirm -o json >/dev/null
+assert_service "$IMAGE_ID" '.serviceDetails.healthCheckPath == "/healthz" and .serviceDetails.runtime == "image" and .serviceDetails.env == "image"' \
+  "official CLI round-trips --health-check-path on a runtime-less image service (w4/052)"
+complete_leg image-healthcheck
+
 "$RENDER_BIN" services delete "$IMAGE_ID" --confirm -o json >/dev/null
 wait_service_gone "$IMAGE_ID" "$IMAGE_NAME"
 forget "$IMAGE_ID"
@@ -210,6 +230,30 @@ remember "$DELETE_BUILD_ID" "$DELETE_BUILD_NAME"
 wait_service_gone "$DELETE_BUILD_ID" "$DELETE_BUILD_NAME"
 forget "$DELETE_BUILD_ID"
 complete_leg repo-delete-during-build
+
+# w4/052 — the exact failing shape: a repo Dockerfile build with NO runtime set,
+# which a dashboard, Blueprint, or hand-applied App produces but the CLI's create
+# flags cannot (it always sends a runtime). Create it out-of-band via raw REST,
+# confirm the read derives runtime "docker", then prove the official CLI can
+# round-trip a serviceDetails-field update against it — the operation that was
+# impossible before the fix (empty runtime → "unsupported runtime" / "cannot
+# switch runtimes via the CLI").
+BUILDER_ID="$(api_post "/services?ownerId=$RENDER_WORKSPACE" \
+  "$(jq -nc --arg name "$BUILDER_NAME" '{
+    name: $name, type: "web_service",
+    repo: "https://github.com/render-examples/go-gin.git", branch: "main",
+    serviceDetails: { plan: "starter", region: "frankfurt" }
+  }')" | jq -er '.service.id')"
+remember "$BUILDER_ID" "$BUILDER_NAME"
+assert_service "$BUILDER_ID" '.serviceDetails.runtime == "docker" and .serviceDetails.env == "docker"' \
+  "builder-expressed Dockerfile service (no runtime set) reads back runtime docker (w4/052)"
+"$RENDER_BIN" services update "$BUILDER_ID" --health-check-path /healthz --pre-deploy-command "./server migrate" --confirm -o json >/dev/null
+assert_service "$BUILDER_ID" '.serviceDetails.healthCheckPath == "/healthz" and .serviceDetails.preDeployCommand == "./server migrate" and .serviceDetails.runtime == "docker"' \
+  "official CLI round-trips serviceDetails updates on a builder-expressed Dockerfile service (w4/052)"
+"$RENDER_BIN" services delete "$BUILDER_ID" --confirm -o json >/dev/null
+wait_service_gone "$BUILDER_ID" "$BUILDER_NAME"
+forget "$BUILDER_ID"
+complete_leg web-builder-roundtrip
 
 web_args=(
   services create --name "$WEB_NAME" --type web_service
