@@ -601,6 +601,20 @@ describe("NewServicePage", () => {
         "true",
       );
     });
+
+    it("offers no Free tier for a background worker and defaults to the first paid tier (w6/025)", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByRole("radiogroup");
+      await user.click(
+        screen.getByRole("radio", { name: /Background Worker/i }),
+      );
+      expect(screen.queryByText("Free")).not.toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /Starter/i })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+    });
   });
 
   describe("create flow", () => {
@@ -651,6 +665,25 @@ describe("NewServicePage", () => {
           runtime: "node",
           buildCommand: "npm install",
           startCommand: "npm start",
+        }),
+      );
+    });
+
+    it("submits a paid plan for a background worker even after Free was picked under another type (w6/025)", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("radio", { name: /Free/i }));
+      await user.click(
+        screen.getByRole("radio", { name: /Background Worker/i }),
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "background_worker",
+          plan: "starter",
         }),
       );
     });

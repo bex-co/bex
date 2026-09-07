@@ -18,6 +18,7 @@ import { useUpdatePlan } from "@/features/services/hooks/use-update-plan";
 import {
   formatInstanceCPU,
   formatInstanceMemory,
+  offeredInstanceTypes,
 } from "@/features/services/lib/instance-type";
 import { cn } from "@/common/lib/utils/utils.ts";
 
@@ -25,18 +26,22 @@ export interface InstanceTypePickerProps {
   serviceId: string;
   /** The App's current plan (Render spelling), or null if untiered. */
   currentPlan: string | null;
+  /** The service's type — a background_worker is never offered Free (w6/025). */
+  serviceType: string | null;
 }
 
 /**
  * Render's "Pick an Instance Type" page (captured live): a card per tier —
- * Free visually separated from the paid ladder — the current plan
- * pre-selected, Save disabled until the selection changes. bex cards omit
- * price (billing is separate from this resource catalog) and the custom-instance
- * contact link (no bex equivalent).
+ * Free visually separated from the paid ladder (and absent entirely for a
+ * paid-only background worker) — the current plan pre-selected, Save disabled
+ * until the selection changes. bex cards omit price (billing is separate from
+ * this resource catalog) and the custom-instance contact link (no bex
+ * equivalent).
  */
 export function InstanceTypePicker({
   serviceId,
   currentPlan,
+  serviceType,
 }: InstanceTypePickerProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
@@ -60,9 +65,10 @@ export function InstanceTypePicker({
     );
   }
 
-  const free = instanceTypes.filter((it) => it.id === "free");
-  const paid = instanceTypes.filter((it) => it.id !== "free");
-  const selectedType = instanceTypes.find((it) => it.id === selected);
+  const offered = offeredInstanceTypes(serviceType, instanceTypes);
+  const free = offered.filter((it) => it.id === "free");
+  const paid = offered.filter((it) => it.id !== "free");
+  const selectedType = offered.find((it) => it.id === selected);
   const canSave = selected != null && selected !== currentPlan;
 
   async function handleConfirm() {

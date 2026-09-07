@@ -142,22 +142,35 @@ func TestSetPlanDowngradeOverCapRefused(t *testing.T) {
 }
 
 // TestInstanceCapServiceTypeFamily enumerates the five service types explicitly
-// (t007 step 4). web_service, private_service and background_worker share the
-// same replica-setting create/Scale path and are all capped identically on the
-// free plan. cron_job and static_site have no multi-instance path to cap — a
-// cron runs to completion and a static site serves from object storage — so the
-// cap simply never applies; they create fine at the default single instance.
+// (t007 step 4). web_service and private_service share the same replica-setting
+// create/Scale path and are capped identically on the free plan. A
+// background_worker is paid-only (w6/025), so free is refused before any cap
+// logic runs and its paid plans carry no plan cap. cron_job and static_site
+// have no multi-instance path to cap — a cron runs to completion and a static
+// site serves from object storage — so the cap simply never applies; they
+// create fine at the default single instance.
 func TestInstanceCapServiceTypeFamily(t *testing.T) {
 	replicaTypes := []string{
 		appv1alpha1.TypeWebService,
 		appv1alpha1.TypePrivateService,
-		appv1alpha1.TypeBackgroundWorker,
 	}
 	for _, typ := range replicaTypes {
 		req := CreateRequest{Name: "svc", Type: typ, Image: "nginx:1", Plan: "free", Replicas: 2}
 		if _, err := specFromCreate(req); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("free %s at 2 instances should be refused, got %v", typ, err)
 		}
+	}
+
+	// background_worker: free is refused outright (paid-only, w6/025) — the
+	// paid-plan refusal fires, not the instance cap — and its paid plans are
+	// uncapped like every other paid plan.
+	worker := CreateRequest{Name: "svc", Type: appv1alpha1.TypeBackgroundWorker, Image: "nginx:1", Plan: "free", Replicas: 2}
+	if _, err := specFromCreate(worker); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "paid plan") {
+		t.Errorf("free background_worker should be refused as paid-only, got %v", err)
+	}
+	paidWorker := CreateRequest{Name: "svc", Type: appv1alpha1.TypeBackgroundWorker, Image: "nginx:1", Plan: "starter", Replicas: 3}
+	if _, err := specFromCreate(paidWorker); err != nil {
+		t.Errorf("starter background_worker at 3 instances must be allowed (no plan cap), got %v", err)
 	}
 
 	// cron_job: a schedule, not a replica set — created at its single instance.

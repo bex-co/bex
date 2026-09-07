@@ -2263,7 +2263,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err := validateTypeSpecificCreate(svcType, req); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
-	tier, err := normalizeTierOrPlan(req.Plan)
+	tier, err := normalizeTierForType(svcType, req.Plan)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
@@ -2750,6 +2750,54 @@ func normalizeTierOrPlan(v string) (string, error) {
 	return "", fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
 }
 
+// normalizeTierForType resolves a create's plan for its (already normalized)
+// service type. A background worker is paid-only (w6/025, matching Render,
+// whose worker picker has no free rung): an omitted plan lands on the cheapest
+// paid tier instead of the catalog's free default, and an explicit free plan is
+// refused. Every other type keeps normalizeTierOrPlan's defaulting.
+func normalizeTierForType(svcType, plan string) (string, error) {
+	if svcType != appv1alpha1.TypeBackgroundWorker {
+		return normalizeTierOrPlan(plan)
+	}
+	if plan == "" {
+		return defaultPaidTierID(), nil
+	}
+	tier, err := normalizeTierOrPlan(plan)
+	if err != nil {
+		return "", err
+	}
+	if !core.PaidPlan(tier) {
+		return "", errWorkerFreePlan()
+	}
+	return tier, nil
+}
+
+// defaultPaidTierID is the cheapest paid rung of the compute ladder — the
+// catalog is ordered smallest-first, so the first non-free id is the tier a
+// plan-less background worker falls to. The catalog-default fallback is
+// unreachable with the reviewed tiers.yaml, which always carries paid rungs.
+func defaultPaidTierID() string {
+	for _, tierID := range tiers.Compute.IDs() {
+		if core.PaidPlan(tierID) {
+			return tierID
+		}
+	}
+	return tiers.Compute.Default().ID
+}
+
+// errWorkerFreePlan refuses the free plan on a background worker — workers are
+// paid-only (w6/025). Built in one place so the create path and the plan-change
+// verbs word the refusal identically, listing only the plans a worker may use.
+func errWorkerFreePlan() error {
+	paid := make([]string, 0, len(tiers.Compute.RenderPlans()))
+	for _, plan := range tiers.Compute.RenderPlans() {
+		if core.PaidPlan(plan) {
+			paid = append(paid, plan)
+		}
+	}
+	return fmt.Errorf("%w: a background_worker requires a paid plan; plan must be one of %s", core.ErrBadRequest, strings.Join(paid, "|"))
+}
+
 // redeploy bumps spec.restartedAt to force the operator to roll a new revision
 // — for a repo-backed App this changes artifact/release identity and re-runs the
 // build-from-git. Unauthorized on purpose: its only
@@ -2896,11 +2944,8 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 	runAt := now.Format(time.RFC3339Nano)
 	jobName := appv1alpha1.ManualCronRunJobName(a.Name, runAt)
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		for _, run := range a.Status.Runs {
-			if renderCronRunStatus(run.Status) == cronRunPending {
-				a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: runAt}
-				break
-			}
+		if run, ok := pendingCronRun(a); ok {
+			a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: runAt}
 		}
 		a.Spec.RunAt = runAt
 	})
@@ -2971,13 +3016,22 @@ func (s *Service) CancelCurrentCronRun(ctx context.Context, name string) (CronRu
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return CronRunView{}, core.ErrNotFound
 	}
-	for _, raw := range a.Status.Runs {
-		run := cronRunView(raw)
-		if run.Status == cronRunPending {
-			return s.cancelCronRunFetched(ctx, a, run)
-		}
+	if run, ok := pendingCronRun(a); ok {
+		return s.cancelCronRunFetched(ctx, a, run)
 	}
 	return CronRunView{}, fmt.Errorf("%w: cron job %q has no active run", core.ErrConflict, name)
+}
+
+// pendingCronRun selects the sole pending run (the operator forbids
+// concurrency, so more than one is not a supported steady state) — the
+// predicate CancelCurrentCronRun and the capability projection share.
+func pendingCronRun(a *appv1alpha1.App) (CronRunView, bool) {
+	for _, raw := range a.Status.Runs {
+		if run := cronRunView(raw); run.Status == cronRunPending {
+			return run, true
+		}
+	}
+	return CronRunView{}, false
 }
 
 func (s *Service) cancelCronRunFetched(ctx context.Context, a *appv1alpha1.App, run CronRunView) (CronRunView, error) {
@@ -3047,6 +3101,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
 	}
 	tier := t.ID
+	if a.Spec.Type == appv1alpha1.TypeBackgroundWorker && !core.PaidPlan(tier) {
+		return AppView{}, errWorkerFreePlan()
+	}
 	if err := s.RequirePlanBilling(ctx, a.Labels[core.LabelTenant], tier); err != nil {
 		return AppView{}, err
 	}
@@ -3085,6 +3142,9 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppVie
 	t, ok := tiers.Compute.ByRenderPlan(plan)
 	if !ok {
 		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+	}
+	if a.Spec.Type == appv1alpha1.TypeBackgroundWorker && !core.PaidPlan(t.ID) {
+		return AppView{}, errWorkerFreePlan()
 	}
 	if t.ID == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
 		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)

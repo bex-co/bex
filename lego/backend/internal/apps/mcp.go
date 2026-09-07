@@ -185,7 +185,7 @@ type createWebServiceArgs struct {
 	StartCommand            string                  `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
 	DockerfilePath          string                  `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
 	Builder                 string                  `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
+	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free; a background_worker is paid-only — free is rejected and an omitted plan defaults to starter)"`
 	EnvVars                 []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
 	SecretFiles             []secretFileInput       `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
 	AutoDeploy              string                  `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`

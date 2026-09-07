@@ -16,3 +16,17 @@ export function formatInstanceMemory(memory: string): string {
   const [, amount, unit] = match;
   return `${amount} ${unit === "Mi" ? "MB" : "GB"}`;
 }
+
+/**
+ * The catalog tiers a service of this type may be offered. Background Workers
+ * are paid-only (w6/025, matching Render): Free never appears in their create
+ * or instance-type pickers — bex-api refuses a free worker plan server-side
+ * too, so this filter is presentation, not the enforcement.
+ */
+export function offeredInstanceTypes<T extends { id: string }>(
+  serviceType: string | null,
+  instanceTypes: T[],
+): T[] {
+  if (serviceType !== "background_worker") return instanceTypes;
+  return instanceTypes.filter((it) => it.id !== "free");
+}

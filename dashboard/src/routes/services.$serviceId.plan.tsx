@@ -50,6 +50,7 @@ function ServicePlanPage() {
       <InstanceTypePicker
         serviceId={serviceId}
         currentPlan={service?.plan ?? null}
+        serviceType={service?.type ?? null}
       />
     </NonStaticRoute>
   );

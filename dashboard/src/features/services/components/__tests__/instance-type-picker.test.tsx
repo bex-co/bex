@@ -48,13 +48,20 @@ const PRO: InstanceTypeView = {
   monthlyUsd: "59.50",
 };
 
-function renderPicker(currentPlan: string | null) {
+function renderPicker(
+  currentPlan: string | null,
+  serviceType: string | null = "web_service",
+) {
   const rootRoute = createRootRoute();
   const pickerRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: () => (
-      <InstanceTypePicker serviceId="app" currentPlan={currentPlan} />
+      <InstanceTypePicker
+        serviceId="app"
+        currentPlan={currentPlan}
+        serviceType={serviceType}
+      />
     ),
   });
   const settingsRoute = createRoute({
@@ -96,6 +103,14 @@ describe("InstanceTypePicker", () => {
 
     await user.click(screen.getByRole("radio", { name: /Pro\b/ }));
     expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
+  });
+
+  it("offers no Free tier for a background worker (w6/025 paid-only)", async () => {
+    renderPicker("standard", "background_worker");
+
+    expect(await screen.findByText("Paid")).toBeInTheDocument();
+    expect(screen.queryByText("Free")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(2); // Standard + Pro only
   });
 
   it("confirms and fires updateServicePlan with the picked Render-spelled id, then navigates to Settings on success", async () => {
