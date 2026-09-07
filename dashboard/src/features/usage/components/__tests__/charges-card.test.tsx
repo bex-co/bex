@@ -575,6 +575,62 @@ function ssrThenHydrate(
   return { html, afterHydrate, recovered };
 }
 
+describe("ChargesCard coverage caveat (w4/048)", () => {
+  const baseProps = {
+    estimatedCost: estimate([resource()]),
+    invoicedUsd: null,
+    loading: false,
+    period: "",
+    now: MID_JULY,
+  };
+
+  it("caveats a partial estimate, naming the coverage boundary and degraded meters", () => {
+    render(
+      <ChargesCard
+        {...baseProps}
+        coverage={{
+          state: "partial",
+          through: "2026-09-01T00:00:00Z",
+          degradedSources: ["direct", "http", "instance"],
+        }}
+      />,
+    );
+
+    const caveat = screen.getByText("Partial data");
+    expect(caveat).toBeInTheDocument();
+    // The tooltip discloses the date the estimate is complete through and the
+    // degraded meters, so the dollar figure isn't presented as authoritative.
+    const title = caveat.getAttribute("title") ?? "";
+    expect(title).toContain("2026-09-01");
+    expect(title).toContain("direct, http, instance");
+  });
+
+  it("shows no caveat when metering is complete", () => {
+    render(
+      <ChargesCard
+        {...baseProps}
+        coverage={{ state: "complete", through: "", degradedSources: [] }}
+      />,
+    );
+    expect(screen.queryByText("Partial data")).not.toBeInTheDocument();
+  });
+
+  it("stays silent for an indeterminate read with nothing to disclose", () => {
+    render(
+      <ChargesCard
+        {...baseProps}
+        coverage={{ state: "unknown", through: "", degradedSources: [] }}
+      />,
+    );
+    expect(screen.queryByText("Partial data")).not.toBeInTheDocument();
+  });
+
+  it("omits the caveat entirely when coverage is not provided (back-compat)", () => {
+    render(<ChargesCard {...baseProps} />);
+    expect(screen.queryByText("Partial data")).not.toBeInTheDocument();
+  });
+});
+
 describe("ChargesCard across the SSR/hydration boundary (w6/049)", () => {
   const props = {
     estimatedCost: estimate([resource()]),

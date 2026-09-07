@@ -277,6 +277,25 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "本周期没有用量。",
     description: "Charge-tree empty state",
   },
+  "usage.coveragePartial": {
+    message: "数据不完整",
+    description:
+      "Amber caveat label above the charges when the metering behind the estimate is degraded/incomplete (w4/048), mirroring the Metrics page's degraded badge",
+  },
+  "usage.coveragePartialLead": {
+    message: "此估算可能低估了用量。",
+    description: "Lead sentence of the partial-coverage caveat tooltip",
+  },
+  "usage.coveragePartialThrough": {
+    message: "仅统计至 {through}。",
+    description:
+      "Partial-coverage caveat clause naming the date the estimate is complete through; {through} is a YYYY-MM-DD date",
+  },
+  "usage.coveragePartialSources": {
+    message: "降级的计量来源：{sources}。",
+    description:
+      "Partial-coverage caveat clause listing the degraded metering source names; {sources} is a comma-separated list",
+  },
   "usage.expandAll": {
     message: "全部展开",
     description: "Charge-tree button that opens every category",

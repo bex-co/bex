@@ -284,6 +284,25 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "No usage in this period.",
     description: "Charge-tree empty state",
   },
+  "usage.coveragePartial": {
+    message: "Partial data",
+    description:
+      "Amber caveat label above the charges when the metering behind the estimate is degraded/incomplete (w4/048), mirroring the Metrics page's degraded badge",
+  },
+  "usage.coveragePartialLead": {
+    message: "This estimate may undercount usage.",
+    description: "Lead sentence of the partial-coverage caveat tooltip",
+  },
+  "usage.coveragePartialThrough": {
+    message: "Complete only through {through}.",
+    description:
+      "Partial-coverage caveat clause naming the date the estimate is complete through; {through} is a YYYY-MM-DD date",
+  },
+  "usage.coveragePartialSources": {
+    message: "Degraded metering sources: {sources}.",
+    description:
+      "Partial-coverage caveat clause listing the degraded metering source names; {sources} is a comma-separated list",
+  },
   "usage.expandAll": {
     message: "Expand all",
     description: "Charge-tree button that opens every category",

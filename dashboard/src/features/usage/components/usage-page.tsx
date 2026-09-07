@@ -130,6 +130,7 @@ export function UsagePage() {
             <section id="charges" className="scroll-mt-6">
               <ChargesCard
                 estimatedCost={summary?.estimatedCost ?? null}
+                coverage={summary?.coverage ?? null}
                 invoicedUsd={billing?.currentCost?.amountUsd ?? null}
                 amountDueUsd={billing?.currentCost?.amountDueUsd ?? null}
                 ratedPeriodStart={billing?.currentCost?.periodStart ?? null}

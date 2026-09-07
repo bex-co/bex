@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { useMemo, useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { AlertTriangle, ChevronRight } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -39,6 +39,7 @@ import {
 } from "@/features/usage/lib/charges";
 import type {
   ChargeLine,
+  Coverage,
   EstimatedCost,
   ResourceEstimate,
 } from "../hooks/use-usage";
@@ -178,8 +179,51 @@ function CategoryRow({
   );
 }
 
+/**
+ * The honesty caveat for a money figure built on incomplete metering (w4/048).
+ * Mirrors the Metrics page's degraded-source badge (network-metrics-card) so the
+ * two surfaces disclose degraded data the same way: an amber "Partial data" line
+ * whose tooltip names the coverage boundary and the degraded meters. Rendered
+ * only when the estimate is genuinely not complete and there is something
+ * concrete to disclose — a `through` bound or named degraded sources — so an
+ * indeterminate "unknown" read with nothing to show stays silent.
+ */
+function CoverageCaveat({ coverage }: { coverage: Coverage }) {
+  const { t } = useTranslations();
+  const parts = [t("usage.coveragePartialLead")];
+  if (coverage.through) {
+    // Date only, sliced from the UTC RFC3339 string: deterministic across the
+    // SSR/hydration boundary, unlike a locale/timezone-formatted date.
+    parts.push(
+      t("usage.coveragePartialThrough", { through: coverage.through.slice(0, 10) }),
+    );
+  }
+  if (coverage.degradedSources.length > 0) {
+    parts.push(
+      t("usage.coveragePartialSources", {
+        sources: coverage.degradedSources.join(", "),
+      }),
+    );
+  }
+  return (
+    <span
+      className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-500"
+      title={parts.join(" ")}
+    >
+      <AlertTriangle className="h-3.5 w-3.5" />
+      {t("usage.coveragePartial")}
+    </span>
+  );
+}
+
 export interface ChargesCardProps {
   estimatedCost: EstimatedCost | null;
+  /**
+   * Metering completeness for the period (ADR040). When the estimate is not
+   * complete and there is something to disclose, the card caveats the totals so
+   * a degraded/partial estimate isn't presented as authoritative (w4/048).
+   */
+  coverage?: Coverage | null;
   /** Stripe's gross rated charge for the period; the total once Stripe has rated anything. */
   invoicedUsd: string | null;
   /** What Stripe actually collects after credits and comp discounts; shown when it differs. */
@@ -207,6 +251,7 @@ export interface ChargesCardProps {
  */
 export function ChargesCard({
   estimatedCost,
+  coverage = null,
   invoicedUsd,
   amountDueUsd = null,
   ratedPeriodStart = null,
@@ -289,6 +334,11 @@ export function ChargesCard({
               ? t("usage.chargesDescriptionEstimate")
               : t("usage.chargesDescriptionInvoiced")}
         </CardDescription>
+        {coverage &&
+        coverage.state !== "complete" &&
+        (coverage.through !== "" || coverage.degradedSources.length > 0) ? (
+          <CoverageCaveat coverage={coverage} />
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         {loading && categories.length === 0 ? (
