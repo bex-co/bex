@@ -427,6 +427,25 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "psql command",
     description: "Connection-info field label (ready-to-run psql command)",
   },
+  "databases.connCaLabel": {
+    message: "Server CA certificate",
+    description: "Connection-info field label (private server CA bundle)",
+  },
+  "databases.connCaDownload": {
+    message: "Download CA certificate",
+    description: "Button downloading the server CA PEM file",
+  },
+  "databases.connCaHelp": {
+    message:
+      "External connections verify this database's certificate against its private server CA (sslmode=verify-full stays required). Download {file}, then point your client at the saved file — for the psql command or the external connection string, prefix it with:",
+    description:
+      "Explanation above the PGSSLROOTCERT example; {file} is the downloaded CA filename",
+  },
+  "databases.connCaSnippet": {
+    message: "Example environment prefix pointing at the downloaded CA",
+    description:
+      "Accessible label for the copyable PGSSLROOTCERT example snippet",
+  },
   "databases.connErrorTitle": {
     message: "Couldn't load connection info",
     description: "Connection-info panel error title",

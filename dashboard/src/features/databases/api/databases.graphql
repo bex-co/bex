@@ -69,6 +69,7 @@ query DatabaseConnectionInfo($id: String!) {
     internalConnectionPoolString
     externalConnectionPoolString
     psqlCommand
+    serverCaCertificate
     readReplicaConnectionStrings {
       name
       internalConnectionString

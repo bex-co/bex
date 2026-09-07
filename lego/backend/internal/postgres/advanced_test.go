@@ -866,6 +866,7 @@ func TestPoolerConnectionStrings(t *testing.T) {
 	if err := cl.Create(ctx, sec); err != nil {
 		t.Fatalf("seed secret: %v", err)
 	}
+	seedDatabaseCA(t, cl, "pool-db")
 
 	info, err := svc.PostgresConnectionInfo(ctx, "pool-db")
 	if err != nil {

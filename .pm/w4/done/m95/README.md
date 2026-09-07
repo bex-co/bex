@@ -1,18 +1,30 @@
 # w4 · m95 — Complete the trust setup for external PostgreSQL connections
 
-**Worker:** worker4 **Goal:** a tenant can obtain its database's server CA through bex and use the supplied external URL/PSQL instructions with full certificate and hostname verification. **Status:** todo
+**Worker:** worker4 **Goal:** a tenant can obtain its database's server CA through bex and use the supplied external URL/PSQL instructions with full certificate and hostname verification. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Expose the database server CA through authenticated connection info | 50m | — |
-| t002 | Provide CA download and complete external client instructions | 45m | t001 |
-| t003 | Cover shared connection variants, authorization, and CA lifecycle | 50m | t001, t002 |
-| t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 20m | t004 |
-| t006 | Test coverage | 40m | t004 |
-| t007 | Closeout | 20m | t005, t006 |
+| t001 | Expose the database server CA through authenticated connection info | 50m | — — **DONE** |
+| t002 | Provide CA download and complete external client instructions | 45m | t001 — **DONE** |
+| t003 | Cover shared connection variants, authorization, and CA lifecycle | 50m | t001, t002 — **DONE** |
+| t004 | Render parity | 20m | t003 — **DONE** |
+| t005 | Simplify | 20m | t004 — **DONE** |
+| t006 | Test coverage | 40m | t004 — **DONE** |
+| t007 | Closeout | 20m | t005, t006 — **DONE** |
+
+## Outcome (2026-09-07)
+
+Shipped. Connection-info now delivers the CNPG cluster's private **server CA** so an external `sslmode=verify-full` client can actually connect — closing the gap where the external URL/PSQL command pinned full verification against a private CA the product never handed out.
+
+- **t001 — CA on the authenticated read.** `PostgresConnectionInfo` gains an additive `serverCaCertificate` PEM field (REST struct + GraphQL `PostgresConnectionInfo.serverCaCertificate`). `Service.serverCACertificate` reads the CNPG-default `<cluster>-ca` Secret in the Database's own namespace (`cluster.SetName(db.Name)`, so the name is `db.Name+"-ca"`; the operator leaves CNPG's default CA in place and only adds public SNI SANs, so one CA covers the primary, pooler, and replica public endpoints alike). `certificateOnlyPEM` re-encodes **only** `CERTIFICATE` blocks — a private key, headers, or trailing bytes can never leak, and any non-certificate block fails the whole bundle. Only populated for `spec.public` databases; a missing CA is an actionable `ErrUnavailable` (503) and malformed material is refused rather than downgrading TLS. Existing `bex-tenant-api` RBAC already grants unrestricted `secrets` `get` in tenant namespaces — no RBAC change needed.
+- **t002 — download + trust instructions.** The dashboard Connections panel renders a **Server CA certificate** field with a per-database `<id>-ca.pem` download (new shared `downloadTextFile` helper) and `PGSSLROOTCERT="/path/to/<id>-ca.pem"` guidance that keeps `sslmode=verify-full` and never suggests a weaker mode. Internal-only databases (empty CA) keep a coherent panel with no CA section. en/zh locales added.
+- **t003/t006 — shared scope + failure-sensitive tests.** `server_ca_test.go` proves REST and GraphQL serve the identical bundle, the response never carries `PRIVATE KEY`, a missing CA → 503, a smuggled key is refused, and internal-only DBs omit the field; `certificateOnlyPEM` unit table covers empty/garbage/key-block/mixed-bundle. Pooler/replica seeding threads the CA. `connection-info-panel.test.tsx` drives the real download (Blob/anchor/revoke) and asserts the verify-full instructions.
+- **t004 — Render parity.** ADR009 external-URL row and ADR018 Postgres row record this as a **deliberate bex extension**: Render's public DB hosts present publicly-trusted certificates, so it needs no counterpart; bex pins verify-full against each cluster's private CNPG CA, so completing that trust setup in-product is required. MCP deliberately still has no connection-info tool (not silently invented).
+- **t005 — simplify.** The Blob/anchor/revoke download dance is now one shared `@/common/lib/download-file` helper; env-export and Generate-Blueprint download call it too (no per-feature drift).
+
+**Verification:** backend `go test ./...` green (61 packages, EXIT 0) incl. the new `postgres` cases; backend `golangci-lint` 0 issues; dashboard `yarn typecheck` + `yarn lint` clean; dashboard tests green (connection-info-panel + blueprint + services suites). **t007 live re-probe deferred to the next QA pass** — no cluster access this session, the same close-out constraint recorded for m91–m94; the deployed change should repeat the README's create → reveal → external psql `verify-full` → cleanup walk.
 
 ## Definition of done
 

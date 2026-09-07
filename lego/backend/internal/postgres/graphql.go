@@ -177,6 +177,7 @@ var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"internalConnectionPoolString": gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.InternalConnectionPoolString }),
 		"externalConnectionPoolString": gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.ExternalConnectionPoolString }),
 		"psqlCommand":                  gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.PSQLCommand }),
+		"serverCaCertificate":          gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.ServerCACertificate }),
 		"readReplicaConnectionStrings": gqlutil.Typed(graphql.NewList(replicaConnectionStringsGQLType), func(v PostgresConnectionInfo) any { return v.ReadReplicaConnectionStrings }),
 	},
 })
