@@ -1,6 +1,6 @@
 # Forum legacy-image retirement — 2026-09-06
 
-Status: completed. Three database restores verified; clean image preserved; five inactive ReplicaSets and the exact legacy credential-bearing artifact retired. Existing missing upload files are recorded separately in w7/042, not claimed recovered.
+Status: completed. Three database restores verified; clean image preserved; five inactive ReplicaSets and the exact legacy credential-bearing artifact retired. Existing missing upload files were investigated in w7/042 (closed 2026-09-06); restore remains deferred until `nvme4tbfish` or another matching archive is available — see `.pm/FUTURE-MAYBE.md` and `w7/done/042.md`.
 
 ## Scope and initial state
 
@@ -22,7 +22,7 @@ Restoration uses a separate local PostgreSQL 18.4 container with networking disa
 
 The live forum Pod has no volumes. Both `/var/www/discourse/public/uploads` and `/var/discourse/shared/uploads` contain zero files. There are 29 custom upload references in the databases: 11 beancount, 8 tianpan, 10 blockeden. Their direct origin requests returned 25 HTTP 500 and 4 HTTP 404 responses; public download attempts returned HTTP 403. Built-in image assets were excluded from these counts. Scanning all 34 gen-54 image layers found no files under either upload path, so retaining that image cannot recover them.
 
-These failures were recorded before any old ReplicaSet/image deletion or application rollout. A database backup preserves the references, not the missing file bytes. Recovery-source investigation and durable upload storage are separately tracked in w7/042. This operation must not claim a complete historical upload backup.
+These failures were recorded before any old ReplicaSet/image deletion or application rollout. A database backup preserves the references, not the missing file bytes. Follow-up investigation (`w7/done/042.md`) confirmed historical routing to `/Volumes/nvme4tbfish/discourse_docker/data/…` and prior Render upload disks; the volume is not currently attached, so restore + durable `spec.disk` stays in `.pm/FUTURE-MAYBE.md`. This operation must not claim a complete historical upload backup.
 
 ## Recovery materials
 
