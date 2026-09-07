@@ -139,7 +139,7 @@ func TestPushWorkerEnqueuesObservedLifecycleFacts(t *testing.T) {
 		t.Fatalf("run once: %v", err)
 	}
 
-	inbox, err := st.ListOwnPushNotifications(ctx, tenant.ID, alice, 50)
+	inbox, err := st.ListOwnPushNotifications(ctx, tenant.ID, alice, 50, nil)
 	if err != nil {
 		t.Fatalf("list inbox: %v", err)
 	}

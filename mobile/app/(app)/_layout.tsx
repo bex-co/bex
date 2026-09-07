@@ -7,6 +7,7 @@ import {
   WorkspaceProvider,
 } from "@/features/workspaces/workspace-provider";
 import { AppDrawerProvider } from "@/components/app-drawer";
+import { CapabilitiesProvider } from "@/features/capabilities/capabilities-provider";
 import { NotificationsProvider } from "@/features/notifications/notifications-provider";
 
 // Deep links to a detail still get a tab screen to return to.
@@ -82,11 +83,13 @@ export default function AppLayout() {
   if (state.status !== "signedIn") return <Redirect href="/sign-in" />;
   return (
     <WorkspaceProvider>
-      <NotificationsProvider>
-        <AppDrawerProvider>
-          <WorkspaceStack />
-        </AppDrawerProvider>
-      </NotificationsProvider>
+      <CapabilitiesProvider>
+        <NotificationsProvider>
+          <AppDrawerProvider>
+            <WorkspaceStack />
+          </AppDrawerProvider>
+        </NotificationsProvider>
+      </CapabilitiesProvider>
     </WorkspaceProvider>
   );
 }

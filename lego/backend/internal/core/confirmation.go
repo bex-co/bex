@@ -45,6 +45,41 @@ type EnvironmentProtectionStore interface {
 	GetEnvironmentProtectedStatus(ctx context.Context, environmentID string) (string, error)
 }
 
+// EnvironmentProtected is the predicate half of RequireEnvironmentConfirmation
+// — shared with the capability projections (ADR087, w6/m136) so what a
+// projection reports and what the guard enforces are structurally the same
+// answer. Empty environment/store are unprotected, exactly like the guard.
+func EnvironmentProtected(ctx context.Context, store EnvironmentProtectionStore, environmentID string) (bool, error) {
+	if store == nil || environmentID == "" {
+		return false, nil
+	}
+	protectedStatus, err := store.GetEnvironmentProtectedStatus(ctx, environmentID)
+	if err != nil {
+		return false, err
+	}
+	return protectedStatus == ProtectedStatusProtected, nil
+}
+
+// ProtectionPrecondition classifies a protection predicate's answer for a
+// capability projection — the ONE mapping the App-row and Environment-label
+// protection paths share: protected → the confirmation requirement; an
+// unanswerable read → unavailable (blocked, never silently unguarded).
+func ProtectionPrecondition(protected bool, err error) string {
+	if err != nil {
+		return PrecondUnavailable
+	}
+	if protected {
+		return PrecondProtectedConfirmation
+	}
+	return ""
+}
+
+// EnvironmentProtectionPrecondition projects the protected-environment guard
+// as a bounded precondition, by the same predicate the guard enforces.
+func EnvironmentProtectionPrecondition(ctx context.Context, store EnvironmentProtectionStore, environmentID string) string {
+	return ProtectionPrecondition(EnvironmentProtected(ctx, store, environmentID))
+}
+
 // RequireEnvironmentConfirmation enforces an exact server-issued phrase for a
 // resource in a protected Environment. Empty environment/store are no-ops so
 // DB-less and environment-less resources preserve their original behavior.
@@ -53,14 +88,11 @@ func RequireEnvironmentConfirmation(
 	store EnvironmentProtectionStore,
 	environmentID, name, verb, required string,
 ) error {
-	if store == nil || environmentID == "" {
-		return nil
-	}
-	protectedStatus, err := store.GetEnvironmentProtectedStatus(ctx, environmentID)
+	protected, err := EnvironmentProtected(ctx, store, environmentID)
 	if err != nil {
 		return err
 	}
-	if protectedStatus != ProtectedStatusProtected {
+	if !protected {
 		return nil
 	}
 	if ConfirmFrom(ctx) != required {

@@ -75,7 +75,11 @@ func (s *Service) ListNotificationInbox(ctx context.Context, limit int) ([]PushN
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.Store.ListOwnPushNotifications(ctx, tenantID, subject, limit)
+	// Destination access decides visibility (destination_policy.go): gated
+	// event types the caller's REAL current relations don't cover are
+	// filtered in SQL, so a downgrade removes historic rows and the badge
+	// cannot disagree with the page.
+	rows, err := s.Store.ListOwnPushNotifications(ctx, tenantID, subject, limit, s.inboxExclusions(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +103,7 @@ func (s *Service) UnreadPushNotificationCount(ctx context.Context) (int, error) 
 	if err != nil {
 		return 0, err
 	}
-	count, err := s.Store.CountUnreadPushNotifications(ctx, tenantID, subject)
+	count, err := s.Store.CountUnreadPushNotifications(ctx, tenantID, subject, s.inboxExclusions(ctx))
 	if err != nil {
 		return 0, err
 	}
@@ -130,6 +134,12 @@ func (s *Service) MarkPushNotificationRead(ctx context.Context, eventID string) 
 		return false, err
 	}
 	return s.Store.MarkOwnPushNotificationRead(ctx, tenantID, subject, eventID, s.Now().UTC())
+}
+
+// inboxExclusions probes the caller's current relations (fail-closed
+// core.Base.Can) through the shared destination policy.
+func (s *Service) inboxExclusions(ctx context.Context) []string {
+	return inboxExcludedEventTypes(func(relation string) bool { return s.Can(ctx, relation) })
 }
 
 func (s *Service) notificationInboxOwner(ctx context.Context) (string, string, error) {

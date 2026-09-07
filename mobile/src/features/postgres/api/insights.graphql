@@ -63,14 +63,6 @@ query MobilePostgresSizes($id: String!) {
   }
 }
 
-query MobilePostgresProcesses($id: String!) {
-  databaseProcesses(id: $id) {
-    state
-    waitEventType
-    durationSeconds
-  }
-}
-
 query MobilePostgresTableScans($id: String!) {
   databaseTableScans(id: $id) {
     schema

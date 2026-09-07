@@ -1,0 +1,10 @@
+query MobileViewerCapabilities($ownerId: String, $fresh: Boolean) {
+  viewerCapabilities(ownerId: $ownerId, fresh: $fresh) {
+    fresh
+    grants {
+      action
+      outcome
+      reason
+    }
+  }
+}

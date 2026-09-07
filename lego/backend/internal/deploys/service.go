@@ -786,7 +786,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 		}
 		return DeployView{}, err
 	}
-	if (target.Status != store.DeployLive && target.Status != store.DeployDeactivated) || target.ResolvedImage == "" {
+	if !RollbackEligible(target) {
 		return DeployView{}, fmt.Errorf("%w: deploy %q never went live — nothing to roll back to", core.ErrConflict, deployID)
 	}
 	// Rolling back to the currently-live deploy WHEN it is already the running

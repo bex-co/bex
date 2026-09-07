@@ -6,7 +6,6 @@ import {
   mergePostgresInsightState,
   postgresInsightFailure,
   postgresInsightState,
-  summarizePostgresProcesses,
 } from "../insights";
 
 describe("Postgres mobile insights", () => {
@@ -105,16 +104,6 @@ describe("Postgres mobile insights", () => {
       expect(mergePostgresInsightState(left, right)).toBe(expected);
       expect(mergePostgresInsightState(right, left)).toBe(expected);
     }
-  });
-
-  it("summarizes processes without retaining query text or database users", () => {
-    expect(
-      summarizePostgresProcesses([
-        { state: "active", waitEventType: "Lock", durationSeconds: 12 },
-        { state: "idle", waitEventType: "", durationSeconds: 2 },
-        { state: "active", waitEventType: null, durationSeconds: null },
-      ]),
-    ).toEqual({ total: 3, active: 2, waiting: 1, longestSeconds: 12 });
   });
 
   it("joins compact table sizes and scans while keeping missing data honest", () => {

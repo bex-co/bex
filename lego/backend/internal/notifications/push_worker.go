@@ -333,11 +333,17 @@ func fanOutPush(
 	target pushTarget,
 ) ([]store.PushNotificationBatchItem, error) {
 	for _, recipient := range recipients {
+		// Destination eligibility is derived from the event INSIDE the shared
+		// fan-out (ADR087, w6/m137) so no dispatcher — current or future — can
+		// forget it: an agent event never reaches a viewer/billing recipient,
+		// however their preferences are set. Roles come from the current
+		// membership join, never from the event.
 		decision, err := evaluator.Evaluate(recipient.policy, DeliveryInput{
 			Channel: DeliveryChannelPush, Event: DeliveryEvent(target.projected.event),
 			Urgency: DeliveryUrgency(target.projected.urgency), WorkspaceID: target.workspaceID,
 			EventWorkspaceID: target.workspaceID, Subject: recipient.subject,
 			WorkspaceRole: recipient.role, ServiceID: target.serviceID,
+			EligibleRoles: destinationEligibleRoles(DeliveryEvent(target.projected.event)),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("evaluate stored push policy: %w", err)
@@ -382,49 +388,34 @@ func fanOutPush(
 
 // projectAgentSessionPush maps a terminal agent session to its push. A completed
 // session that opened a draft PR is "PR ready"; a completed one without a PR and
-// a failed one surface as a failure needing attention. Bodies carry no secret —
-// the repo name and (for PR-ready) the PR number only.
+// a failed one surface as a failure needing attention. Lock-screen text stays
+// GENERIC (ADR087, w6/m137): no repository name, PR number, prompt, or log
+// excerpt — an OS-rendered notification can neither be recalled nor
+// access-checked at display time, so the authorized detail is fetched only
+// after opening the deep link. The closed routing envelope carries the
+// session id; nothing else identifies the work.
 func projectAgentSessionPush(s store.AgentSession) (projectedPush, bool) {
-	repo := boundedPushDisplay(s.Repo)
 	switch s.Phase {
 	case "completed":
 		if s.PRURL != "" {
-			body := "Agent opened a draft PR on " + repo + "."
-			if s.PRNumber > 0 {
-				body = fmt.Sprintf("Agent opened draft PR #%d on %s.", s.PRNumber, repo)
-			}
 			return projectedPush{
 				event: string(DeliveryEventAgentPRReady), title: "Draft PR ready",
-				body: body, urgency: string(DeliveryUrgencyImportant),
+				body: "An agent session opened a draft pull request.", urgency: string(DeliveryUrgencyImportant),
 			}, true
 		}
 		return projectedPush{
 			event: string(DeliveryEventAgentFailed), title: "Agent session ended",
-			body:    "Agent session on " + repo + " ended without a pull request.",
+			body:    "An agent session ended without a pull request.",
 			urgency: string(DeliveryUrgencyImportant),
 		}, true
 	case "failed":
 		return projectedPush{
 			event: string(DeliveryEventAgentFailed), title: "Agent session failed",
-			body: "Agent session on " + repo + " failed.", urgency: string(DeliveryUrgencyImportant),
+			body: "An agent session failed.", urgency: string(DeliveryUrgencyImportant),
 		}, true
 	default:
 		return projectedPush{}, false
 	}
-}
-
-const maxPushRepoDisplayBytes = 256
-
-func boundedPushDisplay(value string) string {
-	if len(value) <= maxPushRepoDisplayBytes {
-		return value
-	}
-	const suffix = "..."
-	limit := maxPushRepoDisplayBytes - len(suffix)
-	for limit > 0 && (value[limit]&0xc0) == 0x80 {
-		limit--
-	}
-	return value[:limit] + suffix
 }
 
 // dispatchAgentSessions is the agent-terminal projection (w11/m6 t005) alongside
@@ -477,7 +468,7 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, byTenant map[str
 		batch, err = fanOutPush(batch, evaluator, byTenant[session.WorkspaceID], pushTarget{
 			workspaceID:  session.WorkspaceID,
 			sourceKey:    sourceKey,
-			resourceKind: "agentSession", resourceID: session.ID,
+			resourceKind: resourceKindAgentSession, resourceID: session.ID,
 			deepLink: "/sessions/" + session.ID, occurredAt: session.UpdatedAt, projected: projected,
 		})
 		if err != nil {
@@ -715,6 +706,22 @@ func (w *PushWorker) sendDelivery(ctx context.Context, delivery store.DuePushDel
 	if !pushSenderSupports(w.Sender, delivery.Provider) {
 		_, _ = w.Store.ReleasePushDelivery(ctx, delivery)
 		return nil
+	}
+	// Send-time destination re-check (destination_policy.go): the claim query
+	// joined the recipient's CURRENT role (MemberRole; "" = membership gone),
+	// so a row enqueued or deferred before a downgrade drops here without a
+	// send. An unreachable membership store fails the claim itself — nothing
+	// is sent, never widened.
+	if eligible := destinationEligibleRoles(DeliveryEvent(delivery.EventType)); eligible != nil {
+		role, ok := deliveryWorkspaceRole(delivery.MemberRole)
+		if !ok || !roleEligible(role, eligible) {
+			if _, err := w.Store.CompletePushDelivery(ctx, delivery, w.now()); err != nil {
+				return []error{err}
+			}
+			w.evidence(ctx, "send", "dropped", string(DeliveryReasonRoleIneligible))
+			w.Metrics.Operation("send", "dropped")
+			return nil
+		}
 	}
 	ticketID, sendErr := w.Sender.Send(ctx, PushSendRequest{
 		Provider: delivery.Provider, Platform: delivery.Platform, Token: delivery.Token,

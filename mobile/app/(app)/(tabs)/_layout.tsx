@@ -13,6 +13,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { HapticTab } from "@/components/haptic-tab";
 import { TabBarIcon } from "@/components/tab-bar-icon";
 import { nativeTabIcons } from "@/components/tab-bar-icon/tab-icons";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import { useNotifications } from "@/features/notifications/notifications-provider";
 
 const TAB_BAR_CONTENT_HEIGHT = 80;
@@ -61,6 +62,12 @@ export default function TabLayout() {
   const theme = useTheme().colorTheme;
   const insets = useSafeAreaInsets();
   const { unread } = useNotifications();
+  // ADR087 navigation matrix: Sessions exists only with confirmed session
+  // read access (can_operate) — Viewer/Billing never see the destination.
+  // The provider holds the last RESOLVED state for the current workspace, so
+  // loading, empty results, and transport failures never change the tab set;
+  // only a resolved workspace/access transition does.
+  const showSessions = useCapabilities().allows("can_operate");
 
   if (Platform.OS === "ios") {
     const contentStyle = { backgroundColor: theme.background };
@@ -84,12 +91,14 @@ export default function TabLayout() {
           </NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf={nativeTabIcons.activity} />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="sessions" contentStyle={contentStyle}>
-          <NativeTabs.Trigger.Label>
-            {t("navigation.sessions")}
-          </NativeTabs.Trigger.Label>
-          <NativeTabs.Trigger.Icon sf={nativeTabIcons.sessions} />
-        </NativeTabs.Trigger>
+        {showSessions ? (
+          <NativeTabs.Trigger name="sessions" contentStyle={contentStyle}>
+            <NativeTabs.Trigger.Label>
+              {t("navigation.sessions")}
+            </NativeTabs.Trigger.Label>
+            <NativeTabs.Trigger.Icon sf={nativeTabIcons.sessions} />
+          </NativeTabs.Trigger>
+        ) : null}
         <NativeTabs.Trigger name="notifications" contentStyle={contentStyle}>
           <NativeTabs.Trigger.Label>
             {t("navigation.notifications")}
@@ -182,6 +191,10 @@ export default function TabLayout() {
         name="sessions"
         options={{
           title: t("navigation.sessions"),
+          // href: null removes the tab entry entirely (the route file must
+          // exist — the route inventory is pinned — but the destination is
+          // absent without confirmed access, per the ADR087 matrix).
+          href: showSessions ? undefined : null,
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon route="sessions" color={color} focused={focused} />
           ),

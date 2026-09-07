@@ -20,6 +20,7 @@ import { formatTimestamp } from "@/common/format-util";
 import { dataBoundary } from "@/common/apollo/data-boundary";
 import { hasAuthoritativeCurrentEvidence } from "@/common/apollo/authoritative-evidence";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import { fonts, fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import {
   MobileCancelCronRunDocument,
@@ -63,6 +64,9 @@ export const CronRunsCard = forwardRef<
 ) {
   const { t, language } = useTranslations();
   const theme = useTheme().colorTheme;
+  const capabilities = useCapabilities();
+  const canOperate = capabilities.allows("can_operate");
+  const canViewLogs = capabilities.allows("can_view_logs");
   const [extraRuns, setExtraRuns] = useState<CronRunSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -342,20 +346,22 @@ export const CronRunsCard = forwardRef<
         </View>
       ) : null}
 
-      <SafeActionPanel
-        key={`${serviceId}:${panelEpoch}`}
-        options={actionOptions}
-        feedbackMessages={
-          timeoutKind
-            ? {
-                "timeout-unknown":
-                  timeoutKind === "ambiguous"
-                    ? t("cron.feedback.ambiguous")
-                    : t("cron.feedback.convergenceTimeout"),
-              }
-            : undefined
-        }
-      />
+      {canOperate ? (
+        <SafeActionPanel
+          key={`${serviceId}:${panelEpoch}`}
+          options={actionOptions}
+          feedbackMessages={
+            timeoutKind
+              ? {
+                  "timeout-unknown":
+                    timeoutKind === "ambiguous"
+                      ? t("cron.feedback.ambiguous")
+                      : t("cron.feedback.convergenceTimeout"),
+                }
+              : undefined
+          }
+        />
+      ) : null}
 
       <View style={[styles.divider, { borderTopColor: theme.border }]} />
       {initialLoading ? (
@@ -384,14 +390,16 @@ export const CronRunsCard = forwardRef<
         </View>
       )}
 
-      <Button
-        type="outline"
-        style={styles.logs}
-        onPress={onOpenLogs}
-        accessibilityLabel={t("cron.openLogs")}
-      >
-        {t("cron.openLogs")}
-      </Button>
+      {canViewLogs ? (
+        <Button
+          type="outline"
+          style={styles.logs}
+          onPress={onOpenLogs}
+          accessibilityLabel={t("cron.openLogs")}
+        >
+          {t("cron.openLogs")}
+        </Button>
+      ) : null}
     </DashboardCard>
   );
 });

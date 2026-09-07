@@ -263,6 +263,30 @@ type Capabilities struct {
 	CanManageKeys    bool   `json:"canManageKeys"`
 	CanManage        bool   `json:"canManage"`
 	CanManageBilling bool   `json:"canManageBilling"`
+	// Grants is the tri-state form of the booleans above (ADR087, w6/m136):
+	// one entry per relation, in the fixed order the booleans declare. A false
+	// boolean cannot say WHY; the matching grant can — denied (an affirmative
+	// refusal, with the scope-vs-permission reason) or unavailable (the check
+	// could not run, which a client must present as "couldn't check", never as
+	// "your role forbids this"). Booleans and grants are derived from the same
+	// probe, so they cannot disagree: boolean == (outcome == "allowed").
+	Grants []CapabilityGrant `json:"grants"`
+	// Fresh reports whether this projection bypassed the positive-check cache
+	// (the fresh=true recovery probe). false means probes MAY reflect a ≤30s
+	// stale positive; true still promises nothing about other replicas — see
+	// the Capabilities verb doc for the full consistency boundary.
+	Fresh bool `json:"fresh"`
+}
+
+// CapabilityGrant is one workspace relation's tri-state evaluation. Action is
+// the FGA relation itself (core.RelCan* — already the bounded vocabulary both
+// sides pin), Outcome/Reason are core's bounded decision vocabulary
+// (core.Decision*/core.Reason*). Clients treat an unknown action, outcome, or
+// reason as not-allowed with generic copy — fail closed.
+type CapabilityGrant struct {
+	Action  string `json:"action"`
+	Outcome string `json:"outcome"`
+	Reason  string `json:"reason,omitempty"`
 }
 
 func memberView(m store.TenantMember) MemberView {
@@ -308,21 +332,60 @@ func wireRole(role string) string { return strings.ToUpper(role) }
 // every relation. The role string is best-effort: a nil store (DB-less mode) or
 // an unresolvable membership just omits it — the booleans are the authoritative
 // part the UI gates on.
-func (s *Service) Capabilities(ctx context.Context, workspaceID string) (Capabilities, error) {
+//
+// Freshness (ADR087, w6/m136/t005): by default the probes may be served by the
+// positive-check cache (core.PositiveTTL, 30s) — a grant revoked moments ago
+// can still read allowed until the TTL expires, and each API replica evicts
+// independently, so even a fresh answer here says nothing about other
+// replicas. fresh=true bypasses that cache on this replica (FreshChecker) and
+// re-asserts can_view itself, the recovery probe a client runs after an
+// access change; membership→OpenFGA reconciliation and stream revalidation
+// remain separate boundaries. Client receipt time is "last checked", never
+// proof of the underlying membership version — no surface of this contract
+// promises instantaneous cross-replica revocation.
+func (s *Service) Capabilities(ctx context.Context, workspaceID string, fresh bool) (Capabilities, error) {
 	ctx = core.WithWorkspace(ctx, workspaceID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return Capabilities{}, err
 	}
-	caps := Capabilities{
-		CanView:          true, // the gate above proved it
-		CanViewLogs:      s.Can(ctx, core.RelCanViewLogs),
-		CanOperate:       s.Can(ctx, core.RelCanOperate),
-		CanCreate:        s.Can(ctx, core.RelCanCreate),
-		CanViewSensitive: s.Can(ctx, core.RelCanViewSensitive),
-		CanManageKeys:    s.Can(ctx, core.RelCanManageKeys),
-		CanManage:        s.Can(ctx, core.RelCanManage),
-		CanManageBilling: s.Can(ctx, core.RelCanManageBilling),
+	if fresh {
+		// The auditing gate above may have ridden a ≤PositiveTTL cached
+		// positive; a fresh projection re-asserts even can_view so a
+		// just-revoked member is refused rather than served a stale shell —
+		// the established auditing-Authorize-then-audit-silent-fresh idiom.
+		if err := s.AuthorizeFresh(ctx, core.RelCanView); err != nil {
+			return Capabilities{}, err
+		}
 	}
+	// The gate above proved can_view; every other relation is probed once, and
+	// that single probe feeds BOTH the legacy boolean and the tri-state grant
+	// (ADR087) — derived from one decision so the two can never disagree. The
+	// workspace object is resolved once here; per-probe resolution would cost
+	// an unbound caller a store round trip per relation.
+	object := core.WorkspaceObject(s.WorkspaceOrDefault(ctx))
+	decide := func(relation string) core.Decision {
+		if fresh {
+			return core.ClassifyDecision(s.AuthorizeFreshOn(ctx, relation, object))
+		}
+		return s.CanDecisionOn(ctx, relation, object)
+	}
+	caps := Capabilities{
+		CanView: true,
+		Fresh:   fresh,
+		Grants:  append(make([]CapabilityGrant, 0, 8), CapabilityGrant{Action: core.RelCanView, Outcome: core.DecisionAllowed}),
+	}
+	probe := func(relation string, allowed *bool) {
+		d := decide(relation)
+		*allowed = d.Allowed()
+		caps.Grants = append(caps.Grants, CapabilityGrant{Action: relation, Outcome: d.Outcome, Reason: d.Reason})
+	}
+	probe(core.RelCanViewLogs, &caps.CanViewLogs)
+	probe(core.RelCanOperate, &caps.CanOperate)
+	probe(core.RelCanCreate, &caps.CanCreate)
+	probe(core.RelCanViewSensitive, &caps.CanViewSensitive)
+	probe(core.RelCanManageKeys, &caps.CanManageKeys)
+	probe(core.RelCanManage, &caps.CanManage)
+	probe(core.RelCanManageBilling, &caps.CanManageBilling)
 	if s.Store != nil {
 		if tenantID, ok := s.Tenant(ctx); ok {
 			if idn, ok := core.IdentityFrom(ctx); ok {

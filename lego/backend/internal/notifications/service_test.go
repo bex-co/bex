@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -212,14 +213,20 @@ func (f *fakeStore) RevokeAllWebPushSubscriptions(_ context.Context, tenantID, s
 	return count, nil
 }
 
-func (f *fakeStore) ListOwnPushNotifications(_ context.Context, tenantID, subject string, limit int) ([]store.PushNotification, error) {
+func (f *fakeStore) ListOwnPushNotifications(_ context.Context, tenantID, subject string, limit int, excludeEvents []string) ([]store.PushNotification, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	rows := f.push[[2]string{tenantID, subject}]
+	var rows []store.PushNotification
+	for _, row := range f.push[[2]string{tenantID, subject}] {
+		if slices.Contains(excludeEvents, row.EventType) {
+			continue
+		}
+		rows = append(rows, row)
+	}
 	if limit < len(rows) {
 		rows = rows[:limit]
 	}
-	return append([]store.PushNotification(nil), rows...), nil
+	return rows, nil
 }
 
 func (f *fakeStore) MarkOwnPushNotificationRead(_ context.Context, tenantID, subject, eventID string, at time.Time) (bool, error) {
@@ -239,12 +246,12 @@ func (f *fakeStore) MarkOwnPushNotificationRead(_ context.Context, tenantID, sub
 	return false, nil
 }
 
-func (f *fakeStore) CountUnreadPushNotifications(_ context.Context, tenantID, subject string) (int64, error) {
+func (f *fakeStore) CountUnreadPushNotifications(_ context.Context, tenantID, subject string, excludeEvents []string) (int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var count int64
 	for _, row := range f.push[[2]string{tenantID, subject}] {
-		if row.ReadAt == nil {
+		if row.ReadAt == nil && !slices.Contains(excludeEvents, row.EventType) {
 			count++
 		}
 	}

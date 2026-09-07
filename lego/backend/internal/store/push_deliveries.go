@@ -72,7 +72,10 @@ type PushNotification struct {
 // other list.
 const defaultPushInboxPage = 50
 
-func (s *PGStore) ListOwnPushNotifications(ctx context.Context, tenantID, subject string, limit int) ([]PushNotification, error) {
+// ListOwnPushNotifications pages the caller's durable inbox. excludeEvents
+// removes destination-gated event types (notifications.destination_policy.go)
+// in SQL, shared with CountUnreadPushNotifications.
+func (s *PGStore) ListOwnPushNotifications(ctx context.Context, tenantID, subject string, limit int, excludeEvents []string) ([]PushNotification, error) {
 	// Defense in depth only: the sole caller (notifications.Service) rejects an
 	// out-of-range limit with a 400 before reaching here, so neither arm is
 	// reachable today. Kept as a normalization rather than deleted — a store
@@ -83,7 +86,8 @@ func (s *PGStore) ListOwnPushNotifications(ctx context.Context, tenantID, subjec
 	}
 	limit = min(limit, core.MaxPageLimit)
 	rows, err := s.Pool.Query(ctx, `SELECT tenant_id,subject,source_event_key,event_id,event_type,title,body,urgency,resource_kind,resource_id,deep_link,occurred_at,deliver_at,created_at,read_at
-	 FROM push_notifications WHERE tenant_id=$1 AND subject=$2 ORDER BY occurred_at DESC,event_id DESC LIMIT $3`, tenantID, subject, limit)
+	 FROM push_notifications WHERE tenant_id=$1 AND subject=$2 AND ($4::text[] IS NULL OR event_type <> ALL($4))
+	 ORDER BY occurred_at DESC,event_id DESC LIMIT $3`, tenantID, subject, limit, excludeEvents)
 	if err != nil {
 		return nil, safePushStoreError(ctx, err)
 	}
@@ -110,9 +114,12 @@ func (s *PGStore) MarkOwnPushNotificationRead(ctx context.Context, tenantID, sub
 	return r.RowsAffected() == 1, nil
 }
 
-func (s *PGStore) CountUnreadPushNotifications(ctx context.Context, tenantID, subject string) (int64, error) {
+// CountUnreadPushNotifications counts the caller's unread inbox items under
+// the same excludeEvents filter as ListOwnPushNotifications.
+func (s *PGStore) CountUnreadPushNotifications(ctx context.Context, tenantID, subject string, excludeEvents []string) (int64, error) {
 	var count int64
-	err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM push_notifications WHERE tenant_id=$1 AND subject=$2 AND read_at IS NULL`, tenantID, subject).Scan(&count)
+	err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM push_notifications WHERE tenant_id=$1 AND subject=$2 AND read_at IS NULL
+	 AND ($3::text[] IS NULL OR event_type <> ALL($3))`, tenantID, subject, excludeEvents).Scan(&count)
 	if err != nil {
 		return 0, safePushStoreError(ctx, err)
 	}
@@ -130,10 +137,18 @@ type PushNotificationBatchItem struct {
 // token. The token remains internal and is excluded from JSON by construction.
 type DuePushDelivery struct {
 	PushNotification
-	DeviceID         string
-	SessionID        string
-	Provider         string
-	Platform         string
+	DeviceID  string
+	SessionID string
+	Provider  string
+	Platform  string
+	// MemberRole is the recipient's CURRENT workspace role, joined at claim
+	// time ("" = membership gone) — the send-time input to the destination
+	// eligibility re-check (ADR087, w6/m137), read in the same query so the
+	// check cannot use stale authorization input (the
+	// ListActivePushSubscriptions pattern). Populated by
+	// ClaimDuePushDeliveries only; the receipts claim has no eligibility
+	// decision to make.
+	MemberRole       string
 	Token            string `json:"-"`
 	P256dh           string `json:"-"`
 	Auth             string `json:"-"`
@@ -313,10 +328,13 @@ func (s *PGStore) ClaimDuePushDeliveries(ctx context.Context, now, leaseUntil ti
 		       c.device_id, COALESCE(expo.session_id, ''),
 		       COALESCE(expo.provider, 'webpush'), COALESCE(expo.platform, 'web'),
 		       COALESCE(expo.token, web.endpoint), COALESCE(web.p256dh, ''), COALESCE(web.auth, ''),
+		       COALESCE(m.role, ''),
 		       $2, d.attempt_count, d.accepted_at, d.receipt_due_at, d.provider_ticket_id
 		FROM claimed c
 		JOIN push_notifications n USING (tenant_id, subject, source_event_key)
 		JOIN push_deliveries d USING (tenant_id, subject, device_id, source_event_key)
+		LEFT JOIN tenant_members m
+		  ON m.tenant_id = c.tenant_id AND m.subject = c.subject
 		LEFT JOIN device_push_subscriptions expo
 		  ON expo.tenant_id = c.tenant_id AND expo.subject = c.subject
 		 AND expo.device_id = c.device_id AND expo.revoked_at IS NULL
@@ -337,7 +355,8 @@ func (s *PGStore) ClaimDuePushDeliveries(ctx context.Context, now, leaseUntil ti
 			&delivery.Urgency, &delivery.ResourceKind, &delivery.ResourceID,
 			&delivery.DeepLink, &delivery.OccurredAt, &delivery.DeliverAt,
 			&delivery.CreatedAt, &delivery.DeviceID, &delivery.SessionID, &delivery.Provider,
-			&delivery.Platform, &delivery.Token, &delivery.P256dh, &delivery.Auth, &delivery.ClaimedUntil,
+			&delivery.Platform, &delivery.Token, &delivery.P256dh, &delivery.Auth,
+			&delivery.MemberRole, &delivery.ClaimedUntil,
 			&delivery.AttemptCount, &delivery.AcceptedAt, &delivery.ReceiptDueAt,
 			&delivery.ProviderTicketID,
 		); err != nil {

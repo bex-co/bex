@@ -53,20 +53,19 @@ func ProtectedConfirmation(verb, name string) string {
 	return "sudo " + verb + " service " + name
 }
 
-// requireUnprotected blocks verb on a App belonging to a
-// protectedStatus=protected Environment unless the context carries the
-// matching ProtectedConfirmation phrase. A no-op for: the store being
-// unwired (hand-applied/DB-less mode has no environment concept at all), or
-// an App with no store row (same reason), or one whose environment is
-// unprotected (or which has none) — protection is opt-in, so every App this
-// milestone predates behaves byte-identically.
-func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, verb string) error {
+// appProtected is the predicate half of requireUnprotected — shared with the
+// capability projection (ADR087, w6/m136) so what it reports and what the
+// guard enforces are structurally the same answer. False for: the store being
+// unwired (hand-applied/DB-less mode has no environment concept at all), an
+// App with no store row (same reason), or one whose environment is
+// unprotected (or which has none) — protection is opt-in.
+func (s *Service) appProtected(ctx context.Context, a *appv1alpha1.App) (bool, error) {
 	if s.Store == nil {
-		return nil
+		return false, nil
 	}
 	id := managedAppID(a)
 	if id == "" {
-		return nil
+		return false, nil
 	}
 	protectedStatus, err := s.Store.GetAppProtectedStatus(ctx, id)
 	if err != nil {
@@ -75,11 +74,22 @@ func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, ve
 		// the retry must still remove the orphaned Kubernetes object. A missing
 		// row has no Environment whose protection could be bypassed.
 		if errors.Is(err, store.ErrNotFound) {
-			return nil
+			return false, nil
 		}
+		return false, err
+	}
+	return protectedStatus == core.ProtectedStatusProtected, nil
+}
+
+// requireUnprotected blocks verb on a App belonging to a
+// protectedStatus=protected Environment unless the context carries the
+// matching ProtectedConfirmation phrase.
+func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, verb string) error {
+	protected, err := s.appProtected(ctx, a)
+	if err != nil {
 		return err
 	}
-	if protectedStatus != core.ProtectedStatusProtected {
+	if !protected {
 		return nil
 	}
 	name := a.Labels[core.LabelServiceName]

@@ -60,6 +60,11 @@ type fakePushWorkerStore struct {
 	notifications map[string]store.PushNotification
 	deliveries    map[string]*fakePushQueueDelivery
 	enqueueCalls  int
+
+	// members overrides the CURRENT role the claim query joins onto each due
+	// delivery (tenant\x00subject → role; "" = membership revoked). Absent
+	// keys fall back to the destination rows' role, matching the live join.
+	members map[string]string
 }
 
 func newFakePushWorkerStore() *fakePushWorkerStore {
@@ -68,7 +73,22 @@ func newFakePushWorkerStore() *fakePushWorkerStore {
 		factStatuses:  map[string]string{},
 		notifications: map[string]store.PushNotification{},
 		deliveries:    map[string]*fakePushQueueDelivery{},
+		members:       map[string]string{},
 	}
+}
+
+// memberRoleLocked mirrors the claim query's tenant_members LEFT JOIN; the
+// caller holds f.mu.
+func (f *fakePushWorkerStore) memberRoleLocked(tenantID, subject string) string {
+	if role, ok := f.members[tenantID+"\x00"+subject]; ok {
+		return role
+	}
+	for _, d := range f.destinations {
+		if d.TenantID == tenantID && d.Subject == subject {
+			return d.Role
+		}
+	}
+	return ""
 }
 
 func (f *fakePushWorkerStore) ListActivePushSubscriptions(context.Context) ([]store.ActivePushSubscription, error) {
@@ -204,6 +224,7 @@ func (f *fakePushWorkerStore) ClaimDuePushDeliveries(
 			DeviceID:         delivery.deviceID, Provider: destination.Provider,
 			Platform: destination.Platform, Token: destination.Token,
 			P256dh: destination.P256dh, Auth: destination.Auth,
+			MemberRole:   f.memberRoleLocked(delivery.notification.TenantID, delivery.notification.Subject),
 			ClaimedUntil: leaseUntil, AttemptCount: delivery.attemptCount,
 		})
 		if len(out) == limit {

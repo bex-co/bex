@@ -110,8 +110,6 @@ const allowedGraphqlOperations: Record<string, string> = {
     "query|id|datastoreMetrics,field,labels,time,unit,value,values",
   MobilePostgresLifecycle:
     "query|id|database,id,name,plan,region,status,suspended,updatedAt,version",
-  MobilePostgresProcesses:
-    "query|id|databaseProcesses,durationSeconds,state,waitEventType",
   MobilePostgresSizes:
     "query|id|database,databaseSizes,name,schema,sizePretty,tables",
   MobilePostgresTableScans:
@@ -148,6 +146,8 @@ const allowedGraphqlOperations: Record<string, string> = {
     "mutation|deviceId|unregisterNotificationDeviceSubscription",
   MobileUsageGlance:
     "query|ownerId|coverage,degradedSources,kind,period,rows,services,state,through,total,usage",
+  MobileViewerCapabilities:
+    "query|fresh,ownerId|action,fresh,grants,outcome,reason,viewerCapabilities",
   MobileWorkspaces: "query||createdAt,id,name,plan,role,workspaces",
 };
 

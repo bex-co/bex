@@ -9,6 +9,7 @@ import {
   type MobileActionRunResult,
 } from "@/components/safe-action";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import {
   MobileCancelDeployDocument,
   MobileRestartServiceDocument,
@@ -58,6 +59,9 @@ export function ServiceActionsCard({
   refreshDeploys: () => Promise<MobileDeployActionTarget[]>;
 }) {
   const { t } = useTranslations();
+  const capabilities = useCapabilities();
+  const canOperate = capabilities.allows("can_operate");
+  const canCreate = capabilities.allows("can_create");
   const serviceRef = useRef(service);
   const deploysRef = useRef(deploys);
   const refreshServiceRef = useRef(refreshService);
@@ -145,6 +149,16 @@ export function ServiceActionsCard({
     return () => deployController?.clear();
   }, [service.id]);
 
+  // ADR087 detail matrix: lifecycle/deploy/cancel require confirmed
+  // can_operate, rollback requires can_create (selecting a prior deploy's
+  // image is executable selection, the create-like class). On confirmed
+  // absence the whole Actions card is absent — never an empty card, never a
+  // control that 403s on tap. State-derived availability (suspended,
+  // cancelable/rollbackable deploys) stays a separate, lifecycle question.
+  if (!canOperate) {
+    return null;
+  }
+
   const options: MobileActionOption[] = [];
   for (const capability of serviceLifecycleCapabilities(service)) {
     const definition =
@@ -200,9 +214,13 @@ export function ServiceActionsCard({
       ),
     );
   }
-  const rollbackTargets = deploys
-    .filter((deploy) => deploy.id && isRollbackableDeployStatus(deploy.status))
-    .slice(0, 1);
+  const rollbackTargets = canCreate
+    ? deploys
+        .filter(
+          (deploy) => deploy.id && isRollbackableDeployStatus(deploy.status),
+        )
+        .slice(0, 1)
+    : [];
   for (const target of rollbackTargets) {
     options.push(
       deployOption(
