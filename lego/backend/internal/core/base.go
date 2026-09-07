@@ -560,13 +560,11 @@ func (b *Base) AuthorizeTarget(ctx context.Context, relation, target string) err
 // optional sensitive fields (a viewer listing blueprints did not ASK for the
 // manifest, so the missing capability is not a recordable denial) — never a
 // verb gate: a verb still opens with Authorize/AuthorizeApp. Fails closed: a
-// resolution or checker error reads as "no".
+// resolution or checker error reads as "no". CanDecision (decision.go) is the
+// same probe with the outcome preserved for callers that must tell a refusal
+// from an unanswerable check.
 func (b *Base) Can(ctx context.Context, relation string) bool {
-	object, err := b.callerWorkspace(ctx)
-	if err != nil {
-		return false
-	}
-	return b.checkAuthz(ctx, relation, object) == nil
+	return b.CanDecision(ctx, relation).Allowed()
 }
 
 // callerWorkspace is the OpenFGA object of the workspace the caller is acting

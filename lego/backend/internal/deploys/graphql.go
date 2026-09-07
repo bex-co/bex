@@ -108,6 +108,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.List(p.Context, p.Args["serviceId"].(string), filter)
 			},
 		},
+		// deployActions projects the deploy verbs' per-service decisions
+		// (ADR087, w6/m136): bare deploy / cancel / rollback, each with the
+		// permission tri-state and the blocking precondition computed by the
+		// same predicates the verbs enforce (RollbackEligible, the suspended +
+		// billing gates). A bex extension consumed by mobile's action gating.
+		"deployActions": gqlutil.KeyVerb(gqlutil.ActionDecisionsOut, "serviceId", s.ActionCapabilities),
 		// deploy is the single-resource fetch-by-id twin of deploys(serviceId, …)
 		// (w9/m1/t001), closing GraphQL's drift from REST's GET
 		// .../deploys/{deployId} and MCP's get_deploy — the dashboard's deploy

@@ -205,13 +205,24 @@ func TestPGStorePushDeliveryQueue(t *testing.T) {
 		t.Fatalf("logical=%d deliveries=%d, want 1/2", logicalCount, deliveryCount)
 	}
 
-	unread, err := store.CountUnreadPushNotifications(ctx, tenant.ID, subject)
+	unread, err := store.CountUnreadPushNotifications(ctx, tenant.ID, subject, nil)
 	if err != nil || unread != 1 {
 		t.Fatalf("unread=%d error=%v, want 1", unread, err)
 	}
-	inbox, err := store.ListOwnPushNotifications(ctx, tenant.ID, subject, 10)
+	inbox, err := store.ListOwnPushNotifications(ctx, tenant.ID, subject, 10, nil)
 	if err != nil || len(inbox) != 1 || inbox[0].EventID != item.Notification.EventID || inbox[0].ReadAt != nil {
 		t.Fatalf("own inbox=%+v error=%v", inbox, err)
+	}
+	// The destination-gated exclusion (w6/m137) filters list and count
+	// identically in SQL; an unrelated exclusion filters nothing.
+	if rows, err := store.ListOwnPushNotifications(ctx, tenant.ID, subject, 10, []string{item.Notification.EventType}); err != nil || len(rows) != 0 {
+		t.Fatalf("excluded-event list=%+v error=%v, want empty", rows, err)
+	}
+	if n, err := store.CountUnreadPushNotifications(ctx, tenant.ID, subject, []string{item.Notification.EventType}); err != nil || n != 0 {
+		t.Fatalf("excluded-event unread=%d error=%v, want 0", n, err)
+	}
+	if rows, err := store.ListOwnPushNotifications(ctx, tenant.ID, subject, 10, []string{"agent_needs_decision"}); err != nil || len(rows) != 1 {
+		t.Fatalf("unrelated exclusion list=%+v error=%v, want the row back", rows, err)
 	}
 	if changed, err := store.MarkOwnPushNotificationRead(ctx, tenant.ID, subject+"-foreign", item.Notification.EventID, now); err != nil || changed {
 		t.Fatalf("foreign read changed=%v error=%v", changed, err)
@@ -227,11 +238,11 @@ func TestPGStorePushDeliveryQueue(t *testing.T) {
 	if changed, err := store.MarkOwnPushNotificationRead(ctx, tenant.ID, subject, item.Notification.EventID, readAt.Add(time.Hour)); err != nil || !changed {
 		t.Fatalf("repeat read changed=%v error=%v", changed, err)
 	}
-	inbox, err = store.ListOwnPushNotifications(ctx, tenant.ID, subject, 10)
+	inbox, err = store.ListOwnPushNotifications(ctx, tenant.ID, subject, 10, nil)
 	if err != nil || len(inbox) != 1 || inbox[0].ReadAt == nil || !inbox[0].ReadAt.Equal(readAt) {
 		t.Fatalf("read inbox=%+v error=%v", inbox, err)
 	}
-	unread, err = store.CountUnreadPushNotifications(ctx, tenant.ID, subject)
+	unread, err = store.CountUnreadPushNotifications(ctx, tenant.ID, subject, nil)
 	if err != nil || unread != 0 {
 		t.Fatalf("unread=%d error=%v, want 0", unread, err)
 	}

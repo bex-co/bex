@@ -15,6 +15,8 @@ import { Button } from "@/components/button";
 import { DashboardCard } from "@/components/dashboard-card";
 import { DashboardScrollView } from "@/components/dashboard-scroll-view";
 import { TopBar } from "@/components/top-bar";
+import { AccessRequiredCard } from "@/features/capabilities/access-required-screen";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -32,13 +34,21 @@ export function SessionsListScreen() {
   const { t, language } = useTranslations();
   const theme = useTheme().colorTheme;
   const { selected } = useWorkspace();
+  const capabilities = useCapabilities();
   const recoveryEnvironment = useRecoveryEnvironment();
   const [composing, setComposing] = useState(false);
+  // ADR087: the session list read is gated on confirmed can_operate — the
+  // query never mounts without it (a hidden destination issues no requests;
+  // this also guards a direct deep link while the tab is hidden). The
+  // composer and its CTAs additionally require can_create: "view session"
+  // must not imply "can delegate".
+  const canReadSessions = capabilities.allows("can_operate");
+  const canCreateSessions = capabilities.allows("can_create");
   const { data, loading, error, refetch, networkStatus } = useQuery(
     MobileAgentSessionsDocument,
     {
       variables: { ownerId: selected?.id ?? "" },
-      skip: !selected,
+      skip: !selected || !canReadSessions,
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
       notifyOnNetworkStatusChange: true,
@@ -68,6 +78,25 @@ export function SessionsListScreen() {
   const initialLoading = loading && !data;
   const refreshing = networkStatus === NetworkStatus.refetch;
 
+  // A direct link opened without confirmed access renders the generic
+  // unavailable state (no session metadata, no fetch, no distinguishing a
+  // forbidden destination from a nonexistent one) with a way back to Status.
+  if (!canReadSessions) {
+    return (
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        style={[styles.safe, { backgroundColor: theme.background }]}
+      >
+        <DashboardScrollView
+          header={<TopBar />}
+          contentContainerStyle={styles.content}
+        >
+          <AccessRequiredCard action="can_operate" />
+        </DashboardScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView
       edges={["top", "left", "right"]}
@@ -81,22 +110,24 @@ export function SessionsListScreen() {
                 {loading && data ? (
                   <ActivityIndicator color={theme.primary} />
                 ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  testID="new-agent-session"
-                  accessibilityLabel={t("agentSessions.composer.new")}
-                  onPress={() => setComposing(true)}
-                  hitSlop={4}
-                  style={[
-                    styles.newButton,
-                    { backgroundColor: theme.primaryMuted },
-                  ]}
-                >
-                  <Ionicons name="add" size={20} color={theme.primary} />
-                  <Text style={[styles.newLabel, { color: theme.primary }]}>
-                    {t("agentSessions.newShort")}
-                  </Text>
-                </Pressable>
+                {canCreateSessions ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    testID="new-agent-session"
+                    accessibilityLabel={t("agentSessions.composer.new")}
+                    onPress={() => setComposing(true)}
+                    hitSlop={4}
+                    style={[
+                      styles.newButton,
+                      { backgroundColor: theme.primaryMuted },
+                    ]}
+                  >
+                    <Ionicons name="add" size={20} color={theme.primary} />
+                    <Text style={[styles.newLabel, { color: theme.primary }]}>
+                      {t("agentSessions.newShort")}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             }
           />
@@ -175,12 +206,14 @@ export function SessionsListScreen() {
             <Text style={[styles.emptyBody, { color: theme.mutedForeground }]}>
               {t("agentSessions.emptyBody")}
             </Text>
-            <Button
-              style={{ marginTop: space.xl }}
-              onPress={() => setComposing(true)}
-            >
-              {t("agentSessions.composer.new")}
-            </Button>
+            {canCreateSessions ? (
+              <Button
+                style={{ marginTop: space.xl }}
+                onPress={() => setComposing(true)}
+              >
+                {t("agentSessions.composer.new")}
+              </Button>
+            ) : null}
           </DashboardCard>
         ) : (
           <DashboardCard>
@@ -250,7 +283,7 @@ export function SessionsListScreen() {
           </DashboardCard>
         )}
       </DashboardScrollView>
-      {composing ? (
+      {composing && canCreateSessions ? (
         <SessionComposer onClose={() => setComposing(false)} />
       ) : null}
     </SafeAreaView>

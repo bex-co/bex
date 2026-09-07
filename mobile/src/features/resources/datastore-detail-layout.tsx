@@ -9,6 +9,7 @@ import {
   type MobileActionOption,
 } from "@/components/safe-action";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import { fontSizes, fonts, space, useTheme } from "@/common/theme";
 import { StatusBadge } from "./status-badge";
 
@@ -39,6 +40,7 @@ export function DatastoreDetailLayout({
   options: MobileActionOption[];
   children?: ReactNode;
 }) {
+  const capabilities = useCapabilities();
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   return (
@@ -91,9 +93,11 @@ export function DatastoreDetailLayout({
               ))}
             </DashboardCard>
             {children}
-            <DashboardCard title={t("safeActions.cardTitle")}>
-              <SafeActionPanel options={options} />
-            </DashboardCard>
+            {capabilities.allows("can_operate") ? (
+              <DashboardCard title={t("safeActions.cardTitle")}>
+                <SafeActionPanel options={options} />
+              </DashboardCard>
+            ) : null}
           </>
         )}
       </DashboardScrollView>

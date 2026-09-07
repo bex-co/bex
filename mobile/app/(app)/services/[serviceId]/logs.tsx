@@ -5,6 +5,8 @@ import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { mobileConfig } from "@/features/auth/config";
 import { authManager } from "@/features/auth/auth-provider";
+import { AccessRequiredScreen } from "@/features/capabilities/access-required-screen";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import { InvalidDeepLinkScreen } from "@/features/navigation/invalid-deep-link-screen";
 import { validServiceDeepLink } from "@/features/navigation/deep-link";
 import { LogSession, LogViewer, RestLogTransport } from "@/features/logs";
@@ -15,7 +17,14 @@ export default function ServiceLogsScreen() {
   const { serviceId } = useLocalSearchParams<{
     serviceId?: string | string[];
   }>();
+  const capabilities = useCapabilities();
   if (!validServiceDeepLink(serviceId)) return <InvalidDeepLinkScreen />;
+  // ADR087: logs require confirmed can_view_logs. The gate sits ABOVE the
+  // session construction, so neither the history request nor the SSE stream
+  // ever mounts for a Viewer/Billing caller (or before access resolves).
+  if (!capabilities.allows("can_view_logs")) {
+    return <AccessRequiredScreen action="can_view_logs" />;
+  }
   return <ValidatedServiceLogsScreen serviceId={serviceId} />;
 }
 

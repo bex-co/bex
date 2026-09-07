@@ -4,6 +4,14 @@ export const zh = {
     current: "当前",
     stale: "已过期",
   },
+  access: {
+    checking: "正在检查访问权限…",
+    unavailable: "无法检查你的访问权限，请重试。",
+    changed: "你在此工作区的访问权限已更改。",
+    cannotOpen: "你当前的访问权限无法查看此内容。",
+    restrictedTitle: "受限内容",
+    backToStatus: "返回状态页",
+  },
   navigation: {
     status: "状态",
     activity: "动态",
@@ -206,11 +214,6 @@ export const zh = {
     diskUsed: "已用磁盘",
     diskCapacity: "磁盘容量",
     connections: "连接数",
-    processes: "进程",
-    activeProcesses: "活跃 / 总数",
-    waitingProcesses: "等待中",
-    longestProcess: "最长运行时间",
-    seconds: "%{value} 秒",
     tables: "表扫描信号",
     tableSummary:
       "%{size} · 顺序 %{sequential} · 索引 %{index} · 死元组 %{dead}",

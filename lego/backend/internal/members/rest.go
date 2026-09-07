@@ -130,8 +130,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// extension) — ownerId query param optional (absent => the caller's default
 	// workspace). The dashboard reads this to disable controls the server would
 	// refuse; a non-member gets the same 403 as any workspace-scoped read.
+	// fresh=true bypasses the positive-check cache (ADR087 recovery probe).
 	mux.HandleFunc("GET /v1/viewer/capabilities", func(w http.ResponseWriter, r *http.Request) {
-		caps, err := s.Capabilities(r.Context(), r.URL.Query().Get("ownerId"))
+		caps, err := s.Capabilities(r.Context(), r.URL.Query().Get("ownerId"), r.URL.Query().Get("fresh") == "true")
 		if err != nil {
 			core.WriteErr(w, err)
 			return

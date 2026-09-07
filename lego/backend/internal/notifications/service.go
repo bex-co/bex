@@ -63,9 +63,9 @@ type NotificationsStore interface {
 	ListOwnWebPushSubscriptions(ctx context.Context, tenantID, subject string) ([]store.WebPushSubscription, error)
 	RevokeWebPushSubscription(ctx context.Context, tenantID, subject, browserID string) (bool, error)
 	RevokeAllWebPushSubscriptions(ctx context.Context, tenantID, subject string) (int64, error)
-	ListOwnPushNotifications(ctx context.Context, tenantID, subject string, limit int) ([]store.PushNotification, error)
+	ListOwnPushNotifications(ctx context.Context, tenantID, subject string, limit int, excludeKinds []string) ([]store.PushNotification, error)
 	MarkOwnPushNotificationRead(ctx context.Context, tenantID, subject, eventID string, at time.Time) (bool, error)
-	CountUnreadPushNotifications(ctx context.Context, tenantID, subject string) (int64, error)
+	CountUnreadPushNotifications(ctx context.Context, tenantID, subject string, excludeKinds []string) (int64, error)
 }
 
 // Mailer delivers an email with a plain-text body and an optional HTML

@@ -1022,6 +1022,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		},
 		"server":  gqlutil.IDVerb(serviceGQLType, s.Get), // Render's dashboard query name
 		"service": gqlutil.IDVerb(serviceGQLType, s.Get), // Render's dashboard also queries service(id) (e.g. serviceEnvVarKeys)
+		// serverActions projects the lifecycle verbs' per-resource decisions
+		// (ADR087, w6/m136): permission tri-state + blocking precondition per
+		// action, from the same predicates the verbs enforce. A bex extension —
+		// mobile gates its controls on it instead of guessing from state.
+		"serverActions": gqlutil.IDVerb(gqlutil.ActionDecisionsOut, s.ActionCapabilities),
 		// First-class cron run reads (bex extensions over Render's current public
 		// API, which only exposes trigger/cancel-current). Both delegate to the
 		// same status.runs verbs REST/MCP use.

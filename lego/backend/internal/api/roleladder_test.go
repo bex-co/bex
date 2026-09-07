@@ -309,6 +309,13 @@ func grantsAll(grants map[string]bool, relations []string) bool {
 // reasons about the gate, not the probed set.
 var capabilityProjectionVerbs = map[string]bool{
 	"*members.Service.Capabilities": true,
+	// The per-resource action projections (ADR087, w6/m136) follow the same
+	// shape: can_view is the gate, the operate/create relations are probed to
+	// REPORT decisions, never to gate the projection itself.
+	"*apps.Service.ActionCapabilities":     true,
+	"*deploys.Service.ActionCapabilities":  true,
+	"*postgres.Service.ActionCapabilities": true,
+	"*keyvalue.Service.ActionCapabilities": true,
 }
 
 // representativeVerbRelations pins the gating relation of one verb per relation
@@ -323,6 +330,9 @@ var representativeVerbRelations = map[string]string{
 	"*apps.Service.Get":     core.RelCanView,
 	"*apps.Service.List":    core.RelCanView,
 	"*deploys.Service.List": core.RelCanView,
+	// Cron history is values-free run metadata, readable by every role
+	// (ADR087 matrix row: Show for all five).
+	"*apps.Service.ListCronRuns": core.RelCanView,
 	// can_view_logs — contributor and up (viewers can't see logs).
 	"*logs.Service.QueryLogs":             core.RelCanViewLogs,
 	"*keyvalue.Service.QueryKeyValueLogs": core.RelCanViewLogs,
@@ -332,6 +342,28 @@ var representativeVerbRelations = map[string]string{
 	"*apps.Service.Scale":            core.RelCanOperate,
 	"*apps.Service.SetPlan":          core.RelCanOperate,
 	"*postgres.Service.CreateExport": core.RelCanOperate,
+	// ADR087 mobile role-view rows (w6/m136): the mobile client derives its
+	// hide/show matrix from these exact relations, so each is pinned
+	// semantically — a re-gated verb would silently invalidate the shipped
+	// view policy, not just move a permission. Session supervision
+	// (list/detail/transcript/cancel) is contributor-and-up; deploy Cancel is
+	// lifecycle while Rollback (below) stays create-like; datastore
+	// suspend/resume/restart mirror the service lifecycle verbs; cron
+	// run-now/cancel are lifecycle with history pinned as a read above.
+	"*agentsessions.Service.List":        core.RelCanOperate,
+	"*agentsessions.Service.Get":         core.RelCanOperate,
+	"*agentsessions.Service.Transcript":  core.RelCanOperate,
+	"*agentsessions.Service.Cancel":      core.RelCanOperate,
+	"*deploys.Service.Cancel":            core.RelCanOperate,
+	"*apps.Service.Resume":               core.RelCanOperate,
+	"*postgres.Service.Suspend":          core.RelCanOperate,
+	"*postgres.Service.Resume":           core.RelCanOperate,
+	"*postgres.Service.Restart":          core.RelCanOperate,
+	"*keyvalue.Service.Suspend":          core.RelCanOperate,
+	"*keyvalue.Service.Resume":           core.RelCanOperate,
+	"*apps.Service.TriggerCronRun":       core.RelCanOperate,
+	"*apps.Service.CancelCronRun":        core.RelCanOperate,
+	"*apps.Service.CancelCurrentCronRun": core.RelCanOperate,
 	// Two verbs are CONDITIONAL (codex round-5 F2): their relation depends on
 	// whether the call supplies executable content. The reflection sweep invokes
 	// them with zero-valued arguments, so what these two pins capture is the

@@ -10,6 +10,7 @@ import { DashboardScrollView } from "@/components/dashboard-scroll-view";
 import { DetailHeader } from "@/components/detail-header";
 import { Button } from "@/components/button";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import {
   useRecovery,
   useRecoveryEnvironment,
@@ -52,6 +53,7 @@ type EventNode = NonNullable<
 >;
 
 export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
+  const capabilities = useCapabilities();
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   const recoveryEnvironment = useRecoveryEnvironment();
@@ -287,19 +289,21 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
 
         <MetricSnapshots resourceId={serviceId} />
 
-        <DashboardCard title={t("logs.title")}>
-          <Text style={[styles.logBody, { color: theme.mutedForeground }]}>
-            {t("logs.description")}
-          </Text>
-          <Button
-            onPress={() =>
-              router.push(`/services/${encodeURIComponent(serviceId)}/logs`)
-            }
-            accessibilityLabel={t("logs.open")}
-          >
-            {t("logs.open")}
-          </Button>
-        </DashboardCard>
+        {capabilities.allows("can_view_logs") ? (
+          <DashboardCard title={t("logs.title")}>
+            <Text style={[styles.logBody, { color: theme.mutedForeground }]}>
+              {t("logs.description")}
+            </Text>
+            <Button
+              onPress={() =>
+                router.push(`/services/${encodeURIComponent(serviceId)}/logs`)
+              }
+              accessibilityLabel={t("logs.open")}
+            >
+              {t("logs.open")}
+            </Button>
+          </DashboardCard>
+        ) : null}
 
         <DashboardCard title={t("activity.timelineTitle")} bleed>
           {timeline.length ? (

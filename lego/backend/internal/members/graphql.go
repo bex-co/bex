@@ -83,10 +83,26 @@ var inviteGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// capabilityGrantGQLType is one relation's tri-state evaluation (ADR087,
+// w6/m136): action is the FGA relation (the bounded vocabulary the pins in
+// api/roleladder_test.go guard), outcome/reason are core's bounded decision
+// strings. reason is null when allowed; clients fail closed on anything
+// unrecognized.
+var capabilityGrantGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "CapabilityGrant",
+	Fields: graphql.Fields{
+		"action":  gqlutil.ReqStrField(func(g CapabilityGrant) any { return g.Action }),
+		"outcome": gqlutil.ReqStrField(func(g CapabilityGrant) any { return g.Outcome }),
+		"reason":  gqlutil.OptionalStrField(func(g CapabilityGrant) any { return g.Reason }),
+	},
+})
+
 // viewerCapabilitiesGQLType is the caller's effective authorization in one
 // workspace — what the dashboard reads to disable controls the server would
 // refuse (w9/m84). role is UPPERCASE (or "" when unresolved); every can* is the
-// authoritative Can-probe of the matching relation.
+// authoritative Can-probe of the matching relation. grants is the same probe
+// set in tri-state form: a false boolean cannot say whether the caller was
+// refused or the check was unanswerable; the matching grant can (ADR087).
 var viewerCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ViewerCapabilities",
 	Fields: graphql.Fields{
@@ -99,6 +115,10 @@ var viewerCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"canManageKeys":    gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanManageKeys }),
 		"canManage":        gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanManage }),
 		"canManageBilling": gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanManageBilling }),
+		"grants": gqlutil.Typed(
+			graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(capabilityGrantGQLType))),
+			func(c Capabilities) any { return c.Grants }),
+		"fresh": gqlutil.ReqBoolField(func(c Capabilities) any { return c.Fresh }),
 	},
 })
 
@@ -142,14 +162,18 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		// viewerCapabilities is the caller's own effective permissions in a
 		// workspace — ownerId optional (absent => the caller's default), the
 		// dashboard passes its active workspace. Distinct from workspaceMembers:
-		// that lists everyone; this answers "what can *I* do here".
+		// that lists everyone; this answers "what can *I* do here". fresh=true
+		// bypasses the positive-check cache for recovery after an access
+		// change (ADR087) — see the Capabilities verb doc for what that does
+		// and does not promise.
 		"viewerCapabilities": &graphql.Field{
 			Type: viewerCapabilitiesGQLType,
 			Args: graphql.FieldConfigArgument{
 				"ownerId": gqlutil.Arg(graphql.String),
+				"fresh":   gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Capabilities(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				return s.Capabilities(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Bool(p.Args, "fresh"))
 			},
 		},
 	}

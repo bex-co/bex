@@ -103,40 +103,6 @@ export function mergePostgresInsightState(
   return "loading";
 }
 
-export type PostgresProcessRow = {
-  state?: string | null;
-  waitEventType?: string | null;
-  durationSeconds?: number | null;
-};
-
-export type PostgresProcessSummary = {
-  total: number;
-  active: number;
-  waiting: number;
-  longestSeconds: number | null;
-};
-
-export function summarizePostgresProcesses(
-  rows: readonly (PostgresProcessRow | null)[] | null | undefined,
-): PostgresProcessSummary {
-  const valid = (rows ?? []).filter(
-    (row): row is PostgresProcessRow => row != null,
-  );
-  const durations = valid.flatMap((row) =>
-    typeof row.durationSeconds === "number" &&
-    Number.isFinite(row.durationSeconds) &&
-    row.durationSeconds >= 0
-      ? [row.durationSeconds]
-      : [],
-  );
-  return {
-    total: valid.length,
-    active: valid.filter((row) => row.state?.toLowerCase() === "active").length,
-    waiting: valid.filter((row) => Boolean(row.waitEventType?.trim())).length,
-    longestSeconds: durations.length ? Math.max(...durations) : null,
-  };
-}
-
 export type PostgresTableSizeRow = {
   schema?: string | null;
   name?: string | null;

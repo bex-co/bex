@@ -14,6 +14,8 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatTimestamp } from "@/common/format-util";
 import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
+import { AccessRequiredScreen } from "@/features/capabilities/access-required-screen";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import {
   MobileAgentSessionDocument,
   MobileCancelAgentSessionDocument,
@@ -29,16 +31,26 @@ const cancelAgentSession = defineSafeAction(
 export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
   const { t, language } = useTranslations();
   const theme = useTheme().colorTheme;
+  const capabilities = useCapabilities();
+  // ADR087: the session read is gated on confirmed can_operate — a deep link
+  // without it renders the generic access state before any fetch, and never
+  // echoes whether the id exists.
+  const canReadSessions = capabilities.allows("can_operate");
   const { data, loading, error, refetch, networkStatus } = useQuery(
     MobileAgentSessionDocument,
     {
       variables: { id: sessionId },
+      skip: !canReadSessions,
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
       notifyOnNetworkStatusChange: true,
     },
   );
   const [cancelSession] = useMutation(MobileCancelAgentSessionDocument);
+
+  if (!canReadSessions) {
+    return <AccessRequiredScreen action="can_operate" />;
+  }
 
   const session = data?.agentSession ?? null;
   const phase = sessionPhaseView(session?.phase);

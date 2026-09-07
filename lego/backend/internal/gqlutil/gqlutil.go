@@ -277,6 +277,28 @@ var IPAllowEntryInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	},
 })
 
+// ActionDecisionType is the shared wire shape of one projected resource-verb
+// decision (core.ActionDecision — ADR087, w6/m136), exposed by the
+// serverActions / deployActions / databaseActions / keyValueActions queries.
+// Defined once here so the composed schema never has duplicate type names
+// (the IPAllowEntryType precedent). outcome/reason are core's bounded
+// tri-state vocabulary; precondition is the bounded blocking condition for an
+// otherwise-permitted action; "" projects as null. Clients fail closed on
+// anything unrecognized.
+var ActionDecisionType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ActionDecision",
+	Fields: graphql.Fields{
+		"action":       ReqStrField(func(d core.ActionDecision) any { return d.Action }),
+		"outcome":      ReqStrField(func(d core.ActionDecision) any { return d.Outcome }),
+		"reason":       OptionalStrField(func(d core.ActionDecision) any { return d.Reason }),
+		"precondition": OptionalStrField(func(d core.ActionDecision) any { return d.Precondition }),
+	},
+})
+
+// ActionDecisionsOut is the `[ActionDecision!]!` output the four action
+// projections share.
+var ActionDecisionsOut = graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(ActionDecisionType)))
+
 // AllowList coerces an `[IPAllowListEntryInput!]` argument value ([]any of
 // maps from graphql-go) into core entries. Nil or absent => nil, so callers
 // can distinguish "argument omitted" from an explicit empty list.

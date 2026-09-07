@@ -182,7 +182,14 @@ func TestMintAndSensitiveHeuristics(t *testing.T) {
 			if class != core.OpClassSensitive {
 				t.Errorf("%s: secret-file value read must be sensitive, got %s", op, class)
 			}
-		case strings.Contains(op, "list_postgres_processes") || strings.Contains(op, "list_postgres_top_queries"):
+		case strings.Contains(op, "list_postgres_processes") || strings.Contains(op, "list_postgres_top_queries") ||
+			strings.Contains(op, "/processes") || strings.Contains(op, "/top-queries") ||
+			strings.Contains(op, "databaseProcesses") || strings.Contains(op, "databaseTopQueries"):
+			// All three surfaces of the SQL-process/top-queries row, pinned
+			// together (ADR087, w6/m136/t001): the mobile matrix hides this row
+			// for EVERY role because the native token lacks the sensitive
+			// scope — a reclassification changes the product contract, and
+			// omitting SQL fields from a selection does not lower the gate.
 			if class != core.OpClassSensitive {
 				t.Errorf("%s: live SQL text must be sensitive, got %s", op, class)
 			}

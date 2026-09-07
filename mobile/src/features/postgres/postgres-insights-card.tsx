@@ -17,7 +17,6 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { fonts, fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import {
   MobilePostgresCapacityDocument,
-  MobilePostgresProcessesDocument,
   MobilePostgresSizesDocument,
   MobilePostgresTableScansDocument,
 } from "@/generated-graphql";
@@ -33,9 +32,13 @@ import {
   POSTGRES_INSIGHT_STALE_AFTER_MS,
   postgresInsightFailure,
   postgresInsightState,
-  summarizePostgresProcesses,
   type PostgresInsightState,
 } from "./insights";
+
+// The SQL process list is deliberately ABSENT (ADR087, w6/m138): it requires
+// the sensitive OAuth scope the native token never holds, so the request
+// could only ever be refused — capacity, sizes, and table-scan telemetry are
+// the mobile-scope insight set.
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -60,7 +63,6 @@ export const PostgresInsightsCard = forwardRef<
   };
   const capacity = useQuery(MobilePostgresCapacityDocument, queryOptions);
   const sizes = useQuery(MobilePostgresSizesDocument, queryOptions);
-  const processes = useQuery(MobilePostgresProcessesDocument, queryOptions);
   const scans = useQuery(MobilePostgresTableScansDocument, queryOptions);
   useImperativeHandle(
     ref,
@@ -69,12 +71,11 @@ export const PostgresInsightsCard = forwardRef<
         await Promise.all([
           capacity.refetch({ id: databaseId }),
           sizes.refetch({ id: databaseId }),
-          processes.refetch({ id: databaseId }),
           scans.refetch({ id: databaseId }),
         ]);
       },
     }),
-    [capacity, databaseId, processes, scans, sizes],
+    [capacity, databaseId, scans, sizes],
   );
 
   const capacityHasData = Boolean(
@@ -86,11 +87,6 @@ export const PostgresInsightsCard = forwardRef<
     sizes.data?.databaseSizes != null,
     sizes.error,
     sizes.networkStatus,
-  );
-  const processesState = usePostgresInsightState(
-    processes.data?.databaseProcesses != null,
-    processes.error,
-    processes.networkStatus,
   );
   const scansState = usePostgresInsightState(
     scans.data?.databaseTableScans != null,
@@ -118,10 +114,6 @@ export const PostgresInsightsCard = forwardRef<
       newestMetricTimestamp([disk, diskCapacity, connections]),
     ),
   );
-  const processSummary = useMemo(
-    () => summarizePostgresProcesses(processes.data?.databaseProcesses),
-    [processes.data?.databaseProcesses],
-  );
   const tables = useMemo(
     () =>
       compactPostgresTableInsights(
@@ -130,7 +122,6 @@ export const PostgresInsightsCard = forwardRef<
       ),
     [sizes.data?.databaseSizes?.tables, scans.data?.databaseTableScans],
   );
-  const connectionState = mergePostgresInsightState(sizesState, processesState);
   const capacitySectionState = mergePostgresInsightState(
     capacityState,
     sizesState,
@@ -141,10 +132,10 @@ export const PostgresInsightsCard = forwardRef<
     <DashboardCard title={t("postgresInsights.title")}>
       <InsightSection
         title={t("postgresInsights.connection")}
-        state={connectionState}
+        state={sizesState}
       >
         <Text style={[styles.primaryValue, { color: theme.foreground }]}>
-          {t(`postgresInsights.connectionState.${connectionState}`)}
+          {t(`postgresInsights.connectionState.${sizesState}`)}
         </Text>
       </InsightSection>
 
@@ -168,34 +159,6 @@ export const PostgresInsightsCard = forwardRef<
           label={t("postgresInsights.connections")}
           value={formatMetric(connections.unit, connections.current)}
         />
-      </InsightSection>
-
-      <InsightSection
-        title={t("postgresInsights.processes")}
-        state={processesState}
-      >
-        {isPostgresInsightFailure(processesState) ? null : (
-          <>
-            <InsightRow
-              label={t("postgresInsights.activeProcesses")}
-              value={`${processSummary.active} / ${processSummary.total}`}
-            />
-            <InsightRow
-              label={t("postgresInsights.waitingProcesses")}
-              value={processSummary.waiting.toLocaleString()}
-            />
-            <InsightRow
-              label={t("postgresInsights.longestProcess")}
-              value={
-                processSummary.longestSeconds == null
-                  ? "—"
-                  : t("postgresInsights.seconds", {
-                      value: processSummary.longestSeconds,
-                    })
-              }
-            />
-          </>
-        )}
       </InsightSection>
 
       <InsightSection title={t("postgresInsights.tables")} state={tablesState}>
