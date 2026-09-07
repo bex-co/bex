@@ -28,7 +28,7 @@ function ws(id: string): WorkspaceView {
 
 /** Mounts the real /w/$ component (not the beforeLoad — the id-less forms
  *  redirect there; these tests cover the NAMED-id flow) plus stub landings. */
-function renderAt(initialPath: string) {
+async function renderAt(initialPath: string) {
   const rootRoute = createRootRoute();
   const alias = createRoute({
     getParentRoute: () => rootRoute,
@@ -52,6 +52,8 @@ function renderAt(initialPath: string) {
     history: createMemoryHistory({ initialEntries: [initialPath] }),
     context: { client: {} as never, session: null },
   });
+  // Resolve the cold route import before polling its navigation effect.
+  await router.load();
   render(<RouterProvider router={router} />);
   return router;
 }
@@ -65,7 +67,7 @@ beforeEach(() => {
 
 describe("/w/{tea-id} alias (w1/m45)", () => {
   it("selects a member workspace from the URL and lands on settings", async () => {
-    const router = renderAt("/w/tea-other/settings");
+    const router = await renderAt("/w/tea-other/settings");
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/workspace/settings"),
     );
@@ -75,18 +77,20 @@ describe("/w/{tea-id} alias (w1/m45)", () => {
   });
 
   it("lands billing on bex's own /billing page (renamed w5/m70)", async () => {
-    const router = renderAt("/w/tea-mine/billing");
-    await waitFor(() => expect(router.state.location.pathname).toBe("/billing"));
+    const router = await renderAt("/w/tea-mine/billing");
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/billing"),
+    );
   });
 
   it("lands the bare workspace root on the overview", async () => {
-    const router = renderAt("/w/tea-other");
+    const router = await renderAt("/w/tea-other");
     await waitFor(() => expect(router.state.location.pathname).toBe("/"));
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-other");
   });
 
   it("refuses a foreign workspace id — redirects home, never the caller's own settings (w9/m55)", async () => {
-    const router = renderAt("/w/tea-foreign/settings");
+    const router = await renderAt("/w/tea-foreign/settings");
     // Redirects home with a not-found toast; never a selection change, and
     // never a silent landing on the caller's own settings.
     await waitFor(() => expect(router.state.location.pathname).toBe("/"));
@@ -96,7 +100,7 @@ describe("/w/{tea-id} alias (w1/m45)", () => {
 
   it("does not judge the id while the membership list is loading", async () => {
     workspaceState.loading = true;
-    renderAt("/w/tea-foreign/settings");
+    await renderAt("/w/tea-foreign/settings");
     await waitFor(() =>
       expect(screen.queryByText(/not found/i)).not.toBeInTheDocument(),
     );
@@ -104,7 +108,7 @@ describe("/w/{tea-id} alias (w1/m45)", () => {
   });
 
   it("skips the redundant selection write when the URL names the current workspace", async () => {
-    const router = renderAt("/w/tea-mine/settings");
+    const router = await renderAt("/w/tea-mine/settings");
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/workspace/settings"),
     );

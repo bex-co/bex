@@ -31,7 +31,7 @@ jq -e '
   ([ $dashboard[] | select(. as $event | $api | index($event) | not) ] | sort) == (.dashboardOnly | sort) and
   (.apiOnly | length) == 6 and
   (.dashboardOnly | length) == 3 and
-  (.bexSupported | length) == 32
+  (.bexSupported | length) == 35
 ' "$webhook_fixture" >/dev/null || {
   echo "Render webhook vocabulary fixture is internally inconsistent: $webhook_fixture" >&2
   exit 1

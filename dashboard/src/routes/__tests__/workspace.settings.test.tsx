@@ -51,7 +51,7 @@ const primaryWorkspace: WorkspaceView = {
   createdAt: null,
 };
 
-function renderPage() {
+async function renderPage() {
   const WorkspaceSettingsPage = Route.options.component;
   if (!WorkspaceSettingsPage) {
     throw new Error("workspace settings route component is missing");
@@ -70,6 +70,9 @@ function renderPage() {
     context: { client: {} as never, session: null },
   });
 
+  // Load the split route before starting DOM assertions; a cold import can
+  // exceed Testing Library's polling window on a busy CI runner.
+  await router.load();
   return render(<RouterProvider router={router} />);
 }
 
@@ -81,10 +84,10 @@ beforeEach(() => {
 
 describe("WorkspaceSettingsPage", () => {
   it("hides the delete section and navigation link for the user's only workspace", async () => {
-    renderPage();
+    await renderPage();
 
     expect(
-      await screen.findByRole("heading", { name: "Workspace settings" }),
+      screen.getByRole("heading", { name: "Workspace settings" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Delete workspace card")).not.toBeInTheDocument();
     expect(
@@ -98,11 +101,9 @@ describe("WorkspaceSettingsPage", () => {
       { ...primaryWorkspace, id: "tea-secondary", name: "secondary" },
     ];
 
-    renderPage();
+    await renderPage();
 
-    expect(
-      await screen.findByText("Delete workspace card"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Delete workspace card")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Danger Zone" })).toHaveAttribute(
       "href",
       "#danger-zone",

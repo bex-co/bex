@@ -1,6 +1,6 @@
 # w2 · m88 — Split self-hosted CI runner pools by trust level
 
-**Worker:** worker2 **Goal:** PR-facing CI jobs and production-credentialed deploy jobs never share a runner host — a poisoned CI runner can no longer be the machine that later holds deploy credentials **Status:** in progress — t001–t003 done 2026-09-02 (label-based pools: the group-addressed first cut could never schedule — runner groups are a paid-plan feature and this org is free-plan, so every job failed in seconds; all 33 jobs now carry `[self-hosted, Linux, ARM64, bex-ci|bex-production]`, validator + self-test rewritten and green, runbook at `docs/runbooks/runner-pool-relabel.md`). t004 open on the operator fleet re-label (org runner labels need `admin:org`); t005/t006 gated on t004.
+**Worker:** worker2 **Goal:** PR-facing CI jobs and production-credentialed deploy jobs never share a runner host — a poisoned CI runner can no longer be the machine that later holds deploy credentials **Status:** in progress — t001–t003 implemented. Live inspection 2026-09-05 confirmed org groups `bex-ci` (3) and `bex-production` (4); the prior free-plan explanation was incorrect. The runner Compose source omitted pool labels. A repair in the ignored `external/block-eden-mono/projects/github-runner/` checkout adds durable labels and separates package caches; both pools have been recreated and are picking up jobs. t004 remains open on green-run evidence, separate production-host placement, and credential rotation; t005–t007 await verification.
 
 ## Tasks (in order)
 

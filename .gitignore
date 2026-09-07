@@ -38,3 +38,5 @@ __pycache__/
 # self-hosted runner this lands inside the reused workspace (never committed).
 .opensandbox-upstream/
 bex-desktop/
+# External CI runner source checkout.
+/external/block-eden-mono/

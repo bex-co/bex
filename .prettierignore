@@ -5,6 +5,7 @@
 projects-to-deploy/
 node_modules/
 .tmp/
+external/
 
 # internal PM notes — not public docs
 .pm/

@@ -38,7 +38,9 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
-          cache-dependency-path: lego/operator/go.sum
+          # Multi-GB remote Go caches outlive signed download URLs and stall
+          # uploads on this fleet; keep the runner-local Go caches instead.
+          cache: false
       - name: make test (operator + envtest)
         working-directory: lego/operator
         run: make test
