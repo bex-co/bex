@@ -10,7 +10,10 @@ import {
   runWithRequestI18n,
   getActiveI18nOnServer,
 } from "@/i18n/request-scope/server";
-import { i18nBootstrapScript } from "@/i18n/client-bootstrap";
+import {
+  i18nBootstrapScript,
+  resolveShellLanguage,
+} from "@/i18n/client-bootstrap";
 import zhResources from "@/i18n/resources-zh";
 
 // A known key that exists in both catalogs, so a render's language is
@@ -132,6 +135,32 @@ describe("w6/m103 — switchLanguage (the one client switch path)", () => {
 describe("w6/m103 — client hydration bootstrap", () => {
   it("emits no bootstrap for the default language", () => {
     expect(i18nBootstrapScript("en")).toBeNull();
+  });
+
+  // Regression: a navigation into a `pendingMs: 0` detail route republishes
+  // the root match with its pre-`beforeLoad` context (no `language`) while the
+  // session fetch is in flight; the shell used to pass that `undefined`
+  // straight into `getResourceBundle` (TypeError in i18next's getResource).
+  it("resolveShellLanguage falls back to the active language when root context has none", async () => {
+    expect(resolveShellLanguage(undefined)).toBe("en");
+    expect(() =>
+      i18nBootstrapScript(resolveShellLanguage(undefined)),
+    ).not.toThrow();
+
+    // A zh session mid-navigation keeps rendering zh (stable <html lang> and
+    // a still-present bootstrap script), not a flash of the default.
+    await switchLanguage("zh");
+    try {
+      expect(resolveShellLanguage(undefined)).toBe("zh");
+      expect(i18nBootstrapScript(resolveShellLanguage(undefined))).toContain(
+        '"lng":"zh"',
+      );
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+
+    // With context present it is authoritative, not the active instance.
+    expect(resolveShellLanguage("zh")).toBe("zh");
   });
 
   it("stamps the active catalog onto the global and stays script-safe", () => {

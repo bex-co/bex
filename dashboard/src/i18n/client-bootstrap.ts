@@ -1,6 +1,10 @@
 import { getActiveI18n } from "@/i18n/request-scope";
 import { CLIENT_BOOTSTRAP_GLOBAL, type ClientI18nBootstrap } from "@/i18n/init";
-import { DEFAULT_LANGUAGE, type SupportedLanguage } from "@/i18n/config";
+import {
+  asSupportedLanguage,
+  DEFAULT_LANGUAGE,
+  type SupportedLanguage,
+} from "@/i18n/config";
 
 // JSON is almost script-safe; close the three holes that let embedded data
 // break out of an inline <script>: a literal `</script>` (and `<!--`), and the
@@ -11,6 +15,28 @@ function serializeForScript(value: unknown): string {
     .replace(/</g, "\\u003c")
     .replace(/\u2028/g, "\\u2028")
     .replace(/\u2029/g, "\\u2029");
+}
+
+/**
+ * The language the document shell renders this pass. The root context's
+ * `language` is authoritative, but it is transiently absent at runtime despite
+ * its non-optional type: during a client-side navigation the router
+ * republishes the root match with its pre-`beforeLoad` context (base router
+ * context only) while the root's session fetch is in flight, and a
+ * `pendingMs: 0` detail route offers pending matches inside exactly that
+ * window. Fall back to the active instance's current language — what the UI is
+ * still rendering — so `<html lang>` stays stable and `getResourceBundle` is
+ * never called with `undefined` (an i18next TypeError on every cold
+ * detail-route navigation before this guard).
+ */
+export function resolveShellLanguage(
+  contextLanguage: SupportedLanguage | undefined,
+): SupportedLanguage {
+  return (
+    contextLanguage ??
+    asSupportedLanguage(getActiveI18n().language) ??
+    DEFAULT_LANGUAGE
+  );
 }
 
 /**
