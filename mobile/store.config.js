@@ -21,7 +21,7 @@ const hasReview = REVIEW_VARS.every((name) => env(name));
 
 const SUPPORT_URL = "https://github.com/bex-co/bex/issues";
 const MARKETING_URL = "https://bex.co";
-const PRIVACY_URL = "https://bex.co/privacy";
+const PRIVACY_URL = "https://bex.co/privacy-policy";
 
 const description = `bex mobile is the supervision companion for the apps you run on bex. It is built for the moments you are away from your desk: a deploy fails, a service crashes, a cron run breaks, or a coding agent needs a decision.
 
@@ -44,7 +44,7 @@ WHAT IT DELIBERATELY DOES NOT DO
 bex mobile is a supervision surface, not a second dashboard. It has no service creation, no blueprint or topology editing, no bulk secret management, no destructive datastore operations such as delete, point-in-time recovery, or failover, and no dangerous permission modes. Those stay on the desktop dashboard, where they belong.
 
 SECURITY
-Sign-in runs in your system browser over OAuth, so the app never sees your password or your MFA response. Tokens live in the device keychain, never in app storage or logs. Environment variable values stay masked until you explicitly reveal one, are held one key at a time, and are cleared when you leave the screen, switch service, or send the app to the background.
+Sign-in runs in your system browser over OAuth, so the app never sees your password or your MFA response. There is no in-app web login. Tokens live in the device keychain, never in app storage, logs, analytics, or crash reports. Protected local state is cleared when you sign out or cross a workspace boundary.
 
 REQUIREMENTS
 bex mobile requires a bex account and an existing workspace. Services, databases, and workspaces are created on the web dashboard at dashboard.bex.co.
@@ -72,7 +72,7 @@ const descriptionZh = `bex mobile 是 bex 应用的运维监督伴侣。它专�
 bex mobile 是监督界面，而非第二个控制台。它不提供服务创建、蓝图或拓扑编辑、批量密钥管理，不提供删除、时间点恢复、故障转移等破坏性数据存储操作，也不提供危险权限模式。这些仍留在桌面端控制台。
 
 安全性
-登录在系统浏览器中通过 OAuth 完成，应用永远不会看到你的密码或多因素验证响应。令牌保存在设备钥匙串中，不写入应用存储或日志。环境变量的值默认保持遮蔽，只有你明确选择查看时才会获取，一次仅保留一个键，并在你离开页面、切换服务或将应用切到后台时清除。
+登录在系统浏览器中通过 OAuth 完成，应用永远不会看到你的密码或多因素验证响应，也不使用应用内网页登录。令牌保存在设备钥匙串中，不写入应用存储、日志、分析或崩溃报告。退出登录或切换工作区时，受保护的本地状态会被清除。
 
 使用要求
 bex mobile 需要 bex 账号与已有的工作区。服务、数据库与工作区均在网页控制台 dashboard.bex.co 中创建。
