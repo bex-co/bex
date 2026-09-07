@@ -175,12 +175,13 @@ fi
 
 # 5. Self-hosted runner custody and trust-pool separation (ADR083,
 # .pm/DO_NOT_DO.md #CI-RUNNERS). All jobs stay on operator-custodied ARM64
-# self-hosted runners. Each runner host carries exactly one of the `bex-ci` /
-# `bex-production` labels, so requiring the label here schedules a job only
-# onto its trust class -- and a not-yet-labeled fleet queues jobs (fail-safe)
-# instead of running them on the wrong host. Existing org runner groups are
-# separate registration metadata; this repository standardizes on labels.
-# Host separation must be verified operationally, not inferred from labels.
+# self-hosted runners. Each runner registration carries exactly one of the
+# `bex-ci` / `bex-production` labels, so requiring the label here schedules a
+# job only onto its trust class -- and a not-yet-labeled fleet queues jobs
+# (fail-safe) instead of running them on the wrong pool. Existing org runner
+# groups are separate registration metadata; this repository standardizes on
+# labels. Both pools share the operator's single host by decision
+# (.pm/DO_NOT_DO.md #RUNNER-HOSTS); the split is label-level routing only.
 hosted_runners=""
 invalid_runner_contract=""
 for wf in $(collect_workflow_files); do

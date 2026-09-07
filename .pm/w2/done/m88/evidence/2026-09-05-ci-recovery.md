@@ -50,6 +50,8 @@ terminal status. CLI workflow `33992408677` is now green too.
 
 ## Still open
 
+_(Superseded 2026-09-07: host separation + credential rotation were rejected by user decision — `.pm/DO_NOT_DO.md` `#RUNNER-HOSTS`; see `2026-09-07-fleet-recovery.md`.)_
+
 - Production and CI still share a privileged Docker host. Separate host placement and the documented credential rotation remain prerequisites for m88 closure.
 - Confirm latest CI and a real production deploy green; record job-to-runner/host evidence.
 - Source changes are not yet committed/pushed: awaiting explicit `$ship` authorization under the root AGENTS.md rule.
