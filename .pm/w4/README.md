@@ -81,11 +81,11 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **049** — Workspace-wide Search palette collapses every service to a generic "Service" label + Globe icon, ignoring `service.type` (sibling entrypoint of 047) ← continuous live `$qa-find-bugs w4` 2026-09-06 (20–30m; dashboard-only, reuse the service-type helpers; do together with 047)
+- [x] **049** — Workspace-wide Search palette collapses every service to a generic "Service" label + Globe icon, ignoring `service.type` (sibling entrypoint of 047) ← continuous live `$qa-find-bugs w4` 2026-09-06 — done 2026-09-07 (Cmd-K palette derives each service result's label + icon from the shared `deriveServiceType`/`SERVICE_TYPE_LABEL`/`SERVICE_TYPE_ICON` helpers, dropping the hardcoded `Globe2`; fuzzy value keeps the generic token and adds the specific type words; shipped with 047; live re-probe deferred), moved to `done/049.md`
 
 - [ ] **048** — Billing/usage page never surfaces `usage.coverage`, presenting a partial/degraded metering estimate as authoritative ← continuous live `$qa-find-bugs w4` 2026-09-06 (40–50m; dashboard-only, add `coverage` to the query + a "Partial data" caveat mirroring the metrics degraded badge)
 
-- [ ] **047** — Projects/Overview resource-list Type column collapses every service type to a generic "Service" badge ← continuous live `$qa-find-bugs w4` 2026-09-06 (20–30m; dashboard-only, delegate service rows to the existing `ServiceTypeBadge`)
+- [x] **047** — Projects/Overview resource-list Type column collapses every service type to a generic "Service" badge ← continuous live `$qa-find-bugs w4` 2026-09-06 — done 2026-09-07 (resource-table service rows delegate to the shared `ServiceTypeBadge`, so the Type column shows Web/Private/Worker/Cron/Static matching the detail header and Render; database/keyvalue/envgroup keep their generic kind; shipped with 049; live re-probe deferred), moved to `done/047.md`
 
 - [ ] **046** — Key Value eviction-policy selector is blank for underscore API values ← live QA pass 5 (40–50m; dashboard mapping)
 

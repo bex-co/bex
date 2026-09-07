@@ -109,6 +109,55 @@ describe("ResourceTable", () => {
     ).not.toBeInTheDocument();
   });
 
+  // w4/047: the Type column must name each service's SPECIFIC kind (matching
+  // the detail header + Render), not collapse every service to "Service".
+  it("renders each service's specific type label, not a generic Service badge", () => {
+    const typed: ResourceRow[] = [
+      {
+        kind: "service",
+        id: "srv-web",
+        name: "Web",
+        createdAt,
+        updatedAt,
+        runtime: "Node",
+        region: "fsn1",
+        service: { id: "srv-web", name: "Web", type: "web_service" } as never,
+      },
+      {
+        kind: "service",
+        id: "srv-cron",
+        name: "Cron",
+        createdAt,
+        updatedAt,
+        runtime: "Node",
+        region: "fsn1",
+        service: { id: "srv-cron", name: "Cron", type: "cron_job" } as never,
+      },
+      {
+        kind: "service",
+        id: "srv-priv",
+        name: "Priv",
+        createdAt,
+        updatedAt,
+        runtime: "Node",
+        region: "fsn1",
+        service: {
+          id: "srv-priv",
+          name: "Priv",
+          type: "private_service",
+        } as never,
+      },
+    ];
+    render(<ResourceTable rows={typed} {...commonProps} />);
+
+    // Each specific label appears (desktop column + mobile-stacked = two nodes).
+    expect(screen.getAllByText("Web Service").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Cron Job").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Private Service").length).toBeGreaterThan(0);
+    // The generic collapse must be gone for these typed rows.
+    expect(screen.queryByText("Service")).not.toBeInTheDocument();
+  });
+
   it("selects one row and the full visible set with stable kind:id identity", async () => {
     const user = userEvent.setup();
     function SelectableTable() {

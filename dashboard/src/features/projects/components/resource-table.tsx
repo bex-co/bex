@@ -13,6 +13,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
+import { ServiceTypeBadge } from "@/features/services/components/service-type-badge";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
 import { DatabaseRowActionsWithCapabilities } from "@/features/databases/components/database-row-actions";
@@ -197,12 +198,12 @@ function ResourceTableRow({
       <TableCell className="min-w-0 font-medium">
         <ResourceLink row={row} />
         <div className={projectMetadata ? "mt-1" : "mt-1 sm:hidden"}>
-          <ResourceTypeBadge kind={row.kind} />
+          <RowTypeBadge row={row} />
         </div>
       </TableCell>
       {!projectMetadata ? (
         <TableCell className="hidden sm:table-cell">
-          <ResourceTypeBadge kind={row.kind} />
+          <RowTypeBadge row={row} />
         </TableCell>
       ) : null}
       <TableCell>
@@ -237,6 +238,19 @@ function ResourceTableRow({
       </TableCell>
     </TableRow>
   );
+}
+
+// The Type-column badge for one row. A service row shows its SPECIFIC type
+// (Web Service / Private Service / Background Worker / Cron Job / Static Site)
+// via the shared ServiceTypeBadge — the same component the detail header uses,
+// so the list and header can't drift — instead of the generic "Service" the
+// merged-table badge would otherwise render for every service kind (w4/047).
+// database/keyvalue/envgroup rows keep their generic kind label.
+function RowTypeBadge({ row }: { row: ResourceRow }) {
+  if (row.kind === "service" && row.service) {
+    return <ServiceTypeBadge service={row.service} />;
+  }
+  return <ResourceTypeBadge kind={row.kind} />;
 }
 
 function ResourceLink({ row }: { row: ResourceRow }) {
