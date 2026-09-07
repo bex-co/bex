@@ -46,7 +46,7 @@ The first post-rollout image delete found a second finalizer cycle: the App-owne
 | --- | --- | --- |
 | `--name` | top-level `name` | Exact. |
 | `--type` | top-level `type` | Exact for `web_service`, `cron_job`, `static_site`, and the private-image `background_worker` control. |
-| `--runtime` | `serviceDetails.runtime` | Exact for native web and cron services. |
+| `--runtime` | `serviceDetails.runtime` | Exact for native web and cron services. Readback also derives `runtime`/`env` `docker` for a repo Dockerfile build created without the flag (default/`auto`/`dockerfile` builder), so a partial `services update` round-trips (w4/052); a prebuilt image, buildpack build, or static site reads back empty. |
 | `--repo` | top-level `repo` | Exact. |
 | `--branch` | top-level `branch` | Exact. |
 | `--image` | `image.imagePath` plus generated `image.ownerId:""` | Exact in deterministic full-server regression and the final production v2.21.0 run. |
