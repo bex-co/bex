@@ -370,6 +370,48 @@ func TestRollbackRestoresPreviousLiveImage(t *testing.T) {
 	}
 }
 
+// w4/051: rolling back to the CURRENT live deploy whose image is already the
+// running image is a no-op that would only restart the service and mint a
+// redundant deploy — every surface must refuse it with a 409.
+func TestRollbackRefusesCurrentLiveNoOp(t *testing.T) {
+	ds := newFakeStore()
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
+	if won, err := ds.CloseDeploy(context.Background(), first.ID, store.DeployLive, "web:v1"); err != nil || !won {
+		t.Fatalf("close first live: won=%v err=%v", won, err)
+	}
+	// sampleApp's spec.image is "web:v1" == the live deploy's image: the no-op.
+	svc, _ := newService(ds, sampleApp("web", "srv-1"))
+
+	if _, err := svc.Rollback(context.Background(), "web", first.ID); !errors.Is(err, core.ErrConflict) {
+		t.Errorf("rollback to the current live deploy (same image): want core.ErrConflict, got %v", err)
+	}
+}
+
+// The complement of the no-op guard: after a failed deploy drifts spec.image off
+// the still-live last-good deploy, rolling back to that live deploy restores the
+// good image and IS allowed — the guard keys on the image, not merely the status
+// (w4/051; mirrors TestRollbackRestoresPreviousLiveImage at the reject arm).
+func TestRollbackToLiveDeployRecoversDriftedImage(t *testing.T) {
+	ds := newFakeStore()
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
+	if won, err := ds.CloseDeploy(context.Background(), first.ID, store.DeployLive, "web:v1"); err != nil || !won {
+		t.Fatalf("close first live: won=%v err=%v", won, err)
+	}
+	// A later deploy failed and left spec.image drifted to its bad image while
+	// `first` stayed live (a failed deploy never deactivates the prior).
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = "web:bad"
+	svc, _ := newService(ds, app)
+
+	rolled, err := svc.Rollback(context.Background(), "web", first.ID)
+	if err != nil {
+		t.Fatalf("rollback to still-live last-good deploy (drifted image): %v", err)
+	}
+	if rolled.Image != "web:v1" || rolled.RollbackOf != first.ID {
+		t.Errorf("recovery rollback = %+v, want image web:v1 rolling back first", rolled)
+	}
+}
+
 func TestRollbackRefusesNonLiveTarget(t *testing.T) {
 	ds := newFakeStore()
 	stillOpen, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
@@ -451,20 +493,26 @@ func TestRESTCancelAndRollback(t *testing.T) {
 		t.Errorf("re-cancel: code=%d, want 409", rec.Code)
 	}
 
-	// Rollback needs a live target.
-	live, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:v1", 2, store.CommitInfo{})
+	// Rollback restores a PREVIOUS (deactivated) deploy — not the current live
+	// one, which would be a no-op restart (w4/051). Take `old` live, then have a
+	// newer deploy go live so `old` is deactivated, and roll back to `old`.
+	old, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v0", 1, store.CommitInfo{})
+	if won, err := ds.CloseDeploy(context.Background(), old.ID, store.DeployLive, "web:v0"); err != nil || !won {
+		t.Fatalf("close old live: won=%v err=%v", won, err)
+	}
+	live, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:v1", 3, store.CommitInfo{})
 	if won, err := ds.CloseDeploy(context.Background(), live.ID, store.DeployLive, "web:v1"); err != nil || !won {
-		t.Fatalf("close live: won=%v err=%v", won, err)
+		t.Fatalf("close live (supersedes old): won=%v err=%v", won, err)
 	}
 
 	rec = httptest.NewRecorder()
-	body := strings.NewReader(`{"deployId":"` + live.ID + `"}`)
+	body := strings.NewReader(`{"deployId":"` + old.ID + `"}`)
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/rollback", body))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("rollback: code=%d body=%s", rec.Code, rec.Body)
 	}
 	var rolled renderDeploy
-	if err := json.Unmarshal(rec.Body.Bytes(), &rolled); err != nil || rolled.Trigger != "rollback" || rolled.RollbackOf != live.ID {
+	if err := json.Unmarshal(rec.Body.Bytes(), &rolled); err != nil || rolled.Trigger != "rollback" || rolled.RollbackOf != old.ID {
 		t.Fatalf("rollback body = %s (err %v)", rec.Body, err)
 	}
 }

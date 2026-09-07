@@ -254,9 +254,14 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                     details={details}
                   />
                 );
+                // Cancel an in-progress deploy, or roll back a PREVIOUS
+                // (deactivated) one — never the current live deploy, which would
+                // be a no-op restart (w4/051). Mirrors the deploys list's guard
+                // so the events feed, list, and detail page all agree.
                 const hasAction =
                   !!deployId &&
-                  (isCancelableDeployStatus(status) || status === "live");
+                  (isCancelableDeployStatus(status) ||
+                    status === "deactivated");
 
                 return (
                   <div

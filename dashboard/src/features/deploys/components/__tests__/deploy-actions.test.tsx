@@ -70,14 +70,14 @@ describe("DeployActions", () => {
     });
   });
 
-  it("rolls back a live deploy and navigates to the new deploy", async () => {
+  it("rolls back a deactivated deploy and navigates to the new deploy", async () => {
     rollbackService.mockResolvedValue({
       data: {
         rollbackService: { id: "dep-rollback", status: "update_in_progress" },
       },
     });
     const user = userEvent.setup();
-    const router = renderActions("live");
+    const router = renderActions("deactivated");
 
     await user.click(await screen.findByRole("button", { name: "Rollback" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -98,7 +98,7 @@ describe("DeployActions", () => {
       data: { rollbackService: { id: null, status: "update_in_progress" } },
     });
     const user = userEvent.setup();
-    const router = renderActions("live");
+    const router = renderActions("deactivated");
 
     await user.click(await screen.findByRole("button", { name: "Rollback" }));
     await user.click(
@@ -117,6 +117,17 @@ describe("DeployActions", () => {
     expect(
       await screen.findByRole("button", { name: "Rollback" }),
     ).toBeInTheDocument();
+  });
+
+  // w4/051: the current live deploy is NOT a rollback target — "rolling back" to
+  // it only restarts the service and mints a redundant deploy. The detail page
+  // (which mounts DeployActions unguarded) must not offer it, matching the list.
+  it("does not offer rollback on the current live deploy", async () => {
+    renderActions("live");
+
+    expect(
+      screen.queryByRole("button", { name: "Rollback" }),
+    ).not.toBeInTheDocument();
   });
 
   // w6/m45 t003: the header's status pill reads the `Server` query, which is

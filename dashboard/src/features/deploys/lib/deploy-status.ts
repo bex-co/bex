@@ -35,12 +35,17 @@ export function isCancelableDeployStatus(status: string): boolean {
 }
 
 /**
- * Rollback targets are deploys that reached live and retained a resolved image.
- * bex-api exposes those rows as either the current `live` deploy or a historical
- * `deactivated` deploy; the server performs the final image-availability check.
+ * A UI rollback target is a PREVIOUS (`deactivated`) deploy — never the current
+ * `live` one. "Rolling back" to the live deploy is a no-op that only restarts
+ * the service and mints a redundant deploy, so the detail page must not offer it
+ * (the deploys list already hides it; this closes the list/detail disagreement,
+ * w4/051). The server is authoritative and stricter-aware: it still permits a
+ * rollback to a still-live last-good deploy whose image drifted off spec.image
+ * after a failed deploy (a real recovery), and performs the final
+ * image-availability check — the UI just doesn't surface that edge affordance.
  */
 export function isRollbackableDeployStatus(status: string): boolean {
-  return status === "live" || status === "deactivated";
+  return status === "deactivated";
 }
 
 export function deployStatusVariant(status: string): DeployBadgeVariant {

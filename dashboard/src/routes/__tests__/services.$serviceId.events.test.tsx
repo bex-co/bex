@@ -51,6 +51,21 @@ function deployEvent(over: Record<string, unknown> = {}) {
   };
 }
 
+// A deploy the events feed offers Rollback on: a previous deploy that a newer
+// live deploy has since deactivated — never the current live one (w4/051).
+function deactivatedDeployEvent() {
+  return deployEvent({
+    details: {
+      deployId: "dep-live-001",
+      deployStatus: "deactivated",
+      preDeployStatus: "",
+      actor: "dev@localhost",
+      triggeredByUser: "dev@localhost",
+      trigger: { manual: true },
+    },
+  });
+}
+
 // The route's component reads serviceId via Route.useParams(), so it needs a
 // real router context — rebuild it rooted at the events path (mirrors
 // services.$serviceId.settings.test.tsx's pattern). The deploys/$deployId
@@ -203,7 +218,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
 
   it("navigates to the rollback deploy's own page once the mutation resolves its id", async () => {
     mockUseQuery.mockReturnValue({
-      data: { serviceEvents: [deployEvent()] },
+      data: { serviceEvents: [deactivatedDeployEvent()] },
       loading: false,
       refetch: vi.fn(),
     });
@@ -230,7 +245,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
 
   it("does not navigate when the rollback mutation rejects", async () => {
     mockUseQuery.mockReturnValue({
-      data: { serviceEvents: [deployEvent()] },
+      data: { serviceEvents: [deactivatedDeployEvent()] },
       loading: false,
       refetch: vi.fn(),
     });
