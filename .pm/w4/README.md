@@ -79,6 +79,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **046** — Key Value eviction-policy selector is blank for underscore API values ← live QA pass 5 (40–50m; dashboard mapping)
+
 - [x] **045** — Language bootstrap throws during ordinary service navigation — retired: fixed concurrently by `4de8ac4db`; moved to `done/045.md` (live post-deploy check pending)
 - [x] **044** — Give Settings' Idle timeout dropdown an accessible name (20m) ← repeated live `$qa-find-bugs` hunt 2026-09-05, second run — done 2026-09-05; resolution and verification in `done/044.md`
 - [x] **042** — Give the environment-group service selector a persistent accessible name (20m) ← repeated live `/qa-find-bugs` passes 2026-09-05 — done 2026-09-05; resolution and verification in `done/042.md`
