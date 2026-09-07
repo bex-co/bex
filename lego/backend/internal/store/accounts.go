@@ -77,13 +77,17 @@ func (s *PGStore) AccountDeletionTombstoned(ctx context.Context, subject string)
 func accountDispositionWithoutMachines(ctx context.Context, q interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 }, subject string, machineSubjects []string, opsWorkspaceID string) ([]AccountWorkspaceDisposition, error) {
+	// COALESCE: a nil machineSubjects slice arrives as SQL NULL, and
+	// `NOT (x = ANY(NULL))` is NULL — silently filtering out every member and
+	// misclassifying each workspace as blocked. nil must mean "no machines".
 	rows, err := q.Query(ctx, `
 		SELECT t.id, t.name,
 		       (SELECT count(*) FROM tenant_members all_m
-		        WHERE all_m.tenant_id = t.id AND NOT (all_m.subject = ANY($2::text[]))),
+		        WHERE all_m.tenant_id = t.id
+		          AND NOT (all_m.subject = ANY(COALESCE($2::text[], '{}')))),
 		       (SELECT count(*) FROM tenant_members admins
 		        WHERE admins.tenant_id = t.id AND admins.role = 'admin' AND admins.subject != $1
-		          AND NOT (admins.subject = ANY($2::text[])))
+		          AND NOT (admins.subject = ANY(COALESCE($2::text[], '{}'))))
 		FROM tenants t
 		JOIN tenant_members mine ON mine.tenant_id = t.id
 		WHERE mine.subject = $1
