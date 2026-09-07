@@ -110,9 +110,23 @@ export interface Billing {
   credits: BillingCredits | null;
 }
 
+/**
+ * How complete the metering behind `estimatedCost` is (ADR040). `state` is
+ * "complete" | "partial" | "unknown": a degraded source turns the estimate
+ * `partial` rather than failing the read, so a money figure built on incomplete
+ * data can be caveated (w4/048). `through` bounds a partial estimate (RFC3339,
+ * empty when unknown/complete) and `degradedSources` names the unhealthy meters.
+ */
+export interface Coverage {
+  state: string;
+  through: string;
+  degradedSources: string[];
+}
+
 export interface UsageSummary {
   workspaceId: string;
   period: string; // "YYYY-MM"
+  coverage: Coverage;
   estimatedCost: EstimatedCost | null;
   billing: Billing | null;
 }
@@ -149,6 +163,13 @@ export function useUsage(period?: string): UseUsageResult {
         ? {
             workspaceId: raw.workspaceId ?? "",
             period: raw.period ?? "",
+            coverage: {
+              state: raw.coverage?.state ?? "unknown",
+              through: raw.coverage?.through ?? "",
+              degradedSources: (raw.coverage?.degradedSources ?? []).filter(
+                Boolean,
+              ),
+            },
             estimatedCost: raw.estimatedCost
               ? {
                   totalUsd: raw.estimatedCost.totalUsd ?? "0.00",

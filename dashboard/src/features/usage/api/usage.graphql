@@ -14,6 +14,16 @@ query Usage($period: String, $ownerId: String) {
   usage(period: $period, ownerId: $ownerId) {
     workspaceId
     period
+    # coverage: how complete/degraded the metering behind estimatedCost is
+    # (ADR040 — failures degrade to estimate-only rather than 500). state is
+    # complete | partial | unknown; `through` bounds a partial estimate and
+    # degradedSources names the unhealthy meters, so the page can caveat a
+    # money figure built on incomplete data (w4/048).
+    coverage {
+      state
+      through
+      degradedSources
+    }
     estimatedCost {
       totalUsd
       # resources is the same total grouped by the resource that incurred it,

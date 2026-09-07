@@ -87,6 +87,8 @@ describe("useUsage", () => {
     expect(result.current.summary).toEqual({
       workspaceId: "ws-abc123",
       period: "",
+      // coverage absent from the response ⇒ the honest "unknown" default (w4/048).
+      coverage: { state: "unknown", through: "", degradedSources: [] },
       estimatedCost: {
         totalUsd: "4.92",
         resources: [
@@ -126,6 +128,30 @@ describe("useUsage", () => {
       },
       // billing absent from the response ⇒ null (estimate-only, m48).
       billing: null,
+    });
+  });
+
+  it("maps a partial coverage read so the page can caveat the estimate (w4/048)", () => {
+    mockUseQuery.mockReturnValue(
+      createSuccessQueryResult({
+        usage: {
+          workspaceId: "ws",
+          coverage: {
+            state: "partial",
+            through: "2026-09-01T00:00:00Z",
+            degradedSources: ["direct", "http", "instance"],
+          },
+          estimatedCost: { totalUsd: "2.45", resources: [] },
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useUsage());
+
+    expect(result.current.summary?.coverage).toEqual({
+      state: "partial",
+      through: "2026-09-01T00:00:00Z",
+      degradedSources: ["direct", "http", "instance"],
     });
   });
 
