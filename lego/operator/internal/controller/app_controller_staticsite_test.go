@@ -75,7 +75,7 @@ var _ = Describe("reconciling a static_site App", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: appv1alpha1.AppSpec{
 				Type:        appv1alpha1.TypeStaticSite,
-				Image:       "site:v1", // prebuilt => no build path
+				Repo:        "https://github.com/bex-co/site", // no build inputs => direct publish (w9/010)
 				PublishPath: "dist",
 				Expose:      true,
 			},
@@ -131,7 +131,7 @@ var _ = Describe("reconciling a static_site App", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: appv1alpha1.AppSpec{
 				Type:        appv1alpha1.TypeStaticSite,
-				Image:       "site:v1",
+				Repo:        "https://github.com/bex-co/site",
 				PublishPath: "dist",
 				Expose:      true,
 			},
@@ -186,7 +186,7 @@ var _ = Describe("reconciling a static_site App", func() {
 			},
 			Spec: appv1alpha1.AppSpec{
 				Type:        appv1alpha1.TypeStaticSite,
-				Image:       "site:v1",
+				Repo:        "https://github.com/bex-co/site",
 				PublishPath: "dist",
 				Expose:      true,
 			},
@@ -436,7 +436,7 @@ var _ = Describe("reconciling a static_site App", func() {
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: appv1alpha1.AppSpec{
-				Type: appv1alpha1.TypeStaticSite, Image: "site:v1", PublishPath: "dist", Expose: true,
+				Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/site", PublishPath: "dist", Expose: true,
 			},
 		}
 		Expect(k8sClient.Create(ctx, app)).To(Succeed())
@@ -460,7 +460,7 @@ var _ = Describe("reconciling a static_site App", func() {
 		nn := types.NamespacedName{Name: name, Namespace: ns}
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
-			Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Image: "site:v1", Expose: true},
+			Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/site", Expose: true},
 		}
 		Expect(k8sClient.Create(ctx, app)).To(Succeed())
 		reconcileFailing(staticReconciler(), nn)
@@ -475,7 +475,7 @@ var _ = Describe("reconciling a static_site App", func() {
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: appv1alpha1.AppSpec{
-				Type: appv1alpha1.TypeStaticSite, Image: "site:v1", PublishPath: "dist", Expose: true,
+				Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/site", PublishPath: "dist", Expose: true,
 			},
 		}
 		Expect(k8sClient.Create(ctx, app)).To(Succeed())

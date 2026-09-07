@@ -43,9 +43,15 @@ var _ = Describe("App type immutability admission", func() {
 					continue
 				}
 				name := fmt.Sprintf("immutable-type-%d-%d", sourceIndex, targetIndex)
+				spec := appv1alpha1.AppSpec{Type: source, Image: "nginx:1"}
+				if source == appv1alpha1.TypeStaticSite {
+					// A static_site cannot carry spec.image (its own admission
+					// rule) — it sources from a repo.
+					spec = appv1alpha1.AppSpec{Type: source, Repo: "https://github.com/bex-co/site", PublishPath: "dist"}
+				}
 				app := &appv1alpha1.App{
 					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
-					Spec:       appv1alpha1.AppSpec{Type: source, Image: "nginx:1"},
+					Spec:       spec,
 				}
 				Expect(k8sClient.Create(ctx, app)).To(Succeed())
 				app.Spec.Type = target

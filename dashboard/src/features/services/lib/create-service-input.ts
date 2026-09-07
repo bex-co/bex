@@ -67,7 +67,10 @@ export interface BuildShape {
 export function buildShape(form: NewServiceForm): BuildShape {
   const isCronType = form.serviceType === "cron_job";
   const isStaticType = form.serviceType === "static_site";
-  const isImageSource = form.tab === "image";
+  // A static site has no image source (ADR029) — even if the form somehow
+  // holds tab === "image" for one, the shape refuses to read it as an image
+  // source, so the submit gate and the payload can never emit static+image.
+  const isImageSource = form.tab === "image" && !isStaticType;
   const isGitSource = form.tab === "github" || form.tab === "git";
   const isBuildableGit = isGitSource && !isStaticType;
   const isDockerBuild = isBuildableGit && form.runtime === "docker";
@@ -146,15 +149,14 @@ export function buildCreateServiceInput(
     .map((p) => p.trim())
     .filter(Boolean);
 
-  const source =
-    form.tab === "github" && form.selectedRepo
+  const source = shape.isImageSource
+    ? { image: form.image.trim() }
+    : form.tab === "github" && form.selectedRepo
       ? {
           repo: form.selectedRepo.cloneUrl,
           branch: form.branch || form.selectedRepo.defaultBranch || undefined,
         }
-      : form.tab === "git"
-        ? { repo: form.gitUrl.trim(), branch: form.branch || undefined }
-        : { image: form.image.trim() };
+      : { repo: form.gitUrl.trim(), branch: form.branch || undefined };
 
   return {
     ...source,

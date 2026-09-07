@@ -90,6 +90,36 @@ services:
 	}
 }
 
+// A static site (runtime: static) has no prebuilt-image path (ADR029; w8/m32).
+// The schema alone cannot refuse it — the shared runtime enum lets a
+// `runtime: static` + image entry validate as a serverService — so the
+// capability walk anchors the incompatibility on the image field itself.
+func TestBlueprintCompilerRejectsPrebuiltImageOnStaticSite(t *testing.T) {
+	_, problems := CompileBlueprintSource(`
+services:
+  - type: web
+    name: site
+    runtime: static
+    repo: https://github.com/bex-co/site
+    staticPublishPath: dist
+    image: {url: nginx:1.27}
+`)
+	problem := findBlueprintProblem(problems, "BLUEPRINT_CAPABILITY_INCOMPATIBLE")
+	if problem == nil || problem.Path != "#/services/0/image" {
+		t.Fatalf("CompileBlueprintSource() problems = %+v, want incompatibility at #/services/0/image", problems)
+	}
+	if !strings.Contains(problem.Message, "a static site builds from a Git repo") {
+		t.Fatalf("static+image problem message = %q, want the static-image diagnosis", problem.Message)
+	}
+	// The site's own repo must not be flagged as an image-incompatible field —
+	// it is the required source for a static site.
+	for _, p := range problems {
+		if p.Path == "#/services/0/repo" {
+			t.Fatalf("repo flagged on a static site: %+v", problems)
+		}
+	}
+}
+
 func TestBlueprintCompilerRejectsRuntimeIncompatibleBuildCommands(t *testing.T) {
 	for _, tc := range []struct {
 		name     string

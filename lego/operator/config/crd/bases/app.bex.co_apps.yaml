@@ -534,7 +534,9 @@ spec:
                   Image is a prebuilt OCI image to run directly, skipping the build plane.
                   Constrained at the CRD schema (w1/m53) so a hand-applied CR can't carry an
                   image reference with whitespace or shell/SSRF-meta characters that bex-api's
-                  ValidImage would reject — host[:port]/repo[:tag][@digest] only.
+                  ValidImage would reject — host[:port]/repo[:tag][@digest] only. Not
+                  supported for a static_site (spec XValidation): a static site is built
+                  from Repo and published to the object-store origin (ADR029).
                 maxLength: 512
                 pattern: ^[A-Za-z0-9][A-Za-z0-9._/:@-]*$
                 type: string
@@ -872,6 +874,9 @@ spec:
             - message: spec.disk.sizeGB can only grow; a disk is never shrunk
               rule: '!has(self.disk) || !has(oldSelf.disk) || self.disk.sizeGB >=
                 oldSelf.disk.sizeGB'
+            - message: a static_site builds from spec.repo; spec.image is not supported
+              rule: '!has(self.image) || (has(self.type) ? self.type : ''web_service'')
+                != ''static_site'''
           status:
             description: status defines the observed state of App
             properties:

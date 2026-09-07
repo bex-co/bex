@@ -129,5 +129,18 @@ export function useNewServiceForm(search: {
     [set],
   );
 
-  return { form, set, setTab, build, name, instanceTypes };
+  // A static site builds from a Git repo (ADR029) — it has no image source, so
+  // arriving on Static Site from the Existing Image tab moves the selection
+  // back to GitHub exactly as a manual tab switch would.
+  const setServiceType = useCallback(
+    (serviceType: ServiceType) =>
+      set((current) =>
+        serviceType === "static_site" && current.tab === "image"
+          ? { serviceType, tab: "github", selectedRepo: null, branch: "" }
+          : { serviceType },
+      ),
+    [set],
+  );
+
+  return { form, set, setTab, setServiceType, build, name, instanceTypes };
 }

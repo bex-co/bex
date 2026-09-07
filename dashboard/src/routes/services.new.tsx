@@ -73,7 +73,7 @@ export function NewServicePage() {
   const search = Route.useSearch();
   const { create, busy, capLimit, nameConflict, clearNameConflict } =
     useCreateService();
-  const { form, set, setTab, build, name, instanceTypes } =
+  const { form, set, setTab, setServiceType, build, name, instanceTypes } =
     useNewServiceForm(search);
   const shape = buildShape(form);
   const createCopy = serviceTypeCreateCopy(form.serviceType);
@@ -122,7 +122,7 @@ export function NewServicePage() {
                 <ServiceTypePicker
                   value={form.serviceType}
                   onChange={(serviceType) => {
-                    set({ serviceType });
+                    setServiceType(serviceType);
                     // Mirror the choice into ?type= so the route's head()
                     // re-runs and the tab title tracks the <h1> (w6/045).
                     // replace + retained search params: same match stays
@@ -143,14 +143,21 @@ export function NewServicePage() {
                 onSelectRepo={(selectedRepo) => set({ selectedRepo })}
                 gitUrl={form.gitUrl}
                 onGitUrlChange={(gitUrl) => set({ gitUrl })}
-                image={{
-                  value: form.image,
-                  onChange: (image) => set({ image }),
-                  registryCredentialId: form.registryCredentialId,
-                  onRegistryCredentialChange: (registryCredentialId) =>
-                    set({ registryCredentialId }),
-                  showPortHint: shape.showPortHint,
-                }}
+                // A static site has no image source (ADR029): omitting the
+                // prop is what removes the Existing Image tab, same as the
+                // Blueprint caller.
+                image={
+                  shape.isStaticType
+                    ? undefined
+                    : {
+                        value: form.image,
+                        onChange: (image) => set({ image }),
+                        registryCredentialId: form.registryCredentialId,
+                        onRegistryCredentialChange: (registryCredentialId) =>
+                          set({ registryCredentialId }),
+                        showPortHint: shape.showPortHint,
+                      }
+                }
               />
 
               <div className="space-y-4">
