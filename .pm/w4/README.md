@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m93** — Include linked environment groups in native builds (6 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06 pass 2; build omits a group value that runtime receives
+
 - [ ] **m92** — Preserve exact environment values in native builds (6 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06; build/runtime byte mismatch
 - [x] **m90** — Workspace-scoped billing email + payment method at creation (9 tasks) ← user request 2026-08-31 after live authenticated comparison of `dashboard.bex.co/new/workspace` and `dashboard.render.com/new/workspace`; closes the shape-only/current-workspace shortcut left by w9/m88 — done 2026-08-31 (account-prefilled billing email plus workspace-local Stripe Payment Element/SetupIntent, resumable subject-bound attempts, server-verified idempotent finalization, bounded cleanup, authenticated Render parity evidence, and real Stripe test-mode success/cancel/retry), moved to `done/m90/`
 - [x] **m89** — Honest agent-session states and a real error taxonomy (8 tasks) ← from `/pm-brainstorm` 2026-08-28 findings 3+4: 17 `ErrAgentSessionsUnavailable` sites collapse into one "aren't configured — ask your operator" alert (hit live in dev-1 from a transient etcd timeout), and a normally-starting session renders failure copy.
