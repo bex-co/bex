@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m95** — Complete the trust setup for external PostgreSQL connections (7 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06 pass 4; private server CA is required but unavailable through the product
+
 - [ ] **m94** — Preserve static assets and request-path headers under rewrites (7 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06 pass 3; existing files masked and path headers omitted
 
 - [ ] **m93** — Include linked environment groups in native builds (6 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06 pass 2; build omits a group value that runtime receives
