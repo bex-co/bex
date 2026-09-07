@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m96** — Use the same log message boundary in history and live streaming (6 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06 pass 6; three cron records render six through newline drift
+
 - [ ] **m95** — Complete the trust setup for external PostgreSQL connections (7 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06 pass 4; private server CA is required but unavailable through the product
 
 - [ ] **m94** — Preserve static assets and request-path headers under rewrites (7 tasks) ← continuous live `$qa-find-bugs w4`, 2026-09-06 pass 3; existing files masked and path headers omitted
