@@ -94,6 +94,10 @@ implementation serves every workstream since `w1/m72`; `.pm/w7/dev-7/` keeps onl
 
 ## Inbox
 
+> **2026-09-06:** `023` deferred to `.pm/FUTURE-MAYBE.md` and archived in `done/023.md`; the proxy already exists, while token billing awaits an explicit product/provider contract. `038` closed after three verified database restores, offline clean-image preservation, and exact old ReplicaSet/manifest/blob retirement; see `done/038.md` and the 2026-09-06 drill record.
+
+- `042.md` — investigate recoverable forum uploads and durable storage; 29 existing custom upload references failed the pre-retirement origin check.
+
 > `032` **fixed 2026-09-05**: unstructured child projections preserve admission defaults while removing withdrawn bex-owned fields. CNPG and backup-store request-count tests, full operator suite, lint, and dead-code analysis passed. Moved to `done/`.
 
 > `036` and `039` **closed 2026-09-05**: reusable managed-Database provisioning/recovery drill passed twice on production, including exact-marker recovery and full cleanup. Backup delegation review and ADR031 cadence updated; evidence in `docs/drills/2026-09-05-managed-postgres-recovery.md`.
@@ -109,8 +113,6 @@ implementation serves every workstream since `w1/m72`; `.pm/w7/dev-7/` keeps onl
 
 > `027.md` promoted to **m81** 2026-08-17; `028.md` retired by **m84** 2026-08-19; both moved to `done/`.
 
-- `038.md` — **verified cleanup scope 2026-09-05**: current images and auto-deploy reporting are clean. A legacy gen-54 layer contains two obsolete passwords; both fail authentication against current databases. No active workload uses it; five zero-replica rollback ReplicaSets do. Exact manifest retirement and blob removal await approval for irreversible artifact deletion.
-- `023.md` — existing model proxy verified; remaining provider-usage accounting and token-billing policy need a scheduling/product decision. Current BYO credentials must not silently acquire a model charge.
 
 > **Board review 2026-08-09** — every open w7 item dispositioned (implement, hold, or block-with-reason; nothing removed — each survivor is a real defect or a deliberate hold):
 >
