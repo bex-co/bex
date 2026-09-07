@@ -340,6 +340,54 @@ func TestLoadConfigVerifiedInviteEmail(t *testing.T) {
 	}
 }
 
+// TestLoadConfigOpsWorkspacePin covers the ADR087 §4 pin: both vars set arms
+// the verb (and, without a control plane, still parses the internal listener
+// address); exactly one set warns loudly and stays disabled; stdio mode never
+// serves. Both-unset defaults ride TestLoadConfigDefaults' zero-warning gate.
+func TestLoadConfigOpsWorkspacePin(t *testing.T) {
+	cfg, warnings, err := loadFor(t, map[string]string{
+		"BEX_OPS_WORKSPACE":  "tea-ops",
+		"BEX_OPS_ROLE_TOKEN": "s3cret",
+	})
+	if err != nil || len(warnings) != 0 {
+		t.Fatalf("both set: err=%v warnings=%v", err, warnings)
+	}
+	if cfg.OpsWorkspace != "tea-ops" || cfg.OpsRoleToken != "s3cret" {
+		t.Fatalf("ops pin = %q/%q", cfg.OpsWorkspace, cfg.OpsRoleToken)
+	}
+	if cfg.CPAddr != ":8091" {
+		t.Fatalf("CPAddr = %q, want :8091 (the ops-only internal listener must know its address)", cfg.CPAddr)
+	}
+
+	for _, env := range []map[string]string{
+		{"BEX_OPS_WORKSPACE": "tea-ops"},
+		{"BEX_OPS_ROLE_TOKEN": "s3cret"},
+	} {
+		cfg, warnings, err := loadFor(t, env)
+		if err != nil {
+			t.Fatalf("partial pin must not be fatal: %v", err)
+		}
+		if !hasWarning(warnings, "BEX_OPS_WORKSPACE/BEX_OPS_ROLE_TOKEN") {
+			t.Fatalf("partial pin: want the loud disabled warning, got %v", warnings)
+		}
+		if cfg.CPAddr != "" {
+			t.Fatalf("partial pin must not arm the internal listener: CPAddr=%q", cfg.CPAddr)
+		}
+	}
+
+	cfg, _, err = loadFor(t, map[string]string{
+		"BEX_OPS_WORKSPACE":  "tea-ops",
+		"BEX_OPS_ROLE_TOKEN": "s3cret",
+		"BEX_MCP_STDIO":      "1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.CPAddr != "" {
+		t.Fatalf("stdio mode parsed the internal listener addr: %q", cfg.CPAddr)
+	}
+}
+
 func TestModelProxyPort(t *testing.T) {
 	cases := []struct {
 		raw     string

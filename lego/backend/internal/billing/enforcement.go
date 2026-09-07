@@ -52,6 +52,14 @@ type KubernetesEnforcer struct {
 	Store     EnforcementStore
 	Namespace string
 	Clock     func() time.Time
+	// OpsWorkspaceID pins the platform ops workspace (BEX_OPS_WORKSPACE,
+	// docs/ADR087-platform-observability-ui.md §4): dunning enforcement refuses
+	// to suspend its resources — workspace suspension is exactly what would take
+	// every operator's Grafana access down at once — so its lifecycle row fails
+	// loudly (core.CodeOpsWorkspaceProtected, retried on the worker's backoff)
+	// instead of converging to enforced. Recover stays allowed: un-suspending
+	// the ops workspace is always safe. Empty (unset) => no exemption.
+	OpsWorkspaceID string
 }
 
 // appNamespace is where a workspace's App CRs live: its own `<ws>` namespace
@@ -78,6 +86,9 @@ func (e *KubernetesEnforcer) marker(state store.BillingLifecycle) string {
 func (e *KubernetesEnforcer) Enforce(ctx context.Context, state store.BillingLifecycle) error {
 	if e == nil || e.Client == nil || e.Store == nil {
 		return fmt.Errorf("billing resource enforcer unavailable")
+	}
+	if e.OpsWorkspaceID != "" && state.WorkspaceID == e.OpsWorkspaceID {
+		return core.NewOpsWorkspaceProtectedError()
 	}
 	marker := e.marker(state)
 	var apps appv1alpha1.AppList

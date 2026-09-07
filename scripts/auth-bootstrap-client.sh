@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
 # Seed the permanent platform OAuth2 clients: confidential `bex-bootstrap`, the
 # secretless public client hard-coded by the official Render CLI, the secretless
-# first-party `bex-desktop` editor client (Zed), and the secretless first-party
-# `bex-mobile` native client. None is a tenant-created API key. Idempotent:
-# re-running resets every client to its intended grants without minting a
-# public-client secret.
+# first-party `bex-desktop` editor client (Zed), the secretless first-party
+# `bex-mobile` native client, and the confidential `bex-obs` Grafana client
+# (docs/ADR087-platform-observability-ui.md §3). None is a tenant-created API
+# key. Idempotent: re-running resets every client to its intended grants without
+# minting a public-client secret.
 #
 # The public clients are always upserted through the admin REST API (curl),
 # never the in-pod `hydra` CLI: they carry fields the CLI cannot express, and
 # `hydra update client` PUTs a full replacement that would silently wipe them.
 #
-# The secret comes from BEX_BOOTSTRAP_CLIENT_SECRET in .env (gitignored) or the
-# environment (CI: GitHub Actions secret). Values are never printed.
+# Secrets come from .env (gitignored) or the environment (CI: GitHub Actions
+# secrets): BEX_BOOTSTRAP_CLIENT_SECRET is required, while
+# BEX_OBS_OAUTH_CLIENT_SECRET gates only the obs client — when it is missing,
+# that one client is refused and the rest are seeded normally. Values are never
+# printed.
 #
 # Usage: scripts/auth-bootstrap-client.sh          # kubectl exec into hydra pod
 #        HYDRA_ADMIN_URL=http://... scripts/...    # use an already-reachable admin URL
@@ -31,20 +35,27 @@ MOBILE_CLIENT_ID=bex-mobile
 # logins 404 (regression from commit 9081fbdb).
 MOBILE_REDIRECT_URI=co.bex.mobile:/oauth2redirect
 MOBILE_AUDIENCE="${BEX_OAUTH_RESOURCE:-https://api.bex.co/mcp}"
+OBS_CLIENT_ID=bex-obs
+# Byte-exact Grafana generic_oauth callback (ADR087 §3) — the single entry.
+OBS_REDIRECT_URI=https://obs.bex.co/login/generic_oauth
 DEVICE_GRANT=urn:ietf:params:oauth:grant-type:device_code
 NS="${BEX_AUTH_NAMESPACE:-auth}"
 PF_PID=""
 PF_LOG=""
 
 # An explicitly-set env var wins; .env is only consulted as the local fallback
-# (CI passes the secret directly and has no .env).
-if [ -z "${BEX_BOOTSTRAP_CLIENT_SECRET:-}" ] && [ -f .env ]; then
+# (CI passes the secrets directly and has no .env). Pre-source values are
+# captured so sourcing .env for one missing secret never clobbers the other.
+env_bootstrap_secret="${BEX_BOOTSTRAP_CLIENT_SECRET:-}"
+env_obs_secret="${BEX_OBS_OAUTH_CLIENT_SECRET:-}"
+if { [ -z "$env_bootstrap_secret" ] || [ -z "$env_obs_secret" ]; } && [ -f .env ]; then
   set -a
   # shellcheck disable=SC1091
   source ./.env
   set +a
 fi
-secret="${BEX_BOOTSTRAP_CLIENT_SECRET:-}"
+secret="${env_bootstrap_secret:-${BEX_BOOTSTRAP_CLIENT_SECRET:-}}"
+obs_secret="${env_obs_secret:-${BEX_OBS_OAUTH_CLIENT_SECRET:-}}"
 [ -n "$secret" ] || { echo "error: BEX_BOOTSTRAP_CLIENT_SECRET is missing or empty (.env or environment)" >&2; exit 1; }
 [ "${#secret}" -ge 16 ] || { echo "error: BEX_BOOTSTRAP_CLIENT_SECRET must be at least 16 characters (got ${#secret})" >&2; exit 1; }
 
@@ -157,6 +168,40 @@ fi
 # ---- Render CLI client: always via the admin REST API (see header comment) ----
 start_port_forward
 
+# One upsert + read-back vocabulary for every REST-admin client below. PUT is a
+# full replace (resets drifted fields, including any secret); 404 => create.
+upsert_client() {
+  local id="$1" body="$2" code
+  code="$(printf '%s' "$body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
+    -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$id")"
+  if [ "$code" = "404" ]; then
+    code="$(printf '%s' "$body" | curl -s -o /dev/null -w '%{http_code}' -X POST \
+      -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients")"
+    [ "$code" = "201" ] || { echo "error: creating $id failed (HTTP $code)" >&2; exit 1; }
+    echo "created OAuth2 client $id"
+  elif [ "$code" = "200" ]; then
+    echo "updated OAuth2 client $id"
+  else
+    echo "error: upserting $id failed (HTTP $code)" >&2
+    exit 1
+  fi
+}
+
+# Hydra ignores unknown JSON fields, so every client's load-bearing fields are
+# asserted on the stored read-back instead of trusting the PUT status alone
+# (a typo'd key would be ignored, not rejected).
+read_client() {
+  curl -sf "$REST_ADMIN/admin/clients/$1" || {
+    echo "error: reading back $1 failed" >&2
+    exit 1
+  }
+}
+
+assert_stored() {
+  local stored="$1" needle="$2" msg="$3"
+  printf '%s' "$stored" | grep -Fq "$needle" || { echo "error: $msg" >&2; exit 1; }
+}
+
 # Per-client access-token lifespan for BOTH grants that mint CLI tokens (device
 # code = first login, refresh_token = every rotation). The unmodified CLI
 # refreshes whenever a token is within 24h of expiry. Seven days matches
@@ -177,35 +222,16 @@ CLI_TOKEN_LIFESPAN=168h
 # deliberately keeps explicit consent because its HTTPS callback is public.
 render_body="$(printf '{"client_id":"%s","client_name":"bex CLI","grant_types":["%s","refresh_token"],"scope":"openid offline_access bex.read bex.write bex.sensitive","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"device_authorization_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
   "$RENDER_CLI_CLIENT_ID" "$DEVICE_GRANT" "$CLI_TOKEN_LIFESPAN" "$CLI_TOKEN_LIFESPAN")"
-render_code="$(printf '%s' "$render_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
-  -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$RENDER_CLI_CLIENT_ID")"
-if [ "$render_code" = "404" ]; then
-  render_code="$(printf '%s' "$render_body" | curl -s -o /dev/null -w '%{http_code}' -X POST \
-    -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients")"
-  [ "$render_code" = "201" ] || { echo "error: creating $RENDER_CLI_CLIENT_ID failed (HTTP $render_code)" >&2; exit 1; }
-  echo "created OAuth2 client $RENDER_CLI_CLIENT_ID"
-elif [ "$render_code" = "200" ]; then
-  echo "updated OAuth2 client $RENDER_CLI_CLIENT_ID"
-else
-  echo "error: upserting $RENDER_CLI_CLIENT_ID failed (HTTP $render_code)" >&2
-  exit 1
-fi
+upsert_client "$RENDER_CLI_CLIENT_ID" "$render_body"
 
-# Guard against silent field drops (a typo'd lifespan key would be ignored, not
-# rejected): assert BOTH grant lifespans round-trip on the stored client. Prefix
-# match, not exact — Hydra may normalize the duration (168h vs 168h0m0s).
-stored_render_client="$(curl -sf "$REST_ADMIN/admin/clients/$RENDER_CLI_CLIENT_ID")" || {
-  echo "error: reading back $RENDER_CLI_CLIENT_ID failed" >&2
-  exit 1
-}
+# Assert BOTH grant lifespans round-trip on the stored client. Prefix match,
+# not exact — Hydra may normalize the duration (168h vs 168h0m0s).
+stored_render_client="$(read_client "$RENDER_CLI_CLIENT_ID")"
 for lifespan_field in \
   device_authorization_grant_access_token_lifespan \
   refresh_token_grant_access_token_lifespan; do
-  if ! printf '%s' "$stored_render_client" \
-      | grep -q "\"$lifespan_field\":\"$CLI_TOKEN_LIFESPAN"; then
-    echo "error: $RENDER_CLI_CLIENT_ID $lifespan_field did not round-trip (hydra too old for per-client lifespans?)" >&2
-    exit 1
-  fi
+  assert_stored "$stored_render_client" "\"$lifespan_field\":\"$CLI_TOKEN_LIFESPAN" \
+    "$RENDER_CLI_CLIENT_ID $lifespan_field did not round-trip (hydra too old for per-client lifespans?)"
 done
 
 # ---- First-party desktop / editor client (bex Desktop, Zed) ----------------
@@ -222,34 +248,13 @@ done
 # ephemeral callback port always matches.
 desktop_body="$(printf '{"client_id":"%s","client_name":"bex Desktop (Zed)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["http://127.0.0.1/callback","http://localhost/callback"],"scope":"openid offline_access bex.read bex.write bex.sensitive","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"authorization_code_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
   "$DESKTOP_CLIENT_ID" "$CLI_TOKEN_LIFESPAN" "$CLI_TOKEN_LIFESPAN")"
-desktop_code="$(printf '%s' "$desktop_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
-  -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$DESKTOP_CLIENT_ID")"
-if [ "$desktop_code" = "404" ]; then
-  desktop_code="$(printf '%s' "$desktop_body" | curl -s -o /dev/null -w '%{http_code}' -X POST \
-    -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients")"
-  [ "$desktop_code" = "201" ] || { echo "error: creating $DESKTOP_CLIENT_ID failed (HTTP $desktop_code)" >&2; exit 1; }
-  echo "created OAuth2 client $DESKTOP_CLIENT_ID"
-elif [ "$desktop_code" = "200" ]; then
-  echo "updated OAuth2 client $DESKTOP_CLIENT_ID"
-else
-  echo "error: upserting $DESKTOP_CLIENT_ID failed (HTTP $desktop_code)" >&2
-  exit 1
-fi
+upsert_client "$DESKTOP_CLIENT_ID" "$desktop_body"
 
-# Hydra ignores unknown JSON fields, so assert the loopback redirect and
-# public-client posture round-trip instead of trusting the PUT status alone.
-stored_desktop_client="$(curl -sf "$REST_ADMIN/admin/clients/$DESKTOP_CLIENT_ID")" || {
-  echo "error: reading back $DESKTOP_CLIENT_ID failed" >&2
-  exit 1
-}
-printf '%s' "$stored_desktop_client" | grep -Fq '"http://127.0.0.1/callback"' || {
-  echo "error: $DESKTOP_CLIENT_ID loopback redirect did not round-trip" >&2
-  exit 1
-}
-printf '%s' "$stored_desktop_client" | grep -Fq '"token_endpoint_auth_method":"none"' || {
-  echo "error: $DESKTOP_CLIENT_ID is not a public client" >&2
-  exit 1
-}
+stored_desktop_client="$(read_client "$DESKTOP_CLIENT_ID")"
+assert_stored "$stored_desktop_client" '"http://127.0.0.1/callback"' \
+  "$DESKTOP_CLIENT_ID loopback redirect did not round-trip"
+assert_stored "$stored_desktop_client" '"token_endpoint_auth_method":"none"' \
+  "$DESKTOP_CLIENT_ID is not a public client"
 
 # ---- First-party native mobile client (ADR012 §8b) -------------------------
 # A store-distributed app cannot keep a client secret. The reverse-domain
@@ -259,34 +264,43 @@ printf '%s' "$stored_desktop_client" | grep -Fq '"token_endpoint_auth_method":"n
 # app and the token still requires granular capabilities at bex-api.
 mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"audience":["%s"],"scope":"openid offline_access bex.read bex.write","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true}' \
   "$MOBILE_CLIENT_ID" "$MOBILE_REDIRECT_URI" "$MOBILE_AUDIENCE")"
-mobile_code="$(printf '%s' "$mobile_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
-  -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$MOBILE_CLIENT_ID")"
-if [ "$mobile_code" = "404" ]; then
-  mobile_code="$(printf '%s' "$mobile_body" | curl -s -o /dev/null -w '%{http_code}' -X POST \
-    -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients")"
-  [ "$mobile_code" = "201" ] || { echo "error: creating $MOBILE_CLIENT_ID failed (HTTP $mobile_code)" >&2; exit 1; }
-  echo "created OAuth2 client $MOBILE_CLIENT_ID"
-elif [ "$mobile_code" = "200" ]; then
-  echo "updated OAuth2 client $MOBILE_CLIENT_ID"
-else
-  echo "error: upserting $MOBILE_CLIENT_ID failed (HTTP $mobile_code)" >&2
-  exit 1
-fi
+upsert_client "$MOBILE_CLIENT_ID" "$mobile_body"
 
-# Hydra ignores unknown JSON fields, so assert the redirect and public-client
-# posture round-trip instead of trusting the PUT status alone.
-mobile_stored="$(curl -sf "$REST_ADMIN/admin/clients/$MOBILE_CLIENT_ID")"
-printf '%s' "$mobile_stored" | grep -Fq "\"$MOBILE_REDIRECT_URI\"" || {
-  echo "error: $MOBILE_CLIENT_ID redirect URI did not round-trip" >&2
-  exit 1
-}
-printf '%s' "$mobile_stored" | grep -Fq '"token_endpoint_auth_method":"none"' || {
-  echo "error: $MOBILE_CLIENT_ID is not a public client" >&2
-  exit 1
-}
-printf '%s' "$mobile_stored" | grep -Fq "\"$MOBILE_AUDIENCE\"" || {
-  echo "error: $MOBILE_CLIENT_ID audience did not round-trip" >&2
-  exit 1
-}
+mobile_stored="$(read_client "$MOBILE_CLIENT_ID")"
+assert_stored "$mobile_stored" "\"$MOBILE_REDIRECT_URI\"" \
+  "$MOBILE_CLIENT_ID redirect URI did not round-trip"
+assert_stored "$mobile_stored" '"token_endpoint_auth_method":"none"' \
+  "$MOBILE_CLIENT_ID is not a public client"
+assert_stored "$mobile_stored" "\"$MOBILE_AUDIENCE\"" \
+  "$MOBILE_CLIENT_ID audience did not round-trip"
+
+# ---- First-party observability client (Grafana at obs.bex.co, ADR087 §3) ----
+# Grafana signs in against the platform issuer as one more first-party client
+# (docs/ADR087-platform-observability-ui.md): confidential, client_secret_basic
+# (Grafana generic_oauth authenticates with HTTP basic by default), the exact
+# generic_oauth callback, and skip_consent=true riding every upsert (the
+# headless trusted path through the consent acceptor — the ops-workspace gate
+# still runs before any accept). Scope is identity-only (openid profile email)
+# and there is deliberately NO audience — unlike bex-mobile above — so a
+# Grafana token carries zero bex-api authority. The secret is never generated
+# or defaulted here: when BEX_OBS_OAUTH_CLIENT_SECRET is missing, provisioning
+# this one client is refused and every client seeded above stands untouched.
+if [ -z "$obs_secret" ]; then
+  echo "refusing to provision OAuth2 client $OBS_CLIENT_ID: BEX_OBS_OAUTH_CLIENT_SECRET is missing or empty (.env or environment); other clients were provisioned normally" >&2
+else
+  obs_body="$(printf '{"client_id":"%s","client_name":"bex observability (Grafana)","client_secret":"%s","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"scope":"openid profile email","token_endpoint_auth_method":"client_secret_basic","subject_type":"public","skip_consent":true}' \
+    "$OBS_CLIENT_ID" "$obs_secret" "$OBS_REDIRECT_URI")"
+  upsert_client "$OBS_CLIENT_ID" "$obs_body"
+
+  # The identity-only posture is load-bearing: empty audience (Hydra always
+  # stores the key) means an obs token carries zero bex-api authority.
+  obs_stored="$(read_client "$OBS_CLIENT_ID")"
+  assert_stored "$obs_stored" "\"$OBS_REDIRECT_URI\"" \
+    "$OBS_CLIENT_ID redirect URI did not round-trip"
+  assert_stored "$obs_stored" '"token_endpoint_auth_method":"client_secret_basic"' \
+    "$OBS_CLIENT_ID is not a client_secret_basic confidential client"
+  assert_stored "$obs_stored" '"audience":[]' \
+    "$OBS_CLIENT_ID audience is not empty — an obs token must carry zero bex-api authority"
+fi
 
 echo "token: POST <hydra-public>/oauth2/token  grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=***"

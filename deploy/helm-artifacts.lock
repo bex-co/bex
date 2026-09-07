@@ -24,3 +24,4 @@ sealed-secrets|2.19.1|https://bitnami.github.io/sealed-secrets|f2a3aa61638f1e23e
 zot|0.1.121|https://zotregistry.dev/helm-charts|7e9fdfa18e4c9f370581eeae37c19a03ceb960857dc8f6f3db1dc3522b9d77ea|sha256:4476fc31b06e14b9386a00b3c9309925b3cc02f7f8ce5105b0bc82b2603a5422
 loki|6.55.0|https://grafana.github.io/helm-charts|f0026f251da5b49cea636a24143dbbadf15b39f51fc4639c9e0d08a4bc975ee3|sha256:e0361dd45bbeedc12f18a0d4d55c81c92cdcda4475e21c316ebe8c379cc9fa54
 kubelet-csr-approver|1.2.14|https://postfinance.github.io/kubelet-csr-approver|4bd637228cd354c1fd8b8e44a0a1c9d7bc9074c01d3eb43c82d39ef11430a090|sha256:d0ea7b27130119945df86d834c0074147d17055549699cef9be92f02de71187e
+grafana|13.2.2|https://grafana-community.github.io/helm-charts|40c4322f98df20865f06289dcd3010ff912dedf974d47239e61a1a6a579ad355|sha256:b929cb66ba5601e57ad7306ff9da6b6454a40fd9b4af81dfe173dca428cf3a98

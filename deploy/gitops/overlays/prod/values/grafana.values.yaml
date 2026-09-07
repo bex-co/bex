@@ -1,0 +1,87 @@
+# Production Grafana: the public observability portal at obs.bex.co plus SSO
+# against the platform Hydra issuer (docs/ADR087-platform-observability-ui.md).
+# Layered over base/values/grafana.values.yaml by the Application patch in
+# ../kustomization.yaml — later valueFiles win. The hostname is role-named like
+# every platform host (api./auth./oauth./dashboard.bex.co, never the tool name,
+# and never under tenant-cookie-scoped onbex.co — ADR087 §2).
+
+# Same public-edge shape as oauth.bex.co (base/values/hydra.values.yaml):
+# Traefik ingress + cert-manager letsencrypt-prod issuance.
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  path: /
+  pathType: Prefix
+  hosts:
+    - obs.bex.co
+  tls:
+    - secretName: grafana-public-tls
+      hosts:
+        - obs.bex.co
+
+# The confidential client secret for Hydra client `bex-obs` (registered
+# idempotently by scripts/auth-bootstrap-client.sh, ADR087 §3) is delivered
+# OUT-OF-BAND: Secret `grafana-oauth` (key `client-secret`) in `monitoring`,
+# SealedSecret custody per docs/ADR016-sealed-secrets.md — never a value in
+# git. GF_* env beats grafana.ini, the chart's idiom for exactly this.
+envValueFrom:
+  GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+    secretKeyRef:
+      name: grafana-oauth
+      key: client-secret
+
+grafana.ini:
+  server:
+    # The OAuth redirect URI is <root_url>/login/generic_oauth — it must match
+    # the exact redirect registered for `bex-obs` (https://obs.bex.co/login/
+    # generic_oauth) or Hydra rejects the flow.
+    root_url: https://obs.bex.co
+  security:
+    cookie_secure: true
+  auth:
+    # Keep the login form: basic auth against the `grafana-admin` Secret is the
+    # BREAK-GLASS path for when Hydra/consent/dashboard is down — exactly the
+    # moment oauth_auto_login's redirect or a hidden form would lock the door
+    # (the escape hatch would be a magic /login?disableAutoLogin URL nobody
+    # remembers mid-incident). One visible OAuth button costs the happy path a
+    # single click; the form's user/password half is break-glass-only because
+    # no other local account can exist (users.allow_sign_up=false in base).
+    disable_login_form: false
+    # ADR087 §4: short sessions so an ops-workspace role change or removal
+    # takes effect at the next login (plus the 1h consent remember window),
+    # never days into a stale session.
+    login_maximum_lifetime_duration: 24h
+    login_maximum_inactive_lifetime_duration: 8h
+  auth.generic_oauth:
+    enabled: true
+    name: bex
+    client_id: bex-obs
+    # Identity-only scopes — no bex-api audience, so a Grafana token carries
+    # zero product-API authority (ADR087 §3). Deliberately no offline_access:
+    # when the short Hydra access token lapses, Grafana re-runs the code flow,
+    # which rides the trusted headless consent path invisibly for a live
+    # dashboard session — and re-evaluates the ops-workspace gate each time,
+    # so demotions propagate at token cadence, not session cadence.
+    scopes: openid profile email
+    auth_url: https://oauth.bex.co/oauth2/auth
+    token_url: https://oauth.bex.co/oauth2/token
+    api_url: https://oauth.bex.co/userinfo
+    # MANDATORY: the consent gate (dashboard hydra-consent.ts pkceSatisfied)
+    # refuses any authorization-code flow that is not PKCE S256.
+    use_pkce: true
+    # Auto-create the Grafana org user on first login: admission is gated
+    # UPSTREAM at consent (only ops-workspace members ever receive a code,
+    # ADR087 §4), so an authenticated operator must not hit a second door.
+    allow_sign_up: true
+    email_attribute_path: email
+    name_attribute_path: name
+    # Role mapping is defense in depth BEHIND the server-side consent gate,
+    # not the gate itself (ADR087 §4): the consent acceptor stamps the
+    # `ops_role` claim with the Grafana role (GrafanaAdmin|Editor|Viewer)
+    # resolved from the ops workspace. strict means an id_token WITHOUT
+    # ops_role cannot log in even if somehow minted.
+    role_attribute_path: ops_role
+    role_attribute_strict: true
+    allow_assign_grafana_admin: true # lets ops_role=GrafanaAdmin confer server admin

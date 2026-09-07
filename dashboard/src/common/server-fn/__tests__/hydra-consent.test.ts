@@ -10,6 +10,10 @@ const DASHBOARD = "https://dashboard.bex.co";
 const SESSION_ID = "session-abc";
 const SUBJECT = "identity-xyz";
 const CHALLENGE = "abc";
+/** bex-api's server-only ops-role verb (docs/ADR087 §4) — deliberately NOT a
+ * Hydra-admin URL so a stray substring match in the mock cannot conflate it
+ * with the consent lookup/accept/reject calls. */
+const OPS_ROLE_URL = "http://bex-api.bex-system.svc:8090/internal/ops-role";
 
 /** The token the consent page embeds: sha256(challenge:session id). */
 const csrf = (challenge = CHALLENGE, sessionID = SESSION_ID) =>
@@ -56,6 +60,12 @@ function mockUpstreams(opts: {
   sessionOk?: boolean;
   /** Overrides the whoami status — e.g. 403, a live session owing a second factor. */
   sessionStatus?: number;
+  /** ADR087 §4 ops-role verb: its response body (default: non-member). */
+  opsBody?: unknown;
+  /** Overrides the verb's status — e.g. 500, bex-api erroring. */
+  opsStatus?: number;
+  /** Simulates a network-level failure reaching the verb (fetch rejects). */
+  opsUnreachable?: boolean;
 }) {
   const calls: { url: string; init?: RequestInit }[] = [];
   vi.stubGlobal(
@@ -65,6 +75,14 @@ function mockUpstreams(opts: {
       if (url.includes("/sessions/whoami")) {
         return new Response(JSON.stringify(opts.sessionBody ?? session()), {
           status: opts.sessionStatus ?? (opts.sessionOk === false ? 401 : 200),
+        });
+      }
+      // Must precede the consent-lookup fallthrough below, or the verb's URL
+      // would be answered with a Hydra consent body.
+      if (url.startsWith(OPS_ROLE_URL)) {
+        if (opts.opsUnreachable) throw new TypeError("fetch failed");
+        return new Response(JSON.stringify(opts.opsBody ?? { member: false }), {
+          status: opts.opsStatus ?? 200,
         });
       }
       if (url.includes("/consent/accept")) {
@@ -96,12 +114,18 @@ beforeEach(() => {
   process.env.HYDRA_ADMIN_URL = ADMIN;
   delete process.env.OAUTH_TRUSTED_CLIENTS;
   delete process.env.OAUTH_PLATFORM_CLIENTS;
+  delete process.env.OAUTH_OPS_CLIENTS;
+  delete process.env.BEX_OPS_ROLE_URL;
+  delete process.env.BEX_OPS_ROLE_TOKEN;
 });
 afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env.HYDRA_ADMIN_URL;
   delete process.env.OAUTH_TRUSTED_CLIENTS;
   delete process.env.OAUTH_PLATFORM_CLIENTS;
+  delete process.env.OAUTH_OPS_CLIENTS;
+  delete process.env.BEX_OPS_ROLE_URL;
+  delete process.env.BEX_OPS_ROLE_TOKEN;
 });
 
 /** A consent GET as the browser makes it: session cookie, challenge in the query. */
@@ -779,5 +803,294 @@ describe("PKCE S256 enforcement (w1/m66 F8)", () => {
     const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
     expect(view).not.toBeInstanceOf(Response);
     expect(accepts(calls)).toHaveLength(0);
+  });
+});
+
+// docs/ADR087-platform-observability-ui.md §4: for a client listed in
+// OAUTH_OPS_CLIENTS (Grafana at obs.bex.co), authentication alone must never
+// become access — Kratos is the CUSTOMER identity pool. Membership in the
+// pinned ops workspace is resolved through bex-api's server-only role verb
+// before ANY accept, including the trusted/skip headless path the skip_consent
+// Grafana registration actually takes, and both entry points run the one
+// shared resolveOpsGate so the policy cannot drift between them.
+describe("ops-workspace gate (ADR087 §4)", () => {
+  const OPS_CLIENT = "bex-obs";
+  const OPS_TOKEN = "ops-verb-token";
+  const DENIED = "https://oauth.bex.co/denied";
+
+  const member = (role: string) => ({
+    member: true,
+    role,
+    email: "operator@bex.co",
+    name: "Op Erator",
+  });
+
+  /** Grafana's consent request as ADR087 §3 registers it: identity-only
+   * scopes, no access-token audience, skip_consent (the headless path). Tests
+   * for the human POST path override skip_consent to false. */
+  const opsConsent = (overrides: Record<string, unknown> = {}) =>
+    consentRequest({
+      requested_scope: ["openid", "profile", "email"],
+      requested_access_token_audience: [],
+      client: {
+        client_id: OPS_CLIENT,
+        client_name: "bex Observability",
+        skip_consent: true,
+      },
+      ...overrides,
+    });
+
+  /** The same client on the human path: not trusted, so the GET renders the
+   * consent card and the decision arrives via POST. */
+  const opsConsentHuman = (overrides: Record<string, unknown> = {}) =>
+    opsConsent({
+      client: {
+        client_id: OPS_CLIENT,
+        client_name: "bex Observability",
+        skip_consent: false,
+      },
+      ...overrides,
+    });
+
+  const approve = {
+    consent_challenge: CHALLENGE,
+    decision: "approve",
+    csrf_token: csrf(),
+  };
+
+  const opsCalls = (calls: { url: string; init?: RequestInit }[]) =>
+    calls.filter((c) => c.url.startsWith(OPS_ROLE_URL));
+
+  beforeEach(() => {
+    process.env.OAUTH_OPS_CLIENTS = OPS_CLIENT;
+    process.env.BEX_OPS_ROLE_URL = OPS_ROLE_URL;
+    process.env.BEX_OPS_ROLE_TOKEN = OPS_TOKEN;
+  });
+
+  const roleClaims: Array<[string, string]> = [
+    ["admin", "GrafanaAdmin"],
+    ["developer", "Editor"],
+    ["viewer", "Viewer"],
+  ];
+
+  for (const [role, opsRole] of roleClaims) {
+    it(`accepts an ops-workspace ${role} headlessly with ops_role=${opsRole} + identity claims`, async () => {
+      const calls = mockUpstreams({
+        lookupBody: opsConsent(),
+        opsBody: member(role),
+      });
+      const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expect((res as Response).status).toBe(302);
+      expect((res as Response).headers.get("Location")).toBe(
+        "https://oauth.bex.co/continue",
+      );
+      const body = JSON.parse(accepts(calls)[0].init?.body as string);
+      expect(body.session).toEqual({
+        id_token: {
+          email: "operator@bex.co",
+          name: "Op Erator",
+          ops_role: opsRole,
+        },
+      });
+      expect(rejects(calls)).toHaveLength(0);
+    });
+
+    it(`accepts an ops-workspace ${role} on the human approve path with the same claims`, async () => {
+      const calls = mockUpstreams({
+        lookupBody: opsConsentHuman(),
+        opsBody: member(role),
+      });
+      const res = await handleConsentDecision(decisionReq(approve));
+      expect(res.status).toBe(303);
+      expect(res.headers.get("Location")).toBe("https://oauth.bex.co/continue");
+      const body = JSON.parse(accepts(calls)[0].init?.body as string);
+      expect(body.session).toEqual({
+        id_token: {
+          email: "operator@bex.co",
+          name: "Op Erator",
+          ops_role: opsRole,
+        },
+      });
+      expect(rejects(calls)).toHaveLength(0);
+    });
+  }
+
+  it("resolves the role from consent.subject with the static bearer — never the request cookie", async () => {
+    const calls = mockUpstreams({
+      lookupBody: opsConsent(),
+      opsBody: member("admin"),
+    });
+    // No cookie at all: the headless path has none (Grafana's redirect carries
+    // only the challenge) — the verb must still be consulted, from the subject
+    // Hydra bound at login.
+    const res = await handleConsent(
+      req(`?consent_challenge=${CHALLENGE}`, null),
+    );
+    expect((res as Response).status).toBe(302);
+    const verb = opsCalls(calls)[0];
+    expect(new URL(verb.url).searchParams.get("subject")).toBe(SUBJECT);
+    expect((verb.init?.headers as Record<string, string>).Authorization).toBe(
+      `Bearer ${OPS_TOKEN}`,
+    );
+  });
+
+  // contributor and billing are real members-model roles (ADR024) that grant
+  // nothing here — a role outside the mapping is a deny, not a fallback.
+  for (const role of ["contributor", "billing"]) {
+    it(`rejects an ops-workspace ${role} with access_denied on the headless path`, async () => {
+      const calls = mockUpstreams({
+        lookupBody: opsConsent(),
+        opsBody: member(role),
+      });
+      const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expect((res as Response).status).toBe(302);
+      expect((res as Response).headers.get("Location")).toBe(DENIED);
+      expect(accepts(calls)).toHaveLength(0);
+      expect(rejects(calls)).toHaveLength(1);
+      expect(JSON.parse(rejects(calls)[0].init?.body as string).error).toBe(
+        "access_denied",
+      );
+    });
+
+    it(`rejects an ops-workspace ${role} on the human approve path too`, async () => {
+      const calls = mockUpstreams({
+        lookupBody: opsConsentHuman(),
+        opsBody: member(role),
+      });
+      const res = await handleConsentDecision(decisionReq(approve));
+      expect(res.status).toBe(303);
+      expect(res.headers.get("Location")).toBe(DENIED);
+      expect(accepts(calls)).toHaveLength(0);
+      expect(JSON.parse(rejects(calls)[0].init?.body as string).error).toBe(
+        "access_denied",
+      );
+    });
+  }
+
+  it("rejects a non-member with access_denied even though Hydra says skip", async () => {
+    const calls = mockUpstreams({
+      lookupBody: opsConsent({ skip: true }),
+      opsBody: { member: false },
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).status).toBe(302);
+    expect((res as Response).headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+    expect(JSON.parse(rejects(calls)[0].init?.body as string).error).toBe(
+      "access_denied",
+    );
+  });
+
+  it("rejects a non-member on the human approve path", async () => {
+    const calls = mockUpstreams({
+      lookupBody: opsConsentHuman(),
+      opsBody: { member: false },
+    });
+    const res = await handleConsentDecision(decisionReq(approve));
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it("rejects when the role verb answers 500 (fail closed, never accept ungated)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: opsConsent(),
+      opsBody: member("admin"),
+      opsStatus: 500,
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it("rejects when the role verb is unreachable (network failure)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: opsConsent(),
+      opsUnreachable: true,
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it("rejects a malformed verb body (member without a role/email/name is a failure)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: opsConsent(),
+      opsBody: { member: true },
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  // Partial wiring is misconfiguration, and misconfiguration fails closed: a
+  // listed ops client must never be accepted ungated just because the verb's
+  // coordinates are missing.
+  it("rejects when BEX_OPS_ROLE_URL is unset for a listed ops client", async () => {
+    delete process.env.BEX_OPS_ROLE_URL;
+    const calls = mockUpstreams({
+      lookupBody: opsConsent(),
+      opsBody: member("admin"),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+    expect(opsCalls(calls)).toHaveLength(0); // it never guessed at a URL
+  });
+
+  it("rejects when BEX_OPS_ROLE_TOKEN is unset for a listed ops client", async () => {
+    delete process.env.BEX_OPS_ROLE_TOKEN;
+    const calls = mockUpstreams({
+      lookupBody: opsConsent(),
+      opsBody: member("admin"),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+    expect(opsCalls(calls)).toHaveLength(0); // no unauthenticated verb call
+  });
+
+  it("rejects when Hydra bound no subject to the challenge", async () => {
+    const calls = mockUpstreams({
+      lookupBody: opsConsent({ subject: "" }),
+      opsBody: member("admin"),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+    expect(opsCalls(calls)).toHaveLength(0);
+  });
+
+  // The byte-identical guarantee: a client outside OAUTH_OPS_CLIENTS gets the
+  // exact pre-ADR087 accept body — no session key, not even an empty one — and
+  // its flow never touches (so never depends on) the ops verb.
+  it("keeps a non-ops client's headless accept body byte-identical, even with the verb down", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({ skip: true }),
+      opsUnreachable: true,
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).status).toBe(302);
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect(body).toEqual({
+      grant_scope: ["openid", "offline_access", "bex.read"],
+      grant_access_token_audience: ["https://api.bex.co/mcp"],
+      remember: true,
+      remember_for: 3600,
+    });
+    expect("session" in body).toBe(false);
+    expect(opsCalls(calls)).toHaveLength(0);
+  });
+
+  it("keeps a non-ops client's human approve unaffected by verb availability", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest(),
+      opsUnreachable: true,
+    });
+    const res = await handleConsentDecision(decisionReq(approve));
+    expect(res.status).toBe(303);
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect("session" in body).toBe(false);
+    expect(opsCalls(calls)).toHaveLength(0);
   });
 });

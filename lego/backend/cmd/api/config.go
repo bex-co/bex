@@ -107,6 +107,14 @@ type Config struct {
 	OAuthPlatformClients []string
 	OAuthAPIScope        string
 
+	// Ops-workspace pin (docs/ADR087-platform-observability-ui.md §4). The
+	// workspace id alone arms the lifecycle guards (delete/suspend refusal,
+	// invite seat/plan-gate exemption); the internal ops-role verb on the
+	// cluster-internal listener additionally needs the static bearer — either
+	// unset leaves that route unregistered (the internal mux's normal 404).
+	OpsWorkspace string // BEX_OPS_WORKSPACE — the pinned tea-* ops workspace id
+	OpsRoleToken string // BEX_OPS_ROLE_TOKEN — static bearer for the ops-role verb
+
 	// Tenant secrets (docs/ADR013-secrets.md).
 	OpenBaoURL string
 	// BEX_OPENBAO_JWT_PATH overrides the pod's projected ServiceAccount token
@@ -315,6 +323,13 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 			"(docs/ADR012-auth.md §7)", cfg.OAuthResource)
 	}
 
+	// Ops-workspace pin (docs/ADR087-platform-observability-ui.md §4).
+	cfg.OpsWorkspace = getenv("BEX_OPS_WORKSPACE")
+	cfg.OpsRoleToken = getenv("BEX_OPS_ROLE_TOKEN")
+	if (cfg.OpsWorkspace == "") != (cfg.OpsRoleToken == "") {
+		p.warnf("WARNING: exactly one of BEX_OPS_WORKSPACE/BEX_OPS_ROLE_TOKEN is set — the internal ops-role verb (docs/ADR087-platform-observability-ui.md §4) stays disabled until both are; the ops-workspace lifecycle guards key on BEX_OPS_WORKSPACE alone")
+	}
+
 	// Secrets.
 	cfg.OpenBaoURL = getenv("BEX_OPENBAO_URL")
 	cfg.OpenBaoJWTPath = getenv("BEX_OPENBAO_JWT_PATH")
@@ -356,7 +371,6 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		if err := requireCPAuth(cfg.CPToken, getenv("BEX_CP_INSECURE")); err != nil {
 			p.errs = append(p.errs, fmt.Errorf("control plane: %w", err))
 		}
-		cfg.CPAddr = p.str("BEX_CP_ADDR", ":8091")
 		// ADR043 D9: BEX_CP_IDENTITY is projected into a label; an invalid value
 		// would fail every namespace apply while ReconcileOnce collects those
 		// errors per-workspace without exiting — the process would come up
@@ -403,6 +417,13 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		cfg.WebhookKeep = p.quietInt("BEX_WEBHOOK_RETENTION_KEEP", "0")
 		cfg.MaxWebhookDeliveriesPerWorkspace = p.zeroableInt(
 			"BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE", webhooks.DefaultMaxDeliveriesPerWorkspace)
+	}
+	// The cluster-internal listener address serves the control plane and/or the
+	// ADR087 ops-role verb; parse it whenever either will listen (a plain
+	// default read with no failure mode — an inert deployment's stale value
+	// still can't fail startup).
+	if cpOn || (cfg.OpsWorkspace != "" && cfg.OpsRoleToken != "" && !cfg.MCPStdio) {
+		cfg.CPAddr = p.str("BEX_CP_ADDR", ":8091")
 	}
 	cfg.BuildNamespace = getenv("BEX_BUILD_NAMESPACE")
 

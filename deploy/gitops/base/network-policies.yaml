@@ -292,6 +292,34 @@ spec:
           port: 8091
 
 ---
+# allow-dashboard-consent-to-cp-api (w5/m86, docs/ADR087-platform-observability-ui.md §4):
+# the dashboard's consent acceptor resolves an ops-gated OIDC client's subject
+# role via bex-api's cluster-internal ops-role verb (:8091, GET
+# /internal/ops-role) before any accept. allow-dashboard-ssr-to-bex-api above
+# only opens :8090, so without this the gate's lookup times out and every obs
+# login is rejected fail-closed — correct but useless. Scoped tightly: only the
+# dashboard namespace, only the CP port; the public :8090 grant stays separate.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dashboard-consent-to-cp-api
+  namespace: bex-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: bex-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: dashboard
+      ports:
+        - protocol: TCP
+          port: 8091
+
+---
 # bex-registry: zot OCI registry on :5000
 # Allowed: bex-system (operator registry administration), bex-build (scoped
 #   build/publish registry access),
@@ -401,3 +429,31 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: bex-system
+
+---
+# The observability portal is the ONLY monitoring pod the edge may reach:
+# obs.bex.co (prod overlay) terminates at Traefik, which forwards to the
+# Grafana pod on :3000 (docs/ADR087-platform-observability-ui.md). Additive to
+# deny-tenant-ingress above, and the same shape as auth's
+# allow-auth-public-edge. Prometheus and Loki stay unreachable from the edge:
+# no Ingress routes to them AND this allow matches only the Grafana pod, so a
+# stray Traefik route could still not expose raw PromQL/LogQL.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-obs-public-edge
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+      app.kubernetes.io/instance: grafana
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - { protocol: TCP, port: 3000 }

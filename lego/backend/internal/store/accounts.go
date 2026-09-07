@@ -76,7 +76,7 @@ func (s *PGStore) AccountDeletionTombstoned(ctx context.Context, subject string)
 
 func accountDispositionWithoutMachines(ctx context.Context, q interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
-}, subject string, machineSubjects []string) ([]AccountWorkspaceDisposition, error) {
+}, subject string, machineSubjects []string, opsWorkspaceID string) ([]AccountWorkspaceDisposition, error) {
 	rows, err := q.Query(ctx, `
 		SELECT t.id, t.name,
 		       (SELECT count(*) FROM tenant_members all_m
@@ -100,6 +100,12 @@ func accountDispositionWithoutMachines(ctx context.Context, q interface {
 			return nil, err
 		}
 		switch {
+		// ADR087 §4: a sole-member OPS workspace must never ride the account-
+		// deletion cascade into teardown — that would lock every operator out
+		// of the observability UI. Classify it blocked (the request refuses up
+		// front, like a shared workspace with no other admin) instead of delete.
+		case members == 1 && opsWorkspaceID != "" && d.ID == opsWorkspaceID:
+			d.Action = AccountWorkspaceBlocked
 		case members == 1:
 			d.Action = AccountWorkspaceDelete
 		case otherAdmins > 0:
@@ -113,7 +119,7 @@ func accountDispositionWithoutMachines(ctx context.Context, q interface {
 }
 
 func (s *PGStore) PreviewAccountDeletion(ctx context.Context, subject string, machineSubjects []string) ([]AccountWorkspaceDisposition, error) {
-	return accountDispositionWithoutMachines(ctx, s.Pool, subject, machineSubjects)
+	return accountDispositionWithoutMachines(ctx, s.Pool, subject, machineSubjects, s.OpsWorkspaceID)
 }
 
 // BeginAccountDeletion serializes against membership mutations with the same
@@ -205,7 +211,7 @@ func (s *PGStore) BeginAccountDeletion(ctx context.Context, subject, email strin
 		if !slices.Equal(ids, lockedIDs) {
 			return fmt.Errorf("account memberships changed during deletion preflight: %w", ErrConflict)
 		}
-		plan, err := accountDispositionWithoutMachines(ctx, tx, subject, machineSubjects)
+		plan, err := accountDispositionWithoutMachines(ctx, tx, subject, machineSubjects, s.OpsWorkspaceID)
 		if err != nil {
 			return err
 		}

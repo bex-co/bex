@@ -314,6 +314,21 @@ func NewAccountDeletionPendingError() *CodedError {
 	return NewConflictError(CodeAccountDeletionPending, "account deletion is in progress", nil)
 }
 
+// CodeOpsWorkspaceProtected is the stable refusal when a product-lifecycle
+// verb targets the pinned platform ops workspace (BEX_OPS_WORKSPACE,
+// docs/ADR087-platform-observability-ui.md §4): its membership is the
+// observability-UI ACL, so deleting or suspending it would lock every operator
+// out of Grafana at once. Declared in core because two features refuse with it
+// — workspaces (delete/teardown) and billing (dunning suspension).
+const CodeOpsWorkspaceProtected = "OPS_WORKSPACE_PROTECTED"
+
+// NewOpsWorkspaceProtectedError is the shared ops-workspace refusal — a 409:
+// the operation is valid, the target's platform role makes it unsafe.
+func NewOpsWorkspaceProtectedError() *CodedError {
+	return NewConflictError(CodeOpsWorkspaceProtected,
+		"this workspace is the pinned platform ops workspace; deleting or suspending it would lock every operator out of the observability UI", nil)
+}
+
 // NewUnavailableError returns a machine-readable 503 for a verb whose backing
 // dependency is not wired — the deployment never configured it, as opposed to
 // it having failed.

@@ -186,6 +186,25 @@ spec:
                   key: uri
             - name: BEX_CP_APPS_NAMESPACE # namespace the projector writes App CRs into
               value: default
+            # Ops-workspace gate (w5/m86, docs/ADR087-platform-observability-ui.md §4):
+            # the designated tea-* workspace whose membership is the Grafana ACL,
+            # plus the static bearer for the cluster-internal ops-role verb on
+            # :8091 (consumed only by the dashboard's consent acceptor). Both
+            # ride the out-of-band bex-ops Secret; either absent => the route is
+            # not registered and the workspace guards are inert — byte-identical
+            # prior behavior.
+            - name: BEX_OPS_WORKSPACE
+              valueFrom:
+                secretKeyRef:
+                  name: bex-ops
+                  key: BEX_OPS_WORKSPACE
+                  optional: true
+            - name: BEX_OPS_ROLE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bex-ops
+                  key: BEX_OPS_ROLE_TOKEN
+                  optional: true
             # Direct Stripe Billing (w7/m50, docs/ADR040-billing-metronome.md):
             # all values arrive together in the out-of-band bex-stripe Secret
             # installed by scripts/stripe-billing-secret.sh. Every reference is

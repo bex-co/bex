@@ -186,6 +186,12 @@ patches:
         path: /spec/source/helm/parameters
         value:
           - { name: alertmanager.enabled, value: "false" }
+  # Grafana (docs/ADR087-platform-observability-ui.md §5) needs no local layer:
+  # the obs.bex.co ingress + OIDC live ONLY in the prod overlay values, so the
+  # base already IS the local admin-only shape — cluster-internal Service,
+  # break-glass `grafana-admin` Secret (created by hand on the mock; unlike
+  # alertmanager-smtp it needs no external credential, so the pod is not
+  # permanently pending — one kubectl command unblocks it).
   # Kratos/Hydra: layer the local values files (hosts, plain HTTP, dev mode)
   # over the base values — Argo merges valueFiles in order, later wins.
   - target:
