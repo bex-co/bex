@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/common/lib/format";
 import { Card, CardContent } from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -11,10 +12,7 @@ import {
   deployTriggerKey,
   preDeployStatusKey,
 } from "@/features/deploys/lib/deploy-status";
-import {
-  formatDeployDuration,
-  formatDeployTimestamp,
-} from "@/features/deploys/lib/deploy-presentation";
+import { formatDeployDuration } from "@/features/deploys/lib/deploy-presentation";
 import type { DeployView } from "../hooks/use-deploy";
 
 function triggerLabel(
@@ -65,24 +63,24 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
   }
   const preDeploy = preDeployStatusKey(deploy.preDeployStatus);
   const commitCreatedAt = hydrated
-    ? formatDeployTimestamp(deploy.commitCreatedAt)
+    ? formatDateTime(deploy.commitCreatedAt)
     : null;
   const facts = [
     {
       label: t("deploys.created"),
-      value: hydrated ? formatDeployTimestamp(deploy.createdAt) : null,
+      value: hydrated ? formatDateTime(deploy.createdAt) : null,
     },
     {
       label: t("deploys.updated"),
-      value: hydrated ? formatDeployTimestamp(deploy.updatedAt) : null,
+      value: hydrated ? formatDateTime(deploy.updatedAt) : null,
     },
     {
       label: t("deploys.started"),
-      value: hydrated ? formatDeployTimestamp(deploy.startedAt) : null,
+      value: hydrated ? formatDateTime(deploy.startedAt) : null,
     },
     {
       label: t("deploys.finished"),
-      value: hydrated ? formatDeployTimestamp(deploy.finishedAt) : null,
+      value: hydrated ? formatDateTime(deploy.finishedAt) : null,
     },
     {
       // Duration is an elapsed span, not a wall-clock reading — timezone-neutral,
@@ -151,7 +149,10 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
               // unbroken text run, so the commit message and the date ran
               // together — "…Docker build contextAugust 22, 2026 at 6:16 PM" —
               // for a screen reader and for anyone copying the line.
-              <span className="text-muted-foreground"> · {commitCreatedAt}</span>
+              <span className="text-muted-foreground">
+                {" "}
+                · {commitCreatedAt}
+              </span>
             )}
           </p>
         )}

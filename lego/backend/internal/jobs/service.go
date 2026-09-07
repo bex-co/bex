@@ -310,7 +310,7 @@ func (s *Service) createK8sJob(ctx context.Context, jobID, namespace, image, sta
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                corev1.RestartPolicyNever,
-					AutomountServiceAccountToken: ptr(false),
+					AutomountServiceAccountToken: new(bool),
 					Containers: []corev1.Container{
 						{
 							Name:    "job",
@@ -418,9 +418,6 @@ func k8sJobStatus(kj *batchv1.Job) string {
 	}
 	return store.JobPending
 }
-
-// ptr returns a pointer to v — the one-liner predeploy uses.
-func ptr[T any](v T) *T { return &v }
 
 // StatusValid reports whether s is one of the Render job status values.
 func StatusValid(s string) bool {

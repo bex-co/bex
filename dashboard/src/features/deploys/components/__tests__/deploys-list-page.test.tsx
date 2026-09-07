@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/common/lib/format";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -9,7 +10,6 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { DeploysListPage } from "../deploys-list-page";
-import { formatDeployTimestamp } from "../../lib/deploy-presentation";
 import type { DeployRow, UseDeploysResult } from "../../hooks/use-deploys";
 
 const state: UseDeploysResult = {
@@ -235,25 +235,19 @@ describe("DeploysListPage", () => {
     renderPage();
 
     // The live deploy is stamped with its finish time, not createdAt.
-    const deployedAt = formatDeployTimestamp("2026-07-16T00:01:30Z")!;
+    const deployedAt = formatDateTime("2026-07-16T00:01:30Z")!;
     expect(
       await screen.findByText(`Deployed ${deployedAt}`),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        `Canceled ${formatDeployTimestamp("2026-07-16T00:00:45Z")!}`,
-      ),
+      screen.getByText(`Canceled ${formatDateTime("2026-07-16T00:00:45Z")!}`),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        `Failed ${formatDeployTimestamp("2026-07-16T00:02:09Z")!}`,
-      ),
+      screen.getByText(`Failed ${formatDateTime("2026-07-16T00:02:09Z")!}`),
     ).toBeInTheDocument();
     // The queued deploy hasn't finished — it shows when it was created.
     expect(
-      screen.getByText(
-        `Created ${formatDeployTimestamp("2026-07-16T00:00:00Z")!}`,
-      ),
+      screen.getByText(`Created ${formatDateTime("2026-07-16T00:00:00Z")!}`),
     ).toBeInTheDocument();
     // Exactly one row earned the "Deployed" verb.
     expect(screen.getAllByText(/^Deployed /)).toHaveLength(1);
@@ -268,7 +262,7 @@ describe("DeploysListPage", () => {
 
     expect(
       await screen.findByText(
-        `Deployed ${formatDeployTimestamp("2026-07-16T00:00:00Z")!}`,
+        `Deployed ${formatDateTime("2026-07-16T00:00:00Z")!}`,
       ),
     ).toBeInTheDocument();
   });

@@ -224,7 +224,7 @@ func (s *PGStore) EnqueuePushNotifications(ctx context.Context, items []PushNoti
 		return fmt.Errorf("push watermark: %w", ErrInvalid)
 	}
 	for _, item := range items {
-		if err := validatePushNotification(item.Notification); err != nil {
+		if err := ValidatePushNotification(item.Notification); err != nil {
 			return err
 		}
 		for _, deviceID := range item.DeviceIDs {
@@ -573,7 +573,10 @@ var pushEventRules = map[string]pushEventRule{
 
 var pushUrgencies = map[string]bool{"routine": true, "important": true, "critical": true}
 
-func validatePushNotification(notification PushNotification) error {
+// ValidatePushNotification is the producer-side admission seam. Feed
+// projections must be able to drop one malformed logical item without making
+// the shared watermark retry that poison event forever.
+func ValidatePushNotification(notification PushNotification) error {
 	rule, known := pushEventRules[notification.EventType]
 	eventKind, eventOK := ids.KindOf(notification.EventID)
 	resourceKind, resourceOK := ids.KindOf(notification.ResourceID)
@@ -591,13 +594,6 @@ func validatePushNotification(notification PushNotification) error {
 		return fmt.Errorf("push notification: %w", ErrInvalid)
 	}
 	return nil
-}
-
-// ValidatePushNotification is the producer-side admission seam. Feed
-// projections must be able to drop one malformed logical item without making
-// the shared watermark retry that poison event forever.
-func ValidatePushNotification(notification PushNotification) error {
-	return validatePushNotification(notification)
 }
 
 // safePushStoreError never returns driver detail because due-delivery reads

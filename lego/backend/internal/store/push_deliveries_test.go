@@ -46,7 +46,7 @@ func TestValidatePushNotificationFailsClosed(t *testing.T) {
 	valid := validPushNotificationForTest(
 		"tea-c185th5c2rvvnhbfiltg", "alice", "srv-c185th5c2rvvnhbfiltg", now,
 	)
-	if err := validatePushNotification(valid); err != nil {
+	if err := ValidatePushNotification(valid); err != nil {
 		t.Fatalf("valid notification: %v", err)
 	}
 	tests := []struct {
@@ -64,7 +64,7 @@ func TestValidatePushNotificationFailsClosed(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			notification := valid
 			test.mutate(&notification)
-			if err := validatePushNotification(notification); err == nil {
+			if err := ValidatePushNotification(notification); err == nil {
 				t.Fatal("invalid notification was accepted")
 			}
 		})
