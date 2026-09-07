@@ -277,8 +277,10 @@ describe("HomePage", () => {
     expect(within(table).getByText("sessions-cache")).toBeInTheDocument();
 
     // Each kind has a desktop Type-cell badge and a mobile badge below its
-    // name; responsive display classes ensure exactly one is visible.
-    expect(within(table).getAllByText("Service")).toHaveLength(2);
+    // name; responsive display classes ensure exactly one is visible. A service
+    // row shows its SPECIFIC type — the web_service fixture badges "Web Service",
+    // not a generic "Service" (w4/047).
+    expect(within(table).getAllByText("Web Service")).toHaveLength(2);
     expect(within(table).getAllByText("Database")).toHaveLength(2);
     expect(within(table).getAllByText("Key Value")).toHaveLength(2);
 
