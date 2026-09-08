@@ -2046,6 +2046,35 @@ if [ -n "$ssh_proxy_version" ] && [ "$ssh_proxy_version" != "null" ]; then
   fi
 fi
 
+# w2/m90: the Web Shell Ingress and the shared bex-shell-ticket Secret wiring are
+# one activation contract. The route alone is not enough (m55 shipped it; the
+# edge stayed dark until the Secret existed). Keep the public host/path, the
+# gateway listener addr, and both Deployments' optional Secret refs in lockstep
+# so a future manifest edit cannot silently strand wss://ssh.bex.co/shell again.
+shell_ingress_host="$(yq -N 'select(.kind == "Ingress" and .metadata.name == "ssh-shell") | .spec.rules[0].host' lego/operator/config/ssh/ingress-shell.yaml)"
+shell_ingress_path="$(yq -N 'select(.kind == "Ingress" and .metadata.name == "ssh-shell") | .spec.rules[0].http.paths[0].path' lego/operator/config/ssh/ingress-shell.yaml)"
+shell_ingress_port="$(yq -N 'select(.kind == "Ingress" and .metadata.name == "ssh-shell") | .spec.rules[0].http.paths[0].backend.service.port.number' lego/operator/config/ssh/ingress-shell.yaml)"
+shell_ws_addr="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[].env[]? | select(.name == "BEX_SHELL_WS_ADDR") | .value' lego/operator/config/ssh/deployment.yaml)"
+shell_gw_secret="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[].env[]? | select(.name == "BEX_SHELL_TICKET_SECRET") | .valueFrom.secretKeyRef.name' lego/operator/config/ssh/deployment.yaml)"
+shell_api_secret="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[].env[]? | select(.name == "BEX_SHELL_TICKET_SECRET") | .valueFrom.secretKeyRef.name' lego/operator/config/api/deployment.yaml)"
+shell_api_ws_url="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[].env[]? | select(.name == "BEX_SHELL_WS_URL") | .value' lego/operator/config/api/deployment.yaml)"
+if [ "$shell_ingress_host" != "ssh.bex.co" ] || [ "$shell_ingress_path" != "/shell" ] || [ "$shell_ingress_port" != "8080" ]; then
+  echo "FAIL: ssh-shell Ingress is host='$shell_ingress_host' path='$shell_ingress_path' port='$shell_ingress_port', want ssh.bex.co /shell → 8080 (w2/m90)" >&2
+  fail=1
+fi
+if [ "$shell_ws_addr" != ":8080" ]; then
+  echo "FAIL: gateway BEX_SHELL_WS_ADDR='$shell_ws_addr', want :8080 to match the ssh-shell Ingress backend (w2/m90)" >&2
+  fail=1
+fi
+if [ "$shell_gw_secret" != "bex-shell-ticket" ] || [ "$shell_api_secret" != "bex-shell-ticket" ]; then
+  echo "FAIL: Web Shell ticket Secret refs are gateway='$shell_gw_secret' api='$shell_api_secret', want both bex-shell-ticket (w2/m90)" >&2
+  fail=1
+fi
+if [ "$shell_api_ws_url" != "wss://ssh.bex.co/shell" ]; then
+  echo "FAIL: bex-api BEX_SHELL_WS_URL='$shell_api_ws_url', want wss://ssh.bex.co/shell (w2/m90)" >&2
+  fail=1
+fi
+
 deny_types="$(yq -N 'select(.kind == "NetworkPolicy" and .metadata.name == "default-deny" and .metadata.namespace == "bex-build") | .spec.policyTypes | sort | join(",")' "$BUILD_BOUNDARY")"
 if [ "$deny_types" != "Egress,Ingress" ]; then
   echo "FAIL: bex-build default-deny must select both ingress and egress" >&2

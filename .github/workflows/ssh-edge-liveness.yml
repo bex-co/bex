@@ -18,7 +18,11 @@ name: Production edge liveness
 # failure class — an acceptance script (scripts/logs-verify.sh) that was written,
 # never scheduled, and so never noticed that type=request had been silently empty
 # for every tenant service in production. w2/m85 adds the public fallback-TLS
-# synthetic to the same carrier. Three probes, one schedule.
+# synthetic to the same carrier. w2/m90 adds the Web Shell WS-edge probe
+# (scripts/shell-ws-probe.sh): ticketless upgrade to wss://ssh.bex.co/shell must
+# get the deterministic 401 "missing ticket" refusal — alive-but-refusing — so a
+# dead or unactivated WS edge cannot fail silently the way the TCP edge did
+# pre-m132. Four probes, one schedule.
 
 on:
   workflow_dispatch:
@@ -31,6 +35,10 @@ on:
         description: "Unknown first-level onbex.co hostname to probe"
         required: false
         default: notfound.onbex.co
+      shell_ws_url:
+        description: "Web Shell WS edge to probe"
+        required: false
+        default: wss://ssh.bex.co/shell
   schedule:
     # Every six hours. "Unnoticed for weeks" is the bar this must beat; a dead
     # edge now surfaces within hours, not on the next human's manual check.
@@ -49,6 +57,7 @@ jobs:
       # resolves standalone with the workspace off.
       GOWORK: "off"
       SSH_EDGE: ${{ github.event.inputs.address || 'ssh.bex.co:22' }}
+      SHELL_WS_URL: ${{ github.event.inputs.shell_ws_url || 'wss://ssh.bex.co/shell' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -143,8 +152,43 @@ jobs:
             gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "$ONBEX_PROBE_HOST again has trusted wildcard TLS and returns the intentional 404."
           fi
+      - name: Probe the Web Shell WS edge for refusal-shape
+        id: shell_ws_probe
+        if: always()
+        run: |
+          if bash scripts/shell-ws-probe.sh "$SHELL_WS_URL" > shell-ws-probe.txt 2>&1; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "down=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat shell-ws-probe.txt
+      - name: Open or update the Web Shell WS tracking issue
+        if: always() && steps.shell_ws_probe.outputs.down == 'true'
+        run: |
+          gh label create shell-ws-edge-down --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "wss://ssh.bex.co/shell is not returning the 401 missing-ticket refusal (w2/m90)" --force
+          body="$SHELL_WS_URL did not return the deterministic 401 \"missing ticket\" refusal — the Web Shell edge is dead, misrouted, or unactivated."$'\n\n'
+          body+="Probe output:"$'\n\n```\n'"$(cat shell-ws-probe.txt)"$'\n```\n\n'
+          body+="Alive-but-refusing (401 missing ticket) is healthy; timeout/refused/TLS/wrong-route/503 are not. Confirm Ingress \`bex-ssh-shell\`, cert \`bex-ssh-shell-tls\`, gateway listener on :8080, and Secret \`bex-shell-ticket\` (scripts/shell-ticket-secret.sh)."
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label shell-ws-edge-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Web Shell WS edge is down: no 401 refusal from $SHELL_WS_URL" \
+              --label shell-ws-edge-down \
+              --body "$body"
+          fi
+      - name: Close the Web Shell WS tracking issue once the edge recovers
+        if: always() && steps.shell_ws_probe.outputs.down == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label shell-ws-edge-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "$SHELL_WS_URL again returns 401 missing ticket (alive-but-refusing)."
+          fi
       - name: Fail the run when a public edge is unhealthy
-        if: always() && (steps.probe.outputs.down == 'true' || steps.tls_probe.outputs.down == 'true')
+        if: always() && (steps.probe.outputs.down == 'true' || steps.tls_probe.outputs.down == 'true' || steps.shell_ws_probe.outputs.down == 'true')
         env:
           ONBEX_PROBE_HOST: ${{ github.event.inputs.host || 'notfound.onbex.co' }}
         run: |
@@ -153,6 +197,9 @@ jobs:
           fi
           if [[ "${{ steps.tls_probe.outputs.down }}" == true ]]; then
             echo "::error::$ONBEX_PROBE_HOST fallback TLS is invalid, expiring, or no longer returns 404" >&2
+          fi
+          if [[ "${{ steps.shell_ws_probe.outputs.down }}" == true ]]; then
+            echo "::error::$SHELL_WS_URL did not return 401 missing ticket — Web Shell WS edge is down" >&2
           fi
           exit 1
 
