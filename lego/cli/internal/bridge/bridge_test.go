@@ -106,6 +106,51 @@ func TestApplyTreatsBlankRenderVariablesAsUnset(t *testing.T) {
 	}
 }
 
+func TestApplyDisablesUpstreamAnalyticsByDefault(t *testing.T) {
+	env := map[string]string{bexHost: "http://127.0.0.1:8090/v1/"}
+	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got, want := env[renderDisableAnalytics], "1"; got != want {
+		t.Errorf("%s = %q, want %q — bex must not ship default-on Render telemetry", renderDisableAnalytics, got, want)
+	}
+}
+
+func TestApplyKeepsExplicitAnalyticsOptIn(t *testing.T) {
+	// A user who explicitly re-enables upstream analytics (falsey opt-out) has
+	// expressed intent; the launcher must not silently override it back to 1.
+	env := map[string]string{renderDisableAnalytics: "0"}
+	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got, want := env[renderDisableAnalytics], "0"; got != want {
+		t.Errorf("%s = %q, want %q (explicit user setting preserved)", renderDisableAnalytics, got, want)
+	}
+}
+
+func TestApplyTreatsBlankAnalyticsOptOutAsUnset(t *testing.T) {
+	// A profile that exports RENDER_CLI_DISABLE_ANALYTICS= (blank) must not
+	// leave telemetry on — blank counts as unset, so the launcher fills in "1".
+	env := map[string]string{renderDisableAnalytics: "", doNotTrack: ""}
+	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got, want := env[renderDisableAnalytics], "1"; got != want {
+		t.Errorf("%s = %q, want %q (blank opt-out is unset)", renderDisableAnalytics, got, want)
+	}
+}
+
+func TestApplyLeavesAnalyticsAloneUnderDoNotTrack(t *testing.T) {
+	// DO_NOT_TRACK already denies consent upstream, so there is nothing to add.
+	env := map[string]string{doNotTrack: "1"}
+	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got, exists := env[renderDisableAnalytics]; exists {
+		t.Errorf("%s = %q, want unset (DO_NOT_TRACK already opts out)", renderDisableAnalytics, got)
+	}
+}
+
 func TestApplyReportsHomeLookupFailure(t *testing.T) {
 	err := apply(lookupFrom(map[string]string{}), setInto(map[string]string{}), func() (string, error) {
 		return "", errors.New("home unavailable")

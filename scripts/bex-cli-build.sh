@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 output_dir="${1:?usage: scripts/bex-cli-build.sh <output-directory>}"
-readonly upstream_version=2.24.0
+readonly upstream_version=2.26.0
 # BEX_CLI_VERSION is bex's own release identity — the bex-cli/vX.Y.Z tag or
 # a bare X.Y.Z, normalized here; local builds stay "dev". It is distinct from
 # the pinned upstream version, which also names the User-Agent.

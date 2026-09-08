@@ -20,7 +20,7 @@ Options via environment: `BEX_VERSION=0.1.0` pins an exact version, `BEX_INSTALL
 brew install bex-co/tap/bex     # upgrades later via: brew upgrade bex
 ```
 
-Confirm the install with `bex -v` — it prints bex's release version (e.g. `bex v0.1.0` plus `compatible with Render CLI v2.24.0`) and tells you when a newer release exists.
+Confirm the install with `bex -v` — it prints bex's release version (e.g. `bex v0.1.0` plus `compatible with Render CLI v2.26.0`) and tells you when a newer release exists.
 
 Both channels consume the [`bex-cli/v*` GitHub releases](https://github.com/bex-co/bex/releases); every release ships four platform archives, `checksums.txt`, and a keyless cosign signature bundle — the provenance-verification command is in the [Bex CLI guide](../../docs/bex-cli.md). Windows is not currently built; use WSL.
 
@@ -55,7 +55,7 @@ BEX_HOST=http://localhost:8090/v1/ bex workspaces -o json
 
 ## Update
 
-`bex -v` prints bex's release identity (`bex vX.Y.Z` plus `compatible with Render CLI v2.24.0`) and reports when a newer [`bex-cli/v*` release](https://github.com/bex-co/bex/releases) exists; after normal commands the same hint appears passively (at most once per 24h, TTY only, never in CI, disable with `BEX_NO_UPDATE_NOTIFIER=1`).
+`bex -v` prints bex's release identity (`bex vX.Y.Z` plus `compatible with Render CLI v2.26.0`) and reports when a newer [`bex-cli/v*` release](https://github.com/bex-co/bex/releases) exists; after normal commands the same hint appears passively (at most once per 24h, TTY only, never in CI, disable with `BEX_NO_UPDATE_NOTIFIER=1`).
 
 To update, replace the binary with the newer release:
 
