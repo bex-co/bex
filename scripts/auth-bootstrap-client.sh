@@ -3,7 +3,7 @@
 # secretless public client hard-coded by the official Render CLI, the secretless
 # first-party `bex-desktop` editor client (Zed), the secretless first-party
 # `bex-mobile` native client, and the confidential `bex-obs` Grafana client
-# (docs/ADR087-platform-observability-ui.md §3). None is a tenant-created API
+# (docs/ADR088-platform-observability-ui.md §3). None is a tenant-created API
 # key. Idempotent: re-running resets every client to its intended grants without
 # minting a public-client secret.
 #
@@ -36,7 +36,7 @@ MOBILE_CLIENT_ID=bex-mobile
 MOBILE_REDIRECT_URI=co.bex.mobile:/oauth2redirect
 MOBILE_AUDIENCE="${BEX_OAUTH_RESOURCE:-https://api.bex.co/mcp}"
 OBS_CLIENT_ID=bex-obs
-# Byte-exact Grafana generic_oauth callback (ADR087 §3) — the single entry.
+# Byte-exact Grafana generic_oauth callback (ADR088 §3) — the single entry.
 OBS_REDIRECT_URI=https://obs.bex.co/login/generic_oauth
 DEVICE_GRANT=urn:ietf:params:oauth:grant-type:device_code
 NS="${BEX_AUTH_NAMESPACE:-auth}"
@@ -274,9 +274,9 @@ assert_stored "$mobile_stored" '"token_endpoint_auth_method":"none"' \
 assert_stored "$mobile_stored" "\"$MOBILE_AUDIENCE\"" \
   "$MOBILE_CLIENT_ID audience did not round-trip"
 
-# ---- First-party observability client (Grafana at obs.bex.co, ADR087 §3) ----
+# ---- First-party observability client (Grafana at obs.bex.co, ADR088 §3) ----
 # Grafana signs in against the platform issuer as one more first-party client
-# (docs/ADR087-platform-observability-ui.md): confidential, client_secret_basic
+# (docs/ADR088-platform-observability-ui.md): confidential, client_secret_basic
 # (Grafana generic_oauth authenticates with HTTP basic by default), the exact
 # generic_oauth callback, and skip_consent=true riding every upsert (the
 # headless trusted path through the consent acceptor — the ops-workspace gate

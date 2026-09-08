@@ -107,7 +107,7 @@ type Config struct {
 	OAuthPlatformClients []string
 	OAuthAPIScope        string
 
-	// Ops-workspace pin (docs/ADR087-platform-observability-ui.md §4). The
+	// Ops-workspace pin (docs/ADR088-platform-observability-ui.md §4). The
 	// workspace id alone arms the lifecycle guards (delete/suspend refusal,
 	// invite seat/plan-gate exemption); the internal ops-role verb on the
 	// cluster-internal listener additionally needs the static bearer — either
@@ -323,11 +323,11 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 			"(docs/ADR012-auth.md §7)", cfg.OAuthResource)
 	}
 
-	// Ops-workspace pin (docs/ADR087-platform-observability-ui.md §4).
+	// Ops-workspace pin (docs/ADR088-platform-observability-ui.md §4).
 	cfg.OpsWorkspace = getenv("BEX_OPS_WORKSPACE")
 	cfg.OpsRoleToken = getenv("BEX_OPS_ROLE_TOKEN")
 	if (cfg.OpsWorkspace == "") != (cfg.OpsRoleToken == "") {
-		p.warnf("WARNING: exactly one of BEX_OPS_WORKSPACE/BEX_OPS_ROLE_TOKEN is set — the internal ops-role verb (docs/ADR087-platform-observability-ui.md §4) stays disabled until both are; the ops-workspace lifecycle guards key on BEX_OPS_WORKSPACE alone")
+		p.warnf("WARNING: exactly one of BEX_OPS_WORKSPACE/BEX_OPS_ROLE_TOKEN is set — the internal ops-role verb (docs/ADR088-platform-observability-ui.md §4) stays disabled until both are; the ops-workspace lifecycle guards key on BEX_OPS_WORKSPACE alone")
 	}
 
 	// Secrets.
@@ -419,7 +419,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 			"BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE", webhooks.DefaultMaxDeliveriesPerWorkspace)
 	}
 	// The cluster-internal listener address serves the control plane and/or the
-	// ADR087 ops-role verb; parse it whenever either will listen (a plain
+	// ADR088 ops-role verb; parse it whenever either will listen (a plain
 	// default read with no failure mode — an inert deployment's stale value
 	// still can't fail startup).
 	if cpOn || (cfg.OpsWorkspace != "" && cfg.OpsRoleToken != "" && !cfg.MCPStdio) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# End-to-end ADR087 ops-workspace consent gate check
-# (docs/ADR087-platform-observability-ui.md §4-5, w5/m86): drives the Grafana
+# End-to-end ADR088 ops-workspace consent gate check
+# (docs/ADR088-platform-observability-ui.md §4-5, w5/m86): drives the Grafana
 # (`bex-obs`) OAuth flow against REAL components — throwaway Hydra + Kratos +
 # OpenFGA containers, the real dashboard consent acceptor (OAUTH_OPS_CLIENTS),
 # and the real bex-api serving the internal ops-role verb on its DECOUPLED
@@ -17,7 +17,7 @@
 #      https://obs.bex.co/login/generic_oauth — captured, NEVER fetched
 #   -> token exchange (client_secret_basic + PKCE verifier) -> claims.
 #
-# Both verdicts (ADR087 §4):
+# Both verdicts (ADR088 §4):
 #   * ALLOW — user A holds `user:<id> admin workspace:tea-obse2e`: the flow
 #     completes headlessly and the id_token AND /userinfo carry
 #     ops_role=GrafanaAdmin plus email/name stamped from the Kratos identity;
@@ -63,7 +63,7 @@ FGA_URL="http://localhost:$FGA_PORT"
 OPS_VERB="http://localhost:$CP_PORT/internal/ops-role"
 
 OBS_CLIENT=bex-obs
-# Byte-exact Grafana generic_oauth callback (ADR087 §3) —
+# Byte-exact Grafana generic_oauth callback (ADR088 §3) —
 # auth-bootstrap-client.sh registers exactly this, and Hydra will redirect to
 # exactly this; the walk below stops on the prefix instead of fetching it.
 OBS_REDIRECT=https://obs.bex.co/login/generic_oauth
@@ -204,7 +204,7 @@ serve:
       allow_credentials: true
   admin:
     base_url: http://kratos:4434/
-# Kratos itself accepts Hydra login challenges (the w4/m9 bridge ADR087 §3
+# Kratos itself accepts Hydra login challenges (the w4/m9 bridge ADR088 §3
 # rides: "login rides the existing Kratos-native bridge").
 oauth2_provider:
   url: http://hydra:4445
@@ -410,7 +410,7 @@ print(next(n['attributes']['value'] for n in f['ui']['nodes'] if n['attributes']
 # login -> wherever the consent acceptor sends us (the ACCEPT continue chain
 # ends at the captured Grafana callback with a code; a REJECT ends there with
 # error=access_denied). Identity-only scopes and no audience parameter — the
-# registered ADR087 §3 shape; PKCE S256 because the consent gate refuses
+# registered ADR088 §3 shape; PKCE S256 because the consent gate refuses
 # anything less (pkceSatisfied).
 authorize() { # state jar email -> final url on stdout
   local state="$1" jar="$2" email="$3" final challenge cont
@@ -516,7 +516,7 @@ assert_denied "$final" "the billing-role flow"
 echo "  ✓ billing is real membership but no observability role — absence from the map IS the deny"
 
 echo
-echo "✓ ADR087 §4-5 end-to-end: auth-bootstrap-client.sh registered bex-obs ->"
+echo "✓ ADR088 §4-5 end-to-end: auth-bootstrap-client.sh registered bex-obs ->"
 echo "  PKCE code flow through Kratos login and the dashboard's ops-gated HEADLESS"
 echo "  consent (role resolved via bex-api's decoupled /internal/ops-role, no CP DB)"
 echo "  -> id_token + userinfo carry ops_role/email/name for the admin member;"

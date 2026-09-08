@@ -1,4 +1,4 @@
-# ADR087 — Platform observability UI: Grafana at obs.bex.co behind the ops-workspace gate
+# ADR088 — Platform observability UI: Grafana at obs.bex.co behind the ops-workspace gate
 
 **Status:** Accepted (2026-09-07). Source: platform-monitoring discussion 2026-09-07 (w5). Composes with [ADR001](ADR001-go-and-gitops.md) (product ≠ GitOps), [ADR010](ADR010-observability.md) (customer-facing logs/metrics), [ADR012](ADR012-auth.md) (Ory Kratos + Hydra), [ADR024](ADR024-members.md) (workspace members & roles), and the [ADR072](ADR072-security-review-round7.md) §1 `onbex.co` cookie-isolation disposition.
 

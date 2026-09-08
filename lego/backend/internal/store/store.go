@@ -569,7 +569,7 @@ type Store interface {
 type PGStore struct {
 	Pool *pgxpool.Pool
 	// OpsWorkspaceID pins the platform ops workspace (BEX_OPS_WORKSPACE,
-	// docs/ADR087-platform-observability-ui.md §4). Two store-level guards key
+	// docs/ADR088-platform-observability-ui.md §4). Two store-level guards key
 	// on it: invite redemption exempts it from seat/plan gating
 	// (planAllowsJoin — a cap must never silently block onboarding an
 	// operator), and account-deletion disposition classifies a sole-member ops

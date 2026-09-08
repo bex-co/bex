@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package opsrole is the ADR087 §4 server-only ops-role verb: "what is subject
+// Package opsrole is the ADR088 §4 server-only ops-role verb: "what is subject
 // S's role in the pinned ops workspace" — the ADR024 role tuples read from
 // OpenFGA plus a Kratos admin identity lookup, guarded by a static bearer.
 //
@@ -25,7 +25,7 @@ limitations under the License.
 // acceptor (dashboard SSR) calls this verb to gate the Grafana OAuth client
 // without talking to OpenFGA itself; the verb reports the RAW role — the
 // contributor/billing deny policy lives in the acceptor, so policy stays in
-// one place (docs/ADR087-platform-observability-ui.md §4).
+// one place (docs/ADR088-platform-observability-ui.md §4).
 package opsrole
 
 import (

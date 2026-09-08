@@ -547,7 +547,7 @@ func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string
 // use). A subject who is ALREADY a member takes no new seat, so the cap does not
 // apply to them (their role is left as-is by redemption, w1/m82).
 //
-// The pinned ops workspace (OpsWorkspaceID, ADR087 §4) is exempt from both the
+// The pinned ops workspace (OpsWorkspaceID, ADR088 §4) is exempt from both the
 // role-per-plan and seat-cap halves: its membership is the operator ACL for
 // the observability UI, and onboarding an operator must never be silently
 // blocked by a product plan cap. Both redemption paths (AcceptInviteByToken and

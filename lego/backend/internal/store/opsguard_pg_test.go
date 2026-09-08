@@ -26,7 +26,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// opsGuardPGStore is the shared harness for the ADR087 §4 store-level guard
+// opsGuardPGStore is the shared harness for the ADR088 §4 store-level guard
 // tests: real Postgres (skipped without BEX_TEST_DB_URI, run in CI), migrated
 // and truncated like every sibling PG test.
 func opsGuardPGStore(t *testing.T) (*PGStore, context.Context) {
@@ -54,7 +54,7 @@ func opsGuardPGStore(t *testing.T) (*PGStore, context.Context) {
 // (planAllowsJoin, behind BOTH AcceptInviteByToken and AcceptInvitesForEmail)
 // exempts the pinned ops workspace from seat/plan gating — a Hobby seat cap or
 // role restriction must never silently block onboarding an operator — while
-// the identical invite into an ordinary workspace stays refused (ADR087 §4).
+// the identical invite into an ordinary workspace stays refused (ADR088 §4).
 func TestOpsWorkspaceInviteExemptionPG(t *testing.T) {
 	s, ctx := opsGuardPGStore(t)
 
@@ -126,7 +126,7 @@ func TestAccountDeletionOpsWorkspaceBlockedPG(t *testing.T) {
 		t.Fatalf("create ops workspace: %v", err)
 	}
 
-	// Unpinned: a sole-member workspace previews as delete (the pre-ADR087
+	// Unpinned: a sole-member workspace previews as delete (the pre-ADR088
 	// disposition, unchanged).
 	preview, err := s.PreviewAccountDeletion(ctx, "identity-op", nil)
 	if err != nil {

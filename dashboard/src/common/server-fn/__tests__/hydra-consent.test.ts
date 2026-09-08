@@ -10,7 +10,7 @@ const DASHBOARD = "https://dashboard.bex.co";
 const SESSION_ID = "session-abc";
 const SUBJECT = "identity-xyz";
 const CHALLENGE = "abc";
-/** bex-api's server-only ops-role verb (docs/ADR087 §4) — deliberately NOT a
+/** bex-api's server-only ops-role verb (docs/ADR088 §4) — deliberately NOT a
  * Hydra-admin URL so a stray substring match in the mock cannot conflate it
  * with the consent lookup/accept/reject calls. */
 const OPS_ROLE_URL = "http://bex-api.bex-system.svc:8090/internal/ops-role";
@@ -60,7 +60,7 @@ function mockUpstreams(opts: {
   sessionOk?: boolean;
   /** Overrides the whoami status — e.g. 403, a live session owing a second factor. */
   sessionStatus?: number;
-  /** ADR087 §4 ops-role verb: its response body (default: non-member). */
+  /** ADR088 §4 ops-role verb: its response body (default: non-member). */
   opsBody?: unknown;
   /** Overrides the verb's status — e.g. 500, bex-api erroring. */
   opsStatus?: number;
@@ -806,14 +806,14 @@ describe("PKCE S256 enforcement (w1/m66 F8)", () => {
   });
 });
 
-// docs/ADR087-platform-observability-ui.md §4: for a client listed in
+// docs/ADR088-platform-observability-ui.md §4: for a client listed in
 // OAUTH_OPS_CLIENTS (Grafana at obs.bex.co), authentication alone must never
 // become access — Kratos is the CUSTOMER identity pool. Membership in the
 // pinned ops workspace is resolved through bex-api's server-only role verb
 // before ANY accept, including the trusted/skip headless path the skip_consent
 // Grafana registration actually takes, and both entry points run the one
 // shared resolveOpsGate so the policy cannot drift between them.
-describe("ops-workspace gate (ADR087 §4)", () => {
+describe("ops-workspace gate (ADR088 §4)", () => {
   const OPS_CLIENT = "bex-obs";
   const OPS_TOKEN = "ops-verb-token";
   const DENIED = "https://oauth.bex.co/denied";
@@ -825,7 +825,7 @@ describe("ops-workspace gate (ADR087 §4)", () => {
     name: "Op Erator",
   });
 
-  /** Grafana's consent request as ADR087 §3 registers it: identity-only
+  /** Grafana's consent request as ADR088 §3 registers it: identity-only
    * scopes, no access-token audience, skip_consent (the headless path). Tests
    * for the human POST path override skip_consent to false. */
   const opsConsent = (overrides: Record<string, unknown> = {}) =>
@@ -1062,7 +1062,7 @@ describe("ops-workspace gate (ADR087 §4)", () => {
   });
 
   // The byte-identical guarantee: a client outside OAUTH_OPS_CLIENTS gets the
-  // exact pre-ADR087 accept body — no session key, not even an empty one — and
+  // exact pre-ADR088 accept body — no session key, not even an empty one — and
   // its flow never touches (so never depends on) the ops verb.
   it("keeps a non-ops client's headless accept body byte-identical, even with the verb down", async () => {
     const calls = mockUpstreams({

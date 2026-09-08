@@ -42,7 +42,7 @@ import { safeHttpHref } from "@/common/lib/external-url";
 // http://hydra-admin.auth.svc:4445), `OAUTH_TRUSTED_CLIENTS`,
 // `OAUTH_PLATFORM_CLIENTS` (comma-separated client_ids), and the ops-gate
 // trio `OAUTH_OPS_CLIENTS` / `BEX_OPS_ROLE_URL` / `BEX_OPS_ROLE_TOKEN`
-// (docs/ADR087-platform-observability-ui.md §4).
+// (docs/ADR088-platform-observability-ui.md §4).
 
 /** How long Hydra remembers an accepted consent, so a returning user's client
  * isn't re-challenged within the window. */
@@ -144,7 +144,7 @@ function platformClients(): Set<string> {
   return clientIdSet(process.env.OAUTH_PLATFORM_CLIENTS);
 }
 
-/** Ops-gated client registry (docs/ADR087-platform-observability-ui.md §4):
+/** Ops-gated client registry (docs/ADR088-platform-observability-ui.md §4):
  * client_ids (today Grafana's) whose consent additionally requires membership
  * in the pinned ops workspace. */
 function opsClients(): Set<string> {
@@ -281,7 +281,7 @@ function isTrusted(consent: OAuth2ConsentRequest): boolean {
   );
 }
 
-/** Grafana role values the ops-workspace roles map onto (docs/ADR087 §4).
+/** Grafana role values the ops-workspace roles map onto (docs/ADR088 §4).
  * Only these three product roles confer observability access; `contributor`
  * and `billing` exist in the members model (docs/ADR024-members.md) but are
  * deliberately absent — absence IS the deny. */
@@ -297,7 +297,7 @@ const OPS_ROLE_TIMEOUT_MS = 5_000;
 
 /** id_token claims stamped onto an ops-gated accept. Grafana maps `ops_role`
  * via role_attribute_path + role_attribute_strict — defense in depth behind
- * this server-side gate, not the gate itself (docs/ADR087 §4). */
+ * this server-side gate, not the gate itself (docs/ADR088 §4). */
 type OpsIdTokenClaims = {
   email: string;
   name: string;
@@ -306,13 +306,13 @@ type OpsIdTokenClaims = {
 
 type OpsGateResult =
   /** Not an ops-gated client: its accept body must stay byte-identical to the
-   * pre-ADR087 shape — no claims, not even an empty `session` key. */
+   * pre-ADR088 shape — no claims, not even an empty `session` key. */
   | { verdict: "ungated" }
   | { verdict: "allow"; idToken: OpsIdTokenClaims }
   | { verdict: "deny" };
 
 /**
- * The ops-workspace gate (docs/ADR087-platform-observability-ui.md §4). Kratos
+ * The ops-workspace gate (docs/ADR088-platform-observability-ui.md §4). Kratos
  * is the CUSTOMER identity pool, so for an ops-gated client (OAUTH_OPS_CLIENTS
  * — today Grafana at obs.bex.co) authentication alone must never become
  * access: membership in the pinned ops workspace is resolved through bex-api's
@@ -402,9 +402,9 @@ async function acceptConsent(
         consent.requested_access_token_audience ?? [],
       remember: true,
       remember_for: REMEMBER_FOR_SECONDS,
-      // Only an ops-gated accept carries id_token claims (docs/ADR087 §4) —
+      // Only an ops-gated accept carries id_token claims (docs/ADR088 §4) —
       // spread conditionally, never an always-present key, so every non-ops
-      // client's accept body stays byte-identical to the pre-ADR087 wire shape
+      // client's accept body stays byte-identical to the pre-ADR088 wire shape
       // (no empty `session` field for Hydra to interpret).
       ...(opsIdToken ? { session: { id_token: opsIdToken } } : {}),
     },
@@ -503,7 +503,7 @@ export async function handleConsent(
     };
   }
 
-  // docs/ADR087 §4: the ops-workspace gate runs after the request-shape gates
+  // docs/ADR088 §4: the ops-workspace gate runs after the request-shape gates
   // (PKCE, audience⇒scope) but BEFORE the trusted accept below — which is
   // exactly the path the skip_consent Grafana client takes, so a gate placed
   // any later would never fire for it. A deny is a real Hydra reject
@@ -669,7 +669,7 @@ export async function handleConsentDecision(
     return Response.redirect(back.toString(), 303);
   };
 
-  // docs/ADR087 §4: the ops-workspace gate guards the human path too — the
+  // docs/ADR088 §4: the ops-workspace gate guards the human path too — the
   // SAME resolveOpsGate the headless path runs (the pkceSatisfied precedent),
   // so the "headless and human paths grant identically" invariant survives. An
   // approve click for an ops-gated client only becomes an accept when the

@@ -152,7 +152,7 @@ func TestKubernetesEnforcerPreservesDataAndOnlyRecoversOwnedIntent(t *testing.T)
 	}
 }
 
-// TestEnforceRefusesOpsWorkspace is the ADR087 §4 suspension guard: dunning
+// TestEnforceRefusesOpsWorkspace is the ADR088 §4 suspension guard: dunning
 // enforcement against the pinned ops workspace fails with the stable
 // OPS_WORKSPACE_PROTECTED code (409-class conflict) BEFORE touching any CR,
 // while an ordinary workspace — and an unset pin — enforce exactly as before.

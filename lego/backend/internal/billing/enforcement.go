@@ -53,7 +53,7 @@ type KubernetesEnforcer struct {
 	Namespace string
 	Clock     func() time.Time
 	// OpsWorkspaceID pins the platform ops workspace (BEX_OPS_WORKSPACE,
-	// docs/ADR087-platform-observability-ui.md §4): dunning enforcement refuses
+	// docs/ADR088-platform-observability-ui.md §4): dunning enforcement refuses
 	// to suspend its resources — workspace suspension is exactly what would take
 	// every operator's Grafana access down at once — so its lifecycle row fails
 	// loudly (core.CodeOpsWorkspaceProtected, retried on the worker's backoff)

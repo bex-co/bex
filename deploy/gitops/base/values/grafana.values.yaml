@@ -1,10 +1,10 @@
-# Grafana values — the platform observability UI (docs/ADR087-platform-observability-ui.md).
-# This file is the LOCAL/base shape (ADR087 §5): break-glass admin login only,
+# Grafana values — the platform observability UI (docs/ADR088-platform-observability-ui.md).
+# This file is the LOCAL/base shape (ADR088 §5): break-glass admin login only,
 # no OIDC, no public host. The prod overlay
 # (overlays/prod/values/grafana.values.yaml) layers the obs.bex.co ingress and
 # Hydra generic-OAuth on top — Argo merges valueFiles in order, later wins.
 #
-# Zero click-ops state (ADR087 §1): datasources and dashboards are provisioned
+# Zero click-ops state (ADR088 §1): datasources and dashboards are provisioned
 # from this file, so a rebuilt pod converges to git with nothing to restore.
 
 fullnameOverride: grafana # => Service `grafana` on :80 (pod :3000)
@@ -13,7 +13,7 @@ fullnameOverride: grafana # => Service `grafana` on :80 (pod :3000)
 # telemetry history that exists nowhere else. Everything Grafana needs to serve
 # is file-provisioned above/below, and the telemetry it renders lives in
 # Prometheus/Loki; its embedded sqlite would accumulate only click-ops residue
-# (hand-edited dashboards, annotations, preferences) that ADR087 §1 rules out
+# (hand-edited dashboards, annotations, preferences) that ADR088 §1 rules out
 # as state we refuse to depend on. Losing that on a reschedule is the point,
 # not a defect: OIDC org users are simply re-created at next login, and every
 # dashboard change must land here in git to survive — exactly the pressure we
@@ -21,7 +21,7 @@ fullnameOverride: grafana # => Service `grafana` on :80 (pod :3000)
 persistence:
   enabled: false
 
-# Break-glass local admin (ADR087 §3): credentials come from the out-of-band
+# Break-glass local admin (ADR088 §3): credentials come from the out-of-band
 # Secret `grafana-admin` in `monitoring` (keys `admin-user`/`admin-password`) —
 # SealedSecret custody in prod (docs/ADR016-sealed-secrets.md), a plain
 # `kubectl -n monitoring create secret generic grafana-admin ...` on the
@@ -40,10 +40,10 @@ grafana.ini:
     news_feed_enabled: false
   users:
     # No self-serve accounts: admission is the ops-workspace consent gate in
-    # prod (ADR087 §4) or the break-glass admin above — never a signup form.
+    # prod (ADR088 §4) or the break-glass admin above — never a signup form.
     allow_sign_up: false
 
-# Datasources as code — the two backends this UI exists to read (ADR087 §1),
+# Datasources as code — the two backends this UI exists to read (ADR088 §1),
 # addressed by stable in-cluster DNS:
 #   Prometheus — Service `prometheus-server` on :80 (prometheus.yaml
 #     fullnameOverride; the same address bex-api uses as BEX_PROM_URL).
@@ -73,7 +73,7 @@ datasources:
         editable: false
 
 # Dashboards as code: a file provider reading the ConfigMap the `dashboards:`
-# block renders. The starter set is deliberately small (ADR087 §1 lets it grow
+# block renders. The starter set is deliberately small (ADR088 §1 lets it grow
 # — bex-api errors/latency, operator reconciliation, builds, CNPG, capacity)
 # but real: the availability view every incident starts from, built on the
 # exact series the TraefikHigh5xxRatio alert (prometheus.yaml) evaluates plus

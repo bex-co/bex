@@ -1,4 +1,4 @@
-# Grafana — the platform observability UI (docs/ADR087-platform-observability-ui.md).
+# Grafana — the platform observability UI (docs/ADR088-platform-observability-ui.md).
 # The human front end for the monitoring backends that already run headless in
 # this namespace: Prometheus (prometheus.yaml — metrics history + the alerting
 # brain) and Loki (loki.yaml — durable log history). Before this, an operator
@@ -10,13 +10,13 @@
 #
 # Everything Grafana serves is provisioned as code from the values file —
 # datasources (Prometheus + Loki by in-cluster DNS) and dashboards (committed
-# JSON) — so there is zero click-ops state to lose (ADR087 §1) and the
+# JSON) — so there is zero click-ops state to lose (ADR088 §1) and the
 # Deployment stays stateless (see the persistence note in the values file).
 #
 # Same multi-source shape as hydra.yaml: the reviewed, mirrored OCI artifact
 # provides the Helm package, the git source (ref: values) provides
 # base/values/grafana.values.yaml. The base values are the LOCAL admin-only
-# shape (ADR087 §5); the prod overlay layers the public obs.bex.co ingress and
+# shape (ADR088 §5); the prod overlay layers the public obs.bex.co ingress and
 # Hydra generic-OAuth SSO on top (later valueFiles win). Runtime secrets are
 # NOT in git: the break-glass admin login reads Secret `grafana-admin` and the
 # prod OIDC client secret reads Secret `grafana-oauth`, both out-of-band in

@@ -316,7 +316,7 @@ func NewAccountDeletionPendingError() *CodedError {
 
 // CodeOpsWorkspaceProtected is the stable refusal when a product-lifecycle
 // verb targets the pinned platform ops workspace (BEX_OPS_WORKSPACE,
-// docs/ADR087-platform-observability-ui.md §4): its membership is the
+// docs/ADR088-platform-observability-ui.md §4): its membership is the
 // observability-UI ACL, so deleting or suspending it would lock every operator
 // out of Grafana at once. Declared in core because two features refuse with it
 // — workspaces (delete/teardown) and billing (dunning suspension).

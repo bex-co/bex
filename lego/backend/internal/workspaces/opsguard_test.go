@@ -24,7 +24,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// assertOpsProtected pins the coded-error contract (ADR087 §4): a stable
+// assertOpsProtected pins the coded-error contract (ADR088 §4): a stable
 // OPS_WORKSPACE_PROTECTED code wrapping ErrConflict (409), never prose-matched.
 func assertOpsProtected(t *testing.T, err error) {
 	t.Helper()
@@ -40,7 +40,7 @@ func assertOpsProtected(t *testing.T, err error) {
 // TestDelete_OpsWorkspaceRefused: deleting the pinned ops workspace is refused
 // with the stable coded 409 even for an admin presenting the exact confirmation
 // phrase, and no teardown side effect happens — the workspace's membership is
-// the observability-UI ACL (ADR087 §4).
+// the observability-UI ACL (ADR088 §4).
 func TestDelete_OpsWorkspaceRefused(t *testing.T) {
 	st := newFakeStore()
 	rev := &fakeRevoker{}

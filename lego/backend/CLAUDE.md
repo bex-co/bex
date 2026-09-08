@@ -47,7 +47,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_AGENT_SNAPSHOT_S3_*` (ENDPOINT/BUCKET/REGION/PREFIX/ACCESS_KEY/SECRET_KEY) | hibernation object store; all set → hibernate/rehydrate, any unset → off (bucket needs SSE) |
 | bex-api | `BEX_AGENT_SNAPSHOT_RETENTION`, `BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE` | retention `168h` (7d, 2× if dirty git) + pin cap `10` (409 `AGENT_SESSION_PIN_LIMIT`) |
 | bex-api | `BEX_SANDBOX_EXEC_SECRET`, `BEX_SANDBOX_EXEC_URL` | `sandbox exec` HMAC + gateway `http://…:8081/sandbox-exec`; unset → exec 503 |
-| bex-api | `BEX_OPS_WORKSPACE`, `BEX_OPS_ROLE_TOKEN` | ops-workspace gate for the obs OIDC client (docs/ADR087): pinned `tea-*` id + static bearer for `GET /internal/ops-role` (machine-to-machine, dashboard consent acceptor only); either unset → route absent, workspace guards inert |
+| bex-api | `BEX_OPS_WORKSPACE`, `BEX_OPS_ROLE_TOKEN` | ops-workspace gate for the obs OIDC client (docs/ADR088): pinned `tea-*` id + static bearer for `GET /internal/ops-role` (machine-to-machine, dashboard consent acceptor only); either unset → route absent, workspace guards inert |
 | ssh-gateway | `BEX_SSH_ADDR` `:2222`, `BEX_SSH_METRICS_ADDR` `:9090`, `BEX_SSH_HOST_KEY_PATH` | SSH listen, metrics, required host private key |
 | ssh-gateway | `BEX_SHELL_WS_ADDR` `:8080`, `BEX_SHELL_TICKET_SECRET` | Web Shell gateway transport; unset secret → disabled |
 | ssh-gateway | `BEX_SANDBOX_EXEC_ADDR` `:8081`, `BEX_SANDBOX_EXEC_SECRET` | sandbox exec gateway transport (internal-only); unset → disabled |
