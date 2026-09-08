@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -207,5 +208,83 @@ func TestWebhookAttemptMigrationBackfillsAndGuardsEvidence(t *testing.T) {
 		       )
 	`).Scan(&childExists, &compositeExists); err != nil || childExists || compositeExists {
 		t.Fatalf("down boundary = child:%v composite:%v err:%v", childExists, compositeExists, err)
+	}
+}
+
+// TestDiskEventTypeRenameMigration rewrites live webhook subscription filters
+// from the pre-w8/m34 bex spellings to Render's disk_created/disk_deleted, leaves
+// already-canonical filters alone, and is idempotent on re-run. Immutable
+// delivery payloads are out of scope for this migration (and for this fixture).
+func TestDiskEventTypeRenameMigration(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	up, err := migrationsFS.ReadFile("migrations/0106_disk_event_type_rename.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0106_disk_event_rename;
+		SET LOCAL search_path TO migration_0106_disk_event_rename;
+		CREATE TABLE webhook_endpoints (
+			id text PRIMARY KEY,
+			event_types text[] NOT NULL
+		);
+		INSERT INTO webhook_endpoints (id, event_types) VALUES
+			('whk-legacy', ARRAY['disk_attached','deploy_started','disk_detached']),
+			('whk-mixed', ARRAY['disk_created','disk_attached']),
+			('whk-clean', ARRAY['disk_created','disk_deleted']),
+			('whk-other', ARRAY['deploy_ended']);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply up: %v", err)
+	}
+	// Re-run: must be a no-op (idempotent).
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("re-apply up: %v", err)
+	}
+
+	rows, err := tx.Query(ctx, `SELECT id, event_types FROM webhook_endpoints ORDER BY id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	got := map[string][]string{}
+	for rows.Next() {
+		var id string
+		var types []string
+		if err := rows.Scan(&id, &types); err != nil {
+			t.Fatal(err)
+		}
+		got[id] = types
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][]string{
+		"whk-clean":  {"disk_created", "disk_deleted"},
+		"whk-legacy": {"disk_created", "deploy_started", "disk_deleted"},
+		"whk-mixed":  {"disk_created"},
+		"whk-other":  {"deploy_ended"},
+	}
+	for id, wantTypes := range want {
+		if !slices.Equal(got[id], wantTypes) {
+			t.Errorf("%s event_types = %v, want %v", id, got[id], wantTypes)
+		}
 	}
 }

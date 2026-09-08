@@ -74,9 +74,9 @@ describe("ServiceEventFilter", () => {
     // disk options; these five were emitted by the API and unselectable.
     for (const label of [
       "Custom domain verified",
-      "Disk attached",
+      "Disk created",
       "Disk updated",
-      "Disk detached",
+      "Disk deleted",
       "Disk restored",
     ]) {
       expect(screen.getByRole("checkbox", { name: label })).toBeChecked();

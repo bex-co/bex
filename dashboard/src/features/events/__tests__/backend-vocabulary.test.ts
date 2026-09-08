@@ -8,8 +8,8 @@ import {
 // The cross-boundary drift guard (w6/m122 t003). Three guards already cover the
 // service event feed — scripts/events-verify.sh, TestEventSurfaceParity, and
 // service-event-filter.test.tsx — and none crosses the Go/TypeScript boundary,
-// which is how five emitted types (custom_domain_verified, disk_attached,
-// disk_updated, disk_detached, disk_restored) drifted out of the dashboard
+// which is how five emitted types (custom_domain_verified, disk_created,
+// disk_updated, disk_deleted, disk_restored) drifted out of the dashboard
 // catalog unnoticed after w7/m66 built it.
 //
 // This enumerates the vocabulary FROM THE GO SOURCE. A restated TypeScript list

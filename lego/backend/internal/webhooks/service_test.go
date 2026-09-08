@@ -573,6 +573,50 @@ func TestExistingLifecycleAndAutoDeployEventTypesAreSubscribable(t *testing.T) {
 	}
 }
 
+func TestDiskEventTypesAreSubscribableAndLegacyAliasesNormalize(t *testing.T) {
+	for _, want := range []string{TypeDiskCreated, TypeDiskUpdated, TypeDiskDeleted} {
+		if !slices.Contains(EventTypes, want) {
+			t.Errorf("EventTypes does not contain %q: %v", want, EventTypes)
+		}
+	}
+	for verb, want := range map[string]string{
+		"apps.AddDisk":    TypeDiskCreated,
+		"apps.UpdateDisk": TypeDiskUpdated,
+		"apps.DeleteDisk": TypeDiskDeleted,
+	} {
+		if got := verbEvents[verb]; got != want {
+			t.Errorf("verbEvents[%q] = %q, want %q", verb, got, want)
+		}
+	}
+	// disk_restored stays a service-feed extension — not webhook-subscribable.
+	if slices.Contains(EventTypes, "disk_restored") {
+		t.Error("disk_restored must not enter the webhook vocabulary (bex-only restore)")
+	}
+
+	s, _ := newTestService()
+	created, err := s.Create(context.Background(), CreateRequest{
+		Name: "legacy-disk", URL: "https://example.com/disk",
+		EventTypes: []string{"disk_attached", "disk_detached", TypeDiskUpdated},
+		Enabled:    true,
+	})
+	if err != nil {
+		t.Fatalf("Create with legacy aliases: %v", err)
+	}
+	want := []string{TypeDiskCreated, TypeDiskDeleted, TypeDiskUpdated}
+	if !slices.Equal(created.EventTypes, want) {
+		t.Errorf("normalized EventTypes = %v, want %v", created.EventTypes, want)
+	}
+	if !endpointSubscribes([]string{"disk_attached"}, TypeDiskCreated) {
+		t.Error("endpointSubscribes must match legacy disk_attached to disk_created")
+	}
+	if !endpointSubscribes([]string{"disk_detached"}, TypeDiskDeleted) {
+		t.Error("endpointSubscribes must match legacy disk_detached to disk_deleted")
+	}
+	if endpointSubscribes([]string{TypeDiskCreated}, TypeDiskDeleted) {
+		t.Error("endpointSubscribes must not cross-match unrelated disk types")
+	}
+}
+
 func TestCronWebhookEventsComeFromObservedFactsNotIntentVerbs(t *testing.T) {
 	for _, verb := range []string{"apps.TriggerCronRun", "apps.CancelCronRun", "apps.CancelCurrentCronRun"} {
 		if eventType, ok := verbEvents[verb]; ok {

@@ -3668,17 +3668,17 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "自定义域名已验证",
     description: "Service activity type: custom domain ownership verified",
   },
-  "services.eventsTypeDiskAttached": {
-    message: "已挂载磁盘",
-    description: "Service activity type: persistent disk attached",
+  "services.eventsTypeDiskCreated": {
+    message: "已创建磁盘",
+    description: "Service activity type: persistent disk created",
   },
   "services.eventsTypeDiskUpdated": {
     message: "已更新磁盘",
     description: "Service activity type: persistent disk updated",
   },
-  "services.eventsTypeDiskDetached": {
-    message: "已卸载磁盘",
-    description: "Service activity type: persistent disk detached",
+  "services.eventsTypeDiskDeleted": {
+    message: "已删除磁盘",
+    description: "Service activity type: persistent disk deleted",
   },
   "services.eventsTypeDiskRestored": {
     message: "已从快照恢复磁盘",

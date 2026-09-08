@@ -227,10 +227,14 @@ const (
 	TypePublishPathChanged        = "publish_path_changed"
 	TypeRoutesChanged             = "routes_changed"
 	TypeHeadersChanged            = "headers_changed"
-	TypeDiskAttached              = "disk_attached"
-	TypeDiskUpdated               = "disk_updated"
-	TypeDiskDetached              = "disk_detached"
-	TypeDiskRestored              = "disk_restored"
+	// Disk lifecycle types match Render's eventTypeParam / webhook enum
+	// (w8/m34): disk_created/disk_deleted — not the earlier bex spellings
+	// disk_attached/disk_detached. TypeDiskRestored is a labeled bex extension
+	// (Render has no restore-from-snapshot event).
+	TypeDiskCreated  = "disk_created"
+	TypeDiskUpdated  = "disk_updated"
+	TypeDiskDeleted  = "disk_deleted"
+	TypeDiskRestored = "disk_restored"
 	TypeCustomDomainAdded         = "custom_domain_added"
 	TypeCustomDomainRemoved       = "custom_domain_removed"
 	TypeCustomDomainVerified      = "custom_domain_verified"
@@ -286,9 +290,9 @@ var eventTypes = map[string]string{
 	"apps.SetPublishPath":                   TypePublishPathChanged,
 	"apps.SetRoutes":                        TypeRoutesChanged,
 	"apps.SetHeaders":                       TypeHeadersChanged,
-	"apps.AddDisk":                          TypeDiskAttached,
+	"apps.AddDisk":                          TypeDiskCreated,
 	"apps.UpdateDisk":                       TypeDiskUpdated,
-	"apps.DeleteDisk":                       TypeDiskDetached,
+	"apps.DeleteDisk":                       TypeDiskDeleted,
 	"apps.RestoreDiskSnapshot":              TypeDiskRestored,
 	"apps.AddDomain":                        TypeCustomDomainAdded,
 	"apps.DeleteDomain":                     TypeCustomDomainRemoved,

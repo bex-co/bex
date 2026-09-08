@@ -525,24 +525,27 @@ func callGetServiceEvent(t *testing.T, srv *Server, eventID string) wireEvent {
 	return out.Event
 }
 
-// TestServiceEventSurfaceCarriesDriftedTypes probes the three API surfaces with
-// the exact types w6/m122 found missing from the DASHBOARD catalog. The point is
-// the negative result: the API was never the defect, so this pins that down
-// rather than leaving "REST already returns them" as an inherited assumption.
-// custom_domain_verified was read live out of GET /v1/services/{id}/events on
-// 2026-08-27; the four disk_* types were only ever traced through eventTypes
-// (the QA workspace has no service with a persistent disk), so disk_attached
-// stands in for that family here.
-func TestServiceEventSurfaceCarriesDriftedTypes(t *testing.T) {
+// TestServiceEventSurfaceCarriesDiskAndBexNamedTypes probes the three API
+// surfaces with the types w6/m122 found missing from the DASHBOARD catalog, and
+// asserts the Render-shaped ?type= filter accepts the renamed disk vocabulary
+// (w8/m34) while still refusing genuine bex-named extensions.
+func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 	at := time.Date(2026, 8, 27, 11, 54, 7, 0, time.UTC)
 	fake := &fakeEventStore{rows: []store.ServiceEventRow{
 		{Key: "aud-domain-verified:", At: at, Source: store.EventSourceAudit, Verb: "apps.VerifyDomain", Caller: "user-x"},
-		{Key: "aud-disk-attached:", At: at.Add(-time.Minute), Source: store.EventSourceAudit, Verb: "apps.AddDisk", Caller: "user-x"},
+		{Key: "aud-disk-created:", At: at.Add(-time.Minute), Source: store.EventSourceAudit, Verb: "apps.AddDisk", Caller: "user-x"},
+		{Key: "aud-disk-deleted:", At: at.Add(-2 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.DeleteDisk", Caller: "user-x"},
+		{Key: "aud-disk-restored:", At: at.Add(-3 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "user-x"},
 	}}
 	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
 	h, srv := serverWith(t, base, Deps{EventStore: fake})
 
-	wantTypes := []string{events.TypeCustomDomainVerified, events.TypeDiskAttached}
+	wantTypes := []string{
+		events.TypeCustomDomainVerified,
+		events.TypeDiskCreated,
+		events.TypeDiskDeleted,
+		events.TypeDiskRestored,
+	}
 
 	res := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z", testToken, "")
 	if res.Code != 200 {
@@ -581,20 +584,33 @@ func TestServiceEventSurfaceCarriesDriftedTypes(t *testing.T) {
 		}
 	}
 
-	// The ?type= FILTER is a different question, and its answer is Render's, not
-	// bex's: the pinned Render contract declares `type` as a 39-value enum, so
-	// the request validator refuses any bex-named type before the handler runs.
-	// (service_moved, asserted below, is refused on this parameter for the same
-	// reason — the dashboard filters it client-side like every bex-named type.)
-	// disk_updated is IN Render's enum and narrows normally; custom_domain_verified
-	// is not, and is refused 400. The control below proves that refusal is the
-	// contract's standing behaviour for every bex-named type rather than anything
-	// specific to the types w6/m122 surfaced.
-	filtered := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z&type="+events.TypeDiskUpdated, testToken, "")
-	if filtered.Code != 200 {
-		t.Fatalf("REST events?type=%s: %d %s", events.TypeDiskUpdated, filtered.Code, filtered.Body.String())
+	// Render's pinned enum accepts disk_created/disk_deleted/disk_updated; the
+	// handler must push the matching verb filter into the store query. The fake
+	// store does not narrow rows, so we assert the push-down rather than the
+	// response body shape (real-Postgres coverage lives in store tests).
+	for _, diskType := range []string{events.TypeDiskCreated, events.TypeDiskDeleted, events.TypeDiskUpdated} {
+		fake.gotFil = store.ServiceEventFilter{}
+		filtered := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z&type="+diskType, testToken, "")
+		if filtered.Code != 200 {
+			t.Fatalf("REST events?type=%s: %d %s", diskType, filtered.Code, filtered.Body.String())
+		}
+		if len(fake.gotFil.Verbs) == 0 {
+			t.Errorf("REST events?type=%s did not push verb filters: %+v", diskType, fake.gotFil)
+		}
 	}
-	for _, bexNamed := range []string{events.TypeCustomDomainVerified, events.TypeCustomDomainAdded, events.TypeEnvVarsChanged, events.TypeServiceMoved} {
+
+	// disk_restored is a deliberate bex extension — unfilterable via the Render
+	// enum, same as every other bex-named type. The legacy bex spellings must
+	// also stay refused so a regression to disk_attached cannot silently return.
+	for _, bexNamed := range []string{
+		events.TypeDiskRestored,
+		events.TypeCustomDomainVerified,
+		events.TypeCustomDomainAdded,
+		events.TypeEnvVarsChanged,
+		events.TypeServiceMoved,
+		"disk_attached",
+		"disk_detached",
+	} {
 		refused := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z&type="+bexNamed, testToken, "")
 		if refused.Code != http.StatusBadRequest {
 			t.Errorf("REST events?type=%s = %d, want 400 from the pinned Render enum", bexNamed, refused.Code)

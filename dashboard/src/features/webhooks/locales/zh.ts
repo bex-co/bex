@@ -447,6 +447,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "维护模式",
     description: "Event-picker group — maintenance mode events",
   },
+  "webhooks.group.disk": {
+    message: "磁盘",
+    description: "Event-picker group — persistent disk events",
+  },
   "webhooks.group.postgres": {
     message: "Postgres",
     description: "Event-picker group — managed Postgres events",
@@ -543,6 +547,18 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.maintenance_mode_uri_updated": {
     message: "维护模式 URI 已更新",
     description: "Event label — maintenance_mode_uri_updated",
+  },
+  "webhooks.event.disk_created": {
+    message: "磁盘已创建",
+    description: "Event label — disk_created",
+  },
+  "webhooks.event.disk_updated": {
+    message: "磁盘已更新",
+    description: "Event label — disk_updated",
+  },
+  "webhooks.event.disk_deleted": {
+    message: "磁盘已删除",
+    description: "Event label — disk_deleted",
   },
   "webhooks.event.postgres_created": {
     message: "Postgres 已创建",
