@@ -35,10 +35,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.ListNotificationInbox(r.Context(), limit)
+		return s.ListNotificationInbox(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")), limit)
 	}))
 	mux.HandleFunc("POST /v1/notifications/{id}/read", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		read, err := s.MarkPushNotificationRead(r.Context(), r.PathValue("id"))
+		read, err := s.MarkPushNotificationRead(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")), r.PathValue("id"))
 		return map[string]bool{"read": read}, err
 	}))
 	mux.HandleFunc("GET /v1/notification-settings", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
@@ -55,15 +55,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.GetPushSettings(r.Context())
 	}))
 	mux.HandleFunc("GET /v1/notification-settings/push/availability", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		available, err := s.IsPushAvailable(r.Context())
+		available, err := s.IsPushAvailable(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")))
 		if err != nil {
 			return nil, err
 		}
-		webPush, err := s.IsWebPushAvailable(r.Context())
+		webPush, err := s.IsWebPushAvailable(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")))
 		if err != nil {
 			return nil, err
 		}
-		key, err := s.WebPushVAPIDPublicKey(r.Context())
+		key, err := s.WebPushVAPIDPublicKey(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")))
 		if err != nil {
 			return nil, err
 		}
@@ -81,21 +81,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.UpdatePushSettings(r.Context(), req)
 	}))
 	mux.HandleFunc("GET /v1/notification-device-subscriptions", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return s.ListDeviceSubscriptions(r.Context())
+		return s.ListDeviceSubscriptions(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")))
 	}))
 	mux.HandleFunc("POST /v1/notification-device-subscriptions", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[RegisterDeviceInput](r)
 		if err != nil {
 			return nil, err
 		}
-		return s.RegisterDeviceSubscription(r.Context(), req)
+		return s.RegisterDeviceSubscription(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")), req)
 	}))
 	mux.HandleFunc("DELETE /v1/notification-device-subscriptions", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		count, err := s.RevokeDeviceSubscriptions(r.Context())
+		count, err := s.RevokeDeviceSubscriptions(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")))
 		return map[string]int64{"revoked": count}, err
 	}))
 	mux.HandleFunc("DELETE /v1/notification-device-subscriptions/{deviceId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		changed, err := s.UnregisterDeviceSubscription(r.Context(), r.PathValue("deviceId"))
+		changed, err := s.UnregisterDeviceSubscription(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")), r.PathValue("deviceId"))
 		return map[string]bool{"revoked": changed}, err
 	}))
 	mux.HandleFunc("GET /v1/notification-webpush-subscriptions", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {

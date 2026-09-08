@@ -52,7 +52,6 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(
   null,
 );
 const native = new ExpoNotificationAdapter();
-const subscriptions = new ApolloNotificationSubscriptionClient(apolloClient);
 const installation = new NotificationInstallationStore(SecureStore, randomUUID);
 const preference = new NotificationRegistrationPreference(AsyncStorage);
 let activeNotificationBinding: NotificationBinding | null = null;
@@ -115,6 +114,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const sessionId = signedIn ? auth.session.sessionId : "signed-out";
   const subject = signedIn ? auth.session.subject : "signed-out";
   const workspaceId = selected?.id ?? "no-workspace";
+  const subscriptions = useMemo(
+    () => new ApolloNotificationSubscriptionClient(apolloClient, workspaceId),
+    [workspaceId],
+  );
   const activeSessionRef = useRef(sessionId);
   const signingOutRef = useRef(false);
   activeSessionRef.current = sessionId;
@@ -153,7 +156,15 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           }
         },
       ),
-    [network, selected, sessionId, signedIn, subject, workspaceId],
+    [
+      network,
+      selected,
+      sessionId,
+      signedIn,
+      subject,
+      workspaceId,
+      subscriptions,
+    ],
   );
   const controllerRef = useRef(controller);
   controllerRef.current = controller;
@@ -196,7 +207,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         .catch(() => undefined);
       router.push(envelope.route as NotificationRoute);
     },
-    [router, sessionId, signedIn, store],
+    [router, sessionId, signedIn, store, subscriptions],
   );
 
   useEffect(() => {
@@ -250,7 +261,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       tapped.remove();
       rotated.remove();
     };
-  }, [controller, receive, sessionId, signedIn, store]);
+  }, [controller, receive, sessionId, signedIn, store, subscriptions]);
 
   useEffect(
     () =>
@@ -281,7 +292,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     void Promise.allSettled(
       unreadIDs.map((id) => subscriptions.markNotificationRead(id)),
     );
-  }, [items, sessionId, store]);
+  }, [items, sessionId, store, subscriptions]);
   const open = useCallback(
     async (item: NotificationInboxItem) => {
       const envelope = parseNotificationEnvelope({
@@ -306,7 +317,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       void subscriptions.markNotificationRead(item.id).catch(() => undefined);
       router.push(envelope.route as NotificationRoute);
     },
-    [router, sessionId, store, subject, workspaceId],
+    [router, sessionId, store, subject, workspaceId, subscriptions],
   );
   const value = useMemo(
     () => ({

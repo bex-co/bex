@@ -1,6 +1,6 @@
-query MobileNotificationDeviceSubscriptions {
-  pushNotificationsAvailable
-  notificationDeviceSubscriptions {
+query MobileNotificationDeviceSubscriptions($ownerId: String!) {
+  pushNotificationsAvailable(ownerId: $ownerId)
+  notificationDeviceSubscriptions(ownerId: $ownerId) {
     deviceId
     provider
     platform
@@ -12,6 +12,7 @@ query MobileNotificationDeviceSubscriptions {
 }
 
 mutation MobileRegisterNotificationDeviceSubscription(
+  $ownerId: String!
   $deviceId: String!
   $sessionId: String!
   $provider: String!
@@ -19,6 +20,7 @@ mutation MobileRegisterNotificationDeviceSubscription(
   $token: String!
 ) {
   registerNotificationDeviceSubscription(
+    ownerId: $ownerId
     deviceId: $deviceId
     sessionId: $sessionId
     provider: $provider
@@ -35,12 +37,18 @@ mutation MobileRegisterNotificationDeviceSubscription(
   }
 }
 
-mutation MobileUnregisterNotificationDeviceSubscription($deviceId: String!) {
-  unregisterNotificationDeviceSubscription(deviceId: $deviceId)
+mutation MobileUnregisterNotificationDeviceSubscription(
+  $ownerId: String!
+  $deviceId: String!
+) {
+  unregisterNotificationDeviceSubscription(
+    ownerId: $ownerId
+    deviceId: $deviceId
+  )
 }
 
-query MobileNotificationInbox($limit: Int!) {
-  notificationInbox(limit: $limit) {
+query MobileNotificationInbox($ownerId: String!, $limit: Int!) {
+  notificationInbox(ownerId: $ownerId, limit: $limit) {
     id
     event
     title
@@ -49,9 +57,9 @@ query MobileNotificationInbox($limit: Int!) {
     occurredAt
     readAt
   }
-  unreadPushNotificationCount
+  unreadPushNotificationCount(ownerId: $ownerId)
 }
 
-mutation MobileMarkPushNotificationRead($id: String!) {
-  markPushNotificationRead(id: $id)
+mutation MobileMarkPushNotificationRead($ownerId: String!, $id: String!) {
+  markPushNotificationRead(ownerId: $ownerId, id: $id)
 }

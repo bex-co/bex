@@ -21,6 +21,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -214,8 +215,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.GetPushSettings(p.Context) },
 		},
 		"pushNotificationsAvailable": &graphql.Field{
-			Type:    graphql.NewNonNull(graphql.Boolean),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.IsPushAvailable(p.Context) },
+			Type: graphql.NewNonNull(graphql.Boolean),
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.IsPushAvailable(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")))
+			},
 		},
 		"webPushAvailable": &graphql.Field{
 			Type:    graphql.NewNonNull(graphql.Boolean),
@@ -233,8 +237,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		},
 		"notificationDeviceSubscriptions": &graphql.Field{
 			Type: graphql.NewList(deviceSubscriptionGQLType),
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListDeviceSubscriptions(p.Context)
+				return s.ListDeviceSubscriptions(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")))
 			},
 		},
 		"notificationWebPushSubscriptions": &graphql.Field{
@@ -246,15 +251,19 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"notificationInbox": &graphql.Field{
 			Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushNotificationGQLType))),
 			Args: graphql.FieldConfigArgument{
-				"limit": &graphql.ArgumentConfig{Type: graphql.Int, DefaultValue: defaultNotificationInboxLimit},
+				"ownerId": gqlutil.Arg(graphql.String),
+				"limit":   &graphql.ArgumentConfig{Type: graphql.Int, DefaultValue: defaultNotificationInboxLimit},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListNotificationInbox(p.Context, p.Args["limit"].(int))
+				return s.ListNotificationInbox(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")), p.Args["limit"].(int))
 			},
 		},
 		"unreadPushNotificationCount": &graphql.Field{
-			Type:    graphql.NewNonNull(graphql.Int),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.UnreadPushNotificationCount(p.Context) },
+			Type: graphql.NewNonNull(graphql.Int),
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.UnreadPushNotificationCount(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")))
+			},
 		},
 	}
 }
@@ -285,6 +294,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"registerNotificationDeviceSubscription": &graphql.Field{
 			Type: deviceSubscriptionGQLType,
 			Args: graphql.FieldConfigArgument{
+				"ownerId":   gqlutil.Arg(graphql.String),
 				"deviceId":  gqlutil.ReqArg(graphql.String),
 				"sessionId": gqlutil.ReqArg(graphql.String),
 				"provider":  gqlutil.ReqArg(graphql.String),
@@ -292,7 +302,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"token":     gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.RegisterDeviceSubscription(p.Context, RegisterDeviceInput{
+				return s.RegisterDeviceSubscription(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")), RegisterDeviceInput{
 					DeviceID: p.Args["deviceId"].(string), Provider: p.Args["provider"].(string),
 					SessionID: p.Args["sessionId"].(string), Platform: p.Args["platform"].(string), Token: p.Args["token"].(string),
 				})
@@ -301,10 +311,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"unregisterNotificationDeviceSubscription": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
+				"ownerId":  gqlutil.Arg(graphql.String),
 				"deviceId": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.UnregisterDeviceSubscription(p.Context, p.Args["deviceId"].(string))
+				return s.UnregisterDeviceSubscription(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")), p.Args["deviceId"].(string))
 			},
 		},
 		"revokeNotificationDeviceSubscriptions": &graphql.Field{
@@ -341,10 +352,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"markPushNotificationRead": &graphql.Field{
 			Type: graphql.NewNonNull(graphql.Boolean),
 			Args: graphql.FieldConfigArgument{
-				"id": gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+				"id":      gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.MarkPushNotificationRead(p.Context, p.Args["id"].(string))
+				return s.MarkPushNotificationRead(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")), p.Args["id"].(string))
 			},
 		},
 	}
