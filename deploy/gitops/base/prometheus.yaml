@@ -248,7 +248,13 @@ spec:
                   - targets: [bex-api.bex-system.svc:8091]
                 metric_relabel_configs:
                   - source_labels: [__name__]
-                    regex: bex_billing_.*
+                    # billing => the Billing* alerts; agent_session => the
+                    # w5/m81 SLO baseline paneled on bex-api-gateways (ADR088
+                    # §6); webhooks => WebhookDeliveryAdmissionPressure, which
+                    # evaluated an absent series while the keep was
+                    # billing-only (the same never-arrived failure class the
+                    # bex-operator job's comment below records for w2/m72).
+                    regex: bex_(billing|agent_session|webhooks)_.*
                     action: keep
               # Build-plane SLIs from the operator's own registry (docs/ADR060
               # D5). This job is why the series are readable at all: the manager
@@ -268,7 +274,13 @@ spec:
                   - targets: [bex-controller-manager-metrics-service.bex-system.svc:8080]
                 metric_relabel_configs:
                   - source_labels: [__name__]
-                    regex: bex_build.*
+                    # build => ADR060 D5 build-plane SLIs; datastore => the
+                    # DatastoreStuckProvisioning / DatabaseNotArchivingWAL /
+                    # DatastoreObservationFailing alerts and the ADR088 §6
+                    # data-plane dashboard — all were evaluating absent series
+                    # while the keep was build-only, exactly the w2/m72
+                    # failure this comment block warns about.
+                    regex: bex_(build|datastore).*
                     action: keep
               # One post-policy netfilter meter per untainted tenant node. Pod discovery
               # (rather than the round-robin Service) preserves the node and
@@ -358,7 +370,9 @@ spec:
                     target_label: node
                 metric_relabel_configs:
                   - source_labels: [__name__]
-                    regex: kubelet_volume_stats_(used|capacity)_bytes
+                    # available: ZotRegistryAlmostFull's `available < 10GiB`
+                    # disjunct was blind without it (ADR088 §6 audit).
+                    regex: kubelet_volume_stats_(used|capacity|available)_bytes
                     action: keep
               # cert-manager controller metrics (:9402) — certmanager_certificate_*
               # for the CertificateNotReady / CertificateExpiringSoon alerts. Pod SD
@@ -406,6 +420,13 @@ spec:
                     replacement: ${1}:8200
                   - source_labels: [__meta_kubernetes_pod_name]
                     target_label: pod
+                  # Stamp namespace like the cnpg jobs below do: the exporter's
+                  # gauge carries no Kubernetes labels, and both OpenBaoSealed
+                  # and the obs seal panel select namespace="secrets" — without
+                  # this mapping that critical alert evaluated an empty vector
+                  # and could never fire (ADR088 §6 review round 2, item 2).
+                  - source_labels: [__meta_kubernetes_namespace]
+                    target_label: namespace
                 metric_relabel_configs:
                   # keep only the seal gauge (OpenBao keeps Vault's metric name; match
                   # a bao_ prefix too in case a future release rebrands it)
