@@ -28,6 +28,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	pathvalidation "k8s.io/apimachinery/pkg/api/validation/path"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -1041,10 +1043,15 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	// Render clients address services by their typed srv- id. The App CR keeps
 	// that public id in LabelAppID while metadata.Name may be tenant-prefixed,
 	// so resolve the unique id before trying the name-compatible fallbacks.
+	// Legacy CR names may exceed a label's length limit. Skip only the label
+	// lookups for invalid values; direct name resolution and authz still apply.
+	validLabel := len(validation.IsValidLabelValue(name)) == 0
 	var byID appv1alpha1.AppList
-	if err := b.Client.List(ctx, &byID,
-		client.MatchingLabels{LabelAppID: name}); err != nil {
-		return nil, err
+	if validLabel {
+		if err := b.Client.List(ctx, &byID,
+			client.MatchingLabels{LabelAppID: name}); err != nil {
+			return nil, err
+		}
 	}
 	preferOwnWorkspaceNamespace(byID.Items)
 	if len(byID.Items) > 0 {
@@ -1061,6 +1068,9 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {
+		if len(pathvalidation.IsValidPathSegmentName(candidate)) != 0 {
+			continue // client-go rejects these names before reaching the apiserver
+		}
 		getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a)
 		if getErr == nil {
 			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, a.Labels)
@@ -1073,7 +1083,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 			return nil, getErr
 		}
 	}
-	if acting != "" {
+	if acting != "" && validLabel {
 		var list appv1alpha1.AppList
 		if err := b.Client.List(ctx, &list,
 			client.MatchingLabels{LabelServiceName: name}); err != nil {
@@ -1469,10 +1479,13 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	}
 	// Prefer an exact public id match. Name lookup remains below for backwards
 	// compatibility with bex-native callers and hand-applied legacy CRs.
+	validLabel := len(validation.IsValidLabelValue(name)) == 0
 	var byID appv1alpha1.AppList
-	if err := b.Client.List(ctx, &byID,
-		client.MatchingLabels{LabelAppID: name}); err != nil {
-		return nil, err
+	if validLabel {
+		if err := b.Client.List(ctx, &byID,
+			client.MatchingLabels{LabelAppID: name}); err != nil {
+			return nil, err
+		}
 	}
 	preferOwnWorkspaceNamespace(byID.Items)
 	if len(byID.Items) > 0 {
@@ -1488,6 +1501,9 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {
+		if len(pathvalidation.IsValidPathSegmentName(candidate)) != 0 {
+			continue
+		}
 		err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a)
 		if err == nil {
 			if err := b.AuthorizeLabeled(ctx, relation, a.Labels); err != nil {
@@ -1499,7 +1515,7 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 			return nil, err
 		}
 	}
-	if acting == "" {
+	if acting == "" || !validLabel {
 		return nil, ErrNotFound
 	}
 	var list appv1alpha1.AppList

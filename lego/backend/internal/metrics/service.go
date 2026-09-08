@@ -353,6 +353,11 @@ func checkFanOut(resources, metrics, quantiles int) error {
 // normalization so every adapter inherits it (round-5 finding 2). resolution is
 // always positive after normalized(); a zero step is impossible here.
 func checkPointBudget(start, end time.Time, resolution time.Duration) error {
+	// Check again after defaults resolve an omitted end to now: a future start
+	// otherwise becomes an inverted range only during normalization.
+	if err := core.ValidateQueryRange(start, end); err != nil {
+		return err
+	}
 	if resolution <= 0 {
 		return nil // defensive: normalized() guarantees a positive step
 	}
@@ -406,7 +411,7 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	case MetricCPUTarget, MetricMemoryTarget:
 		series = autoscaleTargetMetric(app, q, s.Now())
 	default:
-		return nil, fmt.Errorf("unknown metric %q", q.Metric)
+		return nil, fmt.Errorf("%w: unknown metric %q", core.ErrBadRequest, q.Metric)
 	}
 	if err != nil {
 		return nil, err

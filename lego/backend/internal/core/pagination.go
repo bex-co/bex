@@ -67,12 +67,24 @@ func QueryTime(q url.Values, key string) (time.Time, error) {
 	return ParseTime(key, q.Get(key))
 }
 
-// CheckQueryWindow enforces a BEX_MAX_QUERY_HOURS-style cap on a query's
+// ValidateQueryRange rejects an empty or inverted explicit time range. Zero
+// bounds stay open so callers can apply their own history/tail defaults.
+func ValidateQueryRange(start, end time.Time) error {
+	if !start.IsZero() && !end.IsZero() && !start.Before(end) {
+		return fmt.Errorf("%w: startTime must be before endTime", ErrBadRequest)
+	}
+	return nil
+}
+
+// CheckQueryWindow validates the range and enforces a BEX_MAX_QUERY_HOURS-style cap on a query's
 // start–end range — shared by the logs, events, and metrics services so the
 // window budget cannot drift per feature (w9/004 → codex r7 #13). maxHours
 // <= 0 disables the cap; an open start is unbounded history and passes; an
 // open end is measured against now.
 func CheckQueryWindow(maxHours int, now func() time.Time, start, end time.Time) error {
+	if err := ValidateQueryRange(start, end); err != nil {
+		return err
+	}
 	if maxHours <= 0 || start.IsZero() {
 		return nil
 	}

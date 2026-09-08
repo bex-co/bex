@@ -44,6 +44,33 @@ func TestQueryTime(t *testing.T) {
 	}
 }
 
+func TestQueryRangeValidationDoesNotDependOnWindowCap(t *testing.T) {
+	now := time.Date(2026, 9, 7, 6, 0, 0, 0, time.UTC)
+	for _, maxHours := range []int{0, 1} {
+		for _, tc := range []struct {
+			name       string
+			start, end time.Time
+			bad        bool
+		}{
+			{"inverted", now, now.Add(-time.Hour), true},
+			{"equal", now, now, true},
+			{"positive", now.Add(-time.Hour), now, false},
+			{"open start", time.Time{}, now, false},
+			{"open end", now.Add(-time.Hour), time.Time{}, false},
+			{"no bounds", time.Time{}, time.Time{}, false},
+		} {
+			err := CheckQueryWindow(maxHours, func() time.Time { return now }, tc.start, tc.end)
+			if tc.bad {
+				if !errors.Is(err, ErrBadRequest) || !strings.Contains(err.Error(), "must be before") {
+					t.Errorf("%s (cap %d) = %v, want public range error", tc.name, maxHours, err)
+				}
+			} else if err != nil {
+				t.Errorf("%s (cap %d) = %v", tc.name, maxHours, err)
+			}
+		}
+	}
+}
+
 func TestQueryTimeWindow(t *testing.T) {
 	before := time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)
 	after := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)

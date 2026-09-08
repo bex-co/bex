@@ -370,13 +370,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	input, ok := raw.(map[string]any)
 	if !ok {
-		return nil, MetricQuery{}, fmt.Errorf("query is required")
+		return nil, MetricQuery{}, fmt.Errorf("%w: query is required", core.ErrBadRequest)
 	}
 
 	name, _ := input["name"].(string)
 	metric, ok := renderMetricNames[name]
 	if !ok {
-		return nil, MetricQuery{}, fmt.Errorf("unknown metrics name %q", name)
+		return nil, MetricQuery{}, fmt.Errorf("%w: unknown metrics name %q", core.ErrBadRequest, name)
 	}
 	q := MetricQuery{Metric: metric}
 
@@ -388,7 +388,7 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 
 	resources := filters[filterFieldResource]
 	if len(resources) == 0 {
-		return nil, MetricQuery{}, fmt.Errorf("filters must include a RESOURCE entry")
+		return nil, MetricQuery{}, fmt.Errorf("%w: filters must include a RESOURCE entry", core.ErrBadRequest)
 	}
 
 	var err error
@@ -436,17 +436,17 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 func datastoreMetricsQueryInputFromArgs(raw any) (DatastoreMetricQuery, error) {
 	input, ok := raw.(map[string]any)
 	if !ok {
-		return DatastoreMetricQuery{}, fmt.Errorf("query is required")
+		return DatastoreMetricQuery{}, fmt.Errorf("%w: query is required", core.ErrBadRequest)
 	}
 
 	resource, _ := input["resource"].(string)
 	if resource == "" {
-		return DatastoreMetricQuery{}, fmt.Errorf("resource is required")
+		return DatastoreMetricQuery{}, fmt.Errorf("%w: resource is required", core.ErrBadRequest)
 	}
 	name, _ := input["name"].(string)
 	metric, ok := datastoreMetricNames[strings.ToUpper(name)]
 	if !ok {
-		return DatastoreMetricQuery{}, fmt.Errorf("unknown datastore metrics name %q", name)
+		return DatastoreMetricQuery{}, fmt.Errorf("%w: unknown datastore metrics name %q", core.ErrBadRequest, name)
 	}
 	rawKind, _ := input["kind"].(string)
 	kind := strings.ToLower(strings.TrimSpace(rawKind))
@@ -512,11 +512,11 @@ func windowFromInput(input map[string]any) (start, end time.Time, resolution tim
 func metricsFiltersQueryFromArgs(raw any) (MetricsFiltersQuery, error) {
 	input, ok := raw.(map[string]any)
 	if !ok {
-		return MetricsFiltersQuery{}, fmt.Errorf("query is required")
+		return MetricsFiltersQuery{}, fmt.Errorf("%w: query is required", core.ErrBadRequest)
 	}
 	app := firstValue(metricsFilterValues(input)[filterFieldResource])
 	if app == "" {
-		return MetricsFiltersQuery{}, fmt.Errorf("filters must include a RESOURCE entry")
+		return MetricsFiltersQuery{}, fmt.Errorf("%w: filters must include a RESOURCE entry", core.ErrBadRequest)
 	}
 	return MetricsFiltersQuery{App: app, OutputFilters: gqlutil.StringList(input["outputFilters"])}, nil
 }
