@@ -1,18 +1,18 @@
 # w2 · m90 — Web Shell production activation + WS-edge liveness
 
-**Worker:** worker2 **Goal:** an authorized workspace member opens `/services/{id}/shell` on the production dashboard and gets a live terminal over `wss://ssh.bex.co/shell`, and a dead Web Shell edge alerts instead of failing silently. **Status:** todo
+**Worker:** worker2 **Goal:** an authorized workspace member opens `/services/{id}/shell` on the production dashboard and gets a live terminal over `wss://ssh.bex.co/shell`, and a dead Web Shell edge alerts instead of failing silently. **Status:** in progress (t001–t006 done; t007 awaits `/ship` + first green `ssh-edge-liveness.yml` including the WS probe)
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est | depends_on       |
 | ---- | ----------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Activate the prod WS edge: `bex-shell-ticket` Secret + verify `wss://ssh.bex.co/shell`     | 40m | —                |
-| t002 | Production browser acceptance: live terminal + fail-closed matrix                          | 45m | t001             |
-| t003 | Extend `ssh-edge-liveness.yml` with a Web Shell WS-edge probe                              | 30m | t001             |
-| t004 | Record the activation in ADR035/ADR018; remove the "awaits activation" caveats             | 15m | t002             |
-| t005 | Simplify                                                                                   | 20m | t003, t004       |
-| t006 | Test coverage                                                                              | 30m | t003, t004       |
-| t007 | Closeout                                                                                   | 10m | t006             |
+| t001 | Activate the prod WS edge: `bex-shell-ticket` Secret + verify `wss://ssh.bex.co/shell` — **DONE** | 40m | —                |
+| t002 | Production browser acceptance: live terminal + fail-closed matrix — **DONE**              | 45m | t001             |
+| t003 | Extend `ssh-edge-liveness.yml` with a Web Shell WS-edge probe — **DONE**                  | 30m | t001             |
+| t004 | Record the activation in ADR035/ADR018; remove the "awaits activation" caveats — **DONE** | 15m | t002             |
+| t005 | Simplify — **DONE**                                                                       | 20m | t003, t004       |
+| t006 | Test coverage — **DONE**                                                                  | 30m | t003, t004       |
+| t007 | Closeout                                                                                  | 10m | t006             |
 
 ## Definition of done
 

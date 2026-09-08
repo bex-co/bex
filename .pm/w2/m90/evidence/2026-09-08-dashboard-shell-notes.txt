@@ -1,0 +1,11 @@
+title=agentmarketcap-1 ・ Web Service ・ bex Dashboard
+url=https://dashboard.bex.co/services/srv-d9bkcspg9s7c73d0n8ug/shell
+has[Web Shell]=true
+has[Select an instance]=false
+has[Connected]=false
+has[Connecting]=true
+has[ssh ]=true
+has[Shell]=true
+connected=true
+has_marker=true
+has_closed=true
