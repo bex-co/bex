@@ -33,6 +33,19 @@ server:
           tls_disable = 1
           address = "[::]:8200"
           cluster_address = "[::]:8201"
+          # Prometheus scrapes /v1/sys/metrics per-pod for the OpenBaoSealed alert
+          # (w3/m6). unauthenticated_metrics_access lets it read the seal gauge
+          # without a token — and a SEALED member still serves this endpoint, which
+          # is the whole point (a sealed member reports vault_core_unsealed=0).
+          # Cluster-internal only (no ingress), and metrics carry no secret material.
+          # SYNC NOTE (ADR088 live diagnosis, 2026-09-08): this block was added to
+          # base by w3/m6 but never copied here, so production ran WITHOUT it and
+          # the scrape answered 403 — the alert's third independent death layer,
+          # after the missing namespace label and the missing NetworkPolicy.
+          # gitops-validate now asserts this file carries base's telemetry lines.
+          telemetry {
+            unauthenticated_metrics_access = true
+          }
         }
         storage "raft" {
           path = "/openbao/data"
@@ -47,3 +60,9 @@ server:
           }
         }
         service_registration "kubernetes" {}
+        # Emit Prometheus-format telemetry with stable series names (no per-host
+        # label churn); 24h retention comfortably covers the alert eval window.
+        telemetry {
+          prometheus_retention_time = "24h"
+          disable_hostname = true
+        }

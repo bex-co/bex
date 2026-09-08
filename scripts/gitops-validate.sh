@@ -2474,4 +2474,17 @@ for required_snapshot_probe in \
   }
 done
 
+echo "==> prod OpenBao raft config carries base's telemetry lines (w3/m6 sync trap)"
+# The prod overlay REPLACES server.ha.raft.config wholesale (Helm does not merge
+# HCL strings), so base's telemetry lines must be hand-duplicated there. w3/m6
+# added unauthenticated_metrics_access to base only; production ran without it
+# and the OpenBao scrape answered 403 — found live 2026-09-08 as OpenBaoSealed's
+# third independent death layer (ADR088 §6 diagnosis). Enforce the sync note.
+for openbao_marker in 'unauthenticated_metrics_access = true' 'prometheus_retention_time'; do
+  grep -qF "$openbao_marker" deploy/gitops/overlays/prod/values/openbao.values.yaml || {
+    echo "FAIL: prod openbao values lost '$openbao_marker' — its ha.raft.config replaces base wholesale and must carry base's telemetry lines" >&2
+    fail=1
+  }
+done
+
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }
