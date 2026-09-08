@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -755,5 +756,112 @@ var _ = Describe("Persistent disk snapshots without a resolvable image", func() 
 		condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
 		Expect(condition).NotTo(BeNil())
 		Expect(condition.Reason).To(Equal("SnapshotImageUnresolved"))
+	})
+})
+
+// A workspace namespace minted after `disk-snapshot-secret.sh install` ran used
+// to hold neither snapshot Secret, so its first backup Job died in
+// CreateContainerConfigError until an operator re-ran the script (w2/033). The
+// reconciler now projects the canonical pair from the apps namespace, the way
+// the datastore reconcilers project their backup credential.
+var _ = Describe("Disk snapshot credential projection", func() {
+	const srcNS = "snapproj-src"
+	store := DiskSnapshotStore{
+		Endpoint: "https://s3.example.invalid", Bucket: "bex-disk-snapshots",
+		Prefix: "disks", S3Secret: "bex-disk-snapshot",
+		AgePublicKey:    "age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqsxfa9d",
+		AgeSecret:       "bex-disk-snapshot-age",
+		SourceNamespace: srcNS,
+	}
+
+	ensureNamespace := func(name string) {
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}
+		err := k8sClient.Create(ctx, ns)
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
+	}
+
+	seedSource := func(data string) {
+		ensureNamespace(srcNS)
+		for _, name := range []string{store.S3Secret, store.AgeSecret} {
+			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: srcNS}}
+			_, err := controllerutil.CreateOrUpdate(ctx, k8sClient, secret, func() error {
+				secret.Data = map[string][]byte{"AWS_ACCESS_KEY_ID": []byte(data)}
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+		}
+	}
+
+	newProjectionApp := func(name, ns string) (*AppReconciler, *appv1alpha1.App) {
+		ensureNamespace(ns)
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name, Namespace: ns,
+				Labels:      map[string]string{"app.bex.co/workspace": "tea-snapproj"},
+				Annotations: map[string]string{annotDiskProvisioned: diskProvisionedMarker},
+			},
+			Spec: appv1alpha1.AppSpec{
+				Image: "nginx:1", Tier: "starter",
+				Disk: &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10},
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		return &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(),
+			DiskSnapshots: store, BackupHelperImage: "ghcr.io/bex-co/bex:test",
+		}, app
+	}
+
+	It("projects both Secrets into the App's namespace and refreshes drift", func() {
+		seedSource("first")
+		reconciler, app := newProjectionApp("snapproj-app", "tea-snapproj-a")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+
+		Expect(reconciler.reconcileDiskBackup(ctx, app)).To(Succeed())
+
+		for _, name := range []string{store.S3Secret, store.AgeSecret} {
+			projected := &corev1.Secret{}
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, projected)).To(Succeed())
+			Expect(projected.Data).To(HaveKeyWithValue("AWS_ACCESS_KEY_ID", []byte("first")))
+			// The copy must never be wireable into a tenant pod spec.
+			Expect(projected.Labels).To(HaveKeyWithValue(
+				appv1alpha1.LabelProtectedFromTenantMount, appv1alpha1.ProtectedFromTenantMount))
+		}
+		Expect(k8sClient.Get(ctx, client.ObjectKey{
+			Namespace: app.Namespace, Name: diskBackupName(app.Name),
+		}, &batchv1.CronJob{})).To(Succeed(), "the CronJob rides the projected credential")
+
+		// A rotation in the source namespace reaches every projected copy on
+		// the next reconcile — the drift the run-time-only script could not fix.
+		seedSource("rotated")
+		Expect(reconciler.reconcileDiskBackup(ctx, app)).To(Succeed())
+		projected := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: store.S3Secret}, projected)).To(Succeed())
+		Expect(projected.Data).To(HaveKeyWithValue("AWS_ACCESS_KEY_ID", []byte("rotated")))
+	})
+
+	It("names the missing canonical credential instead of scheduling a doomed CronJob", func() {
+		seedSource("seed")
+		// Remove the canonical pair to model a cluster whose apps namespace was
+		// never seeded (pre-w2/033 provision runs).
+		for _, name := range []string{store.S3Secret, store.AgeSecret} {
+			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: srcNS}}
+			Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, secret))).To(Succeed())
+		}
+		reconciler, app := newProjectionApp("snapproj-missing", "tea-snapproj-b")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+
+		Expect(reconciler.reconcileDiskBackup(ctx, app)).To(Succeed())
+
+		err := k8sClient.Get(ctx, client.ObjectKey{
+			Namespace: app.Namespace, Name: diskBackupName(app.Name),
+		}, &batchv1.CronJob{})
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(),
+			"a CronJob without its credential only produces CreateContainerConfigError pods")
+		condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+		Expect(condition).NotTo(BeNil())
+		Expect(condition.Reason).To(Equal("SnapshotCredentialUnavailable"))
 	})
 })

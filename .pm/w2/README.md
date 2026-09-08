@@ -97,9 +97,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- **033** — Disk-snapshot Secrets don't reach new tenant namespaces (no projection) nor the bootstrap apps namespace ← filed from the w2/m86 drill 2026-09-02: `tea-*` namespaces created after a `disk-snapshot-secret.sh` run get no backup credential, so their disk backups die in `CreateContainerConfigError` until the script re-runs
-- **030** — Hetzner volume-price re-check (ADR082 verification) ← from `/pm-brainstorm for w2` 2026-09-01 #5: the disk meter's €/GB-month cost basis was never confirmed via an authenticated Hetzner `GET /v1/pricing`; needs an operator-supplied `HCLOUD_TOKEN`, no code change
-- **031** — Repair ADR018 stale board cross-references ← from `/pm-brainstorm for w2` 2026-09-01 #6: the ledger cites `.pm/w9/050.md` (nonexistent) and `.pm/w2/025.md` (moved to `FUTURE-MAYBE.md` 2026-08-23); fix the pointers so future parity rounds don't re-derive settled state
+_(none open — 2026-09-08 triage: `033` fixed — operator now projects the disk-snapshot Secret pair from the apps namespace into each disk-bearing App's namespace at reconcile time, `SnapshotCredentialUnavailable` fail-closed condition, script seeds the source, envtest-pinned; `030` executed — authenticated Hetzner pricing read: volumes bill **$0.0767/GB-month USD** on this account ⇒ ~56.2% gross margin at the $0.175 rate, recorded in ADR082 §Verification, `pricing.yaml` untouched pending a user re-price decision; `031` fixed — ADR018's two stale `.pm` pointers corrected (Enterprise drift restated inline, Managed-OIDC row points at FUTURE-MAYBE). All three in `done/`.)_
 
 _(`032` resolved 2026-09-03 — user supplied `BEX_STRIPE_PUBLISHABLE_KEY` into `.env`, patched into `bex-system/bex-stripe` (mode-checked), bex-api rolled 2/2 and Argo went Synced/Healthy; moved to `done/`)_
 

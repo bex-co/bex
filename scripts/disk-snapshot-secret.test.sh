@@ -117,15 +117,18 @@ else
   fail "operator Secret must carry AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY"
 fi
 
-# 2. The Job runs beside its App (ADR043 D8) and nothing projects the credential,
-#    so it must be installed into every tenant namespace — AND into bex-system,
-#    where the manager manifest's secretKeyRef reads the age recipient from it
-#    (w2/m86: tenant-only left DiskSnapshots unconfigured on every
-#    manifest-armed cluster, so no backup CronJob was ever created).
-if [ "$(grep -c 'for ns in "\$namespace" \$(tenant_namespaces)' "$SCRIPT")" -ge 2 ]; then
-  pass "operator Secret and age Secret are installed into bex-system and every tenant namespace"
+# 2. The Job runs beside its App (ADR043 D8). Three destinations are all
+#    load-bearing: bex-system (the manager manifest's secretKeyRef reads the
+#    age recipient from it — w2/m86: tenant-only left DiskSnapshots
+#    unconfigured on every manifest-armed cluster), the APPS namespace (the
+#    operator's reconcile-time projection source — w2/033: without a seeded
+#    source, a workspace namespace minted after this script ran never got the
+#    credential and its backups died in CreateContainerConfigError), and every
+#    existing tenant namespace (immediate coverage + rotation repair).
+if [ "$(grep -c 'for ns in "\$namespace" "\$apps_namespace" \$(tenant_namespaces)' "$SCRIPT")" -ge 2 ]; then
+  pass "operator Secret and age Secret reach bex-system, the apps namespace, and every tenant namespace"
 else
-  fail "operator Secret must reach bex-system (manager secretKeyRef) and every tenant namespace"
+  fail "operator Secret must reach bex-system (manager secretKeyRef), the apps namespace (projection source), and every tenant namespace"
 fi
 
 # 2b. The write Secret must carry the age RECIPIENT beside the AWS pair — the

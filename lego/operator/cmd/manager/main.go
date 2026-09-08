@@ -368,6 +368,11 @@ func setupAppReconciler(
 			S3Secret:     os.Getenv("BEX_DISK_SNAPSHOT_S3_SECRET"),
 			AgePublicKey: os.Getenv("BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY"),
 			AgeSecret:    os.Getenv("BEX_DISK_SNAPSHOT_AGE_SECRET"),
+			// The canonical credential pair lives in the apps namespace and is
+			// projected into each disk-bearing App's own namespace at reconcile
+			// time (w2/033) — the same source the datastore
+			// BackupSourceNamespace uses below.
+			SourceNamespace: appsNamespace,
 		},
 		MaxConcurrentBuilds:     envInt("BEX_MAX_CONCURRENT_BUILDS", 0),
 		MaxActiveBuilds:         envInt("BEX_MAX_ACTIVE_BUILDS", 0),
