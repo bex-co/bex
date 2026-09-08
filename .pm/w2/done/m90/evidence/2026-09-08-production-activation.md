@@ -88,7 +88,9 @@ Local discrimination (this session):
 | `wss://127.0.0.1:1/shell` (dead) | **1** — connection refused |
 | `wss://ssh.bex.co/shell` (prod) | **0** — 401 `missing ticket` |
 
-**Owed for closeout:** first green `ssh-edge-liveness.yml` run on `main` that includes the step `Probe the Web Shell WS edge for refusal-shape`. As of 2026-09-08, probe files are **not** on `origin/main`; the latest success ([run 34164258626](https://github.com/bex-co/bex/actions/runs/34164258626)) still has only KEXINIT + fallback-TLS on `public-edge-liveness` — no WS probe step. Requires `/ship` then `gh workflow run` (or the next schedule).
+**Discharged 2026-09-08:** shipped `8cb763d40`; workflow_dispatch [run 34187528803](https://github.com/bex-co/bex/actions/runs/34187528803) conclusion **success**, including step `Probe the Web Shell WS edge for refusal-shape` (success). Local red/green discrimination above remains the proof that refusal-shape ≠ dead edge.
+
+**Discharged 2026-09-08:** shipped `8cb763d40`; workflow_dispatch [run 34187528803](https://github.com/bex-co/bex/actions/runs/34187528803) conclusion **success**, including step `Probe the Web Shell WS edge for refusal-shape` (success). Local red/green discrimination above remains the proof that refusal-shape ≠ dead edge.
 
 ## Verification commands run
 
