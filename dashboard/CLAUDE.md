@@ -152,7 +152,7 @@ yarn test:coverage      # Vitest with coverage
 yarn kill               # Kill process on port 5173
 ```
 
-`yarn typecheck && yarn lint && yarn test` must all pass before `deploy.yml` builds or pushes the dashboard image (`build-and-deploy` `needs:` the dashboard test job).
+`yarn typecheck && yarn lint && yarn test` must all pass before `deploy.yml` builds or pushes the dashboard image (its `build` job `needs:` the dashboard test job).
 
 ### Local development without a cluster (`local-bex`)
 

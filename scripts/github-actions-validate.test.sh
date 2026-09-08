@@ -124,7 +124,18 @@ assert "registry-only image-build job passes" 0 "$(job_body "bex-production" "  
           REGISTRY_TOKEN: \${{ secrets.GITHUB_TOKEN }}
         run: docker login
       - uses: $BUILD_PUSH")"
-# GREEN: deploy-class secrets remain legal in a non-build job.
+# RED: the bracket secrets form GitHub also resolves must not slip past.
+assert "bracket-form secret in image-build job fails" 1 "$(job_body "bex-production" "      - uses: $BUILD_PUSH
+      - env:
+          TOKEN: \${{ secrets['HCLOUD_TOKEN'] }}
+        run: ./deploy")" "image-build job must reference no secret beyond the registry-push GITHUB_TOKEN"
+# RED: a job key with a trailing comment defeats the job-header parser; an
+# image build must then fail closed rather than silently skip classification.
+assert "annotated job key with image build fails" 1 "$(printf 'jobs:\n  x: # image build\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    steps:\n      - uses: %s' "$BUILD_PUSH")" \
+  "outside a recognized job header"
+# GREEN: deploy-class secrets remain legal in a non-build job (byte-identical
+# to check 6's production fixture above — re-proved here as check 8's boundary:
+# the secretless rule keys on the image build, not on the pool).
 assert "deploy secret in non-build job passes" 0 "$(job_body "bex-production" "      - env:
           TOKEN: \${{ secrets.PRODUCTION_TOKEN }}
         run: ./deploy")"

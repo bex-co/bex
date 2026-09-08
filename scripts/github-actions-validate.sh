@@ -343,11 +343,17 @@ secretless_build_violations() {
   local wf
   for wf in $(collect_workflow_files); do
     awk -v file="$wf" '
+      # Any secrets reference beyond the exact registry token is a violation,
+      # including bracket/format() forms GitHub also resolves: strip the exact
+      # allowed name to a marker, then flag every remaining secrets ref and any
+      # longer name that merely starts with GITHUB_TOKEN.
+      function has_disallowed_secret(text) {
+        gsub(/secrets\.GITHUB_TOKEN/, "\001", text)
+        return text ~ /\001[A-Za-z0-9_]/ || text ~ /secrets[.\[]/
+      }
       function check_job() {
         if (job == "" || block !~ /docker\/build-push-action/) return
-        stripped = block
-        gsub(/\$\{\{[[:space:]]*secrets\.GITHUB_TOKEN[[:space:]]*\}\}/, "", stripped)
-        if (header_secret || stripped ~ /\$\{\{[[:space:]]*secrets\./) {
+        if (header_secret || has_disallowed_secret(block)) {
           print file ":" job ": image-build job must reference no secret beyond the registry-push GITHUB_TOKEN"
         }
         if (block ~ /\n    environment:/) {
@@ -355,11 +361,14 @@ secretless_build_violations() {
         }
       }
       !in_jobs {
-        header = $0
-        gsub(/\$\{\{[[:space:]]*secrets\.GITHUB_TOKEN[[:space:]]*\}\}/, "", header)
-        if (header ~ /\$\{\{[[:space:]]*secrets\./) header_secret = 1
+        if (has_disallowed_secret($0)) header_secret = 1
       }
       /^jobs:[[:space:]]*$/ { in_jobs = 1; next }
+      # Fail closed when an image build appears before any recognized job
+      # header — a reformatted/annotated job key must not exempt its job.
+      in_jobs && job == "" && /docker\/build-push-action/ {
+        print file ": docker/build-push-action outside a recognized job header — use the plain two-space `name:` job key form"
+      }
       in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ {
         check_job()
         job = $1
