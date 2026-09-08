@@ -238,9 +238,11 @@ complete_leg repo-delete-during-build
 # round-trip a serviceDetails-field update against it — the operation that was
 # impossible before the fix (empty runtime → "unsupported runtime" / "cannot
 # switch runtimes via the CLI").
-BUILDER_ID="$(api_post "/services?ownerId=$RENDER_WORKSPACE" \
-  "$(jq -nc --arg name "$BUILDER_NAME" '{
-    name: $name, type: "web_service",
+# ownerId belongs in the create body (Render's create envelope), not as a
+# query param — POST /v1/services rejects unknown query keys with 400.
+BUILDER_ID="$(api_post "/services" \
+  "$(jq -nc --arg name "$BUILDER_NAME" --arg owner "$RENDER_WORKSPACE" '{
+    name: $name, type: "web_service", ownerId: $owner,
     repo: "https://github.com/render-examples/go-gin.git", branch: "main",
     serviceDetails: { plan: "starter", region: "frankfurt" }
   }')" | jq -er '.service.id')"
@@ -285,7 +287,7 @@ assert_service "$WEB_ID" '
   .serviceDetails.maintenanceMode == {enabled:true, uri:"https://status.example.test/maintenance"} and
   .serviceDetails.envSpecificDetails.buildCommand == "go build ./..." and
   .serviceDetails.envSpecificDetails.startCommand == "./server" and
-  .ipAllowList == [{cidrBlock:"203.0.113.0/24",description:"create-office"}]
+  .serviceDetails.ipAllowList == [{cidrBlock:"203.0.113.0/24",description:"create-office"}]
 ' "web create preserves every applicable baseline flag" --arg name "$WEB_NAME"
 complete_leg web-create
 
@@ -319,7 +321,7 @@ assert_service "$WEB_ID" '
   .serviceDetails.maintenanceMode == {enabled:false, uri:"https://status.example.test/ready"} and
   .serviceDetails.envSpecificDetails.buildCommand == "go build ./cmd/..." and
   .serviceDetails.envSpecificDetails.startCommand == "./api" and
-  .ipAllowList == [
+  .serviceDetails.ipAllowList == [
     {cidrBlock:"198.51.100.0/24",description:"update-office"},
     {cidrBlock:"2001:db8::/32",description:"update-v6"}
   ]
@@ -369,7 +371,7 @@ assert_service "$STATIC_ID" '
   .branch == "main" and .rootDir == "site" and .autoDeploy == "no" and
   .buildFilter == {paths:["site/**"], ignoredPaths:["docs/**"]} and
   .serviceDetails.buildCommand == "npm run build" and .serviceDetails.publishPath == "dist" and
-  .ipAllowList == [{cidrBlock:"192.0.2.0/24",description:"static-create"}]
+  .serviceDetails.ipAllowList == [{cidrBlock:"192.0.2.0/24",description:"static-create"}]
 ' "static-site create preserves publish and allowlist metadata"
 complete_leg static-create
 
@@ -383,7 +385,7 @@ assert_service "$STATIC_ID" '
   .rootDir == "web" and .autoDeploy == "yes" and
   .buildFilter == {paths:["web/**"], ignoredPaths:["drafts/**"]} and
   .serviceDetails.buildCommand == "npm run generate" and .serviceDetails.publishPath == "public" and
-  .ipAllowList == [{cidrBlock:"192.0.2.128/25",description:"static-update"}]
+  .serviceDetails.ipAllowList == [{cidrBlock:"192.0.2.128/25",description:"static-update"}]
 ' "static-site update preserves publish and allowlist metadata"
 complete_leg static-update
 

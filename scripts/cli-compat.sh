@@ -32,7 +32,7 @@
 #
 # Env (all have dev-9 defaults so this runs with zero setup once dev-9 is up):
 #   BEX_API_URL       bex-api base, default http://localhost:54090
-#   HYDRA_PUBLIC_URL  Hydra's public endpoint (token exchange), default http://localhost:59090
+#   HYDRA_PUBLIC_URL  Hydra's public endpoint (token exchange), default http://localhost:58090
 #   CLI_KEY_ENV       path to a KEY_ID/KEY_SECRET env file, default .pm/w9/dev-9/.cli-key.env
 #     (bash .pm/w9/dev-9/bootstrap-key.sh mints one — see docs/cli-compatibility-checklist.md)
 #   RENDER_BIN        path to the built render binary, default .pm/w9/dev-9/bin/render
@@ -47,7 +47,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BEX_API_URL="${BEX_API_URL:-http://localhost:54090}"
-HYDRA_PUBLIC_URL="${HYDRA_PUBLIC_URL:-http://localhost:59090}"
+HYDRA_PUBLIC_URL="${HYDRA_PUBLIC_URL:-http://localhost:58090}"
 CLI_KEY_ENV="${CLI_KEY_ENV:-.pm/w9/dev-9/.cli-key.env}"
 export RENDER_BIN="${RENDER_BIN:-.pm/w9/dev-9/bin/render}"
 
