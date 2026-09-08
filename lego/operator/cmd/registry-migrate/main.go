@@ -193,15 +193,29 @@ func (s *skopeoRegistry) Digest(ctx context.Context, repo, tag string) (string, 
 func (s *skopeoRegistry) CopyTag(ctx context.Context, srcRepo, dstRepo, tag string) error {
 	src := fmt.Sprintf("docker://%s/%s:%s", s.host, srcRepo, tag)
 	dst := fmt.Sprintf("docker://%s/%s:%s", s.host, dstRepo, tag)
-	cmd := exec.CommandContext(ctx, "skopeo", "copy", "--src-tls-verify=false", "--dest-tls-verify=false", src, dst)
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	return cmd.Run()
+	return s.skopeoCopy(ctx, src, dst)
 }
 
 func (s *skopeoRegistry) PutTombstone(ctx context.Context, repo, digest string) error {
 	src := fmt.Sprintf("docker://%s/%s@%s", s.host, repo, digest)
 	dst := fmt.Sprintf("docker://%s/%s:%s", s.host, repo, identity.TombstoneTag)
-	cmd := exec.CommandContext(ctx, "skopeo", "copy", "--src-tls-verify=false", "--dest-tls-verify=false", src, dst)
+	return s.skopeoCopy(ctx, src, dst)
+}
+
+// skopeoCopyArgs builds the skopeo copy argv. Creds are passed explicitly so
+// --apply works without a prior `skopeo login` (m92 Phase 2: first tenant
+// apply failed with "authentication required" until a local login).
+func skopeoCopyArgs(src, dst, user, password string) []string {
+	args := []string{"copy", "--src-tls-verify=false", "--dest-tls-verify=false"}
+	if user != "" || password != "" {
+		creds := user + ":" + password
+		args = append(args, "--src-creds", creds, "--dest-creds", creds)
+	}
+	return append(args, src, dst)
+}
+
+func (s *skopeoRegistry) skopeoCopy(ctx context.Context, src, dst string) error {
+	cmd := exec.CommandContext(ctx, "skopeo", skopeoCopyArgs(src, dst, s.user, s.password)...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	return cmd.Run()
 }
