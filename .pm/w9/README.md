@@ -57,7 +57,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w9/dev-9/` keeps onl
 
 ## Approved queue (priority order, 2026-09-08)
 
-1. **[059 — Reject blank project names across API surfaces](059.md)** (50–60m; transferred from w4/057). Independent implementation; inbox-sized.
-2. **[060 — Repair name-conflict E2E Hydra compatibility](060.md)** (40–60m; transferred from w5/052). Requires Docker for the full run; inbox-sized.
+- [x] **[059 — Reject blank project names across API surfaces](done/059.md)** — fixed with w4/058 on 2026-09-08; shared service validation and REST/GraphQL/MCP regression coverage.
+1. **[060 — Repair name-conflict E2E Hydra compatibility](060.md)** (40–60m; transferred from w5/052). Requires Docker for the full run; inbox-sized.
 
 `m93` closed 2026-09-08: live `image-healthcheck` + `web-builder-roundtrip` on dev-9 with CLI pin `fe8a6188119e` / API HEAD `9024a9672`; moved to `done/m93/`. The two inbox notes preserve their original evidence and replace their source queue entries. No new milestone or duplicated closing tasks are needed.

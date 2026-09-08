@@ -137,4 +137,6 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 > `002.md` (MFA) promoted to **m11** 2026-07-08; `004.md` (credential hygiene) promoted to **m13** 2026-07-09; `003.md` (GitHub social login) implemented directly 2026-07-11 (Kratos `oidc` + Dex e2e, docs/ADR012-auth.md §10); `007.md` (Audit Log IA placement) promoted to **m15** 2026-07-12; `010.md` promoted to **m17** with `009.md` folded in as its aal2-altitude task, and `006.md` (session management) folded into **m18** as its active-sessions task, 2026-07-12 — notes moved to `done/`.
 
-> Inbox `057` transferred to [w9/059](../w9/059.md) on 2026-09-07 by user approval; implementation remains pending in w9.
+> Inbox `057` transferred to [w9/059](../w9/done/059.md) on 2026-09-07 by user approval; fixed alongside 058 on 2026-09-08.
+
+- [x] **058** — Reject blank environment renames; direct environment creates and sibling project names are guarded too. Closed 2026-09-08; see [done/058.md](done/058.md).
