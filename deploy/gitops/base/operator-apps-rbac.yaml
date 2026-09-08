@@ -14,7 +14,10 @@
 #     credentials Secret (<kv-name>) whose data the StatefulSet reads via env ref.
 #   app_controller: get/create/update/patch — copyCloneSecret reads the git-clone
 #     credential Secret that bex-api wrote, then copies it to the build namespace when
-#     BEX_BUILD_NAMESPACE differs from the app namespace.
+#     BEX_BUILD_NAMESPACE differs from the app namespace; the disk-snapshot
+#     projection (w2/033) reads the canonical bex-disk-snapshot(+-age) pair here
+#     (DiskSnapshotStore.SourceNamespace) to copy into disk-bearing Apps' own
+#     workspace namespaces at reconcile time.
 #
 # This file lives in deploy/gitops (not lego/operator/config/rbac) because
 # config/default's kustomize namePrefix+namespace transform would rewrite any

@@ -88,6 +88,14 @@ type DiskSnapshotStore struct {
 	// AgeSecret is a Secret in the App's namespace holding the matching private
 	// key under "private". Only restore Jobs mount it; a backup never needs it.
 	AgeSecret string
+	// SourceNamespace is where the canonical S3Secret/AgeSecret pair lives (the
+	// apps namespace, mirroring the datastore BackupSourceNamespace). When set,
+	// the reconciler projects both into each disk-bearing App's own namespace,
+	// so a workspace namespace created after `disk-snapshot-secret.sh install`
+	// ran still gets its backup credential — previously its first backup Job
+	// died in CreateContainerConfigError until an operator re-ran the script
+	// (w2/033). Empty ⇒ no projection (single-namespace/dev, byte-identical).
+	SourceNamespace string
 }
 
 // configured reports whether snapshots can be taken at all. Encryption is not
@@ -142,6 +150,18 @@ func (r *AppReconciler) reconcileDiskBackup(ctx context.Context, app *appv1alpha
 			"cannot schedule disk snapshots: the operator could not resolve its own image (POD_NAME/BEX_BACKUP_HELPER_IMAGE)")
 		return nil
 	}
+	switch err := r.projectDiskSnapshotSecrets(ctx, app); {
+	case apierrors.IsNotFound(err):
+		// The canonical credential pair is absent from the source namespace, so
+		// a CronJob would only produce CreateContainerConfigError pods at 02:xx
+		// — the silent-unprotected-disk failure this projection exists to end.
+		// Name it and take no snapshot instead.
+		setDiskCondition(app, false, "SnapshotCredentialUnavailable",
+			fmt.Sprintf("cannot schedule disk snapshots: %v (run scripts/disk-snapshot-secret.sh install)", err))
+		return nil
+	case err != nil:
+		return err
+	}
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cron, func() error {
 		cron.Labels = diskBackupLabels(app)
@@ -149,6 +169,34 @@ func (r *AppReconciler) reconcileDiskBackup(ctx context.Context, app *appv1alpha
 		return controllerutil.SetControllerReference(app, cron, r.Scheme)
 	})
 	return err
+}
+
+// projectDiskSnapshotSecrets copies the canonical disk-snapshot credential pair
+// from the apps namespace into a disk-bearing App's own namespace, exactly the
+// way the Database/KeyValue reconcilers project their backup credential
+// (ADR043 D8.4). This is what lets a workspace namespace minted AFTER the
+// provision script ran still take its nightly snapshot: the copy happens at
+// reconcile time, refreshed on drift, wherever the App actually lives —
+// including the bootstrap apps namespace itself, where projection no-ops
+// because source and destination coincide.
+//
+// The age Secret carries the DECRYPT half, but projecting it alongside adds no
+// exposure: tenant workloads cannot read either copy (no Kubernetes API
+// access, automountServiceAccountToken disabled, and the protected-mount label
+// keeps both out of tenant pod specs), and restore Jobs need it namespace-local.
+func (r *AppReconciler) projectDiskSnapshotSecrets(ctx context.Context, app *appv1alpha1.App) error {
+	src := r.DiskSnapshots.SourceNamespace
+	if src == "" || src == app.Namespace {
+		return nil
+	}
+	cl := r.uncachedSecretClient()
+	if err := projectBackupCredential(ctx, cl, src, app.Namespace, r.DiskSnapshots.S3Secret); err != nil {
+		return err
+	}
+	if r.DiskSnapshots.AgeSecret == "" {
+		return nil
+	}
+	return projectBackupCredential(ctx, cl, src, app.Namespace, r.DiskSnapshots.AgeSecret)
 }
 
 func diskBackupLabels(app *appv1alpha1.App) map[string]string {

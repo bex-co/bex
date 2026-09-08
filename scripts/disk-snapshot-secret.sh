@@ -49,6 +49,13 @@ if [ -n "${BEX_KUBE_CONTEXT:-}" ]; then
   KUBE=(kubectl --context "$BEX_KUBE_CONTEXT")
 fi
 namespace="${BEX_SYSTEM_NAMESPACE:-bex-system}"
+# The apps namespace is the operator's projection SOURCE (w2/033): the manager
+# copies both Secrets from here into each disk-bearing App's own namespace at
+# reconcile time (DiskSnapshotStore.SourceNamespace, mirroring the datastore
+# BackupSourceNamespace), so workspace namespaces created after this script ran
+# still get their backup credential. Must match the operator's
+# BEX_APPS_NAMESPACE.
+apps_namespace="${BEX_APPS_NAMESPACE:-default}"
 write_secret_name="${BEX_DISK_SNAPSHOT_SECRET_NAME:-bex-disk-snapshot}"
 read_secret_name="${BEX_DISK_SNAPSHOT_READ_SECRET_NAME:-bex-disk-snapshot-read}"
 age_secret_name="${BEX_DISK_SNAPSHOT_AGE_SECRET:-bex-disk-snapshot-age}"
@@ -274,7 +281,7 @@ ensure_age_keypair() {
   local private
   private="$(grep -o 'AGE-SECRET-KEY-[A-Z0-9]*' "$keyfile" | head -1)"
   [ -n "$private" ] || { echo "error: could not read the generated private key" >&2; exit 1; }
-  for ns in "$namespace" $(tenant_namespaces); do
+  for ns in "$namespace" "$apps_namespace" $(tenant_namespaces); do
     "${KUBE[@]}" -n "$ns" create secret generic "$age_secret_name" \
       --from-literal=private="$private" \
       --dry-run=client -o yaml | "${KUBE[@]}" apply -f - >/dev/null
@@ -312,17 +319,18 @@ install_secrets() {
     printf 'AWS_SECRET_ACCESS_KEY=%s\n' "${BEX_DISK_SNAPSHOT_SECRET_KEY:-}"
     printf 'BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY=%s\n' "${BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY:-}"
   } >"$env_file"
-  # Installed into bex-system (the manager's secretKeyRef, above) AND every
-  # tenant namespace: the Job runs beside the App (ADR043 D8 co-location) and
-  # there is no projection for disk snapshots the way BackupSourceNamespace
-  # projects the KeyValue credential. A Secret only in bex-system leaves every
-  # backup Job in CreateContainerConfigError — found by the w1/m87 drill.
-  for ns in "$namespace" $(tenant_namespaces); do
+  # Installed into bex-system (the manager's secretKeyRef, above), the APPS
+  # namespace (the operator's projection source — the manager copies the pair
+  # from there into each disk-bearing App's namespace at reconcile time,
+  # w2/033), and every existing tenant namespace (immediate coverage + drift
+  # repair; a Secret reachable nowhere leaves every backup Job in
+  # CreateContainerConfigError — found by the w1/m87 drill).
+  for ns in "$namespace" "$apps_namespace" $(tenant_namespaces); do
     "${KUBE[@]}" -n "$ns" create secret generic "$write_secret_name" \
       --from-env-file="$env_file" \
       --dry-run=client -o yaml | "${KUBE[@]}" apply -f - >/dev/null
   done
-  echo "installed $write_secret_name (operator: write + purge + age recipient) into bex-system and every tenant namespace"
+  echo "installed $write_secret_name (operator: write + purge + age recipient) into bex-system, the apps namespace, and every tenant namespace"
 
   # bex-api: LIST only. No age key, no write authority.
   {
