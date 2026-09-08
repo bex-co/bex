@@ -10,11 +10,15 @@ import type { DeviceSubscriptionClient } from "./registration-controller";
 import type { RemoteNotificationInboxItem } from "./inbox-store";
 
 export class ApolloNotificationSubscriptionClient implements DeviceSubscriptionClient {
-  constructor(private readonly client: ApolloClient) {}
+  constructor(
+    private readonly client: ApolloClient,
+    private readonly workspaceId: string,
+  ) {}
 
   async list(): Promise<{ available: boolean }> {
     const result = await this.client.query({
       query: MobileNotificationDeviceSubscriptionsDocument,
+      variables: { ownerId: this.workspaceId },
       fetchPolicy: "network-only",
     });
     return { available: result.data?.pushNotificationsAvailable === true };
@@ -29,14 +33,14 @@ export class ApolloNotificationSubscriptionClient implements DeviceSubscriptionC
   }): Promise<void> {
     await this.client.mutate({
       mutation: MobileRegisterNotificationDeviceSubscriptionDocument,
-      variables: input,
+      variables: { ...input, ownerId: this.workspaceId },
     });
   }
 
   async unregister(deviceId: string, accessToken?: string): Promise<void> {
     await this.client.mutate({
       mutation: MobileUnregisterNotificationDeviceSubscriptionDocument,
-      variables: { deviceId },
+      variables: { deviceId, ownerId: this.workspaceId },
       context: accessToken
         ? {
             headers: { authorization: `Bearer ${accessToken}` },
@@ -49,7 +53,7 @@ export class ApolloNotificationSubscriptionClient implements DeviceSubscriptionC
   async inbox(limit = 100): Promise<RemoteNotificationInboxItem[]> {
     const result = await this.client.query({
       query: MobileNotificationInboxDocument,
-      variables: { limit },
+      variables: { limit, ownerId: this.workspaceId },
       fetchPolicy: "network-only",
     });
     return (result.data?.notificationInbox ?? []).map((item) => ({
@@ -66,7 +70,7 @@ export class ApolloNotificationSubscriptionClient implements DeviceSubscriptionC
   async markNotificationRead(id: string): Promise<void> {
     await this.client.mutate({
       mutation: MobileMarkPushNotificationReadDocument,
-      variables: { id },
+      variables: { id, ownerId: this.workspaceId },
     });
   }
 }

@@ -99,13 +99,14 @@ const allowedGraphqlOperations: Record<string, string> = {
     "query|id|datastoreMetrics,field,labels,time,unit,value,values",
   MobileKeyValueLifecycle:
     "query|id|id,keyValue,name,plan,region,status,suspended,updatedAt,version",
-  MobileMarkPushNotificationRead: "mutation|id|markPushNotificationRead",
+  MobileMarkPushNotificationRead:
+    "mutation|id,ownerId|markPushNotificationRead",
   MobileMetricSnapshot:
     "query|name,resourceId|field,labels,metrics,time,unit,value,values",
   MobileNotificationDeviceSubscriptions:
-    "query||createdAt,deviceId,lastRegisteredAt,notificationDeviceSubscriptions,platform,preferenceRef,provider,pushNotificationsAvailable,updatedAt",
+    "query|ownerId|createdAt,deviceId,lastRegisteredAt,notificationDeviceSubscriptions,platform,preferenceRef,provider,pushNotificationsAvailable,updatedAt",
   MobileNotificationInbox:
-    "query|limit|body,deepLink,event,id,notificationInbox,occurredAt,readAt,title,unreadPushNotificationCount",
+    "query|limit,ownerId|body,deepLink,event,id,notificationInbox,occurredAt,readAt,title,unreadPushNotificationCount",
   MobilePostgresCapacity:
     "query|id|datastoreMetrics,field,labels,time,unit,value,values",
   MobilePostgresLifecycle:
@@ -115,7 +116,7 @@ const allowedGraphqlOperations: Record<string, string> = {
   MobilePostgresTableScans:
     "query|id|databaseTableScans,deadRows,indexScans,name,schema,seqScans",
   MobileRegisterNotificationDeviceSubscription:
-    "mutation|deviceId,platform,provider,sessionId,token|createdAt,deviceId,lastRegisteredAt,platform,preferenceRef,provider,registerNotificationDeviceSubscription,updatedAt",
+    "mutation|deviceId,ownerId,platform,provider,sessionId,token|createdAt,deviceId,lastRegisteredAt,platform,preferenceRef,provider,registerNotificationDeviceSubscription,updatedAt",
   MobileResourceStatus:
     "query|ownerId|databaseIds,databases,displayName,id,keyValueIds,keyValues,latestDeployId,name,phase,projectId,projects,runtime,serviceIds,services,status,suspended,type,updatedAt,version",
   MobileRestartPostgres:
@@ -143,7 +144,7 @@ const allowedGraphqlOperations: Record<string, string> = {
   MobileTriggerDeploy:
     "mutation|serviceId|createdAt,id,serviceId,status,trigger,triggerDeploy",
   MobileUnregisterNotificationDeviceSubscription:
-    "mutation|deviceId|unregisterNotificationDeviceSubscription",
+    "mutation|deviceId,ownerId|unregisterNotificationDeviceSubscription",
   MobileUsageGlance:
     "query|ownerId|coverage,degradedSources,kind,period,rows,services,state,through,total,usage",
   MobileViewerCapabilities:
