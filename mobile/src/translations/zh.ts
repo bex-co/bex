@@ -20,6 +20,8 @@ export const zh = {
     notifications: "提醒",
   },
   notifications: {
+    inboxChecking: "正在检查访问权限并刷新提醒…",
+    inboxError: "无法刷新提醒。请检查网络连接后重试。",
     benefit: "在手机上接收重要的服务和部署动态。",
     emptyTitle: "暂无提醒",
 

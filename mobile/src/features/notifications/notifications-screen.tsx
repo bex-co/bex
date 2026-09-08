@@ -13,8 +13,17 @@ import { useNotifications } from "./notifications-provider";
 export function NotificationInboxScreen() {
   const theme = useTheme().colorTheme;
   const { t, language } = useTranslations();
-  const { state, items, unread, enable, disable, markAllRead, open } =
-    useNotifications();
+  const {
+    state,
+    items,
+    unread,
+    inboxState,
+    retry,
+    enable,
+    disable,
+    markAllRead,
+    open,
+  } = useNotifications();
   const stateColor =
     state === "enabled"
       ? theme.success
@@ -61,7 +70,29 @@ export function NotificationInboxScreen() {
             ) : null}
           </View>
         ) : null}
-        {items.length === 0 ? (
+        {inboxState !== "ready" ? (
+          <DashboardCard>
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[styles.body, { color: theme.mutedForeground }]}
+            >
+              {t(
+                inboxState === "checking"
+                  ? "notifications.inboxChecking"
+                  : "notifications.inboxError",
+              )}
+            </Text>
+            {inboxState === "error" ? (
+              <Button
+                type="outline"
+                onPress={() => void retry().catch(() => undefined)}
+              >
+                {t("auth.retry")}
+              </Button>
+            ) : null}
+          </DashboardCard>
+        ) : null}
+        {items.length === 0 && inboxState === "ready" ? (
           <DashboardCard>
             <View style={styles.empty}>
               <View

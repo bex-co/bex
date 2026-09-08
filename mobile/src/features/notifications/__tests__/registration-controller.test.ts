@@ -47,7 +47,6 @@ function setup(projectId: string | null = "project-1") {
   const native = new Native();
   const subscriptions = new Subscriptions();
   let enabled = false;
-  const registered: string[] = [];
   const controller = new NotificationRegistrationController(
     projectId,
     "ios",
@@ -68,10 +67,6 @@ function setup(projectId: string | null = "project-1") {
       sessionId: "session-1",
       workspaceId: "tea-1",
     }),
-    (binding) =>
-      registered.push(
-        `${binding.subject}:${binding.workspaceId}:${binding.sessionId}`,
-      ),
   );
   return {
     controller,
@@ -81,7 +76,6 @@ function setup(projectId: string | null = "project-1") {
       enabled = value;
     },
     isEnabled: () => enabled,
-    registered,
   };
 }
 
@@ -148,8 +142,9 @@ describe("NotificationRegistrationController", () => {
     expect(enabled.subscriptions.calls).toEqual(["list"]);
   });
 
-  it("repairs a rotated token best-effort while signed in and online", async () => {
-    const { controller, native, subscriptions } = setup();
+  it("repairs a rotated token best-effort while signed in and opted in", async () => {
+    const { controller, native, subscriptions, setEnabled } = setup();
+    setEnabled(true);
     native.current = "granted";
     await controller.repairAfterTokenRotation();
     expect(subscriptions.calls).toEqual([
@@ -158,10 +153,12 @@ describe("NotificationRegistrationController", () => {
     ]);
   });
 
-  it("publishes the exact binding only after registration succeeds", async () => {
-    const { controller, registered } = setup();
+  it("registers the captured session", async () => {
+    const { controller, subscriptions } = setup();
     await controller.enableFromUserGesture();
-    expect(registered).toEqual(["identity-1:tea-1:session-1"]);
+    expect(subscriptions.calls.at(-1)).toBe(
+      "register:11111111-1111-4111-8111-111111111111:session-1",
+    );
   });
 
   it("keeps the local preference enabled when the remote unregister fails", async () => {
@@ -191,5 +188,46 @@ describe("NotificationRegistrationController", () => {
     expect(subscriptions.calls).toEqual([
       "unregister:11111111-1111-4111-8111-111111111111",
     ]);
+  });
+  it("does not register after disposal during token lookup", async () => {
+    const { controller, native, subscriptions } = setup();
+    let release: (value: string) => void = () => undefined;
+    let started: () => void = () => undefined;
+    const waiting = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    native.expoToken = async () => {
+      started();
+      return new Promise<string>((resolve) => {
+        release = resolve;
+      });
+    };
+    const enabling = controller.enableFromUserGesture();
+    await waiting;
+    controller.dispose();
+    release("ExponentPushToken[late]");
+    await enabling;
+    expect(subscriptions.calls).toEqual(["list"]);
+  });
+
+  it("does not publish enabled state from a late registration result", async () => {
+    const { controller, subscriptions } = setup();
+    let release: () => void = () => undefined;
+    let started: () => void = () => undefined;
+    const waiting = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    subscriptions.register = async () => {
+      started();
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    };
+    const enabling = controller.enableFromUserGesture();
+    await waiting;
+    controller.dispose();
+    release();
+    await enabling;
+    expect(controller.state).toBe("enabling");
   });
 });

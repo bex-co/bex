@@ -32,6 +32,17 @@ const AppState = {
     return { remove: () => listeners.delete(listener) };
   },
 };
+let notificationClient;
+let initialNotification = null;
+const notificationReceived = new Set();
+const notificationTapped = new Set();
+const notificationBadges = [];
+const sessionClearHooks = new Set();
+const notificationIdentity = {
+  status: "signedIn",
+  session: { subject: "test-subject", sessionId: "test-session" },
+};
+const notificationRouter = { push: (route) => routes.push(route) };
 const adapters = {
   "react-native": {
     Platform: { OS: "ios", select: (values) => values.ios ?? values.default },
@@ -61,7 +72,40 @@ const adapters = {
       announceForAccessibility: (text) => announcements.push(text),
     },
   },
-  "expo-router": { router: { replace: (route) => routes.push(route) } },
+  "expo-router": {
+    router: { replace: (route) => routes.push(route) },
+    useRouter: () => notificationRouter,
+  },
+  "expo-secure-store": {
+    getItemAsync: async () => null,
+    setItemAsync: async () => undefined,
+  },
+  "expo-crypto": { randomUUID: () => "11111111-1111-4111-8111-111111111111" },
+  "expo-notifications": {
+    setNotificationHandler: () => undefined,
+    setBadgeCountAsync: async (count) => {
+      notificationBadges.push(count);
+    },
+    getLastNotificationResponse: () => initialNotification,
+    clearLastNotificationResponse: () => {
+      initialNotification = null;
+    },
+    addNotificationReceivedListener: (listener) => {
+      notificationReceived.add(listener);
+      return { remove: () => notificationReceived.delete(listener) };
+    },
+    addNotificationResponseReceivedListener: (listener) => {
+      notificationTapped.add(listener);
+      return { remove: () => notificationTapped.delete(listener) };
+    },
+    addPushTokenListener: () => ({ remove: () => undefined }),
+  },
+  "@/features/auth/config": { mobileConfig: { easProjectId: null } },
+  "@/common/apollo/apollo-client": {
+    get apolloClient() {
+      return notificationClient;
+    },
+  },
   "@react-native-async-storage/async-storage": {
     getItem: async (key) => storage.get(key) ?? null,
     setItem: async (key, value) => {
@@ -72,9 +116,14 @@ const adapters = {
     },
   },
   "@/features/auth/auth-provider": {
-    useAuth: () => ({
-      state: { status: "signedIn", session: { sessionId: "test-session" } },
-    }),
+    useAuth: () => ({ state: notificationIdentity }),
+    authManager: {
+      getState: () => notificationIdentity,
+      registerSessionClearHook: (hook) => {
+        sessionClearHooks.add(hook);
+        return () => sessionClearHooks.delete(hook);
+      },
+    },
   },
   "@/common/hooks/use-translations": {
     useTranslations: () => ({ t: translate }),
@@ -132,6 +181,10 @@ translations = {
 const {
   SafeActionPanel,
 } = require("../src/components/safe-action/safe-action-panel");
+const {
+  NotificationsProvider,
+  useNotifications,
+} = require("../src/features/notifications/notifications-provider");
 const { LogSession } = require("../src/features/logs/log-session");
 const { LogViewer } = require("../src/features/logs/log-viewer");
 const workspaceData = (ids = ["tea-a"]) => ({
@@ -246,8 +299,10 @@ test("mounted recovery serializes membership and distinguishes outage from denia
   }
 });
 
-async function fixture(content) {
+async function fixture(content, notifications = false, initialStorage = []) {
   storage.clear();
+  for (const [key, value] of initialStorage) storage.set(key, value);
+  notificationBadges.length = 0;
   announcements.length = 0;
   routes.length = 0;
   connectivity = "online";
@@ -268,10 +323,15 @@ async function fixture(content) {
       ),
     ]),
   });
+  notificationClient = client;
   let observed;
   let children = content;
   function Probe() {
-    observed = { access: useCapabilities(), workspace: useWorkspace() };
+    observed = {
+      access: useCapabilities(),
+      workspace: useWorkspace(),
+      notifications: notifications ? useNotifications() : null,
+    };
     return children?.(observed) ?? null;
   }
   const root = createRoot();
@@ -286,7 +346,13 @@ async function fixture(content) {
           React.createElement(
             CapabilitiesProvider,
             null,
-            React.createElement(Probe),
+            notifications
+              ? React.createElement(
+                  NotificationsProvider,
+                  null,
+                  React.createElement(Probe),
+                )
+              : React.createElement(Probe),
           ),
         ),
       ),
@@ -766,5 +832,418 @@ test("equal-grant polling preserves mounted logs and confirmation until actual e
   } finally {
     await f.close();
     t.mock.timers.reset();
+  }
+});
+
+const pushResponse = (
+  workspaceId = "tea-b",
+  event = "server_failed",
+  route = "/services/srv-one",
+) => ({
+  notification: {
+    date: 1000,
+    request: {
+      identifier: "response-1",
+      content: {
+        title: "Private alert",
+        body: "Private details",
+        data: {
+          schema: "bex.notification.v1",
+          notificationId: "notification-1",
+          subject: "test-subject",
+          sessionId: "test-session",
+          workspaceId,
+          event,
+          route,
+        },
+      },
+    },
+  },
+});
+const inboxData = (rows = []) => ({
+  notificationInbox: rows,
+  unreadPushNotificationCount: rows.length,
+});
+async function replyNotification(f, name, data) {
+  const index = f.requests.findIndex((r) => r.operation.operationName === name);
+  assert.ok(
+    index >= 0,
+    `Missing ${name}: ${f.requests.map((r) => r.operation.operationName)}`,
+  );
+  const [request] = f.requests.splice(index, 1);
+  await React.act(async () => {
+    request.observer.next({ data });
+    request.observer.complete();
+  });
+  return request;
+}
+
+test("notification cold tap waits for the non-default workspace and access, then opens exactly once", async () => {
+  initialNotification = pushResponse();
+  const f = await fixture(undefined, true, [
+    ["bex.mobile.workspace.test-session", "tea-b"],
+  ]);
+  try {
+    assert.deepEqual(routes, []);
+    assert.ok(initialNotification);
+    await f.reply("MobileWorkspaces", workspaceData(["tea-a", "tea-b"]));
+    assert.deepEqual(routes, []);
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    assert.deepEqual(routes, ["/services/srv-one"]);
+    assert.equal(initialNotification, null);
+    assert.equal(f.observed.notifications.items.length, 1);
+    const inbox = await replyNotification(
+      f,
+      "MobileNotificationInbox",
+      inboxData(),
+    );
+    assert.equal(inbox.operation.variables.ownerId, "tea-b");
+    const mark = await replyNotification(f, "MobileMarkPushNotificationRead", {
+      markPushNotificationRead: true,
+    });
+    assert.equal(mark.operation.variables.ownerId, "tea-b");
+    await React.act(async () => {
+      for (const listener of notificationTapped) listener(pushResponse());
+    });
+    assert.deepEqual(routes, ["/services/srv-one"]);
+    assert.equal(f.observed.notifications.unread, 0);
+  } finally {
+    await f.close();
+    initialNotification = null;
+  }
+});
+
+test("notification revocation prunes persisted session content and blocks a retained item callback", async () => {
+  initialNotification = null;
+  const f = await fixture(undefined, true);
+  try {
+    await f.reply("MobileWorkspaces", workspaceData());
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    await replyNotification(f, "MobileNotificationInbox", inboxData());
+    await React.act(async () => {
+      for (const listener of notificationReceived)
+        listener(
+          pushResponse("tea-a", "agent_pr_ready", "/sessions/ags-one")
+            .notification,
+        );
+    });
+    assert.equal(f.observed.notifications.unread, 1);
+    const oldItem = f.observed.notifications.items[0];
+    const oldOpen = f.observed.notifications.open;
+    await appState("background");
+    await appState("active");
+    assert.equal(f.observed.notifications.items.length, 0);
+    await f.reply("MobileWorkspaces", workspaceData());
+    const denied = capabilityData();
+    for (const grant of denied.viewerCapabilities.grants)
+      if (grant.action === "can_operate" || grant.action === "can_create")
+        grant.outcome = "denied";
+    await f.reply("MobileViewerCapabilities", denied);
+    await replyNotification(f, "MobileNotificationInbox", inboxData());
+    assert.equal(f.observed.notifications.items.length, 0);
+    assert.equal(notificationBadges.at(-1), 0);
+    assert.deepEqual(
+      JSON.parse(
+        storage.get("bex.notifications.inbox.v1:test-session:tea-a") ?? "[]",
+      ),
+      [],
+    );
+    routes.length = 0;
+    await React.act(async () => {
+      await oldOpen(oldItem);
+    });
+    assert.deepEqual(routes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a delayed receipt and inbox response cannot publish into a switched workspace", async () => {
+  initialNotification = null;
+  const f = await fixture(undefined, true);
+  const adapter = adapters["@react-native-async-storage/async-storage"];
+  const originalGet = adapter.getItem;
+  let release;
+  try {
+    await f.reply("MobileWorkspaces", workspaceData(["tea-a", "tea-b"]));
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    const lateInbox = f.requests.shift();
+    assert.equal(lateInbox.operation.operationName, "MobileNotificationInbox");
+    let started;
+    const reading = new Promise((resolve) => {
+      started = resolve;
+    });
+    const delayed = new Promise((resolve) => {
+      release = resolve;
+    });
+    let once = true;
+    adapter.getItem = async (key) => {
+      if (once && key === "bex.notifications.inbox.v1:test-session:tea-a") {
+        once = false;
+        started();
+        await delayed;
+      }
+      return originalGet(key);
+    };
+    await React.act(async () => {
+      for (const listener of notificationReceived)
+        listener(pushResponse("tea-a").notification);
+    });
+    await reading;
+    await React.act(async () => {
+      await f.observed.workspace.switchWorkspace("tea-b");
+    });
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    await replyNotification(f, "MobileNotificationInbox", inboxData());
+    await React.act(async () => {
+      release();
+      lateInbox.observer.next({
+        data: inboxData([
+          {
+            id: "late-a",
+            event: "SERVER_FAILED",
+            deepLink: "/services/srv-a",
+            title: "Old A",
+            body: "Old A",
+            occurredAt: "2026-09-07T00:00:00Z",
+            readAt: null,
+          },
+        ]),
+      });
+      lateInbox.observer.complete();
+    });
+    assert.deepEqual(f.observed.notifications.items, []);
+    assert.equal(notificationBadges.at(-1), 0);
+    assert.deepEqual(routes, []);
+    assert.deepEqual(
+      JSON.parse(
+        storage.get("bex.notifications.inbox.v1:test-session:tea-a") ?? "[]",
+      ),
+      [],
+    );
+  } finally {
+    release?.();
+    adapter.getItem = originalGet;
+    await f.close();
+  }
+});
+
+test("foreign-workspace and denied initial taps are terminal without routing details", async () => {
+  for (const denied of [false, true]) {
+    initialNotification = pushResponse(
+      denied ? "tea-a" : "tea-b",
+      "agent_pr_ready",
+      "/sessions/ags-one",
+    );
+    const f = await fixture(undefined, true);
+    try {
+      await f.reply("MobileWorkspaces", workspaceData());
+      const capabilities = capabilityData();
+      if (denied)
+        for (const grant of capabilities.viewerCapabilities.grants)
+          if (grant.action === "can_operate") grant.outcome = "denied";
+      await f.reply("MobileViewerCapabilities", capabilities);
+      await replyNotification(f, "MobileNotificationInbox", inboxData());
+      assert.deepEqual(routes, []);
+      assert.deepEqual(f.observed.notifications.items, []);
+      assert.equal(initialNotification, null);
+    } finally {
+      await f.close();
+      initialNotification = null;
+    }
+  }
+});
+
+test("the native subscription transport sends explicit workspace on list, register, and logout cleanup", async () => {
+  const f = await fixture();
+  try {
+    await f.reply("MobileWorkspaces", workspaceData(["tea-a", "tea-b"]));
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    const {
+      ApolloNotificationSubscriptionClient,
+    } = require("../src/features/notifications/graphql-client");
+    const api = new ApolloNotificationSubscriptionClient(f.client, "tea-b");
+    const listing = api.list();
+    const listed = await replyNotification(
+      f,
+      "MobileNotificationDeviceSubscriptions",
+      { pushNotificationsAvailable: true, notificationDeviceSubscriptions: [] },
+    );
+    assert.deepEqual(listed.operation.variables, { ownerId: "tea-b" });
+    assert.deepEqual(await listing, { available: true });
+    const input = {
+      deviceId: "phone-one",
+      sessionId: "test-session",
+      provider: "expo",
+      platform: "ios",
+      token: "ExponentPushToken[synthetic]",
+    };
+    const registering = api.register(input);
+    const registered = await replyNotification(
+      f,
+      "MobileRegisterNotificationDeviceSubscription",
+      {
+        registerNotificationDeviceSubscription: {
+          deviceId: input.deviceId,
+          provider: "expo",
+          platform: "ios",
+          preferenceRef: "pref",
+          createdAt: "2026-09-07T00:00:00Z",
+          updatedAt: "2026-09-07T00:00:00Z",
+          lastRegisteredAt: "2026-09-07T00:00:00Z",
+        },
+      },
+    );
+    assert.deepEqual(registered.operation.variables, {
+      ...input,
+      ownerId: "tea-b",
+    });
+    await registering;
+    const unregistering = api.unregister(
+      input.deviceId,
+      "synthetic-original-bearer",
+    );
+    const unregistered = await replyNotification(
+      f,
+      "MobileUnregisterNotificationDeviceSubscription",
+      { unregisterNotificationDeviceSubscription: true },
+    );
+    assert.deepEqual(unregistered.operation.variables, {
+      deviceId: input.deviceId,
+      ownerId: "tea-b",
+    });
+    assert.equal(
+      unregistered.operation.getContext().headers.authorization,
+      "Bearer synthetic-original-bearer",
+    );
+    assert.equal(unregistered.operation.getContext().skipAuthRefresh, true);
+    await unregistering;
+  } finally {
+    await f.close();
+  }
+});
+
+test("refresh failure preserves authorized local history and reports recovery instead of empty success", async () => {
+  initialNotification = null;
+  const f = await fixture(undefined, true);
+  try {
+    await f.reply("MobileWorkspaces", workspaceData());
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    await replyNotification(f, "MobileNotificationInbox", inboxData());
+    await React.act(async () => {
+      for (const listener of notificationReceived)
+        listener(pushResponse("tea-a").notification);
+    });
+    await appState("background");
+    await appState("active");
+    await f.reply("MobileWorkspaces", workspaceData());
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    const request = f.requests.shift();
+    assert.equal(request.operation.operationName, "MobileNotificationInbox");
+    await React.act(async () => request.observer.error(new Error("offline")));
+    assert.equal(f.observed.notifications.inboxState, "error");
+    assert.equal(f.observed.notifications.items.length, 1);
+    assert.equal(f.observed.notifications.unread, 1);
+    assert.equal(notificationBadges.at(-1), 1);
+  } finally {
+    await f.close();
+  }
+});
+
+test("logout hides items immediately and a delayed mark-read cannot navigate or resurrect persistence", async () => {
+  initialNotification = null;
+  const f = await fixture(undefined, true);
+  const adapter = adapters["@react-native-async-storage/async-storage"];
+  const originalSet = adapter.setItem;
+  let release;
+  try {
+    await f.reply("MobileWorkspaces", workspaceData());
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    await replyNotification(f, "MobileNotificationInbox", inboxData());
+    await React.act(async () => {
+      for (const listener of notificationReceived)
+        listener(pushResponse("tea-a").notification);
+    });
+    let started;
+    const writing = new Promise((resolve) => {
+      started = resolve;
+    });
+    const delayed = new Promise((resolve) => {
+      release = resolve;
+    });
+    adapter.setItem = async (key, value) => {
+      if (value.includes('"read":true')) {
+        started();
+        await delayed;
+      }
+      await originalSet(key, value);
+    };
+    let opening;
+    await React.act(async () => {
+      opening = f.observed.notifications.open(
+        f.observed.notifications.items[0],
+      );
+    });
+    await writing;
+    let clearing;
+    await React.act(async () => {
+      clearing = Promise.all(
+        [...sessionClearHooks].map((hook) =>
+          hook({ accessToken: "synthetic-logout-bearer" }),
+        ),
+      );
+    });
+    assert.deepEqual(f.observed.notifications.items, []);
+    assert.equal(notificationBadges.at(-1), 0);
+    await React.act(async () => {
+      release();
+      await opening;
+    });
+    await replyNotification(
+      f,
+      "MobileUnregisterNotificationDeviceSubscription",
+      { unregisterNotificationDeviceSubscription: true },
+    );
+    await React.act(async () => {
+      await clearing;
+    });
+    assert.deepEqual(routes, []);
+    assert.equal(
+      storage.has("bex.notifications.inbox.v1:test-session:tea-a"),
+      false,
+    );
+    assert.equal(notificationBadges.at(-1), 0);
+  } finally {
+    release?.();
+    adapter.setItem = originalSet;
+    await f.close();
+  }
+});
+
+test("a removed tap listener cannot replace the new workspace's pending valid tap", async () => {
+  initialNotification = null;
+  const f = await fixture(undefined, true);
+  try {
+    await f.reply("MobileWorkspaces", workspaceData(["tea-a", "tea-b"]));
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    await replyNotification(f, "MobileNotificationInbox", inboxData());
+    const oldListener = [...notificationTapped][0];
+    await React.act(async () => {
+      await f.observed.workspace.switchWorkspace("tea-b");
+    });
+    const next = pushResponse("tea-b");
+    next.notification.request.identifier = "new-workspace-response";
+    await React.act(async () => {
+      for (const listener of notificationTapped) listener(next);
+      oldListener(pushResponse("tea-a"));
+    });
+    await f.reply("MobileViewerCapabilities", capabilityData());
+    assert.deepEqual(routes, ["/services/srv-one"]);
+    await replyNotification(f, "MobileNotificationInbox", inboxData());
+    await replyNotification(f, "MobileMarkPushNotificationRead", {
+      markPushNotificationRead: true,
+    });
+  } finally {
+    await f.close();
   }
 });

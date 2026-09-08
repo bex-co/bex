@@ -25,12 +25,9 @@ const envelope: NotificationEnvelope = {
 };
 
 describe("NotificationInboxStore", () => {
-  it("deduplicates receipts and reconciles unread badges", async () => {
+  it("deduplicates receipts and preserves read acknowledgments", async () => {
     const storage = new MemoryStorage();
-    const badges: number[] = [];
-    const store = new NotificationInboxStore(storage, {
-      set: async (count) => badges.push(count),
-    });
+    const store = new NotificationInboxStore(storage);
     await store.record(envelope, {
       title: "First",
       body: "body",
@@ -42,17 +39,13 @@ describe("NotificationInboxStore", () => {
       receivedAt: 2,
     });
     expect((await store.list()).map((item) => item.title)).toEqual(["Updated"]);
-    expect(badges).toEqual([1, 1]);
     await store.markRead(envelope.notificationId);
-    expect(badges.at(-1)).toBe(0);
+    expect((await store.list())[0]?.read).toBe(true);
   });
 
-  it("clears local content and the badge at logout", async () => {
+  it("clears local content at logout", async () => {
     const storage = new MemoryStorage();
-    const badges: number[] = [];
-    const store = new NotificationInboxStore(storage, {
-      set: async (count) => badges.push(count),
-    });
+    const store = new NotificationInboxStore(storage);
     await store.record(envelope, {
       title: "Failure",
       body: "body",
@@ -60,14 +53,11 @@ describe("NotificationInboxStore", () => {
     });
     await store.clear();
     expect(await store.list()).toEqual([]);
-    expect(badges.at(-1)).toBe(0);
   });
 
   it("serializes an in-flight receipt before logout clearing", async () => {
     const storage = new MemoryStorage();
-    const store = new NotificationInboxStore(storage, {
-      set: async () => undefined,
-    });
+    const store = new NotificationInboxStore(storage);
     const recording = store.record(envelope, {
       title: "Failure",
       body: "body",
@@ -80,10 +70,7 @@ describe("NotificationInboxStore", () => {
 
   it("merges the durable server inbox without reviving locally read items", async () => {
     const storage = new MemoryStorage();
-    const badges: number[] = [];
-    const store = new NotificationInboxStore(storage, {
-      set: async (count) => badges.push(count),
-    });
+    const store = new NotificationInboxStore(storage);
     await store.record(envelope, {
       title: "Local",
       body: "body",
@@ -114,7 +101,6 @@ describe("NotificationInboxStore", () => {
     expect(items[0]?.id).toBe(envelope.notificationId);
     expect(items[0]?.title).toBe("Durable");
     expect(items[0]?.read).toBe(true);
-    expect(badges.at(-1)).toBe(0);
   });
 
   it("drops tampered routes and malformed timestamps from persisted data", async () => {
@@ -142,9 +128,84 @@ describe("NotificationInboxStore", () => {
         },
       ]),
     );
-    const store = new NotificationInboxStore(storage, {
-      set: async () => undefined,
-    });
+    const store = new NotificationInboxStore(storage);
     expect(await store.list()).toEqual([]);
+  });
+  it("removes confirmed revoked destinations without treating a page as global absence", async () => {
+    const storage = new MemoryStorage();
+    const store = new NotificationInboxStore(storage);
+    await store.record(envelope, { receivedAt: 1 });
+    await store.record(
+      {
+        ...envelope,
+        notificationId: "agent-1",
+        event: "agent_pr_ready",
+        route: "/sessions/ags-one",
+      },
+      { receivedAt: 2 },
+    );
+    const next = await store.reconcile(
+      (item) => !item.route.startsWith("/sessions/"),
+    );
+    expect(next.map((item) => item.id)).toEqual([envelope.notificationId]);
+    expect(await store.list()).toEqual(next);
+    expect(await store.mergeRemote([])).toEqual(next);
+  });
+
+  it("rolls back an old-generation write before a replacement store reconciles", async () => {
+    const storage = new MemoryStorage();
+    let current = true;
+    let release: () => void = () => undefined;
+    let started: () => void = () => undefined;
+    const writing = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const delayed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const originalSet = storage.setItem.bind(storage);
+    let delayOnce = true;
+    storage.setItem = async (key, value) => {
+      if (delayOnce) {
+        delayOnce = false;
+        started();
+        await delayed;
+      }
+      await originalSet(key, value);
+    };
+    const oldStore = new NotificationInboxStore(
+      storage,
+      "shared",
+      100,
+      () => current,
+    );
+    const recording = oldStore.record(envelope, { receivedAt: 1 });
+    await writing;
+    current = false;
+    const nextStore = new NotificationInboxStore(storage, "shared");
+    const reconciling = nextStore.reconcile();
+    release();
+    await recording;
+    expect(await reconciling).toEqual([]);
+    expect(await nextStore.list()).toEqual([]);
+  });
+  it("retains authorized older history when a remote page omits it", async () => {
+    const store = new NotificationInboxStore(new MemoryStorage());
+    await store.record(envelope, { receivedAt: 1 });
+    const next = await store.mergeRemote([
+      {
+        id: "newest",
+        event: "server_failed",
+        route: "/services/srv-new",
+        title: "New",
+        body: "",
+        receivedAt: 100,
+        read: false,
+      },
+    ]);
+    expect(next.map((item) => item.id)).toEqual([
+      "newest",
+      envelope.notificationId,
+    ]);
   });
 });
