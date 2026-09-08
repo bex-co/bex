@@ -81,8 +81,9 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-No pending items after the 2026-09-07 triage. Notes 052–054 were fixed; the already-fixed CLI report was renumbered to 055 and closed.
+No pending items after the 2026-09-07 evening triage. Open alias note (filed as colliding `055`) closed as **056**; notes 052–055 remain done.
 
+- [x] **056** — `logLabelValues` (+ datastore log aliases) inverted-range guard must live in shared `LogQuery.validate`, not only `QueryLogs` — already satisfied by w4/054's `ValidateQueryRange` placement; alias regression pins added to `TestInvalidQueryRangesAcrossSurfaces`. Renumbered from open `055` (collided with CLI `done/055`); closed 2026-09-07, see `done/056.md`.
 - [x] **055** — CLI health-check updates for Dockerfile services — already fixed by `cca2f571d` and extended by `d58245084`; verified current runtime/read/PATCH tests. Renumbered from the README-only 052 collision; closed 2026-09-07, see `done/055.md`.
 - [x] **054** — Inverted/equal log ranges — fixed in shared validation and before live-stream headers; direct App/DB/KV reads plus REST/GraphQL/MCP checks pass. Done 2026-09-07, see `done/054.md`.
 - [x] **053** — Metrics input-validation errors — classified as public bad requests, including datastore siblings and invalid/defaulted ranges; upstream errors stay redacted. Done 2026-09-07, see `done/053.md`.
