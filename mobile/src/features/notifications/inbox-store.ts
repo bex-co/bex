@@ -31,10 +31,6 @@ export interface KeyValueStorage {
   removeItem(key: string): Promise<void>;
 }
 
-export interface BadgeWriter {
-  set(count: number): Promise<unknown>;
-}
-
 const isItem = (value: unknown): value is NotificationInboxItem => {
   if (!value || typeof value !== "object") return false;
   const item = value as Partial<NotificationInboxItem>;
@@ -60,14 +56,19 @@ const isItem = (value: unknown): value is NotificationInboxItem => {
   );
 };
 
-export class NotificationInboxStore {
-  private pendingMutation: Promise<void> = Promise.resolve();
+// A reset can create a new store for the same persistence key while an old
+// write is still pending. Serialize both instances, including logout cleanup.
+const storageQueues = new WeakMap<
+  KeyValueStorage,
+  Map<string, Promise<void>>
+>();
 
+export class NotificationInboxStore {
   constructor(
     private readonly storage: KeyValueStorage,
-    private readonly badge: BadgeWriter,
     private readonly key = "bex.notifications.inbox.v1",
     private readonly limit = 100,
+    private readonly isCurrent: () => boolean = () => true,
   ) {}
 
   async list(): Promise<NotificationInboxItem[]> {
@@ -180,34 +181,55 @@ export class NotificationInboxStore {
     });
   }
 
-  async reconcile(): Promise<NotificationInboxItem[]> {
-    const items = await this.list();
-    await this.badge
-      .set(items.filter((item) => !item.read).length)
-      .catch(() => undefined);
-    return items;
+  // Callers supply only confirmed authorization removals. An unavailable
+  // capability check or an omitted row on a bounded remote page is not a denial.
+  async reconcile(
+    retain: (item: NotificationInboxItem) => boolean = () => true,
+  ): Promise<NotificationInboxItem[]> {
+    return this.mutate(async () => {
+      const existing = await this.list();
+      const items = existing.filter(retain);
+      if (items.length !== existing.length) await this.persist(items);
+      return this.isCurrent() ? items : [];
+    });
   }
 
   async clear(): Promise<void> {
     await this.mutate(async () => {
       await this.storage.removeItem(this.key).catch(() => undefined);
-      await this.badge.set(0).catch(() => undefined);
     });
   }
 
   private mutate<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.pendingMutation.then(operation, operation);
-    this.pendingMutation = result.then(
+    let queues = storageQueues.get(this.storage);
+    if (!queues) {
+      queues = new Map();
+      storageQueues.set(this.storage, queues);
+    }
+    const pending = queues.get(this.key) ?? Promise.resolve();
+    const result = pending.then(operation, operation);
+    const settled = result.then(
       () => undefined,
       () => undefined,
     );
+    queues.set(this.key, settled);
+    void settled.then(() => {
+      if (queues.get(this.key) === settled) queues.delete(this.key);
+    });
     return result;
   }
 
   private async persist(items: NotificationInboxItem[]): Promise<void> {
+    if (!this.isCurrent()) return;
+    const previous = await this.storage.getItem(this.key);
+    if (!this.isCurrent()) return;
     await this.storage.setItem(this.key, JSON.stringify(items));
-    await this.badge
-      .set(items.filter((item) => !item.read).length)
-      .catch(() => undefined);
+    if (!this.isCurrent()) {
+      // Roll back a write that crossed the boundary before releasing the key
+      // queue. A new generation cannot observe it through a store mutation.
+      if (previous === null) await this.storage.removeItem(this.key);
+      else await this.storage.setItem(this.key, previous);
+      return;
+    }
   }
 }

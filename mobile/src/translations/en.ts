@@ -20,6 +20,8 @@ export const en = {
     notifications: "Alerts",
   },
   notifications: {
+    inboxChecking: "Checking access and refreshing alerts…",
+    inboxError: "Couldn’t refresh alerts. Check your connection and try again.",
     benefit: "Get important service and deployment updates on your phone.",
     emptyTitle: "No alerts yet",
 

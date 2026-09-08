@@ -52,3 +52,7 @@ Also exercise one deploy success/failure, service failure, cron failure, quiet-h
 ## Release decision
 
 Any failed physical-device row blocks push-enabled distribution. Simulator/export evidence must remain labeled as simulator/export evidence and must never be promoted to a physical-device pass.
+
+## 2026-09-07 notification handling correction
+
+[m140 verification](m140-notifications.md) records selected-workspace REST/GraphQL/native tests and synthetic iOS/Android startup, warm tap, revocation and stale-callback interactions. These repair client handling; they do not complete any physical delivery/signing row in the matrix above. The build remained visibly unconfigured for provider push.

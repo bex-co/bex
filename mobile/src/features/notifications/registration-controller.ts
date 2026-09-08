@@ -65,17 +65,16 @@ export class NotificationRegistrationController {
       sessionId: "test-session",
       workspaceId: "test-workspace",
     }),
-    private readonly onRegistered: (
-      binding: NotificationBinding,
-    ) => void = () => {},
   ) {}
 
   async inspectAndRepair(): Promise<void> {
     if (!this.projectId) return this.setState("unconfigured");
-    if (!this.signedIn() || !this.online()) return this.setState("offline");
+    if (!this.current() || !this.online()) return this.setState("offline");
     if (!(await this.pushAvailable())) return;
     const permission = await this.native.permission();
+    if (!this.current()) return;
     const wasEnabled = await this.preference.wasEnabled();
+    if (!this.current()) return;
     if (permission === "undetermined") return this.setState("disabled");
     if (permission === "denied") {
       return this.setState(wasEnabled ? "revoked" : "denied");
@@ -88,14 +87,17 @@ export class NotificationRegistrationController {
     if (!this.projectId) return this.setState("unconfigured");
     this.setState("enabling");
     try {
-      if (!this.signedIn() || !this.online()) return this.setState("offline");
+      if (!this.current() || !this.online()) return this.setState("offline");
       if (!(await this.pushAvailable())) return;
       await this.native.ensureAndroidChannel();
+      if (!this.current()) return;
       const permission = await this.native.requestPermission();
+      if (!this.current()) return;
       if (permission !== "granted") {
         return this.setState(permission === "denied" ? "denied" : "disabled");
       }
       await this.preference.setEnabled(true);
+      if (!this.current()) return;
       await this.registerCurrent(true);
     } catch {
       this.setState("error");
@@ -103,9 +105,11 @@ export class NotificationRegistrationController {
   }
 
   async repairAfterTokenRotation(): Promise<void> {
-    if (!this.signedIn() || !this.online()) return;
+    if (!this.current() || !this.online()) return;
     try {
-      if ((await this.native.permission()) !== "granted") return;
+      if ((await this.native.permission()) !== "granted" || !this.current())
+        return;
+      if (!(await this.preference.wasEnabled()) || !this.current()) return;
       await this.registerCurrent();
     } catch {
       // Rotation repair is deliberately best-effort; reconnect also repairs.
@@ -117,8 +121,13 @@ export class NotificationRegistrationController {
     // the other way round leaves the server-side device row bound to this
     // subject forever on a failure, while the local "disabled" state makes
     // inspectAndRepair refuse to ever re-register it (w4/029.md #15).
+    if (!accessToken && !this.current()) return;
     const deviceId = await this.installationId();
+    if (!accessToken && !this.current()) return;
     await this.subscriptions.unregister(deviceId, accessToken);
+    // Logout cleanup uses the captured bearer/workspace but must not change
+    // preferences or UI belonging to a subsequent session.
+    if (!this.current()) return;
     await this.preference.setEnabled(false).catch(() => undefined);
     this.setState("disabled");
   }
@@ -128,12 +137,16 @@ export class NotificationRegistrationController {
   }
 
   private async registerCurrent(serverAvailable = false): Promise<void> {
-    if (!this.projectId) return;
-    if (!serverAvailable && !(await this.pushAvailable())) return;
-    await this.native.ensureAndroidChannel();
-    const token = await this.native.expoToken(this.projectId);
-    const deviceId = await this.installationId();
+    if (!this.projectId || !this.current()) return;
     const binding = this.binding();
+    if (!serverAvailable && !(await this.pushAvailable())) return;
+    if (!this.current()) return;
+    await this.native.ensureAndroidChannel();
+    if (!this.current()) return;
+    const token = await this.native.expoToken(this.projectId);
+    if (!this.current()) return;
+    const deviceId = await this.installationId();
+    if (!this.current()) return;
     await this.subscriptions.register({
       deviceId,
       sessionId: binding.sessionId,
@@ -141,20 +154,27 @@ export class NotificationRegistrationController {
       platform: this.platform,
       token,
     });
-    if (this.active) this.onRegistered(binding);
+    if (!this.current()) return;
     await this.preference.setEnabled(true);
     this.setState("enabled");
   }
 
   private async pushAvailable(): Promise<boolean> {
+    if (!this.current()) return false;
     const availability = await this.subscriptions.list();
+    if (!this.current()) return false;
     if (availability.available) return true;
     this.setState("unavailable");
     return false;
   }
 
+  private current(): boolean {
+    return this.active && this.signedIn();
+  }
+
   private setState(state: NotificationRegistrationState): void {
+    if (!this.active) return;
     this.state = state;
-    if (this.active) this.onState(state);
+    this.onState(state);
   }
 }

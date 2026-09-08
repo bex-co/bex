@@ -18,7 +18,10 @@ package notifications
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -87,6 +90,9 @@ func TestNotificationGraphQLSelectedWorkspace(t *testing.T) {
 	}
 	for _, query := range []string{
 		`{ pushNotificationsAvailable(ownerId:%q) }`,
+		`{ webPushAvailable(ownerId:%q) }`,
+		`{ webPushVapidPublicKey(ownerId:%q) }`,
+		`mutation { revokeNotificationDeviceSubscriptions(ownerId:%q) }`,
 		`{ notificationDeviceSubscriptions(ownerId:%q) { deviceId } }`,
 		`{ notificationInbox(ownerId:%q) { id } }`,
 		`{ unreadPushNotificationCount(ownerId:%q) }`,
@@ -98,5 +104,67 @@ func TestNotificationGraphQLSelectedWorkspace(t *testing.T) {
 		if len(result.Errors) == 0 || !strings.Contains(strings.ToLower(result.Errors[0].Message), "forbidden") {
 			t.Fatalf("nonmember workspace must be forbidden: %s: %v", query, result.Errors)
 		}
+	}
+}
+
+func TestNotificationRESTSelectedWorkspace(t *testing.T) {
+	svc, st, ctx, defaultID, _ := inboxFixture(t)
+	svc.Base.Workspace = multiWorkspace{"alice": {"tea-a", "tea-b"}}
+	selectedID := ids.Derive(ids.Event, "rest-selected-workspace")
+	row := st.push[[2]string{"tea-a", "alice"}][0]
+	row.TenantID, row.EventID = "tea-b", selectedID
+	st.push[[2]string{"tea-b", "alice"}] = []store.PushNotification{row}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	request := func(method, path, body string, status int) json.RawMessage {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(ctx)
+		req.Header.Set("Content-Type", "application/json")
+		res := httptest.NewRecorder()
+		mux.ServeHTTP(res, req)
+		if res.Code != status {
+			t.Fatalf("%s %s: status %d, want %d: %s", method, path, res.Code, status, res.Body.String())
+		}
+		return res.Body.Bytes()
+	}
+	assertRows := func(path, expectedID string, count int) {
+		t.Helper()
+		var rows []map[string]any
+		if err := json.Unmarshal(request("GET", path, "", 200), &rows); err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != count {
+			t.Fatalf("%s: got %d rows, want %d", path, len(rows), count)
+		}
+		if expectedID != "" && rows[0]["id"] != expectedID {
+			t.Fatalf("wrong workspace row: %v", rows)
+		}
+	}
+	assertRows("/v1/notifications?ownerId=tea-b", selectedID, 1)
+	assertRows("/v1/notifications", "", 2)
+	if string(request("POST", "/v1/notifications/"+defaultID+"/read?ownerId=tea-b", "", 200)) != "{\"read\":false}\n" {
+		t.Fatal("cross-workspace read acknowledged")
+	}
+	if string(request("POST", "/v1/notifications/"+selectedID+"/read?ownerId=tea-b", "", 200)) != "{\"read\":true}\n" {
+		t.Fatal("selected read not acknowledged")
+	}
+	body := `{"deviceId":"phone-b","sessionId":"session","provider":"expo","platform":"ios","token":"ExponentPushToken[synthetic]"}`
+	request("POST", "/v1/notification-device-subscriptions?ownerId=tea-b", body, 201)
+	assertRows("/v1/notification-device-subscriptions?ownerId=tea-b", "", 1)
+	assertRows("/v1/notification-device-subscriptions", "", 0)
+	request("DELETE", "/v1/notification-device-subscriptions/phone-b", "", 200)
+	assertRows("/v1/notification-device-subscriptions?ownerId=tea-b", "", 1)
+	request("DELETE", "/v1/notification-device-subscriptions/phone-b?ownerId=tea-b", "", 200)
+	assertRows("/v1/notification-device-subscriptions?ownerId=tea-b", "", 0)
+	for _, route := range []struct{ method, path, body string }{
+		{"GET", "/v1/notifications", ""},
+		{"POST", "/v1/notifications/" + selectedID + "/read", ""},
+		{"GET", "/v1/notification-device-subscriptions", ""},
+		{"POST", "/v1/notification-device-subscriptions", body},
+		{"DELETE", "/v1/notification-device-subscriptions/phone-b", ""},
+		{"DELETE", "/v1/notification-device-subscriptions", ""},
+		{"GET", "/v1/notification-settings/push/availability", ""},
+	} {
+		request(route.method, route.path+"?ownerId=tea-foreign", route.body, 403)
 	}
 }

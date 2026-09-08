@@ -222,13 +222,17 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 		"webPushAvailable": &graphql.Field{
-			Type:    graphql.NewNonNull(graphql.Boolean),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.IsWebPushAvailable(p.Context) },
+			Type: graphql.NewNonNull(graphql.Boolean),
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.IsWebPushAvailable(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")))
+			},
 		},
 		"webPushVapidPublicKey": &graphql.Field{
 			Type: graphql.String,
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				key, err := s.WebPushVAPIDPublicKey(p.Context)
+				key, err := s.WebPushVAPIDPublicKey(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")))
 				if err != nil || key == "" {
 					return nil, err
 				}
@@ -320,8 +324,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"revokeNotificationDeviceSubscriptions": &graphql.Field{
 			Type: graphql.Int,
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				count, err := s.RevokeDeviceSubscriptions(p.Context)
+				count, err := s.RevokeDeviceSubscriptions(core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId")))
 				return int(count), err
 			},
 		},
