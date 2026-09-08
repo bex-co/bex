@@ -246,7 +246,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		isHA = db.Status.HighAvailabilityEnabled
 		logicalDiskGB = tiers.Postgres.EffectiveStorageGB(db.Spec.Plan, db.Spec.StorageGB, db.Status.AllocatedStorageGB)
 		if q.Metric == MetricKVMemory || q.Metric == MetricKVConnections {
-			return nil, fmt.Errorf("metric %q is key-value-only, not valid for a database resource", q.Metric)
+			return nil, fmt.Errorf("%w: metric %q is key-value-only, not valid for a database resource", core.ErrBadRequest, q.Metric)
 		}
 	case DatastoreKeyValue:
 		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanView, q.Resource)
@@ -257,7 +257,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		resource = kv.Name
 		logicalDiskGB = tiers.Valkey.EffectiveStorageGB(kv.Spec.Plan, kv.Spec.StorageGB, kv.Status.AllocatedStorageGB)
 		if q.Metric == MetricDBConnections || q.Metric == MetricReplicationLag {
-			return nil, fmt.Errorf("metric %q is Postgres-only, not valid for a key-value resource", q.Metric)
+			return nil, fmt.Errorf("%w: metric %q is Postgres-only, not valid for a key-value resource", core.ErrBadRequest, q.Metric)
 		}
 	case DatastoreService:
 		// A service disk is read against the SERVICE — the App CR is the
@@ -275,7 +275,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		// verb — so anything but the two PVC series is a caller error, named
 		// rather than silently answered with an empty series.
 		if q.Metric != MetricDisk && q.Metric != MetricDiskCapacity {
-			return nil, fmt.Errorf("metric %q is not valid for a service resource; only disk and disk_capacity are", q.Metric)
+			return nil, fmt.Errorf("%w: metric %q is not valid for a service resource; only disk and disk_capacity are", core.ErrBadRequest, q.Metric)
 		}
 		// A service without a disk has no claim to measure. Report absence as
 		// an empty series, not an error: the Disk tab asks for the graph
@@ -302,7 +302,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		if err := s.Authorize(ctx, core.RelCanView); err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf("unknown datastore kind %q", q.Kind)
+		return nil, fmt.Errorf("%w: unknown datastore kind %q", core.ErrBadRequest, q.Kind)
 	}
 
 	q = q.normalized(s.Now())
@@ -365,6 +365,6 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	default:
-		return nil, fmt.Errorf("unknown metric %q", q.Metric)
+		return nil, fmt.Errorf("%w: unknown metric %q", core.ErrBadRequest, q.Metric)
 	}
 }

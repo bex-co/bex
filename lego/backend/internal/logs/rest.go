@@ -159,6 +159,12 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	if resume, ok := resumeFrom(r.Header.Get("Last-Event-ID")); ok && resume.After(q.Since) {
 		q.Since = resume
 	}
+	// Refuse invalid bounds before writing streaming headers or upgrading to
+	// WebSocket; FollowLogs' validation would otherwise run after HTTP 200/101.
+	if err := q.validate(); err != nil {
+		core.WriteErr(w, err)
+		return
+	}
 
 	// SECURITY (codex #3): reject a subscription with no live producer BEFORE
 	// acquiring a slot — a type=predeploy (or other producerless) request would
