@@ -46,7 +46,7 @@ func (s *Service) QueryDatabaseLogs(ctx context.Context, name string, q Database
 	if s.DatabaseLogs != nil {
 		return s.DatabaseLogs(ctx, name, q)
 	}
-	d, err := s.fetchDatabase(ctx, core.RelCanViewLogs, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanViewLogs, name)
 	if err != nil {
 		return nil, err
 	}

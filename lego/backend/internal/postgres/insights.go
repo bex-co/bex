@@ -181,7 +181,7 @@ ORDER BY name`
 // runInsight dials the database and executes sql inside the standard read-only
 // envelope (same safety rails as Query). The caller maps rows to its typed view.
 func (s *Service) runInsight(ctx context.Context, relation, dbID, sql string) (QueryResult, error) {
-	db, err := s.AuthorizeDatabase(ctx, relation, dbID)
+	db, err := s.fetchDatabaseForRead(ctx, relation, dbID)
 	if err != nil {
 		return QueryResult{}, err
 	}
@@ -431,7 +431,7 @@ func (s *Service) ParameterSpec(ctx context.Context, dbID string) ([]ParameterSp
 // Database CR (spec.parameters), not from pg_settings. Use ParameterOverrides for
 // the live database view.
 func (s *Service) GetParameterSpec(ctx context.Context, dbID string) (map[string]string, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanView, dbID)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, dbID)
 	if err != nil {
 		return nil, err
 	}

@@ -276,12 +276,27 @@ func (s *Service) fetchKeyValue(ctx context.Context, relation, name string) (*ap
 	return s.AuthorizeKeyValue(ctx, relation, name)
 }
 
+// fetchKeyValueForRead is the by-id read gate: authorize + fetch, then treat a
+// DeletionTimestamp as not-found so get/connection-info/sibling reads agree with
+// List and with Render's GET 404 (w8/m35 / core.NotFoundIfDeleting). WRITE verbs
+// keep fetchKeyValue so finalizer-safe teardown can still authorize the CR.
+func (s *Service) fetchKeyValueForRead(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
+	kv, err := s.fetchKeyValue(ctx, relation, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := core.NotFoundIfDeleting(kv); err != nil {
+		return nil, err
+	}
+	return kv, nil
+}
+
 // loadSecret resolves a KeyValue and its operator-generated credentials Secret
 // (username/password/host/port/uri, and externalUri when public) — the path the
 // connection-info verb reads. Returns core.ErrNotFound when the KeyValue or its
 // Secret isn't provisioned yet.
 func (s *Service) loadSecret(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, *corev1.Secret, error) {
-	kv, err := s.fetchKeyValue(ctx, relation, name)
+	kv, err := s.fetchKeyValueForRead(ctx, relation, name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -340,6 +355,13 @@ func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValue
 	items := core.DedupKeyValueTwins(list.Items)
 	out := make([]KeyValueView, 0, len(items))
 	for i := range items {
+		// Match apps.List / w3/m81: a deleting KeyValue is absent from the list
+		// the moment its deletion is accepted. By-id reads use the same
+		// NotFoundIfDeleting gate (w8/m35); quota still accounts for it under
+		// workspaceLimits.terminating (w6/m129).
+		if !items[i].DeletionTimestamp.IsZero() {
+			continue
+		}
 		out = append(out, s.view(&items[i]))
 	}
 	return out, nil
@@ -370,7 +392,7 @@ func (s *Service) ensureKeyValueNameAvailable(ctx context.Context, tenantID, nam
 
 // GetKeyValue returns one managed key-value store, or core.ErrNotFound.
 func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, error) {
-	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
+	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -591,7 +613,7 @@ func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID stri
 // GetIPAllowList returns the allowlist gating the external endpoint (empty
 // => open to all source IPs). The internal path is never gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
-	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
+	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -654,7 +676,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView,
 // validation and in-memory spec update — zero side effects (w2/m29 dry-run).
 // Requires can_view on the named key-value store (no audit event, no write).
 func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (KeyValueView, error) {
-	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
+	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -795,7 +817,7 @@ func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValu
 // PreviewUpdateKeyValue is UpdateKeyValue's dry-run twin (w2/m29 pattern): same
 // validation, zero side effects. Requires can_view (no audit event, no write).
 func (s *Service) PreviewUpdateKeyValue(ctx context.Context, name string, patch KeyValuePatch) (KeyValueView, error) {
-	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
+	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
