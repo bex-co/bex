@@ -78,6 +78,10 @@ func TestInvalidQueryRangesAcrossSurfaces(t *testing.T) {
 			t.Error("invalid range reached Loki")
 			return nil, nil
 		},
+		LogLabelValues: func(context.Context, string, string, logs.LogQuery) ([]string, error) {
+			t.Error("invalid range reached Loki label values")
+			return nil, nil
+		},
 		ResourceMetricsRange: func(context.Context, metrics.ResourceMetricsRangeRequest) ([]metrics.MetricSeries, error) {
 			t.Error("invalid range reached Prometheus")
 			return nil, nil
@@ -96,6 +100,11 @@ func TestInvalidQueryRangesAcrossSurfaces(t *testing.T) {
 			assertQueryError(t, h, `{ metrics(query: {name: "MEMORY", filters: [{field: "RESOURCE", values: ["web"]}], `+window+`}) { unit } }`, message)
 			assertQueryError(t, h, `{ datastoreMetrics(query: {resource: "pg", name: "DISK", `+window+`}) { unit } }`, message)
 			assertQueryError(t, h, `{ logs(resource: "web", startTime: "`+start+`", endTime: "`+end+`") { timestamp } }`, message)
+			// w4/056: logLabelValues (+ datastore log siblings) share LogQuery.validate —
+			// an inverted range must never reach Loki as "internal error".
+			assertQueryError(t, h, `{ logLabelValues(resource: "web", label: "level", startTime: "`+start+`", endTime: "`+end+`") }`, message)
+			assertQueryError(t, h, `{ databaseLogs(id: "dpg-c185th5c2rvvnhbfiltg", startTime: "`+start+`", endTime: "`+end+`") { timestamp } }`, message)
+			assertQueryError(t, h, `{ keyValueLogs(id: "red-c185th5c2rvvnhbfiltg", startTime: "`+start+`", endTime: "`+end+`") { timestamp } }`, message)
 			for _, path := range []string{
 				"/v1/metrics/memory?resource=web", "/v1/metrics/disk?resource=pg",
 				"/v1/logs?resource=web", "/v1/logs/values?resource=web&label=level", "/v1/logs/subscribe?resource=web",
@@ -112,6 +121,7 @@ func TestInvalidQueryRangesAcrossSurfaces(t *testing.T) {
 				{"get_metrics", map[string]any{"resource": []string{"web"}, "metricTypes": []string{"memory"}}},
 				{"get_datastore_metrics", map[string]any{"resource": "pg", "metricTypes": []string{"disk"}}},
 				{"list_logs", map[string]any{"resource": []string{"web"}}},
+				{"list_log_label_values", map[string]any{"resource": []string{"web"}, "label": "level"}},
 			} {
 				tc.args["startTime"], tc.args["endTime"] = start, end
 				result, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: tc.tool, Arguments: tc.args})
@@ -123,13 +133,17 @@ func TestInvalidQueryRangesAcrossSurfaces(t *testing.T) {
 					t.Errorf("%s = %s, want range error", tc.tool, payload)
 				}
 			}
-			// Direct service calls, including datastore log paths, must refuse
-			// the same input even when no adapter checks the window first.
+			// Direct service calls, including datastore log paths and label-value
+			// discovery, must refuse the same input even when no adapter checks
+			// the window first.
 			from, _ := time.Parse(time.RFC3339, start)
 			to, _ := time.Parse(time.RFC3339, end)
 			for _, resource := range []string{"web", "dpg-c185th5c2rvvnhbfiltg", "red-c185th5c2rvvnhbfiltg"} {
 				if _, err := srv.Logs.QueryLogs(context.Background(), logs.LogQuery{App: resource, Since: from, End: to}); !errors.Is(err, core.ErrBadRequest) {
-					t.Errorf("QueryLogs = %v, want bad request", err)
+					t.Errorf("QueryLogs(%s) = %v, want bad request", resource, err)
+				}
+				if _, err := srv.Logs.LogLabelValues(context.Background(), logs.LabelLevel, logs.LogQuery{App: resource, Since: from, End: to}); !errors.Is(err, core.ErrBadRequest) {
+					t.Errorf("LogLabelValues(%s) = %v, want bad request", resource, err)
 				}
 			}
 		})
