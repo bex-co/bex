@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint app src --quiet && yarn lint:unused",
     "lint:unused": "knip --include files,dependencies --no-progress",
-    "test:unit": "node ./scripts/jest-lite-runner.js",
+    "test:unit": "node ./scripts/jest-lite-runner.js && node ./scripts/access-recovery-tests.js",
     "test": "yarn format:check && yarn typecheck && yarn lint && yarn test:unit && yarn expo:check",
     "format": "prettier . --cache --write",
     "format:check": "prettier . --cache --check",
@@ -74,6 +74,7 @@
     "eslint-plugin-prettier": "^5.4.1",
     "knip": "6.33.0",
     "prettier": "^3.7.4",
+    "test-renderer": "1.2.0",
     "typescript": "~6.0.3"
   },
   "resolutions": {

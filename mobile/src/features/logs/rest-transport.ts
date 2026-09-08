@@ -1,4 +1,5 @@
 import { buildLogQuery } from "./query";
+import { assertCurrentAccess } from "../../common/apollo/access-link";
 import { classifyLogError, SSEParser } from "./sse-parser";
 import type {
   LogFilters,
@@ -88,6 +89,8 @@ export class RestLogTransport implements LogTransport {
     signal: AbortSignal,
   ): Promise<Response> {
     const accessToken = await this.credentials.getAccessToken();
+    signal.throwIfAborted();
+    assertCurrentAccess("can_view_logs");
     return this.fetchImpl(
       `${this.apiOrigin}/v1/logs?${buildLogQuery(filters)}`,
       {
@@ -104,6 +107,8 @@ export class RestLogTransport implements LogTransport {
     signal: AbortSignal,
   ): Promise<LogTailConnection> {
     const accessToken = await this.credentials.getAccessToken();
+    signal.throwIfAborted();
+    assertCurrentAccess("can_view_logs");
     let refreshing = false;
     return openXHRStream(
       `${this.apiOrigin}/v1/logs/subscribe?${buildLogQuery(filters)}`,
@@ -153,6 +158,7 @@ function openXHRStream(
   xhr.setRequestHeader("Accept", "text/event-stream");
   xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
   xhr.onprogress = () => {
+    if (terminal) return;
     // codex round-9 #11: responseText is cumulative and cannot be released
     // while the request lives; past the budget, recycle the connection instead
     // of growing the heap. The emitted error is a normal network-class error,

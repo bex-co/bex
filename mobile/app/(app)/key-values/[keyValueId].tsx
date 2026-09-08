@@ -1,3 +1,4 @@
+import { AccessBoundary } from "@/features/capabilities/access-required-screen";
 import { useLocalSearchParams } from "expo-router";
 import { KeyValueDetailScreen } from "@/features/keyvalue/keyvalue-detail-screen";
 import { InvalidDeepLinkScreen } from "@/features/navigation/invalid-deep-link-screen";
@@ -8,5 +9,9 @@ export default function KeyValueDetailRoute() {
     keyValueId?: string | string[];
   }>();
   if (!validKeyValueDeepLink(keyValueId)) return <InvalidDeepLinkScreen />;
-  return <KeyValueDetailScreen keyValueId={keyValueId} />;
+  return (
+    <AccessBoundary>
+      <KeyValueDetailScreen keyValueId={keyValueId} />
+    </AccessBoundary>
+  );
 }

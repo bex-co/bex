@@ -72,9 +72,9 @@ describe("capability policy (ADR087)", () => {
     const revoked = ready({ can_operate: "denied" });
     const outage = ready({ can_operate: "unavailable" });
     expect(downgradeDetected(held, revoked)).toBe(true);
-    // A grant that could not be re-checked also stops enabling work — the
-    // affirmative is gone — so it counts as a detected loss of "allowed".
-    expect(downgradeDetected(held, outage)).toBe(true);
+    // Unavailable stops work but does not prove a permission change.
+    expect(downgradeDetected(held, outage)).toBe(false);
+    expect(downgradeDetected(held, ready({}))).toBe(false);
     // A transport failure produces no ready snapshot: never a role change.
     expect(downgradeDetected(held, unavailableCapabilities)).toBe(false);
     expect(downgradeDetected(held, checkingCapabilities)).toBe(false);
@@ -84,5 +84,24 @@ describe("capability policy (ADR087)", () => {
     ).toBe(false);
     // An upgrade is not a downgrade.
     expect(downgradeDetected(revoked, held)).toBe(false);
+  });
+
+  it("expires affirmative access at 30 seconds without trusting clock rollback", () => {
+    const state: CapabilityState = {
+      status: "ready",
+      snapshot: toSnapshot(
+        "tea-a",
+        [
+          { action: "can_view", outcome: "allowed", reason: null },
+          { action: "can_operate", outcome: "allowed", reason: null },
+        ],
+        10_000,
+      ),
+    };
+    for (const action of ["can_view", "can_operate"] as const) {
+      expect(allowsAction(state, "tea-a", action, 39_999)).toBe(true);
+      expect(allowsAction(state, "tea-a", action, 40_000)).toBe(false);
+      expect(allowsAction(state, "tea-a", action, 9_999)).toBe(false);
+    }
   });
 });

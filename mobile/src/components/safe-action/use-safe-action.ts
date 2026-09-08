@@ -12,6 +12,7 @@ import {
   type SafeActionTarget,
 } from "./model";
 import type { SafeActionDefinition } from "./registry";
+import { useActionAccess } from "./use-action-access";
 
 export interface UseSafeActionOptions<Data> {
   operation: SafeActionOperation<Data>;
@@ -47,15 +48,33 @@ export function useSafeAction<Data>(
   const [outcome, setOutcome] = useState<SafeActionOutcome<Data> | null>(null);
   const [, renderPending] = useState(0);
   const executor = executorRef.current;
+  const access = useActionAccess();
+  const accessRef = useRef(access);
+  accessRef.current = access;
+  const binding = useRef<string | null>(null);
 
   useEffect(
     () => executor.subscribe(() => renderPending((value) => value + 1)),
     [executor],
   );
   useEffect(() => () => executor.cancelAll(), [executor]);
+  useEffect(() => {
+    if (
+      !intent ||
+      (binding.current && access.isCurrent(binding.current, intent.actionId))
+    )
+      return;
+    executor.cancelAll();
+    binding.current = null;
+    setIntent(null);
+    setOutcome(null);
+  });
 
   const requestConfirmation = useCallback(
     (definition: SafeActionDefinition, target: SafeActionTarget) => {
+      const current = accessRef.current;
+      if (!current.isCurrent(current.key, definition.id)) return;
+      binding.current = current.key;
       setOutcome(null);
       setIntent(
         createSafeActionIntent(
@@ -72,8 +91,20 @@ export function useSafeAction<Data>(
   }, [executor]);
   const execute = useCallback(
     async (next: SafeActionIntent) => {
+      const confirmedBinding = binding.current;
+      if (
+        !confirmedBinding ||
+        !accessRef.current.isCurrent(confirmedBinding, next.actionId)
+      )
+        return null;
       setIntent(next);
-      const result = await executor.execute(next, optionsRef.current.operation);
+      const result = await executor.execute(next, (context) => {
+        if (!accessRef.current.isCurrent(confirmedBinding, next.actionId))
+          throw new Error("mobile access is not currently verified");
+        return optionsRef.current.operation(context);
+      });
+      if (!accessRef.current.isCurrent(confirmedBinding, next.actionId))
+        return null;
       setOutcome(result);
       return result;
     },

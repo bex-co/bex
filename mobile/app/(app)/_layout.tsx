@@ -7,8 +7,13 @@ import {
   WorkspaceProvider,
 } from "@/features/workspaces/workspace-provider";
 import { AppDrawerProvider } from "@/components/app-drawer";
-import { CapabilitiesProvider } from "@/features/capabilities/capabilities-provider";
+import {
+  CapabilitiesProvider,
+  useCapabilities,
+} from "@/features/capabilities/capabilities-provider";
 import { NotificationsProvider } from "@/features/notifications/notifications-provider";
+import { WorkspaceList } from "@/components/app-drawer/workspace-list";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Deep links to a detail still get a tab screen to return to.
 export const unstable_settings = { initialRouteName: "(tabs)" };
@@ -17,6 +22,7 @@ function WorkspaceStack() {
   const theme = useTheme().colorTheme;
   const { status, offline, switching, retry } = useWorkspace();
   const { signOut } = useAuth();
+  const { generation } = useCapabilities();
   // A failed or empty workspace load is otherwise a dead end (no drawer behind
   // the gate), so both offer sign-out — the only way to mint a fresh token when
   // the current session lacks capability scope (w11 auth contract).
@@ -56,8 +62,16 @@ function WorkspaceStack() {
       />
     );
   }
+  if (status === "choose") {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+        <WorkspaceList onSelected={() => undefined} />
+      </SafeAreaView>
+    );
+  }
   return (
     <Stack
+      key={generation}
       initialRouteName="(tabs)"
       screenOptions={{
         headerShown: false,
@@ -82,7 +96,7 @@ export default function AppLayout() {
   }
   if (state.status !== "signedIn") return <Redirect href="/sign-in" />;
   return (
-    <WorkspaceProvider>
+    <WorkspaceProvider key={state.session.sessionId}>
       <CapabilitiesProvider>
         <NotificationsProvider>
           <AppDrawerProvider>

@@ -118,10 +118,11 @@ export class LogSession {
     this.emit();
   }
 
-  stop(): void {
+  stop(clear = false): void {
     ++this.generation;
     this.stopActive();
     this.phase = "idle";
+    if (clear) this.buffer.replace([]);
     this.emit();
   }
 

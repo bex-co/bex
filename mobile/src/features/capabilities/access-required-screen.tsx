@@ -1,4 +1,5 @@
 import { StyleSheet, Text } from "react-native";
+import { Fragment, type ReactNode } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Button } from "@/components/button";
@@ -8,7 +9,19 @@ import { DetailHeader } from "@/components/detail-header";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { fontSizes, space, useTheme } from "@/common/theme";
 import { useCapabilities } from "./capabilities-provider";
-import type { CapabilityAction } from "./capability-policy";
+import { accessMessage, type CapabilityAction } from "./capability-policy";
+
+export function AccessBoundary({
+  children,
+  action = "can_view",
+}: {
+  children: ReactNode;
+  action?: CapabilityAction;
+}) {
+  const access = useCapabilities();
+  if (!access.allows(action)) return <AccessRequiredScreen action={action} />;
+  return <Fragment key={access.generation}>{children}</Fragment>;
+}
 
 // ADR087: the generic presentation for a destination the caller cannot open,
 // shared by every gated surface so the copy cannot fork: a confirmed denial
@@ -19,11 +32,11 @@ export function AccessRequiredCard({ action }: { action: CapabilityAction }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   const capabilities = useCapabilities();
-  const bodyKey = capabilities.denied(action)
-    ? "access.cannotOpen"
-    : capabilities.state.status === "checking"
-      ? "access.checking"
-      : "access.unavailable";
+  const bodyKey = accessMessage(
+    capabilities.state,
+    capabilities.offline,
+    capabilities.denied(action),
+  );
   return (
     <DashboardCard>
       <Text
@@ -32,6 +45,11 @@ export function AccessRequiredCard({ action }: { action: CapabilityAction }) {
       >
         {t(bodyKey)}
       </Text>
+      {!capabilities.denied(action) && !capabilities.offline ? (
+        <Button type="outline" onPress={() => void capabilities.retry()}>
+          {t("auth.retry")}
+        </Button>
+      ) : null}
       <Button
         type="outline"
         style={{ marginTop: space.lg }}

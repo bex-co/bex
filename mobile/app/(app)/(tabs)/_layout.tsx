@@ -67,7 +67,7 @@ export default function TabLayout() {
   // The provider holds the last RESOLVED state for the current workspace, so
   // loading, empty results, and transport failures never change the tab set;
   // only a resolved workspace/access transition does.
-  const showSessions = useCapabilities().allows("can_operate");
+  const showSessions = useCapabilities().shows("can_operate");
 
   if (Platform.OS === "ios") {
     const contentStyle = { backgroundColor: theme.background };
@@ -187,19 +187,17 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="sessions"
-        options={{
-          title: t("navigation.sessions"),
-          // href: null removes the tab entry entirely (the route file must
-          // exist — the route inventory is pinned — but the destination is
-          // absent without confirmed access, per the ADR087 matrix).
-          href: showSessions ? undefined : null,
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon route="sessions" color={color} focused={focused} />
-          ),
-        }}
-      />
+      <Tabs.Protected guard={showSessions}>
+        <Tabs.Screen
+          name="sessions"
+          options={{
+            title: t("navigation.sessions"),
+            tabBarIcon: ({ color, focused }) => (
+              <TabBarIcon route="sessions" color={color} focused={focused} />
+            ),
+          }}
+        />
+      </Tabs.Protected>
       <Tabs.Screen
         name="notifications"
         options={{

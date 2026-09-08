@@ -2432,6 +2432,11 @@
   dependencies:
     undici-types "~8.3.0"
 
+"@types/react-reconciler@~0.33.0":
+  version "0.33.0"
+  resolved "https://registry.yarnpkg.com/@types/react-reconciler/-/react-reconciler-0.33.0.tgz#d27edab907998b3d9f18bc24e422d9aac34b741d"
+  integrity sha512-HZOXsKT0tGI9LlUw2LuedXsVeB88wFa536vVL0M6vE8zN63nI+sSr1ByxmPToP5K5bukaVscyeCJcF9guVNJ1g==
+
 "@types/react-test-renderer@^19.1.0":
   version "19.1.0"
   resolved "https://registry.yarnpkg.com/@types/react-test-renderer/-/react-test-renderer-19.1.0.tgz#1d0af8f2e1b5931e245b8b5b234d1502b854dc10"
@@ -6831,6 +6836,13 @@ react-native@0.86.3:
     ws "^7.5.10"
     yargs "^17.6.2"
 
+react-reconciler@~0.33.0:
+  version "0.33.0"
+  resolved "https://registry.yarnpkg.com/react-reconciler/-/react-reconciler-0.33.0.tgz#9dd20208d45baa5b0b4701781f858236657f15e1"
+  integrity sha512-KetWRytFv1epdpJc3J4G75I4WrplZE5jOL7Yq0p34+OVOKF4Se7WrdIdVC45XsSSmUTlht2FM/fM1FZb1mfQeA==
+  dependencies:
+    scheduler "^0.27.0"
+
 react-refresh@^0.14.0, react-refresh@^0.14.2:
   version "0.14.2"
   resolved "https://registry.yarnpkg.com/react-refresh/-/react-refresh-0.14.2.tgz#3833da01ce32da470f1f936b9d477da5c7028bf9"
@@ -7596,6 +7608,14 @@ terser@^5.15.0:
     acorn "^8.15.0"
     commander "^2.20.0"
     source-map-support "~0.5.20"
+
+test-renderer@1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/test-renderer/-/test-renderer-1.2.0.tgz#b106039bd4df8a40ea3de3718a6f346df184957b"
+  integrity sha512-JYiEGbgBGtmHAWX8Kf99gGRL1HtjcRVHLrmJNTZL4vFs9XrnWcuL45Iszw/pO4094+JR7havSrN+ds6YTOpSQA==
+  dependencies:
+    "@types/react-reconciler" "~0.33.0"
+    react-reconciler "~0.33.0"
 
 throat@^5.0.0:
   version "5.0.0"

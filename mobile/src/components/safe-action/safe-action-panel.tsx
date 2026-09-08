@@ -12,6 +12,7 @@ import {
 } from "./model";
 import type { SafeActionDefinition } from "./registry";
 import { SafeActionConfirmationDialog } from "./safe-action-dialog";
+import { useActionAccess } from "./use-action-access";
 import {
   SafeActionFeedbackView,
   type SafeActionFeedbackMessages,
@@ -57,6 +58,12 @@ export function SafeActionPanel({
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   const executor = useRef(new SafeActionExecutor()).current;
+  const access = useActionAccess();
+  const binding = useRef<string | null>(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  const sequence = useRef(0);
+  const viewSequence = sequence.current;
   const [selected, setSelected] = useState<MobileActionOption | null>(null);
   const [intent, setIntent] = useState<SafeActionIntent | null>(null);
   const [serverConfirmation, setServerConfirmation] = useState<string | null>(
@@ -69,8 +76,39 @@ export function SafeActionPanel({
 
   useEffect(() => () => executor.cancelAll(), [executor]);
 
+  function currentOption() {
+    if (
+      !selected ||
+      !binding.current ||
+      !access.isCurrent(binding.current, selected.definition.id)
+    )
+      return undefined;
+    return optionsRef.current.find(
+      (option) =>
+        option.key === selected.key &&
+        option.definition.id === selected.definition.id &&
+        option.target.kind === selected.target.kind &&
+        option.target.id === selected.target.id,
+    );
+  }
+
+  useEffect(() => {
+    if (!selected || currentOption()) return;
+    executor.cancelAll();
+    sequence.current += 1;
+    binding.current = null;
+    setIntent(null);
+    setSelected(null);
+    setServerConfirmation(null);
+    setOutcome(null);
+    setPending(false);
+  });
+
   function request(option: MobileActionOption) {
-    setSelected(option);
+    if (!access.isCurrent(access.key, option.definition.id)) return;
+    binding.current = access.key;
+    sequence.current += 1;
+    setSelected({ ...option, target: Object.freeze({ ...option.target }) });
     setServerConfirmation(null);
     setOutcome(null);
     setIntent(
@@ -83,7 +121,11 @@ export function SafeActionPanel({
   }
 
   async function confirm() {
-    if (!selected || !intent || pending) return;
+    if (!selected || !intent || pending || viewSequence !== sequence.current)
+      return;
+    const option = currentOption();
+    if (!option) return;
+    const confirmedBinding = binding.current;
     const confirmed = intent.confirmed ? intent : confirmSafeAction(intent);
     setIntent(confirmed);
     setPending(true);
@@ -91,7 +133,13 @@ export function SafeActionPanel({
       const next = await executor.execute<MobileActionRunResult>(
         confirmed,
         async () => {
-          const result = await selected.run(
+          if (
+            !confirmedBinding ||
+            !access.isCurrent(confirmedBinding, confirmed.actionId)
+          ) {
+            return { data: { status: "not_allowed" } };
+          }
+          const result = await option.run(
             serverConfirmation ?? undefined,
             confirmed.retryIdentity,
           );
@@ -115,6 +163,12 @@ export function SafeActionPanel({
           }
         },
       );
+      if (
+        viewSequence !== sequence.current ||
+        !confirmedBinding ||
+        !access.isCurrent(confirmedBinding, confirmed.actionId)
+      )
+        return;
       if (next.status === "succeeded" && isServerConfirmation(next.data)) {
         setServerConfirmation(next.data.confirmation);
         setOutcome(null);
@@ -130,7 +184,7 @@ export function SafeActionPanel({
       setOutcome(next);
       setIntent(null);
     } finally {
-      setPending(false);
+      if (viewSequence === sequence.current) setPending(false);
     }
   }
 
@@ -147,8 +201,19 @@ export function SafeActionPanel({
     ...feedbackMessages,
   };
 
+  const blockedOption = options.find(
+    (option) => !access.isCurrent(access.key, option.definition.id),
+  );
   return (
     <View style={styles.container}>
+      {blockedOption ? (
+        <Text
+          accessibilityRole="alert"
+          style={{ color: theme.mutedForeground }}
+        >
+          {t(access.reason(blockedOption.definition.id))}
+        </Text>
+      ) : null}
       <View style={styles.buttons}>
         {options.length ? (
           options.map((option) => (
@@ -156,7 +221,9 @@ export function SafeActionPanel({
               key={option.key}
               type="outline"
               style={styles.button}
-              disabled={pending}
+              disabled={
+                pending || !access.isCurrent(access.key, option.definition.id)
+              }
               accessibilityLabel={option.label}
               onPress={() => request(option)}
             >
@@ -186,6 +253,8 @@ export function SafeActionPanel({
         pendingLabel={t("safeActions.pending")}
         onConfirm={() => void confirm()}
         onCancel={() => {
+          sequence.current += 1;
+          binding.current = null;
           setIntent(null);
           setSelected(null);
           setServerConfirmation(null);

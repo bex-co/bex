@@ -27,8 +27,22 @@ export type CapabilityGrantInput = {
 
 export type CapabilitySnapshot = {
   workspaceId: string;
+  /** Local receipt time, not a server membership version. Never persisted. */
+  receivedAt: number;
   grants: Partial<Record<CapabilityAction, CapabilityOutcome>>;
 };
+
+export const CAPABILITY_FRESHNESS_MS = 30_000;
+
+export function snapshotIsFresh(
+  snapshot: CapabilitySnapshot,
+  now = Date.now(),
+): boolean {
+  return (
+    now >= snapshot.receivedAt &&
+    now - snapshot.receivedAt < CAPABILITY_FRESHNESS_MS
+  );
+}
 
 export type CapabilityState =
   | { status: "checking" }
@@ -40,6 +54,20 @@ export const unavailableCapabilities: CapabilityState = {
   status: "unavailable",
 };
 
+export function accessMessage(
+  state: CapabilityState,
+  offline: boolean,
+  denied: boolean,
+) {
+  return offline
+    ? "access.offline"
+    : denied
+      ? "access.cannotOpen"
+      : state.status === "checking"
+        ? "access.checking"
+        : "access.unavailable";
+}
+
 // toSnapshot normalizes the server's grants list. Unknown action ids are
 // dropped (the app never gates on them); an unrecognized outcome value on a
 // KNOWN action reads as "unavailable" — the server said something this build
@@ -48,9 +76,10 @@ export const unavailableCapabilities: CapabilityState = {
 export function toSnapshot(
   workspaceId: string,
   grants: readonly CapabilityGrantInput[],
+  receivedAt = Date.now(),
 ): CapabilitySnapshot {
   const known = new Set<string>(CAPABILITY_ACTIONS);
-  const out: CapabilitySnapshot = { workspaceId, grants: {} };
+  const out: CapabilitySnapshot = { workspaceId, receivedAt, grants: {} };
   for (const grant of grants) {
     if (!known.has(grant.action)) continue;
     const outcome = (OUTCOMES as readonly string[]).includes(grant.outcome)
@@ -68,9 +97,11 @@ export function allowsAction(
   state: CapabilityState,
   workspaceId: string | null,
   action: CapabilityAction,
+  now = Date.now(),
 ): boolean {
   return (
     state.status === "ready" &&
+    snapshotIsFresh(state.snapshot, now) &&
     workspaceId !== null &&
     state.snapshot.workspaceId === workspaceId &&
     state.snapshot.grants[action] === "allowed"
@@ -107,6 +138,6 @@ export function downgradeDetected(
   return CAPABILITY_ACTIONS.some(
     (action) =>
       previous.snapshot.grants[action] === "allowed" &&
-      next.snapshot.grants[action] !== "allowed",
+      next.snapshot.grants[action] === "denied",
   );
 }
