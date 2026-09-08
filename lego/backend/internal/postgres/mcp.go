@@ -59,7 +59,10 @@ type createPostgresArgs struct {
 	DatabaseUser          string   `json:"databaseUser,omitempty" jsonschema:"optional physical PostgreSQL owner role; lowercase letters, digits, and underscores"`
 	Plan                  string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
 	Version               string   `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
-	DiskSizeGB            int32    `json:"diskSizeGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
+	// DiskSizeGb is Render's MCP spelling. DiskSizeGB is the legacy bex alias
+	// (w2/m91); when both are set, DiskSizeGb wins.
+	DiskSizeGb            *int32   `json:"diskSizeGb,omitempty" jsonschema:"disk size in GB (omit for the plan default); Render's MCP spelling"`
+	DiskSizeGB            *int32   `json:"diskSizeGB,omitempty" jsonschema:"legacy bex alias of diskSizeGb; ignored when diskSizeGb is also set"`
 	EnableDiskAutoscaling bool     `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatically grow storage at 90 percent full"`
 	Public                bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
 	IPAllowList           []string `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
@@ -68,6 +71,12 @@ type createPostgresArgs struct {
 	IPAllowListEntries     []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of ipAllowList to keep per-entry descriptions"`
 	EnableHighAvailability bool                    `json:"enableHighAvailability,omitempty" jsonschema:"provision a replicated cluster (primary + standby) for high availability"`
 	DryRun                 bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+}
+
+// diskSizeGBValue applies the w2/m91 alias policy: Render's diskSizeGb wins
+// when both spellings are present; either alone is accepted.
+func (a createPostgresArgs) diskSizeGBValue() int32 {
+	return mcputil.PreferPtrOrZero(a.DiskSizeGb, a.DiskSizeGB)
 }
 
 // listPostgresResult wraps the array — MCP tool outputs must be JSON objects.
@@ -113,7 +122,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
-		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGB, public, ipAllowList/ipAllowListEntries and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
+		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGb (legacy alias diskSizeGB), public, ipAllowList/ipAllowListEntries and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
 			OwnerID:                core.NamedWorkspace(ctx),
@@ -123,7 +132,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			DatabaseUser:           in.DatabaseUser,
 			Plan:                   in.Plan,
 			Version:                in.Version,
-			DiskSizeGB:             in.DiskSizeGB,
+			DiskSizeGB:             in.diskSizeGBValue(),
 			EnableDiskAutoscaling:  in.EnableDiskAutoscaling,
 			Public:                 in.Public,
 			IPAllowList:            core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList),

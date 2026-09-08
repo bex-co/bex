@@ -94,21 +94,15 @@ var mcpAcceptedDivergences = map[string]string{
 	"create_cron_job":    "same as create_web_service — `region` is not a caller-chosen value in bex",
 	"create_key_value":   "same as create_web_service — `region` is not a caller-chosen value in bex",
 
-	// Two departures. `region` as above. `diskSizeGb` vs bex's `diskSizeGB` is a
-	// genuine casing incompatibility with no defensible reason — an agent
-	// following Render's schema silently fails to set disk size. Tracked for
-	// repair rather than accepted on merit; see the milestone's follow-up notes.
-	"create_postgres": "`region` as above; `diskSizeGb` vs bex's `diskSizeGB` is an unintended casing divergence — accepted only to keep this pin landable, filed for repair",
+	// Same region omission as the other create tools. diskSizeGb was repaired
+	// in w2/m91 (legacy diskSizeGB kept as a compat alias; Render wins when both
+	// are set), so the only remaining break is region.
+	"create_postgres": "`region` as above — diskSizeGb casing repaired in w2/m91",
 
 	// bex requires publishPath because a static site with no publish directory
-	// has nothing to serve; upstream defaults it. Dropping buildCommand and
-	// autoDeploy, though, is unintended.
-	"create_static_site": "`publishPath` is genuinely required in bex (no default publish dir); missing `autoDeploy`/`buildCommand` is unintended and filed for repair",
-
-	// bex's metrics surface predates this pin and uses `resource`/`quantile`/
-	// `resolutionSeconds` where upstream uses `resourceId`/`httpLatencyQuantile`/
-	// `resolution`. A rename, not a capability gap.
-	"get_metrics": "argument names predate the pin (`resource` vs `resourceId`, `quantile` vs `httpLatencyQuantile`, `resolutionSeconds` vs `resolution`); a rename, not a capability gap — filed for repair",
+	// has nothing to serve; upstream defaults it. autoDeploy/buildCommand were
+	// repaired in w2/m91.
+	"create_static_site": "`publishPath` is genuinely required in bex (no default publish dir); autoDeploy/buildCommand wired in w2/m91",
 
 	// bex has no preview environments at all (PR previews are a recorded
 	// non-goal in .pm/DO_NOT_DO.md), so there is no set to include or exclude.

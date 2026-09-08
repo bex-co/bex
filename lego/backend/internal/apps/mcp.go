@@ -445,7 +445,8 @@ type staticHeaderArg struct {
 // createStaticSiteArgs is create_static_site's input — Render's MCP tool name.
 // A static site builds a repo and serves its publishPath output from the
 // object-store origin (no running container). publishPath is required; routes and
-// headers are the optional edge rules.
+// headers are the optional edge rules. autoDeploy + buildCommand match Render's
+// upstream args (w2/m91); publishPath stays required (genuine divergence).
 type createStaticSiteArgs struct {
 	OwnerID            string                  `json:"-"`
 	EnvironmentID      string                  `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
@@ -454,9 +455,11 @@ type createStaticSiteArgs struct {
 	Image              string                  `json:"image,omitempty" jsonschema:"a prebuilt OCI image whose publishPath holds the built site; omit if using repo"`
 	Branch             string                  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
 	RootDir            string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	BuildCommand       string                  `json:"buildCommand,omitempty" jsonschema:"command used to build the static site (e.g. npm run build)"`
 	PublishPath        string                  `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public"`
 	EnvVars            []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) build-time environment variables"`
 	SecretFiles        []secretFileInput       `json:"secretFiles,omitempty" jsonschema:"secret files available to the static-site build from first boot"`
+	AutoDeploy         string                  `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
 	Domains            []string                `json:"domains,omitempty" jsonschema:"custom domains to serve the site at, in addition to the platform hostname"`
 	Routes             []staticRouteArg        `json:"routes,omitempty" jsonschema:"ordered redirect/rewrite rules (first match wins), e.g. an SPA fallback rewrite of /* to /index.html"`
 	Headers            []staticHeaderArg       `json:"headers,omitempty" jsonschema:"custom response-header rules scoped by request path"`
@@ -475,9 +478,11 @@ func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
 		Image:         a.Image,
 		Branch:        a.Branch,
 		RootDir:       a.RootDir,
+		BuildCommand:  a.BuildCommand,
 		PublishPath:   a.PublishPath,
 		Env:           toEnvVars(a.EnvVars),
 		SecretFiles:   toSecretFiles(a.SecretFiles),
+		AutoDeploy:    parseYesNo(a.AutoDeploy),
 		Hosts:         a.Domains,
 		Routes:        routeArgViews(a.Routes),
 		Headers:       headerArgViews(a.Headers),

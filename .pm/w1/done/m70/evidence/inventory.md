@@ -43,9 +43,9 @@ These are what an agent written against Render's official MCP calls unchanged. `
 | `create_web_service` | missing `region` | accepted — no caller-chosen region in bex |
 | `create_cron_job` | missing `region` | accepted — same |
 | `create_key_value` | missing `region` | accepted — same |
-| `create_postgres` | missing `region`, `diskSizeGb` | **repair** — bex spells it `diskSizeGB`; a casing bug |
-| `create_static_site` | missing `autoDeploy`, `buildCommand`; requires `publishPath` | **repair** — `publishPath` is genuine, the two omissions are not |
-| `get_metrics` | missing 7 args; requires renamed `resource` | **repair** — `resourceId`→`resource`, `httpLatencyQuantile`→`quantile`, `resolution`→`resolutionSeconds` |
+| `create_postgres` | missing `region`, `diskSizeGb` | **repaired w2/m91** — `diskSizeGb` accepted (legacy `diskSizeGB` alias; Render wins when both set); remaining `region` omission accepted like the other create tools |
+| `create_static_site` | missing `autoDeploy`, `buildCommand`; requires `publishPath` | **repaired w2/m91** — `autoDeploy`/`buildCommand` wired; `publishPath` requirement remains genuine |
+| `get_metrics` | missing 7 args; requires renamed `resource` | **repaired w2/m91** — Render names accepted (`resourceId`/`resolution`/`httpLatencyQuantile`/`httpHost`/`httpPath`); `cpuUsageAggregationMethod` AVG-only; `aggregateHttpRequestCountsBy=statusCode` wired, `host` rejected; tool now `Superset` |
 | `list_services` | missing `includePreviews` | accepted — PR previews are a recorded non-goal |
 | `trigger_deploy` | missing `clearCache` | **repair** — reaches REST and GraphQL, never wired into MCP despite ADR018's w2/m30 row |
 
