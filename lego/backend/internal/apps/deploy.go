@@ -2274,6 +2274,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if plan == "" {
 		plan = "basic-256mb"
 	}
+	plan = tiers.Postgres.CanonicalID(plan)
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q plan %q is not a supported Render Postgres plan (one of %s)", core.ErrBadRequest, d.Name, plan, strings.Join(tiers.Postgres.IDs(), "|"))
 	}

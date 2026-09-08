@@ -26,11 +26,13 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
@@ -339,26 +341,35 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: keyValueBackupName(kv.Name), Namespace: kv.Namespace}}
 	if gone, err := deleteAndWait(ctx, r.Client, cron); err != nil {
+		if r.kvDeletionOverran(kv) {
+			r.recordKVDeletionStalled(ctx, kv, "delete KeyValue backup CronJob returned errors")
+		}
 		return result, fmt.Errorf("delete KeyValue backup CronJob: %w", err)
 	} else if !gone {
-		return ctrl.Result{RequeueAfter: settleRequeue}, nil
+		return r.kvDeletionPending(ctx, kv, "waiting for backup CronJob deletion"), nil
 	}
 
 	jobsGone, err := r.deleteKeyValueBackupJobs(ctx, kv)
 	if err != nil {
+		if r.kvDeletionOverran(kv) {
+			r.recordKVDeletionStalled(ctx, kv, "delete KeyValue backup Jobs returned errors")
+		}
 		return result, err
 	}
 	if !jobsGone {
-		return ctrl.Result{RequeueAfter: settleRequeue}, nil
+		return r.kvDeletionPending(ctx, kv, "waiting for backup Jobs deletion"), nil
 	}
 
 	if r.Backup.configured() && kv.Annotations[appv1alpha1.AnnotationPreserveKeyValueBackups] != kvPreserveBackupsTrue {
 		done, err := reconcileCleanupJob(ctx, r.Client, kv, r.keyValueBackupPurgeJob(kv), annotKVBackupPurgeComplete)
 		if err != nil {
+			if r.kvDeletionOverran(kv) {
+				r.recordKVDeletionStalled(ctx, kv, "RDB backup purge returned errors")
+			}
 			return result, err
 		}
 		if !done {
-			return ctrl.Result{RequeueAfter: settleRequeue}, nil
+			return r.kvDeletionPending(ctx, kv, "waiting for RDB backup purge Job"), nil
 		}
 	}
 
@@ -367,6 +378,45 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 		return result, err
 	}
 	return result, nil
+}
+
+func (r *KeyValueReconciler) kvFinalizerOverrunWindow() time.Duration {
+	if r.FinalizerOverrunAfter > 0 {
+		return r.FinalizerOverrunAfter
+	}
+	return finalizerOverrunAfter
+}
+
+func (r *KeyValueReconciler) kvDeletionOverran(kv *appv1alpha1.KeyValue) bool {
+	if kv.DeletionTimestamp.IsZero() {
+		return false
+	}
+	return time.Since(kv.DeletionTimestamp.Time) >= r.kvFinalizerOverrunWindow()
+}
+
+func (r *KeyValueReconciler) recordKVDeletionStalled(ctx context.Context, kv *appv1alpha1.KeyValue, blockedStep string) {
+	changed := meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
+		Type:               conditionDeletionStalled,
+		Status:             metav1.ConditionTrue,
+		Reason:             reasonCleanupExceededDeadline,
+		ObservedGeneration: kv.Generation,
+		Message: fmt.Sprintf("key value finalization has not completed within %s of deletion (%s); the finalizer is retained so no backup data is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
+			r.kvFinalizerOverrunWindow(), blockedStep),
+	})
+	if !changed {
+		return
+	}
+	logf.FromContext(ctx).Error(nil, "KeyValue finalization stalled past its bound; surfaced as DeletionStalled",
+		"keyvalue", kv.Name, "window", r.kvFinalizerOverrunWindow(), "step", blockedStep)
+	_ = updateStatusIfChanged(ctx, r.Client, kv)
+}
+
+func (r *KeyValueReconciler) kvDeletionPending(ctx context.Context, kv *appv1alpha1.KeyValue, step string) ctrl.Result {
+	if r.kvDeletionOverran(kv) {
+		r.recordKVDeletionStalled(ctx, kv, step)
+		return ctrl.Result{RequeueAfter: childHealthRequeue}
+	}
+	return ctrl.Result{RequeueAfter: settleRequeue}
 }
 
 func (r *KeyValueReconciler) deleteKeyValueBackupJobs(ctx context.Context, kv *appv1alpha1.KeyValue) (bool, error) {

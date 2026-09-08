@@ -573,6 +573,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := validateDatabaseName(req.Name); err != nil {
 		return PostgresView{}, err
 	}
+	req.Plan = tiers.Postgres.CanonicalID(req.Plan)
 	if err := req.validatePhysicalIdentifiers(); err != nil {
 		return PostgresView{}, err
 	}
@@ -847,6 +848,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 	if err != nil {
 		return PostgresView{}, err
 	}
+	plan = tiers.Postgres.CanonicalID(plan)
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
 		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
@@ -875,6 +877,7 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (Postgr
 	if err != nil {
 		return PostgresView{}, err
 	}
+	plan = tiers.Postgres.CanonicalID(plan)
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
 		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
@@ -916,7 +919,7 @@ func (patch PostgresPatch) validate() error {
 		}
 	}
 	if patch.Plan != nil {
-		if _, ok := tiers.Postgres.ByID(*patch.Plan); !ok {
+		if _, ok := tiers.Postgres.ByID(tiers.Postgres.CanonicalID(*patch.Plan)); !ok {
 			return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 		}
 	}
@@ -981,7 +984,7 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 		d.Spec.Name = *patch.Name
 	}
 	if patch.Plan != nil {
-		d.Spec.Plan = *patch.Plan
+		d.Spec.Plan = tiers.Postgres.CanonicalID(*patch.Plan)
 	}
 	if patch.Version != nil {
 		d.Spec.Version = *patch.Version
@@ -1232,7 +1235,7 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 	if err := patch.validate(); err != nil {
 		return PostgresView{}, err
 	}
-	if patch.Plan != nil && core.PaidPlan(*patch.Plan) {
+	if patch.Plan != nil && core.PaidPlan(tiers.Postgres.CanonicalID(*patch.Plan)) {
 		if err := s.RequirePaymentMethod(ctx, d.Labels[core.LabelTenant]); err != nil {
 			return PostgresView{}, err
 		}

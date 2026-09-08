@@ -3948,9 +3948,34 @@ const enServices: Record<string, TranslationEntry> = {
     message: "IP allowlist updated",
     description: "Toast on successful setServiceIpAllowList mutation (w7/m32)",
   },
-  "services.networkingError": {
+	"services.networkingError": {
     message: "Failed to update IP allowlist: {error}",
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
+  },
+  "services.outboundIpsTitle": {
+    message: "Outbound IPs",
+    description: "Settings card title for service egress IPs (w8/010)",
+  },
+  "services.outboundIpsDescription": {
+    message:
+      "Shared egress addresses for this service. They are the tenant pool's current node public IPs and can change as the autoscaler adds or removes nodes.",
+    description: "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
+  },
+  "services.outboundIpsEmpty": {
+    message: "No outbound IPs reported yet (common on local clusters without node ExternalIPs).",
+    description: "Honest empty state when outboundIps.ips is empty (w8/010)",
+  },
+  "services.outboundIpsCopy": {
+    message: "Copy {ip}",
+    description: "Accessible label on the copy button for one outbound IP (w8/010)",
+  },
+  "services.outboundIpsCopied": {
+    message: "Copied",
+    description: "Toast after copying an outbound IP (w8/010)",
+  },
+  "services.outboundIpsCopyError": {
+    message: "Could not copy",
+    description: "Toast when clipboard write fails for an outbound IP (w8/010)",
   },
   "services.environmentPageTitle": {
     message: "Environment",

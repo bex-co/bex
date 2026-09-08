@@ -22,12 +22,14 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -504,6 +506,42 @@ func TestKeyValueDeletionRetainsFinalizerWhenPurgeFails(t *testing.T) {
 	}
 	if !controllerutil.ContainsFinalizer(current, kvFinalizer) {
 		t.Fatal("failed purge released the KeyValue finalizer")
+	}
+}
+
+// TestKeyValueDeletionSurfacesStalledConditionOnOverrun is w8/012: a KeyValue
+// finalization past its bound stamps DeletionStalled and backs off requeue.
+func TestKeyValueDeletionSurfacesStalledConditionOnOverrun(t *testing.T) {
+	scheme := keyValueBackupTestScheme(t)
+	now := metav1.Now()
+	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{
+		Name: "stalled-kv", Namespace: "default", UID: "uid-stalled-kv",
+		Finalizers: []string{kvFinalizer}, DeletionTimestamp: &now,
+	}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}, &batchv1.Job{}).Build()
+	r := &KeyValueReconciler{
+		Client: cl, Scheme: scheme, FinalizerOverrunAfter: time.Nanosecond,
+		Backup: testKeyValueBackupStore,
+	}
+	nn := types.NamespacedName{Name: kv.Name, Namespace: kv.Namespace}
+	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RequeueAfter != childHealthRequeue {
+		t.Fatalf("stalled requeue = %v, want childHealthRequeue %v", result.RequeueAfter, childHealthRequeue)
+	}
+	var current appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), nn, &current); err != nil {
+		t.Fatal(err)
+	}
+	if !controllerutil.ContainsFinalizer(&current, kvFinalizer) {
+		t.Fatal("finalizer must be retained while stalled")
+	}
+	cond := meta.FindStatusCondition(current.Status.Conditions, conditionDeletionStalled)
+	if cond == nil || cond.Status != metav1.ConditionTrue {
+		t.Fatalf("DeletionStalled condition = %+v, want present and True", cond)
 	}
 }
 

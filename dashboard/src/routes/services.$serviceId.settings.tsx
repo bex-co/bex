@@ -30,6 +30,7 @@ import { EditableFieldRow } from "@/features/services/components/editable-field-
 import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
 import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown-delay-row";
 import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
+import { ServiceOutboundIpsPanel } from "@/features/services/components/service-outbound-ips-panel";
 import { MaintenanceModeSection } from "@/features/services/components/maintenance-mode-section";
 import { RegistryCredentialSection } from "@/features/services/components/registry-credential-section";
 import {
@@ -314,6 +315,11 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                   />
                 </section>
               </>
+            )}
+            {service && (
+              <section id="outbound-ips" className="scroll-mt-6">
+                <ServiceOutboundIpsPanel ips={service.outboundIps?.ips} />
+              </section>
             )}
           </>
         )}

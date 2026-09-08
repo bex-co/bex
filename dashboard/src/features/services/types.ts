@@ -214,6 +214,11 @@ export interface ServiceView {
     description: string | null;
   } | null> | null;
   /**
+   * Shared egress IPs (`Service.outboundIps`, w8/010). null when not selected
+   * (list query); detail `server` query returns `{type, ips}` (always shared).
+   */
+  outboundIps: { type: string; ips: string[] } | null;
+  /**
    * Render's maintenanceMode object (`spec.maintenanceMode`, w1/m37): takes a
    * web_service offline behind an interstitial page without suspending it.
    * null when not selected (list query); the detail `server` query always

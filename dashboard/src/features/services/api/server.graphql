@@ -126,6 +126,12 @@ query Server($id: String!) {
       cidrBlock
       description
     }
+    # Shared egress IPs for Connect / outbound allowlisting (w8/010). Always
+    # type "shared" on bex; empty ips is truthful on CAPD, not an error.
+    outboundIps {
+      type
+      ips
+    }
     # maintenanceMode is Render's maintenanceMode object (w1/m37): takes a
     # web_service offline behind an interstitial page without suspending it.
     # Always present (never null), even when never configured.

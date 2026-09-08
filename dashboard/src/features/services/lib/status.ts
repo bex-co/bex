@@ -90,10 +90,21 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     ipAllowList: "ipAllowList" in s ? (s.ipAllowList ?? null) : null,
     ipAllowListEntries:
       "ipAllowListEntries" in s ? (s.ipAllowListEntries ?? null) : null,
+    outboundIps: "outboundIps" in s ? toOutboundIps(s.outboundIps) : null,
     routes: "routes" in s ? toStaticRoutes(s.routes) : [],
     headers: "headers" in s ? toStaticHeaders(s.headers) : [],
     maintenanceMode:
       "maintenanceMode" in s ? toMaintenanceMode(s.maintenanceMode) : null,
+  };
+}
+
+function toOutboundIps(
+  o: ServerNode["outboundIps"] | null | undefined,
+): { type: string; ips: string[] } | null {
+  if (!o) return null;
+  return {
+    type: o.type ?? "shared",
+    ips: (o.ips ?? []).filter((ip): ip is string => !!ip),
   };
 }
 

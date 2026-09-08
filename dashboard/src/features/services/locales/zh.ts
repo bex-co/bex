@@ -3878,9 +3878,34 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "IP 允许列表已更新",
     description: "Toast on successful setServiceIpAllowList mutation (w7/m32)",
   },
-  "services.networkingError": {
+	"services.networkingError": {
     message: "更新 IP 允许列表失败：{error}",
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
+  },
+  "services.outboundIpsTitle": {
+    message: "出站 IP",
+    description: "Settings card title for service egress IPs (w8/010)",
+  },
+  "services.outboundIpsDescription": {
+    message:
+      "此服务的共享出站地址。它们是租户节点池当前的公网 IP，会随自动扩缩容增减节点而变化。",
+    description: "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
+  },
+  "services.outboundIpsEmpty": {
+    message: "尚未报告出站 IP（本地集群没有节点 ExternalIP 时很常见）。",
+    description: "Honest empty state when outboundIps.ips is empty (w8/010)",
+  },
+  "services.outboundIpsCopy": {
+    message: "复制 {ip}",
+    description: "Accessible label on the copy button for one outbound IP (w8/010)",
+  },
+  "services.outboundIpsCopied": {
+    message: "已复制",
+    description: "Toast after copying an outbound IP (w8/010)",
+  },
+  "services.outboundIpsCopyError": {
+    message: "无法复制",
+    description: "Toast when clipboard write fails for an outbound IP (w8/010)",
   },
   "services.environmentPageTitle": {
     message: "环境",
