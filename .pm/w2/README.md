@@ -101,7 +101,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - **035** — Phase 4: drop dual-read + delete legacy registry/static blobs (ADR055 F2/F3 close) ← from w2/m92 t005; STOP + window-gated until **2026-09-22**
-- **034** — Decide the disk $/GB-month rate (measured 56.2% margin vs ADR082's assumed 65–71%): keep $0.175 or re-price ← from `/pm-brainstorm for w2` 2026-09-07 #5; residual of `030`
+
+_(2026-09-08: `034` resolved — keep disk $0.175 / Render×0.70; ADR082+ADR030 margin figures updated to measured Hetzner $0.0767 (~56.2%); moved to `done/034.md`.)_
 
 _(2026-09-08 triage: `033` fixed — operator now projects the disk-snapshot Secret pair from the apps namespace into each disk-bearing App's namespace at reconcile time, `SnapshotCredentialUnavailable` fail-closed condition, script seeds the source, envtest-pinned; `030` executed — authenticated Hetzner pricing read: volumes bill **$0.0767/GB-month USD** on this account ⇒ ~56.2% gross margin at the $0.175 rate, recorded in ADR082 §Verification, `pricing.yaml` untouched pending a user re-price decision; `031` fixed — ADR018's two stale `.pm` pointers corrected (Enterprise drift restated inline, Managed-OIDC row points at FUTURE-MAYBE). All three in `done/`.)_
 
