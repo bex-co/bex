@@ -73,12 +73,26 @@ datasources:
         editable: false
 
 # Dashboards as code: a file provider reading the ConfigMap the `dashboards:`
-# block renders. The starter set is deliberately small (ADR088 §1 lets it grow
-# — bex-api errors/latency, operator reconciliation, builds, CNPG, capacity)
-# but real: the availability view every incident starts from, built on the
-# exact series the TraefikHigh5xxRatio alert (prometheus.yaml) evaluates plus
-# the log-shipper's type=request stream in Loki, so the dashboard and the
-# pager can never disagree about what "edge errors" means.
+# block renders. The set is the ADR088 §6 SLI baseline — one dashboard per §6
+# row, built on the exact series the alert rules (prometheus.yaml) evaluate,
+# with each alert's numeric threshold drawn as a threshold line on the panel
+# that shows its backing series ("every alert gets a panel": an alert says
+# broken, the panel answers how bad / since when / trending which way). Only
+# bounded label sets appear, the same ones the rules query — never per-path/
+# per-host/per-tenant-unbounded dimensions (the ADR010 cardinality rule).
+#
+# Absence is never health: count-of-bad-things panels coerce to 0 only behind
+# a guard proving the backing telemetry is actually flowing (`or (count(<base
+# or up series>) * 0)`), and every current-health stat tile queries INSTANT —
+# Prometheus staleness (~5m) drops a vanished target from an instant query, so
+# absence is representable at all instead of lastNotNull holding the last 1
+# for the whole 6h window. On MULTI-target tiles Grafana's noValue fires only
+# when NO display values remain, so one vanished source would silently drop
+# while its siblings stay green — hence the per-target sentinel convention:
+# each source queries `<expr> or on() vector(-1)` and the tile maps
+# -1 → MISSING (red), 0 → down/unhealthy (red), 1 → healthy (green); legends
+# on sentinel-capable targets are constant strings (never label-derived,
+# vector(-1) carries no labels), and noValue stays as a second net.
 dashboardProviders:
   dashboardproviders.yaml:
     apiVersion: 1
@@ -93,6 +107,10 @@ dashboardProviders:
 
 dashboards:
   platform:
+    # Platform availability (ADR088 §6 row 1, the landing page): is the
+    # platform itself up — edge traffic/5xx/latency against TraefikHigh5xxRate's
+    # 5% line, platform Deployment/pod health on the same namespace allowlist
+    # the rules use, cert issuance+expiry, and the OpenBao seal gauge.
     platform-availability:
       json: |
         {
@@ -101,6 +119,7 @@ dashboards:
           "tags": ["bex", "platform"],
           "editable": false,
           "graphTooltip": 1,
+          "timezone": "browser",
           "schemaVersion": 39,
           "refresh": "30s",
           "time": { "from": "now-6h", "to": "now" },
@@ -133,7 +152,7 @@ dashboards:
               "id": 2,
               "type": "timeseries",
               "title": "Edge 5xx ratio",
-              "description": "Share of edge responses that are 5xx. The TraefikHigh5xxRatio alert (prometheus.yaml) pages at >5% for 10m — the red line.",
+              "description": "Share of ALL edge responses that are 5xx. The red line marks TraefikHigh5xxRate's 5% threshold; the alert additionally requires >0.1 req/s aggregate traffic for 10m, so a red excursion under lighter traffic does not page. Healthy tenant traffic can dilute a platform-service outage below this line — see the per-service panel below.",
               "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "fieldConfig": {
@@ -162,8 +181,8 @@ dashboards:
             {
               "id": 3,
               "type": "logs",
-              "title": "Edge 5xx request log",
-              "description": "Traefik access lines for 5xx responses (log-shipper type=request stream). host/path are line-only fields by cardinality design — filter with LogQL | json, never a label.",
+              "title": "Tenant + dashboard 5xx request log",
+              "description": "Traefik access lines for 5xx responses — but the log-shipper's type=request stream retains ONLY tenant App hosts plus dashboard.bex.co (the w4/m88 bounded allowlist in log-shipper.yaml). Platform edge hosts (api/oauth/auth/obs) are NOT yet retained in Loki, so bex-api 5xx during a platform outage will not appear here even while the ratio panel climbs; extending the w4/m88 allowlist is the fix. host/path are line-only fields by cardinality design — filter with LogQL | json, never a label.",
               "gridPos": { "h": 10, "w": 24, "x": 0, "y": 9 },
               "datasource": { "type": "loki", "uid": "loki" },
               "options": {
@@ -177,6 +196,1839 @@ dashboards:
                 {
                   "refId": "A",
                   "expr": "{type=\"request\", status=~\"5..\"}"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "type": "timeseries",
+              "title": "Edge latency p50/p95/p99",
+              "description": "Traefik service request duration quantiles across the whole edge (traefik_service_request_duration_seconds_bucket — the same histogram behind bex-api's latency metrics).",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 19 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "s", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "histogram_quantile(0.50, sum by (le) (rate(traefik_service_request_duration_seconds_bucket[5m])))",
+                  "legendFormat": "p50"
+                },
+                {
+                  "refId": "B",
+                  "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket[5m])))",
+                  "legendFormat": "p95"
+                },
+                {
+                  "refId": "C",
+                  "expr": "histogram_quantile(0.99, sum by (le) (rate(traefik_service_request_duration_seconds_bucket[5m])))",
+                  "legendFormat": "p99"
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "type": "timeseries",
+              "title": "Platform deployments: missing replicas",
+              "description": "Desired minus available replicas per platform Deployment — the PlatformDeploymentNotReady expression (fires at >0 for 10m; red line).",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 19 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "kube_deployment_spec_replicas{namespace=~\"bex-system|argocd|traefik|auth|secrets|monitoring|cert-manager|cnpg-system|kube-system|bex-registry|opensandbox-system|dashboard\"} - on (namespace, deployment) kube_deployment_status_replicas_available",
+                  "legendFormat": "{{namespace}}/{{deployment}}"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "type": "timeseries",
+              "title": "Platform crashlooping containers",
+              "description": "CrashLoopBackOff containers in the platform namespaces — the PlatformPodCrashLooping expression (fires at >0 for 10m; red line). Reads 0 only while kube-state-metrics is up; No data when it is not.",
+              "gridPos": { "h": 9, "w": 6, "x": 0, "y": 28 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(max by (namespace, pod, container) (kube_pod_container_status_waiting_reason{reason=\"CrashLoopBackOff\", namespace=~\"bex-system|argocd|traefik|auth|secrets|monitoring|cert-manager|cnpg-system|kube-system|bex-registry|opensandbox-system|dashboard\"})) or (count(up{job=\"kube-state-metrics\"} == 1) * 0)",
+                  "legendFormat": "crashlooping containers"
+                }
+              ]
+            },
+            {
+              "id": 13,
+              "type": "timeseries",
+              "title": "Stranded node-local images",
+              "description": "App pods in the shared default namespace waiting on ImagePullBackOff/ErrImageNeverPull — the StrandedNodeLocalImages expression (fires at >0 for 10m; red line). A tenant-node replacement or scale-down strands node-local ctr imports (no registry to re-pull from); re-import via the /deploy-app-from-local runbook. Reads 0 only while kube-state-metrics is up.",
+              "gridPos": { "h": 9, "w": 6, "x": 6, "y": 28 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(max by (namespace, pod, container) (kube_pod_container_status_waiting_reason{reason=~\"ImagePullBackOff|ErrImageNeverPull\", namespace=\"default\"})) or (count(up{job=\"kube-state-metrics\"} == 1) * 0)",
+                  "legendFormat": "stranded pods"
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "type": "timeseries",
+              "title": "Certificates not Ready (platform-paged)",
+              "description": "Not-Ready cert-manager Certificates minus tenant custom-domain certs — the CertificateNotReady expression (customer-DNS certs are the info-level TenantCustomDomainCertNotReady, deliberately excluded here as they are there). Reads 0 only while the cert-manager exporter is up.",
+              "gridPos": { "h": 9, "w": 6, "x": 12, "y": 28 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "count((certmanager_certificate_ready_status{condition=\"True\"} == 0) unless certmanager_certificate_ready_status{condition=\"True\", namespace=~\"tea-.*\", name=~\".+-tls-.+\", name!~\".*-tls-.*onbex\\\\.co.*\"}) or (count(up{job=\"cert-manager\"} == 1) * 0)",
+                  "legendFormat": "not Ready"
+                }
+              ]
+            },
+            {
+              "id": 15,
+              "type": "timeseries",
+              "title": "Tenant custom-domain certs not Ready (info)",
+              "description": "The exact tenant-cert population the platform panel excludes — the TenantCustomDomainCertNotReady selector (severity info, routed to the null receiver: almost always the tenant's own DNS, e.g. a Cloudflare-proxied apex 404ing the ACME HTTP-01 solver, so it never pages on-call). The blast radius is the tenant's: their custom domain serves an invalid cert until their DNS points at bex per the ADR005 custom-domain flow, and the state is surfaced on their domain dashboard. Amber line at 1 (the alert fires at >0 for 1h); reads 0 only while the cert-manager exporter is up.",
+              "gridPos": { "h": 9, "w": 6, "x": 18, "y": 28 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "orange", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "count(certmanager_certificate_ready_status{condition=\"True\", namespace=~\"tea-.*\", name=~\".+-tls-.+\", name!~\".*-tls-.*onbex\\\\.co.*\"} == 0) or (count(up{job=\"cert-manager\"} == 1) * 0)",
+                  "legendFormat": "tenant certs not Ready"
+                }
+              ]
+            },
+            {
+              "id": 8,
+              "type": "stat",
+              "title": "OpenBao seal state",
+              "description": "Min of vault_core_unsealed over the raft members — the OpenBaoSealed expression (any member at 0 for 5m pages; sealed members 503 the tenant env-vars API). Instant query: a vanished member goes MISSING/red, never stale green.",
+              "gridPos": { "h": 9, "w": 6, "x": 18, "y": 37 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+              "fieldConfig": {
+                "defaults": {
+                  "noValue": "MISSING",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "min({__name__=~\"(vault|bao)_core_unsealed\", namespace=\"secrets\"})",
+                  "legendFormat": "unsealed (min over members)",
+                  "instant": true,
+                  "range": false
+                }
+              ]
+            },
+            {
+              "id": 9,
+              "type": "timeseries",
+              "title": "Certificate time to expiry",
+              "description": "certmanager_certificate_expiration_timestamp_seconds minus now, per Certificate. CertificateExpiringSoon warns under 14 days — below the green line is alert territory.",
+              "gridPos": { "h": 9, "w": 9, "x": 0, "y": 37 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 1209600 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "certmanager_certificate_expiration_timestamp_seconds - time()",
+                  "legendFormat": "{{namespace}}/{{name}}"
+                }
+              ]
+            },
+            {
+              "id": 11,
+              "type": "timeseries",
+              "title": "App cluster admin cert: days to estimated expiry",
+              "description": "The CAPI-minted kubernetes-admin cert's ~1y validity, estimated from the bex-kubeconfig Secret's creation time — the AdminCertExpiringSoon expression in days. Warns under 30 days (green line); renewal runbook: ADR036.",
+              "gridPos": { "h": 9, "w": 9, "x": 9, "y": 37 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "d",
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 30 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "(kube_secret_created{namespace=\"bex-capi\", secret=\"bex-kubeconfig\"} + 31536000 - time()) / 86400",
+                  "legendFormat": "days to estimated expiry"
+                }
+              ]
+            },
+            {
+              "id": 10,
+              "type": "timeseries",
+              "title": "Platform service 5xx ratio",
+              "description": "Per-service 5xx ratio for the platform front doors (Traefik Ingress service labels <ns>-<svc>-<port>@kubernetes) — a full bex-api outage that healthy tenant traffic dilutes below the aggregate line is unmissable here. A 0 line means traffic is flowing with no errors; No data means genuinely no traffic/telemetry for that service (the 5xx counter alone never existing must not read as absence). Red line mirrors TraefikHigh5xxRate's 5% for reference; the alert itself evaluates only the aggregate, and low per-service traffic makes these ratios jumpy. obs is prod-only (Grafana's Ingress lives in the prod overlay).",
+              "gridPos": { "h": 9, "w": 24, "x": 0, "y": 46 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.05 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "(sum(rate(traefik_service_requests_total{service=~\"bex-system-bex-api-.*\", code=~\"5..\"}[5m])) or (sum(rate(traefik_service_requests_total{service=~\"bex-system-bex-api-.*\"}[5m])) * 0)) / sum(rate(traefik_service_requests_total{service=~\"bex-system-bex-api-.*\"}[5m]))",
+                  "legendFormat": "api"
+                },
+                {
+                  "refId": "B",
+                  "expr": "(sum(rate(traefik_service_requests_total{service=~\"dashboard-dashboard-.*\", code=~\"5..\"}[5m])) or (sum(rate(traefik_service_requests_total{service=~\"dashboard-dashboard-.*\"}[5m])) * 0)) / sum(rate(traefik_service_requests_total{service=~\"dashboard-dashboard-.*\"}[5m]))",
+                  "legendFormat": "dashboard"
+                },
+                {
+                  "refId": "C",
+                  "expr": "(sum(rate(traefik_service_requests_total{service=~\"auth-hydra-public-.*\", code=~\"5..\"}[5m])) or (sum(rate(traefik_service_requests_total{service=~\"auth-hydra-public-.*\"}[5m])) * 0)) / sum(rate(traefik_service_requests_total{service=~\"auth-hydra-public-.*\"}[5m]))",
+                  "legendFormat": "oauth"
+                },
+                {
+                  "refId": "D",
+                  "expr": "(sum(rate(traefik_service_requests_total{service=~\"auth-kratos-public-.*\", code=~\"5..\"}[5m])) or (sum(rate(traefik_service_requests_total{service=~\"auth-kratos-public-.*\"}[5m])) * 0)) / sum(rate(traefik_service_requests_total{service=~\"auth-kratos-public-.*\"}[5m]))",
+                  "legendFormat": "auth"
+                },
+                {
+                  "refId": "E",
+                  "expr": "(sum(rate(traefik_service_requests_total{service=~\"monitoring-grafana-.*\", code=~\"5..\"}[5m])) or (sum(rate(traefik_service_requests_total{service=~\"monitoring-grafana-.*\"}[5m])) * 0)) / sum(rate(traefik_service_requests_total{service=~\"monitoring-grafana-.*\"}[5m]))",
+                  "legendFormat": "obs"
+                }
+              ]
+            },
+            {
+              "id": 12,
+              "type": "timeseries",
+              "title": "Kratos courier: missing replicas",
+              "description": "Desired minus ready replicas of the kratos-courier StatefulSet — the KratosCourierNotReady expression (red line; fires at >0 for 10m). Under the ADR075 D8 verification gate a stalled courier silently blocks 100% of new sign-ups, which is why it gets its own panel beside the Deployment view.",
+              "gridPos": { "h": 8, "w": 24, "x": 0, "y": 55 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "kube_statefulset_replicas{namespace=\"auth\", statefulset=\"kratos-courier\"} - on (namespace, statefulset) kube_statefulset_status_replicas_ready{namespace=\"auth\", statefulset=\"kratos-courier\"}",
+                  "legendFormat": "missing replicas"
+                }
+              ]
+            },
+            {
+              "id": 14,
+              "type": "stat",
+              "title": "Scrape health (sources)",
+              "description": "up for this dashboard's exporters. kube-state-metrics down blinds the deployment-readiness, crashloop, stranded-images, and courier panels (and the node/PVC panels on Cluster capacity); cert-manager down blinds all three certificate panels; openbao down blinds the seal tile. Per-target sentinel: a vanished target reads -1 → MISSING/red on its own tile, never silently dropping while siblings stay green.",
+              "gridPos": { "h": 5, "w": 24, "x": 0, "y": 63 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+              "fieldConfig": {
+                "defaults": {
+                  "noValue": "MISSING",
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "-1": { "text": "MISSING", "color": "red", "index": 0 },
+                        "0": { "text": "DOWN", "color": "red", "index": 1 },
+                        "1": { "text": "UP", "color": "green", "index": 2 }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "min(up{job=\"kube-state-metrics\"}) or on() vector(-1)",
+                  "legendFormat": "kube-state-metrics",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "B",
+                  "expr": "min(up{job=\"cert-manager\"}) or on() vector(-1)",
+                  "legendFormat": "cert-manager",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "C",
+                  "expr": "min(up{job=\"openbao\"}) or on() vector(-1)",
+                  "legendFormat": "openbao",
+                  "instant": true,
+                  "range": false
+                }
+              ]
+            }
+          ]
+        }
+
+    # bex-api + gateways (ADR088 §6 row 2): the API's error/latency view is
+    # Traefik's edge perspective (the recorded §6 gap — no first-party per-route
+    # histogram), filtered to the one bounded service label bex-api's Ingress
+    # produces; agent-session SLOs (w5/m81) and SSH-gateway saturation ride
+    # their own registries. NB the agent-session panels depend on the bex-api
+    # scrape job's keep-list (prometheus.yaml) admitting bex_agent_session_* —
+    # sustained No data there means the keep-list dropped them, which is
+    # exactly the visible pressure ADR088 §6 wants a panel to apply.
+    bex-api-gateways:
+      json: |
+        {
+          "uid": "bex-api-gateways",
+          "title": "bex-api + gateways",
+          "tags": ["bex", "platform"],
+          "editable": false,
+          "graphTooltip": 1,
+          "timezone": "browser",
+          "schemaVersion": 39,
+          "refresh": "30s",
+          "time": { "from": "now-6h", "to": "now" },
+          "panels": [
+            {
+              "id": 1,
+              "type": "timeseries",
+              "title": "bex-api edge request rate",
+              "description": "Requests through the edge to the bex-api Service (Traefik service label bex-system-bex-api-<port>@kubernetes).",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "reqps", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(rate(traefik_service_requests_total{service=~\"bex-system-bex-api-.*\"}[5m]))",
+                  "legendFormat": "all"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum(rate(traefik_service_requests_total{service=~\"bex-system-bex-api-.*\", code=~\"5..\"}[5m]))",
+                  "legendFormat": "5xx"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "type": "timeseries",
+              "title": "bex-api edge latency p50/p95/p99",
+              "description": "Edge-observed duration quantiles for the bex-api service.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "s", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "histogram_quantile(0.50, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"bex-system-bex-api-.*\"}[5m])))",
+                  "legendFormat": "p50"
+                },
+                {
+                  "refId": "B",
+                  "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"bex-system-bex-api-.*\"}[5m])))",
+                  "legendFormat": "p95"
+                },
+                {
+                  "refId": "C",
+                  "expr": "histogram_quantile(0.99, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"bex-system-bex-api-.*\"}[5m])))",
+                  "legendFormat": "p99"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "type": "timeseries",
+              "title": "Agent turn duration p95",
+              "description": "Wall-clock a turn spent running before terminalization, by outcome (surfaces a hung turn as a metric, not a pod investigation).",
+              "gridPos": { "h": 9, "w": 8, "x": 0, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "s", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "histogram_quantile(0.95, sum by (le, outcome) (rate(bex_agent_session_turn_duration_seconds_bucket[15m])))",
+                  "legendFormat": "{{outcome}}"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "type": "timeseries",
+              "title": "Agent sandbox provision p95",
+              "description": "Create-to-Running wall-clock by outcome — the accept-fast/provision-async gap the user waits through (ADR047).",
+              "gridPos": { "h": 9, "w": 8, "x": 8, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "s", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "histogram_quantile(0.95, sum by (le, outcome) (rate(bex_agent_session_provision_seconds_bucket[15m])))",
+                  "legendFormat": "{{outcome}}"
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "type": "timeseries",
+              "title": "Agent terminal convergences (1h)",
+              "description": "Sessions terminalized by the lifecycle backstop rather than a driver report, by reason — each one is a driver/sandbox that died unreported.",
+              "gridPos": { "h": 9, "w": 8, "x": 16, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (reason) (increase(bex_agent_session_terminal_convergences_total[1h]))",
+                  "legendFormat": "{{reason}}"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "type": "timeseries",
+              "title": "SSH gateway active sessions / channels",
+              "description": "Authenticated connections and open exec-stream channels currently held by the gateway — its saturation gauges.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(bex_ssh_gateway_active_sessions)",
+                  "legendFormat": "sessions"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum(bex_ssh_gateway_active_channels)",
+                  "legendFormat": "channels"
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "type": "timeseries",
+              "title": "SSH gateway rejections + git-proxy failures (15m)",
+              "description": "Session-limit rejections by scope and admitted-but-failed gateway→forge Git exchanges by cause.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (scope) (increase(bex_ssh_gateway_limit_rejections_total[15m]))",
+                  "legendFormat": "limit rejected ({{scope}})"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum by (cause) (increase(bex_ssh_gateway_git_proxy_upstream_failures_total[15m]))",
+                  "legendFormat": "git upstream ({{cause}})"
+                }
+              ]
+            },
+            {
+              "id": 8,
+              "type": "timeseries",
+              "title": "Webhook deliveries capped (15m)",
+              "description": "Outbound webhook notifications refused by the per-workspace admission bound — the WebhookDeliveryAdmissionPressure expression (red line at 100; warns after 10m). Lives here rather than on billing: it is bex-api's own eventing back-pressure signal, not billable-usage integrity.",
+              "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 100 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(increase(bex_webhooks_delivery_admissions_total{result=\"capped\"}[15m]))",
+                  "legendFormat": "capped"
+                }
+              ]
+            }
+          ]
+        }
+
+    # Builds (ADR088 §6 row 3): queue time is the platform's own capacity SLI
+    # (run time is mostly the tenant's), so every build alert's series and
+    # threshold appears here — BuildQueuedTooLong 480s, BuildQueueTimeHigh 300s
+    # p95, BuildInfraSuccessBelowSLO 99.5%, the ≥3-workspace correlation
+    # detector, and the ClusterBuilder readiness/30d-pin-freshness pair.
+    bex-builds:
+      json: |
+        {
+          "uid": "bex-builds",
+          "title": "Builds",
+          "tags": ["bex", "platform"],
+          "editable": false,
+          "graphTooltip": 1,
+          "timezone": "browser",
+          "schemaVersion": 39,
+          "refresh": "30s",
+          "time": { "from": "now-6h", "to": "now" },
+          "panels": [
+            {
+              "id": 1,
+              "type": "timeseries",
+              "title": "Builds active / queued",
+              "description": "Live admission picture from a full recount (never edge-driven): active is the quantity BEX_MAX_ACTIVE_BUILDS caps; queued builds are waiting for a node, doing no work.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "max(bex_builds_active)",
+                  "legendFormat": "active"
+                },
+                {
+                  "refId": "B",
+                  "expr": "max(bex_builds_queued)",
+                  "legendFormat": "queued"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "type": "timeseries",
+              "title": "Oldest queued build age",
+              "description": "Age of the longest-currently-queued build. BuildQueuedTooLong fires at >480s (red line) — sized so it pages ~8m before bex-api's 18m deploy gate fails the deploy.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 480 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "max(bex_build_queue_oldest_seconds)",
+                  "legendFormat": "oldest queued"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "type": "timeseries",
+              "title": "Build queue vs run p95 (30m)",
+              "description": "The split that attributes an incident: queue time is the platform failing to supply capacity, run time is mostly tenant code. The red line is BuildQueueTimeHigh's 300s p95 threshold — it applies to the queue series only.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 300 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "histogram_quantile(0.95, sum by (le) (rate(bex_build_queue_seconds_bucket[30m]))) or (count(bex_build_queue_seconds_bucket) * 0)",
+                  "legendFormat": "queue p95"
+                },
+                {
+                  "refId": "B",
+                  "expr": "histogram_quantile(0.95, sum by (le) (rate(bex_build_run_seconds_bucket[30m])))",
+                  "legendFormat": "run p95"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "type": "timeseries",
+              "title": "Build infra success ratio (1h)",
+              "description": "The recorded SLO series (user_failed excluded by construction — tenant Dockerfiles are not platform failures). BuildInfraSuccessBelowSLO fires under 99.5%.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "max": 1,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 0.995 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "bex:build_infra_success_ratio:rate1h",
+                  "legendFormat": "infra success"
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "type": "timeseries",
+              "title": "Build outcomes (1h)",
+              "description": "Terminal build outcomes by class — user_failed is deterministic tenant input, infra_failed exhausted its retry budget on a platform-owned cause.",
+              "gridPos": { "h": 9, "w": 8, "x": 0, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (outcome) (increase(bex_build_outcomes_total[1h]))",
+                  "legendFormat": "{{outcome}}"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "type": "timeseries",
+              "title": "Workspaces with infra failures (15m)",
+              "description": "Distinct workspaces failing infra-side inside 15m — the flake-vs-user discriminator. BuildInfraFailuresCorrelatedAcrossWorkspaces fires at ≥3 (red line); one workspace's bad afternoon must not.",
+              "gridPos": { "h": 9, "w": 8, "x": 8, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 3 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "count(sum by (workspace) (increase(bex_build_infra_failures_total[15m])) > 0) or (count(bex_builds_active) * 0)",
+                  "legendFormat": "distinct workspaces"
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "type": "stat",
+              "title": "ClusterBuilder present / ready",
+              "description": "Both must be 1 — ClusterBuilderNotReady fires when either is not (a Ready builder can still be a stale pin; see the pin-age panel). Per-target sentinel: an absent series reads -1 → MISSING/red per source, so one vanished gauge cannot hide behind the other's green.",
+              "gridPos": { "h": 9, "w": 8, "x": 16, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+              "fieldConfig": {
+                "defaults": {
+                  "noValue": "MISSING",
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "-1": { "text": "MISSING", "color": "red", "index": 0 },
+                        "0": { "text": "NO", "color": "red", "index": 1 },
+                        "1": { "text": "YES", "color": "green", "index": 2 }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "max(bex_build_clusterbuilder_present) or on() vector(-1)",
+                  "legendFormat": "present",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "B",
+                  "expr": "max(bex_build_clusterbuilder_ready) or on() vector(-1)",
+                  "legendFormat": "ready",
+                  "instant": true,
+                  "range": false
+                }
+              ]
+            },
+            {
+              "id": 8,
+              "type": "timeseries",
+              "title": "ClusterBuilder image pin age",
+              "description": "Age of the committed builder resolution. ClusterBuilderImageStale fires past the 30-day review SLO (red line) — refresh is a reviewed digest update, never an automatic rollout.",
+              "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 2592000 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "time() - max(bex_build_clusterbuilder_image_resolved_timestamp_seconds)",
+                  "legendFormat": "pin age"
+                }
+              ]
+            }
+          ]
+        }
+
+    # Data plane (ADR088 §6 row 4): datastore readiness comes from CR status
+    # (bex_datastore_*, w7/036) precisely because a Cluster that never got an
+    # instance pod exports NOTHING — absence is the symptom. PITR safety is the
+    # 26h WAL/CronJob freshness pair. NB the bex_datastore_* panels depend on
+    # the bex-operator scrape job's keep-list (prometheus.yaml) admitting them
+    # — sustained No data there is a keep-list regression, not health.
+    bex-data-plane:
+      json: |
+        {
+          "uid": "bex-data-plane",
+          "title": "Data plane",
+          "tags": ["bex", "platform"],
+          "editable": false,
+          "graphTooltip": 1,
+          "timezone": "browser",
+          "schemaVersion": 39,
+          "refresh": "30s",
+          "time": { "from": "now-6h", "to": "now" },
+          "panels": [
+            {
+              "id": 1,
+              "type": "timeseries",
+              "title": "Datastores stuck provisioning",
+              "description": "Not-ready datastores older than 15m against the estate total — the DatastoreStuckProvisioning expression (any at the red line pages; the tenant sees a resource that never arrives and nothing else reports it). Reads 0 only while bex_datastore_ready series actually exist; with no datastore telemetry at all both series show No data instead of a fake healthy 0 (see the scrape-health row).",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "count(bex_datastore_ready == 0 and on (kind, namespace, name) bex_datastore_age_seconds > 900) or (count(bex_datastore_ready) * 0)",
+                  "legendFormat": "stuck >15m"
+                },
+                {
+                  "refId": "B",
+                  "expr": "count(bex_datastore_ready)",
+                  "legendFormat": "total datastores"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "type": "timeseries",
+              "title": "Tenant WAL archiving (must be 1)",
+              "description": "ContinuousArchiving per backup-enabled database. DatabaseNotArchivingWAL fires at 0 for 15m — a Ready, serving database with no advancing restore point (w7/040) shows only here.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "max": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "min by (namespace, name) (bex_datastore_wal_archiving)",
+                  "legendFormat": "{{namespace}}/{{name}}"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "type": "timeseries",
+              "title": "Datastore observation errors (15m)",
+              "description": "Failed datastore listings — DatastoreObservationFailing fires at >0 because a broken observer silently blinds the stuck-provisioning alert. No data here means the counter itself is not being scraped (see the scrape-health row), which is worse than any value.",
+              "gridPos": { "h": 9, "w": 8, "x": 0, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(increase(bex_datastore_observe_errors_total[15m]))",
+                  "legendFormat": "observe errors"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "type": "timeseries",
+              "title": "Platform DB WAL archiver age",
+              "description": "Time since each platform CNPG primary archived a WAL segment. PlatformDatabaseBackupStale fires past 26h (red line).",
+              "gridPos": { "h": 9, "w": 8, "x": 8, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 93600 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "time() - cnpg_pg_stat_archiver_last_archived_time{job=\"cnpg-platform-db\"}",
+                  "legendFormat": "{{namespace}}/{{cnpg_io_cluster}}"
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "type": "timeseries",
+              "title": "Backup CronJob age since success",
+              "description": "Time since the last successful etcd/openbao/kvbak-* backup run, mirroring BackupCronJobStale's full expression: a CronJob that has NEVER succeeded falls back to age since creation (so a 27h-old never-successful backup shows exactly when the alert fires), and suspended CronJobs are excluded exactly as the alert excludes them. Red line 26h — silent backup rot is unrecoverable data loss.",
+              "gridPos": { "h": 9, "w": 8, "x": 16, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 93600 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "((time() - kube_cronjob_status_last_successful_time{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*\"}) or ((time() - kube_cronjob_created{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*\"}) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*\"})) and on (namespace, cronjob) (kube_cronjob_spec_suspend{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*\"} == 0)",
+                  "legendFormat": "{{namespace}}/{{cronjob}}"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "type": "timeseries",
+              "title": "Tenant DB backends",
+              "description": "Connected backends per tenant CNPG cluster (cnpg_backends_total, cluster/namespace stamped at scrape time — the labels the metric itself lacks).",
+              "gridPos": { "h": 9, "w": 8, "x": 0, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (namespace, cnpg_io_cluster) (cnpg_backends_total)",
+                  "legendFormat": "{{namespace}}/{{cnpg_io_cluster}}"
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "type": "timeseries",
+              "title": "Tenant DB replication lag",
+              "description": "Seconds each replica trails its primary (cnpg_pg_replication_lag — the same series behind the product's replication-lag metric).",
+              "gridPos": { "h": 9, "w": 8, "x": 8, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "s", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "max by (namespace, cnpg_io_cluster) (cnpg_pg_replication_lag)",
+                  "legendFormat": "{{namespace}}/{{cnpg_io_cluster}}"
+                }
+              ]
+            },
+            {
+              "id": 8,
+              "type": "stat",
+              "title": "Public SNI front doors",
+              "description": "Min health of the public Postgres/Key Value proxy meters — PostgresEgressProxyUnavailable / KeyValueEgressProxyUnavailable page at 0 AND on the series being absent. Per-target sentinel: either proxy's telemetry vanishing reads -1 → MISSING/red for that proxy alone, never a tile quietly showing only the survivor.",
+              "gridPos": { "h": 9, "w": 8, "x": 16, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+              "fieldConfig": {
+                "defaults": {
+                  "noValue": "MISSING",
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "-1": { "text": "MISSING", "color": "red", "index": 0 },
+                        "0": { "text": "UNHEALTHY", "color": "red", "index": 1 },
+                        "1": { "text": "HEALTHY", "color": "green", "index": 2 }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "min(bex_pg_proxy_healthy{resource_kind=\"postgres\"}) or on() vector(-1)",
+                  "legendFormat": "postgres",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "B",
+                  "expr": "min(bex_kv_proxy_healthy{resource_kind=\"key_value\"}) or on() vector(-1)",
+                  "legendFormat": "key value",
+                  "instant": true,
+                  "range": false
+                }
+              ]
+            },
+            {
+              "id": 9,
+              "type": "stat",
+              "title": "Scrape health (sources)",
+              "description": "up for the jobs every bex_* panel above depends on. operator down blinds the stuck-provisioning/WAL/observe-errors panels; pg/kv proxy down blinds the front-door tile. Per-target sentinel: a source whose up series vanishes entirely (SD lost the target) reads -1 → MISSING/red on its own tile, the same absent-series trap the Unavailable alerts guard against with absent(up).",
+              "gridPos": { "h": 5, "w": 24, "x": 0, "y": 27 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+              "fieldConfig": {
+                "defaults": {
+                  "noValue": "MISSING",
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "-1": { "text": "MISSING", "color": "red", "index": 0 },
+                        "0": { "text": "DOWN", "color": "red", "index": 1 },
+                        "1": { "text": "UP", "color": "green", "index": 2 }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "min(up{job=\"bex-operator\"}) or on() vector(-1)",
+                  "legendFormat": "operator",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "B",
+                  "expr": "min(up{job=\"bex-pg-proxy\"}) or on() vector(-1)",
+                  "legendFormat": "pg proxy",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "C",
+                  "expr": "min(up{job=\"bex-kv-proxy\"}) or on() vector(-1)",
+                  "legendFormat": "kv proxy",
+                  "instant": true,
+                  "range": false
+                }
+              ]
+            }
+          ]
+        }
+
+    # Billing + metering (ADR088 §6 row 5): money-path freshness and meter
+    # integrity — a broken meter is silent revenue loss, so every billing/meter
+    # alert's series and threshold is drawn (outbox 72h, reject/ambiguous >0,
+    # operation errors, meter health 0/1, map pressure 80%).
+    bex-billing-metering:
+      json: |
+        {
+          "uid": "bex-billing-metering",
+          "title": "Billing + metering",
+          "tags": ["bex", "platform"],
+          "editable": false,
+          "graphTooltip": 1,
+          "timezone": "browser",
+          "schemaVersion": 39,
+          "refresh": "30s",
+          "time": { "from": "now-6h", "to": "now" },
+          "panels": [
+            {
+              "id": 1,
+              "type": "timeseries",
+              "title": "Money-path freshness",
+              "description": "Oldest pending outbox row age and time since the last verified Stripe webhook. The red line is BillingExportBacklog's 72h threshold on the outbox series; webhook age has no alert threshold.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 259200 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "max(bex_billing_outbox_oldest_pending_age_seconds)",
+                  "legendFormat": "oldest pending outbox row"
+                },
+                {
+                  "refId": "B",
+                  "expr": "time() - max(bex_billing_webhook_last_success_timestamp_seconds)",
+                  "legendFormat": "since last verified webhook"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "type": "timeseries",
+              "title": "Export rejected / ambiguous rows",
+              "description": "Durable reject queue and stale ambiguous provider outcomes. BillingPermanentReject (warning) and BillingExportAmbiguity (critical) both fire at >0 — never blind-retry, reconcile first.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "max(bex_billing_export_rejected_rows)",
+                  "legendFormat": "rejected"
+                },
+                {
+                  "refId": "B",
+                  "expr": "max(bex_billing_export_ambiguous_rows)",
+                  "legendFormat": "ambiguous"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "type": "timeseries",
+              "title": "Billing operation errors (15m)",
+              "description": "result=error by operation — the shared series behind BillingLocalStampFailure, BillingProviderDuplicate, BillingWebhookDrift, BillingInvoiceReadDegraded, and BillingProvisioningFailure (all fire on small counts; red line at 1).",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (operation) (increase(bex_billing_operations_total{result=\"error\"}[15m]))",
+                  "legendFormat": "{{operation}}"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "type": "stat",
+              "title": "Billing enabled",
+              "description": "Every billing alert gates on this — at 0 (local, or Stripe unconfigured) they are all deliberately silent, so 0 is a legitimate state, not red. MISSING (instant query, no series) means bex-api's metrics are gone — that IS red: the alerts are blind, not disabled.",
+              "gridPos": { "h": 9, "w": 4, "x": 12, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+              "fieldConfig": {
+                "defaults": {
+                  "noValue": "MISSING",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 0 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "max(bex_billing_enabled)",
+                  "legendFormat": "enabled",
+                  "instant": true,
+                  "range": false
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "type": "stat",
+              "title": "Meter scrape health",
+              "description": "up for the money-path telemetry sources plus the websocket meter's own health gauge. min(healthy) alone stays green when a meter vanishes entirely, so each source carries its own sentinel: a vanished target reads -1 → MISSING/red on its own tile (the same absent(up) guard the Unavailable alerts carry) instead of silently dropping while its siblings stay green.",
+              "gridPos": { "h": 9, "w": 8, "x": 16, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+              "fieldConfig": {
+                "defaults": {
+                  "noValue": "MISSING",
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "-1": { "text": "MISSING", "color": "red", "index": 0 },
+                        "0": { "text": "DOWN", "color": "red", "index": 1 },
+                        "1": { "text": "UP", "color": "green", "index": 2 }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "min(up{job=\"bex-api\"}) or on() vector(-1)",
+                  "legendFormat": "bex-api",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "B",
+                  "expr": "min(up{job=\"bex-egress-meter\"}) or on() vector(-1)",
+                  "legendFormat": "egress meters",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "C",
+                  "expr": "min(up{job=\"traefik-websocket-meter\"}) or on() vector(-1)",
+                  "legendFormat": "websocket meter",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "D",
+                  "expr": "min(bex_websocket_meter_healthy) or on() vector(-1)",
+                  "legendFormat": "websocket healthy",
+                  "instant": true,
+                  "range": false
+                }
+              ]
+            },
+            {
+              "id": 9,
+              "type": "timeseries",
+              "title": "Egress meter fleet: expected vs up vs unhealthy",
+              "description": "EgressMeterTargetMissing's own comparison: scrapeable meters vs untainted tenant nodes (the alert fires when they differ — do not collect affected hourly windows). Unhealthy reads 0 only while meters are scrapeable and No data when none are, so a vanished fleet cannot render as healthy.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "count(kube_node_info unless on (node) kube_node_spec_taint{key=\"bex.co/platform\", value=\"true\"} unless on (node) kube_node_role{role=\"control-plane\"})",
+                  "legendFormat": "expected (untainted tenant nodes)"
+                },
+                {
+                  "refId": "B",
+                  "expr": "count(up{job=\"bex-egress-meter\"} == 1)",
+                  "legendFormat": "meters up"
+                },
+                {
+                  "refId": "C",
+                  "expr": "count(bex_egress_meter_healthy == 0) or (count(up{job=\"bex-egress-meter\"} == 1) * 0)",
+                  "legendFormat": "unhealthy (EgressMeterUnhealthy at ≥1)"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "type": "timeseries",
+              "title": "Egress counter-loss events (1h)",
+              "description": "Detected counter-map restores/decreases per node — the durable trend twin of the recency panel beside it. No data means either no meter telemetry (see the fleet panel) or a node's counter not yet scraped; a healthy scraped meter reports 0.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 27 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (node) (increase(bex_egress_meter_counter_loss_events_total[1h]))",
+                  "legendFormat": "{{node}}"
+                }
+              ]
+            },
+            {
+              "id": 10,
+              "type": "timeseries",
+              "title": "Egress counter-loss recency",
+              "description": "Time since each node's most recent detected counter loss — the exact quantity EgressMeterCounterLoss evaluates (pages while under 1h, the red zone below the line; a first-sample durable count is invisible to increase() but not to this). No data means no loss ever recorded on that node.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 27 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 3600 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "(time() - max by (node) (bex_egress_meter_last_counter_loss_time_seconds)) and max by (node) (bex_egress_meter_last_counter_loss_time_seconds) > 0",
+                  "legendFormat": "{{node}}"
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "type": "timeseries",
+              "title": "Egress meter map pressure",
+              "description": "Fraction of the bounded per-App counter map occupied, per node. EgressMeterMapPressure warns at 80% (red line) — at capacity, new attribution fails closed.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0,
+                  "max": 1,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.8 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "max by (node) (bex_egress_meter_resource_map_pressure_ratio)",
+                  "legendFormat": "{{node}}"
+                }
+              ]
+            },
+            {
+              "id": 8,
+              "type": "timeseries",
+              "title": "Metered egress bytes",
+              "description": "The four billable outbound paths: direct App egress (netfilter meters), public Postgres/Key Value SNI splices, and WebSocket hijack frames.",
+              "gridPos": { "h": 9, "w": 24, "x": 0, "y": 36 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "Bps", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(rate(bex_app_direct_egress_bytes_total[5m]))",
+                  "legendFormat": "direct"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum(rate(bex_pg_proxy_egress_bytes_total[5m]))",
+                  "legendFormat": "postgres"
+                },
+                {
+                  "refId": "C",
+                  "expr": "sum(rate(bex_kv_proxy_egress_bytes_total[5m]))",
+                  "legendFormat": "key value"
+                },
+                {
+                  "refId": "D",
+                  "expr": "sum(rate(bex_websocket_egress_bytes_total[5m]))",
+                  "legendFormat": "websocket"
+                }
+              ]
+            }
+          ]
+        }
+
+    # Cluster capacity (ADR088 §6 row 6): node headroom from cadvisor, node
+    # readiness split CP-vs-worker exactly as the alerts split severity, and PV
+    # fill with the Zot registry's earlier 70%/85%/10GiB ladder. Headroom is
+    # computed as capacity−used, so it holds regardless of whether the kubelet
+    # keep-list also admits kubelet_volume_stats_available_bytes.
+    bex-cluster-capacity:
+      json: |
+        {
+          "uid": "bex-cluster-capacity",
+          "title": "Cluster capacity",
+          "tags": ["bex", "platform"],
+          "editable": false,
+          "graphTooltip": 1,
+          "timezone": "browser",
+          "schemaVersion": 39,
+          "refresh": "30s",
+          "time": { "from": "now-6h", "to": "now" },
+          "panels": [
+            {
+              "id": 1,
+              "type": "timeseries",
+              "title": "CPU usage by node",
+              "description": "Container CPU cores in use per node (cadvisor; pod-sandbox rows dropped at scrape).",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (node) (rate(container_cpu_usage_seconds_total[5m]))",
+                  "legendFormat": "{{node}}"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "type": "timeseries",
+              "title": "Memory working set by node",
+              "description": "Container working-set bytes per node (cadvisor) — the reclaim-safe memory figure.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "bytes", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (node) (container_memory_working_set_bytes)",
+                  "legendFormat": "{{node}}"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "type": "timeseries",
+              "title": "Nodes not Ready",
+              "description": "Split exactly as the alerts split severity: ControlPlaneNodeNotReady is critical (single-node CP pool until the m19.1 TEMP knobs revert), NodeNotReady is warning. Red line at 1. Reads 0 only while node-condition series exist; No data when kube-state-metrics is gone.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "count(kube_node_status_condition{condition=\"Ready\", status=\"true\"} == 0 and on (node) kube_node_role{role=\"control-plane\"}) or (count(kube_node_status_condition{condition=\"Ready\", status=\"true\"}) * 0)",
+                  "legendFormat": "control-plane"
+                },
+                {
+                  "refId": "B",
+                  "expr": "count(kube_node_status_condition{condition=\"Ready\", status=\"true\"} == 0 unless on (node) kube_node_role{role=\"control-plane\"}) or (count(kube_node_status_condition{condition=\"Ready\", status=\"true\"}) * 0)",
+                  "legendFormat": "worker"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "type": "timeseries",
+              "title": "Nodes by role",
+              "description": "Fleet size and composition — the denominator the EgressMeterTargetMissing count compares its scrapeable-meter count against.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "count(kube_node_info)",
+                  "legendFormat": "total"
+                },
+                {
+                  "refId": "B",
+                  "expr": "count by (role) (kube_node_role)",
+                  "legendFormat": "{{role}}"
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "type": "timeseries",
+              "title": "PVC fill ratio",
+              "description": "used/capacity per PVC (kubelet volume stats — etcd/Loki/OpenBao/Prometheus and tenant disks). PersistentVolumeFillingUp warns at 85% (red line); this series also feeds the disk autoscaler.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0,
+                  "max": 1,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.85 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes",
+                  "legendFormat": "{{namespace}}/{{persistentvolumeclaim}}"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "type": "timeseries",
+              "title": "Zot registry PVC fill ratio",
+              "description": "The registry volume gets an earlier ladder than the generic 85%: ZotRegistryFillingUp warns at 70% (amber), ZotRegistryAlmostFull pages at 85% (red) — a runaway rebuild loop once filled it with no prior warning (2026-07-12).",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 18 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0,
+                  "max": 1,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "orange", "value": 0.7 },
+                      { "color": "red", "value": 0.85 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "kubelet_volume_stats_used_bytes{namespace=\"bex-registry\"} / kubelet_volume_stats_capacity_bytes{namespace=\"bex-registry\"}",
+                  "legendFormat": "{{persistentvolumeclaim}}"
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "type": "timeseries",
+              "title": "Zot registry headroom",
+              "description": "capacity−used (equivalent to available bytes, and independent of the kubelet scrape keep-list). ZotRegistryAlmostFull's absolute floor is 10 GiB — below the green line a large layer can fail a push well before 100%.",
+              "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 10737418240 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "kubelet_volume_stats_capacity_bytes{namespace=\"bex-registry\"} - kubelet_volume_stats_used_bytes{namespace=\"bex-registry\"}",
+                  "legendFormat": "{{persistentvolumeclaim}}"
+                }
+              ]
+            },
+            {
+              "id": 8,
+              "type": "stat",
+              "title": "Scrape health (sources)",
+              "description": "up for this dashboard's exporters. kubelet down blinds every PVC fill/headroom panel (and the PersistentVolumeFillingUp/Zot alerts); cadvisor down blinds the CPU/memory panels; kube-state-metrics down blinds the node panels. Per-target sentinel: a vanished target reads -1 → MISSING/red on its own tile, never silently dropping while siblings stay green.",
+              "gridPos": { "h": 5, "w": 24, "x": 0, "y": 35 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+              "fieldConfig": {
+                "defaults": {
+                  "noValue": "MISSING",
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "-1": { "text": "MISSING", "color": "red", "index": 0 },
+                        "0": { "text": "DOWN", "color": "red", "index": 1 },
+                        "1": { "text": "UP", "color": "green", "index": 2 }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "green", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "min(up{job=\"kubernetes-kubelet\"}) or on() vector(-1)",
+                  "legendFormat": "kubelet",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "B",
+                  "expr": "min(up{job=\"kubernetes-cadvisor\"}) or on() vector(-1)",
+                  "legendFormat": "cadvisor",
+                  "instant": true,
+                  "range": false
+                },
+                {
+                  "refId": "C",
+                  "expr": "min(up{job=\"kube-state-metrics\"}) or on() vector(-1)",
+                  "legendFormat": "kube-state-metrics",
+                  "instant": true,
+                  "range": false
                 }
               ]
             }

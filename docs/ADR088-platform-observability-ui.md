@@ -54,6 +54,26 @@ The pinned workspace gets two guards: workspace deletion/suspension refuse it ou
 
 The local overlay runs Grafana with only the local admin — no OIDC client, no public host — the same reduced shape as its other components; prod carries the full OIDC config. Verification extends the auth e2e family (`scripts/auth-oauth21-e2e.sh` pattern): an ops-workspace member completes the code flow and lands with the mapped role; a customer identity outside the ops workspace is denied at consent.
 
+### 6. Key metrics / SLI baseline
+
+Division of record: **this section says what we watch and why; the committed dashboard JSON says how it is drawn.** Two standing principles:
+
+- **Every alert gets a panel.** Prometheus evaluates 43 platform alert rules today (`deploy/gitops/base/prometheus.yaml`); an alert only says "broken", so each rule's backing series must appear on a dashboard that answers _how bad, since when, trending which way_. A new alert rule lands with (or names) its panel; a panel-less alert is review feedback.
+- **Bounded labels only.** Platform dashboards query the same bounded label sets the alert rules do — never per-path/per-host/per-tenant-unbounded dimensions (the ADR010 cardinality rule applies to dashboards too).
+
+Per-dashboard SLIs and core series (all series names verified against the scrape/alert config and the `bex_*` registries; third-party exporters named by their real series):
+
+| dashboard | SLI / question | core series |
+| --- | --- | --- |
+| **Platform availability** (landing page) | edge availability = 1 − 5xx ratio (5m), tied to `TraefikHigh5xxRate`'s threshold; edge latency p50/p95/p99; "is the platform itself up" | `traefik_service_requests_total`, Traefik service duration histogram; `kube_deployment_status_replicas_available` vs `kube_deployment_spec_replicas` (platform ns); `kube_pod_container_status_waiting_reason` (crashloops); `certmanager_certificate_expiration_timestamp_seconds` + `certmanager_certificate_ready_status`; `vault_core_unsealed` |
+| **bex-api + gateways** | API error/latency (edge view per service); agent-session SLOs (w5/m81 baseline); gateway saturation | Traefik series filtered to the api service; `bex_agent_session_turn_duration_seconds{outcome}`, `bex_agent_session_provision_seconds{outcome}`, `bex_agent_session_terminal_convergences_total`; `bex_ssh_gateway_active_sessions`/`_active_channels`/`_limit_rejections_total`/`_git_proxy_upstream_failures_total` |
+| **Builds** | queue starvation (oldest wait), queue-time distribution, build success ratio, builder health | `bex_builds_active`/`bex_builds_queued`, `bex_build_queue_oldest_seconds`, `bex_build_queue_seconds_bucket`, `bex_build_run_seconds`, `bex_build_outcomes_total`, `bex_build_infra_failures_total`, `bex_build_clusterbuilder_ready`/`_present`/`_image_resolved_timestamp_seconds` |
+| **Data plane** | tenant datastore readiness + PITR safety (WAL archiving must be 1); replication/backup freshness; public SNI front doors | `bex_datastore_ready`, `bex_datastore_wal_archiving`, `bex_datastore_age_seconds`, `bex_datastore_observe_errors_total`; `cnpg_backends_total`, `cnpg_pg_replication_*`, `cnpg_pg_stat_archiver_last_archived_time`; `kube_cronjob_status_last_successful_time` (backup CronJobs); `bex_pg_proxy_healthy`, `bex_kv_proxy_healthy` |
+| **Billing + metering** | money-path freshness (outbox age), export integrity, meter integrity (a broken meter is silent revenue loss) | `bex_billing_outbox_oldest_pending_age_seconds`, `bex_billing_export_rejected_rows`/`_ambiguous_rows`, `bex_billing_webhook_last_success_timestamp_seconds`, `bex_billing_operations_total`, `bex_billing_enabled`; `bex_egress_meter_healthy`/`_counter_loss_events_total`/`_resource_map_pressure_ratio`, `bex_websocket_meter_healthy`, `bex_app_direct_egress_bytes_total` + pg/kv/websocket egress bytes |
+| **Cluster capacity** | node headroom, PV fill (feeds `PersistentVolumeFillingUp` + the disk autoscaler), registry fill | `container_cpu_usage_seconds_total`, `container_memory_working_set_bytes` (cadvisor); `kube_node_status_condition`, `kube_node_info`/`kube_node_role`; `kubelet_volume_stats_used_bytes`/`_available_bytes`/`_capacity_bytes` (incl. the Zot PVC behind the `ZotRegistry*` alerts) |
+
+**Known gap (recorded, not hidden):** bex-api has no first-party per-route request histogram — its error/latency view is Traefik's edge perspective. Acceptable while the edge fronts every request; adding a native histogram is the first candidate when edge-vs-origin attribution starts mattering. And per §1, whole-cluster outage detection stays with the external uptime check — this stack must never be its own only witness.
+
 ## Consequences
 
 - New env vars enter the cascading inventories: `BEX_OPS_WORKSPACE` + `BEX_OPS_ROLE_TOKEN` (backend, [lego/backend/CLAUDE.md](../lego/backend/CLAUDE.md)); `OAUTH_OPS_CLIENTS` + the role-verb URL/token (dashboard SSR, [dashboard/CLAUDE.md](../dashboard/CLAUDE.md)).

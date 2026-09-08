@@ -1115,6 +1115,14 @@ else
   echo "WARN: promtool not installed — skipping alerting-rule check/test (docs/ADR010-observability.md)" >&2
 fi
 
+# ADR088 §6 "every alert gets a panel" (w5, .pm/w5/054.md): every alert rule's
+# backing series must appear in at least one committed Grafana dashboard expr,
+# so the alert→panel audit is generated each run instead of hand-maintained
+# and a panel-less alert fails CI, not review. Waivers (with reasons) live at
+# the top of the script; it fails closed on any parse gap.
+echo "==> every platform alert's backing series has a Grafana panel (ADR088 §6)"
+bash scripts/obs-coverage-check.sh || fail=1
+
 # etcd snapshot image guard (w7/m29 drill): the CronJob's snapshot image must be ≥3.6.x.
 # etcdutl (required for 'snapshot restore' in the runbook) ships only in 3.6.x+ images.
 # A 3.5.x pin breaks the restore path even though the backup itself succeeds.

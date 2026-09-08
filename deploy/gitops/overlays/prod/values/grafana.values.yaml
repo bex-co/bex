@@ -59,11 +59,16 @@ grafana.ini:
     name: bex
     client_id: bex-obs
     # Identity-only scopes — no bex-api audience, so a Grafana token carries
-    # zero product-API authority (ADR088 §3). Deliberately no offline_access:
-    # when the short Hydra access token lapses, Grafana re-runs the code flow,
-    # which rides the trusted headless consent path invisibly for a live
-    # dashboard session — and re-evaluates the ops-workspace gate each time,
-    # so demotions propagate at token cadence, not session cadence.
+    # zero product-API authority (ADR088 §3). Deliberately no offline_access —
+    # a surface reduction, NOT a faster revocation bound: without
+    # use_refresh_token Grafana never re-runs OAuth mid-session; the session
+    # simply persists to its own lifetimes. So a role change or removal takes
+    # effect at the NEXT login (ADR088 §4) — worst case
+    # login_maximum_lifetime_duration 24h (8h inactive) plus the 1h consent
+    # remember window — and a refresh-token path would not tighten that:
+    # refresh renews tokens without re-running the consent gate. Immediate
+    # revocation is an ops action: revoke the Hydra session/tokens and delete
+    # the Grafana org user.
     scopes: openid profile email
     auth_url: https://oauth.bex.co/oauth2/auth
     token_url: https://oauth.bex.co/oauth2/token
