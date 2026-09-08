@@ -79,6 +79,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     headers: [],
     ipAllowList: null,
     ipAllowListEntries: null,
+    outboundIps: null,
     ...overrides,
   };
 }
@@ -134,6 +135,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     routes: null,
     headers: null,
     ipAllowListEntries: null,
+    outboundIps: null,
     ...overrides,
   };
 }
@@ -201,6 +203,7 @@ describe("toServiceView", () => {
       headers: [],
       ipAllowList: null,
       ipAllowListEntries: null,
+    outboundIps: null,
       maintenanceMode: null,
     });
   });

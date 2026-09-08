@@ -36,6 +36,14 @@ export type AccountWorkspaceDisposition = {
   name: Scalars['String']['output'];
 };
 
+export type ActionDecision = {
+  __typename: 'ActionDecision';
+  action: Scalars['String']['output'];
+  outcome: Scalars['String']['output'];
+  precondition: Maybe<Scalars['String']['output']>;
+  reason: Maybe<Scalars['String']['output']>;
+};
+
 export type AgentSession = {
   __typename: 'AgentSession';
   agentConfig: AgentSessionConfig;
@@ -384,6 +392,13 @@ export type BuildFilter = {
 export type BuildFilterInput = {
   ignoredPaths?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   paths?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
+export type CapabilityGrant = {
+  __typename: 'CapabilityGrant';
+  action: Scalars['String']['output'];
+  outcome: Scalars['String']['output'];
+  reason: Maybe<Scalars['String']['output']>;
 };
 
 export type ChargeLine = {
@@ -1599,6 +1614,7 @@ export type MutationLinkEnvGroupArgs = {
 
 export type MutationMarkPushNotificationReadArgs = {
   id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1656,6 +1672,7 @@ export type MutationRegenerateDeployHookArgs = {
 
 export type MutationRegisterNotificationDeviceSubscriptionArgs = {
   deviceId: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
   platform: Scalars['String']['input'];
   provider: Scalars['String']['input'];
   sessionId: Scalars['String']['input'];
@@ -2138,6 +2155,7 @@ export type MutationUnpinAgentSessionArgs = {
 
 export type MutationUnregisterNotificationDeviceSubscriptionArgs = {
   deviceId: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2431,6 +2449,7 @@ export type Query = {
   customDomain: Maybe<CustomDomain>;
   customDomains: Maybe<Array<Maybe<CustomDomain>>>;
   database: Maybe<Database>;
+  databaseActions: Array<ActionDecision>;
   databaseConnectionInfo: Maybe<PostgresConnectionInfo>;
   databaseExports: Maybe<Array<Maybe<DatabaseExport>>>;
   databaseInstanceTypes: Maybe<Array<Maybe<DatabaseInstanceType>>>;
@@ -2447,6 +2466,7 @@ export type Query = {
   databases: Maybe<Array<Maybe<Database>>>;
   datastoreMetrics: Maybe<Array<Maybe<MetricSeries>>>;
   deploy: Maybe<Deploy>;
+  deployActions: Array<ActionDecision>;
   deployHook: Maybe<DeployHook>;
   deploys: Maybe<Array<Maybe<Deploy>>>;
   disk: Maybe<Disk>;
@@ -2467,6 +2487,7 @@ export type Query = {
   job: Maybe<Job>;
   jobs: Maybe<Array<Maybe<Job>>>;
   keyValue: Maybe<KeyValue>;
+  keyValueActions: Array<ActionDecision>;
   keyValueConnectionInfo: Maybe<KeyValueConnectionInfo>;
   keyValueInstanceTypes: Maybe<Array<Maybe<KeyValueInstanceType>>>;
   keyValueIpAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
@@ -2493,6 +2514,7 @@ export type Query = {
   repos: Maybe<Array<Maybe<Repo>>>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
+  serverActions: Array<ActionDecision>;
   service: Maybe<Service>;
   serviceEvent: Maybe<ServiceEvent>;
   serviceEvents: Maybe<Array<Maybe<ServiceEvent>>>;
@@ -2632,6 +2654,11 @@ export type QueryDatabaseArgs = {
 };
 
 
+export type QueryDatabaseActionsArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type QueryDatabaseConnectionInfoArgs = {
   id: Scalars['String']['input'];
 };
@@ -2713,6 +2740,11 @@ export type QueryDatastoreMetricsArgs = {
 
 export type QueryDeployArgs = {
   deployId: Scalars['String']['input'];
+  serviceId: Scalars['String']['input'];
+};
+
+
+export type QueryDeployActionsArgs = {
   serviceId: Scalars['String']['input'];
 };
 
@@ -2831,6 +2863,11 @@ export type QueryKeyValueArgs = {
 };
 
 
+export type QueryKeyValueActionsArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type QueryKeyValueConnectionInfoArgs = {
   id: Scalars['String']['input'];
 };
@@ -2914,8 +2951,14 @@ export type QueryMonthToDateBandwidthArgs = {
 };
 
 
+export type QueryNotificationDeviceSubscriptionsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryNotificationInboxArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2928,6 +2971,11 @@ export type QueryProjectsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   ownerId: Scalars['String']['input'];
+};
+
+
+export type QueryPushNotificationsAvailableArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2972,6 +3020,11 @@ export type QueryServerArgs = {
 };
 
 
+export type QueryServerActionsArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type QueryServiceArgs = {
   id: Scalars['String']['input'];
 };
@@ -3009,6 +3062,11 @@ export type QueryServicesArgs = {
 };
 
 
+export type QueryUnreadPushNotificationCountArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryUsageArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   period?: InputMaybe<Scalars['String']['input']>;
@@ -3022,6 +3080,7 @@ export type QueryValidateBlueprintArgs = {
 
 
 export type QueryViewerCapabilitiesArgs = {
+  fresh?: InputMaybe<Scalars['Boolean']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3427,6 +3486,8 @@ export type ViewerCapabilities = {
   canView: Scalars['Boolean']['output'];
   canViewLogs: Scalars['Boolean']['output'];
   canViewSensitive: Scalars['Boolean']['output'];
+  fresh: Scalars['Boolean']['output'];
+  grants: Array<CapabilityGrant>;
   role: Maybe<Scalars['String']['output']>;
 };
 

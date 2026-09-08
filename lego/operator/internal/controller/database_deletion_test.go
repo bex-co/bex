@@ -26,6 +26,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -232,3 +233,88 @@ func TestDatabaseBackupPurgeJobCarriesTenantHardening(t *testing.T) {
 		t.Fatal("purge pod must not pin a node directly")
 	}
 }
+
+// TestDatabaseDeletionSurfacesStalledConditionOnOverrun is w8/012: a Database
+// finalization that has not converged past the finalization window stamps
+// DeletionStalled, backs the requeue off to childHealthRequeue, and retains the
+// finalizer — same bound Apps got in w3/m81.
+func TestDatabaseDeletionSurfacesStalledConditionOnOverrun(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(cnpgClusterGVK, &unstructured.Unstructured{})
+	now := metav1.Now()
+	db := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{
+		Name: "stalled-db", Namespace: "default", UID: "uid-stalled-db",
+		Finalizers: []string{dbFinalizer}, DeletionTimestamp: &now,
+	}, Status: appv1alpha1.DatabaseStatus{BackupsEnabled: true}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).
+		WithStatusSubresource(&appv1alpha1.Database{}, &batchv1.Job{}).Build()
+	r := &DatabaseReconciler{
+		Client: cl, Scheme: scheme, FinalizerOverrunAfter: time.Nanosecond,
+		Backup: BackupStore{
+			DestinationPath: "s3://backups/postgres", EndpointURL: "https://s3.example", S3Secret: "backup-creds",
+		},
+	}
+	nn := types.NamespacedName{Name: db.Name, Namespace: db.Namespace}
+	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RequeueAfter != childHealthRequeue {
+		t.Fatalf("stalled requeue = %v, want childHealthRequeue %v", result.RequeueAfter, childHealthRequeue)
+	}
+	var current appv1alpha1.Database
+	if err := cl.Get(context.Background(), nn, &current); err != nil {
+		t.Fatal(err)
+	}
+	if !controllerutil.ContainsFinalizer(&current, dbFinalizer) {
+		t.Fatal("finalizer must be retained while stalled")
+	}
+	cond := meta.FindStatusCondition(current.Status.Conditions, conditionDeletionStalled)
+	if cond == nil || cond.Status != metav1.ConditionTrue {
+		t.Fatalf("DeletionStalled condition = %+v, want present and True", cond)
+	}
+	if cond.Reason != reasonCleanupExceededDeadline {
+		t.Fatalf("DeletionStalled reason = %q, want %q", cond.Reason, reasonCleanupExceededDeadline)
+	}
+}
+
+// TestDatabaseDeletionDoesNotStampStalledInWindow guards the healthy path:
+// an in-progress purge within the bound keeps settleRequeue and stamps no
+// DeletionStalled condition.
+func TestDatabaseDeletionDoesNotStampStalledInWindow(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(cnpgClusterGVK, &unstructured.Unstructured{})
+	now := metav1.Now()
+	db := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{
+		Name: "in-window-db", Namespace: "default", UID: "uid-in-window-db",
+		Finalizers: []string{dbFinalizer}, DeletionTimestamp: &now,
+	}, Status: appv1alpha1.DatabaseStatus{BackupsEnabled: true}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).
+		WithStatusSubresource(&appv1alpha1.Database{}, &batchv1.Job{}).Build()
+	r := &DatabaseReconciler{
+		Client: cl, Scheme: scheme, // default 15m window
+		Backup: BackupStore{
+			DestinationPath: "s3://backups/postgres", EndpointURL: "https://s3.example", S3Secret: "backup-creds",
+		},
+	}
+	nn := types.NamespacedName{Name: db.Name, Namespace: db.Namespace}
+	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RequeueAfter != settleRequeue {
+		t.Fatalf("in-window requeue = %v, want settleRequeue %v", result.RequeueAfter, settleRequeue)
+	}
+	var current appv1alpha1.Database
+	if err := cl.Get(context.Background(), nn, &current); err != nil {
+		t.Fatal(err)
+	}
+	if cond := meta.FindStatusCondition(current.Status.Conditions, conditionDeletionStalled); cond != nil {
+		t.Fatalf("healthy in-progress deletion stamped DeletionStalled: %+v", cond)
+	}
+}
+

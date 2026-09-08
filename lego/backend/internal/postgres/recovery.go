@@ -282,6 +282,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	// because it takes the operator's default. The billing gates use the
 	// RESOLVED plan either way, because that is what the recovery actually costs.
 	if req.Plan != "" {
+		req.Plan = tiers.Postgres.CanonicalID(req.Plan)
 		if _, ok := tiers.Postgres.ByID(req.Plan); !ok {
 			return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 		}

@@ -273,6 +273,10 @@ type KeyValueReconciler struct {
 	// rather than fetching age at run time (w7/m85, ADR068 #9). Required only
 	// when Backup.AgePublicKey is set; that combination fails closed.
 	BackupHelperImage string
+	// FinalizerOverrunAfter overrides finalizerOverrunAfter — the window past
+	// which a still-running KeyValue finalization is surfaced as DeletionStalled
+	// (w8/012). Zero uses the package default; tests set a tiny duration.
+	FinalizerOverrunAfter time.Duration
 }
 
 // secretClient prefers the uncached reader for tenant-namespace Secret access,

@@ -416,6 +416,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := validateKeyValueName(req.Name); err != nil {
 		return KeyValueView{}, err
 	}
+	req.Plan = tiers.Valkey.CanonicalID(req.Plan)
 	if req.Plan != "" {
 		if _, ok := tiers.Valkey.ByID(req.Plan); !ok {
 			return KeyValueView{}, fmt.Errorf("%w: unknown plan %q (valid: %v)", core.ErrBadRequest, req.Plan, tiers.Valkey.IDs())
@@ -652,6 +653,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView,
 	if err != nil {
 		return KeyValueView{}, err
 	}
+	plan = tiers.Valkey.CanonicalID(plan)
 	if _, ok := tiers.Valkey.ByID(plan); !ok {
 		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
 	}
@@ -680,6 +682,7 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (KeyVal
 	if err != nil {
 		return KeyValueView{}, err
 	}
+	plan = tiers.Valkey.CanonicalID(plan)
 	if _, ok := tiers.Valkey.ByID(plan); !ok {
 		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
 	}
@@ -741,7 +744,7 @@ func (patch KeyValuePatch) validate() error {
 		}
 	}
 	if patch.Plan != nil {
-		if _, ok := tiers.Valkey.ByID(*patch.Plan); !ok {
+		if _, ok := tiers.Valkey.ByID(tiers.Valkey.CanonicalID(*patch.Plan)); !ok {
 			return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
 		}
 	}
@@ -764,7 +767,7 @@ func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
 		kv.Spec.Name = *patch.Name
 	}
 	if patch.Plan != nil {
-		kv.Spec.Plan = *patch.Plan
+		kv.Spec.Plan = tiers.Valkey.CanonicalID(*patch.Plan)
 	}
 	if patch.MaxmemoryPolicy != nil {
 		kv.Spec.MaxmemoryPolicy = renderToCRD(*patch.MaxmemoryPolicy)
@@ -792,7 +795,7 @@ func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValu
 		return KeyValueView{}, err
 	}
 	if patch.Plan != nil {
-		if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], *patch.Plan); err != nil {
+		if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], tiers.Valkey.CanonicalID(*patch.Plan)); err != nil {
 			return KeyValueView{}, err
 		}
 	}
