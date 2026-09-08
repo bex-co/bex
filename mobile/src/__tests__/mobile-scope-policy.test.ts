@@ -87,14 +87,20 @@ const allowedGraphqlOperations: Record<string, string> = {
     "mutation|id|cancelAgentSession,canceledAt,id,phase,status",
   MobileCreateAgentSession:
     "mutation|agentConfig,branch,ownerId,repo|branch,createAgentSession,createdAt,id,phase,repo,status",
+  MobileDatabaseActions:
+    "query|id|action,databaseActions,outcome,precondition,reason",
   MobileCancelCronRun:
     "mutation|runId,serviceId|cancelCronJobRun,finishedAt,id,startedAt,status",
   MobileCancelDeploy:
     "mutation|deployId,serviceId|cancelDeploy,finishedAt,id,serviceId,status,updatedAt",
   MobileCronRuns:
     "query|cursor,limit,serviceId|cronJobRuns,finishedAt,id,startedAt,status",
+  MobileDeployActions:
+    "query|serviceId|action,deployActions,outcome,precondition,reason",
   MobileDeployHistory:
     "query|cursor,limit,serviceId|commitCreatedAt,commitId,commitMessage,createdAt,deploys,failureReason,finishedAt,id,image,preDeployStatus,rollbackOf,serviceId,startedAt,status,trigger,updatedAt",
+  MobileKeyValueActions:
+    "query|id|action,keyValueActions,outcome,precondition,reason",
   MobileKeyValueInsights:
     "query|id|datastoreMetrics,field,labels,time,unit,value,values",
   MobileKeyValueLifecycle:
@@ -131,6 +137,8 @@ const allowedGraphqlOperations: Record<string, string> = {
   MobileRollbackService:
     "mutation|deployId,serviceId|createdAt,id,rollbackOf,rollbackService,serviceId,status,trigger",
   MobileRunCronJob: "mutation|id|finishedAt,id,runCronJob,startedAt,status",
+  MobileServerActions:
+    "query|id|action,outcome,precondition,reason,serverActions",
   MobileServiceEvents:
     "query|cursor,limit,serviceId|actor,branchFrom,branchTo,commitId,commitMessage,commitUrl,cursor,deployId,deployStatus,details,finishedAt,fromCount,id,image,instanceId,preDeployStatus,reasonCode,serviceEvents,startedAt,status,timestamp,toCount,triggeredByUser,type",
   MobileServiceSupervision:

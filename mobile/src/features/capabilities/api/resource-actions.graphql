@@ -1,0 +1,38 @@
+# ADR087 (w6/m141): per-resource action projections computed by the execute
+# paths' own predicates. Minimum fields for target/action permission, blocking
+# precondition, and confirmation — no configuration, secrets, or scopes.
+query MobileServerActions($id: String!) {
+  serverActions(id: $id) {
+    action
+    outcome
+    reason
+    precondition
+  }
+}
+
+query MobileDeployActions($serviceId: String!) {
+  deployActions(serviceId: $serviceId) {
+    action
+    outcome
+    reason
+    precondition
+  }
+}
+
+query MobileDatabaseActions($id: String!) {
+  databaseActions(id: $id) {
+    action
+    outcome
+    reason
+    precondition
+  }
+}
+
+query MobileKeyValueActions($id: String!) {
+  keyValueActions(id: $id) {
+    action
+    outcome
+    reason
+    precondition
+  }
+}

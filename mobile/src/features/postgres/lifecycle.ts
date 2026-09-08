@@ -1,14 +1,25 @@
+import { datastoreSuspensionConverged } from "../resources/datastore-lifecycle";
 import {
-  datastoreLifecycleTransition,
-  datastoreSuspensionConverged,
-} from "../resources/datastore-lifecycle";
+  presentAction,
+  type ResourceActionDecision,
+} from "../capabilities/resource-actions";
 import {
   protectedConfirmationFromError,
-  type LifecycleCapability,
   type LifecycleRunResult,
 } from "../services/lifecycle";
 
 export type PostgresLifecycleAction = "suspend" | "resume" | "restart";
+
+// The server's per-resource decision for one lifecycle verb (ADR087
+// databaseActions projection, normalized by toResourceSnapshot): the tri-state
+// permission plus the blocking precondition, or null when the projection has
+// no row for this exact workspace+resource+action. Presentation eligibility
+// comes from here — never from the database's status or suspension, which the
+// projection's execute paths already account for.
+export type PostgresLifecycleDecision = Pick<
+  ResourceActionDecision,
+  "outcome" | "precondition"
+>;
 
 export type PostgresLifecycleResource = {
   id: string;
@@ -29,20 +40,13 @@ export type PostgresLifecycleControllerOptions = {
   maxPolls?: number;
 };
 
-export function postgresLifecycleCapabilities(
-  resource: PostgresLifecycleResource,
-): LifecycleCapability<PostgresLifecycleAction>[] {
-  const transition = datastoreLifecycleTransition(resource);
-  if (transition === "resume") {
-    return [{ action: "resume", requiresConfirmation: false }];
-  }
-  return transition === "suspend"
-    ? [
-        { action: "suspend", requiresConfirmation: true },
-        { action: "restart", requiresConfirmation: true },
-      ]
-    : [];
-}
+// Device-confirmation policy per verb (UX, not authorization): suspend and
+// restart confirm on-device; resume does not.
+const REQUIRES_DEVICE_CONFIRMATION: Record<PostgresLifecycleAction, boolean> = {
+  suspend: true,
+  restart: true,
+  resume: false,
+};
 
 export class PostgresLifecycleController {
   private readonly pending = new Map<string, PostgresLifecycleAction>();
@@ -65,17 +69,29 @@ export class PostgresLifecycleController {
     resource: PostgresLifecycleResource;
     confirmed: boolean;
     serverConfirmation?: string;
+    /**
+     * The server's decision for this exact action, read from the current
+     * projection snapshot at confirmation time. Null (no row for this
+     * workspace+resource+action) means the verb does not exist for this
+     * resource — never an implicit allow.
+     */
+    decision: PostgresLifecycleDecision | null;
   }): Promise<
     LifecycleRunResult<PostgresLifecycleResource, PostgresLifecycleAction>
   > {
-    const { action, resource } = input;
+    const { action, resource, decision } = input;
     const active = this.pending.get(resource.id);
     if (active) return { status: "busy", action: active };
-    const capability = postgresLifecycleCapabilities(resource).find(
-      (candidate) => candidate.action === action,
-    );
-    if (!capability) return { status: "not_allowed", reason: "state" };
-    if (capability.requiresConfirmation && !input.confirmed) {
+    if (!decision) {
+      return { status: "not_allowed", reason: "type" };
+    }
+    // Shared presentation semantics: denied/unavailable decisions are absent,
+    // blocked ones do not send. Protected-environment suspend presents as
+    // ready — the mutation's phrase round trip below completes it.
+    if (presentAction(decision).kind !== "ready") {
+      return { status: "not_allowed", reason: "state" };
+    }
+    if (REQUIRES_DEVICE_CONFIRMATION[action] && !input.confirmed) {
       return { status: "confirmation_required", source: "device" };
     }
 

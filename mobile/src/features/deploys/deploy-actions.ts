@@ -18,6 +18,7 @@ export type {
   DeployActionState,
   DeployActionTransport,
   DeployMutationResult,
+  DeployServerGate,
   DeployTarget,
   RollbackDeployRequest,
   TriggerDeployRequest,

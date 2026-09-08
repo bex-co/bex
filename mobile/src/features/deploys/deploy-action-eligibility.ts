@@ -3,6 +3,10 @@ import type {
   DeployActionRequest,
 } from "./deploy-action-types";
 
+// Target SELECTORS, not eligibility: the deployActions projection answers
+// whether a cancelable/rollbackable row exists for the service, while deploy
+// history names the concrete row to act on. These sets stay client-side only
+// to pick that row — they never gate whether the verb may run.
 const cancelableStatuses = new Set([
   "created",
   "queued",
@@ -42,31 +46,61 @@ export function deployActionEligibility(
   ) {
     return denied("The deploy identifier is invalid.");
   }
-  if (
-    (request.action === "trigger" || request.action === "rollback") &&
-    request.serviceSuspended
-  ) {
-    return denied("The service is suspended.", "conflict");
+  // Eligibility itself is the server's per-service decision, captured at
+  // confirmation time: suspension, open-deploy, rollback-target, and billing
+  // preconditions all live in the projection (and are rechecked by the verb
+  // at dispatch). A missing or unanswerable decision fails closed.
+  const server = request.server;
+  if (!server) {
+    return unavailable("Deploy eligibility is currently unavailable.");
   }
-  if (
-    request.action === "cancel" &&
-    !isCancelableDeployStatus(request.target.status)
-  ) {
-    return denied(
-      `Deploy ${request.target.id} is already ${request.target.status || "terminal"}.`,
-      "conflict",
-    );
+  if (server.outcome === "denied") {
+    return {
+      allowed: false,
+      error: {
+        code: "forbidden",
+        message: "The deploy action is not permitted.",
+        delivery: "not_sent",
+        refreshRequired: false,
+        retry: "none",
+      },
+    };
   }
-  if (
-    request.action === "rollback" &&
-    !isRollbackableDeployStatus(request.target.status)
-  ) {
-    return denied(
-      `Deploy ${request.target.id} never reached a rollbackable state.`,
-      "conflict",
-    );
+  if (server.outcome !== "allowed") {
+    return unavailable("Deploy eligibility is currently unavailable.");
+  }
+  if (server.precondition !== "") {
+    return denied(blockedMessage(server.precondition), "conflict");
   }
   return { allowed: true };
+}
+
+function blockedMessage(precondition: string): string {
+  switch (precondition) {
+    case "suspended":
+      return "The service is suspended.";
+    case "no_active_deploy":
+      return "There is no active deploy.";
+    case "no_eligible_rollback_target":
+      return "There is no eligible rollback target.";
+    case "billing_blocked":
+      return "Billing enforcement blocks this action.";
+    default:
+      return "The deploy action is currently unavailable.";
+  }
+}
+
+function unavailable(message: string): DeployActionEligibility {
+  return {
+    allowed: false,
+    error: {
+      code: "unavailable",
+      message,
+      delivery: "not_sent",
+      refreshRequired: true,
+      retry: "after_refresh",
+    },
+  };
 }
 
 function denied(

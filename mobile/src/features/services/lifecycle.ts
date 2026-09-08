@@ -1,4 +1,20 @@
+import {
+  presentAction,
+  type ResourceActionDecision,
+} from "../capabilities/resource-actions";
+
 export type ServiceLifecycleAction = "suspend" | "resume" | "restart";
+
+// The server's per-resource decision for one lifecycle verb (ADR087
+// serverActions projection, normalized by toResourceSnapshot): the tri-state
+// permission plus the blocking precondition, or null when the projection has
+// no row for this exact workspace+resource+action. Presentation eligibility
+// comes from here — never from the service's phase, type, or suspension,
+// which the projection's execute paths already account for.
+export type ServiceLifecycleDecision = Pick<
+  ResourceActionDecision,
+  "outcome" | "precondition"
+>;
 
 export type ServiceLifecycleResource = {
   id: string;
@@ -42,34 +58,17 @@ export type ServiceLifecycleControllerOptions = {
   maxPolls?: number;
 };
 
-const SERVICE_TYPES = new Set([
-  "web_service",
-  "private_service",
-  "background_worker",
-  "cron_job",
-  "static_site",
-]);
-const ACTIONABLE_PHASES = new Set(["running", "failed", "hibernated"]);
-
 export function isLifecycleSuspended(value: unknown): boolean {
   return value === true || value === "suspended";
 }
 
-export function serviceLifecycleCapabilities(
-  resource: ServiceLifecycleResource,
-): LifecycleCapability<ServiceLifecycleAction>[] {
-  if (!SERVICE_TYPES.has(resource.type.toLowerCase())) return [];
-  const phase = resource.phase.toLowerCase();
-  if (phase === "deleting") return [];
-  if (isLifecycleSuspended(resource.suspended)) {
-    return [{ action: "resume", requiresConfirmation: false }];
-  }
-  if (!ACTIONABLE_PHASES.has(phase)) return [];
-  return [
-    { action: "suspend", requiresConfirmation: true },
-    { action: "restart", requiresConfirmation: true },
-  ];
-}
+// Device-confirmation policy per verb (UX, not authorization): suspend and
+// restart confirm on-device; resume does not.
+const REQUIRES_DEVICE_CONFIRMATION: Record<ServiceLifecycleAction, boolean> = {
+  suspend: true,
+  restart: true,
+  resume: false,
+};
 
 export function protectedConfirmationFromError(error: unknown): string | null {
   const message =
@@ -104,25 +103,29 @@ export class ServiceLifecycleController {
     resource: ServiceLifecycleResource;
     confirmed: boolean;
     serverConfirmation?: string;
+    /**
+     * The server's decision for this exact action, read from the current
+     * projection snapshot at confirmation time. Null (no row for this
+     * workspace+resource+action) means the verb does not exist for this
+     * resource — never an implicit allow.
+     */
+    decision: ServiceLifecycleDecision | null;
   }): Promise<
     LifecycleRunResult<ServiceLifecycleResource, ServiceLifecycleAction>
   > {
-    const { action, resource } = input;
+    const { action, resource, decision } = input;
     const active = this.pending.get(resource.id);
     if (active) return { status: "busy", action: active };
-    const capabilities = serviceLifecycleCapabilities(resource);
-    const capability = capabilities.find(
-      (candidate) => candidate.action === action,
-    );
-    if (!capability) {
-      return {
-        status: "not_allowed",
-        reason: SERVICE_TYPES.has(resource.type.toLowerCase())
-          ? "state"
-          : "type",
-      };
+    if (!decision) {
+      return { status: "not_allowed", reason: "type" };
     }
-    if (capability.requiresConfirmation && !input.confirmed) {
+    // Shared presentation semantics: denied/unavailable decisions are absent,
+    // blocked ones do not send. Protected-environment suspend presents as
+    // ready — the mutation's phrase round trip below completes it.
+    if (presentAction(decision).kind !== "ready") {
+      return { status: "not_allowed", reason: "state" };
+    }
+    if (REQUIRES_DEVICE_CONFIRMATION[action] && !input.confirmed) {
       return { status: "confirmation_required", source: "device" };
     }
 

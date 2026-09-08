@@ -267,9 +267,15 @@ export class DeployActionController {
 }
 
 function actionFingerprint(request: DeployActionRequest): string {
+  // The server gate binds the exact eligibility confirmed: a changed outcome
+  // or precondition (or target) under a reused confirmation id is a different
+  // action and must not replay the earlier confirmation.
+  const gate = request.server
+    ? `${request.server.outcome}:${request.server.precondition}`
+    : "none";
   return request.action === "trigger"
-    ? `${request.action}:${request.serviceId}`
-    : `${request.action}:${request.serviceId}:${request.target.id}`;
+    ? `${request.action}:${request.serviceId}:${gate}`
+    : `${request.action}:${request.serviceId}:${request.target.id}:${gate}`;
 }
 
 function immediateResultPhase(

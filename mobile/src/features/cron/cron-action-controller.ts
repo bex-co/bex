@@ -1,16 +1,26 @@
-import {
-  isActiveCronRun,
-  isTerminalCronRun,
-  type CronRunSummary,
-} from "./cron-history";
+import type { ResourceActionDecision } from "../capabilities/resource-actions";
+import { isTerminalCronRun, type CronRunSummary } from "./cron-history";
 
 export type CronAction = "run" | "cancel";
+
+/**
+ * The server's per-service decision for one cron verb (ADR087 serverActions
+ * projection, normalized by toResourceSnapshot), captured at confirmation
+ * time and bound into the request fingerprint: a changed outcome or
+ * precondition cannot silently reuse an earlier confirmation. Null (no row
+ * for this exact workspace+service+action) never authorizes a send.
+ */
+export type CronServerGate = Pick<
+  ResourceActionDecision,
+  "outcome" | "precondition"
+> | null;
 
 export type CronActionRequest = {
   requestId: string;
   action: CronAction;
   serviceId: string;
-  serviceSuspended: boolean;
+  /** Server eligibility for this verb, read at confirmation time. */
+  server: CronServerGate;
   target?: CronRunSummary;
 };
 
@@ -86,9 +96,11 @@ export class CronActionController {
       return promise;
     }
 
-    const ineligible = eligibilityError(request);
-    if (ineligible) {
-      const promise = Promise.resolve(rejected(request.action, ineligible));
+    const gate = serverGateError(request);
+    if (gate) {
+      const promise = Promise.resolve(
+        rejected(request.action, gate.message, gate.refreshRequired),
+      );
       this.requests.set(request.requestId, { fingerprint, promise });
       return promise;
     }
@@ -283,21 +295,69 @@ export async function awaitCronActionObservation(options: {
   return { observed: false, runs };
 }
 
-function eligibilityError(request: CronActionRequest): string | null {
-  if (request.serviceSuspended && request.action === "run") {
-    return "cron service is suspended";
+// The server's per-service decision gates the send: suspension, billing,
+// and active-run preconditions live in the projection (and are rechecked by
+// the verb at dispatch), never in parallel client status sets. History still
+// names the concrete cancel target row — a cancel without one is malformed
+// and never sent. A missing or unanswerable decision fails closed.
+function serverGateError(request: CronActionRequest): {
+  message: string;
+  refreshRequired: boolean;
+} | null {
+  if (
+    request.action === "cancel" &&
+    (!request.target || !request.target.id.trim())
+  ) {
+    return { message: "cron run target is missing", refreshRequired: false };
   }
-  if (request.action === "run") return null;
-  if (!request.target || !isActiveCronRun(request.target.status)) {
-    return "cron run is already terminal";
+  const server = request.server;
+  if (!server) {
+    return {
+      message: "cron action eligibility is currently unavailable",
+      refreshRequired: true,
+    };
+  }
+  if (server.outcome === "denied") {
+    return { message: "cron action is not permitted", refreshRequired: false };
+  }
+  if (server.outcome !== "allowed") {
+    return {
+      message: "cron action eligibility is currently unavailable",
+      refreshRequired: true,
+    };
+  }
+  if (server.precondition !== "") {
+    return {
+      message: blockedMessage(server.precondition),
+      refreshRequired: true,
+    };
   }
   return null;
 }
 
+function blockedMessage(precondition: string): string {
+  switch (precondition) {
+    case "suspended":
+      return "cron service is suspended";
+    case "no_active_run":
+      return "cron run is already terminal";
+    case "billing_blocked":
+      return "billing enforcement blocks this action";
+    default:
+      return "cron action is currently unavailable";
+  }
+}
+
 function actionFingerprint(request: CronActionRequest): string {
+  // The server gate binds the exact eligibility confirmed: a changed outcome
+  // or precondition (or target) under a reused confirmation id is a different
+  // action and must not replay the earlier confirmation.
+  const gate = request.server
+    ? `${request.server.outcome}:${request.server.precondition}`
+    : "none";
   return request.action === "run"
-    ? `run:${request.serviceId}`
-    : `cancel:${request.serviceId}:${request.target?.id ?? ""}`;
+    ? `run:${request.serviceId}:${gate}`
+    : `cancel:${request.serviceId}:${request.target?.id ?? ""}:${gate}`;
 }
 
 function rejected(
