@@ -102,6 +102,37 @@ spec:
         - { protocol: TCP, port: 4444 }
 
 ---
+# allow-acme-solver-auth (ADR088 live diagnosis, 2026-09-08): cert-manager's
+# HTTP-01 solver pods spawn IN the certificate's namespace and must be
+# reachable from Traefik on :8089, but allow-auth-public-edge above admits
+# traefik only on 4433/4444 — so every auth-namespace ACME validation times
+# out at the last hop. hydra-public-tls/kratos-public-tls were ISSUED
+# 2026-07-11, before this lockdown landed; their first post-lockdown renewal
+# (window opens 2026-09-09) would have failed exactly the way
+# monitoring/grafana-public-tls — the first post-lockdown NEW issuance — was
+# found wedged for 5h+. Scoped to cert-manager's own solver pod label, one
+# port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-acme-solver-auth
+  namespace: auth
+spec:
+  podSelector:
+    matchLabels:
+      acme.cert-manager.io/http01-solver: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - protocol: TCP
+          port: 8089
+
+---
 # CNPG observes the three auth database instance managers on 8000.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -487,3 +518,29 @@ spec:
               kubernetes.io/metadata.name: traefik
       ports:
         - { protocol: TCP, port: 3000 }
+
+---
+# allow-acme-solver-monitoring (ADR088 live diagnosis, 2026-09-08): the
+# grafana-public-tls HTTP-01 solver pod spawns in THIS namespace, but
+# allow-obs-public-edge above admits traefik only to the grafana pod on
+# :3000 — the ACME validation timed out at the last hop and the obs.bex.co
+# certificate sat wedged in a pending challenge for 5h+ while the origin
+# served the fallback default cert. Same shape as allow-acme-solver-auth.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-acme-solver-monitoring
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      acme.cert-manager.io/http01-solver: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - { protocol: TCP, port: 8089 }
