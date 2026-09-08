@@ -1,6 +1,6 @@
 # w2 · m89 — Secretless image build, credentialed deploy (ADR080 F2)
 
-**Worker:** worker2 **Goal:** the CI job that compiles code and builds images runs with zero deploy credentials in scope; a separate environment-gated deploy job consumes the exact built digest — closing ADR080 finding 2, still recorded open by ADR083 **Status:** in progress 2026-09-07 — t001–t003 done (split + digest-output handoff + validator check 8 + ADR closures, both validators green locally); t004 awaits the first live run of the split pipeline (triggered by this milestone’s own ship)
+**Worker:** worker2 **Goal:** the CI job that compiles code and builds images runs with zero deploy credentials in scope; a separate environment-gated deploy job consumes the exact built digest — closing ADR080 finding 2, still recorded open by ADR083 **Status:** done 2026-09-08 (UTC) — deploy.yml split into a secretless `build` job (GITHUB_TOKEN + cosign OIDC only, five digests as job outputs) and an `environment: production-deploy`-gated `deploy` job consuming `needs.build.outputs.*`; validator check 8 fail-closed with red-fixture self-tests (incl. bracket-form and annotated-job-key bypass hardening); ADR080 F2 + ADR083 follow-up 3 closed; end-to-end proven live by run 34171816919 (pin commit `5e0ff91ac`, in-cluster digest-match asserted) after three earlier green runs proved the mechanism and the supersede protection; a deterministic backend-gate red from a concurrent commit was root-caused and fixed en route (`42d4532a3`)
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | Split `deploy.yml` into a secretless build job and an environment-gated deploy job — **DONE** | 60m | —          |
 | t002 | Image handoff by pinned digest between the jobs — **DONE**                   | 45m | t001       |
 | t003 | Validator + docs: build jobs must reference no deploy secrets — **DONE**     | 30m | t002       |
-| t004 | Verify a full production deploy through the split pipeline                   | 30m | t003       |
-| t005 | Simplify                                                                     | 20m | t004       |
-| t006 | Test coverage                                                                | 30m | t004       |
-| t007 | Closeout                                                                     | 15m | t005, t006 |
+| t004 | Verify a full production deploy through the split pipeline — **DONE**        | 30m | t003       |
+| t005 | Simplify — **DONE**                                                          | 20m | t004       |
+| t006 | Test coverage — **DONE**                                                     | 30m | t004       |
+| t007 | Closeout — **DONE**                                                          | 15m | t005, t006 |
 
 ## Definition of done
 

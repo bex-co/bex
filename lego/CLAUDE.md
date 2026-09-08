@@ -14,7 +14,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - Dev inner loop against a cluster: `make install && BEX_RUNTIME=kubernetes make run` (runs the operator from the host).
 - `make docker-build IMG=…` / `make deploy IMG=…` — image build / kustomize deploy to the current kubeconfig.
 - ⚠️ `make test-e2e` creates and deletes a kind cluster (`control-plane-test-e2e`) — slow, CI territory; don't run casually.
-- All three test suites (`make test`, `go test ./...`, `yarn test`) **must pass before `deploy.yml` builds or pushes any image**: `build-and-deploy` `needs:` all three test jobs.
+- All three test suites (`make test`, `go test ./...`, `yarn test`) **must pass before `deploy.yml` builds or pushes any image**: deploy.yml's `build` job `needs:` all three test jobs.
 
 ## Rules
 
