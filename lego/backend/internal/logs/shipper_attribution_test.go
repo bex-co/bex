@@ -30,6 +30,14 @@ package logs
 // (and did) drift from the App CR's real placement.
 //
 // It reads the deployed config rather than a copy, so the two cannot diverge.
+//
+// The same read-the-real-config pattern also guards the request pipeline's
+// bounded RequestHost allowlist (w4/m88, extended to the platform edge hosts
+// by w5/053 per ADR088 §6): the should_drop / namespace / platform_service
+// stage.template blocks are extracted out of log-shipper.yaml, un-escaped
+// (Helm tpl + River quoting), and EXECUTED as the Go templates Alloy's
+// pipeline engine runs — asserting each allowlisted host is retained under
+// its fixed namespace/service pair and that an unlisted host still drops.
 
 import (
 	"os"
@@ -37,6 +45,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"text/template"
 )
 
 // shipperServiceNameRegex reads log-shipper.yaml, extracts the Traefik
@@ -167,6 +176,164 @@ func TestShipperRegexStillAttributesDefaultNamespace(t *testing.T) {
 	}
 	if ns != "default" || app != "web" {
 		t.Errorf("default attribution = (%q, %q), want (default, web)", ns, app)
+	}
+}
+
+// shipperPipelineTemplate reads log-shipper.yaml, finds the stage.template
+// block whose `source` is name, and recovers the real template text the way it
+// reaches Alloy: Helm's tpl pass renders the self-evaluating escape actions to
+// literal double-braces (the HELM TPL ESCAPING note in the file), and River
+// unquotes `\"` inside its double-quoted string. Parsing the result with Go's
+// text/template mirrors Alloy's pipeline-stage engine — these templates use
+// only the builtin eq/or, no Sprig functions.
+func shipperPipelineTemplate(t *testing.T, name string) *template.Template {
+	t.Helper()
+	path := findRepoFile(t, filepath.Join("deploy", "gitops", "base", "log-shipper.yaml"))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	sourceLine := regexp.MustCompile(`^source\s*=\s*"` + regexp.QuoteMeta(name) + `"$`)
+	lines := strings.Split(string(data), "\n")
+	var tmplLine string
+	for i, line := range lines {
+		if !sourceLine.MatchString(strings.TrimSpace(line)) {
+			continue
+		}
+		for _, next := range lines[i+1:] {
+			trimmed := strings.TrimSpace(next)
+			if strings.HasPrefix(trimmed, "template =") {
+				tmplLine = trimmed
+				break
+			}
+			if trimmed == "}" { // end of the stage block — no template line
+				break
+			}
+		}
+		break
+	}
+	if tmplLine == "" {
+		t.Fatalf("could not find the stage.template block for source %q in log-shipper.yaml", name)
+	}
+	first := strings.IndexByte(tmplLine, '"')
+	last := strings.LastIndexByte(tmplLine, '"')
+	if first < 0 || last <= first {
+		t.Fatalf("could not extract the quoted template from: %s", tmplLine)
+	}
+	text := tmplLine[first+1 : last]
+	// Helm tpl: `{{ "{{" }}` / `{{ "}}" }}` render to the literal braces.
+	text = strings.ReplaceAll(text, `{{ "{{" }}`, "{{")
+	text = strings.ReplaceAll(text, `{{ "}}" }}`, "}}")
+	if strings.Contains(text, "{{ \"") {
+		t.Fatalf("template for %q carries an unrecognized Helm escape after un-escaping: %s", name, text)
+	}
+	// River unquoting: `\"` inside the double-quoted string is a `"`.
+	text = strings.ReplaceAll(text, `\"`, `"`)
+	tmpl, err := template.New(name).Parse(text)
+	if err != nil {
+		t.Fatalf("template for %q does not parse as a Go template (%q): %v", name, text, err)
+	}
+	return tmpl
+}
+
+// renderStage executes a pipeline template against the extracted-field map the
+// way Alloy's stage.template does: `.Value` is the source field's current
+// value, every other key is a previously extracted field. map[string]string
+// models Alloy's extracted map for these stages (all string-typed); a missing
+// key reads as "", i.e. "not extracted".
+func renderStage(t *testing.T, tmpl *template.Template, data map[string]string) string {
+	t.Helper()
+	var out strings.Builder
+	if err := tmpl.Execute(&out, data); err != nil {
+		t.Fatalf("execute %s template over %v: %v", tmpl.Name(), data, err)
+	}
+	return out.String()
+}
+
+func TestShipperHostAllowlistRetainsPlatformEdgeHosts(t *testing.T) {
+	shouldDrop := shipperPipelineTemplate(t, "should_drop")
+	namespace := shipperPipelineTemplate(t, "namespace")
+	service := shipperPipelineTemplate(t, "platform_service")
+
+	// The full w4/m88 + w5/053 allowlist: each host is retained under a FIXED
+	// bounded namespace/service pair — the pods actually serving it — so the
+	// obs availability dashboard's 5xx log panel can explain a platform-API
+	// outage (ADR088 §6). `host` itself stays line-only (see
+	// TestPathAndHostNeverBecomeLabels for the query side).
+	cases := []struct {
+		host          string
+		wantNamespace string
+		wantService   string
+	}{
+		{"dashboard.bex.co", "dashboard", "dashboard"}, // w4/m88
+		{"api.bex.co", "bex-system", "bex-api"},        // w5/053
+		{"oauth.bex.co", "auth", "hydra"},              // w5/053
+		{"auth.bex.co", "auth", "kratos"},              // w5/053
+		{"obs.bex.co", "monitoring", "grafana"},        // w5/053
+	}
+	for _, tc := range cases {
+		t.Run(tc.host, func(t *testing.T) {
+			// A platform edge line: the ServiceName regex missed, so `app`
+			// normalized to "" and only the host allowlist can retain it.
+			line := map[string]string{"app": "", "host": tc.host}
+			if got := renderStage(t, shouldDrop, line); got != "no" {
+				t.Fatalf("should_drop(%s) = %q, want \"no\" — the line would be dropped and the availability dashboard's log panel stays empty during an outage", tc.host, got)
+			}
+			line["Value"] = "" // the namespace stage's source is empty on a regex miss
+			if got := renderStage(t, namespace, line); got != tc.wantNamespace {
+				t.Errorf("namespace(%s) = %q, want %q", tc.host, got, tc.wantNamespace)
+			}
+			if got := renderStage(t, service, line); got != tc.wantService {
+				t.Errorf("service(%s) = %q, want %q", tc.host, got, tc.wantService)
+			}
+		})
+	}
+}
+
+func TestShipperHostAllowlistDropsUnknownHosts(t *testing.T) {
+	shouldDrop := shipperPipelineTemplate(t, "should_drop")
+
+	// Drop-not-guess: any host NOT on the explicit allowlist must still be
+	// dropped when the line has no App attribution — never retained under a
+	// guessed label. Includes near misses (tool-named grafana.bex.co, a
+	// tenant host whose ServiceName regex failed) and the empty host.
+	for _, host := range []string{
+		"grafana.bex.co",  // the tool name; the role-named host is obs.bex.co
+		"ssh.bex.co",      // real platform host, deliberately not allowlisted
+		"web.onbex.co",    // tenant host — retention comes from ServiceName, not host
+		"api.bex.co.evil", // prefix-collision probe
+		"example.com",
+		"",
+	} {
+		got := renderStage(t, shouldDrop, map[string]string{"app": "", "host": host})
+		if got != "yes" {
+			t.Errorf("should_drop(host=%q, no app) = %q, want \"yes\" (drop) — an unlisted host must never mint a request stream", host, got)
+		}
+	}
+}
+
+func TestShipperHostAllowlistKeepsTenantAttributionFirst(t *testing.T) {
+	shouldDrop := shipperPipelineTemplate(t, "should_drop")
+	namespace := shipperPipelineTemplate(t, "namespace")
+	service := shipperPipelineTemplate(t, "platform_service")
+
+	// A tenant-attributed line (regex matched, `app` non-empty) keeps its
+	// regex-derived namespace/app and gets NO service label (empty values are
+	// omitted by Alloy's stage.labels) — regardless of what host it was
+	// served on.
+	line := map[string]string{
+		"app":   "tea-d98210cbbpdc73dcrkvg-web",
+		"host":  "api.bex.co", // even a host on the allowlist must not override attribution
+		"Value": "tea-d98210cbbpdc73dcrkvg",
+	}
+	if got := renderStage(t, shouldDrop, line); got != "no" {
+		t.Fatalf("should_drop(tenant line) = %q, want \"no\"", got)
+	}
+	if got := renderStage(t, namespace, line); got != "tea-d98210cbbpdc73dcrkvg" {
+		t.Errorf("namespace(tenant line) = %q, want the regex-derived namespace", got)
+	}
+	if got := renderStage(t, service, line); got != "" {
+		t.Errorf("service(tenant line) = %q, want \"\" (no service label on tenant streams)", got)
 	}
 }
 

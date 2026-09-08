@@ -11,7 +11,11 @@
 #   type=request  — Traefik's access log (traefik.values.yaml `logs.access`),
 #                   attributed back to the App via the access line's ServiceName
 #                   and labelled method/status; plus an explicit host allowlist
-#                   for `dashboard.bex.co` kept as service=dashboard (w4/m88).
+#                   for `dashboard.bex.co` kept as service=dashboard (w4/m88)
+#                   and the platform edge hosts api/oauth/auth/obs.bex.co kept
+#                   under FIXED namespace/service pairs (w5/053, ADR088 §6) so
+#                   the obs availability dashboard's log panel can explain a
+#                   platform-API outage. Every other host still drops.
 #
 # These are exactly the labels bex-api's LogQL selects on (see lokiSelectorFor /
 # docs/ADR010-observability.md § Log labels), and both push to /loki/api/v1/push.
@@ -23,7 +27,8 @@
 #   line-only: path, host  — unbounded per request; filtered at query time with
 #              LogQL's `| json` over the access line, never promoted to a label.
 #              Platform request retention keys off RequestHost in a stage, then
-#              stamps the BOUNDED `service=dashboard` label — never `host=…`.
+#              stamps a BOUNDED fixed `service` label from the closed allowlist
+#              vocabulary (dashboard|bex-api|hydra|kratos|grafana) — never `host=…`.
 # Worst case ≈ replicas×levels + methods×statuses streams per App (low hundreds);
 # typically under 20. Raising `path` to a label would be a cardinality incident.
 #
@@ -600,6 +605,18 @@ spec:
                 // w4/m88: keep RequestHost=dashboard.bex.co under a BOUNDED
                 // `service=dashboard` label (host stays line-only per the
                 // cardinality budget above); other non-App hosts still drop.
+                // w5/053 (ADR088 §6 review triage item 2): the allowlist now
+                // also keeps the platform edge hosts, each under a FIXED
+                // bounded namespace/service pair — api.bex.co (bex-system/
+                // bex-api), oauth.bex.co (auth/hydra), auth.bex.co (auth/
+                // kratos), obs.bex.co (monitoring/grafana) — so Loki retains
+                // their 5xx request lines and the obs availability dashboard's
+                // log panel can explain a platform-API outage instead of
+                // sitting empty while the 5xx ratio climbs. The discipline is
+                // unchanged: only hosts named here are kept, every value the
+                // templates below can emit is a closed vocabulary, `host`
+                // itself never becomes a label, and any unlisted host is still
+                // dropped — never guessed.
                 stage.template {
                   source   = "app"
                   // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
@@ -608,23 +625,24 @@ spec:
                 }
                 stage.template {
                   source   = "should_drop"
-                  template = "{{ "{{" }} if .app {{ "}}" }}no{{ "{{" }} else if eq .host \"dashboard.bex.co\" {{ "}}" }}no{{ "{{" }} else {{ "}}" }}yes{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} if .app {{ "}}" }}no{{ "{{" }} else if or (eq .host \"dashboard.bex.co\") (eq .host \"api.bex.co\") (eq .host \"oauth.bex.co\") (eq .host \"auth.bex.co\") (eq .host \"obs.bex.co\") {{ "}}" }}no{{ "{{" }} else {{ "}}" }}yes{{ "{{" }} end {{ "}}" }}"
                 }
                 stage.drop {
                   source              = "should_drop"
                   expression          = "^yes$"
                   drop_counter_reason = "not_a_tenant_app"
                 }
-                // Platform host allowlist → bounded service label + dashboard ns.
-                // Tenant lines keep regex namespace/app; empty label values are
-                // omitted by Alloy's stage.labels.
+                // Platform host allowlist → fixed bounded namespace/service
+                // pair per host (the pods actually serving it). Tenant lines
+                // keep regex namespace/app; empty label values are omitted by
+                // Alloy's stage.labels.
                 stage.template {
                   source   = "namespace"
-                  template = "{{ "{{" }} if .app {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} else {{ "}}" }}dashboard{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} if .app {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} else if eq .host \"api.bex.co\" {{ "}}" }}bex-system{{ "{{" }} else if or (eq .host \"oauth.bex.co\") (eq .host \"auth.bex.co\") {{ "}}" }}auth{{ "{{" }} else if eq .host \"obs.bex.co\" {{ "}}" }}monitoring{{ "{{" }} else {{ "}}" }}dashboard{{ "{{" }} end {{ "}}" }}"
                 }
                 stage.template {
                   source   = "platform_service"
-                  template = "{{ "{{" }} if .app {{ "}}" }}{{ "{{" }} else {{ "}}" }}dashboard{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} if .app {{ "}}" }}{{ "{{" }} else if eq .host \"api.bex.co\" {{ "}}" }}bex-api{{ "{{" }} else if eq .host \"oauth.bex.co\" {{ "}}" }}hydra{{ "{{" }} else if eq .host \"auth.bex.co\" {{ "}}" }}kratos{{ "{{" }} else if eq .host \"obs.bex.co\" {{ "}}" }}grafana{{ "{{" }} else {{ "}}" }}dashboard{{ "{{" }} end {{ "}}" }}"
                 }
 
                 stage.labels {

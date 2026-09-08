@@ -1275,6 +1275,32 @@ if [ -f "$LOGSHIP" ]; then
     echo "$vals" | grep -qF "$required" \
       || { echo "FAIL: log-shipper.yaml platform dashboard retention lost required rule: $required" >&2; fail=1; }
   done
+
+  # Platform edge-host retention (w5/053, ADR088 §6): the w4/m88 RequestHost
+  # allowlist must also keep api/oauth/auth/obs.bex.co, each under its FIXED
+  # bounded namespace/service pair (the '}}<value>{{' literals are the Helm-
+  # escaped template branches that stamp those labels), so the obs availability
+  # dashboard's 5xx log panel can explain a platform-API outage. The final
+  # else→yes branch plus the drop stage above keep every UNLISTED host on the
+  # drop-not-guess default. (should_drop / evaluated-template semantics are
+  # unit-asserted in lego/backend/internal/logs/shipper_attribution_test.go.)
+  echo "==> $LOGSHIP platform edge-host retention (w5/053)"
+  for required in \
+    'eq .host \"api.bex.co\"' \
+    'eq .host \"oauth.bex.co\"' \
+    'eq .host \"auth.bex.co\"' \
+    'eq .host \"obs.bex.co\"' \
+    '}}bex-system{{' \
+    '}}bex-api{{' \
+    '}}hydra{{' \
+    '}}kratos{{' \
+    '}}monitoring{{' \
+    '}}grafana{{' \
+    '}}yes{{' \
+    'expression          = "^yes$"'; do
+    echo "$vals" | grep -qF "$required" \
+      || { echo "FAIL: log-shipper.yaml platform edge-host retention lost required rule: $required" >&2; fail=1; }
+  done
   # Cardinality tripwire: RequestHost may be extracted for the allowlist
   # decision, but must never appear as a stage.labels value (Loki stream key).
   if echo "$vals" | grep -A30 'stage.labels {' | grep -qE '^\s*host\s*='; then

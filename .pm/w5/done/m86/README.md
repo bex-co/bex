@@ -1,6 +1,6 @@
 # w5 · m86 — Platform observability UI: Grafana at obs.bex.co (ADR088)
 
-**Worker:** worker5 **Goal:** operators read the existing Prometheus/Loki backends through a provisioned Grafana at `obs.bex.co`, signing in with their bex identity, gated by ops-workspace membership — no kubectl port-forwards, no separate password store. **Status:** t001–t009 done; t010 closeout open — code complete and verified locally, pending `/ship` + post-merge live `obs.bex.co` verification via Argo CD
+**Worker:** worker5 **Goal:** operators read the existing Prometheus/Loki backends through a provisioned Grafana at `obs.bex.co`, signing in with their bex identity, gated by ops-workspace membership — no kubectl port-forwards, no separate password store. **Status:** done
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t007 | E2E + docs: allow/deny consent flow verification, env inventories — **DONE**           | 30m | t002, t003, t005 |
 | t008 | Simplify — `/simplify` over the code this milestone changed — **DONE**                 | 30m | t006, t007 |
 | t009 | Test coverage — meaningful tests for gate, guards, and claims — **DONE** (mutation spot-checks: non-member→ungated flip fails 2 consent tests; bearer-compare inversion fails 2 opsrole tests) | 30m | t006, t007 |
-| t010 | Closeout                                                                               | 15m | t009       |
+| t010 | Closeout — **DONE** (user live sign-in confirmed 2026-09-08; OIDC chain, secrets, Argo, e2e all verified) | 15m | t009       |
 
 ## Definition of done
 

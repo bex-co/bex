@@ -181,8 +181,8 @@ dashboards:
             {
               "id": 3,
               "type": "logs",
-              "title": "Tenant + dashboard 5xx request log",
-              "description": "Traefik access lines for 5xx responses — but the log-shipper's type=request stream retains ONLY tenant App hosts plus dashboard.bex.co (the w4/m88 bounded allowlist in log-shipper.yaml). Platform edge hosts (api/oauth/auth/obs) are NOT yet retained in Loki, so bex-api 5xx during a platform outage will not appear here even while the ratio panel climbs; extending the w4/m88 allowlist is the fix. host/path are line-only fields by cardinality design — filter with LogQL | json, never a label.",
+              "title": "Edge 5xx request log (tenant + platform hosts)",
+              "description": "Traefik access lines for 5xx responses across everything the log-shipper's type=request stream retains: tenant App hosts (labelled app=...) plus the bounded host allowlist — dashboard.bex.co (w4/m88) and the platform edge hosts api/oauth/auth/obs.bex.co (w5/053, ADR088 §6), each under a fixed namespace/service pair (service=bex-api|hydra|kratos|grafana|dashboard) — so a platform-API outage shows its failing requests here while the ratio panel climbs. The selector matches both label shapes. Lines exist only from the allowlist's deploy time forward (Loki retains nothing retroactively). host/path are line-only fields by cardinality design — filter with LogQL | json, never a label.",
               "gridPos": { "h": 10, "w": 24, "x": 0, "y": 9 },
               "datasource": { "type": "loki", "uid": "loki" },
               "options": {
