@@ -259,12 +259,15 @@ func TestMCPParityInventory(t *testing.T) {
 	// wired `clearCache` into trigger_deploy, moving it from Divergent (8 → 7)
 	// to Superset (1 → 2). w2/023 added get_service_outbound_ips (Extension
 	// 164 → 165), the Render-shaped outbound-IPs read Render's own MCP does
-	// not ship. Update this table and ADR018's MCP inventory together
-	// — that pairing is the point.
+	// not ship. w2/m91 repaired get_metrics' arg contract (Divergent 7 → 6,
+	// Superset 2 → 3); create_postgres/create_static_site stay Divergent for
+	// their accepted genuine differences (region / required publishPath).
+	// Update this table and ADR018's MCP inventory together — that pairing is
+	// the point.
 	want := map[mcpParityClass]int{
 		mcpParity1to1:      10,
-		mcpParitySuperset:  2,   // +trigger_deploy (clearCache wired, w3/m46)
-		mcpParityDivergent: 7,   // -trigger_deploy (clearCache wired, w3/m46)
+		mcpParitySuperset:  3,   // +get_metrics (w2/m91 Render arg names)
+		mcpParityDivergent: 6,   // -get_metrics (w2/m91)
 		mcpParityExtension: 167, // +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133)
 	}
 	const wantTotal = 186

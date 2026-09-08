@@ -18,6 +18,8 @@ package metrics
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -27,19 +29,38 @@ import (
 )
 
 // mcp.go is the metrics MCP fragment. get_metrics mirrors Render's tool: a
-// required `resource` array of service ids and `metricTypes` (bex metric ids),
-// plus the optional time window and options.
+// required resourceId (legacy alias: resource[]) and metricTypes, plus the
+// optional time window and Render-named options (w2/m91 alias policy: Render
+// spelling wins when both a Render name and a legacy bex name are set).
+
 type getMetricsArgs struct {
-	Resource          []string  `json:"resource" jsonschema:"service ids (srv-...) or names to read metrics for"`
-	MetricTypes       []string  `json:"metricTypes" jsonschema:"metric ids: cpu|memory|instance_count|http_requests|http_latency|bandwidth|cpu_target|memory_target (cpu_target/memory_target are bex extensions: the App's configured autoscale-target utilization, w1/m20 — omitted when autoscaling is disabled)"`
-	StartTime         string    `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window (request metrics)"`
-	EndTime           string    `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window (request metrics)"`
-	ResolutionSeconds int64     `json:"resolutionSeconds,omitempty" jsonschema:"request-metric step in seconds"`
-	Quantile          float64   `json:"quantile,omitempty" jsonschema:"http_latency percentile 0..1 (default .95)"`
-	Quantiles         []float64 `json:"quantiles,omitempty" jsonschema:"http_latency percentiles 0..1 to read together — the percentile 'All' overlay (e.g. [0.5,0.9,0.99]); each returned series carries a quantile label so the overlaid percentiles stay distinct"`
-	Percentage        bool      `json:"percentage,omitempty" jsonschema:"report cpu/memory as a percentage of the pod limit"`
-	Host              string    `json:"host,omitempty" jsonschema:"filter http_requests/http_latency to one request Host — served from the request-log store (Loki); requires BEX_LOKI_URL or the read returns store-unavailable, and is rejected for any other metric"`
-	Path              string    `json:"path,omitempty" jsonschema:"filter http_requests/http_latency to one request Path — served from the request-log store (Loki); requires BEX_LOKI_URL or the read returns store-unavailable, and is rejected for any other metric"`
+	// ResourceID is Render's single-id spelling. Resource is the legacy bex
+	// multi-id array; when ResourceID is set it wins as a one-element list.
+	ResourceID string   `json:"resourceId,omitempty" jsonschema:"service id (srv-...) to read metrics for — Render's MCP spelling"`
+	Resource   []string `json:"resource,omitempty" jsonschema:"legacy bex alias of resourceId as a list of service ids/names; ignored when resourceId is also set"`
+	MetricTypes []string `json:"metricTypes" jsonschema:"metric ids: cpu|memory|instance_count|http_requests|http_latency|bandwidth|cpu_target|memory_target (cpu_target/memory_target are bex extensions: the App's configured autoscale-target utilization, w1/m20 — omitted when autoscaling is disabled)"`
+	StartTime   string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window (request metrics)"`
+	EndTime     string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window (request metrics)"`
+	// Resolution is Render's spelling; ResolutionSeconds is the legacy bex alias.
+	Resolution        *int64 `json:"resolution,omitempty" jsonschema:"request-metric step in seconds — Render's MCP spelling"`
+	ResolutionSeconds *int64 `json:"resolutionSeconds,omitempty" jsonschema:"legacy bex alias of resolution; ignored when resolution is also set"`
+	// HTTPLatencyQuantile is Render's spelling; Quantile is the legacy bex alias.
+	HTTPLatencyQuantile *float64  `json:"httpLatencyQuantile,omitempty" jsonschema:"http_latency percentile 0..1 (default .95) — Render's MCP spelling"`
+	Quantile            *float64  `json:"quantile,omitempty" jsonschema:"legacy bex alias of httpLatencyQuantile; ignored when httpLatencyQuantile is also set"`
+	Quantiles           []float64 `json:"quantiles,omitempty" jsonschema:"http_latency percentiles 0..1 to read together — the percentile 'All' overlay (e.g. [0.5,0.9,0.99]); each returned series carries a quantile label so the overlaid percentiles stay distinct"`
+	Percentage          bool      `json:"percentage,omitempty" jsonschema:"report cpu/memory as a percentage of the pod limit"`
+	// HTTPHost/HTTPPath are Render's spellings; Host/Path are legacy bex aliases.
+	HTTPHost string `json:"httpHost,omitempty" jsonschema:"filter http_requests/http_latency to one request Host — Render's MCP spelling; served from the request-log store (Loki)"`
+	Host     string `json:"host,omitempty" jsonschema:"legacy bex alias of httpHost; ignored when httpHost is also set"`
+	HTTPPath string `json:"httpPath,omitempty" jsonschema:"filter http_requests/http_latency to one request Path — Render's MCP spelling; served from the request-log store (Loki)"`
+	Path     string `json:"path,omitempty" jsonschema:"legacy bex alias of httpPath; ignored when httpPath is also set"`
+	// CPUUsageAggregationMethod is accepted for contract parity. bex's CPU
+	// series is a metrics-server snapshot (no interval aggregation), so only
+	// AVG (or omit) is honored; MAX/MIN are rejected.
+	CPUUsageAggregationMethod string `json:"cpuUsageAggregationMethod,omitempty" jsonschema:"AVG (default, only supported value) | MAX | MIN — bex CPU is a metrics-server snapshot, so MAX/MIN are rejected"`
+	// AggregateHTTPRequestCountsBy groups http_requests. statusCode maps onto
+	// GroupBy=status; host has no Traefik/Loki group-by axis and is rejected.
+	AggregateHTTPRequestCountsBy string `json:"aggregateHttpRequestCountsBy,omitempty" jsonschema:"group http_requests by statusCode (wired) or host (unsupported — rejected)"`
 }
 
 type getMetricsResult struct {
@@ -59,21 +80,80 @@ func metricSeriesOrEmpty(series []MetricSeries) []MetricSeries {
 	return series
 }
 
+// resources applies the w2/m91 alias policy for resourceId vs resource.
+func (a getMetricsArgs) resources() ([]string, error) {
+	return mcputil.ResourceIDs(a.ResourceID, a.Resource, "resourceId", "resource")
+}
+
+func (a getMetricsArgs) resolutionSeconds() int64 {
+	return mcputil.PreferPtrOrZero(a.Resolution, a.ResolutionSeconds)
+}
+
+func (a getMetricsArgs) quantile() float64 {
+	return mcputil.PreferPtrOrZero(a.HTTPLatencyQuantile, a.Quantile)
+}
+
+func (a getMetricsArgs) host() string {
+	return mcputil.PreferString(a.HTTPHost, a.Host)
+}
+
+func (a getMetricsArgs) path() string {
+	return mcputil.PreferString(a.HTTPPath, a.Path)
+}
+
+// applyCPUAggregation enforces the thin AVG-only wiring of
+// cpuUsageAggregationMethod. Empty/AVG are no-ops; MAX/MIN are capability gaps.
+func applyCPUAggregation(method string) error {
+	switch strings.ToUpper(strings.TrimSpace(method)) {
+	case "", "AVG":
+		return nil
+	case "MAX", "MIN":
+		return fmt.Errorf("%w: cpuUsageAggregationMethod %q is unsupported — bex CPU is a metrics-server snapshot without interval aggregation (only AVG)", core.ErrBadRequest, method)
+	default:
+		return fmt.Errorf("%w: unknown cpuUsageAggregationMethod %q (want AVG|MAX|MIN)", core.ErrBadRequest, method)
+	}
+}
+
+// applyHTTPRequestAggregate maps aggregateHttpRequestCountsBy onto MetricQuery.GroupBy.
+func applyHTTPRequestAggregate(by string) (string, error) {
+	switch strings.TrimSpace(by) {
+	case "":
+		return "", nil
+	case "statusCode":
+		return "status", nil
+	case "host":
+		return "", fmt.Errorf("%w: aggregateHttpRequestCountsBy=host is unsupported — neither Traefik Prometheus counters nor the Loki request-log path expose a host group-by axis (filter with httpHost instead)", core.ErrBadRequest)
+	default:
+		return "", fmt.Errorf("%w: unknown aggregateHttpRequestCountsBy %q (want statusCode|host)", core.ErrBadRequest, by)
+	}
+}
+
 // RegisterMCP adds the get_metrics tool to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_metrics",
-		Description: "Get resource (cpu/memory/instance_count) and request (http_requests/http_latency/bandwidth) metrics for one or more services, as Render-shaped time-series.",
+		Description: "Get resource (cpu/memory/instance_count) and request (http_requests/http_latency/bandwidth) metrics for one or more services, as Render-shaped time-series. Prefer Render's resourceId/resolution/httpLatencyQuantile/httpHost/httpPath; legacy resource/resolutionSeconds/quantile/host/path aliases still work (Render spelling wins when both are set).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getMetricsArgs) (*mcp.CallToolResult, getMetricsResult, error) {
+		resources, err := in.resources()
+		if err != nil {
+			return nil, getMetricsResult{}, err
+		}
+		if err := applyCPUAggregation(in.CPUUsageAggregationMethod); err != nil {
+			return nil, getMetricsResult{}, err
+		}
+		groupBy, err := applyHTTPRequestAggregate(in.AggregateHTTPRequestCountsBy)
+		if err != nil {
+			return nil, getMetricsResult{}, err
+		}
 		q := MetricQuery{
-			Quantile:   in.Quantile,
+			Quantile:   in.quantile(),
 			Quantiles:  in.Quantiles,
 			Percentage: in.Percentage,
-			Host:       in.Host,
-			Path:       in.Path,
-			Resolution: time.Duration(in.ResolutionSeconds) * time.Second,
+			Host:       in.host(),
+			Path:       in.path(),
+			GroupBy:    groupBy,
+			Resolution: time.Duration(in.resolutionSeconds()) * time.Second,
 		}
-		var err error
 		if q.Start, err = core.ParseTime("startTime", in.StartTime); err != nil {
 			return nil, getMetricsResult{}, err
 		}
@@ -89,11 +169,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				quantileFan = fan
 			}
 		}
-		if err := checkFanOut(len(in.Resource), len(in.MetricTypes), quantileFan); err != nil {
+		if err := checkFanOut(len(resources), len(in.MetricTypes), quantileFan); err != nil {
 			return nil, getMetricsResult{}, err
 		}
 		var all []MetricSeries
-		for _, id := range in.Resource {
+		for _, id := range resources {
 			for _, metric := range in.MetricTypes {
 				q.App, q.Metric = id, metric
 				// MetricsWithQuantiles fans http_latency out over q.Quantiles (the
@@ -119,14 +199,25 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 // KeyValue-scoped sibling of getMetricsArgs. One resource per call (a
 // datastore metric always names exactly one instance, mirroring the
 // list_postgres_instances/get_postgres_instance MCP shape rather than
-// get_metrics' multi-resource array).
+// get_metrics' multi-resource array). resourceId/resolution aliases match
+// get_metrics for consistency (w2/m91); this tool remains a bex Extension.
 type getDatastoreMetricsArgs struct {
-	Resource          string   `json:"resource" jsonschema:"the Database, KeyValue, or service id (dpg-…/red-…/srv-…) — the CR name, not the display name"`
+	ResourceID        string   `json:"resourceId,omitempty" jsonschema:"the Database, KeyValue, or service id (dpg-…/red-…/srv-…) — Render-shaped alias of resource"`
+	Resource          string   `json:"resource,omitempty" jsonschema:"legacy spelling of resourceId — the CR name, not the display name; ignored when resourceId is also set"`
 	Kind              string   `json:"kind,omitempty" jsonschema:"database|keyvalue|service (default database); service reads the disk attached to a service (ADR082)"`
 	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database, KeyValue, or a service with an attached disk) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22) | kv_memory|kv_connections (KeyValue only)"`
 	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window"`
 	EndTime           string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window"`
-	ResolutionSeconds int64    `json:"resolutionSeconds,omitempty" jsonschema:"step in seconds"`
+	Resolution        *int64   `json:"resolution,omitempty" jsonschema:"step in seconds — Render-shaped alias of resolutionSeconds"`
+	ResolutionSeconds *int64   `json:"resolutionSeconds,omitempty" jsonschema:"legacy bex alias of resolution; ignored when resolution is also set"`
+}
+
+func (a getDatastoreMetricsArgs) resource() (string, error) {
+	return mcputil.RequireAliasString(a.ResourceID, a.Resource, "resourceId", "resource")
+}
+
+func (a getDatastoreMetricsArgs) resolutionSeconds() int64 {
+	return mcputil.PreferPtrOrZero(a.Resolution, a.ResolutionSeconds)
 }
 
 // RegisterDatastoreMetricsMCP adds the get_datastore_metrics tool — split from
@@ -137,16 +228,19 @@ func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 		Name:        "get_datastore_metrics",
 		Description: "Get disk usage, active-connections, replication-lag (Postgres), and memory/connections (Key Value) metrics for one managed Postgres or Key Value instance — or, with kind=service, the used/capacity bytes of the persistent disk attached to a service (ADR082) — as Render-shaped time-series. bex extension (no Render equivalent).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDatastoreMetricsArgs) (*mcp.CallToolResult, getMetricsResult, error) {
+		resource, err := in.resource()
+		if err != nil {
+			return nil, getMetricsResult{}, err
+		}
 		kind := in.Kind
 		if kind == "" {
 			kind = DatastoreDatabase
 		}
 		q := DatastoreMetricQuery{
 			Kind:       kind,
-			Resource:   in.Resource,
-			Resolution: time.Duration(in.ResolutionSeconds) * time.Second,
+			Resource:   resource,
+			Resolution: time.Duration(in.resolutionSeconds()) * time.Second,
 		}
-		var err error
 		if q.Start, err = core.ParseTime("startTime", in.StartTime); err != nil {
 			return nil, getMetricsResult{}, err
 		}
