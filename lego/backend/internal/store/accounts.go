@@ -104,7 +104,7 @@ func accountDispositionWithoutMachines(ctx context.Context, q interface {
 			return nil, err
 		}
 		switch {
-		// ADR087 §4: a sole-member OPS workspace must never ride the account-
+		// ADR088 §4: a sole-member OPS workspace must never ride the account-
 		// deletion cascade into teardown — that would lock every operator out
 		// of the observability UI. Classify it blocked (the request refuses up
 		// front, like a shared workspace with no other admin) instead of delete.

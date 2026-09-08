@@ -398,7 +398,7 @@ type Deps struct {
 	// Enterprise workspace tier. Nil keeps that tier unavailable by default.
 	EnterpriseEntitlement workspaces.EnterpriseEntitlement
 	// OpsWorkspaceID pins the platform ops workspace (BEX_OPS_WORKSPACE,
-	// docs/ADR087-platform-observability-ui.md §4): the workspaces service
+	// docs/ADR088-platform-observability-ui.md §4): the workspaces service
 	// refuses to delete it (its membership is the observability-UI operator
 	// ACL). Empty (unset) => no pin, byte-identical behavior.
 	OpsWorkspaceID string

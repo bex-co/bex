@@ -6,7 +6,7 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$script_dir/.."
 
 # Install the out-of-band Secrets for the platform observability UI
-# (docs/ADR087-platform-observability-ui.md, w5/m86):
+# (docs/ADR088-platform-observability-ui.md, w5/m86):
 #
 #   bex-system/bex-ops        BEX_OPS_WORKSPACE + BEX_OPS_ROLE_TOKEN — bex-api's
 #                             ops-role verb + workspace guards

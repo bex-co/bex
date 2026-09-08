@@ -238,7 +238,7 @@ func main() {
 	deps.AccountOAuth = oryAccountCleaner
 	deps.AccountKratos = oryAccountCleaner
 	authzChecker := wireAuthz(base, cfg)
-	// Ops-workspace pin (docs/ADR087-platform-observability-ui.md §4): the id
+	// Ops-workspace pin (docs/ADR088-platform-observability-ui.md §4): the id
 	// arms the delete guard (workspaces service, via Deps) and the store-level
 	// guards (invite seat-cap exemption + account-deletion disposition, set on
 	// st below); the internal ops-role verb needs the bearer too and is nil —
@@ -271,7 +271,7 @@ func main() {
 		defer pool.Close()
 
 		st = store.NewPGStore(pool)
-		// ADR087 §4 store-level guards: invite redemption into the pinned ops
+		// ADR088 §4 store-level guards: invite redemption into the pinned ops
 		// workspace skips seat/plan gating, and account-deletion disposition
 		// classifies a sole-member ops workspace blocked instead of delete.
 		st.OpsWorkspaceID = cfg.OpsWorkspace
@@ -316,7 +316,7 @@ func main() {
 
 		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, ghClient, deps.Secrets, opsRole, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
-		// ADR087 §4: without the control plane there is no :8091 mux to share,
+		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
 		// listener (local dev / e2e without BEX_CP_DB_URI). Production always
 		// runs the control plane and takes the branch above.
@@ -829,7 +829,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			grace := cfg.StripeGracePeriod
 			reconcileEvery := cfg.StripeReconcileInterval
 			lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: stripeClient.ExpectedLivemode()}
-			// ADR087 §4: dunning must never suspend the pinned ops workspace.
+			// ADR088 §4: dunning must never suspend the pinned ops workspace.
 			enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS, OpsWorkspaceID: cfg.OpsWorkspace}
 			stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
 			stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics, ExpectedLivemode: stripeClient.ExpectedLivemode()}
@@ -892,7 +892,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			})
 		}
 	}
-	// ADR087 §4: the ops-role verb mounts ONLY here, on the cluster-internal
+	// ADR088 §4: the ops-role verb mounts ONLY here, on the cluster-internal
 	// listener — never the public :8090 mux (api.bex.co routes the whole `/`
 	// prefix straight to :8090, which would leave the static bearer as the
 	// route's only protection). Register is a no-op unless BEX_OPS_WORKSPACE
@@ -917,7 +917,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	}()
 }
 
-// opsRoleHandler builds the ADR087 §4 ops-role verb when BOTH
+// opsRoleHandler builds the ADR088 §4 ops-role verb when BOTH
 // BEX_OPS_WORKSPACE and BEX_OPS_ROLE_TOKEN are configured; nil otherwise, so
 // the route is never mounted and answers the internal mux's normal 404. The
 // verb reads roles from OpenFGA and identity traits from the same Kratos admin
@@ -937,7 +937,7 @@ func opsRoleHandler(cfg *Config, authzChecker core.Checker, identities workspace
 	return h
 }
 
-// startOpsRoleServer starts the cluster-internal listener with ONLY the ADR087
+// startOpsRoleServer starts the cluster-internal listener with ONLY the ADR088
 // ops-role verb mounted — the control-plane-less shape (local dev / e2e
 // without BEX_CP_DB_URI). With the control plane on, the verb instead shares
 // the :8091 mux (startControlPlaneServer); either way it never touches the

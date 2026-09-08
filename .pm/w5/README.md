@@ -15,7 +15,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m86** — Platform observability UI: Grafana at obs.bex.co (10 tasks) ← from [docs/ADR087-platform-observability-ui.md](../../docs/ADR087-platform-observability-ui.md) (accepted 2026-09-07, platform-monitoring discussion: GitOps Grafana in `monitoring`, `obs.bex.co`, Hydra OIDC client, ops-workspace consent gate)
+- [ ] **m86** — Platform observability UI: Grafana at obs.bex.co (10 tasks) ← from [docs/ADR088-platform-observability-ui.md](../../docs/ADR088-platform-observability-ui.md) (accepted 2026-09-07, platform-monitoring discussion: GitOps Grafana in `monitoring`, `obs.bex.co`, Hydra OIDC client, ops-workspace consent gate)
 
 - [x] **m85** — Crash-safe agent-session dispatch (6 tasks) — **DONE 2026-09-06**, moved to `done/m85/`; durable acceptance, turn guards, restart/rolling-upgrade recovery and retryable orphan cleanup verified with real-Postgres and sandbox race tests.
 

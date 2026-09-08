@@ -79,7 +79,7 @@ patches:
         value: $values/deploy/gitops/overlays/prod/values/openbao.values.yaml
   # Grafana: layer the prod values file — public obs.bex.co ingress
   # (letsencrypt-prod) + Hydra generic-OAuth SSO with strict ops_role mapping
-  # (docs/ADR087-platform-observability-ui.md). Same shape as hydra above.
+  # (docs/ADR088-platform-observability-ui.md). Same shape as hydra above.
   - target:
       group: argoproj.io
       version: v1alpha1

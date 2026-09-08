@@ -1,9 +1,9 @@
 # Production Grafana: the public observability portal at obs.bex.co plus SSO
-# against the platform Hydra issuer (docs/ADR087-platform-observability-ui.md).
+# against the platform Hydra issuer (docs/ADR088-platform-observability-ui.md).
 # Layered over base/values/grafana.values.yaml by the Application patch in
 # ../kustomization.yaml — later valueFiles win. The hostname is role-named like
 # every platform host (api./auth./oauth./dashboard.bex.co, never the tool name,
-# and never under tenant-cookie-scoped onbex.co — ADR087 §2).
+# and never under tenant-cookie-scoped onbex.co — ADR088 §2).
 
 # Same public-edge shape as oauth.bex.co (base/values/hydra.values.yaml):
 # Traefik ingress + cert-manager letsencrypt-prod issuance.
@@ -22,7 +22,7 @@ ingress:
         - obs.bex.co
 
 # The confidential client secret for Hydra client `bex-obs` (registered
-# idempotently by scripts/auth-bootstrap-client.sh, ADR087 §3) is delivered
+# idempotently by scripts/auth-bootstrap-client.sh, ADR088 §3) is delivered
 # OUT-OF-BAND: Secret `grafana-oauth` (key `client-secret`) in `monitoring`,
 # SealedSecret custody per docs/ADR016-sealed-secrets.md — never a value in
 # git. GF_* env beats grafana.ini, the chart's idiom for exactly this.
@@ -49,7 +49,7 @@ grafana.ini:
     # single click; the form's user/password half is break-glass-only because
     # no other local account can exist (users.allow_sign_up=false in base).
     disable_login_form: false
-    # ADR087 §4: short sessions so an ops-workspace role change or removal
+    # ADR088 §4: short sessions so an ops-workspace role change or removal
     # takes effect at the next login (plus the 1h consent remember window),
     # never days into a stale session.
     login_maximum_lifetime_duration: 24h
@@ -59,7 +59,7 @@ grafana.ini:
     name: bex
     client_id: bex-obs
     # Identity-only scopes — no bex-api audience, so a Grafana token carries
-    # zero product-API authority (ADR087 §3). Deliberately no offline_access:
+    # zero product-API authority (ADR088 §3). Deliberately no offline_access:
     # when the short Hydra access token lapses, Grafana re-runs the code flow,
     # which rides the trusted headless consent path invisibly for a live
     # dashboard session — and re-evaluates the ops-workspace gate each time,
@@ -73,12 +73,12 @@ grafana.ini:
     use_pkce: true
     # Auto-create the Grafana org user on first login: admission is gated
     # UPSTREAM at consent (only ops-workspace members ever receive a code,
-    # ADR087 §4), so an authenticated operator must not hit a second door.
+    # ADR088 §4), so an authenticated operator must not hit a second door.
     allow_sign_up: true
     email_attribute_path: email
     name_attribute_path: name
     # Role mapping is defense in depth BEHIND the server-side consent gate,
-    # not the gate itself (ADR087 §4): the consent acceptor stamps the
+    # not the gate itself (ADR088 §4): the consent acceptor stamps the
     # `ops_role` claim with the Grafana role (GrafanaAdmin|Editor|Viewer)
     # resolved from the ops workspace. strict means an id_token WITHOUT
     # ops_role cannot log in even if somehow minted.

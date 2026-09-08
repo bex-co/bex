@@ -106,7 +106,7 @@ type Service struct {
 	// the earliest-admin-email fallback alone.
 	KeyOwners KeyOwnerReader
 	// OpsWorkspaceID pins the platform ops workspace (BEX_OPS_WORKSPACE,
-	// docs/ADR087-platform-observability-ui.md §4), whose membership is the
+	// docs/ADR088-platform-observability-ui.md §4), whose membership is the
 	// observability-UI ACL: Delete — the public verb AND the account-deletion
 	// teardown path — refuses it with core.CodeOpsWorkspaceProtected, because
 	// destroying it would lock every operator out at once. Empty (unset) leaves
@@ -1156,7 +1156,7 @@ func (a AccountTeardown) Delete(ctx context.Context, id string) error {
 }
 
 func (s *Service) deleteWorkspace(ctx context.Context, id string) error {
-	// ADR087 §4: the pinned ops workspace's membership is the observability-UI
+	// ADR088 §4: the pinned ops workspace's membership is the observability-UI
 	// ACL, so its teardown is refused outright — on the public Delete verb AND
 	// on account-deletion's teardown (whose disposition should already have
 	// classified the workspace blocked; this is the backstop for a deletion

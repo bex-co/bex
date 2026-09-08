@@ -340,7 +340,7 @@ func TestLoadConfigVerifiedInviteEmail(t *testing.T) {
 	}
 }
 
-// TestLoadConfigOpsWorkspacePin covers the ADR087 §4 pin: both vars set arms
+// TestLoadConfigOpsWorkspacePin covers the ADR088 §4 pin: both vars set arms
 // the verb (and, without a control plane, still parses the internal listener
 // address); exactly one set warns loudly and stays disabled; stdio mode never
 // serves. Both-unset defaults ride TestLoadConfigDefaults' zero-warning gate.

@@ -292,7 +292,7 @@ spec:
           port: 8091
 
 ---
-# allow-dashboard-consent-to-cp-api (w5/m86, docs/ADR087-platform-observability-ui.md §4):
+# allow-dashboard-consent-to-cp-api (w5/m86, docs/ADR088-platform-observability-ui.md §4):
 # the dashboard's consent acceptor resolves an ops-gated OIDC client's subject
 # role via bex-api's cluster-internal ops-role verb (:8091, GET
 # /internal/ops-role) before any accept. allow-dashboard-ssr-to-bex-api above
@@ -433,7 +433,7 @@ spec:
 ---
 # The observability portal is the ONLY monitoring pod the edge may reach:
 # obs.bex.co (prod overlay) terminates at Traefik, which forwards to the
-# Grafana pod on :3000 (docs/ADR087-platform-observability-ui.md). Additive to
+# Grafana pod on :3000 (docs/ADR088-platform-observability-ui.md). Additive to
 # deny-tenant-ingress above, and the same shape as auth's
 # allow-auth-public-edge. Prometheus and Loki stay unreachable from the edge:
 # no Ingress routes to them AND this allow matches only the Grafana pod, so a
