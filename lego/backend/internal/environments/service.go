@@ -509,6 +509,10 @@ func (s *Service) Create(ctx context.Context, projectID, name string) (Environme
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
+	name, err := validateEnvironmentName(name)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
 	e, err := s.create(ctx, projectID, name)
 	if err != nil {
 		return EnvironmentView{}, err
@@ -620,6 +624,10 @@ func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView,
 		return EnvironmentView{}, err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	name, err = validateEnvironmentName(name)
 	if err != nil {
 		return EnvironmentView{}, err
 	}

@@ -352,6 +352,10 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 	if s.Store == nil {
 		return ProjectView{}, ErrProjectsUnavailable
 	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ProjectView{}, core.ErrBadRequest
+	}
 	for i := range environments {
 		e := &environments[i]
 		e.Name = strings.TrimSpace(e.Name)
@@ -443,6 +447,10 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
 		return ProjectView{}, err
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ProjectView{}, core.ErrBadRequest
 	}
 	if err := s.Store.RenameProject(ctx, id, name); err != nil {
 		return ProjectView{}, store.MapError(err)
