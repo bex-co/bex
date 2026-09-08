@@ -163,6 +163,9 @@
     "cron_job_run_started",
     "deploy_ended",
     "deploy_started",
+    "disk_created",
+    "disk_deleted",
+    "disk_updated",
     "image_pull_failed",
     "instance_count_changed",
     "job_run_ended",
@@ -199,9 +202,6 @@
     "instance_type_changed": "plan_changed"
   },
   "antiGoalUnsupported": [
-    "disk_created",
-    "disk_deleted",
-    "disk_updated",
     "edge_cache_disabled",
     "edge_cache_enabled",
     "edge_cache_purged",

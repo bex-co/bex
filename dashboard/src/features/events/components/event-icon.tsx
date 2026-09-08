@@ -81,12 +81,12 @@ export function EventIcon({
   // A project/environment reassignment (w6/m134): the service entered a
   // different grouping folder.
   if (type === "service_moved") return <FolderInput {...iconProps} />;
-  // The persistent-disk lifecycle (ADR082): attach/update share the drive glyph,
-  // detach unplugs it, restore is a point-in-time rewind.
-  if (type === "disk_attached" || type === "disk_updated") {
+  // The persistent-disk lifecycle (ADR082; w8/m34 Render spellings):
+  // create/update share the drive glyph, delete unplugs it, restore rewinds.
+  if (type === "disk_created" || type === "disk_updated") {
     return <HardDrive {...iconProps} />;
   }
-  if (type === "disk_detached") return <Unplug {...iconProps} />;
+  if (type === "disk_deleted") return <Unplug {...iconProps} />;
   if (type === "disk_restored") return <History {...iconProps} />;
   if (
     type === "instance_count_changed" ||

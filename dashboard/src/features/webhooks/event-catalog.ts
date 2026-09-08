@@ -34,6 +34,7 @@ const GROUPS: Record<string, string[]> = {
     "branch_changed",
   ],
   maintenanceMode: ["maintenance_mode_enabled", "maintenance_mode_uri_updated"],
+  disk: ["disk_created", "disk_updated", "disk_deleted"],
   postgres: [
     "postgres_created",
     "postgres_restarted",

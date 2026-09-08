@@ -458,6 +458,10 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Maintenance Mode",
     description: "Event-picker group — maintenance mode events",
   },
+  "webhooks.group.disk": {
+    message: "Disk",
+    description: "Event-picker group — persistent disk events",
+  },
   "webhooks.group.postgres": {
     message: "Postgres",
     description: "Event-picker group — managed Postgres events",
@@ -554,6 +558,18 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.maintenance_mode_uri_updated": {
     message: "Maintenance Mode URI Updated",
     description: "Event label — maintenance_mode_uri_updated",
+  },
+  "webhooks.event.disk_created": {
+    message: "Disk Created",
+    description: "Event label — disk_created",
+  },
+  "webhooks.event.disk_updated": {
+    message: "Disk Updated",
+    description: "Event label — disk_updated",
+  },
+  "webhooks.event.disk_deleted": {
+    message: "Disk Deleted",
+    description: "Event label — disk_deleted",
   },
   "webhooks.event.postgres_created": {
     message: "Postgres Created",

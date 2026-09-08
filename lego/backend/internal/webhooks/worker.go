@@ -429,7 +429,7 @@ func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]
 		for _, e := range byTenant[r.TenantID] {
 			// CreatedAt guard: an endpoint never receives events from before
 			// it existed, however far back the watermark was when it appeared.
-			if r.At.Before(e.CreatedAt) || (len(e.EventTypes) > 0 && !slices.Contains(e.EventTypes, eventType)) {
+			if r.At.Before(e.CreatedAt) || (len(e.EventTypes) > 0 && !endpointSubscribes(e.EventTypes, eventType)) {
 				continue
 			}
 			if body == "" {
@@ -451,6 +451,23 @@ func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]
 		}
 	}
 	return batch, nil
+}
+
+// endpointSubscribes reports whether a stored eventFilter wants eventType.
+// Migration 0106 rewrites disk_attached/disk_detached to Render's names; the
+// legacy aliases remain matched here so a row that has not yet been rewritten
+// (or a test fixture that inserts the old spelling) still receives renamed
+// events rather than going silently orphaned.
+func endpointSubscribes(types []string, eventType string) bool {
+	if slices.Contains(types, eventType) {
+		return true
+	}
+	for legacy, canonical := range legacyEventTypeAliases {
+		if canonical == eventType && slices.Contains(types, legacy) {
+			return true
+		}
+	}
+	return false
 }
 
 // project maps one composed feed row onto the webhook vocabulary. The event

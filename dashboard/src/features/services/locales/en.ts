@@ -3737,17 +3737,17 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Custom domain verified",
     description: "Service activity type: custom domain ownership verified",
   },
-  "services.eventsTypeDiskAttached": {
-    message: "Disk attached",
-    description: "Service activity type: persistent disk attached",
+  "services.eventsTypeDiskCreated": {
+    message: "Disk created",
+    description: "Service activity type: persistent disk created",
   },
   "services.eventsTypeDiskUpdated": {
     message: "Disk updated",
     description: "Service activity type: persistent disk updated",
   },
-  "services.eventsTypeDiskDetached": {
-    message: "Disk detached",
-    description: "Service activity type: persistent disk detached",
+  "services.eventsTypeDiskDeleted": {
+    message: "Disk deleted",
+    description: "Service activity type: persistent disk deleted",
   },
   "services.eventsTypeDiskRestored": {
     message: "Disk restored",
