@@ -405,6 +405,36 @@ spec:
               kubernetes.io/metadata.name: secrets
 
 ---
+# allow-monitoring-openbao-metrics (ADR088 §6 live diagnosis, 2026-09-08): the
+# openbao scrape job reads the per-pod seal gauge on :8200, but the default-deny
+# above admits only bex-system and secrets itself — Prometheus timed out at the
+# network layer, so vault_core_unsealed never ingested and OpenBaoSealed
+# evaluated an empty vector (the SECOND independent way that critical alert was
+# dead; the first was the missing namespace label, fixed the same day). Scoped
+# to the OpenBao server pods on the one metrics-bearing port, mirroring
+# allow-monitoring-auth-db-metrics.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-openbao-metrics
+  namespace: secrets
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: openbao
+      component: server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8200
+
+---
 # monitoring: Prometheus
 # Allowed: monitoring itself (internal Alertmanager / Grafana),
 #   bex-system (bex-api queries Prometheus for request + resource metrics via BEX_PROM_URL).
