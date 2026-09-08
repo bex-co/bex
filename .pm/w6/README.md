@@ -20,7 +20,7 @@ Materialized from the mobile source review at `e609e9322` and the user's `$pm` h
 1. [071 — Fix mobile GraphQL token-refresh recovery](071.md) (45m inbox note).
 2. [m139 — Complete mobile access-change recovery](done/m139/README.md) (3h implementation; 8 tasks including closing work).
 3. [m140 — Repair notification workspace and launch handling](done/m140/README.md) (3h implementation; 8 tasks including closing work; consumes m139's recovery/boundary contract).
-4. [m141 — Consume server resource-action decisions in mobile](m141/README.md) (2h15m implementation; 7 tasks including closing work; promoted from 070, consumes m139's dispatch gate).
+4. [m141 — Consume server resource-action decisions in mobile](done/m141/README.md) (2h15m implementation; 7 tasks including closing work; promoted from 070, consumes m139's dispatch gate).
 5. [072 — Refresh mobile session details opened directly](072.md) (45m inbox note; follows m139's recovery/boundary work).
 
 Existing physical-device qualification remains in `w11/002` and `w11/m5`/`m6`/`m8`; live transcript attach remains in `w11/m7`. The review passed mobile typecheck and 330 unit tests and reproduced the auth-retry and retained-inbox defects with isolated synthetic probes; it did not establish physical-device behavior. These entries schedule implementation, not completed fixes or a release.
@@ -29,7 +29,7 @@ Existing physical-device qualification remains in `w11/002` and `w11/m5`/`m6`/`m
 
 - [x] **m139** — Complete mobile access-change recovery (8 tasks) ← mobile review proposal 2, user handoff to w6 on 2026-09-07; targeted freshness/recovery/invalidation follow-up to m138
 - [x] **m140** — Repair notification workspace and launch handling (8 tasks) ← mobile review proposal 3, user handoff to w6 on 2026-09-07; follows w11/m5 implementation + m137 and consumes m139
-- [ ] **m141** — Consume server resource-action decisions in mobile (7 tasks) ← promoted from `w6/070`, mobile review proposal 4; consumes m136 projections and m139 dispatch gating
+- [x] **m141** — Consume server resource-action decisions in mobile (7 tasks) ← promoted from `w6/070`, mobile review proposal 4; consumes m136 projections and m139 dispatch gating
 
 - [x] **m1** — Workspace model & lifecycle verbs: create · rename · delete · plan limits (10 tasks) ← from RESEARCH-workspaces.md — done 2026-07-09 (backend shipped `b06e301`, verified vs real Postgres + OpenFGA), moved to `done/m1/`
 - [x] **m2** — Render `owners` read API + MCP workspace tools (9 tasks) ← from RESEARCH-workspaces.md, needs m1; supersedes w2/002 — done, moved to `done/m2/`

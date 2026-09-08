@@ -35,6 +35,13 @@ export type MobileActionOption = {
   definition: SafeActionDefinition;
   target: SafeActionTarget;
   label: string;
+  /**
+   * Already-localized reason a PERMITTED action cannot run right now (the
+   * server projection's blocking precondition). The option renders disabled
+   * with this explanation instead of being absent. Denied actions stay
+   * absent — never disabled-with-reason.
+   */
+  disabledReason?: string;
   run: (
     serverConfirmation?: string,
     retryIdentity?: string,
@@ -105,6 +112,7 @@ export function SafeActionPanel({
   });
 
   function request(option: MobileActionOption) {
+    if (option.disabledReason !== undefined) return;
     if (!access.isCurrent(access.key, option.definition.id)) return;
     binding.current = access.key;
     sequence.current += 1;
@@ -217,18 +225,32 @@ export function SafeActionPanel({
       <View style={styles.buttons}>
         {options.length ? (
           options.map((option) => (
-            <Button
-              key={option.key}
-              type="outline"
-              style={styles.button}
-              disabled={
-                pending || !access.isCurrent(access.key, option.definition.id)
-              }
-              accessibilityLabel={option.label}
-              onPress={() => request(option)}
-            >
-              {option.label}
-            </Button>
+            <View key={option.key} style={styles.button}>
+              <Button
+                type="outline"
+                disabled={
+                  pending ||
+                  option.disabledReason !== undefined ||
+                  !access.isCurrent(access.key, option.definition.id)
+                }
+                accessibilityLabel={
+                  option.disabledReason
+                    ? `${option.label}. ${option.disabledReason}`
+                    : option.label
+                }
+                onPress={() => request(option)}
+              >
+                {option.label}
+              </Button>
+              {option.disabledReason ? (
+                <Text
+                  accessibilityRole="alert"
+                  style={{ color: theme.mutedForeground }}
+                >
+                  {option.disabledReason}
+                </Text>
+              ) : null}
+            </View>
           ))
         ) : (
           <Text style={{ color: theme.mutedForeground }}>

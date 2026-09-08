@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import {
   KeyValueLifecycleController,
-  keyValueLifecycleCapabilities,
+  type KeyValueLifecycleDecision,
   type KeyValueLifecycleResource,
 } from "../lifecycle";
 
@@ -16,19 +16,125 @@ const keyValue = (
   ...patch,
 });
 
+const ready = (
+  patch: Partial<KeyValueLifecycleDecision> = {},
+): KeyValueLifecycleDecision => ({
+  outcome: "allowed",
+  precondition: "",
+  ...patch,
+});
+
 describe("Key Value mobile lifecycle domain", () => {
-  it("maps every state to the exact server-backed capability set", () => {
-    for (const status of ["available", "unavailable"]) {
-      expect(keyValueLifecycleCapabilities(keyValue({ status }))).toEqual([
-        { action: "suspend", requiresConfirmation: true },
-      ]);
-    }
+  it("gates every verb on the server decision, not store state", async () => {
+    const controller = new KeyValueLifecycleController({
+      mutate: {
+        suspend: async () => undefined,
+        resume: async () => undefined,
+      },
+      refresh: async () => keyValue({ suspended: "suspended" }),
+      wait: async () => undefined,
+      maxPolls: 1,
+    });
+    // A ready decision runs regardless of the local status/suspended
+    // predicates the projection replaced — even a transitional status no
+    // longer blocks.
     expect(
-      keyValueLifecycleCapabilities(keyValue({ suspended: "suspended" })),
-    ).toEqual([{ action: "resume", requiresConfirmation: false }]);
-    for (const status of ["creating", "deleting", "unknown", ""]) {
-      expect(keyValueLifecycleCapabilities(keyValue({ status }))).toEqual([]);
+      await controller.run({
+        action: "suspend",
+        resource: keyValue({ status: "creating" }),
+        confirmed: true,
+        decision: ready(),
+      }),
+    ).toEqual({
+      status: "success",
+      resource: keyValue({ suspended: "suspended" }),
+    });
+    // No row for this action means the verb does not exist for this resource.
+    expect(
+      await controller.run({
+        action: "resume",
+        resource: keyValue(),
+        confirmed: true,
+        decision: null,
+      }),
+    ).toEqual({ status: "not_allowed", reason: "type" });
+    // Denied, unavailable, and blocked decisions never send.
+    for (const decision of [
+      ready({ outcome: "denied" }),
+      ready({ outcome: "unavailable" }),
+      ready({ precondition: "billing_blocked" }),
+      ready({ precondition: "suspended" }),
+      ready({ precondition: "unavailable" }),
+    ]) {
+      expect(
+        await controller.run({
+          action: "resume",
+          resource: keyValue(),
+          confirmed: true,
+          decision,
+        }),
+      ).toEqual({ status: "not_allowed", reason: "state" });
     }
+  });
+
+  it("still suspends through the protected-environment phrase round trip", async () => {
+    const controller = new KeyValueLifecycleController({
+      mutate: {
+        suspend: async () => {
+          throw new Error(
+            'protected environment: retry with confirm="sudo suspend keyvalue cache"',
+          );
+        },
+        resume: async () => undefined,
+      },
+      refresh: async () => keyValue(),
+    });
+    expect(
+      await controller.run({
+        action: "suspend",
+        resource: keyValue(),
+        confirmed: true,
+        decision: ready({ precondition: "protected_confirmation_required" }),
+      }),
+    ).toEqual({
+      status: "confirmation_required",
+      source: "server",
+      confirmation: "sudo suspend keyvalue cache",
+    });
+  });
+
+  it("requires device confirmation for suspend only", async () => {
+    let current = keyValue();
+    const controller = new KeyValueLifecycleController({
+      mutate: {
+        suspend: async () => undefined,
+        resume: async () => undefined,
+      },
+      refresh: async () => current,
+      wait: async () => undefined,
+      maxPolls: 1,
+    });
+    expect(
+      await controller.run({
+        action: "suspend",
+        resource: current,
+        confirmed: false,
+        decision: ready(),
+      }),
+    ).toEqual({ status: "confirmation_required", source: "device" });
+    // Resume needs no device confirmation: unconfirmed proceeds to send
+    // (here it times out waiting for convergence instead of asking).
+    current = keyValue({ suspended: "suspended" });
+    expect(
+      (
+        await controller.run({
+          action: "resume",
+          resource: current,
+          confirmed: false,
+          decision: ready(),
+        })
+      ).status,
+    ).toBe("timeout");
   });
 
   it("does not claim success until a refresh observes the requested state", async () => {
@@ -48,6 +154,7 @@ describe("Key Value mobile lifecycle domain", () => {
           action: "suspend",
           resource: current,
           confirmed: true,
+          decision: ready(),
         })
       ).status,
     ).toBe("timeout");

@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import {
   ServiceLifecycleController,
-  serviceLifecycleCapabilities,
+  type ServiceLifecycleDecision,
   type ServiceLifecycleResource,
 } from "../lifecycle";
 
@@ -20,24 +20,91 @@ const service = (
   ...patch,
 });
 
+const ready = (
+  patch: Partial<ServiceLifecycleDecision> = {},
+): ServiceLifecycleDecision => ({
+  outcome: "allowed",
+  precondition: "",
+  ...patch,
+});
+
 describe("service lifecycle domain", () => {
-  it("offers only confirmed disruptive verbs for stable supported types", () => {
-    expect(serviceLifecycleCapabilities(service())).toEqual([
-      { action: "suspend", requiresConfirmation: true },
-      { action: "restart", requiresConfirmation: true },
-    ]);
+  it("gates every verb on the server decision, not service state", async () => {
+    const controller = new ServiceLifecycleController({
+      mutate: {
+        suspend: async () => undefined,
+        resume: async () => undefined,
+        restart: async () => ({ operationId: "dep-new" }),
+      },
+      refresh: async () => service({ suspended: "suspended" }),
+      wait: async () => undefined,
+      maxPolls: 1,
+    });
+    // A ready decision runs regardless of the local phase/type predicates the
+    // projection replaced — even a transitional phase no longer blocks.
     expect(
-      serviceLifecycleCapabilities(service({ suspended: "suspended" })),
-    ).toEqual([{ action: "resume", requiresConfirmation: false }]);
+      await controller.run({
+        action: "suspend",
+        resource: service({ phase: "Pending" }),
+        confirmed: true,
+        decision: ready(),
+      }),
+    ).toEqual({
+      status: "success",
+      resource: service({ suspended: "suspended" }),
+    });
+    // No row for this action means the verb does not exist for this resource.
+    expect(
+      await controller.run({
+        action: "resume",
+        resource: service(),
+        confirmed: true,
+        decision: null,
+      }),
+    ).toEqual({ status: "not_allowed", reason: "type" });
+    // Denied, unavailable, and blocked decisions never send.
+    for (const decision of [
+      ready({ outcome: "denied" }),
+      ready({ outcome: "unavailable" }),
+      ready({ precondition: "billing_blocked" }),
+      ready({ precondition: "suspended" }),
+    ]) {
+      expect(
+        await controller.run({
+          action: "resume",
+          resource: service(),
+          confirmed: true,
+          decision,
+        }),
+      ).toEqual({ status: "not_allowed", reason: "state" });
+    }
   });
 
-  it("offers nothing for unknown types or transitional states", () => {
-    for (const phase of ["Pending", "Building", "Deploying", "Deleting", ""]) {
-      expect(serviceLifecycleCapabilities(service({ phase }))).toEqual([]);
-    }
+  it("still suspends through the protected-environment phrase round trip", async () => {
+    const controller = new ServiceLifecycleController({
+      mutate: {
+        suspend: async () => {
+          throw new Error(
+            'protected environment: retry with confirm="sudo suspend service api"',
+          );
+        },
+        resume: async () => undefined,
+        restart: async () => undefined,
+      },
+      refresh: async () => service(),
+    });
     expect(
-      serviceLifecycleCapabilities(service({ type: "future_type" })),
-    ).toEqual([]);
+      await controller.run({
+        action: "suspend",
+        resource: service(),
+        confirmed: true,
+        decision: ready({ precondition: "protected_confirmation_required" }),
+      }),
+    ).toEqual({
+      status: "confirmation_required",
+      source: "server",
+      confirmation: "sudo suspend service api",
+    });
   });
 
   it("requires device confirmation, disables duplicate execution, and polls truth", async () => {
@@ -61,12 +128,14 @@ describe("service lifecycle domain", () => {
         action: "suspend",
         resource: current,
         confirmed: false,
+        decision: ready(),
       }),
     ).toEqual({ status: "confirmation_required", source: "device" });
     const first = controller.run({
       action: "suspend",
       resource: current,
       confirmed: true,
+      decision: ready(),
     });
     expect(controller.pendingAction(current.id)).toBe("suspend");
     expect(
@@ -74,6 +143,7 @@ describe("service lifecycle domain", () => {
         action: "restart",
         resource: current,
         confirmed: true,
+        decision: ready(),
       }),
     ).toEqual({ status: "busy", action: "suspend" });
     current = service({ suspended: "suspended" });
@@ -100,6 +170,7 @@ describe("service lifecycle domain", () => {
         action: "suspend",
         resource: service(),
         confirmed: true,
+        decision: ready(),
       }),
     ).toEqual({
       status: "confirmation_required",

@@ -37,11 +37,13 @@ class FakeTransport implements DeployActionTransport {
   }
 }
 
+const readyGate = { outcome: "allowed", precondition: "" } as const;
+
 const triggerRequest = (requestId: string) => ({
   requestId,
   action: "trigger" as const,
   serviceId: "srv-one",
-  serviceSuspended: false,
+  server: { ...readyGate },
 });
 
 describe("DeployActionController", () => {
@@ -72,27 +74,64 @@ describe("DeployActionController", () => {
     expect(transport.triggerCalls.length).toBe(1);
   });
 
-  it("never sends ineligible terminal cancel or rollback requests", async () => {
+  it("never sends without a ready server gate", async () => {
     const transport = new FakeTransport();
     const subject = new DeployActionController(transport);
-    const cancel = await subject.execute({
-      requestId: "confirmation-cancel",
+    const denied = await subject.execute({
+      requestId: "confirmation-denied",
+      action: "trigger",
+      serviceId: "srv-one",
+      server: { outcome: "denied", precondition: "" },
+    });
+    const blocked = await subject.execute({
+      requestId: "confirmation-blocked",
       action: "cancel",
       serviceId: "srv-one",
-      serviceSuspended: false,
+      server: { outcome: "allowed", precondition: "no_active_deploy" },
       target: { id: "dep-live", status: "live" },
     });
-    const rollback = await subject.execute({
-      requestId: "confirmation-rollback",
+    const missing = await subject.execute({
+      requestId: "confirmation-missing",
       action: "rollback",
       serviceId: "srv-one",
-      serviceSuspended: false,
-      target: { id: "dep-failed", status: "update_failed" },
+      server: null,
+      target: { id: "dep-live", status: "live" },
     });
-    expect(cancel.outcome).toBe("rejected");
-    expect(rollback.outcome).toBe("rejected");
+    expect(denied.outcome).toBe("rejected");
+    expect(blocked.outcome).toBe("rejected");
+    expect(missing.outcome).toBe("rejected");
+    expect(transport.triggerCalls.length).toBe(0);
     expect(transport.cancelCalls.length).toBe(0);
     expect(transport.rollbackCalls.length).toBe(0);
+  });
+
+  it("lets the server gate decide, not the cached target status", async () => {
+    const transport = new FakeTransport();
+    const subject = new DeployActionController(transport);
+    // A terminal-status row still sends when the projection is ready: the
+    // server rechecks at dispatch and history may simply be stale.
+    const cancel = await subject.execute({
+      requestId: "confirmation-stale-status",
+      action: "cancel",
+      serviceId: "srv-one",
+      server: { ...readyGate },
+      target: { id: "dep-live", status: "live" },
+    });
+    expect(cancel.outcome).toBe("accepted");
+    expect(transport.cancelCalls.length).toBe(1);
+  });
+
+  it("rejects a reused confirmation when the server gate changes", async () => {
+    const transport = new FakeTransport();
+    const subject = new DeployActionController(transport);
+    const first = await subject.execute(triggerRequest("confirmation-gate"));
+    expect(first.outcome).toBe("accepted");
+    const replay = await subject.execute({
+      ...triggerRequest("confirmation-gate"),
+      server: { outcome: "allowed", precondition: "billing_blocked" },
+    });
+    expect(replay.outcome).toBe("rejected");
+    expect(transport.triggerCalls.length).toBe(1);
   });
 
   it("passes only service and known target ids to each mutation", async () => {
@@ -102,14 +141,14 @@ describe("DeployActionController", () => {
       requestId: "confirmation-cancel",
       action: "cancel",
       serviceId: "srv-one",
-      serviceSuspended: false,
+      server: { ...readyGate },
       target: { id: "dep-open", status: "build_in_progress" },
     });
     await subject.execute({
       requestId: "confirmation-rollback",
       action: "rollback",
       serviceId: "srv-one",
-      serviceSuspended: false,
+      server: { ...readyGate },
       target: { id: "dep-live", status: "deactivated" },
     });
     expect(transport.cancelCalls).toEqual([["srv-one", "dep-open"]]);

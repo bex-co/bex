@@ -311,6 +311,23 @@ export const en = {
       canceled: "The pending action was canceled locally.",
     },
   },
+  resourceActions: {
+    blocked: {
+      protectedConfirmation:
+        "This protected resource needs an extra confirmation before this action can run.",
+      suspended:
+        "Unavailable while the resource is suspended. Resume it first.",
+      noActiveDeploy: "There is no active deploy to cancel right now.",
+      noActiveRun: "There is no active run to cancel right now.",
+      noEligibleRollbackTarget:
+        "No earlier deploy is eligible as a rollback target.",
+      billingBlocked:
+        "Billing needs attention before this action can run. Resolve it on the dashboard.",
+      unavailable:
+        "The server could not confirm this action right now. Try again.",
+      generic: "The server is not allowing this action right now. Try again.",
+    },
+  },
   sessions: {
     title: "Agent sessions",
     body: "Assign and supervise coding-agent work from your phone.",

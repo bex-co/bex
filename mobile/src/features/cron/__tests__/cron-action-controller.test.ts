@@ -36,11 +36,13 @@ class FakeTransport implements CronActionTransport {
   }
 }
 
+const readyGate = { outcome: "allowed", precondition: "" } as const;
+
 const runRequest = (requestId: string): CronActionRequest => ({
   requestId,
   action: "run",
   serviceId: "srv-cron",
-  serviceSuspended: false,
+  server: { ...readyGate },
 });
 
 describe("CronActionController", () => {
@@ -106,38 +108,57 @@ describe("CronActionController", () => {
     expect(transport.runCalls).toEqual(["srv-cron", "srv-cron"]);
   });
 
-  it("blocks suspended run-now and terminal cancel without sending", async () => {
+  it("blocks on the server gate without sending", async () => {
     const transport = new FakeTransport();
     const subject = new CronActionController(transport);
     const suspended = await subject.execute({
       ...runRequest("confirm-suspended"),
-      serviceSuspended: true,
+      server: { outcome: "allowed", precondition: "suspended" },
     });
-    const terminal = await subject.execute({
-      requestId: "confirm-terminal",
+    const noRun = await subject.execute({
+      requestId: "confirm-no-run",
       action: "cancel",
       serviceId: "srv-cron",
-      serviceSuspended: false,
+      server: { outcome: "allowed", precondition: "no_active_run" },
       target: cronRun("crr-done", "successful"),
     });
+    const missing = await subject.execute({
+      ...runRequest("confirm-missing"),
+      server: null,
+    });
     expect(suspended.outcome).toBe("rejected");
-    expect(terminal.outcome).toBe("rejected");
+    expect(noRun.outcome).toBe("rejected");
+    expect(missing.outcome).toBe("rejected");
     expect(transport.runCalls).toEqual([]);
     expect(transport.cancelCalls).toEqual([]);
   });
 
-  it("still permits canceling an active run after the service is suspended", async () => {
+  it("lets the server gate decide, not the cached run status", async () => {
     const transport = new FakeTransport();
-    const target = cronRun("crr-active", "running");
+    // A terminal-status row still sends when the projection is ready: history
+    // may be stale and the verb rechecks at dispatch.
     const result = await new CronActionController(transport).execute({
-      requestId: "confirm-suspended-cancel",
+      requestId: "confirm-stale-status",
       action: "cancel",
       serviceId: "srv-cron",
-      serviceSuspended: true,
-      target,
+      server: { ...readyGate },
+      target: cronRun("crr-done", "successful"),
     });
     expect(result.outcome).toBe("accepted");
-    expect(transport.cancelCalls).toEqual([["srv-cron", "crr-active"]]);
+    expect(transport.cancelCalls).toEqual([["srv-cron", "crr-done"]]);
+  });
+
+  it("rejects a reused confirmation when the server gate changes", async () => {
+    const transport = new FakeTransport();
+    const subject = new CronActionController(transport);
+    const first = await subject.execute(runRequest("confirm-gate-change"));
+    expect(first.outcome).toBe("accepted");
+    const replay = await subject.execute({
+      ...runRequest("confirm-gate-change"),
+      server: { outcome: "allowed", precondition: "billing_blocked" },
+    });
+    expect(replay.outcome).toBe("rejected");
+    expect(transport.runCalls).toEqual(["srv-cron"]);
   });
 
   it("passes only the service id and current opaque run id to cancel", async () => {
@@ -147,7 +168,7 @@ describe("CronActionController", () => {
       requestId: "confirm-cancel",
       action: "cancel",
       serviceId: "srv-cron",
-      serviceSuspended: false,
+      server: { ...readyGate },
       target,
     });
     expect(transport.cancelCalls).toEqual([["srv-cron", "crr-current"]]);
@@ -165,7 +186,7 @@ describe("CronActionController", () => {
       requestId: "confirm-cancel-one",
       action: "cancel",
       serviceId: "srv-cron",
-      serviceSuspended: false,
+      server: { ...readyGate },
       target,
     };
 
@@ -335,7 +356,7 @@ describe("CronActionController", () => {
       requestId: "confirm-cancel-phase",
       action: "cancel",
       serviceId: "srv-cron",
-      serviceSuspended: false,
+      server: { ...readyGate },
       target,
     };
     const accepted = {

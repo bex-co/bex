@@ -298,6 +298,18 @@ export const zh = {
       canceled: "待处理操作已在本地取消。",
     },
   },
+  resourceActions: {
+    blocked: {
+      protectedConfirmation: "此受保护资源需要额外确认后才能执行该操作。",
+      suspended: "资源已暂停时不可用，请先恢复。",
+      noActiveDeploy: "当前没有可取消的进行中部署。",
+      noActiveRun: "当前没有可取消的进行中任务。",
+      noEligibleRollbackTarget: "没有符合条件的历史部署可供回滚。",
+      billingBlocked: "请先处理账单问题，再执行该操作（请前往网页端）。",
+      unavailable: "服务器暂时无法确认该操作，请重试。",
+      generic: "服务器当前不允许该操作，请重试。",
+    },
+  },
   sessions: {
     title: "智能体会话",
     body: "通过手机分派和监督编码智能体的工作。",

@@ -1,4 +1,18 @@
+import type { ResourceActionDecision } from "../capabilities/resource-actions";
+
 export type DeployAction = "trigger" | "cancel" | "rollback";
+
+/**
+ * The server's per-service decision for one deploy verb (ADR087
+ * deployActions projection, normalized by toResourceSnapshot), captured at
+ * confirmation time and bound into the request fingerprint: a changed outcome
+ * or precondition cannot silently reuse an earlier confirmation. Null (no row
+ * for this exact workspace+service+action) never authorizes a send.
+ */
+export type DeployServerGate = Pick<
+  ResourceActionDecision,
+  "outcome" | "precondition"
+> | null;
 
 export type DeployTarget = {
   id: string;
@@ -9,7 +23,8 @@ type BaseDeployActionRequest = {
   /** Stable for one confirmation. Replaying it must not submit again. */
   requestId: string;
   serviceId: string;
-  serviceSuspended: boolean;
+  /** Server eligibility for this verb, read at confirmation time. */
+  server: DeployServerGate;
 };
 
 export type TriggerDeployRequest = BaseDeployActionRequest & {

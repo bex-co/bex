@@ -29,6 +29,13 @@ import {
   type MobileCronRunsQuery,
 } from "@/generated-graphql";
 import { isLifecycleSuspended } from "@/features/services/lifecycle";
+import { useServerActions } from "@/features/capabilities/api/use-resource-actions";
+import {
+  blockedReasonKey,
+  presentAction,
+  resourceDecision,
+} from "@/features/capabilities/resource-actions";
+import { useWorkspace } from "@/features/workspaces/workspace-provider";
 import {
   CronActionController,
   awaitCronActionObservation,
@@ -65,8 +72,56 @@ export const CronRunsCard = forwardRef<
   const { t, language } = useTranslations();
   const theme = useTheme().colorTheme;
   const capabilities = useCapabilities();
+  const { selected } = useWorkspace();
+  const workspaceId = selected?.id ?? null;
   const canOperate = capabilities.allows("can_operate");
   const canViewLogs = capabilities.allows("can_view_logs");
+  // Authoritative cron eligibility (serverActions): the server's suspended,
+  // billing, and active-run preconditions replace the card's local
+  // suspended/active-run presentation predicates. History still selects the
+  // concrete cancel target row.
+  const serverState = useServerActions(serviceId);
+  const serverSnapshot =
+    serverState.status === "ready" ? serverState.snapshot : null;
+  const runDecision = serverSnapshot
+    ? resourceDecision(serverSnapshot, workspaceId, serviceId, "cron_run_now")
+    : null;
+  const cancelDecision = serverSnapshot
+    ? resourceDecision(
+        serverSnapshot,
+        workspaceId,
+        serviceId,
+        "cron_cancel_run",
+      )
+    : null;
+  const cronBlockedCopy = (
+    decision: typeof runDecision,
+  ): string | undefined => {
+    const presentation = presentAction(decision);
+    return presentation.kind === "blocked"
+      ? t(blockedReasonKey(presentation.precondition))
+      : undefined;
+  };
+  // Confirm-time gate reads, mirroring the service card: the run closures
+  // below execute when the user confirms, so they re-read the CURRENT
+  // projection snapshot instead of silently reusing render-time eligibility.
+  const serverSnapshotRef = useRef(serverSnapshot);
+  serverSnapshotRef.current = serverSnapshot;
+  const workspaceIdRef = useRef(workspaceId);
+  workspaceIdRef.current = workspaceId;
+  function cronGateFor(action: "cron_run_now" | "cron_cancel_run") {
+    const snapshot = serverSnapshotRef.current;
+    if (!snapshot) return null;
+    const decision = resourceDecision(
+      snapshot,
+      workspaceIdRef.current,
+      serviceIdRef.current,
+      action,
+    );
+    return decision
+      ? { outcome: decision.outcome, precondition: decision.precondition }
+      : null;
+  }
   const [extraRuns, setExtraRuns] = useState<CronRunSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -97,8 +152,8 @@ export const CronRunsCard = forwardRef<
     () => composeCronRunPages(firstPage, extraRuns),
     [extraRuns, firstPage],
   );
-  const suspendedRef = useRef(suspended);
-  suspendedRef.current = suspended;
+  // The suspended prop now drives status display only (the notice below);
+  // run/cancel eligibility comes from the server projection.
 
   const controllerRef = useRef<CronActionController | null>(null);
   const mutationsRef = useRef({ runNow, cancelRun });
@@ -192,6 +247,8 @@ export const CronRunsCard = forwardRef<
       setRefreshRequired(false);
       setTimeoutKind(null);
       controllerRef.current?.markAuthoritativelyRefreshed(requestedService);
+      // Run history changed, so cron preconditions may have flipped.
+      void serverState.refresh().catch(() => undefined);
     } finally {
       if (
         boundaryRef.current === boundary &&
@@ -263,6 +320,7 @@ export const CronRunsCard = forwardRef<
         setRefreshRequired(false);
         setTimeoutKind(null);
         controllerRef.current?.markAuthoritativelyRefreshed(request.serviceId);
+        void serverState.refresh().catch(() => undefined);
         return { status: "success" };
       }
     } catch {
@@ -283,23 +341,38 @@ export const CronRunsCard = forwardRef<
     error: query.error,
     hasData: query.data !== undefined,
   });
-  if (!refreshRequired && historyEvidenceCurrent && serviceEvidenceCurrent) {
-    if (!isLifecycleSuspended(suspended)) {
+  // Fail closed: without the projection for this exact service, neither
+  // option can claim server eligibility.
+  if (
+    !refreshRequired &&
+    historyEvidenceCurrent &&
+    serviceEvidenceCurrent &&
+    serverSnapshot !== null
+  ) {
+    if (presentAction(runDecision).kind !== "hidden") {
       actionOptions.push({
         key: "cron:run",
         definition: runCronNow,
         target: { kind: "service", id: serviceId, label: serviceLabel },
         label: t("cron.runNow"),
+        disabledReason: cronBlockedCopy(runDecision),
         run: (_confirmation, retryIdentity) =>
           execute({
             requestId: retryIdentity!,
             action: "run",
             serviceId,
-            serviceSuspended: isLifecycleSuspended(suspendedRef.current),
+            server: cronGateFor("cron_run_now"),
           }),
       });
     }
-    if (activeRun) {
+    // Cancel names the concrete active row; the server answers only whether
+    // one exists. Blocked-without-target (no_active_run) stays absent — the
+    // empty history itself is the explanation.
+    if (
+      cancelDecision !== null &&
+      presentAction(cancelDecision).kind === "ready" &&
+      activeRun
+    ) {
       actionOptions.push({
         key: `cron:cancel:${activeRun.id}`,
         definition: cancelCronRun,
@@ -310,7 +383,7 @@ export const CronRunsCard = forwardRef<
             requestId: retryIdentity!,
             action: "cancel",
             serviceId,
-            serviceSuspended: isLifecycleSuspended(suspendedRef.current),
+            server: cronGateFor("cron_cancel_run"),
             target: activeRun,
           }),
       });
