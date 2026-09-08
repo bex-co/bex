@@ -30,7 +30,7 @@ import (
 // verb does not exist for Key Value, and the projection must not invent one
 // (an absent action means "does not exist for this type").
 func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.ActionDecision, error) {
-	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
+	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}

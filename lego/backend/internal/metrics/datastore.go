@@ -241,6 +241,9 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		if err != nil {
 			return nil, err
 		}
+		if err := core.NotFoundIfDeleting(db); err != nil {
+			return nil, err
+		}
 		namespace = db.Namespace
 		resource = db.Name
 		isHA = db.Status.HighAvailabilityEnabled
@@ -251,6 +254,9 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	case DatastoreKeyValue:
 		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanView, q.Resource)
 		if err != nil {
+			return nil, err
+		}
+		if err := core.NotFoundIfDeleting(kv); err != nil {
 			return nil, err
 		}
 		namespace = kv.Namespace

@@ -31,7 +31,7 @@ import (
 // delete are deliberately absent: neither is a mobile-scope action (ADR087),
 // and an absent action reads as "not offered here", never as permitted.
 func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.ActionDecision, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}

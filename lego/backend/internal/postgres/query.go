@@ -103,7 +103,7 @@ type queryExecutor func(context.Context, string, string, queryLimits, bool) (Que
 // in-cluster next to the databases) inside a hard read-only envelope; writes, DDL,
 // multi-statement escapes and over-long queries are rejected by Postgres itself.
 func (s *Service) Query(ctx context.Context, dbID, sql string) (QueryResult, error) {
-	db, err := s.AuthorizeDatabase(ctx, core.RelCanViewSensitive, dbID)
+	db, err := s.fetchDatabaseForRead(ctx, core.RelCanViewSensitive, dbID)
 	if err != nil {
 		return QueryResult{}, err // core.ErrNotFound for an unknown/unprovisioned db
 	}
@@ -125,7 +125,16 @@ func (s *Service) ExecuteQuery(ctx context.Context, dbID, sql string, allowWrite
 	if allowWrites {
 		relation = core.RelCanCreate
 	}
-	db, err := s.AuthorizeDatabase(ctx, relation, dbID)
+	var (
+		db  *appv1alpha1.Database
+		err error
+	)
+	if allowWrites {
+		// Writable console may still authorize a terminating CR (write carveout).
+		db, err = s.fetchDatabase(ctx, relation, dbID)
+	} else {
+		db, err = s.fetchDatabaseForRead(ctx, relation, dbID)
+	}
 	if err != nil {
 		return QueryResult{}, err
 	}

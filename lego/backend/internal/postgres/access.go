@@ -46,7 +46,7 @@ import (
 // GetIPAllowList returns the allowlist gating the external endpoint (empty
 // => open to all source IPs). The internal -rw path is never gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ type CreateUserResult struct {
 // ListUsers returns the database's additional managed login roles (not the
 // owner role, which is CNPG-managed). Passwords are never surfaced.
 func (s *Service) ListUsers(ctx context.Context, name string) ([]PostgresUserView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}

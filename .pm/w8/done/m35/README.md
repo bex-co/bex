@@ -1,19 +1,19 @@
 # w8 · m35 — Datastore deleting-read parity: fold Postgres/Key Value onto consistent-absence
 
-**Worker:** worker8 **Goal:** a deleting Postgres or Key Value reads `not found` by id the instant deletion starts — the same contract services got in w3/m81, matching List and Render's 404 **Status:** todo
+**Worker:** worker8 **Goal:** a deleting Postgres or Key Value reads `not found` by id the instant deletion starts — the same contract services got in w3/m81, matching List and Render's 404 **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                    | est | depends_on |
 | ---- | ------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Pin Render's deleted-datastore read evidence; confirm option 1           | 30m | —          |
-| t002 | Postgres by-id reads gain `core.NotFoundIfDeleting`                      | 30m | t001       |
-| t003 | Key Value by-id reads gain `core.NotFoundIfDeleting`                     | 30m | t001       |
-| t004 | Cross-surface tests + finalizer-bound story + ADR closure                | 45m | t002, t003 |
-| t005 | Render parity: cross-surface consistency check (REST/GraphQL/MCP/UI)     | 30m | t004       |
-| t006 | Simplify: `/simplify` over the code this milestone changed               | 30m | t005       |
-| t007 | Test coverage: meaningful tests for the behavior this milestone shipped  | 30m | t005       |
-| t008 | Closeout: verify DoD, mark done, move milestone to done/                 | 15m | t007       |
+| t001 | Pin Render's deleted-datastore read evidence; confirm option 1 — **DONE** | 30m | —          |
+| t002 | Postgres by-id reads gain `core.NotFoundIfDeleting` — **DONE**           | 30m | t001       |
+| t003 | Key Value by-id reads gain `core.NotFoundIfDeleting` — **DONE**          | 30m | t001       |
+| t004 | Cross-surface tests + finalizer-bound story + ADR closure — **DONE**     | 45m | t002, t003 |
+| t005 | Render parity: cross-surface consistency check (REST/GraphQL/MCP/UI) — **DONE** | 30m | t004       |
+| t006 | Simplify: `/simplify` over the code this milestone changed — **DONE**    | 30m | t005       |
+| t007 | Test coverage: meaningful tests for the behavior this milestone shipped — **DONE** | 30m | t005       |
+| t008 | Closeout: verify DoD, mark done, move milestone to done/ — **DONE**      | 15m | t007       |
 
 ## Definition of done
 

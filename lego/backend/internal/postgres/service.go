@@ -451,12 +451,27 @@ func (s *Service) fetchDatabase(ctx context.Context, relation, name string) (*ap
 	return s.AuthorizeDatabase(ctx, relation, name)
 }
 
+// fetchDatabaseForRead is the by-id read gate: authorize + fetch, then treat a
+// DeletionTimestamp as not-found so get/connection-info/sibling reads agree with
+// List and with Render's GET 404 (w8/m35 / core.NotFoundIfDeleting). WRITE verbs
+// keep fetchDatabase so finalizer-safe teardown can still authorize the CR.
+func (s *Service) fetchDatabaseForRead(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
+	d, err := s.fetchDatabase(ctx, relation, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := core.NotFoundIfDeleting(d); err != nil {
+		return nil, err
+	}
+	return d, nil
+}
+
 // loadAppSecret resolves a Database and its CNPG-generated "<stable-id>-app" Secret
 // (username/password/dbname/uri) — the credential path both connection-info and
 // the read-only query verb share. Returns core.ErrNotFound when the Database or
 // its Secret isn't provisioned yet.
 func (s *Service) loadAppSecret(ctx context.Context, relation, name string) (*appv1alpha1.Database, *corev1.Secret, error) {
-	d, err := s.fetchDatabase(ctx, relation, name)
+	d, err := s.fetchDatabaseForRead(ctx, relation, name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -504,6 +519,13 @@ func (s *Service) ListPostgres(ctx context.Context, ownerID string) ([]PostgresV
 	items := core.DedupDatabaseTwins(list.Items)
 	out := make([]PostgresView, 0, len(items))
 	for i := range items {
+		// Match apps.List / w3/m81: a deleting Database is absent from the list
+		// the moment its deletion is accepted. By-id reads use the same
+		// NotFoundIfDeleting gate (w8/m35); quota still accounts for it under
+		// workspaceLimits.terminating (w6/m129).
+		if !items[i].DeletionTimestamp.IsZero() {
+			continue
+		}
 		out = append(out, s.view(&items[i]))
 	}
 	return out, nil
@@ -511,7 +533,7 @@ func (s *Service) ListPostgres(ctx context.Context, ownerID string) ([]PostgresV
 
 // GetPostgres returns one managed Postgres, or core.ErrNotFound.
 func (s *Service) GetPostgres(ctx context.Context, name string) (PostgresView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -849,7 +871,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 // validation and in-memory spec update — zero side effects (w2/m29 dry-run).
 // Requires can_view on the named database (no audit event, no write).
 func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (PostgresView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -1249,7 +1271,7 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 // PreviewUpdatePostgres is UpdatePostgres's dry-run twin (w2/m29 pattern): same
 // validation, zero side effects. Requires can_view (no audit event, no write).
 func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch PostgresPatch) (PostgresView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return PostgresView{}, err
 	}

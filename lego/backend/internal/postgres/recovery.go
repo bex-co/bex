@@ -133,7 +133,7 @@ func effectiveBackupServerName(d *appv1alpha1.Database) string {
 // RecoveryInfo returns the recovery window + backup list for a managed Postgres.
 // A no-backup plan returns {enabled:false} rather than an error.
 func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return RecoveryInfoView{}, err
 	}
@@ -327,7 +327,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 // database, so even listing it (Render's list response contains the download
 // URL) is gated by can_view_sensitive rather than ordinary can_view.
 func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanViewSensitive, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
 		return nil, err
 	}

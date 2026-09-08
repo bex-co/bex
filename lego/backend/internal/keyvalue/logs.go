@@ -47,7 +47,7 @@ func (s *Service) QueryKeyValueLogs(ctx context.Context, name string, q KeyValue
 	if kind, ok := ids.KindOf(name); ok && kind == ids.KeyValue && s.KeyValueLogs != nil {
 		return s.KeyValueLogs(ctx, name, q)
 	}
-	kv, err := s.fetchKeyValue(ctx, core.RelCanViewLogs, name)
+	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanViewLogs, name)
 	if err != nil {
 		return nil, err
 	}
