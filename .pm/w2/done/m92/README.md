@@ -1,6 +1,6 @@
 # w2 · m92 — ADR055 F2/F3: execute the production identity migration (phases 1–3, arm phase 4)
 
-**Worker:** worker2 **Goal:** every labeled App's registry identity (Zot repo/user/pull Secret) and static prefix is workspace-scoped in production, closing the security register's two open HIGH findings to "phase 4 armed" — with the runbook's STOP honored at every mutating phase. **Status:** todo
+**Worker:** worker2 **Goal:** every labeled App's registry identity (Zot repo/user/pull Secret) and static prefix is workspace-scoped in production, closing the security register's two open HIGH findings to "phase 4 armed" — with the runbook's STOP honored at every mutating phase. **Status:** done
 
 ## STOP — authorization model
 
@@ -10,14 +10,14 @@ Phases 2, 3, and 4 mutate live tenant artifacts. Per `docs/runbooks/registry-sta
 
 | id   | title                                                                          | est | depends_on |
 | ---- | ------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Phase 1: read-only inventory of legacy-named identities across prod            | 40m | —          |
-| t002 | Rehearse phase 2 `--apply` on a scratch App (runbook precondition)             | 40m | t001       |
-| t003 | Phase 2 (STOP-gated): `registry-migrate --apply` — copy, verify, tombstone     | 45m | t002       |
-| t004 | Phase 3 (STOP-gated): tenant redeploy onto scoped refs; verify every App healthy | 45m | t003       |
-| t005 | Arm phase 4: record the 14-day clean window; annotate ADR055; file the follow-up note | 20m | t004 |
-| t006 | Simplify                                                                       | 20m | t005       |
-| t007 | Test coverage                                                                  | 30m | t005       |
-| t008 | Closeout                                                                       | 10m | t007       |
+| t001 | Phase 1: read-only inventory of legacy-named identities across prod — **DONE** | 40m | —          |
+| t002 | Rehearse phase 2 `--apply` on a scratch App (runbook precondition) — **DONE**  | 40m | t001       |
+| t003 | Phase 2 (STOP-gated): `registry-migrate --apply` — copy, verify, tombstone — **DONE**| 45m | t002       |
+| t004 | Phase 3 (STOP-gated): tenant redeploy onto scoped refs; verify every App healthy — **DONE**| 45m | t003       |
+| t005 | Arm phase 4: record the 14-day clean window; annotate ADR055; file the follow-up note — **DONE**| 20m | t004 |
+| t006 | Simplify — **DONE**| 20m | t005       |
+| t007 | Test coverage — **DONE**| 30m | t005       |
+| t008 | Closeout — **DONE**| 10m | t007       |
 
 ## Definition of done
 

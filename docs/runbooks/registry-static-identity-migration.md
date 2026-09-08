@@ -87,6 +87,8 @@ Trigger a deploy (or wait for the next natural roll) so each migrated App's Depl
 
 **STOP — requires explicit operator authorization before touching live tenant data.**
 
+**Clean window started:** 2026-09-08 (w2/m92 phase 3 complete). **Do not start Phase 4 before:** 2026-09-22, and only with zero dual-read hits + explicit STOP authorization. Follow-up note: `.pm/w2/035.md`.
+
 Criteria before this phase: **zero dual-read hits over 14 days** (no kubelet pull of `<registry>/A:…`, no static-server GET under `A/<rev>/`) and every migrated App is tombstoned with a rolled image ref.
 
 Then, and only then:
