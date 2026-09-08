@@ -1,6 +1,6 @@
 # w2 · m90 — Web Shell production activation + WS-edge liveness
 
-**Worker:** worker2 **Goal:** an authorized workspace member opens `/services/{id}/shell` on the production dashboard and gets a live terminal over `wss://ssh.bex.co/shell`, and a dead Web Shell edge alerts instead of failing silently. **Status:** in progress (t001–t006 done; t007 awaits `/ship` + first green `ssh-edge-liveness.yml` including the WS probe)
+**Worker:** worker2 **Goal:** an authorized workspace member opens `/services/{id}/shell` on the production dashboard and gets a live terminal over `wss://ssh.bex.co/shell`, and a dead Web Shell edge alerts instead of failing silently. **Status:** done (2026-09-08)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Record the activation in ADR035/ADR018; remove the "awaits activation" caveats — **DONE** | 15m | t002             |
 | t005 | Simplify — **DONE**                                                                       | 20m | t003, t004       |
 | t006 | Test coverage — **DONE**                                                                  | 30m | t003, t004       |
-| t007 | Closeout                                                                                  | 10m | t006             |
+| t007 | Closeout — **DONE**                                                                       | 10m | t006             |
 
 ## Definition of done
 
