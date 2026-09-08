@@ -24,6 +24,17 @@ const (
 	renderWorkspace  = "RENDER_WORKSPACE"
 	renderOutput     = "RENDER_OUTPUT"
 	renderAPIKey     = "RENDER_API_KEY"
+
+	// Upstream telemetry opt-outs. render-oss/cli v2.26.0 made usage analytics
+	// opt-out (on by default), sending events — including a stable install id
+	// and the active workspace — to Render's telemetry endpoint. That endpoint
+	// belongs to Render, not Bex; a bex user never consented to it and gains
+	// nothing from it, so the launcher disables it by default. Either upstream
+	// opt-out (its own RENDER_CLI_DISABLE_ANALYTICS, or the cross-tool
+	// DO_NOT_TRACK convention) already denies consent, so an explicit user
+	// setting is left untouched.
+	renderDisableAnalytics = "RENDER_CLI_DISABLE_ANALYTICS"
+	doNotTrack             = "DO_NOT_TRACK"
 )
 
 // Apply installs Bex defaults only when their upstream equivalents are absent.
@@ -40,7 +51,7 @@ type setEnv func(string, string) error
 type userHomeDir func() (string, error)
 
 func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
-	if value, pathSet := lookup(renderConfigPath); !pathSet || value == "" {
+	if !isSet(lookup, renderConfigPath) {
 		path := ""
 		if value, exists := lookup(bexConfigPath); exists && value != "" {
 			path = value
@@ -64,7 +75,7 @@ func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
 		{renderOutput, bexOutput},
 		{renderAPIKey, bexAccess},
 	} {
-		if value, exists := lookup(mapping.upstream); exists && value != "" {
+		if isSet(lookup, mapping.upstream) {
 			continue
 		}
 		if value, exists := lookup(mapping.bex); exists && value != "" {
@@ -74,10 +85,23 @@ func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
 		}
 	}
 
-	if value, exists := lookup(renderHost); !exists || value == "" {
+	if !isSet(lookup, renderHost) {
 		if err := set(renderHost, DefaultHost); err != nil {
 			return fmt.Errorf("set %s: %w", renderHost, err)
 		}
 	}
+
+	if !isSet(lookup, renderDisableAnalytics) && !isSet(lookup, doNotTrack) {
+		if err := set(renderDisableAnalytics, "1"); err != nil {
+			return fmt.Errorf("set %s: %w", renderDisableAnalytics, err)
+		}
+	}
 	return nil
+}
+
+// isSet reports whether key holds a non-empty value. apply treats a blank
+// variable as unset throughout, so a present-but-empty env var never counts.
+func isSet(lookup lookupEnv, key string) bool {
+	value, exists := lookup(key)
+	return exists && value != ""
 }
