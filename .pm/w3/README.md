@@ -66,6 +66,8 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 
 ## Inbox
 
+> `034.md` — **promoted 2026-09-07 → [`w8/m35`](../w8/m35/README.md)** (note moved to `done/034.md`): fold Postgres/Key Value by-id reads onto the m81 consistent-absence contract (option 1), scheduled under w8 by the `/pm-brainstorm for w8` round approved the same day.
+
 > `014.md` — **retired 2026-08-31 without implementation, moved to `done/014.md`**: it existed only to feed `+A −D` into the inline PR card, which `w5/m65` deliberately removed. The header's `#N` link is now the sole PR affordance, so the proposed persisted/API fields have no current consumer.
 
 > `015.md` — **promoted 2026-08-19 → [`w4/m87`](../w4/m87/README.md)** (note moved to `done/015.md`): persist transcript part timestamps so "Worked for Ns" survives replay.
