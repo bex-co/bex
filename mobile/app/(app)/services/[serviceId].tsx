@@ -1,3 +1,4 @@
+import { AccessBoundary } from "@/features/capabilities/access-required-screen";
 import { useLocalSearchParams } from "expo-router";
 import { InvalidDeepLinkScreen } from "@/features/navigation/invalid-deep-link-screen";
 import { validServiceDeepLink } from "@/features/navigation/deep-link";
@@ -8,5 +9,9 @@ export default function ServiceDeepLinkScreen() {
     serviceId?: string | string[];
   }>();
   if (!validServiceDeepLink(serviceId)) return <InvalidDeepLinkScreen />;
-  return <ServiceDetailScreen serviceId={serviceId} />;
+  return (
+    <AccessBoundary>
+      <ServiceDetailScreen serviceId={serviceId} />
+    </AccessBoundary>
+  );
 }

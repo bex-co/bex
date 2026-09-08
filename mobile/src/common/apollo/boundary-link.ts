@@ -11,6 +11,7 @@ export function createBoundaryLink(boundary: DataBoundary = dataBoundary) {
     )?.signal;
     const combinedSignal = combineAbortSignals(callerSignal, lease.signal);
     operation.setContext({
+      boundaryGeneration: boundary.getGeneration(),
       fetchOptions: {
         ...context.fetchOptions,
         signal: combinedSignal.signal,

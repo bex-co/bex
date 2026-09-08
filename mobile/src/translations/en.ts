@@ -5,6 +5,7 @@ export const en = {
     stale: "Stale",
   },
   access: {
+    offline: "Reconnect to check access before continuing.",
     checking: "Checking access…",
     unavailable: "We couldn't check your access. Try again.",
     changed: "Your access in this workspace has changed.",

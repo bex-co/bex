@@ -1,3 +1,4 @@
+import { AccessBoundary } from "@/features/capabilities/access-required-screen";
 import { useLocalSearchParams } from "expo-router";
 import { InvalidDeepLinkScreen } from "@/features/navigation/invalid-deep-link-screen";
 import { validDatabaseDeepLink } from "@/features/navigation/deep-link";
@@ -8,5 +9,9 @@ export default function DatabaseDetailRoute() {
     databaseId?: string | string[];
   }>();
   if (!validDatabaseDeepLink(databaseId)) return <InvalidDeepLinkScreen />;
-  return <PostgresDetailScreen databaseId={databaseId} />;
+  return (
+    <AccessBoundary>
+      <PostgresDetailScreen databaseId={databaseId} />
+    </AccessBoundary>
+  );
 }

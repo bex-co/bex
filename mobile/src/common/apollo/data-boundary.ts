@@ -10,6 +10,14 @@ export class DataBoundary {
   private epoch = 0;
   private controllers = new Set<AbortController>();
   private handlers = new Set<ResetHandler>();
+  private listeners = new Set<() => void>();
+
+  getGeneration = (): number => this.epoch;
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
 
   workspaceId: string | null = null;
 
@@ -38,6 +46,7 @@ export class DataBoundary {
     this.workspaceId = workspaceId;
     for (const controller of this.controllers) controller.abort();
     this.controllers.clear();
+    for (const listener of this.listeners) listener();
     await Promise.all([...this.handlers].map((handler) => handler()));
   }
 }

@@ -5,6 +5,7 @@ export const zh = {
     stale: "已过期",
   },
   access: {
+    offline: "请重新连接网络，确认访问权限后再继续。",
     checking: "正在检查访问权限…",
     unavailable: "无法检查你的访问权限，请重试。",
     changed: "你在此工作区的访问权限已更改。",

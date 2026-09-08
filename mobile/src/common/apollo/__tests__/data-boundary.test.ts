@@ -1,6 +1,32 @@
 import { DataBoundary } from "../data-boundary";
 
 describe("DataBoundary", () => {
+  it("publishes invalidation before async cleanup and supports unsubscribing", async () => {
+    const boundary = new DataBoundary();
+    const request = boundary.begin();
+    const observed: number[] = [];
+    let finishCleanup: () => void = () => undefined;
+    boundary.registerResetHandler(
+      () =>
+        new Promise<void>((resolve) => {
+          finishCleanup = resolve;
+        }),
+    );
+    const unsubscribe = boundary.subscribe(() => {
+      expect(request.signal.aborted).toBe(true);
+      observed.push(boundary.getGeneration());
+    });
+    const reset = boundary.reset("tea-next");
+    expect(observed).toEqual([1]);
+    finishCleanup();
+    await reset;
+    unsubscribe();
+    const second = boundary.reset(null);
+    finishCleanup();
+    await second;
+    expect(observed).toEqual([1]);
+    expect(boundary.getGeneration()).toBe(2);
+  });
   it("aborts and invalidates in-flight work before a workspace switch", async () => {
     const boundary = new DataBoundary();
     const oldRequest = boundary.begin();

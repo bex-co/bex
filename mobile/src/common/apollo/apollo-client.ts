@@ -11,6 +11,7 @@ import { catchError, from, switchMap, throwError } from "rxjs";
 import { authManager } from "@/features/auth/auth-provider";
 import { mobileConfig } from "@/features/auth/config";
 import { createBoundaryLink } from "./boundary-link";
+import { createAccessLink } from "./access-link";
 import { dataBoundary } from "./data-boundary";
 import { isRetryableNetworkError, isUnauthorized } from "./error-policy";
 
@@ -64,6 +65,7 @@ export const apolloClient = new ApolloClient({
     refreshLink,
     retryLink,
     authLink,
+    createAccessLink(),
     new HttpLink({ uri: mobileConfig.graphqlUrl }),
   ]),
   defaultOptions: {
