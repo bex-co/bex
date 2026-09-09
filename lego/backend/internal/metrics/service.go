@@ -161,6 +161,14 @@ type MetricQuery struct {
 	Host    string
 	Path    string
 	GroupBy string // request group-by: "status" | "method" | "instance" | ""
+	// Instances selects public instance ids (m87) for cpu/memory and their
+	// limit series. Empty means all instances. Oversized/blank values error;
+	// unresolved selectors yield an empty result rather than broadening (w5/m89).
+	Instances []string
+	// ReplicaAggregate is MIN|MAX|AVG across selected replicas at each
+	// timestamp. Empty keeps raw per-instance series. Distinct from
+	// AggregateMax (legacy latest-point collapse used by limit callers).
+	ReplicaAggregate string
 	// AggregateMax collapses a per-instance series (cpu_limit/memory_limit) down
 	// to one series holding the max value across instances — Render's dashboard
 	// GraphQL requests this via aggregateAllMethod:"MAX" (captured live).
@@ -434,10 +442,29 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if err != nil {
 		return nil, err
 	}
-	if q.AggregateMax {
-		series = aggregateMaxSeries(q.App, series)
+	var live []ids.InstanceCandidate
+	if len(q.Instances) > 0 || q.ReplicaAggregate != "" || q.AggregateMax {
+		if needsLiveInstanceCandidates(q.Metric) {
+			pods, podErr := s.AppPodsIn(ctx, app.Namespace, app.Name)
+			if podErr != nil {
+				return nil, podErr
+			}
+			live = make([]ids.InstanceCandidate, 0, len(pods))
+			for _, p := range pods {
+				live = append(live, ids.InstanceCandidate{Name: p.Name, UID: string(p.UID)})
+			}
+		}
 	}
-	return series, nil
+	return applyInstanceSelection(q, series, live)
+}
+
+func needsLiveInstanceCandidates(metric string) bool {
+	switch metric {
+	case MetricCPU, MetricMemory, MetricCPULimit, MetricMemoryLimit:
+		return true
+	default:
+		return false
+	}
 }
 
 // QuantileSeries is a MetricSeries paired with the http_latency percentile that

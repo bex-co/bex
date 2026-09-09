@@ -1420,12 +1420,16 @@ function MetricsCardSkeleton({
 }) {
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between gap-3">
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-4 w-64 max-w-full" />
         </div>
-        <Skeleton className="h-9 w-40" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-9 w-36" />
+          <Skeleton className="h-9 w-40" />
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {Array.from({ length: sections }, (_, index) => (

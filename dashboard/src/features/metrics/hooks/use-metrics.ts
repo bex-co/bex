@@ -40,6 +40,14 @@ export interface UseMetricsOptions {
    */
   aggregateMax?: boolean;
   /**
+   * Replica aggregate across selected instances at each timestamp (w5/m89):
+   * MIN | MAX | AVG. Distinct from aggregateMax (latest-point limit collapse)
+   * and from MCP cpuUsageAggregationMethod (interval aggregation).
+   */
+  aggregateMethod?: "MIN" | "MAX" | "AVG";
+  /** Public instance ids (m87) to keep; omit for all instances (w5/m89). */
+  instances?: string[];
+  /**
    * Render's toolbar Status Code filter: a class ("2xx"/"5xx") or exact code
    * ("500"), sent as a STATUS_CODE filters entry alongside RESOURCE.
    */
@@ -110,6 +118,8 @@ export function useMetrics(
     quantile,
     quantiles,
     aggregateMax,
+    aggregateMethod,
+    instances,
     statusCode,
     groupBy,
     host,
@@ -126,6 +136,9 @@ export function useMetrics(
             : []),
           ...(host ? [{ field: "HOST", values: [host] }] : []),
           ...(path ? [{ field: "PATH", values: [path] }] : []),
+          ...(instances && instances.length > 0
+            ? [{ field: "INSTANCE", values: instances }]
+            : []),
         ],
         name: RENDER_METRIC_NAMES[metric],
         start: startTime,
@@ -145,7 +158,8 @@ export function useMetrics(
             : groupBy === "method"
               ? ["METHOD"]
               : undefined,
-        aggregateAllMethod: aggregateMax ? "MAX" : undefined,
+        aggregateAllMethod:
+          aggregateMethod ?? (aggregateMax ? "MAX" : undefined),
       },
     },
     pollInterval: pollIntervalMs,

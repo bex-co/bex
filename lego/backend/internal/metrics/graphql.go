@@ -385,6 +385,7 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	// HOST/PATH are parsed only so Metrics can refuse them (see MetricQuery.Host).
 	q.Host = firstValue(filters[filterFieldHost])
 	q.Path = firstValue(filters[filterFieldPath])
+	q.Instances = filters[filterFieldInstance]
 
 	resources := filters[filterFieldResource]
 	if len(resources) == 0 {
@@ -407,8 +408,12 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 			}
 		}
 	}
-	if method, _ := input["aggregateAllMethod"].(string); method == "MAX" {
-		q.AggregateMax = true
+	if method, _ := input["aggregateAllMethod"].(string); method != "" {
+		replica, aggMax, parseErr := parseReplicaAggregate(method)
+		if parseErr != nil {
+			return nil, MetricQuery{}, parseErr
+		}
+		q.ReplicaAggregate, q.AggregateMax = replica, aggMax
 	}
 	// aggregateBy carries Render's per-chart "Group by" breakdown: an entry
 	// naming the label to break the series out by (STATUS_CODE / METHOD, the
