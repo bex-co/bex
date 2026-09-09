@@ -202,6 +202,16 @@ The time result is unambiguous and the escalation to per-workspace persistent ca
 
 **Native environment cache key (w7/m87).** Secret mount contents do not invalidate BuildKit's instruction cache. The native path therefore embeds an opaque `NativeEnvRevision` inside the env-dependent `RUN` (persisted on the App-owned `<app>-native-env` Secret) so an environment-only change at a fixed commit cannot reuse a layer baked under different values. Cache-loss and gate-off behavior are unchanged. Evidence: [2026-09-08-native-env-cache.md](drills/2026-09-08-native-env-cache.md).
 
+**Clear-cache deploys (w7/m88).** Render's `clearCache=clear` is release-scoped, not a sticky App boolean. The API stamps `app.bex.co/clear-cache-release-generation` on the opened release; the operator sets `SkipCacheImport` only when that marker equals the current release generation. Behavior:
+
+| `clearCache` | `BEX_BUILD_CACHE` | native / Dockerfile | kpack / image-backed |
+| --- | --- | --- | --- |
+| omit / `do_not_clear` | `registry` | restore + import; export + save | accept; no BuildKit registry-cache phases |
+| `clear` | `registry` | purge (best-effort) + **no** import; still export + save | accept; no invented cache effect |
+| either | off / unset | accept; no cache phases | accept |
+
+Retry of the same clear release keeps the marker; a successful build consumes it so a later normal deploy cannot inherit `SkipCacheImport`. A superseding ordinary trigger deletes the marker. Clear-cache dispatch deletes other active build Jobs for the App so an older `cache-save` cannot reinstall pre-clear layers after the reset exports a fresh `:cache` (narrow exception to D1a's let-in-flight-finish rule). Evidence: [2026-09-08-clear-cache.md](drills/2026-09-08-clear-cache.md).
+
 **Scope is unchanged** from D3: per-App `<app-repo>-cache`, derived from the same `internal/identity` helper as the image repository so the two can never land in different workspaces' columns, and carrying the same exclusive Zot ACL grant to the same per-App user. That grant is not merely defence in depth — in per-App mode it is load-bearing, because Zot honours only the longest repository match, so the builder's `**` rule does not reach a repository a tenant user owns. With `BEX_REGISTRY_NS` unset (the shared-credential dev path) the cache works through the existing `bex-builder` adminPolicy and needs no ACL entry; isolation in that mode comes from the same place it already does for images — the credential never enters BuildKit — so the cache is **supported in both modes**, not silently shared in one.
 
 ### D4 — Registry hardening for the build path

@@ -408,3 +408,30 @@ func TestSpecRollsReleaseIgnoresNoOpChanges(t *testing.T) {
 		t.Fatal("growing a disk online must not roll a release")
 	}
 }
+
+func TestClearCacheAppliesOnlyMatchingRelease(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation: 3,
+			Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:            "3",
+				appv1alpha1.AnnotationClearCacheReleaseGeneration: "3",
+			},
+		},
+	}
+	if !clearCacheApplies(app) {
+		t.Fatal("matching clear-cache generation must apply")
+	}
+	app.Annotations[appv1alpha1.AnnotationClearCacheReleaseGeneration] = "2"
+	if clearCacheApplies(app) {
+		t.Fatal("stale clear-cache marker must not apply to a newer release")
+	}
+	delete(app.Annotations, appv1alpha1.AnnotationClearCacheReleaseGeneration)
+	if clearCacheApplies(app) {
+		t.Fatal("absent clear-cache marker must not apply")
+	}
+	app.Annotations[appv1alpha1.AnnotationClearCacheReleaseGeneration] = "not-a-number"
+	if clearCacheApplies(app) {
+		t.Fatal("garbage clear-cache marker must not apply")
+	}
+}

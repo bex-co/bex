@@ -191,9 +191,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"commitId":   gqlutil.Arg(graphql.String),
 				"deployMode": gqlutil.Arg(graphql.String),
 				"imageUrl":   gqlutil.Arg(graphql.String),
-				// Render's "clear" | "do_not_clear" enum. bex builds are always
-				// cache-free, so this is a validated no-op (see TriggerParams) —
-				// exposed for parity with the dashboard's Manual Deploy menu.
+				// Render's "clear" | "do_not_clear" enum. With registry caching
+				// enabled, "clear" rebuilds without importing prior layers (w7/m88);
+				// with the gate off both values are no-ops. See TriggerParams.
 				"clearCache": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {

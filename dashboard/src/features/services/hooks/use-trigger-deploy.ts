@@ -16,9 +16,9 @@ export interface TriggerOptions {
   deployMode?: string;
   /**
    * Render's "clear" | "do_not_clear" enum ("Clear build cache and deploy").
-   * bex builds are always cache-free (ephemeral BuildKit Jobs), so "clear" is a
-   * no-op — every trigger already rebuilds from a clean slate. Sent for
-   * REST/GraphQL/MCP parity; the backend enum-validates but does not branch on it.
+   * With BEX_BUILD_CACHE=registry, "clear" rebuilds without importing prior
+   * layers and still exports a fresh cache (w7/m88). With the gate off both
+   * values are no-ops (ephemeral Jobs start empty).
    */
   clearCache?: string;
 }

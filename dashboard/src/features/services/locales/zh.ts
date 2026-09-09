@@ -3722,7 +3722,7 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.deployMenuClearCache": {
     message: "清除构建缓存并部署",
     description:
-      "Manual Deploy dropdown item (Render parity): rebuild with a cleared build cache. bex builds are always cache-free, so this rebuilds from a clean slate like a normal deploy",
+      "Manual Deploy dropdown item (Render parity): rebuild without importing prior build-cache layers when registry caching is enabled; still exports a fresh cache for later deploys",
   },
   "services.deployMenuRestart": {
     message: "重启服务",

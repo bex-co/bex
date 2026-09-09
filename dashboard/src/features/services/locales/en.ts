@@ -3791,7 +3791,7 @@ const enServices: Record<string, TranslationEntry> = {
   "services.deployMenuClearCache": {
     message: "Clear build cache & deploy",
     description:
-      "Manual Deploy dropdown item (Render parity): rebuild with a cleared build cache. bex builds are always cache-free, so this rebuilds from a clean slate like a normal deploy",
+      "Manual Deploy dropdown item (Render parity): rebuild without importing prior build-cache layers when registry caching is enabled; still exports a fresh cache for later deploys",
   },
   "services.deployMenuRestart": {
     message: "Restart service",
