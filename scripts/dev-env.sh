@@ -1184,11 +1184,11 @@ agent_reconcile_node_images() {
       return 1
     }
     for node in "${nodes[@]}"; do
-      if ! observed=$(agent_node_image_identity "$node" "$img"); then
+      observed=$(agent_node_image_identity "$node" "$img") || {
         rc=$?
         [ "$rc" -eq 2 ] || return 1
         observed=""
-      fi
+      }
       if agent_image_import_needed "$desired" "$observed"; then
         agent_import_image_to_node "$img" "$node" "$desired" || return 1
       else

@@ -116,7 +116,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps onl
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
-> All four items below are now done (m9, m5, m4.5 moved to `done/`; m3 remains open — see the Milestones list above for current status). Kept for provenance.
+> All four items below are now done: m9, m5, m4.5, and [m3](done/m3/README.md) are archived in `done/`. The following descriptions preserve the July 8 planning context, not current actionable work.
 
 1. **m9** — tenant onboarding + enforced OpenFGA (m2/t007 marked done; prod authz is still allow-all — the standing security gap).
 2. **m5** — build-from-git (t001/t002 are the last missing piece of the flow; the webhook half already shipped via w2).
@@ -131,11 +131,11 @@ implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps onl
 
 ## Inbox
 
-- `083` — [Reconcile stale queue summaries](083.md) (20m) ← approved 2026-09-08 pm-brainstorm proposal 2.
+No open inbox notes.
 
-- `070` — `cmd/api` env validation before irreversible startup (`store.Migrate` + loops currently start before later parses can fatal). The 2026-08-19 review's only live operational hazard; >1h, promote when scheduled.
-- `081` — `dev-env.sh agent-up` silently reuses a stale `bex-lego:dev`, so a gateway code change never reaches the cluster while the rollout reports success (hit in w1/m136). ~30m; pick one of the three options in the note.
-- `080` — reconcile `VITE_SSR_API_URL` into `dev-2` … `dev-10`'s READMEs (`dev-1` + `scripts/dev-env.sh` already fixed). Omitting it leaves every SSR GraphQL query failing with `ECONNREFUSED` against `local-bex`'s `:8099` stub, so detail pages cold-load as "Something went wrong". ~20–30m, mechanical.
+> **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
+
+> **Done 2026-09-02:** [070](done/070.md) validates configuration before startup side effects; [080](done/080.md) fixes the other dev-N SSR commands and adds a preflight warning; [081](done/081.md) rebuilds stale local agent images and reloads changed images. These completion records supersede the former open inbox summaries.
 
 > **Triage 2026-08-19:** drained the rest of the inbox. Implemented `063` (dead `SetSource`/`GetBlueprint` alias), `068` (unused dashboard kit/hooks/deps), `073` (MCP maintenance-before-plan + ADR018 routing). Closed `044` (Stripe orphan-sub runbook; operator-only), `046` (residuals owned by `w7/m85` / FUTURE-MAYBE / #PSL), `050` (duplicate of #PSL). Deferred architecture-review leftovers `057`–`067`, `069`, `071`–`072` (and `063`'s remaining extracts) to `.pm/FUTURE-MAYBE.md`. Notes moved to `done/`. `048` had already been in `done/`.
 
