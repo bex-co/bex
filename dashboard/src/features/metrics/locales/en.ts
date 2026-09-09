@@ -358,6 +358,31 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Instances",
     description: "Application metrics instance multi-select label",
   },
+  "metrics.instanceShowAll": {
+    message: "Show all",
+    description:
+      "Explicit action that clears the retained instance selection back to all instances (w5/m91)",
+  },
+  "metrics.instanceUnavailableSuffix": {
+    message: " (unavailable)",
+    description:
+      "Suffix appended to a retained instance option that is no longer in the window or discovery (w5/m91)",
+  },
+  "metrics.instancesUnavailable_one": {
+    message: "{count} selected instance is unavailable in this window",
+    description:
+      "Note when one retained instance selection has no samples in the window (singular; w5/m91)",
+  },
+  "metrics.instancesUnavailable_other": {
+    message: "{count} selected instances are unavailable in this window",
+    description:
+      "Note when retained instance selections have no samples in the window (plural; w5/m91)",
+  },
+  "metrics.noDataForSelection": {
+    message: "No data for the selected instances in this range",
+    description:
+      "Empty-result copy when an explicit instance filter yields no samples — distinct from query errors (w5/m91)",
+  },
   "metrics.aggregateFilter": {
     message: "Aggregation",
     description: "Application metrics replica aggregation control",

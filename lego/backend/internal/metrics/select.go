@@ -36,6 +36,20 @@ const (
 	replicaAggregateAvg = "AVG"
 )
 
+// instanceFilterSupported reports whether an INSTANCE filter is meaningful for
+// a metric. cpu/memory carry per-instance series and cpu_limit/memory_limit
+// carry per-instance limit series (w5/m89 limit consumers); every other metric
+// (request metrics, instance_count, autoscale targets) has no per-instance
+// axis, so an INSTANCE filter on it is a defined bad request (w5/m91).
+func instanceFilterSupported(metric string) bool {
+	switch metric {
+	case MetricCPU, MetricMemory, MetricCPULimit, MetricMemoryLimit:
+		return true
+	default:
+		return false
+	}
+}
+
 // validateInstanceSelection rejects empty/blank/oversized INSTANCE filters.
 // Omitted selection (nil/empty slice) means all instances and is valid.
 func validateInstanceSelection(instances []string) error {
@@ -195,7 +209,16 @@ func applyInstanceSelection(q MetricQuery, series []MetricSeries, live []ids.Ins
 		return nil, err
 	}
 	if len(q.Instances) > 0 {
-		if !seriesHaveInstanceLabels(series) {
+		// Eligibility is a property of the metric, not of the returned data:
+		// an authorized empty cpu/memory (or supported limit) window must
+		// succeed with no series rather than misreport a bad request (w5/m91).
+		// A legacy caller that leaves Metric unset keeps the data-derived
+		// check so existing unit probes without a metric still behave.
+		if q.Metric != "" {
+			if !instanceFilterSupported(q.Metric) {
+				return nil, fmt.Errorf("%w: INSTANCE filter applies only to per-instance cpu/memory metrics", core.ErrBadRequest)
+			}
+		} else if !seriesHaveInstanceLabels(series) {
 			return nil, fmt.Errorf("%w: INSTANCE filter applies only to per-instance cpu/memory metrics", core.ErrBadRequest)
 		}
 		series = filterSeriesByInstances(q.App, q.Instances, series, live)

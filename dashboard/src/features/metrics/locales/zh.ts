@@ -346,6 +346,26 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "实例",
     description: "Application metrics instance multi-select label",
   },
+  "metrics.instanceShowAll": {
+    message: "显示全部",
+    description:
+      "Explicit action that clears the retained instance selection back to all instances (w5/m91)",
+  },
+  "metrics.instanceUnavailableSuffix": {
+    message: "（不可用）",
+    description:
+      "Suffix appended to a retained instance option that is no longer in the window or discovery (w5/m91)",
+  },
+  "metrics.instancesUnavailable_other": {
+    message: "所选实例中有 {count} 个在此时间范围内不可用",
+    description:
+      "Note when retained instance selections have no samples in the window (w5/m91)",
+  },
+  "metrics.noDataForSelection": {
+    message: "所选实例在此时间范围内暂无数据",
+    description:
+      "Empty-result copy when an explicit instance filter yields no samples — distinct from query errors (w5/m91)",
+  },
   "metrics.aggregateFilter": {
     message: "聚合",
     description: "Application metrics replica aggregation control",
