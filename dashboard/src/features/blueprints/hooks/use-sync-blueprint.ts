@@ -12,6 +12,7 @@ import {
 } from "@/features/services/lib/protected-confirmation";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
+import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 
 export type BlueprintSyncActionResult =
   | { status: "success"; result: SyncBlueprintResult | null }
@@ -62,7 +63,13 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
             confirmation: requiredConfirmation,
           };
         }
-        toast.error(t("blueprints.syncError"));
+        // A fenced sync is actionable, not a failure of the manifest: tell the
+        // caller to retry after the recorded run settles (w8/m37 t005).
+        if (hasGraphQLErrorCode(err, "BLUEPRINT_SYNC_BUSY")) {
+          toast.error(t("blueprints.syncBusy"));
+        } else {
+          toast.error(t("blueprints.syncError"));
+        }
         return { status: "error" };
       } finally {
         setBusy(false);

@@ -51,6 +51,46 @@ type BlueprintStore interface {
 	InsertBlueprintSync(ctx context.Context, run store.BlueprintSync) (store.BlueprintSync, error)
 	UpdateBlueprintSync(ctx context.Context, id, state string, completedAt *time.Time, errMsg *string) (store.BlueprintSync, error)
 	ListBlueprintSyncs(ctx context.Context, blueprintID, cursor string, limit int) ([]store.BlueprintSync, error)
+	// AdmitBlueprintSyncRun atomically claims the active apply for an existing
+	// Blueprint and records its running run (w8/m37 t002). Zero claimed rows
+	// (disconnected between lookup and admission, or a lost admission race)
+	// report store.ErrBlueprintSyncBusy.
+	AdmitBlueprintSyncRun(ctx context.Context, blueprintID, tenantID string, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error)
+	// AdmitBlueprintCreate atomically upserts the row for explicit creation and
+	// claims its initial sync, reviving disconnected rows under a fresh
+	// generation (w8/m37 t001). A conflicting live claim reports
+	// store.ErrBlueprintSyncBusy.
+	AdmitBlueprintCreate(ctx context.Context, b store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error)
+	// StageBlueprintManifest stores the admitted sync's preflighted manifest,
+	// fencing on the admitted generation (w8/m37 t002/t005).
+	StageBlueprintManifest(ctx context.Context, id, tenantID string, generation int64, runID, manifest string) (store.Blueprint, error)
+	// CompleteBlueprintSync commits a run's terminal state together with the
+	// status projected from the current row (w8/m37 t002/t005). A stale
+	// completion reports store.ErrBlueprintSyncBusy without overwriting.
+	CompleteBlueprintSync(ctx context.Context, id, tenantID, runID string, generation int64, state string, completedAt time.Time, errMsg *string) (store.Blueprint, error)
+	// FailAdmittedSync settles an admitted run in error without projecting
+	// Blueprint status: preflight/stage failures leave current settings and
+	// status untouched while releasing the claim (w8/m37 t005).
+	FailAdmittedSync(ctx context.Context, id, tenantID, runID string, generation int64, completedAt time.Time, errMsg *string) error
+	// ListAbandonedBlueprintSyncs returns stale running runs for the recovery
+	// sweep, oldest first, bounded per tick (w8/m37 t004).
+	ListAbandonedBlueprintSyncs(ctx context.Context, before time.Time, limit int) ([]store.AbandonedBlueprintSync, error)
+	// AbandonBlueprintSync settles one stale running run as interrupted,
+	// flipping its Blueprint to error only while the abandoned generation
+	// still owns it (w8/m37 t004). False means another writer settled first.
+	AbandonBlueprintSync(ctx context.Context, runID string, now time.Time, reason string) (bool, error)
+}
+
+// errBlueprintSyncBusy is the one documented 409 for every lifecycle fencing
+// outcome (admission contention, fenced stage/completion, disconnect-busy):
+// one coded error through REST, GraphQL, MCP, and the dashboard (w8/m37 t002).
+func errBlueprintSyncBusy(msg string) error {
+	return core.NewConflictError("BLUEPRINT_SYNC_BUSY", msg, nil)
+}
+
+// isBlueprintBusy reports a lost (or never held) execution claim from the store.
+func isBlueprintBusy(err error) bool {
+	return errors.Is(err, store.ErrBlueprintSyncBusy)
 }
 
 // BlueprintFetcher fetches a blueprint file from its Git repository. The
@@ -437,8 +477,12 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		return BlueprintView{}, err
 	}
 
+	// Admission claims the initial apply and records its run atomically (w8/m37
+	// t002): a failed admission blocks every workload side effect, a competing
+	// live claim loses with the documented busy conflict, and a disconnected
+	// row is deliberately re-established under a fresh generation.
 	now := s.Now().UTC()
-	b, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
+	b, run, err := s.Blueprints.AdmitBlueprintCreate(ctx, store.Blueprint{
 		TenantID: tenantID,
 		Name:     req.Name,
 		Repo:     req.Repo,
@@ -446,49 +490,59 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		Path:     req.Path,
 		AutoSync: true,
 		Manifest: contents,
-		Status:   store.BlueprintStatusSyncing,
+	}, store.BlueprintSync{
+		CommitID:  commitSHA,
+		State:     store.BlueprintSyncStateRunning,
+		StartedAt: now,
 	})
 	if err != nil {
-		return BlueprintView{}, err
-	}
-
-	// The initial run is persisted before application (w8/m36 t004): a failed
-	// insertion blocks every workload side effect — no App, datastore,
-	// grouping, environment, or ownership mutation without a recorded attempt.
-	run, err := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
-		BlueprintID: b.ID,
-		CommitID:    commitSHA,
-		State:       store.BlueprintSyncStateRunning,
-		StartedAt:   now,
-	})
-	if err != nil {
+		if isBlueprintBusy(err) {
+			return BlueprintView{}, errBlueprintSyncBusy("another sync is already running for this blueprint; retry after it settles")
+		}
 		return BlueprintView{}, err
 	}
 
 	prepareReq.Confirm = req.Confirm
 	prepareReq.BlueprintID = b.ID
+	prepareReq.BlueprintGeneration = b.ExecutionGeneration
 	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed)
 
-	finalStatus := store.BlueprintStatusInSync
-	syncState := store.BlueprintSyncStateSuccess
-	if applyErr != nil {
-		finalStatus = store.BlueprintStatusError
-		syncState = store.BlueprintSyncStateError
-	}
-	completedAt := s.Now().UTC()
-	if updated, updErr := s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, &finalStatus, &completedAt); updErr == nil {
-		b = updated
-	}
-	// A failed completion write is not reported as verified success.
-	if _, updErr := s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt, errMsgPtr(applyErr)); updErr != nil {
-		return BlueprintView{}, fmt.Errorf("blueprint create: record completion: %w", updErr)
-	}
-	if applyErr != nil {
-		return BlueprintView{}, applyErr
+	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "create")
+	if cerr != nil {
+		return BlueprintView{}, cerr
 	}
 	v := toBlueprintView(b)
 	v.Resources = s.resolveBlueprintResourcesFromIR(ctx, b, ir)
 	return v, nil
+}
+
+// completeAdmittedSync commits the terminal state of an admitted run together
+// with the status projected from the current row (w8/m37 t002/t005), and maps
+// the outcome to the verb's return. applyErr is the apply outcome (nil on
+// success); recordVerb names the verb for completion-persistence failures
+// ("sync"/"create"). A fenced completion is never reported as success: on a
+// failed apply the apply error is returned, on a successful apply the fencing
+// error is.
+func (s *Service) completeAdmittedSync(ctx context.Context, b store.Blueprint, run store.BlueprintSync, applyErr error, recordVerb string) (store.Blueprint, error) {
+	state := store.BlueprintSyncStateSuccess
+	if applyErr != nil {
+		state = store.BlueprintSyncStateError
+	}
+	completedAt := s.Now().UTC()
+	updated, err := s.Blueprints.CompleteBlueprintSync(ctx, b.ID, b.TenantID, run.ID, run.ExecutionGeneration, state, completedAt, errMsgPtr(applyErr))
+	if err != nil {
+		if isBlueprintBusy(err) {
+			if applyErr != nil {
+				return b, applyErr
+			}
+			return b, errBlueprintSyncBusy("this sync no longer owns blueprint execution (superseded or disconnected); start a new sync")
+		}
+		return b, fmt.Errorf("blueprint %s: record completion: %w", recordVerb, err)
+	}
+	if applyErr != nil {
+		return updated, applyErr
+	}
+	return updated, nil
 }
 
 // GetBlueprintByID returns a single blueprint by its opaque id.
@@ -578,14 +632,17 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 	return s.runSync(ctx, b, bexYAML, confirm)
 }
 
-// runSync is the shared sync engine: records a run, pulls-from-repo or uses
-// the supplied/stored manifest, applies the stack, and stamps status + lastSyncAt.
-// prepareSyncManifest validates one candidate manifest and records it as the
-// blueprint's syncing manifest. Both sync sources — a caller-supplied YAML and
-// a git-fetched file — run the identical compile → payment-gate → action-plan
-// preflight before anything is persisted, so a manifest that cannot be applied
-// never becomes the stored one.
-func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, manifest string) (store.Blueprint, *parsedStack, error) {
+// runSync is the shared sync engine: admits the apply, pulls-from-repo or uses
+// the supplied/stored manifest, applies the stack, and commits status +
+// lastSyncAt together with the run's terminal state.
+// prepareSyncManifest validates one candidate manifest and stages it as the
+// blueprint's syncing manifest under the admitted generation. Both sync
+// sources — a caller-supplied YAML and a git-fetched file — run the identical
+// compile → payment-gate → action-plan preflight before anything is persisted,
+// so a manifest that cannot be applied never becomes the stored one. Only the
+// manifest (the sync-owned field) is written: current name/path/autoSync
+// settings survive the sync (w8/m37 t005).
+func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string) (store.Blueprint, *parsedStack, error) {
 	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: manifest})
 	if err != nil {
 		return store.Blueprint{}, nil, err
@@ -596,40 +653,34 @@ func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, ma
 	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed); err != nil {
 		return store.Blueprint{}, nil, err
 	}
-	updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
-		ID:       b.ID,
-		TenantID: b.TenantID,
-		Name:     b.Name,
-		Repo:     b.Repo,
-		Branch:   b.Branch,
-		Path:     b.Path,
-		AutoSync: b.AutoSync,
-		Manifest: manifest,
-		Status:   store.BlueprintStatusSyncing,
-	})
+	staged, err := s.Blueprints.StageBlueprintManifest(ctx, b.ID, b.TenantID, run.ExecutionGeneration, run.ID, manifest)
 	if err != nil {
+		if isBlueprintBusy(err) {
+			return store.Blueprint{}, nil, errBlueprintSyncBusy("this sync no longer owns blueprint execution (superseded or disconnected); start a new sync")
+		}
 		return store.Blueprint{}, nil, err
 	}
-	return updated, &parsed, nil
+	return staged, &parsed, nil
 }
 
 // failSync records a failed attempt for an existing Blueprint and returns the
-// source error (w8/m36 t004). Source and validation failures terminate in sync
-// history with their sanitized reason instead of vanishing before any run is
-// recorded. No workload mutation happens here; when the store itself is
-// unavailable the source error is returned without promising a history row.
+// source error (w8/m36 t004, w8/m37 t002). The run is inserted directly in its
+// terminal error state — one statement, so a process dying mid-report cannot
+// strand a running row. Source, validation, and admission-contention failures
+// terminate in sync history with their sanitized reason instead of vanishing
+// before any run is recorded. No workload mutation happens here; when the
+// store itself is unavailable the source error is returned without promising
+// a history row.
 func (s *Service) failSync(ctx context.Context, b store.Blueprint, commitSHA string, startedAt time.Time, srcErr error) (SyncBlueprintResult, error) {
-	run, insErr := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
-		BlueprintID: b.ID,
-		CommitID:    commitSHA,
-		State:       store.BlueprintSyncStateRunning,
-		StartedAt:   startedAt,
-	})
-	if insErr != nil {
-		return SyncBlueprintResult{}, srcErr
-	}
 	completedAt := s.Now().UTC()
-	_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, store.BlueprintSyncStateError, &completedAt, errMsgPtr(srcErr))
+	_, _ = s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
+		BlueprintID:  b.ID,
+		CommitID:     commitSHA,
+		State:        store.BlueprintSyncStateError,
+		StartedAt:    startedAt,
+		CompletedAt:  &completedAt,
+		ErrorMessage: errMsgPtr(srcErr),
+	})
 	return SyncBlueprintResult{}, srcErr
 }
 
@@ -686,44 +737,59 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		useStored = true
 	}
 
-	// Record the attempt before preflight/application (w8/m36 t004): a failed
-	// run insertion blocks every workload side effect below.
-	run, err := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
-		BlueprintID: b.ID,
-		CommitID:    commitSHA,
-		State:       store.BlueprintSyncStateRunning,
-		StartedAt:   now,
+	// Admission claims the active apply and records its run atomically (w8/m37
+	// t002): at most one admitted apply per Blueprint across replicas, and a
+	// failed admission blocks every workload side effect below. A competing
+	// live claim loses with the documented busy conflict (recorded in history);
+	// a disconnect that lands first fences here the same way.
+	b, run, err := s.Blueprints.AdmitBlueprintSyncRun(ctx, b.ID, tenantID, store.BlueprintSync{
+		CommitID:  commitSHA,
+		State:     store.BlueprintSyncStateRunning,
+		StartedAt: now,
 	})
 	if err != nil {
+		if isBlueprintBusy(err) {
+			return s.failSync(ctx, b, commitSHA, now, errBlueprintSyncBusy("another sync is already running for this blueprint; retry after it settles"))
+		}
 		return SyncBlueprintResult{}, err
 	}
-	fail := func(srcErr error) (SyncBlueprintResult, error) {
+
+	// settleStage terminates an admitted run whose manifest could not be staged
+	// (preflight refusal, or a lost fence on the legacy path) without touching
+	// Blueprint status or settings (w8/m37 t005), releasing the claim. The
+	// proximate error is what the caller can act on; a settle-persistence
+	// failure is best-effort (the recovery sweep bounds a leaked claim).
+	settleStage := func(stageErr error) (SyncBlueprintResult, error) {
 		completedAt := s.Now().UTC()
-		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, store.BlueprintSyncStateError, &completedAt, errMsgPtr(srcErr))
-		return SyncBlueprintResult{}, srcErr
+		_ = s.Blueprints.FailAdmittedSync(ctx, b.ID, tenantID, run.ID, run.ExecutionGeneration, completedAt, errMsgPtr(stageErr))
+		return SyncBlueprintResult{}, stageErr
 	}
-
-	if !useStored {
-		updated, parsed, err := s.prepareSyncManifest(ctx, b, manifest)
+	if useStored {
+		// Legacy non-Git rows apply the stored manifest: staging records the
+		// same bytes and marks the admitted apply syncing under the fence.
+		staged, err := s.Blueprints.StageBlueprintManifest(ctx, b.ID, tenantID, run.ExecutionGeneration, run.ID, b.Manifest)
 		if err != nil {
-			return fail(err)
+			if isBlueprintBusy(err) {
+				err = errBlueprintSyncBusy("this sync no longer owns blueprint execution (superseded or disconnected); start a new sync")
+			}
+			return settleStage(err)
 		}
-		b, prepared = updated, parsed
-	}
-
-	if b.Status != store.BlueprintStatusSyncing {
-		syncingStatus := store.BlueprintStatusSyncing
-		if updated, err := s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, &syncingStatus, nil); err == nil {
-			b = updated
+		b = staged
+	} else {
+		staged, parsed, err := s.prepareSyncManifest(ctx, b, run, manifest)
+		if err != nil {
+			return settleStage(err)
 		}
+		b, prepared = staged, parsed
 	}
 
 	deployReq := DeployRequest{
-		BlueprintID: b.ID,
-		Repo:        b.Repo,
-		Branch:      b.Branch,
-		Manifest:    b.Manifest,
-		Confirm:     confirm,
+		BlueprintID:         b.ID,
+		BlueprintGeneration: b.ExecutionGeneration,
+		Repo:                b.Repo,
+		Branch:              b.Branch,
+		Manifest:            b.Manifest,
+		Confirm:             confirm,
 	}
 	var stack StackResult
 	var applyErr error
@@ -733,27 +799,9 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		stack, applyErr = s.deployStack(ctx, deployReq)
 	}
 
-	finalStatus := store.BlueprintStatusInSync
-	syncState := store.BlueprintSyncStateSuccess
-	if applyErr != nil {
-		finalStatus = store.BlueprintStatusError
-		syncState = store.BlueprintSyncStateError
-		if !b.AutoSync {
-			finalStatus = store.BlueprintStatusPaused
-		}
-	}
-	completedAt := s.Now().UTC()
-	if updated, updErr := s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, &finalStatus, &completedAt); updErr == nil {
-		b = updated
-	}
-	// A failed completion write is not reported as verified success (w8/m36
-	// t004): propagate it instead of returning the apply outcome with
-	// misleading persisted state. m37's recovery work keys off the run ID.
-	if _, updErr := s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt, errMsgPtr(applyErr)); updErr != nil {
-		return SyncBlueprintResult{}, fmt.Errorf("blueprint sync: record completion: %w", updErr)
-	}
-	if applyErr != nil {
-		return SyncBlueprintResult{}, applyErr
+	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "sync")
+	if cerr != nil {
+		return SyncBlueprintResult{}, cerr
 	}
 	return SyncBlueprintResult{Blueprint: toBlueprintView(b), Stack: stack}, nil
 }
@@ -858,6 +906,14 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 
 // DisconnectBlueprint stops syncing and hides the blueprint from the workspace.
 // Resources remain untouched (Render semantics).
+//
+// Lifecycle coordination (w8/m37 t003): the store fences the transition on the
+// execution boundary — a fresh apply still owning the claim refuses with the
+// documented busy conflict (retry after it settles), a stale claim is settled
+// inline, and late completions or ownership stamps from the fenced run cannot
+// restore management afterwards. Cleanup failures are returned, never
+// discarded: the row stays disconnected either way, and the error names the
+// failed sweep for the operator.
 func (s *Service) DisconnectBlueprint(ctx context.Context, bpID, ownerID string) error {
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
@@ -871,16 +927,26 @@ func (s *Service) DisconnectBlueprint(ctx context.Context, bpID, ownerID string)
 	tenantID := s.resolveTenantID(ctx)
 	// Read the stored manifest before the row disappears — it names the
 	// groupings this blueprint minted, which the post-disconnect sweep may
-	// reclaim (w8/m20 t004).
+	// reclaim (w8/m20 t004). A disconnected row reads as absent, so its
+	// manifest is simply unavailable to the sweep.
 	manifest := ""
 	if b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID); err == nil {
 		manifest = b.Manifest
 	}
 	if err := s.Blueprints.DisconnectBlueprint(ctx, bpID, tenantID); err != nil {
+		if isBlueprintBusy(err) {
+			return errBlueprintSyncBusy("a sync is currently applying for this blueprint; retry disconnect after it settles")
+		}
 		return store.MapError(err)
 	}
-	s.reclaimBlueprintGroupings(ctx, tenantID, manifest)
-	s.clearBlueprintOwnership(ctx, tenantID, bpID)
+	if err := s.reclaimBlueprintGroupings(ctx, tenantID, manifest); err != nil {
+		log.Printf("blueprint %s: %v", bpID, err)
+		return err
+	}
+	if err := s.clearBlueprintOwnership(ctx, tenantID, bpID); err != nil {
+		log.Printf("blueprint %s: disconnect ownership cleanup failed: %v", bpID, err)
+		return fmt.Errorf("blueprint disconnected but ownership cleanup failed: %w", err)
+	}
 	return nil
 }
 
@@ -892,23 +958,26 @@ type GroupingReclaimer interface {
 }
 
 // reclaimBlueprintGroupings deletes the empty grouping rows the disconnected
-// blueprint's stored manifest declared. Best-effort by design: disconnect has
-// already succeeded, deployed resources are never touched (Render disconnect
-// semantics), a populated or externally-referenced grouping survives with a
-// log line, and a stale/unparseable manifest simply skips the sweep.
-func (s *Service) reclaimBlueprintGroupings(ctx context.Context, tenantID, manifest string) {
+// blueprint's stored manifest declared. Skips (no manifest, unparseable
+// manifest, no pairs, incomplete reference snapshot) are benign and return
+// nil: disconnect has already succeeded, deployed resources are never touched
+// (Render disconnect semantics), and a populated or externally-referenced
+// grouping survives. Only a genuine reclaim-store failure is returned, so
+// disconnect reports failed cleanup instead of inferring success from a
+// discarded error (w8/m37 t003).
+func (s *Service) reclaimBlueprintGroupings(ctx context.Context, tenantID, manifest string) error {
 	if s.GroupingReclaim == nil || manifest == "" {
-		return
+		return nil
 	}
 	source, ir, problems := CompileBlueprintIR(manifest)
 	if len(problems) > 0 {
 		log.Printf("blueprint disconnect: stored manifest no longer compiles; skipping grouping reclaim (workspace %s)", tenantID)
-		return
+		return nil
 	}
 	st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
 	if err != nil {
 		log.Printf("blueprint disconnect: stored manifest no longer parses; skipping grouping reclaim (workspace %s): %v", tenantID, err)
-		return
+		return nil
 	}
 	seen := map[store.GroupingPair]bool{}
 	var pairs []store.GroupingPair
@@ -920,7 +989,7 @@ func (s *Service) reclaimBlueprintGroupings(ctx context.Context, tenantID, manif
 		}
 	}
 	if len(pairs) == 0 {
-		return
+		return nil
 	}
 	referencedEnvironments, referencedProjects, err := s.datastoreGroupingRefs(ctx, tenantID)
 	if err != nil {
@@ -929,12 +998,11 @@ func (s *Service) reclaimBlueprintGroupings(ctx context.Context, tenantID, manif
 		// (recoverable) rather than risk deleting a populated grouping
 		// (irreversible).
 		log.Printf("blueprint disconnect: datastore reference scan failed; skipping grouping reclaim (workspace %s): %v", tenantID, err)
-		return
+		return nil
 	}
 	removedEnvironments, removedProjects, err := s.GroupingReclaim.ReclaimEmptyBlueprintGroupings(ctx, tenantID, pairs, referencedEnvironments, referencedProjects)
 	if err != nil {
-		log.Printf("blueprint disconnect: grouping reclaim failed (workspace %s): %v", tenantID, err)
-		return
+		return fmt.Errorf("blueprint disconnect: grouping reclaim: %w", err)
 	}
 	var audits []groupingAuditEntry
 	for _, name := range removedEnvironments {
@@ -944,6 +1012,7 @@ func (s *Service) reclaimBlueprintGroupings(ctx context.Context, tenantID, manif
 		audits = append(audits, groupingAuditEntry{action: "project_reclaimed", project: name})
 	}
 	s.emitGroupingAudits(ctx, tenantID, audits)
+	return nil
 }
 
 // datastoreGroupingRefs collects the environment/project ids the workspace's

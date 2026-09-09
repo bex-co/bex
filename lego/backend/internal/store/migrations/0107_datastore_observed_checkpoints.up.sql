@@ -7,7 +7,7 @@
 -- payload stays closed and typed for the same reason the App-side table does:
 -- no JSON or free-text column can become a path for a credential value.
 CREATE TABLE IF NOT EXISTS datastore_event_facts (
-    10|    source_key TEXT PRIMARY KEY,
+       source_key TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
     datastore_id TEXT NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN ('postgres', 'keyvalue')),
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS datastore_event_facts (
         'key_value_unhealthy',
         'key_value_available',
         'postgres_backup_completed',
-    20|        'postgres_backup_failed',
+           'postgres_backup_failed',
         'postgres_restore_succeeded',
         'postgres_restore_failed',
         'postgres_upgrade_started',
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS datastore_event_facts (
     at TIMESTAMPTZ NOT NULL,
     -- Webhook dispatch tails insertion order, not occurrence order (see the
     -- same column on service_event_facts).
-    30|    recorded_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+       recorded_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
     reason_code TEXT NOT NULL DEFAULT '' CHECK (reason_code IN ('', 'readiness_failed')),
     -- Detail columns for the backup/restore/upgrade facts (t002); empty on
     -- every availability fact.
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS datastore_event_facts (
     version_to TEXT NOT NULL DEFAULT '',
     scheduled BOOLEAN
 );
-    40|
+
 CREATE INDEX IF NOT EXISTS datastore_event_facts_workspace_at_idx
     ON datastore_event_facts (workspace_id, at DESC, source_key DESC);
 
@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS datastore_event_facts_datastore_at_idx
 CREATE INDEX IF NOT EXISTS datastore_event_facts_recorded_idx
     ON datastore_event_facts (recorded_at, source_key);
 
-    50|-- Level-triggered Database/KeyValue reconciliation records edges relative to
+    -- Level-triggered Database/KeyValue reconciliation records edges relative to
 -- this checkpoint, exactly as service_event_checkpoints does for Apps: the
 -- first observation establishes a baseline and emits nothing.
 --
@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS datastore_event_facts_recorded_idx
 -- the outage edge.
 CREATE TABLE IF NOT EXISTS datastore_observed_checkpoints (
     datastore_id TEXT PRIMARY KEY,
-    60|    workspace_id TEXT NOT NULL,
+       workspace_id TEXT NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN ('postgres', 'keyvalue')),
     phase TEXT NOT NULL DEFAULT '',
     availability TEXT NOT NULL DEFAULT '' CHECK (availability IN ('', 'healthy', 'unhealthy')),
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS datastore_observed_checkpoints (
     last_backup_name TEXT NOT NULL DEFAULT '',
     last_backup_phase TEXT NOT NULL DEFAULT '',
     restore_outcome TEXT NOT NULL DEFAULT '',
-    70|    upgrade_key TEXT NOT NULL DEFAULT '',
+       upgrade_key TEXT NOT NULL DEFAULT '',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS datastore_observed_checkpoints (
 -- at. The workspace comes off the fact itself.
 CREATE FUNCTION bex_index_datastore_fact_service_event()
 RETURNS trigger
-    80|LANGUAGE plpgsql
+    LANGUAGE plpgsql
 AS $$
 BEGIN
     INSERT INTO service_event_index (
@@ -87,7 +87,7 @@ BEGIN
         NEW.workspace_id, 'fact:' || NEW.source_key, 'fact', NEW.source_key, '',
         NEW.datastore_id, NEW.datastore_id, NULL
     )
-    90|    ON CONFLICT ON CONSTRAINT service_event_index_source_key DO NOTHING;
+       ON CONFLICT ON CONSTRAINT service_event_index_source_key DO NOTHING;
     RETURN NEW;
 END;
 $$;
@@ -97,7 +97,7 @@ AFTER INSERT ON datastore_event_facts
 FOR EACH ROW EXECUTE FUNCTION bex_index_datastore_fact_service_event();
 
 -- Extend 0083's shared delete trigger with the new source table. Recreated
-   100|-- whole rather than patched so the function body stays readable as one piece.
+   -- whole rather than patched so the function body stays readable as one piece.
 CREATE OR REPLACE FUNCTION bex_delete_service_event_index()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -107,7 +107,7 @@ BEGIN
         DELETE FROM service_event_index
         WHERE source = 'deploy' AND source_row_id = OLD.id;
     ELSIF TG_TABLE_NAME = 'audit_events' THEN
-   110|        DELETE FROM service_event_index
+          DELETE FROM service_event_index
         WHERE source = 'audit' AND source_row_id = OLD.id;
     ELSIF TG_TABLE_NAME = 'service_event_facts' THEN
         DELETE FROM service_event_index
@@ -117,7 +117,7 @@ BEGIN
         WHERE source = 'fact' AND source_row_id = OLD.source_key;
     END IF;
     RETURN OLD;
-   120|END;
+   END;
 $$;
 
 CREATE TRIGGER datastore_event_facts_event_index_delete

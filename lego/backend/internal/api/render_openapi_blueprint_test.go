@@ -110,6 +110,36 @@ func (f *blueprintFixtureStore) UpdateBlueprintSync(_ context.Context, id, state
 	return store.BlueprintSync{ID: id, State: state}, nil
 }
 
+// Lifecycle stubs (w8/m37): the by-id route tests never admit, stage,
+// complete, or recover runs, so these stay unimplemented.
+func (f *blueprintFixtureStore) AdmitBlueprintSyncRun(context.Context, string, string, store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
+	return store.Blueprint{}, store.BlueprintSync{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+}
+
+func (f *blueprintFixtureStore) AdmitBlueprintCreate(context.Context, store.Blueprint, store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
+	return store.Blueprint{}, store.BlueprintSync{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+}
+
+func (f *blueprintFixtureStore) StageBlueprintManifest(context.Context, string, string, int64, string, string) (store.Blueprint, error) {
+	return store.Blueprint{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+}
+
+func (f *blueprintFixtureStore) CompleteBlueprintSync(context.Context, string, string, string, int64, string, time.Time, *string) (store.Blueprint, error) {
+	return store.Blueprint{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+}
+
+func (f *blueprintFixtureStore) FailAdmittedSync(context.Context, string, string, string, int64, time.Time, *string) error {
+	return fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+}
+
+func (f *blueprintFixtureStore) ListAbandonedBlueprintSyncs(context.Context, time.Time, int) ([]store.AbandonedBlueprintSync, error) {
+	return nil, nil
+}
+
+func (f *blueprintFixtureStore) AbandonBlueprintSync(context.Context, string, time.Time, string) (bool, error) {
+	return false, nil
+}
+
 // blueprintRESTHandler composes what the milestone's coverage gap was missing:
 // the REAL apps.Service REST routes behind the REAL Render OpenAPI validator.
 // The existing blueprint REST test builds a bare http.NewServeMux() and calls

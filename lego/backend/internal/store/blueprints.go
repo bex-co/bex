@@ -41,6 +41,14 @@ type Blueprint struct {
 	LastSyncAt *time.Time `json:"lastSyncAt"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt"`
+	// ExecutionGeneration is the lifecycle fencing counter (w8/m37, migration
+	// 0111): bumped by every admission, disconnect, and explicit
+	// re-creation. Only the Admit/Complete paths populate it; the remaining
+	// readers leave it zero rather than pay for columns they never use.
+	ExecutionGeneration int64 `json:"-"`
+	// ActiveRunID names the one admitted-but-uncompleted run, "" when idle.
+	// Internal to lifecycle coordination; never rendered on API views.
+	ActiveRunID string `json:"-"`
 }
 
 // BlueprintSync is a row of `blueprint_syncs` — one recorded sync run.
@@ -54,6 +62,10 @@ type BlueprintSync struct {
 	CompletedAt  *time.Time `json:"completedAt"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	ErrorMessage *string    `json:"errorMessage"`
+	// ExecutionGeneration records which admission a run belongs to (w8/m37,
+	// migration 0111) so recovery and completion never settle a run against a
+	// newer generation. Internal; never rendered on API views.
+	ExecutionGeneration int64 `json:"-"`
 }
 
 // Blueprint sync state constants (Render's vocabulary).
@@ -74,9 +86,18 @@ const (
 	BlueprintStatusError   = "error"
 )
 
-// UpsertBlueprint creates a blueprint or updates its fields when (tenant_id,
-// repo, branch) already exists. The id field is ignored on conflict — the
-// existing row's id is preserved. Returns the current row.
+// UpsertBlueprint creates a blueprint or refreshes its manifest when
+// (tenant_id, repo, branch) already exists. The id field is ignored on
+// conflict — the existing row's id is preserved. Returns the current row.
+//
+// The conflict arm writes the manifest ONLY (w8/m37 t005): deploy-time
+// auto-registration must never clobber current name/path/autoSync settings or
+// lifecycle status with deploy-request defaults — a direct deploy racing an
+// admitted sync (or a mid-run settings change) keeps the row's settings.
+// It also refuses disconnected rows (re-establishment is confined to explicit
+// creation through AdmitBlueprintCreate, which bumps the execution
+// generation). Generation and active-run ownership are never written here —
+// an auto-register racing a live sync must not fence its own admission.
 func (s *PGStore) UpsertBlueprint(ctx context.Context, b Blueprint) (Blueprint, error) {
 	if b.ID == "" {
 		b.ID = ids.New(ids.Blueprint)
@@ -90,12 +111,9 @@ func (s *PGStore) UpsertBlueprint(ctx context.Context, b Blueprint) (Blueprint, 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT (tenant_id, repo, branch)
 		DO UPDATE SET
-			name       = EXCLUDED.name,
-			path       = EXCLUDED.path,
-			auto_sync  = EXCLUDED.auto_sync,
 			manifest   = EXCLUDED.manifest,
-			status     = EXCLUDED.status,
 			updated_at = now()
+		WHERE blueprints.status != 'disconnected'
 		RETURNING id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 		          last_sync_at, created_at, updated_at`,
 		b.ID, b.TenantID, b.Name, b.Repo, b.Branch, b.Path, b.AutoSync, b.Manifest, b.Status,
@@ -107,14 +125,15 @@ func (s *PGStore) UpsertBlueprint(ctx context.Context, b Blueprint) (Blueprint, 
 	return out, nil
 }
 
-// GetBlueprint fetches a blueprint by id, scoped to tenantID (returns ErrNotFound
-// if the id belongs to a different workspace).
+// GetBlueprint fetches an active blueprint by id, scoped to tenantID (returns
+// ErrNotFound if the id belongs to a different workspace — or names a
+// disconnected row, which ordinary reads treat as absent, w8/m37 t001).
 func (s *PGStore) GetBlueprint(ctx context.Context, id, tenantID string) (Blueprint, error) {
 	var out Blueprint
 	err := s.Pool.QueryRow(ctx,
 		`SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 		        last_sync_at, created_at, updated_at
-		 FROM blueprints WHERE id = $1 AND tenant_id = $2`,
+		 FROM blueprints WHERE id = $1 AND tenant_id = $2 AND status != 'disconnected'`,
 		id, tenantID,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
 		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt)
@@ -125,13 +144,15 @@ func (s *PGStore) GetBlueprint(ctx context.Context, id, tenantID string) (Bluepr
 }
 
 // GetBlueprintByRepo fetches the active blueprint for a tenant+repo+branch, used
-// by the push-webhook auto-sync path. Returns ErrNotFound when unregistered.
+// by the push-webhook auto-sync path. Returns ErrNotFound when unregistered —
+// or when the row is disconnected, so webhooks cannot resurrect one (w8/m37).
 func (s *PGStore) GetBlueprintByRepo(ctx context.Context, tenantID, repo, branch string) (Blueprint, error) {
 	var out Blueprint
 	err := s.Pool.QueryRow(ctx,
 		`SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 		        last_sync_at, created_at, updated_at
 		 FROM blueprints WHERE tenant_id = $1 AND repo = $2 AND branch = $3
+		   AND status != 'disconnected'
 		 LIMIT 1`,
 		tenantID, repo, branch,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
@@ -168,7 +189,8 @@ func (s *PGStore) ListBlueprints(ctx context.Context, tenantID string) ([]Bluepr
 }
 
 // UpdateBlueprint applies a partial update (only non-zero pointer fields are
-// changed). Returns the updated row.
+// changed). Returns the updated row. Disconnected rows are untouched —
+// ordinary updates cannot reactivate one (w8/m37 t001).
 func (s *PGStore) UpdateBlueprint(ctx context.Context, id, tenantID string, name *string, autoSync *bool, path *string, status *string, lastSyncAt *time.Time) (Blueprint, error) {
 	var out Blueprint
 	err := s.Pool.QueryRow(ctx,
@@ -179,7 +201,7 @@ func (s *PGStore) UpdateBlueprint(ctx context.Context, id, tenantID string, name
 			status      = COALESCE($6, status),
 			last_sync_at = COALESCE($7, last_sync_at),
 			updated_at  = now()
-		 WHERE id = $1 AND tenant_id = $2
+		 WHERE id = $1 AND tenant_id = $2 AND status != 'disconnected'
 		 RETURNING id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 		           last_sync_at, created_at, updated_at`,
 		id, tenantID, name, autoSync, path, status, lastSyncAt,
@@ -191,35 +213,21 @@ func (s *PGStore) UpdateBlueprint(ctx context.Context, id, tenantID string, name
 	return out, nil
 }
 
-// DisconnectBlueprint marks the blueprint as disconnected (hidden from list;
-// resources remain untouched). Returns ErrNotFound if not owned by tenantID.
-func (s *PGStore) DisconnectBlueprint(ctx context.Context, id, tenantID string) error {
-	tag, err := s.Pool.Exec(ctx,
-		`UPDATE blueprints SET status = 'disconnected', auto_sync = false, updated_at = now()
-		 WHERE id = $1 AND tenant_id = $2`,
-		id, tenantID)
-	if err != nil {
-		return classify("blueprint", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return classify("blueprint", ErrNotFound)
-	}
-	return nil
-}
-
-// InsertBlueprintSync inserts a new sync run row.
+// InsertBlueprintSync inserts a new sync run row. Terminal fields travel with
+// the insert so a pre-admission failure lands directly in its final error
+// state — one statement, no stranded running row (w8/m37 t002 failSync).
 func (s *PGStore) InsertBlueprintSync(ctx context.Context, run BlueprintSync) (BlueprintSync, error) {
 	if run.ID == "" {
 		run.ID = ids.New(ids.BlueprintSync)
 	}
 	var out BlueprintSync
 	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at)
-		 VALUES ($1, $2, $3, $4, $5)
-		 RETURNING id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message`,
-		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt,
+		`INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, completed_at, error_message, execution_generation)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		 RETURNING id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, execution_generation`,
+		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt, run.CompletedAt, run.ErrorMessage, run.ExecutionGeneration,
 	).Scan(&out.ID, &out.BlueprintID, &out.CommitID, &out.State,
-		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage)
+		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage, &out.ExecutionGeneration)
 	if err != nil {
 		return BlueprintSync{}, classify("blueprint_sync", err)
 	}

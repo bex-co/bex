@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { useSyncBlueprint } from "@/features/blueprints/hooks/use-sync-blueprint";
 
 const mutate = vi.fn();
@@ -45,6 +46,42 @@ describe("useSyncBlueprint", () => {
       confirmation: "sudo deploy service api",
     });
     expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("shows the retry toast on BLUEPRINT_SYNC_BUSY instead of generic failure", async () => {
+    mutate.mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message: "another sync is already running",
+            extensions: { code: "BLUEPRINT_SYNC_BUSY" },
+          },
+        ],
+      }),
+    );
+    const { result } = renderHook(() => useSyncBlueprint());
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.sync("blp-1");
+    });
+
+    expect(outcome).toEqual({ status: "error" });
+    expect(toastError).toHaveBeenCalledWith(
+      "Another sync is already running — retry after it settles",
+    );
+  });
+
+  it("shows generic failure for non-busy errors", async () => {
+    mutate.mockRejectedValue(new Error("boom"));
+    const { result } = renderHook(() => useSyncBlueprint());
+
+    await act(async () => {
+      await result.current.sync("blp-1");
+    });
+
+    expect(toastError).toHaveBeenCalledWith("Sync failed");
   });
 
   it("forwards the exact phrase on retry and reports success", async () => {

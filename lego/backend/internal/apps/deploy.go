@@ -90,9 +90,15 @@ type DeployRequest struct {
 	// conflict preflight (w8/m23). Empty = a non-blueprint deploy: no stamping,
 	// no ownership enforcement (manual resources adopt freely, unchanged).
 	BlueprintID string
-	Repo        string
-	Branch      string
-	Manifest    string
+	// BlueprintGeneration is the admitted execution generation the apply runs
+	// under (w8/m37 t003). Zero = unguarded (direct deploy, legacy paths):
+	// stamping proceeds as before. Non-zero = the ownership stamp is applied
+	// only while the Blueprint still carries this generation — a disconnect or
+	// newer admission that fenced the run also fences its late stamp.
+	BlueprintGeneration int64
+	Repo                string
+	Branch              string
+	Manifest            string
 	// EnvVarValues supplies sync:false values collected by an interactive
 	// Blueprint create flow. They are never included in a validation plan or an
 	// App spec; apply seeds them once into the mutable env store.
@@ -720,7 +726,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if req.Repo != "" {
 		s.upsertBlueprint(ctx, req)
 	}
-	s.stampBlueprintOwnership(ctx, req.BlueprintID, st)
+	s.stampBlueprintOwnership(ctx, req.BlueprintID, req.BlueprintGeneration, st)
 	return res, nil
 }
 

@@ -97,6 +97,11 @@ type Server struct {
 	// fire-and-forget agent sessions (ADR047 D4, w3/m41). nil (or its deps
 	// unwired) ⇒ the loop is a no-op; main.go starts it with the serve context.
 	AgentSessionCompleter *agentsessions.Completer
+	// BlueprintRecovery is the background loop that settles Blueprint sync
+	// runs abandoned by process loss (w8/m37 t004). nil (or its store
+	// unwired) ⇒ the loop is a no-op; main.go starts it with the serve
+	// context.
+	BlueprintRecovery *apps.BlueprintRecoverer
 	Postgres              *postgres.Service
 	KeyValue              *keyvalue.Service
 	Secrets               *secrets.Service
@@ -822,6 +827,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			RetentionTTL:       d.AgentSnapshotRetentionTTL,
 			TurnTimeout:        d.AgentTurnTimeout,
 		},
+		BlueprintRecovery: &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
 			GitHub: d.GitHubClient, Connections: d.GitHubStore, APIPublicURL: d.DeployHookBaseURL,
