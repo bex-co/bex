@@ -17,6 +17,7 @@ limitations under the License.
 package github
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -453,6 +454,163 @@ func TestRepoAccessible(t *testing.T) {
 			t.Errorf("status %d => ok=%v err=%v, want ok=%v err=%v", tc.status, ok, err, tc.wantOK, tc.wantErr)
 		}
 		srv.Close()
+	}
+}
+
+// --- w8/m36 t001/t007: Blueprint source integrity at the HTTP boundary ---
+
+func testFileClient(t *testing.T, srv *httptest.Server) *Client {
+	t.Helper()
+	keyPEM, _ := testKeyPEM(t)
+	c, err := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	c.baseURL = srv.URL
+	return c
+}
+
+// Exactly-at-limit content is complete and accepted; limit-plus-one — even
+// with a valid YAML prefix — is refused rather than truncated (t001).
+func TestGetFileContentsEnforcesSizeBound(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		size    int
+		wantErr bool
+	}{
+		{"exactly at limit", maxBlueprintFileBytes, false},
+		{"limit plus one", maxBlueprintFileBytes + 1, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			prefix := []byte("services: []\n# ")
+			body := append(prefix, bytes.Repeat([]byte("x"), tc.size-len(prefix))...)
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(body)
+			}))
+			defer srv.Close()
+			fc, err := testFileClient(t, srv).GetFileContents(context.Background(), "", "o", "r", "render.yaml", "main")
+			if tc.wantErr {
+				if !errors.Is(err, errFileTooLarge) {
+					t.Fatalf("over-limit file: want errFileTooLarge, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("at-limit file: %v", err)
+			}
+			if len(fc.Contents) != len(body) {
+				t.Fatalf("at-limit contents = %d bytes, want complete %d", len(fc.Contents), len(body))
+			}
+		})
+	}
+}
+
+// A reader error after a valid YAML prefix stays an error — never a
+// successful partial manifest (t001).
+func TestGetFileContentsReadErrorIsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Error("hijack unsupported")
+			return
+		}
+		conn, buf, err := hj.Hijack()
+		if err != nil {
+			t.Errorf("hijack: %v", err)
+			return
+		}
+		defer conn.Close()
+		_, _ = buf.WriteString("HTTP/1.1 200 OK\r\nContent-Length: 100\r\nConnection: close\r\n\r\nservices:\n  - name: app")
+		_ = buf.Flush()
+	}))
+	defer srv.Close()
+	if _, err := testFileClient(t, srv).GetFileContents(context.Background(), "", "o", "r", "render.yaml", "main"); err == nil {
+		t.Fatal("interrupted response: want error, got success with a partial manifest")
+	} else if !strings.Contains(err.Error(), "github: get file") {
+		t.Fatalf("interrupted response error = %q, want a github read failure", err)
+	}
+}
+
+// 404, denied access, rate limits, and interrupted responses never become
+// successful empty or partial content, and error output carries neither
+// installation tokens nor raw upstream bodies (t001).
+func TestGetFileContentsClassifiesFailures(t *testing.T) {
+	const upstreamBody = "UPSTREAM-SECRET-BODY"
+	const token = "INSTALLATION-TOKEN-SECRET"
+	for _, tc := range []struct {
+		name    string
+		status  int
+		wantSub string
+		wantAPI bool
+	}{
+		{"not found", http.StatusNotFound, "not found", true},
+		{"unauthorized", http.StatusUnauthorized, "access denied", true},
+		{"forbidden", http.StatusForbidden, "access denied", true},
+		{"rate limited", http.StatusTooManyRequests, "rate limited", true},
+		{"server error", http.StatusInternalServerError, "unexpected status 500", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(upstreamBody))
+			}))
+			defer srv.Close()
+			_, err := testFileClient(t, srv).GetFileContents(context.Background(), token, "o", "r", "render.yaml", "main")
+			if err == nil {
+				t.Fatalf("status %d: want error, got success", tc.status)
+			}
+			if !strings.Contains(err.Error(), tc.wantSub) {
+				t.Errorf("status %d error = %q, want %q", tc.status, err, tc.wantSub)
+			}
+			var apiErr *APIError
+			if tc.wantAPI && !errors.As(err, &apiErr) {
+				t.Errorf("status %d error %q does not wrap *APIError", tc.status, err)
+			}
+			if strings.Contains(err.Error(), upstreamBody) {
+				t.Errorf("status %d error leaks the upstream body: %q", tc.status, err)
+			}
+			if strings.Contains(err.Error(), token) {
+				t.Errorf("status %d error leaks the installation token: %q", tc.status, err)
+			}
+		})
+	}
+}
+
+// An empty or malformed branch HEAD is an actionable error, never provenance
+// (t002). Both SHA-1 (40) and SHA-256 (64) lengths validate.
+func TestGetRepoCommitSHAValidatesSHA(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		sha     string
+		wantErr bool
+	}{
+		{"sha1", "0123456789abcdef0123456789abcdef01234567", false},
+		{"sha256", strings.Repeat("ab12", 16), false},
+		{"empty", "", true},
+		{"not hex", "main", true},
+		{"truncated", "0123456789abcdef", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = fmt.Fprintf(w, `{"commit":{"sha":%q}}`, tc.sha)
+			}))
+			defer srv.Close()
+			sha, err := testFileClient(t, srv).GetRepoCommitSHA(context.Background(), "", "o", "r", "main")
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("malformed commit id: want error, got success")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("valid commit id: %v", err)
+			}
+			if sha != tc.sha {
+				t.Fatalf("commit = %q, want %q", sha, tc.sha)
+			}
+		})
 	}
 }
 

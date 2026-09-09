@@ -703,6 +703,8 @@ func TestSyncBlueprintGraphQLReportsKeyValuesAndEnvGroups(t *testing.T) {
 		EnvGroups:       groups,
 		EnvSeeder:       &fakeSeeder{},
 		DomainOwnership: allowDomainOwnership{},
+		// w8/m36 t003: Git-backed sync fetches instead of reapplying stored.
+		GitFetcher: fakeBlueprintFetcher{contents: allKindsManifest},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 

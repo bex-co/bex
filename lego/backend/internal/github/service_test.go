@@ -211,6 +211,17 @@ type fakeClient struct {
 	// gotCommitRef records the (token, owner, repo, ref) GetCommit was called
 	// with, for assertions.
 	gotCommitRef []string
+	// Blueprint fetcher seams (w8/m36): fileContents/fileErr back GetFileContents,
+	// fileByRef serves per-ref content for the moving-branch test, gotFileRef
+	// records the (path, ref) of the last content read, commitSHA/commitSHAErr
+	// back GetRepoCommitSHA, resolveCalls counts resolutions.
+	fileContents string
+	fileErr      error
+	fileByRef    map[string]string
+	gotFileRef   []string
+	commitSHA    string
+	commitSHAErr error
+	resolveCalls int
 	// Multi-connection (ADR078) test seams: reposByInst returns per-installation
 	// repos (falls back to repos when nil); tokenByInst maps an installation to
 	// the token it mints; gotMintInst records the installation MintInstallationToken
@@ -279,12 +290,23 @@ func (c *fakeClient) GetCommit(_ context.Context, token, owner, repo, ref string
 	return c.commit, nil
 }
 
-func (c *fakeClient) GetFileContents(_ context.Context, _, _, _, _, _ string) (FileContents, error) {
-	return FileContents{}, nil
+func (c *fakeClient) GetFileContents(_ context.Context, _, _, _, path, ref string) (FileContents, error) {
+	c.gotFileRef = []string{path, ref}
+	if c.fileErr != nil {
+		return FileContents{}, c.fileErr
+	}
+	if c.fileByRef != nil {
+		return FileContents{Contents: c.fileByRef[ref]}, nil
+	}
+	return FileContents{Contents: c.fileContents}, nil
 }
 
 func (c *fakeClient) GetRepoCommitSHA(_ context.Context, _, _, _, _ string) (string, error) {
-	return "", nil
+	c.resolveCalls++
+	if c.commitSHAErr != nil {
+		return "", c.commitSHAErr
+	}
+	return c.commitSHA, nil
 }
 func (c *fakeClient) OpenDraftPullRequest(_ context.Context, _ int64, _, _, _, _, _, _ string) (PullRequest, error) {
 	return PullRequest{}, nil
@@ -863,6 +885,103 @@ func TestResolveCommit(t *testing.T) {
 	}
 	if _, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/octo/app", ""); ok || err != nil {
 		t.Errorf("empty ref = ok=%v err=%v, want (false, nil)", ok, err)
+	}
+}
+
+// --- w8/m36 t002/t007: resolve-then-read at one immutable commit ---
+
+const (
+	testCommitA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	testCommitB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+)
+
+func newBlueprintSourceService(fc *fakeClient) *Service {
+	return &Service{Base: &core.Base{Namespace: "default"}, GitHub: fc, Store: newFakeStore()}
+}
+
+// A branch advancing between resolution and fetch cannot change the manifest
+// read at the reported commit: the content ref is the resolved SHA, and the
+// bytes served are exactly that revision's.
+func TestBlueprintFetchPinsImmutableCommit(t *testing.T) {
+	fc := &fakeClient{
+		commitSHA: testCommitA,
+		fileByRef: map[string]string{
+			testCommitA: "content-at-A",
+			"main":      "content-at-moving-tip",
+		},
+	}
+	svc := newBlueprintSourceService(fc)
+	ctx := context.Background()
+	f := svc.BlueprintFileFetcher()
+
+	sha, err := f.ResolveBlueprintCommit(ctx, "ws-1", "https://github.com/a/app", "main")
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	if sha != testCommitA {
+		t.Fatalf("resolved commit = %q, want %q", sha, testCommitA)
+	}
+	// The branch advances before the content read.
+	fc.commitSHA = testCommitB
+	contents, err := f.FetchBlueprintFileAtCommit(ctx, "ws-1", "https://github.com/a/app", sha, "render.yaml")
+	if err != nil {
+		t.Fatalf("fetch at commit: %v", err)
+	}
+	if contents != "content-at-A" {
+		t.Fatalf("contents = %q, want the resolved revision's bytes", contents)
+	}
+	if got := fc.gotFileRef; len(got) != 2 || got[0] != "render.yaml" || got[1] != testCommitA {
+		t.Fatalf("content read ref = %v, want [render.yaml %s]", got, testCommitA)
+	}
+}
+
+// Commit lookup failure, an empty commit ID, and a malformed commit ID are
+// actionable errors — and a branch name can never stand in for a commit.
+func TestBlueprintResolveFailureIsActionable(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeClient{commitSHAErr: errors.New("github: get branch: connection reset")}
+	svc := newBlueprintSourceService(fc)
+	f := svc.BlueprintFileFetcher()
+	if _, err := f.ResolveBlueprintCommit(ctx, "ws-1", "https://github.com/a/app", "main"); err == nil {
+		t.Fatal("commit lookup failure: want error, got success")
+	}
+
+	for _, tc := range []struct {
+		name   string
+		commit string
+	}{
+		{"empty", ""},
+		{"branch name", "main"},
+		{"blob-shaped garbage", "not-a-sha"},
+	} {
+		t.Run("resolve/"+tc.name, func(t *testing.T) {
+			fc := &fakeClient{commitSHA: tc.commit}
+			f := newBlueprintSourceService(fc).BlueprintFileFetcher()
+			if _, err := f.ResolveBlueprintCommit(ctx, "ws-1", "https://github.com/a/app", "main"); err == nil {
+				t.Fatalf("resolve(%q): want error, got fabricated provenance", tc.commit)
+			}
+		})
+		t.Run("fetch/"+tc.name, func(t *testing.T) {
+			f := newBlueprintSourceService(&fakeClient{}).BlueprintFileFetcher()
+			if _, err := f.FetchBlueprintFileAtCommit(ctx, "ws-1", "https://github.com/a/app", tc.commit, "render.yaml"); err == nil {
+				t.Fatalf("fetch(%q): want refusal, got success", tc.commit)
+			}
+		})
+	}
+}
+
+// No blob-SHA-as-commit fallback remains: when HEAD resolution fails the whole
+// fetch fails, even though content is available.
+func TestBlueprintFetchHasNoBlobSHAFallback(t *testing.T) {
+	fc := &fakeClient{commitSHAErr: errors.New("boom"), fileContents: "usable-bytes"}
+	svc := newBlueprintSourceService(fc)
+	ctx := context.Background()
+	f := svc.BlueprintFileFetcher()
+	if _, err := f.ResolveBlueprintCommit(ctx, "ws-1", "https://github.com/a/app", "main"); err == nil {
+		t.Fatal("failed resolution: want error, got a fallback commit")
+	}
+	if fc.resolveCalls != 1 {
+		t.Fatalf("resolve calls = %d, want exactly 1 pinned resolution", fc.resolveCalls)
 	}
 }
 
