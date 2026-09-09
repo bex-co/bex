@@ -372,3 +372,15 @@ func releaseRevision(app *appv1alpha1.App) string {
 func releaseBuildRevision(app *appv1alpha1.App) string {
 	return appv1alpha1.BuildRevision(releaseGeneration(app))
 }
+
+// clearCacheApplies is true when this App's current release generation is the
+// one stamped for a clear-cache rebuild. A marker for any other generation must
+// not skip import — that would clear an unrelated deploy (w7/m88).
+func clearCacheApplies(app *appv1alpha1.App) bool {
+	raw := app.Annotations[appv1alpha1.AnnotationClearCacheReleaseGeneration]
+	clearGen, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || clearGen <= 0 {
+		return false
+	}
+	return clearGen == releaseGeneration(app)
+}

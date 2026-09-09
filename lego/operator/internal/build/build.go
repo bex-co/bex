@@ -259,6 +259,7 @@ const (
 	// there would be two facts that must agree.
 	cacheRestorePhase = "cache-restore"
 	cacheSavePhase    = "cache-save"
+	cachePurgePhase   = "cache-purge"
 	cacheInVolume     = "cache-in"
 	cacheOutVolume    = "cache-out"
 
@@ -404,6 +405,10 @@ type Options struct {
 	// carry the cache in and out. The container that runs tenant-authored
 	// Dockerfile RUN steps still holds nothing that can write to the registry.
 	BuildCache bool
+	// SkipCacheImport is the clear-cache rebuild contract (w7/m88): when BuildCache
+	// is on, the Job still exports and saves a fresh cache, but it does not
+	// restore or import prior layers. Empty/false keeps the normal warm path.
+	SkipCacheImport bool
 }
 
 // Phase is the observed lifecycle of a dispatched build (ADR060 §D1: the
@@ -639,6 +644,7 @@ func windowSeconds(start, finish time.Time) float64 {
 var buildStepNames = map[string]string{
 	"clone":                "clone",
 	cacheRestorePhase:      "build cache restore",
+	cachePurgePhase:        "build cache purge",
 	"prepare-native-build": "build preparation",
 	"buildkit":             "docker build",
 	pushContainer:          "image push",
@@ -881,16 +887,21 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	if o.BuildCache {
 		args = append(args, "--export-cache",
 			"type=local,dest="+cacheOutMount+",mode=max,image-manifest=true,compression=zstd,ignore-error=true")
-		// The import is added by the phase itself rather than here, because
-		// whether there IS a cache is only known at run time: the restore phase
-		// leaves the volume empty on a first build or a registry miss, and
-		// pointing --import-cache at an empty layout is an error. Appending to
-		// "$@" keeps every value a discrete positional parameter, so nothing is
-		// spliced into shell text (the rule classifyPrelude documents).
-		buildkitScript = `if [ -s ` + cacheInMount + `/index.json ]; then
+		// Clear-cache rebuilds still export a fresh cache but must not import
+		// prior layers (w7/m88). The import stanza is omitted entirely so an
+		// empty volume cannot become a spurious --import-cache error either.
+		if !o.SkipCacheImport {
+			// The import is added by the phase itself rather than here, because
+			// whether there IS a cache is only known at run time: the restore phase
+			// leaves the volume empty on a first build or a registry miss, and
+			// pointing --import-cache at an empty layout is an error. Appending to
+			// "$@" keeps every value a discrete positional parameter, so nothing is
+			// spliced into shell text (the rule classifyPrelude documents).
+			buildkitScript = `if [ -s ` + cacheInMount + `/index.json ]; then
   set -- "$@" --import-cache "type=local,src=` + cacheInMount + `"
 fi
 ` + buildkitScript
+		}
 	}
 
 	// Keep BuildKit's default OCI process sandbox enabled; the Pod user namespace
@@ -914,9 +925,10 @@ fi
 
 	volumes := []corev1.Volume{emptyDirVolume("source"), emptyDirVolume("output")}
 	if o.BuildCache {
-		volumes = append(volumes,
-			boundedEmptyDirVolume(cacheInVolume, cacheEmptyDirSizeLimit),
-			boundedEmptyDirVolume(cacheOutVolume, cacheEmptyDirSizeLimit))
+		volumes = append(volumes, boundedEmptyDirVolume(cacheOutVolume, cacheEmptyDirSizeLimit))
+		if !o.SkipCacheImport {
+			volumes = append(volumes, boundedEmptyDirVolume(cacheInVolume, cacheEmptyDirSizeLimit))
+		}
 	}
 	if o.PushSecret != "" {
 		volumes = append(volumes, secretVolume("push-registry-cred", o.PushSecret))
@@ -981,8 +993,12 @@ fi
 		buildkit.VolumeMounts = append(buildkit.VolumeMounts, corev1.VolumeMount{Name: "native-build", MountPath: "/native"})
 	}
 	if o.BuildCache {
+		if !o.SkipCacheImport {
+			buildkit.VolumeMounts = append(buildkit.VolumeMounts,
+				corev1.VolumeMount{Name: "cache-in", MountPath: cacheInMount, ReadOnly: true},
+			)
+		}
 		buildkit.VolumeMounts = append(buildkit.VolumeMounts,
-			corev1.VolumeMount{Name: "cache-in", MountPath: cacheInMount, ReadOnly: true},
 			corev1.VolumeMount{Name: "cache-out", MountPath: cacheOutMount},
 		)
 	}
@@ -1012,8 +1028,15 @@ fi
 	}
 	if o.BuildCache {
 		// After the clone, so a build that fails on tenant input (a bad ref)
-		// does not first spend time pulling a cache it will never use.
-		podSpec.InitContainers = append(podSpec.InitContainers, cacheRestoreContainer(o, pushImage))
+		// does not first spend time pulling a cache it will never use. A clear
+		// rebuild skips restore/import and instead best-effort deletes the
+		// prior cache tag so later normal deploys cannot accidentally warm from
+		// layers this rebuild was asked to discard (w7/m88).
+		if o.SkipCacheImport {
+			podSpec.InitContainers = append(podSpec.InitContainers, cachePurgeContainer(o, pushImage))
+		} else {
+			podSpec.InitContainers = append(podSpec.InitContainers, cacheRestoreContainer(o, pushImage))
+		}
 	}
 	if o.Builder == BuilderNative {
 		podSpec.InitContainers = append(podSpec.InitContainers, nativeBuildPreparer(o))
@@ -1134,6 +1157,12 @@ const cacheBestEffort = `skopeo "$@" || echo "bex: build cache step failed; cont
 // no-cache path.
 const cacheRestoreBestEffort = `skopeo "$@" || { rm -rf ` + cacheInMount + `/* ` + cacheInMount + `/.[!.]*; echo "bex: no usable build cache; building clean" >&2; }`
 
+// cachePurgeBestEffort deletes the App's cache tag. Missing tags and transient
+// registry errors must not fail a clear-cache rebuild — the rebuild already
+// skips import, so a purge miss only means a later normal deploy may still see
+// an older tag until this Job's cache-save replaces it.
+const cachePurgeBestEffort = `skopeo "$@" || echo "bex: build cache purge skipped; continuing (clear rebuild does not import)" >&2`
+
 // skopeoCopyArgs assembles one credential-isolated registry copy. The
 // TLS-verification flag is derived from which SIDE is the registry rather than
 // passed in, so a future phase cannot be given --dest-tls-verify where it needed
@@ -1153,6 +1182,20 @@ func skopeoCopyArgs(o Options, src, dst string, flags ...string) []string {
 		args = append(args, "--authfile", dockerAuthFile)
 	}
 	return append(args, src, dst)
+}
+
+// skopeoDeleteArgs assembles a credential-isolated registry delete for the
+// clear-cache purge phase. Cluster-local registries skip TLS verification the
+// same way copies do.
+func skopeoDeleteArgs(o Options, ref string) []string {
+	args := []string{"delete"}
+	if registryIsClusterLocal(o.Registry) {
+		args = append(args, "--tls-verify=false")
+	}
+	if o.PushSecret != "" {
+		args = append(args, "--authfile", dockerAuthFile)
+	}
+	return append(args, ref)
 }
 
 // pushPhaseResources is the budget every credentialed skopeo phase runs under.
@@ -1190,6 +1233,15 @@ func cacheRestoreContainer(o Options, image string) corev1.Container {
 		corev1.VolumeMount{Name: cacheInVolume, MountPath: cacheInMount})
 }
 
+// cachePurgeContainer best-effort deletes this App's registry cache tag before
+// a clear-cache rebuild. It is the credentialed twin of cache-restore: BuildKit
+// still never holds the credential. A missing tag is success (first clear, or
+// a prior purge already landed).
+func cachePurgeContainer(o Options, image string) corev1.Container {
+	return cachePhase(o, cachePurgePhase, image, cachePurgeBestEffort,
+		skopeoDeleteArgs(o, "docker://"+o.CacheRef()))
+}
+
 // cacheSaveContainer stores the layer cache BuildKit exported. Whole-blob retry
 // matches the image push for the same reason (docs/ADR060 D4).
 func cacheSaveContainer(o Options, image string) corev1.Container {
@@ -1198,17 +1250,17 @@ func cacheSaveContainer(o Options, image string) corev1.Container {
 		corev1.VolumeMount{Name: cacheOutVolume, MountPath: cacheOutMount, ReadOnly: true})
 }
 
-// cachePhase is the shape both cache phases share: a skopeo copy that cannot
-// fail the build, holding the same output-repository credential the image push
-// holds and nothing else.
-func cachePhase(o Options, name, image, script string, args []string, mount corev1.VolumeMount) corev1.Container {
+// cachePhase is the shape credentialed cache helpers share: a best-effort skopeo
+// invocation holding the same output-repository credential the image push holds
+// and nothing else. Optional mounts are for restore/save only (purge needs none).
+func cachePhase(o Options, name, image, script string, args []string, mounts ...corev1.VolumeMount) corev1.Container {
 	c := corev1.Container{
 		Name:    name,
 		Image:   image,
 		Command: []string{"sh", "-c", script, name},
 		// The timeout is a skopeo GLOBAL flag, so it precedes the subcommand.
 		Args:            append([]string{"--command-timeout", cacheCommandTimeout}, args...),
-		VolumeMounts:    []corev1.VolumeMount{mount},
+		VolumeMounts:    mounts,
 		SecurityContext: restrictedContainerSecurityContext(),
 		// NOT pushPhaseResources: see cacheEphemeralLimit. The pod's ceiling is
 		// the sum of its regular containers' limits, so reusing the push phase's

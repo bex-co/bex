@@ -45,15 +45,20 @@ var _ = Describe("build cache dispatch", func() {
 	// in the shared namespace is refused since codex-security 2026-08 F11).
 	const ns = "tea-w1"
 
-	dispatch := func(name string, cache bool) *batchv1.Job {
+	dispatch := func(name string, cache bool, clearCache bool) *batchv1.Job {
 		ctx := context.Background()
 		_ = k8sClient.Create(ctx, &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: ns},
 		}) // AlreadyExists is fine across specs
+		anns := map[string]string{}
+		if clearCache {
+			anns[appv1alpha1.AnnotationClearCacheReleaseGeneration] = "1"
+		}
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name, Namespace: ns,
-				Labels: map[string]string{labelWorkspace: "tea-w1"},
+				Labels:      map[string]string{labelWorkspace: "tea-w1"},
+				Annotations: anns,
 			},
 			Spec: appv1alpha1.AppSpec{
 				Repo: "https://github.com/bex-co/hello", Branch: "main",
@@ -97,7 +102,7 @@ var _ = Describe("build cache dispatch", func() {
 	}
 
 	It("dispatches the cache phases when BEX_BUILD_CACHE is on, and the API server keeps them", func() {
-		job := dispatch("cache-on-app", true)
+		job := dispatch("cache-on-app", true, false)
 		spec := job.Spec.Template.Spec
 		Expect(names(spec.InitContainers)).To(ContainElement("cache-restore"))
 		Expect(names(spec.Containers)).To(ContainElement("cache-save"))
@@ -119,10 +124,25 @@ var _ = Describe("build cache dispatch", func() {
 		Expect(restore.Args).To(ContainElement(ContainSubstring("tea-w1/cache-on-app-cache:cache")))
 	})
 
-	It("dispatches an unchanged build Job when the gate is off", func() {
-		job := dispatch("cache-off-app", false)
+	It("skips restore and purges on a clear-cache release when the gate is on", func() {
+		job := dispatch("cache-clear-app", true, true)
 		spec := job.Spec.Template.Spec
 		Expect(names(spec.InitContainers)).NotTo(ContainElement("cache-restore"))
+		Expect(names(spec.InitContainers)).To(ContainElement("cache-purge"))
+		Expect(names(spec.Containers)).To(ContainElement("cache-save"))
+		volumes := make([]string, 0, len(spec.Volumes))
+		for _, v := range spec.Volumes {
+			volumes = append(volumes, v.Name)
+		}
+		Expect(volumes).To(ContainElement("cache-out"))
+		Expect(volumes).NotTo(ContainElement("cache-in"))
+	})
+
+	It("dispatches an unchanged build Job when the gate is off", func() {
+		job := dispatch("cache-off-app", false, false)
+		spec := job.Spec.Template.Spec
+		Expect(names(spec.InitContainers)).NotTo(ContainElement("cache-restore"))
+		Expect(names(spec.InitContainers)).NotTo(ContainElement("cache-purge"))
 		Expect(names(spec.Containers)).NotTo(ContainElement("cache-save"))
 		Expect(spec.Containers).To(HaveLen(1))
 		for _, v := range spec.Volumes {

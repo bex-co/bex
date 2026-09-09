@@ -182,7 +182,7 @@ func TestBuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 
 func withoutCachePhases(cs []corev1.Container) []corev1.Container {
 	return slices.DeleteFunc(cs, func(c corev1.Container) bool {
-		return c.Name == cacheRestorePhase || c.Name == cacheSavePhase
+		return c.Name == cacheRestorePhase || c.Name == cacheSavePhase || c.Name == cachePurgePhase
 	})
 }
 
@@ -526,5 +526,49 @@ func TestBuildCacheTransfersCannotHangPastTheirOwnBudget(t *testing.T) {
 		} else if d >= BuildTimeout {
 			t.Errorf("%s timeout %s does not bound anything below the %s build deadline", name, d, BuildTimeout)
 		}
+	}
+}
+
+func TestBuildCacheSkipImportPurgesAndStillExports(t *testing.T) {
+	o := cacheOpts()
+	o.SkipCacheImport = true
+	spec := BuildJob(o, o.ImageRef()).Spec.Template.Spec
+	if cachePhaseIn(&spec, cacheRestorePhase) != nil {
+		t.Fatal("clear-cache rebuild must not restore prior layers")
+	}
+	if cachePhaseIn(&spec, cachePurgePhase) == nil {
+		t.Fatal("clear-cache rebuild must purge the prior cache tag")
+	}
+	if cachePhaseIn(&spec, cacheSavePhase) == nil {
+		t.Fatal("clear-cache rebuild must still save a fresh cache")
+	}
+	if volByName(spec.Volumes, cacheInVolume) != nil {
+		t.Fatal("clear-cache rebuild must not mount cache-in")
+	}
+	if volByName(spec.Volumes, cacheOutVolume) == nil {
+		t.Fatal("clear-cache rebuild must keep cache-out for export")
+	}
+	bk := cachePhaseIn(&spec, "buildkit")
+	if bk == nil {
+		t.Fatal("buildkit phase missing")
+	}
+	script := scriptOf(t, bk)
+	if strings.Contains(script, "import-cache") {
+		t.Fatalf("clear-cache buildkit script still imports: %s", script)
+	}
+	hasExport := false
+	for _, a := range bk.Args {
+		if strings.Contains(a, "export-cache") {
+			hasExport = true
+			break
+		}
+	}
+	if !hasExport {
+		t.Fatal("clear-cache rebuild must still export-cache")
+	}
+	purge := cachePhaseIn(&spec, cachePurgePhase)
+	joined := strings.Join(purge.Args, " ")
+	if !strings.Contains(joined, "delete") || !strings.Contains(joined, o.CacheRef()) {
+		t.Fatalf("purge args = %v", purge.Args)
 	}
 }

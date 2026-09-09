@@ -816,6 +816,16 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if err != nil {
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("preparing Docker-build registry credential: %w", err)))
 	}
+	skipCacheImport := clearCacheApplies(app)
+	if skipCacheImport {
+		// A clear-cache rebuild must not let an older in-flight Job's cache-save
+		// reinstall pre-clear layers after this Job exports a fresh cache. D1a's
+		// "let the in-flight build finish" still holds for ordinary deploys; the
+		// explicit clear request is the narrow exception (w7/m88 t004).
+		if err := r.deleteSiblingBuildJobs(ctx, app, buildNs, releaseBuildRevision(app)); err != nil {
+			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("clearing superseded builds before cache reset: %w", err)))
+		}
+	}
 	obs, err := build.EnsureBuild(ctx, build.Options{
 		Repo: app.Spec.Repo, Ref: ref, ExpectedCommit: expectedGitObjectID(app.Spec.BuildCommit), RootDir: app.Spec.RootDir,
 		DockerfilePath: app.Spec.DockerfilePath, DockerContext: app.Spec.DockerContext,
@@ -840,6 +850,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		PullSecret:         buildRegistryPullSecret,
 		RegistryConfig:     usesBuildRegistryConfig(app, builder),
 		BuildCache:         r.BuildCache,
+		SkipCacheImport:    skipCacheImport,
 		Client:             buildClient,
 	})
 	if err != nil {
@@ -871,6 +882,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 			recordBuildOutcome(buildOutcomeSucceeded)
 			recordBuildRunSeconds(obs.RunSeconds)
 			r.meterBuildSignals(ctx, app, buildNs)
+			r.consumeClearCacheAnnotation(ctx, app)
 		}
 		return r.pinBuiltImage(ctx, app, obs.Image), ctrl.Result{}, false, nil
 	case build.PhaseFailed:
@@ -932,6 +944,56 @@ func expectedGitObjectID(value string) string {
 		}
 	}
 	return value
+}
+
+// consumeClearCacheAnnotation drops a spent clear-cache marker once its release
+// has built successfully, so a later normal deploy cannot inherit SkipCacheImport.
+func (r *AppReconciler) consumeClearCacheAnnotation(ctx context.Context, app *appv1alpha1.App) {
+	if !clearCacheApplies(app) {
+		return
+	}
+	patch := client.MergeFrom(app.DeepCopy())
+	delete(app.Annotations, appv1alpha1.AnnotationClearCacheReleaseGeneration)
+	if len(app.Annotations) == 0 {
+		app.Annotations = nil
+	}
+	if err := r.Client.Patch(ctx, app, patch); err != nil {
+		logf.FromContext(ctx).Error(err, "clearing spent clear-cache annotation", "app", app.Name)
+	}
+}
+
+// deleteSiblingBuildJobs removes other active build Jobs for this App so an
+// older cache-save cannot overwrite a clear-cache rebuild's fresh export. The
+// Job for keepRevision is left alone (it may already exist from a retry).
+func (r *AppReconciler) deleteSiblingBuildJobs(ctx context.Context, app *appv1alpha1.App, buildNs, keepRevision string) error {
+	keep := build.JobName(app.Name, keepRevision)
+	var jobs batchv1.JobList
+	sel := client.MatchingLabels{"app.bex.co/build": app.Name}
+	if app.UID != "" {
+		sel[execution.LabelAppUID] = string(app.UID)
+	}
+	if err := r.buildPlaneClient().List(ctx, &jobs, client.InNamespace(buildNs), sel); err != nil {
+		return err
+	}
+	background := metav1.DeletePropagationBackground
+	var errs []error
+	for i := range jobs.Items {
+		job := &jobs.Items[i]
+		if job.Name == keep {
+			continue
+		}
+		if job.Status.Succeeded > 0 || job.Status.Failed > 0 {
+			continue
+		}
+		uid := job.UID
+		if err := r.buildPlaneClient().Delete(ctx, job, &client.DeleteOptions{
+			Preconditions:     &metav1.Preconditions{UID: &uid},
+			PropagationPolicy: &background,
+		}); client.IgnoreNotFound(err) != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // recordedBuildVerdict returns the terminal build-failure reason already

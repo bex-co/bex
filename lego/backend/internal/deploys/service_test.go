@@ -582,15 +582,30 @@ func TestTriggerRejectsUnknownClearCache(t *testing.T) {
 }
 
 func TestTriggerAcceptsClearCacheEnum(t *testing.T) {
-	// bex builds are cache-free, so "clear" and "do_not_clear" are both
-	// honored-identically no-ops — accepted (never rejected) for Render/CLI
-	// parity; an omitted value is fine too.
-	for _, v := range []string{"clear", "do_not_clear", ""} {
-		ds := newFakeStore()
-		svc, _ := newService(ds, sampleApp("svc", "srv-cc"))
-		if _, err := svc.Trigger(context.Background(), "svc", TriggerParams{ClearCache: v}); err != nil {
-			t.Errorf("clearCache=%q: want nil, got %v", v, err)
-		}
+	// "clear" stamps a release-scoped reset; do_not_clear and omission do not.
+	ds := newFakeStore()
+	svc, cl := newService(ds, sampleApp("svc", "srv-cc"))
+	if _, err := svc.Trigger(context.Background(), "svc", TriggerParams{ClearCache: "clear"}); err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	var app appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "svc"}, &app); err != nil {
+		t.Fatal(err)
+	}
+	if got := app.Annotations[appv1alpha1.AnnotationClearCacheReleaseGeneration]; got != "2" {
+		t.Fatalf("clear annotation = %q, want 2", got)
+	}
+	if _, err := svc.Trigger(context.Background(), "svc", TriggerParams{ClearCache: "do_not_clear"}); err != nil {
+		t.Fatalf("do_not_clear: %v", err)
+	}
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "svc"}, &app); err != nil {
+		t.Fatal(err)
+	}
+	if _, sticky := app.Annotations[appv1alpha1.AnnotationClearCacheReleaseGeneration]; sticky {
+		t.Fatal("do_not_clear must clear the reset marker")
+	}
+	if _, err := svc.Trigger(context.Background(), "svc", TriggerParams{}); err != nil {
+		t.Fatalf("omitted: %v", err)
 	}
 }
 

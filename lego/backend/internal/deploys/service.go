@@ -381,12 +381,12 @@ type TriggerParams struct {
 	// image-backed service (the authenticated caller chooses the image).
 	ImageURL string
 	// ClearCache is Render's "clear" | "do_not_clear" string enum (its
-	// dashboard's "Clear build cache and deploy"). bex builds are always
-	// cache-free (ephemeral BuildKit Jobs, no --cache-to/--cache-from), so both
-	// values are already-true no-ops: a trigger always rebuilds from a clean
-	// slate. The field is accepted (and enum-validated) for Render/CLI
-	// compatibility across all three surfaces, not because it changes behavior;
-	// only a value outside the enum is rejected. Empty = omitted = the default.
+	// dashboard's "Clear build cache and deploy"). When per-App registry
+	// caching is enabled (BEX_BUILD_CACHE=registry), "clear" stamps a
+	// release-scoped reset on the App so that generation rebuilds without
+	// importing prior layers and still exports a fresh cache (w7/m88). With
+	// the gate off, both values remain behavioral no-ops (ephemeral BuildKit
+	// Jobs already start empty). Empty = omitted = do_not_clear.
 	ClearCache string
 }
 
@@ -476,8 +476,10 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 	if p.CommitID != "" && a.Spec.Type == appv1alpha1.TypeCronJob {
 		return fmt.Errorf("%w: commitId is not supported for cron_job services", core.ErrBadRequest)
 	}
-	// clearCache is a validated no-op (see TriggerParams); rejecting a typo here —
-	// shared by REST/GraphQL/MCP — keeps the three surfaces byte-identical.
+	// clearCache is enum-validated here — shared by REST/GraphQL/MCP — so a typo
+	// never reaches the App. "clear" stamps a release-scoped reset; anything
+	// else (including omission) leaves prior-cache import intact for that
+	// generation (w7/m88).
 	if p.ClearCache != "" && p.ClearCache != "clear" && p.ClearCache != "do_not_clear" {
 		return fmt.Errorf("%w: unknown clearCache %q (valid: clear, do_not_clear)", core.ErrBadRequest, p.ClearCache)
 	}
@@ -533,6 +535,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	releaseGeneration := previousGeneration + 1
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
 		stampReleaseGeneration(a, releaseGeneration)
+		stampClearCacheRelease(a, releaseGeneration, p.ClearCache)
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 		if a.Spec.Repo != "" {
 			a.Spec.Image = ""
@@ -586,6 +589,20 @@ func stampReleaseGeneration(a *appv1alpha1.App, generation int64) {
 		a.Annotations = map[string]string{}
 	}
 	a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(generation, 10)
+}
+
+// stampClearCacheRelease binds Render's clearCache=clear to the release being
+// opened. Omission and do_not_clear remove any prior marker so a later normal
+// deploy cannot inherit a stale reset (w7/m88).
+func stampClearCacheRelease(a *appv1alpha1.App, generation int64, clearCache string) {
+	if a.Annotations == nil {
+		a.Annotations = map[string]string{}
+	}
+	if clearCache == "clear" {
+		a.Annotations[appv1alpha1.AnnotationClearCacheReleaseGeneration] = strconv.FormatInt(generation, 10)
+		return
+	}
+	delete(a.Annotations, appv1alpha1.AnnotationClearCacheReleaseGeneration)
 }
 
 // notifyDeployStarted detaches delivery from the request hot path, matching the

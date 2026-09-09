@@ -220,16 +220,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toRenderDeploy(d))
 	})
 	// Trigger (Render's POST .../deploys): decode the optional body fields
-	// bex can honestly honor (commitId, deployMode). clearCache is Render's
-	// string enum "clear" | "do_not_clear" (cli/pkg/client/types_gen.go's
+	// bex can honestly honor (commitId, deployMode, clearCache). clearCache is
+	// Render's string enum "clear" | "do_not_clear" (cli/pkg/client/types_gen.go's
 	// CreateDeployJSONBodyClearCache) — NOT a bool; the official CLI always
 	// sends it explicitly (defaulting to "do_not_clear" absent --clear-cache),
-	// so a bool-typed field here 400s every deploys-create call the CLI
-	// makes. bex builds are always cache-free (ephemeral BuildKit Jobs, no
-	// --cache-to/--cache-from) — "clear" and "do_not_clear" are both
-	// already-true no-ops. The enum is validated in the shared validateTrigger
-	// (so REST/GraphQL/MCP reject a typo identically); only a value outside the
-	// enum 400s, an omitted or recognized one is accepted.
+	// so a bool-typed field here 400s every deploys-create call the CLI makes.
+	// With BEX_BUILD_CACHE=registry, "clear" stamps a release-scoped rebuild that
+	// skips registry cache import (w7/m88); with the gate off both values remain
+	// behavioral no-ops (ephemeral Jobs start empty). Enum validation lives in
+	// shared validateTrigger so REST/GraphQL/MCP reject typos identically.
 	mux.HandleFunc("POST "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			CommitID   string `json:"commitId"`

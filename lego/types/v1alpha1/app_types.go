@@ -52,6 +52,14 @@ const AnnotationPendingSourceGeneration = "app.bex.co/pending-source-generation"
 // this marker.
 const AnnotationCanceledReleaseGeneration = "app.bex.co/canceled-release-generation"
 
+// AnnotationClearCacheReleaseGeneration records a repo-backed release that must
+// rebuild without importing the App's prior registry build cache (Render's
+// clearCache=clear / "Clear build cache & deploy"). The value is the release
+// generation the reset is bound to — never a sticky App-wide boolean. The
+// operator skips cache restore/import for that generation only, still exports a
+// fresh cache, and a later deploy without clear supersedes the marker (w7/m88).
+const AnnotationClearCacheReleaseGeneration = "app.bex.co/clear-cache-release-generation"
+
 // LabelProtectedFromTenantMount marks an operational Secret (a clone token, a
 // registry credential, a backup writer, …) that a tenant workload must never
 // mount by name. Kubelet secret projection needs no pod-side API token, so pod
