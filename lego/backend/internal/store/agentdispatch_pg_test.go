@@ -76,7 +76,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if intent.SessionID == "" {
 			t.Fatal("accepted turn has no durable dispatch intent")
 		}
-		if err := restarted.AbandonAgentDispatch(ctx, intent, future, "provisioning interrupted; retry"); err != nil {
+		if _, err := restarted.AbandonAgentDispatch(ctx, intent, future, "provisioning interrupted; retry"); err != nil {
 			t.Fatal(err)
 		}
 		// Crash before cleanup/schedule leaves the tombstone immediately recoverable.
@@ -103,7 +103,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := s.AbandonAgentDispatch(ctx, intent, future, "stale sweep"); err != nil {
+		if _, err := s.AbandonAgentDispatch(ctx, intent, future, "stale sweep"); err != nil {
 			t.Fatal(err)
 		}
 		got, _ = s.GetAgentSession(ctx, row.ID)
@@ -137,7 +137,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		row, err = s.FinalizeAgentSession(ctx, row.ID, "completed", "", "", 0, nil, "")
+		row, _, err = s.FinalizeAgentSession(ctx, row.ID, "completed", "", "", 0, nil, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -181,7 +181,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if _, err := s.SetAgentSessionLifecycle(ctx, row.ID, "legacy-"+row.ID, "running", "running", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := s.AbandonAgentDispatch(ctx, intent, future, "interrupted"); !errors.Is(err, ErrNotFound) {
+		if _, err := s.AbandonAgentDispatch(ctx, intent, future, "interrupted"); !errors.Is(err, ErrNotFound) {
 			t.Fatalf("old binding must skip orphan deletion: %v", err)
 		}
 		got, err := s.GetAgentSession(ctx, row.ID)
@@ -195,7 +195,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if _, err := s.SetAgentSessionLifecycle(ctx, row.ID, "", "canceled", "canceled", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := s.AbandonAgentDispatch(ctx, d, future, "interrupted"); err != nil {
+		if _, err := s.AbandonAgentDispatch(ctx, d, future, "interrupted"); err != nil {
 			t.Fatal(err)
 		}
 		got, _ := s.GetAgentSession(ctx, row.ID)
@@ -236,7 +236,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 				defer wg.Done()
 				_, bindErr = s.RecordAgentSessionDispatch(ctx, row.ID, "candidate-"+row.ID, "running", "running", "", row.Turns)
 			}()
-			go func() { defer wg.Done(); abandonErr = s.AbandonAgentDispatch(ctx, d, time.Now(), "interrupted") }()
+			go func() { defer wg.Done(); _, abandonErr = s.AbandonAgentDispatch(ctx, d, time.Now(), "interrupted") }()
 			wg.Wait()
 			got, _ := s.GetAgentSession(ctx, row.ID)
 			if bindErr == nil {

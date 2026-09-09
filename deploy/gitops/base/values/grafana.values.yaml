@@ -682,8 +682,8 @@ dashboards:
             {
               "id": 3,
               "type": "timeseries",
-              "title": "Agent turn duration p95",
-              "description": "Wall-clock a turn spent running before terminalization, by outcome (surfaces a hung turn as a metric, not a pod investigation).",
+              "title": "Agent turn running duration p95",
+              "description": "Running wall-clock (agent_session_turns.started_at → terminal CAS) by outcome. Pin/archive do not move the start. Never-running failures (auth reject before bind, dispatch fail) appear only on the outcomes panel — they do not fabricate a duration sample.",
               "gridPos": { "h": 9, "w": 8, "x": 0, "y": 9 },
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "fieldConfig": {
@@ -699,11 +699,30 @@ dashboards:
               ]
             },
             {
+              "id": 31,
+              "type": "timeseries",
+              "title": "Agent turn outcomes (15m)",
+              "description": "Successful terminal CASes by bounded outcome (completed, failed, lost, canceled, vendor_auth_rejected, dispatch_failed). Counts every terminal path once; missing series means no activity, not a probe failure.",
+              "gridPos": { "h": 9, "w": 8, "x": 8, "y": 9 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (outcome) (increase(bex_agent_session_turn_outcomes_total[15m]))",
+                  "legendFormat": "{{outcome}}"
+                }
+              ]
+            },
+            {
               "id": 4,
               "type": "timeseries",
               "title": "Agent sandbox provision p95",
-              "description": "Create-to-Running wall-clock by outcome — the accept-fast/provision-async gap the user waits through (ADR047).",
-              "gridPos": { "h": 9, "w": 8, "x": 8, "y": 9 },
+              "description": "Create-to-Running wall-clock by outcome — the accept-fast/provision-async gap the user waits through (ADR047). Distinct from turn running duration.",
+              "gridPos": { "h": 9, "w": 8, "x": 16, "y": 9 },
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "fieldConfig": {
                 "defaults": { "unit": "s", "min": 0 },
@@ -722,7 +741,7 @@ dashboards:
               "type": "timeseries",
               "title": "Agent terminal convergences (1h)",
               "description": "Sessions terminalized by the lifecycle backstop rather than a driver report, by reason — each one is a driver/sandbox that died unreported.",
-              "gridPos": { "h": 9, "w": 8, "x": 16, "y": 9 },
+              "gridPos": { "h": 9, "w": 8, "x": 0, "y": 27 },
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "fieldConfig": {
                 "defaults": { "unit": "short", "min": 0 },

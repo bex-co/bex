@@ -165,6 +165,9 @@ func main() {
 	billingMetrics := billing.NewMetrics(metricRegistry)
 	pushMetrics := notifications.NewPushMetrics(metricRegistry)
 	webhookMetrics := webhooks.NewMetrics(metricRegistry)
+	// Shared by Completer, Service, and ModelAuthFailer (w5/m81 + w5/m88). Created
+	// early so the control-plane auth-failure verb can observe vendor rejections.
+	agentMetrics := agentsessions.NewCompletionMetrics(metricRegistry)
 	pushMetrics.SetEnabled(mobilePush != nil || webPush != nil)
 
 	scheme := runtime.NewScheme()
@@ -314,7 +317,7 @@ func main() {
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
 
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, ghClient, deps.Secrets, opsRole, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, agentMetrics, ghClient, deps.Secrets, opsRole, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -369,8 +372,8 @@ func main() {
 	}
 	// One CompletionMetrics registration shared by the Completer (turn duration,
 	// convergence) and the Service (provisioning latency) so the agent-session
-	// lifecycle timing lives under one set of series (w5/m81).
-	agentMetrics := agentsessions.NewCompletionMetrics(metricRegistry)
+	// lifecycle timing lives under one set of series (w5/m81). Created above with
+	// the other registries so ModelAuthFailer on :8091 can observe too (w5/m88).
 	srv.AgentSessionCompleter.Metrics = agentMetrics
 	srv.AgentSessions.Metrics = agentMetrics
 	// codex round-8 #9: the signed git webhook durably claims each processed
@@ -853,7 +856,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, ghClient *github.Client, modelKeys core.SecretKV, opsRole *opsrole.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelKeys core.SecretKV, opsRole *opsrole.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -887,8 +890,11 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			// since it only needs the store to CAS a live session to failed.
 			internalRoot.Handle(agentsession.InternalModelAuthFailurePath, &agentsession.ModelAuthFailureHandler{
 				Secret: []byte(cfg.SandboxExecSecret),
-				Failer: &agentsession.ModelAuthFailer{Sessions: st, Audit: st},
-				Nonce:  st,
+				Failer: &agentsession.ModelAuthFailer{
+					Sessions: st, Audit: st,
+					ObserveTerminal: agentMetrics.ObserveVendorAuthRejected,
+				},
+				Nonce: st,
 			})
 		}
 	}

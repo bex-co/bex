@@ -323,7 +323,7 @@ func (m *ModelMinter) now() time.Time {
 // the reported session and CAS a live one to failed. *store.PGStore satisfies it.
 type ModelSessionFailer interface {
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
-	FinalizeAgentSession(ctx context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (store.AgentSession, error)
+	FinalizeAgentSession(ctx context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (store.AgentSession, store.TerminalTurnFact, error)
 }
 
 // ModelAuthFailer terminalizes a live session whose workspace BYO model key the
@@ -338,6 +338,9 @@ type ModelAuthFailer struct {
 	Sessions ModelSessionFailer
 	Audit    core.AuditSink
 	Now      func() time.Time
+	// ObserveTerminal, when set, records a successful vendor-auth-reject CAS
+	// (w5/m88). Wired from bex-api's shared CompletionMetrics; nil in unit tests.
+	ObserveTerminal func(fact store.TerminalTurnFact)
 }
 
 func (f *ModelAuthFailer) Fail(ctx context.Context, req ModelMintRequest) (response ModelAuthFailureResponse, err error) {
@@ -377,10 +380,12 @@ func (f *ModelAuthFailer) Fail(ctx context.Context, req ModelMintRequest) (respo
 	// where two reports both read `running`: the loser's CAS matches no live row and
 	// returns ErrNotFound, which we acknowledge rather than surface — the desired end
 	// state (failed) already holds.
-	if _, finErr := f.Sessions.FinalizeAgentSession(ctx, req.SessionID, modelFailedPhase, "", "", 0, nil, ModelAuthFailureReason); finErr != nil {
+	if _, fact, finErr := f.Sessions.FinalizeAgentSession(ctx, req.SessionID, modelFailedPhase, "", "", 0, nil, ModelAuthFailureReason); finErr != nil {
 		if !errors.Is(finErr, store.ErrNotFound) {
 			return ModelAuthFailureResponse{}, finErr
 		}
+	} else if f.ObserveTerminal != nil {
+		f.ObserveTerminal(fact)
 	}
 	return ModelAuthFailureResponse{Acknowledged: true}, nil
 }

@@ -64,7 +64,18 @@ type AgentSessionTurn struct {
 	TranscriptTruncated bool
 	TruncationReason    string
 	CreatedAt           time.Time
+	StartedAt           *time.Time
 	CompletedAt         *time.Time
+}
+
+// TerminalTurnFact is the immutable timing for a successful terminal CAS on the
+// session's current turn (w5/m88). Callers observe metrics only when Finalize*
+// succeeds; ErrNotFound means another writer already owned the transition.
+type TerminalTurnFact struct {
+	Turn       int
+	AcceptedAt time.Time
+	StartedAt  *time.Time // nil when the turn never reached running (no bind)
+	TerminalAt time.Time
 }
 
 // AgentSession is the durable control-plane record for one cloud coding-agent
@@ -239,7 +250,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 	rows, err := s.Pool.Query(ctx, `
 		SELECT session_id, turn, prompt, delivery_mode,
 		       transcript_complete, transcript_truncated, truncation_reason,
-		       created_at, completed_at
+		       created_at, started_at, completed_at
 		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`, sessionID)
 	if err != nil {
 		return nil, err
@@ -250,7 +261,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		var turn AgentSessionTurn
 		if err := rows.Scan(&turn.SessionID, &turn.Turn, &turn.Prompt, &turn.DeliveryMode,
 			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
-			&turn.CreatedAt, &turn.CompletedAt); err != nil {
+			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, turn)
@@ -750,6 +761,12 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 		if err != nil {
 			return err
 		}
+		// Stamp the durable running-start once; pin/archive must not move it.
+		if _, err := tx.Exec(ctx, `UPDATE agent_session_turns
+			SET started_at = COALESCE(started_at, now())
+			WHERE session_id=$1 AND turn=$2`, id, turn); err != nil {
+			return err
+		}
 		_, err = tx.Exec(ctx, `DELETE FROM agent_session_dispatches WHERE session_id=$1 AND turn=$2`, id, turn)
 		return err
 	})
@@ -766,22 +783,82 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 // the cross-replica CAS: two Completers may observe the same running row, but
 // only one can own its terminal transition. `hibernating` is admitted solely so
 // the snapshot reaper can unclaim its own transient phase.
-func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET phase=$2, status=$3,
-		    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END,
-		    pr_url   = CASE WHEN $5 <> '' THEN $5 ELSE pr_url END,
-		    pr_number = CASE WHEN $6 <> 0 THEN $6 ELSE pr_number END,
-		    evidence = CASE WHEN $7::jsonb IS NOT NULL THEN $7::jsonb ELSE evidence END,
-		    failure_reason=$8, updated_at=now()
-		WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching','hibernating')
-		RETURNING `+agentSessionColumns,
-		id, phase, phase, headSHA, prURL, prNumber, nullableJSON(evidence), failureReason))
+//
+// The returned TerminalTurnFact carries the current turn's durable timing for
+// metrics (w5/m88). Callers must observe only when err == nil.
+func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (AgentSession, TerminalTurnFact, error) {
+	var out AgentSession
+	var fact TerminalTurnFact
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var err error
+		out, err = scanAgentSession(tx.QueryRow(ctx, `
+			UPDATE agent_sessions
+			SET phase=$2, status=$3,
+			    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END,
+			    pr_url   = CASE WHEN $5 <> '' THEN $5 ELSE pr_url END,
+			    pr_number = CASE WHEN $6 <> 0 THEN $6 ELSE pr_number END,
+			    evidence = CASE WHEN $7::jsonb IS NOT NULL THEN $7::jsonb ELSE evidence END,
+			    failure_reason=$8, updated_at=now()
+			WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching','hibernating')
+			RETURNING `+agentSessionColumns,
+			id, phase, phase, headSHA, prURL, prNumber, nullableJSON(evidence), failureReason))
+		if err != nil {
+			return err
+		}
+		fact, err = stampTerminalTurn(ctx, tx, id, out.Turns, out.UpdatedAt)
+		return err
+	})
 	if err != nil {
-		return AgentSession{}, classify("agent session", err)
+		return AgentSession{}, TerminalTurnFact{}, classify("agent session", err)
 	}
-	return out, nil
+	return out, fact, nil
+}
+
+// SetAgentSessionCanceled is the Cancel verb's terminal CAS (w5/m88): first
+// writer to leave a non-canceled phase wins, stamps the current turn's
+// completed_at, and returns timing for metrics. A repeated Cancel after the
+// session is already canceled returns ErrNotFound so observers do not double-count.
+func (s *PGStore) SetAgentSessionCanceled(ctx context.Context, id string) (AgentSession, TerminalTurnFact, error) {
+	var out AgentSession
+	var fact TerminalTurnFact
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var err error
+		out, err = scanAgentSession(tx.QueryRow(ctx, `
+			UPDATE agent_sessions
+			SET phase='canceled', status='canceled', updated_at=now(),
+			    canceled_at=COALESCE(canceled_at, now())
+			WHERE id=$1 AND phase <> 'canceled'
+			RETURNING `+agentSessionColumns, id))
+		if err != nil {
+			return err
+		}
+		fact, err = stampTerminalTurn(ctx, tx, id, out.Turns, out.UpdatedAt)
+		return err
+	})
+	if err != nil {
+		return AgentSession{}, TerminalTurnFact{}, classify("agent session", err)
+	}
+	return out, fact, nil
+}
+
+// stampTerminalTurn sets completed_at on the current turn (once) and returns
+// the immutable timing fact for metrics. Missing turn rows (turns=0) leave a
+// fact with only Turn/TerminalAt — no fabricated started_at.
+func stampTerminalTurn(ctx context.Context, tx pgx.Tx, sessionID string, turn int, fallbackTerminal time.Time) (TerminalTurnFact, error) {
+	fact := TerminalTurnFact{Turn: turn, TerminalAt: fallbackTerminal}
+	err := tx.QueryRow(ctx, `
+		UPDATE agent_session_turns
+		SET completed_at = COALESCE(completed_at, now())
+		WHERE session_id=$1 AND turn=$2
+		RETURNING created_at, started_at, completed_at`, sessionID, turn).
+		Scan(&fact.AcceptedAt, &fact.StartedAt, &fact.TerminalAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fact, nil
+		}
+		return TerminalTurnFact{}, err
+	}
+	return fact, nil
 }
 
 func nullableJSON(v json.RawMessage) any {

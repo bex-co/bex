@@ -44,12 +44,14 @@ const ticketTTL = 90 * time.Second
 type Store interface {
 	CreateAgentSession(context.Context, store.AgentSession) (store.AgentSession, error)
 	ListAgentDispatchesDue(context.Context, time.Time) ([]store.AgentDispatch, error)
-	AbandonAgentDispatch(context.Context, store.AgentDispatch, time.Time, string) error
+	AbandonAgentDispatch(context.Context, store.AgentDispatch, time.Time, string) (store.TerminalTurnFact, error)
 	DeferAgentDispatchCleanup(context.Context, store.AgentDispatch, time.Time) error
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
 	ListAgentSessions(context.Context, string, store.AgentSessionListQuery) ([]store.AgentSession, error)
 	ListAgentSessionsByPhases(context.Context, []string) ([]store.AgentSession, error)
 	SetAgentSessionLifecycle(context.Context, string, string, string, string, bool) (store.AgentSession, error)
+	// SetAgentSessionCanceled terminalizes Cancel with a CAS + turn timing fact.
+	SetAgentSessionCanceled(context.Context, string) (store.AgentSession, store.TerminalTurnFact, error)
 	// SetAgentSessionFailure terminalizes an active session with a reason recorded
 	// in failure_reason (w5/m80 t005): the background failure paths use it so a
 	// provisioning failure carries the same surfaced reason a driver failure does.
@@ -58,7 +60,7 @@ type Store interface {
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
 	BeginAgentSessionTurn(context.Context, string, string, string, string, string) (store.AgentSession, error)
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string, int) (store.AgentSession, error)
-	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, error)
+	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, store.TerminalTurnFact, error)
 	DeleteAgentSession(context.Context, string) error
 	// Deferred-teardown reaping (ADR054 D6, generalized by ADR059 D2 / w2/m67):
 	// the Completer defers a finished session's sandbox teardown while an editor
@@ -1178,10 +1180,18 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 			log.Printf("agent-session cancel: delete snapshot failed (session=%s ref=%s): %v", record.ID, record.SnapshotRef, err)
 		}
 	}
-	record, err = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseCanceled, "canceled", true)
+	record, fact, err := s.Store.SetAgentSessionCanceled(ctx, sessionID)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			record, err = s.Store.GetAgentSession(ctx, sessionID)
+			if err != nil {
+				return View{}, mapStoreError(sessionID, err)
+			}
+			return s.toView(record)
+		}
 		return View{}, mapStoreError(sessionID, err)
 	}
+	s.Metrics.observeTerminalTurn(turnOutcomeCanceled, fact)
 	return s.toView(record)
 }
 

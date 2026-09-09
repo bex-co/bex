@@ -314,6 +314,17 @@ The dev-5 numbers above had to be derived from pod timestamps and an out-of-band
 
 **Observed SLO baseline (dev-5, warm node/image, 2026-08-26/27):** create-accept ~100ms; provisioning 3–10s (cold image pull ~23s per ADR059); agent-ready <1s (`initialize` 132ms + `session/new` 736ms); happy-path turn ≈ model latency; a bad-key turn was ~192s **before** m80 t003 and is seconds after. **Time-to-first-model-call** is approximated by `provision_seconds` — agent boot measured <1s, so the running-transition is within ~1s of the first model call for a turn-1 session; a precise per-turn first-token metric is deferred because it requires correlating the turn-start (bex-api) with the first proxied call (gateway), which the current one-way mint channel does not carry.
 
+### w5/m88 — durable turn timing + full outcome coverage (2026-09-08)
+
+m81 measured turn duration from `agent_sessions.updated_at`, which pin/archive also rewrite mid-turn and would shorten samples. Timing now anchors on durable `agent_session_turns` columns: `created_at` (acceptance), `started_at` (set once at sandbox bind / running transition; NULL when the turn never ran), and `completed_at` (terminal CAS). Series contract:
+
+- `bex_agent_session_turn_outcomes_total{outcome}` — successful terminal CAS count. Closed outcomes: `completed`, `failed`, `lost`, `canceled`, `vendor_auth_rejected`, `dispatch_failed`. Only the winning CAS observes (no double-count on Completer races or replayed auth reports).
+- `bex_agent_session_turn_duration_seconds{outcome}` — **running** wall-clock only (`started_at` → terminal). Never-running failures (dispatch abandon before bind, auth reject before running) increment the outcome counter and **do not** emit a fabricated duration sample. Pre-migration turns with NULL `started_at` are treated the same (no guessed historical precision).
+- `bex_agent_session_provision_seconds{outcome}` — unchanged; provisioning latency remains separate from turn running duration.
+- Prompt-less rehydrate, pin/archive, and idle hibernation do not mint phantom turns or extra terminal observations.
+
+Prometheus scrape/process resets still apply — this is operational telemetry, not a durable exactly-once ledger. Precise first-token tracing remains deferred.
+
 ## Alternatives considered
 
 - **Per-request ("premium requests") billing** — rejected; retired by its inventor effective 2026-06-01 (four stale premium-request claims were refuted 0-3/1-2 in verification; any source describing multipliers as current is outdated).
