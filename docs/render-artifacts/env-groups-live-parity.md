@@ -32,9 +32,24 @@ The browser uses GraphQL. REST and MCP are thin translations over the same Core 
 - REST `PATCH /v1/env-groups/{id}/contents`, GraphQL `patchEnvGroupEnvironment`, and MCP `patch_env_group_environment` accept the same sparse patch, opaque revision, and `save_only | deploy | rebuild` modes;
 - REST `PATCH .../environment`, GraphQL `moveEnvGroup`, and MCP `move_env_group` share atomic scope validation;
 - REST `POST .../clone`, GraphQL `cloneEnvGroup`, and MCP `clone_env_group` clone only on the server and return metadata/names, never values;
-- `ENV_GROUP_NAME_EXISTS`, `ENV_GROUP_NAME_AMBIGUOUS`, revision conflicts, and restoration outcomes map consistently across adapters.
+- `ENV_GROUP_NAME_EXISTS`, `ENV_GROUP_NAME_AMBIGUOUS`, `ENV_GROUP_METADATA_CONFLICT`, revision conflicts, and restoration outcomes map consistently across adapters.
 
 Render has no official env-group MCP tools in the observed/documented surface. Bex's MCP tools are deliberate API extensions, not a claim about Render wire compatibility.
+
+## Metadata concurrency repair (w4/m97, 2026-09-08)
+
+Source review plus deterministic Core tests (not a fresh authenticated Render walk). Render's docs establish shared configuration, membership, scope, and rollout; they do not document multi-replica metadata CAS. Bex evidence:
+
+| interleaving | expected | coverage |
+| --- | --- | --- |
+| Content save paused on revision read vs rename | Rename survives; content lands | `TestContentSavePreservesConcurrentRename` |
+| Failing content save vs rename | Compensation restores env/files only; rename survives | `TestContentCompensationPreservesConcurrentRename` |
+| Two concurrent links | Both service ids in meta; both Apps keep Secret refs | `TestConcurrentLinksPreserveBothMemberships` |
+| Stale-link prune vs new link | Stale id removed; new link kept | `TestPruneStaleLinksPreservesConcurrentLink` |
+| Delete then delayed meta writer | `ErrNotFound`; no resurrection | `TestDelayedMetaMutationDoesNotResurrectDeletedGroup` |
+| Two concurrent renames | One committed name; losing name claim free | `TestConcurrentRenamesLeaveOneCommittedName` |
+
+Dashboard surfaces unchanged (names-only reads, save modes). Live OpenBao/Kubernetes drill notes: [docs/drills/2026-09-08-env-group-metadata-cas.md](../drills/2026-09-08-env-group-metadata-cas.md).
 
 ## Cleanup
 

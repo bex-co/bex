@@ -117,6 +117,10 @@ type fakeStore struct {
 	mu       sync.Mutex
 	m        map[string]map[string]string
 	versions map[string]uint64
+	// Optional hooks for deterministic concurrency tests (w4/m97). They run
+	// while the store lock is held; the hook must not re-enter the store.
+	afterGetVersioned func(path string, snap core.SecretKVSnapshot)
+	afterPutCAS       func(path string, version uint64)
 }
 
 func newFakeStore() *fakeStore {
@@ -193,20 +197,33 @@ func (f *fakeStore) List(ctx context.Context, path string) ([]string, error) {
 
 func (f *fakeStore) GetVersioned(ctx context.Context, path string) (core.SecretKVSnapshot, error) {
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	key := f.key(ctx, path)
-	return core.SecretKVSnapshot{Data: f.get(key), Version: f.versions[key]}, nil
+	snap := core.SecretKVSnapshot{Data: f.get(key), Version: f.versions[key]}
+	hook := f.afterGetVersioned
+	f.mu.Unlock()
+	// Hook runs unlocked so a concurrent writer can commit between snapshot and
+	// return — the race mutateMetaCAS / content CAS must tolerate.
+	if hook != nil {
+		hook(path, snap)
+	}
+	return snap, nil
 }
 
 func (f *fakeStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	key := f.key(ctx, path)
 	if f.versions[key] != expectedVersion {
+		f.mu.Unlock()
 		return 0, core.ErrConflict
 	}
 	f.put(key, data)
-	return f.versions[key], nil
+	version := f.versions[key]
+	hook := f.afterPutCAS
+	f.mu.Unlock()
+	if hook != nil {
+		hook(path, version)
+	}
+	return version, nil
 }
 
 type failMetaStore struct{ *fakeStore }
@@ -216,6 +233,13 @@ func (f *failMetaStore) Put(ctx context.Context, path string, data map[string]st
 		return errors.New("meta write failed")
 	}
 	return f.fakeStore.Put(ctx, path, data)
+}
+
+func (f *failMetaStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
+	if strings.HasSuffix(path, "/meta") {
+		return 0, errors.New("meta write failed")
+	}
+	return f.fakeStore.PutCAS(ctx, path, data, expectedVersion)
 }
 
 type fakeChecker struct {
@@ -922,9 +946,13 @@ func TestEnvGroup_DeleteUnlinksAndCleansUp(t *testing.T) {
 	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: envSecretName(g.ID)}, &s); !apierrors.IsNotFound(err) {
 		t.Errorf("group env Secret should be deleted, got %v", err)
 	}
-	// Store paths gone.
-	if _, ok := store.m[store.key(ctx, metaPath(g.ID))]; ok {
-		t.Error("group meta should be deleted from the store")
+	// Store content/revision gone; meta retains a non-editable tombstone fence
+	// so a delayed writer cannot resurrect the group (w4/m97).
+	if raw, ok := store.m[store.key(ctx, metaPath(g.ID))]; !ok || raw["tombstoned"] != "1" {
+		t.Errorf("deleted group should leave a tombstone meta fence, got %v ok=%v", raw, ok)
+	}
+	if _, ok := store.m[store.key(ctx, envPath(g.ID))]; ok {
+		t.Error("group env should be deleted from the store")
 	}
 	// Group no longer listed / gettable.
 	if _, err := svc.GetEnvGroup(ctx, g.ID); !errors.Is(err, core.ErrNotFound) {
@@ -1184,7 +1212,10 @@ func TestEnvGroup_UnlinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing
 		t.Fatalf("read group meta: %v", err)
 	}
 	m.links = []string{"web"} // legacy bare-name link in tea-b
-	if err := svc.writeMeta(ctx, groupB.ID, m); err != nil {
+	if _, err := svc.mutateMetaCAS(ctx, groupB.ID, m.workspace, func(cur meta) (meta, error) {
+		cur.links = []string{"web"}
+		return cur, nil
+	}); err != nil {
 		t.Fatalf("seed group link: %v", err)
 	}
 
