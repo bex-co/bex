@@ -38,3 +38,21 @@ func TestStaticServePrefixRecordedThenLegacy(t *testing.T) {
 		t.Errorf("recorded prefix = %q, want %q", got, want)
 	}
 }
+
+func TestIsLegacyStaticPrefix(t *testing.T) {
+	cases := []struct {
+		name string
+		site Site
+		want bool
+	}{
+		{"explicit legacy", Site{AppID: "web", Prefix: "web/rev-1/"}, true},
+		{"empty prefix synthesizes legacy", Site{AppID: "web", Revision: "rev-1"}, true},
+		{"scoped prefix", Site{AppID: "web", Prefix: "tea-aaaaaaaaaaaaaaaaaaaa/web/rev-1/"}, false},
+		{"missing app", Site{Prefix: "web/rev-1/"}, false},
+	}
+	for _, tc := range cases {
+		if got := isLegacyStaticPrefix(tc.site); got != tc.want {
+			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

@@ -255,19 +255,28 @@ spec:
                 forward_to = [loki.write.default.receiver]
               }
 
-              // --- type=platform: dashboard UI pod logs (w4/m88) ---
+              // --- type=platform: dashboard UI + migration evidence pods ---
               //
               // The app_pods pipeline drops every pod lacking app.bex.co/app, so
               // the GitOps-deployed dashboard never reached Loki. Ship namespace
               // `dashboard` under a non-tenant label set (service=dashboard) —
               // never invent a fake App name for bex-api's tenant log selectors.
+              //
+              // w2/m93 also ships Zot (bex-registry) and static-server
+              // (bex-system, app.bex.co/component=static-server) under the same
+              // type=platform vocabulary with closed service=zot|static-server
+              // labels. Path/prefix stay line-only (cardinality budget, ADR010);
+              // scripts/registry-migration-readiness.sh filters legacy reads.
 
               discovery.relabel "platform_pods" {
                 targets = discovery.kubernetes.pods.targets
 
+                // One keep for dashboard + zot + static-server (w2/m93). Closed
+                // service= vocabulary is stamped from namespace below.
                 rule {
-                  source_labels = ["__meta_kubernetes_namespace"]
-                  regex         = "dashboard"
+                  source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app_bex_co_component"]
+                  separator     = ";"
+                  regex         = "dashboard;.*|bex-registry;.*|bex-system;static-server"
                   action        = "keep"
                 }
                 rule {
@@ -275,8 +284,22 @@ spec:
                   target_label  = "namespace"
                 }
                 rule {
-                  target_label = "service"
-                  replacement = "dashboard"
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  regex         = "dashboard"
+                  target_label  = "service"
+                  replacement   = "dashboard"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  regex         = "bex-registry"
+                  target_label  = "service"
+                  replacement   = "zot"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  regex         = "bex-system"
+                  target_label  = "service"
+                  replacement   = "static-server"
                 }
                 rule {
                   source_labels = ["__meta_kubernetes_pod_name"]

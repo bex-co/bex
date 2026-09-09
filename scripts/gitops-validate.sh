@@ -1276,6 +1276,23 @@ if [ -f "$LOGSHIP" ]; then
       || { echo "FAIL: log-shipper.yaml platform dashboard retention lost required rule: $required" >&2; fail=1; }
   done
 
+  # Migration clean-window evidence (w2/m93): Zot + static-server must ship as
+  # type=platform with closed service=zot|static-server labels so
+  # scripts/registry-migration-readiness.sh can prove zero legacy reads. Path
+  # and prefix stay line-only (cardinality tripwire below). Unified into the
+  # platform_pods keep (namespace;component) rather than separate sources.
+  echo "==> $LOGSHIP registry/static migration evidence (w2/m93)"
+  for required in \
+    'dashboard;.*|bex-registry;.*|bex-system;static-server' \
+    'regex         = "bex-registry"' \
+    'replacement   = "zot"' \
+    'regex         = "bex-system"' \
+    'replacement   = "static-server"' \
+    'type  = "platform"'; do
+    echo "$vals" | grep -qF "$required" \
+      || { echo "FAIL: log-shipper.yaml migration evidence pipeline lost required rule: $required" >&2; fail=1; }
+  done
+
   # Platform edge-host retention (w5/053, ADR088 §6): the w4/m88 RequestHost
   # allowlist must also keep api/oauth/auth/obs.bex.co, each under its FIXED
   # bounded namespace/service pair (the '}}<value>{{' literals are the Helm-
@@ -1307,6 +1324,19 @@ if [ -f "$LOGSHIP" ]; then
     echo "FAIL: log-shipper.yaml must not promote request host to a Loki label (cardinality budget, docs/ADR010)" >&2
     fail=1
   fi
+fi
+
+# Loki retention for the registry/static migration clean window (w2/m93): at
+# least 14 days of searchable history plus evaluation buffer (504h = 21d) and a
+# PVC sized for the extra Zot/static-server platform streams.
+LOKI_APP="deploy/gitops/base/loki.yaml"
+if [ -f "$LOKI_APP" ]; then
+  echo "==> $LOKI_APP migration clean-window retention (w2/m93)"
+  loki_vals="$(yq '.spec.source.helm.values' "$LOKI_APP")"
+  echo "$loki_vals" | grep -qF 'retention_period: 504h' \
+    || { echo "FAIL: loki.yaml must retain >=21d (504h) for the ADR055 Phase-4 clean window" >&2; fail=1; }
+  echo "$loki_vals" | grep -qE 'size: 60Gi' \
+    || { echo "FAIL: loki.yaml PVC must be sized for 21d + zot/static-server evidence (60Gi)" >&2; fail=1; }
 fi
 
 # Operator day-to-day RBAC guard (w7/m37, docs/ADR019-infra-credentials.md): the

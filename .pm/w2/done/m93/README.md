@@ -1,18 +1,18 @@
 # w2 · m93 — Migration clean-window evidence
 
-**Worker:** worker2 **Goal:** make the registry/static identity migration's 14-day zero-legacy-read requirement reproducible before destructive cleanup. **Status:** todo
+**Worker:** worker2 **Goal:** make the registry/static identity migration's 14-day zero-legacy-read requirement reproducible before destructive cleanup. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Identify legacy-read evidence and coverage | 40m | — |
-| t002 | Retain migration-scoped read evidence | 50m | t001 |
-| t003 | Add a read-only migration readiness report | 50m | t002 |
-| t004 | Document the evidence window and Phase 4 handoff | 30m | t003 |
-| t005 | Simplify | 20m | t004 |
-| t006 | Test coverage | 30m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t001 | Identify legacy-read evidence and coverage — **DONE** | 40m | — |
+| t002 | Retain migration-scoped read evidence — **DONE** | 50m | t001 |
+| t003 | Add a read-only migration readiness report — **DONE** | 50m | t002 |
+| t004 | Document the evidence window and Phase 4 handoff — **DONE** | 30m | t003 |
+| t005 | Simplify — **DONE** | 20m | t004 |
+| t006 | Test coverage — **DONE** | 30m | t004, t005 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 

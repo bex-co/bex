@@ -13,9 +13,10 @@
 # (log-shipper.yaml) tails App pod logs into it, labelled namespace/app/pod/
 # container so bex-api can select on the App's namespace+name.
 #
-# Retention is 7 days (168h) — Render's Hobby-tier searchable window
-# (docs/ADR010-observability.md); paid Render tiers reach 14/30 days, a knob to raise
-# here (limits_config.retention_period) alongside the PVC. Like prometheus.yaml's
+# Retention is 21 days (504h) — 14-day registry/static migration clean window
+# (w2/m93, docs/runbooks/registry-static-identity-migration.md Phase 4) plus a
+# week of evaluation buffer, still within Render's Pro/Scale searchable range
+# (docs/ADR010-observability.md). Raise/lower with the PVC. Like prometheus.yaml's
 # PV and etcd/OpenBao's Raft volumes, the PVC rides the cluster's default
 # StorageClass: hcloud-volumes on prod (a Hetzner Cloud Volume — a network volume
 # that survives a node rebuild/loss), local-path on the disposable CAPD mock
@@ -52,10 +53,11 @@ spec:
                 object_store: filesystem
                 schema: v13
                 index: { prefix: index_, period: 24h }
-          # Retention: 7 days, enforced by the compactor. Render's Hobby window;
-          # raise (with the PVC) for the 14/30-day paid-tier equivalent.
+          # Retention: 21 days, enforced by the compactor. Covers the 14-day
+          # migration clean window + evaluation buffer (w2/m93); still within
+          # Render's Pro/Scale searchable range (ADR010).
           limits_config:
-            retention_period: 168h
+            retention_period: 504h
           compactor:
             retention_enabled: true
             delete_request_store: filesystem
@@ -63,15 +65,17 @@ spec:
           pattern_ingester: { enabled: false }
         singleBinary:
           replicas: 1
-          # The user-facing durable window: sized for 7d of tenant App logs at
-          # platform scale. local overlay shrinks this to CAPD scale. The PVC
-          # rides the cluster default StorageClass — hcloud-volumes on prod
-          # (network volume, survives a node loss), local-path on the CAPD mock
-          # (node-local) — so history survives a pod restart (and a node loss on
-          # prod), the whole point.
+          # The user-facing durable window: sized for 21d of tenant App +
+          # platform (zot/static-server) logs at platform scale. local overlay
+          # shrinks this to CAPD scale. The PVC rides the cluster default
+          # StorageClass — hcloud-volumes on prod (network volume, survives a
+          # node loss), local-path on the CAPD mock (node-local) — so history
+          # survives a pod restart (and a node loss on prod), the whole point.
+          # StatefulSet volumeClaimTemplates are immutable: grow an existing
+          # claim online out of band, then ignore the template size below.
           persistence:
             enabled: true
-            size: 20Gi
+            size: 60Gi
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { cpu: "1", memory: 1Gi }
@@ -99,6 +103,18 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
+  # StatefulSet volumeClaimTemplates are immutable. Grow the live PVC online
+  # (hcloud volume expand) when raising size; ignore the embedded template so
+  # Argo does not thrash on apiVersion/kind defaults + the size field.
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: loki
+      namespace: monitoring
+      jsonPointers:
+        - /spec/volumeClaimTemplates/0/apiVersion
+        - /spec/volumeClaimTemplates/0/kind
+        - /spec/volumeClaimTemplates/0/spec/resources/requests
   syncPolicy:
     automated: { prune: true, selfHeal: true }
-    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    syncOptions: [CreateNamespace=true, ServerSideApply=true, RespectIgnoreDifferences=true]
