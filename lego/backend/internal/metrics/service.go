@@ -34,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -113,6 +114,23 @@ func (s *MetricSeries) SetLabel(key, value string) {
 func setLabelOnEach(series []MetricSeries, key, value string) {
 	for i := range series {
 		series[i].SetLabel(key, value)
+	}
+}
+
+// projectInstanceLabels rewrites each series' raw pod/PVC name into the
+// canonical public instance id (w5/m87). Internal Prom/cAdvisor matching still
+// uses the Kubernetes name; only the public label changes. Series without an
+// instance label (aggregated counts, request totals) are left untouched.
+func projectInstanceLabels(resourceID string, series []MetricSeries) {
+	if resourceID == "" {
+		return
+	}
+	for i := range series {
+		pod := series[i].Labels["instance"]
+		if pod == "" {
+			continue
+		}
+		series[i].SetLabel("instance", ids.ServiceInstanceID(resourceID, pod))
 	}
 }
 
@@ -598,7 +616,7 @@ func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, app *appv1a
 			ts = nowStr
 		}
 		out = append(out, MetricSeries{
-			Labels: map[string]string{"resource": q.App, "instance": u.Pod},
+			Labels: map[string]string{"resource": q.App, "instance": ids.ServiceInstanceID(q.App, u.Pod)},
 			Unit:   unit,
 			Points: []MetricPoint{{Timestamp: ts, Value: val}},
 		})
@@ -666,6 +684,7 @@ func (s *Service) resourceMetricRange(ctx context.Context, q MetricQuery, app *a
 		}
 		series = kept
 	}
+	projectInstanceLabels(q.App, series)
 	sort.SliceStable(series, func(i, j int) bool { return series[i].Labels["instance"] < series[j].Labels["instance"] })
 	return series, nil
 }
@@ -692,7 +711,7 @@ func (s *Service) resourceLimitMetric(ctx context.Context, q MetricQuery, app *a
 			continue
 		}
 		out = append(out, MetricSeries{
-			Labels: map[string]string{"resource": q.App, "instance": pod.Name},
+			Labels: map[string]string{"resource": q.App, "instance": ids.ServiceInstanceID(q.App, pod.Name)},
 			Unit:   unit,
 			Points: []MetricPoint{{Timestamp: nowStr, Value: lim}},
 		})
@@ -992,7 +1011,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 			}
 			instances := make([]string, 0, len(pods))
 			for _, p := range pods {
-				instances = append(instances, p.Name)
+				instances = append(instances, ids.ServiceInstanceID(q.App, p.Name))
 			}
 			out = append(out, MetricsFilterValues{Field: field, Values: instances})
 		case filterFieldStatusCode:

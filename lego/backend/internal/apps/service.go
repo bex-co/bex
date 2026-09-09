@@ -1331,7 +1331,7 @@ func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInst
 			continue
 		}
 		out = append(out, ServiceInstanceView{
-			ID:        ids.DeriveServiceInstance(serviceID, podInstanceIdentity(pod)),
+			ID:        ids.ServiceInstanceID(serviceID, pod.Name),
 			CreatedAt: pod.CreationTimestamp.Time,
 		})
 	}
@@ -1354,6 +1354,9 @@ type SSHInstanceTarget struct {
 	Namespace string
 	PodName   string
 	Container string
+	// podUID is retained only so ResolveSSHSession can accept pre-m87
+	// UID-derived selectors; it is never serialized on the wire.
+	podUID string
 	// Sandbox marks an agent-session sandbox target (ADR054): the transport then
 	// permits Zed's multi-channel remoting and the sftp-server subsystem bridge,
 	// which stay banned for ordinary App-instance (srv-…) targets. Resolved
@@ -1409,12 +1412,24 @@ func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHIn
 		}
 		return targets[rand.IntN(len(targets))], nil
 	}
-	for _, target := range targets {
-		if target.ID == instanceID {
-			return target, nil
+	var matched *SSHInstanceTarget
+	for i := range targets {
+		// Canonical id equals target.ID; legacy UID-derived selectors still
+		// resolve to the same Ready pod via MatchServiceInstance.
+		if !ids.MatchServiceInstance(instanceID, targets[i].ServiceID, targets[i].PodName, targets[i].podUID) {
+			continue
 		}
+		if matched != nil {
+			// Ambiguous (e.g. two pods sharing a legacy UID hash) — never
+			// fall through to an arbitrary replica.
+			return SSHInstanceTarget{}, core.ErrNotFound
+		}
+		matched = &targets[i]
 	}
-	return SSHInstanceTarget{}, core.ErrNotFound
+	if matched == nil {
+		return SSHInstanceTarget{}, core.ErrNotFound
+	}
+	return *matched, nil
 }
 
 // shellTicketTTL bounds a Browser Web Shell exec ticket. It is short because
@@ -1507,12 +1522,13 @@ func (s *Service) readySSHInstances(ctx context.Context, a *appv1alpha1.App, v A
 			continue
 		}
 		target := SSHInstanceTarget{
-			ID:        ids.DeriveServiceInstance(v.ID, podInstanceIdentity(pod)),
+			ID:        ids.ServiceInstanceID(v.ID, pod.Name),
 			CreatedAt: pod.CreationTimestamp.UTC().Format(time.RFC3339),
 			ServiceID: v.ID,
 			OwnerID:   v.OwnerID,
 			Namespace: pod.Namespace,
 			PodName:   pod.Name,
+			podUID:    string(pod.UID),
 			Container: core.AppContainer,
 		}
 		candidates = append(candidates, target)
@@ -1531,15 +1547,6 @@ func (s *Service) readySSHInstances(ctx context.Context, a *appv1alpha1.App, v A
 		return targets[i].CreatedAt < targets[j].CreatedAt
 	})
 	return targets, nil
-}
-
-func podInstanceIdentity(pod *corev1.Pod) string {
-	if pod.UID != "" {
-		return string(pod.UID)
-	}
-	// The apiserver always assigns a UID. This fallback keeps fake clients and
-	// pre-persisted test objects deterministic without exposing the Pod name.
-	return pod.Name
 }
 
 func readyCurrentAppPod(pod *corev1.Pod, activeImage, activeRevision string) bool {

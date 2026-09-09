@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // rangeService builds a metrics Service with a ranged source (and optional
@@ -86,7 +87,7 @@ func TestRangedResourceMetricsPreferred(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cpu: %v", err)
 	}
-	if len(series) != 1 || len(series[0].Points) != 2 || series[0].Unit != unitCores || series[0].Labels["instance"] != webInst {
+	if len(series) != 1 || len(series[0].Points) != 2 || series[0].Unit != unitCores || series[0].Labels["instance"] != ids.ServiceInstanceID("web", webInst) {
 		t.Fatalf("want 1 stepped 2-point series: %+v", series)
 	}
 	if got.Metric != MetricCPU || !got.Start.Equal(start) || !got.End.Equal(end) || got.Resolution != 30*time.Second {

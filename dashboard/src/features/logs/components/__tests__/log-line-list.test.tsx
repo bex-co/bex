@@ -122,9 +122,11 @@ describe("LogLineList request-line rendering (w5/008)", () => {
     expect(message.querySelector("span")).toBeNull();
   });
 
-  it("shows a short clickable pod slug and filters with the full instance", () => {
+  it("shows a short clickable slug and filters with the full public instance id", () => {
     const onInstanceFilter = vi.fn();
-    const instance = "hello-go-6f7d8f9c4b-bv612";
+    // Backend-provided public instance id (srv-<20>-<20>); presentation shortens
+    // the opaque suffix, filtering always uses the full value.
+    const instance = "srv-c185th5c2rvvnhbfiltg-ohoplujmv928mnmaj7j7";
     render(
       <LogLineList
         lines={[line({ instance })]}
@@ -135,7 +137,7 @@ describe("LogLineList request-line rendering (w5/008)", () => {
     const instanceButton = screen.getByRole("button", {
       name: `Filter logs by instance ${instance}`,
     });
-    expect(instanceButton).toHaveTextContent("[bv612]");
+    expect(instanceButton).toHaveTextContent("[ohopl]");
     expect(instanceButton).toHaveAttribute("title", instance);
 
     fireEvent.click(instanceButton);

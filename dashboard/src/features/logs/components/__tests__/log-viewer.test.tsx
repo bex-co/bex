@@ -206,7 +206,7 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
   });
 
   it("turns a clicked short instance slug into the exact instance filter", async () => {
-    const instance = "web-6f7d8f9c4b-bv612";
+    const instance = "srv-c185th5c2rvvnhbfiltg-ohoplujmv928mnmaj7j7";
     historyState.lines = [
       {
         key: "k-instance",

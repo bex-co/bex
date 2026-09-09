@@ -320,10 +320,12 @@ func TestSSHInstanceIDCollisionFailsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(targets) != 0 {
-		t.Fatalf("ambiguous instance id was exposed: %+v", targets)
+	// Name-derived public ids differ, so both remain listed; the legacy
+	// UID-derived selector is what must fail closed on ambiguity.
+	if len(targets) != 2 {
+		t.Fatalf("expected both name-distinct targets, got %+v", targets)
 	}
-	ambiguousID := ids.DeriveServiceInstance(sshServiceID, string(first.UID))
+	ambiguousID := ids.LegacyServiceInstanceID(sshServiceID, string(first.UID))
 	if _, err := service.ResolveSSHSession(context.Background(), ambiguousID); !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("ambiguous instance resolved with %v", err)
 	}

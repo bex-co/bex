@@ -488,6 +488,11 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
+	pods, err := s.AppPodsIn(ctx, appNS, app.Name)
+	if err != nil {
+		return nil, err
+	}
+	s.translateInstanceFilter(ctx, resource, appNS, &q, candidatesFromPods(pods))
 	// Pre-deploy step logs (w1/m33): a distinct LIVE source (the migration Job's
 	// pod), read directly from the App's own namespace — the Job is co-located
 	// with the App (ADR043 D8), not in the build namespace — never the durable
@@ -511,11 +516,19 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if q.needsStore() {
 		return nil, core.ErrLogStoreUnavailable
 	}
-	entries, err := s.collectPodLogs(ctx, appNS, q, q.Limit)
-	if err != nil {
-		return nil, err
+	var out []LogEntry
+	for i := range pods {
+		if !q.keepPod(pods[i].Name) {
+			continue
+		}
+		entries, err := s.readPodLogs(ctx, appNS, q.App, pods[i].Name, q.Limit)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, entries...)
 	}
-	return setLogResource(q.filterAndCap(entries), resource), nil
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	return setLogResource(q.filterAndCap(out), resource), nil
 }
 
 // queryPostgresLogs is the one datastore-scoped core read behind the existing
@@ -538,11 +551,20 @@ func (s *Service) queryPostgresLogs(ctx context.Context, q LogQuery) ([]LogEntry
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
+	pods, err := s.DatabasePods(ctx, database.Namespace, database.Name)
+	if err != nil {
+		return nil, err
+	}
+	s.translateInstanceFilter(ctx, requested, database.Namespace, &q, candidatesFromPods(pods))
 	if s.History != nil {
 		entries, err := s.History(ctx, database.Namespace, q)
 		return setLogResource(entries, requested), err
 	}
-	entries, err := s.collectDatabasePodLogs(ctx, database.Namespace, q)
+	entries, err := s.collectDatastorePodLogs(ctx, database.Namespace, q, pods, datastore{
+		name:      q.Database,
+		container: core.CNPGPostgresContainer,
+		kind:      datastorelogs.KindPostgres,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -585,11 +607,20 @@ func (s *Service) queryKeyValueLogs(ctx context.Context, q LogQuery) ([]LogEntry
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
+	pods, err := s.KeyValuePods(ctx, kv.Namespace, kv.Name)
+	if err != nil {
+		return nil, err
+	}
+	s.translateInstanceFilter(ctx, requested, kv.Namespace, &q, candidatesFromPods(pods))
 	if s.History != nil {
 		entries, err := s.History(ctx, kv.Namespace, q)
 		return setLogResource(entries, requested), err
 	}
-	entries, err := s.collectKeyValuePodLogs(ctx, kv.Namespace, q)
+	entries, err := s.collectDatastorePodLogs(ctx, kv.Namespace, q, pods, datastore{
+		name:      q.KeyValue,
+		container: core.ValkeyContainer,
+		kind:      datastorelogs.KindKeyValue,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -644,10 +675,12 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	if isKeyValueResource(q.App) {
 		return s.keyValueLogLabelValues(ctx, label, q)
 	}
-	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, q.App)
+	requested := q.App
+	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
 	if err != nil {
 		return nil, err
 	}
+	resource := appLogResource(app.Labels, requested)
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
@@ -672,11 +705,15 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	if err != nil {
 		return nil, err
 	}
+	if label == LabelInstance {
+		return projectLogLabelValues(resource, values), nil
+	}
 	return slices.Compact(slices.Sorted(slices.Values(values))), nil
 }
 
 func (s *Service) postgresLogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
-	database, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, q.App)
+	requested := q.App
+	database, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, requested)
 	if err != nil {
 		return nil, err
 	}
@@ -693,7 +730,7 @@ func (s *Service) postgresLogLabelValues(ctx context.Context, label string, q Lo
 		if err != nil {
 			return nil, err
 		}
-		return slices.Compact(slices.Sorted(slices.Values(values))), nil
+		return projectLogLabelValues(requested, values), nil
 	}
 	pods, err := s.DatabasePods(ctx, database.Namespace, database.Name)
 	if err != nil {
@@ -703,11 +740,12 @@ func (s *Service) postgresLogLabelValues(ctx context.Context, label string, q Lo
 	for i := range pods {
 		values = append(values, pods[i].Name)
 	}
-	return slices.Compact(slices.Sorted(slices.Values(values))), nil
+	return projectLogLabelValues(requested, values), nil
 }
 
 func (s *Service) keyValueLogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
-	kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, q.App)
+	requested := q.App
+	kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, requested)
 	if err != nil {
 		return nil, err
 	}
@@ -724,7 +762,7 @@ func (s *Service) keyValueLogLabelValues(ctx context.Context, label string, q Lo
 		if err != nil {
 			return nil, err
 		}
-		return slices.Compact(slices.Sorted(slices.Values(values))), nil
+		return projectLogLabelValues(requested, values), nil
 	}
 	pods, err := s.KeyValuePods(ctx, kv.Namespace, kv.Name)
 	if err != nil {
@@ -734,7 +772,7 @@ func (s *Service) keyValueLogLabelValues(ctx context.Context, label string, q Lo
 	for i := range pods {
 		values = append(values, pods[i].Name)
 	}
-	return slices.Compact(slices.Sorted(slices.Values(values))), nil
+	return projectLogLabelValues(requested, values), nil
 }
 
 // FollowLogs streams an App's new log lines to emit until ctx is cancelled or
@@ -770,6 +808,11 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		return core.ErrLogsUnavailable
 	}
 	q = q.normalized()
+	podsLive, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
+	if err != nil {
+		return err
+	}
+	s.translateInstanceFilter(ctx, resource, app.Namespace, &q, candidatesFromPods(podsLive))
 	// The tail's refusal is about the TRANSPORT, not the deployment: it reads pod
 	// logs even when Loki is wired, so a store-only filter is something this stream
 	// structurally cannot do — a bad request (400), not "the store is missing"
@@ -805,16 +848,18 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	ch := make(chan LogEntry, 64)
 	var wg sync.WaitGroup
 
-	pods, err := s.appPodNames(ctx, app.Namespace, q)
-	if err != nil {
-		return err
+	pods := make([]string, 0, len(podsLive))
+	for i := range podsLive {
+		if q.keepPod(podsLive[i].Name) {
+			pods = append(pods, podsLive[i].Name)
+		}
 	}
 	for i := range pods {
 		wg.Add(1)
 		go func(pod string) {
 			defer wg.Done()
 			// app.Namespace: the pods stream from their `<ws>` namespace under
-			// ADR043, the same namespace appPodNames selected them in.
+			// ADR043, the same namespace translateInstanceFilter selected them in.
 			s.streamPodLogs(ctx, app.Namespace, q.App, pod, q.Since, ch)
 		}(pods[i])
 	}
@@ -1077,6 +1122,71 @@ func appLogResource(labels map[string]string, requested string) string {
 	return requested
 }
 
+// noSuchInstance is an internal pod selector that can never match a real name.
+// Used when every public/legacy instance filter fails to resolve so the query
+// stays narrow instead of dropping the filter and returning every line.
+const noSuchInstance = "__bex_no_such_instance__"
+
+func projectLogInstance(resourceID, podName string) string {
+	if resourceID == "" || podName == "" {
+		return podName
+	}
+	return ids.ServiceInstanceID(resourceID, podName)
+}
+
+func projectLogLabelValues(resourceID string, values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		out = append(out, projectLogInstance(resourceID, v))
+	}
+	return slices.Compact(slices.Sorted(slices.Values(out)))
+}
+
+func candidatesFromPods(pods []corev1.Pod) []ids.InstanceCandidate {
+	out := make([]ids.InstanceCandidate, 0, len(pods))
+	for i := range pods {
+		out = append(out, ids.InstanceCandidate{Name: pods[i].Name, UID: string(pods[i].UID)})
+	}
+	return out
+}
+
+// translateInstanceFilter rewrites public instance ids (and legacy raw-name /
+// UID-derived selectors) into the internal pod names Loki and the live tail
+// match on. Candidates are the authorized live pods plus, when the store is
+// wired, historical pod names from label discovery — never a cross-resource
+// enumeration.
+func (s *Service) translateInstanceFilter(ctx context.Context, resourceID, namespace string, q *LogQuery, live []ids.InstanceCandidate) {
+	if len(q.Instance) == 0 {
+		return
+	}
+	cands := append([]ids.InstanceCandidate(nil), live...)
+	if s.LabelValues != nil {
+		disc := *q
+		disc.Instance = nil
+		if vals, err := s.LabelValues(ctx, namespace, LabelInstance, disc.normalized()); err == nil {
+			seen := make(map[string]struct{}, len(cands))
+			for _, c := range cands {
+				seen[c.Name] = struct{}{}
+			}
+			for _, name := range vals {
+				if name == "" {
+					continue
+				}
+				if _, ok := seen[name]; ok {
+					continue
+				}
+				cands = append(cands, ids.InstanceCandidate{Name: name})
+			}
+		}
+	}
+	resolved := ids.ResolveInstanceSelectors(q.Instance, resourceID, cands)
+	if len(resolved) == 0 {
+		q.Instance = []string{noSuchInstance}
+		return
+	}
+	q.Instance = resolved
+}
+
 func setLogResource(entries []LogEntry, resource string) []LogEntry {
 	for i := range entries {
 		setLogEntryResource(&entries[i], resource)
@@ -1089,6 +1199,9 @@ func setLogEntryResource(entry *LogEntry, resource string) {
 		entry.Labels = map[string]string{}
 	}
 	entry.Labels["service"] = resource
+	if pod := entry.Labels[LabelInstance]; pod != "" {
+		entry.Labels[LabelInstance] = projectLogInstance(resource, pod)
+	}
 }
 
 // collectPodLogs reads up to tail lines from every replica of an App the query's

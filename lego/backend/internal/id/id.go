@@ -163,9 +163,15 @@ func Derive(k Kind, parts ...string) string {
 // DeriveServiceInstance returns Render's compound service-instance id:
 // "<service-id>-<stable-suffix>". A service instance is a projection of a
 // Kubernetes Pod rather than an independently stored resource, so it extends
-// the parent Service id instead of adding another top-level Kind. Callers pass
-// the Pod UID as a derivation part; the opaque suffix keeps Kubernetes names
-// and UIDs out of the public wire contract while remaining stable across reads.
+// the parent Service id instead of adding another top-level Kind. The opaque
+// suffix keeps Kubernetes names and UIDs out of the public wire contract while
+// remaining stable across reads.
+//
+// Canonical emit paths pass the Pod name (see ServiceInstanceID) so historical
+// Prom/Loki series — which retain only the name — agree with live listing.
+// Legacy live SSH selectors hashed the Pod UID; MatchServiceInstance accepts
+// both. Prefer ServiceInstanceID / MatchServiceInstance over calling this
+// directly with an ad-hoc part.
 //
 // Legacy hand-applied Apps can still have a name-shaped service id. Preserve
 // that parent verbatim for backwards compatibility; store-managed services use

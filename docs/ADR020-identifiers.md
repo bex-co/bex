@@ -23,6 +23,8 @@ Registered prefixes (the `id.Kind` registry — Render's public-API spellings, s
 | `evt-` | service event (**derived**) | evt    |
 | `crr-` | cron-job run (**derived**)  | —      |
 
+Service **instances** are not a top-level Kind. They are compound ids `<service-id>-<opaque>` from `id.ServiceInstanceID` / `id.DeriveServiceInstance` (see [ADR035](ADR035-ssh.md)): the opaque suffix is a name-derived hash so live listing, metrics, and logs agree without exposing Kubernetes pod names. Pre-m87 live SSH selectors hashed the Pod UID; `id.MatchServiceInstance` still accepts those for the same Ready pod.
+
 ## Why this shape
 
 - **Render parity.** bex-api is Render-compatible ([ADR006-bex-api.md](ADR006-bex-api.md)); a Render-targeting client expects `srv-…`, `tea-…`. Matching the prefixes is free compatibility.

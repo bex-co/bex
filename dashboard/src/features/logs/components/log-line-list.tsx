@@ -294,11 +294,13 @@ function LogMessage({
   ));
 }
 
-// Deployment-managed pods end in Kubernetes's five-character replica slug
-// (`service-<replicaset>-bv612`). Render leads with the same compact instance
-// shape; keep the full pod name in the callback/title so filtering remains
-// exact and only abbreviate the presentation when that suffix is present.
+// Public instance ids are `<service-id>-<opaque>` (20-char base32-hex suffix).
+// Prefer a compact suffix when present; otherwise show the full id. Filtering
+// always uses the full backend-provided value from the line / chip.
 function shortInstance(instance: string): string {
   const suffix = instance.split("-").at(-1) ?? instance;
+  if (/^[0-9a-v]{20}$/.test(suffix)) {
+    return suffix.slice(0, 5);
+  }
   return suffix.length === 5 ? suffix : instance;
 }
