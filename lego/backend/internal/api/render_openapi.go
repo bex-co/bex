@@ -175,6 +175,24 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	// its capacity, while GraphQL and MCP could read both. Found by the w1/m86
 	// parity audit.
 	"get-disk-capacity": {"kind": {}},
+
+	// Bex's replica-percentage surface (w5/m89's aggregateAllMethod +
+	// w5/m90's percentage) on the eight App-metrics operations sharing
+	// metrics.parseMetricParams. Render's pinned schema only names its own
+	// interval aggregationMethod, so without these entries the strict-query
+	// gate 400s the exact DoD call
+	// (?percentage=true&aggregateAllMethod=AVG) while GraphQL and MCP serve
+	// it — found by the w5/m90 t008 live walkthrough driving the real
+	// composed server (bare-mux tests never see the gate, the same shape as
+	// the w6/m96 blueprint ownerId miss above).
+	"get-cpu":            {"percentage": {}, "aggregateAllMethod": {}},
+	"get-memory":         {"percentage": {}, "aggregateAllMethod": {}},
+	"get-cpu-target":     {"percentage": {}, "aggregateAllMethod": {}},
+	"get-memory-target":  {"percentage": {}, "aggregateAllMethod": {}},
+	"get-instance-count": {"percentage": {}, "aggregateAllMethod": {}},
+	"get-http-requests":  {"percentage": {}, "aggregateAllMethod": {}},
+	"get-http-latency":   {"percentage": {}, "aggregateAllMethod": {}},
+	"get-bandwidth":      {"percentage": {}, "aggregateAllMethod": {}},
 }
 
 // These are deliberate bex body extensions on Render-shaped operations. The

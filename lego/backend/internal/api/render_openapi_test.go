@@ -538,3 +538,41 @@ func TestRenderCLIImageOwnerContractThroughComposedServer(t *testing.T) {
 		t.Fatalf("unknown field mutated App: apps=%#v err=%v", apps.Items, err)
 	}
 }
+
+// TestMetricsPercentageQueryThroughComposedServer guards bex's
+// replica-percentage query extensions (w5/m89 aggregateAllMethod + w5/m90
+// percentage) against the strict Render-query gate. The metrics adapter tests
+// drive a bare mux that never sees the gate, so without the extension entries
+// the exact DoD call (?percentage=true&aggregateAllMethod=AVG) 400s on the
+// real server while GraphQL and MCP serve it — found by the w5/m90 t008 live
+// walkthrough. An unknown app must 404 (gate passed, store miss), while a
+// genuinely unknown parameter must still 400.
+func TestMetricsPercentageQueryThroughComposedServer(t *testing.T) {
+	cl := fakeClient()
+	base := &core.Base{
+		Client:    cl,
+		Namespace: "default",
+		Workspace: fakeWorkspace{"client-1": "tea-cli"},
+	}
+	h, _ := serverWith(t, base, Deps{APIKeys: newFakeKeyStore()})
+
+	for _, path := range []string{
+		"/v1/metrics/cpu",
+		"/v1/metrics/memory",
+		"/v1/metrics/cpu-target",
+		"/v1/metrics/memory-target",
+		"/v1/metrics/instance-count",
+		"/v1/metrics/http-requests",
+		"/v1/metrics/http-latency",
+		"/v1/metrics/bandwidth",
+	} {
+		w := do(t, h, http.MethodGet, path+"?resource=srv-x&percentage=true&aggregateAllMethod=AVG", testToken, "")
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("%s percentage+aggregate = %d, want 404 (gate passed, unknown app): %s", path, w.Code, w.Body.String())
+		}
+	}
+	w := do(t, h, http.MethodGet, "/v1/metrics/cpu?resource=srv-x&bogusParam=1", testToken, "")
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "unsupported query parameter") {
+		t.Fatalf("unknown param = %d, want 400 unsupported query parameter: %s", w.Code, w.Body.String())
+	}
+}
