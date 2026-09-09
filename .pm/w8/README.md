@@ -11,11 +11,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - `bash scripts/dev-env.sh 8 down` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
 - `bash scripts/dev-env.sh 8 clean` — reclaim `logs/` and `bin/` (refuses while the environment is up)
 
-`up` prints the dashboard command to point at it once bex-api is running. One shared
-implementation serves every workstream since `w1/m72`; `.pm/w8/dev-8/` keeps only
-`ports.env` (a generated record of the derivation), this README, and `.gitignore`.
+`up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w8/dev-8/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
 ## Milestones
+
+- [ ] **m36** — [Blueprint Git source integrity](m36/README.md) (8 tasks; 3h15m implementation, 5h total) ← approved 2026-09-08 pm-brainstorm proposal 1. **Next:** t001.
+- [ ] **m37** — [Blueprint lifecycle consistency](m37/README.md) (9 tasks; 4h30m implementation, 6h30m total) ← approved 2026-09-08 pm-brainstorm proposal 2. **Blocked:** t001 depends on w8/m36/t008 (verified closeout).
+- [ ] **m38** — [Resource-independent Blueprint auto-sync](m38/README.md) (9 tasks; 4h implementation, 6h total) ← approved 2026-09-08 pm-brainstorm proposal 3. **Blocked:** t001 depends on w8/m37/t009 (verified closeout).
 
 - [x] **m1** — Metering pipeline: hourly usage rollups into the control-plane store (9 tasks) ← from `/pm-brainstorm w8` 2026-07-09
 - [x] **m2** — Usage API: month-to-date usage over REST · GraphQL · MCP (9 tasks) ← from `/pm-brainstorm w8` 2026-07-09, needs m1
@@ -55,6 +57,5 @@ implementation serves every workstream since `w1/m72`; `.pm/w8/dev-8/` keeps onl
 ## Inbox
 
 _(empty — `010`/`011`/`012` implemented 2026-09-08 and moved to `done/`)_
-
 
 > `010.md`/`011.md`/`012.md` implemented 2026-09-08 (outbound-IPs UI; narrow plan aliases; datastore DeletionStalled) — moved to `done/`. `001.md` retired 2026-08-16 after its production gate found only 1–2 represented workspaces, zero build minutes, a 1.46 TiB sole complete egress sample, and remaining hourly gaps — no evidence-safe cap can be selected. `007.md` retired after its one useful artifact was captured: the production unmodified-CLI validation re-grade is now in `docs/cli-compatibility-checklist.md`; the note mixed that finished evidence chore with disposable deployment experiments and an unrelated dev-host suggestion, so it is not retained as roadmap work. `008.md` implemented and moved to `done/` (env groups in `resources[]` + action plans). `009.md` implemented and moved to `done/` (ADR018 deliberate divergences). `002.md` promoted to **m9** 2026-07-13; note moved to `done/`. `004.md` (KeyValue `maxmemoryPolicy` underscore-vs-hyphen, filed by `w9/m2`'s Render CLI compatibility walk) fixed 2026-07-15 (`dfff3034`), re-verified live end to end (create/list/get/update/suspend/resume/delete) — note moved to `done/`. `005.md` (Postgres owner/options wire-shape, filed by `w9/m2`) retired 2026-07-15 — a parallel session independently found the same gap across Postgres/Service/KeyValue and filed it as `w6/016`; `005.md` moved to `done/` pointing there rather than duplicating it.
