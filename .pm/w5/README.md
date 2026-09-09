@@ -17,10 +17,10 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 - [x] **m87** — [Consistent instance IDs across logs, metrics, and SSH](done/m87/README.md) (9 tasks) — **DONE 2026-09-08**: name-derived public instance ids unify serviceInstances, metrics, logs, and SSH; legacy UID SSH selectors and raw-name log filters remain compatible. Unblocks m89.
 
-- [ ] **m88** — [Correct agent-turn latency and outcome metrics](m88/README.md) (7 tasks; 3h30m implementation, ~5h15m with closeout) ← approved 2026-09-08 from proposal 2; closes the m81 coverage/timing gaps consumed by Grafana. **Next:** t001; independent of m87.
-- [ ] **m89** — [Select and aggregate instances on the Metrics page](m89/README.md) (9 tasks; 4h implementation, ~6h15m with closeout) ← approved 2026-09-08 from proposal 3. **Unblocked:** m87 closeout shipped; t001 may proceed.
+- [x] **m88** — [Correct agent-turn latency and outcome metrics](done/m88/README.md) (7 tasks) — **DONE 2026-09-08**: durable turn `started_at` anchors running duration; all terminal paths emit bounded outcomes; Grafana/ADRs updated (`38e1082b`).
+- [x] **m89** — [Select and aggregate instances on the Metrics page](done/m89/README.md) (9 tasks) — **DONE 2026-09-08**: INSTANCE filter + MIN/MAX/AVG replica aggregate on shared metrics core; Application Metrics controls; REST/GQL/MCP adapters.
 
-**Approved execution priority (2026-09-08):** m87 → m88 → m89. m87 done; next is m88.
+**Approved execution priority (2026-09-08):** m87 → m88 → m89. All three shipped.
 
 - [x] **m86** — Platform observability UI: Grafana at obs.bex.co (10 tasks) ← from [docs/ADR088-platform-observability-ui.md](../../docs/ADR088-platform-observability-ui.md) (accepted 2026-09-07, platform-monitoring discussion: GitOps Grafana in `monitoring`, `obs.bex.co`, Hydra OIDC client, ops-workspace consent gate)
 
