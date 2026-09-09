@@ -797,10 +797,38 @@ func sameOrigin(base, candidate string) bool {
 }
 
 // FileContents is the decoded content of a repository file (w2/m62 — blueprint
-// manifest fetch). CommitSHA is the branch HEAD at the time of the fetch.
+// manifest fetch). The caller names the exact ref (branch or immutable commit)
+// it wants; provenance comes from the ref it passed, never from this struct —
+// w8/m36 removed the old blob-SHA-as-commit fallback, which fabricated sync
+// provenance whenever branch resolution failed.
 type FileContents struct {
-	Contents  string
-	CommitSHA string
+	Contents string
+}
+
+// maxBlueprintFileBytes bounds one Blueprint manifest read. GitHub's raw
+// content can exceed it; the reader refuses over-limit bodies rather than
+// applying a silently truncated prefix as the whole file (w8/m36 t001).
+const maxBlueprintFileBytes = 1 << 20
+
+// errFileTooLarge classifies an over-limit manifest for callers that refuse
+// partial content without raising the accepted Blueprint size limit.
+var errFileTooLarge = errors.New("github: file exceeds the 1 MiB blueprint limit")
+
+// validCommitSHA accepts the Git object IDs GitHub returns for a branch HEAD:
+// 40 hex chars (SHA-1) or 64 (SHA-256 repos). Anything else is a malformed
+// provenance the Blueprint fetcher must refuse, never persist (w8/m36 t002).
+func validCommitSHA(sha string) bool {
+	if len(sha) != 40 && len(sha) != 64 {
+		return false
+	}
+	for i := 0; i < len(sha); i++ {
+		c := sha[i]
+		if c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // GetFileContents fetches the raw contents of path at ref in owner/repo using
@@ -831,14 +859,31 @@ func (c *Client) GetFileContents(ctx context.Context, token, owner, repo, path, 
 		return FileContents{}, fmt.Errorf("github: get file: %w", err)
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	// Read one byte past the bound: exactly-at-limit content is complete and
+	// accepted, limit-plus-one is refused — and a transport/read failure after
+	// a valid YAML prefix stays an error instead of a successful partial file
+	// (w8/m36 t001). Only caller-supplied path/ref interpolate into errors;
+	// upstream bodies and credentials never do.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBlueprintFileBytes+1))
+	if err != nil {
+		return FileContents{}, fmt.Errorf("github: get file: read response: %w", err)
+	}
 	if resp.StatusCode == http.StatusNotFound {
 		return FileContents{}, fmt.Errorf("github: file %q not found at ref %q: %w", path, ref, &APIError{Status: resp.StatusCode})
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return FileContents{}, fmt.Errorf("github: access denied fetching file %q at ref %q: %w", path, ref, &APIError{Status: resp.StatusCode})
+	}
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return FileContents{}, fmt.Errorf("github: rate limited fetching file %q at ref %q: %w", path, ref, &APIError{Status: resp.StatusCode})
 	}
 	if resp.StatusCode != http.StatusOK {
 		return FileContents{}, &APIError{Status: resp.StatusCode, Body: string(body)}
 	}
-	return FileContents{Contents: string(body), CommitSHA: resp.Header.Get("X-GitHub-File-Sha")}, nil
+	if len(body) > maxBlueprintFileBytes {
+		return FileContents{}, fmt.Errorf("%w: file %q at ref %q", errFileTooLarge, path, ref)
+	}
+	return FileContents{Contents: string(body)}, nil
 }
 
 // GetRepoCommitSHA resolves the HEAD commit SHA for a branch using the branch
@@ -857,7 +902,10 @@ func (c *Client) GetRepoCommitSHA(ctx context.Context, token, owner, repo, branc
 		return "", fmt.Errorf("github: get branch: %w", err)
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return "", fmt.Errorf("github: get branch: read response: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return "", &APIError{Status: resp.StatusCode, Body: string(body)}
 	}
@@ -868,6 +916,11 @@ func (c *Client) GetRepoCommitSHA(ctx context.Context, token, owner, repo, branc
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
 		return "", fmt.Errorf("github: decode branch response: %w", err)
+	}
+	// An empty or malformed commit ID is an actionable error, never provenance
+	// (w8/m36 t002): only the validated SHA below may be stamped on a sync run.
+	if !validCommitSHA(out.Commit.SHA) {
+		return "", fmt.Errorf("github: branch %q returned an empty or malformed commit id", branch)
 	}
 	return out.Commit.SHA, nil
 }

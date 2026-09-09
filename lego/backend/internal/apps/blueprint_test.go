@@ -56,6 +56,13 @@ type fakeBlueprintStore struct {
 	// syncsToReturn, when set, is what ListBlueprintSyncs returns — the wire
 	// round-trip tests need a canned row rather than a live-recorded one.
 	syncsToReturn []store.BlueprintSync
+	// insertedSyncs records every InsertBlueprintSync call in order, so tests
+	// can assert a run was (or was not) recorded and with what provenance.
+	insertedSyncs []store.BlueprintSync
+	// insertSyncErr / updateSyncErr, when set, fail the matching sync write —
+	// the store-outage cases (w8/m36 t004).
+	insertSyncErr error
+	updateSyncErr error
 }
 
 func newFakeBlueprintStore(bs ...store.Blueprint) *fakeBlueprintStore {
@@ -146,13 +153,20 @@ func (f *fakeBlueprintStore) DisconnectBlueprint(_ context.Context, id, tenantID
 }
 
 func (f *fakeBlueprintStore) InsertBlueprintSync(_ context.Context, run store.BlueprintSync) (store.BlueprintSync, error) {
-	if run.ID == "" {
-		run.ID = fmt.Sprintf("bsr-fake-%d", len(f.blueprints))
+	if f.insertSyncErr != nil {
+		return store.BlueprintSync{}, f.insertSyncErr
 	}
+	if run.ID == "" {
+		run.ID = fmt.Sprintf("bsr-fake-%d", len(f.insertedSyncs))
+	}
+	f.insertedSyncs = append(f.insertedSyncs, run)
 	return run, nil
 }
 
 func (f *fakeBlueprintStore) UpdateBlueprintSync(_ context.Context, id, state string, completedAt *time.Time, errMsg *string) (store.BlueprintSync, error) {
+	if f.updateSyncErr != nil {
+		return store.BlueprintSync{}, f.updateSyncErr
+	}
 	out := store.BlueprintSync{ID: id, State: state, CompletedAt: completedAt, ErrorMessage: errMsg}
 	f.lastSyncUpdate = out
 	return out, nil
@@ -755,6 +769,9 @@ projects:
 
 // --- PreviewBlueprint ---
 
+// testCommitSHA is the canned immutable revision test fetchers pin to.
+const testCommitSHA = "0123456789abcdef0123456789abcdef01234567"
+
 // fakeBlueprintFetcher returns canned contents/sha or an error.
 type fakeBlueprintFetcher struct {
 	contents string
@@ -763,18 +780,28 @@ type fakeBlueprintFetcher struct {
 	path     string
 }
 
-func (f fakeBlueprintFetcher) FetchBlueprintFile(_ context.Context, _ string, _ string, _ string, filePath string) (string, string, error) {
+func (f fakeBlueprintFetcher) ResolveBlueprintCommit(context.Context, string, string, string) (string, error) {
 	if f.err != nil {
-		return "", "", f.err
+		return "", f.err
+	}
+	if f.sha != "" {
+		return f.sha, nil
+	}
+	return testCommitSHA, nil
+}
+
+func (f fakeBlueprintFetcher) FetchBlueprintFileAtCommit(_ context.Context, _ string, _ string, _ string, filePath string) (string, error) {
+	if f.err != nil {
+		return "", f.err
 	}
 	expectedPath := f.path
 	if expectedPath == "" {
 		expectedPath = CanonicalBlueprintFilename
 	}
 	if filePath != expectedPath {
-		return "", "", fmt.Errorf("bad request: %s not found on main", filePath)
+		return "", fmt.Errorf("bad request: %s not found on main", filePath)
 	}
-	return f.contents, f.sha, f.err
+	return f.contents, nil
 }
 
 func TestPreviewBlueprintFound(t *testing.T) {
@@ -796,12 +823,16 @@ func TestPreviewBlueprintFound(t *testing.T) {
 
 type blueprintFilesFetcher map[string]string
 
-func (f blueprintFilesFetcher) FetchBlueprintFile(_ context.Context, _ string, _ string, _ string, filePath string) (string, string, error) {
+func (f blueprintFilesFetcher) ResolveBlueprintCommit(context.Context, string, string, string) (string, error) {
+	return testCommitSHA, nil
+}
+
+func (f blueprintFilesFetcher) FetchBlueprintFileAtCommit(_ context.Context, _ string, _ string, _ string, filePath string) (string, error) {
 	contents, ok := f[filePath]
 	if !ok {
-		return "", "", fmt.Errorf("bad request: %s not found on main", filePath)
+		return "", fmt.Errorf("bad request: %s not found on main", filePath)
 	}
-	return contents, "abc1234", nil
+	return contents, nil
 }
 
 func TestBlueprintFilenameDiscovery(t *testing.T) {
@@ -1083,6 +1114,9 @@ func TestSyncBlueprintReappliesManifest(t *testing.T) {
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
 		DomainOwnership: allowDomainOwnership{},
+		// w8/m36 t003: a Git-backed sync with no fetcher is a failure, so the
+		// reapply path fetches the unchanged manifest through the seam.
+		GitFetcher: fakeBlueprintFetcher{contents: stackManifest},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
@@ -1092,6 +1126,11 @@ func TestSyncBlueprintReappliesManifest(t *testing.T) {
 	}
 	if res.Blueprint.ID != "blp-1" {
 		t.Errorf("SyncBlueprint: blueprint id = %q, want blp-1", res.Blueprint.ID)
+	}
+	// w8/m36 t002: the run is stamped with the resolved commit the bytes were
+	// read at — never an empty or fabricated provenance.
+	if len(fs.insertedSyncs) != 1 || fs.insertedSyncs[0].CommitID != testCommitSHA {
+		t.Errorf("SyncBlueprint run provenance = %+v, want one run at %q", fs.insertedSyncs, testCommitSHA)
 	}
 	if len(res.Stack.Services) == 0 {
 		t.Errorf("SyncBlueprint: stack.services empty, expected stack to be deployed")
@@ -1235,6 +1274,209 @@ func TestBlueprintCoreEntrypointsRefuseUnsupportedManifestBeforeWrites(t *testin
 	}
 	if len(apps.Items) != 0 {
 		t.Errorf("unsupported Blueprint created %d Apps", len(apps.Items))
+	}
+}
+
+// --- w8/m36 t003/t004: Git-backed sync fails without falling back ---
+
+// A Git-backed sync whose source cannot be fetched fails with zero workload
+// mutations: the stored manifest is preserved, nothing is applied, and the
+// attempt terminates in history with its sanitized reason (t003+t004).
+func TestSyncBlueprintFetchFailureRecordsErrorRun(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
+		Status: "active", Name: "app",
+	})
+	client := fakeClient()
+	svc := &Service{
+		Base:       &core.Base{Client: client, Namespace: "default", Workspace: ws},
+		Blueprints: fs,
+		GitFetcher: fakeBlueprintFetcher{err: fmt.Errorf("bad request: render.yaml not found on main")},
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
+	if err == nil {
+		t.Fatal("SyncBlueprint unreachable source: want error, got success")
+	}
+	if stored := fs.blueprints["blp-1"]; stored.Manifest != stackManifest || stored.Status != "active" {
+		t.Errorf("failed fetch mutated the stored blueprint: %+v", stored)
+	}
+	var apps appv1alpha1.AppList
+	if err := client.List(ctx, &apps); err != nil {
+		t.Fatalf("list apps: %v", err)
+	}
+	if len(apps.Items) != 0 {
+		t.Errorf("failed fetch applied %d Apps; want zero mutations", len(apps.Items))
+	}
+	if len(fs.insertedSyncs) != 1 {
+		t.Fatalf("inserted runs = %d, want the one failed attempt", len(fs.insertedSyncs))
+	}
+	if fs.lastSyncUpdate.State != store.BlueprintSyncStateError {
+		t.Fatalf("failed sync run state = %q, want error", fs.lastSyncUpdate.State)
+	}
+	if msg := fs.lastSyncUpdate.ErrorMessage; msg == nil || !strings.Contains(*msg, "not found") {
+		t.Fatalf("failed sync run reason = %v, want the actionable fetch failure", msg)
+	}
+}
+
+// A Git-backed sync with no fetcher configured fails rather than silently
+// applying the stored manifest (t003).
+func TestSyncBlueprintWithoutFetcherFailsGitBackedSync(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
+		Status: "active", Name: "app",
+	})
+	client := fakeClient()
+	svc := &Service{
+		Base:       &core.Base{Client: client, Namespace: "default", Workspace: ws},
+		Blueprints: fs,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
+	if !errors.Is(err, ErrBlueprintFetchUnavailable) {
+		t.Fatalf("Git-backed sync without fetcher: want ErrBlueprintFetchUnavailable, got %v", err)
+	}
+	var apps appv1alpha1.AppList
+	if err := client.List(ctx, &apps); err != nil {
+		t.Fatalf("list apps: %v", err)
+	}
+	if len(apps.Items) != 0 {
+		t.Errorf("unavailable fetcher applied %d Apps; want zero mutations", len(apps.Items))
+	}
+	if fs.lastSyncUpdate.State != store.BlueprintSyncStateError {
+		t.Fatalf("failed sync run state = %q, want error", fs.lastSyncUpdate.State)
+	}
+}
+
+// A failed run insertion blocks every workload side effect: no App,
+// datastore, grouping, environment, or ownership mutation without a recorded
+// attempt (t004).
+func TestSyncBlueprintFailedRunInsertBlocksApply(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
+		Status: "active", Name: "app",
+	})
+	fs.insertSyncErr = errors.New("blueprints store unavailable")
+	client := fakeClient()
+	svc := &Service{
+		Base:       &core.Base{Client: client, Namespace: "default", Workspace: ws},
+		Blueprints: fs,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, ""); err == nil {
+		t.Fatal("SyncBlueprint with failing run insert: want error, got success")
+	}
+	if stored := fs.blueprints["blp-1"]; stored.Manifest != stackManifest {
+		t.Errorf("blocked sync mutated the stored manifest: %+v", stored)
+	}
+	var apps appv1alpha1.AppList
+	if err := client.List(ctx, &apps); err != nil {
+		t.Fatalf("list apps: %v", err)
+	}
+	if len(apps.Items) != 0 {
+		t.Errorf("blocked sync applied %d Apps; want zero mutations", len(apps.Items))
+	}
+}
+
+// A failed completion write is not reported as verified success — even though
+// the apply itself went through (t004).
+func TestSyncBlueprintFailedCompletionWriteIsError(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
+		Status: "active", Name: "app",
+	})
+	fs.updateSyncErr = errors.New("blueprints store unavailable")
+	client := fakeClient()
+	svc := &Service{
+		Base:            &core.Base{Client: client, Namespace: "default", Workspace: ws},
+		Blueprints:      fs,
+		DomainOwnership: allowDomainOwnership{},
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "")
+	if err == nil || !strings.Contains(err.Error(), "record completion") {
+		t.Fatalf("SyncBlueprint with failing completion write: want record-completion error, got %v", err)
+	}
+}
+
+// Explicit supplied-manifest sync stays usable and never claims a Git commit
+// it did not consume (t003).
+func TestSyncBlueprintSuppliedManifestClaimsNoCommit(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
+		Status: "active", Name: "app",
+	})
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, ""); err != nil {
+		t.Fatalf("SyncBlueprint supplied manifest: %v", err)
+	}
+	if len(fs.insertedSyncs) != 1 {
+		t.Fatalf("inserted runs = %d, want 1", len(fs.insertedSyncs))
+	}
+	if got := fs.insertedSyncs[0].CommitID; got != "" {
+		t.Fatalf("supplied-manifest run commit = %q, want no claimed commit", got)
+	}
+}
+
+// Implicit canonical/legacy discovery resolves once and probes both filenames
+// at that one revision — never two independently moving branch tips (t002).
+type pinCountingFetcher struct {
+	fakeBlueprintFetcher
+	resolves int
+	refs     []string
+}
+
+func (f *pinCountingFetcher) ResolveBlueprintCommit(ctx context.Context, ws, repo, branch string) (string, error) {
+	f.resolves++
+	return f.fakeBlueprintFetcher.ResolveBlueprintCommit(ctx, ws, repo, branch)
+}
+
+func (f *pinCountingFetcher) FetchBlueprintFileAtCommit(ctx context.Context, ws, repo, commit, filePath string) (string, error) {
+	f.refs = append(f.refs, commit)
+	return f.fakeBlueprintFetcher.FetchBlueprintFileAtCommit(ctx, ws, repo, commit, filePath)
+}
+
+func TestBlueprintDiscoveryPinsOneRevision(t *testing.T) {
+	ctx := context.Background()
+	fetcher := &pinCountingFetcher{fakeBlueprintFetcher: fakeBlueprintFetcher{contents: "canonical"}}
+	contents, sha, filePath, err := discoverBlueprintFile(ctx, fetcher, "ws", "https://github.com/a/app", "main", "")
+	if err != nil {
+		t.Fatalf("discover: %v", err)
+	}
+	if contents != "canonical" || sha != testCommitSHA || filePath != CanonicalBlueprintFilename {
+		t.Fatalf("discover = %q %q %q, want canonical at the pinned commit", contents, sha, filePath)
+	}
+	if fetcher.resolves != 1 {
+		t.Fatalf("discover resolved %d times, want exactly 1 pinned resolution", fetcher.resolves)
+	}
+	for _, ref := range fetcher.refs {
+		if ref != testCommitSHA {
+			t.Fatalf("discover probed ref %q, want every probe at %q", ref, testCommitSHA)
+		}
+	}
+	if len(fetcher.refs) != 2 {
+		t.Fatalf("discover probed %d files, want both filenames checked for ambiguity", len(fetcher.refs))
+	}
+
+	files := blueprintFilesFetcher{CanonicalBlueprintFilename: "c", LegacyBlueprintFilename: "l"}
+	if _, _, _, err := discoverBlueprintFile(ctx, files, "ws", "https://github.com/a/app", "main", ""); !errors.Is(err, ErrBlueprintFilenameAmbiguous) {
+		t.Fatalf("both filenames present: want ErrBlueprintFilenameAmbiguous, got %v", err)
 	}
 }
 
@@ -1791,6 +2033,7 @@ func TestGraphQLSyncBlueprint(t *testing.T) {
 		TenantID: "tea-a",
 		Repo:     "https://github.com/a/app",
 		Branch:   "main",
+		Path:     CanonicalBlueprintFilename,
 		Manifest: stackManifest,
 		Status:   "active",
 		Name:     "app",
@@ -1799,6 +2042,8 @@ func TestGraphQLSyncBlueprint(t *testing.T) {
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
 		DomainOwnership: allowDomainOwnership{},
+		// w8/m36 t003: Git-backed sync fetches instead of reapplying stored.
+		GitFetcher: fakeBlueprintFetcher{contents: stackManifest},
 	}
 	schema := blueprintSchema(t, svc)
 
@@ -1829,13 +2074,17 @@ func TestBlueprintAutoSyncPreservesTenantContext(t *testing.T) {
 		TenantID: "tea-a",
 		Repo:     "https://github.com/a/app",
 		Branch:   "main",
+		Path:     CanonicalBlueprintFilename,
 		Manifest: stackManifest,
 		Status:   "active",
 		Name:     "app",
 		AutoSync: true,
 	})
 	cl := fakeClient()
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
+	// w8/m36 t003: the webhook-triggered sync fetches the manifest through
+	// the seam instead of reapplying the stored one.
+	fetcher := fakeBlueprintFetcher{contents: stackManifest}
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}, GitFetcher: fetcher}
 
 	tenantID := "tea-a"
 
@@ -1920,7 +2169,8 @@ func TestBlueprintAutoSyncScopedMatchingIgnoresForeignResources(t *testing.T) {
 	ws := fakeWorkspace{"user-a": "tea-a"}
 	bp := store.Blueprint{
 		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
-		Branch: "main", Manifest: foreignMatchManifest, Status: "active", Name: "app", AutoSync: true,
+		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: foreignMatchManifest,
+		Status: "active", Name: "app", AutoSync: true,
 	}
 	fs := newFakeBlueprintStore(bp)
 	foreignApp := sampleApp("web") // bare-named, unlabeled, shared namespace
@@ -1929,7 +2179,8 @@ func TestBlueprintAutoSyncScopedMatchingIgnoresForeignResources(t *testing.T) {
 		Spec:       appv1alpha1.DatabaseSpec{Name: "db", Plan: "basic-256mb", StorageGB: 5},
 	}
 	cl := fakeClient(foreignApp, foreignDB)
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
+	// w8/m36 t003: the sync fetches the manifest through the seam.
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}, GitFetcher: fakeBlueprintFetcher{contents: foreignMatchManifest}}
 
 	// The ctx exactly as triggerBlueprintSync builds it (webhook-shaped
 	// workspace-named ctx + the acting-tenant binding from the blueprint row).
@@ -2009,12 +2260,21 @@ func TestRunSyncFailsClosedWithoutResolvableTenant(t *testing.T) {
 // --- UpdateBlueprint path allowlist (codex-security round-6 #14) ---
 
 // recordingBlueprintFetcher fails every fetch and records the paths asked for,
-// proving a guard ran BEFORE the token-backed repository read.
-type recordingBlueprintFetcher struct{ paths []string }
+// proving a guard ran BEFORE the token-backed repository read. resolves counts
+// commit resolutions, which are repository reads too.
+type recordingBlueprintFetcher struct {
+	paths    []string
+	resolves int
+}
 
-func (f *recordingBlueprintFetcher) FetchBlueprintFile(_ context.Context, _, _, _, filePath string) (string, string, error) {
+func (f *recordingBlueprintFetcher) ResolveBlueprintCommit(context.Context, string, string, string) (string, error) {
+	f.resolves++
+	return "", fmt.Errorf("resolve should not have been reached")
+}
+
+func (f *recordingBlueprintFetcher) FetchBlueprintFileAtCommit(_ context.Context, _, _, _, filePath string) (string, error) {
 	f.paths = append(f.paths, filePath)
-	return "", "", fmt.Errorf("fetch should not have been reached")
+	return "", fmt.Errorf("fetch should not have been reached")
 }
 
 // TestUpdateBlueprintEnforcesApprovedPath pins round-6 #14: the discovery-time
@@ -2074,6 +2334,9 @@ func TestSyncBlueprintRefusesLegacyUnapprovedPath(t *testing.T) {
 	}
 	if len(fetcher.paths) != 0 {
 		t.Errorf("sync fetched %v before validating the stored path", fetcher.paths)
+	}
+	if fetcher.resolves != 0 {
+		t.Errorf("sync resolved the branch %d times before validating the stored path", fetcher.resolves)
 	}
 }
 

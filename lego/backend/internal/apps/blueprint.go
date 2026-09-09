@@ -56,8 +56,17 @@ type BlueprintStore interface {
 // BlueprintFetcher fetches a blueprint file from its Git repository. The
 // github.Service.BlueprintFileFetcher() adapter satisfies it. nil on
 // apps.Service (s.GitFetcher) ⇒ create/sync cannot pull-from-repo.
+//
+// The revision contract (w8/m36 t002): resolve the branch to one immutable
+// commit first, then read every manifest byte at that commit — a branch that
+// advances mid-sync cannot mix revisions into one apply.
 type BlueprintFetcher interface {
-	FetchBlueprintFile(ctx context.Context, workspaceID, repoURL, branch, filePath string) (contents, commitSHA string, err error)
+	// ResolveBlueprintCommit pins branch to its immutable HEAD commit.
+	// Lookup failure or an empty/malformed commit ID is an actionable error,
+	// never fabricated provenance.
+	ResolveBlueprintCommit(ctx context.Context, workspaceID, repoURL, branch string) (commitSHA string, err error)
+	// FetchBlueprintFileAtCommit reads filePath at an already-resolved commit.
+	FetchBlueprintFileAtCommit(ctx context.Context, workspaceID, repoURL, commitSHA, filePath string) (contents string, err error)
 }
 
 // ErrBlueprintsUnavailable is returned when the control-plane store is not wired.
@@ -88,24 +97,32 @@ const (
 // discoverBlueprintFile implements ADR049's filename rule. An explicit path is
 // fetched as-is. For an implicit request, render.yaml wins only when the
 // legacy alias is absent; legacy alone remains compatible; both are an error.
+//
+// Every probe reads at one resolved commit (w8/m36 t002): the branch is pinned
+// once up front, so canonical/legacy discovery examines a consistent revision
+// instead of two independently moving branch tips.
 func discoverBlueprintFile(ctx context.Context, fetcher BlueprintFetcher, workspaceID, repo, branch, explicitPath string) (contents, commitSHA, filePath string, err error) {
+	commitSHA, err = fetcher.ResolveBlueprintCommit(ctx, workspaceID, repo, branch)
+	if err != nil {
+		return "", "", "", err
+	}
 	if explicitPath != "" {
 		explicitPath, err = approvedBlueprintPath(explicitPath)
 		if err != nil {
 			return "", "", "", err
 		}
-		contents, commitSHA, err = fetcher.FetchBlueprintFile(ctx, workspaceID, repo, branch, explicitPath)
+		contents, err = fetcher.FetchBlueprintFileAtCommit(ctx, workspaceID, repo, commitSHA, explicitPath)
 		return contents, commitSHA, explicitPath, err
 	}
-	canonicalContents, canonicalSHA, canonicalErr := fetcher.FetchBlueprintFile(ctx, workspaceID, repo, branch, CanonicalBlueprintFilename)
-	legacyContents, legacySHA, legacyErr := fetcher.FetchBlueprintFile(ctx, workspaceID, repo, branch, LegacyBlueprintFilename)
+	canonicalContents, canonicalErr := fetcher.FetchBlueprintFileAtCommit(ctx, workspaceID, repo, commitSHA, CanonicalBlueprintFilename)
+	legacyContents, legacyErr := fetcher.FetchBlueprintFileAtCommit(ctx, workspaceID, repo, commitSHA, LegacyBlueprintFilename)
 	switch {
 	case canonicalErr == nil && legacyErr == nil:
 		return "", "", "", ErrBlueprintFilenameAmbiguous
 	case canonicalErr == nil:
-		return canonicalContents, canonicalSHA, CanonicalBlueprintFilename, nil
+		return canonicalContents, commitSHA, CanonicalBlueprintFilename, nil
 	case legacyErr == nil:
-		return legacyContents, legacySHA, LegacyBlueprintFilename, nil
+		return legacyContents, commitSHA, LegacyBlueprintFilename, nil
 	default:
 		return "", "", "", canonicalErr
 	}
@@ -435,12 +452,18 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		return BlueprintView{}, err
 	}
 
-	run, _ := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
+	// The initial run is persisted before application (w8/m36 t004): a failed
+	// insertion blocks every workload side effect — no App, datastore,
+	// grouping, environment, or ownership mutation without a recorded attempt.
+	run, err := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
 		BlueprintID: b.ID,
 		CommitID:    commitSHA,
 		State:       store.BlueprintSyncStateRunning,
 		StartedAt:   now,
 	})
+	if err != nil {
+		return BlueprintView{}, err
+	}
 
 	prepareReq.Confirm = req.Confirm
 	prepareReq.BlueprintID = b.ID
@@ -456,8 +479,9 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if updated, updErr := s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, &finalStatus, &completedAt); updErr == nil {
 		b = updated
 	}
-	if run.ID != "" {
-		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt, errMsgPtr(applyErr))
+	// A failed completion write is not reported as verified success.
+	if _, updErr := s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt, errMsgPtr(applyErr)); updErr != nil {
+		return BlueprintView{}, fmt.Errorf("blueprint create: record completion: %w", updErr)
 	}
 	if applyErr != nil {
 		return BlueprintView{}, applyErr
@@ -589,6 +613,26 @@ func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, ma
 	return updated, &parsed, nil
 }
 
+// failSync records a failed attempt for an existing Blueprint and returns the
+// source error (w8/m36 t004). Source and validation failures terminate in sync
+// history with their sanitized reason instead of vanishing before any run is
+// recorded. No workload mutation happens here; when the store itself is
+// unavailable the source error is returned without promising a history row.
+func (s *Service) failSync(ctx context.Context, b store.Blueprint, commitSHA string, startedAt time.Time, srcErr error) (SyncBlueprintResult, error) {
+	run, insErr := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
+		BlueprintID: b.ID,
+		CommitID:    commitSHA,
+		State:       store.BlueprintSyncStateRunning,
+		StartedAt:   startedAt,
+	})
+	if insErr != nil {
+		return SyncBlueprintResult{}, srcErr
+	}
+	completedAt := s.Now().UTC()
+	_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, store.BlueprintSyncStateError, &completedAt, errMsgPtr(srcErr))
+	return SyncBlueprintResult{}, srcErr
+}
+
 func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confirm string) (SyncBlueprintResult, error) {
 	tenantID := b.TenantID
 	// w1/m69: a sync that cannot name the workspace it acts in must refuse
@@ -604,31 +648,67 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	}
 	now := s.Now().UTC()
 	var commitSHA string
+	var manifest string
 	var prepared *parsedStack
+	// useStored covers only legacy non-Git rows (no Repo to fetch from): the
+	// one path that still applies the stored manifest. A Git-backed source
+	// that cannot be fetched is a failure, never an implicit reapply (w8/m36
+	// t003) — the stored manifest is preserved untouched for the next attempt.
+	useStored := false
 
 	if bexYAML != "" {
-		updated, parsed, err := s.prepareSyncManifest(ctx, b, bexYAML)
-		if err != nil {
-			return SyncBlueprintResult{}, err
+		// Explicit supplied-manifest sync (the documented bex extension): no
+		// Git commit is consumed, so none is claimed.
+		manifest = bexYAML
+	} else if b.Repo != "" {
+		if s.GitFetcher == nil {
+			return s.failSync(ctx, b, "", now, ErrBlueprintFetchUnavailable)
 		}
-		b, prepared = updated, parsed
-	} else if s.GitFetcher != nil && b.Repo != "" {
 		// Re-validate the stored path before the token-backed fetch (round-6
 		// #14): a legacy row written before UpdateBlueprint enforced the
 		// allowlist must not become an arbitrary private-file read at sync time.
 		if _, pathErr := approvedBlueprintPath(b.Path); pathErr != nil {
-			return SyncBlueprintResult{}, pathErr
+			return s.failSync(ctx, b, "", now, pathErr)
 		}
-		// A fetch failure is deliberately swallowed: the sync falls through to
-		// the stored manifest rather than failing the whole run.
-		if contents, sha, fetchErr := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, b.Repo, b.Branch, b.Path); fetchErr == nil {
-			commitSHA = sha
-			updated, parsed, err := s.prepareSyncManifest(ctx, b, contents)
-			if err != nil {
-				return SyncBlueprintResult{}, err
-			}
-			b, prepared = updated, parsed
+		// Resolve-then-read at one immutable commit (w8/m36 t002): the commit
+		// is known before the run is recorded, and any fetch failure below
+		// fails the sync without touching the stored manifest.
+		sha, resolveErr := s.GitFetcher.ResolveBlueprintCommit(ctx, tenantID, b.Repo, b.Branch)
+		if resolveErr != nil {
+			return s.failSync(ctx, b, "", now, resolveErr)
 		}
+		contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, b.Repo, sha, b.Path)
+		if fetchErr != nil {
+			return s.failSync(ctx, b, sha, now, fetchErr)
+		}
+		commitSHA, manifest = sha, contents
+	} else {
+		useStored = true
+	}
+
+	// Record the attempt before preflight/application (w8/m36 t004): a failed
+	// run insertion blocks every workload side effect below.
+	run, err := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
+		BlueprintID: b.ID,
+		CommitID:    commitSHA,
+		State:       store.BlueprintSyncStateRunning,
+		StartedAt:   now,
+	})
+	if err != nil {
+		return SyncBlueprintResult{}, err
+	}
+	fail := func(srcErr error) (SyncBlueprintResult, error) {
+		completedAt := s.Now().UTC()
+		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, store.BlueprintSyncStateError, &completedAt, errMsgPtr(srcErr))
+		return SyncBlueprintResult{}, srcErr
+	}
+
+	if !useStored {
+		updated, parsed, err := s.prepareSyncManifest(ctx, b, manifest)
+		if err != nil {
+			return fail(err)
+		}
+		b, prepared = updated, parsed
 	}
 
 	if b.Status != store.BlueprintStatusSyncing {
@@ -637,13 +717,6 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 			b = updated
 		}
 	}
-
-	run, _ := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
-		BlueprintID: b.ID,
-		CommitID:    commitSHA,
-		State:       store.BlueprintSyncStateRunning,
-		StartedAt:   now,
-	})
 
 	deployReq := DeployRequest{
 		BlueprintID: b.ID,
@@ -673,8 +746,11 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	if updated, updErr := s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, &finalStatus, &completedAt); updErr == nil {
 		b = updated
 	}
-	if run.ID != "" {
-		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt, errMsgPtr(applyErr))
+	// A failed completion write is not reported as verified success (w8/m36
+	// t004): propagate it instead of returning the apply outcome with
+	// misleading persisted state. m37's recovery work keys off the run ID.
+	if _, updErr := s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt, errMsgPtr(applyErr)); updErr != nil {
+		return SyncBlueprintResult{}, fmt.Errorf("blueprint sync: record completion: %w", updErr)
 	}
 	if applyErr != nil {
 		return SyncBlueprintResult{}, applyErr

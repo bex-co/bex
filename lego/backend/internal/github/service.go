@@ -989,32 +989,40 @@ func (s *Service) connectedView(c store.GitConnection) Connection {
 // Not an exported verb — only the deploy path logic calls it, not end-users.
 type blueprintFetcher struct{ s *Service }
 
-// FetchBlueprintFile fetches the blueprint file at repo+branch+path using the
-// workspace's GitHub connection (if available) or an anonymous fetch for public
-// repos. Returns the contents and the head commit SHA, or an error.
-func (f blueprintFetcher) FetchBlueprintFile(ctx context.Context, workspaceID, repoURL, branch, filePath string) (string, string, error) {
-	return f.s.fetchBlueprintFile(ctx, workspaceID, repoURL, branch, filePath)
+// ResolveBlueprintCommit pins branch to its immutable HEAD commit before any
+// manifest bytes are read, so branch movement cannot mix revisions (w8/m36
+// t002). A lookup failure or an empty/malformed commit ID is an actionable
+// error — provenance is never fabricated from a blob SHA.
+func (f blueprintFetcher) ResolveBlueprintCommit(ctx context.Context, workspaceID, repoURL, branch string) (string, error) {
+	return f.s.resolveBlueprintCommit(ctx, workspaceID, repoURL, branch)
+}
+
+// FetchBlueprintFileAtCommit reads the blueprint file at an already-resolved
+// immutable commit (see ResolveBlueprintCommit). The commit is re-validated so
+// a caller can never smuggle a branch name or garbage into sync provenance.
+func (f blueprintFetcher) FetchBlueprintFileAtCommit(ctx context.Context, workspaceID, repoURL, commitSHA, filePath string) (string, error) {
+	return f.s.fetchBlueprintFileAtCommit(ctx, workspaceID, repoURL, commitSHA, filePath)
 }
 
 // BlueprintFileFetcher returns the blueprint-file-fetch seam wired in the
 // composition root onto apps.Service.
 func (s *Service) BlueprintFileFetcher() blueprintFetcher { return blueprintFetcher{s} }
 
-func (s *Service) fetchBlueprintFile(ctx context.Context, workspaceID, repoURL, branch, filePath string) (string, string, error) {
-	owner, repo, ok := ownerRepo(repoURL)
-	if !ok {
-		return "", "", fmt.Errorf("%w: repo URL %q is not an owner/repo URL", core.ErrBadRequest, repoURL)
-	}
+// blueprintToken mints the workspace installation token for a repo owner, or
+// "" for the anonymous public-repo path. Shared by commit resolution and
+// content fetch so private and public repositories use the same revision
+// contract (w8/m36 t002).
+func (s *Service) blueprintToken(ctx context.Context, workspaceID, owner, repoURL string) (string, error) {
 	var token string
 	if s.configured() {
 		row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)
 		if err != nil && !errors.Is(err, store.ErrNotFound) {
-			return "", "", err
+			return "", err
 		}
 		if err == nil {
 			tok, err := s.GitHub.MintInstallationToken(ctx, row.InstallationID)
 			if err != nil {
-				return "", "", err
+				return "", err
 			}
 			token = tok.Token
 		}
@@ -1022,24 +1030,56 @@ func (s *Service) fetchBlueprintFile(ctx context.Context, workspaceID, repoURL, 
 	if token == "" {
 		// Anonymous fetch for public repos — re-use the client's base URL.
 		if s.GitHub == nil {
-			return "", "", fmt.Errorf("%w: GitHub App not configured; cannot fetch blueprint file from %q", core.ErrBadRequest, repoURL)
+			return "", fmt.Errorf("%w: GitHub App not configured; cannot fetch blueprint file from %q", core.ErrBadRequest, repoURL)
 		}
 	}
-	// Use the GitHub raw-content endpoint.
-	fc, err := s.GitHub.GetFileContents(ctx, token, owner, repo, filePath, branch)
+	return token, nil
+}
+
+// blueprintRepoToken parses the repo URL and mints the workspace token for its
+// owner — the shared preamble of commit resolution and content fetch.
+func (s *Service) blueprintRepoToken(ctx context.Context, workspaceID, repoURL string) (owner, repo, token string, err error) {
+	owner, repo, ok := ownerRepo(repoURL)
+	if !ok {
+		return "", "", "", fmt.Errorf("%w: repo URL %q is not an owner/repo URL", core.ErrBadRequest, repoURL)
+	}
+	token, err = s.blueprintToken(ctx, workspaceID, owner, repoURL)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	// GetRepoCommitSHA gives us the true HEAD SHA (the raw-content response
-	// does not carry it reliably for the repo HEAD).
-	sha, shaErr := s.GitHub.GetRepoCommitSHA(ctx, token, owner, repo, branch)
-	if shaErr != nil {
-		sha = "" // best-effort; don't fail the fetch over missing provenance
+	return owner, repo, token, nil
+}
+
+func (s *Service) resolveBlueprintCommit(ctx context.Context, workspaceID, repoURL, branch string) (string, error) {
+	owner, repo, token, err := s.blueprintRepoToken(ctx, workspaceID, repoURL)
+	if err != nil {
+		return "", err
 	}
-	if sha == "" {
-		sha = fc.CommitSHA // fall back to the blob SHA if HEAD is unavailable
+	sha, err := s.GitHub.GetRepoCommitSHA(ctx, token, owner, repo, branch)
+	if err != nil {
+		return "", err
 	}
-	return fc.Contents, sha, nil
+	if !validCommitSHA(sha) {
+		return "", fmt.Errorf("github: branch %q returned an empty or malformed commit id", branch)
+	}
+	return sha, nil
+}
+
+func (s *Service) fetchBlueprintFileAtCommit(ctx context.Context, workspaceID, repoURL, commitSHA, filePath string) (string, error) {
+	if !validCommitSHA(commitSHA) {
+		return "", fmt.Errorf("github: refusing to fetch blueprint file at an empty or malformed commit id")
+	}
+	owner, repo, token, err := s.blueprintRepoToken(ctx, workspaceID, repoURL)
+	if err != nil {
+		return "", err
+	}
+	// GitHub's contents endpoint accepts a commit as the ref parameter, so the
+	// bytes read here are exactly the resolved revision — never a moved tip.
+	fc, err := s.GitHub.GetFileContents(ctx, token, owner, repo, filePath, commitSHA)
+	if err != nil {
+		return "", err
+	}
+	return fc.Contents, nil
 }
 
 // mapGitHubErr turns a GitHub client error into a clean bex error: a 4xx (e.g. a

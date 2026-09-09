@@ -42,9 +42,14 @@ type countingFetcher struct {
 	n int
 }
 
-func (f *countingFetcher) FetchBlueprintFile(ctx context.Context, tenantID, repo, branch, filePath string) (string, string, error) {
+func (f *countingFetcher) ResolveBlueprintCommit(ctx context.Context, tenantID, repo, branch string) (string, error) {
 	f.n++
-	return f.fakeBlueprintFetcher.FetchBlueprintFile(ctx, tenantID, repo, branch, filePath)
+	return f.fakeBlueprintFetcher.ResolveBlueprintCommit(ctx, tenantID, repo, branch)
+}
+
+func (f *countingFetcher) FetchBlueprintFileAtCommit(ctx context.Context, tenantID, repo, commitSHA, filePath string) (string, error) {
+	f.n++
+	return f.fakeBlueprintFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, repo, commitSHA, filePath)
 }
 
 // PreviewBlueprint must not fetch private repo contents on a stale positive.
