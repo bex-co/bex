@@ -1,6 +1,6 @@
 # w4 · m97 — Preserve environment-group metadata during concurrent edits
 
-**Worker:** worker4 **Goal:** Successful environment-group changes survive overlapping requests, and group membership stays consistent with linked App references. **Status:** todo
+**Worker:** worker4 **Goal:** Successful environment-group changes survive overlapping requests, and group membership stays consistent with linked App references. **Status:** done
 
 **Estimate:** 330m (5h 30m) including the standing closing tasks. No pending external prerequisite.
 
@@ -8,14 +8,14 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Add conditional metadata updates that preserve unrelated concurrent changes | 60m | — |
-| t002 | Keep rename claims and Environment moves consistent with committed metadata | 60m | t001 |
-| t003 | Coordinate link, unlink, and delete with App references and current membership | 60m | t001, t002 |
-| t004 | Preserve newer metadata during content commits, compensation, and stale-link pruning | 45m | t002, t003 |
-| t005 | Render parity | 30m | t004 |
-| t006 | Simplify | 20m | t005 |
-| t007 | Test coverage | 45m | t005, t006 |
-| t008 | Closeout | 10m | t007 |
+| t001 | Add conditional metadata updates that preserve unrelated concurrent changes | 60m | — — **DONE** |
+| t002 | Keep rename claims and Environment moves consistent with committed metadata | 60m | t001 — **DONE** |
+| t003 | Coordinate link, unlink, and delete with App references and current membership | 60m | t001, t002 — **DONE** |
+| t004 | Preserve newer metadata during content commits, compensation, and stale-link pruning | 45m | t002, t003 — **DONE** |
+| t005 | Render parity | 30m | t004 — **DONE** |
+| t006 | Simplify | 20m | t005 — **DONE** |
+| t007 | Test coverage | 45m | t005, t006 — **DONE** |
+| t008 | Closeout | 10m | t007 — **DONE** |
 
 Task ids in depends_on are relative to w4/m97 unless written as a full wN/mN/tNNN id. Completed dependency files resolve through done/ locations; their ids remain stable after the move.
 
@@ -50,4 +50,9 @@ Task ids in depends_on are relative to w4/m97 unless written as a full wN/mN/tNN
 
 ## Evidence
 
-Pending. Materialization schedules implementation and verification; it is not a completion claim. Record commands, fixture identities, observable results, evidence paths, limitations, and cleanup here as work proceeds. Preserve the workstream's isolated dev-4 environment and avoid other workers' namespaces and ports.
+Shipped 2026-09-08.
+
+- **Implementation:** `mutateMetaCAS` / `clearMetaCAS` / tombstone fence in `lego/backend/internal/envgroups/meta.go`; rename/move/link/unlink/delete and patch `touch`/`abort`/`prune` routed through it. Additive public code `ENV_GROUP_METADATA_CONFLICT`.
+- **Tests:** `go test ./internal/envgroups/ -count=1 -race` green; new `meta_cas_test.go` covers rename-vs-content, compensation-vs-rename, dual-link, prune-vs-link, delete-vs-delayed-writer, dual-rename, hard conflict. Full `go test ./...` otherwise green after renumbering colliding store migration `0107_agent_turn_started_at` → `0110` (unrelated main collision unblocking CI).
+- **Parity/docs:** ADR018 row + ADR006 metadata-CAS paragraph + `docs/render-artifacts/env-groups-live-parity.md` concurrency matrix + `docs/drills/2026-09-08-env-group-metadata-cas.md`. Dashboard unchanged.
+- **Live drill limitation:** Core/fake-store interleavings are the dated proof; live OpenBao/`dev-4` re-run deferred (no healthy mock-cluster kubeconfig this session). No secret values recorded.

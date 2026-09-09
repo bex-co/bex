@@ -647,7 +647,8 @@ func (s *Service) SetEnvironmentID(ctx context.Context, gid, environmentID strin
 
 // MoveEnvGroup is SetEnvironmentID's view-returning public contract for the
 // REST/GraphQL/MCP move workflow. The group id stays pinned throughout and the
-// metadata write happens only after every linked service has been validated.
+// metadata write happens only after every linked service has been validated
+// against the *current* link set on each CAS attempt (w4/m97).
 func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (EnvGroupView, error) {
 	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
@@ -659,11 +660,18 @@ func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (
 	if m.environment == environmentID {
 		return s.viewFromMeta(ctx, gid, m)
 	}
-	if err := s.validateLinkedServiceEnvironments(ctx, m.links, environmentID); err != nil {
-		return EnvGroupView{}, err
-	}
-	m.environment = environmentID
-	if m, err = s.touch(ctx, gid, m); err != nil {
+	m, err = s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
+		if cur.environment == environmentID {
+			return cur, nil
+		}
+		if err := s.validateLinkedServiceEnvironments(ctx, cur.links, environmentID); err != nil {
+			return meta{}, err
+		}
+		cur.environment = environmentID
+		cur.updatedAt = s.now()
+		return cur, nil
+	})
+	if err != nil {
 		return EnvGroupView{}, err
 	}
 	return s.viewFromMeta(ctx, gid, m)
@@ -693,6 +701,11 @@ func (s *Service) SetGroupEnvironment(ctx context.Context, name, environmentID s
 // RenameEnvGroup updates a group's display name without changing its id,
 // contents, links, or materialized Secrets. The name is metadata only, so this
 // does not roll linked services. Manage scope.
+//
+// Claim order (w4/m97): acquire the new name, CAS-commit metadata, then release
+// the old claim. Releasing before the meta commit previously let a concurrent
+// content touch restore the obsolete name while claims already pointed at the
+// new one.
 func (s *Service) RenameEnvGroup(ctx context.Context, gid, name string) (EnvGroupView, error) {
 	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
@@ -708,38 +721,52 @@ func (s *Service) RenameEnvGroup(ctx context.Context, gid, name string) (EnvGrou
 	if err := s.claimGroupName(ctx, m.workspace, name, gid); err != nil {
 		return EnvGroupView{}, err
 	}
-	old := m
+	oldName, workspace := m.name, m.workspace
 	cleanupCtx := context.WithoutCancel(ctx)
-	if err := s.releaseGroupName(cleanupCtx, old.workspace, old.name, gid); err != nil {
-		return EnvGroupView{}, errors.Join(err, s.releaseGroupName(cleanupCtx, old.workspace, name, gid))
+	m, err = s.mutateMetaCAS(ctx, gid, workspace, func(cur meta) (meta, error) {
+		if cur.name == name {
+			return cur, nil
+		}
+		if cur.name != oldName {
+			return meta{}, envGroupMetadataConflict()
+		}
+		cur.name = name
+		cur.updatedAt = s.now()
+		return cur, nil
+	})
+	if err != nil {
+		return EnvGroupView{}, errors.Join(err, s.releaseGroupName(cleanupCtx, workspace, name, gid))
 	}
-	m.name = name
-	if m, err = s.touch(ctx, gid, m); err != nil {
-		return EnvGroupView{}, errors.Join(
-			err,
-			s.claimGroupName(cleanupCtx, old.workspace, old.name, gid),
-			s.releaseGroupName(cleanupCtx, old.workspace, name, gid),
-		)
+	if err := s.releaseGroupName(cleanupCtx, workspace, oldName, gid); err != nil {
+		return EnvGroupView{}, err
 	}
 	return s.viewFromMeta(ctx, gid, m)
 }
 
 // DeleteEnvGroup unlinks the group from every service, deletes its projection
 // Secrets, and removes its store paths. Manage scope.
+//
+// Metadata is CAS-cleared before detach so a concurrent link/content writer
+// cannot resurrect the group or commit membership against a deleting id
+// (w4/m97). Links for detach come from the cleared snapshot.
 func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
 		return err
 	}
-	// Release the claim before deleting metadata. Until metadata is removed, the
+	// Release the claim before clearing metadata. Until metadata is removed, the
 	// fresh legacy sweep still blocks reuse; after it is removed there is no stale
 	// claim. Stopping here on failure keeps a retry possible and fail-closed.
 	if err := s.releaseGroupName(context.WithoutCancel(ctx), m.workspace, m.name, gid); err != nil {
 		return err
 	}
+	links, err := s.clearMetaCAS(ctx, gid, m.workspace)
+	if err != nil {
+		return err
+	}
 	// Detach from linked services first (drop the spec refs + roll) so no pod is
 	// left referencing a Secret about to be deleted.
-	for _, svc := range m.links {
+	for _, svc := range links {
 		if err := s.detach(ctx, gid, svc); err != nil {
 			return err
 		}
@@ -750,7 +777,40 @@ func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 	if err := s.deleteSecret(ctx, m.workspace, filesSecretName(gid)); err != nil {
 		return err
 	}
-	return s.deleteGroupArtifacts(ctx, m.workspace, gid)
+	if err := s.deleteGroupArtifacts(ctx, m.workspace, gid); err != nil {
+		return err
+	}
+	// deleteGroupArtifacts removes the path (and its version). Re-plant a
+	// non-editable tombstone so a delayed writeMetaCreate/PutCAS(0) cannot
+	// resurrect the group under the same id (w4/m97).
+	return s.plantDeletedMetaFence(ctx, m.workspace, gid)
+}
+
+// plantDeletedMetaFence writes a non-editable tombstone at the group's workspace
+// meta path after artifact deletion. Version 0 expected — the path was just
+// removed. Failures are returned so delete does not report success without the
+// resurrection fence.
+func (s *Service) plantDeletedMetaFence(ctx context.Context, workspace, gid string) error {
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		return nil
+	}
+	_, err := versioned.PutCAS(groupCtx(ctx, workspace), metaPath(gid), map[string]string{
+		"tombstoned": "1",
+	}, 0)
+	if errors.Is(err, core.ErrConflict) {
+		// Another writer already recreated the path — refuse to leave an
+		// editable map if we can clear it; otherwise surface the conflict.
+		snapshot, snapErr := versioned.GetVersioned(groupCtx(ctx, workspace), metaPath(gid))
+		if snapErr != nil {
+			return snapErr
+		}
+		if isEditableMeta(snapshot.Data) {
+			return envGroupMetadataConflict()
+		}
+		return nil
+	}
+	return err
 }
 
 // --- group contents (env vars) ------------------------------------------------
@@ -955,7 +1015,8 @@ func (s *Service) LinkService(ctx context.Context, gid, service string) error {
 // linkFetched is LinkService's post-authorize body, shared with LinkEnvGroup (the
 // blueprint seam) so the two link paths authorize + audit exactly once each. It
 // appends the group's Secret refs to the already-fetched App, rolls it, and
-// records the service in the group's link set.
+// records the service in the group's link set via CAS so a concurrent link to
+// another service is preserved (w4/m97).
 func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1alpha1.App) error {
 	m, err := s.fetchGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
@@ -989,9 +1050,23 @@ func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1
 	}); err != nil {
 		return err
 	}
-	m.links = addString(m.links, service)
-	_, err = s.touch(ctx, gid, m)
-	return err
+	_, err = s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
+		if err := validateGroupServiceEnvironment(cur.environment, service, a.Labels); err != nil {
+			return meta{}, err
+		}
+		cur.links = addString(cur.links, service)
+		cur.updatedAt = s.now()
+		return cur, nil
+	})
+	if err != nil {
+		// Group deleted or fenced between App patch and meta commit: detach so
+		// the App is not left referencing a group that no longer admits links.
+		if errors.Is(err, core.ErrNotFound) {
+			_ = s.detachFetched(context.WithoutCancel(ctx), gid, a)
+		}
+		return err
+	}
+	return nil
 }
 
 // rollLinkedService applies mutate to an already-fetched linked service and
@@ -1033,8 +1108,15 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	if err := s.detachFetched(ctx, gid, a); err != nil {
 		return err
 	}
-	m.links = removeString(m.links, service)
-	_, err = s.touch(ctx, gid, m)
+	_, err = s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
+		cur.links = removeString(cur.links, service)
+		cur.updatedAt = s.now()
+		return cur, nil
+	})
+	if errors.Is(err, core.ErrNotFound) {
+		// Group already deleted — App detach is the durable outcome.
+		return nil
+	}
 	return err
 }
 
@@ -1496,15 +1578,14 @@ func (s *Service) boundWorkspace(ctx context.Context) (workspace string, scoped 
 
 // --- store + secret helpers ---------------------------------------------------
 
-// touch bumps a group's updatedAt and persists its meta — called by every write
-// verb (identity changes AND content changes alike), so a client polling
-// updatedAt observes every mutation, not only renames.
+// touch bumps a group's updatedAt from the *current* metadata snapshot — never
+// re-persisting a caller-held name/links/environment that may already be stale
+// relative to a concurrent rename, link, or move (w4/m97).
 func (s *Service) touch(ctx context.Context, gid string, m meta) (meta, error) {
-	m.updatedAt = s.now()
-	if err := s.writeMeta(ctx, gid, m); err != nil {
-		return meta{}, err
-	}
-	return m, nil
+	return s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
+		cur.updatedAt = s.now()
+		return cur, nil
+	})
 }
 
 // viewFromMeta builds the (secret-free) view of a group from its already-fetched
@@ -1594,7 +1675,7 @@ func (s *Service) readMeta(ctx context.Context, gid string) (meta, error) {
 				return meta{}, err
 			}
 		}
-		if len(raw) == 0 {
+		if len(raw) == 0 || !isEditableMeta(raw) {
 			return meta{}, core.ErrNotFound
 		}
 		return decodeMeta(raw), nil
@@ -1608,17 +1689,27 @@ func (s *Service) readMeta(ctx context.Context, gid string) (meta, error) {
 		if err != nil {
 			return meta{}, err
 		}
-		if len(full) == 0 {
+		if !isEditableMeta(full) {
 			return meta{}, core.ErrNotFound
 		}
 		return decodeMeta(full), nil
 	}
+	if !isEditableMeta(raw) {
+		return meta{}, core.ErrNotFound
+	}
 	m := decodeMeta(raw)
 	if m.workspace == "" && s.Workspace != nil {
 		m.workspace = core.DefaultTenant
-		if err := s.writeMeta(ctx, gid, m); err != nil {
+		updated, err := s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
+			if cur.workspace == "" {
+				cur.workspace = core.DefaultTenant
+			}
+			return cur, nil
+		})
+		if err != nil {
 			return meta{}, err
 		}
+		m = updated
 		s.RecordEnvGroupOwnershipMigration(ctx, gid, m.workspace)
 	}
 	return m, nil
@@ -1638,31 +1729,11 @@ func decodeMeta(raw map[string]string) meta {
 	return m
 }
 
-// writeMeta persists a group's full metadata under its OWN workspace tenant
-// (w2/m80) — never the shared legacy tenant, once that workspace is a real,
-// non-legacy one — and, for that case, republishes the thin legacy-tenant
-// locator so a bare-gid lookup (readMeta, GetEnvGroup, the SSH/Blueprint
-// seams) keeps finding it. A store-off/unattributed group (m.workspace == "")
-// and the lazily-attributed core.DefaultTenant both already ARE the legacy
-// tenant (groupCtx(ctx, "") == legacyCtx(ctx)); writing a locator on top of
-// that single copy would clobber the meta it names, so the locator write is
-// skipped precisely in that case.
+// writeMeta persists a brand-new group's full metadata (create path). Updates
+// go through mutateMetaCAS so concurrent writers cannot silently replace each
+// other's committed fields (w4/m97).
 func (s *Service) writeMeta(ctx context.Context, gid string, m meta) error {
-	data := map[string]string{
-		"name":        m.name,
-		"links":       strings.Join(m.links, ","),
-		"workspace":   m.workspace,
-		"environment": m.environment,
-		"createdAt":   m.createdAt,
-		"updatedAt":   m.updatedAt,
-	}
-	if err := s.Store.Put(groupCtx(ctx, m.workspace), metaPath(gid), data); err != nil {
-		return err
-	}
-	if m.workspace != "" && m.workspace != secrets.LegacyTenant {
-		return s.writeMetaLocator(ctx, gid, m.workspace)
-	}
-	return nil
+	return s.writeMetaCreate(ctx, gid, m)
 }
 
 // envGroupQuota refuses a create that would push workspace past its env-group

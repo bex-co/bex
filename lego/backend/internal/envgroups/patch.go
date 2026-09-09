@@ -253,9 +253,11 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 		}
 	}
 	if changedEnv || changedFiles {
-		if _, err := s.touch(ctx, gid, m); err != nil {
+		touched, err := s.touch(ctx, gid, m)
+		if err != nil {
 			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
 		}
+		m = touched
 	}
 	newGeneration := generation
 	if changedEnv || changedFiles {
@@ -318,17 +320,27 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 // best-effort self-heal: a failure to persist the pruned set must never turn a
 // successful rollout into an error response (the exact false-failure this
 // milestone removes) — the write error is swallowed and the next patch
-// re-discovers and re-prunes. The updatedAt bump matches every other link
-// mutation (linkFetched / UnlinkService), and context.WithoutCancel lets the
-// heal complete even if the client disconnects right after the rollout.
+// re-discovers and re-prunes. Removals apply to the *current* link set so a
+// concurrently added valid link is preserved (w4/m97).
 func (s *Service) pruneStaleLinks(ctx context.Context, gid string, m meta, stale []string) {
 	if len(stale) == 0 {
 		return
 	}
+	remove := map[string]struct{}{}
 	for _, serviceID := range stale {
-		m.links = removeString(m.links, serviceID)
+		remove[serviceID] = struct{}{}
 	}
-	_, _ = s.touch(context.WithoutCancel(ctx), gid, m)
+	_, _ = s.mutateMetaCAS(context.WithoutCancel(ctx), gid, m.workspace, func(cur meta) (meta, error) {
+		next := make([]string, 0, len(cur.links))
+		for _, id := range cur.links {
+			if _, drop := remove[id]; !drop {
+				next = append(next, id)
+			}
+		}
+		cur.links = next
+		cur.updatedAt = s.now()
+		return cur, nil
+	})
 }
 
 func (s *Service) releaseGroupPatch(ctx context.Context, workspace, gid string, versioned core.VersionedSecretKV, claimVersion, generation uint64, state string) (uint64, error) {
@@ -384,7 +396,9 @@ func (s *Service) abortGroupPatch(ctx context.Context, txn groupPatchTxn, restor
 				s.restoreGroupSecret(ctx, txn.oldMeta.workspace, filesSecretName(txn.gid), txn.oldFilesProjection),
 			)
 		}
-		restoreErrors = append(restoreErrors, s.writeMeta(ctx, txn.gid, txn.oldMeta))
+		// Do not restore txn.oldMeta: a concurrent rename/link/move that
+		// committed after this patch read must survive compensation (w4/m97).
+		// Content maps/projections above are the only fields this txn owns.
 		restoreErr = errors.Join(restoreErrors...)
 	}
 	state := "idle"
