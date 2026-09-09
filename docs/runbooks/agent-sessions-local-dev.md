@@ -52,6 +52,14 @@ So the gateway is deployed as a Deployment in the `bex` workload cluster, exactl
 
 `bash scripts/dev-env.sh N up` → `bash scripts/dev-env.sh N agent-up`. The overlay builds/imports the images, installs OpenFGA + OpenBao + both agent CRDs, deploys OpenSandbox + the gateway + reverse-hop bridge, starts the port-forwards, injects the agent environment into bex-api, and waits for each rollout. Re-running `agent-up` is idempotent.
 
+## Recovering interrupted agent-image updates (w1/m137)
+
+`agent-up` distributes four local tags into every CAPD node's containerd (`bex-lego:dev`, `bex-agent-sandbox:dev`, `opensandbox-server:0.2.2-local`, `opensandbox-controller:v0.2.0-bex`). A same-named tag on a node is **not** proof it has the intended bytes — Docker's config Id and `ctr`'s manifest digest are different digest families, so comparison uses Docker `image inspect .Id` against `crictl inspecti` `status.id` (they match after `docker save | ctr import`).
+
+If an `agent-up` is interrupted after only some nodes imported a rebuilt image, the next `agent-up` **without** `AGENT_REBUILD=1` and without further source edits reconciles every node to the current local identity: matching Ids are skipped, missing/mismatched tags are re-imported, and a post-import identity mismatch aborts **before** workload rollout with the image and node named. Do not rely on re-running with a forced rebuild to repair distribution — reconciliation is the recovery path.
+
+Live drill evidence (2026-09-08, disposable CAPD nodes on cluster `bex`): rebuild a probe under the same tag, import onto one node only, confirm the pre-fix tag-presence skip would leave the other nodes stale, then re-run reconcile — every node converges to the new Id; a forced wrong desired Id fails closed naming image+node. Covered by `bash scripts/dev-env.test.sh` when ≥2 `bex` nodes are present.
+
 ## Verify
 
 - `BEX_API_TOKEN=<workspace-member-token> BEX_VERIFY_OWNER_ID=<workspaceId> bash scripts/dev-env.sh N status` — asserts OpenFGA (including store `bex`), OpenBao unsealed, both agent CRDs, OpenSandbox, the gateway attach/exec forwards, and the actual public `capabilities.enabled == true` gate. The owner id is optional when the token has a default workspace; the token is required because capabilities is tenant-authorized and the unbound platform bootstrap token cannot read it.
