@@ -15,12 +15,17 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+**Approved corrective queue (2026-09-08):** m90 → m91. Execute sequentially because both touch the Application Metrics card; m91 has no technical dependency on m90.
+
+- [ ] **m90** — [Correct CPU/memory percentages across replicas and rollouts](m90/README.md) (8 tasks; 3h30m implementation, 5h total) ← approved pm-brainstorm proposal 1; corrects specific incomplete m89 acceptance coverage.
+- [ ] **m91** — [Preserve instance selection through empty windows and refreshes](m91/README.md) (7 tasks; 2h implementation, 3h30m total) ← approved pm-brainstorm proposal 2; corrects specific incomplete m89 acceptance coverage.
+
 - [x] **m87** — [Consistent instance IDs across logs, metrics, and SSH](done/m87/README.md) (9 tasks) — **DONE 2026-09-08**: name-derived public instance ids unify serviceInstances, metrics, logs, and SSH; legacy UID SSH selectors and raw-name log filters remain compatible. Unblocks m89.
 
 - [x] **m88** — [Correct agent-turn latency and outcome metrics](done/m88/README.md) (7 tasks) — **DONE 2026-09-08**: durable turn `started_at` anchors running duration; all terminal paths emit bounded outcomes; Grafana/ADRs updated (`38e1082b`).
 - [x] **m89** — [Select and aggregate instances on the Metrics page](done/m89/README.md) (9 tasks) — **DONE 2026-09-08**: INSTANCE filter + MIN/MAX/AVG replica aggregate on shared metrics core; Application Metrics controls; REST/GQL/MCP adapters.
 
-**Approved execution priority (2026-09-08):** m87 → m88 → m89. All three shipped.
+**Previous execution priority (2026-09-08):** m87 → m88 → m89. All three shipped; the corrective queue above tracks subsequently identified m89 gaps.
 
 - [x] **m86** — Platform observability UI: Grafana at obs.bex.co (10 tasks) ← from [docs/ADR088-platform-observability-ui.md](../../docs/ADR088-platform-observability-ui.md) (accepted 2026-09-07, platform-monitoring discussion: GitOps Grafana in `monitoring`, `obs.bex.co`, Hydra OIDC client, ops-workspace consent gate)
 
