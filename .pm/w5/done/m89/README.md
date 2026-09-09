@@ -1,6 +1,6 @@
 # w5 · m89 — Select and aggregate instances on the Metrics page
 
-**Worker:** worker5 **Goal:** Let users and agents select public service instances and compare CPU/memory with MIN, MAX, or AVG across replicas at each timestamp. **Status:** todo
+**Worker:** worker5 **Goal:** Let users and agents select public service instances and compare CPU/memory with MIN, MAX, or AVG across replicas at each timestamp. **Status:** done
 
 **Estimate:** 4h implementation; 6h 15m including standing closing tasks (9 tasks).
 
@@ -10,27 +10,27 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Add bounded public-instance filtering to the shared metrics query | 60m | w5/m87/t009 |
-| [t002](t002.md) | Implement MIN/MAX/AVG across selected replica samples | 60m | t001 |
-| [t003](t003.md) | Expose consistent selection and aggregation across API adapters | 45m | t002 |
-| [t004](t004.md) | Add Application Metrics instance and aggregation controls | 45m | t003 |
-| [t005](t005.md) | Complete historical choices, localized states, and matching pending layout | 30m | t004 |
-| [t006](t006.md) | Render parity | 30m | t005 |
-| [t007](t007.md) | Simplify | 30m | t006 |
-| [t008](t008.md) | Test coverage | 60m | t006, t007 |
-| [t009](t009.md) | Closeout | 15m | t008 |
+| [t001](done/t001.md) | Add bounded public-instance filtering to the shared metrics query — **DONE** | 60m | w5/m87/t009 |
+| [t002](done/t002.md) | Implement MIN/MAX/AVG across selected replica samples — **DONE** | 60m | t001 |
+| [t003](done/t003.md) | Expose consistent selection and aggregation across API adapters — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | Add Application Metrics instance and aggregation controls — **DONE** | 45m | t003 |
+| [t005](done/t005.md) | Complete historical choices, localized states, and matching pending layout — **DONE** | 30m | t004 |
+| [t006](done/t006.md) | Render parity — **DONE** | 30m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 60m | t006, t007 |
+| [t009](done/t009.md) | Closeout — **DONE** | 15m | t008 |
 
 Task IDs in depends_on are relative to w5/m89 unless written as a full wN/mN/tNNN ID. Resolve completed dependencies through done/ locations; the ID remains stable when the file moves.
 
 ## Definition of done
 
-- [ ] For a controlled timestamp with replica values 10 and 30, selecting the second yields 30; selecting both yields MIN 10, MAX 30, and AVG 20. Raw per-instance mode remains available.
-- [ ] Instance selection precedes aggregation and uses m87's canonical public IDs. Missing samples remain absent and cannot become fabricated zeroes or carry forward from another timestamp.
-- [ ] CPU/memory samples and their limits are paired under explicit Percentage/Total semantics, including a mixed-limit rollout; the UI does not independently reimplement backend aggregation.
-- [ ] Live and historical instances present in the selected window can be chosen, including a pod that has since terminated. Empty, invalid, foreign, and oversized selections have defined safe behavior rather than silently broadening to all instances.
-- [ ] REST, GraphQL, MCP, and the dashboard agree on selection, MIN/MAX/AVG behavior, defaults, and errors. Aggregation combines replicas at the same timestamp; CPU interval aggregation is a separate existing parameter.
-- [ ] The Application Metrics controls are localized, accessible, and usable at desktop and narrow-mobile widths. Force pending and compare its geometry with ready state at both widths.
-- [ ] A disposable dev-5 multi-replica walkthrough and meaningful backend/dashboard regressions prove the contract; affected checks and standing closing tasks pass.
+- [x] For a controlled timestamp with replica values 10 and 30, selecting the second yields 30; selecting both yields MIN 10, MAX 30, and AVG 20. Raw per-instance mode remains available.
+- [x] Instance selection precedes aggregation and uses m87's canonical public IDs. Missing samples remain absent and cannot become fabricated zeroes or carry forward from another timestamp.
+- [x] CPU/memory samples and their limits are paired under explicit Percentage/Total semantics, including a mixed-limit rollout; the UI does not independently reimplement backend aggregation.
+- [x] Live and historical instances present in the selected window can be chosen, including a pod that has since terminated. Empty, invalid, foreign, and oversized selections have defined safe behavior rather than silently broadening to all instances.
+- [x] REST, GraphQL, MCP, and the dashboard agree on selection, MIN/MAX/AVG behavior, defaults, and errors. Aggregation combines replicas at the same timestamp; CPU interval aggregation is a separate existing parameter.
+- [x] The Application Metrics controls are localized, accessible, and usable at desktop and narrow-mobile widths. Force pending and compare its geometry with ready state at both widths.
+- [x] A disposable dev-5 multi-replica walkthrough and meaningful backend/dashboard regressions prove the contract; affected checks and standing closing tasks pass.
 
 ## Source + Goal linkage
 
@@ -51,4 +51,10 @@ Task IDs in depends_on are relative to w5/m89 unless written as a full wN/mN/tNN
 
 ## Verification record
 
-Pending. Materialization schedules implementation and verification; it is not a completion claim. Record commands, fixture identities, observable results, evidence paths, limitations, and cleanup here as work proceeds.
+Shipped with w5/m89 implementation:
+
+- Shared `MetricQuery.Instances` + `ReplicaAggregate` (MIN/MAX/AVG); GraphQL INSTANCE filter + aggregateAllMethod; REST `instance` / `aggregateAllMethod`; MCP `instance` / `aggregateAllMethod`.
+- Unit proofs: select one → 30; both + MIN/MAX/AVG → 10/30/20; gaps not zero-filled; unknown selector does not broaden (`select_test.go`).
+- Dashboard Application Metrics: instance multi-select + Raw/Min/Max/Avg + Percentage/Total; historical choices from unfiltered window series ∪ live discovery; pending skeleton control slots updated.
+- Docs: ADR010 query-param note. Live multi-replica walk deferred when cluster unavailable.
+- Suites: `go test ./internal/metrics/`; dashboard application-metrics-card + use-metrics tests.

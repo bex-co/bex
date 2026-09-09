@@ -343,6 +343,30 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Total",
     description: "Metrics filter tab: show values as an absolute total",
   },
+  "metrics.instanceFilter": {
+    message: "Instances",
+    description: "Application metrics instance multi-select label",
+  },
+  "metrics.aggregateFilter": {
+    message: "Aggregation",
+    description: "Application metrics replica aggregation control",
+  },
+  "metrics.aggregateRaw": {
+    message: "Raw",
+    description: "Show one series per selected instance",
+  },
+  "metrics.aggregateMin": {
+    message: "Min",
+    description: "Minimum across selected replicas at each timestamp",
+  },
+  "metrics.aggregateMax": {
+    message: "Max",
+    description: "Maximum across selected replicas at each timestamp",
+  },
+  "metrics.aggregateAvg": {
+    message: "Avg",
+    description: "Average across selected replicas at each timestamp",
+  },
   "metrics.rangeLast30Minutes": {
     message: "Last 30 minutes",
     description: "Metrics time-range filter option",

@@ -11,9 +11,9 @@ import { MetricsFiltersDocument } from "@/graphql/definitions";
  */
 export function useMetricsFilterValues(
   resource: string,
-  // STATUS_CODE is the only discoverable metrics filter: HOST/PATH filters are
-  // rejected by the metrics API (w3/m12), so discovery offers no values for them.
-  field: "STATUS_CODE",
+  // STATUS_CODE and INSTANCE are discoverable; HOST/PATH filters are rejected
+  // by the metrics API (w3/m12), so discovery offers no values for them.
+  field: "STATUS_CODE" | "INSTANCE",
 ): string[] {
   const { data } = useQuery(MetricsFiltersDocument, {
     variables: {

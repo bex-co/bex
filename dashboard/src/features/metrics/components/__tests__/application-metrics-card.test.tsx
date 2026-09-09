@@ -10,12 +10,17 @@ import {
 } from "@tanstack/react-router";
 import { ApplicationMetricsCard } from "../application-metrics-card";
 import { useMetrics } from "@/features/metrics/hooks/use-metrics";
+import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-filter-values";
 
 vi.mock("@/features/metrics/hooks/use-metrics", () => ({
   useMetrics: vi.fn(),
 }));
+vi.mock("@/features/metrics/hooks/use-metrics-filter-values", () => ({
+  useMetricsFilterValues: vi.fn(() => []),
+}));
 
 const mockUseMetrics = vi.mocked(useMetrics);
+vi.mocked(useMetricsFilterValues);
 
 // The page-level resolved live window, passed down by the route.
 const WINDOW = {
@@ -108,12 +113,20 @@ describe("ApplicationMetricsCard", () => {
     expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu_limit", {
       ...WINDOW,
       aggregateMax: true,
+      aggregateMethod: undefined,
     });
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
       "memory_limit",
-      { ...WINDOW, aggregateMax: true },
+      { ...WINDOW, aggregateMax: true, aggregateMethod: undefined },
     );
+    // Inventory CPU (unfiltered) + usage CPU share the same WINDOW when no
+    // instance selection is active.
+    expect(
+      mockUseMetrics.mock.calls.filter(
+        (c) => c[0] === "beancount-cms" && c[1] === "cpu",
+      ).length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("owns the Percentage/Total tabs in its header, defaulting to Percentage (w5/m42)", async () => {

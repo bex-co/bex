@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Card,
@@ -20,6 +20,7 @@ import {
   type UseMetricsOptions,
   type UseMetricsResult,
 } from "@/features/metrics/hooks/use-metrics";
+import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-filter-values";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMetricValue } from "@/features/metrics/lib/format";
 import { latestValue } from "@/features/metrics/lib/series";
@@ -58,15 +59,35 @@ export function ApplicationMetricsCard({
 }: ApplicationMetricsCardProps) {
   const { t } = useTranslations();
   const [percentage, setPercentage] = useState(true); // Render defaults to Percentage
-  const cpu = useMetrics(resource, "cpu", window);
-  const memory = useMetrics(resource, "memory", window);
-  const cpuLimit = useMetrics(resource, "cpu_limit", {
+  // Raw = per-instance series; MIN/MAX/AVG are backend replica aggregates (w5/m89).
+  const [aggregateMethod, setAggregateMethod] = useState<
+    "" | "MIN" | "MAX" | "AVG"
+  >("");
+  const [selectedInstances, setSelectedInstances] = useState<string[]>([]);
+
+  const liveInstances = useMetricsFilterValues(resource, "INSTANCE");
+  // Unfiltered CPU series seeds historical instance choices (terminated pods
+  // still in the window). Selection never silently broadens when a choice
+  // leaves — see the prune effect below.
+  const inventory = useMetrics(resource, "cpu", window);
+  const resourceOpts: UseMetricsOptions = {
     ...window,
+    ...(selectedInstances.length > 0
+      ? { instances: selectedInstances }
+      : {}),
+    ...(aggregateMethod ? { aggregateMethod } : {}),
+  };
+  const cpu = useMetrics(resource, "cpu", resourceOpts);
+  const memory = useMetrics(resource, "memory", resourceOpts);
+  const cpuLimit = useMetrics(resource, "cpu_limit", {
+    ...resourceOpts,
     aggregateMax: true,
+    aggregateMethod: aggregateMethod || undefined,
   });
   const memoryLimit = useMetrics(resource, "memory_limit", {
-    ...window,
+    ...resourceOpts,
     aggregateMax: true,
+    aggregateMethod: aggregateMethod || undefined,
   });
   // Autoscale target (w3/m10, w1/m20's config): a single current-value point,
   // omitted server-side when autoscaling is disabled — latestValue then
@@ -74,6 +95,24 @@ export function ApplicationMetricsCard({
   const cpuTarget = useMetrics(resource, "cpu_target", window);
   const memoryTarget = useMetrics(resource, "memory_target", window);
   const instances = useMetrics(resource, "instance_count", window);
+
+  // Live discovery ∪ labels already in the window (terminated replicas).
+  const instanceChoices = useMemo(() => {
+    const fromSeries = new Set<string>();
+    for (const s of inventory.series) {
+      const id = s.labels["instance"];
+      if (id) fromSeries.add(id);
+    }
+    return Array.from(new Set([...liveInstances, ...fromSeries])).sort();
+  }, [liveInstances, inventory.series]);
+
+  // Drop selections that left the window rather than silently selecting all.
+  useEffect(() => {
+    setSelectedInstances((prev) => {
+      const next = prev.filter((id) => instanceChoices.includes(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [instanceChoices]);
 
   const instancesSeries = useMemo<LineSeriesInput[]>(
     () => [
@@ -84,19 +123,59 @@ export function ApplicationMetricsCard({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
         <CardTitle>{t("metrics.applicationTitle")}</CardTitle>
-        <Tabs
-          value={percentage ? "percentage" : "total"}
-          onValueChange={(v) => setPercentage(v === "percentage")}
-        >
-          <TabsList>
-            <TabsTrigger value="percentage">
-              {t("metrics.filterPercentage")}
-            </TabsTrigger>
-            <TabsTrigger value="total">{t("metrics.filterTotal")}</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap items-center gap-2">
+          {instanceChoices.length > 0 ? (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="sr-only">{t("metrics.instanceFilter")}</span>
+              <select
+                multiple
+                aria-label={t("metrics.instanceFilter")}
+                className="h-9 min-w-[9rem] max-w-[14rem] rounded-md border bg-background px-2 text-xs text-foreground"
+                value={selectedInstances}
+                onChange={(e) => {
+                  const next = Array.from(e.target.selectedOptions).map(
+                    (o) => o.value,
+                  );
+                  setSelectedInstances(next);
+                }}
+              >
+                {instanceChoices.map((id) => (
+                  <option key={id} value={id}>
+                    {shortInstanceLabel(id)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <Tabs
+            value={aggregateMethod || "raw"}
+            onValueChange={(v) =>
+              setAggregateMethod(
+                v === "raw" ? "" : (v as "MIN" | "MAX" | "AVG"),
+              )
+            }
+          >
+            <TabsList aria-label={t("metrics.aggregateFilter")}>
+              <TabsTrigger value="raw">{t("metrics.aggregateRaw")}</TabsTrigger>
+              <TabsTrigger value="MIN">{t("metrics.aggregateMin")}</TabsTrigger>
+              <TabsTrigger value="MAX">{t("metrics.aggregateMax")}</TabsTrigger>
+              <TabsTrigger value="AVG">{t("metrics.aggregateAvg")}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Tabs
+            value={percentage ? "percentage" : "total"}
+            onValueChange={(v) => setPercentage(v === "percentage")}
+          >
+            <TabsList>
+              <TabsTrigger value="percentage">
+                {t("metrics.filterPercentage")}
+              </TabsTrigger>
+              <TabsTrigger value="total">{t("metrics.filterTotal")}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <ResourceSection
@@ -149,6 +228,16 @@ export function ApplicationMetricsCard({
       </CardContent>
     </Card>
   );
+}
+
+/** Shorten opaque instance suffixes for the selector without changing the value. */
+function shortInstanceLabel(id: string): string {
+  const parts = id.split("-");
+  const suffix = parts[parts.length - 1] ?? id;
+  if (/^[0-9a-v]{20}$/.test(suffix) && suffix.length > 5) {
+    return `${parts.slice(0, -1).join("-")}-${suffix.slice(0, 5)}`;
+  }
+  return id;
 }
 
 interface ResourceSectionProps {

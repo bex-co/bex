@@ -332,6 +332,30 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "总量",
     description: "Metrics filter tab: show values as an absolute total",
   },
+  "metrics.instanceFilter": {
+    message: "实例",
+    description: "Application metrics instance multi-select label",
+  },
+  "metrics.aggregateFilter": {
+    message: "聚合",
+    description: "Application metrics replica aggregation control",
+  },
+  "metrics.aggregateRaw": {
+    message: "原始",
+    description: "Show one series per selected instance",
+  },
+  "metrics.aggregateMin": {
+    message: "最小",
+    description: "Minimum across selected replicas at each timestamp",
+  },
+  "metrics.aggregateMax": {
+    message: "最大",
+    description: "Maximum across selected replicas at each timestamp",
+  },
+  "metrics.aggregateAvg": {
+    message: "平均",
+    description: "Average across selected replicas at each timestamp",
+  },
   "metrics.rangeLast30Minutes": {
     message: "过去 30 分钟",
     description: "Metrics time-range filter option",

@@ -61,6 +61,12 @@ type getMetricsArgs struct {
 	// AggregateHTTPRequestCountsBy groups http_requests. statusCode maps onto
 	// GroupBy=status; host has no Traefik/Loki group-by axis and is rejected.
 	AggregateHTTPRequestCountsBy string `json:"aggregateHttpRequestCountsBy,omitempty" jsonschema:"group http_requests by statusCode (wired) or host (unsupported — rejected)"`
+	// Instance is a bex extension (w5/m89): public instance ids from m87. Omit
+	// for all instances; unresolved ids yield an empty series, never a broaden.
+	Instance []string `json:"instance,omitempty" jsonschema:"public service instance ids to keep (canonical srv-…-… ids from metricsFilters INSTANCE / serviceInstances); omit for all"`
+	// AggregateAllMethod is a bex extension mirroring Render GraphQL
+	// aggregateAllMethod: MIN|MAX|AVG across selected replicas at each timestamp.
+	AggregateAllMethod string `json:"aggregateAllMethod,omitempty" jsonschema:"MIN|MAX|AVG across selected replicas at each timestamp (distinct from cpuUsageAggregationMethod interval aggregation)"`
 }
 
 type getMetricsResult struct {
@@ -153,6 +159,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Path:       in.path(),
 			GroupBy:    groupBy,
 			Resolution: time.Duration(in.resolutionSeconds()) * time.Second,
+			Instances:  in.Instance,
+		}
+		if in.AggregateAllMethod != "" {
+			replica, aggMax, parseErr := parseReplicaAggregate(in.AggregateAllMethod)
+			if parseErr != nil {
+				return nil, getMetricsResult{}, parseErr
+			}
+			q.ReplicaAggregate, q.AggregateMax = replica, aggMax
 		}
 		if q.Start, err = core.ParseTime("startTime", in.StartTime); err != nil {
 			return nil, getMetricsResult{}, err

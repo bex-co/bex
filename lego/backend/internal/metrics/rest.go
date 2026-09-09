@@ -184,6 +184,7 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 		Path:       v.Get("path"),
 		GroupBy:    v.Get("groupBy"),
 		Percentage: v.Get("percentage") == "true",
+		Instances:  v["instance"],
 	}
 
 	start, end, resolution, err := parseTimeWindow(v)
@@ -208,6 +209,13 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 	}
 	if len(q.Quantiles) == 1 {
 		q.Quantile = q.Quantiles[0]
+	}
+	if method := v.Get("aggregateAllMethod"); method != "" {
+		replica, aggMax, parseErr := parseReplicaAggregate(method)
+		if parseErr != nil {
+			return nil, MetricQuery{}, parseErr
+		}
+		q.ReplicaAggregate, q.AggregateMax = replica, aggMax
 	}
 
 	return resources, q, nil
