@@ -999,6 +999,7 @@ export type MetricsQueryInput = {
   filters: Array<MetricsFilterInput>;
   name: Scalars['String']['input'];
   parameters?: InputMaybe<Array<InputMaybe<MetricsParameterInput>>>;
+  percentage?: InputMaybe<Scalars['Boolean']['input']>;
   resolution?: InputMaybe<Scalars['Int']['input']>;
   start?: InputMaybe<Scalars['String']['input']>;
 };

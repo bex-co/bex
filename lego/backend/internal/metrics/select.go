@@ -182,6 +182,14 @@ func aggregateReplicasAtTimestamps(app, method string, series []MetricSeries) []
 
 // applyInstanceSelection runs after metric dispatch: optional INSTANCE filter,
 // then replica MIN/MAX/AVG or the legacy latest-point AggregateMax collapse.
+//
+// Pipeline order (w5/m90): selection precedes aggregation, and normalization
+// precedes aggregation — a percentage read arrives here already normalized per
+// instance (resourceMetric divides each replica by its own trustworthy limit),
+// so this step only filters and aggregates normalized values. It never divides
+// an aggregate by one limit, fills missing samples with zeroes, or borrows
+// across timestamps (aggregateReplicasAtTimestamps averages only the replicas
+// present at each timestamp).
 func applyInstanceSelection(q MetricQuery, series []MetricSeries, live []ids.InstanceCandidate) ([]MetricSeries, error) {
 	if err := validateInstanceSelection(q.Instances); err != nil {
 		return nil, err

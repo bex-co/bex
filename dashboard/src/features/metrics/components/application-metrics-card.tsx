@@ -25,6 +25,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMetricValue } from "@/features/metrics/lib/format";
 import { latestValue } from "@/features/metrics/lib/series";
 import type { ChartEventMarker } from "@/features/metrics/lib/chart-events";
+import type { ChartSeries } from "@/features/metrics/types";
 
 interface ApplicationMetricsCardProps {
   /** The service id — names the metrics resource and the plan/scaling links. */
@@ -43,14 +44,14 @@ interface ApplicationMetricsCardProps {
  * the card header (Render's placement, captured live 2026-07-17, w5/m42) —
  * they alter only this card, so their state lives here, not on the page.
  *
- * Percentage/Total is computed client-side from two already-fetched series
- * (the raw metric + its _limit counterpart, aggregated to one max value) —
- * captured live from Render's dashboard: it fetches both regardless of which
- * tab is selected rather than asking the backend for a percentage. The same
- * limit feeds the "Limit …" header label and the Total tab's dashed
- * reference line. The limit queries ride the same live-window tick as the
- * usage queries (no second Apollo poll timer — limits only change on
- * redeploy anyway).
+ * Percentage is a server-side read (bex-api `percentage`, w5/m90): each
+ * replica normalized by its own trustworthy limit before any MIN/MAX/AVG
+ * aggregation — never the old client-side division of every point by one
+ * latest aggregate limit, which misreported mixed-limit replicas (0.4 of 0.5
+ * read as 40%). Total renders the absolute usage series untouched. The
+ * per-instance _limit series feed only the header label and the Total tab's
+ * dashed reference line, so mixed limits read as "Limits vary" instead of
+ * one max presented as universal.
  */
 export function ApplicationMetricsCard({
   resource,
@@ -77,18 +78,30 @@ export function ApplicationMetricsCard({
       : {}),
     ...(aggregateMethod ? { aggregateMethod } : {}),
   };
-  const cpu = useMetrics(resource, "cpu", resourceOpts);
-  const memory = useMetrics(resource, "memory", resourceOpts);
-  const cpuLimit = useMetrics(resource, "cpu_limit", {
+  // Absolute usage (Total tab; also the "is there anything to percentize?"
+  // witness for the percentage-unavailable state).
+  const cpuAbsolute = useMetrics(resource, "cpu", resourceOpts);
+  const memoryAbsolute = useMetrics(resource, "memory", resourceOpts);
+  // Server-side per-instance percentages (w5/m90) — rendered as returned.
+  const cpuPercentage = useMetrics(resource, "cpu", {
     ...resourceOpts,
-    aggregateMax: true,
-    aggregateMethod: aggregateMethod || undefined,
+    percentage: true,
   });
-  const memoryLimit = useMetrics(resource, "memory_limit", {
+  const memoryPercentage = useMetrics(resource, "memory", {
     ...resourceOpts,
-    aggregateMax: true,
-    aggregateMethod: aggregateMethod || undefined,
+    percentage: true,
   });
+  // Per-instance limits for truthful headers (w5/m90): no aggregate collapse,
+  // so a uniform limit still reads as one value while mixed limits read as
+  // "Limits vary". Scoped to the selection, like the usage queries.
+  const limitOpts: UseMetricsOptions = {
+    ...window,
+    ...(selectedInstances.length > 0
+      ? { instances: selectedInstances }
+      : {}),
+  };
+  const cpuLimit = useMetrics(resource, "cpu_limit", limitOpts);
+  const memoryLimit = useMetrics(resource, "memory_limit", limitOpts);
   // Autoscale target (w3/m10, w1/m20's config): a single current-value point,
   // omitted server-side when autoscaling is disabled — latestValue then
   // naturally resolves to null and the target line/label just don't render.
@@ -181,8 +194,9 @@ export function ApplicationMetricsCard({
         <ResourceSection
           title={t("metrics.memory")}
           serviceId={resource}
-          result={memory}
-          limit={latestValue(memoryLimit.series)}
+          result={percentage ? memoryPercentage : memoryAbsolute}
+          absolute={memoryAbsolute}
+          limit={summarizeLimits(memoryLimit.series)}
           limitUnit="bytes"
           target={latestValue(memoryTarget.series)}
           percentage={percentage}
@@ -191,8 +205,9 @@ export function ApplicationMetricsCard({
         <ResourceSection
           title={t("metrics.cpu")}
           serviceId={resource}
-          result={cpu}
-          limit={latestValue(cpuLimit.series)}
+          result={percentage ? cpuPercentage : cpuAbsolute}
+          absolute={cpuAbsolute}
+          limit={summarizeLimits(cpuLimit.series)}
           limitUnit="cpu"
           target={latestValue(cpuTarget.series)}
           percentage={percentage}
@@ -230,6 +245,28 @@ export function ApplicationMetricsCard({
   );
 }
 
+/**
+ * One App limit as the header can honestly state it: no limit series at all,
+ * one uniform value across the selected replicas, or mixed per-replica
+ * limits. Computed from the per-instance _limit series' latest points.
+ */
+export type LimitSummary =
+  | { kind: "none" }
+  | { kind: "single"; value: number }
+  | { kind: "vary" };
+
+export function summarizeLimits(series: ChartSeries[]): LimitSummary {
+  const values = series
+    .map((s) =>
+      s.points.length > 0 ? s.points[s.points.length - 1].value : null,
+    )
+    .filter((v): v is number => v != null);
+  if (values.length === 0) return { kind: "none" };
+  return values.every((v) => v === values[0])
+    ? { kind: "single", value: values[0] }
+    : { kind: "vary" };
+}
+
 /** Shorten opaque instance suffixes for the selector without changing the value. */
 function shortInstanceLabel(id: string): string {
   const parts = id.split("-");
@@ -244,9 +281,13 @@ interface ResourceSectionProps {
   title: string;
   /** Names the header's `Limit` link target (the service's Instance Type tab). */
   serviceId: string;
+  /** The series to chart: server percentages in Percentage mode, absolutes in Total. */
   result: UseMetricsResult;
-  /** The App's limit (max across instances) — null when none is configured. */
-  limit: number | null;
+  /** The absolute usage read for the same selection — the witness that tells
+   *  "no trustworthy limit" apart from "no usage samples". */
+  absolute: UseMetricsResult;
+  /** The App's limit across the selected replicas — null when none is configured. */
+  limit: LimitSummary;
   limitUnit: string;
   /**
    * The App's configured autoscale-target utilization (0..100), null when
@@ -262,14 +303,18 @@ interface ResourceSectionProps {
 
 /**
  * One usage chart (memory or cpu): per-instance lines, latest value + limit
- * in the header. Percentage mode divides every point by the limit; with no
- * limit configured that division is undefined, so the chart honestly says so
- * instead of faking a flat line (same omit-don't-fake rule as bex-api).
+ * in the header. In Percentage mode the series arrive already normalized by
+ * bex-api (each replica against its own trustworthy limit); samples without
+ * a trustworthy denominator are omitted server-side, so an empty percentage
+ * chart over non-empty usage honestly says percentages are unavailable
+ * instead of faking a flat line. Mixed per-replica limits read as
+ * "Limits vary", never as one max presented as universal.
  */
 function ResourceSection({
   title,
   serviceId,
   result,
+  absolute,
   limit,
   limitUnit,
   target,
@@ -278,34 +323,54 @@ function ResourceSection({
 }: ResourceSectionProps) {
   const { t } = useTranslations();
 
-  const hasLimit = limit != null && limit !== 0;
   const hasTarget = target != null;
-  const noLimit = percentage && !hasLimit;
+  const absoluteHasData =
+    absolute.series.some((s) => s.points.length > 0) ||
+    result.series.some((s) => s.points.length > 0);
+  // Percentage over observed usage but no percentage point survived: every
+  // denominator was missing, zero, or otherwise untrustworthy (deleted pods,
+  // predated limit retention, a mid-window rollout gap) — distinct from "no
+  // usage samples" and from a source failure (both handled elsewhere).
+  const percentagesUnavailable =
+    percentage &&
+    result.series.every((s) => s.points.length === 0) &&
+    absolute.series.some((s) => s.points.length > 0);
+  // No limit configured at all (and usage observed): the division is
+  // undefined, so the chart honestly says so instead of faking a flat line
+  // (same omit-don't-fake rule as bex-api).
+  const noLimit =
+    percentage && limit.kind === "none" && absoluteHasData;
   const unit = percentage
     ? "percentage"
     : (result.series[0]?.unit ?? limitUnit);
 
   const series = useMemo<LineSeriesInput[]>(
     () =>
-      noLimit
-        ? []
-        : result.series.map((s, i) => ({
-            points: percentage
-              ? s.points.map((p) => ({
-                  ...p,
-                  value: (p.value / limit!) * 100,
-                }))
-              : s.points,
-            color: seriesColor(i),
-            label: s.labels["instance"],
-          })),
-    [result.series, percentage, limit, noLimit],
+      result.series.map((s, i) => ({
+        points: s.points,
+        color: seriesColor(i),
+        label: s.labels["instance"],
+      })),
+    [result.series],
   );
+
+  // The Total tab's dashed reference line is only truthful for a uniform
+  // limit; mixed limits have no one applicable value, so the line is omitted
+  // and the header says so.
+  const referenceValue = percentage
+    ? (hasTarget ? target : undefined)
+    : limit.kind === "single"
+      ? limit.value
+      : undefined;
 
   return (
     <MetricSection
       title={title}
-      result={result}
+      result={
+        percentage && absolute.loading
+          ? { ...result, loading: true }
+          : result
+      }
       headerExtra={
         <div className="flex items-baseline gap-2">
           <span className="text-xs text-muted-foreground">
@@ -318,7 +383,10 @@ function ResourceSection({
             >
               {t("metrics.limitLink")}
             </Link>
-            {hasLimit && <> {formatMetricValue(limitUnit, limit)}</>}
+            {limit.kind === "single" && (
+              <> {formatMetricValue(limitUnit, limit.value)}</>
+            )}
+            {limit.kind === "vary" && <> {t("metrics.limitsVary")}</>}
           </span>
           {percentage && hasTarget && (
             <span className="text-xs text-muted-foreground">
@@ -327,7 +395,7 @@ function ResourceSection({
               })}
             </span>
           )}
-          {!noLimit && (
+          {!noLimit && !percentagesUnavailable && (
             <LatestValue
               result={result}
               unit={unit}
@@ -339,20 +407,14 @@ function ResourceSection({
     >
       {noLimit ? (
         <EmptyChart message={t("metrics.noLimitConfigured")} />
+      ) : percentagesUnavailable ? (
+        <EmptyChart message={t("metrics.percentageUnavailable")} />
       ) : (
         <>
           <SvgLineChart
             unit={unit}
             series={series}
-            referenceValue={
-              percentage
-                ? hasTarget
-                  ? target
-                  : undefined
-                : hasLimit
-                  ? limit
-                  : undefined
-            }
+            referenceValue={referenceValue}
             markers={markers}
             markersServiceId={serviceId}
           />

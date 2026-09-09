@@ -114,6 +114,49 @@ describe("useMetrics", () => {
     );
   });
 
+  it("sends percentage: true for a server-side percentage read (w5/m90)", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+    });
+
+    renderHook(() => useMetrics("app", "cpu", { percentage: true }));
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          query: expect.objectContaining({
+            name: "CPU",
+            percentage: true,
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("omits the percentage variable for an absolute read", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+    });
+
+    renderHook(() => useMetrics("app", "cpu", {}));
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          query: expect.not.objectContaining({
+            percentage: true,
+          }),
+        }),
+      }),
+    );
+  });
+
   it("defaults to a 30s poll interval and honors an override", () => {
     mockUseQuery.mockReturnValue({
       data: undefined,

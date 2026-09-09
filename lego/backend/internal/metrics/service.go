@@ -286,6 +286,13 @@ type Service struct {
 	// (cAdvisor via Prometheus); non-nil => preferred over ResourceMetrics and the
 	// pod-count fallback.
 	ResourceMetricsRange ResourceMetricsRangeSource
+	// ResourceLimitRange reads stepped per-instance limit history
+	// (kube-state-metrics via Prometheus, w5/m90); non-nil => percentage mode
+	// joins each usage sample against the limit observed at that same
+	// timestamp, so a rollout mid-window never lets history inherit the new
+	// limit. nil => percentage mode divides by the pods' current spec limits
+	// (the only denominator available without limit telemetry).
+	ResourceLimitRange ResourceLimitRangeSource
 	// RequestMetrics reads request time-series (Traefik via Prometheus); nil =>
 	// http_requests/http_latency/bandwidth report core.ErrMetricsUnavailable.
 	RequestMetrics RequestMetricsSource
@@ -596,9 +603,11 @@ func aggregateMaxSeries(app string, series []MetricSeries) []MetricSeries {
 // resourceMetric returns one series per replica (labels instance + resource) of
 // CPU or memory usage: stepped history over the queried range when the ranged
 // source (Prometheus) is wired, else a single current point (metrics-server
-// snapshot). With Percentage set, each value is divided by that pod's limit (from
-// the pod spec) and reported as a 0..100 percentage; a pod with no limit is
-// skipped from percentage output (division is undefined).
+// snapshot). With Percentage set, each series carries that instance's own
+// 0..100 percentages (see normalizeUsageToPercentage); callers must aggregate
+// those normalized series (applyInstanceSelection) rather than dividing an
+// aggregate by one limit. Without Percentage the series stay absolute, so the
+// Total tab and unrelated request metrics keep their existing semantics.
 func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, app *appv1alpha1.App) ([]MetricSeries, error) {
 	if s.ResourceMetricsRange != nil {
 		return s.resourceMetricRange(ctx, q, app)
@@ -625,31 +634,141 @@ func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, app *appv1a
 	}
 	nowStr := s.Now().UTC().Format(time.RFC3339)
 
+	// The snapshot is a single current point per pod, so the current spec
+	// limit is the trustworthy denominator for that same point — no history
+	// to inherit. A pod with no (or zero) limit is omitted, never faked.
+	limitAt := constantLimitAt(limits)
+
 	out := make([]MetricSeries, 0, len(usage))
 	for _, u := range usage {
 		val := u.CPUCores
 		if q.Metric == MetricMemory {
 			val = u.MemoryBytes
 		}
-		if q.Percentage {
-			lim, ok := limits[u.Pod]
-			if !ok || lim <= 0 {
-				continue // no limit => percentage is undefined; omit rather than fake
-			}
-			val = val / lim * 100
-		}
 		ts := u.Timestamp
 		if ts == "" {
 			ts = nowStr
 		}
-		out = append(out, MetricSeries{
-			Labels: map[string]string{"resource": q.App, "instance": ids.ServiceInstanceID(q.App, u.Pod)},
+		ser := MetricSeries{
+			Labels: map[string]string{"resource": q.App, "instance": u.Pod},
 			Unit:   unit,
 			Points: []MetricPoint{{Timestamp: ts, Value: val}},
-		})
+		}
+		if q.Percentage {
+			// Normalize while labels still carry the raw pod name (the limit
+			// map's key); projection to public instance ids happens after.
+			norm := normalizeUsageToPercentage([]MetricSeries{ser}, limitAt)
+			if len(norm) == 0 {
+				continue
+			}
+			ser = norm[0]
+		}
+		ser.SetLabel("instance", ids.ServiceInstanceID(q.App, u.Pod))
+		out = append(out, ser)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Labels["instance"] < out[j].Labels["instance"] })
 	return out, nil
+}
+
+// timedValue is one stepped limit observation: the limit in force from ts on
+// until the next observation.
+type timedValue struct {
+	ts    time.Time
+	value float64
+}
+
+// limitTimelines indexes stepped limit series by raw pod name, each timeline
+// sorted ascending — the join input for per-timestamp normalization.
+func buildLimitTimelines(series []MetricSeries) map[string][]timedValue {
+	out := make(map[string][]timedValue, len(series))
+	for _, ser := range series {
+		pod := ser.Labels["instance"]
+		if pod == "" {
+			continue
+		}
+		for _, p := range ser.Points {
+			ts, err := time.Parse(time.RFC3339, p.Timestamp)
+			if err != nil {
+				continue // an undated denominator proves nothing; skip it
+			}
+			out[pod] = append(out[pod], timedValue{ts: ts, value: p.Value})
+		}
+	}
+	for pod := range out {
+		sort.Slice(out[pod], func(i, j int) bool { return out[pod][i].ts.Before(out[pod][j].ts) })
+	}
+	return out
+}
+
+// steppedLimitAt resolves the denominator for one usage sample: the limit
+// observation in force at t (the timeline's last sample at or before t, the
+// Prometheus step interpolation). Samples predating the limit history, pods
+// with no timeline at all (deleted before limit retention, or a limit the
+// source never observed), and zero limits all report untrustworthy — the
+// caller omits those samples rather than borrowing another pod's limit or
+// dividing by zero.
+func steppedLimitAt(timelines map[string][]timedValue, pod string, t time.Time) (float64, bool) {
+	tl := timelines[pod]
+	// Binary search the last observation at or before t.
+	lo, hi := 0, len(tl)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if !tl[mid].ts.After(t) {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if lo == 0 {
+		return 0, false
+	}
+	if v := tl[lo-1].value; v > 0 {
+		return v, true
+	}
+	return 0, false
+}
+
+// constantLimitAt adapts a pod-name-keyed limit map (podResourceLimits) into
+// the per-sample lookup normalizeUsageToPercentage takes: one constant
+// denominator per pod, untrustworthy when missing or zero.
+func constantLimitAt(limits map[string]float64) func(pod, ts string) (float64, bool) {
+	return func(pod string, _ string) (float64, bool) {
+		lim, ok := limits[pod]
+		if !ok || lim <= 0 {
+			return 0, false
+		}
+		return lim, true
+	}
+}
+
+// normalizeUsageToPercentage converts absolute per-instance usage series into
+// 0..100 percentages, each sample divided by its own instance's trustworthy
+// limit at that sample's timestamp (looked up per point, so mixed-limit
+// replicas normalize independently and a rollout never blends denominators).
+// Points without a trustworthy denominator are dropped — never zero-filled,
+// never borrowed from another timestamp or instance; a series left with no
+// points is dropped entirely. limitAt receives the series' raw-pod instance
+// label and the sample timestamp. The input order is preserved.
+func normalizeUsageToPercentage(usage []MetricSeries, limitAt func(pod, ts string) (float64, bool)) []MetricSeries {
+	out := make([]MetricSeries, 0, len(usage))
+	for _, ser := range usage {
+		pod := ser.Labels["instance"]
+		points := make([]MetricPoint, 0, len(ser.Points))
+		for _, p := range ser.Points {
+			lim, ok := limitAt(pod, p.Timestamp)
+			if !ok {
+				continue
+			}
+			points = append(points, MetricPoint{Timestamp: p.Timestamp, Value: p.Value / lim * 100})
+		}
+		if len(points) == 0 {
+			continue
+		}
+		ser.Points = points
+		ser.Unit = unitPercentage
+		out = append(out, ser)
+	}
+	return out
 }
 
 // rangedResourceSeries funnels one resource-family metric through the ranged
@@ -679,10 +798,15 @@ func (s *Service) rangedResourceSeries(ctx context.Context, q MetricQuery, app *
 }
 
 // resourceMetricRange serves cpu/memory from the ranged (Prometheus) source: one
-// stepped series per replica over [Start, End]. Percentage mode divides every
-// point by the pod's current spec limit, keyed by the series' instance label — an
-// instance with no limit (including a pod that no longer exists) is omitted
-// rather than faked, exactly like the snapshot path.
+// stepped series per replica over [Start, End]. Percentage mode normalizes
+// each instance against its own trustworthy limit BEFORE any replica
+// aggregation (applyInstanceSelection runs later in Metrics): with a limit
+// history source wired, every sample joins the limit observed at that same
+// timestamp, so a rollout mid-window keeps the old limit for old samples and
+// the new limit for new ones; a sample with no trustworthy denominator
+// (deleted pod, predated retention, zero limit) is omitted, never faked.
+// Without a limit source the pods' current spec limits stand in (the only
+// denominator available — production always wires both sources together).
 func (s *Service) resourceMetricRange(ctx context.Context, q MetricQuery, app *appv1alpha1.App) ([]MetricSeries, error) {
 	unit := resourceUnit(q.Metric)
 	if q.Percentage {
@@ -693,27 +817,56 @@ func (s *Service) resourceMetricRange(ctx context.Context, q MetricQuery, app *a
 		return nil, err
 	}
 	if q.Percentage && len(series) > 0 {
+		limitAt, err := s.percentageDenominators(ctx, q, app)
+		if err != nil {
+			return nil, err
+		}
+		// Normalize while labels still carry the raw pod name (the limit
+		// timelines' key); projection to public instance ids happens after.
+		series = normalizeUsageToPercentage(series, limitAt)
+	}
+	projectInstanceLabels(q.App, series)
+	sort.SliceStable(series, func(i, j int) bool { return series[i].Labels["instance"] < series[j].Labels["instance"] })
+	return series, nil
+}
+
+// percentageDenominators resolves the per-sample denominator lookup for one
+// ranged percentage read. With a limit history source wired it joins each
+// usage timestamp against the limit observed then (step interpolation); the
+// ranged request inherits the usage query's window so both histories cover the
+// same range. A limit-source error surfaces — a half-joined percentage would
+// be worse than none. Without a limit source the pods' current spec limits
+// stand in for every sample (documented assumption in ADR010: the deployment
+// that wires a ranged usage source without a limit source is a test/dev
+// shape — production wires both from the same Prometheus).
+func (s *Service) percentageDenominators(ctx context.Context, q MetricQuery, app *appv1alpha1.App) (func(pod, ts string) (float64, bool), error) {
+	if s.ResourceLimitRange == nil {
 		pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
 		if err != nil {
 			return nil, err
 		}
 		limits := podResourceLimits(pods, q.Metric)
-		kept := series[:0]
-		for _, ser := range series {
-			lim, ok := limits[ser.Labels["instance"]]
-			if !ok || lim <= 0 {
-				continue
-			}
-			for i := range ser.Points {
-				ser.Points[i].Value = ser.Points[i].Value / lim * 100
-			}
-			kept = append(kept, ser)
-		}
-		series = kept
+		return constantLimitAt(limits), nil
 	}
-	projectInstanceLabels(q.App, series)
-	sort.SliceStable(series, func(i, j int) bool { return series[i].Labels["instance"] < series[j].Labels["instance"] })
-	return series, nil
+	limits, err := s.ResourceLimitRange(ctx, ResourceLimitRangeRequest{
+		Namespace:  app.Namespace,
+		App:        app.Name,
+		Metric:     q.Metric,
+		Start:      q.Start,
+		End:        q.End,
+		Resolution: q.Resolution,
+	})
+	if err != nil {
+		return nil, err
+	}
+	timelines := buildLimitTimelines(limits)
+	return func(pod, ts string) (float64, bool) {
+		t, err := time.Parse(time.RFC3339, ts)
+		if err != nil {
+			return 0, false
+		}
+		return steppedLimitAt(timelines, pod, t)
+	}, nil
 }
 
 // resourceLimitMetric returns one current series per replica of the pod's

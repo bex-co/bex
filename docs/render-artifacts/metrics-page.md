@@ -78,6 +78,10 @@ The host-only latency read exposed a real defect: the old `quantile_over_time` q
 
 This separates the evidence accurately: interactions/path rendering were observed through the deployed dashboard; the corrected host-only query was verified directly against live Loki and in local tests. No post-rollout browser capture is claimed here. The optional store-unavailable scenario remains covered by automated tests; production Loki was not disabled for QA.
 
+## Corrected by w5/m90 (2026-09-08)
+
+m89's replica aggregation exposed that the Application card's Percentage tab divided every point by the latest value of one aggregate limit — mixed-limit replicas (0.4 of 0.5 vs 0.5 of 1 CPU) misread as 40%/50% instead of 80%/50%, and history inherited whatever limit was current. **Not** a Render divergence (Render's own dashboard divides client-side by construction; bex deliberately departs here and documents the extension in ADR010): the card now renders bex-api server-side percentages (each replica normalized by its own trustworthy kube-state-metrics limit history before MIN/MAX/AVG), with mixed limits reading as "Limits vary" in the header and unavailable percentages as explicit copy distinct from no-data. Cross-surface verdicts asserted by `TestPercentageCrossSurfaceParity` (REST/GraphQL/MCP agree on 65% AVG for the 80%/50% pair).
+
 ## Cross-surface note
 
 w5/m42 changed only `dashboard/`; **w5/m56 extended the metrics _read_ itself** — REST (`GET /v1/metrics/*` repeated `quantile`), GraphQL (`metrics` `parameters[]`), and MCP (`get_metrics` `quantiles[]`) now all serve multiple quantiles in one call through one `MetricsWithQuantiles` core, so the three API surfaces stay in lock-step. The p90 default and 12 h window remain client-side choices (bex-api's own defaults — quantile 0.95, 1 h span — still apply to direct API callers, matching Render's API/UI split: Render's UI defaults also differ from its API defaults). The percentile "All" and the "Last 30 days"/"Custom" ranges are ungated (Render plan-gates the latter two).

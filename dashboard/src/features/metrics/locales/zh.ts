@@ -215,6 +215,16 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Shown instead of a percentage chart when the App's pods declare no resource limit",
   },
+  "metrics.limitsVary": {
+    message: "限额不一",
+    description:
+      "Memory/CPU chart header annotation when the selected replicas declare different limits — each replica is percentized against its own limit, so no single limit value applies",
+  },
+  "metrics.percentageUnavailable": {
+    message: "百分比不可用——此时间范围内没有可信的限额",
+    description:
+      "Shown instead of a percentage chart when usage samples exist but every denominator was missing, zero, or otherwise untrustworthy (deleted pods, predated limit history, a mid-window rollout gap) — distinct from no usage samples or a source failure",
+  },
   "metrics.targetLabel": {
     message: "目标 {value}",
     description:
