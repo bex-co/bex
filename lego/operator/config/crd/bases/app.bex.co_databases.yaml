@@ -553,6 +553,41 @@ spec:
                 description: Host is the in-cluster read-write hostname (CNPG "<cluster>-rw"
                   Service).
                 type: string
+              lastBackup:
+                description: |-
+                  LastBackup is the most recent terminal base backup CNPG reported for this
+                  database, projected so the control plane can turn "a backup finished" into
+                  a durable event without ever reading CNPG resources itself. Nil until the
+                  first backup reaches a terminal phase.
+                properties:
+                  completedAt:
+                    type: string
+                  error:
+                    description: Error is CNPG's failure message for a failed backup,
+                      empty otherwise.
+                    type: string
+                  name:
+                    description: |-
+                      Name is the CNPG Backup object's name — the stable identity a control
+                      plane keys its "already reported this one" checkpoint on.
+                    type: string
+                  phase:
+                    description: 'Phase is CNPG''s terminal backup phase, lowercased:
+                      completed or failed.'
+                    type: string
+                  scheduled:
+                    description: |-
+                      Scheduled distinguishes a nightly ScheduledBackup run from an on-demand
+                      one (an API-triggered backup, or the post-major-upgrade base backup).
+                    type: boolean
+                  startedAt:
+                    description: StartedAt / CompletedAt are RFC3339, copied from
+                      CNPG's own timestamps.
+                    type: string
+                required:
+                - name
+                - phase
+                type: object
               lastFailoverAt:
                 description: |-
                   LastFailoverAt records the spec.failoverAt value the controller last acted

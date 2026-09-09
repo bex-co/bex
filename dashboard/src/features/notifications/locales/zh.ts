@@ -169,6 +169,34 @@ const zhNotifications: Record<string, TranslationEntry> = {
     message: "智能体会话失败",
     description: "Push event",
   },
+  "notifications.pushEventPostgresUnavailable": {
+    message: "数据库不可用",
+    description: "Push event",
+  },
+  "notifications.pushEventPostgresAvailable": {
+    message: "数据库已恢复",
+    description: "Push event",
+  },
+  "notifications.pushEventKeyValueUnhealthy": {
+    message: "键值存储异常",
+    description: "Push event",
+  },
+  "notifications.pushEventKeyValueAvailable": {
+    message: "键值存储已恢复",
+    description: "Push event",
+  },
+  "notifications.pushEventPostgresBackupFailed": {
+    message: "数据库备份失败",
+    description: "Push event",
+  },
+  "notifications.pushEventPostgresRestoreFailed": {
+    message: "数据库恢复失败",
+    description: "Push event",
+  },
+  "notifications.pushEventPostgresUpgradeFailed": {
+    message: "数据库升级失败",
+    description: "Push event",
+  },
   "notifications.pushMinimumUrgency": {
     message: "最低紧急程度",
     description: "Urgency field",

@@ -559,6 +559,15 @@ type Store interface {
 	// against. Zero when there is no healthy checkpoint or its transition time
 	// is unknown; callers must fail open toward recording, never silence.
 	LastHealthyTransitionAt(ctx context.Context, appID string) (time.Time, error)
+	// RecordObservedDatastoreState is RecordObservedServiceState for a managed
+	// Database or KeyValue (w3/m82): the same checkpoint CAS keyed on the
+	// datastore's own dpg-/red- id, emitting the availability edges Render
+	// names postgres_unavailable/postgres_available and
+	// key_value_unhealthy/key_value_available.
+	RecordObservedDatastoreState(ctx context.Context, obs ObservedDatastoreState) ([]DatastoreEventFact, error)
+	// LastDatastoreHealthyTransitionAt is LastHealthyTransitionAt's datastore
+	// twin, with the same fail-open-toward-recording contract.
+	LastDatastoreHealthyTransitionAt(ctx context.Context, datastoreID string) (time.Time, error)
 	InsertServiceEventFact(ctx context.Context, fact ServiceEventFact) (bool, error)
 	InsertServiceEventFacts(ctx context.Context, facts []ServiceEventFact) error
 }

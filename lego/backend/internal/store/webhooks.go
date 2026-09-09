@@ -695,7 +695,9 @@ const appDisplayLabel = `COALESCE(NULLIF(a.display_name, ''), a.name)`
 //     tenants share attributes to both, exactly as it appears in both their
 //     per-service feeds).
 //   - Datastore audit rows need no control-plane join: their typed target holds
-//     the immutable dpg-/red- id and target_name holds the display name.
+//     the immutable dpg-/red- id and target_name holds the display name. The
+//     observed datastore facts (w3/m82) join nothing for the same reason — the
+//     fact row already carries both its workspace and that same typed id.
 //   - the target matches every supported service spelling: the current CR name
 //     "<tenantID>-<appName>", the legacy "<tenantName>-<appName>", or the bare
 //     app-name fallback. The per-service feed is handed the caller's spelling;
@@ -809,6 +811,23 @@ WITH feed AS (
     JOIN apps a ON a.id = f.app_id
     JOIN tenants t ON t.id = a.tenant_id
     WHERE a.tenant_id = ANY($5)
+  UNION ALL
+    SELECT f.recorded_at,
+           'fact:' || f.source_key,
+           f.at,
+           f.workspace_id,
+           f.datastore_id,
+           f.datastore_id,
+           '` + EventSourceFact + `'::text,
+           ''::text,
+           ''::text,
+           ''::text,
+           ''::text,
+           f.fact_type,
+	       NULL::boolean,
+           ''::text
+    FROM datastore_event_facts f
+    WHERE f.workspace_id = ANY($5)
 )
 SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type, auto_deploy_enabled, app_id
 FROM feed

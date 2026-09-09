@@ -55,6 +55,20 @@ const eventKeys: Record<PushNotificationEvent, string> = {
     "notifications.pushEventAgentNeedsDecision",
   [PushNotificationEvent.AgentPrReady]: "notifications.pushEventAgentPrReady",
   [PushNotificationEvent.AgentFailed]: "notifications.pushEventAgentFailed",
+  [PushNotificationEvent.PostgresUnavailable]:
+    "notifications.pushEventPostgresUnavailable",
+  [PushNotificationEvent.PostgresAvailable]:
+    "notifications.pushEventPostgresAvailable",
+  [PushNotificationEvent.KeyValueUnhealthy]:
+    "notifications.pushEventKeyValueUnhealthy",
+  [PushNotificationEvent.KeyValueAvailable]:
+    "notifications.pushEventKeyValueAvailable",
+  [PushNotificationEvent.PostgresBackupFailed]:
+    "notifications.pushEventPostgresBackupFailed",
+  [PushNotificationEvent.PostgresRestoreFailed]:
+    "notifications.pushEventPostgresRestoreFailed",
+  [PushNotificationEvent.PostgresUpgradeFailed]:
+    "notifications.pushEventPostgresUpgradeFailed",
 };
 
 const urgencyKeys: Record<PushNotificationUrgency, string> = {

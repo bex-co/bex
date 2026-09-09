@@ -738,6 +738,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if reason, err := r.reconcileScheduledBackup(ctx, &db, backups.enabled); err != nil {
 		return r.dbFail(ctx, &db, reason, err)
 	}
+	r.stampLastBackupStatus(ctx, &db, backups.enabled)
 
 	// --- logical exports: pg_dump directory archive -> object store ---
 	exportRequeue, err := r.reconcileExports(ctx, &db, backups.storeConfigured)
@@ -880,6 +881,111 @@ func (r *DatabaseReconciler) stampConnectionStatus(db *appv1alpha1.Database, sto
 		db.Status.BackupEndpointURL = ""
 		db.Status.BackupS3SecretName = ""
 	}
+}
+
+// cnpgScheduledBackupLabel is the label CNPG stamps on a Backup a
+// ScheduledBackup created, naming that ScheduledBackup. Its mere presence is
+// what separates a nightly run from an on-demand one.
+const cnpgScheduledBackupLabel = "cnpg.io/scheduledBackupName"
+
+// stampLastBackupStatus projects the newest TERMINAL CNPG Backup of this
+// database onto status.lastBackup (w3/m82 t002).
+//
+// The control plane needs "a backup finished, and how it went" to be a durable
+// event, and it must learn that without reading CNPG resources itself — the
+// backend never talks to the mechanism layer, only to the App/Database CR
+// contract. So the operator, which already watches these objects, summarises
+// the outcome here. Only non-secret fields cross: a name, a phase, two
+// timestamps, and CNPG's own error string. Object-store coordinates and
+// credentials deliberately stay behind.
+//
+// Best effort by construction: a listing failure (including the CNPG CRDs not
+// being installed at all, as in envtest) leaves the previous value alone rather
+// than failing a reconcile whose real work — the running database — succeeded.
+//
+// Gated on backupEnabled because this List is one uncached API round trip per
+// reconcile (controller-runtime does not serve unstructured reads from the
+// cache), and a plan with no backups configured has no Backup objects to find.
+func (r *DatabaseReconciler) stampLastBackupStatus(ctx context.Context, db *appv1alpha1.Database, backupEnabled bool) {
+	if !backupEnabled {
+		return
+	}
+	backupList := &unstructured.UnstructuredList{}
+	backupList.SetGroupVersionKind(cnpgBackupGVK)
+	if err := r.List(ctx, backupList, client.InNamespace(db.Namespace)); err != nil {
+		if !meta.IsNoMatchError(err) {
+			logf.FromContext(ctx).V(1).Info("listing CNPG backups failed", "database", db.Name, "error", err)
+		}
+		return
+	}
+	var newest *appv1alpha1.DatabaseLastBackupStatus
+	var newestAt time.Time
+	for i := range backupList.Items {
+		backup := &backupList.Items[i]
+		cluster, _, _ := unstructured.NestedString(backup.Object, "spec", "cluster", "name")
+		if cluster != db.Name {
+			continue
+		}
+		summary, at, ok := terminalBackupSummary(backup)
+		if !ok {
+			continue
+		}
+		// Ties break on name so the choice is stable across passes: two backups
+		// can share a stop time, and a status that flaps between them would
+		// re-emit the same edge forever.
+		if newest == nil || at.After(newestAt) || (at.Equal(newestAt) && summary.Name > newest.Name) {
+			newest, newestAt = &summary, at
+		}
+	}
+	if newest != nil {
+		db.Status.LastBackup = newest
+	}
+}
+
+// terminalBackupSummary reduces one CNPG Backup to the closed summary
+// status.lastBackup carries, plus the time to order it by. ok is false while
+// the backup is still running (or has a phase this operator does not treat as
+// terminal): an in-flight backup is not an outcome to report.
+func terminalBackupSummary(backup *unstructured.Unstructured) (appv1alpha1.DatabaseLastBackupStatus, time.Time, bool) {
+	phase, _, _ := unstructured.NestedString(backup.Object, "status", "phase")
+	var summaryPhase string
+	switch strings.ToLower(phase) {
+	case "completed":
+		summaryPhase = "completed"
+	case "failed":
+		summaryPhase = "failed"
+	default:
+		return appv1alpha1.DatabaseLastBackupStatus{}, time.Time{}, false
+	}
+	startedAt, _, _ := unstructured.NestedString(backup.Object, "status", "startedAt")
+	stoppedAt, _, _ := unstructured.NestedString(backup.Object, "status", "stoppedAt")
+	backupError, _, _ := unstructured.NestedString(backup.Object, "status", "error")
+	_, scheduled := backup.GetLabels()[cnpgScheduledBackupLabel]
+	if !scheduled {
+		for _, owner := range backup.GetOwnerReferences() {
+			if owner.Kind == "ScheduledBackup" {
+				scheduled = true
+				break
+			}
+		}
+	}
+	// Order by when the backup ENDED, falling back to when it started and then
+	// to creation: a failed backup can stop without ever recording a stop time.
+	at := backup.GetCreationTimestamp().Time
+	if parsed, err := time.Parse(time.RFC3339, startedAt); err == nil {
+		at = parsed
+	}
+	if parsed, err := time.Parse(time.RFC3339, stoppedAt); err == nil {
+		at = parsed
+	}
+	return appv1alpha1.DatabaseLastBackupStatus{
+		Name:        backup.GetName(),
+		Phase:       summaryPhase,
+		StartedAt:   startedAt,
+		CompletedAt: stoppedAt,
+		Error:       backupError,
+		Scheduled:   scheduled,
+	}, at, true
 }
 
 // reconcileScheduledBackup converges the daily base backup on the plan's

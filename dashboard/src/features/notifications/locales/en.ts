@@ -170,6 +170,34 @@ const enNotifications: Record<string, TranslationEntry> = {
     message: "Agent session failed",
     description: "Push event",
   },
+  "notifications.pushEventPostgresUnavailable": {
+    message: "Database unavailable",
+    description: "Push event",
+  },
+  "notifications.pushEventPostgresAvailable": {
+    message: "Database recovered",
+    description: "Push event",
+  },
+  "notifications.pushEventKeyValueUnhealthy": {
+    message: "Key Value unhealthy",
+    description: "Push event",
+  },
+  "notifications.pushEventKeyValueAvailable": {
+    message: "Key Value recovered",
+    description: "Push event",
+  },
+  "notifications.pushEventPostgresBackupFailed": {
+    message: "Database backup failed",
+    description: "Push event",
+  },
+  "notifications.pushEventPostgresRestoreFailed": {
+    message: "Database restore failed",
+    description: "Push event",
+  },
+  "notifications.pushEventPostgresUpgradeFailed": {
+    message: "Database upgrade failed",
+    description: "Push event",
+  },
   "notifications.pushMinimumUrgency": {
     message: "Minimum urgency",
     description: "Urgency field",

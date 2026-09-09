@@ -190,6 +190,29 @@ const (
 	TypePostgresCredentialsCreated = eventvocab.TypePostgresCredentialsCreated
 	TypePostgresCredentialsDeleted = eventvocab.TypePostgresCredentialsDeleted
 	TypePostgresBackupStarted      = eventvocab.TypePostgresBackupStarted
+	// Field-level datastore configuration changes (w3/m82). Like their siblings
+	// above they are indexed audit effects with no service-scoped list home;
+	// details carry the value the field was set to.
+	TypePostgresHAStatusChanged              = eventvocab.TypePostgresHAStatusChanged
+	TypePostgresConnectionPoolEnabledChanged = eventvocab.TypePostgresConnectionPoolEnabledChanged
+	TypePostgresDiskSizeChanged              = eventvocab.TypePostgresDiskSizeChanged
+	TypeKeyValueConfigRestart                = eventvocab.TypeKeyValueConfigRestart
+	// Observed datastore lifecycle (w3/m82): typed datastore_event_facts rows
+	// the control-plane reconciler records, not audit effects. Like the audit
+	// names above they have no service-scoped list home — a datastore is not an
+	// App, so GET /services/{id}/events can never join them — which is why they
+	// are absent from allFactTypes and reachable only through Get by evt-… id.
+	TypePostgresUnavailable      = eventvocab.TypePostgresUnavailable
+	TypePostgresAvailable        = eventvocab.TypePostgresAvailable
+	TypeKeyValueUnhealthy        = eventvocab.TypeKeyValueUnhealthy
+	TypeKeyValueAvailable        = eventvocab.TypeKeyValueAvailable
+	TypePostgresBackupCompleted  = eventvocab.TypePostgresBackupCompleted
+	TypePostgresBackupFailed     = eventvocab.TypePostgresBackupFailed
+	TypePostgresRestoreSucceeded = eventvocab.TypePostgresRestoreSucceeded
+	TypePostgresRestoreFailed    = eventvocab.TypePostgresRestoreFailed
+	TypePostgresUpgradeStarted   = eventvocab.TypePostgresUpgradeStarted
+	TypePostgresUpgradeSucceeded = eventvocab.TypePostgresUpgradeSucceeded
+	TypePostgresUpgradeFailed    = eventvocab.TypePostgresUpgradeFailed
 )
 
 // bex-named types — real writes Render's vocabulary has no name for. Named in
@@ -451,6 +474,16 @@ type Details struct {
 	ProjectTo       *string
 	EnvironmentFrom *string
 	EnvironmentTo   *string
+	// Datastore configuration changes (w3/m82): the value the field was set TO.
+	// postgres_ha_status_changed carries HighAvailabilityEnabled,
+	// postgres_connection_pool_enabled_changed ConnectionPoolEnabled,
+	// postgres_disk_size_changed DiskSizeGB, and key_value_config_restart the
+	// resulting MaxmemoryPolicy/PersistenceMode pair.
+	HighAvailabilityEnabled *bool
+	ConnectionPoolEnabled   *bool
+	DiskSizeGB              *int32
+	MaxmemoryPolicy         *string
+	PersistenceMode         *string
 	// Durable fact details. ReasonCode is a closed public code, never a raw
 	// Kubernetes or Git message.
 	ReasonCode string
@@ -703,6 +736,15 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.ProjectTo = r.ProjectTo
 			ev.Details.EnvironmentFrom = r.EnvironmentFrom
 			ev.Details.EnvironmentTo = r.EnvironmentTo
+		case TypePostgresHAStatusChanged:
+			ev.Details.HighAvailabilityEnabled = r.HighAvailabilityEnabled
+		case TypePostgresConnectionPoolEnabledChanged:
+			ev.Details.ConnectionPoolEnabled = r.ConnectionPoolEnabled
+		case TypePostgresDiskSizeChanged:
+			ev.Details.DiskSizeGB = r.DiskSizeGB
+		case TypeKeyValueConfigRestart:
+			ev.Details.MaxmemoryPolicy = r.MaxmemoryPolicy
+			ev.Details.PersistenceMode = r.PersistenceMode
 		case TypeAutoDeployChanged:
 			// Discriminate: new rows carry the boolean; legacy rows keep the bex name.
 			if r.AutoDeployEnabled != nil {

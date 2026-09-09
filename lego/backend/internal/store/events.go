@@ -113,6 +113,13 @@ type ServiceEventRow struct {
 	ProjectTo       *string
 	EnvironmentFrom *string
 	EnvironmentTo   *string
+	// Managed-datastore configuration values (w3/m82): what a field-level
+	// datastore effect set its field TO. Nil for every other verb.
+	HighAvailabilityEnabled *bool
+	ConnectionPoolEnabled   *bool
+	DiskSizeGB              *int32
+	MaxmemoryPolicy         *string
+	PersistenceMode         *string
 
 	// Typed service_event_facts columns. FactType is the closed discriminator;
 	// all remaining values are bounded scalars used only by the types that own
@@ -241,6 +248,11 @@ WITH feed AS (
            NULL::text                          AS project_to,
            NULL::text                          AS environment_from,
            NULL::text                          AS environment_to,
+           NULL::boolean                       AS high_availability_enabled,
+           NULL::boolean                       AS connection_pool_enabled,
+           NULL::integer                       AS disk_size_gb,
+           NULL::text                          AS maxmemory_policy,
+           NULL::text                          AS persistence_mode,
            d.image                             AS image,
            d.commit                            AS commit_id,
            d.commit_message                    AS commit_message,
@@ -279,6 +291,11 @@ WITH feed AS (
            NULL::boolean,
            NULL::text,
            NULL::text,
+           NULL::text,
+           NULL::text,
+           NULL::boolean,
+           NULL::boolean,
+           NULL::integer,
            NULL::text,
            NULL::text,
            d.image,
@@ -321,6 +338,11 @@ WITH feed AS (
            a.project_to,
            a.environment_from,
            a.environment_to,
+           a.high_availability_enabled,
+           a.connection_pool_enabled,
+           a.disk_size_gb,
+           a.maxmemory_policy,
+           a.persistence_mode,
            ''::text,
            ''::text,
            ''::text,
@@ -368,6 +390,11 @@ WITH feed AS (
            NULL::text,
            NULL::text,
            NULL::text,
+           NULL::boolean,
+           NULL::boolean,
+           NULL::integer,
+           NULL::text,
+           NULL::text,
            f.image,
            f.commit_id,
            ''::text,
@@ -389,6 +416,7 @@ SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, ve
        plan_from, plan_to, instance_count_from, instance_count_to,
        autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to,
        auto_deploy_enabled, project_from, project_to, environment_from, environment_to,
+       high_availability_enabled, connection_pool_enabled, disk_size_gb, maxmemory_policy, persistence_mode,
        image, commit_id, commit_message, started_at, finished_at,
        fact_type, reason_code, instance_id, fact_from_count, fact_to_count,
        branch_from, branch_to, commit_url, fact_status
@@ -443,6 +471,15 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, target, ownerWor
 // key, then follows the recorded source identity to one row. The index stores
 // no details payload: deploy/audit/fact columns remain single-sourced and the
 // projection is deliberately identical to ListServiceEvents' row shape.
+//
+// EventSourceFact spans TWO tables (w3/m82): an App's service_event_facts and a
+// managed datastore's datastore_event_facts, which the index writes with the
+// same 'fact:<source_key>' identity and the same source/source_row_id pair.
+// Both are joined and the fact columns coalesced across them, so a datastore
+// availability or backup notification hydrates by the id it delivered instead
+// of 404ing the way it did while only the App table was reachable. Source keys
+// are namespaced by producer, so at most one side ever matches; if both did,
+// each join is still by primary key and the row count is unchanged.
 const getServiceEventQuery = `
 WITH hit AS MATERIALIZED (
     SELECT event_key, source, source_row_id, phase, service_id, app_id
@@ -454,13 +491,13 @@ SELECT h.event_key AS key,
            WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.created_at
            WHEN h.source = '` + EventSourceDeploy + `' THEN d.finished_at
            WHEN h.source = '` + EventSourceAudit + `' THEN a.at
-           ELSE f.at
+           ELSE COALESCE(f.at, df.at)
        END AS at,
        h.source,
        h.phase,
        CASE
            WHEN h.source = '` + EventSourceDeploy + `' THEN d.id
-           WHEN h.source = '` + EventSourceFact + `' THEN f.deploy_id
+           WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.deploy_id, '')
            ELSE ''
        END AS deploy_id,
        CASE
@@ -490,28 +527,33 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.project_to END AS project_to,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.environment_from END AS environment_from,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.environment_to END AS environment_to,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.high_availability_enabled END AS high_availability_enabled,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.connection_pool_enabled END AS connection_pool_enabled,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.disk_size_gb END AS disk_size_gb,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.maxmemory_policy END AS maxmemory_policy,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.persistence_mode END AS persistence_mode,
        CASE
            WHEN h.source = '` + EventSourceDeploy + `' THEN d.image
-           WHEN h.source = '` + EventSourceFact + `' THEN f.image
+           WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.image, '')
            ELSE ''
        END AS image,
        CASE
            WHEN h.source = '` + EventSourceDeploy + `' THEN d.commit
-           WHEN h.source = '` + EventSourceFact + `' THEN f.commit_id
+           WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.commit_id, '')
            ELSE ''
        END AS commit_id,
        CASE WHEN h.source = '` + EventSourceDeploy + `' THEN d.commit_message ELSE '' END AS commit_message,
        CASE WHEN h.source = '` + EventSourceDeploy + `' THEN d.started_at END AS started_at,
        CASE WHEN h.source = '` + EventSourceDeploy + `' THEN d.finished_at END AS finished_at,
-       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.fact_type ELSE '' END AS fact_type,
-       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.reason_code ELSE '' END AS reason_code,
-       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.instance_id ELSE '' END AS instance_id,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.fact_type, df.fact_type, '') ELSE '' END AS fact_type,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.reason_code, df.reason_code, '') ELSE '' END AS reason_code,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.instance_id, '') ELSE '' END AS instance_id,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.from_count END AS fact_from_count,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.to_count END AS fact_to_count,
-       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.branch_from ELSE '' END AS branch_from,
-       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.branch_to ELSE '' END AS branch_to,
-       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.commit_url ELSE '' END AS commit_url,
-       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.status ELSE '' END AS fact_status,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.branch_from, '') ELSE '' END AS branch_from,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.branch_to, '') ELSE '' END AS branch_to,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.commit_url, '') ELSE '' END AS commit_url,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.status, '') ELSE '' END AS fact_status,
        COALESCE(h.app_id, h.service_id)
 FROM hit h
 LEFT JOIN deploys d
@@ -520,11 +562,13 @@ LEFT JOIN audit_events a
   ON h.source = '` + EventSourceAudit + `' AND a.id = h.source_row_id
 LEFT JOIN service_event_facts f
   ON h.source = '` + EventSourceFact + `' AND f.source_key = h.source_row_id
+LEFT JOIN datastore_event_facts df
+  ON h.source = '` + EventSourceFact + `' AND df.source_key = h.source_row_id
 WHERE (h.source = '` + EventSourceDeploy + `' AND d.id IS NOT NULL
        AND (h.phase = '` + EventPhaseStarted + `'
             OR (h.phase = '` + EventPhaseEnded + `' AND d.finished_at IS NOT NULL)))
    OR (h.source = '` + EventSourceAudit + `' AND a.id IS NOT NULL AND a.outcome = 'allowed')
-   OR (h.source = '` + EventSourceFact + `' AND f.source_key IS NOT NULL)`
+   OR (h.source = '` + EventSourceFact + `' AND COALESCE(f.source_key, df.source_key) IS NOT NULL)`
 
 // GetServiceEvent returns one event only when the owner workspace and public id
 // both match. A foreign id and an absent id therefore share ErrNotFound, and no
@@ -573,6 +617,7 @@ func serviceEventScanDestinations(r *ServiceEventRow, trailing ...any) []any {
 		&r.PlanFrom, &r.PlanTo, &r.InstanceCountFrom, &r.InstanceCountTo,
 		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
 		&r.AutoDeployEnabled, &r.ProjectFrom, &r.ProjectTo, &r.EnvironmentFrom, &r.EnvironmentTo,
+		&r.HighAvailabilityEnabled, &r.ConnectionPoolEnabled, &r.DiskSizeGB, &r.MaxmemoryPolicy, &r.PersistenceMode,
 		&r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt,
 		&r.FactType, &r.ReasonCode, &r.InstanceID, &r.FromCount, &r.ToCount,
 		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus,

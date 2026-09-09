@@ -835,6 +835,130 @@ func TestPaymentMethodBoundMigrationAppliesAndRollsBack(t *testing.T) {
 	}
 }
 
+// TestPushDatastoreEventsMigrationRoundTrips applies and rolls back 0109 in an
+// isolated schema. m78 shipped its lifecycle events without widening the
+// persisted CHECK and the integration test caught it at enqueue time, so the
+// probe here is a real INSERT in each direction rather than a catalog lookup:
+// after up, a datastore-routed row is accepted; after down, the same row is
+// rejected while a service row still lands.
+func TestPushDatastoreEventsMigrationRoundTrips(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	up, err := migrationsFS.ReadFile("migrations/0109_push_datastore_events.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0109_push_datastore_events.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	// The three constraints 0109 rewrites, in the post-0070 shape it expects,
+	// on a stand-in table free of the real one's tenant_members FK.
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0109_push_datastore;
+		SET LOCAL search_path TO migration_0109_push_datastore;
+		CREATE TABLE push_notifications (
+		    event_type    text NOT NULL,
+		    resource_kind text NOT NULL,
+		    resource_id   text NOT NULL,
+		    deep_link     text NOT NULL,
+		    CONSTRAINT push_notifications_event_type_check
+		        CHECK (event_type IN (
+		            'deploy_started', 'deploy_succeeded', 'deploy_failed',
+		            'server_failed', 'server_available',
+		            'service_suspended', 'service_resumed',
+		            'cron_failed',
+		            'agent_pr_ready', 'agent_failed', 'agent_needs_decision'
+		        )),
+		    CONSTRAINT push_notifications_resource_check
+		        CHECK (
+		            (resource_kind = 'service' AND resource_id ~ '^srv-[0-9a-v]{20}$')
+		            OR (resource_kind = 'agentSession' AND resource_id ~ '^ags-[0-9a-v]{20}$')
+		        ),
+		    CONSTRAINT push_notifications_deep_link_check
+		        CHECK (
+		            (resource_kind = 'service' AND deep_link = '/services/' || resource_id)
+		            OR (resource_kind = 'agentSession' AND deep_link = '/sessions/' || resource_id)
+		        )
+		);
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	const insertService = `INSERT INTO push_notifications VALUES
+		('server_failed', 'service', 'srv-c185th5c2rvvnhbfiltg', '/services/srv-c185th5c2rvvnhbfiltg')`
+	datastoreRows := map[string]string{
+		"postgres_unavailable": `INSERT INTO push_notifications VALUES
+			('postgres_unavailable', 'database', 'dpg-c185th5c2rvvnhbfiltg', '/databases/dpg-c185th5c2rvvnhbfiltg')`,
+		"key_value_unhealthy": `INSERT INTO push_notifications VALUES
+			('key_value_unhealthy', 'keyValue', 'red-c185th5c2rvvnhbfilth', '/key-values/red-c185th5c2rvvnhbfilth')`,
+		"postgres_upgrade_failed": `INSERT INTO push_notifications VALUES
+			('postgres_upgrade_failed', 'database', 'dpg-c185th5c2rvvnhbfiltg', '/databases/dpg-c185th5c2rvvnhbfiltg')`,
+	}
+	// A rejected INSERT aborts the surrounding transaction, so each negative
+	// probe runs inside its own savepoint.
+	rejects := func(name, statement string) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, `SAVEPOINT probe`); err != nil {
+			t.Fatal(err)
+		}
+		_, err := tx.Exec(ctx, statement)
+		if _, rollbackErr := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT probe`); rollbackErr != nil {
+			t.Fatal(rollbackErr)
+		}
+		if err == nil {
+			t.Fatalf("%s was accepted by a CHECK that must reject it", name)
+		}
+	}
+	for name, statement := range datastoreRows {
+		rejects(name+" before 0109", statement)
+	}
+
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply migration 0109: %v", err)
+	}
+	for name, statement := range datastoreRows {
+		if _, err := tx.Exec(ctx, statement); err != nil {
+			t.Fatalf("%s rejected after 0109: %v", name, err)
+		}
+	}
+	if _, err := tx.Exec(ctx, insertService); err != nil {
+		t.Fatalf("service row rejected after 0109: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("roll back migration 0109: %v", err)
+	}
+	var remaining int
+	if err := tx.QueryRow(ctx,
+		`SELECT count(*) FROM push_notifications WHERE resource_kind IN ('database', 'keyValue')`).Scan(&remaining); err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 0 {
+		t.Fatalf("%d datastore rows survived the down migration — the narrowed CHECK could not have been restored", remaining)
+	}
+	for name, statement := range datastoreRows {
+		rejects(name+" after the down migration", statement)
+	}
+	if _, err := tx.Exec(ctx, insertService); err != nil {
+		t.Fatalf("service row rejected after the down migration: %v", err)
+	}
+}
+
 // TestMigrationNumbersAreUnique guards against a bug class that has bitten
 // this migrations directory repeatedly: golang-migrate keys a migration off
 // its leading NNNN_ number, so two files sharing one is at best a refused

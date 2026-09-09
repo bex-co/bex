@@ -118,6 +118,29 @@ const (
 	TypePostgresCredentialsCreated = eventvocab.TypePostgresCredentialsCreated
 	TypePostgresCredentialsDeleted = eventvocab.TypePostgresCredentialsDeleted
 	TypePostgresBackupStarted      = eventvocab.TypePostgresBackupStarted
+	// Field-level datastore configuration changes (w3/m82). Render's
+	// postgres_read_replicas_changed stays unsupported — see eventvocab.
+	TypePostgresHAStatusChanged              = eventvocab.TypePostgresHAStatusChanged
+	TypePostgresConnectionPoolEnabledChanged = eventvocab.TypePostgresConnectionPoolEnabledChanged
+	TypePostgresDiskSizeChanged              = eventvocab.TypePostgresDiskSizeChanged
+	TypeKeyValueConfigRestart                = eventvocab.TypeKeyValueConfigRestart
+	// Observed datastore lifecycle (w3/m82). Unlike every datastore name above
+	// these are not audit effects: the control-plane reconciler derives them
+	// from Database/KeyValue status and records them as typed
+	// datastore_event_facts rows, which is why they enter through factEvents.
+	// Postgres says "unavailable" and Key Value "unhealthy" — Render's own
+	// asymmetry, kept rather than normalized.
+	TypePostgresUnavailable      = eventvocab.TypePostgresUnavailable
+	TypePostgresAvailable        = eventvocab.TypePostgresAvailable
+	TypeKeyValueUnhealthy        = eventvocab.TypeKeyValueUnhealthy
+	TypeKeyValueAvailable        = eventvocab.TypeKeyValueAvailable
+	TypePostgresBackupCompleted  = eventvocab.TypePostgresBackupCompleted
+	TypePostgresBackupFailed     = eventvocab.TypePostgresBackupFailed
+	TypePostgresRestoreSucceeded = eventvocab.TypePostgresRestoreSucceeded
+	TypePostgresRestoreFailed    = eventvocab.TypePostgresRestoreFailed
+	TypePostgresUpgradeStarted   = eventvocab.TypePostgresUpgradeStarted
+	TypePostgresUpgradeSucceeded = eventvocab.TypePostgresUpgradeSucceeded
+	TypePostgresUpgradeFailed    = eventvocab.TypePostgresUpgradeFailed
 	// Persistent-disk lifecycle (ADR082; w8/m34). Render's webhook enum spells
 	// these disk_created/disk_updated/disk_deleted — the earlier bex-only
 	// disk_attached/disk_detached filters are rewritten by migration 0106.
@@ -186,6 +209,22 @@ var factEvents = map[string]string{
 	string(store.EventFactJobRunEnded):        TypeJobRunEnded,
 	string(store.EventFactCronRunStarted):     TypeCronJobRunStarted,
 	string(store.EventFactCronRunEnded):       TypeCronJobRunEnded,
+
+	// Managed-datastore facts (w3/m82). They live in datastore_event_facts
+	// rather than service_event_facts, but the composed feed the dispatcher
+	// tails UNIONs both under EventSourceFact, so one fact_type → type map
+	// serves them all.
+	string(store.DatastoreFactPostgresUnavailable):      TypePostgresUnavailable,
+	string(store.DatastoreFactPostgresAvailable):        TypePostgresAvailable,
+	string(store.DatastoreFactKeyValueUnhealthy):        TypeKeyValueUnhealthy,
+	string(store.DatastoreFactKeyValueAvailable):        TypeKeyValueAvailable,
+	string(store.DatastoreFactPostgresBackupCompleted):  TypePostgresBackupCompleted,
+	string(store.DatastoreFactPostgresBackupFailed):     TypePostgresBackupFailed,
+	string(store.DatastoreFactPostgresRestoreSucceeded): TypePostgresRestoreSucceeded,
+	string(store.DatastoreFactPostgresRestoreFailed):    TypePostgresRestoreFailed,
+	string(store.DatastoreFactPostgresUpgradeStarted):   TypePostgresUpgradeStarted,
+	string(store.DatastoreFactPostgresUpgradeSucceeded): TypePostgresUpgradeSucceeded,
+	string(store.DatastoreFactPostgresUpgradeFailed):    TypePostgresUpgradeFailed,
 }
 
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,

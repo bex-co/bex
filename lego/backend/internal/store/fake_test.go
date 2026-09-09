@@ -25,6 +25,7 @@ import (
 	"time"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // memStore is the in-memory Store used by the API and reconciler tests. It
@@ -48,7 +49,11 @@ type memStore struct {
 	deploys          map[string]Deploy
 	eventFacts       map[string]ServiceEventFact
 	eventCheckpoints map[string]ObservedServiceState
-	billingExcluded  map[string]bool // tenantID -> excluded (ADR040 §7)
+	// Managed-datastore observation mirror (w3/m82), keyed on the dpg-/red-
+	// resource id exactly as the Postgres tables are.
+	datastoreFacts       map[string]DatastoreEventFact
+	datastoreCheckpoints map[string]ObservedDatastoreState
+	billingExcluded      map[string]bool // tenantID -> excluded (ADR040 §7)
 }
 
 // memberKey is the composite key of a tenant_members row.
@@ -67,7 +72,10 @@ func newMemStore() *memStore {
 		deploys:          map[string]Deploy{},
 		eventFacts:       map[string]ServiceEventFact{},
 		eventCheckpoints: map[string]ObservedServiceState{},
-		billingExcluded:  map[string]bool{},
+
+		datastoreFacts:       map[string]DatastoreEventFact{},
+		datastoreCheckpoints: map[string]ObservedDatastoreState{},
+		billingExcluded:      map[string]bool{},
 	}
 }
 
@@ -897,6 +905,77 @@ func (m *memStore) LastHealthyTransitionAt(_ context.Context, appID string) (tim
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	checkpoint, ok := m.eventCheckpoints[appID]
+	if !ok || checkpoint.Availability != "healthy" {
+		return time.Time{}, nil
+	}
+	return checkpoint.ReadyTransitionAt, nil
+}
+
+// RecordObservedDatastoreState mirrors PGStore's checkpoint CAS, including the
+// arming rule (nextDatastoreAvailability): a test passing here is not passing
+// on a laxer contract than production's.
+func (m *memStore) RecordObservedDatastoreState(_ context.Context, obs ObservedDatastoreState) ([]DatastoreEventFact, error) {
+	if obs.DatastoreID == "" || obs.WorkspaceID == "" {
+		return nil, fmt.Errorf("observed datastore state requires datastore and workspace id")
+	}
+	if !validDatastoreKind(obs.Kind) {
+		return nil, fmt.Errorf("invalid datastore kind %q", obs.Kind)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	previous, ok := m.datastoreCheckpoints[obs.DatastoreID]
+	if !ok {
+		obs.Availability = nextDatastoreAvailability("", obs.Availability)
+		if obs.Recovering && obs.Availability == "healthy" {
+			obs.RestoreOutcome = "succeeded"
+		}
+		if obs.Recovering && obs.Phase == string(appv1alpha1.DBPhaseFailed) {
+			obs.RestoreOutcome = "failed"
+		}
+		if obs.Phase == string(appv1alpha1.DBPhaseUpgrading) && obs.SpecVersion != "" && obs.CurrentVersion != "" && obs.SpecVersion != obs.CurrentVersion {
+			from, to := obs.CurrentVersion, obs.SpecVersion
+			obs.UpgradeKey = fmt.Sprintf("%s:upgrade:%s-%s:started", obs.DatastoreID, from, to)
+		}
+		m.datastoreCheckpoints[obs.DatastoreID] = obs
+		return nil, nil
+	}
+	if obs.AvailabilityObserved {
+		obs.Availability = nextDatastoreAvailability(previous.Availability, obs.Availability)
+	} else {
+		obs.Availability = previous.Availability
+	}
+	if !(obs.AvailabilityObserved && obs.Availability == "healthy" && !obs.ReadyTransitionAt.IsZero()) {
+		obs.ReadyTransitionAt = previous.ReadyTransitionAt
+	}
+	facts := observedDatastoreStateFacts(obs, previous.Availability)
+	previousExtras := datastoreCheckpointExtras{
+		LastBackupName:  previous.LastBackupName,
+		LastBackupPhase: previous.LastBackupPhase,
+		RestoreOutcome:  previous.RestoreOutcome,
+		UpgradeKey:      previous.UpgradeKey,
+	}
+	lifecycle, nextExtras := observedDatastoreLifecycleFacts(obs, previousExtras)
+	facts = append(facts, lifecycle...)
+	var inserted []DatastoreEventFact
+	for _, fact := range facts {
+		if _, exists := m.datastoreFacts[fact.SourceKey]; exists {
+			continue
+		}
+		m.datastoreFacts[fact.SourceKey] = fact
+		inserted = append(inserted, fact)
+	}
+	obs.LastBackupName = nextExtras.LastBackupName
+	obs.LastBackupPhase = nextExtras.LastBackupPhase
+	obs.RestoreOutcome = nextExtras.RestoreOutcome
+	obs.UpgradeKey = nextExtras.UpgradeKey
+	m.datastoreCheckpoints[obs.DatastoreID] = obs
+	return inserted, nil
+}
+
+func (m *memStore) LastDatastoreHealthyTransitionAt(_ context.Context, datastoreID string) (time.Time, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	checkpoint, ok := m.datastoreCheckpoints[datastoreID]
 	if !ok || checkpoint.Availability != "healthy" {
 		return time.Time{}, nil
 	}

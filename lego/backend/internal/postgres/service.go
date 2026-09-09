@@ -1258,17 +1258,49 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 			return PostgresView{}, err
 		}
 	}
-	fromPlan := d.Spec.Plan
+	before := d.Spec
 	view, err := s.patchDatabaseObj(ctx, d, patch.apply)
 	if err != nil {
 		return PostgresView{}, err
 	}
-	if patch.Plan != nil && fromPlan != d.Spec.Plan {
+	s.recordUpdateEffects(ctx, d, before)
+	return view, nil
+}
+
+// recordUpdateEffects records what a successful PATCH actually changed, one
+// fixed verb per field whose change Render's datastore event vocabulary names
+// (plan, high availability, the connection pooler, disk size) — the
+// maintenance-mode shape, where one atomic write emits a row per field effect
+// rather than a single undifferentiated Update. Fields Render has no name for
+// (rename, ip-allow-list, parameter overrides, disk autoscaling) keep the
+// generic DatabaseUpdated row, which is also what an idempotent PATCH records:
+// the caller made a call, and the audit trail says so without claiming a
+// configuration change that did not happen.
+func (s *Service) recordUpdateEffects(ctx context.Context, d *appv1alpha1.Database, before appv1alpha1.DatabaseSpec) {
+	recorded := false
+	if before.Plan != d.Spec.Plan {
 		s.RecordDatabaseEffect(ctx, d, core.DatabasePlanChanged)
-	} else {
+		recorded = true
+	}
+	if before.HighAvailability != d.Spec.HighAvailability {
+		s.RecordDatabaseHighAvailabilityChanged(ctx, d, d.Spec.HighAvailability)
+		recorded = true
+	}
+	if before.Pooler != d.Spec.Pooler {
+		s.RecordDatabaseConnectionPoolChanged(ctx, d, d.Spec.Pooler)
+		recorded = true
+	}
+	// Keyed on the declared size (what the caller asked to change) but recorded
+	// as the high-water size, which is what every other surface reports as the
+	// disk size. A plan change that raises the plan's included storage is a
+	// plan_changed event, not a resize the caller requested.
+	if before.StorageGB != d.Spec.StorageGB {
+		s.RecordDatabaseDiskSizeChanged(ctx, d, DatabaseStorageHighWater(d))
+		recorded = true
+	}
+	if !recorded {
 		s.RecordDatabaseEffect(ctx, d, core.DatabaseUpdated)
 	}
-	return view, nil
 }
 
 // PreviewUpdatePostgres is UpdatePostgres's dry-run twin (w2/m29 pattern): same

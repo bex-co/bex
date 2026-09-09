@@ -494,11 +494,49 @@ type DatabaseStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
+	// LastBackup is the most recent terminal base backup CNPG reported for this
+	// database, projected so the control plane can turn "a backup finished" into
+	// a durable event without ever reading CNPG resources itself. Nil until the
+	// first backup reaches a terminal phase.
+	// +optional
+	LastBackup *DatabaseLastBackupStatus `json:"lastBackup,omitempty"`
+
 	// Conditions represent the current state (Ready).
 	// +listType=map
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// DatabaseLastBackupStatus is the non-secret summary of one completed or failed
+// CNPG base backup. It deliberately carries no object-store coordinates and no
+// credentials: it exists so a level-triggered observer can detect the edge and
+// name the backup, not so a client can fetch the artifact.
+type DatabaseLastBackupStatus struct {
+	// Name is the CNPG Backup object's name — the stable identity a control
+	// plane keys its "already reported this one" checkpoint on.
+	// +required
+	Name string `json:"name"`
+
+	// Phase is CNPG's terminal backup phase, lowercased: completed or failed.
+	// +required
+	Phase string `json:"phase"`
+
+	// StartedAt / CompletedAt are RFC3339, copied from CNPG's own timestamps.
+	// +optional
+	StartedAt string `json:"startedAt,omitempty"`
+
+	// +optional
+	CompletedAt string `json:"completedAt,omitempty"`
+
+	// Error is CNPG's failure message for a failed backup, empty otherwise.
+	// +optional
+	Error string `json:"error,omitempty"`
+
+	// Scheduled distinguishes a nightly ScheduledBackup run from an on-demand
+	// one (an API-triggered backup, or the post-major-upgrade base backup).
+	// +optional
+	Scheduled bool `json:"scheduled,omitempty"`
 }
 
 // DatabaseDiskResizeStatus records one operator-triggered, grow-only storage

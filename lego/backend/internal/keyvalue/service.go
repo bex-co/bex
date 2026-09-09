@@ -804,17 +804,37 @@ func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValu
 			return KeyValueView{}, err
 		}
 	}
-	fromPlan := kv.Spec.Plan
+	before := kv.Spec
 	view, err := s.patchKeyValueObj(ctx, kv, patch.apply)
 	if err != nil {
 		return KeyValueView{}, err
 	}
-	if patch.Plan != nil && fromPlan != kv.Spec.Plan {
+	s.recordUpdateEffects(ctx, kv, before)
+	return view, nil
+}
+
+// recordUpdateEffects records what a successful PATCH actually changed — the
+// postgres.recordUpdateEffects mirror. A plan change is Render's plan_changed;
+// an eviction- or persistence-setting change is key_value_config_restart,
+// because the operator rebuilds the Valkey server args from those two fields
+// and the StatefulSet rolls its single pod to pick them up. A rename or
+// ip-allow-list write keeps the generic KeyValueUpdated row, which is also
+// what an idempotent PATCH records.
+func (s *Service) recordUpdateEffects(ctx context.Context, kv *appv1alpha1.KeyValue, before appv1alpha1.KeyValueSpec) {
+	recorded := false
+	if before.Plan != kv.Spec.Plan {
 		s.RecordKeyValueEffect(ctx, kv, core.KeyValuePlanChanged)
-	} else {
+		recorded = true
+	}
+	if before.MaxmemoryPolicy != kv.Spec.MaxmemoryPolicy || before.PersistenceMode != kv.Spec.PersistenceMode {
+		// Render-shaped (underscore) spellings, matching what every read surface
+		// reports for these fields.
+		s.RecordKeyValueConfigChanged(ctx, kv, crdToRender(kv.Spec.MaxmemoryPolicy), crdToRender(kv.Spec.PersistenceMode))
+		recorded = true
+	}
+	if !recorded {
 		s.RecordKeyValueEffect(ctx, kv, core.KeyValueUpdated)
 	}
-	return view, nil
 }
 
 // PreviewUpdateKeyValue is UpdateKeyValue's dry-run twin (w2/m29 pattern): same

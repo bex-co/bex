@@ -19,6 +19,7 @@ package events
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -316,6 +317,119 @@ func TestGetReturnsIndexedPostgresEvent(t *testing.T) {
 	}
 	if got.ID != eventID || got.Type != TypePostgresCreated || got.ServiceID != "dpg-1" {
 		t.Errorf("Get = %+v, want the indexed postgres_created event", got)
+	}
+}
+
+// TestGetReturnsIndexedDatastoreConfigEvents is w3/m82 t003's retrieval half:
+// the value a datastore configuration effect recorded must come back in details
+// under the same evt-… id a delivered webhook carried.
+func TestGetReturnsIndexedDatastoreConfigEvents(t *testing.T) {
+	enabled := true
+	sizeGB := int32(40)
+	policy, mode := "noeviction", "journal_snapshot"
+	cases := []struct {
+		name     string
+		row      store.ServiceEventRow
+		wantType string
+		want     Details
+	}{
+		{
+			name:     "ha status",
+			row:      store.ServiceEventRow{Verb: core.AuditVerbPostgresHAChanged, HighAvailabilityEnabled: &enabled},
+			wantType: TypePostgresHAStatusChanged,
+			want:     Details{HighAvailabilityEnabled: &enabled},
+		},
+		{
+			name:     "connection pool",
+			row:      store.ServiceEventRow{Verb: core.AuditVerbPostgresPoolerChanged, ConnectionPoolEnabled: &enabled},
+			wantType: TypePostgresConnectionPoolEnabledChanged,
+			want:     Details{ConnectionPoolEnabled: &enabled},
+		},
+		{
+			name:     "disk size",
+			row:      store.ServiceEventRow{Verb: core.AuditVerbPostgresDiskSizeChanged, DiskSizeGB: &sizeGB},
+			wantType: TypePostgresDiskSizeChanged,
+			want:     Details{DiskSizeGB: &sizeGB},
+		},
+		{
+			name:     "key value config restart",
+			row:      store.ServiceEventRow{Verb: core.AuditVerbKeyValueConfigChanged, MaxmemoryPolicy: &policy, PersistenceMode: &mode},
+			wantType: TypeKeyValueConfigRestart,
+			want:     Details{MaxmemoryPolicy: &policy, PersistenceMode: &mode},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			row := tc.row
+			row.Key, row.At, row.Source, row.Caller = "aud-cfg:", now, store.EventSourceAudit, "user-x"
+			eventID := ids.Derive(ids.Event, row.Key)
+			st := &fakeStore{lookup: store.ServiceEventLookup{Event: row, ServiceID: "dpg-1"}}
+
+			got, err := newService(st).Get(context.Background(), eventID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ID != eventID || got.Type != tc.wantType || got.ServiceID != "dpg-1" {
+				t.Fatalf("Get = %+v, want the indexed %s event", got, tc.wantType)
+			}
+			if !reflect.DeepEqual(got.Details, tc.want) {
+				t.Errorf("details = %+v, want %+v", got.Details, tc.want)
+			}
+		})
+	}
+}
+
+// TestGetReturnsObservedDatastoreFactEvents is w3/m82 t004's retrieval half for
+// the reconciler-produced side of the vocabulary: an availability edge and a
+// backup outcome both arrive as datastore_event_facts rows under
+// EventSourceFact, and each must come back under the same evt-… id its webhook
+// delivered — including the closed reason code an outage carries.
+func TestGetReturnsObservedDatastoreFactEvents(t *testing.T) {
+	cases := []struct {
+		name     string
+		row      store.ServiceEventRow
+		service  string
+		wantType string
+		want     Details
+	}{
+		{
+			name:     "postgres outage",
+			row:      store.ServiceEventRow{FactType: TypePostgresUnavailable, ReasonCode: store.EventReasonReadinessFailed},
+			service:  "dpg-1",
+			wantType: TypePostgresUnavailable,
+			want:     Details{ReasonCode: store.EventReasonReadinessFailed},
+		},
+		{
+			name:     "key value recovery",
+			row:      store.ServiceEventRow{FactType: TypeKeyValueAvailable},
+			service:  "red-1",
+			wantType: TypeKeyValueAvailable,
+		},
+		{
+			name:     "backup outcome",
+			row:      store.ServiceEventRow{FactType: TypePostgresBackupCompleted},
+			service:  "dpg-1",
+			wantType: TypePostgresBackupCompleted,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			row := tc.row
+			row.Key, row.At, row.Source = "fact:observed:"+tc.service, now, store.EventSourceFact
+			eventID := ids.Derive(ids.Event, row.Key)
+			st := &fakeStore{lookup: store.ServiceEventLookup{Event: row, ServiceID: tc.service}}
+
+			got, err := newService(st).Get(context.Background(), eventID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ID != eventID || got.Type != tc.wantType || got.ServiceID != tc.service {
+				t.Fatalf("Get = %+v, want the indexed %s event", got, tc.wantType)
+			}
+			if !reflect.DeepEqual(got.Details, tc.want) {
+				t.Errorf("details = %+v, want %+v", got.Details, tc.want)
+			}
+		})
 	}
 }
 

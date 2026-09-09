@@ -40,9 +40,10 @@ const (
 // request bodies or arbitrary values — Verb/Resource/Target are derived from
 // the call site, the OpenFGA object string, and the verb's resource NAME. The
 // typed detail fields (MaintenanceModeTo, PlanFrom/PlanTo,
-// InstanceCountFrom/InstanceCountTo, Autoscaling*From/*To, AutoDeployEnabled)
-// are non-secret scalars required by Render's event contracts; there is no
-// free-form path for a secret to reach an event.
+// InstanceCountFrom/InstanceCountTo, Autoscaling*From/*To, AutoDeployEnabled,
+// and the datastore configuration values below) are non-secret scalars
+// required by Render's event contracts; there is no free-form path for a
+// secret to reach an event.
 type AuditEvent struct {
 	Caller       string // core.Identity.Subject; empty for an unauthenticated caller
 	CallerMethod string // core.Identity.Method ("oauth2" | "session")
@@ -69,6 +70,17 @@ type AuditEvent struct {
 	AutoscalingMinTo   *int32
 	AutoscalingMaxTo   *int32
 	AutoDeployEnabled  *bool
+	// Managed-datastore configuration values (w3/m82). Each is the value the
+	// corresponding field was set TO by a successful PATCH — the
+	// AutoDeployEnabled shape, not a from/to pair, because Render's datastore
+	// event names describe the resulting configuration. Nil for every verb that
+	// does not define them; MaxmemoryPolicy/PersistenceMode are the closed
+	// Key Value enums, never free-form.
+	HighAvailabilityEnabled *bool
+	ConnectionPoolEnabled   *bool
+	DiskSizeGB              *int32
+	MaxmemoryPolicy         *string
+	PersistenceMode         *string
 	// RoleFrom/RoleTo are the member-role detail of the team-membership verbs
 	// (w1/m33): a role change records old→new; an invite/acceptance records the
 	// granted role in RoleTo alone. Roles are the closed members.Roles ladder,
@@ -146,6 +158,17 @@ const (
 	AuditVerbKeyValueCreated            = "keyvalue.CreateKeyValue"
 	AuditVerbKeyValuePlanChanged        = "keyvalue.SetPlan"
 	AuditVerbKeyValueUpdated            = "keyvalue.UpdateKeyValue"
+	// Field-level datastore configuration effects (w3/m82). Like the
+	// maintenance-mode pair these are fixed vocabulary recorded only after the
+	// PATCH that changed the field succeeds — so one atomic UpdatePostgres can
+	// emit more than one of them — and each carries the value it set as a typed
+	// scalar. The generic AuditVerbPostgresUpdated / AuditVerbKeyValueUpdated
+	// rows remain for the fields Render's event vocabulary has no name for
+	// (rename, ip-allow-list, parameter overrides).
+	AuditVerbPostgresHAChanged       = "postgres.SetHighAvailability"
+	AuditVerbPostgresPoolerChanged   = "postgres.SetPooler"
+	AuditVerbPostgresDiskSizeChanged = "postgres.SetDiskSize"
+	AuditVerbKeyValueConfigChanged   = "keyvalue.UpdateConfig"
 	// Team-membership effects (w1/m33). Invite and ChangeRole are spelled exactly
 	// as callerVerb() derives them (deferred-success recording, like SetPlan);
 	// AcceptInvite is recorded explicitly — redemption happens on the auth gate's
@@ -533,12 +556,78 @@ func (b *Base) RecordDatabasePlanChanged(ctx context.Context, d *appv1alpha1.Dat
 	b.recordAudit(ctx, ev)
 }
 
+// RecordDatabaseHighAvailabilityChanged records a successful managed-Postgres
+// high-availability toggle with the value it was set TO. The resulting value
+// rather than a from/to pair, following RecordAutoDeployChanged: Render's
+// postgres_ha_status_changed names the transition and the recorded boolean says
+// which way it went. Recorded only after the CR patch succeeds, and only when
+// the field actually changed, so an idempotent PATCH emits nothing.
+func (b *Base) RecordDatabaseHighAvailabilityChanged(ctx context.Context, d *appv1alpha1.Database, enabled bool) {
+	ev, ok := b.databaseAuditEvent(ctx, d, AuditVerbPostgresHAChanged)
+	if !ok {
+		return
+	}
+	ev.HighAvailabilityEnabled = &enabled
+	b.recordAudit(ctx, ev)
+}
+
+// RecordDatabaseConnectionPoolChanged is the pooler sibling of
+// RecordDatabaseHighAvailabilityChanged — Render's
+// postgres_connection_pool_enabled_changed.
+func (b *Base) RecordDatabaseConnectionPoolChanged(ctx context.Context, d *appv1alpha1.Database, enabled bool) {
+	ev, ok := b.databaseAuditEvent(ctx, d, AuditVerbPostgresPoolerChanged)
+	if !ok {
+		return
+	}
+	ev.ConnectionPoolEnabled = &enabled
+	b.recordAudit(ctx, ev)
+}
+
+// RecordDatabaseDiskSizeChanged records a successful managed-Postgres storage
+// resize with the size it grew TO, in GB. Postgres storage is grow-only, so the
+// single resulting value is the whole fact.
+func (b *Base) RecordDatabaseDiskSizeChanged(ctx context.Context, d *appv1alpha1.Database, sizeGB int32) {
+	ev, ok := b.databaseAuditEvent(ctx, d, AuditVerbPostgresDiskSizeChanged)
+	if !ok {
+		return
+	}
+	ev.DiskSizeGB = &sizeGB
+	b.recordAudit(ctx, ev)
+}
+
+// RecordKeyValueConfigChanged records a successful Key Value eviction- or
+// persistence-setting change — the write the operator converges by rewriting
+// the Valkey server args, which rolls the StatefulSet's single pod (Render's
+// key_value_config_restart). Both resulting values are recorded, not only the
+// changed one: the event states the configuration the instance restarted INTO.
+// Empty values (never configured, so the server default applies) stay nil.
+func (b *Base) RecordKeyValueConfigChanged(ctx context.Context, kv *appv1alpha1.KeyValue, maxmemoryPolicy, persistenceMode string) {
+	ev, ok := b.keyValueAuditEvent(ctx, kv, AuditVerbKeyValueConfigChanged)
+	if !ok {
+		return
+	}
+	if maxmemoryPolicy != "" {
+		ev.MaxmemoryPolicy = &maxmemoryPolicy
+	}
+	if persistenceMode != "" {
+		ev.PersistenceMode = &persistenceMode
+	}
+	b.recordAudit(ctx, ev)
+}
+
 func (b *Base) databaseEffectEvent(ctx context.Context, d *appv1alpha1.Database, effect DatabaseAuditEffect) (AuditEvent, bool) {
 	verb, ok := databaseAuditVerbs[effect]
 	if !ok {
 		log.Printf("audit: unknown database effect %d", effect)
 		return AuditEvent{}, false
 	}
+	return b.databaseAuditEvent(ctx, d, verb)
+}
+
+// databaseAuditEvent builds the workspace-resolved, dpg-targeted skeleton every
+// managed-Postgres effect row shares — the enumerated effects above and the
+// field-level configuration verbs alike.
+func (b *Base) databaseAuditEvent(ctx context.Context, d *appv1alpha1.Database, verb string) (AuditEvent, bool) {
 	resource, err := b.resourceWorkspace(ctx, d.Labels)
 	if err != nil {
 		log.Printf("audit: resolve database-effect resource: %v", err)
@@ -583,6 +672,11 @@ func (b *Base) keyValueEffectEvent(ctx context.Context, kv *appv1alpha1.KeyValue
 		log.Printf("audit: unknown key-value effect %d", effect)
 		return AuditEvent{}, false
 	}
+	return b.keyValueAuditEvent(ctx, kv, verb)
+}
+
+// keyValueAuditEvent is databaseAuditEvent's Key Value twin.
+func (b *Base) keyValueAuditEvent(ctx context.Context, kv *appv1alpha1.KeyValue, verb string) (AuditEvent, bool) {
 	resource, err := b.resourceWorkspace(ctx, kv.Labels)
 	if err != nil {
 		log.Printf("audit: resolve key-value plan-change resource: %v", err)

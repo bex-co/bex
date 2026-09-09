@@ -317,4 +317,3 @@ func TestDatabaseDeletionDoesNotStampStalledInWindow(t *testing.T) {
 		t.Fatalf("healthy in-progress deletion stamped DeletionStalled: %+v", cond)
 	}
 }
-
