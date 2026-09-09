@@ -190,6 +190,18 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "更新时间",
     description: "Env-group updated timestamp label",
   },
+  "envGroups.availabilityLabel": {
+    message: "状态",
+    description: "Env-group availability label when busy or repair-required",
+  },
+  "envGroups.availabilityBusy": {
+    message: "正在保存 — 请稍后重试",
+    description: "Busy environment-group availability message",
+  },
+  "envGroups.availabilityRepairRequired": {
+    message: "需要恢复 — 若持续请联系支持",
+    description: "Repair-required environment-group availability message",
+  },
   "envGroups.unavailableTitle": {
     message: "环境变量组不可用",
     description: "Secret store unavailable state title",

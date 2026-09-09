@@ -43,6 +43,7 @@ const GROUP: EnvGroupView = {
   createdAt: null,
   updatedAt: null,
   revision: "1",
+  availability: null,
   serviceLinks: [],
   envVarKeys: ["FOO"],
   secretFileNames: [],

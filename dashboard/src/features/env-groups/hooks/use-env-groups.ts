@@ -52,6 +52,10 @@ export function mapEnvGroup(
     createdAt: raw.createdAt ?? null,
     updatedAt: raw.updatedAt ?? null,
     revision: raw.revision ?? null,
+    availability:
+      raw.availability === "busy" || raw.availability === "repair_required"
+        ? raw.availability
+        : null,
     serviceLinks: (raw.serviceLinks ?? []).filter(
       (serviceId): serviceId is string => serviceId != null,
     ),

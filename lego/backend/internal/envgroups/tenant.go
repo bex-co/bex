@@ -174,7 +174,8 @@ func (s *Service) writeMetaLocator(ctx context.Context, gid, workspace string) e
 // leftover (an unmigrated full copy, or the locator writeMeta left behind) —
 // correct regardless of whether the group has been migrated yet.
 func (s *Service) deleteGroupArtifacts(ctx context.Context, workspace, gid string) error {
-	for _, path := range []string{metaPath(gid), envPath(gid), filesPath(gid), revisionPath(gid)} {
+	_ = s.clearOpArtifacts(ctx, workspace, gid, "")
+	for _, path := range []string{metaPath(gid), envPath(gid), filesPath(gid), revisionPath(gid), opRecordPath(gid)} {
 		if err := s.deleteGroupPath(ctx, workspace, path); err != nil {
 			return err
 		}
