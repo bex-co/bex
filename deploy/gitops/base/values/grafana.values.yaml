@@ -609,8 +609,11 @@ dashboards:
     # Traefik's edge perspective (the recorded §6 gap — no first-party per-route
     # histogram), filtered to the one bounded service label bex-api's Ingress
     # produces; agent-session SLOs (w5/m81) and SSH-gateway saturation ride
-    # their own registries. NB the agent-session panels depend on the bex-api
-    # scrape job's keep-list (prometheus.yaml) admitting bex_agent_session_* —
+    # their own registries. w3/m83 t006 adds the bex-api eventing surfaces that
+    # exported health series with no rule: outbound webhook attempt outcomes,
+    # push delivery freshness + queue depth, and agent-session provision
+    # outcomes. NB every one of those panels depends on the bex-api scrape job's
+    # keep-list (prometheus.yaml) admitting bex_(agent_session|webhooks|push)_* —
     # sustained No data there means the keep-list dropped them, which is
     # exactly the visible pressure ADR088 §6 wants a panel to apply.
     bex-api-gateways:
@@ -830,6 +833,125 @@ dashboards:
                   "refId": "A",
                   "expr": "sum(increase(bex_webhooks_delivery_admissions_total{result=\"capped\"}[15m]))",
                   "legendFormat": "capped"
+                }
+              ]
+            },
+            {
+              "id": 9,
+              "type": "timeseries",
+              "title": "Webhook delivery attempts + fleet failure ratio",
+              "description": "Completed attempts by terminal result, with the fleet-wide failure ratio WebhookDeliveryFailing evaluates (red line at 90%; warns after 30m above a 36-attempts/30m floor). The counter carries no endpoint label by design, so a high ratio here is read as bex's own egress only after checking that the failures are actually spread across endpoints.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 35 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.9 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (result) (increase(bex_webhooks_delivery_attempts_total[30m]))",
+                  "legendFormat": "attempts ({{result}})"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum(rate(bex_webhooks_delivery_attempts_total{result=\"failed\"}[30m])) / sum(rate(bex_webhooks_delivery_attempts_total[30m]))",
+                  "legendFormat": "failure ratio"
+                }
+              ]
+            },
+            {
+              "id": 10,
+              "type": "timeseries",
+              "title": "Agent sandbox provision outcomes + failure ratio (1h)",
+              "description": "Provision attempts by outcome and the ratio AgentSessionProvisionFailing evaluates (red line at 25%; warns after 15m above a 10-provisions/hour floor). Pairs with the provision p95 panel: that one shows a slow provision, this one a failed session that never boots.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 35 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.25 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (outcome) (increase(bex_agent_session_provision_seconds_count[1h]))",
+                  "legendFormat": "provisions ({{outcome}})"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum(rate(bex_agent_session_provision_seconds_count{outcome=\"failed\"}[1h])) / sum(rate(bex_agent_session_provision_seconds_count[1h]))",
+                  "legendFormat": "failure ratio"
+                }
+              ]
+            },
+            {
+              "id": 11,
+              "type": "timeseries",
+              "title": "Push: time since last successful delivery",
+              "description": "Age of bex_push_last_success_timestamp_seconds — the numerator of PushDeliveryStale (red line at 2h). The gauge is process-local and starts at zero, so the age jumps after a bex-api restart and drops back within one worker poll; a plateau above the line with queued rows next door is the real failure.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 44 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 7200 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "max(time() - bex_push_last_success_timestamp_seconds)",
+                  "legendFormat": "age since last success"
+                }
+              ]
+            },
+            {
+              "id": 12,
+              "type": "timeseries",
+              "title": "Push queue rows by state",
+              "description": "The other half of PushDeliveryStale: staleness only pages while send_pending/receipt_pending rows are actually waiting, so an idle night stays silent. terminal is drawn for context, not alerted on.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 44 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (state) (bex_push_queue_rows)",
+                  "legendFormat": "{{state}}"
                 }
               ]
             }

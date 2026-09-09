@@ -71,7 +71,7 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 ### Observability, metering, billing, notifications
 
 - [ADR010-observability.md](ADR010-observability.md) — logs (query + live-tail) + metrics
-- [ADR088-platform-observability-ui.md](ADR088-platform-observability-ui.md) — Grafana at `obs.bex.co` (GitOps, monitoring ns), OIDC via Hydra, ops-workspace gate at consent; §6 = per-dashboard SLI/metric baseline + every-alert-gets-a-panel rule
+- [ADR088-platform-observability-ui.md](ADR088-platform-observability-ui.md) — Grafana at `obs.bex.co` (GitOps, monitoring ns), OIDC via Hydra, ops-workspace gate at consent; §6 = per-dashboard SLI/metric baseline, every-alert-gets-a-panel rule, and the tenant-facing surface coverage table (alert / scheduled probe / waiver per surface)
 - [ADR023-usage-metering.md](ADR023-usage-metering.md) — hourly rollup + `GET /v1/usage`
 - [ADR040-billing-metronome.md](ADR040-billing-metronome.md) — Stripe Billing: `usage_hourly` → Customers/Subscriptions, `BEX_STRIPE_SECRET_KEY`
 - [ADR030-pricing.md](ADR030-pricing.md) — price sheet + `estimatedCost` (advisory; invoices = ADR040)

@@ -1,0 +1,207 @@
+name: Isolation matrix (weekly)
+
+# w3/m83/t005. Re-prove the security invariants that were verified once and then
+# never again: ADR043's tenant namespace reachability matrix and ADR042/w3/m35's
+# sandbox boundary. Both were validated on the real substrate — the namespace
+# matrix on 2026-07-29, the sandbox matrix during m35 — and both have been
+# resting on that single observation ever since.
+#
+# The failure class this guards is specific and already happened once: the
+# CEL-vs-native-selector admission gap found late in m35, where a policy that
+# read correctly did not select the pods it was meant to. Nothing in unit CI can
+# see that — it needs real pods on real nodes under the real CNI. So the matrix
+# runs weekly against production and opens an issue when a DENY stops denying.
+#
+# Both scripts create disposable fixtures and clean up after themselves; the
+# leftover audit at the end is the check on that promise, not a substitute for
+# it. Cadence is weekly because the probes create pods and (for the sandbox leg)
+# real workspaces and OpenFGA tuples.
+#
+# The sandbox leg's model-key check is NOT run here. scripts/verify-sandbox-isolation.sh
+# gates it behind BEX_VERIFY_AGENT_DRIVER=1 + BEX_VERIFY_AGENT_MODEL=1 (both
+# default 0), and it costs real model tokens on every run. The other ~40 boundary
+# checks — the ones that would catch an admission regression — do not need it, so
+# the weekly run stays free and the paid turn remains an explicit manual
+# invocation. Wiring it later means setting those two flags plus
+# BEX_LIVE_AGENT_MODEL_API_KEY on this job; no script change is required.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Tuesday 03:41 UTC. Deliberately a different day from deploy-canary.yml:
+    # these probes and that one both touch the production substrate, and a
+    # concurrent build + probe-pod sweep makes a red run ambiguous.
+    - cron: "41 3 * * 2"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  # Two overlapping runs would race each other's probe pods and workspaces.
+  group: isolation-matrix
+  cancel-in-progress: false
+
+jobs:
+  isolation-matrix:
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BEX_API_URL: ${{ vars.BEX_API_URL || 'https://api.bex.co' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+      # Same not-every-host-has-gh guard as ssh-edge-liveness.yml: one host in
+      # the bex-production pool lacks the gh CLI, and the issue bookkeeping
+      # below fails on `gh: command not found` even when the probes are healthy.
+      - name: Ensure gh CLI
+        run: |
+          command -v gh >/dev/null && exit 0
+          v=2.100.0
+          curl -fsSL -o "$RUNNER_TEMP/gh.tgz" "https://github.com/cli/cli/releases/download/v${v}/gh_${v}_linux_arm64.tar.gz"
+          echo "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961  $RUNNER_TEMP/gh.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gh.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gh_${v}_linux_arm64/bin" >> "$GITHUB_PATH"
+      # Same credential staging as deploy.yml: everything under $RUNNER_TEMP
+      # (auto-deleted at job end), never ~/.ssh or a fixed path on the shared
+      # self-hosted runner, and the control-plane host key is pinned so the
+      # fetch fails closed rather than trusting an unknown key.
+      - name: Get app cluster kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >> "$GITHUB_ENV"
+      # The SSH key was only ever needed to fetch admin.conf.
+      - name: Scrub SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+      # ADR043's matrix: cross-workspace DENY, platform-service DENY, node and
+      # cloud-metadata egress DENY, same-workspace and public-internet ALLOW.
+      # The harness body is the pre-ADR043 shared-namespace shape (two workspaces
+      # distinguished by label inside APPS_NS); it still exercises the real
+      # per-App and platform policies, which is what an admission regression
+      # would break. Re-running the per-namespace form needs two real workspaces
+      # and is recorded in the script header as the manual variant.
+      - name: Tenant isolation matrix (ADR043)
+        id: tenant
+        run: |
+          code=0
+          bash scripts/verify-tenant-isolation.sh > tenant-isolation.txt 2>&1 || code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = 0 ]; then echo "down=false" >> "$GITHUB_OUTPUT"; else echo "down=true" >> "$GITHUB_OUTPUT"; fi
+          cat tenant-isolation.txt
+      - name: Open or update the tenant-isolation issue
+        if: always() && steps.tenant.outputs.down == 'true'
+        run: |
+          gh label create tenant-isolation-down --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "A tenant-isolation DENY stopped denying (ADR043, w3/m83)" --force
+          body="The weekly ADR043 tenant-isolation matrix failed on production (exit ${{ steps.tenant.outputs.code }}). The failing probe names are in the output below."$'\n\n'
+          body+="Probe output:"$'\n\n```\n'"$(cat tenant-isolation.txt)"$'\n```\n\n'
+          body+="A failed DENY probe means one tenant can reach something it must not — treat as a live isolation breach, not a flaky test. First suspect is a policy whose selector no longer matches the pods it names (the CEL-vs-native-selector class found in w3/m35): compare the CiliumNetworkPolicy/NetworkPolicy selectors against the labels the operator actually stamps on tenant pods. A failed ALLOW probe is the opposite failure and breaks working tenants."
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-isolation-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Tenant isolation matrix is red on production" \
+              --label tenant-isolation-down --body "$body"
+          fi
+      - name: Close the tenant-isolation issue after recovery
+        if: always() && steps.tenant.outputs.down == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-isolation-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "The ADR043 reachability matrix is compliant again on production."
+          fi
+      # The sandbox leg provisions four disposable machine principals through the
+      # real Hydra/tenant-store/OpenFGA paths, runs the boundary matrix, and
+      # removes every credential, tuple, workspace, and local file. BEX_LIVE_VERIFY=1
+      # is its explicit authorization to create those fixtures.
+      #
+      # Exit 2 is the script's "I was not given what I need" code (missing tool
+      # or unset variable on this runner), which is an operator to-do, not an
+      # isolation breach — it is reported as a notice and does not open the
+      # security label. Any other non-zero exit is a real failure.
+      - name: Sandbox isolation matrix (ADR042 / w3/m35)
+        id: sandbox
+        if: always()
+        env:
+          BEX_LIVE_VERIFY: "1"
+        run: |
+          code=0
+          bash scripts/verify-sandbox-isolation-live.sh > sandbox-isolation.txt 2>&1 || code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = 0 ]; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          elif [ "$code" = 2 ]; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::sandbox isolation matrix could not run (exit 2 — missing tool or environment on this runner); see the step log. Not treated as an isolation failure."
+          else
+            echo "down=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat sandbox-isolation.txt
+      - name: Open or update the sandbox-isolation issue
+        if: always() && steps.sandbox.outputs.down == 'true'
+        run: |
+          gh label create sandbox-isolation-down --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "A sandbox boundary check failed on production (ADR042, w3/m83)" --force
+          body="The weekly sandbox isolation matrix failed on production (exit ${{ steps.sandbox.outputs.code }})."$'\n\n'
+          body+="Probe output:"$'\n\n```\n'"$(cat sandbox-isolation.txt)"$'\n```\n\n'
+          body+="These are adversarial checks across the owner/member/admin/cross-workspace matrix (docs/ADR042-sandbox-cluster-substrate.md, w3/m35). A failure means a principal reached a sandbox or credential outside its authorization. The wrapper removes its own fixtures on every exit path; if the run died mid-provision, confirm no \`m35-a-*\`/\`m35-b-*\` workspace or bootstrap client survives before closing."
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label sandbox-isolation-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Sandbox isolation matrix is red on production" \
+              --label sandbox-isolation-down --body "$body"
+          fi
+      - name: Close the sandbox-isolation issue after recovery
+        if: always() && steps.sandbox.outputs.down == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label sandbox-isolation-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "The sandbox boundary matrix passed again on production."
+          fi
+      # Both probes promise to clean up; this is the audit on that promise. It
+      # reports rather than fails, because a leftover fixture is a hygiene
+      # problem and must not be confused with an isolation breach.
+      - name: Audit for leftover fixtures
+        if: always()
+        run: |
+          echo "probe namespaces still present:"
+          kubectl get ns -o name | grep -E 'probe|m35-[ab]-' || echo "  none"
+          echo "verify-iso Apps still present:"
+          kubectl get apps.app.bex.co -A -o name | grep -E 'verify-iso|egress-probe' || echo "  none"
+      - name: Fail the run when an isolation invariant regressed
+        if: always() && (steps.tenant.outputs.down == 'true' || steps.sandbox.outputs.down == 'true')
+        run: |
+          if [[ "${{ steps.tenant.outputs.down }}" == true ]]; then
+            echo "::error::ADR043 tenant-isolation matrix is red on production" >&2
+          fi
+          if [[ "${{ steps.sandbox.outputs.down }}" == true ]]; then
+            echo "::error::ADR042 sandbox isolation matrix is red on production" >&2
+          fi
+          exit 1
+      # Last, and only after every cluster read: admin.conf outlives the SSH key
+      # because the probes need it, so it is scrubbed here rather than above.
+      - name: Scrub the cluster kubeconfig
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"

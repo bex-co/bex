@@ -74,6 +74,13 @@ set_file BEX_SSH_PRIVATE_KEY "${BEX_SSH_PRIVATE_KEY_FILE:?set BEX_SSH_PRIVATE_KE
 # cluster/openbao-drill workflows assert mandatory-pin mode and abort without it.
 set_scalar BEX_SSH_KNOWN_HOSTS
 
+# The canary workspace's scoped API key (w3/m83, docs/ADR088 §6): the credential
+# the scheduled tenant-view and deploy canaries authenticate with. Scoped to the
+# first-party canary workspace alone, so this is the least-privileged secret in
+# the set; the probes refuse to run if it can see anything else. Empty => both
+# scheduled probes soft-skip, which is why it is not `:?`-required here.
+set_scalar BEX_CANARY_API_KEY
+
 # Optional: the bex-co/homebrew-tap write deploy key (cli-release.yml's
 # formula-push step); skipping leaves the release workflow's tap step off.
 if [ -n "${BEX_TAP_PUSH_KEY_FILE:-}" ]; then
