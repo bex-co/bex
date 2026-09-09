@@ -107,6 +107,7 @@ type groupPatchTxn struct {
 	versioned          core.VersionedSecretKV
 	claimVersion       uint64
 	generation         uint64
+	opID               string
 	oldEnv             map[string]string
 	oldFiles           map[string]string
 	oldMeta            meta
@@ -144,6 +145,9 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	if !ok {
 		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
 	}
+	if err := s.ensureGroupOperable(ctx, m.workspace, gid); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
 	revision, err := s.getRevisionSnapshot(ctx, versioned, m.workspace, gid)
 	if err != nil || revision.Data["state"] == "repair_required" {
 		return EnvironmentPatchResult{}, envGroupRestorationFailed()
@@ -164,64 +168,57 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	// Preflight the complete merged maps before claiming the revision. The
 	// claim itself is an OpenBao mutation, so quota failures must not leave a
 	// busy group behind and must be independent of which patch form was used.
-	preflightEnv, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
-	if err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	preflightFiles, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
-	if err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	if err := core.ApplyEnvVarPatch(preflightEnv, patch.EnvVars); err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	if err := core.ApplySecretFilePatch(preflightFiles, patch.SecretFiles); err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	if err := secrets.ValidateEnvMapQuota(preflightEnv); err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	if err := secrets.ValidateFilesMapQuota(preflightFiles); err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	claimVersion, err := versioned.PutCAS(groupCtx(ctx, m.workspace), revisionPath(gid), map[string]string{
-		"state": "busy", "generation": strconv.FormatUint(generation, 10),
-	}, revision.Version)
-	if err != nil {
-		if errors.Is(err, core.ErrConflict) {
-			return EnvironmentPatchResult{}, envGroupRevisionConflict()
-		}
-		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
-	}
-
 	oldEnv, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
 	if err != nil {
-		return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, groupPatchTxn{gid: gid, versioned: versioned, claimVersion: claimVersion, generation: generation, oldMeta: m}, false)
+		return EnvironmentPatchResult{}, err
 	}
 	oldFiles, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
 	if err != nil {
-		return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, groupPatchTxn{gid: gid, versioned: versioned, claimVersion: claimVersion, generation: generation, oldMeta: m}, false)
+		return EnvironmentPatchResult{}, err
 	}
 	env, files := core.CloneStringMap(oldEnv), core.CloneStringMap(oldFiles)
 	if err := core.ApplyEnvVarPatch(env, patch.EnvVars); err != nil {
-		if _, releaseErr := s.releaseGroupPatch(ctx, m.workspace, gid, versioned, claimVersion, generation, "idle"); releaseErr != nil {
-			return EnvironmentPatchResult{}, envGroupRestorationFailed()
-		}
 		return EnvironmentPatchResult{}, err
 	}
 	if err := core.ApplySecretFilePatch(files, patch.SecretFiles); err != nil {
-		if _, releaseErr := s.releaseGroupPatch(ctx, m.workspace, gid, versioned, claimVersion, generation, "idle"); releaseErr != nil {
-			return EnvironmentPatchResult{}, envGroupRestorationFailed()
-		}
+		return EnvironmentPatchResult{}, err
+	}
+	if err := secrets.ValidateEnvMapQuota(env); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	if err := secrets.ValidateFilesMapQuota(files); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
 	changedEnv := !maps.Equal(oldEnv, env)
 	changedFiles := !maps.Equal(oldFiles, files)
 
+	// Persist recovery evidence before the busy claim (w4/m98).
+	opID, err := s.preparePatchOperation(ctx, m.workspace, gid, generation, oldEnv, oldFiles, env, files, changedEnv, changedFiles)
+	if err != nil {
+		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
+	}
+	claimVersion, err := versioned.PutCAS(groupCtx(ctx, m.workspace), revisionPath(gid), revisionClaimData("busy", generation, opID), revision.Version)
+	if err != nil {
+		_ = s.clearOpArtifacts(ctx, m.workspace, gid, opID)
+		if errors.Is(err, core.ErrConflict) {
+			return EnvironmentPatchResult{}, envGroupRevisionConflict()
+		}
+		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
+	}
+	if err := s.commitOpRecord(ctx, m.workspace, gid, groupOpRecord{
+		id: opID, kind: opKindPatch, phase: opPhaseAdmitted, generation: generation,
+		leaseUntil: s.Now().UTC().Add(s.opLease()),
+		envChanged: changedEnv, filesChanged: changedFiles,
+	}); err != nil {
+		_, _ = s.releaseGroupPatch(ctx, m.workspace, gid, versioned, claimVersion, generation, "idle")
+		_ = s.clearOpArtifacts(ctx, m.workspace, gid, opID)
+		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
+	}
+
 	txn := groupPatchTxn{
 		gid: gid, versioned: versioned, claimVersion: claimVersion, generation: generation,
 		oldEnv: core.CloneStringMap(oldEnv), oldFiles: core.CloneStringMap(oldFiles), oldMeta: m,
-		envChanged: changedEnv, filesChanged: changedFiles,
+		envChanged: changedEnv, filesChanged: changedFiles, opID: opID,
 	}
 	if changedEnv {
 		txn.oldEnvProjection, err = s.snapshotGroupSecret(ctx, m.workspace, envSecretName(gid))
@@ -243,6 +240,9 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 		if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
 			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
 		}
+		if err := s.advanceOpPhase(ctx, m.workspace, gid, opID, opPhaseEnvWritten); err != nil {
+			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
+		}
 	}
 	if changedFiles {
 		if err := s.storeMap(ctx, m.workspace, filesPath(gid), files); err != nil {
@@ -253,11 +253,15 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 		}
 	}
 	if changedEnv || changedFiles {
+		if err := s.advanceOpPhase(ctx, m.workspace, gid, opID, opPhaseFilesWritten); err != nil {
+			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
+		}
 		touched, err := s.touch(ctx, gid, m)
 		if err != nil {
 			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
 		}
 		m = touched
+		_ = s.advanceOpPhase(ctx, m.workspace, gid, opID, opPhaseCommitted)
 	}
 	newGeneration := generation
 	if changedEnv || changedFiles {
@@ -267,6 +271,7 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	if err != nil {
 		return EnvironmentPatchResult{}, envGroupRestorationFailed()
 	}
+	_ = s.clearOpArtifacts(ctx, m.workspace, gid, opID)
 
 	result := EnvironmentPatchResult{
 		EnvVarKeys:         slices.Sorted(maps.Keys(env)),
@@ -344,9 +349,7 @@ func (s *Service) pruneStaleLinks(ctx context.Context, gid string, m meta, stale
 }
 
 func (s *Service) releaseGroupPatch(ctx context.Context, workspace, gid string, versioned core.VersionedSecretKV, claimVersion, generation uint64, state string) (uint64, error) {
-	version, err := versioned.PutCAS(groupCtx(context.WithoutCancel(ctx), workspace), revisionPath(gid), map[string]string{
-		"state": state, "generation": strconv.FormatUint(generation, 10),
-	}, claimVersion)
+	version, err := versioned.PutCAS(groupCtx(context.WithoutCancel(ctx), workspace), revisionPath(gid), revisionClaimData(state, generation, ""), claimVersion)
 	return version, err
 }
 
@@ -409,5 +412,6 @@ func (s *Service) abortGroupPatch(ctx context.Context, txn groupPatchTxn, restor
 	if restoreErr != nil || releaseErr != nil {
 		return envGroupRestorationFailed()
 	}
+	_ = s.clearOpArtifacts(ctx, txn.oldMeta.workspace, txn.gid, txn.opID)
 	return envGroupUpdateRestored()
 }

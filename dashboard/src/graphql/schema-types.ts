@@ -664,6 +664,7 @@ export type DiskSnapshot = {
 
 export type EnvGroup = {
   __typename: 'EnvGroup';
+  availability: Maybe<Scalars['String']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   envVars: Maybe<Array<Maybe<EnvGroupVar>>>;
   environmentId: Maybe<Scalars['String']['output']>;
@@ -1784,6 +1785,11 @@ export type MutationResumeServiceArgs = {
 
 export type MutationRevokeApiKeyArgs = {
   id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationRevokeNotificationDeviceSubscriptionsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3088,6 +3094,16 @@ export type QueryValidateBlueprintArgs = {
 
 export type QueryViewerCapabilitiesArgs = {
   fresh?: InputMaybe<Scalars['Boolean']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryWebPushAvailableArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryWebPushVapidPublicKeyArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 

@@ -30,6 +30,16 @@ export function EnvGroupMetadata({
         value={group.updatedAt}
         timestamp
       />
+      {group.availability ? (
+        <MetadataItem
+          label={t("envGroups.availabilityLabel")}
+          value={
+            group.availability === "busy"
+              ? t("envGroups.availabilityBusy")
+              : t("envGroups.availabilityRepairRequired")
+          }
+        />
+      ) : null}
     </dl>
   );
 }

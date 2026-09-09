@@ -10,6 +10,8 @@ export interface EnvGroupView {
   createdAt: string | null;
   updatedAt: string | null;
   revision: string | null;
+  /** Non-null when the group is busy or needs repair after an interrupted save. */
+  availability: "busy" | "repair_required" | null;
   serviceLinks: string[];
   envVarKeys: string[];
   secretFileNames: string[];

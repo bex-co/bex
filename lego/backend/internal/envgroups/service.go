@@ -85,6 +85,11 @@ type Service struct {
 	// count is now a prefix-scoped list (listGroupIDs) rather than a global
 	// metadata sweep, so this quota is what bounds the walk — no cache needed.
 	MaxEnvGroups int
+
+	// OpLease bounds how long a busy content/clone operation may run before
+	// another API instance may reclaim it from durable recovery evidence
+	// (w4/m98). Zero uses defaultEnvGroupOpLease.
+	OpLease time.Duration
 }
 
 // EnvVarView is a group env var ({key, value}); value is empty in list/get
@@ -186,6 +191,12 @@ type EnvGroupView struct {
 	CreatedAt     string           `json:"createdAt,omitempty"`
 	UpdatedAt     string           `json:"updatedAt,omitempty"`
 	Revision      string           `json:"revision,omitempty"`
+	// Availability is empty for a healthy idle group. "busy" means an active
+	// content/clone lease; "repair_required" means automatic recovery failed.
+	// When set, EnvVars/SecretFiles/Revision describe only what is safe to show
+	// (often empty keys) so a stranded group cannot poison the workspace list
+	// (w4/m98).
+	Availability string `json:"availability,omitempty"`
 }
 
 // --- store paths + materialized Secret names ----------------------------------
@@ -274,11 +285,36 @@ func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupList
 	for _, group := range matched {
 		view, err := s.viewFromMeta(ctx, group.id, group.meta)
 		if err != nil {
+			// One stranded group must not block the whole workspace list (w4/m98).
+			if errors.Is(err, core.ErrConflict) {
+				view = EnvGroupView{
+					ID: group.id, Name: group.name, OwnerID: group.workspace,
+					EnvironmentID: group.environment, ServiceLinks: append([]string{}, group.links...),
+					EnvVars: []EnvVarView{}, SecretFiles: []SecretFileView{},
+					CreatedAt: group.createdAt, UpdatedAt: group.updatedAt,
+					Availability: availabilityFromConflict(err),
+				}
+				out = append(out, view)
+				continue
+			}
 			return nil, err
 		}
 		out = append(out, view)
 	}
 	return out, nil
+}
+
+func availabilityFromConflict(err error) string {
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		switch coded.Code {
+		case "ENV_GROUP_RESTORATION_FAILED":
+			return "repair_required"
+		case "ENV_GROUP_REVISION_CONFLICT", "ENV_GROUP_UPDATE_RESTORED":
+			return "busy"
+		}
+	}
+	return "busy"
 }
 
 func matchesEnvGroupFilter(group scopedMeta, filter EnvGroupListFilter) bool {
@@ -1592,6 +1628,38 @@ func (s *Service) touch(ctx context.Context, gid string, m meta) (meta, error) {
 // meta plus contents — the second half of view lookups that already hold meta
 // (authorizeGroup/ListEnvGroups), so it's never re-read.
 func (s *Service) viewFromMeta(ctx context.Context, gid string, m meta) (EnvGroupView, error) {
+	links := m.links
+	if links == nil {
+		links = []string{}
+	}
+	base := EnvGroupView{
+		ID: gid, Name: m.name, OwnerID: m.workspace, EnvironmentID: m.environment,
+		ServiceLinks: links, CreatedAt: m.createdAt, UpdatedAt: m.updatedAt,
+		EnvVars: []EnvVarView{}, SecretFiles: []SecretFileView{},
+	}
+	revision := ""
+	if versioned, ok := s.Store.(core.VersionedSecretKV); ok {
+		if err := s.ensureGroupOperable(ctx, m.workspace, gid); err != nil {
+			if errors.Is(err, core.ErrConflict) {
+				base.Availability = availabilityFromConflict(err)
+				return base, nil
+			}
+			return EnvGroupView{}, err
+		}
+		snapshot, revisionErr := s.getRevisionSnapshot(ctx, versioned, m.workspace, gid)
+		if revisionErr != nil {
+			return EnvGroupView{}, core.ErrSecretsUnavailable
+		}
+		if snapshot.Data["state"] == "repair_required" {
+			base.Availability = "repair_required"
+			return base, nil
+		}
+		if snapshot.Data["state"] == "busy" {
+			base.Availability = "busy"
+			return base, nil
+		}
+		revision = encodeEnvGroupRevision(revisionGeneration(snapshot.Data))
+	}
 	env, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
 	if err != nil {
 		return EnvGroupView{}, err
@@ -1600,36 +1668,10 @@ func (s *Service) viewFromMeta(ctx context.Context, gid string, m meta) (EnvGrou
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	links := m.links
-	if links == nil {
-		links = []string{}
-	}
-	revision := ""
-	if versioned, ok := s.Store.(core.VersionedSecretKV); ok {
-		snapshot, revisionErr := s.getRevisionSnapshot(ctx, versioned, m.workspace, gid)
-		if revisionErr != nil {
-			return EnvGroupView{}, core.ErrSecretsUnavailable
-		}
-		if snapshot.Data["state"] == "repair_required" {
-			return EnvGroupView{}, envGroupRestorationFailed()
-		}
-		if snapshot.Data["state"] == "busy" {
-			return EnvGroupView{}, envGroupRevisionConflict()
-		}
-		revision = encodeEnvGroupRevision(revisionGeneration(snapshot.Data))
-	}
-	return EnvGroupView{
-		ID:            gid,
-		Name:          m.name,
-		OwnerID:       m.workspace,
-		EnvironmentID: m.environment,
-		ServiceLinks:  links,
-		EnvVars:       envKeyViews(env),
-		SecretFiles:   fileNameViews(files),
-		CreatedAt:     m.createdAt,
-		UpdatedAt:     m.updatedAt,
-		Revision:      revision,
-	}, nil
+	base.EnvVars = envKeyViews(env)
+	base.SecretFiles = fileNameViews(files)
+	base.Revision = revision
+	return base, nil
 }
 
 // requireGroup returns a group's meta or core.ErrNotFound when it doesn't exist.

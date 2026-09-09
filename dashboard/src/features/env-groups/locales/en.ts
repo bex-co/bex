@@ -193,6 +193,18 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Updated",
     description: "Env-group updated timestamp label",
   },
+  "envGroups.availabilityLabel": {
+    message: "Status",
+    description: "Env-group availability label when busy or repair-required",
+  },
+  "envGroups.availabilityBusy": {
+    message: "Save in progress — retry shortly",
+    description: "Busy environment-group availability message",
+  },
+  "envGroups.availabilityRepairRequired": {
+    message: "Recovery needed — contact support if this persists",
+    description: "Repair-required environment-group availability message",
+  },
   "envGroups.unavailableTitle": {
     message: "Environment groups unavailable",
     description: "Secret store unavailable state title",

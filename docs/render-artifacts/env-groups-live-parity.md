@@ -32,7 +32,7 @@ The browser uses GraphQL. REST and MCP are thin translations over the same Core 
 - REST `PATCH /v1/env-groups/{id}/contents`, GraphQL `patchEnvGroupEnvironment`, and MCP `patch_env_group_environment` accept the same sparse patch, opaque revision, and `save_only | deploy | rebuild` modes;
 - REST `PATCH .../environment`, GraphQL `moveEnvGroup`, and MCP `move_env_group` share atomic scope validation;
 - REST `POST .../clone`, GraphQL `cloneEnvGroup`, and MCP `clone_env_group` clone only on the server and return metadata/names, never values;
-- `ENV_GROUP_NAME_EXISTS`, `ENV_GROUP_NAME_AMBIGUOUS`, `ENV_GROUP_METADATA_CONFLICT`, revision conflicts, and restoration outcomes map consistently across adapters.
+- `ENV_GROUP_NAME_EXISTS`, `ENV_GROUP_NAME_AMBIGUOUS`, `ENV_GROUP_METADATA_CONFLICT`, revision conflicts, restoration outcomes, and optional `availability` (`busy` / `repair_required`) map consistently across adapters.
 
 Render has no official env-group MCP tools in the observed/documented surface. Bex's MCP tools are deliberate API extensions, not a claim about Render wire compatibility.
 
@@ -50,6 +50,20 @@ Source review plus deterministic Core tests (not a fresh authenticated Render wa
 | Two concurrent renames | One committed name; losing name claim free | `TestConcurrentRenamesLeaveOneCommittedName` |
 
 Dashboard surfaces unchanged (names-only reads, save modes). Live OpenBao/Kubernetes drill notes: [docs/drills/2026-09-08-env-group-metadata-cas.md](../drills/2026-09-08-env-group-metadata-cas.md).
+
+## Interrupted-save recovery (w4/m98, 2026-09-09)
+
+Source review plus deterministic Core tests (not a fresh authenticated Render walk). Render documents shared configuration and rollout; process-death recovery of an in-flight group save is a Bex reliability guarantee:
+
+| interleaving | expected | coverage |
+| --- | --- | --- |
+| Patch admitted then lease expired | Prior maps restored; group idle | `TestRecoverExpiredPatchRestoresAdmittedOperation` |
+| Patch files_written then lease expired | New maps finalized; group idle | `TestRecoverExpiredPatchFinalizesCommittedMaps` |
+| Active lease | Recovery refused; concurrent writer conflicts | `TestActiveLeaseRejectsConcurrentWriter` |
+| One busy peer in list | Healthy peers returned; busy peer carries `availability` | `TestListEnvGroupsSurfacesBusyWithoutFailingHealthyPeers` |
+| Interrupted clone source lock | Source unlocked without content mutation | `TestRecoverExpiredCloneReleasesSourceLock` |
+
+REST JSON and GraphQL `EnvGroup.availability` expose `busy` / `repair_required`. Dashboard list/detail query the field and show a status row when set. Live kill/restart drill notes: [docs/drills/2026-09-09-env-group-save-recovery.md](../drills/2026-09-09-env-group-save-recovery.md).
 
 ## Cleanup
 

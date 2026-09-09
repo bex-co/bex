@@ -53,6 +53,9 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 	if !ok {
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
+	if err := s.ensureGroupOperable(ctx, source.workspace, sourceID); err != nil {
+		return EnvGroupView{}, err
+	}
 	revision, err := s.getRevisionSnapshot(ctx, versioned, source.workspace, sourceID)
 	if err != nil || revision.Data["state"] == "repair_required" {
 		return EnvGroupView{}, envGroupRestorationFailed()
@@ -61,17 +64,29 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 		return EnvGroupView{}, envGroupRevisionConflict()
 	}
 	generation := revisionGeneration(revision.Data)
-	claimVersion, err := versioned.PutCAS(groupCtx(ctx, source.workspace), revisionPath(sourceID), map[string]string{
-		"state": "busy", "generation": revision.Data["generation"],
-	}, revision.Version)
+	opID, err := s.prepareCloneOperation(ctx, source.workspace, sourceID, generation)
 	if err != nil {
+		return EnvGroupView{}, core.ErrSecretsUnavailable
+	}
+	claimVersion, err := versioned.PutCAS(groupCtx(ctx, source.workspace), revisionPath(sourceID), revisionClaimData("busy", generation, opID), revision.Version)
+	if err != nil {
+		_ = s.clearOpArtifacts(ctx, source.workspace, sourceID, opID)
 		if errors.Is(err, core.ErrConflict) {
 			return EnvGroupView{}, envGroupRevisionConflict()
 		}
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
+	if err := s.commitOpRecord(ctx, source.workspace, sourceID, groupOpRecord{
+		id: opID, kind: opKindClone, phase: opPhaseAdmitted, generation: generation,
+		leaseUntil: s.Now().UTC().Add(s.opLease()),
+	}); err != nil {
+		_, _ = s.releaseGroupPatch(ctx, source.workspace, sourceID, versioned, claimVersion, generation, "idle")
+		_ = s.clearOpArtifacts(ctx, source.workspace, sourceID, opID)
+		return EnvGroupView{}, core.ErrSecretsUnavailable
+	}
 	release := func() error {
 		_, releaseErr := s.releaseGroupPatch(ctx, source.workspace, sourceID, versioned, claimVersion, generation, "idle")
+		_ = s.clearOpArtifacts(ctx, source.workspace, sourceID, opID)
 		return releaseErr
 	}
 	env, err := s.getGroupMap(ctx, source.workspace, envPath(sourceID))

@@ -52,6 +52,7 @@ const WORKSPACE_GROUP: EnvGroupView = {
   createdAt: null,
   updatedAt: null,
   revision: "1",
+  availability: null,
   serviceLinks: ["web"],
   envVarKeys: [],
   secretFileNames: [],

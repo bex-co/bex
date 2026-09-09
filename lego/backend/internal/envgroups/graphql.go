@@ -57,6 +57,7 @@ var envGroupGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"createdAt":     gqlutil.StrField(func(g EnvGroupView) any { return g.CreatedAt }),
 		"updatedAt":     gqlutil.StrField(func(g EnvGroupView) any { return g.UpdatedAt }),
 		"revision":      gqlutil.StrField(func(g EnvGroupView) any { return g.Revision }),
+		"availability":  gqlutil.StrField(func(g EnvGroupView) any { return g.Availability }),
 	},
 })
 

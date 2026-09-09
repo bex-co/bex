@@ -22,6 +22,7 @@ query EnvGroups($ownerId: String) {
     createdAt
     updatedAt
     revision
+    availability
     serviceLinks
     envVars {
       key
@@ -41,6 +42,7 @@ query EnvGroup($id: String!) {
     createdAt
     updatedAt
     revision
+    availability
     serviceLinks
     envVars {
       key
