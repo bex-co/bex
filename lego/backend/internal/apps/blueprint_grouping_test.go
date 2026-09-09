@@ -171,7 +171,12 @@ func TestDisconnectBlueprintSweepsMintedGroupings(t *testing.T) {
 	if len(events) != 2 || events[0].Verb != "apps.BlueprintGrouping.environment_reclaimed" || events[1].Verb != "apps.BlueprintGrouping.project_reclaimed" {
 		t.Fatalf("reclaim audit events = %+v", events)
 	}
-	if b, err := fs.GetBlueprint(context.Background(), "blp-1", "tea-a"); err != nil || b.Status != "disconnected" || b.AutoSync {
-		t.Fatalf("blueprint must be disconnected, got %+v err=%v", b, err)
+	// w8/m37 t001: the disconnected row reads as absent on ordinary lookups,
+	// while the stored row itself stays disconnected (durable, not deleted).
+	if _, err := fs.GetBlueprint(context.Background(), "blp-1", "tea-a"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("disconnected blueprint read = %v, want not-found absence", err)
+	}
+	if b := fs.blueprints["blp-1"]; b.Status != "disconnected" || b.AutoSync {
+		t.Fatalf("stored blueprint must stay disconnected, got %+v", b)
 	}
 }

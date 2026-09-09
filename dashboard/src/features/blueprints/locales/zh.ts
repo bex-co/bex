@@ -473,6 +473,11 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "同步失败",
     description: "Toast shown when syncBlueprint returns an error",
   },
+  "blueprints.syncBusy": {
+    message: "已有同步正在运行——待其完成后重试",
+    description:
+      "Toast shown when syncBlueprint refuses with BLUEPRINT_SYNC_BUSY",
+  },
   // --- Update action ---
   "blueprints.editField": {
     message: "编辑{field}",
@@ -529,6 +534,11 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   "blueprints.disconnectError": {
     message: "断开连接失败",
     description: "Toast shown when disconnectBlueprint returns an error",
+  },
+  "blueprints.disconnectBusy": {
+    message: "同步正在应用中——待其完成后重试断开连接",
+    description:
+      "Toast shown when disconnectBlueprint refuses with BLUEPRINT_SYNC_BUSY",
   },
   // --- Validate action ---
   "blueprints.validateTitle": {

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { DisconnectBlueprintDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 
 export interface UseDisconnectBlueprintResult {
   disconnect: (id: string) => Promise<boolean>;
@@ -23,8 +24,14 @@ export function useDisconnectBlueprint(): UseDisconnectBlueprintResult {
         await mutate({ variables: { id, ownerId: currentWorkspaceId } });
         toast.success(t("blueprints.disconnectSuccess"));
         return true;
-      } catch {
-        toast.error(t("blueprints.disconnectError"));
+      } catch (err) {
+        // Disconnect refused while an apply owns the claim: retry after it
+        // settles (w8/m37 t005).
+        if (hasGraphQLErrorCode(err, "BLUEPRINT_SYNC_BUSY")) {
+          toast.error(t("blueprints.disconnectBusy"));
+        } else {
+          toast.error(t("blueprints.disconnectError"));
+        }
         return false;
       } finally {
         setBusy(false);

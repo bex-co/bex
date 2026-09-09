@@ -169,13 +169,29 @@ func appServiceName(a *appv1alpha1.App) string {
 	return a.Name
 }
 
-func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID string, st parsedStack) {
+func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID string, generation int64, st parsedStack) {
 	if blueprintID == "" {
 		return
 	}
 	tenantID, ok := s.Tenant(ctx)
 	if !ok {
 		return
+	}
+	// A fenced run must not restamp ownership after a disconnect or a newer
+	// admission took authority (w8/m37 t003): the stamp lands only while the
+	// admitted generation still owns the row. Unguarded (zero) applies stamp
+	// as before. Skips are logged, never retried — the fencing writer owns
+	// the row now.
+	if generation != 0 && s.Blueprints != nil {
+		current, err := s.Blueprints.GetBlueprint(ctx, blueprintID, tenantID)
+		if err != nil {
+			log.Printf("blueprint %s: skipping ownership stamp (row absent, generation %d fenced)", blueprintID, generation)
+			return
+		}
+		if current.ExecutionGeneration != generation {
+			log.Printf("blueprint %s: skipping ownership stamp (generation %d superseded by %d)", blueprintID, generation, current.ExecutionGeneration)
+			return
+		}
 	}
 
 	stamp := func(obj client.Object) {
@@ -232,9 +248,22 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 
 // clearBlueprintOwnership removes the marker from every resource the
 // disconnected blueprint owned — they become unmanaged (Render disconnect
-// semantics: resources survive, management ends). Best-effort post-disconnect.
-func (s *Service) clearBlueprintOwnership(ctx context.Context, tenantID, blueprintID string) {
+// semantics: resources survive, management ends). It continues past individual
+// patch failures and returns the first one: disconnect reports cleanup failure
+// instead of inferring success from a discarded error (w8/m37 t003). A failed
+// clear leaves the row disconnected — the markers are inert without an owning
+// row, and an explicit re-creation adopts or takes them over through the
+// normal ownership flow.
+func (s *Service) clearBlueprintOwnership(ctx context.Context, tenantID, blueprintID string) error {
 	owned := []client.ListOption{client.MatchingLabels{core.LabelTenant: tenantID, core.LabelBlueprint: blueprintID}}
+	var firstErr error
+	fail := func(format string, args ...any) {
+		err := fmt.Errorf(format, args...)
+		log.Printf("blueprint %s: %v", blueprintID, err)
+		if firstErr == nil {
+			firstErr = err
+		}
+	}
 
 	clear := func(obj client.Object) {
 		base := obj.DeepCopyObject().(client.Object)
@@ -245,28 +274,35 @@ func (s *Service) clearBlueprintOwnership(ctx context.Context, tenantID, bluepri
 		delete(labels, core.LabelBlueprint)
 		obj.SetLabels(labels)
 		if err := s.Client.Patch(ctx, obj, client.MergeFrom(base)); err != nil {
-			log.Printf("blueprint %s: clearing ownership on %s/%s: %v", blueprintID, obj.GetNamespace(), obj.GetName(), err)
+			fail("clearing ownership on %s/%s: %v", obj.GetNamespace(), obj.GetName(), err)
 		}
 	}
 
 	var apps appv1alpha1.AppList
-	if err := s.Client.List(ctx, &apps, owned...); err == nil {
+	if err := s.Client.List(ctx, &apps, owned...); err != nil {
+		fail("listing owned apps: %v", err)
+	} else {
 		for i := range apps.Items {
 			clear(&apps.Items[i])
 		}
 	}
 	var databases appv1alpha1.DatabaseList
-	if err := s.Client.List(ctx, &databases, owned...); err == nil {
+	if err := s.Client.List(ctx, &databases, owned...); err != nil {
+		fail("listing owned databases: %v", err)
+	} else {
 		for i := range databases.Items {
 			clear(&databases.Items[i])
 		}
 	}
 	var keyValues appv1alpha1.KeyValueList
-	if err := s.Client.List(ctx, &keyValues, owned...); err == nil {
+	if err := s.Client.List(ctx, &keyValues, owned...); err != nil {
+		fail("listing owned key values: %v", err)
+	} else {
 		for i := range keyValues.Items {
 			clear(&keyValues.Items[i])
 		}
 	}
+	return firstErr
 }
 
 // previewOwnershipConflicts reports cross-blueprint conflicts as validation

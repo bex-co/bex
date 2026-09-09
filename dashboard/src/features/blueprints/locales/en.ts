@@ -478,6 +478,11 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Sync failed",
     description: "Toast shown when syncBlueprint returns an error",
   },
+  "blueprints.syncBusy": {
+    message: "Another sync is already running — retry after it settles",
+    description:
+      "Toast shown when syncBlueprint refuses with BLUEPRINT_SYNC_BUSY",
+  },
   // --- Update action ---
   "blueprints.editField": {
     message: "Edit {field}",
@@ -534,6 +539,11 @@ const enBlueprints: Record<string, TranslationEntry> = {
   "blueprints.disconnectError": {
     message: "Disconnect failed",
     description: "Toast shown when disconnectBlueprint returns an error",
+  },
+  "blueprints.disconnectBusy": {
+    message: "A sync is currently applying — retry disconnect after it settles",
+    description:
+      "Toast shown when disconnectBlueprint refuses with BLUEPRINT_SYNC_BUSY",
   },
   // --- Validate action ---
   "blueprints.validateTitle": {
