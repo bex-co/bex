@@ -82,7 +82,7 @@ bex 是开源项目，欢迎在 github.com/bex-co/bex 查看源码或提交问�
 module.exports = {
   configVersion: 0,
   apple: {
-    version: "1.0",
+    version: "0.2.0",
     copyright: "2026 Stargately, Inc.",
     categories: ["DEVELOPER_TOOLS", "PRODUCTIVITY"],
     release: {

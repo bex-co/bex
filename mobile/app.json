@@ -2,17 +2,27 @@
   "expo": {
     "name": "bex",
     "slug": "bex-mobile",
-    "scheme": ["bex", "co.bex.mobile"],
-    "version": "0.1.0",
-    "platforms": ["ios", "android"],
+    "scheme": [
+      "bex",
+      "co.bex.mobile"
+    ],
+    "version": "0.2.0",
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "orientation": "default",
     "userInterfaceStyle": "automatic",
     "icon": "./src/assets/images/icon.png",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "co.bex.mobile",
-      "associatedDomains": ["applinks:dashboard.bex.co"],
+      "associatedDomains": [
+        "applinks:dashboard.bex.co"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -21,7 +31,7 @@
     "android": {
       "package": "co.bex.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/icon.png",
         "backgroundColor": "#000000"
@@ -38,7 +48,10 @@
               "path": "/invite"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -67,7 +80,9 @@
       [
         "expo-asset",
         {
-          "assets": ["./src/assets/images/icon.png"]
+          "assets": [
+            "./src/assets/images/icon.png"
+          ]
         }
       ],
       "expo-localization",
