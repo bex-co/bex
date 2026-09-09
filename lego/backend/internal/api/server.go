@@ -232,6 +232,13 @@ type Server struct {
 	// tenant for a human identity on first login. nil => store off: no mint.
 	Onboard Onboarding
 
+	// OriginMetrics, when set, records bex-api's own request telemetry — the
+	// per-route HTTP histogram plus the GraphQL-operation and MCP-tool
+	// dimensions (docs/ADR088 §6). nil (tests, stdio mode) observes nothing;
+	// the HTTP families are recorded by the middleware cmd/api wraps each
+	// listener with, not from here. See httpmetrics.go.
+	OriginMetrics *OriginMetrics
+
 	schema graphql.Schema
 }
 
@@ -1026,7 +1033,9 @@ func (m serverMuxes) corsRoutes() corsRoutes {
 }
 
 func (s *Server) wrapMuxes(m serverMuxes) http.Handler {
-	return withGzip(withSecurityHeaders(s.TrustedProxies, withCORS(s.CORSOrigin, m.corsRoutes())))
+	// The route recorder is outermost so the telemetry label is a registered
+	// pattern of the product mux even when CORS answers a preflight itself.
+	return recordRoutePattern(m.root, withGzip(withSecurityHeaders(s.TrustedProxies, withCORS(s.CORSOrigin, m.corsRoutes()))))
 }
 
 // rootMux exposes the raw top-level mux to completeness guards. The assembly
@@ -1118,7 +1127,11 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// server reading up to MaxBodyBytes (codex F11). The operation-class gate
 	// sits outside the OpenAPI validator so a read-only token is refused
 	// before schema work runs.
-	mux.Handle(restMountPattern, auth(rl(bodyLimit(s.withScopeClassREST(restMux, rest)))))
+	// recordRoutePattern sits innermost, right against the REST mux: the
+	// wrappers outside it clone the request, so reading r.Pattern after the
+	// fact would only ever see the outer `/v1/` mount, not the specific route
+	// the telemetry needs (w3/m84).
+	mux.Handle(restMountPattern, auth(rl(bodyLimit(s.withScopeClassREST(restMux, recordRoutePattern(restMux, rest))))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies).
@@ -1278,61 +1291,89 @@ func (s *Server) newSchema() (graphql.Schema, error) {
 	return schema, nil
 }
 
-// graphqlHandler serves POST /graphql over the compiled schema. The request
-// context already carries the caller Identity (attached by the auth middleware),
-// which the feature resolvers' authorize gate reads.
+// graphqlHandler serves POST /graphql over the compiled schema, timing each
+// document into the operation histogram (w3/m84 — GraphQL answers 200 with an
+// `errors` array, so the HTTP metrics alone cannot say whether a mutation
+// worked).
 func (s *Server) graphqlHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Query         string         `json:"query"`
-			OperationName string         `json:"operationName"`
-			Variables     map[string]any `json:"variables"`
-		}
-		if err := core.DecodeJSON(r, &body); err != nil {
-			core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
-			return
-		}
-		// Cost gate (w1/m65 F9): reject an over-budget document (depth / alias /
-		// field / operation count) BEFORE execution, so a single near-limit request
-		// can't be amplified into many resolver/provider calls or large allocations.
-		// Returned as a GraphQL-shaped errors response (HTTP 200), the dialect
-		// clients already handle.
-		if err := validateGraphQLComplexity(body.Query); err != nil {
-			writeGraphQLErrors(w, err)
-			return
-		}
-		if err := s.requireGraphQLScope(r.Context(), body.Query, body.OperationName); err != nil {
-			writeGraphQLErrors(w, err)
-			return
-		}
-		// Env-var reads nest under the apps Service type but live in the secrets
-		// feature; inject the reader so those resolvers reach it via context (the
-		// shared Service GraphQL type stays stateless — no per-server closure).
-		ctx := r.Context()
-		if s.Secrets != nil {
-			ctx = core.WithEnvVars(ctx, s.Secrets)
-			ctx = core.WithSecretFiles(ctx, s.Secrets)
-		}
-		// The outboundIps field nests the apps Service's own outbound-IPs verb
-		// under the same stateless type through the matching reader seam.
-		if s.Apps != nil {
-			ctx = core.WithOutboundIPs(ctx, s.Apps)
-		}
-		// Bound execution time so a single expensive document can't tie up a
-		// resolver goroutine indefinitely (F9).
-		ctx, cancel := context.WithTimeout(ctx, gqlExecTimeout)
-		defer cancel()
-		result := graphql.Do(graphql.Params{
-			Schema:         s.schema,
-			RequestString:  body.Query,
-			OperationName:  body.OperationName,
-			VariableValues: body.Variables,
-			Context:        ctx,
-		})
-		result.Errors = sanitizeGraphQLErrors(result.Errors)
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(result)
+		start := time.Now()
+		operation, opType, outcome := s.serveGraphQL(w, r)
+		s.OriginMetrics.observeGraphQL(operation, opType, outcome, time.Since(start))
 	})
+}
+
+// serveGraphQL answers one GraphQL request and returns its bounded telemetry
+// dimensions. The request context already carries the caller Identity (attached
+// by the auth middleware), which the feature resolvers' authorize gate reads.
+func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation, opType, outcome string) {
+	operation, opType = gqlOperationOther, gqlTypeQuery
+	var body struct {
+		Query         string         `json:"query"`
+		OperationName string         `json:"operationName"`
+		Variables     map[string]any `json:"variables"`
+	}
+	if err := core.DecodeJSON(r, &body); err != nil {
+		core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
+		return operation, opType, gqlOutcomeInvalid
+	}
+	// One parse feeds telemetry dims, the cost gate, and the scope check;
+	// graphql.Do still re-parses for execution (its own AST).
+	if fragments, ops, ok := parseGraphQLDocument(body.Query); ok {
+		operation, opType = graphqlOperationDimsFrom(fragments, ops, body.OperationName)
+		// Cost gate (w1/m65 F9): reject an over-budget document before execution.
+		if err := validateGraphQLComplexityParsed(fragments, ops); err != nil {
+			writeGraphQLErrors(w, err)
+			return operation, opType, gqlOutcomeInvalid
+		}
+		if err := s.requireGraphQLScopeFrom(r.Context(), fragments, ops, body.OperationName); err != nil {
+			writeGraphQLErrors(w, err)
+			return operation, opType, graphqlOutcome(err)
+		}
+	}
+	// Env-var reads nest under the apps Service type but live in the secrets
+	// feature; inject the reader so those resolvers reach it via context (the
+	// shared Service GraphQL type stays stateless — no per-server closure).
+	ctx := r.Context()
+	if s.Secrets != nil {
+		ctx = core.WithEnvVars(ctx, s.Secrets)
+		ctx = core.WithSecretFiles(ctx, s.Secrets)
+	}
+	// The outboundIps field nests the apps Service's own outbound-IPs verb
+	// under the same stateless type through the matching reader seam.
+	if s.Apps != nil {
+		ctx = core.WithOutboundIPs(ctx, s.Apps)
+	}
+	// Bound execution time so a single expensive document can't tie up a
+	// resolver goroutine indefinitely (F9).
+	ctx, cancel := context.WithTimeout(ctx, gqlExecTimeout)
+	defer cancel()
+	result := graphql.Do(graphql.Params{
+		Schema:         s.schema,
+		RequestString:  body.Query,
+		OperationName:  body.OperationName,
+		VariableValues: body.Variables,
+		Context:        ctx,
+	})
+	result.Errors = sanitizeGraphQLErrors(result.Errors)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(result)
+	return operation, opType, graphqlResultOutcome(result.Errors)
+}
+
+// graphqlResultOutcome classifies a completed document by its FIRST error —
+// graphql-go reports one entry per failed field, and the first is the one a
+// client acts on. A parse/validation error (no wrapped resolver error) is an
+// invalid document, not a server fault.
+func graphqlResultOutcome(errs []gqlerrors.FormattedError) string {
+	if len(errs) == 0 {
+		return gqlOutcomeOK
+	}
+	resolverErr := resolverError(errs[0].OriginalError())
+	if resolverErr == nil {
+		return gqlOutcomeInvalid
+	}
+	return graphqlOutcome(resolverErr)
 }
 
 // sanitizeGraphQLErrors applies core.WriteErr's redaction policy on the GraphQL
@@ -1383,6 +1424,11 @@ func (s *Server) MCPServer() *mcp.Server {
 		base = s.Apps.Base
 	}
 	srv.AddReceivingMiddleware(mcpWorkspaceMiddleware(base, s.requireMCPScope))
+	// Added last => outermost (the SDK wraps the current handler), so a call the
+	// workspace/scope gate above refuses is still timed, as denied.
+	if s.OriginMetrics != nil {
+		srv.AddReceivingMiddleware(mcpMetricsMiddleware(s.OriginMetrics))
+	}
 	return srv
 }
 

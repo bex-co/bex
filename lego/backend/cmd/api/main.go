@@ -168,6 +168,10 @@ func main() {
 	// Shared by Completer, Service, and ModelAuthFailer (w5/m81 + w5/m88). Created
 	// early so the control-plane auth-failure verb can observe vendor rejections.
 	agentMetrics := agentsessions.NewCompletionMetrics(metricRegistry)
+	// bex-api's own request telemetry (w3/m84, docs/ADR088 §6): one instance
+	// shared by both listeners and the GraphQL/MCP observation points, so the
+	// origin-side view of an incident lives on the same registry /metrics serves.
+	originMetrics := api.NewOriginMetrics(metricRegistry)
 	pushMetrics.SetEnabled(mobilePush != nil || webPush != nil)
 
 	scheme := runtime.NewScheme()
@@ -317,7 +321,7 @@ func main() {
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
 
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, agentMetrics, ghClient, deps.Secrets, opsRole, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, deps.Secrets, opsRole, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -350,6 +354,7 @@ func main() {
 	wireAgentSessions(&deps, cfg)
 	wireDiskSnapshots(&deps, cfg)
 	srv := api.NewServer(base, deps)
+	srv.OriginMetrics = originMetrics
 	if mode := cfg.EnvGroupNameClaimAudit; mode != "" {
 		report, auditErr := envgroups.AuditNameClaims(ctx, deps.Secrets, mode == "dry-run")
 		if auditErr != nil {
@@ -466,7 +471,10 @@ func main() {
 	root.Handle("/", handler)
 
 	addr := cfg.APIAddr
-	httpSrv := newHTTPServer(addr, root)
+	// The request-telemetry middleware is the OUTERMOST wrapper (w3/m84): a
+	// request shed by the auth gate, a rate limiter, or the body cap is part of
+	// the origin's error picture, so it has to be counted too.
+	httpSrv := newHTTPServer(addr, originMetrics.Middleware(root))
 	log.Printf("bex-api listening on %s (namespace %s)", addr, base.Namespace)
 	// Serve in a goroutine and block on ctx (SIGTERM/SIGINT via
 	// ctrl.SetupSignalHandler above) so the process shuts the server down
@@ -860,7 +868,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelKeys core.SecretKV, opsRole *opsrole.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelKeys core.SecretKV, opsRole *opsrole.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -910,7 +918,9 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	opsrole.Register(internalRoot, opsRole)
 	internalRoot.Handle("/", internal.Handler())
 	cpAddr := cfg.CPAddr
-	cpSrv := newHTTPServer(cpAddr, internalRoot)
+	// Metered as surface="internal": the projection/mint/ops-role verbs are not
+	// product API and must never be averaged into the public SLIs (w3/m84).
+	cpSrv := newHTTPServer(cpAddr, originMetrics.InternalMiddleware(internalRoot))
 	log.Printf("bex-api control plane (source of truth) on %s (Apps project into per-tenant <ws> namespaces; Databases/KeyValues stay in %q)", cpAddr, cfg.CPAppsNamespace)
 	go func() {
 		// Same serve-then-graceful-shutdown pattern as the public server

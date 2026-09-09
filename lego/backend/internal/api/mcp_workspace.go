@@ -81,22 +81,22 @@ func mcpBindCallWorkspace(ctx context.Context, base *core.Base, method string, r
 	}
 	if _, callerScoped := mcpCallerScopedTools[call.Params.Name]; callerScoped {
 		if err := mcpRequireScope(ctx, checkScope, call.Params.Name); err != nil {
-			return mcpCallError(err), nil
+			return mcpCallError(ctx, err), nil
 		}
 		return next(ctx, method, req)
 	}
 	resolved, workspaceID, err := takeMCPWorkspaceID(call)
 	if err != nil {
-		return mcpCallError(err), nil
+		return mcpCallError(ctx, err), nil
 	}
 	if workspaceID != "" {
 		ctx = core.WithWorkspace(ctx, workspaceID)
 		if err := base.ValidateNamedWorkspace(ctx); err != nil {
-			return mcpCallError(fmt.Errorf("cannot access workspace %s: %w", workspaceID, err)), nil
+			return mcpCallError(ctx, fmt.Errorf("cannot access workspace %s: %w", workspaceID, err)), nil
 		}
 	}
 	if err := mcpRequireScope(ctx, checkScope, call.Params.Name); err != nil {
-		return mcpCallError(err), nil
+		return mcpCallError(ctx, err), nil
 	}
 	return next(ctx, method, resolved)
 }
@@ -199,7 +199,12 @@ func takeMCPWorkspaceID(req *mcp.CallToolRequest) (*mcp.CallToolRequest, string,
 	return &resolved, workspaceID, nil
 }
 
-func mcpCallError(err error) *mcp.CallToolResult {
+// mcpCallError renders a gate's refusal as the tool-visible error result, and
+// tells the telemetry middleware which CLASS of refusal it was: SetError keeps
+// only the message, so a workspace/scope denial would otherwise be
+// indistinguishable from a tool fault (w3/m84, httpmetrics.go).
+func mcpCallError(ctx context.Context, err error) *mcp.CallToolResult {
+	markToolOutcome(ctx, err)
 	var result mcp.CallToolResult
 	result.SetError(err)
 	return &result

@@ -172,6 +172,8 @@ flowchart LR
 
 When a metric's source isn't wired at all (request metrics without `BEX_PROM_URL`, cpu/memory with neither Prometheus nor metrics-server), the endpoint returns **503** (`ErrMetricsUnavailable`) — the App exists, the data source doesn't.
 
+**Everything above is the TENANT-facing read: metrics about a tenant's App.** bex-api's telemetry about **itself** — the origin-side per-route request histogram, the GraphQL-operation and MCP-tool families, and the two `BexApiOrigin*` alert rules — is platform-side, exposed on the internal `:8091` `/metrics` registry and documented in [ADR088 §6](ADR088-platform-observability-ui.md). It never reaches a tenant surface, and it obeys the same cardinality rule as everything else here: route labels are registered mux patterns, never paths, and tool/operation labels come from closed registries. Nothing in this section changed when it landed (w3/m84).
+
 ### REST surface
 
 | method + path | metric |
@@ -236,6 +238,8 @@ Two groups, all with actionable `description`s (each carries the `kubectl` comma
 | `bex` | `BackupCronJobStale` | `etcd-backup`/`openbao-backup` last succeeded >26h ago (silent rot) | critical |
 | `bex` | `OpenBaoSealed` | any OpenBao member reports sealed >5m (⇒ 503s the env-vars API) | critical |
 | `bex` | `BexApiDown` | `bex-api` has zero available replicas >5m | critical |
+| `bex` | `BexApiOriginHighErrorRate` | >5% of the requests bex-api itself completed on one surface are 5xx for >10m (above a 0.1 req/s floor) — the origin-side sibling of `TraefikHigh5xxRate`, read together with it to place the fault ([ADR088 §6](ADR088-platform-observability-ui.md)) | warning |
+| `bex` | `BexApiOriginLatencyHigh` | bex-api's own p95 on one surface is above the recorded 2.5s baseline for >10m (above the same floor) | warning |
 | `bex` | `WebhookDeliveryAdmissionPressure` | >100 outbound webhook notifications remain capped in rolling 15m windows for >10m | warning |
 | `bex` | `WebhookDeliveryFailing` | >90% of outbound webhook attempts fail for >30m, above a 36-attempts/30m floor | warning |
 | `bex` | `PushDeliveryStale` | push is configured, rows are queued, and no provider operation has succeeded in >2h (for >30m) | warning |

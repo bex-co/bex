@@ -86,6 +86,12 @@ func validateGraphQLComplexity(query string) error {
 	if !ok {
 		return nil // let graphql.Do report the parse error
 	}
+	return validateGraphQLComplexityParsed(fragments, ops)
+}
+
+// validateGraphQLComplexityParsed is the AST form used when the document was
+// already parsed for telemetry / scope (one parse per request).
+func validateGraphQLComplexityParsed(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition) error {
 	if len(ops) > gqlMaxOperations {
 		return fmt.Errorf("query rejected: too many operations (%d > %d)", len(ops), gqlMaxOperations)
 	}

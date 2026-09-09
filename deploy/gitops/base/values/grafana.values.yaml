@@ -605,15 +605,18 @@ dashboards:
           ]
         }
 
-    # bex-api + gateways (ADR088 §6 row 2): the API's error/latency view is
-    # Traefik's edge perspective (the recorded §6 gap — no first-party per-route
-    # histogram), filtered to the one bounded service label bex-api's Ingress
-    # produces; agent-session SLOs (w5/m81) and SSH-gateway saturation ride
-    # their own registries. w3/m83 t006 adds the bex-api eventing surfaces that
+    # bex-api + gateways (ADR088 §6 row 2): BOTH halves of the API's
+    # error/latency view — Traefik's edge perspective (filtered to the one
+    # bounded service label bex-api's Ingress produces) and, since w3/m84,
+    # bex-api's own origin-side per-route histogram, which is what makes
+    # edge-vs-origin attribution possible at all (it closes the §6 gap). Read the
+    # two together: a healthy origin under a bad edge puts the fault between
+    # Traefik and the pod. Agent-session SLOs (w5/m81) and SSH-gateway saturation
+    # ride their own registries. w3/m83 t006 adds the bex-api eventing surfaces that
     # exported health series with no rule: outbound webhook attempt outcomes,
     # push delivery freshness + queue depth, and agent-session provision
     # outcomes. NB every one of those panels depends on the bex-api scrape job's
-    # keep-list (prometheus.yaml) admitting bex_(agent_session|webhooks|push)_* —
+    # keep-list (prometheus.yaml) admitting bex_(agent_session|webhooks|push|api)_* —
     # sustained No data there means the keep-list dropped them, which is
     # exactly the visible pressure ADR088 §6 wants a panel to apply.
     bex-api-gateways:
@@ -952,6 +955,186 @@ dashboards:
                   "refId": "A",
                   "expr": "sum by (state) (bex_push_queue_rows)",
                   "legendFormat": "{{state}}"
+                }
+              ]
+            },
+            {
+              "id": 13,
+              "type": "timeseries",
+              "title": "Origin latency p50/p95/p99 by surface",
+              "description": "bex-api's OWN request duration (w3/m84), the origin half of the pair at the top of this dashboard: read together with the edge panel, a normal origin p95 under a bad edge p95 puts the fault between Traefik and the pod. Excludes surface=internal (:8091 projection/mint verbs) and streaming responses by construction. Red line at 2.5s is BexApiOriginLatencyHigh's baseline.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 53 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 2.5 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "histogram_quantile(0.50, sum by (le, surface) (rate(bex_api_http_request_duration_seconds_bucket{surface=~\"rest|graphql|mcp\"}[5m])))",
+                  "legendFormat": "p50 {{surface}}"
+                },
+                {
+                  "refId": "B",
+                  "expr": "histogram_quantile(0.95, sum by (le, surface) (rate(bex_api_http_request_duration_seconds_bucket{surface=~\"rest|graphql|mcp\"}[10m])))",
+                  "legendFormat": "p95 {{surface}}"
+                },
+                {
+                  "refId": "C",
+                  "expr": "histogram_quantile(0.99, sum by (le, surface) (rate(bex_api_http_request_duration_seconds_bucket{surface=~\"rest|graphql|mcp\"}[10m])))",
+                  "legendFormat": "p99 {{surface}}"
+                }
+              ]
+            },
+            {
+              "id": 14,
+              "type": "timeseries",
+              "title": "Origin 5xx ratio by surface + request rate",
+              "description": "The ratio BexApiOriginHighErrorRate evaluates (red line at 5%; warns after 10m above a 0.1 req/s floor) with the traffic that feeds it, so zero-errors-with-traffic is visually distinct from no-data. A surface with no traffic draws no ratio series at all rather than a fake healthy zero.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 53 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.05 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (surface) (rate(bex_api_http_requests_total{surface!=\"internal\", status=~\"5..\"}[5m])) / sum by (surface) (rate(bex_api_http_requests_total{surface!=\"internal\"}[5m]))",
+                  "legendFormat": "5xx ratio {{surface}}"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum by (surface) (rate(bex_api_http_requests_total{surface!=\"internal\"}[5m]))",
+                  "legendFormat": "req/s {{surface}}"
+                }
+              ]
+            },
+            {
+              "id": 15,
+              "type": "timeseries",
+              "title": "Origin 5xx rate by route (top 10)",
+              "description": "Which registered route pattern is failing — the question the edge counters cannot answer (their service label is the whole bex-api Service). Labels are mux patterns, never paths, so a service id never becomes a series.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 62 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "reqps", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "topk(10, sum by (route) (rate(bex_api_http_requests_total{status=~\"5..\"}[5m])))",
+                  "legendFormat": "{{route}}"
+                }
+              ]
+            },
+            {
+              "id": 16,
+              "type": "timeseries",
+              "title": "Slowest origin routes (p95, top 10)",
+              "description": "Per-route-pattern p95 — where BexApiOriginLatencyHigh's surface-level quantile actually comes from. A route that only appears here after a deploy is the one that regressed.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 62 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "s", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "topk(10, histogram_quantile(0.95, sum by (le, route) (rate(bex_api_http_request_duration_seconds_bucket[10m]))))",
+                  "legendFormat": "{{route}}"
+                }
+              ]
+            },
+            {
+              "id": 17,
+              "type": "timeseries",
+              "title": "GraphQL operations: mutation error ratio + p95",
+              "description": "GraphQL answers 200 with an errors array, so the HTTP panels above cannot see a broken mutation at all. outcome is a closed class set (ok/denied/not_found/invalid/conflict/payment_required/unavailable/rejected/internal); operation is the schema field, unknown documents fold to other.",
+              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 71 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(rate(bex_api_graphql_operation_duration_seconds_count{type=\"mutation\", outcome=~\"internal|unavailable\"}[10m])) / sum(rate(bex_api_graphql_operation_duration_seconds_count{type=\"mutation\"}[10m]))",
+                  "legendFormat": "mutation fault ratio"
+                },
+                {
+                  "refId": "B",
+                  "expr": "topk(10, histogram_quantile(0.95, sum by (le, operation) (rate(bex_api_graphql_operation_duration_seconds_bucket[10m]))))",
+                  "legendFormat": "p95 {{operation}}"
+                }
+              ]
+            },
+            {
+              "id": 18,
+              "type": "timeseries",
+              "title": "MCP tool latency p95 + outcomes (agent traffic)",
+              "description": "Per-tool latency and outcome for agent traffic (ADR008): tool is the registered name only — an unknown tool creates no series — and outcome separates a denial (workspace/scope) from a fault.",
+              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 71 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "s", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "topk(10, histogram_quantile(0.95, sum by (le, tool) (rate(bex_api_mcp_tool_duration_seconds_bucket[10m]))))",
+                  "legendFormat": "p95 {{tool}}"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum by (outcome) (rate(bex_api_mcp_tool_duration_seconds_count[10m]))",
+                  "legendFormat": "calls/s {{outcome}}"
+                }
+              ]
+            },
+            {
+              "id": 19,
+              "type": "timeseries",
+              "title": "Origin in-flight requests by surface",
+              "description": "bex-api's saturation gauge: concurrency currently held per surface, including the long-lived streams the duration histogram deliberately excludes (SSE log tails, MCP SSE, upgrades). A plateau here with flat throughput is a stuck dependency.",
+              "gridPos": { "h": 9, "w": 24, "x": 0, "y": 80 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": { "unit": "short", "min": 0 },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (surface) (bex_api_http_in_flight_requests)",
+                  "legendFormat": "{{surface}}"
                 }
               ]
             }

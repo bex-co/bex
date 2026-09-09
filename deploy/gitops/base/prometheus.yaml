@@ -256,8 +256,16 @@ spec:
                     # billing-only (the same never-arrived failure class the
                     # bex-operator job's comment below records for w2/m72);
                     # push => PushDeliveryStale (w3/m83 t006, added WITH the
-                    # rule so the rule never evaluates a never-scraped series).
-                    regex: bex_(billing|agent_session|webhooks|push)_.*
+                    # rule so the rule never evaluates a never-scraped series);
+                    # api => w3/m84's first-party request telemetry
+                    # (bex_api_http_* / _graphql_operation_* / _mcp_tool_*), the
+                    # origin half of every edge-vs-origin question and the
+                    # backing series of BexApiOriginHighErrorRate +
+                    # BexApiOriginLatencyHigh. Its labels are bounded by
+                    # construction (route = registered mux pattern, never a path;
+                    # tool/operation = closed registry) — see
+                    # lego/backend/internal/api/httpmetrics.go.
+                    regex: bex_(billing|agent_session|webhooks|push|api)_.*
                     action: keep
               # Build-plane SLIs from the operator's own registry (docs/ADR060
               # D5). This job is why the series are readable at all: the manager
@@ -1067,6 +1075,58 @@ spec:
                     annotations:
                       summary: "bex-api has no available replicas"
                       description: "The bex-api control-plane surface (REST/GraphQL/MCP) has had zero available replicas for >5m. Debug: kubectl -n bex-system rollout status deploy/bex-api; kubectl -n bex-system logs deploy/bex-api"
+
+                  # w3/m84. TraefikHigh5xxRate's origin-side sibling, and
+                  # deliberately the same shape (>5% over 5m, a 0.1 req/s floor,
+                  # 10m persistence) so the pair is READ TOGETHER: both firing is
+                  # bex-api serving errors, only the edge one firing puts the
+                  # fault between Traefik and the pod (LB/idle-timeout/routing).
+                  # Per SURFACE, because a broken MCP tool and a broken REST route
+                  # page differently and averaging them hides both.
+                  # surface="internal" is excluded: the :8091 projection/mint
+                  # verbs are not the product API and its callers are our own
+                  # components, not users. The traffic floor keeps a quiet
+                  # surface's single 500 from paging; no vector(0) coercion, so an
+                  # idle surface produces no series rather than a fake zero.
+                  - alert: BexApiOriginHighErrorRate
+                    expr: |
+                      (
+                        sum by (surface) (rate(bex_api_http_requests_total{surface!="internal", status=~"5.."}[5m]))
+                        / sum by (surface) (rate(bex_api_http_requests_total{surface!="internal"}[5m]))
+                      ) > 0.05
+                      and
+                      sum by (surface) (rate(bex_api_http_requests_total{surface!="internal"}[5m])) > 0.1
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "bex-api is serving {{ $value | humanizePercentage }} 5xx on its {{ $labels.surface }} surface"
+                      description: "More than 5% of the requests bex-api itself completed on the {{ $labels.surface }} surface were 5xx for >10m, with meaningful traffic — this is the ORIGIN's own view, so the fault is in bex-api or a dependency it calls, not the edge. Compare with TraefikHigh5xxRate: if only the edge alert fires, the failure is between Traefik and the pod. Find the routes on the bex-api-gateways dashboard (origin 5xx ratio by route), then: kubectl -n bex-system logs deploy/bex-api; check OpenFGA/Hydra/Postgres reachability. Runbook: docs/ADR088-platform-observability-ui.md"
+
+                  # w3/m84. Latency, not errors: a p95 this far out means callers
+                  # are timing out even though every response is nominally a 200.
+                  # 2.5s is the recorded baseline (ADR088 §6) — roughly an order
+                  # of magnitude above bex-api's normal p95, so ordinary load
+                  # never pages. Streaming responses are not in this histogram by
+                  # construction (an hour-long SSE tail would otherwise own every
+                  # bucket), so the quantile is about unary work only.
+                  - alert: BexApiOriginLatencyHigh
+                    expr: |
+                      histogram_quantile(0.95,
+                        sum by (le, surface) (
+                          rate(bex_api_http_request_duration_seconds_bucket{surface=~"rest|graphql|mcp"}[10m])
+                        )
+                      ) > 2.5
+                      and
+                      sum by (surface) (
+                        rate(bex_api_http_request_duration_seconds_count{surface=~"rest|graphql|mcp"}[10m])
+                      ) > 0.1
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "bex-api {{ $labels.surface }} p95 is {{ $value | humanizeDuration }}"
+                      description: "The 95th percentile of bex-api's own request duration on the {{ $labels.surface }} surface has been above 2.5s for >10m with meaningful traffic. Callers (dashboard, CLI, agents) are seeing timeouts even where the status is 200. Use the bex-api-gateways dashboard's slowest-routes panel to find which route pattern moved, then check the dependency it fans out to: Kubernetes API latency, control-plane Postgres, OpenFGA, Hydra introspection. Runbook: docs/ADR088-platform-observability-ui.md"
 
                   - alert: WebhookDeliveryAdmissionPressure
                     expr: |
