@@ -41,6 +41,7 @@ import (
 
 	"golang.org/x/sync/semaphore"
 	"golang.org/x/sync/singleflight"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -135,6 +136,33 @@ func (s Site) keyFor(reqPath string) string {
 	return prefix + strings.TrimPrefix(reqPath, "/")
 }
 
+// legacyServePrefix is the prefix string used for legacy-shape detection /
+// evidence logging. Empty Prefix synthesizes "<app>/<rev>/"; does not force a
+// trailing slash onto an explicit Prefix (status may omit it).
+func legacyServePrefix(s Site) string {
+	if s.Prefix != "" {
+		return s.Prefix
+	}
+	if s.AppID == "" || s.Revision == "" {
+		return ""
+	}
+	return s.AppID + "/" + s.Revision + "/"
+}
+
+// isLegacyStaticPrefix reports whether the Site still serves from the pre-m75
+// "<app>/<rev>/" object-key shape (empty status.staticPrefix dual-read). A
+// workspace-scoped prefix is "<workspace>/<app>/<rev>/" and does not match.
+func isLegacyStaticPrefix(s Site) bool {
+	if s.AppID == "" {
+		return false
+	}
+	prefix := legacyServePrefix(s)
+	if prefix == "" {
+		return false
+	}
+	return strings.HasPrefix(prefix, s.AppID+"/")
+}
+
 // Resolver maps a request host to its Site config.
 type Resolver interface {
 	// Resolve returns the Site for host, or ok=false when no static_site App
@@ -189,6 +217,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// contract, w4/m94), while the (possibly rewritten) served path drives
 	// origin keys, content type, and the default cache policy.
 	requestPath := normalizePath(r.URL.Path)
+
+	// w2/m93: evidence line when this host still dual-reads the legacy
+	// "<app>/<rev>/" prefix. Path/prefix stay line fields (never Loki labels).
+	// Unlabeled sites are legitimate forever; readiness filters by tombstone.
+	if isLegacyStaticPrefix(site) {
+		log.FromContext(r.Context()).Info("static_legacy_origin_get",
+			"app", site.AppID,
+			"prefix", legacyServePrefix(site),
+			"path", requestPath,
+		)
+	}
 
 	// An existing published object wins over both redirect and rewrite rules,
 	// matching Render's documented order. Only a genuine miss advances to the

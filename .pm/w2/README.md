@@ -15,7 +15,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m93** — Migration clean-window evidence (7 tasks) ← revalidated brainstorm 2026-09-08; retained legacy-read coverage + fail-closed readiness report before w2/035 Phase 4; Render parity omitted (internal operations).
+- [x] **m93** — Migration clean-window evidence (7 tasks) ← revalidated brainstorm 2026-09-08; retained legacy-read coverage + fail-closed readiness report before w2/035 Phase 4; Render parity omitted (internal operations).
 
 - [x] **m92** — ADR055 F2/F3: execute the production identity migration (phases 1–3, arm phase 4) (8 tasks) ← from `/pm-brainstorm for w2` 2026-09-07 #2 (approved same day): w2/m75 shipped the workspace-scoped identity code, dual-read, `registry-migrate`, and the STOP-gated runbook on 2026-08-18, but prod phases 2–4 never ran, so the security register's two HIGH findings (registry repos/users and static prefixes keyed by App name alone) stay open and the legacy artifact set grows with every deploy; inventory → scratch-App rehearsal → STOP-gated copy/verify/tombstone → STOP-gated redeploy → arm the 14-day phase-4 window with a filed follow-up; every mutating phase waits for explicit user authorization; Render parity omitted (platform storage identity, no wire change)
 - [x] **m91** — Repair the three Divergent MCP tools (7 tasks) ← from `/pm-brainstorm for w2` 2026-09-07 #4: w1/m70's inventory filed `create_postgres` (`diskSizeGb` casing), `create_static_site` (missing `autoDeploy`/`buildCommand`), and `get_metrics` (renamed `resourceId`/`httpLatencyQuantile`/`resolution` + 7 missing args) for repair, but the filing had no open board item and all three are still wrong in code; standing Render-parity task omitted as redundant (the milestone is the parity work — m79 precedent; cross-surface check folded into t004)
@@ -102,7 +102,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- **035** — Phase 4: drop dual-read + delete legacy registry/static blobs (ADR055 F2/F3 close) ← from w2/m92 t005; STOP + window-gated until **2026-09-22**
+- **035** — Phase 4: drop dual-read + delete legacy registry/static blobs (ADR055 F2/F3 close) ← from w2/m92 t005; STOP + window-gated until evidenced clean window (calendar lower bound **2026-09-22**; continuous evidence start pending Loki/shipper roll — see note)
 
 _(2026-09-08: `034` resolved — keep disk $0.175 / Render×0.70; ADR082+ADR030 margin figures updated to measured Hetzner $0.0767 (~56.2%); moved to `done/034.md`.)_
 

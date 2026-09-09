@@ -87,9 +87,30 @@ Trigger a deploy (or wait for the next natural roll) so each migrated App's Depl
 
 **STOP — requires explicit operator authorization before touching live tenant data.**
 
-**Clean window started:** 2026-09-08 (w2/m92 phase 3 complete). **Do not start Phase 4 before:** 2026-09-22, and only with zero dual-read hits + explicit STOP authorization. Follow-up note: `.pm/w2/035.md`.
+**m92 calendar lower bound:** 2026-09-08 (phase 3 complete) → earliest calendar date **2026-09-22**. That date is **not** proof the window is clean.
 
-Criteria before this phase: **zero dual-read hits over 14 days** (no kubelet pull of `<registry>/A:…`, no static-server GET under `A/<rev>/`) and every migrated App is tombstoned with a rolled image ref.
+**Evidence (w2/m93):** continuous coverage starts only after Loki retains Zot + static-server platform streams (`type=platform`, `service=zot|static-server`) at `retention_period: 504h`. Until those pipelines have been live for 14 continuous days with a `clean` readiness report, treat the window as **insufficient evidence** and slip the earliest eligible cleanup date forward. Do **not** backdate missing history to 2026-09-08.
+
+### Prove the clean window (read-only)
+
+```bash
+# Inventory (current tombstones / scoped refs — not historical traffic):
+KUBECONFIG=… bash scripts/verify-workspace-scoped-identity.sh
+
+# Fail-closed readiness over retained Loki evidence:
+KUBECONFIG=… bash scripts/registry-migration-readiness.sh
+# Optional: EVIDENCE_START=2026-09-09T00:00:00Z WINDOW_DAYS=14
+
+# Manual LogQL (via Grafana / loki query_range) for a tombstoned App name A:
+#   {type="platform",service="zot"} |= `/v2/A/`
+#   {type="platform",service="static-server"} |~ `static_legacy_origin_get` |~ `A`
+```
+
+`RESULT status=clean` requires: 14 continuous days of coverage, live `zot` + `static-server` collection, zero migrated legacy reads, and a valid current inventory (every labeled App tombstoned on a scoped image ref). `legacy_reads_detected` and `insufficient_evidence` both block Phase 4. Unlabeled Apps (e.g. `hello-static`) are excluded.
+
+**Follow-up note:** `.pm/w2/035.md` (earliest eligible date tracks evidenced coverage, not only the calendar lower bound).
+
+Criteria before this phase: **`registry-migration-readiness.sh` reports `clean`** (zero dual-read hits over 14 evidenced days: no kubelet pull of `<registry>/A:…`, no static-server GET under `A/<rev>/`) and every migrated App is tombstoned with a rolled image ref.
 
 Then, and only then:
 
@@ -99,7 +120,7 @@ Then, and only then:
 
 The operator no longer grants dual-read once the tombstone annotation is set. Removing the blobs is the last step so a missed Deployment cannot ImagePullBackOff.
 
-**Rollback:** restore from registry/S3 backup. There is no in-place un-delete. Do not start Phase 4 until the 14-day window is clean.
+**Rollback:** restore from registry/S3 backup. There is no in-place un-delete. Do not start Phase 4 until the evidenced 14-day window is clean.
 
 ## Per-phase summary
 
@@ -108,4 +129,4 @@ The operator no longer grants dual-read once the tombstone annotation is set. Re
 | 1 inventory / dry-run | no | not required | n/a |
 | 2 copy+verify+tombstone | yes (copy + markers; **no blob delete**) | **STOP — explicit operator authorization** | annotation off; legacy still authoritative |
 | 3 redeploy | yes (new image ref / prefix in status) | **STOP — explicit operator authorization** | roll back the Deployment |
-| 4 drop fallback + delete legacy | yes (destructive) | **STOP — explicit operator authorization** + 14-day zero dual-read hits | restore from backup |
+| 4 drop fallback + delete legacy | yes (destructive) | **STOP — explicit operator authorization** + evidenced 14-day zero dual-read hits | restore from backup |
