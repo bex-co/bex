@@ -81,7 +81,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-No pending items after the 2026-09-07 evening triage. Open alias note (filed as colliding `055`) closed as **056**; notes 052–055 remain done.
+No pending inbox items after the 2026-09-08 promotion. The instance-identity findings **059** + **060** were absorbed into [w5/m87](../w5/m87/README.md) by user approval; their original evidence is preserved in [done/059.md](done/059.md) and [done/060.md](done/060.md). Their move records promotion, not a fix: implementation remains pending in w5. The earlier open alias note (filed as colliding `055`) closed as **056**; notes 052–055 remain done.
 
 - [x] **056** — `logLabelValues` (+ datastore log aliases) inverted-range guard must live in shared `LogQuery.validate`, not only `QueryLogs` — already satisfied by w4/054's `ValidateQueryRange` placement; alias regression pins added to `TestInvalidQueryRangesAcrossSurfaces`. Renumbered from open `055` (collided with CLI `done/055`); closed 2026-09-07, see `done/056.md`.
 - [x] **055** — CLI health-check updates for Dockerfile services — already fixed by `cca2f571d` and extended by `d58245084`; verified current runtime/read/PATCH tests. Renumbered from the README-only 052 collision; closed 2026-09-07, see `done/055.md`.
