@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // CompletionMetrics contains only bounded platform-controlled labels. Session,
@@ -27,13 +29,16 @@ import (
 type CompletionMetrics struct {
 	statusReads  *prometheus.CounterVec
 	convergences *prometheus.CounterVec
-	// turnDuration is the wall-clock a turn spent in its running phase before the
-	// Completer terminalized it, labelled by terminal outcome (w5/m81 t001). It is
-	// measured from the running-transition (record.UpdatedAt) to terminalization,
-	// so it includes up to one poll interval of detection lag — an upper bound on
-	// the turn's true duration, which is exactly the signal an operator wants: it
-	// is what surfaces a slow/hung turn (e.g. the ~192s bad-key case w5/m80 t003
-	// eliminates) as a metric rather than a manual pod-level investigation.
+	// turnOutcomes counts successful terminal CASes by bounded outcome
+	// (w5/m88). Includes never-running failures that must not fabricate a
+	// running-duration sample.
+	turnOutcomes *prometheus.CounterVec
+	// turnDuration is the wall-clock a turn spent in its running phase before
+	// terminalization (w5/m81, corrected w5/m88), labelled by terminal outcome.
+	// Anchored on agent_session_turns.started_at (set at bind), not
+	// agent_sessions.updated_at — pin/archive must not shorten the sample. A
+	// turn that never reached running (started_at NULL) does not emit a
+	// running-duration sample.
 	turnDuration *prometheus.HistogramVec
 	// provisionLatency is the wall-clock to stand a session's sandbox up: the
 	// CreateAgentSessionSandbox call, which blocks until the pod is Running with an
@@ -52,16 +57,17 @@ const (
 	provisionFailed  provisionOutcome = "failed"
 )
 
-// turnOutcome is the bounded terminal-outcome label on the turn-duration
-// histogram. It never carries a session id, reason, or any tenant string.
+// turnOutcome is the bounded terminal-outcome label on turn metrics. It never
+// carries a session id, reason, or any tenant string.
 type turnOutcome string
 
 const (
-	turnOutcomeCompleted turnOutcome = "completed"
-	turnOutcomeFailed    turnOutcome = "failed"
-	// turnOutcomeLost is a driver/sandbox that died before reporting — the
-	// Completer's terminal backstop, distinct from a driver-reported failure.
-	turnOutcomeLost turnOutcome = "lost"
+	turnOutcomeCompleted          turnOutcome = "completed"
+	turnOutcomeFailed             turnOutcome = "failed"
+	turnOutcomeLost               turnOutcome = "lost"
+	turnOutcomeCanceled           turnOutcome = "canceled"
+	turnOutcomeVendorAuthRejected turnOutcome = "vendor_auth_rejected"
+	turnOutcomeDispatchFailed     turnOutcome = "dispatch_failed"
 )
 
 type statusReadOutcome string
@@ -89,9 +95,13 @@ func NewCompletionMetrics(reg prometheus.Registerer) *CompletionMetrics {
 			Name: "bex_agent_session_terminal_convergences_total",
 			Help: "Agent sessions terminalized by the lifecycle backstop.",
 		}, []string{"reason"}),
+		turnOutcomes: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "bex_agent_session_turn_outcomes_total",
+			Help: "Agent-session turns terminalized by bounded outcome (successful CAS only).",
+		}, []string{"outcome"}),
 		turnDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name: "bex_agent_session_turn_duration_seconds",
-			Help: "Agent-session turn wall-clock (running-transition to terminalization) by outcome.",
+			Help: "Agent-session turn running wall-clock (started_at → terminal CAS) by outcome; omitted when the turn never reached running.",
 			// Sub-second through ~30m: brackets a fast happy-path turn, a normal
 			// coding turn, and a hung turn approaching the BEX_AGENT_TURN_TIMEOUT bound.
 			Buckets: []float64{1, 5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600},
@@ -104,7 +114,7 @@ func NewCompletionMetrics(reg prometheus.Registerer) *CompletionMetrics {
 			Buckets: []float64{1, 2, 5, 10, 20, 30, 60, 120, 300},
 		}, []string{"outcome"}),
 	}
-	reg.MustRegister(m.statusReads, m.convergences, m.turnDuration, m.provisionLatency)
+	reg.MustRegister(m.statusReads, m.convergences, m.turnOutcomes, m.turnDuration, m.provisionLatency)
 	return m
 }
 
@@ -116,12 +126,35 @@ func (m *CompletionMetrics) observeProvision(outcome provisionOutcome, d time.Du
 	}
 }
 
-// observeTurn records a terminated turn's duration under its outcome label. A
-// non-positive duration (a clock skew or a row whose updated_at is in the future)
-// is dropped rather than recorded as a spurious zero.
-func (m *CompletionMetrics) observeTurn(outcome turnOutcome, d time.Duration) {
-	if m != nil && d > 0 {
+// observeTerminalTurn records a successful terminal CAS: always the outcome
+// counter, and a running-duration sample only when started_at was set. Callers
+// must invoke this only when the store reported the CAS won (err == nil).
+func (m *CompletionMetrics) observeTerminalTurn(outcome turnOutcome, fact store.TerminalTurnFact) {
+	if m == nil {
+		return
+	}
+	m.turnOutcomes.WithLabelValues(string(outcome)).Inc()
+	if fact.StartedAt == nil {
+		return
+	}
+	d := fact.TerminalAt.Sub(*fact.StartedAt)
+	if d > 0 {
 		m.turnDuration.WithLabelValues(string(outcome)).Observe(d.Seconds())
+	}
+}
+
+// ObserveVendorAuthRejected records a successful model-auth terminal CAS from
+// the :8091 auth-failure verb (w5/m88). Exported so main can wire ModelAuthFailer
+// without importing agentsessions' unexported outcome constants into agentsession.
+func (m *CompletionMetrics) ObserveVendorAuthRejected(fact store.TerminalTurnFact) {
+	m.observeTerminalTurn(turnOutcomeVendorAuthRejected, fact)
+}
+
+// observeDispatchFailed records a successful AbandonAgentDispatch session
+// terminalization. A zero Turn means tombstone-only (no session phase change).
+func (m *CompletionMetrics) observeDispatchFailed(fact store.TerminalTurnFact) {
+	if fact.Turn > 0 {
+		m.observeTerminalTurn(turnOutcomeDispatchFailed, fact)
 	}
 }
 

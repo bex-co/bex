@@ -190,12 +190,12 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	if err != nil || len(running) != 1 || running[0].ID != record.ID {
 		t.Fatalf("list-by-phases = %+v err=%v", running, err)
 	}
-	record, err = s.FinalizeAgentSession(ctx, record.ID, "completed", "abc123",
+	record, _, err = s.FinalizeAgentSession(ctx, record.ID, "completed", "abc123",
 		"https://github.com/bex-co/example/pull/7", 7, []byte(`{"commandLog":["go test"]}`), "")
 	if err != nil || record.Phase != "completed" || record.HeadSHA != "abc123" || record.PRNumber != 7 {
 		t.Fatalf("finalize agent session = %+v err=%v", record, err)
 	}
-	if _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", 0, nil, "stale observer"); !errors.Is(err, ErrNotFound) {
+	if _, _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", 0, nil, "stale observer"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("second terminal finalize = %v, want CAS ErrNotFound", err)
 	}
 	got, err = s.GetAgentSession(ctx, record.ID)
@@ -231,7 +231,7 @@ func assertAgentSessionRetryClearsFailure(ctx context.Context, t *testing.T, s *
 	if _, err := s.SetAgentSessionLifecycle(ctx, record.ID, "sandbox-1", "running", "running", false); err != nil {
 		t.Fatalf("start retry session: %v", err)
 	}
-	if _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", 0, nil, "old push failure"); err != nil {
+	if _, _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", 0, nil, "old push failure"); err != nil {
 		t.Fatalf("fail retry session: %v", err)
 	}
 	record, err = s.BeginAgentSessionTurn(ctx, record.ID, "retry", "redispatch", "redispatching", "redispatching")

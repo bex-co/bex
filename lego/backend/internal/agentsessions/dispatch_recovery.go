@@ -28,10 +28,12 @@ const interruptedDispatchReason = "Sandbox provisioning was interrupted before i
 
 func (s *Service) abandonDispatch(ctx context.Context, row store.AgentSession, turn int, reason string) {
 	d := store.AgentDispatch{SessionID: row.ID, WorkspaceID: row.WorkspaceID, Turn: turn}
-	if err := s.Store.AbandonAgentDispatch(ctx, d, time.Now(), reason); err != nil {
+	fact, err := s.Store.AbandonAgentDispatch(ctx, d, time.Now(), reason)
+	if err != nil {
 		log.Printf("agent-session dispatch: failure persistence failed (session=%s turn=%d): %v", row.ID, turn, err)
 		return
 	}
+	s.Metrics.observeDispatchFailed(fact)
 	if err := s.Sandbox.CleanupAgentDispatches(ctx, []store.AgentDispatch{d}); err != nil {
 		log.Printf("agent-session dispatch: cleanup deferred (session=%s turn=%d): %v", row.ID, turn, err)
 	}
@@ -52,9 +54,11 @@ func (c *Completer) recoverDispatches(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		if err := c.Store.AbandonAgentDispatch(ctx, d, c.now(), interruptedDispatchReason); err != nil {
+		fact, err := c.Store.AbandonAgentDispatch(ctx, d, c.now(), interruptedDispatchReason)
+		if err != nil {
 			continue
 		}
+		c.Metrics.observeDispatchFailed(fact)
 		// Rotate before remote I/O so an unavailable workspace cannot starve others.
 		if err := c.Store.DeferAgentDispatchCleanup(ctx, d, c.now().Add(time.Minute)); err != nil {
 			continue

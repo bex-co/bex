@@ -74,8 +74,14 @@ func (s *PGStore) ListAgentDispatchesDue(ctx context.Context, now time.Time) ([]
 // AbandonAgentDispatch serializes against binding and atomically settles only
 // the accepted turn that owns the intent. A canceled/deleted/newer session
 // still leaves a cleanup tombstone, but its lifecycle is never overwritten.
-func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now time.Time, reason string) error {
+// When the session row is terminalized (still unbound creating/redispatching),
+// the returned TerminalTurnFact carries timing for metrics (w5/m88); a zero
+// Turn means no session terminalization occurred (tombstone-only or already
+// bound — the latter returns ErrNotFound).
+func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now time.Time, reason string) (TerminalTurnFact, error) {
 	bound := false
+	terminalized := false
+	var fact TerminalTurnFact
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var turn int
 		var sandboxID string
@@ -97,18 +103,46 @@ func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now
 		if tag.RowsAffected() == 0 {
 			return ErrNotFound
 		}
-		if _, err = tx.Exec(ctx, `UPDATE agent_sessions SET phase='failed', status='failed', failure_reason=$3, updated_at=$4
-    WHERE id=$1 AND turns=$2 AND sandbox_id='' AND phase IN ('creating','redispatching')`, d.SessionID, d.Turn, reason, now); err != nil {
+		tag, err = tx.Exec(ctx, `UPDATE agent_sessions SET phase='failed', status='failed', failure_reason=$3, updated_at=$4
+    WHERE id=$1 AND turns=$2 AND sandbox_id='' AND phase IN ('creating','redispatching')`, d.SessionID, d.Turn, reason, now)
+		if err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `UPDATE agent_session_turns SET completed_at=COALESCE(completed_at,$3), transcript_complete=false, truncation_reason=$4
-    WHERE session_id=$1 AND turn=$2 AND completed_at IS NULL`, d.SessionID, d.Turn, now, reason)
-		return err
+		if tag.RowsAffected() == 0 {
+			return nil
+		}
+		terminalized = true
+		fact.Turn = d.Turn
+		fact.TerminalAt = now
+		err = tx.QueryRow(ctx, `UPDATE agent_session_turns SET completed_at=COALESCE(completed_at,$3), transcript_complete=false, truncation_reason=$4
+    WHERE session_id=$1 AND turn=$2 AND completed_at IS NULL
+    RETURNING created_at, started_at, completed_at`, d.SessionID, d.Turn, now, reason).
+			Scan(&fact.AcceptedAt, &fact.StartedAt, &fact.TerminalAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				// Turn already completed (settleDispatchTurn raced) — still a
+				// successful session terminalization; load timing without rewriting.
+				err = tx.QueryRow(ctx, `SELECT created_at, started_at, completed_at FROM agent_session_turns
+					WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn).
+					Scan(&fact.AcceptedAt, &fact.StartedAt, &fact.TerminalAt)
+				if errors.Is(err, pgx.ErrNoRows) {
+					return nil
+				}
+			}
+			return err
+		}
+		return nil
 	})
 	if err == nil && bound {
-		return ErrNotFound
+		return TerminalTurnFact{}, ErrNotFound
 	}
-	return err
+	if err != nil {
+		return TerminalTurnFact{}, err
+	}
+	if !terminalized {
+		return TerminalTurnFact{}, nil
+	}
+	return fact, nil
 }
 
 func (s *PGStore) DeferAgentDispatchCleanup(ctx context.Context, d AgentDispatch, next time.Time) error {

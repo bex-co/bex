@@ -506,6 +506,36 @@ func (f *fakeStore) SetAgentSessionLifecycle(_ context.Context, id, sandboxID, p
 	f.rows[id] = row
 	return row, nil
 }
+func (f *fakeStore) SetAgentSessionCanceled(_ context.Context, id string) (store.AgentSession, store.TerminalTurnFact, error) {
+	row, ok := f.rows[id]
+	if !ok {
+		return store.AgentSession{}, store.TerminalTurnFact{}, store.ErrNotFound
+	}
+	if row.Phase == PhaseCanceled {
+		return store.AgentSession{}, store.TerminalTurnFact{}, store.ErrNotFound
+	}
+	row.Phase, row.Status = PhaseCanceled, "canceled"
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	at := row.UpdatedAt
+	if row.CanceledAt == nil {
+		row.CanceledAt = &at
+	}
+	f.rows[id] = row
+	fact := store.TerminalTurnFact{Turn: row.Turns, AcceptedAt: row.CreatedAt, TerminalAt: row.UpdatedAt}
+	if turns := f.turns[id]; turns != nil {
+		if turn, ok := turns[row.Turns]; ok {
+			fact.AcceptedAt = turn.CreatedAt
+			fact.StartedAt = turn.StartedAt
+			if turn.CompletedAt == nil {
+				turn.CompletedAt = &at
+				turns[row.Turns] = turn
+			} else {
+				fact.TerminalAt = *turn.CompletedAt
+			}
+		}
+	}
+	return row, fact, nil
+}
 func (f *fakeStore) SetAgentSessionFailure(_ context.Context, id, sandboxID, reason string) (store.AgentSession, error) {
 	row, ok := f.rows[id]
 	if !ok {
@@ -554,17 +584,24 @@ func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID,
 	row.Phase, row.Status, row.DeliveryMode = phase, status, deliveryMode
 	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
 	f.rows[id] = row
+	if turns := f.turns[id]; turns != nil {
+		if trow, ok := turns[turn]; ok && trow.StartedAt == nil {
+			at := row.UpdatedAt
+			trow.StartedAt = &at
+			turns[turn] = trow
+		}
+	}
 	return row, nil
 }
-func (f *fakeStore) FinalizeAgentSession(_ context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (store.AgentSession, error) {
+func (f *fakeStore) FinalizeAgentSession(_ context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (store.AgentSession, store.TerminalTurnFact, error) {
 	row, ok := f.rows[id]
 	if !ok {
-		return store.AgentSession{}, store.ErrNotFound
+		return store.AgentSession{}, store.TerminalTurnFact{}, store.ErrNotFound
 	}
 	switch row.Phase {
 	case PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching, PhaseHibernating:
 	default:
-		return store.AgentSession{}, store.ErrNotFound
+		return store.AgentSession{}, store.TerminalTurnFact{}, store.ErrNotFound
 	}
 	row.Phase, row.Status, row.FailureReason = phase, phase, failureReason
 	if headSHA != "" {
@@ -581,7 +618,20 @@ func (f *fakeStore) FinalizeAgentSession(_ context.Context, id, phase, headSHA, 
 	}
 	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
 	f.rows[id] = row
-	return row, nil
+	fact := store.TerminalTurnFact{Turn: row.Turns, AcceptedAt: row.CreatedAt, TerminalAt: row.UpdatedAt}
+	if turns := f.turns[id]; turns != nil {
+		if turn, ok := turns[row.Turns]; ok {
+			fact.AcceptedAt = turn.CreatedAt
+			fact.StartedAt = turn.StartedAt
+			at := row.UpdatedAt
+			if turn.CompletedAt == nil {
+				turn.CompletedAt = &at
+				turns[row.Turns] = turn
+			}
+			fact.TerminalAt = *turn.CompletedAt
+		}
+	}
+	return row, fact, nil
 }
 func (f *fakeStore) DeleteAgentSession(_ context.Context, id string) error {
 	delete(f.rows, id)
@@ -2023,26 +2073,43 @@ func (f *fakeStore) ListAgentDispatchesDue(_ context.Context, now time.Time) ([]
 	}
 	return out, nil
 }
-func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispatch, now time.Time, reason string) error {
+func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispatch, now time.Time, reason string) (store.TerminalTurnFact, error) {
 	key := dispatchKey(d.SessionID, d.Turn)
 	intent, ok := f.dispatches[key]
 	if !ok {
-		return store.ErrNotFound
+		return store.TerminalTurnFact{}, store.ErrNotFound
 	}
 	intent.abandoned = true
 	f.dispatches[key] = intent
 	row := f.rows[d.SessionID]
+	if row.Turns == d.Turn && row.SandboxID != "" {
+		delete(f.dispatches, key)
+		return store.TerminalTurnFact{}, store.ErrNotFound
+	}
+	fact := store.TerminalTurnFact{}
 	if row.Turns == d.Turn && row.SandboxID == "" && (row.Phase == PhaseCreating || row.Phase == PhaseRedispatching) {
 		row.Phase = PhaseFailed
 		row.Status = PhaseFailed
 		row.FailureReason = reason
 		row.UpdatedAt = now
 		f.rows[row.ID] = row
+		fact = store.TerminalTurnFact{Turn: d.Turn, TerminalAt: now}
+		if turn, ok := f.turns[d.SessionID][d.Turn]; ok {
+			fact.AcceptedAt = turn.CreatedAt
+			fact.StartedAt = turn.StartedAt
+			if turn.CompletedAt == nil {
+				_ = f.CompleteAgentSessionTurn(ctx, d.SessionID, d.Turn, false, false, reason)
+				fact.TerminalAt = now
+			} else {
+				fact.TerminalAt = *turn.CompletedAt
+			}
+		}
+		return fact, nil
 	}
 	if turn, ok := f.turns[d.SessionID][d.Turn]; ok && turn.CompletedAt == nil {
-		return f.CompleteAgentSessionTurn(ctx, d.SessionID, d.Turn, false, false, reason)
+		_ = f.CompleteAgentSessionTurn(ctx, d.SessionID, d.Turn, false, false, reason)
 	}
-	return nil
+	return store.TerminalTurnFact{}, nil
 }
 func (f *fakeStore) DeferAgentDispatchCleanup(_ context.Context, d store.AgentDispatch, next time.Time) error {
 	key := dispatchKey(d.SessionID, d.Turn)

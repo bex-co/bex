@@ -386,8 +386,8 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 	// A turn that pushed nothing is an honest no-op completion: record it (with
 	// evidence) but open no PR — there is nothing to review.
 	if !report.Delivery.Pushed || report.Delivery.HeadSHA == "" {
-		if final, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, "", "", 0, evidenceJSON, ""); err == nil {
-			c.Metrics.observeTurn(turnOutcomeCompleted, c.now().Sub(record.UpdatedAt))
+		if final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, "", "", 0, evidenceJSON, ""); err == nil {
+			c.Metrics.observeTerminalTurn(turnOutcomeCompleted, fact)
 			log.Printf("agent-session completer: completed session=%s (no-op, nothing pushed)", record.ID)
 			c.teardown(ctx, final)
 		} else {
@@ -422,13 +422,13 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		c.fail(ctx, record, "draft pull request could not be opened")
 		return
 	}
-	final, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted,
+	final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted,
 		report.Delivery.HeadSHA, pr.HTMLURL, pr.Number, evidenceJSON, "")
 	if err != nil {
 		log.Printf("agent-session completer: finalize failed (session=%s pr=%s): %v", record.ID, pr.HTMLURL, err)
 		return // retry next tick; the sandbox stays until the row is finalized
 	}
-	c.Metrics.observeTurn(turnOutcomeCompleted, c.now().Sub(record.UpdatedAt))
+	c.Metrics.observeTerminalTurn(turnOutcomeCompleted, fact)
 	log.Printf("agent-session completer: completed session=%s pr=%s head=%s", record.ID, pr.HTMLURL, report.Delivery.HeadSHA)
 	// Tear down against the FINALIZED row so the idle clock (record.UpdatedAt) is
 	// the turn-end time, not the stale pre-finalize timestamp; SandboxID survives
@@ -437,11 +437,11 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 }
 
 func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason string) {
-	final, ok := c.finalizeFailure(ctx, record, reason)
+	final, fact, ok := c.finalizeFailure(ctx, record, reason)
 	if !ok {
 		return
 	}
-	c.Metrics.observeTurn(turnOutcomeFailed, c.now().Sub(record.UpdatedAt))
+	c.Metrics.observeTerminalTurn(turnOutcomeFailed, fact)
 	log.Printf("agent-session completer: failed session=%s reason=%q", record.ID, reason)
 	c.teardown(ctx, final)
 }
@@ -452,26 +452,26 @@ func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason 
 // immediately instead of entering the Active-tier idle grace.
 func (c *Completer) failLostSandbox(ctx context.Context, record store.AgentSession, reason string, metricReason terminalConvergenceReason) {
 	c.clearStatusFailure(record.ID)
-	final, ok := c.finalizeFailure(ctx, record, reason)
+	final, fact, ok := c.finalizeFailure(ctx, record, reason)
 	if !ok {
 		return
 	}
 	c.Metrics.converged(metricReason)
-	c.Metrics.observeTurn(turnOutcomeLost, c.now().Sub(record.UpdatedAt))
+	c.Metrics.observeTerminalTurn(turnOutcomeLost, fact)
 	c.markTurnTranscript(ctx, final, false, true, reason)
 	log.Printf("agent-session completer: terminal fallback converged session=%s reason=%q", record.ID, reason)
 	c.terminate(ctx, final)
 }
 
-func (c *Completer) finalizeFailure(ctx context.Context, record store.AgentSession, reason string) (store.AgentSession, bool) {
-	final, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseFailed, "", "", 0, nil, reason)
+func (c *Completer) finalizeFailure(ctx context.Context, record store.AgentSession, reason string) (store.AgentSession, store.TerminalTurnFact, bool) {
+	final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseFailed, "", "", 0, nil, reason)
 	if err != nil {
 		if !errors.Is(err, store.ErrNotFound) {
 			log.Printf("agent-session completer: finalize failed-state write errored (session=%s reason=%q): %v", record.ID, reason, err)
 		}
-		return store.AgentSession{}, false
+		return store.AgentSession{}, store.TerminalTurnFact{}, false
 	}
-	return final, true
+	return final, fact, true
 }
 
 // maxTranscriptParts bounds how many parts one turn's harvest persists — a
@@ -612,7 +612,7 @@ func (c *Completer) hibernate(ctx context.Context, record store.AgentSession) bo
 // terminal phase so the fallback Terminate — or a later retry — proceeds. A
 // failure is only logged (the reaper retries next tick).
 func (c *Completer) unclaimHibernation(ctx context.Context, claimed store.AgentSession, originalPhase string) {
-	if _, err := c.Store.FinalizeAgentSession(ctx, claimed.ID, originalPhase, "", "", 0, nil, claimed.FailureReason); err != nil {
+	if _, _, err := c.Store.FinalizeAgentSession(ctx, claimed.ID, originalPhase, "", "", 0, nil, claimed.FailureReason); err != nil {
 		log.Printf("agent-session completer: unclaim hibernation failed (session=%s): %v", claimed.ID, err)
 	}
 }
