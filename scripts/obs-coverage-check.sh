@@ -71,6 +71,7 @@ WAIVED_ALERTS=(
 CONTEXT_SERIES=(
   "up"                        # scrape-target liveness guard/absence clause, shared by most jobs
   "bex_billing_enabled"       # feature gate ANDed into every billing alert, not a signal
+  "bex_push_enabled"          # push-transport-configured gate ANDed into PushDeliveryStale, not a signal
   "kube_node_role"            # node-role join (control-plane vs worker), not a signal
   "kube_node_info"            # node-inventory join used for fleet counts, not a signal
   "kube_cronjob_spec_suspend" # suspension guard ANDed into BackupCronJobStale, not a signal

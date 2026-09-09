@@ -58,7 +58,8 @@ The local overlay runs Grafana with only the local admin — no OIDC client, no 
 
 Division of record: **this section says what we watch and why; the committed dashboard JSON says how it is drawn.** Two standing principles:
 
-- **Every alert gets a panel.** Prometheus evaluates 43 platform alert rules today (`deploy/gitops/base/prometheus.yaml`); an alert only says "broken", so each rule's backing series must appear on a dashboard that answers _how bad, since when, trending which way_. A new alert rule lands with (or names) its panel; a panel-less alert is review feedback.
+- **Every alert gets a panel.** Prometheus evaluates 46 platform alert rules today (`deploy/gitops/base/prometheus.yaml`); an alert only says "broken", so each rule's backing series must appear on a dashboard that answers _how bad, since when, trending which way_. A new alert rule lands with (or names) its panel; a panel-less alert is review feedback. `scripts/obs-coverage-check.sh` generates the audit and fails CI, so this is enforced rather than remembered.
+- **Every tenant-facing surface gets a falsifiable signal** — an alert rule, a scheduled probe, or a written waiver. The per-surface ledger is the [coverage table](#tenant-facing-surface-coverage-w3m83-t001) below.
 - **Bounded labels only.** Platform dashboards query the same bounded label sets the alert rules do — never per-path/per-host/per-tenant-unbounded dimensions (the ADR010 cardinality rule applies to dashboards too).
 
 Per-dashboard SLIs and core series (all series names verified against the scrape/alert config and the `bex_*` registries; third-party exporters named by their real series):
@@ -66,11 +67,81 @@ Per-dashboard SLIs and core series (all series names verified against the scrape
 | dashboard | SLI / question | core series |
 | --- | --- | --- |
 | **Platform availability** (landing page) | edge availability = 1 − 5xx ratio (5m), tied to `TraefikHigh5xxRate`'s threshold; edge latency p50/p95/p99; "is the platform itself up" | `traefik_service_requests_total`, Traefik service duration histogram; `kube_deployment_status_replicas_available` vs `kube_deployment_spec_replicas` (platform ns); `kube_pod_container_status_waiting_reason` (crashloops); `certmanager_certificate_expiration_timestamp_seconds` + `certmanager_certificate_ready_status`; `vault_core_unsealed` |
-| **bex-api + gateways** | API error/latency (edge view per service); agent-session SLOs (w5/m81 baseline, corrected w5/m88); gateway saturation | Traefik series filtered to the api service; `bex_agent_session_turn_outcomes_total{outcome}`, `bex_agent_session_turn_duration_seconds{outcome}` (running-only; started_at→terminal), `bex_agent_session_provision_seconds{outcome}`, `bex_agent_session_terminal_convergences_total`; `bex_ssh_gateway_active_sessions`/`_active_channels`/`_limit_rejections_total`/`_git_proxy_upstream_failures_total` |
+| **bex-api + gateways** | API error/latency (edge view per service); agent-session SLOs (w5/m81 baseline, corrected w5/m88); gateway saturation; outbound eventing delivery (webhooks + push) | Traefik series filtered to the api service; `bex_agent_session_turn_outcomes_total{outcome}`, `bex_agent_session_turn_duration_seconds{outcome}` (running-only; started_at→terminal), `bex_agent_session_provision_seconds{outcome}`, `bex_agent_session_terminal_convergences_total`; `bex_ssh_gateway_active_sessions`/`_active_channels`/`_limit_rejections_total`/`_git_proxy_upstream_failures_total`; `bex_webhooks_delivery_admissions_total{result}`, `bex_webhooks_delivery_attempts_total{origin,result}`; `bex_push_last_success_timestamp_seconds`, `bex_push_queue_rows{state}`, `bex_push_enabled` |
 | **Builds** | queue starvation (oldest wait), queue-time distribution, build success ratio, builder health | `bex_builds_active`/`bex_builds_queued`, `bex_build_queue_oldest_seconds`, `bex_build_queue_seconds_bucket`, `bex_build_run_seconds`, `bex_build_outcomes_total`, `bex_build_infra_failures_total`, `bex_build_clusterbuilder_ready`/`_present`/`_image_resolved_timestamp_seconds` |
 | **Data plane** | tenant datastore readiness + PITR safety (WAL archiving must be 1); replication/backup freshness; public SNI front doors | `bex_datastore_ready`, `bex_datastore_wal_archiving`, `bex_datastore_age_seconds`, `bex_datastore_observe_errors_total`; `cnpg_backends_total`, `cnpg_pg_replication_*`, `cnpg_pg_stat_archiver_last_archived_time`; `kube_cronjob_status_last_successful_time` (backup CronJobs); `bex_pg_proxy_healthy`, `bex_kv_proxy_healthy` |
 | **Billing + metering** | money-path freshness (outbox age), export integrity, meter integrity (a broken meter is silent revenue loss) | `bex_billing_outbox_oldest_pending_age_seconds`, `bex_billing_export_rejected_rows`/`_ambiguous_rows`, `bex_billing_webhook_last_success_timestamp_seconds`, `bex_billing_operations_total`, `bex_billing_enabled`; `bex_egress_meter_healthy`/`_counter_loss_events_total`/`_resource_map_pressure_ratio`, `bex_websocket_meter_healthy`, `bex_app_direct_egress_bytes_total` + pg/kv/websocket egress bytes |
 | **Cluster capacity** | node headroom, PV fill (feeds `PersistentVolumeFillingUp` + the disk autoscaler), registry fill | `container_cpu_usage_seconds_total`, `container_memory_working_set_bytes` (cadvisor); `kube_node_status_condition`, `kube_node_info`/`kube_node_role`; `kubelet_volume_stats_used_bytes`/`_available_bytes`/`_capacity_bytes` (incl. the Zot PVC behind the `ZotRegistry*` alerts) |
+
+#### Tenant-facing surface coverage (w3/m83 t001)
+
+"Every alert gets a panel" is a rule about the alerts that exist. It says nothing about the surfaces that have **no** signal at all — and every silent outage in this repo's history has been of that second kind: a pipeline that returned `200` with no rows (`w3/m36` app logs, `w6/m131` request logs), an edge that answered TCP but never spoke SSH (`w6/m132`), a metric that stopped arriving (`w3/m110`). So the standing rule extends: **every tenant-facing surface gets a falsifiable signal**, and the form is chosen by where the failure is visible.
+
+The choice is not a preference. A **Prometheus rule** is right when the failure is already visible in a series bex emits, because it costs nothing per evaluation and fires in minutes. A **scheduled probe** is the only option when the failure is visible only from the tenant's side — a query that returns empty, a URL that 404s, an invariant that needs a fixture to test — because no series exists to alert on. A surface at **none** is a surface where the next regression is found by a human.
+
+Each "covered" cell below names the rule (`deploy/gitops/base/prometheus.yaml`) or the workflow job (`.github/workflows/*.yml`) that provides it, so the claim is checkable rather than asserted.
+
+| tenant-facing surface | alert rule | scheduled probe | form + owner |
+| --- | --- | --- | --- |
+| App logs (`type=app`) | — | `request-logs-liveness` job, 6h (`STREAM_TYPES` includes `app`) | **probe** — w3/m83 t002. A dark pipeline is a `200 {"logs":[]}`, indistinguishable per-resource from a quiet service; only the fleet-wide label index decides it |
+| Request logs (`type=request`) | — | `request-logs-liveness` job, 6h | **probe** — shipped w6/m131 t004 |
+| Build logs (`type=build`) | — | — | **waived** — a build stream only exists while a build runs, so "no stream in 6h" is a true statement about a quiet fleet, not a fault. Its producer is covered by the build alerts (`BuildInfraSuccessBelowSLO`, `BuildQueuedTooLong`): a build that never ran cannot have logs |
+| Datastore logs (`type=postgres`/`keyvalue`) | — | — | **waived** — same shipper DaemonSet and Loki as `type=app`, selected by an operator-stamped pod label; the app-log probe fails first and for the same reason. Revisit if a datastore-only pipeline defect is ever seen |
+| Resource metrics (cpu/memory/instances) | — | `tenant-view-liveness` job, 6h | **probe** — w3/m83 t003. cAdvisor's own absence is what fails, and only a real App's series answers it |
+| Request metrics | `TraefikHigh5xxRate` (the source series, not the tenant read) | `tenant-view-liveness` job, 6h | **probe** — w3/m83 t003 |
+| Usage metering | `EgressMeterTargetMissing`, `EgressMeterUnhealthy`, `EgressMeterCounterLoss`, `EgressMeterMapPressure`, `WebSocketEgressMeterUnavailable`, `PostgresEgressProxyUnavailable`, `KeyValueEgressProxyUnavailable` | — | **covered by alerts** — every meter fails loudly rather than metering zero (ADR023) |
+| Events feed | — | `tenant-view-liveness` job, 6h | **probe** — w3/m83 t003. The feed is a read VIEW over Postgres; its failure shape is an empty page |
+| Outbound webhooks | `WebhookDeliveryAdmissionPressure`, `WebhookDeliveryFailing` | — | **covered by alerts** — w3/m83 t006 added the wire-failure ratio beside the queue-bound one |
+| Push delivery | `PushDeliveryStale` | — | **alert** — w3/m83 t006 |
+| Deploy email | — | — | **waived** — one SMTP relay, and `KratosCourierNotReady` already pages when it stalls (sign-up verification shares it, so a dead relay is caught at the higher-stakes surface first) |
+| Deploy from git → Ready → URL | — | `deploy-canary` job, weekly | **probe** — w3/m83 t004. The Render promise itself; no series says "a push became a running URL" |
+| Static-site serving + teardown | — | `deploy-canary` job (static variant), weekly | **probe** — w3/m83 t004. Teardown is the half that fails silently: a deleted site that keeps serving is invisible to every metric |
+| Custom domains / TLS | `CertificateNotReady`, `CertificateExpiringSoon`, `TenantCustomDomainCertNotReady` (info) | `onbex-default-tls-verify` step, 6h | **covered** — cert-manager's own series plus the public wildcard-fallback synthetic |
+| SSH edge | — | `ssh-kexinit-probe` step, 6h | **probe** — shipped w6/m132 t004. The failure was pre-authentication, so no in-cluster series saw it |
+| Web Shell | — | `shell-ws-probe` step, 6h | **probe** — shipped w2/m90 (alive-but-refusing 401 is the healthy shape) |
+| Agent sessions — provision | `AgentSessionProvisionFailing` | — | **alert** — w3/m83 t006 |
+| Agent sessions — turn | — | — | **waived** — a turn's duration is dominated by the model and the task, so no threshold separates "slow platform" from "hard problem". `bex_agent_session_turn_duration_seconds` and `bex_agent_session_terminal_convergences_total` are paneled for the human read; provisioning is the half bex owns and it is alerted |
+| Sandboxes | — | — | **none (accepted for now)** — sandbox creation outside an agent session has no first-party series and no probe. The agent-session provisioning alert covers the same OpenSandbox substrate through its busiest caller, so a substrate outage is caught; a `/v1/sandboxes`-specific regression is not. Owner: unfiled |
+| Tenant / sandbox isolation | — | `isolation-matrix` job, weekly | **probe** — w3/m83 t005. An invariant, not a series: only an actual denied connection proves it |
+| Datastore provisioning | `DatastoreStuckProvisioning`, `DatastoreObservationFailing` | — | **covered by alerts** — absence is the symptom, which is why the observation-error rule exists beside it |
+| Datastore backups | `DatabaseNotArchivingWAL`, `BackupCronJobStale`, `PlatformDatabaseBackupStale` | — | **covered by alerts** |
+| Billing | `BillingExportBacklog`, `BillingPermanentReject`, `BillingExportAmbiguity`, `BillingLocalStampFailure`, `BillingProviderDuplicate`, `BillingInvoiceReadDegraded`, `BillingWebhookDrift`, `BillingProvisioningFailure` | — | **covered by alerts** |
+
+Two properties of this table are load-bearing:
+
+- **A probe must be falsifiable.** A probe that cannot fail is worse than no probe, because it reports safety. Every row above that says "probe" asserts a property that was actually false during a real outage — tenant-namespace attribution, a KEXINIT byte, a 401 refusal shape — not merely that a call returned 200.
+- **`scripts/obs-coverage-check.sh` guards the alert column only.** Its waiver list is about panels for alerts; the "none"/"waived" rows here are a different ledger, kept in this table, and each one states the reason in place rather than pointing at a waiver file.
+
+#### Scheduled probes and the canary fixture (w3/m83)
+
+An alert rule fires on a series that moved. It cannot fire on a series that is **silently empty**, and that is the failure this platform has hit repeatedly: `type=request` dark for every tenant for a month (w6/m131), the SSH edge never completing a handshake (w6/m132), metrics series that existed while bex-api's query named them wrong (w6/m110). Each was a 200 with no rows — indistinguishable, to any threshold, from a quiet platform. So dashboards and alerts are only half the coverage; the other half is a probe that **generates** the signal it then demands to read back. Falsifiable green: a probe that cannot go red is not coverage.
+
+| probe | cadence | asks | red opens |
+| --- | --- | --- | --- |
+| `ssh-kexinit-probe.sh` | 6h | does `ssh.bex.co` complete a version exchange | `ssh-edge-down` |
+| `onbex-default-tls-verify.sh` | 6h | trusted wildcard TLS + the intentional 404 | `onbex-fallback-tls-down` |
+| `shell-ws-probe.sh` | 6h | does the Web Shell edge refuse ticketlessly with 401 | `shell-ws-edge-down` |
+| `request-logs-liveness.sh` | 6h | do `type=request` streams exist for a **tenant** namespace | `request-logs-down` |
+| `tenant-view-liveness.sh` | 6h | with a tenant's key: does the canary serve, and does bex-api report that request back through logs, metrics, and events | `tenant-view-down` |
+| `deploy-canary.sh` | weekly | does a repo become a running HTTPS URL, and does deleting it converge on every read surface | `deploy-canary-down` |
+| `verify-tenant-isolation.sh` | weekly | ADR043 reachability matrix on the real substrate | `tenant-isolation-down` |
+| `verify-sandbox-isolation-live.sh` | weekly | ADR042 / w3/m35 sandbox boundary matrix | `sandbox-isolation-down` |
+
+The first four are credential-free platform reads. The last four need a **canary fixture**: a first-party `bex-canary` workspace (`billing_excluded` per [ADR040](ADR040-billing-metronome.md) §7) holding one free web service built from `examples/hello-go`, plus one workspace-scoped API key. Free-tier hibernation is wanted rather than tolerated — the probe's own request wakes the service, which exercises the activator path and puts a `service_woken` event in the feed that the probe's last stage reads.
+
+Configuration is split by secrecy, not convenience: the key is a repository **secret** (`BEX_CANARY_API_KEY`, custodied per [ADR019](ADR019-infra-credentials.md)), while the fixture's ids are repository **variables**, so a wrong value is legible in the run log instead of masked.
+
+| setting | kind | value |
+| --- | --- | --- |
+| `BEX_CANARY_API_KEY` | secret | _owed_ — `<key-id>:<key-secret>` from `POST /v1/api-keys` in the canary workspace |
+| `BEX_CANARY_WORKSPACE_ID` | variable | _owed_ — the `tea-…` id of `bex-canary` |
+| `BEX_CANARY_SERVICE_ID` | variable | _owed_ — the `srv-…` id of the canary web service |
+| `BEX_CANARY_URL` | variable | _owed_ — that service's assigned `https://….onbex.co` host |
+| `BEX_CANARY_STATIC_REPO` | variable | _owed, optional_ — a public no-build static-site repo; unset leaves the deploy canary's static leg skipped |
+
+**Owed operator steps** (they provision real first-party production resources, so they are an authorized human action, not something a scheduled job or an agent may do): create the `bex-canary` workspace and mark it `billing_excluded`; deploy the `examples/hello-go` web service into it on the free plan; mint one workspace API key; record the four ids as repository variables; put the key in `.env` and run `scripts/gh-secrets.sh`; dispatch each workflow once and record the run ids. **No placeholder id is committed** — a fabricated `srv-…` that reads as live is worse than an absent one, so until these exist every affected job soft-skips with a `::notice::` naming what is missing. A soft-skip is deliberately not a failure: a red run on these workflows must always mean production is broken.
+
+Two probes stay narrower than their scripts allow, on purpose. The deploy canary's static leg needs a public no-build static-site repository that does not exist yet, which is what keeps the `w3/m46` t008 and `w3/m81` t004 static legs owed. And the sandbox matrix's model-key check ([`scripts/verify-sandbox-isolation.sh`](../scripts/verify-sandbox-isolation.sh) `BEX_VERIFY_AGENT_DRIVER=1` + `BEX_VERIFY_AGENT_MODEL=1`, both default 0) costs real model tokens per run while adding nothing to the admission-regression class the weekly run exists to catch; it remains a manual invocation. Enabling it later is two flags plus `BEX_LIVE_AGENT_MODEL_API_KEY` on the job — no script change.
 
 **Known gap (recorded, not hidden):** bex-api has no first-party per-route request histogram — its error/latency view is Traefik's edge perspective. Acceptable while the edge fronts every request; adding a native histogram is the first candidate when edge-vs-origin attribution starts mattering. And per §1, whole-cluster outage detection stays with the external uptime check — this stack must never be its own only witness.
 

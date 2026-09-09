@@ -22,7 +22,14 @@ name: Production edge liveness
 # (scripts/shell-ws-probe.sh): ticketless upgrade to wss://ssh.bex.co/shell must
 # get the deterministic 401 "missing ticket" refusal — alive-but-refusing — so a
 # dead or unactivated WS edge cannot fail silently the way the TCP edge did
-# pre-m132. Four probes, one schedule.
+# pre-m132.
+#
+# w3/m83 adds the fifth: tenant-view-liveness. Every probe above is
+# credential-free and platform-side. None of them can catch bex-api asking Loki
+# or Prometheus the WRONG QUESTION about a service that is demonstrably serving
+# (the w6/m110 class: the series existed, the query named them wrong), because
+# answering that needs a tenant's credential and a service whose answer is known
+# to be non-empty. The tenant-view job supplies both. Five probes, one schedule.
 
 on:
   workflow_dispatch:
@@ -215,6 +222,13 @@ jobs:
   # actually failed: request streams exist FOR A TENANT NAMESPACE. It reads
   # Loki's label index (no line scan, no API credential, no fixture) and needs
   # only cluster access.
+  #
+  # w3/m83/t002 adds the sibling assertion for `type=app`, the pipeline w3/m36
+  # found empty for every tenant. One probe, one cluster read per type, and two
+  # independent tracking issues: `request-logs-down` and `app-logs-down`. The
+  # types are kept separate all the way to the issue because their remediations
+  # are unrelated (an attribution regex vs. the Alloy DaemonSet's reach), and a
+  # healthy sibling must never mask a dark pipeline.
   request-logs-liveness:
     runs-on: [self-hosted, Linux, ARM64, bex-production]
     env:
@@ -260,17 +274,29 @@ jobs:
       - name: Scrub SSH credentials
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
-      - name: Probe the request-log pipeline for tenant streams
+      # One probe, one RESULT line per stream type. The per-type verdict comes
+      # from those lines rather than the exit status, because exit 2 already
+      # means "the probe could not run" — see the script's header. A type with
+      # no RESULT line stays `unknown`: its issue is neither opened nor closed
+      # on evidence the probe never gathered, while `rc` still fails the run.
+      - name: Probe the tenant log pipelines for tenant streams
         id: probe
         run: |
-          if bash scripts/request-logs-liveness.sh 6h > logs-probe.txt 2>&1; then
-            echo "down=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "down=true" >> "$GITHUB_OUTPUT"
-          fi
+          rc=0
+          bash scripts/request-logs-liveness.sh 6h > logs-probe.txt 2>&1 || rc=$?
           cat logs-probe.txt
-      - name: Open or update the tracking issue
-        if: steps.probe.outputs.down == 'true'
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          for t in request app; do
+            status=unknown
+            if grep -qx "RESULT type=$t status=live" logs-probe.txt; then
+              status=live
+            elif grep -qx "RESULT type=$t status=dark" logs-probe.txt; then
+              status=dark
+            fi
+            echo "$t=$status" >> "$GITHUB_OUTPUT"
+          done
+      - name: Open or update the request-log tracking issue
+        if: steps.probe.outputs.request == 'dark'
         run: |
           gh label create request-logs-down --repo "$GITHUB_REPOSITORY" \
             --color B60205 --description "type=request is producing no tenant lines (w6/m131)" --force
@@ -286,21 +312,166 @@ jobs:
               --label request-logs-down \
               --body "$body"
           fi
-      - name: Close the tracking issue once request logs recover
-        if: steps.probe.outputs.down == 'false'
+      - name: Close the request-log tracking issue once it recovers
+        if: steps.probe.outputs.request == 'live'
         run: |
           existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label request-logs-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
             gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "type=request streams are being attributed to tenant namespaces again."
           fi
-      - name: Fail the run when request logs are dark
-        if: steps.probe.outputs.down == 'true'
+      - name: Open or update the app-log tracking issue
+        if: always() && steps.probe.outputs.app == 'dark'
         run: |
-          echo "::error::no type=request streams for any tenant namespace — request logs are dark" >&2
+          gh label create app-logs-down --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "type=app is producing no tenant lines (w3/m36, w3/m83)" --force
+          body="The App container-log pipeline is not attributing lines to tenant namespaces, so \`type=app\` — the default log view for every service — is silently empty. A 200 with no rows reads as a quiet service, which is how w3/m36 stayed hidden."$'\n\n'
+          body+="Probe output:"$'\n\n```\n'"$(cat logs-probe.txt)"$'\n```\n\n'
+          body+="This pipeline reads the namespace straight from pod metadata, so an attribution regex is NOT the suspect (that is the request-log failure mode). Check the Alloy DaemonSet instead: it must be running on every tenant node (\`kubectl -n monitoring get ds\`), its \`app.bex.co/app\` pod selector must still match what the operator stamps, and Loki must be accepting its pushes. Config: \`deploy/gitops/base/log-shipper.yaml\` (\`app_pods\` pipeline)."
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label app-logs-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "App logs are dark: no type=app streams for any tenant" \
+              --label app-logs-down \
+              --body "$body"
+          fi
+      - name: Close the app-log tracking issue once it recovers
+        if: always() && steps.probe.outputs.app == 'live'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label app-logs-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "type=app streams are being attributed to tenant namespaces again."
+          fi
+      - name: Fail the run when a tenant log pipeline is dark
+        if: always() && steps.probe.outputs.rc != '0'
+        env:
+          REQUEST_STATUS: ${{ steps.probe.outputs.request }}
+          APP_STATUS: ${{ steps.probe.outputs.app }}
+          PROBE_RC: ${{ steps.probe.outputs.rc }}
+        run: |
+          dark=0
+          if [[ "$REQUEST_STATUS" == dark ]]; then
+            echo "::error::no type=request streams for any tenant namespace — request logs are dark" >&2
+            dark=1
+          fi
+          if [[ "$APP_STATUS" == dark ]]; then
+            echo "::error::no type=app streams for any tenant namespace — app logs are dark" >&2
+            dark=1
+          fi
+          if [[ "$dark" == 0 ]]; then
+            echo "::error::the log-pipeline probe could not run (exit $PROBE_RC) — Loki or the cluster read failed, so no pipeline was assessed" >&2
+          fi
           exit 1
       # Last, and only after every cluster read: admin.conf outlives the SSH key
       # because the probe needs it, so it is scrubbed here rather than above.
       - name: Scrub the cluster kubeconfig
         if: always()
         run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"
+
+  # w3/m83/t003. The tenant's own view of a running service, asked with a
+  # tenant's credential. The two jobs above read the platform's internals; this
+  # one reads the product, which is the only place the w6/m110 failure class
+  # shows up — bex-api returning 200 with an empty body for a service that is
+  # provably serving traffic, because its Loki/Prometheus query named the wrong
+  # selector. The probe makes the traffic itself so "empty" is never ambiguous.
+  #
+  # Fixture (created out of band by an authorized operator, docs/ADR088 §6): a
+  # first-party `bex-canary` workspace holding one free web service from
+  # examples/hello-go, plus a workspace-scoped API key. Free-tier hibernation is
+  # wanted, not tolerated — the probe's request wakes the service, exercising the
+  # activator, and the wake lands in the events feed that stage 4 reads.
+  #
+  # Configuration is deliberately split: the key is a repository SECRET
+  # (BEX_CANARY_API_KEY, in .env + scripts/gh-secrets.sh), while the fixture's
+  # ids are repository VARIABLES (BEX_CANARY_SERVICE_ID, BEX_CANARY_URL) because
+  # they are not secret and a wrong value should be readable in the run log. If
+  # any of the three is missing the job SOFT-SKIPS with a notice rather than
+  # failing: an unconfigured fixture is an operator to-do, not a production
+  # incident, and a red run here must always mean "production is broken".
+  tenant-view-liveness:
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BEX_API_URL: ${{ vars.BEX_API_URL || 'https://api.bex.co' }}
+      BEX_OAUTH_ISSUER: ${{ vars.BEX_OAUTH_ISSUER || 'https://oauth.bex.co' }}
+      BEX_CANARY_SERVICE_ID: ${{ vars.BEX_CANARY_SERVICE_ID }}
+      BEX_CANARY_URL: ${{ vars.BEX_CANARY_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Same not-every-host-has-gh guard as the jobs above.
+      - name: Ensure gh CLI
+        run: |
+          command -v gh >/dev/null && exit 0
+          v=2.100.0
+          curl -fsSL -o "$RUNNER_TEMP/gh.tgz" "https://github.com/cli/cli/releases/download/v${v}/gh_${v}_linux_arm64.tar.gz"
+          echo "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961  $RUNNER_TEMP/gh.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gh.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gh_${v}_linux_arm64/bin" >> "$GITHUB_PATH"
+      - name: Check whether the canary fixture is configured
+        id: fixture
+        env:
+          BEX_CANARY_API_KEY: ${{ secrets.BEX_CANARY_API_KEY }}
+        run: |
+          missing=""
+          [ -n "${BEX_CANARY_API_KEY:-}" ] || missing="$missing BEX_CANARY_API_KEY(secret)"
+          [ -n "${BEX_CANARY_SERVICE_ID:-}" ] || missing="$missing BEX_CANARY_SERVICE_ID(var)"
+          [ -n "${BEX_CANARY_URL:-}" ] || missing="$missing BEX_CANARY_URL(var)"
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::tenant-view canary skipped — not configured yet:$missing. Create the bex-canary workspace + service, mint the scoped key, then run scripts/gh-secrets.sh and set the two repository variables (docs/ADR088 §6)."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Probe the tenant view (url -> logs -> metrics -> events)
+        id: probe
+        if: steps.fixture.outputs.configured == 'true'
+        env:
+          BEX_CANARY_API_KEY: ${{ secrets.BEX_CANARY_API_KEY }}
+        run: |
+          code=0
+          bash scripts/tenant-view-liveness.sh > tenant-view.txt 2>&1 || code=$?
+          case "$code" in
+            0) stage="none" ;;
+            3) stage="1/4 wake (the canary service does not serve)" ;;
+            4) stage="2/4 logs (bex-api does not report the request it just served)" ;;
+            5) stage="3/4 metrics (empty series for a serving service)" ;;
+            6) stage="4/4 events (the feed did not advance)" ;;
+            *) stage="configuration/probe error" ;;
+          esac
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "stage=$stage" >> "$GITHUB_OUTPUT"
+          if [ "$code" = 0 ]; then echo "down=false" >> "$GITHUB_OUTPUT"; else echo "down=true" >> "$GITHUB_OUTPUT"; fi
+          cat tenant-view.txt
+      - name: Open or update the tracking issue
+        if: steps.probe.outputs.down == 'true'
+        run: |
+          gh label create tenant-view-down --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "The tenant view of a running service is broken (w3/m83)" --force
+          body="The production canary service is not answering a tenant correctly. Failing stage: **${{ steps.probe.outputs.stage }}** (exit ${{ steps.probe.outputs.code }})."$'\n\n'
+          body+="Probe output:"$'\n\n```\n'"$(cat tenant-view.txt)"$'\n```\n\n'
+          body+="Read the stage before the pipeline: stage 1 red is a hosting/activator failure, stages 2-4 red with stage 1 green mean the service IS serving and bex-api is answering wrongly — the w6/m110 class, where the series exist and the query names them wrong. Cross-check \`request-logs-liveness\` in this same workflow: green there plus red here isolates the fault to bex-api's query rather than the shipper."
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-view-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Tenant view is broken: ${{ steps.probe.outputs.stage }}" \
+              --label tenant-view-down \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once the tenant view recovers
+        if: steps.probe.outputs.down == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-view-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "The canary served this probe's request and bex-api reported it back through logs, metrics, and events."
+          fi
+      - name: Fail the run when the tenant view is broken
+        if: steps.probe.outputs.down == 'true'
+        run: |
+          echo "::error::tenant-view canary failed at ${{ steps.probe.outputs.stage }}" >&2
+          exit 1

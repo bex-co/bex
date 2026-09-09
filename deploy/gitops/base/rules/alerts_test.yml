@@ -987,3 +987,154 @@ tests:
             exp_annotations:
               summary: "Certificate tea-abc/tea-abc-web-tls-web.onbex.co is not Ready"
               description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls-web.onbex.co; kubectl -n tea-abc get certificaterequest,order,challenge"
+
+  # ── w3/m83 t006: the three subsystems that exported health series with no
+  # rule. Each rule's whole design is a discriminator — a tenant's broken
+  # endpoint vs. bex's egress, an idle night vs. a dead push worker, a quiet
+  # hour vs. a failing sandbox substrate — so each gets both edges tested.
+  - name: a fleet-wide webhook egress failure pages
+    interval: 1m
+    input_series:
+      # Every attempt bex makes fails, and there is real volume: 3/min ≈ 0.05/s,
+      # well over the 0.02/s floor. This is the shape of bex's own egress being
+      # broken, not of N tenants breaking N endpoints at once.
+      - series: 'bex_webhooks_delivery_attempts_total{origin="automatic",result="failed",job="bex-api",instance="prod-a"}'
+        values: "0+3x120"
+      - series: 'bex_webhooks_delivery_attempts_total{origin="automatic",result="delivered",job="bex-api",instance="prod-a"}'
+        values: "0x120"
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: WebhookDeliveryFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "100% of outbound webhook attempts are failing fleet-wide"
+              description: "Nearly every webhook delivery attempt bex made in the last 30m failed, across all endpoints and both automatic and manual origins. Suspect bex's own egress before any tenant's endpoint: cluster DNS resolution, the bex-api NetworkPolicy egress rules, outbound TLS trust, and the worker's own health. Confirm the failures are actually spread (bex_webhooks_delivery_attempts_total has no endpoint label, so check the deliveries surface for whether one busy endpoint dominates) before treating this as platform-wide. Runbook: docs/ADR010-observability.md#outbound-webhook-and-push-delivery"
+
+  - name: one tenant's broken endpoint never pages while the fleet delivers
+    interval: 1m
+    input_series:
+      # 1 failure/min against 9 deliveries/min: a tenant whose endpoint is down,
+      # which is theirs to fix. 10% is nowhere near the 90% fleet threshold.
+      - series: 'bex_webhooks_delivery_attempts_total{origin="automatic",result="failed",job="bex-api",instance="prod-a"}'
+        values: "0+1x120"
+      - series: 'bex_webhooks_delivery_attempts_total{origin="automatic",result="delivered",job="bex-api",instance="prod-a"}'
+        values: "0+9x120"
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: WebhookDeliveryFailing
+        exp_alerts: []
+
+  - name: a trickle of all-failing webhook attempts stays under the traffic floor
+    interval: 1m
+    input_series:
+      # 100% failing, but one attempt every ~40 minutes. The ratio is maximal and
+      # the alert must still stay silent: at this volume the ratio carries no
+      # information about the platform, which is what the floor exists to say.
+      - series: 'bex_webhooks_delivery_attempts_total{origin="automatic",result="failed",job="bex-api",instance="prod-a"}'
+        values: "0x40 1x40 2x40 3x100"
+    alert_rule_test:
+      - eval_time: 150m
+        alertname: WebhookDeliveryFailing
+        exp_alerts: []
+
+  - name: queued push work with no successful delivery pages
+    interval: 1m
+    input_series:
+      - series: 'bex_push_enabled{job="bex-api",instance="prod-a"}'
+        values: "1x200"
+      # Never stamped in this process: the gauge stays at 0, so the age is the
+      # wall clock itself. The 30m persistence window is what keeps a bex-api
+      # restart (which zeroes the gauge) from paging — a worker that CAN deliver
+      # stamps it within one poll, long before the window elapses.
+      - series: 'bex_push_last_success_timestamp_seconds{job="bex-api",instance="prod-a"}'
+        values: "0x200"
+      - series: 'bex_push_queue_rows{state="send_pending",job="bex-api",instance="prod-a"}'
+        values: "5x200"
+    alert_rule_test:
+      # Age crosses 2h at t=120m; for:30m fires at 150m.
+      - eval_time: 140m
+        alertname: PushDeliveryStale
+        exp_alerts: []
+      - eval_time: 160m
+        alertname: PushDeliveryStale
+        exp_alerts:
+          - exp_labels: { severity: warning, job: bex-api, instance: prod-a }
+            exp_annotations:
+              summary: "Push delivery has not succeeded in 2h 40m 0s while work is queued"
+              description: "Push transport is configured and rows are waiting in send_pending/receipt_pending, but no provider operation has succeeded for over two hours — every mobile supervision notification (ADR048) is silently undelivered. Check the VAPID credentials and provider reachability first, then bex_push_transport_total{result} and bex_push_operations_total{result} for whether sends are being rejected or never attempted. Runbook: docs/ADR010-observability.md#outbound-webhook-and-push-delivery"
+
+  - name: an idle night with an empty push queue is not a failure
+    interval: 1m
+    input_series:
+      # Nothing has succeeded because nothing was asked for. Staleness alone must
+      # never page, or every quiet night would.
+      - series: 'bex_push_enabled{job="bex-api",instance="prod-a"}'
+        values: "1x200"
+      - series: 'bex_push_last_success_timestamp_seconds{job="bex-api",instance="prod-a"}'
+        values: "0x200"
+      - series: 'bex_push_queue_rows{state="send_pending",job="bex-api",instance="prod-a"}'
+        values: "0x200"
+    alert_rule_test:
+      - eval_time: 160m
+        alertname: PushDeliveryStale
+        exp_alerts: []
+
+  - name: a busy push worker with a standing backlog is not stale
+    interval: 1m
+    input_series:
+      - series: 'bex_push_enabled{job="bex-api",instance="prod-a"}'
+        values: "1x200"
+      # The gauge tracks the clock: something succeeds every minute. A permanently
+      # non-empty queue (a busy fleet) must not page while delivery is working.
+      - series: 'bex_push_last_success_timestamp_seconds{job="bex-api",instance="prod-a"}'
+        values: "0+60x200"
+      - series: 'bex_push_queue_rows{state="send_pending",job="bex-api",instance="prod-a"}'
+        values: "40x200"
+    alert_rule_test:
+      - eval_time: 160m
+        alertname: PushDeliveryStale
+        exp_alerts: []
+
+  - name: half of agent sandbox provisions failing pages
+    interval: 1m
+    input_series:
+      - series: 'bex_agent_session_provision_seconds_count{outcome="failed",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+      - series: 'bex_agent_session_provision_seconds_count{outcome="running",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: AgentSessionProvisionFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "50% of agent-session sandbox provisions are failing"
+              description: "More than a quarter of agent-session sandbox creations failed to reach Running in the last hour, so users are accepting a session that never boots (ADR047 accept-fast/provision-async). Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_AGENT_SESSION_IMAGE. bex_agent_session_provision_seconds{outcome} separates a slow provision from a failed one. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
+
+  - name: occasional provision failures on a healthy substrate stay silent
+    interval: 1m
+    input_series:
+      # ~9% failed. Sandbox provisioning is not free of transient failure, and the
+      # threshold is set so ordinary noise never pages.
+      - series: 'bex_agent_session_provision_seconds_count{outcome="failed",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+      - series: 'bex_agent_session_provision_seconds_count{outcome="running",job="bex-api",instance="prod-a"}'
+        values: "0+10x200"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: AgentSessionProvisionFailing
+        exp_alerts: []
+
+  - name: a quiet hour with one failed provision stays under the traffic floor
+    interval: 1m
+    input_series:
+      # One provision attempt every ~40 minutes, all failed: 100% failure over a
+      # sample too small to mean anything. No vector(0) coercion anywhere, so an
+      # hour with no provisions at all produces no series rather than a fake zero.
+      - series: 'bex_agent_session_provision_seconds_count{outcome="failed",job="bex-api",instance="prod-a"}'
+        values: "0x40 1x40 2x40 3x100"
+    alert_rule_test:
+      - eval_time: 180m
+        alertname: AgentSessionProvisionFailing
+        exp_alerts: []

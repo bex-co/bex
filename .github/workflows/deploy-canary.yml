@@ -1,0 +1,132 @@
+name: Deploy canary (weekly)
+
+# w3/m83/t004. The product's core promise, exercised on a schedule: a git repo
+# becomes a running HTTPS service, and then disappears cleanly.
+#
+# Why this is a separate workflow rather than another job on the six-hourly
+# carrier (.github/workflows/ssh-edge-liveness.yml): every probe there is a
+# cheap read, so six-hourly costs nothing. This one BUILDS an image and runs two
+# deploys, so its cadence is weekly — a different schedule needs a different
+# `on:` block. It is also the only scheduled probe that WRITES to production,
+# which is a separate blast radius and deserves its own file, its own
+# concurrency group, and its own label.
+#
+# It additionally discharges the two live probes still owed on the record —
+# w3/m46 t008 (static-site behaviours) and w3/m81 t004 (delete timing) — by
+# running them weekly instead of "in a future QA run".
+#
+# Blast radius: scripts/deploy-canary.sh refuses to run unless the API key's
+# visible workspaces include BEX_CANARY_WORKSPACE_ID, so a mis-set secret aborts
+# before the first write rather than creating and deleting a service inside a
+# real tenant's workspace. Cleanup is unconditional (trap), so a mid-flight
+# assertion failure still tears the fixture down.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monday 04:23 UTC — off-peak, and early enough in the week that a red run
+    # is triaged on a working day rather than discovered the next Monday.
+    - cron: "23 4 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  # Two overlapping runs would create two fixtures in one workspace and each
+  # would see the other in the list-absence assertion.
+  group: deploy-canary
+  cancel-in-progress: false
+
+jobs:
+  deploy-canary:
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BEX_API_URL: ${{ vars.BEX_API_URL || 'https://api.bex.co' }}
+      BEX_OAUTH_ISSUER: ${{ vars.BEX_OAUTH_ISSUER || 'https://oauth.bex.co' }}
+      BEX_CANARY_WORKSPACE_ID: ${{ vars.BEX_CANARY_WORKSPACE_ID }}
+      # Unset until a public no-build static-site fixture repo exists; the probe
+      # then skips its static leg with an explicit notice instead of failing.
+      BEX_CANARY_STATIC_REPO: ${{ vars.BEX_CANARY_STATIC_REPO }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The bex-production pool is not homogeneous: one host lacks the gh CLI,
+      # so the issue-bookkeeping steps fail on `gh: command not found` even when
+      # the probe itself is healthy. Pinned + checksummed so a compromised
+      # release mirror fails closed rather than executing arbitrary code.
+      - name: Ensure gh CLI
+        run: |
+          command -v gh >/dev/null && exit 0
+          v=2.100.0
+          curl -fsSL -o "$RUNNER_TEMP/gh.tgz" "https://github.com/cli/cli/releases/download/v${v}/gh_${v}_linux_arm64.tar.gz"
+          echo "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961  $RUNNER_TEMP/gh.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gh.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gh_${v}_linux_arm64/bin" >> "$GITHUB_PATH"
+      # An unconfigured fixture is an operator to-do, not a production incident.
+      # A red run on this workflow must always mean the product is broken.
+      - name: Check whether the canary workspace is configured
+        id: fixture
+        env:
+          BEX_CANARY_API_KEY: ${{ secrets.BEX_CANARY_API_KEY }}
+        run: |
+          missing=""
+          [ -n "${BEX_CANARY_API_KEY:-}" ] || missing="$missing BEX_CANARY_API_KEY(secret)"
+          [ -n "${BEX_CANARY_WORKSPACE_ID:-}" ] || missing="$missing BEX_CANARY_WORKSPACE_ID(var)"
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::deploy canary skipped — not configured yet:$missing. Create the bex-canary workspace, mint the scoped key, run scripts/gh-secrets.sh, and set the repository variable (docs/ADR088 §6)."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Deploy, serve, delete, and assert consistent absence
+        id: probe
+        if: steps.fixture.outputs.configured == 'true'
+        env:
+          BEX_CANARY_API_KEY: ${{ secrets.BEX_CANARY_API_KEY }}
+        run: |
+          code=0
+          bash scripts/deploy-canary.sh > deploy-canary.txt 2>&1 || code=$?
+          case "$code" in
+            0) stage="none" ;;
+            3) stage="1/5 create (POST /v1/services did not return a service)" ;;
+            4) stage="2/5 ready (the deploy never reached live)" ;;
+            5) stage="3/5 serve (live deploy, dead public URL)" ;;
+            6) stage="4/5 absence (surfaces disagree after delete — the m81 split)" ;;
+            7) stage="5/5 static (static-site delete timing)" ;;
+            *) stage="configuration/probe error" ;;
+          esac
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "stage=$stage" >> "$GITHUB_OUTPUT"
+          if [ "$code" = 0 ]; then echo "down=false" >> "$GITHUB_OUTPUT"; else echo "down=true" >> "$GITHUB_OUTPUT"; fi
+          cat deploy-canary.txt
+      - name: Open or update the tracking issue
+        if: steps.probe.outputs.down == 'true'
+        run: |
+          gh label create deploy-canary-down --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "Deploy-from-git or clean deletion is broken in production (w3/m83)" --force
+          body="The weekly deploy canary failed at **${{ steps.probe.outputs.stage }}** (exit ${{ steps.probe.outputs.code }})."$'\n\n'
+          body+="Probe output (carries the service and deploy ids):"$'\n\n```\n'"$(cat deploy-canary.txt)"$'\n```\n\n'
+          body+="Stages 1-3 red means a repo no longer becomes a running URL — the promise the platform exists to keep. Stage 4 red is the w3/m81 delete-timing split (docs/ADR006 § Reads while a deletion finalizes): one read surface reports the service gone while another still serves it. The fixture is torn down unconditionally by the probe's trap, so no cleanup is owed unless stage 4 itself is the failure — in which case confirm the canary workspace is empty before closing."
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label deploy-canary-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Deploy canary is red: ${{ steps.probe.outputs.stage }}" \
+              --label deploy-canary-down \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once the deploy canary recovers
+        if: steps.probe.outputs.down == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label deploy-canary-down --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "A repo became a running HTTPS service and then disappeared from every read surface within the delete window."
+          fi
+      - name: Fail the run when the deploy canary is red
+        if: steps.probe.outputs.down == 'true'
+        run: |
+          echo "::error::deploy canary failed at ${{ steps.probe.outputs.stage }}" >&2
+          exit 1

@@ -250,11 +250,14 @@ spec:
                   - source_labels: [__name__]
                     # billing => the Billing* alerts; agent_session => the
                     # w5/m81 SLO baseline paneled on bex-api-gateways (ADR088
-                    # §6); webhooks => WebhookDeliveryAdmissionPressure, which
-                    # evaluated an absent series while the keep was
+                    # §6) plus AgentSessionProvisionFailing; webhooks =>
+                    # WebhookDeliveryAdmissionPressure + WebhookDeliveryFailing,
+                    # which evaluated an absent series while the keep was
                     # billing-only (the same never-arrived failure class the
-                    # bex-operator job's comment below records for w2/m72).
-                    regex: bex_(billing|agent_session|webhooks)_.*
+                    # bex-operator job's comment below records for w2/m72);
+                    # push => PushDeliveryStale (w3/m83 t006, added WITH the
+                    # rule so the rule never evaluates a never-scraped series).
+                    regex: bex_(billing|agent_session|webhooks|push)_.*
                     action: keep
               # Build-plane SLIs from the operator's own registry (docs/ADR060
               # D5). This job is why the series are readable at all: the manager
@@ -1076,6 +1079,93 @@ spec:
                     annotations:
                       summary: "Outbound webhook admission is chronically hitting its workspace bound"
                       description: "More than 100 webhook notifications were capped in each rolling 15m window for >10m. First investigate event amplification and unhealthy endpoints/retry pressure; raise BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE only after confirming database and worker capacity. Runbook: docs/ADR010-observability.md#webhook-admission-pressure"
+
+                  # w3/m83 t006. Admission pressure (above) is about the queue's
+                  # bound; this is about the wire. A tenant's own broken endpoint
+                  # is THEIR fault and must not page — so the signal is not the
+                  # failure count but the FLEET RATIO: when essentially every
+                  # attempt bex makes fails, the common factor is bex's egress
+                  # path (DNS, NetworkPolicy, TLS trust, proxy), not N tenants
+                  # simultaneously breaking N unrelated endpoints.
+                  #
+                  # Known limit, stated rather than hidden: the counter carries
+                  # no endpoint label by design (the ADR010 cardinality rule), so
+                  # "all endpoints" cannot be counted directly and >90% of a
+                  # meaningful volume stands in for it. On a fleet with very
+                  # little webhook traffic, one busy broken endpoint can clear
+                  # the floor alone — hence warning, not critical, and a
+                  # description that tells the responder to check concentration
+                  # first. The floor (0.02/s ≈ 36 attempts per 30m) and the
+                  # 30-minute persistence window are what keep a single retry
+                  # storm from paging.
+                  - alert: WebhookDeliveryFailing
+                    expr: |
+                      (
+                        sum(rate(bex_webhooks_delivery_attempts_total{result="failed"}[30m]))
+                        / sum(rate(bex_webhooks_delivery_attempts_total[30m]))
+                      ) > 0.9
+                      and
+                      sum(rate(bex_webhooks_delivery_attempts_total[30m])) > 0.02
+                    for: 30m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "{{ $value | humanizePercentage }} of outbound webhook attempts are failing fleet-wide"
+                      description: "Nearly every webhook delivery attempt bex made in the last 30m failed, across all endpoints and both automatic and manual origins. Suspect bex's own egress before any tenant's endpoint: cluster DNS resolution, the bex-api NetworkPolicy egress rules, outbound TLS trust, and the worker's own health. Confirm the failures are actually spread (bex_webhooks_delivery_attempts_total has no endpoint label, so check the deliveries surface for whether one busy endpoint dominates) before treating this as platform-wide. Runbook: docs/ADR010-observability.md#outbound-webhook-and-push-delivery"
+
+                  # w3/m83 t006. Push is the ADR048 supervision channel: a
+                  # phone that stops buzzing looks exactly like a quiet day.
+                  # Both halves are required — staleness alone would fire on
+                  # every genuinely idle night, and a queue alone says nothing
+                  # about delivery. Pending work plus no success is the failure.
+                  #
+                  # bex_push_last_success_timestamp_seconds is PROCESS-local and
+                  # starts at 0, so `time() - 0` is trivially over any threshold
+                  # right after a bex-api restart. That is deliberate rather than
+                  # guarded away: a fresh process with a non-empty queue that
+                  # cannot deliver IS the failure, and a process that CAN deliver
+                  # stamps the gauge within one worker poll — far inside the
+                  # 30-minute persistence window, which is what makes the
+                  # restart transient silent without hiding the real case.
+                  - alert: PushDeliveryStale
+                    expr: |
+                      (time() - bex_push_last_success_timestamp_seconds) > (2 * 3600)
+                      and bex_push_enabled == 1
+                      and on (job, instance) (
+                        sum by (job, instance) (
+                          bex_push_queue_rows{state=~"send_pending|receipt_pending"}
+                        ) > 0
+                      )
+                    for: 30m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Push delivery has not succeeded in {{ $value | humanizeDuration }} while work is queued"
+                      description: "Push transport is configured and rows are waiting in send_pending/receipt_pending, but no provider operation has succeeded for over two hours — every mobile supervision notification (ADR048) is silently undelivered. Check the VAPID credentials and provider reachability first, then bex_push_transport_total{result} and bex_push_operations_total{result} for whether sends are being rejected or never attempted. Runbook: docs/ADR010-observability.md#outbound-webhook-and-push-delivery"
+
+                  # w3/m83 t006. The w5/m81 SLO baseline exported this histogram
+                  # but nothing alerted on it, so a sandbox substrate that had
+                  # stopped standing sessions up was visible only on a dashboard
+                  # nobody was watching. Failure RATIO, not latency: a slow
+                  # provision is an ADR047 UX regression, a failing one means the
+                  # user's session never starts. The traffic floor (0.0028/s ≈ 10
+                  # provisions per hour) is what keeps a quiet hour with one
+                  # failure from paging — no vector(0) coercion, so an idle hour
+                  # produces no series at all rather than a fake healthy zero.
+                  - alert: AgentSessionProvisionFailing
+                    expr: |
+                      (
+                        sum(rate(bex_agent_session_provision_seconds_count{outcome="failed"}[1h]))
+                        / sum(rate(bex_agent_session_provision_seconds_count[1h]))
+                      ) > 0.25
+                      and
+                      sum(rate(bex_agent_session_provision_seconds_count[1h])) > 0.0028
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "{{ $value | humanizePercentage }} of agent-session sandbox provisions are failing"
+                      description: "More than a quarter of agent-session sandbox creations failed to reach Running in the last hour, so users are accepting a session that never boots (ADR047 accept-fast/provision-async). Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_AGENT_SESSION_IMAGE. bex_agent_session_provision_seconds{outcome} separates a slow provision from a failed one. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
 
                   - alert: BillingExportBacklog
                     expr: |

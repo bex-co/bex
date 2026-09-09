@@ -43,6 +43,7 @@ graph TD
 | **platform app secrets** | `BEX_BOOTSTRAP_CLIENT_SECRET`, `KRATOS_SECRETS_*`, `HYDRA_SECRETS_*`, `HYDRA_OIDC_PAIRWISE_SALT`, `OPENFGA_PRESHARED_KEY` | `.env`; applied to the app cluster by `scripts/auth-secrets.sh` / `auth-bootstrap-client.sh` | operator; CI | bex-api bootstrap key ([ADR012-auth.md](ADR012-auth.md)), Kratos/Hydra/OpenFGA signing + preshared keys |
 | **Stripe test billing credentials** | dedicated `rk_test_*` + endpoint `whsec_*` | operator keychain/out-of-band source; `bex-system/bex-stripe` Secret | billing operator; bex-api runtime | least-privilege test Customer/Subscription/sessions/meter-event writes and catalog/invoice/meter summary reads; signed test webhook intake only |
 | **OpenBao unseal material** | `BAO_UNSEAL_KEY_1..3`, `BAO_ROOT_TOKEN` | `.env` (written back by `bao-init.sh`); GitHub secret | operator; CI | unseal + root the tenant secret store ([ADR013-secrets.md §3](ADR013-secrets.md)) |
+| **canary workspace API key** | Hydra `client_credentials` pair, `<key-id>:<key-secret>` | `.env` (`BEX_CANARY_API_KEY`); GitHub secret | operator; CI (the scheduled canary probes) | the first-party `bex-canary` workspace **only**: read its service's logs/metrics/events, create + delete fixtures inside it. No platform, cluster, or other-tenant reach — the least-privileged entry in this table |
 
 ## `.env`: the out-of-band bootstrap store
 
@@ -82,6 +83,14 @@ Because the nodes are immutable and roll on template rotation ([ADR053](ADR053-n
 The production-hosted billing sandbox uses a dedicated restricted `rk_test_*`, never the Stripe CLI login/setup key and never any `*_live_*` credential. [`scripts/stripe-billing-secret.sh`](../scripts/stripe-billing-secret.sh) validates the restricted/test prefix, keeps secret bytes in a mode-0600 temporary file, installs `bex-system/bex-stripe`, and refuses live runtime keys by default. On macOS the test endpoint secret may be sourced from the login keychain service `bex-stripe-test-webhook`; neither value belongs in `.env.example`, GitHub logs, tickets, drill evidence, or tenant-visible state.
 
 Rotation follows add → deploy → verify → revoke. Keep the previous test key/endpoint active until the replacement passes a production reconciliation and a new webhook delivery; record only non-secret key/object ids and timestamps. Test and live credentials must use separate custody records. See the exact permission inventory, disable path, and rotation drill in [the Stripe Billing runbook](runbooks/stripe-billing-setup.md#rotation-and-disable-drill).
+
+### The canary API key is a tenant credential, not a platform one
+
+Every other credential above is platform authority. `BEX_CANARY_API_KEY` (w3/m83) is deliberately the opposite: an ordinary **workspace** API key, minted through the product's own `/v1/api-keys` surface, holding exactly what a customer's key holds — inside one first-party workspace. That is the point. The probes it authorizes ([`scripts/tenant-view-liveness.sh`](../scripts/tenant-view-liveness.sh), [`scripts/deploy-canary.sh`](../scripts/deploy-canary.sh)) exist to see production the way a tenant sees it, so a privileged credential would defeat them: it could read series a tenant cannot and would not notice a tenant-scoped read path going dark.
+
+Because the deploy canary **writes**, `deploy-canary.sh` refuses to act unless the key's visible workspaces include `BEX_CANARY_WORKSPACE_ID` — a mis-set secret aborts before its first create rather than making and deleting a service inside a real tenant's workspace. Both probes pass the key through a 0600 file and curl's `-K` header file, never argv, and print only workspace/service ids. Rotation is on demand and cheap: mint a second key in the canary workspace, push it with `scripts/gh-secrets.sh`, confirm one green scheduled run, then delete the old key. There is nothing to coordinate — no cluster Secret, no deploy — because nothing but CI holds it.
+
+**Owed, as of this ADR's revision:** the canary workspace, its service, and the key do not exist yet. Creating them is an authorized operator step (it provisions first-party production resources), and the fixture ids are recorded in [ADR088 §6](ADR088-platform-observability-ui.md) once they do. Until then both scheduled probes soft-skip with a notice; no placeholder id is committed anywhere, because a fake id that looks live is worse than an absent one.
 
 ### Static-site S3 credentials are derived, bucket-scoped identities
 

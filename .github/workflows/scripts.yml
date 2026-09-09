@@ -130,6 +130,8 @@ jobs:
           scripts/lib/image-digest-exists.sh
           scripts/disk-snapshot-secret.sh scripts/disk-snapshot-secret.test.sh
           scripts/request-logs-liveness.sh
+          scripts/lib/canary-api.sh scripts/tenant-view-liveness.sh
+          scripts/deploy-canary.sh
           scripts/funnel-counters.sh
       - name: Restore script hermetic safety tests
         run: bash scripts/restore.test.sh
