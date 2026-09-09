@@ -126,6 +126,7 @@ export function ServiceMetricsPage({
 
       {showApplicationCard && (
         <ApplicationMetricsCard
+          key={serviceId}
           resource={serviceId}
           window={window}
           markers={markers}

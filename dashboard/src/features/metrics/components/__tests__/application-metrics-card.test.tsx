@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -23,7 +24,7 @@ vi.mock("@/features/metrics/hooks/use-metrics-filter-values", () => ({
 }));
 
 const mockUseMetrics = vi.mocked(useMetrics);
-vi.mocked(useMetricsFilterValues);
+const mockFilterValues = vi.mocked(useMetricsFilterValues);
 
 // The page-level resolved live window, passed down by the route.
 const WINDOW = {
@@ -90,6 +91,8 @@ function multiSeriesResult(
 describe("ApplicationMetricsCard", () => {
   beforeEach(() => {
     mockUseMetrics.mockReset();
+    mockFilterValues.mockReset();
+    mockFilterValues.mockReturnValue([]);
   });
 
   // The card's Limit / Manage-scaling header links (w5/m42) need a router
@@ -405,6 +408,152 @@ describe("ApplicationMetricsCard", () => {
     ).toBeInTheDocument();
     // Memory and Total Instances still render their (empty) charts, not unavailable.
     expect(screen.getAllByText("No data in range")).toHaveLength(2);
+  });
+
+  it("retains the selection across a discovery gap instead of broadening to all (w5/m91)", async () => {
+    mockFilterValues.mockReturnValue(["web-a"]);
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      const instances = (
+        opts as { instances?: string[] } | undefined
+      )?.instances;
+      if (metric === "cpu" && !instances)
+        return seriesResult("cpu", [0.5], "web-a");
+      return emptyResult();
+    });
+    renderCard();
+    const select = (await screen.findByLabelText("Instances")) as HTMLElement;
+    await userEvent.selectOptions(select, ["web-a"]);
+    // Discovery gap: live list empties and the inventory goes quiet. Force a
+    // re-render via the Total tab so the card recomputes choices while the
+    // explicit selection must survive.
+    mockFilterValues.mockReturnValue([]);
+    mockUseMetrics.mockImplementation(() => emptyResult());
+    await userEvent.click(await screen.findByRole("tab", { name: "Total" }));
+    const reselected = (await screen.findByLabelText(
+      "Instances",
+    )) as unknown as HTMLSelectElement;
+    expect(Array.from(reselected.selectedOptions).map((o) => o.value)).toEqual(
+      ["web-a"],
+    );
+    expect(
+      await screen.findByRole("button", { name: "Show all" }),
+    ).toBeInTheDocument();
+    // Filtered reads still carry the retained id — never broadened to all.
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      expect.anything(),
+      "cpu",
+      expect.objectContaining({ instances: ["web-a"] }),
+    );
+  });
+
+  it("keeps a selected historical instance and offers an explicit return to all (w5/m91)", async () => {
+    mockFilterValues.mockReturnValue(["web-a", "web-b"]);
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      const instances = (
+        opts as { instances?: string[] } | undefined
+      )?.instances;
+      if (metric === "cpu" && !instances)
+        return seriesResult("cpu", [0.5], "web-a");
+      return emptyResult();
+    });
+    renderCard();
+    const select = (await screen.findByLabelText("Instances")) as HTMLElement;
+    await userEvent.selectOptions(select, ["web-a"]);
+    // Filtered usage reads carry the retained id even though the window has
+    // no samples for it.
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      expect.anything(),
+      "cpu",
+      expect.objectContaining({ instances: ["web-a"] }),
+    );
+    // Explicit return-to-all clears the filter (no silent broadening before).
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show all" }),
+    );
+    expect(mockUseMetrics).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.not.objectContaining({ instances: ["web-a"] }),
+    );
+  });
+
+  it("resets the selection on resource navigation so choices never cross services (w5/m91)", async () => {
+    mockFilterValues.mockReturnValue(["web-a"]);
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      const instances = (
+        opts as { instances?: string[] } | undefined
+      )?.instances;
+      if (metric === "cpu" && !instances)
+        return seriesResult("cpu", [0.5], "web-a");
+      return emptyResult();
+    });
+    function Harness() {
+      const [res, setRes] = useState("app1");
+      return (
+        <>
+          <button type="button" onClick={() => setRes("app2")}>
+            switch-service
+          </button>
+          {/* key={resource} mirrors the route: navigation remounts the card */}
+          <ApplicationMetricsCard key={res} resource={res} window={WINDOW} />
+        </>
+      );
+    }
+    const rootRoute = createRootRoute();
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component: Harness,
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+      context: { client: {} as never, session: null },
+    });
+    render(<RouterProvider router={router} />);
+    await userEvent.selectOptions(
+      (await screen.findByLabelText("Instances")) as HTMLElement,
+      ["web-a"],
+    );
+    expect(
+      await screen.findByRole("button", { name: "Show all" }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "switch-service" }),
+    );
+    expect(screen.queryByRole("button", { name: "Show all" })).toBeNull();
+    expect(mockUseMetrics).toHaveBeenLastCalledWith(
+      "app2",
+      expect.anything(),
+      expect.not.objectContaining({ instances: ["web-a"] }),
+    );
+  });
+
+  it("marks retained-but-unavailable choices and names the empty selection result (w5/m91)", async () => {
+    mockFilterValues.mockReturnValue(["web-a"]);
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      const instances = (
+        opts as { instances?: string[] } | undefined
+      )?.instances;
+      if (metric === "cpu" && !instances)
+        return seriesResult("cpu", [0.5], "web-a");
+      return emptyResult();
+    });
+    renderCard();
+    const select = (await screen.findByLabelText("Instances")) as HTMLElement;
+    await userEvent.selectOptions(select, ["web-a"]);
+    // The choice leaves the window: force a re-render with quiet discovery.
+    mockUseMetrics.mockImplementation(() => emptyResult());
+    mockFilterValues.mockReturnValue([]);
+    await userEvent.click(await screen.findByRole("tab", { name: "Total" }));
+    expect(await screen.findByRole("button", { name: "Show all" }))
+      .toBeInTheDocument();
+    expect(
+      await screen.findByText(/unavailable in this window/),
+    ).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText(/No data for the selected instances/)).length,
+    ).toBeGreaterThan(0);
   });
 });
 

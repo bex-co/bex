@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Card,
@@ -68,8 +68,8 @@ export function ApplicationMetricsCard({
 
   const liveInstances = useMetricsFilterValues(resource, "INSTANCE");
   // Unfiltered CPU series seeds historical instance choices (terminated pods
-  // still in the window). Selection never silently broadens when a choice
-  // leaves — see the prune effect below.
+  // still in the window). The selection itself is retained below even when a
+  // choice leaves, so it never silently broadens.
   const inventory = useMetrics(resource, "cpu", window);
   const resourceOpts: UseMetricsOptions = {
     ...window,
@@ -109,23 +109,37 @@ export function ApplicationMetricsCard({
   const memoryTarget = useMetrics(resource, "memory_target", window);
   const instances = useMetrics(resource, "instance_count", window);
 
-  // Live discovery ∪ labels already in the window (terminated replicas).
-  const instanceChoices = useMemo(() => {
+  // Live discovery ∪ labels already in the window (terminated replicas) ∪
+  // retained selections. Retained ids stay offered even when they leave the
+  // window or discovery gaps — the selection is explicit state, never pruned
+  // into all-instances mode (w5/m91). An empty/error discovery read therefore
+  // never removes the active INSTANCE filter.
+  const availableInstances = useMemo(() => {
     const fromSeries = new Set<string>();
     for (const s of inventory.series) {
       const id = s.labels["instance"];
       if (id) fromSeries.add(id);
     }
-    return Array.from(new Set([...liveInstances, ...fromSeries])).sort();
+    return new Set([...liveInstances, ...fromSeries]);
   }, [liveInstances, inventory.series]);
+  const instanceChoices = useMemo(
+    () =>
+      Array.from(new Set([...availableInstances, ...selectedInstances])).sort(),
+    [availableInstances, selectedInstances],
+  );
+  // Retained but currently unavailable: selected yet in neither live discovery
+  // nor the window's series (expired historical choice, refresh gap). Rendered
+  // with an explicit suffix and a recovery note — never silently dropped.
+  const unavailableInstances = useMemo(
+    () => selectedInstances.filter((id) => !availableInstances.has(id)),
+    [selectedInstances, availableInstances],
+  );
+  const hasSelection = selectedInstances.length > 0;
 
-  // Drop selections that left the window rather than silently selecting all.
-  useEffect(() => {
-    setSelectedInstances((prev) => {
-      const next = prev.filter((id) => instanceChoices.includes(id));
-      return next.length === prev.length ? prev : next;
-    });
-  }, [instanceChoices]);
+  // Resource-navigation reset lives with the owner: the route renders this
+  // card with key={resource}, so a selection names instances of one service
+  // and never crosses into another service's queries (w5/m91). Window
+  // changes, polling ticks, and discovery gaps intentionally keep it.
 
   const instancesSeries = useMemo<LineSeriesInput[]>(
     () => [
@@ -140,27 +154,41 @@ export function ApplicationMetricsCard({
         <CardTitle>{t("metrics.applicationTitle")}</CardTitle>
         <div className="flex flex-wrap items-center gap-2">
           {instanceChoices.length > 0 ? (
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="sr-only">{t("metrics.instanceFilter")}</span>
-              <select
-                multiple
-                aria-label={t("metrics.instanceFilter")}
-                className="h-9 min-w-[9rem] max-w-[14rem] rounded-md border bg-background px-2 text-xs text-foreground"
-                value={selectedInstances}
-                onChange={(e) => {
-                  const next = Array.from(e.target.selectedOptions).map(
-                    (o) => o.value,
-                  );
-                  setSelectedInstances(next);
-                }}
-              >
-                {instanceChoices.map((id) => (
-                  <option key={id} value={id}>
-                    {shortInstanceLabel(id)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <span className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="sr-only">{t("metrics.instanceFilter")}</span>
+                <select
+                  multiple
+                  aria-label={t("metrics.instanceFilter")}
+                  className="h-9 min-w-[9rem] max-w-[14rem] rounded-md border bg-background px-2 text-xs text-foreground"
+                  value={selectedInstances}
+                  onChange={(e) => {
+                    const next = Array.from(e.target.selectedOptions).map(
+                      (o) => o.value,
+                    );
+                    setSelectedInstances(next);
+                  }}
+                >
+                  {instanceChoices.map((id) => (
+                    <option key={id} value={id}>
+                      {shortInstanceLabel(id)}
+                      {!availableInstances.has(id)
+                        ? t("metrics.instanceUnavailableSuffix")
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {hasSelection ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedInstances([])}
+                  className="h-9 shrink-0 rounded-md px-2 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  {t("metrics.instanceShowAll")}
+                </button>
+              ) : null}
+            </span>
           ) : null}
           <Tabs
             value={aggregateMethod || "raw"}
@@ -191,6 +219,13 @@ export function ApplicationMetricsCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {unavailableInstances.length > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {t("metrics.instancesUnavailable", {
+              count: unavailableInstances.length,
+            })}
+          </p>
+        ) : null}
         <ResourceSection
           title={t("metrics.memory")}
           serviceId={resource}
@@ -201,6 +236,7 @@ export function ApplicationMetricsCard({
           target={latestValue(memoryTarget.series)}
           percentage={percentage}
           markers={markers}
+          hasSelection={hasSelection}
         />
         <ResourceSection
           title={t("metrics.cpu")}
@@ -212,6 +248,7 @@ export function ApplicationMetricsCard({
           target={latestValue(cpuTarget.series)}
           percentage={percentage}
           markers={markers}
+          hasSelection={hasSelection}
         />
         <MetricSection
           title={t("metrics.totalInstances")}
@@ -299,6 +336,12 @@ interface ResourceSectionProps {
   target?: number | null;
   percentage: boolean;
   markers?: ChartEventMarker[];
+  /**
+   * True when an explicit INSTANCE filter is active. An empty result then says
+   * so (localized, w5/m91) instead of the generic unfiltered empty state, and
+   * stays distinct from query errors (handled by MetricSection).
+   */
+  hasSelection?: boolean;
 }
 
 /**
@@ -320,6 +363,7 @@ function ResourceSection({
   target,
   percentage,
   markers,
+  hasSelection,
 }: ResourceSectionProps) {
   const { t } = useTranslations();
 
@@ -418,6 +462,13 @@ function ResourceSection({
         <EmptyChart message={t("metrics.noLimitConfigured")} />
       ) : percentagesUnavailable ? (
         <EmptyChart message={t("metrics.percentageUnavailable")} />
+      ) : hasSelection &&
+        series.every((s) => s.points.length === 0) &&
+        !result.loading &&
+        !result.error &&
+        !result.unavailable &&
+        !result.storeUnavailable ? (
+        <EmptyChart message={t("metrics.noDataForSelection")} />
       ) : (
         <>
           <SvgLineChart

@@ -466,12 +466,9 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 }
 
 func needsLiveInstanceCandidates(metric string) bool {
-	switch metric {
-	case MetricCPU, MetricMemory, MetricCPULimit, MetricMemoryLimit:
-		return true
-	default:
-		return false
-	}
+	// Live candidates back the INSTANCE filter, so the set stays identical to
+	// its eligibility (w5/m91) — one predicate, not two lists to drift.
+	return instanceFilterSupported(metric)
 }
 
 // QuantileSeries is a MetricSeries paired with the http_latency percentile that
