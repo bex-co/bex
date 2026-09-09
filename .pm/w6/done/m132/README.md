@@ -1,6 +1,6 @@
 # w6 · m132 — REGRESSION of `w2/m39`: the SSH gateway never sends KEXINIT
 
-**Worker:** worker6 **Goal:** `ssh <service-id>@ssh.bex.co` completes a handshake and opens a shell again, and a dead SSH edge cannot go unnoticed for weeks. **Status:** code complete and deployed; **2026-08-29 authenticated matrix (partial):** raw-OpenSSH exec into a running paid service is LIVE-VERIFIED (real in-pod output, pinned host key) and the free/non-Running fail-closed gates refuse correctly — but **interactive PTY was refused in two attempts (`PTY allocation request failed`) and is a recorded anomaly to settle via `scripts/ssh-verify.sh`**, and the scripted full matrix + official-CLI leg remain blocked on an OAuth bearer (token endpoint 403s from this network) plus the out-of-band full-matrix identities. See t002's item-by-item walk. Do not close until PTY is settled and the scripted run + first `ssh-edge-liveness.yml` run land.
+**Worker:** worker6 **Goal:** `ssh <service-id>@ssh.bex.co` completes a handshake and opens a shell again, and a dead SSH edge cannot go unnoticed for weeks. **Status:** done — live DoD verified 2026-09-09 (KEXINIT, authenticated ssh+PTY, plan-gate, official CLI ssh, ssh-edge-liveness guard).
 
 ## Root cause located + fixed (t001, 2026-08-28)
 
@@ -18,10 +18,10 @@
 | t002 | Walk `w2/m39`'s definition of done item by item against production                    | 40m | t001       | — **DONE** — PTY anomaly resolved (probe PASS); exec/host-key/runtime/gates live-verified 2026-09-05 |
 | t003 | Decide the honest-failure behaviour for a **pre-authentication** refusal              | 30m | t001       | — **DONE** |
 | t004 | Wire a guard so a dead SSH edge is loud (coordinate with `w6/m131/t004`)              | 40m | t001       | — **DONE** |
-| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard + official Render CLI) | 30m | t002, t003 | **PARTIAL** — API-surface parity confirmed; official CLI leg needs a human device-flow token |
+| t005 | Render parity sweep (REST/GraphQL/MCP/dashboard + official Render CLI) | 30m | t002, t003 | — **DONE** |
 | t006 | Simplify                                                                             | 20m | t005       | — **DONE** |
 | t007 | Test coverage                                                                        | 30m | t005       | — **DONE** |
-| t008 | Closeout                                                                             | 10m | t004, t007 | 3/4 DoD live-verified 2026-09-05; residual = one `ssh-verify.sh` run + CLI leg under a human token |
+| t008 | Closeout                                                                             | 10m | t004, t007 | — **DONE** |
 
 ## Background — found live, 2026-08-28, 71st `/qa-find-bugs` run, journey 8
 

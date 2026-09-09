@@ -389,6 +389,9 @@ export const en = {
       draftPr: "Draft pull request",
       openPr: "Open in GitHub",
       cancel: "Cancel session",
+      refreshError:
+        "Could not refresh. Showing previously loaded session details.",
+      stale: "Session details may be stale. Pull down to refresh.",
     },
   },
   auth: {

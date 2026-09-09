@@ -371,6 +371,8 @@ export const zh = {
       draftPr: "草稿拉取请求",
       openPr: "在 GitHub 中打开",
       cancel: "取消会话",
+      refreshError: "刷新失败。显示上次加载的会话详情。",
+      stale: "会话详情可能已过期。下拉刷新。",
     },
   },
   auth: {

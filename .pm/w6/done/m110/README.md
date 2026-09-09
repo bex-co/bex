@@ -1,6 +1,6 @@
 # w6 · m110 — App compute is never metered, and a service named ≥22 chars loses CPU/memory/instance metrics
 
-**Worker:** worker6 **Goal:** every App's pods are selected by an identity that actually matches them — so App compute is metered and billed like Postgres/Key Value already is, and the Metrics page's Memory/CPU/Total Instances cards stop going blank for services with ordinary-length names. **Status:** code complete and deployed (`23c323f9` is an ancestor of the running production image `2a9a7240`) — code and all local gates green. **2026-08-29 closeout sweep:** the QA-credential blocker that stalled t008 is now removable via the admin path recorded in `w6/README.md` § Closeout sweep, but t008's DoD is uniquely metrics-infra-bound: it needs a paid running service AND accumulated Prometheus scrape/rollup windows (compute metering + the ≥22-char pod-name selector only become observable after several scrape intervals), plus the filing's original `srv-…` fixtures which no longer exist. Not attempted live this session (each other milestone's probe was point-in-time; this one needs sustained time-series accumulation). Next session: create a ≥22-char-named paid web service, wait ≥2 rollup windows, then run DoD bullets 1–7 (instance_seconds charge, MEMORY/CPU/INSTANCES series, dashboard Metrics cards, short-name non-regression) across REST/GraphQL/MCP.
+**Worker:** worker6 **Goal:** every App's pods are selected by an identity that actually matches them — so App compute is metered and billed like Postgres/Key Value already is, and the Metrics page's Memory/CPU/Total Instances cards stop going blank for services with ordinary-length names. **Status:** done — live DoD verified 2026-09-09 (instance_seconds + Application Metrics on ≥22-char and short fixtures; estimatedCost charge tree).
 
 ## Background (found live, 2026-08-27, 21st `/qa-find-bugs` run)
 
@@ -166,7 +166,7 @@ Not an authorization or existence boundary — both defects are identity/selecti
 | t005 | Render parity — metrics across REST/GraphQL/MCP + the dashboard charge tree — **DONE** (found + fixed an MCP empty-case divergence: `{"series":null}` vs REST's `[]`; the `/billing` charge-tree bullet carries to t008's live sweep) | 30m | t003, t004 |
 | t006 | Simplify — `/simplify` over the code this milestone changed — **DONE**                                       | 20m | t005       |
 | t007 | Test coverage — **DONE**                                                                                                | 45m | t005       |
-| t008 | Closeout                                                                                                     | 15m | t007       |
+| t008 | Closeout                                                                                                     | 15m | t007       | — **DONE**
 
 ## Resolution (landed 2026-08-27)
 

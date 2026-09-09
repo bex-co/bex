@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { NetworkStatus } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { Linking, StyleSheet, Text, View } from "react-native";
@@ -12,8 +13,13 @@ import {
   type MobileActionOption,
 } from "@/components/safe-action";
 import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  useRecovery,
+  useRecoveryEnvironment,
+} from "@/common/hooks/use-recovery";
 import { formatTimestamp } from "@/common/format-util";
 import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
+import { dataBoundary } from "@/common/apollo/data-boundary";
 import { AccessRequiredScreen } from "@/features/capabilities/access-required-screen";
 import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import {
@@ -22,6 +28,7 @@ import {
 } from "@/generated-graphql";
 import { isCancelablePhase, sessionPhaseView } from "../lifecycle";
 import { isGitHubPrUrl } from "./github-links";
+import { sessionDetailPollIntervalMs } from "./session-detail-refresh";
 
 const cancelAgentSession = defineSafeAction(
   "cancel-agent-session",
@@ -32,10 +39,24 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
   const { t, language } = useTranslations();
   const theme = useTheme().colorTheme;
   const capabilities = useCapabilities();
+  const recoveryEnvironment = useRecoveryEnvironment();
   // ADR087: the session read is gated on confirmed can_operate — a deep link
   // without it renders the generic access state before any fetch, and never
   // echoes whether the id exists.
   const canReadSessions = capabilities.allows("can_operate");
+  const generation = capabilities.generation;
+  const observedSessionId = useRef(sessionId);
+  observedSessionId.current = sessionId;
+  // Until the first response lands, treat the session as active so a direct
+  // deep link into a running session still polls. Terminal phases stop it.
+  const [knownPhase, setKnownPhase] = useState<string | null | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    setKnownPhase(undefined);
+  }, [sessionId]);
+
   const { data, loading, error, refetch, networkStatus } = useQuery(
     MobileAgentSessionDocument,
     {
@@ -44,8 +65,38 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
       notifyOnNetworkStatusChange: true,
+      // Bound cadence for active sessions only; terminal + background/offline
+      // stop. Direct deep links cannot rely on the list's poll to advance phase.
+      pollInterval: canReadSessions
+        ? sessionDetailPollIntervalMs(knownPhase, recoveryEnvironment)
+        : 0,
     },
   );
+
+  useEffect(() => {
+    setKnownPhase(data?.agentSession?.phase);
+  }, [data?.agentSession?.phase]);
+
+  const recovery = useRecovery({
+    attempt: async ({ signal }) => {
+      if (!canReadSessions) return;
+      if (signal.aborted || observedSessionId.current !== sessionId) return;
+      const lease = dataBoundary.begin();
+      try {
+        if (!lease.isCurrent() || lease.signal.aborted) return;
+        await refetch();
+      } finally {
+        lease.finish();
+      }
+    },
+  });
+
+  useEffect(() => {
+    // Session / access generation changes must not leave a prior detail's
+    // in-flight recovery writing into the new destination.
+    recovery.cancel();
+  }, [sessionId, generation, recovery.cancel]);
+
   const [cancelSession] = useMutation(MobileCancelAgentSessionDocument);
 
   if (!canReadSessions) {
@@ -54,6 +105,9 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
 
   const session = data?.agentSession ?? null;
   const phase = sessionPhaseView(session?.phase);
+  const refreshFailed = Boolean(error && session);
+  const staleCached =
+    recovery.phase === "failed" && session != null && !refreshFailed;
 
   const options: MobileActionOption[] =
     session && isCancelablePhase(session.phase)
@@ -90,9 +144,21 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
       />
       <DashboardScrollView
         refreshing={networkStatus === NetworkStatus.refetch}
-        onRefresh={() => void refetch()}
+        onRefresh={() => void recovery.manualRetry()}
         contentContainerStyle={styles.content}
       >
+        {refreshFailed || staleCached ? (
+          <Text
+            accessibilityRole="alert"
+            style={[styles.notice, { color: theme.warning }]}
+          >
+            {t(
+              refreshFailed
+                ? "agentSessions.detail.refreshError"
+                : "agentSessions.detail.stale",
+            )}
+          </Text>
+        ) : null}
         {loading && !data ? null : error && !session ? (
           <DashboardCard>
             <Text
@@ -185,4 +251,5 @@ const styles = StyleSheet.create({
   body: { fontSize: fontSizes.sm, lineHeight: fontSizes.sm * 1.5 },
   meta: { fontSize: fontSizes.xs, marginTop: space.xs },
   phase: { fontSize: fontSizes.sm, fontWeight: fontWeights.medium },
+  notice: { fontSize: fontSizes.sm, lineHeight: fontSizes.sm * 1.4 },
 });
