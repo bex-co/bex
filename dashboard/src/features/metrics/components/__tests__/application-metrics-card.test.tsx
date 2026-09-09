@@ -298,7 +298,11 @@ describe("ApplicationMetricsCard", () => {
   });
 
   it("shows the honest no-limit state for percentage when no _limit series exists", async () => {
-    mockUseMetrics.mockImplementation((_resource, metric) => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      // No limits configured AND no percentage survived (zero denominators):
+      // the absolute read witnesses observed usage, the percentage read is
+      // empty, the _limit reads are empty.
+      if (metric === "cpu" && opts?.percentage) return emptyResult();
       if (metric === "cpu") return seriesResult("cpu", [0.5]);
       return emptyResult();
     });
@@ -308,6 +312,27 @@ describe("ApplicationMetricsCard", () => {
     expect(
       (await screen.findAllByText(/No limit configured/)).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("renders retained percentages when the current-limit read is empty (suspended service)", async () => {
+    // bex-api's cpu_limit is a current-pod read (empty with 0 pods), while
+    // the percentage read keeps own-limit history — the card must not hide
+    // usable retained points behind "No limit configured" (w5/m90 t008 live
+    // walkthrough on a suspended mixed-limit fixture).
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "cpu" && opts?.percentage)
+        return seriesResult("percentage", [90.6, 64.4]);
+      if (metric === "cpu") return seriesResult("cpu", [0.45, 0.64]);
+      return emptyResult(); // _limit/_target reads: no live pods
+    });
+
+    renderCard();
+
+    expect(await screen.findByText("64.4%")).toBeInTheDocument();
+    expect(screen.queryByText(/No limit configured/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Percentages unavailable/),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the unavailable state when usage exists but no percentage survived (untrustworthy limits)", async () => {

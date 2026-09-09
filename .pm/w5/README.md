@@ -17,7 +17,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 **Approved corrective queue (2026-09-08):** m90 → m91. Execute sequentially because both touch the Application Metrics card; m91 has no technical dependency on m90.
 
-- [ ] **m90** — [Correct CPU/memory percentages across replicas and rollouts](m90/README.md) (8 tasks; 3h30m implementation, 5h total) ← approved pm-brainstorm proposal 1; corrects specific incomplete m89 acceptance coverage.
+- [x] **m90** — [Correct CPU/memory percentages across replicas and rollouts](done/m90/README.md) (8 tasks; 3h30m implementation, 5h total) ← approved pm-brainstorm proposal 1; corrects specific incomplete m89 acceptance coverage. — **DONE 2026-09-09**: per-instance own-limit normalization before replica aggregation across REST/GraphQL/MCP/dashboard, truthful limit/unavailable states, live-verified (service-level + authed REST/GraphQL/MCP + dashboard Percentage/Total with desktop/narrow-mobile pending/ready captures); two real bugs fixed in tree (REST gate 400 on percentage/aggregateAllMethod, retained-percentage suppression on empty current-limit read).
 - [ ] **m91** — [Preserve instance selection through empty windows and refreshes](m91/README.md) (7 tasks; 2h implementation, 3h30m total) ← approved pm-brainstorm proposal 2; corrects specific incomplete m89 acceptance coverage.
 
 - [x] **m87** — [Consistent instance IDs across logs, metrics, and SSH](done/m87/README.md) (9 tasks) — **DONE 2026-09-08**: name-derived public instance ids unify serviceInstances, metrics, logs, and SSH; legacy UID SSH selectors and raw-name log filters remain compatible. Unblocks m89.
