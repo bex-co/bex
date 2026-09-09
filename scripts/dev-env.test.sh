@@ -194,6 +194,7 @@ assert "a benign override is accepted" "devenv 10 env >/dev/null"
 if [ "$had_override" -eq 1 ]; then cp "$tmp/override.bak" "$override"; else rm -f "$override"; fi
 
 echo "==> agent image identity helpers (w1/m137)"
+bash scripts/dev-env-images.test.sh
 # Source the helpers without running the entrypoint: everything from the
 # AGENT_NODE_IMAGES inventory through agent_reconcile_node_images, stopping
 # before image_stale / agent_build_images.
