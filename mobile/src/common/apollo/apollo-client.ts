@@ -4,45 +4,19 @@ import {
   HttpLink,
   InMemoryCache,
 } from "@apollo/client";
-import { SetContextLink } from "@apollo/client/link/context";
-import { ErrorLink } from "@apollo/client/link/error";
 import { RetryLink } from "@apollo/client/link/retry";
-import { catchError, from, switchMap, throwError } from "rxjs";
 import { authManager } from "@/features/auth/auth-provider";
 import { mobileConfig } from "@/features/auth/config";
 import { createBoundaryLink } from "./boundary-link";
 import { createAccessLink } from "./access-link";
+import { createAuthLinks } from "./auth-links";
 import { dataBoundary } from "./data-boundary";
-import { isRetryableNetworkError, isUnauthorized } from "./error-policy";
+import { isRetryableNetworkError } from "./error-policy";
 
-const authLink = new SetContextLink(async (context) => {
-  if (context.headers?.authorization) return context;
-  const accessToken = await authManager.getAccessToken();
-  return {
-    headers: {
-      ...context.headers,
-      authorization: `Bearer ${accessToken}`,
-    },
-  };
-});
-
-const refreshLink = new ErrorLink(({ error, operation, forward }) => {
-  if (
-    !isUnauthorized(error) ||
-    operation.getContext().authRetried === true ||
-    operation.getContext().skipAuthRefresh === true
-  ) {
-    return;
-  }
-  operation.setContext({ authRetried: true });
-  return from(authManager.forceRefresh()).pipe(
-    switchMap(() => forward(operation)),
-    catchError((refreshError) =>
-      from(authManager.signOut()).pipe(
-        switchMap(() => throwError(() => refreshError)),
-      ),
-    ),
-  );
+const { authLink, refreshLink } = createAuthLinks({
+  getAccessToken: () => authManager.getAccessToken(),
+  forceRefresh: () => authManager.forceRefresh(),
+  signOut: () => authManager.signOut(),
 });
 
 const retryLink = new RetryLink({
