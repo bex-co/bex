@@ -968,27 +968,8 @@ cmd_agent_up() {
   echo "==> building the agent-session images (arm64-native where the pinned digest is not)"
   agent_build_images
 
-  echo "==> loading images into every node's containerd (no registry on the mock)"
-  local img node
-  for img in bex-lego:dev opensandbox-server:0.2.2-local \
-    opensandbox-controller:v0.2.0-bex bex-agent-sandbox:dev; do
-    for node in $(kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); do
-      case " $AGENT_RELOAD_IMAGES " in
-      *" $img "*)
-        # Rebuilt with a new ID: the node's same-named tag is stale — replace
-        # it (the by-name skip below would otherwise keep the old code running
-        # while the rollout "succeeds", .pm/w1/081.md).
-        docker exec "$node" ctr -n k8s.io images rm "docker.io/library/$img" >/dev/null 2>&1 || true
-        ;;
-      *)
-        docker exec "$node" ctr -n k8s.io images ls -q 2>/dev/null |
-          grep -qx "docker.io/library/$img" && continue
-        ;;
-      esac
-      echo "    $img -> $node"
-      docker save "$img" | docker exec -i "$node" ctr -n k8s.io images import - >/dev/null
-    done
-  done
+  echo "==> reconciling agent images onto every node's containerd (no registry on the mock)"
+  agent_reconcile_node_images
 
   echo "==> tenant-namespace ClusterRoles (shared; the RoleBindings bex-api stamps point at these)"
   kubectl apply -f deploy/gitops/base/tenant-namespace-clusterroles.yaml >/dev/null
@@ -1088,10 +1069,134 @@ EOF
 # An image is rebuilt when it is missing, when any file under its build source
 # is newer than the image (a code change must reach the cluster — the old
 # build-only-when-absent guard silently ran stale gateway/bex-api code,
-# .pm/w1/081.md), or when AGENT_REBUILD=1 forces it. Images whose ID actually
-# changed are recorded in AGENT_RELOAD_IMAGES so the node-load loop below
-# replaces the same-named stale copy in each node's containerd; the
-# config-revision stamp on the Deployments then rolls the pods.
+# .pm/w1/081.md), or when AGENT_REBUILD=1 forces it. Node distribution no longer
+# depends on an invocation-local reload list: agent_reconcile_node_images
+# compares Docker config Ids to each node's crictl image Id every run, so a
+# retry after a partial import converges without AGENT_REBUILD or source edits
+# (w1/m137). The config-revision stamp on the Deployments then rolls the pods.
+
+# The four images agent-up distributes into every CAPD node's containerd.
+AGENT_NODE_IMAGES=(
+  bex-lego:dev
+  opensandbox-server:0.2.2-local
+  opensandbox-controller:v0.2.0-bex
+  bex-agent-sandbox:dev
+)
+
+# agent_image_ref <tag> — containerd/CRI reference for a locally-tagged image.
+agent_image_ref() {
+  printf 'docker.io/library/%s\n' "$1"
+}
+
+# agent_image_absent_err <stderr> — true when inspect failed because the image
+# is missing (vs a real inspection failure).
+agent_image_absent_err() {
+  printf '%s' "$1" | grep -qiE 'No such image|No such object|not found|does not exist|NotFound'
+}
+
+# agent_local_image_identity <img> — comparable Docker config Id on stdout.
+# Exit 0=ok, 2=missing, 1=inspection failure. Do not compare this to ctr's
+# manifest DIGEST column — that is a different digest family (w1/m137).
+agent_local_image_identity() {
+  local img="$1" out
+  if ! out=$(docker image inspect -f '{{.Id}}' "$img" 2>&1); then
+    agent_image_absent_err "$out" && return 2
+    echo "error: inspecting local image $img: $out" >&2
+    return 1
+  fi
+  if [ -z "$out" ] || [ "$out" = "<no value>" ]; then
+    echo "error: local image $img has empty identity" >&2
+    return 1
+  fi
+  printf '%s\n' "$out"
+}
+
+# agent_node_image_identity <node> <img> — comparable CRI config Id on stdout.
+# Uses crictl (status.id == Docker .Id after docker-save|ctr-import), not ctr's
+# manifest digest. Exit 0=ok, 2=missing, 1=inspection failure.
+agent_node_image_identity() {
+  local node="$1" img="$2" ref out
+  ref=$(agent_image_ref "$img")
+  if ! out=$(docker exec "$node" crictl inspecti --output go-template \
+    --template '{{.status.id}}' "$ref" 2>&1); then
+    agent_image_absent_err "$out" && return 2
+    echo "error: inspecting $img on node $node: $out" >&2
+    return 1
+  fi
+  if [ -z "$out" ] || [ "$out" = "<no value>" ]; then
+    echo "error: $img on node $node has empty identity" >&2
+    return 1
+  fi
+  printf '%s\n' "$out"
+}
+
+# agent_image_import_needed <desired-id> <observed-id-or-empty>
+# Exit 0 when the node must import; 1 when the observed identity already matches.
+agent_image_import_needed() {
+  local desired="$1" observed="${2:-}"
+  [ -n "$desired" ] && [ -n "$observed" ] && [ "$desired" = "$observed" ] && return 1
+  return 0
+}
+
+# agent_import_image_to_node <img> <node> <desired-id> — replace the node's tag
+# and verify the imported identity matches before returning.
+agent_import_image_to_node() {
+  local img="$1" node="$2" desired="$3" ref observed
+  ref=$(agent_image_ref "$img")
+  docker exec "$node" ctr -n k8s.io images rm "$ref" >/dev/null 2>&1 || true
+  echo "    $img -> $node (desired ${desired#sha256:})"
+  if ! docker save "$img" | docker exec -i "$node" ctr -n k8s.io images import - >/dev/null; then
+    echo "error: importing $img onto node $node failed" >&2
+    return 1
+  fi
+  observed=$(agent_node_image_identity "$node" "$img") || {
+    echo "error: post-import inspection of $img on node $node failed" >&2
+    return 1
+  }
+  if [ "$observed" != "$desired" ]; then
+    echo "error: post-import identity mismatch for $img on node $node" >&2
+    echo "       desired=$desired" >&2
+    echo "       observed=$observed" >&2
+    return 1
+  fi
+}
+
+# agent_reconcile_node_images — ensure every node has the intended identity for
+# all four agent images. Missing or mismatched tags are imported; matching Ids
+# are skipped. Any inspect/import/verify failure aborts before workload rollout.
+agent_reconcile_node_images() {
+  local img node desired observed rc
+  local -a nodes=()
+  while IFS= read -r node; do
+    [ -n "$node" ] && nodes+=("$node")
+  done < <(kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+  if [ "${#nodes[@]}" -eq 0 ]; then
+    echo "error: no cluster nodes to load agent images onto" >&2
+    return 1
+  fi
+
+  for img in "${AGENT_NODE_IMAGES[@]}"; do
+    desired=$(agent_local_image_identity "$img") || {
+      rc=$?
+      if [ "$rc" -eq 2 ]; then
+        echo "error: required local image $img is missing after build" >&2
+      fi
+      return 1
+    }
+    for node in "${nodes[@]}"; do
+      if ! observed=$(agent_node_image_identity "$node" "$img"); then
+        rc=$?
+        [ "$rc" -eq 2 ] || return 1
+        observed=""
+      fi
+      if agent_image_import_needed "$desired" "$observed"; then
+        agent_import_image_to_node "$img" "$node" "$desired" || return 1
+      else
+        echo "    $img @ $node already ${desired#sha256:}"
+      fi
+    done
+  done
+}
 
 # image_stale <image> <src>... — true when the image is missing, AGENT_REBUILD=1,
 # or any file under a src path is newer than the image's Created timestamp.
@@ -1111,43 +1216,23 @@ image_stale() {
   return 1
 }
 
-# agent_mark_reload <image> <previous-id> — record the image for force-reload
-# when the rebuild produced a different image ID (a fully-cached rebuild of an
-# unchanged tree is a no-op and must not churn the nodes).
-agent_mark_reload() {
-  local now
-  now=$(docker image inspect -f '{{.Id}}' "$1")
-  if [ "$now" != "$2" ]; then AGENT_RELOAD_IMAGES="$AGENT_RELOAD_IMAGES $1"; fi
-  return 0
-}
-
 agent_build_images() {
-  AGENT_RELOAD_IMAGES=""
-  local before
   if image_stale bex-agent-sandbox:dev lego; then
-    before=$(docker image inspect -f '{{.Id}}' bex-agent-sandbox:dev 2>/dev/null || true)
     (cd lego && docker build -q -f agent-image/Dockerfile -t bex-agent-sandbox:dev . >/dev/null)
-    agent_mark_reload bex-agent-sandbox:dev "$before"
   fi
   if image_stale bex-lego:dev lego; then
-    before=$(docker image inspect -f '{{.Id}}' bex-lego:dev 2>/dev/null || true)
     (cd lego && docker build -q -t bex-lego:dev . >/dev/null)
-    agent_mark_reload bex-lego:dev "$before"
   fi
   if image_stale opensandbox-server:0.2.2-local deploy/opensandbox "$AGENT_TEMPLATES/opensandbox-server.local.Dockerfile"; then
-    before=$(docker image inspect -f '{{.Id}}' opensandbox-server:0.2.2-local 2>/dev/null || true)
     docker build -q -f "$AGENT_TEMPLATES/opensandbox-server.local.Dockerfile" \
       -t opensandbox-server:0.2.2-local deploy/opensandbox >/dev/null
-    agent_mark_reload opensandbox-server:0.2.2-local "$before"
   fi
   # The chart's image helper prepends "v" to a semver-looking tag, so the built
   # tag must already carry it or the Deployment references an image that is not
   # on the node.
   if image_stale opensandbox-controller:v0.2.0-bex deploy/opensandbox; then
-    before=$(docker image inspect -f '{{.Id}}' opensandbox-controller:v0.2.0-bex 2>/dev/null || true)
     docker build -q -f deploy/opensandbox/controller.Dockerfile \
       -t opensandbox-controller:v0.2.0-bex deploy/opensandbox >/dev/null
-    agent_mark_reload opensandbox-controller:v0.2.0-bex "$before"
   fi
 }
 

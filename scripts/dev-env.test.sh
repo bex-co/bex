@@ -193,6 +193,140 @@ printf 'DEV_ENV_OBSERVABILITY=0\n' >"$override"
 assert "a benign override is accepted" "devenv 10 env >/dev/null"
 if [ "$had_override" -eq 1 ]; then cp "$tmp/override.bak" "$override"; else rm -f "$override"; fi
 
+echo "==> agent image identity helpers (w1/m137)"
+# Source the helpers without running the entrypoint: everything from the
+# AGENT_NODE_IMAGES inventory through agent_reconcile_node_images, stopping
+# before image_stale / agent_build_images.
+eval "$(awk '
+  /^AGENT_NODE_IMAGES=\(/ {keep=1}
+  keep {print}
+  /^agent_reconcile_node_images\(\)/ {in_fn=1}
+  in_fn && /^}$/ {exit}
+' scripts/dev-env.sh)"
+
+assert "all four agent images are inventoried" \
+  "[ \${#AGENT_NODE_IMAGES[@]} -eq 4 ]"
+assert "inventory includes bex-lego:dev" \
+  "printf '%s\n' \"\${AGENT_NODE_IMAGES[@]}\" | grep -qx 'bex-lego:dev'"
+assert "inventory includes bex-agent-sandbox:dev" \
+  "printf '%s\n' \"\${AGENT_NODE_IMAGES[@]}\" | grep -qx 'bex-agent-sandbox:dev'"
+assert "inventory includes opensandbox-server:0.2.2-local" \
+  "printf '%s\n' \"\${AGENT_NODE_IMAGES[@]}\" | grep -qx 'opensandbox-server:0.2.2-local'"
+assert "inventory includes opensandbox-controller:v0.2.0-bex" \
+  "printf '%s\n' \"\${AGENT_NODE_IMAGES[@]}\" | grep -qx 'opensandbox-controller:v0.2.0-bex'"
+assert "agent-up calls identity reconciliation" \
+  "grep -q 'agent_reconcile_node_images' scripts/dev-env.sh"
+assert "agent-up no longer keys reloads on AGENT_RELOAD_IMAGES" \
+  "! grep -q 'AGENT_RELOAD_IMAGES' scripts/dev-env.sh"
+assert "node identity uses crictl status.id, not ctr manifest digest" \
+  "grep -q 'crictl inspecti' scripts/dev-env.sh && grep -q 'status.id' scripts/dev-env.sh"
+
+# Pure decision coverage — the interrupted-import bug is "tag present ⇒ skip".
+assert "missing observed identity needs import" \
+  "agent_image_import_needed 'sha256:aaa' ''"
+assert "mismatched observed identity needs import" \
+  "agent_image_import_needed 'sha256:aaa' 'sha256:bbb'"
+assert "matching observed identity skips import" \
+  "! agent_image_import_needed 'sha256:aaa' 'sha256:aaa'"
+
+set +e
+agent_local_image_identity "bex-m137-definitely-absent:test" >/dev/null 2>&1
+missing_rc=$?
+set -e
+assert "local inspect distinguishes missing (exit 2)" "[ '$missing_rc' -eq 2 ]"
+
+echo "==> interrupted import converges on CAPD nodes (w1/m137)"
+# Stateful Docker/containerd fixture against the live mock nodes. Skips cleanly
+# when the cluster is down so CI without CAPD still runs the decision tests.
+PROBE_IMG="bex-m137-probe:dev"
+PROBE_REF="docker.io/library/$PROBE_IMG"
+drill_nodes=()
+while IFS= read -r n; do
+  [ -n "$n" ] && drill_nodes+=("$n")
+done < <(docker ps --filter label=io.x-k8s.kind.cluster=bex \
+  --filter label=io.x-k8s.kind.role=worker --format '{{.Names}}' 2>/dev/null)
+# Include the control-plane — agent-up loads onto every kubectl node.
+cp_node="$(docker ps --filter label=io.x-k8s.kind.cluster=bex \
+  --filter label=io.x-k8s.kind.role=control-plane --format '{{.Names}}' 2>/dev/null | head -1 || true)"
+[ -n "$cp_node" ] && drill_nodes+=("$cp_node")
+
+if [ "${#drill_nodes[@]}" -lt 2 ]; then
+  echo "    skip: need ≥2 bex CAPD nodes for the interrupted-import fixture"
+else
+  # Two disposable nodes are enough to prove partial-import recovery; keep the
+  # fixture bounded — each ctr import is multi-second on CAPD.
+  drill_nodes=("${drill_nodes[0]}" "${drill_nodes[1]}")
+  cleanup_probe() {
+    local n
+    for n in "${drill_nodes[@]}"; do
+      docker exec "$n" ctr -n k8s.io images rm "$PROBE_REF" >/dev/null 2>&1 || true
+    done
+    docker rmi "$PROBE_IMG" >/dev/null 2>&1 || true
+  }
+  cleanup_probe
+
+  docker build -q -t "$PROBE_IMG" - <<'EOF' >/dev/null
+FROM alpine:3.20
+RUN echo m137-v1 > /m137-probe.txt
+EOF
+  old_id="$(agent_local_image_identity "$PROBE_IMG")"
+  # Seed both nodes with v1 (the "previous successful agent-up").
+  for n in "${drill_nodes[@]}"; do
+    agent_import_image_to_node "$PROBE_IMG" "$n" "$old_id" >/dev/null
+  done
+
+  docker build -q -t "$PROBE_IMG" - <<'EOF' >/dev/null
+FROM alpine:3.20
+RUN echo m137-v2 > /m137-probe.txt
+EOF
+  new_id="$(agent_local_image_identity "$PROBE_IMG")"
+  assert "rebuild under the same tag minted a new identity" "[ '$old_id' != '$new_id' ]"
+
+  # Partial import: only the first node receives v2 (interrupted agent-up).
+  first="${drill_nodes[0]}"
+  agent_import_image_to_node "$PROBE_IMG" "$first" "$new_id" >/dev/null
+  stale="${drill_nodes[1]}"
+  stale_id="$(agent_node_image_identity "$stale" "$PROBE_IMG")"
+  assert "interrupted update left a node on the old identity" "[ '$stale_id' = '$old_id' ]"
+
+  # Pre-fix regression: tag-presence skip would treat the stale node as done.
+  set +e
+  docker exec "$stale" ctr -n k8s.io images ls -q 2>/dev/null | grep -qx "$PROBE_REF"
+  old_skip_rc=$?
+  set -e
+  assert "pre-fix tag-presence check would skip the stale node" "[ '$old_skip_rc' -eq 0 ]"
+  assert "identity reconcile still requires import on the stale node" \
+    "agent_image_import_needed '$new_id' '$stale_id'"
+
+  # Retry without AGENT_REBUILD / source edits: reconcile every node to new_id.
+  for n in "${drill_nodes[@]}"; do
+    observed="$(agent_node_image_identity "$n" "$PROBE_IMG" 2>/dev/null || true)"
+    if agent_image_import_needed "$new_id" "$observed"; then
+      agent_import_image_to_node "$PROBE_IMG" "$n" "$new_id" >/dev/null
+    fi
+  done
+  for n in "${drill_nodes[@]}"; do
+    got="$(agent_node_image_identity "$n" "$PROBE_IMG")"
+    assert "$n converged to the intended identity" "[ '$got' = '$new_id' ]"
+  done
+
+  # Matching identity skips reimport (no churn).
+  before_skip="$(agent_node_image_identity "$first" "$PROBE_IMG")"
+  assert "matching identity skips reimport" \
+    "! agent_image_import_needed '$new_id' '$before_skip'"
+
+  # Post-import mismatch must fail closed (false-success guard).
+  set +e
+  agent_import_image_to_node "$PROBE_IMG" "$first" "sha256:deadbeef" >/dev/null 2>"$tmp/mismatch.err"
+  mismatch_rc=$?
+  set -e
+  assert "post-import identity mismatch fails" "[ '$mismatch_rc' -ne 0 ]"
+  assert "mismatch diagnostic names the image" "grep -q '$PROBE_IMG' '$tmp/mismatch.err'"
+  assert "mismatch diagnostic names the node" "grep -q '$first' '$tmp/mismatch.err'"
+
+  cleanup_probe
+fi
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "dev-env: all checks passed"
