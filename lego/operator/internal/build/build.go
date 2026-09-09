@@ -343,7 +343,13 @@ type Options struct {
 	// operator's App-owned merged projection of linked group Secrets plus the
 	// service's own Secret (w4/m93). Empty = no Secret-backed build env.
 	RuntimeEnvSecret string
-	Namespace        string // namespace the build Job runs in
+	// NativeEnvRevision is an opaque, non-secret cache key for the effective
+	// native build environment (literals + projected Secret sources). It enters
+	// the generated Dockerfile's env-dependent RUN so BuildKit cannot reuse a
+	// layer baked under a different environment (w7/m87). Secret mount contents
+	// alone do not invalidate BuildKit's cache. Empty means "none".
+	NativeEnvRevision string
+	Namespace         string // namespace the build Job runs in
 	// Workspace is the owning tenant id (app.bex.co/workspace label value) stamped
 	// on the build Job so per-workspace concurrent-build counting works (w7/m9).
 	// Empty = label omitted (legacy/hand-applied Apps without a workspace label).

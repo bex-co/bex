@@ -20,12 +20,23 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
+
+// NativeEnvNoneRevision is the stable BuildKit cache key when a native build
+// has no effective environment. It still appears in the generated Dockerfile so
+// introducing the first env value cannot reuse a no-env cached RUN (w7/m87).
+const NativeEnvNoneRevision = "none"
+
+// nativeEnvRevisionPattern rejects anything that could break out of the
+// quoted no-op shell token we embed in the generated Dockerfile. The revision
+// is opaque platform metadata — never a secret value.
+var nativeEnvRevisionPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]+$`)
 
 // nativePreparerImage is digest-pinned (codex round-7 F10 / the ADR055 F7
 // digest-pinning deferral's highest-value pin): this initContainer mounts and
@@ -74,7 +85,20 @@ func validateNativeOptions(o Options) error {
 	if !o.StaticSite && strings.TrimSpace(o.StartCommand) == "" {
 		return fmt.Errorf("build: native runtime %s requires startCommand", runtime)
 	}
+	if rev := strings.TrimSpace(o.NativeEnvRevision); rev != "" && !nativeEnvRevisionPattern.MatchString(rev) {
+		return fmt.Errorf("build: native env revision %q is not opaque cache metadata", rev)
+	}
 	return nil
+}
+
+// nativeEnvRevision returns the opaque BuildKit cache key embedded in the
+// generated Dockerfile. Empty Options default to NativeEnvNoneRevision.
+func nativeEnvRevision(o Options) string {
+	rev := strings.TrimSpace(o.NativeEnvRevision)
+	if rev == "" {
+		return NativeEnvNoneRevision
+	}
+	return rev
 }
 
 // nativeDockerfile translates Render's native runtime contract into a
@@ -82,8 +106,14 @@ func validateNativeOptions(o Options) error {
 // build command with service env available, and retain the exact start command
 // as the image CMD. The generated file is written by an init container and is
 // never committed to the tenant repository.
+//
+// BuildKit secret mounts do not participate in the instruction cache key
+// (https://docs.docker.com/build/cache/invalidation/#build-secrets). The opaque
+// NativeEnvRevision is therefore referenced inside the env-dependent RUN so a
+// changed effective environment cannot reuse a layer baked under different
+// values (w7/m87). The revision carries no secret material.
 func nativeDockerfile(o Options) string {
-	buildScript := `while IFS= read -r record; do
+	buildScript := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + `while IFS= read -r record; do
   [ -n "$record" ] || continue
   key=${record%%=*}
   encoded=${record#*=}
