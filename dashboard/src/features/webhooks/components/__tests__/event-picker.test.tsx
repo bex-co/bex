@@ -64,6 +64,40 @@ describe("catalogEntries (w1/m49/t002)", () => {
     expect(entries.map((e) => e.groupKey)).toEqual(["deploy", "suspension"]);
   });
 
+  // w3/m82 t004: the datastore vocabulary (observed availability, backup /
+  // restore / upgrade outcomes, and the configuration-change audits) must land
+  // in the Postgres and Key Value groups with real labels — a served key the
+  // catalog doesn't know falls into "Other" and renders raw.
+  it("groups the datastore vocabulary under Postgres and Key Value", () => {
+    const datastore = [
+      "postgres_available",
+      "postgres_unavailable",
+      "postgres_ha_status_changed",
+      "postgres_connection_pool_enabled_changed",
+      "postgres_disk_size_changed",
+      "postgres_backup_completed",
+      "postgres_backup_failed",
+      "postgres_restore_succeeded",
+      "postgres_restore_failed",
+      "postgres_upgrade_started",
+      "postgres_upgrade_succeeded",
+      "postgres_upgrade_failed",
+      "key_value_available",
+      "key_value_unhealthy",
+      "key_value_config_restart",
+    ];
+    const entries = catalogEntries(datastore);
+    expect(entries.map((e) => e.groupKey)).toEqual(["postgres", "keyValue"]);
+    for (const entry of entries) {
+      for (const event of entry.events) {
+        expect(event.labelKey).toBe(`webhooks.event.${event.type}`);
+      }
+    }
+    expect(entries.flatMap((e) => e.events).map((e) => e.type)).toHaveLength(
+      datastore.length,
+    );
+  });
+
   it("humanizes service_moved as a known single (not Other/raw)", () => {
     const entries = catalogEntries(["service_moved", "zz_mystery_event"]);
     expect(entries).toEqual([

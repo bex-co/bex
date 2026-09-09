@@ -235,6 +235,11 @@ type Reconciler struct {
 	// debounceUnhealthy). Per-process memory is deliberate: a restart just
 	// costs one extra confirming tick.
 	unhealthyOnce map[string]bool
+	// datastoreUnhealthyOnce is unhealthyOnce for the managed-datastore
+	// observation pass (w3/m82). A separate map, not a shared one, so the pass
+	// can prune entries for datastores that have gone away without having to
+	// tell a dpg-/red- key apart from a service id.
+	datastoreUnhealthyOnce map[string]bool
 
 	kick chan struct{}
 }
@@ -283,6 +288,15 @@ func debounceUnhealthy(obs ObservedServiceState, unhealthyOnce map[string]bool) 
 // the last recorded healthy checkpoint, i.e. a time-traveled re-read.
 const rejectReasonStaleTransition = "stale_transition"
 
+// The closed subject vocabulary for ReconcilerMetrics.Rejection's second
+// label: which observation path refused the conclusion. Both ride the same
+// guard, but a suppressed service outage and a suppressed datastore outage are
+// different incidents and must be readable apart.
+const (
+	rejectSubjectApp       = "app"
+	rejectSubjectDatastore = "datastore"
+)
+
 // rejectStaleUnhealthy refuses a time-traveled unhealthy conclusion (w6/m41,
 // source .pm/w3/016.md — found by w3/m78's live crash leg). The operator
 // concludes App Ready from controller-runtime CACHED clients; when a
@@ -313,7 +327,7 @@ func (r *Reconciler) rejectStaleUnhealthy(ctx context.Context, obs ObservedServi
 	if healthyAt.IsZero() || !obs.ReadyTransitionAt.Before(healthyAt) {
 		return obs
 	}
-	r.Metrics.Rejection(rejectReasonStaleTransition)
+	r.Metrics.Rejection(rejectReasonStaleTransition, rejectSubjectApp)
 	log.Printf("controlplane: refusing time-traveled unhealthy conclusion for %s: ready transition %s predates the recorded healthy checkpoint %s",
 		obs.AppID, obs.ReadyTransitionAt, healthyAt)
 	return suppressAvailability(obs)
@@ -566,6 +580,11 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		if err := r.Client.Delete(ctx, cur); err != nil && !apierrors.IsNotFound(err) {
 			errs = append(errs, fmt.Errorf("delete App %s: %w", cur.Name, err))
 		}
+	}
+	// Managed datastores are observed, never projected: they have no desired
+	// row here, so this is a sibling pass rather than part of the loop above.
+	if err := r.recordDatastoreObservations(ctx); err != nil {
+		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }

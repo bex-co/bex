@@ -41,8 +41,11 @@ const resourceKindAgentSession = "agentSession"
 
 // destinationRequiredRelation maps an event family to the relation its
 // destination read/decision requires: "" for the all-roles families
-// (service/deploy/cron supervision rides can_view, which every role holds),
-// can_operate for agent session reads, can_create for a decision request —
+// (service/deploy/cron supervision rides can_view, which every role holds —
+// so does managed-datastore supervision, whose destination read is the
+// datastore's OWN can_view, `can_view from workspace` on type postgres in
+// model.fga, not the App's), can_operate for agent session reads, can_create
+// for a decision request —
 // approving/steering asks for work only create-holders may dispatch (the
 // event constant exists even though no producer ships yet).
 //

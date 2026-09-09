@@ -22,6 +22,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/eventvocab"
 )
 
 // locationCache memoizes time.LoadLocation. The Go runtime does not: each call
@@ -71,6 +73,23 @@ const (
 	DeliveryEventAgentNeedsDecision DeliveryEvent = "agent_needs_decision"
 	DeliveryEventAgentPRReady       DeliveryEvent = "agent_pr_ready"
 	DeliveryEventAgentFailed        DeliveryEvent = "agent_failed"
+)
+
+// Managed-datastore events (w3/m82 t005). Their names come from eventvocab
+// rather than a literal, because each one IS the datastore fact type the push
+// worker projects from — spelling them twice is the drift eventvocab exists to
+// prevent. Availability is the Critical/Important pair server_failed and
+// server_available already model; only the FAILURE half of backup, restore,
+// and major upgrade is push-worthy, since a nightly backup that worked is not
+// news and remains in the Events feed and the webhook vocabulary.
+const (
+	DeliveryEventPostgresUnavailable   DeliveryEvent = eventvocab.TypePostgresUnavailable
+	DeliveryEventPostgresAvailable     DeliveryEvent = eventvocab.TypePostgresAvailable
+	DeliveryEventKeyValueUnhealthy     DeliveryEvent = eventvocab.TypeKeyValueUnhealthy
+	DeliveryEventKeyValueAvailable     DeliveryEvent = eventvocab.TypeKeyValueAvailable
+	DeliveryEventPostgresBackupFailed  DeliveryEvent = eventvocab.TypePostgresBackupFailed
+	DeliveryEventPostgresRestoreFailed DeliveryEvent = eventvocab.TypePostgresRestoreFailed
+	DeliveryEventPostgresUpgradeFailed DeliveryEvent = eventvocab.TypePostgresUpgradeFailed
 )
 
 // DeliveryUrgency controls channel filtering and schedule bypass. Critical is

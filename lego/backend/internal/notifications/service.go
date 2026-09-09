@@ -364,6 +364,13 @@ var orderedDeliveryEvents = []DeliveryEvent{
 	DeliveryEventAgentNeedsDecision,
 	DeliveryEventAgentPRReady,
 	DeliveryEventAgentFailed,
+	DeliveryEventPostgresUnavailable,
+	DeliveryEventPostgresAvailable,
+	DeliveryEventKeyValueUnhealthy,
+	DeliveryEventKeyValueAvailable,
+	DeliveryEventPostgresBackupFailed,
+	DeliveryEventPostgresRestoreFailed,
+	DeliveryEventPostgresUpgradeFailed,
 }
 
 var orderedWeekdays = []struct {

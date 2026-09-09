@@ -17,6 +17,13 @@ export const pushEvents = [
   PushNotificationEvent.AgentNeedsDecision,
   PushNotificationEvent.AgentPrReady,
   PushNotificationEvent.AgentFailed,
+  PushNotificationEvent.PostgresUnavailable,
+  PushNotificationEvent.PostgresAvailable,
+  PushNotificationEvent.KeyValueUnhealthy,
+  PushNotificationEvent.KeyValueAvailable,
+  PushNotificationEvent.PostgresBackupFailed,
+  PushNotificationEvent.PostgresRestoreFailed,
+  PushNotificationEvent.PostgresUpgradeFailed,
 ] as const;
 
 export const pushUrgencies = [

@@ -466,6 +466,10 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres",
     description: "Event-picker group — managed Postgres events",
   },
+  "webhooks.group.keyValue": {
+    message: "Key Value",
+    description: "Event-picker group — managed Key Value events",
+  },
   "webhooks.group.suspension": {
     message: "Suspension",
     description: "Event-picker group — suspend/resume events",
@@ -590,6 +594,66 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.postgres_backup_started": {
     message: "Postgres Backup Started",
     description: "Event label — postgres_backup_started",
+  },
+  "webhooks.event.postgres_available": {
+    message: "Postgres Available",
+    description: "Event label — postgres_available",
+  },
+  "webhooks.event.postgres_unavailable": {
+    message: "Postgres Unavailable",
+    description: "Event label — postgres_unavailable",
+  },
+  "webhooks.event.postgres_ha_status_changed": {
+    message: "Postgres High Availability Changed",
+    description: "Event label — postgres_ha_status_changed",
+  },
+  "webhooks.event.postgres_connection_pool_enabled_changed": {
+    message: "Postgres Connection Pool Changed",
+    description: "Event label — postgres_connection_pool_enabled_changed",
+  },
+  "webhooks.event.postgres_disk_size_changed": {
+    message: "Postgres Disk Size Changed",
+    description: "Event label — postgres_disk_size_changed",
+  },
+  "webhooks.event.postgres_backup_completed": {
+    message: "Postgres Backup Completed",
+    description: "Event label — postgres_backup_completed",
+  },
+  "webhooks.event.postgres_backup_failed": {
+    message: "Postgres Backup Failed",
+    description: "Event label — postgres_backup_failed",
+  },
+  "webhooks.event.postgres_restore_succeeded": {
+    message: "Postgres Restore Succeeded",
+    description: "Event label — postgres_restore_succeeded",
+  },
+  "webhooks.event.postgres_restore_failed": {
+    message: "Postgres Restore Failed",
+    description: "Event label — postgres_restore_failed",
+  },
+  "webhooks.event.postgres_upgrade_started": {
+    message: "Postgres Upgrade Started",
+    description: "Event label — postgres_upgrade_started",
+  },
+  "webhooks.event.postgres_upgrade_succeeded": {
+    message: "Postgres Upgrade Succeeded",
+    description: "Event label — postgres_upgrade_succeeded",
+  },
+  "webhooks.event.postgres_upgrade_failed": {
+    message: "Postgres Upgrade Failed",
+    description: "Event label — postgres_upgrade_failed",
+  },
+  "webhooks.event.key_value_available": {
+    message: "Key Value Available",
+    description: "Event label — key_value_available",
+  },
+  "webhooks.event.key_value_unhealthy": {
+    message: "Key Value Unhealthy",
+    description: "Event label — key_value_unhealthy",
+  },
+  "webhooks.event.key_value_config_restart": {
+    message: "Key Value Restarted By Config Change",
+    description: "Event label — key_value_config_restart",
   },
   "webhooks.event.service_suspended": {
     message: "Service Suspended",

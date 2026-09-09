@@ -570,12 +570,17 @@ var (
 	// the workspace, not an App — so the resource is the agent_session id and the
 	// deep link opens the session, never a service.
 	agentEventRule = pushEventRule{resourceKind: "agentSession", idKind: ids.AgentSession, deepLinkPrefix: "/sessions/"}
+	// Managed datastores (w3/m82 t005) are two families, not one: a Postgres
+	// and a Key Value have different id kinds and different destinations, and
+	// pairing kind/id/link is exactly what these rules exist to do.
+	databaseEventRule = pushEventRule{resourceKind: "database", idKind: ids.Postgres, deepLinkPrefix: "/databases/"}
+	keyValueEventRule = pushEventRule{resourceKind: "keyValue", idKind: ids.KeyValue, deepLinkPrefix: "/key-values/"}
 )
 
 // pushEventRules is the whole DB-enqueueable push vocabulary; its key set must
-// stay equal to the push_notifications event_type CHECK (migration 0070). The
-// four lifecycle names are deliberately the fact names; deploy_*/cron_failed
-// are projection-only names with no fact constant.
+// stay equal to the push_notifications event_type CHECK (migration 0109). The
+// lifecycle and datastore names are deliberately the fact names;
+// deploy_*/cron_failed are projection-only names with no fact constant.
 var pushEventRules = map[string]pushEventRule{
 	"deploy_started":                  serviceEventRule,
 	"deploy_succeeded":                serviceEventRule,
@@ -588,6 +593,14 @@ var pushEventRules = map[string]pushEventRule{
 	"agent_pr_ready":                  agentEventRule,
 	"agent_failed":                    agentEventRule,
 	"agent_needs_decision":            agentEventRule,
+
+	string(DatastoreFactPostgresUnavailable):   databaseEventRule,
+	string(DatastoreFactPostgresAvailable):     databaseEventRule,
+	string(DatastoreFactPostgresBackupFailed):  databaseEventRule,
+	string(DatastoreFactPostgresRestoreFailed): databaseEventRule,
+	string(DatastoreFactPostgresUpgradeFailed): databaseEventRule,
+	string(DatastoreFactKeyValueUnhealthy):     keyValueEventRule,
+	string(DatastoreFactKeyValueAvailable):     keyValueEventRule,
 }
 
 var pushUrgencies = map[string]bool{"routine": true, "important": true, "critical": true}

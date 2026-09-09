@@ -81,22 +81,27 @@ const eventsConstants = new Map([
   ...aliasedConstants(eventsSource, vocabConstants),
 ]);
 
-// The datastore-only half, derived rather than hand-listed: every type
-// eventvocab maps for datastore audit rows that internal/events does NOT also
-// route into a service feed. service.go says so itself where it declares
-// indexedAuditEventTypes — those rows "have no service-scoped list home" and are
-// deliberately kept out of eventTypes. plan_changed is the one member of
-// eventvocab that IS a service event (apps.SetPlan), and it survives this
-// subtraction because eventTypes references it.
+// The datastore-only half, derived rather than hand-listed: eventvocab exists
+// to name events about a dpg-/red- datastore, and those rows "have no
+// service-scoped list home" (service.go's own words at indexedAuditEventTypes)
+// because a datastore has no apps row for GET /services/{id}/events to join.
+// So the whole vocabulary package is subtracted, not just the audit-derived
+// half — w3/m82 added observed availability and backup/restore/upgrade names
+// that reach webhooks and Get-by-id without ever entering a service feed, and a
+// guard keyed on DatastoreAuditTypes() alone would demand a Postgres group in
+// the Events tab filter for events that tab can never show.
+//
+// plan_changed is the one member of eventvocab that IS a service event
+// (apps.SetPlan), and it survives this subtraction because eventTypes
+// references it — which is what makes subtracting the package safe rather than
+// a blanket exemption.
 const serviceVerbTypes = new Set(
   blockValues(eventsSource, /var\s+eventTypes\s*=\s*map\[string\]string/).map(
     (name) => eventsConstants.get(name) ?? name,
   ),
 );
 const datastoreOnly = new Set(
-  [...blockValues(vocabSource, /func\s+DatastoreAuditTypes\(\)/)]
-    .map((name) => vocabConstants.get(name) ?? name)
-    .filter((type) => !serviceVerbTypes.has(type)),
+  [...vocabConstants.values()].filter((type) => !serviceVerbTypes.has(type)),
 );
 
 /** Every event type GET /services/{id}/events can return. */

@@ -53,6 +53,14 @@ var pushDeliveryEventGQLEnum = graphql.NewEnum(graphql.EnumConfig{
 		"AGENT_NEEDS_DECISION": &graphql.EnumValueConfig{Value: string(DeliveryEventAgentNeedsDecision)},
 		"AGENT_PR_READY":       &graphql.EnumValueConfig{Value: string(DeliveryEventAgentPRReady)},
 		"AGENT_FAILED":         &graphql.EnumValueConfig{Value: string(DeliveryEventAgentFailed)},
+
+		"POSTGRES_UNAVAILABLE":    &graphql.EnumValueConfig{Value: string(DeliveryEventPostgresUnavailable)},
+		"POSTGRES_AVAILABLE":      &graphql.EnumValueConfig{Value: string(DeliveryEventPostgresAvailable)},
+		"KEY_VALUE_UNHEALTHY":     &graphql.EnumValueConfig{Value: string(DeliveryEventKeyValueUnhealthy)},
+		"KEY_VALUE_AVAILABLE":     &graphql.EnumValueConfig{Value: string(DeliveryEventKeyValueAvailable)},
+		"POSTGRES_BACKUP_FAILED":  &graphql.EnumValueConfig{Value: string(DeliveryEventPostgresBackupFailed)},
+		"POSTGRES_RESTORE_FAILED": &graphql.EnumValueConfig{Value: string(DeliveryEventPostgresRestoreFailed)},
+		"POSTGRES_UPGRADE_FAILED": &graphql.EnumValueConfig{Value: string(DeliveryEventPostgresUpgradeFailed)},
 	},
 })
 

@@ -555,6 +555,40 @@ func TestDatastoreEventTypesAreSubscribableAndMapped(t *testing.T) {
 	}
 }
 
+// w3/m82 t003: the field-level datastore configuration effects are one verb to
+// one event name each, so the dispatcher needs no discrimination — but each must
+// be pushed down into the feed query and be subscribable.
+func TestDatastoreConfigEventTypesAreSubscribableAndMapped(t *testing.T) {
+	wantByVerb := map[string]string{
+		core.AuditVerbPostgresHAChanged:       TypePostgresHAStatusChanged,
+		core.AuditVerbPostgresPoolerChanged:   TypePostgresConnectionPoolEnabledChanged,
+		core.AuditVerbPostgresDiskSizeChanged: TypePostgresDiskSizeChanged,
+		core.AuditVerbKeyValueConfigChanged:   TypeKeyValueConfigRestart,
+	}
+	for verb, want := range wantByVerb {
+		if got := verbEvents[verb]; got != want {
+			t.Errorf("verbEvents[%q] = %q, want %q", verb, got, want)
+		}
+		if !slices.Contains(auditVerbs, verb) {
+			t.Errorf("auditVerbs does not push %q down into the feed query", verb)
+		}
+		if !slices.Contains(EventTypes, want) {
+			t.Errorf("EventTypes does not contain %q: %v", want, EventTypes)
+		}
+		eventType, data, ok := project(store.WebhookEventRow{
+			Source: store.EventSourceAudit, Key: "aud-cfg:", Verb: verb,
+			ServiceID: "dpg-1", ServiceName: "orders",
+		})
+		if !ok || eventType != want || data.ServiceID != "dpg-1" || data.ServiceName != "orders" {
+			t.Errorf("project(%q) = %q %+v ok=%t, want %q", verb, eventType, data, ok, want)
+		}
+	}
+	// No producer, so not advertised — read replicas are create-time only.
+	if slices.Contains(EventTypes, "postgres_read_replicas_changed") {
+		t.Error("postgres_read_replicas_changed is subscribable but nothing can emit it")
+	}
+}
+
 func TestExistingLifecycleAndAutoDeployEventTypesAreSubscribable(t *testing.T) {
 	want := []string{
 		TypeBranchDeleted,
@@ -632,6 +666,49 @@ func TestCronWebhookEventsComeFromObservedFactsNotIntentVerbs(t *testing.T) {
 	} {
 		if got := factEvents[string(factType)]; got != want {
 			t.Errorf("factEvents[%q] = %q, want %q", factType, got, want)
+		}
+	}
+}
+
+// TestObservedDatastoreFactsProjectToTheAdvertisedVocabulary is w3/m82 t004's
+// dispatch half: the datastore facts the reconciler records reach the outbound
+// feed under EventSourceFact just like an App's, so each must be subscribable
+// AND projectable. A name advertised in EventTypes that project() drops is a
+// subscription that can never fire.
+func TestObservedDatastoreFactsProjectToTheAdvertisedVocabulary(t *testing.T) {
+	for factType, want := range map[store.DatastoreEventFactType]string{
+		store.DatastoreFactPostgresUnavailable:      TypePostgresUnavailable,
+		store.DatastoreFactPostgresAvailable:        TypePostgresAvailable,
+		store.DatastoreFactKeyValueUnhealthy:        TypeKeyValueUnhealthy,
+		store.DatastoreFactKeyValueAvailable:        TypeKeyValueAvailable,
+		store.DatastoreFactPostgresBackupCompleted:  TypePostgresBackupCompleted,
+		store.DatastoreFactPostgresBackupFailed:     TypePostgresBackupFailed,
+		store.DatastoreFactPostgresRestoreSucceeded: TypePostgresRestoreSucceeded,
+		store.DatastoreFactPostgresRestoreFailed:    TypePostgresRestoreFailed,
+		store.DatastoreFactPostgresUpgradeStarted:   TypePostgresUpgradeStarted,
+		store.DatastoreFactPostgresUpgradeSucceeded: TypePostgresUpgradeSucceeded,
+		store.DatastoreFactPostgresUpgradeFailed:    TypePostgresUpgradeFailed,
+	} {
+		if got := factEvents[string(factType)]; got != want {
+			t.Errorf("factEvents[%q] = %q, want %q", factType, got, want)
+		}
+		if !slices.Contains(EventTypes, want) {
+			t.Errorf("%s is not subscribable — absent from EventTypes", want)
+		}
+		// A datastore fact carries the dpg-/red- id as the service id and no
+		// app id, the shape store.ListWebhookEvents' datastore arm emits.
+		row := store.WebhookEventRow{
+			Key:       "fact:observed:dpg-1:" + string(factType),
+			Source:    store.EventSourceFact,
+			FactType:  string(factType),
+			ServiceID: "dpg-1", ServiceName: "dpg-1",
+		}
+		gotType, data, ok := project(row)
+		if !ok || gotType != want {
+			t.Errorf("project(%s) = (%q, %v), want %q", factType, gotType, ok, want)
+		}
+		if data.ServiceID != "dpg-1" {
+			t.Errorf("project(%s) service id = %q, want the datastore id", factType, data.ServiceID)
 		}
 	}
 }

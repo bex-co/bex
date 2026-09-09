@@ -548,11 +548,21 @@ func (w *PushWorker) fanOutPage(ctx context.Context, rows []store.WebhookEventRo
 		if !ok {
 			continue
 		}
-		batch, err = fanOutPush(batch, evaluator, byTenant[row.TenantID], pushTarget{
+		target := pushTarget{
 			workspaceID: row.TenantID, sourceKey: row.Key, serviceID: serviceID,
 			resourceKind: "service", resourceID: serviceID,
 			deepLink: "/services/" + serviceID, occurredAt: row.At, projected: projected,
-		})
+		}
+		if route, ok := datastorePushRouteFor(DeliveryEvent(projected.event)); ok {
+			// A datastore fact has no App: the feed carries the datastore's own
+			// dpg-/red- id in ServiceID, and there is nothing for a service
+			// override (keyed by srv- id) to match, so the policy is evaluated
+			// workspace-wide.
+			target.serviceID = ""
+			target.resourceKind, target.resourceID = route.kind, row.ServiceID
+			target.deepLink = route.deepLinkPrefix + row.ServiceID
+		}
+		batch, err = fanOutPush(batch, evaluator, byTenant[row.TenantID], target)
 		if err != nil {
 			return nil, err
 		}
@@ -665,9 +675,74 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 				event: string(DeliveryEventCronFailed), title: "Cron job failed",
 				body: serviceName + " cron job failed.", urgency: string(DeliveryUrgencyImportant),
 			}, true
+
+		// Managed datastores (w3/m82 t005). serviceName is the datastore's own
+		// dpg-/red- id here — the feed's datastore arm has no App to join a
+		// display label from, and that id is the datastore's CR name.
+		//
+		// The successful backup/restore/upgrade facts and
+		// postgres_upgrade_started are deliberately absent: a nightly backup
+		// that worked is bookkeeping, not a page. They stay in the Events feed
+		// and remain subscribable as webhooks. Unlike
+		// service_hibernated/service_woken, though, the facts below are never
+		// excluded — an unreachable datastore is real downtime.
+		case string(store.DatastoreFactPostgresUnavailable):
+			return projectedPush{
+				event: string(DeliveryEventPostgresUnavailable), title: "Database unavailable",
+				body: serviceName + " is unavailable.", urgency: string(DeliveryUrgencyCritical),
+			}, true
+		case string(store.DatastoreFactPostgresAvailable):
+			return projectedPush{
+				event: string(DeliveryEventPostgresAvailable), title: "Database recovered",
+				body: serviceName + " recovered.", urgency: string(DeliveryUrgencyImportant),
+			}, true
+		case string(store.DatastoreFactKeyValueUnhealthy):
+			return projectedPush{
+				event: string(DeliveryEventKeyValueUnhealthy), title: "Key Value unhealthy",
+				body: serviceName + " is unhealthy.", urgency: string(DeliveryUrgencyCritical),
+			}, true
+		case string(store.DatastoreFactKeyValueAvailable):
+			return projectedPush{
+				event: string(DeliveryEventKeyValueAvailable), title: "Key Value recovered",
+				body: serviceName + " recovered.", urgency: string(DeliveryUrgencyImportant),
+			}, true
+		case string(store.DatastoreFactPostgresBackupFailed):
+			return projectedPush{
+				event: string(DeliveryEventPostgresBackupFailed), title: "Backup failed",
+				body: serviceName + " backup failed.", urgency: string(DeliveryUrgencyImportant),
+			}, true
+		case string(store.DatastoreFactPostgresRestoreFailed):
+			return projectedPush{
+				event: string(DeliveryEventPostgresRestoreFailed), title: "Restore failed",
+				body: serviceName + " restore failed.", urgency: string(DeliveryUrgencyImportant),
+			}, true
+		case string(store.DatastoreFactPostgresUpgradeFailed):
+			return projectedPush{
+				event: string(DeliveryEventPostgresUpgradeFailed), title: "Upgrade failed",
+				body: serviceName + " major version upgrade failed.", urgency: string(DeliveryUrgencyImportant),
+			}, true
 		}
 	}
 	return projectedPush{}, false
+}
+
+// datastorePushRouteFor is the notifications-side half of store's
+// pushEventRules: which resource a datastore push names and where its deep
+// link points. Keeping the two in step is what lets a projection be admitted
+// by ValidatePushNotification instead of quarantined at enqueue.
+type datastorePushRoute struct{ kind, deepLinkPrefix string }
+
+func datastorePushRouteFor(event DeliveryEvent) (datastorePushRoute, bool) {
+	switch event {
+	case DeliveryEventPostgresUnavailable, DeliveryEventPostgresAvailable,
+		DeliveryEventPostgresBackupFailed, DeliveryEventPostgresRestoreFailed,
+		DeliveryEventPostgresUpgradeFailed:
+		return datastorePushRoute{kind: "database", deepLinkPrefix: "/databases/"}, true
+	case DeliveryEventKeyValueUnhealthy, DeliveryEventKeyValueAvailable:
+		return datastorePushRoute{kind: "keyValue", deepLinkPrefix: "/key-values/"}, true
+	default:
+		return datastorePushRoute{}, false
+	}
 }
 
 func (w *PushWorker) send(ctx context.Context) error {

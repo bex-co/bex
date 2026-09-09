@@ -455,6 +455,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres",
     description: "Event-picker group — managed Postgres events",
   },
+  "webhooks.group.keyValue": {
+    message: "Key Value",
+    description: "Event-picker group — managed Key Value events",
+  },
   "webhooks.group.suspension": {
     message: "暂停",
     description: "Event-picker group — suspend/resume events",
@@ -579,6 +583,66 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.postgres_backup_started": {
     message: "Postgres 备份开始",
     description: "Event label — postgres_backup_started",
+  },
+  "webhooks.event.postgres_available": {
+    message: "Postgres 可用",
+    description: "Event label — postgres_available",
+  },
+  "webhooks.event.postgres_unavailable": {
+    message: "Postgres 不可用",
+    description: "Event label — postgres_unavailable",
+  },
+  "webhooks.event.postgres_ha_status_changed": {
+    message: "Postgres 高可用状态变更",
+    description: "Event label — postgres_ha_status_changed",
+  },
+  "webhooks.event.postgres_connection_pool_enabled_changed": {
+    message: "Postgres 连接池变更",
+    description: "Event label — postgres_connection_pool_enabled_changed",
+  },
+  "webhooks.event.postgres_disk_size_changed": {
+    message: "Postgres 磁盘容量变更",
+    description: "Event label — postgres_disk_size_changed",
+  },
+  "webhooks.event.postgres_backup_completed": {
+    message: "Postgres 备份完成",
+    description: "Event label — postgres_backup_completed",
+  },
+  "webhooks.event.postgres_backup_failed": {
+    message: "Postgres 备份失败",
+    description: "Event label — postgres_backup_failed",
+  },
+  "webhooks.event.postgres_restore_succeeded": {
+    message: "Postgres 恢复成功",
+    description: "Event label — postgres_restore_succeeded",
+  },
+  "webhooks.event.postgres_restore_failed": {
+    message: "Postgres 恢复失败",
+    description: "Event label — postgres_restore_failed",
+  },
+  "webhooks.event.postgres_upgrade_started": {
+    message: "Postgres 升级开始",
+    description: "Event label — postgres_upgrade_started",
+  },
+  "webhooks.event.postgres_upgrade_succeeded": {
+    message: "Postgres 升级成功",
+    description: "Event label — postgres_upgrade_succeeded",
+  },
+  "webhooks.event.postgres_upgrade_failed": {
+    message: "Postgres 升级失败",
+    description: "Event label — postgres_upgrade_failed",
+  },
+  "webhooks.event.key_value_available": {
+    message: "Key Value 可用",
+    description: "Event label — key_value_available",
+  },
+  "webhooks.event.key_value_unhealthy": {
+    message: "Key Value 不健康",
+    description: "Event label — key_value_unhealthy",
+  },
+  "webhooks.event.key_value_config_restart": {
+    message: "Key Value 因配置变更重启",
+    description: "Event label — key_value_config_restart",
   },
   "webhooks.event.service_suspended": {
     message: "服务已暂停",

@@ -10,6 +10,13 @@ export const notificationEvents = [
   "agent_needs_decision",
   "agent_pr_ready",
   "agent_failed",
+  "postgres_unavailable",
+  "postgres_available",
+  "key_value_unhealthy",
+  "key_value_available",
+  "postgres_backup_failed",
+  "postgres_restore_failed",
+  "postgres_upgrade_failed",
 ] as const;
 
 export type NotificationEvent = (typeof notificationEvents)[number];

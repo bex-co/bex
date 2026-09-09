@@ -33,17 +33,19 @@ func NewReconcilerMetrics(registerer prometheus.Registerer) *ReconcilerMetrics {
 		observationRejections: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "controlplane", Name: "observed_state_rejections_total",
 			Help: "Observed service-state conclusions the reconciler refused to record, by bounded reason.",
-		}, []string{"reason"}),
+		}, []string{"reason", "subject"}),
 	}
 	registerer.MustRegister(m.observationRejections)
 	return m
 }
 
-// Rejection counts one refused conclusion. reason comes from the closed
-// rejectReason* vocabulary — never anything tenant-derived, so label
-// cardinality stays bounded regardless of fleet size.
-func (m *ReconcilerMetrics) Rejection(reason string) {
+// Rejection counts one refused conclusion. Both labels come from closed
+// vocabularies — reason from rejectReason*, subject from rejectSubject* —
+// never anything tenant-derived, so label cardinality stays bounded regardless
+// of fleet size. subject separates the App observation path from the managed-
+// datastore one (w3/m82): they share the guard but not the incident.
+func (m *ReconcilerMetrics) Rejection(reason, subject string) {
 	if m != nil {
-		m.observationRejections.WithLabelValues(reason).Inc()
+		m.observationRejections.WithLabelValues(reason, subject).Inc()
 	}
 }

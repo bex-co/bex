@@ -71,9 +71,27 @@ The official list contains no managed-datastore suspend, resume, or delete event
 | `postgres_credentials_deleted` | Successful managed-role deletion |
 | `postgres_backup_started` | Successful export/backup-request write |
 | `plan_changed` | Successful changed plan write for a service, Postgres, or KV |
+| `postgres_ha_status_changed` | Successful PATCH that changed high availability (w3/m82) |
+| `postgres_connection_pool_enabled_changed` | Successful PATCH that toggled the PgBouncer pooler (w3/m82) |
+| `postgres_disk_size_changed` | Successful PATCH that changed the disk size (w3/m82) |
+| `key_value_config_restart` | Successful PATCH of `maxmemoryPolicy`/`persistenceMode`, which the operator folds into the Valkey StatefulSet's args and therefore rolls the pod (w3/m82) |
 
-Each successful write records one fixed, typed audit effect after the Kubernetes mutation succeeds. The existing durable webhook worker projects that row, so the delivery queue, retry behavior, and signing path remain shared with service events. The payload's `serviceId` is the immutable `dpg-…` or `red-…` resource id; `serviceName` is captured in the same audit row so a later rename cannot rewrite historical deliveries.
+Each successful write records one fixed, typed audit effect after the Kubernetes mutation succeeds. The existing durable webhook worker projects that row, so the delivery queue, retry behavior, and signing path remain shared with service events. The payload's `serviceId` is the immutable `dpg-…` or `red-…` resource id; `serviceName` is captured in the same audit row so a later rename cannot rewrite historical deliveries. The four w3/m82 configuration events additionally carry the value the field was set **to** in `GET /v1/events/{id}`'s `details`.
+
+## Observed datastore facts (w3/m82)
+
+The status-transition types below are no longer omitted. `datastore_event_facts` (migration 0107) is the Database/KeyValue twin of `service_event_facts`: the control-plane reconciler derives a small typed snapshot from `Database`/`KeyValue` status on each pass and records only the edges it crossed, against a per-datastore checkpoint. That is what makes a level-triggered 30-second poll emit one event per transition rather than one per tick, and it keeps the operator mechanism-only — bex-api observes the CR, the operator never writes to the control plane.
+
+| Render type | Durable bex source |
+| --- | --- |
+| `postgres_unavailable` / `postgres_available` | Ready-condition availability edge on a `Database`, latched through the checkpoint |
+| `key_value_unhealthy` / `key_value_available` | The same edge on a `KeyValue`, under Render's own asymmetric spelling |
+| `postgres_backup_completed` / `postgres_backup_failed` | Terminal `Database.status.lastBackup` projected by the operator |
+| `postgres_restore_succeeded` / `postgres_restore_failed` | Terminal outcome of a `Database` created as a recovery target |
+| `postgres_upgrade_started` / `postgres_upgrade_succeeded` / `postgres_upgrade_failed` | Major-version transition between `spec.version` and the observed current version |
+
+Two rules keep availability truthful rather than noisy. A datastore that has never reported Ready is **provisioning, not down** — the outage edge arms only after the first healthy observation, because a CNPG cluster with zero ready instances reports the same phase whether it is being created or has just lost its only instance. And a **suspended** datastore is intentional downtime: it is observed availability-empty, never unavailable.
 
 ## Honest omissions
 
-`postgres_available`, `postgres_unavailable`, `key_value_available`, and `key_value_unhealthy` describe observed status transitions, not API write completion. Backup completion/failure and the remaining Postgres types likewise require a durable operator/status event source or a feature bex does not yet implement. The operator is mechanism-only and DB-free, so m26 does not create an operator-to-control-plane write path merely to manufacture these events. They remain omitted, not approximated by request acceptance.
+`postgres_cluster_leader_changed`, `postgres_connection_pool_changed`, `postgres_disk_autoscaling_enabled_changed`, the three `postgres_pitr_checkpoint_*` types, `postgres_read_replica_stale`, and `postgres_wal_archive_failed` still require a durable source or a feature bex does not yet implement. `postgres_read_replicas_changed` is a distinct case: read replicas are create-time-only in bex (no patch verb writes them after create), so there is no mutation to source the event from — it stays unsupported until a replica add/remove verb exists. None of these is approximated by request acceptance.

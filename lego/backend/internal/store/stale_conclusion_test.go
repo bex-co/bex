@@ -77,7 +77,7 @@ func edgeCounts(st *memStore) (failed, available int) {
 
 func staleRejections(t *testing.T, m *ReconcilerMetrics) float64 {
 	t.Helper()
-	return testutil.ToFloat64(m.observationRejections.WithLabelValues(rejectReasonStaleTransition))
+	return testutil.ToFloat64(m.observationRejections.WithLabelValues(rejectReasonStaleTransition, rejectSubjectApp))
 }
 
 func newGuardedReconciler() (*Reconciler, *memStore, *ReconcilerMetrics) {

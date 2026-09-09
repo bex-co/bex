@@ -42,6 +42,16 @@ func TestEveryDeliveryEventHasDestinationPolicy(t *testing.T) {
 		DeliveryEventServiceSuspended: true,
 		DeliveryEventServiceResumed:   true,
 		DeliveryEventCronFailed:       true,
+		// Managed-datastore supervision: the target read is the datastore's own
+		// can_view (type postgres in model.fga inherits it from the workspace),
+		// which every member role holds — same shape as the service family.
+		DeliveryEventPostgresUnavailable:   true,
+		DeliveryEventPostgresAvailable:     true,
+		DeliveryEventKeyValueUnhealthy:     true,
+		DeliveryEventKeyValueAvailable:     true,
+		DeliveryEventPostgresBackupFailed:  true,
+		DeliveryEventPostgresRestoreFailed: true,
+		DeliveryEventPostgresUpgradeFailed: true,
 	}
 	for _, event := range orderedDeliveryEvents {
 		eligible := destinationEligibleRoles(event)

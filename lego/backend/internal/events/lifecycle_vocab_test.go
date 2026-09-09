@@ -52,3 +52,24 @@ func TestLifecycleTypesInVocabulary(t *testing.T) {
 		}
 	}
 }
+
+// TestObservedDatastoreTypesStayOutOfTheServiceFeed pins the w3/m82 t004
+// boundary. The datastore fact types are advertised on outbound webhooks and
+// retrievable by evt-… id, but they live in datastore_event_facts and belong to
+// a dpg-/red- resource with no apps row — GET /services/{id}/events can never
+// join them. Listing them in allFactTypes would push a filter down onto
+// service_event_facts that matches nothing, which reads as "this event does not
+// exist" rather than "this feed is not its home".
+func TestObservedDatastoreTypesStayOutOfTheServiceFeed(t *testing.T) {
+	for _, ft := range []string{
+		TypePostgresUnavailable, TypePostgresAvailable,
+		TypeKeyValueUnhealthy, TypeKeyValueAvailable,
+		TypePostgresBackupCompleted, TypePostgresBackupFailed,
+		TypePostgresRestoreSucceeded, TypePostgresRestoreFailed,
+		TypePostgresUpgradeStarted, TypePostgresUpgradeSucceeded, TypePostgresUpgradeFailed,
+	} {
+		if slices.Contains(allFactTypes, ft) {
+			t.Errorf("%s is in allFactTypes — the service feed would filter service_event_facts by a datastore fact type and match nothing", ft)
+		}
+	}
+}
