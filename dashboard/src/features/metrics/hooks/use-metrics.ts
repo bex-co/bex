@@ -32,13 +32,20 @@ export interface UseMetricsOptions {
   quantiles?: number[];
   /**
    * aggregateAllMethod: MAX — collapses a per-instance series (cpu_limit/
-   * memory_limit) into one series holding the max across instances. Render's
-   * dashboard sends this for the Limit query it fetches alongside the raw
-   * metric, then computes Percentage/Total client-side from the two
-   * (captured live: no server-side percentage flag exists in the real
-   * contract) — see application-metrics-card.tsx.
+   * memory_limit) into one series holding the max across instances. Kept for
+   * Render-shaped callers; the Application Metrics card no longer uses it
+   * (w5/m90 reads per-instance limits to tell a uniform limit from mixed
+   * ones, and server-side percentages instead of dividing client-side).
    */
   aggregateMax?: boolean;
+  /**
+   * Server-side per-instance percentages (w5/m90, bex extension — no Render
+   * equivalent): cpu/memory as 0..100, each replica normalized by its own
+   * trustworthy limit before any replica aggregation. Replaces the old
+   * client-side division of raw usage by one latest aggregate limit, which
+   * misreported mixed-limit replicas.
+   */
+  percentage?: boolean;
   /**
    * Replica aggregate across selected instances at each timestamp (w5/m89):
    * MIN | MAX | AVG. Distinct from aggregateMax (latest-point limit collapse)
@@ -124,6 +131,7 @@ export function useMetrics(
     groupBy,
     host,
     path,
+    percentage,
   } = opts;
 
   const { data, loading, error } = useQuery(MetricsDocument, {
@@ -160,6 +168,7 @@ export function useMetrics(
               : undefined,
         aggregateAllMethod:
           aggregateMethod ?? (aggregateMax ? "MAX" : undefined),
+        percentage: percentage ?? undefined,
       },
     },
     pollInterval: pollIntervalMs,

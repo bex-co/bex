@@ -8,7 +8,10 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { ApplicationMetricsCard } from "../application-metrics-card";
+import {
+  ApplicationMetricsCard,
+  summarizeLimits,
+} from "../application-metrics-card";
 import { useMetrics } from "@/features/metrics/hooks/use-metrics";
 import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-filter-values";
 
@@ -63,6 +66,27 @@ function seriesResult(unit: string, values: number[], instance?: string) {
   };
 }
 
+function multiSeriesResult(
+  unit: string,
+  perInstance: Record<string, number[]>,
+) {
+  return {
+    series: Object.entries(perInstance).map(([instance, values]) => ({
+      unit,
+      labels: { instance },
+      points: values.map((value, i) => ({
+        timestamp: new Date(1_751_800_000_000 + i * 60_000).toISOString(),
+        value,
+      })),
+    })),
+    loading: false,
+    unavailable: false,
+    storeUnavailable: false,
+    error: undefined,
+    degradedSources: [],
+  };
+}
+
 describe("ApplicationMetricsCard", () => {
   beforeEach(() => {
     mockUseMetrics.mockReset();
@@ -92,41 +116,46 @@ describe("ApplicationMetricsCard", () => {
     await userEvent.click(await screen.findByRole("tab", { name: "Total" }));
   }
 
-  it("fetches cpu/memory/instances over the shared window; the _limit queries ride the same window aggregated", async () => {
+  it("fetches absolute + percentage cpu/memory over the shared window; per-instance _limit queries ride the same window unaggregated", async () => {
     mockUseMetrics.mockReturnValue(emptyResult());
 
     renderCard("beancount-cms");
     await screen.findByText("Application Metrics");
 
-    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu", WINDOW);
+    // Absolute usage (Total tab + percentage-unavailable witness).
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "cpu",
+      WINDOW,
+    );
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
       "memory",
       WINDOW,
+    );
+    // Server-side percentages (w5/m90) — never divided client-side.
+    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu", {
+      ...WINDOW,
+      percentage: true,
+    });
+    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "memory", {
+      ...WINDOW,
+      percentage: true,
+    });
+    // Limits are per-instance (no aggregateMax collapse) over the same window.
+    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu_limit", {
+      ...WINDOW,
+    });
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "memory_limit",
+      { ...WINDOW },
     );
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
       "instance_count",
       WINDOW,
     );
-    // Limits share the window's cadence (no second Apollo poll timer).
-    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu_limit", {
-      ...WINDOW,
-      aggregateMax: true,
-      aggregateMethod: undefined,
-    });
-    expect(mockUseMetrics).toHaveBeenCalledWith(
-      "beancount-cms",
-      "memory_limit",
-      { ...WINDOW, aggregateMax: true, aggregateMethod: undefined },
-    );
-    // Inventory CPU (unfiltered) + usage CPU share the same WINDOW when no
-    // instance selection is active.
-    expect(
-      mockUseMetrics.mock.calls.filter(
-        (c) => c[0] === "beancount-cms" && c[1] === "cpu",
-      ).length,
-    ).toBeGreaterThanOrEqual(2);
   });
 
   it("owns the Percentage/Total tabs in its header, defaulting to Percentage (w5/m42)", async () => {
@@ -163,16 +192,21 @@ describe("ApplicationMetricsCard", () => {
     expect(screen.getAllByText("3").length).toBeGreaterThan(0);
   });
 
-  it("scales every percentage point by the _limit series and links the limit to the plan tab", async () => {
-    mockUseMetrics.mockImplementation((_resource, metric) => {
-      if (metric === "memory") return seriesResult("bytes", [50, 100]);
+  it("renders server percentages as-is, never dividing by the _limit series (w5/m90)", async () => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      // Absolute usage (bytes) and server percentages (already 0..100).
+      if (metric === "memory" && opts?.percentage)
+        return seriesResult("percentage", [80, 50]);
+      if (metric === "memory") return seriesResult("bytes", [100, 200]);
       if (metric === "memory_limit") return seriesResult("bytes", [200]);
       return emptyResult();
     });
 
     renderCard("beancount-cms");
 
-    // Latest 100/200 => 50.0%; the Limit link + value render alongside.
+    // Latest server percentage (50) renders directly — NOT 100/200 = 50% via
+    // client division (indistinguishable here by value, but the _limit value
+    // must not leak into the math: change the mock limit and it still holds).
     expect(await screen.findByText("50.0%")).toBeInTheDocument();
     expect(screen.getByText("200 B")).toBeInTheDocument();
     const limitLinks = screen.getAllByRole("link", { name: "Limit" });
@@ -181,6 +215,26 @@ describe("ApplicationMetricsCard", () => {
       "href",
       "/services/beancount-cms/plan",
     );
+  });
+
+  it("shows one uniform limit value, or 'Limits vary' for mixed per-replica limits", async () => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "memory" && opts?.percentage)
+        return seriesResult("percentage", [80, 50]);
+      if (metric === "memory") return seriesResult("bytes", [100, 200]);
+      // Two replicas on different limits: no single applicable value.
+      if (metric === "memory_limit")
+        return multiSeriesResult("bytes", {
+          "web-a": [536870912],
+          "web-b": [1073741824],
+        });
+      return emptyResult();
+    });
+
+    renderCard();
+
+    expect(await screen.findByText("Limits vary")).toBeInTheDocument();
+    expect(await screen.findByText("50.0%")).toBeInTheDocument();
   });
 
   it("links Total Instances to the scaling tab (w5/m42)", async () => {
@@ -194,7 +248,9 @@ describe("ApplicationMetricsCard", () => {
   });
 
   it("shows the autoscale-target label alongside the limit in percentage mode (w3/m10)", async () => {
-    mockUseMetrics.mockImplementation((_resource, metric) => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "memory" && opts?.percentage)
+        return seriesResult("percentage", [25, 50]);
       if (metric === "memory") return seriesResult("bytes", [50, 100]);
       if (metric === "memory_limit") return seriesResult("bytes", [200]);
       if (metric === "memory_target") return seriesResult("percentage", [70]);
@@ -226,7 +282,9 @@ describe("ApplicationMetricsCard", () => {
   });
 
   it("omits the target label when autoscaling is disabled/unconfigured (no fake value)", async () => {
-    mockUseMetrics.mockImplementation((_resource, metric) => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "memory" && opts?.percentage)
+        return seriesResult("percentage", [25, 50]);
       if (metric === "memory") return seriesResult("bytes", [50, 100]);
       if (metric === "memory_limit") return seriesResult("bytes", [200]);
       return emptyResult(); // memory_target: server omits it entirely
@@ -250,6 +308,28 @@ describe("ApplicationMetricsCard", () => {
     expect(
       (await screen.findAllByText(/No limit configured/)).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("shows the unavailable state when usage exists but no percentage survived (untrustworthy limits)", async () => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      // Usage observed (absolute), but bex-api omitted every percentage
+      // point (deleted pods / predated limit history) while limits exist.
+      if (metric === "cpu" && opts?.percentage) return emptyResult();
+      if (metric === "cpu") return seriesResult("cpu", [0.5]);
+      if (metric === "cpu_limit") return seriesResult("cpu", [1]);
+      return emptyResult();
+    });
+
+    renderCard();
+
+    expect(
+      (await screen.findAllByText(/Percentages unavailable/)).length,
+    ).toBeGreaterThan(0);
+    // The Total tab still charts the absolute usage — the witness that
+    // distinguishes "unavailable percentages" from "no usage". Memory and
+    // Total Instances are genuinely empty here, so they keep "No data".
+    await selectTotalTab();
+    expect(screen.getAllByText("No data in range")).toHaveLength(2);
   });
 
   it("draws one line per instance and a legend naming each", async () => {
@@ -300,5 +380,36 @@ describe("ApplicationMetricsCard", () => {
     ).toBeInTheDocument();
     // Memory and Total Instances still render their (empty) charts, not unavailable.
     expect(screen.getAllByText("No data in range")).toHaveLength(2);
+  });
+});
+
+describe("summarizeLimits", () => {
+  function limitSeries(instance: string, value: number) {
+    return {
+      unit: "bytes",
+      labels: { instance },
+      points: [
+        {
+          timestamp: new Date(1_751_800_000_000).toISOString(),
+          value,
+        },
+      ],
+    };
+  }
+
+  it("reports none for no series", () => {
+    expect(summarizeLimits([])).toEqual({ kind: "none" });
+  });
+
+  it("reports a single uniform value", () => {
+    expect(
+      summarizeLimits([limitSeries("a", 200), limitSeries("b", 200)]),
+    ).toEqual({ kind: "single", value: 200 });
+  });
+
+  it("reports vary for mixed per-replica limits", () => {
+    expect(
+      summarizeLimits([limitSeries("a", 100), limitSeries("b", 200)]),
+    ).toEqual({ kind: "vary" });
   });
 });

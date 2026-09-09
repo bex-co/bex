@@ -502,6 +502,7 @@ func wireObservability(deps *api.Deps, cfg *Config) {
 	if promURL != "" {
 		deps.RequestMetrics = metrics.NewPrometheusRequestSource(promURL, nil)
 		deps.ResourceMetricsRange = metrics.NewPrometheusResourceSource(promURL, nil)
+		deps.ResourceLimitRange = metrics.NewPrometheusResourceLimitSource(promURL, nil)
 		deps.MonthToDateBandwidth = metrics.NewMonthToDateBandwidthSource(promURL, nil)
 		deps.MetricsFilterValues = metrics.NewPrometheusFilterValuesSource(promURL, nil)
 		// Datastore metrics (w3/m10): PVC usage (kubelet, already scraped

@@ -284,6 +284,81 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	}
 }
 
+// ResourceLimitRangeRequest is the backend-neutral per-instance limit-history
+// ask handed to a ResourceLimitRangeSource — the limit sibling of
+// ResourceMetricsRangeRequest. The source owns the query language; the service
+// only resolves defaults and delegates.
+type ResourceLimitRangeRequest struct {
+	Namespace  string
+	App        string
+	Metric     string // cpu | memory (the usage metric whose denominator is wanted)
+	Start, End time.Time
+	Resolution time.Duration
+}
+
+// ResourceLimitRangeSource returns stepped per-instance limit series for an App
+// over a time range (kube-state-metrics scraped by Prometheus) — one series
+// per pod holding that pod's own configured limit in absolute units (cores for
+// cpu, bytes for memory), labeled exactly like a ResourceMetricsRangeSource
+// result (instance = raw pod name). When non-nil, percentage mode joins each
+// usage sample against the limit observed at that same timestamp; nil => the
+// service falls back to the pods' current spec limits (documented assumption).
+type ResourceLimitRangeSource func(ctx context.Context, req ResourceLimitRangeRequest) ([]MetricSeries, error)
+
+// NewPrometheusResourceLimitSource returns the production
+// ResourceLimitRangeSource — stepped per-pod limit history via query_range over
+// kube-state-metrics' kube_pod_container_resource_limits (the
+// deploy/gitops/base/prometheus.yaml kube-state-metrics job scrapes it
+// cluster-wide, so no new scrape config is needed). base/hc as
+// NewPrometheusRequestSource.
+func NewPrometheusResourceLimitSource(base string, hc *http.Client) ResourceLimitRangeSource {
+	if hc == nil {
+		hc = core.UpstreamClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req ResourceLimitRangeRequest) ([]MetricSeries, error) {
+		q := promLimitQueryFor(req)
+		if q == "" {
+			return []MetricSeries{}, nil
+		}
+		series, err := promQueryRange(ctx, hc, base, q, req.Start, req.End, stepSeconds(req.Resolution))
+		if err != nil {
+			return nil, err
+		}
+		// Same vocabulary as NewPrometheusResourceSource: pod => instance,
+		// plus the resource (App) tag every series carries.
+		for i := range series {
+			labels := map[string]string{"resource": req.App}
+			if pod := series[i].Labels["pod"]; pod != "" {
+				labels["instance"] = pod
+			}
+			series[i].Labels = labels
+		}
+		return series, nil
+	}
+}
+
+// promLimitQueryFor builds the PromQL range query for one App's per-pod limit
+// history: the per-container kube-state-metrics limit series summed by pod, so
+// multi-container pods report the same total the pod-spec reader
+// (podResourceLimits) sums. resource="cpu" reports cores, resource="memory"
+// bytes — matching the usage series' absolute units, so the service divides
+// without conversion. Non cpu/memory metrics have no limit denominator and
+// yield no query.
+func promLimitQueryFor(req ResourceLimitRangeRequest) string {
+	var resource string
+	switch req.Metric {
+	case MetricCPU:
+		resource = "cpu"
+	case MetricMemory:
+		resource = "memory"
+	default:
+		return ""
+	}
+	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
+	return fmt.Sprintf(`sum by (pod) (kube_pod_container_resource_limits{%s,resource=%q})`, matchers, resource)
+}
+
 // traefikServiceLabel returns the exact Prometheus `service` label Traefik's
 // Kubernetes Ingress provider assigns to an App's backend:
 // "<namespace>-<app>-<port>@kubernetes" (docs/ADR010-observability.md,

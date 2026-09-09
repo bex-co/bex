@@ -225,6 +225,17 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Shown instead of a percentage chart when the App's pods declare no resource limit",
   },
+  "metrics.limitsVary": {
+    message: "Limits vary",
+    description:
+      "Memory/CPU chart header annotation when the selected replicas declare different limits — each replica is percentized against its own limit, so no single limit value applies",
+  },
+  "metrics.percentageUnavailable": {
+    message:
+      "Percentages unavailable — no trustworthy limit for this window",
+    description:
+      "Shown instead of a percentage chart when usage samples exist but every denominator was missing, zero, or otherwise untrustworthy (deleted pods, predated limit history, a mid-window rollout gap) — distinct from no usage samples or a source failure",
+  },
   "metrics.targetLabel": {
     message: "Target {value}",
     description:

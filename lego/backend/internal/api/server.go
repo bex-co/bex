@@ -250,7 +250,12 @@ type Deps struct {
 	LogLabelValues       logs.LogLabelValuesSource
 	ResourceMetrics      metrics.ResourceMetricsSource
 	ResourceMetricsRange metrics.ResourceMetricsRangeSource
-	RequestMetrics       metrics.RequestMetricsSource
+	// ResourceLimitRange, when set (BEX_PROM_URL, same Prometheus as the usage
+	// history), backs percentage mode's per-timestamp denominators
+	// (kube-state-metrics limit history, w5/m90). nil => percentage mode
+	// divides by the pods' current spec limits.
+	ResourceLimitRange metrics.ResourceLimitRangeSource
+	RequestMetrics     metrics.RequestMetricsSource
 	// RequestLogMetrics, when set (BEX_LOKI_URL), serves host/path-filtered
 	// request metrics from the Traefik access log in Loki — the only store with a
 	// per-request host/path axis (w5/m58). nil => a host/path-filtered read
@@ -790,6 +795,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Base:                       base,
 			ResourceMetrics:            d.ResourceMetrics,
 			ResourceMetricsRange:       d.ResourceMetricsRange,
+			ResourceLimitRange:         d.ResourceLimitRange,
 			RequestMetrics:             d.RequestMetrics,
 			RequestLogMetrics:          d.RequestLogMetrics,
 			MonthToDateBandwidthSource: d.MonthToDateBandwidth,

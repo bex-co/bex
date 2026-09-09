@@ -108,6 +108,12 @@ var metricsQueryInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 		"aggregateBy":        &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.String)},
 		"aggregationMethod":  &graphql.InputObjectFieldConfig{Type: graphql.String},
 		"aggregateAllMethod": &graphql.InputObjectFieldConfig{Type: graphql.String},
+		// percentage is a bex extension (w5/m90, no Render equivalent — Render's
+		// dashboard divides client-side): report cpu/memory as 0..100 per
+		// instance, each replica normalized by its own trustworthy limit
+		// before any replica aggregation. Mirrors REST ?percentage=true and
+		// MCP get_metrics percentage.
+		"percentage": &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
 	},
 })
 
@@ -379,6 +385,9 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 		return nil, MetricQuery{}, fmt.Errorf("%w: unknown metrics name %q", core.ErrBadRequest, name)
 	}
 	q := MetricQuery{Metric: metric}
+	if pct, ok := input["percentage"].(bool); ok {
+		q.Percentage = pct
+	}
 
 	filters := metricsFilterValues(input)
 	q.StatusCode = firstValue(filters[filterFieldStatusCode])
