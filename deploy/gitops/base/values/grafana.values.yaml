@@ -2031,6 +2031,101 @@ dashboards:
                   "range": false
                 }
               ]
+            },
+            {
+              "id": 9,
+              "type": "timeseries",
+              "title": "CPU commitment by node (requests / allocatable)",
+              "description": "The scheduler's truth: summed CPU requests of scheduled pods over allocatable, per node. Sustained >80% (red line) on the PLATFORM pool means add machines; on the tenant pool the Cluster Autoscaler acts on overflow automatically — a cost event, not an outage. kube_pod_container_resource_requests carries a node label only once a pod is scheduled, which is exactly the commitment semantics wanted here (pending pods show on the pending panel instead).",
+              "gridPos": { "h": 9, "w": 8, "x": 0, "y": 40 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.8 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"cpu\"}) / on (node) kube_node_status_allocatable{resource=\"cpu\"}",
+                  "legendFormat": "{{node}}"
+                }
+              ]
+            },
+            {
+              "id": 10,
+              "type": "timeseries",
+              "title": "Saturation vs allocatable by node",
+              "description": "Actual cadvisor usage over allocatable — the reality check beside the commitment panel: high saturation with LOW commitment means fix the pods' requests, not buy machines. Amber line at 80%. Same by-node grouping as the CPU/memory panels above (cadvisor node label, stamped at scrape).",
+              "gridPos": { "h": 9, "w": 8, "x": 8, "y": 40 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "orange", "value": 0.8 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (node) (rate(container_cpu_usage_seconds_total[5m])) / on (node) kube_node_status_allocatable{resource=\"cpu\"}",
+                  "legendFormat": "cpu {{node}}"
+                },
+                {
+                  "refId": "B",
+                  "expr": "sum by (node) (container_memory_working_set_bytes) / on (node) kube_node_status_allocatable{resource=\"memory\"}",
+                  "legendFormat": "mem {{node}}"
+                }
+              ]
+            },
+            {
+              "id": 11,
+              "type": "timeseries",
+              "title": "Pending pods (unschedulable pressure)",
+              "description": "Pods in phase Pending — the Cluster Autoscaler's own trigger. Sustained >0 (red line) is a capacity action NOW: the autoscaler is adding tenant nodes, or the platform pool needs a human. Reads 0 only while kube-state-metrics telemetry is present.",
+              "gridPos": { "h": 9, "w": 8, "x": 16, "y": 40 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "min": 0,
+                  "custom": { "thresholdsStyle": { "mode": "line" } },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(kube_pod_status_phase{phase=\"Pending\"}) or (count(kube_node_status_allocatable) * 0)",
+                  "legendFormat": "pending pods"
+                }
+              ]
             }
           ]
         }
