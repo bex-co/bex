@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -216,19 +217,32 @@ func TestResourceMetricsAbsoluteAndPercentage(t *testing.T) {
 	}), nil, sampleApp("web"), podWithLimits(webInst), podWithLimits("web-2"))
 
 	abs, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricCPU})
-	if err != nil || len(abs) != 2 || abs[0].Labels["instance"] != webInst || abs[0].Unit != unitCores {
+	wantWeb1 := ids.ServiceInstanceID("web", webInst)
+	if err != nil || len(abs) != 2 || abs[0].Unit != unitCores {
 		t.Fatalf("cpu: %v %+v", err, abs)
 	}
-	if abs[0].Points[0].Value != 0.5 {
-		t.Errorf("web-1 cpu should be 0.5, got %v", abs[0].Points[0].Value)
+	byInst := map[string]float64{}
+	for _, ser := range abs {
+		byInst[ser.Labels["instance"]] = ser.Points[0].Value
+	}
+	if byInst[wantWeb1] != 0.5 {
+		t.Errorf("web-1 cpu should be 0.5, got %v in %+v", byInst[wantWeb1], abs)
 	}
 	pct, _ := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricCPU, Percentage: true})
-	if pct[0].Unit != unitPercentage || pct[0].Points[0].Value != 50 {
-		t.Errorf("cpu%% should be 50, got %+v", pct[0])
+	pctBy := map[string]MetricSeries{}
+	for _, ser := range pct {
+		pctBy[ser.Labels["instance"]] = ser
+	}
+	if ser := pctBy[wantWeb1]; ser.Unit != unitPercentage || ser.Points[0].Value != 50 {
+		t.Errorf("cpu%% should be 50, got %+v", ser)
 	}
 	mem, _ := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricMemory, Percentage: true})
-	if mem[0].Points[0].Value != 50 {
-		t.Errorf("mem%% should be 50, got %v", mem[0].Points[0].Value)
+	memBy := map[string]float64{}
+	for _, ser := range mem {
+		memBy[ser.Labels["instance"]] = ser.Points[0].Value
+	}
+	if memBy[wantWeb1] != 50 {
+		t.Errorf("mem%% should be 50, got %v", memBy[wantWeb1])
 	}
 }
 
@@ -378,7 +392,7 @@ func TestManagedServiceIDUsesResolvedAppNameForEveryMetricsLookup(t *testing.T) 
 	if len(filters) != 3 || len(filters[0].Values) != 1 || filters[0].Values[0] != managedAppID {
 		t.Fatalf("resource filter should retain public id: %+v", filters)
 	}
-	if len(filters[1].Values) != 1 || filters[1].Values[0] != managedAppPod {
+	if len(filters[1].Values) != 1 || filters[1].Values[0] != ids.ServiceInstanceID(managedAppID, managedAppPod) {
 		t.Errorf("instance filter should come from resolved App pods: %+v", filters[1])
 	}
 	if len(filters[2].Values) != 2 || filters[2].Values[1] != "500" {

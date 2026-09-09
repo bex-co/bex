@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	"github.com/bex-co/bex/lego/types/tiers"
 )
 
 // datastore.go is the managed-datastore (Database/KeyValue) sibling of the
@@ -329,7 +329,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		if s.DiskUsage == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
-		return s.DiskUsage(ctx, DiskUsageRequest{
+		series, err := s.DiskUsage(ctx, DiskUsageRequest{
 			Namespace:  namespace,
 			Resource:   resource,
 			PVCPattern: pvcPattern(q.Kind, resource),
@@ -337,13 +337,17 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			End:        q.End,
 			Resolution: q.Resolution,
 		})
+		projectInstanceLabels(q.Resource, series)
+		return series, err
 	case MetricDBConnections:
 		if s.DBConnections == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
-		return s.DBConnections(ctx, DBConnectionsRequest{
+		series, err := s.DBConnections(ctx, DBConnectionsRequest{
 			Namespace: namespace, Cluster: resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
+		projectInstanceLabels(q.Resource, series)
+		return series, err
 	case MetricReplicationLag:
 		// Gated on HighAvailabilityEnabled: a non-HA instance has no standby, and
 		// CNPG's own lag query reports 0 (not absence) from a lone primary —
@@ -355,9 +359,11 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		if s.ReplicationLag == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
-		return s.ReplicationLag(ctx, ReplicationLagRequest{
+		series, err := s.ReplicationLag(ctx, ReplicationLagRequest{
 			Namespace: namespace, Cluster: resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
+		projectInstanceLabels(q.Resource, series)
+		return series, err
 	case MetricKVMemory, MetricKVConnections:
 		if s.KeyValueStats == nil {
 			return nil, core.ErrMetricsUnavailable
@@ -366,10 +372,12 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		if q.Metric == MetricKVConnections {
 			dimension = "connections"
 		}
-		return s.KeyValueStats(ctx, KeyValueStatsRequest{
+		series, err := s.KeyValueStats(ctx, KeyValueStatsRequest{
 			Namespace: namespace, Resource: resource, Dimension: dimension,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
+		projectInstanceLabels(q.Resource, series)
+		return series, err
 	default:
 		return nil, fmt.Errorf("%w: unknown metric %q", core.ErrBadRequest, q.Metric)
 	}

@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -182,7 +183,7 @@ func TestLogsAggregatesAndSorts(t *testing.T) {
 			t.Errorf("entry %d = %q, want %q", i, entries[i].Message, w)
 		}
 	}
-	if entries[0].Labels["instance"] != webInst || entries[0].Labels["service"] != "web" {
+	if entries[0].Labels["instance"] != ids.ServiceInstanceID("web", webInst) || entries[0].Labels["service"] != "web" {
 		t.Errorf("missing render log labels: %+v", entries[0].Labels)
 	}
 }
@@ -323,7 +324,7 @@ func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	for _, label := range env.Logs[0].Labels {
 		labels[label.Name] = label.Value
 	}
-	if labels["resource"] != postgresID || labels[LabelType] != "postgres" || labels[LabelInstance] != pod {
+	if labels["resource"] != postgresID || labels[LabelType] != "postgres" || labels[LabelInstance] != ids.ServiceInstanceID(postgresID, pod) {
 		t.Fatalf("REST Postgres labels = %+v", labels)
 	}
 	if strings.Contains(rec.Body.String(), "must not leak") {
@@ -616,7 +617,7 @@ func TestFollowBuildLogsStreamsNewestActiveBuildPod(t *testing.T) {
 		t.Fatalf("build entries = %+v, want newest build's two lines", entries)
 	}
 	for _, entry := range entries {
-		if entry.Labels[LabelType] != LogTypeBuild || entry.Labels["instance"] != newest.Name || entry.Labels["container"] != "buildkit" {
+		if entry.Labels[LabelType] != LogTypeBuild || entry.Labels["instance"] != ids.ServiceInstanceID("web", newest.Name) || entry.Labels["container"] != "buildkit" {
 			t.Errorf("build labels = %+v", entry.Labels)
 		}
 	}
@@ -741,7 +742,7 @@ func TestQueryLogsSynthesizesProgressLinesForExplicitBuildType(t *testing.T) {
 		if e.Message == "#1 real build line" {
 			continue
 		}
-		if e.Labels[LabelType] != LogTypeBuild || e.Labels[LabelInstance] != "dep-progress-1" || e.Labels["container"] != progressContainer {
+		if e.Labels[LabelType] != LogTypeBuild || e.Labels[LabelInstance] != ids.ServiceInstanceID("web", "dep-progress-1") || e.Labels["container"] != progressContainer {
 			t.Errorf("synthesized labels = %+v", e.Labels)
 		}
 	}
@@ -935,7 +936,7 @@ func TestGraphQLLogs(t *testing.T) {
 		t.Fatalf("want 1 log, got %d", len(list))
 	}
 	first := list[0].(map[string]any)
-	if first["message"] != "hello" || first["type"] != LogTypeApp || first["instance"] != "web-1" {
+	if first["message"] != "hello" || first["type"] != LogTypeApp || first["instance"] != ids.ServiceInstanceID("web", "web-1") {
 		t.Fatalf("unexpected log shape: %+v", first)
 	}
 }
