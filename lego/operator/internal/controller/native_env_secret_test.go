@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -78,7 +79,7 @@ func TestProjectNativeBuildEnvMergesGroupsAndOwn(t *testing.T) {
 	r := &AppReconciler{Client: cl, BuildClient: cl}
 	app := nativeEnvApp("web", []string{"evg-a-env", "evg-b-env"}, "web-env")
 
-	name, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build")
+	name, _, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +111,7 @@ func TestProjectNativeBuildEnvGroupOnlyWithoutOwnSecret(t *testing.T) {
 	r := &AppReconciler{Client: cl, BuildClient: cl}
 	app := nativeEnvApp("web", []string{"evg-a-env"}, "")
 
-	name, err := r.projectNativeBuildEnv(context.Background(), app, "default")
+	name, _, err := r.projectNativeBuildEnv(context.Background(), app, "default", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +134,7 @@ func TestProjectNativeBuildEnvSourcePresenceContract(t *testing.T) {
 	r := &AppReconciler{Client: cl, BuildClient: cl}
 
 	app := nativeEnvApp("web", []string{"evg-a-env", "evg-gone-env"}, "")
-	name, err := r.projectNativeBuildEnv(context.Background(), app, "default")
+	name, _, err := r.projectNativeBuildEnv(context.Background(), app, "default", nil)
 	if err != nil {
 		t.Fatalf("absent group must be optional: %v", err)
 	}
@@ -146,7 +147,7 @@ func TestProjectNativeBuildEnvSourcePresenceContract(t *testing.T) {
 	}
 
 	missingOwn := nativeEnvApp("api", nil, "api-env")
-	if _, err := r.projectNativeBuildEnv(context.Background(), missingOwn, "default"); err == nil {
+	if _, _, err := r.projectNativeBuildEnv(context.Background(), missingOwn, "default", nil); err == nil {
 		t.Fatal("missing own Secret must fail the projection")
 	}
 }
@@ -156,12 +157,15 @@ func TestProjectNativeBuildEnvNoSources(t *testing.T) {
 	r := &AppReconciler{Client: cl, BuildClient: cl}
 	app := nativeEnvApp("web", nil, "")
 
-	name, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build")
+	name, rev, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if name != "" {
 		t.Fatalf("no sources must produce no mount, got %q", name)
+	}
+	if rev != build.NativeEnvNoneRevision {
+		t.Fatalf("empty environment revision = %q, want %q", rev, build.NativeEnvNoneRevision)
 	}
 	var list corev1.SecretList
 	if err := cl.List(context.Background(), &list, client.InNamespace("bex-build")); err != nil {
@@ -179,7 +183,7 @@ func TestProjectNativeBuildEnvRefusesProtectedSource(t *testing.T) {
 	r := &AppReconciler{Client: cl, BuildClient: cl}
 	app := nativeEnvApp("web", []string{"bex-tenant-postgres"}, "")
 
-	if _, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build"); err == nil ||
+	if _, _, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil); err == nil ||
 		!strings.Contains(err.Error(), "protected") {
 		t.Fatalf("protected source must be refused, got %v", err)
 	}
@@ -205,7 +209,7 @@ func TestProjectNativeBuildEnvRefusesForeignOwner(t *testing.T) {
 	r := &AppReconciler{Client: cl, BuildClient: cl}
 	app := nativeEnvApp("web", nil, "web-env")
 
-	if _, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build"); err == nil {
+	if _, _, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil); err == nil {
 		t.Fatal("foreign-owned destination must be refused")
 	}
 	var kept corev1.Secret
@@ -229,11 +233,11 @@ func TestProjectNativeBuildEnvSharedGroupIsolation(t *testing.T) {
 	web := nativeEnvApp("web", []string{"evg-a-env"}, "web-env")
 	api := nativeEnvApp("api", []string{"evg-a-env"}, "api-env")
 
-	webName, err := r.projectNativeBuildEnv(context.Background(), web, "bex-build")
+	webName, _, err := r.projectNativeBuildEnv(context.Background(), web, "bex-build", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	apiName, err := r.projectNativeBuildEnv(context.Background(), api, "bex-build")
+	apiName, _, err := r.projectNativeBuildEnv(context.Background(), api, "bex-build", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,11 +272,11 @@ func TestProjectNativeBuildEnvUnlinkDropsGroupKeys(t *testing.T) {
 	r := &AppReconciler{Client: cl, BuildClient: cl}
 	app := nativeEnvApp("web", []string{"evg-a-env"}, "web-env")
 
-	if _, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build"); err != nil {
+	if _, _, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil); err != nil {
 		t.Fatal(err)
 	}
 	app.Spec.EnvFromSecrets = nil
-	name, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build")
+	name, _, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,5 +314,139 @@ func TestNativeArtifactIdentityIncludesEnvFromSecrets(t *testing.T) {
 	dockerLinked.EnvFromSecrets = []string{"evg-a-env"}
 	if desiredAppReleaseIdentity(docker).artifact != desiredAppReleaseIdentity(dockerLinked).artifact {
 		t.Fatal("a Dockerfile build does not consume group env; its artifact must not change")
+	}
+}
+
+// The opaque revision must stay put across reconcile when the effective
+// environment is unchanged, and bump when Secret bytes or literals change —
+// without putting secret values into annotations that BuildKit will see.
+func TestProjectNativeBuildEnvRevisionStabilityAndInvalidation(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(nativeEnvScheme(t)).WithObjects(
+		envSecret("default", "web-env", map[string]string{"MESSAGE": "A"}),
+	).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl}
+	app := nativeEnvApp("web", nil, "web-env")
+
+	name, rev1, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev1 != "1" {
+		t.Fatalf("first revision = %q, want 1", rev1)
+	}
+	_, rev2, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev2 != rev1 {
+		t.Fatalf("unchanged input reminted revision %q → %q", rev1, rev2)
+	}
+
+	var own corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-env"}, &own); err != nil {
+		t.Fatal(err)
+	}
+	own.Data["MESSAGE"] = []byte("B")
+	if err := cl.Update(context.Background(), &own); err != nil {
+		t.Fatal(err)
+	}
+	_, rev3, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev3 != "2" {
+		t.Fatalf("Secret value change revision = %q, want 2", rev3)
+	}
+
+	litA := []corev1.EnvVar{{Name: "MESSAGE", Value: "literal-A"}}
+	_, rev4, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", litA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev4 != "3" {
+		t.Fatalf("literal overlay revision = %q, want 3", rev4)
+	}
+	_, rev5, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", litA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev5 != rev4 {
+		t.Fatalf("unchanged literals reminted revision %q → %q", rev4, rev5)
+	}
+	_, rev6, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build",
+		[]corev1.EnvVar{{Name: "MESSAGE", Value: "literal-B"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev6 != "4" {
+		t.Fatalf("literal value change revision = %q, want 4", rev6)
+	}
+
+	var merged corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "bex-build", Name: name}, &merged); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range merged.Annotations {
+		if strings.Contains(v, "literal-A") || strings.Contains(v, "literal-B") ||
+			strings.Contains(v, "MESSAGE=A") || v == "A" || v == "B" {
+			t.Fatalf("annotations must not carry raw env values: %v", merged.Annotations)
+		}
+	}
+	if merged.Annotations[annotNativeEnvRevision] != rev6 {
+		t.Fatalf("persisted revision = %q, want %q", merged.Annotations[annotNativeEnvRevision], rev6)
+	}
+	if len(merged.Annotations[annotNativeEnvInput]) != 64 {
+		t.Fatalf("input token should be hex sha256, got %q", merged.Annotations[annotNativeEnvInput])
+	}
+}
+
+func TestProjectNativeBuildEnvLiteralsAlonePersistRevision(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(nativeEnvScheme(t)).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl}
+	app := nativeEnvApp("web", nil, "")
+	literals := []corev1.EnvVar{{Name: "MESSAGE", Value: "only-literal"}}
+
+	name, rev, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", literals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if name != "web-native-env" || rev != "1" {
+		t.Fatalf("literals-only got name=%q rev=%q", name, rev)
+	}
+	var merged corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "bex-build", Name: name}, &merged); err != nil {
+		t.Fatal(err)
+	}
+	if len(merged.Data) != 0 {
+		t.Fatalf("literals-only Secret must carry no Data keys, got %v", merged.Data)
+	}
+	_, rev2, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", literals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev2 != rev {
+		t.Fatalf("literals-only restart reminted %q → %q", rev, rev2)
+	}
+}
+
+func TestProjectNativeBuildEnvUnlinkBumpsRevision(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(nativeEnvScheme(t)).WithObjects(
+		envSecret("default", "evg-a-env", map[string]string{"MESSAGE": "qa-group-value"}),
+		envSecret("default", "web-env", map[string]string{"OWN": "web"}),
+	).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl}
+	app := nativeEnvApp("web", []string{"evg-a-env"}, "web-env")
+
+	_, rev1, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.Spec.EnvFromSecrets = nil
+	_, rev2, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev2 == rev1 {
+		t.Fatal("unlinking a group must invalidate the native env revision")
 	}
 }

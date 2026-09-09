@@ -17,10 +17,13 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"cmp"
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -799,12 +802,15 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 	}
 	runtimeSecret := ""
+	nativeEnvRevision := ""
+	nativeLiterals := buildEnv(builder, app.Spec.Env)
 	if builder == build.BuilderNative {
-		merged, err := r.projectNativeBuildEnv(ctx, app, buildNs)
+		merged, rev, err := r.projectNativeBuildEnv(ctx, app, buildNs, nativeLiterals)
 		if err != nil {
 			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 		}
 		runtimeSecret = merged
+		nativeEnvRevision = rev
 	}
 	buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, app, buildNs, builder)
 	if err != nil {
@@ -815,25 +821,26 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		DockerfilePath: app.Spec.DockerfilePath, DockerContext: app.Spec.DockerContext,
 		Name: app.Name, AppUID: string(app.UID),
 		Registry: r.Registry, KpackRegistry: r.KpackRegistry,
-		Builder:          builder,
-		Runtime:          app.Spec.Runtime,
-		StaticSite:       app.Spec.Type == appv1alpha1.TypeStaticSite,
-		BuildCommand:     app.Spec.BuildCommand,
-		StartCommand:     app.Spec.StartCommand,
-		BuildEnv:         buildEnv(builder, app.Spec.Env),
-		RuntimeEnvSecret: runtimeSecret,
-		Revision:         releaseBuildRevision(app),
-		Namespace:        buildNs,
-		AppNamespace:     app.Namespace,
-		Workspace:        app.Labels[labelWorkspace],
-		CloneSecret:      app.Spec.CloneSecret,
-		SignKeySecret:    r.TenantSignKeySecret,
-		SignImage:        r.TenantSignImage,
-		PushSecret:       r.buildJobPushSecret(app),
-		PullSecret:       buildRegistryPullSecret,
-		RegistryConfig:   usesBuildRegistryConfig(app, builder),
-		BuildCache:       r.BuildCache,
-		Client:           buildClient,
+		Builder:            builder,
+		Runtime:            app.Spec.Runtime,
+		StaticSite:         app.Spec.Type == appv1alpha1.TypeStaticSite,
+		BuildCommand:       app.Spec.BuildCommand,
+		StartCommand:       app.Spec.StartCommand,
+		BuildEnv:           nativeLiterals,
+		RuntimeEnvSecret:   runtimeSecret,
+		NativeEnvRevision:  nativeEnvRevision,
+		Revision:           releaseBuildRevision(app),
+		Namespace:          buildNs,
+		AppNamespace:       app.Namespace,
+		Workspace:          app.Labels[labelWorkspace],
+		CloneSecret:        app.Spec.CloneSecret,
+		SignKeySecret:      r.TenantSignKeySecret,
+		SignImage:          r.TenantSignImage,
+		PushSecret:         r.buildJobPushSecret(app),
+		PullSecret:         buildRegistryPullSecret,
+		RegistryConfig:     usesBuildRegistryConfig(app, builder),
+		BuildCache:         r.BuildCache,
+		Client:             buildClient,
 	})
 	if err != nil {
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("dispatching build: %w", err)))
@@ -1188,22 +1195,38 @@ func (r *AppReconciler) relocateBuildSecret(ctx context.Context, app *appv1alpha
 // Apps sharing a group never contend over the shared `<evg>-env` name (w4/m93).
 func nativeEnvSecretName(app string) string { return app + "-native-env" }
 
+const (
+	// annotNativeEnvRevision is the opaque BuildKit cache key for the effective
+	// native environment. It is the only revision value that enters the
+	// generated Dockerfile (w7/m87).
+	annotNativeEnvRevision = "app.bex.co/native-env-revision"
+	// annotNativeEnvInput is a keyed equality token over Secret bytes + literals.
+	// It lives only on the App-owned Secret so reconciles can keep the opaque
+	// revision stable; it is never passed to BuildKit or image metadata.
+	annotNativeEnvInput = "app.bex.co/native-env-input"
+)
+
 // projectNativeBuildEnv merges the App's ordered runtime env sources — linked
 // environment-group Secrets first (each optional, like the runtime envFrom
 // projection), the service's own Secret last so its keys win — into one
 // App-owned Secret next to the build Job, returning its name for the BuildKit
-// secret mount. Literal spec.env entries still travel separately and still win
+// secret mount and an opaque environment revision for the native Dockerfile's
+// cache key. Literal spec.env entries still travel separately and still win
 // over every Secret source: the preparer appends them after the Secret records
 // and the decoder's later-wins export order matches Kubernetes env precedence.
-// No sources => "" (no mount). A missing group Secret contributes nothing, but
-// any other read failure — including the own Secret missing — fails the build
-// rather than silently building with a partial environment.
-func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs string) (string, error) {
+//
+// No Secret sources and no build-relevant literals => ("", "none") with no
+// Secret written. Literals alone still mint the App-owned Secret so the
+// revision survives operator restarts. A missing group Secret contributes
+// nothing, but any other read failure — including the own Secret missing —
+// fails the build rather than silently building with a partial environment.
+func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar) (string, string, error) {
 	// envFromSources owns the source list, order, and optionality — iterating
 	// its output keeps build-time and runtime environments single-sourced.
 	sources := envFromSources(app)
-	if len(sources) == 0 {
-		return "", nil
+	literals = nativeBuildLiterals(literals)
+	if len(sources) == 0 && len(literals) == 0 {
+		return "", build.NativeEnvNoneRevision, nil
 	}
 	reader := r.uncachedSecretClient()
 	data := map[string][]byte{}
@@ -1214,29 +1237,98 @@ func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alp
 			if ref.Optional != nil && *ref.Optional && apierrors.IsNotFound(err) {
 				continue
 			}
-			return "", fmt.Errorf("reading native build env Secret %s/%s: %w", app.Namespace, ref.Name, err)
+			return "", "", fmt.Errorf("reading native build env Secret %s/%s: %w", app.Namespace, ref.Name, err)
 		}
 		// rejectProtectedSecretRefs already vets the spec references; re-check at
 		// the read like copyCloneSecret does, so a protected operational Secret
 		// can never be laundered into a mountable merged copy (codex F1/F7).
 		if src.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
-			return "", fmt.Errorf("refusing to project protected operator Secret %s/%s into a native build", app.Namespace, ref.Name)
+			return "", "", fmt.Errorf("refusing to project protected operator Secret %s/%s into a native build", app.Namespace, ref.Name)
 		}
 		maps.Copy(data, src.Data)
 	}
+	input := nativeEnvInputToken(string(app.UID), data, literals)
+	var revision string
 	merged := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: nativeEnvSecretName(app.Name), Namespace: buildNs}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), merged, func() error {
 		if err := checkOwnedArtifact(merged, app); err != nil {
 			return err
 		}
+		prevInput, prevRev := "", ""
+		if merged.Annotations != nil {
+			prevInput = merged.Annotations[annotNativeEnvInput]
+			prevRev = merged.Annotations[annotNativeEnvRevision]
+		}
+		revision = prevRev
+		if revision == "" || prevInput != input {
+			revision = bumpNativeEnvRevision(prevRev)
+		}
 		merged.Type = corev1.SecretTypeOpaque
 		merged.Data = data
 		merged.Labels = artifactLabels(app, "native-env-secret")
+		if merged.Annotations == nil {
+			merged.Annotations = map[string]string{}
+		}
+		merged.Annotations[annotNativeEnvRevision] = revision
+		merged.Annotations[annotNativeEnvInput] = input
 		return nil
 	}); err != nil {
-		return "", fmt.Errorf("projecting native build env: %w", err)
+		return "", "", fmt.Errorf("projecting native build env: %w", err)
 	}
-	return merged.Name, nil
+	if revision == "" {
+		// CreateOrUpdate can short-circuit when the live object already matched;
+		// read back the durable revision in that case.
+		revision = merged.Annotations[annotNativeEnvRevision]
+	}
+	return merged.Name, revision, nil
+}
+
+// nativeBuildLiterals keeps the preparer's build-relevant literal set so the
+// environment revision covers exactly what the native RUN exports.
+func nativeBuildLiterals(env []corev1.EnvVar) []corev1.EnvVar {
+	out := make([]corev1.EnvVar, 0, len(env))
+	for _, item := range env {
+		if item.Name == "" || item.ValueFrom != nil || item.Name == "PORT" || strings.HasPrefix(item.Name, "BEX_NATIVE_") {
+			continue
+		}
+		out = append(out, item)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// nativeEnvInputToken is a keyed equality fingerprint over the effective native
+// environment. The App UID is the HMAC key so the token is not an unkeyed hash
+// of secret values; it never enters BuildKit, logs, or image metadata.
+func nativeEnvInputToken(uid string, data map[string][]byte, literals []corev1.EnvVar) string {
+	var buf bytes.Buffer
+	for _, key := range slices.Sorted(maps.Keys(data)) {
+		buf.WriteString(key)
+		buf.WriteByte(0)
+		buf.Write(data[key])
+		buf.WriteByte(0)
+	}
+	buf.WriteByte(0x1e)
+	for _, item := range literals {
+		buf.WriteString(item.Name)
+		buf.WriteByte(0)
+		buf.WriteString(item.Value)
+		buf.WriteByte(0)
+	}
+	mac := hmac.New(sha256.New, []byte(uid))
+	_, _ = mac.Write(buf.Bytes())
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func bumpNativeEnvRevision(prev string) string {
+	if prev == "" || prev == build.NativeEnvNoneRevision {
+		return "1"
+	}
+	n, err := strconv.ParseUint(prev, 10, 64)
+	if err != nil {
+		return "1"
+	}
+	return strconv.FormatUint(n+1, 10)
 }
 
 // effectiveDeployRef is the git ref a source clone checks out: the tracked

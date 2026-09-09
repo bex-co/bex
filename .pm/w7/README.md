@@ -15,8 +15,8 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m87** — [Rebuild native output when build-time environment changes](m87/README.md) (8 tasks; 3h implementation, ~5h total) ← approved 2026-09-08 pm-brainstorm proposal 1. **Next:** t001.
-- [ ] **m88** — [Make clear-cache deploys effective](m88/README.md) (9 tasks; 4h implementation, ~6h total) ← approved proposal 2. **Blocked:** t001 depends on w7/m87/t008; shared build dispatch/cache identity.
+- [x] **m87** — [Rebuild native output when build-time environment changes](done/m87/README.md) (8 tasks; 3h implementation, ~5h total) ← approved 2026-09-08 pm-brainstorm proposal 1. **DONE 2026-09-08:** opaque native env revision busts BuildKit cache on environment-only changes; local BuildKit A→B proof + unit coverage; ADR018/ADR060 updated. Unblocks m88/t001.
+- [ ] **m88** — [Make clear-cache deploys effective](m88/README.md) (9 tasks; 4h implementation, ~6h total) ← approved proposal 2. **Next:** t001 (unblocked by m87).
 
 - [x] **m1** — East-west tenant isolation: default-deny network for tenant workloads (8 tasks) ← from `/pm-brainstorm for w7` 2026-07-09
 - [x] **m2** — Tenant workload hardening: Pod Security baseline + quotas + token hygiene (7 tasks) ← from `/pm-brainstorm for w7` 2026-07-09

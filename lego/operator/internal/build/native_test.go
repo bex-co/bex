@@ -51,10 +51,38 @@ func TestNativeDockerfilePreservesRenderCommands(t *testing.T) {
 		"npm ci && npm run build",
 		`CMD ["/bin/bash","-c","node dist/server.js --flag='quoted'"]`,
 		"--mount=type=secret,id=render-env",
+		": bex-native-env-rev=none",
 	} {
 		if !strings.Contains(dockerfile, want) {
 			t.Errorf("Dockerfile missing %q:\n%s", want, dockerfile)
 		}
+	}
+}
+
+// Secret mount contents are not part of BuildKit's instruction cache key, so two
+// Options that differ only in BuildEnv values previously produced identical
+// Dockerfiles and could reuse a stale RUN. The opaque NativeEnvRevision is the
+// durable cache input that makes A→B rebuild (w7/m87).
+func TestNativeDockerfileEnvRevisionBustsCacheKey(t *testing.T) {
+	a := nativeOptions()
+	a.BuildEnv = []corev1.EnvVar{{Name: "MESSAGE", Value: "A"}}
+	b := nativeOptions()
+	b.BuildEnv = []corev1.EnvVar{{Name: "MESSAGE", Value: "B"}}
+	if nativeDockerfile(a) != nativeDockerfile(b) {
+		t.Fatal("literal BuildEnv values must not appear in the generated Dockerfile")
+	}
+	a.NativeEnvRevision = "1"
+	b.NativeEnvRevision = "2"
+	if nativeDockerfile(a) == nativeDockerfile(b) {
+		t.Fatal("distinct env revisions must change the env-dependent RUN cache key")
+	}
+	if strings.Contains(nativeDockerfile(a), "MESSAGE") || strings.Contains(nativeDockerfile(a), "=A") {
+		t.Fatal("secret/literal values must not leak into the generated Dockerfile")
+	}
+	same := nativeOptions()
+	same.NativeEnvRevision = "1"
+	if nativeDockerfile(a) != nativeDockerfile(same) {
+		t.Fatal("unchanged revision must keep a stable Dockerfile")
 	}
 }
 

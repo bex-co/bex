@@ -20,6 +20,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -135,9 +136,17 @@ func TestRegistryBuildCacheDrill(t *testing.T) {
 	if err := live.Get(ctx, client.ObjectKey{Name: ws}, &workspace); err != nil {
 		t.Fatal(err)
 	}
-	// Preflight the exact Jobs before registering cleanup, so a reused name
-	// cannot cause this verifier to delete an earlier run's artifacts.
-	for _, rev := range []string{appv1alpha1.BuildRevision(1), appv1alpha1.BuildRevision(2)} {
+	t.Logf("repository=%s/%s commit=%s", ws, name, commit)
+	workload := os.Getenv("BEX_CACHE_DRILL_WORKLOAD")
+	generations := int64(2)
+	if workload == "native-env" {
+		// Cold MESSAGE=A, env-only MESSAGE=B (must miss cache), unchanged MESSAGE=B (may hit).
+		generations = 3
+	}
+	for _, rev := range []string{appv1alpha1.BuildRevision(1), appv1alpha1.BuildRevision(2), appv1alpha1.BuildRevision(3)} {
+		if generations < 3 && rev == appv1alpha1.BuildRevision(3) {
+			continue
+		}
 		var job batchv1.Job
 		err := live.Get(ctx, client.ObjectKey{Namespace: ns, Name: build.JobName(name, rev)}, &job)
 		if client.IgnoreNotFound(err) != nil {
@@ -151,9 +160,9 @@ func TestRegistryBuildCacheDrill(t *testing.T) {
 		background := metav1.DeletePropagationBackground
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer cleanupCancel()
-		for _, rev := range []string{appv1alpha1.BuildRevision(1), appv1alpha1.BuildRevision(2)} {
+		for gen := int64(1); gen <= generations; gen++ {
 			var job batchv1.Job
-			key := client.ObjectKey{Namespace: ns, Name: build.JobName(name, rev)}
+			key := client.ObjectKey{Namespace: ns, Name: build.JobName(name, appv1alpha1.BuildRevision(gen))}
 			if err := live.Get(cleanupCtx, key, &job); err != nil {
 				if client.IgnoreNotFound(err) != nil {
 					t.Error(err)
@@ -166,12 +175,16 @@ func TestRegistryBuildCacheDrill(t *testing.T) {
 			}
 		}
 	})
-	t.Logf("repository=%s/%s commit=%s", ws, name, commit)
-	for generation := int64(1); generation <= 2; generation++ {
+	messages := []string{"", ""}
+	if workload == "native-env" {
+		messages = []string{"A", "B", "B"}
+	}
+	for generation := int64(1); generation <= generations; generation++ {
 		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ws, UID: types.UID(name), Generation: generation, Labels: map[string]string{labelWorkspace: ws}},
 			Spec:   appv1alpha1.AppSpec{Repo: "https://github.com/bex-co/bex", BuildCommit: commit, RootDir: "dashboard", Builder: "dockerfile", DockerfilePath: "Dockerfile", Port: 3000},
 			Status: appv1alpha1.AppStatus{ReleaseGeneration: generation}}
-		if os.Getenv("BEX_CACHE_DRILL_WORKLOAD") == "node-api" {
+		switch workload {
+		case "node-api":
 			app.Spec.Repo = "https://github.com/hagopj13/node-express-boilerplate"
 			app.Spec.RootDir = ""
 			app.Spec.DockerfilePath = ""
@@ -179,8 +192,28 @@ func TestRegistryBuildCacheDrill(t *testing.T) {
 			app.Spec.Runtime = "node"
 			app.Spec.BuildCommand = "corepack yarn@1.22.22 install --frozen-lockfile"
 			app.Spec.StartCommand = "node src/index.js"
+		case "native-env":
+			// Tiny native build whose only product is the synthetic MESSAGE bytes.
+			// Source stays fixed; only the literal env (and therefore the opaque
+			// native env revision) changes across generations.
+			app.Spec.Repo = "https://github.com/hagopj13/node-express-boilerplate"
+			app.Spec.RootDir = ""
+			app.Spec.DockerfilePath = ""
+			app.Spec.Builder = "native"
+			app.Spec.Runtime = "node"
+			app.Spec.BuildCommand = `printf '%s' "$MESSAGE" > message.txt`
+			app.Spec.StartCommand = "node -e \"process.exit(0)\""
+			app.Spec.Env = []appv1alpha1.EnvVar{{Name: "MESSAGE", Value: messages[generation-1]}}
 		}
 		runCacheDrillBuild(t, ctx, live, app)
+		if workload == "native-env" {
+			want := messages[generation-1]
+			got := readCacheDrillNativeMessage(t, ctx, live, app, registryHost, user, password)
+			t.Logf("generation=%d MESSAGE want=%q got=%q", generation, want, got)
+			if got != want {
+				t.Fatalf("native-env generation %d artifact MESSAGE=%q, want %q", generation, got, want)
+			}
+		}
 	}
 }
 
@@ -237,6 +270,66 @@ func runCacheDrillBuild(t *testing.T, ctx context.Context, live client.Client, a
 		}
 		t.Logf("%s BuildKit CACHED lines=%d", jobName, strings.Count(string(logs), "CACHED"))
 	}
+}
+
+// readCacheDrillNativeMessage pulls the just-built image inside bex-build and
+// reads the synthetic message.txt the native-env drill writes. Using an
+// in-cluster Pod keeps registry auth on the existing build-plane pull Secret
+// and avoids a host-side skopeo/crane dependency.
+func readCacheDrillNativeMessage(t *testing.T, ctx context.Context, live client.Client, app *appv1alpha1.App, registryHost, _, _ string) string {
+	t.Helper()
+	const ns = "bex-build"
+	image := build.Options{
+		Name: app.Name, AppUID: string(app.UID), Registry: registryHost,
+		Revision: releaseBuildRevision(app), Workspace: app.Labels[labelWorkspace],
+	}.ImageRef()
+	podName := fmt.Sprintf("m87-msg-%s-%d", app.Name[len(app.Name)-8:], app.Generation)
+	var zero, deadline int64 = 0, 120
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: ns},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			ImagePullSecrets: []corev1.LocalObjectReference{
+				{Name: "bex-registry-pull"},
+			},
+			Containers: []corev1.Container{{
+				Name:            "read",
+				Image:           image,
+				ImagePullPolicy: corev1.PullAlways,
+				Command:         []string{"/bin/sh", "-ec", "cat /opt/render/project/src/message.txt"},
+			}},
+			ActiveDeadlineSeconds:         &deadline,
+			TerminationGracePeriodSeconds: &zero,
+		},
+	}
+	if err := live.Create(ctx, pod); err != nil {
+		t.Fatalf("create message reader pod: %v", err)
+	}
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		_ = live.Delete(cleanupCtx, pod)
+	})
+	if err := wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
+		var current corev1.Pod
+		if err := live.Get(ctx, client.ObjectKeyFromObject(pod), &current); err != nil {
+			return false, err
+		}
+		for _, status := range current.Status.ContainerStatuses {
+			if status.State.Terminated != nil {
+				return true, nil
+			}
+		}
+		return current.Status.Phase == corev1.PodFailed || current.Status.Phase == corev1.PodSucceeded, nil
+	}); err != nil {
+		t.Fatalf("wait for message reader: %v", err)
+	}
+	out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig="+os.Getenv("KUBECONFIG"),
+		"--request-timeout=20s", "-n", ns, "logs", podName, "-c", "read").CombinedOutput()
+	if err != nil {
+		t.Fatalf("read message.txt from %s: %v: %s", image, err, out)
+	}
+	return string(out)
 }
 
 // The observer runs outside the cluster without a live App credential. Use
