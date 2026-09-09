@@ -1138,3 +1138,107 @@ tests:
       - eval_time: 180m
         alertname: AgentSessionProvisionFailing
         exp_alerts: []
+
+  # w3/m84 — bex-api's own origin SLIs. Both rules are per-surface with a traffic
+  # floor, so the interesting cases are "a busy surface really is broken" and
+  # "a quiet surface's handful of errors must stay silent".
+  - name: a busy bex-api surface serving 5xx pages per surface
+    interval: 1m
+    input_series:
+      # rest: 6 req/s with 1 5xx/s (~17%) — well over 5% and over the floor.
+      - series: 'bex_api_http_requests_total{surface="rest",route="GET /v1/services",method="GET",status="200",job="bex-api",instance="prod-a"}'
+        values: "0+300x60"
+      - series: 'bex_api_http_requests_total{surface="rest",route="GET /v1/services",method="GET",status="500",job="bex-api",instance="prod-a"}'
+        values: "0+60x60"
+      # graphql: same traffic, no errors — must not appear in the alert.
+      - series: 'bex_api_http_requests_total{surface="graphql",route="POST /graphql",method="POST",status="200",job="bex-api",instance="prod-a"}'
+        values: "0+300x60"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BexApiOriginHighErrorRate
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: BexApiOriginHighErrorRate
+        exp_alerts:
+          - exp_labels: { severity: warning, surface: rest }
+            exp_annotations:
+              summary: "bex-api is serving 16.67% 5xx on its rest surface"
+              description: "More than 5% of the requests bex-api itself completed on the rest surface were 5xx for >10m, with meaningful traffic — this is the ORIGIN's own view, so the fault is in bex-api or a dependency it calls, not the edge. Compare with TraefikHigh5xxRate: if only the edge alert fires, the failure is between Traefik and the pod. Find the routes on the bex-api-gateways dashboard (origin 5xx ratio by route), then: kubectl -n bex-system logs deploy/bex-api; check OpenFGA/Hydra/Postgres reachability. Runbook: docs/ADR088-platform-observability-ui.md"
+
+  - name: a quiet bex-api surface under the traffic floor stays silent
+    interval: 1m
+    input_series:
+      # ~0.017 req/s, all of it 5xx: 100% failure over a sample too small to mean
+      # anything. Below the 0.1 req/s floor, so no alert — and no vector(0)
+      # coercion anywhere, so a surface with no traffic yields no series at all.
+      - series: 'bex_api_http_requests_total{surface="mcp",route="/mcp",method="POST",status="500",job="bex-api",instance="prod-a"}'
+        values: "0+1x60"
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: BexApiOriginHighErrorRate
+        exp_alerts: []
+
+  - name: internal control-plane errors never page the public error-rate rule
+    interval: 1m
+    input_series:
+      # The :8091 projection/mint surface is excluded by construction: its callers
+      # are bex's own components, and its noise must not read as a user-facing API
+      # regression.
+      - series: 'bex_api_http_requests_total{surface="internal",route="/v1/apps/{id}",method="GET",status="500",job="bex-api",instance="prod-a"}'
+        values: "0+60x60"
+      - series: 'bex_api_http_requests_total{surface="internal",route="/v1/apps/{id}",method="GET",status="200",job="bex-api",instance="prod-a"}'
+        values: "0+60x60"
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: BexApiOriginHighErrorRate
+        exp_alerts: []
+
+  - name: a bex-api surface whose p95 sits past the 2.5s baseline pages
+    interval: 1m
+    input_series:
+      # Nothing lands at or under 2.5s — the whole population sits in the 2.5–5s
+      # bucket, so the interpolated p95 is ~4.9s. 2 req/s clears the floor.
+      - series: 'bex_api_http_request_duration_seconds_bucket{le="2.5",surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0x60"
+      - series: 'bex_api_http_request_duration_seconds_bucket{le="5",surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+120x60"
+      - series: 'bex_api_http_request_duration_seconds_bucket{le="30",surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+120x60"
+      - series: 'bex_api_http_request_duration_seconds_bucket{le="+Inf",surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+120x60"
+      - series: 'bex_api_http_request_duration_seconds_count{surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+120x60"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BexApiOriginLatencyHigh
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: BexApiOriginLatencyHigh
+        exp_alerts:
+          - exp_labels: { severity: warning, surface: rest }
+            exp_annotations:
+              summary: "bex-api rest p95 is 4.875s"
+              description: "The 95th percentile of bex-api's own request duration on the rest surface has been above 2.5s for >10m with meaningful traffic. Callers (dashboard, CLI, agents) are seeing timeouts even where the status is 200. Use the bex-api-gateways dashboard's slowest-routes panel to find which route pattern moved, then check the dependency it fans out to: Kubernetes API latency, control-plane Postgres, OpenFGA, Hydra introspection. Runbook: docs/ADR088-platform-observability-ui.md"
+
+  - name: a fast bex-api surface with a slow tail stays silent
+    interval: 1m
+    input_series:
+      # 95% of requests under 100ms, a thin slow tail above 5s: the p95 stays well
+      # inside the baseline, which is the whole point of alerting on a quantile
+      # rather than a max.
+      - series: 'bex_api_http_request_duration_seconds_bucket{le="0.1",surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+114x60"
+      - series: 'bex_api_http_request_duration_seconds_bucket{le="2.5",surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+114x60"
+      - series: 'bex_api_http_request_duration_seconds_bucket{le="5",surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+114x60"
+      - series: 'bex_api_http_request_duration_seconds_bucket{le="30",surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+120x60"
+      - series: 'bex_api_http_request_duration_seconds_bucket{le="+Inf",surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+120x60"
+      - series: 'bex_api_http_request_duration_seconds_count{surface="rest",job="bex-api",instance="prod-a"}'
+        values: "0+120x60"
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: BexApiOriginLatencyHigh
+        exp_alerts: []

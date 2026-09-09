@@ -183,24 +183,35 @@ func graphqlTopLevelOps(query, operationName string) []string {
 	if !ok {
 		return nil
 	}
+	return graphqlTopLevelOpsFrom(fragments, ops, operationName)
+}
+
+// graphqlTopLevelOpsFrom is the AST form used when the document was already
+// parsed for telemetry / cost (one parse per request). With no operationName,
+// every operation in the document is walked so a multi-op document cannot
+// sneak a write past a read-only scope check.
+func graphqlTopLevelOpsFrom(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, operationName string) []string {
 	if operationName != "" {
-		filtered := ops[:0]
-		for _, op := range ops {
-			if op.Name != nil && op.Name.Value == operationName {
-				filtered = append(filtered, op)
-			}
+		if op := selectGraphQLOperation(ops, operationName); op != nil {
+			ops = []*ast.OperationDefinition{op}
+		} else {
+			ops = nil
 		}
-		ops = filtered
 	}
 	var out []string
 	for _, op := range ops {
-		kind := "Query"
-		if op.Operation == "mutation" {
-			kind = "Mutation"
-		}
-		collectGraphQLTopLevel(op.SelectionSet, fragments, kind, map[string]bool{}, &out)
+		collectGraphQLTopLevel(op.SelectionSet, fragments, graphQLOperationKind(op), map[string]bool{}, &out)
 	}
 	return out
+}
+
+// graphQLOperationKind maps an AST operation to the GQL Query./Mutation. prefix
+// used by classifiedOps.
+func graphQLOperationKind(op *ast.OperationDefinition) string {
+	if op != nil && op.Operation == gqlTypeMutation {
+		return "Mutation"
+	}
+	return "Query"
 }
 
 func collectGraphQLTopLevel(sel *ast.SelectionSet, fragments map[string]*ast.FragmentDefinition, kind string, visiting map[string]bool, out *[]string) {
@@ -235,11 +246,68 @@ func collectGraphQLTopLevel(sel *ast.SelectionSet, fragments map[string]*ast.Fra
 	}
 }
 
+// graphqlOperationDims derives the two BOUNDED telemetry dimensions of a
+// GraphQL document (w3/m84): the operation label and its type. Operation names
+// are client-chosen, so the label is not the document's name but its first
+// top-level field, and only when classifiedOps — the CI-generated table of every
+// operation the schema actually has — knows it. An anonymous, unparseable, or
+// introspection-only document is "other", which is what keeps a hostile client
+// from minting a series per request.
+func graphqlOperationDims(query, operationName string) (operation, opType string) {
+	fragments, ops, ok := parseGraphQLDocument(query)
+	if !ok {
+		return gqlOperationOther, gqlTypeQuery
+	}
+	return graphqlOperationDimsFrom(fragments, ops, operationName)
+}
+
+// graphqlOperationDimsFrom is the AST form used when the document was already
+// parsed for cost / scope (one parse per request).
+func graphqlOperationDimsFrom(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, operationName string) (operation, opType string) {
+	operation, opType = gqlOperationOther, gqlTypeQuery
+	op := selectGraphQLOperation(ops, operationName)
+	if op == nil {
+		return operation, opType
+	}
+	switch op.Operation {
+	case gqlTypeMutation, gqlTypeSubscription:
+		opType = op.Operation
+	}
+	var fields []string
+	collectGraphQLTopLevel(op.SelectionSet, fragments, graphQLOperationKind(op), map[string]bool{}, &fields)
+	for _, field := range fields {
+		if _, known := lookupScopeClass(field); known {
+			_, name, _ := strings.Cut(field, ".")
+			return name, opType
+		}
+	}
+	return operation, opType
+}
+
+// selectGraphQLOperation picks the operation graphql.Do will execute: the named
+// one when the request names it, otherwise the document's first.
+func selectGraphQLOperation(ops []*ast.OperationDefinition, operationName string) *ast.OperationDefinition {
+	for _, op := range ops {
+		if operationName == "" || (op.Name != nil && op.Name.Value == operationName) {
+			return op
+		}
+	}
+	return nil
+}
+
 func (s *Server) requireGraphQLScope(ctx context.Context, query, operationName string) error {
+	fragments, ops, ok := parseGraphQLDocument(query)
+	if !ok {
+		return nil
+	}
+	return s.requireGraphQLScopeFrom(ctx, fragments, ops, operationName)
+}
+
+func (s *Server) requireGraphQLScopeFrom(ctx context.Context, fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, operationName string) error {
 	if id, ok := core.IdentityFrom(ctx); !ok || id.CapabilityExempt() {
 		return nil
 	}
-	for _, op := range graphqlTopLevelOps(query, operationName) {
+	for _, op := range graphqlTopLevelOpsFrom(fragments, ops, operationName) {
 		if err := s.requireScopeClass(ctx, op); err != nil {
 			return err
 		}

@@ -58,7 +58,7 @@ The local overlay runs Grafana with only the local admin — no OIDC client, no 
 
 Division of record: **this section says what we watch and why; the committed dashboard JSON says how it is drawn.** Two standing principles:
 
-- **Every alert gets a panel.** Prometheus evaluates 46 platform alert rules today (`deploy/gitops/base/prometheus.yaml`); an alert only says "broken", so each rule's backing series must appear on a dashboard that answers _how bad, since when, trending which way_. A new alert rule lands with (or names) its panel; a panel-less alert is review feedback. `scripts/obs-coverage-check.sh` generates the audit and fails CI, so this is enforced rather than remembered.
+- **Every alert gets a panel.** Prometheus evaluates 48 platform alert rules today (`deploy/gitops/base/prometheus.yaml`); an alert only says "broken", so each rule's backing series must appear on a dashboard that answers _how bad, since when, trending which way_. A new alert rule lands with (or names) its panel; a panel-less alert is review feedback. `scripts/obs-coverage-check.sh` generates the audit and fails CI, so this is enforced rather than remembered.
 - **Every tenant-facing surface gets a falsifiable signal** — an alert rule, a scheduled probe, or a written waiver. The per-surface ledger is the [coverage table](#tenant-facing-surface-coverage-w3m83-t001) below.
 - **Bounded labels only.** Platform dashboards query the same bounded label sets the alert rules do — never per-path/per-host/per-tenant-unbounded dimensions (the ADR010 cardinality rule applies to dashboards too).
 
@@ -67,7 +67,7 @@ Per-dashboard SLIs and core series (all series names verified against the scrape
 | dashboard | SLI / question | core series |
 | --- | --- | --- |
 | **Platform availability** (landing page) | edge availability = 1 − 5xx ratio (5m), tied to `TraefikHigh5xxRate`'s threshold; edge latency p50/p95/p99; "is the platform itself up" | `traefik_service_requests_total`, Traefik service duration histogram; `kube_deployment_status_replicas_available` vs `kube_deployment_spec_replicas` (platform ns); `kube_pod_container_status_waiting_reason` (crashloops); `certmanager_certificate_expiration_timestamp_seconds` + `certmanager_certificate_ready_status`; `vault_core_unsealed` |
-| **bex-api + gateways** | API error/latency (edge view per service); agent-session SLOs (w5/m81 baseline, corrected w5/m88); gateway saturation; outbound eventing delivery (webhooks + push) | Traefik series filtered to the api service; `bex_agent_session_turn_outcomes_total{outcome}`, `bex_agent_session_turn_duration_seconds{outcome}` (running-only; started_at→terminal), `bex_agent_session_provision_seconds{outcome}`, `bex_agent_session_terminal_convergences_total`; `bex_ssh_gateway_active_sessions`/`_active_channels`/`_limit_rejections_total`/`_git_proxy_upstream_failures_total`; `bex_webhooks_delivery_admissions_total{result}`, `bex_webhooks_delivery_attempts_total{origin,result}`; `bex_push_last_success_timestamp_seconds`, `bex_push_queue_rows{state}`, `bex_push_enabled` |
+| **bex-api + gateways** | API error/latency from BOTH sides — Traefik's edge view per service and bex-api's own origin view per route pattern, surface, GraphQL operation, and MCP tool (w3/m84); agent-session SLOs (w5/m81 baseline, corrected w5/m88); gateway saturation; outbound eventing delivery (webhooks + push) | Traefik series filtered to the api service; `bex_api_http_request_duration_seconds{surface,route,method,status}`, `bex_api_http_requests_total{…}`, `bex_api_http_in_flight_requests{surface}`, `bex_api_graphql_operation_duration_seconds{operation,type,outcome}`, `bex_api_mcp_tool_duration_seconds{tool,outcome}`; `bex_agent_session_turn_outcomes_total{outcome}`, `bex_agent_session_turn_duration_seconds{outcome}` (running-only; started_at→terminal), `bex_agent_session_provision_seconds{outcome}`, `bex_agent_session_terminal_convergences_total`; `bex_ssh_gateway_active_sessions`/`_active_channels`/`_limit_rejections_total`/`_git_proxy_upstream_failures_total`; `bex_webhooks_delivery_admissions_total{result}`, `bex_webhooks_delivery_attempts_total{origin,result}`; `bex_push_last_success_timestamp_seconds`, `bex_push_queue_rows{state}`, `bex_push_enabled` |
 | **Builds** | queue starvation (oldest wait), queue-time distribution, build success ratio, builder health | `bex_builds_active`/`bex_builds_queued`, `bex_build_queue_oldest_seconds`, `bex_build_queue_seconds_bucket`, `bex_build_run_seconds`, `bex_build_outcomes_total`, `bex_build_infra_failures_total`, `bex_build_clusterbuilder_ready`/`_present`/`_image_resolved_timestamp_seconds` |
 | **Data plane** | tenant datastore readiness + PITR safety (WAL archiving must be 1); replication/backup freshness; public SNI front doors | `bex_datastore_ready`, `bex_datastore_wal_archiving`, `bex_datastore_age_seconds`, `bex_datastore_observe_errors_total`; `cnpg_backends_total`, `cnpg_pg_replication_*`, `cnpg_pg_stat_archiver_last_archived_time`; `kube_cronjob_status_last_successful_time` (backup CronJobs); `bex_pg_proxy_healthy`, `bex_kv_proxy_healthy` |
 | **Billing + metering** | money-path freshness (outbox age), export integrity, meter integrity (a broken meter is silent revenue loss) | `bex_billing_outbox_oldest_pending_age_seconds`, `bex_billing_export_rejected_rows`/`_ambiguous_rows`, `bex_billing_webhook_last_success_timestamp_seconds`, `bex_billing_operations_total`, `bex_billing_enabled`; `bex_egress_meter_healthy`/`_counter_loss_events_total`/`_resource_map_pressure_ratio`, `bex_websocket_meter_healthy`, `bex_app_direct_egress_bytes_total` + pg/kv/websocket egress bytes |
@@ -143,7 +143,33 @@ Configuration is split by secrecy, not convenience: the key is a repository **se
 
 Two probes stay narrower than their scripts allow, on purpose. The deploy canary's static leg needs a public no-build static-site repository that does not exist yet, which is what keeps the `w3/m46` t008 and `w3/m81` t004 static legs owed. And the sandbox matrix's model-key check ([`scripts/verify-sandbox-isolation.sh`](../scripts/verify-sandbox-isolation.sh) `BEX_VERIFY_AGENT_DRIVER=1` + `BEX_VERIFY_AGENT_MODEL=1`, both default 0) costs real model tokens per run while adding nothing to the admission-regression class the weekly run exists to catch; it remains a manual invocation. Enabling it later is two flags plus `BEX_LIVE_AGENT_MODEL_API_KEY` on the job — no script change.
 
-**Known gap (recorded, not hidden):** bex-api has no first-party per-route request histogram — its error/latency view is Traefik's edge perspective. Acceptable while the edge fronts every request; adding a native histogram is the first candidate when edge-vs-origin attribution starts mattering. And per §1, whole-cluster outage detection stays with the external uptime check — this stack must never be its own only witness.
+#### Origin-side API telemetry (w3/m84 — closes the former §6 gap)
+
+The gap this section used to record — "bex-api has no first-party per-route request histogram, its error/latency view is Traefik's edge perspective" — is closed. bex-api now exports its own request telemetry on the registry `/metrics` already serves (`lego/backend/internal/api/httpmetrics.go`), which is what makes **edge-versus-origin attribution** possible: an origin-side 2xx under an edge-side error puts the fault between Traefik and the pod (LB or idle-timeout race), an origin-side 5xx puts it in bex-api or a dependency it calls.
+
+| series | labels | what it answers |
+| --- | --- | --- |
+| `bex_api_http_request_duration_seconds` | `surface`, `route`, `method`, `status` | origin p50/p95/p99 per surface, slowest route patterns |
+| `bex_api_http_requests_total` | same | origin error ratio per surface and per route (includes streams) |
+| `bex_api_http_in_flight_requests` | `surface` | origin saturation, including long-lived streams |
+| `bex_api_graphql_operation_duration_seconds` | `operation`, `type`, `outcome` | whether a mutation actually worked — GraphQL answers 200 with an `errors` array, so no HTTP metric can say |
+| `bex_api_mcp_tool_duration_seconds` | `tool`, `outcome` | per-tool latency and denial rate for agent traffic (ADR008) |
+
+The **label contract** is the load-bearing part, and it is enforced by test (`TestOriginMetricsRouteLabelIsAPatternNeverAnId`), not by convention:
+
+- `surface` is the closed set `rest` / `graphql` / `mcp` / `auth` / `internal`. `internal` is the cluster-internal `:8091` listener (projection, mints, ops-role); it is excluded from both alert rules because its callers are bex's own components.
+- `route` is the **registered mux pattern** the request matched (`GET /v1/services/{serviceId}`), never a raw path, so no `srv-…`/`dpg-…`/`tea-…` id can become a series. Unrouted requests — 404s, scanners — all fold into `route="unmatched"`.
+- `method` folds to `other` outside the methods bex registers; GraphQL `operation` folds to `other` unless the schema's own operation table knows it; an unregistered MCP `tool` creates no series at all.
+- Streaming responses (SSE tails, MCP SSE, upgrades) are counted but **not** observed into the duration histogram: an hour-long healthy tail would own every bucket and hide the p95 the SLI is about. Their question — did it start and stay up — is the counter plus the in-flight gauge.
+
+Two alert rules read these, both per surface with a traffic floor so a quiet surface's single failure never pages:
+
+- **`BexApiOriginHighErrorRate`** — 5xx ratio > 5% over 5m above 0.1 req/s, for 10m. Deliberately the same shape as `TraefikHigh5xxRate` so the pair is read together.
+- **`BexApiOriginLatencyHigh`** — p95 > **2.5s** over 10m above 0.1 req/s, for 10m. That threshold is the recorded baseline: roughly an order of magnitude above bex-api's normal p95, so load never pages and a real stall does.
+
+Both land with panels on **bex-api + gateways** (origin p50/p95/p99 by surface, origin 5xx ratio + request rate, 5xx rate by route, slowest routes p95, GraphQL mutation fault ratio + p95, MCP tool p95 + outcomes, in-flight by surface) and with promtool fire/no-fire tests in `deploy/gitops/base/rules/alerts_test.yml`. The families reach Prometheus only because the bex-api scrape job's keep-list admits `bex_api_.*` — the m86 death-layer lesson: a rule that evaluates a never-scraped series is worse than no rule.
+
+Remaining, still recorded: per §1, whole-cluster outage detection stays with the external uptime check — this stack must never be its own only witness.
 
 ## Consequences
 
