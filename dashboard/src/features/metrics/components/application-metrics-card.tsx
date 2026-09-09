@@ -335,11 +335,20 @@ function ResourceSection({
     percentage &&
     result.series.every((s) => s.points.length === 0) &&
     absolute.series.some((s) => s.points.length > 0);
-  // No limit configured at all (and usage observed): the division is
-  // undefined, so the chart honestly says so instead of faking a flat line
-  // (same omit-don't-fake rule as bex-api).
+  // No limit configured at all (usage observed, but no percentage point
+  // survived either): the division is undefined, so the chart honestly says
+  // so instead of faking a flat line (same omit-don't-fake rule as bex-api).
+  // Retained percentage points still render when the current-limit read is
+  // empty: bex-api's cpu_limit/memory_limit is a current-pod read (empty for
+  // a suspended/scaled-to-zero service), while the percentage read keeps
+  // own-limit history — and every surviving point already passed the
+  // server-side trustworthiness join, so hiding them would discard usable
+  // history (w5/m90 t008 live walkthrough).
   const noLimit =
-    percentage && limit.kind === "none" && absoluteHasData;
+    percentage &&
+    limit.kind === "none" &&
+    absoluteHasData &&
+    result.series.every((s) => s.points.length === 0);
   const unit = percentage
     ? "percentage"
     : (result.series[0]?.unit ?? limitUnit);
