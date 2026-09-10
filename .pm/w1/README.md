@@ -17,6 +17,8 @@ implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps onl
 
 ## Milestones
 
+- [ ] **m138** — [Deploy `failureReason` reaches every surface, and the last protected-marker drop](m138/README.md) (8 tasks; ~2h15m implementation, ~4h15m total) ← approved 2026-09-09 pm-brainstorm proposal 1, from `w6/done/m97` § "Follow-ups found, NOT fixed here" (all three re-verified open 2026-09-09).
+- [ ] **m139** — [Live-verification debt sweep on dev-1](m139/README.md) (10 tasks; ~4h15m implementation, ~5h50m total) ← approved 2026-09-09 pm-brainstorm proposal 2: ten unowned "not verified live — deferred to the next QA pass" residuals from w6/m114·m116·m118·m125·m127·m130·m133·m46, w9/m91, and w1/m72's waived t007, runnable now that the CAPD cluster is healthy (`084`, 2026-09-09) and `dev-3` is live under `w3/m79`.
 - [x] **m137** — [Recover interrupted local agent-image updates](done/m137/README.md) (7 tasks; 3h implementation, 4h total) ← approved 2026-09-08 pm-brainstorm proposal 1.
 
 - [x] **m136** — A session that failed for a missing model key says so (6 tasks) ← from a live `dev-1` bug hunt 2026-08-29 (session `ags-da9674i9086hnle27720`): `modelproxy.go:162-171` maps every mint `ErrForbidden` to a bare 403 without calling `reportAuthFailure`, so a workspace with no BYO model key terminalizes with the ACP adapter's raw `API Error: 403 forbidden (code -32603)` instead of the actionable `ModelAuthFailureReason` the code already defines.
@@ -131,7 +133,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps onl
 
 ## Inbox
 
-No open inbox notes.
+No open inbox notes. Open milestones: `m138`, `m139` (materialized 2026-09-09).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
 
