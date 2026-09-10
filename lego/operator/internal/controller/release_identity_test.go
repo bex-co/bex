@@ -414,7 +414,7 @@ func TestClearCacheAppliesOnlyMatchingRelease(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Generation: 3,
 			Annotations: map[string]string{
-				appv1alpha1.AnnotationReleaseGeneration:            "3",
+				appv1alpha1.AnnotationReleaseGeneration:           "3",
 				appv1alpha1.AnnotationClearCacheReleaseGeneration: "3",
 			},
 		},
