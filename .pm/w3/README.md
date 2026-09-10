@@ -69,7 +69,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 
 ## Inbox
 
-- [ ] **035** — [ADR008 vision status refresh: pillars 4/5 and roadmap items 1–4 read "planned" but shipped](035.md) (30m) ← from `/pm-brainstorm for w3` 2026-09-08 #4
+- [x] **035** — ADR008 vision status refresh: pillars 4/5 and roadmap items 1–4 read "planned" but shipped — **done 2026-09-09** ([done/035.md](done/035.md)): pillars 4–5 ✅ with ADR pointers; original roadmap 1–4 marked shipped; "What's next" points at m79 / w11 / pillar-5 follow-ons / canary fixture
 
 > `034.md` — **promoted 2026-09-07 → [`w8/m35`](../w8/m35/README.md)** (note moved to `done/034.md`): fold Postgres/Key Value by-id reads onto the m81 consistent-absence contract (option 1), scheduled under w8 by the `/pm-brainstorm for w8` round approved the same day.
 

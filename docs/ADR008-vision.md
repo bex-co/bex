@@ -25,20 +25,27 @@ Render compatibility is part of the same thesis: agents (and their toolchains) a
 | 1 | **Render-compatible REST + GraphQL** — `bex-api` serves Render's `/v1/services` shapes (verified against Render's OpenAPI spec) and its dashboard GraphQL ([ADR006-bex-api.md](ADR006-bex-api.md)) | ✅ shipped |
 | 2 | **Agent-readable state** — `App` CR `status.phase` / `status.revision` / `status.url`; `kubectl get apps.app.bex.co` is the dashboard. Treated as a stable contract | ✅ shipped |
 | 3 | **MCP server** — the bex-api verbs (list / get / restart / suspend / resume / plan-change / logs / metrics / env-vars / api-keys) exposed over MCP (`/mcp` + a stdio mode); by design just another thin adapter over the same core ([ADR006-bex-api.md](ADR006-bex-api.md)) | ✅ shipped |
-| 4 | **Deploy-from-chat** — one API call takes a repo + `render.yaml` to a live URL, so "deploy this" is a single agent action (needs the control plane, [ADR003-control-plane.md](ADR003-control-plane.md)) | 🔜 planned |
-| 5 | **E2B-compatible sandboxes** — the opensandbox runtime's real pause/resume as hosted execution environments for agents, with idle sandboxes hibernated ("sleep = free") | 🔜 planned |
+| 4 | **Deploy-from-chat** — one API call takes a repo + `render.yaml` to a live URL, so "deploy this" is a single agent action ([ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md); MCP `deploy` / `create_web_service` over `Core.Create`, HMAC push-to-deploy; in-cluster builds via [ADR034](ADR034-scalable-build-pipeline.md) / [ADR060](ADR060-build-worker-reliability-and-performance.md)) | ✅ shipped |
+| 5 | **E2B-compatible sandboxes** — the opensandbox runtime's real pause/resume as hosted execution environments for agents, with idle sandboxes hibernated ("sleep = free") ([ADR014](ADR014-sandboxes.md), [ADR042](ADR042-sandbox-cluster-substrate.md), [ADR047](ADR047-cloud-coding-agent-sessions.md), [ADR059](ADR059-agent-sandbox-hibernation.md); `render ea sandbox` + the agent-session stack) | ✅ shipped |
 
-Pillars 1–3 mean an agent can already operate bex today natively — MCP, `curl`, or `kubectl`. Pillars 4–5 close the loop from "operate" to "create".
+All five pillars ship today: an agent can create, operate, and sandbox-execute on bex via MCP, `curl`, or `kubectl`.
 
 ## Roadmap
 
-Roughly ordered — de-risk the live system, then the source-of-truth control plane, then the elastic/cost machinery:
+### Shipped foundation (was the original de-risk list)
 
-1. **Postgres control plane** — ✅ built (opt-in via `BEX_CP_DB_URI`, not yet the prod default; [ADR003-control-plane.md](ADR003-control-plane.md)). Remaining: flip it on in prod, tenant onboarding.
-2. **Wake activator + HMAC webhook** — push-to-deploy from Git hosting, and wake-on-request for hibernated apps.
-3. **Cluster Autoscaler wiring** — add/remove machines reactively instead of manually.
-4. **In-cluster builds** — BuildKit/kpack Jobs so build-from-git images are pullable by cluster nodes.
+1. **Postgres control plane** — ✅ production default ([ADR003](ADR003-control-plane.md), [ADR043](ADR043-tenant-namespace-isolation.md); `NamespaceReconciler` requires `BEX_CP_DB_URI`; datastores cut over in `w7/m77`).
+2. **Wake activator + HMAC webhook** — ✅ `lego/operator/cmd/activator` and git HMAC push-to-deploy ([ADR017](ADR017-deploy-from-chat.md)).
+3. **Cluster Autoscaler wiring** — ✅ `deploy/gitops/base/autoscaler.yaml` (`w1/m19`).
+4. **In-cluster builds** — ✅ BuildKit workers ([ADR034](ADR034-scalable-build-pipeline.md), [ADR060](ADR060-build-worker-reliability-and-performance.md); `w1/m5`).
 5. **MCP server** — ✅ shipped (pillar 3).
+
+### What's next
+
+- **Local agent-session draft-PR proof** — finish `w3/m79` once a developer-supplied GitHub App installation exists (repo-less sessions already green on `dev-N`).
+- **Mobile mission control** — `w11` (push hygiene, live attach / needs-decision steering, tier-2 quick actions).
+- **Pillar-5 follow-ons** — sandbox metering, deeper hibernation/continuity, and the remaining ADR047 phase-2 attach surface.
+- **Ops hardening** — authorize the production canary fixture (`BEX_CANARY_*`) so m83's scheduled synthetics stop soft-skipping; keep origin-vs-edge SLIs honest as traffic grows ([ADR088](ADR088-platform-observability-ui.md)).
 
 ## Non-goals
 
