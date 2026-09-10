@@ -1,0 +1,27 @@
+# w8/m40 — ownership claim verification evidence
+Date: 2026-09-10
+
+## Automated (authoritative for races)
+- TestPGClaimBlueprintResource (real Postgres): first claim wins; second conflicts;
+  takeover with expectedOwner succeeds; stale expectedOwner after intervening takeover conflicts;
+  ReleaseBlueprintResourceClaims clears rows.
+- TestBlueprintResourceClaimRaceLoserCannotWrite: loser ClaimBlueprintResource → BLUEPRINT_RESOURCE_CONFLICT.
+- TestBlueprintTakeoverRejectsInterveningOwner: Confirm naming prior owner cannot steal from current owner.
+- Existing m23 ownership stamp/conflict/takeover/disconnect/webhook tests still pass with fail-loud stamp.
+
+## Live dev-8 GraphQL attempt
+- Stack: scripts/dev-env.sh 8 up with supervisor held; bex-api rebuilt with m40 code.
+- createBlueprint for Blueprint A (examples/hello-go) reached in_sync.
+- Concurrent GraphQL sync for a second Blueprint was interrupted by CAPD kubectl
+  port-forward drops to bex-db (:55080) — bex-api then answered
+  "tenant onboarding unavailable". Same flake class as m39's earlier PF instability.
+- Not closed solely on that flake: Real-Postgres claim races + app-layer conflict/takeover
+  tests above satisfy the multi-connection / fault DoD clauses; fixture cleanup of the
+  partial A create was attempted when the API stayed reachable.
+
+## Code shipped
+- migration 0112 blueprint_resource_claims
+- Claim at applyDatabase / applyKeyValue / applyCreateWithFields
+- stampBlueprintOwnership returns errors (no silent success)
+- Disconnect releases claims then clears labels
+- Managed-resource reads prefer durable claims

@@ -16,23 +16,29 @@ limitations under the License.
 
 package apps
 
-// blueprint_ownership.go (w8/m23): a resource created or adopted by a
-// Git-connected Blueprint carries core.LabelBlueprint; a second blueprint
-// naming the same resource is refused pre-write with
-// BLUEPRINT_RESOURCE_CONFLICT unless the explicit takeover confirmation
-// transfers ownership. Render documents "max one Blueprint per resource;
+// blueprint_ownership.go (w8/m23 + w8/m40): a resource created or adopted by a
+// Git-connected Blueprint carries a durable workspace claim
+// (blueprint_resource_claims) mirrored by core.LabelBlueprint; a second
+// blueprint naming the same resource is refused with BLUEPRINT_RESOURCE_CONFLICT
+// unless the explicit takeover confirmation transfers ownership. Claims couple
+// to each successful resource write so partial apply cannot leave mutated
+// resources unowned, and replicas coordinate through the UNIQUE claim rather
+// than a process-local check. Render documents "max one Blueprint per resource;
 // last sync wins" without enforcing it — refusing is a deliberate, documented
-// improvement (ADR018 Blueprint row). Disconnect clears the marker; manual
-// resources without a marker adopt freely, unchanged.
+// improvement (ADR018 Blueprint row). Disconnect clears the claim and marker;
+// manual resources without a marker adopt freely, unchanged.
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -51,8 +57,9 @@ type blueprintOwnershipConflict struct {
 }
 
 // blueprintOwnershipConflicts lists the parsed stack's resources that a
-// DIFFERENT blueprint currently owns. selfID "" means "no blueprint identity"
-// (a bare validate): every owned resource conflicts.
+// DIFFERENT blueprint currently owns. Prefers the durable claim table when
+// wired (w8/m40); falls back to CR labels. selfID "" means "no blueprint
+// identity" (a bare validate): every owned resource conflicts.
 func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, selfID string, st parsedStack) ([]blueprintOwnershipConflict, error) {
 	// Cluster-wide, label-scoped lists (the DatastoreListOptions shape): a
 	// workspace's resources may straddle the shared and per-tenant namespaces.
@@ -63,6 +70,14 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 		if owner != "" && owner != selfID {
 			conflicts = append(conflicts, blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
 		}
+	}
+	ownerOf := func(kind, name, labelOwner string) string {
+		if s.Blueprints != nil {
+			if claimOwner, err := s.Blueprints.GetBlueprintResourceOwner(ctx, tenantID, kind, name); err == nil && claimOwner != "" {
+				return claimOwner
+			}
+		}
+		return labelOwner
 	}
 
 	if len(st.services) > 0 {
@@ -75,9 +90,8 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			byName[appServiceName(&apps.Items[i])] = apps.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, svc := range st.services {
-			if owner, ok := byName[svc.req.Name]; ok {
-				record("service", svc.req.Name, owner)
-			}
+			labelOwner := byName[svc.req.Name]
+			record("service", svc.req.Name, ownerOf("service", svc.req.Name, labelOwner))
 		}
 	}
 	if len(st.databases) > 0 {
@@ -90,9 +104,8 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			byName[databases.Items[i].Spec.Name] = databases.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, db := range st.databases {
-			if owner, ok := byName[db.name]; ok {
-				record("database", db.name, owner)
-			}
+			labelOwner := byName[db.name]
+			record("database", db.name, ownerOf("database", db.name, labelOwner))
 		}
 	}
 	if len(st.keyValues) > 0 {
@@ -105,9 +118,8 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			byName[keyValues.Items[i].Spec.Name] = keyValues.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, kv := range st.keyValues {
-			if owner, ok := byName[kv.name]; ok {
-				record("key value", kv.name, owner)
-			}
+			labelOwner := byName[kv.name]
+			record("key value", kv.name, ownerOf("key_value", kv.name, labelOwner))
 		}
 	}
 	return conflicts, nil
@@ -156,9 +168,10 @@ func blueprintOwnershipError(c blueprintOwnershipConflict) error {
 }
 
 // stampBlueprintOwnership records req.BlueprintID on every resource the apply
-// converged — create, adopt, and takeover all land here, and re-stamping is
-// how pre-existing managed resources lazily backfill on their next sync.
-// Best-effort by design: the apply has already succeeded.
+// converged — create, adopt, and takeover all land here as a fail-loud
+// backfill for no-op short circuits that already claimed at write time
+// (w8/m40). A failed claim or label patch fails the sync: ownership
+// persistence failure cannot look like success.
 // appServiceName is the manifest-facing service name: the service-name label
 // for store-managed Apps (CR names carry the tenant prefix), the bare CR name
 // for hand-applied ones.
@@ -169,86 +182,158 @@ func appServiceName(a *appv1alpha1.App) string {
 	return a.Name
 }
 
-func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID string, generation int64, runID string, st parsedStack) {
-	if blueprintID == "" {
-		return
+// takeoverExpectedOwner returns the owning blueprint id encoded in Confirm, or
+// "" when Confirm is not a takeover phrase.
+func takeoverExpectedOwner(confirm string) string {
+	const prefix = "takeover blueprint "
+	if strings.HasPrefix(confirm, prefix) {
+		return strings.TrimPrefix(confirm, prefix)
+	}
+	return ""
+}
+
+// claimBlueprintResourceName takes the durable claim for one resource and
+// stamps the CR label. expectedOwner comes from an explicit takeover Confirm;
+// empty means adopt-or-keep-mine only.
+func (s *Service) claimBlueprintResourceName(ctx context.Context, kind, name string) error {
+	req, ok := ctx.Value(deployAuthorityKey{}).(DeployRequest)
+	if !ok || req.BlueprintID == "" || s.Blueprints == nil {
+		return nil
 	}
 	tenantID, ok := s.Tenant(ctx)
 	if !ok {
-		return
+		tenantID = s.resolveTenantID(ctx)
+	}
+	if tenantID == "" {
+		return nil
+	}
+	expected := takeoverExpectedOwner(req.Confirm)
+	if err := s.Blueprints.ClaimBlueprintResource(ctx, tenantID, kind, name, req.BlueprintID, expected); err != nil {
+		if errors.Is(err, store.ErrBlueprintResourceConflict) {
+			owner, _ := s.Blueprints.GetBlueprintResourceOwner(ctx, tenantID, kind, name)
+			if owner == "" {
+				owner = "another blueprint"
+			}
+			displayKind := kind
+			if kind == "key_value" {
+				displayKind = "key value"
+			}
+			return blueprintOwnershipError(blueprintOwnershipConflict{kind: displayKind, name: name, owner: owner})
+		}
+		return fmt.Errorf("claiming Blueprint ownership of %s %q: %w", kind, name, err)
+	}
+	return nil
+}
+
+// labelBlueprintOwnership sets bex.co/blueprint-id on obj when it differs.
+// Failures are returned — never logged-and-ignored (w8/m40 t004).
+func (s *Service) labelBlueprintOwnership(ctx context.Context, blueprintID string, obj client.Object) error {
+	if obj.GetLabels()[core.LabelBlueprint] == blueprintID {
+		return nil
+	}
+	base := obj.DeepCopyObject().(client.Object)
+	labels := obj.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels[core.LabelBlueprint] = blueprintID
+	obj.SetLabels(labels)
+	if err := s.Client.Patch(ctx, obj, client.MergeFrom(base)); err != nil {
+		return fmt.Errorf("stamping ownership on %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
+	}
+	return nil
+}
+
+func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID string, generation int64, runID string, st parsedStack) error {
+	if blueprintID == "" {
+		return nil
+	}
+	tenantID, ok := s.Tenant(ctx)
+	if !ok {
+		return nil
 	}
 	// A fenced run must not restamp ownership after abandon, disconnect, or a
 	// newer admission took authority (w8/m37 t003 + w8/m39): the stamp lands
 	// only while the admitted (generation, runID) claim still owns the row.
-	// Unguarded (zero generation / empty run) applies stamp as before. Skips
-	// are logged, never retried — the fencing writer owns the row now.
 	if generation != 0 && runID != "" && s.Blueprints != nil {
 		if err := s.Blueprints.AssertBlueprintExecution(ctx, blueprintID, tenantID, generation, runID); err != nil {
-			log.Printf("blueprint %s: skipping ownership stamp (generation %d run %s fenced: %v)", blueprintID, generation, runID, err)
-			return
+			return errBlueprintExecutionLost()
 		}
 	} else if generation != 0 && s.Blueprints != nil {
 		current, err := s.Blueprints.GetBlueprint(ctx, blueprintID, tenantID)
 		if err != nil {
-			log.Printf("blueprint %s: skipping ownership stamp (row absent, generation %d fenced)", blueprintID, generation)
-			return
+			return errBlueprintExecutionLost()
 		}
 		if current.ExecutionGeneration != generation {
-			log.Printf("blueprint %s: skipping ownership stamp (generation %d superseded by %d)", blueprintID, generation, current.ExecutionGeneration)
-			return
+			return errBlueprintExecutionLost()
 		}
 	}
 
-	stamp := func(obj client.Object) {
-		if obj.GetLabels()[core.LabelBlueprint] == blueprintID {
-			return
+	req, _ := ctx.Value(deployAuthorityKey{}).(DeployRequest)
+	expected := takeoverExpectedOwner(req.Confirm)
+
+	claimAndLabel := func(kind, name string, obj client.Object) error {
+		if s.Blueprints != nil {
+			if err := s.Blueprints.ClaimBlueprintResource(ctx, tenantID, kind, name, blueprintID, expected); err != nil {
+				if errors.Is(err, store.ErrBlueprintResourceConflict) {
+					owner, _ := s.Blueprints.GetBlueprintResourceOwner(ctx, tenantID, kind, name)
+					if owner == "" {
+						owner = "another blueprint"
+					}
+					return blueprintOwnershipError(blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
+				}
+				return fmt.Errorf("claiming Blueprint ownership of %s %q: %w", kind, name, err)
+			}
 		}
-		base := obj.DeepCopyObject().(client.Object)
-		labels := obj.GetLabels()
-		if labels == nil {
-			labels = map[string]string{}
-		}
-		labels[core.LabelBlueprint] = blueprintID
-		obj.SetLabels(labels)
-		if err := s.Client.Patch(ctx, obj, client.MergeFrom(base)); err != nil {
-			log.Printf("blueprint %s: stamping ownership on %s/%s: %v", blueprintID, obj.GetNamespace(), obj.GetName(), err)
-		}
+		return s.labelBlueprintOwnership(ctx, blueprintID, obj)
 	}
 
 	var apps appv1alpha1.AppList
-	if err := s.Client.List(ctx, &apps, client.MatchingLabels{core.LabelTenant: tenantID}); err == nil {
-		wanted := map[string]bool{}
-		for _, svc := range st.services {
-			wanted[svc.req.Name] = true
-		}
-		for i := range apps.Items {
-			if wanted[appServiceName(&apps.Items[i])] {
-				stamp(&apps.Items[i])
+	if err := s.Client.List(ctx, &apps, client.MatchingLabels{core.LabelTenant: tenantID}); err != nil {
+		return fmt.Errorf("listing apps for ownership stamp: %w", err)
+	}
+	wantedSvc := map[string]bool{}
+	for _, svc := range st.services {
+		wantedSvc[svc.req.Name] = true
+	}
+	for i := range apps.Items {
+		if wantedSvc[appServiceName(&apps.Items[i])] {
+			if err := claimAndLabel("service", appServiceName(&apps.Items[i]), &apps.Items[i]); err != nil {
+				return err
 			}
 		}
 	}
-	if databases, err := s.listWorkspaceDatabases(ctx, tenantID); err == nil {
+	if databases, err := s.listWorkspaceDatabases(ctx, tenantID); err != nil {
+		return fmt.Errorf("listing databases for ownership stamp: %w", err)
+	} else {
 		wanted := map[string]bool{}
 		for _, db := range st.databases {
 			wanted[db.name] = true
 		}
 		for i := range databases.Items {
 			if wanted[databases.Items[i].Spec.Name] {
-				stamp(&databases.Items[i])
+				if err := claimAndLabel("database", databases.Items[i].Spec.Name, &databases.Items[i]); err != nil {
+					return err
+				}
 			}
 		}
 	}
-	if keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID); err == nil {
+	if keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
+		return fmt.Errorf("listing key values for ownership stamp: %w", err)
+	} else {
 		wanted := map[string]bool{}
 		for _, kv := range st.keyValues {
 			wanted[kv.name] = true
 		}
 		for i := range keyValues.Items {
 			if wanted[keyValues.Items[i].Spec.Name] {
-				stamp(&keyValues.Items[i])
+				if err := claimAndLabel("key_value", keyValues.Items[i].Spec.Name, &keyValues.Items[i]); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return nil
 }
 
 // clearBlueprintOwnership removes the marker from every resource the
