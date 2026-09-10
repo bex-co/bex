@@ -74,6 +74,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     plan: null,
     idleTTLSeconds: 0,
     maintenanceMode: { enabled: false, uri: "" },
+    outboundIps: null,
     schedule: null,
     command: null,
     runs: [],

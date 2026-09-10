@@ -1256,30 +1256,6 @@ func (s *Service) collectDatastorePodLogs(ctx context.Context, namespace string,
 	return out, nil
 }
 
-func (s *Service) collectDatabasePodLogs(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error) {
-	pods, err := s.DatabasePods(ctx, namespace, q.Database)
-	if err != nil {
-		return nil, err
-	}
-	return s.collectDatastorePodLogs(ctx, namespace, q, pods, datastore{
-		name:      q.Database,
-		container: core.CNPGPostgresContainer,
-		kind:      datastorelogs.KindPostgres,
-	})
-}
-
-func (s *Service) collectKeyValuePodLogs(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error) {
-	pods, err := s.KeyValuePods(ctx, namespace, q.KeyValue)
-	if err != nil {
-		return nil, err
-	}
-	return s.collectDatastorePodLogs(ctx, namespace, q, pods, datastore{
-		name:      q.KeyValue,
-		container: core.ValkeyContainer,
-		kind:      datastorelogs.KindKeyValue,
-	})
-}
-
 // appPodNames lists the App's replica names the query's `instance` filter admits
 // — the pod-log path's honoring of that filter (a pod name is a pod name, so this
 // one structured filter needs no store).

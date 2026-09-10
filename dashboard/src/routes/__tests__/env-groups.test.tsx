@@ -146,6 +146,7 @@ function group(overrides: Partial<EnvGroupView> = {}): EnvGroupView {
     createdAt: "2026-07-15T12:00:00Z",
     updatedAt: "2026-07-15T13:00:00Z",
     revision: "egr1_test",
+    availability: null,
     serviceLinks: [],
     envVarKeys: [],
     secretFileNames: [],

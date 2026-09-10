@@ -243,7 +243,7 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		{Name: "BEX_DISK_WORKSPACE", Value: diskSnapshotWorkspace(app)},
 		{Name: "BEX_DISK_ID", Value: app.Name},
 		{Name: "HOME", Value: "/tmp"},
-		{Name: "AWS_EC2_METADATA_DISABLED", Value: "true"},
+		{Name: awsIMDSDisabledEnv, Value: awsIMDSDisabled},
 	}, extraEnv...)
 	if command != "purge" {
 		env = append(env, corev1.EnvVar{Name: "AGE_PUBLIC_KEY", Value: r.DiskSnapshots.AgePublicKey})

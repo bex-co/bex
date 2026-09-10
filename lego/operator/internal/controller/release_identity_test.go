@@ -315,7 +315,7 @@ func mutateIdentityTestField(value reflect.Value) {
 		value.SetBool(!value.Bool())
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		value.SetInt(value.Int() + 1)
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if value.IsNil() {
 			value.Set(reflect.New(value.Type().Elem()))
 		}

@@ -150,6 +150,7 @@ const apiService: ServiceView = {
   ipAllowList: null,
   ipAllowListEntries: null,
   maintenanceMode: null,
+  outboundIps: null,
 };
 
 function renderCard(

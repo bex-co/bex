@@ -217,7 +217,7 @@ func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 	// buildpack build instead bakes the command into the image's own CMD at
 	// build time, so no Deployment-level override is needed there.
 	if b := effectiveBuilder(app.Spec); b != build.BuilderNative && b != build.BuilderBuildpack && app.Spec.StartCommand != "" {
-		container.Command = []string{"/bin/sh", "-c", app.Spec.StartCommand}
+		container.Command = []string{shellBinary, "-c", app.Spec.StartCommand}
 	}
 	// Health-gating: a non-worker service speaks HTTP, so gate pod readiness on
 	// spec.healthCheckPath — Render's health check. A failure pulls the pod out

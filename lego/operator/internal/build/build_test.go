@@ -1448,8 +1448,7 @@ func TestClassifyPreludeExecutes(t *testing.T) {
 			cmd.Env = append(os.Environ(), "TMPDIR="+t.TempDir())
 			out, err := cmd.CombinedOutput()
 			got := 0
-			var ee *exec.ExitError
-			if errors.As(err, &ee) {
+			if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 				got = ee.ExitCode()
 			} else if err != nil {
 				t.Fatalf("running prelude: %v (output %q)", err, out)
@@ -1493,8 +1492,7 @@ func TestTenantOutputCannotForgeAnInfraClassification(t *testing.T) {
 		cmd := exec.Command("sh", "-eu", "-c", script, "bex-test", phase)
 		cmd.Env = append(os.Environ(), "TMPDIR="+t.TempDir())
 		out, err := cmd.CombinedOutput()
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 			return ee.ExitCode()
 		}
 		if err != nil {

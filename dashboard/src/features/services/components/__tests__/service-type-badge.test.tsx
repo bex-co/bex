@@ -45,6 +45,7 @@ function svc(type: string): ServiceView {
     ipAllowList: null,
     ipAllowListEntries: null,
     maintenanceMode: null,
+    outboundIps: null,
   };
 }
 

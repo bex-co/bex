@@ -231,8 +231,17 @@ ENVTEST_K8S_VERSION ?= $(shell v='$(call gomodver,k8s.io/api)'; \
   [ -n "$$v" ] || { echo "Set ENVTEST_K8S_VERSION manually (k8s.io/api replace has no tag)" >&2; exit 1; }; \
   printf '%s\n' "$$v" | sed -E 's/^v?[0-9]+\.([0-9]+).*/1.\1/')
 
-GOLANGCI_LINT_VERSION ?= v2.11.4
-DEADCODE_VERSION ?= v0.49.0
+GOLANGCI_LINT_VERSION ?= v2.13.2
+DEADCODE_VERSION ?= v0.50.0
+
+# The lint toolchain follows the workspace's HIGHEST module Go version (lego/cli,
+# on the 1.27 line since the pinned render-oss/cli moved there). golangci-lint's
+# own go.mod targets 1.26, so a default GOTOOLCHAIN builds the custom binary with
+# 1.26 — which then refuses to analyze the 1.27 cli module ("the Go language
+# version used to build golangci-lint is lower than the targeted Go version").
+# Pinning the build toolchain here keeps `make lint` working on a 1.26 developer
+# machine as well as on CI (where 1.27 is already installed, so nothing downloads).
+GO_LINT_TOOLCHAIN ?= go$(shell sed -n 's/^go //p' ../cli/go.mod)
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
@@ -259,10 +268,17 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+	@[ -f "$(GOLANGCI_LINT)-$(GOLANGCI_LINT_VERSION)" ] || { \
+		set -e; \
+		echo "Downloading github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)"; \
+		rm -f "$(GOLANGCI_LINT)"; \
+		GOTOOLCHAIN=$(GO_LINT_TOOLCHAIN) GOBIN="$(LOCALBIN)" go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
+		mv "$(LOCALBIN)/golangci-lint" "$(GOLANGCI_LINT)-$(GOLANGCI_LINT_VERSION)"; \
+	}
+	@ln -sf "$$(realpath "$(GOLANGCI_LINT)-$(GOLANGCI_LINT_VERSION)")" "$(GOLANGCI_LINT)"
 	@test -f .custom-gcl.yml && { \
 		echo "Building custom golangci-lint with plugins..." && \
-		$(GOLANGCI_LINT) custom --destination $(LOCALBIN) --name golangci-lint-custom && \
+		GOTOOLCHAIN=$(GO_LINT_TOOLCHAIN) $(GOLANGCI_LINT) custom --destination $(LOCALBIN) --name golangci-lint-custom && \
 		mv -f $(LOCALBIN)/golangci-lint-custom $(GOLANGCI_LINT); \
 	} || true
 

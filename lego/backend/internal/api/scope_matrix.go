@@ -295,14 +295,6 @@ func selectGraphQLOperation(ops []*ast.OperationDefinition, operationName string
 	return nil
 }
 
-func (s *Server) requireGraphQLScope(ctx context.Context, query, operationName string) error {
-	fragments, ops, ok := parseGraphQLDocument(query)
-	if !ok {
-		return nil
-	}
-	return s.requireGraphQLScopeFrom(ctx, fragments, ops, operationName)
-}
-
 func (s *Server) requireGraphQLScopeFrom(ctx context.Context, fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, operationName string) error {
 	if id, ok := core.IdentityFrom(ctx); !ok || id.CapabilityExempt() {
 		return nil

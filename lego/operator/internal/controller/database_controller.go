@@ -655,7 +655,7 @@ func stampFinalizer(ctx context.Context, c client.Client, obj client.Object, fin
 	if err := c.Update(ctx, obj); err != nil {
 		return ctrl.Result{}, true, err
 	}
-	return ctrl.Result{Requeue: true}, true, nil
+	return ctrl.Result{RequeueAfter: settleRequeue}, true, nil
 }
 
 // deleteOwned best-effort removes an owned optional object by gvk/name in the
@@ -1595,7 +1595,7 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 						// added capabilities, privilege escalation, and non-
 						// RuntimeDefault seccomp outside the build boundary.
 						SecurityContext: tenantSecCtx(),
-						Command:         []string{"/bin/sh", "-ec"},
+						Command:         []string{shellBinary, "-ec"},
 						Args: []string{
 							`for prefix in ${PREFIXES}; do
   aws s3 rm "${DESTINATION}/${prefix}/" --recursive --endpoint-url "${ENDPOINT}"

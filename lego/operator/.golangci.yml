@@ -35,6 +35,17 @@ linters:
     modernize:
       disable:
         - omitzero
+    goconst:
+      # goconst 1.11 (golangci-lint v2.13) widened detection to package scope, so
+      # a literal repeated three times across sibling files now reports. For this
+      # module that mostly surfaces container args, env-var names and label keys
+      # that read better inline than behind a const; keep the linter for literals
+      # repeated often enough to actually drift.
+      min-occurrences: 5
+      # "name" is an unstructured-object field key and a Prometheus label, not a
+      # domain value — a constant would obscure both call sites.
+      ignore-string-values:
+        - '^name$'
   exclusions:
     generated: lax
     rules:

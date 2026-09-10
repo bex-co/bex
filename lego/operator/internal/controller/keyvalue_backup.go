@@ -225,7 +225,7 @@ func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue,
 		{
 			Name:    "snapshot",
 			Image:   valkeyImage(kv.Spec.Version),
-			Command: []string{"/bin/sh", "-ceu"},
+			Command: []string{shellBinary, "-ceu"},
 			Args: []string{`rm -f /backup/dump.rdb
 valkey-cli -h "${VALKEY_HOST}" -p "6379" --rdb /backup/dump.rdb
 test -s /backup/dump.rdb`},
@@ -308,7 +308,7 @@ aws --endpoint-url "${ENDPOINT}" s3 ls "${prefix}" \
     done`, keyValueBackupRetention, uploadSource, uploadSuffix)},
 							Env: []corev1.EnvVar{
 								{Name: "HOME", Value: "/tmp"},
-								{Name: "AWS_EC2_METADATA_DISABLED", Value: "true"},
+								{Name: awsIMDSDisabledEnv, Value: awsIMDSDisabled},
 								{Name: "DESTINATION", Value: strings.TrimRight(r.Backup.DestinationPath, "/")},
 								{Name: "ENDPOINT", Value: r.Backup.EndpointURL},
 								{Name: "KEYVALUE", Value: kv.Name},
@@ -460,7 +460,7 @@ func (r *KeyValueReconciler) keyValueBackupPurgeJob(kv *appv1alpha1.KeyValue) *b
 aws --endpoint-url "${ENDPOINT}" s3 rm "${DESTINATION%/}/${KEYVALUE}/" --recursive`},
 						Env: []corev1.EnvVar{
 							{Name: "HOME", Value: "/tmp"},
-							{Name: "AWS_EC2_METADATA_DISABLED", Value: "true"},
+							{Name: awsIMDSDisabledEnv, Value: awsIMDSDisabled},
 							{Name: "DESTINATION", Value: strings.TrimRight(r.Backup.DestinationPath, "/")},
 							{Name: "ENDPOINT", Value: r.Backup.EndpointURL},
 							{Name: "KEYVALUE", Value: kv.Name},

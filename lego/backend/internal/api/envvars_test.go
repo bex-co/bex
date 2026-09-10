@@ -27,10 +27,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 )
 
-// memSecretStore is an in-memory core.SecretKV (path-keyed) for the server-level
-// env-vars wiring tests (the deep behavior is covered in internal/secrets). A
+// memSecretStore is an in-memory core.SecretKV for the server-level env-vars
+// wiring tests (the deep behavior is covered in internal/secrets). Keys are
+// tenant-prefixed ("<tenant>/<path>", secrets.TenantFromContext, "" → the
+// legacy shared tenant), exactly like the real OpenBao store and envgroups'
+// own fakeStore — env groups write a group's metadata under its workspace
+// tenant and a thin locator at the legacy tenant under the SAME logical path,
+// so a tenant-blind store would let the locator clobber the metadata. A
 // service's env map lives at "services/<svc>/env".
 type memSecretStore struct {
 	m           map[string]map[string]string
@@ -43,33 +49,54 @@ func newMemSecretStore() *memSecretStore {
 	return &memSecretStore{m: map[string]map[string]string{}, versions: map[string]uint64{}}
 }
 
-func (s *memSecretStore) Get(_ context.Context, path string) (map[string]string, error) {
+// key is the tenant-prefixed map key for a logical path.
+func (s *memSecretStore) key(ctx context.Context, path string) string {
+	return secrets.TenantFromContext(ctx) + "/" + path
+}
+
+// legacyKey addresses the untenanted (legacy shared) home of path — where
+// every non-env-group caller in this package writes.
+func legacyKey(path string) string { return secrets.LegacyTenant + "/" + path }
+
+// data returns the stored map at path's legacy-tenant home, for assertions
+// that index the store directly instead of going through Get.
+func (s *memSecretStore) data(path string) map[string]string { return s.m[legacyKey(path)] }
+
+// seed writes data directly at path's legacy-tenant home.
+func (s *memSecretStore) seed(path string, data map[string]string) { s.m[legacyKey(path)] = data }
+
+// version reports the current CAS version of path under ctx's tenant.
+func (s *memSecretStore) version(ctx context.Context, path string) uint64 {
+	return s.versions[s.key(ctx, path)]
+}
+
+func (s *memSecretStore) Get(ctx context.Context, path string) (map[string]string, error) {
 	out := map[string]string{}
-	for k, v := range s.m[path] {
+	for k, v := range s.m[s.key(ctx, path)] {
 		out[k] = v
 	}
 	return out, nil
 }
 
-func (s *memSecretStore) Put(_ context.Context, path string, data map[string]string) error {
+func (s *memSecretStore) Put(ctx context.Context, path string, data map[string]string) error {
 	cp := map[string]string{}
 	for k, v := range data {
 		cp[k] = v
 	}
-	s.m[path] = cp
-	s.versions[path]++
+	s.m[s.key(ctx, path)] = cp
+	s.versions[s.key(ctx, path)]++
 	return nil
 }
 
-func (s *memSecretStore) Delete(_ context.Context, path string) error {
-	delete(s.m, path)
-	s.versions[path]++
+func (s *memSecretStore) Delete(ctx context.Context, path string) error {
+	delete(s.m, s.key(ctx, path))
+	s.versions[s.key(ctx, path)]++
 	return nil
 }
 
 func (s *memSecretStore) GetVersioned(ctx context.Context, path string) (core.SecretKVSnapshot, error) {
 	data, err := s.Get(ctx, path)
-	return core.SecretKVSnapshot{Data: data, Version: s.versions[path]}, err
+	return core.SecretKVSnapshot{Data: data, Version: s.versions[s.key(ctx, path)]}, err
 }
 
 func (s *memSecretStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
@@ -77,17 +104,17 @@ func (s *memSecretStore) PutCAS(ctx context.Context, path string, data map[strin
 	if s.failCASCall == s.casCalls {
 		return 0, errors.New("injected /openbao/private/path failed-writer-secret")
 	}
-	if s.versions[path] != expectedVersion {
+	if s.versions[s.key(ctx, path)] != expectedVersion {
 		return 0, core.ErrConflict
 	}
 	if err := s.Put(ctx, path, data); err != nil {
 		return 0, err
 	}
-	return s.versions[path], nil
+	return s.versions[s.key(ctx, path)], nil
 }
 
-func (s *memSecretStore) List(_ context.Context, path string) ([]string, error) {
-	prefix := path + "/"
+func (s *memSecretStore) List(ctx context.Context, path string) ([]string, error) {
+	prefix := s.key(ctx, path) + "/"
 	seen := map[string]bool{}
 	var out []string
 	for k := range s.m {
@@ -118,7 +145,7 @@ func (c *compensationConflictClient) Patch(ctx context.Context, obj client.Objec
 		c.done = true
 		if c.concurrent {
 			path := envKey("web")
-			_, _ = c.store.PutCAS(ctx, path, map[string]string{"TOKEN": "concurrent-winner"}, c.store.versions[path])
+			_, _ = c.store.PutCAS(ctx, path, map[string]string{"TOKEN": "concurrent-winner"}, c.store.version(ctx, path))
 		}
 		return errors.New("injected App /private/path failure")
 	}
@@ -142,7 +169,7 @@ func TestEnvVars_RESTAndGraphQLDashboardShape(t *testing.T) {
 		`[{"key":"FOO","value":"bar"},{"key":"BAZ","value":"qux"}]`).Code; code != 200 {
 		t.Fatalf("PUT env-vars => 200, got %d", code)
 	}
-	if store.m[envKey("web")]["FOO"] != "bar" {
+	if store.data(envKey("web"))["FOO"] != "bar" {
 		t.Fatal("REST PUT did not write the store")
 	}
 
@@ -184,16 +211,16 @@ func TestEnvVars_RESTAndGraphQLDashboardShape(t *testing.T) {
 			expectedEnvRevision:"`+revision+`"
 		) { envVarKeys rolledOut }
 	}`)["patchServiceEnvironment"].(map[string]any)
-	if cas["rolledOut"] != false || store.m[envKey("web")]["FOO"] != "cas-updated" {
-		t.Fatalf("revision-aware GraphQL mutation = %+v store=%+v", cas, store.m[envKey("web")])
+	if cas["rolledOut"] != false || store.data(envKey("web"))["FOO"] != "cas-updated" {
+		t.Fatalf("revision-aware GraphQL mutation = %+v store=%+v", cas, store.data(envKey("web")))
 	}
 
 	// setEnvVar mutation (upsert-one) travels the same Service path.
 	if gql(t, h, `mutation { setEnvVar(serviceId:"web", key:"NEW", value:"z") }`)["setEnvVar"] != true {
 		t.Fatal("setEnvVar mutation should be true")
 	}
-	if store.m[envKey("web")]["NEW"] != "z" || store.m[envKey("web")]["FOO"] != "cas-updated" {
-		t.Fatalf("setEnvVar should merge: %+v", store.m[envKey("web")])
+	if store.data(envKey("web"))["NEW"] != "z" || store.data(envKey("web"))["FOO"] != "cas-updated" {
+		t.Fatalf("setEnvVar should merge: %+v", store.data(envKey("web")))
 	}
 
 	// The new GraphQL list is the paged twin of REST's per-item envelope. The
@@ -212,14 +239,14 @@ func TestEnvVars_RESTAndGraphQLDashboardShape(t *testing.T) {
 	if gql(t, h, `mutation { setEnvVar(serviceId:"web", key:"GENERATED_ONE", generateValue:true) }`)["setEnvVar"] != true {
 		t.Fatal("generated setEnvVar mutation should be true")
 	}
-	if len(store.m[envKey("web")]["GENERATED_ONE"]) != 44 {
-		t.Fatalf("single generated value = %q", store.m[envKey("web")]["GENERATED_ONE"])
+	if len(store.data(envKey("web"))["GENERATED_ONE"]) != 44 {
+		t.Fatalf("single generated value = %q", store.data(envKey("web"))["GENERATED_ONE"])
 	}
 	if gql(t, h, `mutation { setEnvVars(serviceId:"web", envVars:[{key:"GENERATED_ALL", generateValue:true}]) }`)["setEnvVars"] != true {
 		t.Fatal("generated setEnvVars mutation should be true")
 	}
-	if len(store.m[envKey("web")]["GENERATED_ALL"]) != 44 {
-		t.Fatalf("bulk generated value = %q", store.m[envKey("web")]["GENERATED_ALL"])
+	if len(store.data(envKey("web"))["GENERATED_ALL"]) != 44 {
+		t.Fatalf("bulk generated value = %q", store.data(envKey("web"))["GENERATED_ALL"])
 	}
 }
 
@@ -243,8 +270,8 @@ func TestEnvVars_UnconfiguredIs503(t *testing.T) {
 
 func TestEnvironmentBatch_RESTAndGraphQLWiring(t *testing.T) {
 	store := newMemSecretStore()
-	store.m[envKey("web")] = map[string]string{"KEEP": "opaque-secret", "RENAME": "rename-secret"}
-	store.m["services/web/files"] = map[string]string{"keep.pem": "opaque-file"}
+	store.seed(envKey("web"), map[string]string{"KEEP": "opaque-secret", "RENAME": "rename-secret"})
+	store.seed("services/web/files", map[string]string{"keep.pem": "opaque-file"})
 	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default",
 		Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
 	h, _ := serverWith(t, base, Deps{Secrets: store})
@@ -259,8 +286,8 @@ func TestEnvironmentBatch_RESTAndGraphQLWiring(t *testing.T) {
 			t.Fatalf("REST batch response leaked %q: %s", secret, rec.Body.String())
 		}
 	}
-	if store.m[envKey("web")]["KEEP"] != "opaque-secret" || store.m[envKey("web")]["RENAMED"] != "rename-secret" {
-		t.Fatalf("REST batch lost omitted/renamed values: %+v", store.m[envKey("web")])
+	if store.data(envKey("web"))["KEEP"] != "opaque-secret" || store.data(envKey("web"))["RENAMED"] != "rename-secret" {
+		t.Fatalf("REST batch lost omitted/renamed values: %+v", store.data(envKey("web")))
 	}
 
 	result := gql(t, h, `mutation {
@@ -274,11 +301,11 @@ func TestEnvironmentBatch_RESTAndGraphQLWiring(t *testing.T) {
 	if result["rolledOut"] != true {
 		t.Fatalf("GraphQL deploy result: %+v", result)
 	}
-	if _, ok := store.m[envKey("web")]["ADDED"]; ok {
-		t.Fatalf("GraphQL batch did not delete env var: %+v", store.m[envKey("web")])
+	if _, ok := store.data(envKey("web"))["ADDED"]; ok {
+		t.Fatalf("GraphQL batch did not delete env var: %+v", store.data(envKey("web")))
 	}
-	if _, ok := store.m["services/web/files"]["keep.pem"]; ok {
-		t.Fatalf("GraphQL batch did not delete file: %+v", store.m["services/web/files"])
+	if _, ok := store.data("services/web/files")["keep.pem"]; ok {
+		t.Fatalf("GraphQL batch did not delete file: %+v", store.data("services/web/files"))
 	}
 }
 
@@ -296,7 +323,7 @@ func TestEnvironmentCASCompensationPreservesGraphQLErrorCodes(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			store := newMemSecretStore()
-			store.m[envKey("web")] = map[string]string{"TOKEN": "before-secret"}
+			store.seed(envKey("web"), map[string]string{"TOKEN": "before-secret"})
 			store.failCASCall = tc.failCASCall
 			cl := &compensationConflictClient{Client: fakeClient(sampleApp("web")), store: store, concurrent: tc.concurrent}
 			base := &core.Base{Client: cl, Namespace: "default", Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}

@@ -56,6 +56,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     ipAllowList: null,
     ipAllowListEntries: null,
     maintenanceMode: null,
+    outboundIps: null,
     ...overrides,
   };
 }

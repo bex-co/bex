@@ -50,9 +50,6 @@ func TestPrometheusQueryHonorsCancellationDuringResponseBody(t *testing.T) {
 	}
 }
 
-//go:fix inline
-func ptr32(v int32) *int32 { return new(v) }
-
 // fakePodMetricsList builds a minimal metrics-server PodMetricsList JSON body.
 func fakePodMetricsList(items []struct{ cpu, mem string }) []byte {
 	type usage struct {
@@ -124,7 +121,7 @@ func TestAutoscaleDesiredNoUsage(t *testing.T) {
 		Enabled:          true,
 		MinReplicas:      1,
 		MaxReplicas:      5,
-		TargetCPUPercent: ptr32(80),
+		TargetCPUPercent: new(int32(80)),
 	}
 	_, skip := autoscaleDesired(as, nil, "starter")
 	if !skip {
@@ -138,7 +135,7 @@ func TestAutoscaleDesiredBestEffortTier(t *testing.T) {
 		Enabled:          true,
 		MinReplicas:      1,
 		MaxReplicas:      5,
-		TargetCPUPercent: ptr32(80),
+		TargetCPUPercent: new(int32(80)),
 	}
 	usage := []PodUsage{{Pod: "p", CPUCores: 999, MemoryBytes: 999e9}}
 	_, skip := autoscaleDesired(as, usage, "") // empty tier = best-effort
@@ -155,7 +152,7 @@ func TestAutoscaleDesiredScaleUp(t *testing.T) {
 		Enabled:          true,
 		MinReplicas:      1,
 		MaxReplicas:      5,
-		TargetCPUPercent: ptr32(80),
+		TargetCPUPercent: new(int32(80)),
 	}
 	usage := []PodUsage{{Pod: "p", CPUCores: 0.6, MemoryBytes: 100 * 1024 * 1024}}
 	got, skip := autoscaleDesired(as, usage, "starter")
@@ -176,7 +173,7 @@ func TestAutoscaleDesiredScaleDown(t *testing.T) {
 		Enabled:          true,
 		MinReplicas:      1,
 		MaxReplicas:      5,
-		TargetCPUPercent: ptr32(80),
+		TargetCPUPercent: new(int32(80)),
 	}
 	usage := []PodUsage{
 		{Pod: "p1", CPUCores: 0.05},
@@ -198,7 +195,7 @@ func TestAutoscaleDesiredClampToMax(t *testing.T) {
 		Enabled:          true,
 		MinReplicas:      1,
 		MaxReplicas:      3,
-		TargetCPUPercent: ptr32(10),
+		TargetCPUPercent: new(int32(10)),
 	}
 	usage := []PodUsage{{Pod: "p", CPUCores: 0.5}} // starter limit 0.5; target 10% = 0.05
 	got, skip := autoscaleDesired(as, usage, "starter")
@@ -218,7 +215,7 @@ func TestAutoscaleDesiredCapsOversizedBounds(t *testing.T) {
 		Enabled:          true,
 		MinReplicas:      1,
 		MaxReplicas:      1_000_000_000,
-		TargetCPUPercent: ptr32(1),
+		TargetCPUPercent: new(int32(1)),
 	}
 	usage := []PodUsage{{Pod: "p", CPUCores: 0.5}}
 	got, skip := autoscaleDesired(as, usage, "starter")
@@ -236,7 +233,7 @@ func TestAutoscaleDesiredClampToMin(t *testing.T) {
 		Enabled:          true,
 		MinReplicas:      2,
 		MaxReplicas:      5,
-		TargetCPUPercent: ptr32(80),
+		TargetCPUPercent: new(int32(80)),
 	}
 	usage := []PodUsage{{Pod: "p", CPUCores: 0.05}}
 	got, skip := autoscaleDesired(as, usage, "starter")
@@ -255,7 +252,7 @@ func TestAutoscaleDesiredMemoryMetric(t *testing.T) {
 		Enabled:             true,
 		MinReplicas:         1,
 		MaxReplicas:         5,
-		TargetMemoryPercent: ptr32(50),
+		TargetMemoryPercent: new(int32(50)),
 	}
 	usage := []PodUsage{{Pod: "p", CPUCores: 0.1, MemoryBytes: 1.5 * 1024 * 1024 * 1024}}
 	got, skip := autoscaleDesired(as, usage, "standard")
@@ -273,8 +270,8 @@ func TestAutoscaleDesiredBothMetrics(t *testing.T) {
 		Enabled:             true,
 		MinReplicas:         1,
 		MaxReplicas:         5,
-		TargetCPUPercent:    ptr32(80),
-		TargetMemoryPercent: ptr32(50),
+		TargetCPUPercent:    new(int32(80)),
+		TargetMemoryPercent: new(int32(50)),
 	}
 	// starter: 0.5 CPU, 512 MiB
 	// CPU: target 0.4, avg usage 0.6 → desired = ceil(1*0.6/0.4) = 2
@@ -312,7 +309,7 @@ func TestApplyAutoscalingWritesAnnotationNotSpec(t *testing.T) {
 				Enabled:          true,
 				MinReplicas:      1,
 				MaxReplicas:      5,
-				TargetCPUPercent: ptr32(80),
+				TargetCPUPercent: new(int32(80)),
 			},
 		},
 	}

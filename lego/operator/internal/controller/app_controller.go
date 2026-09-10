@@ -202,6 +202,15 @@ const labelNetworkIsolation = "app.bex.co/network-isolation"
 // an ExternalName create/update from the manager ServiceAccount.
 const labelPlatformAliasPurpose = "app.bex.co/platform-alias"
 
+// shellBinary is the shell every operator-authored container command runs
+// through, and awsIMDSDisabledEnv is the env var each S3-touching Job sets so
+// the AWS SDK never probes instance metadata.
+const (
+	shellBinary        = "/bin/sh"
+	awsIMDSDisabledEnv = "AWS_EC2_METADATA_DISABLED"
+	awsIMDSDisabled    = "true"
+)
+
 const (
 	platformAliasStatic      = "static-server"
 	platformAliasMaintenance = "maintenance"
@@ -957,7 +966,7 @@ func (r *AppReconciler) consumeClearCacheAnnotation(ctx context.Context, app *ap
 	if len(app.Annotations) == 0 {
 		app.Annotations = nil
 	}
-	if err := r.Client.Patch(ctx, app, patch); err != nil {
+	if err := r.Patch(ctx, app, patch); err != nil {
 		logf.FromContext(ctx).Error(err, "clearing spent clear-cache annotation", "app", app.Name)
 	}
 }
@@ -2522,8 +2531,7 @@ func (r *AppReconciler) reconcileSlugService(ctx context.Context, app *appv1alph
 		return r.Delete(ctx, svc)
 	}
 	err := r.applyClusterIPService(ctx, app, slug, port)
-	var owned *controllerutil.AlreadyOwnedError
-	if errors.As(err, &owned) {
+	if _, ok := errors.AsType[*controllerutil.AlreadyOwnedError](err); ok {
 		logf.FromContext(ctx).Info("slug Service name already owned by another object; skipping the alias",
 			"app", app.Name, "slug", slug)
 		return nil
@@ -3584,7 +3592,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 		command = app.Spec.StartCommand
 	}
 	if command != "" {
-		container.Command = []string{"/bin/sh", "-c", command}
+		container.Command = []string{shellBinary, "-c", command}
 	}
 	spec := corev1.PodSpec{
 		RestartPolicy:                corev1.RestartPolicyNever,

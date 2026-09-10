@@ -9,10 +9,8 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import {
-  ApplicationMetricsCard,
-  summarizeLimits,
-} from "../application-metrics-card";
+import { ApplicationMetricsCard } from "../application-metrics-card";
+import { summarizeLimits } from "@/features/metrics/lib/limit-summary";
 import { useMetrics } from "@/features/metrics/hooks/use-metrics";
 import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-filter-values";
 
