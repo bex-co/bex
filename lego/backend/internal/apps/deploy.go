@@ -51,6 +51,26 @@ const (
 	initialDeployHookRanAnnotation = "bex.co/initial-deploy-hook-ran"
 )
 
+// deployAuthorityKey carries the Blueprint DeployRequest on the apply context
+// so per-resource sinks (applyDatabase / applyKeyValue / applyBlueprintCreate)
+// can re-assert execution without widening every helper signature (w8/m39).
+type deployAuthorityKey struct{}
+
+func withDeployAuthority(ctx context.Context, req DeployRequest) context.Context {
+	if req.BlueprintID == "" || req.BlueprintGeneration == 0 || req.BlueprintRunID == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, deployAuthorityKey{}, req)
+}
+
+func requireDeployAuthority(ctx context.Context, s *Service) error {
+	req, ok := ctx.Value(deployAuthorityKey{}).(DeployRequest)
+	if !ok {
+		return nil
+	}
+	return s.requireBlueprintExecution(ctx, req)
+}
+
 // deploy.go is the deploy-from-chat mapper (pillar 4): it turns a repo + a
 // Render Blueprint-shaped render.yaml into a stack of CreateRequests + Database specs and
 // rides Core.Create, so "deploy this repo (web + worker + postgres)" is one agent
@@ -91,14 +111,18 @@ type DeployRequest struct {
 	// no ownership enforcement (manual resources adopt freely, unchanged).
 	BlueprintID string
 	// BlueprintGeneration is the admitted execution generation the apply runs
-	// under (w8/m37 t003). Zero = unguarded (direct deploy, legacy paths):
-	// stamping proceeds as before. Non-zero = the ownership stamp is applied
-	// only while the Blueprint still carries this generation — a disconnect or
-	// newer admission that fenced the run also fences its late stamp.
+	// under (w8/m37 t003 + w8/m39). Zero = unguarded (direct deploy, legacy
+	// paths): stamping and mid-apply asserts are skipped. Non-zero = every
+	// mutation family re-asserts this generation still owns active_run_id, and
+	// the ownership stamp lands only while that claim holds.
 	BlueprintGeneration int64
-	Repo                string
-	Branch              string
-	Manifest            string
+	// BlueprintRunID is the admitted sync run id paired with BlueprintGeneration
+	// (w8/m39). Empty with a non-zero generation is treated as unguarded so
+	// legacy callers without a run claim do not spuriously assert.
+	BlueprintRunID string
+	Repo           string
+	Branch         string
+	Manifest       string
 	// EnvVarValues supplies sync:false values collected by an interactive
 	// Blueprint create flow. They are never included in a validation plan or an
 	// App spec; apply seeds them once into the mutable env store.
@@ -643,10 +667,11 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 // 3. Fetch workspace datastore snapshots (databases, key-values) in parallel
 // 4. Resolve cross-references to existing resources (by name → id/CR name)
 // 5. Preflight env-groups and env-vars (seam availability checks)
-// 6. Apply groupings (projects, environments)
-// 7. Apply env-groups → datastores → services (in dependency order)
+// 6. Apply groupings (projects, environments) — asserts Blueprint execution first
+// 7. Apply env-groups → datastores → services (each family re-asserts)
 // 8. Patch forward-referenced services (deferred fromService host slugs)
 // 9. Auto-register Blueprint row (enables subsequent sync operations)
+// 10. Stamp ownership only while the admitted (generation, run) claim still holds
 func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack) (StackResult, error) {
 	if err := s.resolveBlueprintRegistryCredentials(ctx, &st); err != nil {
 		return StackResult{}, err
@@ -675,6 +700,10 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.preflightBlueprintEnv(ctx, st); err != nil {
 		return StackResult{}, err
 	}
+	if err := s.requireBlueprintExecution(ctx, req); err != nil {
+		return StackResult{}, err
+	}
+	ctx = withDeployAuthority(ctx, req)
 	assignments, err := s.applyBlueprintGroupings(ctx, st.groupings)
 	if err != nil {
 		return StackResult{}, err
@@ -684,7 +713,13 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
 	ctx = core.WithConfirm(ctx, req.Confirm)
 	res := StackResult{}
+	if err := s.requireBlueprintExecution(ctx, req); err != nil {
+		return res, err
+	}
 	if err := s.applyStackEnvGroups(ctx, st.envGroups, assignments, &res); err != nil {
+		return res, err
+	}
+	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
 	if err := s.applyStackDatastores(ctx, st, assignments, databases, keyValues, databaseIDs, kvCRNames, &res); err != nil {
@@ -713,8 +748,14 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		serviceSlugs[target] = slug
 		return slug, nil
 	}
+	if err := s.requireBlueprintExecution(ctx, req); err != nil {
+		return res, err
+	}
 	deferred, err := s.applyStackServices(ctx, st, assignments, databaseIDs, kvCRNames, serviceSlugs, lookupSlug, &res)
 	if err != nil {
+		return res, err
+	}
+	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
 	if err := s.patchDeferredStackServices(ctx, deferred, serviceSlugs); err != nil {
@@ -722,11 +763,15 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	}
 	// Auto-register a blueprint row when called with a repo (w2/m15): lets
 	// list_blueprints surface it and sync_blueprint re-apply it later without
-	// the caller needing to register it separately.
-	if req.Repo != "" {
+	// the caller needing to register it separately. Blueprint sync/create
+	// already admitted the row — skip the unfenced upsert on those paths.
+	if req.Repo != "" && req.BlueprintID == "" {
 		s.upsertBlueprint(ctx, req)
 	}
-	s.stampBlueprintOwnership(ctx, req.BlueprintID, req.BlueprintGeneration, st)
+	if err := s.requireBlueprintExecution(ctx, req); err != nil {
+		return res, err
+	}
+	s.stampBlueprintOwnership(ctx, req.BlueprintID, req.BlueprintGeneration, req.BlueprintRunID, st)
 	return res, nil
 }
 
@@ -800,11 +845,17 @@ func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnv
 		return nil // nothing declared — and the EnvGroups seam may not be wired
 	}
 	for _, g := range envGroups {
+		if err := requireDeployAuthority(ctx, s); err != nil {
+			return err
+		}
 		if err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates); err != nil {
 			return fmt.Errorf("env group %q: %w", g.name, err)
 		}
 		if g.grouping != "" {
 			if assignment := assignments[g.grouping]; assignment.ID != "" {
+				if err := requireDeployAuthority(ctx, s); err != nil {
+					return err
+				}
 				if err := s.EnvGroups.SetGroupEnvironment(ctx, g.name, assignment.ID); err != nil {
 					return fmt.Errorf("assigning env group %q to environment: %w", g.name, err)
 				}
@@ -833,6 +884,9 @@ func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnv
 // applying the DB first starts its provisioning immediately.
 func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, databases *appv1alpha1.DatabaseList, keyValues *appv1alpha1.KeyValueList, databaseIDs, kvCRNames map[string]string, res *StackResult) error {
 	for _, db := range st.databases {
+		if err := requireDeployAuthority(ctx, s); err != nil {
+			return err
+		}
 		v, err := s.applyDatabase(ctx, db, assignments[db.grouping], databases.Items)
 		if err != nil {
 			return err
@@ -841,6 +895,9 @@ func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assi
 		databaseIDs[db.name] = v.ID
 	}
 	for _, kv := range st.keyValues {
+		if err := requireDeployAuthority(ctx, s); err != nil {
+			return err
+		}
 		v, err := s.applyKeyValue(ctx, kv, assignments[kv.grouping], keyValues.Items)
 		if err != nil {
 			return err
@@ -867,6 +924,9 @@ type deferredService struct {
 func (s *Service) applyStackServices(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, databaseIDs, kvCRNames, serviceSlugs map[string]string, lookupSlug func(string) (string, error), res *StackResult) ([]deferredService, error) {
 	var deferred []deferredService
 	for _, svc := range st.services {
+		if err := requireDeployAuthority(ctx, s); err != nil {
+			return nil, err
+		}
 		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupSlug)
 		if err != nil {
 			return nil, err
@@ -888,11 +948,17 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, assign
 		// Link fromGroup groups (idempotent) and seed sync:false/generateValue vars
 		// (seed-once) now that the service exists.
 		for _, g := range svc.groupLinks {
+			if err := requireDeployAuthority(ctx, s); err != nil {
+				return nil, err
+			}
 			if err := s.EnvGroups.LinkEnvGroup(ctx, g, svc.req.Name); err != nil {
 				return nil, fmt.Errorf("linking env group %q to %q: %w", g, svc.req.Name, err)
 			}
 		}
 		if len(svc.seedLiterals) > 0 || len(svc.seedGenerates) > 0 {
+			if err := requireDeployAuthority(ctx, s); err != nil {
+				return nil, err
+			}
 			if err := s.EnvSeeder.SeedEnvVars(ctx, svc.req.Name, svc.seedLiterals, svc.seedGenerates); err != nil {
 				return nil, fmt.Errorf("seeding env for %q: %w", svc.req.Name, err)
 			}
@@ -907,6 +973,9 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, assign
 // references (first apply only).
 func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []deferredService, serviceSlugs map[string]string) error {
 	for _, d := range deferred {
+		if err := requireDeployAuthority(ctx, s); err != nil {
+			return err
+		}
 		for _, ref := range d.refs {
 			slug := serviceSlugs[ref.target]
 			if slug == "" { // unreachable: every stack service was created above

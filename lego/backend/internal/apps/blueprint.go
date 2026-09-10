@@ -64,6 +64,9 @@ type BlueprintStore interface {
 	// StageBlueprintManifest stores the admitted sync's preflighted manifest,
 	// fencing on the admitted generation (w8/m37 t002/t005).
 	StageBlueprintManifest(ctx context.Context, id, tenantID string, generation int64, runID, manifest string) (store.Blueprint, error)
+	// AssertBlueprintExecution confirms the admitted (generation, runID) still
+	// owns the claim before a resource-mutation family (w8/m39).
+	AssertBlueprintExecution(ctx context.Context, id, tenantID string, generation int64, runID string) error
 	// CompleteBlueprintSync commits a run's terminal state together with the
 	// status projected from the current row (w8/m37 t002/t005). A stale
 	// completion reports store.ErrBlueprintSyncBusy without overwriting.
@@ -76,21 +79,53 @@ type BlueprintStore interface {
 	// sweep, oldest first, bounded per tick (w8/m37 t004).
 	ListAbandonedBlueprintSyncs(ctx context.Context, before time.Time, limit int) ([]store.AbandonedBlueprintSync, error)
 	// AbandonBlueprintSync settles one stale running run as interrupted,
-	// flipping its Blueprint to error only while the abandoned generation
-	// still owns it (w8/m37 t004). False means another writer settled first.
+	// flipping its Blueprint to error and bumping generation only while the
+	// abandoned generation still owns it (w8/m37 t004 + w8/m39). False means
+	// another writer settled first.
 	AbandonBlueprintSync(ctx context.Context, runID string, now time.Time, reason string) (bool, error)
 }
 
 // errBlueprintSyncBusy is the one documented 409 for every lifecycle fencing
-// outcome (admission contention, fenced stage/completion, disconnect-busy):
-// one coded error through REST, GraphQL, MCP, and the dashboard (w8/m37 t002).
+// outcome (admission contention, fenced stage/completion/assert, disconnect-
+// busy): one coded error through REST, GraphQL, MCP, and the dashboard
+// (w8/m37 t002 + w8/m39).
 func errBlueprintSyncBusy(msg string) error {
 	return core.NewConflictError("BLUEPRINT_SYNC_BUSY", msg, nil)
+}
+
+// errBlueprintExecutionLost is the busy conflict for a mid-apply assert that
+// lost authority — actionable: start an explicit new sync; partial work is
+// never replayed automatically.
+func errBlueprintExecutionLost() error {
+	return errBlueprintSyncBusy("this sync no longer owns blueprint execution (superseded, interrupted, or disconnected); start a new sync — partial work is never replayed automatically")
 }
 
 // isBlueprintBusy reports a lost (or never held) execution claim from the store.
 func isBlueprintBusy(err error) bool {
 	return errors.Is(err, store.ErrBlueprintSyncBusy)
+}
+
+// requireBlueprintExecution asserts the DeployRequest's admitted claim still
+// holds before a mutation family. Non-blueprint / unguarded deploys (empty id
+// or zero generation) are no-ops.
+func (s *Service) requireBlueprintExecution(ctx context.Context, req DeployRequest) error {
+	if req.BlueprintID == "" || req.BlueprintGeneration == 0 || req.BlueprintRunID == "" || s.Blueprints == nil {
+		return nil
+	}
+	tenantID, ok := s.Tenant(ctx)
+	if !ok {
+		tenantID = s.resolveTenantID(ctx)
+	}
+	if tenantID == "" {
+		return nil
+	}
+	if err := s.Blueprints.AssertBlueprintExecution(ctx, req.BlueprintID, tenantID, req.BlueprintGeneration, req.BlueprintRunID); err != nil {
+		if isBlueprintBusy(err) {
+			return errBlueprintExecutionLost()
+		}
+		return err
+	}
+	return nil
 }
 
 // BlueprintFetcher fetches a blueprint file from its Git repository. The
@@ -505,6 +540,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	prepareReq.Confirm = req.Confirm
 	prepareReq.BlueprintID = b.ID
 	prepareReq.BlueprintGeneration = b.ExecutionGeneration
+	prepareReq.BlueprintRunID = run.ID
 	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed)
 
 	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "create")
@@ -786,6 +822,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	deployReq := DeployRequest{
 		BlueprintID:         b.ID,
 		BlueprintGeneration: b.ExecutionGeneration,
+		BlueprintRunID:      run.ID,
 		Repo:                b.Repo,
 		Branch:              b.Branch,
 		Manifest:            b.Manifest,

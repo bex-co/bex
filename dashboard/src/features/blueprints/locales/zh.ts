@@ -474,7 +474,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Toast shown when syncBlueprint returns an error",
   },
   "blueprints.syncBusy": {
-    message: "已有同步正在运行——待其完成后重试",
+    message:
+      "此同步已失去执行权（忙碌、中断或被取代）——请重新同步；部分写入不会自动重放",
     description:
       "Toast shown when syncBlueprint refuses with BLUEPRINT_SYNC_BUSY",
   },

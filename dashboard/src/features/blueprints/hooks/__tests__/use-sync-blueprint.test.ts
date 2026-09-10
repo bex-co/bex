@@ -69,7 +69,7 @@ describe("useSyncBlueprint", () => {
 
     expect(outcome).toEqual({ status: "error" });
     expect(toastError).toHaveBeenCalledWith(
-      "Another sync is already running — retry after it settles",
+      "This sync no longer owns execution (busy, interrupted, or superseded) — start a new sync; partial work is never replayed",
     );
   });
 
