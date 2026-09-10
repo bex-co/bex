@@ -95,7 +95,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **043** — [Decide production build-cache enablement](043.md) (45m; depends on w7/m87/t008 and w7/m88/t009) ← approved proposal 3; measured enable-or-hold recommendation after both correctness fixes close.
+- [ ] **043** — [Decide production build-cache enablement](043.md) (45m; depends on w7/m87/t008 and w7/m88/t009) ← **HOLD 2026-09-09:** production preflight recorded; 7 real correctness builds passed. The approved 48–72h trial awaits a deployed image containing both fixes and a representative cache-size projection. Global cache remains off.
 
 > **2026-09-06:** `023` deferred to `.pm/FUTURE-MAYBE.md` and archived in `done/023.md`; the proxy already exists, while token billing awaits an explicit product/provider contract. `038` closed after three verified database restores, offline clean-image preservation, and exact old ReplicaSet/manifest/blob retirement; see `done/038.md` and the 2026-09-06 drill record. `042` investigation closed — historical upload routing is `nvme4tbfish` / prior Render disks; no attached recovery source today; restore + durable disk deferred to `.pm/FUTURE-MAYBE.md` (`done/042.md`).
 
