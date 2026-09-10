@@ -17,7 +17,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps onl
 
 ## Milestones
 
-- [ ] **m138** — [Deploy `failureReason` reaches every surface, and the last protected-marker drop](m138/README.md) (8 tasks; ~2h15m implementation, ~4h15m total) ← approved 2026-09-09 pm-brainstorm proposal 1, from `w6/done/m97` § "Follow-ups found, NOT fixed here" (all three re-verified open 2026-09-09).
+- [x] **m138** — [Deploy `failureReason` reaches every surface, and the last protected-marker drop](done/m138/README.md) (8 tasks; ~2h15m implementation, ~4h15m total) ← approved 2026-09-09 pm-brainstorm proposal 1, from `w6/done/m97` § "Follow-ups found, NOT fixed here" (all three re-verified open 2026-09-09).
 - [ ] **m139** — [Live-verification debt sweep on dev-1](m139/README.md) (10 tasks; ~4h15m implementation, ~5h50m total) ← approved 2026-09-09 pm-brainstorm proposal 2: ten unowned "not verified live — deferred to the next QA pass" residuals from w6/m114·m116·m118·m125·m127·m130·m133·m46, w9/m91, and w1/m72's waived t007, runnable now that the CAPD cluster is healthy (`084`, 2026-09-09) and `dev-3` is live under `w3/m79`.
 - [x] **m137** — [Recover interrupted local agent-image updates](done/m137/README.md) (7 tasks; 3h implementation, 4h total) ← approved 2026-09-08 pm-brainstorm proposal 1.
 

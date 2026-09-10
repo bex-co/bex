@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  deployEndedStatus,
   deployStatusKey,
   deployStatusVariant,
   deployTriggerKey,
@@ -8,6 +9,33 @@ import {
   isRollbackableDeployStatus,
   isTerminalDeployStatus,
 } from "../deploy-status";
+
+describe("deployEndedStatus (w1/m138)", () => {
+  it("prefers the backend's exact failure kind over the lossy mapping", () => {
+    expect(
+      deployEndedStatus({
+        deployStatus: "failed",
+        fullDeployStatus: "build_failed",
+      }),
+    ).toBe("build_failed");
+    expect(
+      deployEndedStatus({
+        deployStatus: "failed",
+        fullDeployStatus: "pre_deploy_failed",
+      }),
+    ).toBe("pre_deploy_failed");
+  });
+
+  it("maps Render's 3-value status when the extra is absent (older events)", () => {
+    expect(deployEndedStatus({ deployStatus: "succeeded" })).toBe("live");
+    expect(deployEndedStatus({ deployStatus: "failed" })).toBe(
+      "update_failed",
+    );
+    expect(deployEndedStatus({ deployStatus: "canceled" })).toBe("canceled");
+    expect(deployEndedStatus(null)).toBe("");
+    expect(deployEndedStatus(undefined)).toBe("");
+  });
+});
 
 describe("deployStatusKey", () => {
   it.each([

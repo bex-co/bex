@@ -56,6 +56,7 @@ function row(overrides: Partial<DeployRow> = {}): DeployRow {
     startedAt: "2026-07-16T00:00:00Z",
     finishedAt: "2026-07-16T00:01:30Z",
     preDeployStatus: "succeeded",
+    failureReason: "",
     ...overrides,
   };
 }
@@ -251,6 +252,31 @@ describe("DeploysListPage", () => {
     ).toBeInTheDocument();
     // Exactly one row earned the "Deployed" verb.
     expect(screen.getAllByText(/^Deployed /)).toHaveLength(1);
+  });
+
+  it("shows a failed deploy's reason on its row and nothing extra on live rows (w1/m138)", async () => {
+    state.deploys = [
+      row({
+        id: "dep-broken",
+        status: "build_failed",
+        finishedAt: "2026-07-16T00:02:09Z",
+        preDeployStatus: "",
+        failureReason: "image pull failed: not found",
+      }),
+      row({ id: "dep-shipped", status: "live" }),
+    ];
+
+    renderPage();
+
+    // The failed row shows the same reason text the detail header shows.
+    expect(
+      await screen.findByText("image pull failed: not found"),
+    ).toBeInTheDocument();
+    // Exactly one reason line: the live row renders nothing extra, so its
+    // height is unchanged.
+    expect(screen.getAllByText("image pull failed: not found")).toHaveLength(
+      1,
+    );
   });
 
   it("falls back to createdAt for a live deploy without a stored finish time", async () => {

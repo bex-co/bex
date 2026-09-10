@@ -83,6 +83,10 @@ type ServiceEventRow struct {
 	// PreDeployStatus is the deploy's pre-deploy step outcome (w1/m33): '' |
 	// 'running' | 'succeeded' | 'failed'; the ended phase only.
 	PreDeployStatus string
+	// FailureReason is the human-actionable cause stamped when the reconciler
+	// closes the deploy failed (w1/m138); the ended phase only. Empty on
+	// non-failed deploys — the deploys table stores it that way.
+	FailureReason string
 	// Deployed image URI; empty for non-deploy rows. (w1/m47)
 	Image string
 	// Commit ID (git revision); empty for non-deploy rows. (w1/m47)
@@ -233,6 +237,7 @@ WITH feed AS (
            d.trigger                           AS trigger,
            ''::text                            AS status,
            ''::text                            AS pre_deploy_status,
+           ''::text                            AS failure_reason,
            ''::text                            AS verb,
            ''::text                            AS caller,
            NULL::text                          AS plan_from,
@@ -278,6 +283,7 @@ WITH feed AS (
            ''::text,
            d.status,
            d.pre_deploy_status,
+           d.failure_reason,
            ''::text,
            ''::text,
            NULL::text,
@@ -318,6 +324,7 @@ WITH feed AS (
     SELECT a.id || ':',
            a.at,
            '` + EventSourceAudit + `'::text,
+           ''::text,
            ''::text,
            ''::text,
            ''::text,
@@ -377,6 +384,7 @@ WITH feed AS (
            ''::text,
            ''::text,
            ''::text,
+           ''::text,
            NULL::text,
            NULL::text,
            NULL::integer,
@@ -412,7 +420,7 @@ WITH feed AS (
     FROM service_event_facts f
     WHERE f.app_id = $1 AND f.fact_type = ANY($12)
 )
-SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, verb, caller,
+SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, failure_reason, verb, caller,
        plan_from, plan_to, instance_count_from, instance_count_to,
        autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to,
        auto_deploy_enabled, project_from, project_to, environment_from, environment_to,
@@ -512,6 +520,10 @@ SELECT h.event_key AS key,
            WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseEnded + `' THEN d.pre_deploy_status
            ELSE ''
        END AS pre_deploy_status,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseEnded + `' THEN d.failure_reason
+           ELSE ''
+       END AS failure_reason,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.verb ELSE '' END AS verb,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.caller ELSE '' END AS caller,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.plan_from END AS plan_from,
@@ -613,7 +625,7 @@ func scanServiceEventRow(row pgx.Row) (ServiceEventRow, error) {
 
 func serviceEventScanDestinations(r *ServiceEventRow, trailing ...any) []any {
 	destinations := []any{
-		&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.Verb, &r.Caller,
+		&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.FailureReason, &r.Verb, &r.Caller,
 		&r.PlanFrom, &r.PlanTo, &r.InstanceCountFrom, &r.InstanceCountTo,
 		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
 		&r.AutoDeployEnabled, &r.ProjectFrom, &r.ProjectTo, &r.EnvironmentFrom, &r.EnvironmentTo,

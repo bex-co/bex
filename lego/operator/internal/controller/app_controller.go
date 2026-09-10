@@ -1531,7 +1531,10 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 // spec.externalRegistryPullSecret (codex-security 2026-08 F7): the copier and
 // the kubelet resolve those by name too, so a tenant naming a protected Secret
 // there must be refused by the same denylist, not silently relocated into the
-// shared build namespace with its marker stripped. Reads use the uncached
+// shared build namespace. The permitted own-pair copies (copyCloneSecret,
+// copyBuildRegistryCredential, prepareBuildRegistrySecret) all preserve the
+// marker, so a relocated Secret is no more mountable there than it was in the
+// tenant namespace. Reads use the uncached
 // build-plane client so the lookup is reliable in per-tenant namespaces the
 // manager does not cache; a referenced Secret that does not exist is not our
 // concern here (it resolves to nothing / fails the pod on its own). Zero
@@ -1840,12 +1843,10 @@ func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.Ap
 		dst.Type = src.Type
 		dst.Data = src.Data
 		dst.Labels = artifactLabels(app, "copied-secret")
-		if src.Labels[execution.LabelProtectedFromTenantMount] != "" {
-			// Reached by the w6/m97 carve-out above: this App's own clone /
-			// registry-pull Secret is relocatable, but the marker rides along
-			// so no App in the build namespace can mount the copy either.
-			dst.Labels[execution.LabelProtectedFromTenantMount] = src.Labels[execution.LabelProtectedFromTenantMount]
-		}
+		// Reached by the w6/m97 carve-out above: this App's own clone /
+		// registry-pull Secret is relocatable, but the marker rides along
+		// so no App in the build namespace can mount the copy either.
+		carryProtectedMarker(dst.Labels, src.Labels)
 		return nil
 	})
 	return err

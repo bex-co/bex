@@ -3393,8 +3393,10 @@ export type ServiceEventDetails = {
   deployStatus: Maybe<Scalars['String']['output']>;
   environmentFrom: Maybe<Scalars['String']['output']>;
   environmentTo: Maybe<Scalars['String']['output']>;
+  failureReason: Maybe<Scalars['String']['output']>;
   finishedAt: Maybe<Scalars['String']['output']>;
   fromCount: Maybe<Scalars['Int']['output']>;
+  fullDeployStatus: Maybe<Scalars['String']['output']>;
   image: Maybe<Scalars['String']['output']>;
   instanceCountFrom: Maybe<Scalars['Int']['output']>;
   instanceCountTo: Maybe<Scalars['Int']['output']>;
