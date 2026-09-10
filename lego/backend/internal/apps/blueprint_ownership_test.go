@@ -186,3 +186,57 @@ func TestBlueprintOwnershipDisconnectClears(t *testing.T) {
 		t.Fatalf("adopt after disconnect: %v", err)
 	}
 }
+
+func TestBlueprintResourceClaimRaceLoserCannotWrite(t *testing.T) {
+	svc, fs := ownershipService(t)
+	ctx := ownershipCtx()
+
+	a, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/acme/a", Branch: "main"})
+	if err != nil {
+		t.Fatalf("create A: %v", err)
+	}
+	// Simulate a racing claim already held by A before B's write path runs.
+	if err := fs.ClaimBlueprintResource(ctx, "tea-a", "service", "web", a.ID, ""); err != nil {
+		t.Fatalf("seed claim: %v", err)
+	}
+
+	ctxB := withDeployAuthority(ctx, DeployRequest{BlueprintID: "blp-b-race", Confirm: ""})
+	if err := svc.claimBlueprintResourceName(ctxB, "service", "web"); err == nil {
+		t.Fatal("loser claim must conflict")
+	} else {
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_RESOURCE_CONFLICT" {
+			t.Fatalf("loser claim = %v, want BLUEPRINT_RESOURCE_CONFLICT", err)
+		}
+	}
+	if owner := appOwner(t, svc, "web"); owner != a.ID {
+		t.Fatalf("race must leave A as owner, got %q", owner)
+	}
+}
+
+func TestBlueprintTakeoverRejectsInterveningOwner(t *testing.T) {
+	svc, fs := ownershipService(t)
+	ctx := ownershipCtx()
+	a, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/acme/a", Branch: "main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{
+		Repo: "https://github.com/acme/b", Branch: "main", Confirm: BlueprintTakeoverConfirmation(a.ID),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Stale confirmation naming A must not transfer from B to C.
+	_, err = svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{
+		Repo: "https://github.com/acme/c", Branch: "main", Confirm: BlueprintTakeoverConfirmation(a.ID),
+	})
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_RESOURCE_CONFLICT" {
+		t.Fatalf("stale takeover = %v, want BLUEPRINT_RESOURCE_CONFLICT", err)
+	}
+	if owner := appOwner(t, svc, "web"); owner != b.ID {
+		t.Fatalf("intervening owner must stay B, got %q", owner)
+	}
+	_ = fs
+}

@@ -1,6 +1,6 @@
 # w8 · m40 — Make Blueprint ownership reliable during apply
 
-**Worker:** worker8 **Goal:** Concurrent and partially failed Blueprint syncs preserve one authorized resource owner. **Status:** todo
+**Worker:** worker8 **Goal:** Concurrent and partially failed Blueprint syncs preserve one authorized resource owner. **Status:** todo (t001–t006 done; t007 live walkthrough outstanding)
 
 **Estimate:** 3h20m implementation; 5h20m including standing closing tasks. **Priority:** 2 in the approved 2026-09-09 proposal.
 
@@ -8,12 +8,12 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Establish conditional resource claims | 50m | w8/m39/t008 |
-| t002 | Couple resource writes to the authorized claim | 60m | w8/m40/t001 |
-| t003 | Preserve ownership through failure and disconnect | 50m | w8/m40/t002 |
-| t004 | Propagate claim failures and managed-resource state | 40m | w8/m40/t003 |
-| t005 | Render parity | 30m | w8/m40/t004 |
-| t006 | Simplify | 30m | w8/m40/t005 |
+| t001 | Establish conditional resource claims — **DONE** | 50m | w8/m39/t008 |
+| t002 | Couple resource writes to the authorized claim — **DONE** | 60m | w8/m40/t001 |
+| t003 | Preserve ownership through failure and disconnect — **DONE** | 50m | w8/m40/t002 |
+| t004 | Propagate claim failures and managed-resource state — **DONE** | 40m | w8/m40/t003 |
+| t005 | Render parity — **DONE** | 30m | w8/m40/t004 |
+| t006 | Simplify — **DONE** | 30m | w8/m40/t005 |
 | t007 | Test coverage | 45m | w8/m40/t005, w8/m40/t006 |
 | t008 | Closeout | 15m | w8/m40/t007 |
 
@@ -40,3 +40,8 @@ t001 depends on w8/m39/t008. Resolve archived prerequisites under done/ without 
 ## Scope
 
 No automatic takeover, sync-delete, new resource families, or ownership redesign for ordinary non-Blueprint operations beyond the enforcement needed for this guarantee.
+
+
+## Closeout evidence
+
+See [walkthrough-evidence.txt](walkthrough-evidence.txt).

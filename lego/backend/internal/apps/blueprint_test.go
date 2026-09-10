@@ -51,6 +51,8 @@ type fakeBlueprintStore struct {
 	mu         sync.Mutex
 	blueprints map[string]store.Blueprint // key: id
 	syncs      map[string]store.BlueprintSync
+	// claims keys are tenant|kind|name → blueprint id (w8/m40).
+	claims map[string]string
 	// gotSyncLimit records the limit ListBlueprintSyncs was called with, so the
 	// service's clamp is asserted where it is applied rather than re-derived.
 	gotSyncLimit int
@@ -70,7 +72,11 @@ type fakeBlueprintStore struct {
 }
 
 func newFakeBlueprintStore(bs ...store.Blueprint) *fakeBlueprintStore {
-	f := &fakeBlueprintStore{blueprints: make(map[string]store.Blueprint), syncs: make(map[string]store.BlueprintSync)}
+	f := &fakeBlueprintStore{
+		blueprints: make(map[string]store.Blueprint),
+		syncs:      make(map[string]store.BlueprintSync),
+		claims:     make(map[string]string),
+	}
 	for _, b := range bs {
 		f.blueprints[b.ID] = b
 	}
@@ -426,6 +432,60 @@ func (f *fakeBlueprintStore) AbandonBlueprintSync(_ context.Context, runID strin
 		f.blueprints[run.BlueprintID] = b
 	}
 	return true, nil
+}
+
+func claimKey(tenantID, kind, name string) string {
+	return tenantID + "|" + kind + "|" + name
+}
+
+func (f *fakeBlueprintStore) ClaimBlueprintResource(_ context.Context, tenantID, kind, name, blueprintID, expectedOwner string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.claims == nil {
+		f.claims = make(map[string]string)
+	}
+	key := claimKey(tenantID, kind, name)
+	cur, ok := f.claims[key]
+	if !ok || cur == blueprintID || (expectedOwner != "" && cur == expectedOwner) {
+		f.claims[key] = blueprintID
+		return nil
+	}
+	return store.ErrBlueprintResourceConflict
+}
+
+func (f *fakeBlueprintStore) ReleaseBlueprintResourceClaims(_ context.Context, tenantID, blueprintID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for k, v := range f.claims {
+		if v == blueprintID && strings.HasPrefix(k, tenantID+"|") {
+			delete(f.claims, k)
+		}
+	}
+	return nil
+}
+
+func (f *fakeBlueprintStore) ListBlueprintResourceClaims(_ context.Context, tenantID, blueprintID string) ([]store.BlueprintResourceClaim, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []store.BlueprintResourceClaim
+	prefix := tenantID + "|"
+	for k, v := range f.claims {
+		if v != blueprintID || !strings.HasPrefix(k, prefix) {
+			continue
+		}
+		parts := strings.SplitN(strings.TrimPrefix(k, prefix), "|", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		out = append(out, store.BlueprintResourceClaim{TenantID: tenantID, Kind: parts[0], Name: parts[1], BlueprintID: blueprintID})
+	}
+	return out, nil
+}
+
+func (f *fakeBlueprintStore) GetBlueprintResourceOwner(_ context.Context, tenantID, kind, name string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.claims[claimKey(tenantID, kind, name)], nil
 }
 
 // --- helpers ---
@@ -1970,7 +2030,9 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 	mkApp("api")
 
 	st := parsedStack{services: []parsedService{{req: CreateRequest{Name: "web"}}}}
-	svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", st)
+	if err := svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", st); err != nil {
+		t.Fatalf("current-generation stamp: %v", err)
+	}
 	var web appv1alpha1.App
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &web); err != nil {
 		t.Fatalf("get web: %v", err)
@@ -1980,7 +2042,9 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 	}
 
 	stale := parsedStack{services: []parsedService{{req: CreateRequest{Name: "api"}}}}
-	svc.stampBlueprintOwnership(ctx, "blp-1", 6, "bsr-old", stale)
+	if err := svc.stampBlueprintOwnership(ctx, "blp-1", 6, "bsr-old", stale); err == nil {
+		t.Fatalf("superseded-generation stamp returned nil, want BLUEPRINT_SYNC_BUSY")
+	}
 	var api appv1alpha1.App
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "api"}, &api); err != nil {
 		t.Fatalf("get api: %v", err)
@@ -1991,7 +2055,9 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 	if err := svc.DisconnectBlueprint(ctx, "blp-1", "tea-a"); err != nil {
 		t.Fatalf("disconnect: %v", err)
 	}
-	svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", stale)
+	if err := svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", stale); err == nil {
+		t.Fatalf("post-disconnect stamp returned nil, want BLUEPRINT_SYNC_BUSY")
+	}
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "api"}, &api); err != nil {
 		t.Fatalf("get api: %v", err)
 	}
@@ -2262,7 +2328,9 @@ func TestPausedApplyAssertsAfterAbandon(t *testing.T) {
 		}
 	}
 	mkApp("web")
-	svc.stampBlueprintOwnership(ctx, b.ID, run.ExecutionGeneration, run.ID, st)
+	if err := svc.stampBlueprintOwnership(ctx, b.ID, run.ExecutionGeneration, run.ID, st); err == nil {
+		t.Fatalf("abandoned run stamp returned nil, want BLUEPRINT_SYNC_BUSY")
+	}
 	var web appv1alpha1.App
 	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &web); err != nil {
 		t.Fatalf("get web: %v", err)

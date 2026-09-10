@@ -144,6 +144,22 @@ func (f *blueprintFixtureStore) AbandonBlueprintSync(context.Context, string, ti
 	return false, nil
 }
 
+func (f *blueprintFixtureStore) ClaimBlueprintResource(context.Context, string, string, string, string, string) error {
+	return nil
+}
+
+func (f *blueprintFixtureStore) ReleaseBlueprintResourceClaims(context.Context, string, string) error {
+	return nil
+}
+
+func (f *blueprintFixtureStore) ListBlueprintResourceClaims(context.Context, string, string) ([]store.BlueprintResourceClaim, error) {
+	return nil, nil
+}
+
+func (f *blueprintFixtureStore) GetBlueprintResourceOwner(context.Context, string, string, string) (string, error) {
+	return "", nil
+}
+
 // blueprintRESTHandler composes what the milestone's coverage gap was missing:
 // the REAL apps.Service REST routes behind the REAL Render OpenAPI validator.
 // The existing blueprint REST test builds a bare http.NewServeMux() and calls

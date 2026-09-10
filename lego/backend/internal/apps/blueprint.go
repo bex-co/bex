@@ -83,6 +83,17 @@ type BlueprintStore interface {
 	// abandoned generation still owns it (w8/m37 t004 + w8/m39). False means
 	// another writer settled first.
 	AbandonBlueprintSync(ctx context.Context, runID string, now time.Time, reason string) (bool, error)
+	// ClaimBlueprintResource takes (or keeps) the durable workspace claim for
+	// one resource name (w8/m40). expectedOwner "" adopts only when absent or
+	// already ours; non-empty transfers only while that owner still holds it.
+	ClaimBlueprintResource(ctx context.Context, tenantID, kind, name, blueprintID, expectedOwner string) error
+	// ReleaseBlueprintResourceClaims drops every durable claim for a
+	// disconnected Blueprint (w8/m40).
+	ReleaseBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) error
+	// ListBlueprintResourceClaims lists durable claims owned by blueprintID.
+	ListBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) ([]store.BlueprintResourceClaim, error)
+	// GetBlueprintResourceOwner returns the owning blueprint id, or "" if none.
+	GetBlueprintResourceOwner(ctx context.Context, tenantID, kind, name string) (string, error)
 }
 
 // errBlueprintSyncBusy is the one documented 409 for every lifecycle fencing
@@ -980,6 +991,10 @@ func (s *Service) DisconnectBlueprint(ctx context.Context, bpID, ownerID string)
 		log.Printf("blueprint %s: %v", bpID, err)
 		return err
 	}
+	if err := s.Blueprints.ReleaseBlueprintResourceClaims(ctx, tenantID, bpID); err != nil {
+		log.Printf("blueprint %s: disconnect claim release failed: %v", bpID, err)
+		return fmt.Errorf("blueprint disconnected but claim release failed: %w", err)
+	}
 	if err := s.clearBlueprintOwnership(ctx, tenantID, bpID); err != nil {
 		log.Printf("blueprint %s: disconnect ownership cleanup failed: %v", bpID, err)
 		return fmt.Errorf("blueprint disconnected but ownership cleanup failed: %w", err)
@@ -1142,6 +1157,18 @@ func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Bluepri
 	return s.resolveBlueprintResourcesFromIR(ctx, b, ir)
 }
 
+// resourceOwnedByBlueprint reports whether the durable claim (preferred) or CR
+// label attributes the resource to b (w8/m40). Unclaimed resources that only
+// match the manifest by name are not reported as managed.
+func (s *Service) resourceOwnedByBlueprint(ctx context.Context, b store.Blueprint, kind, name, labelOwner string) bool {
+	if s.Blueprints != nil {
+		if owner, err := s.Blueprints.GetBlueprintResourceOwner(ctx, b.TenantID, kind, name); err == nil && owner != "" {
+			return owner == b.ID
+		}
+	}
+	return labelOwner == b.ID
+}
+
 func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.Blueprint, ir BlueprintIR) []BlueprintResource {
 	if len(ir.Resources) == 0 {
 		return nil
@@ -1162,7 +1189,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 		if err := s.Client.List(ctx, &appList, opts...); err == nil {
 			for i := range appList.Items {
 				a := &appList.Items[i]
-				appByName[a.Name] = a
+				appByName[appServiceName(a)] = a
 			}
 		}
 
@@ -1203,6 +1230,9 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 			if !ok {
 				continue
 			}
+			if !s.resourceOwnedByBlueprint(ctx, b, "service", resource.Name, a.Labels[core.LabelBlueprint]) {
+				continue
+			}
 			resourceID := store.ManagedAppID(a.Labels)
 			if resourceID == "" {
 				resourceID = a.Name
@@ -1213,10 +1243,16 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 			if !ok {
 				continue
 			}
+			if !s.resourceOwnedByBlueprint(ctx, b, "database", resource.Name, d.Labels[core.LabelBlueprint]) {
+				continue
+			}
 			resources = append(resources, BlueprintResource{ID: d.Name, Name: resource.Name, Type: "postgres"})
 		case BlueprintResourceKeyValue:
 			kv, ok := keyValueByName[resource.Name]
 			if !ok {
+				continue
+			}
+			if !s.resourceOwnedByBlueprint(ctx, b, "key_value", resource.Name, kv.Labels[core.LabelBlueprint]) {
 				continue
 			}
 			resources = append(resources, BlueprintResource{ID: kv.Name, Name: resource.Name, Type: "key_value"})
