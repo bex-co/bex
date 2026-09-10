@@ -196,10 +196,15 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/ssh-keys":            true,
 	// Create names its service in the BODY, which AddDisk authorizes against
 	// that service's own workspace before any row is written.
-	"POST /v1/disks":          true,
-	"POST /v1/sandboxes":      true,
-	"POST /v1/agent-sessions": true,
-	"POST /v1/git/connect":    true,
+	"POST /v1/disks":     true,
+	"POST /v1/sandboxes": true,
+	// CLI telemetry ingest (w5/m92): addresses no resource by path; the row's
+	// workspace AND subject both derive from the auth context (Record's
+	// RelCanView gate denies non-members), so a caller can only ever file
+	// events against workspaces they belong to.
+	"POST /v1/cli-telemetry-events": true,
+	"POST /v1/agent-sessions":       true,
+	"POST /v1/git/connect":          true,
 	// The ADR075 §3a claim start — same ownerId/body scoping as connect; its
 	// cross-workspace path is the verb's own can_manage gate.
 	"POST /v1/git/claim":                           true,

@@ -658,6 +658,7 @@ var classifiedOps = map[string]string{
 	"REST POST /v1/blueprints/preview":                                 core.OpClassSensitive,
 	"REST POST /v1/blueprints/validate":                                core.OpClassWrite,
 	"REST POST /v1/blueprints/{id}/sync":                               core.OpClassWrite,
+	"REST POST /v1/cli-telemetry-events":                               core.OpClassWrite,
 	"REST POST /v1/cron-jobs/{id}/runs":                                core.OpClassWrite,
 	"REST POST /v1/cron-jobs/{id}/runs/{runId}/cancel":                 core.OpClassWrite,
 	"REST POST /v1/disks":                                              core.OpClassWrite,
