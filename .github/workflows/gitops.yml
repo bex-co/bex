@@ -17,6 +17,8 @@ on:
       - ".github/workflows/ssh-edge-liveness.yml"
       - "scripts/cnpg-backup-guard.sh"
       - "scripts/obs-coverage-check.sh"
+      - "scripts/cli-analytics*"
+      - "scripts/test_cli_analytics.py"
       - "scripts/gitops-hardening-guard-test.sh"
       - "scripts/lib/platform-pod-hardening-guard.yq"
       - "scripts/platform-deprecations-validate.sh"
@@ -44,6 +46,8 @@ on:
       - ".github/workflows/ssh-edge-liveness.yml"
       - "scripts/cnpg-backup-guard.sh"
       - "scripts/obs-coverage-check.sh"
+      - "scripts/cli-analytics*"
+      - "scripts/test_cli_analytics.py"
       - "scripts/gitops-hardening-guard-test.sh"
       - "scripts/lib/platform-pod-hardening-guard.yq"
       - "scripts/platform-deprecations-validate.sh"
@@ -67,6 +71,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  cli-analytics:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    services:
+      postgres:
+        image: postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296
+        env:
+          POSTGRES_PASSWORD: pw
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: verify CLI analytics SQL and restricted reader
+        env:
+          BEX_CLI_ANALYTICS_TEST_CONTAINER: ${{ job.services.postgres.id }}
+        run: python3 -m unittest scripts/test_cli_analytics.py -v
+
   render:
     # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
