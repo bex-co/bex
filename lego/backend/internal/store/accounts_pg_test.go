@@ -133,8 +133,21 @@ func TestAccountDeletionStorePG(t *testing.T) {
 	if err := st.RemoveAccountMember(ctx, shared.ID, "identity-a"); err != nil {
 		t.Fatalf("leave shared: %v", err)
 	}
+	if err := st.InsertCLITelemetryEvent(ctx, CLITelemetryEvent{
+		ID: "cte-deletion-probe", Subject: "identity-a", WorkspaceID: shared.ID,
+		Command: "services list", InstallationID: "install-probe",
+	}); err != nil {
+		t.Fatalf("seed telemetry: %v", err)
+	}
 	if err := st.CleanupAccountSubject(ctx, "identity-a", deletion.DeletedMarker); err != nil {
 		t.Fatalf("cleanup: %v", err)
+	}
+	var telemetryRows int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM cli_telemetry_events WHERE subject = 'identity-a'`).Scan(&telemetryRows); err != nil {
+		t.Fatal(err)
+	}
+	if telemetryRows != 0 {
+		t.Fatalf("telemetry rows survived account deletion: %d", telemetryRows)
 	}
 	if err := st.CleanupAccountSubject(ctx, "identity-a", deletion.DeletedMarker); err != nil {
 		t.Fatalf("idempotent cleanup: %v", err)
@@ -291,6 +304,7 @@ func assertAccountDeletionInventory(t *testing.T, ctx context.Context, pool *pgx
 	want := []string{
 		"account_deletions.subject",
 		"audit_events.caller",
+		"cli_telemetry_events.subject",
 		"device_push_subscriptions.subject",
 		"github_connect_transactions.subject",
 		"membership_role_reconciliations.subject",
