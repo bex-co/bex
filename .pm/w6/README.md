@@ -27,6 +27,7 @@ Existing physical-device qualification remains in `w11/002` and `w11/m5`/`m6`/`m
 
 ## Milestones
 
+- [x] **m142** — ADR018 upstream drift re-baseline round 4 (6 tasks) ← `/pm-brainstorm for w6` 2026-09-09 #3 (proposal label m144; next free id)
 - [x] **m139** — Complete mobile access-change recovery (8 tasks) ← mobile review proposal 2, user handoff to w6 on 2026-09-07; targeted freshness/recovery/invalidation follow-up to m138
 - [x] **m140** — Repair notification workspace and launch handling (8 tasks) ← mobile review proposal 3, user handoff to w6 on 2026-09-07; follows w11/m5 implementation + m137 and consumes m139
 - [x] **m141** — Consume server resource-action decisions in mobile (7 tasks) ← promoted from `w6/070`, mobile review proposal 4; consumes m136 projections and m139 dispatch gating

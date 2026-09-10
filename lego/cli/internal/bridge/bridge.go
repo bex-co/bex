@@ -25,7 +25,7 @@ const (
 	renderOutput     = "RENDER_OUTPUT"
 	renderAPIKey     = "RENDER_API_KEY"
 
-	// Upstream telemetry opt-outs. render-oss/cli v2.26.0 made usage analytics
+	// Upstream telemetry opt-outs. render-oss/cli v2.26.0+ made usage analytics
 	// opt-out (on by default), sending events — including a stable install id
 	// and the active workspace — to Render's telemetry endpoint. That endpoint
 	// belongs to Render, not Bex; a bex user never consented to it and gains
