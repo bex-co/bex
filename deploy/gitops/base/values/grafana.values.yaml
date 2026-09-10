@@ -32,6 +32,22 @@ persistence:
 admin:
   existingSecret: grafana-admin
 
+# Bootstrap once with scripts/cli-analytics-bootstrap.sh. A dedicated reader
+# can SELECT only cli_analytics.events, with database-side query/connection caps.
+envValueFrom:
+  BEX_CLI_ANALYTICS_PASSWORD:
+    secretKeyRef:
+      name: grafana-cli-analytics
+      key: password
+extraSecretMounts:
+  - name: cli-analytics-ca
+    secretName: grafana-cli-analytics
+    mountPath: /etc/grafana/cli-analytics
+    readOnly: true
+    items:
+      - key: ca.crt
+        path: ca.crt
+
 grafana.ini:
   analytics:
     check_for_updates: false
@@ -43,7 +59,7 @@ grafana.ini:
     # prod (ADR088 §4) or the break-glass admin above — never a signup form.
     allow_sign_up: false
 
-# Datasources as code — the two backends this UI exists to read (ADR088 §1),
+# Datasources as code — monitoring backends and retained CLI events (ADR088 §1),
 # addressed by stable in-cluster DNS:
 #   Prometheus — Service `prometheus-server` on :80 (prometheus.yaml
 #     fullnameOverride; the same address bex-api uses as BEX_PROM_URL).
@@ -71,6 +87,28 @@ datasources:
         access: proxy
         url: http://loki.monitoring.svc:3100
         editable: false
+
+      - name: CLI analytics
+        uid: cli-analytics
+        type: grafana-postgresql-datasource
+        access: proxy
+        url: bex-db-rw.bex-system.svc:5432
+        user: bex_cli_analytics
+        editable: false
+        secureJsonData:
+          password: $BEX_CLI_ANALYTICS_PASSWORD
+        jsonData:
+          database: bex
+          sslmode: verify-full
+          tlsConfigurationMethod: file-path
+          sslRootCertFile: /etc/grafana/cli-analytics/ca.crt
+          postgresVersion: 1700
+          timescaledb: false
+          maxOpenConns: 4
+          maxIdleConns: 2
+          maxIdleConnsAuto: false
+          connMaxLifetime: 300
+          timeInterval: 1h
 
 # Dashboards as code: a file provider reading the ConfigMap the `dashboards:`
 # block renders. The set is the ADR088 §6 SLI baseline — one dashboard per §6
@@ -2454,36 +2492,1188 @@ dashboards:
           ]
         }
 
-    # CLI usage (w5/m92, product analytics — not an SLI dashboard): what the
-    # imported CLI reports to bex-api's POST /v1/cli-telemetry-events once a
-    # telemetry-enabled CLI release ships. Until then every panel here reads
-    # empty — that is expected, not an outage (the counter family appears on
-    # the first stored event; the request panels answer even before that).
-    # Identity splits (workspace/install/user) live in Postgres behind the
-    # retention window and NEVER become Prometheus labels — see the cardinality
-    # note on the ObserveTelemetry family.
+    # Product analytics use retained rows via the restricted Postgres reader;
+    # global ingest health stays on Prometheus. No identity becomes a label.
     cli-usage:
       json: |
         {
           "uid": "bex-cli-usage",
           "title": "CLI usage",
-          "tags": ["bex", "platform"],
+          "description": "Observed CLI adoption, repeat usage, command reliability and agent/CI usage. Retained Postgres events plus Prometheus ingest health.",
+          "tags": [
+            "bex",
+            "platform",
+            "cli",
+            "analytics"
+          ],
           "editable": false,
           "graphTooltip": 1,
-          "timezone": "browser",
+          "timezone": "utc",
           "schemaVersion": 39,
-          "refresh": "30s",
-          "time": { "from": "now-6h", "to": "now" },
+          "refresh": "5m",
+          "time": {
+            "from": "now-7d",
+            "to": "now"
+          },
+          "templating": {
+            "list": [
+              {
+                "name": "command",
+                "label": "Command",
+                "type": "query",
+                "datasource": {
+                  "type": "grafana-postgresql-datasource",
+                  "uid": "cli-analytics"
+                },
+                "query": "SELECT DISTINCT command FROM cli_analytics.events ORDER BY 1",
+                "refresh": 1,
+                "sort": 1,
+                "multi": true,
+                "includeAll": true,
+                "allValue": "'__all'",
+                "current": {
+                  "selected": true,
+                  "text": [
+                    "All"
+                  ],
+                  "value": [
+                    "$__all"
+                  ]
+                },
+                "options": []
+              },
+              {
+                "name": "version",
+                "label": "Upstream version",
+                "type": "query",
+                "datasource": {
+                  "type": "grafana-postgresql-datasource",
+                  "uid": "cli-analytics"
+                },
+                "query": "SELECT DISTINCT upstream_version FROM cli_analytics.events ORDER BY 1",
+                "refresh": 1,
+                "sort": 1,
+                "multi": true,
+                "includeAll": true,
+                "allValue": "'__all'",
+                "current": {
+                  "selected": true,
+                  "text": [
+                    "All"
+                  ],
+                  "value": [
+                    "$__all"
+                  ]
+                },
+                "options": []
+              },
+              {
+                "name": "output",
+                "label": "Output",
+                "type": "query",
+                "datasource": {
+                  "type": "grafana-postgresql-datasource",
+                  "uid": "cli-analytics"
+                },
+                "query": "SELECT DISTINCT output_format FROM cli_analytics.events ORDER BY 1",
+                "refresh": 1,
+                "sort": 1,
+                "multi": true,
+                "includeAll": true,
+                "allValue": "'__all'",
+                "current": {
+                  "selected": true,
+                  "text": [
+                    "All"
+                  ],
+                  "value": [
+                    "$__all"
+                  ]
+                },
+                "options": []
+              }
+            ]
+          },
           "panels": [
             {
               "id": 1,
+              "type": "text",
+              "title": "Observed CLI usage",
+              "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 24,
+                "h": 4
+              },
+              "options": {
+                "mode": "markdown",
+                "content": "Track adoption, command reliability and automation across retained CLI events. **All product panels follow the time range and filters**; telemetry health remains global. Daily buckets use UTC; the final bucket may be partial.\n\nOpt-outs, logged-out/early failures and delivery loss are unobserved. Bex release versions and successful `glm` / `muse` / `kimi` / `deepseek` launches are not recorded by the current sender. [Metric definitions and setup](https://github.com/bex-co/bex/blob/main/docs/runbooks/cli-analytics.md)."
+              }
+            },
+            {
+              "id": 2,
+              "title": "Observed commands",
+              "type": "stat",
+              "description": "Selected time range and command/version/output filters. Received events only; installations and authenticated identities are not people.",
+              "gridPos": {
+                "x": 0,
+                "y": 4,
+                "w": 6,
+                "h": 4
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT count(*) AS \"Observed commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
+                }
+              ],
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto"
+              }
+            },
+            {
+              "id": 3,
+              "title": "Active installations",
+              "type": "stat",
+              "description": "Selected time range and command/version/output filters. Received events only; installations and authenticated identities are not people. Empty installation IDs are excluded.",
+              "gridPos": {
+                "x": 6,
+                "y": 4,
+                "w": 6,
+                "h": 4
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT count(DISTINCT installation_id) AS \"Active installations\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
+                }
+              ],
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto"
+              }
+            },
+            {
+              "id": 4,
+              "title": "Active workspaces",
+              "type": "stat",
+              "description": "Selected time range and command/version/output filters. Received events only; installations and authenticated identities are not people. Server-attributed workspace; may be the caller's default rather than the client's reported selection.",
+              "gridPos": {
+                "x": 12,
+                "y": 4,
+                "w": 6,
+                "h": 4
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT count(DISTINCT workspace_id) AS \"Active workspaces\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
+                }
+              ],
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto"
+              }
+            },
+            {
+              "id": 5,
+              "title": "Command failure share",
+              "type": "stat",
+              "description": "Recognized unsuccessful attempts / classified attempts. Explicit help, version and unknown outcome kinds are excluded. No attempts yields no value; a successful deploy command does not prove the service reached Ready.",
+              "gridPos": {
+                "x": 18,
+                "y": 4,
+                "w": 6,
+                "h": 4
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT avg(failed::int) AS \"Command failure share\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
+                }
+              ],
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto"
+              }
+            },
+            {
+              "id": 6,
+              "title": "Daily active installations, identities and workspaces",
+              "type": "timeseries",
+              "description": "Selected time range and command/version/output filters. Received events only; installations and authenticated identities are not people. Each identity is counted once per UTC day; automation credentials may represent identities.",
+              "gridPos": {
+                "x": 0,
+                "y": 8,
+                "w": 12,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 2,
+                    "fillOpacity": 10,
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, count(DISTINCT e.installation_id) AS installations, count(DISTINCT e.subject) AS identities, count(DISTINCT e.workspace_id) AS workspaces FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' GROUP BY d.day ORDER BY d.day"
+                }
+              ],
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 7,
+              "title": "Commands per day",
+              "type": "timeseries",
+              "description": "Selected time range and command/version/output filters. Received events only; installations and authenticated identities are not people.",
+              "gridPos": {
+                "x": 12,
+                "y": 8,
+                "w": 12,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "bars",
+                    "lineWidth": 2,
+                    "fillOpacity": 70,
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, count(e.received_at) AS commands, count(*) FILTER (WHERE e.failed IS TRUE) AS failed FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' GROUP BY d.day ORDER BY d.day"
+                }
+              ],
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 8,
+              "title": "Commands — reach, failures and non-interactive duration",
+              "type": "table",
+              "description": "Top 50 by observed volume, including help in volume/reach. Failure share excludes help/version/unknown outcomes. p50/p95 include only completed non-interactive, non-streaming command attempts with valid duration; sample count is shown. Sort affected installations to prioritize broad pain.",
+              "gridPos": {
+                "x": 0,
+                "y": 16,
+                "w": 24,
+                "h": 10
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Failure share"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percentunit"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": "^p(50|95)$"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "ms"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT command AS \"Command\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\", count(*) FILTER (WHERE failed IS TRUE) AS \"Failures\", count(DISTINCT installation_id) FILTER (WHERE failed IS TRUE) AS \"Affected installations\", avg(failed::int) AS \"Failure share\", count(duration_ms) FILTER (WHERE duration_mode = 'non-interactive') AS \"Duration samples\", percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_mode = 'non-interactive') AS \"p50\", percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_mode = 'non-interactive') AS \"p95\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY command ORDER BY count(*) DESC, command LIMIT 50"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 9,
+              "title": "Agent and CI signals per day",
+              "type": "timeseries",
+              "description": "Shares of received events with nonempty agent or CI markers. These signals overlap; neither absence nor TTY attachment establishes human use. Empty days have no denominator.",
+              "gridPos": {
+                "x": 0,
+                "y": 26,
+                "w": 12,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 2,
+                    "fillOpacity": 10,
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, avg((cardinality(e.agent_signals) > 0)::int) AS \"Agent detected\", avg((cardinality(e.ci_signals) > 0)::int) AS \"CI detected\" FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' GROUP BY d.day ORDER BY d.day"
+                }
+              ],
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 10,
+              "title": "Detected agent families",
+              "type": "table",
+              "description": "Environment-marker names only. An invocation may detect multiple families; each family counts once per invocation. Unrecognized markers are grouped as Other.",
+              "gridPos": {
+                "x": 12,
+                "y": 26,
+                "w": 6,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "WITH events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT a.family AS \"Agent\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\" FROM events CROSS JOIN LATERAL (SELECT DISTINCT CASE marker WHEN 'CLAUDECODE' THEN 'Claude Code' WHEN 'CODEX_THREAD_ID' THEN 'Codex' WHEN 'CURSOR_AGENT' THEN 'Cursor' WHEN 'CURSOR_TRACE_ID' THEN 'Cursor' WHEN 'AMP_CURRENT_THREAD_ID' THEN 'Amp' WHEN 'CLINE' THEN 'Cline / compatible' WHEN 'CLINE_ACTIVE' THEN 'Cline / compatible' WHEN 'COPILOT_AGENT_SESSION_ID' THEN 'GitHub Copilot' WHEN 'GEMINI_CLI' THEN 'Gemini CLI' WHEN 'GOOSE_TERMINAL' THEN 'Goose' WHEN 'OPENCODE_CLIENT' THEN 'OpenCode' WHEN 'PI_CODING_AGENT' THEN 'Pi' WHEN 'VSCODE_AGENT' THEN 'VS Code agent' ELSE 'Other' END AS family FROM unnest(agent_signals) marker) a GROUP BY a.family ORDER BY count(*) DESC, a.family"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 11,
+              "title": "Detected CI providers",
+              "type": "table",
+              "description": "Provider markers may overlap. Generic CI is counted only when no specific provider is detected.",
+              "gridPos": {
+                "x": 18,
+                "y": 26,
+                "w": 6,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "WITH events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT c.provider AS \"CI\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\" FROM events CROSS JOIN LATERAL (SELECT DISTINCT CASE marker WHEN 'GITHUB_ACTIONS' THEN 'GitHub Actions' WHEN 'GITLAB_CI' THEN 'GitLab' WHEN 'CIRCLECI' THEN 'CircleCI' WHEN 'BUILDKITE' THEN 'Buildkite' WHEN 'JENKINS_URL' THEN 'Jenkins' WHEN 'BUILD_TAG' THEN 'Jenkins' WHEN 'TEAMCITY_VERSION' THEN 'TeamCity' WHEN 'BITBUCKET_BUILD_NUMBER' THEN 'Bitbucket' WHEN 'TF_BUILD' THEN 'Azure Pipelines' WHEN 'TRAVIS' THEN 'Travis CI' WHEN 'NETLIFY' THEN 'Netlify' WHEN 'VERCEL' THEN 'Vercel' WHEN 'RENDER' THEN 'Render' ELSE 'Generic / other' END AS provider FROM unnest(ci_signals) marker WHERE marker <> 'CI' OR cardinality(ci_signals) = 1) c GROUP BY c.provider ORDER BY count(*) DESC, c.provider"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 12,
+              "title": "First-seen and returning installations per day",
+              "type": "timeseries",
+              "description": "First seen under the selected filters within retained history, not lifetime installs. Returning means observed on an earlier UTC day; multiple invocations on the first day remain first-seen. Retention/deletion can shift first-seen dates.",
+              "gridPos": {
+                "x": 0,
+                "y": 34,
+                "w": 12,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 2,
+                    "fillOpacity": 10,
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))), first_seen AS (SELECT installation_id, min(received_at) AS first_at FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY installation_id) SELECT d.day AS time, count(DISTINCT e.installation_id) FILTER (WHERE f.first_at >= d.day) AS \"First seen\", count(DISTINCT e.installation_id) FILTER (WHERE f.first_at < d.day) AS \"Returning\" FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' LEFT JOIN first_seen f USING (installation_id) GROUP BY d.day ORDER BY d.day"
+                }
+              ],
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 13,
+              "title": "Next-week return — mature cohorts",
+              "type": "table",
+              "description": "UTC calendar-week cohorts based on first observation under the selected filters in retained history. Week 1 = any activity in the next calendar week. Only cohorts whose entire next week has elapsed at the selected end are shown. Recent installs are not failures; no mature cohort means no data.",
+              "gridPos": {
+                "x": 12,
+                "y": 34,
+                "w": 12,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Week 1 return"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percentunit"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "WITH first_seen AS (SELECT installation_id, min(received_at) AS first_at FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY installation_id), cohorts AS (SELECT installation_id, date_trunc('week', first_at) AS cohort FROM first_seen), activity AS (SELECT DISTINCT installation_id, date_trunc('week', received_at) AS week FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at >= date_trunc('week', $__timeFrom()::timestamptz) + interval '7 days' AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT c.cohort AS \"Cohort (UTC)\", count(*) AS \"Installations\", count(a.installation_id) AS \"Returned next week\", count(a.installation_id)::float / count(*) AS \"Week 1 return\" FROM cohorts c LEFT JOIN activity a ON a.installation_id = c.installation_id AND a.week = c.cohort + interval '7 days' WHERE c.cohort >= date_trunc('week', $__timeFrom()::timestamptz) AND c.cohort + interval '14 days' <= $__timeTo()::timestamptz GROUP BY c.cohort ORDER BY c.cohort"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 14,
+              "title": "Daily / 7-day / 30-day active installations",
+              "type": "timeseries",
+              "description": "Distinct installations in trailing 1/7/30 days, evaluated at each UTC day end (or selected end for the partial day). Reads up to 30 days before the visible range; retained history limits coverage. Values are not additive.",
+              "gridPos": {
+                "x": 0,
+                "y": 42,
+                "w": 12,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 2,
+                    "fillOpacity": 10,
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT installation_id, received_at FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at >= $__timeFrom()::timestamptz - interval '30 days' AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, count(DISTINCT e.installation_id) FILTER (WHERE e.received_at > LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) - interval '1 day') AS \"1 day\", count(DISTINCT e.installation_id) FILTER (WHERE e.received_at > LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) - interval '7 days') AS \"7 days\", count(DISTINCT e.installation_id) AS \"30 days\" FROM days d LEFT JOIN events e ON e.received_at > LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) - interval '30 days' AND e.received_at <= LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) GROUP BY d.day ORDER BY d.day"
+                }
+              ],
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 15,
+              "title": "Completion outcomes",
+              "type": "table",
+              "description": "Help and discovery/validation/setup errors remain visible separately. Early failures that cannot initialize the sender or authenticate are absent; this is not a crash census.",
+              "gridPos": {
+                "x": 12,
+                "y": 42,
+                "w": 12,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Share"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percentunit"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT outcome AS \"Outcome\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\", count(*)::float / sum(count(*)) OVER () AS \"Share\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY outcome ORDER BY count(*) DESC, outcome"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 16,
+              "title": "Duration by command and mode",
+              "type": "table",
+              "description": "Non-interactive command duration, interactive time and session/stream lifetime are separate populations. Includes completed success/execution_error/explicit_exit events with nonnegative durations. No arguments or flags are recorded, so wait modes cannot be distinguished further.",
+              "gridPos": {
+                "x": 0,
+                "y": 50,
+                "w": 12,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": "^p(50|95)$"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "ms"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT command AS \"Command\", duration_mode AS \"Mode\", count(duration_ms) AS \"Samples\", percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms) AS \"p50\", percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) AS \"p95\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) AND duration_ms IS NOT NULL GROUP BY command, duration_mode ORDER BY count(duration_ms) DESC, command, duration_mode LIMIT 50"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 17,
+              "title": "Operating system / architecture",
+              "type": "table",
+              "description": "Distinct installations can appear in multiple environments within the selected period.",
+              "gridPos": {
+                "x": 12,
+                "y": 50,
+                "w": 6,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT os || ' / ' || arch AS \"Platform\", count(DISTINCT installation_id) AS \"Installations\", count(*) AS \"Commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY os, arch ORDER BY count(*) DESC, os, arch"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 18,
+              "title": "Output formats",
+              "type": "table",
+              "description": "Reported output mode. Machine-readable output alone is not proof of agent usage.",
+              "gridPos": {
+                "x": 18,
+                "y": 50,
+                "w": 6,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT output_format AS \"Output\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY output_format ORDER BY count(*) DESC, output_format"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 19,
+              "title": "Upstream CLI version adoption",
+              "type": "table",
+              "description": "Version is the imported Render CLI version, not bex-cli/v*. An installation can report multiple upstream versions in the selected range; counts are not additive.",
+              "gridPos": {
+                "x": 0,
+                "y": 58,
+                "w": 12,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT upstream_version AS \"Upstream version\", count(DISTINCT installation_id) AS \"Installations\", count(*) AS \"Commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY upstream_version ORDER BY count(*) DESC, upstream_version"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 20,
+              "title": "Full-screen TUI usage",
+              "type": "table",
+              "description": "Whether a full-screen TUI actually launched. Unknown is retained for older or foreign payloads.",
+              "gridPos": {
+                "x": 12,
+                "y": 58,
+                "w": 6,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT CASE launched_full_screen_tui WHEN true THEN 'Launched' WHEN false THEN 'Not launched' ELSE 'Unknown' END AS \"TUI\", count(*) AS \"Commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY launched_full_screen_tui ORDER BY count(*) DESC"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 21,
+              "title": "Last event received — global",
+              "type": "stat",
+              "description": "Age of the newest retained event across all commands, independent of dashboard filters/time range. Quiet usage is not a collector outage. No retained events produces no value, never a healthy zero.",
+              "gridPos": {
+                "x": 18,
+                "y": 58,
+                "w": 6,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT extract(epoch FROM now() - max(received_at)) AS \"Last received\" FROM cli_analytics.events"
+                }
+              ],
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto"
+              }
+            },
+            {
+              "id": 22,
               "type": "timeseries",
               "title": "Telemetry ingest rate",
-              "description": "Server-side receipt of CLI telemetry deliveries (bex_api_http_requests_total on the ingest route, by status) — includes rejections the stored-events counter below deliberately excludes. Empty until a telemetry-enabled CLI release ships.",
-              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "description": "Server-side receipt of CLI telemetry deliveries (bex_api_http_requests_total on the ingest route, by status) — includes rejections the stored-events counter below deliberately excludes. Global, independent of product filters.",
+              "gridPos": {
+                "x": 0,
+                "y": 66,
+                "w": 8,
+                "h": 8
+              },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "fieldConfig": {
-                "defaults": { "unit": "reqps", "min": 0 },
+                "defaults": {
+                  "unit": "reqps",
+                  "min": 0
+                },
                 "overrides": []
               },
               "targets": [
@@ -2495,14 +3685,25 @@ dashboards:
               ]
             },
             {
-              "id": 2,
+              "id": 23,
               "type": "timeseries",
               "title": "Ingest rejection share",
-              "description": "Share of telemetry deliveries answered 4xx/5xx (auth, scope, rate limit, store off). The self-guard coerces to 0 only while the route serves traffic — an empty panel with an empty ingest-rate panel means no CLI traffic, not a healthy endpoint.",
-              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "description": "Share of telemetry deliveries answered 4xx/5xx (auth, scope, rate limit, store off). The self-guard coerces to 0 only while the route serves traffic — an empty panel with an empty ingest-rate panel means no CLI traffic, not a healthy endpoint. Global, independent of product filters.",
+              "gridPos": {
+                "x": 8,
+                "y": 66,
+                "w": 8,
+                "h": 8
+              },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "fieldConfig": {
-                "defaults": { "unit": "percentunit", "min": 0 },
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0
+                },
                 "overrides": []
               },
               "targets": [
@@ -2514,77 +3715,31 @@ dashboards:
               ]
             },
             {
-              "id": 3,
-              "type": "timeseries",
-              "title": "Stored events by command (top 12)",
-              "description": "Which CLI commands users actually run (bex_api_cli_telemetry_events_total — stored rows only). Command paths come from the CLI's fixed subcommand tree (~dozens of series); a novel command string appears here only as fast as an authenticated client can write retained rows.",
-              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "fieldConfig": {
-                "defaults": { "unit": "reqps", "min": 0 },
-                "overrides": []
-              },
-              "targets": [
-                {
-                  "refId": "A",
-                  "expr": "topk(12, sum by (command) (rate(bex_api_cli_telemetry_events_total[5m])))",
-                  "legendFormat": "{{command}}"
-                }
-              ]
-            },
-            {
-              "id": 4,
-              "type": "timeseries",
-              "title": "Outcomes",
-              "description": "Stored events by the sender's completion kind (success vs execution_error and friends) — the CLI failure rate as users experience it, distinct from server-side 5xx above.",
-              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "fieldConfig": {
-                "defaults": { "unit": "reqps", "min": 0 },
-                "overrides": []
-              },
-              "targets": [
-                {
-                  "refId": "A",
-                  "expr": "sum by (completion_kind) (rate(bex_api_cli_telemetry_events_total[5m]))",
-                  "legendFormat": "{{completion_kind}}"
-                }
-              ]
-            },
-            {
-              "id": 5,
-              "type": "timeseries",
-              "title": "CLI version adoption",
-              "description": "Stored events by upstream CLI version (the sender reports render-oss/cli's version, not bex's release train — bex-native commands in the by-command panel are the bex-release signal). Hourly rate: versions move on release cadence, not minute cadence.",
-              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 18 },
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "fieldConfig": {
-                "defaults": { "unit": "reqps", "min": 0 },
-                "overrides": []
-              },
-              "targets": [
-                {
-                  "refId": "A",
-                  "expr": "sum by (cli_version) (rate(bex_api_cli_telemetry_events_total[1h]))",
-                  "legendFormat": "{{cli_version}}"
-                }
-              ]
-            },
-            {
-              "id": 6,
+              "id": 24,
               "type": "timeseries",
               "title": "Ingest latency p95",
-              "description": "Server-side p95 for storing one delivery (origin duration histogram on the ingest route). Insert is one bounded row write; a climbing p95 points at the control-plane database, not the CLI.",
-              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 18 },
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "description": "Server-side p95 for storing one delivery (origin duration histogram on the ingest route). Insert is one bounded row write; a climbing p95 points at the control-plane database, not the CLI. Global, independent of product filters.",
+              "gridPos": {
+                "x": 16,
+                "y": 66,
+                "w": 8,
+                "h": 8
+              },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "fieldConfig": {
-                "defaults": { "unit": "s", "min": 0 },
+                "defaults": {
+                  "unit": "s",
+                  "min": 0
+                },
                 "overrides": []
               },
               "targets": [
                 {
                   "refId": "A",
-                  "expr": "histogram_quantile(0.95, sum by (le) (rate(bex_api_http_request_duration_seconds{route=\"POST /v1/cli-telemetry-events\"}[5m])))",
+                  "expr": "histogram_quantile(0.95, sum by (le) (rate(bex_api_http_request_duration_seconds_bucket{route=\"POST /v1/cli-telemetry-events\"}[5m])))",
                   "legendFormat": "p95 store"
                 }
               ]
@@ -2593,7 +3748,7 @@ dashboards:
         }
 
 # No bats test pod — the same minimal posture as loki.yaml (no canary, no
-# self-monitoring): this exists solely to render the two backends above.
+# self-monitoring): datasource/SQL tests run in the GitOps CI workflow.
 testFramework:
   enabled: false
 

@@ -14,6 +14,8 @@ Three questions are decided here: where the UI runs, what hostname it gets, and 
 
 Grafana is deployed by an Argo CD Application in `deploy/gitops/base/` (per-env differences in the overlays, like every sibling), into the `monitoring` namespace alongside the backends it reads. Datasources (Prometheus, Loki) and dashboards are **provisioned as code** — committed JSON, no click-ops state to lose. The initial dashboard set targets platform availability, bex-api errors/latency, operator reconciliation, builds, databases (CNPG), and cluster capacity; it may start small and grow, but every dashboard lives in git.
 
+The CLI usage board also reads a dedicated Postgres datasource (`cli-analytics`), restricted to `cli_analytics.events` by a separate database role. This supports distinct counts, retained-history cohorts and command-duration percentiles without exporting identities as Prometheus labels. Connections use CNPG CA/hostname verification, four pooled connections and database-side connection/query limits. Definitions, bootstrap and custody: [CLI analytics runbook](runbooks/cli-analytics.md).
+
 Explicit non-choices:
 
 - **Not a bex-hosted customer App.** Our operations tooling must not depend on the product it exists to observe.
@@ -72,6 +74,7 @@ Per-dashboard SLIs and core series (all series names verified against the scrape
 | **Data plane** | tenant datastore readiness + PITR safety (WAL archiving must be 1); replication/backup freshness; public SNI front doors | `bex_datastore_ready`, `bex_datastore_wal_archiving`, `bex_datastore_age_seconds`, `bex_datastore_observe_errors_total`; `cnpg_backends_total`, `cnpg_pg_replication_*`, `cnpg_pg_stat_archiver_last_archived_time`; `kube_cronjob_status_last_successful_time` (backup CronJobs); `bex_pg_proxy_healthy`, `bex_kv_proxy_healthy` |
 | **Billing + metering** | money-path freshness (outbox age), export integrity, meter integrity (a broken meter is silent revenue loss) | `bex_billing_outbox_oldest_pending_age_seconds`, `bex_billing_export_rejected_rows`/`_ambiguous_rows`, `bex_billing_webhook_last_success_timestamp_seconds`, `bex_billing_operations_total`, `bex_billing_enabled`; `bex_egress_meter_healthy`/`_counter_loss_events_total`/`_resource_map_pressure_ratio`, `bex_websocket_meter_healthy`, `bex_app_direct_egress_bytes_total` + pg/kv/websocket egress bytes |
 | **Cluster capacity** | node headroom, PV fill (feeds `PersistentVolumeFillingUp` + the disk autoscaler), registry fill | `container_cpu_usage_seconds_total`, `container_memory_working_set_bytes` (cadvisor); `kube_node_status_condition`, `kube_node_info`/`kube_node_role`; `kubelet_volume_stats_used_bytes`/`_available_bytes`/`_capacity_bytes` (incl. the Zot PVC behind the `ZotRegistry*` alerts) |
+| **CLI usage** (product analytics) | observed adoption/repeat usage; command reach/failures/duration; detected agents/CI; environment mix; collection health | restricted Postgres `cli_analytics.events` view over retained `cli_telemetry_events`; Prometheus ingest-route request count/status/duration. The time range and command/upstream-version/output filters scope product panels; collection health stays global. |
 
 #### Tenant-facing surface coverage (w3/m83 t001)
 
