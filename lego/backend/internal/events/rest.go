@@ -74,6 +74,13 @@ type renderDetails struct {
 	DeployID        string `json:"deployId,omitempty"`
 	DeployStatus    string `json:"deployStatus,omitempty"`
 	PreDeployStatus string `json:"preDeployStatus,omitempty"` // bex extra (w1/m33): the deploy's pre-deploy step outcome
+	// FullDeployStatus is the deploy object's own status, present only when the
+	// deploy failed (w1/m138): Render's deployStatus collapses every failure
+	// kind to "failed". bex extra.
+	FullDeployStatus string `json:"fullDeployStatus,omitempty"`
+	// FailureReason is the human-actionable cause of a failed deploy, present
+	// only on failures (w1/m138). bex extra — Render's deploy_ended has none.
+	FailureReason string `json:"failureReason,omitempty"`
 	// Status is the terminal outcome of a lifecycle-step event (w7/m66):
 	// build_ended / pre_deploy_ended / job_run_ended carry succeeded|failed|canceled.
 	Status  string         `json:"status,omitempty"`
@@ -128,20 +135,22 @@ type renderTrigger struct {
 
 func toRenderEvent(e Event) renderEvent {
 	d := renderDetails{
-		DeployID:        e.Details.DeployID,
-		DeployStatus:    e.Details.DeployStatus,
-		PreDeployStatus: e.Details.PreDeployStatus,
-		Status:          e.Details.Status,
-		Image:           e.Details.Image,
-		CommitID:        e.Details.CommitID,
-		CommitMessage:   e.Details.CommitMessage,
-		StartedAt:       formatTime(e.Details.StartedAt),
-		FinishedAt:      formatTime(e.Details.FinishedAt),
-		Actor:           e.Details.Actor,
-		TriggeredByUser: e.Details.TriggeredByUser,
-		ReasonCode:      e.Details.ReasonCode,
-		InstanceID:      e.Details.InstanceID,
-		CommitURL:       e.Details.CommitURL,
+		DeployID:         e.Details.DeployID,
+		DeployStatus:     e.Details.DeployStatus,
+		PreDeployStatus:  e.Details.PreDeployStatus,
+		FullDeployStatus: e.Details.FullDeployStatus,
+		FailureReason:    e.Details.FailureReason,
+		Status:           e.Details.Status,
+		Image:            e.Details.Image,
+		CommitID:         e.Details.CommitID,
+		CommitMessage:    e.Details.CommitMessage,
+		StartedAt:        formatTime(e.Details.StartedAt),
+		FinishedAt:       formatTime(e.Details.FinishedAt),
+		Actor:            e.Details.Actor,
+		TriggeredByUser:  e.Details.TriggeredByUser,
+		ReasonCode:       e.Details.ReasonCode,
+		InstanceID:       e.Details.InstanceID,
+		CommitURL:        e.Details.CommitURL,
 	}
 	if t := e.Details.Trigger; t != nil {
 		d.Trigger = &renderTrigger{

@@ -67,6 +67,10 @@ func (r *AppReconciler) prepareBuildRegistrySecret(ctx context.Context, app *app
 			buildkitRegistryConfigKey: []byte(buildkitRegistryConfig(r.Registry)),
 		}
 		secret.Labels = artifactLabels(app, buildRegistryComponent)
+		// The merged credential is relocatable for the same reason the per-App
+		// pull credential is (copyBuildRegistryCredential below), so the marker
+		// rides along.
+		carryProtectedMarker(secret.Labels, external.Labels)
 		return nil
 	}); err != nil {
 		return "", fmt.Errorf("write merged build registry credential: %w", err)
@@ -110,6 +114,10 @@ func (r *AppReconciler) copyBuildRegistryCredential(ctx context.Context, app *ap
 		dst.Data = maps.Clone(src.Data)
 		dst.Data[buildRegistryConfigKey] = config
 		dst.Labels = artifactLabels(app, buildRegistryComponent)
+		// This App's own registry-pull credential is relocatable, but the
+		// marker rides along so no App in the build namespace can mount the
+		// copy either.
+		carryProtectedMarker(dst.Labels, src.Labels)
 		return nil
 	})
 	return err
@@ -142,6 +150,17 @@ func checkOwnedArtifact(obj metav1.Object, app *appv1alpha1.App) error {
 func artifactLabels(app *appv1alpha1.App, component string) map[string]string {
 	return execution.PodLabels(app.Name, string(app.UID), component,
 		app.Labels[labelWorkspace], app.Namespace, false)
+}
+
+// carryProtectedMarker copies LabelProtectedFromTenantMount from a source
+// Secret's labels onto a relocated copy's labels when present (codex F7): a
+// copy that drops the marker presents itself as an ordinary artifact to any
+// later check, while a copy that invents one over-protects. All three
+// build-namespace writers share it so the rule cannot drift per call site.
+func carryProtectedMarker(dst, src map[string]string) {
+	if src[execution.LabelProtectedFromTenantMount] != "" {
+		dst[execution.LabelProtectedFromTenantMount] = src[execution.LabelProtectedFromTenantMount]
+	}
 }
 
 func dockerConfigData(secret *corev1.Secret) ([]byte, error) {

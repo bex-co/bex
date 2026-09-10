@@ -442,6 +442,20 @@ type Details struct {
 	// | "succeeded" | "failed"; empty when no pre-deploy step ran. deploy_ended
 	// only. Distinguishes a migration failure from a health-check failure.
 	PreDeployStatus string
+	// FullDeployStatus is the deploy object's own status (w1/m138): live |
+	// build_failed | pre_deploy_failed | update_failed | canceled | … —
+	// deploy_ended only. Render's deployStatus collapses every failure kind to
+	// "failed"; this bex extra preserves the kind so a consumer can badge the
+	// deploy the way the Deploy page does. Populated only when the deploy
+	// failed — Render's succeeded/canceled need no disambiguation, so a
+	// succeeded or canceled deploy carries neither extra.
+	FullDeployStatus string
+	// FailureReason is the human-actionable cause stamped when the reconciler
+	// closes the deploy failed (w9/011, w1/m138) — the App CR's
+	// Ready-condition message or a synthesized health-gate-timeout line.
+	// deploy_ended only; empty on non-failed deploys. A bex extra — Render's
+	// deploy_ended details carry no failure reason.
+	FailureReason string
 	// Status is a lifecycle-step fact's terminal outcome (w7/m66): build_ended /
 	// pre_deploy_ended / job_run_ended carry succeeded|failed|canceled; empty for
 	// the started/observed kinds and every other type.
@@ -709,6 +723,15 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Type = TypeDeployEnded
 			ev.Details.DeployStatus = store.RenderDeployStatus(r.Status)
 			ev.Details.PreDeployStatus = r.PreDeployStatus
+			// The richer status and the reason ride only on failures (w1/m138):
+			// Render's succeeded/canceled already badge unambiguously. Gated on
+			// the closed failure vocabulary, not on "not succeeded" — an
+			// unrecognized status string must never be echoed onto a surface
+			// (TestEventsNeverCarryValues).
+			if store.DeployFailureStatus(r.Status) {
+				ev.Details.FullDeployStatus = r.Status
+				ev.Details.FailureReason = r.FailureReason
+			}
 		}
 	case store.EventSourceAudit:
 		ev.Type = eventTypes[r.Verb]

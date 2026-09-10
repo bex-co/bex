@@ -41,5 +41,6 @@ query Deploys(
     startedAt
     finishedAt
     preDeployStatus
+    failureReason
   }
 }

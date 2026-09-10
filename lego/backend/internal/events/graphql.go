@@ -58,6 +58,13 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// dashboard's Events tab shows it to tell a migration failure apart from a
 		// health-check failure. Empty when no pre-deploy step ran.
 		"preDeployStatus": gqlutil.StrField(func(d Details) any { return d.PreDeployStatus }),
+		// fullDeployStatus is the deploy object's own status, present only when
+		// the deploy failed (w1/m138) — Render's deployStatus collapses every
+		// failure kind to "failed". bex extra.
+		"fullDeployStatus": gqlutil.StrField(func(d Details) any { return d.FullDeployStatus }),
+		// failureReason is the human-actionable cause of a failed deploy,
+		// present only on failures (w1/m138). bex extra.
+		"failureReason": gqlutil.StrField(func(d Details) any { return d.FailureReason }),
 		// status is a lifecycle-step event's terminal outcome (w7/m66):
 		// build_ended / pre_deploy_ended / job_run_ended → succeeded|failed|canceled.
 		"status": gqlutil.StrField(func(d Details) any { return d.Status }),

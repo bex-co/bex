@@ -13,6 +13,7 @@ import {
   preDeployStatusKey,
 } from "@/features/deploys/lib/deploy-status";
 import { formatDeployDuration } from "@/features/deploys/lib/deploy-presentation";
+import { DeployFailureReason } from "./deploy-failure-reason";
 import type { DeployView } from "../hooks/use-deploy";
 
 function triggerLabel(
@@ -114,9 +115,7 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
         {/* Actionable cause of a failed deploy (w9/011) — the operator's
             diagnosis (crash loop with the $PORT hint, image-pull failure,
             build error) or a health-gate-timeout line. */}
-        {deploy.failureReason && (
-          <p className="text-xs text-destructive">{deploy.failureReason}</p>
-        )}
+        <DeployFailureReason reason={deploy.failureReason} />
 
         {preDeploy && (
           <p

@@ -232,6 +232,100 @@ func TestCopyBuildRegistryCredentialAddsSkopeoFilename(t *testing.T) {
 	}
 }
 
+// TestBuildRegistrySecretsPreserveProtectedMarker pins w1/m138: bex-api stamps
+// LabelProtectedFromTenantMount on the registry-pull credential it mints for an
+// App, so both build-namespace writers must carry the marker onto the copy —
+// the last place the marker was dropped. A copy that drops it would present
+// itself as an ordinary artifact to any later check.
+func TestBuildRegistrySecretsPreserveProtectedMarker(t *testing.T) {
+	const (
+		appNS   = "tea-a"
+		buildNS = "bex-build"
+		config  = `{"auths":{"private.example":{"auth":"external"}}}`
+	)
+	newScheme := func() *runtime.Scheme {
+		scheme := runtime.NewScheme()
+		_ = clientgoscheme.AddToScheme(scheme)
+		return scheme
+	}
+
+	t.Run("copyBuildRegistryCredential", func(t *testing.T) {
+		for _, tc := range []struct {
+			name     string
+			labels   map[string]string
+			wantMark bool
+		}{
+			{name: "protected source", labels: map[string]string{execution.LabelProtectedFromTenantMount: execution.ProtectedFromTenantMount}, wantMark: true},
+			{name: "unprotected source", labels: nil, wantMark: false},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				src := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "reg-pull-web", Namespace: appNS, Labels: tc.labels},
+					Type:       corev1.SecretTypeDockerConfigJson,
+					Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(config)},
+				}
+				cl := fake.NewClientBuilder().WithScheme(newScheme()).WithObjects(src).Build()
+				r := &AppReconciler{Client: cl, BuildClient: cl}
+				app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: appNS, UID: "uid-web"}}
+				if err := r.copyBuildRegistryCredential(context.Background(), app, appNS, buildNS, src.Name); err != nil {
+					t.Fatal(err)
+				}
+				var got corev1.Secret
+				if err := cl.Get(context.Background(), client.ObjectKey{Namespace: buildNS, Name: src.Name}, &got); err != nil {
+					t.Fatal(err)
+				}
+				mark, ok := got.Labels[execution.LabelProtectedFromTenantMount]
+				if tc.wantMark && (!ok || mark != execution.ProtectedFromTenantMount) {
+					t.Fatalf("protected source yielded labels %v — the marker was dropped", got.Labels)
+				}
+				if !tc.wantMark && ok {
+					t.Fatalf("unprotected source yielded marker %q — the copy invents protection", mark)
+				}
+			})
+		}
+	})
+
+	t.Run("prepareBuildRegistrySecret", func(t *testing.T) {
+		for _, tc := range []struct {
+			name     string
+			labels   map[string]string
+			wantMark bool
+		}{
+			{name: "protected source", labels: map[string]string{execution.LabelProtectedFromTenantMount: execution.ProtectedFromTenantMount}, wantMark: true},
+			{name: "unprotected source", labels: nil, wantMark: false},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				external := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "web-registry-pull", Namespace: appNS, Labels: tc.labels},
+					Type:       corev1.SecretTypeDockerConfigJson,
+					Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(config)},
+				}
+				cl := fake.NewClientBuilder().WithScheme(newScheme()).WithObjects(external).Build()
+				r := &AppReconciler{Client: cl, BuildClient: cl, Registry: "zot.example"}
+				app := &appv1alpha1.App{
+					ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: appNS},
+					Spec:       appv1alpha1.AppSpec{ExternalRegistryPullSecret: external.Name},
+				}
+				name, err := r.prepareBuildRegistrySecret(context.Background(), app, buildNS, build.BuilderDockerfile)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var got corev1.Secret
+				if err := cl.Get(context.Background(), client.ObjectKey{Namespace: buildNS, Name: name}, &got); err != nil {
+					t.Fatal(err)
+				}
+				mark, ok := got.Labels[execution.LabelProtectedFromTenantMount]
+				if tc.wantMark && (!ok || mark != execution.ProtectedFromTenantMount) {
+					t.Fatalf("protected source yielded labels %v — the marker was dropped", got.Labels)
+				}
+				if !tc.wantMark && ok {
+					t.Fatalf("unprotected source yielded marker %q — the copy invents protection", mark)
+				}
+			})
+		}
+	})
+}
+
 // TestBuildNamespaceSecretsRefuseForeignOwner pins codex-security round 12,
 // finding 1: the shared build namespace derives deterministic Secret names from
 // the workspace-local App name, so a same-named App in another workspace

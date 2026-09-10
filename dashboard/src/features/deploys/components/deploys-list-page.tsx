@@ -45,6 +45,7 @@ import {
   formatDeployDuration,
 } from "../lib/deploy-presentation";
 import { DeployActions } from "./deploy-actions";
+import { DeployFailureReason } from "./deploy-failure-reason";
 
 // Radix Select can't hold "" — the log-filter-bar's "all" sentinel idiom.
 const ALL = "all";
@@ -196,6 +197,12 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                         {d.id}
                       </span>
                     </div>
+                    {/* Absent on non-failed rows, so their height is unchanged. */}
+                    <DeployFailureReason
+                      reason={d.failureReason}
+                      truncate
+                      className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
+                    />
                     {d.commitId ? (
                       <p className="mt-1 max-w-[16rem] truncate text-sm text-foreground sm:max-w-md lg:max-w-lg">
                         <span

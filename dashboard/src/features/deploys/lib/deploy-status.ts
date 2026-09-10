@@ -96,6 +96,20 @@ export function deployStatusKey(status: string): string {
   }
 }
 
+// Badge status for a deploy_ended event (w1/m138): the backend names the
+// deploy object's own status on failures (fullDeployStatus) — badge that
+// directly, so a build failure reads build_failed, not update_failed. Older
+// events carry only Render's 3-value deployStatus, mapped as before.
+export function deployEndedStatus(details: {
+  fullDeployStatus?: string | null;
+  deployStatus?: string | null;
+} | null | undefined): string {
+  if (details?.fullDeployStatus) return details.fullDeployStatus;
+  if (details?.deployStatus === "succeeded") return "live";
+  if (details?.deployStatus === "failed") return "update_failed";
+  return details?.deployStatus ?? "";
+}
+
 // The pre-deploy step's own status line (w1/m33), shown under the deploy badge
 // so a migration failure reads distinctly from a health-check failure. Only
 // running/succeeded/failed carry a label; "" (no pre-deploy step) shows nothing.

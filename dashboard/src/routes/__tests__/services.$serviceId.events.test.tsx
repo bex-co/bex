@@ -430,3 +430,103 @@ describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
     expect(screen.getByText("Service settings changed")).toBeInTheDocument();
   });
 });
+
+describe("ServiceEventsPage — failed deploys badge their own status + reason (w1/m138)", () => {
+  function failedDeployEvent(over: Record<string, unknown> = {}) {
+    return deployEvent({
+      id: "evt-build-fail-001",
+      details: {
+        deployId: "dep-build-fail-001",
+        deployStatus: "failed",
+        fullDeployStatus: "build_failed",
+        failureReason: "image pull failed: not found",
+        preDeployStatus: "",
+        trigger: { manual: true },
+      },
+      ...over,
+    });
+  }
+
+  it("badges a build failure as Build Failed, not Failed, and shows its reason", async () => {
+    mockUseQuery.mockReturnValue({
+      data: { serviceEvents: [failedDeployEvent()] },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("Build Failed")).toBeInTheDocument();
+    expect(
+      screen.getByText("image pull failed: not found"),
+    ).toBeInTheDocument();
+    // The lossy update_failed mapping must not fire when the backend named
+    // the kind: no bare "Failed" badge.
+    expect(screen.queryByText("Failed")).not.toBeInTheDocument();
+  });
+
+  it("badges a pre-deploy failure as Pre-Deploy Failed with its reason", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          failedDeployEvent({
+            id: "evt-predeploy-fail-001",
+            details: {
+              deployId: "dep-predeploy-fail-001",
+              deployStatus: "failed",
+              fullDeployStatus: "pre_deploy_failed",
+              failureReason: "migration exited 1",
+              preDeployStatus: "failed",
+              trigger: { manual: true },
+            },
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("Pre-Deploy Failed")).toBeInTheDocument();
+    expect(screen.getByText("migration exited 1")).toBeInTheDocument();
+  });
+
+  it("keeps the old mapping for legacy failed events without the new field", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          deployEvent({
+            id: "evt-legacy-fail-001",
+            details: {
+              deployId: "dep-legacy-fail-001",
+              deployStatus: "failed",
+              preDeployStatus: "",
+              trigger: { manual: true },
+            },
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("Failed")).toBeInTheDocument();
+  });
+
+  it("shows no reason on a succeeded deploy", async () => {
+    mockUseQuery.mockReturnValue({
+      data: { serviceEvents: [deployEvent()] },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    const { container } = renderEvents("app");
+
+    expect(await screen.findByText("Live")).toBeInTheDocument();
+    // The reason line is the only text-destructive <p> the row renders.
+    expect(container.querySelector("p.text-destructive")).toBeNull();
+  });
+});

@@ -338,6 +338,80 @@ func TestLifecycleFactStatusAcrossSurfaces(t *testing.T) {
 	}
 }
 
+// TestFailedDeployDetailsAcrossSurfaces proves a failed deploy's own status
+// and reason (w1/m138: fullDeployStatus + failureReason) surface identically
+// on all three adapters as deploy_ended details, while a succeeded or
+// canceled deploy carries neither extra.
+func TestFailedDeployDetailsAcrossSurfaces(t *testing.T) {
+	at := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	fake := &fakeEventStore{rows: []store.ServiceEventRow{
+		{Key: "dep-b:ended", At: at, Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-b", Status: store.DeployBuildFailed, FailureReason: "image pull failed"},
+		{Key: "dep-p:ended", At: at.Add(-time.Minute), Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-p", Status: store.DeployPreDeployFailed, PreDeployStatus: store.PreDeployFailed, FailureReason: "migration exited 1"},
+		{Key: "dep-u:ended", At: at.Add(-2 * time.Minute), Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-u", Status: store.DeployUpdateFailed, FailureReason: "health gate timed out"},
+		{Key: "dep-c:ended", At: at.Add(-3 * time.Minute), Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-c", Status: store.DeployCanceled},
+		{Key: "dep-l:ended", At: at.Add(-4 * time.Minute), Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-l", Status: store.DeployLive},
+	}}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake})
+
+	want := map[string]map[string]any{
+		"dep-b": {"deployStatus": "failed", "fullDeployStatus": "build_failed", "failureReason": "image pull failed"},
+		"dep-p": {"deployStatus": "failed", "fullDeployStatus": "pre_deploy_failed", "failureReason": "migration exited 1"},
+		"dep-u": {"deployStatus": "failed", "fullDeployStatus": "update_failed", "failureReason": "health gate timed out"},
+		"dep-c": {"deployStatus": "canceled"},
+		"dep-l": {"deployStatus": "succeeded"},
+	}
+
+	res := do(t, h, "GET", "/v1/services/web/events?startTime=2026-07-01T00:00:00Z", testToken, "")
+	var rest []restEvent
+	if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil || len(rest) != 5 {
+		t.Fatalf("REST events = %s (err %v), want 5", res.Body.String(), err)
+	}
+	for _, r := range rest {
+		w := want[r.Event.Details["deployId"].(string)]
+		for k, v := range w {
+			if r.Event.Details[k] != v {
+				t.Errorf("REST %s details[%q] = %v, want %v (all: %v)", r.Event.Details["deployId"], k, r.Event.Details[k], v, r.Event.Details)
+			}
+		}
+		for _, extra := range []string{"fullDeployStatus", "failureReason"} {
+			if _, isExtra := w[extra]; !isExtra {
+				if _, present := r.Event.Details[extra]; present {
+					t.Errorf("REST %s details[%q] present = %v, want absent", r.Event.Details["deployId"], extra, r.Event.Details[extra])
+				}
+			}
+		}
+	}
+
+	gqlData := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-07-01T00:00:00Z") { details { deployId deployStatus fullDeployStatus failureReason } } }`)
+	gqlList, ok := gqlData["serviceEvents"].([]any)
+	if !ok || len(gqlList) != 5 {
+		t.Fatalf("GraphQL serviceEvents = %v, want 5 events", gqlData["serviceEvents"])
+	}
+	for _, item := range gqlList {
+		g := item.(map[string]any)["details"].(map[string]any)
+		w := want[g["deployId"].(string)]
+		for k, v := range w {
+			if g[k] != v {
+				t.Errorf("GraphQL %s details[%q] = %v, want %v", g["deployId"], k, g[k], v)
+			}
+		}
+	}
+
+	mcpEvents := callListServiceEvents(t, srv, map[string]any{"serviceId": "web", "startTime": "2026-07-01T00:00:00Z"})
+	if len(mcpEvents) != 5 {
+		t.Fatalf("MCP list_service_events = %d events, want 5", len(mcpEvents))
+	}
+	for _, m := range mcpEvents {
+		w := want[m.Event.Details["deployId"].(string)]
+		for k, v := range w {
+			if m.Event.Details[k] != v {
+				t.Errorf("MCP %s details[%q] = %v, want %v", m.Event.Details["deployId"], k, m.Event.Details[k], v)
+			}
+		}
+	}
+}
+
 // TestEventsNeverCarryValues is the DoD's redaction clause: a planted secret
 // value cannot appear on ANY surface.
 //

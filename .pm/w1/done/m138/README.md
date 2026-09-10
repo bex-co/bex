@@ -1,19 +1,28 @@
 # w1 · m138 — Deploy `failureReason` reaches every surface, and the last protected-marker drop
 
-**Worker:** worker1 **Goal:** a failed deploy shows the same status and the same actionable `failureReason` on the Deploy page, the Deploys list, and the Events feed — and in every REST/GraphQL/MCP payload that describes it — and the build-namespace registry Secret keeps the protected-mount marker its source carries. **Status:** todo
+**Worker:** worker1 **Goal:** a failed deploy shows the same status and the same actionable `failureReason` on the Deploy page, the Deploys list, and the Events feed — and in every REST/GraphQL/MCP payload that describes it — and the build-namespace registry Secret keeps the protected-mount marker its source carries. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                   | est | depends_on       |
 | ---- | ----------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Events: carry the deploy object's own status vocabulary + `failureReason` in `events.Details` across REST/GraphQL/MCP   | 45m | —                |
-| t002 | Dashboard Events feed: render the backend's deploy status + `failureReason`, drop the lossy `deployStatus` re-mapping    | 30m | t001             |
-| t003 | Deploys list: add `failureReason` to `deploys.graphql` and render it in the list row                                     | 30m | —                |
-| t004 | `prepareBuildRegistrySecret` / `copyBuildRegistryCredential`: carry `LabelProtectedFromTenantMount` onto the build copy | 30m | —                |
-| t005 | Render parity                                                                                                           | 30m | t002, t003, t004 |
-| t006 | Simplify                                                                                                                | 30m | t005             |
-| t007 | Test coverage                                                                                                           | 45m | t005             |
-| t008 | Closeout                                                                                                                | 15m | t007             |
+| t001 | Events: carry the deploy object's own status vocabulary + `failureReason` in `events.Details` across REST/GraphQL/MCP — **DONE**   | 45m | —                |
+| t002 | Dashboard Events feed: render the backend's deploy status + `failureReason`, drop the lossy `deployStatus` re-mapping — **DONE**    | 30m | t001             |
+| t003 | Deploys list: add `failureReason` to `deploys.graphql` and render it in the list row — **DONE**                                     | 30m | —                |
+| t004 | `prepareBuildRegistrySecret` / `copyBuildRegistryCredential`: carry `LabelProtectedFromTenantMount` onto the build copy — **DONE** | 30m | —                |
+| t005 | Render parity — **DONE**                                                                                                           | 30m | t002, t003, t004 |
+| t006 | Simplify — **DONE**                                                                                                                | 30m | t005             |
+| t007 | Test coverage — **DONE**                                                                                                           | 45m | t005             |
+| t008 | Closeout — **DONE**                                                                                                                | 15m | t007             |
+
+## Closeout evidence (2026-09-09)
+
+- Backend: `TestViewMapsEverySource` (build/pre-deploy/update/canceled/live rows), `TestFailedDeployDetailsAcrossSurfaces` (REST=GraphQL=MCP field-for-field, extras absent on success/cancel), `TestEventsNeverCarryValues` (the extra is gated on the closed `DeployFailureStatus` vocabulary — an unrecognized status never echoes). Both new tests proven red with the fill neutered.
+- Operator: `TestBuildRegistrySecretsPreserveProtectedMarker` (both writers × protected/unprotected), proven red pre-fix; `artifactLabels(` audit: NetworkPolicy (not a Secret) and native-env-secret (refuses protected sources) need no change.
+- Dashboard: route tests (build/pre-deploy badge + reason, legacy fallback, no reason on success), list test (reason on failed row, nothing extra on live), `deployEndedStatus` unit tests, `DeployFailureReason` component test; full suite 404 files / 3096 tests green; codegen reconciled from the backend schema dump (2-query hunk + 2-line schema type).
+- Simplify: one `DeployFailureReason` component (3 surfaces), one `deployEndedStatus` helper, one `carryProtectedMarker` helper (3 writers).
+- Suites: backend `go test ./...` green except pre-existing `TestRunPTYCommand` env failure (proven red on pristine HEAD too); operator suite incl. envtest green; `dashboard/yarn test` green; `go vet` clean; eslint clean; typecheck has 16 pre-existing errors in unrelated files, zero in touched files.
+- Live dev-1 walk **not done**: the shared kind cluster API is down (`connection refused` on 127.0.0.1:32770) and the verification inventory reports no default StorageClass. Deferred to w1/m139, the live-verification sweep that immediately follows in this loop run.
 
 ## Definition of done
 

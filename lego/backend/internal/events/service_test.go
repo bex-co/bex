@@ -112,12 +112,27 @@ func TestViewMapsEverySource(t *testing.T) {
 		name:        "deploy failed",
 		row:         store.ServiceEventRow{Key: "dep-3:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-3", Status: store.DeployUpdateFailed},
 		wantType:    TypeDeployEnded,
-		wantDetails: Details{DeployID: "dep-3", DeployStatus: "failed"},
+		wantDetails: Details{DeployID: "dep-3", DeployStatus: "failed", FullDeployStatus: store.DeployUpdateFailed},
+	}, {
+		name:        "deploy failed in build carries its own status and the reason (w1/m138)",
+		row:         store.ServiceEventRow{Key: "dep-5:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-5", Status: store.DeployBuildFailed, FailureReason: "image pull failed: not found"},
+		wantType:    TypeDeployEnded,
+		wantDetails: Details{DeployID: "dep-5", DeployStatus: "failed", FullDeployStatus: store.DeployBuildFailed, FailureReason: "image pull failed: not found"},
+	}, {
+		name:        "deploy failed in pre-deploy carries its own status and the reason (w1/m138)",
+		row:         store.ServiceEventRow{Key: "dep-6:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-6", Status: store.DeployPreDeployFailed, PreDeployStatus: store.PreDeployFailed, FailureReason: "migration exited 1"},
+		wantType:    TypeDeployEnded,
+		wantDetails: Details{DeployID: "dep-6", DeployStatus: "failed", FullDeployStatus: store.DeployPreDeployFailed, PreDeployStatus: store.PreDeployFailed, FailureReason: "migration exited 1"},
+	}, {
+		name:        "canceled deploy carries no extras (w1/m138)",
+		row:         store.ServiceEventRow{Key: "dep-7:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-7", Status: store.DeployCanceled},
+		wantType:    TypeDeployEnded,
+		wantDetails: Details{DeployID: "dep-7", DeployStatus: "canceled"},
 	}, {
 		name:        "deploy failed on its pre-deploy step carries preDeployStatus (w1/m33)",
 		row:         store.ServiceEventRow{Key: "dep-4:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-4", Status: store.DeployUpdateFailed, PreDeployStatus: store.PreDeployFailed},
 		wantType:    TypeDeployEnded,
-		wantDetails: Details{DeployID: "dep-4", DeployStatus: "failed", PreDeployStatus: store.PreDeployFailed},
+		wantDetails: Details{DeployID: "dep-4", DeployStatus: "failed", FullDeployStatus: store.DeployUpdateFailed, PreDeployStatus: store.PreDeployFailed},
 	}, {
 		name:        "suspend names its actor",
 		row:         store.ServiceEventRow{Key: "aud-1:", Source: store.EventSourceAudit, Verb: "apps.Suspend", Caller: "user-x"},
@@ -220,6 +235,8 @@ func TestViewMapsEverySource(t *testing.T) {
 			if got.Details.DeployID != tc.wantDetails.DeployID ||
 				got.Details.DeployStatus != tc.wantDetails.DeployStatus ||
 				got.Details.PreDeployStatus != tc.wantDetails.PreDeployStatus ||
+				got.Details.FullDeployStatus != tc.wantDetails.FullDeployStatus ||
+				got.Details.FailureReason != tc.wantDetails.FailureReason ||
 				got.Details.Actor != tc.wantDetails.Actor ||
 				got.Details.TriggeredByUser != tc.wantDetails.TriggeredByUser ||
 				got.Details.Image != tc.wantDetails.Image ||
