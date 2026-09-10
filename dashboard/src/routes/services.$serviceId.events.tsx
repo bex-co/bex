@@ -26,10 +26,12 @@ import { useLocalDateTime } from "@/common/hooks/use-local-date";
 import {
   deployStatusVariant as statusVariant,
   deployStatusKey as statusKey,
+  deployEndedStatus,
   preDeployStatusKey as preDeployKey,
   isCancelableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
+import { DeployFailureReason } from "@/features/deploys/components/deploy-failure-reason";
 import {
   useServiceEvents,
   type ServiceEventView,
@@ -225,19 +227,14 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                 const details = event.details;
                 const deployId = details?.deployId ?? "";
                 // Render's deploy_started event intentionally has no terminal
-                // status, while deploy_ended uses succeeded/failed instead of
-                // the deploy object's live/update_failed vocabulary. Normalize
-                // that API boundary for the shared badge and action helpers.
+                // status. deploy_ended badging lives in the shared deploy-status
+                // helper so both surfaces read the same rule.
                 const status =
                   event.type === "deploy_started"
                     ? finishedDeployIds.has(deployId)
                       ? ""
                       : "update_in_progress"
-                    : details?.deployStatus === "succeeded"
-                      ? "live"
-                      : details?.deployStatus === "failed"
-                        ? "update_failed"
-                        : (details?.deployStatus ?? "");
+                    : deployEndedStatus(details);
                 const trigger = triggerKey(details?.trigger ?? null);
                 const preDeploy = preDeployKey(details?.preDeployStatus ?? "");
                 const summary = (
@@ -416,6 +413,10 @@ function EventSummary({
             </Badge>
           ) : null}
         </div>
+        <DeployFailureReason
+          reason={details?.failureReason}
+          className="mt-1"
+        />
         <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           {trigger ? (
             <span>{t(trigger as Parameters<typeof t>[0])}</span>
