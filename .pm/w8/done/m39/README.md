@@ -1,6 +1,6 @@
 # w8 · m39 — Complete Blueprint execution fencing
 
-**Worker:** worker8 **Goal:** Interrupted Blueprint execution stops managing resources, including after recovery or disconnect. **Status:** todo (t001–t006 done; t007 walkthrough outstanding)
+**Worker:** worker8 **Goal:** Interrupted Blueprint execution stops managing resources, including after recovery or disconnect. **Status:** done
 
 **Estimate:** 3h20m implementation; 5h20m including standing closing tasks. **Priority:** 1 in the approved 2026-09-09 proposal.
 
@@ -14,8 +14,8 @@
 | t004 | Preserve honest interrupted-run outcomes across surfaces — **DONE** | 40m | w8/m39/t003 |
 | t005 | Render parity — **DONE** | 30m | w8/m39/t004 |
 | t006 | Simplify — **DONE** | 30m | w8/m39/t005 |
-| t007 | Test coverage | 45m | w8/m39/t005, w8/m39/t006 |
-| t008 | Closeout | 15m | w8/m39/t007 |
+| t007 | Test coverage — **DONE** | 45m | w8/m39/t005, w8/m39/t006 |
+| t008 | Closeout — **DONE** | 15m | w8/m39/t007 |
 
 ## Definition of done
 
@@ -42,3 +42,9 @@ m38 must wait for this closeout and m40 closeout before automatic intake expands
 ## Scope
 
 No generic workflow engine, automatic partial-apply replay, new deployment products, or resource deletion. Preserve the operator → types ← backend boundary.
+
+
+## Closeout evidence
+
+- Code shipped earlier on main (`74c4c1cee`): mid-apply `AssertBlueprintExecution`, abandon generation bump, busy surfaces, dashboard toast.
+- t007: [walkthrough-evidence.txt](walkthrough-evidence.txt) — concurrent sync busy, disconnect-busy, interrupted history, successor in_sync, absence after disconnect, fixture cleanup; targeted store/apps tests ok.

@@ -1,0 +1,33 @@
+# w8/m39 t007 — dev-8 two-client Blueprint execution fencing walkthrough
+Date: 2026-09-10
+Stack: bash scripts/dev-env.sh 8 up (bex-api :54080, kratos :51080); supervisor shell held alive.
+Auth: local Kratos identity (not production QA_EMAIL); two browser-shaped sessions (client A + client B cookies).
+
+## Concurrent sync busy
+Held admitted claim on blp-dah2re9jg4r8tg0r6bi0 (status=syncing, active_run_id=bsr-hold-1789013478).
+Both clients GraphQL syncBlueprint → extensions.code=BLUEPRINT_SYNC_BUSY
+  "another sync is already running for this blueprint; retry after it settles"
+
+## Disconnect while applying
+Client A disconnectBlueprint while claim held → BLUEPRINT_SYNC_BUSY
+  "a sync is currently applying for this blueprint; retry disconnect after it settles"
+
+## Interrupted history + successor
+Cleared claim (generation bump, active_run_id NULL); run bsr-hold-1789013478 → state=error
+  error_message="interrupted: recovered by successor"
+Client B successor syncBlueprint → blueprint status in_sync
+REST GET /v1/services?ownerId=… showed hello-go + m39-walk whoami resources.
+
+## Disconnect / absence
+Client A disconnectBlueprint after settle → true
+Client B blueprints(ownerId) → []
+
+## Fixture cleanup
+- kubectl delete apps in tea-dah2qo1jg4r8tg0r6bh0 (hello-go + m39-walk-svc)
+- DELETE Kratos identity → 204
+- remaining non-disconnected blueprints for owner = 0
+
+## Automated regressions (t007)
+BEX_TEST_DB_URI=postgres://postgres@localhost:55436/bex_test
+go test ./internal/store/ ./internal/apps/ -run AssertBlueprint|PausedApply|Abandon|BlueprintSyncBusy|Ownership|Disconnect
+→ ok store; ok apps
