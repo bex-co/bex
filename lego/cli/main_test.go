@@ -2,7 +2,9 @@ package main_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,8 +12,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 var bexBinary string
@@ -24,6 +28,15 @@ const (
 )
 
 func TestMain(m *testing.M) {
+	// The launcher test-binary must never emit telemetry at the harness
+	// itself: every child below inherits this process's environment, and an
+	// emission would phone the test's stub API (or worse, the default
+	// api.bex.co when a test sets no BEX_HOST). The dedicated sending test
+	// overrides this back to blank (bridge: blank counts as unset).
+	if err := os.Setenv("BEX_CLI_DISABLE_ANALYTICS", "1"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	dir, err := os.MkdirTemp("", "bex-cli-test-*")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -455,4 +468,131 @@ func TestBexDocsCommandPointsAtBex(t *testing.T) {
 
 func buildBex() string {
 	return bexBinary
+}
+
+// telemetryStub records POST /cli-telemetry-events bodies while serving the
+// minimal workspace list the CLI needs to complete a command.
+type telemetryStub struct {
+	mu     sync.Mutex
+	bodies []string
+}
+
+func (s *telemetryStub) handler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v1/owners":
+			_, _ = w.Write([]byte(`[{"owner":{"id":"tea-bex","name":"Bex","email":"bex@example.test","type":"team"}}]`))
+		case "/v1/cli-telemetry-events":
+			body, _ := io.ReadAll(r.Body)
+			s.mu.Lock()
+			s.bodies = append(s.bodies, string(body))
+			s.mu.Unlock()
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{"id":"cte-test"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+func (s *telemetryStub) count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.bodies)
+}
+
+func (s *telemetryStub) first(t *testing.T) map[string]any {
+	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.bodies) == 0 {
+		t.Fatal("no telemetry event captured")
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(s.bodies[0]), &decoded); err != nil {
+		t.Fatalf("decode telemetry body: %v", err)
+	}
+	return decoded
+}
+
+// seedNoticeMarker pre-creates the upstream one-time-notice marker under the
+// test HOME so a headless run proceeds to the send path: without a TTY the
+// sender skips delivery until a marker proves the notice was shown once.
+func seedNoticeMarker(t *testing.T, home string) {
+	t.Helper()
+	dir := filepath.Join(home, ".render", "state", "analytics")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "notice-shown"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBexEmitsTelemetryToBexAPI(t *testing.T) {
+	stub := &telemetryStub{}
+	api := httptest.NewServer(stub.handler())
+	t.Cleanup(api.Close)
+
+	home := t.TempDir()
+	seedNoticeMarker(t, home)
+
+	// TestMain disables telemetry for the harness; blank counts as unset in
+	// the bridge, so this explicit empty value re-enables it for this child
+	// (duplicate env keys resolve to the last value).
+	command := exec.Command(buildBex(), "workspaces", "-o", "json")
+	command.Env = append(withoutRenderEnv(os.Environ()),
+		"HOME="+home,
+		"BEX_HOST="+api.URL+"/v1/",
+		"BEX_ACCESS_TOKEN=test-access-token",
+		"BEX_CLI_DISABLE_ANALYTICS=",
+	)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("bex workspaces: %v\n%s", err, output)
+	}
+
+	deadline := time.Now().Add(20 * time.Second)
+	for stub.count() == 0 && time.Now().Before(deadline) {
+		time.Sleep(200 * time.Millisecond)
+	}
+	event := stub.first(t)
+	// Upstream reports the full command path including the binary name —
+	// which the branding overlay renamed, so a bex binary reports "bex …".
+	if event["command"] != "bex workspaces" {
+		t.Errorf("command = %v, want bex workspaces", event["command"])
+	}
+	if event["cli_version"] != testUpstreamVersion {
+		t.Errorf("cli_version = %v, want %v", event["cli_version"], testUpstreamVersion)
+	}
+	if event["installation_id"] == "" {
+		t.Errorf("installation_id missing: %v", event)
+	}
+	if event["exit_code"] != float64(0) {
+		t.Errorf("exit_code = %v, want 0", event["exit_code"])
+	}
+}
+
+func TestBexOptOutSuppressesTelemetry(t *testing.T) {
+	stub := &telemetryStub{}
+	api := httptest.NewServer(stub.handler())
+	t.Cleanup(api.Close)
+
+	home := t.TempDir()
+	seedNoticeMarker(t, home)
+
+	// Inherits BEX_CLI_DISABLE_ANALYTICS=1 from TestMain: nothing may send.
+	command := exec.Command(buildBex(), "workspaces", "-o", "json")
+	command.Env = append(withoutRenderEnv(os.Environ()),
+		"HOME="+home,
+		"BEX_HOST="+api.URL+"/v1/",
+		"BEX_ACCESS_TOKEN=test-access-token",
+	)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("bex workspaces: %v\n%s", err, output)
+	}
+	time.Sleep(3 * time.Second)
+	if got := stub.count(); got != 0 {
+		t.Errorf("telemetry events = %d, want 0 under opt-out", got)
+	}
 }

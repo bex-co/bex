@@ -672,6 +672,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.ProjectsStore = st      // project groupings (w1/m31): project CRUD + service-assignment
 	deps.EnvironmentsStore = st  // environment groupings (layered on w1/m31): environment CRUD + service-assignment
 	deps.RegistryCredsStore = st // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
+	deps.CLITelemetryStore = st  // CLI telemetry ingest (w5/m92): one row per cli-telemetry-events delivery (nil-safe: *store.PGStore stays a comparable nil when the store is off)
 	deps.BlueprintsStore = st    // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
 	deps.WebhookStore = st       // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
 	deps.JobStore = st           // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking

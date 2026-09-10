@@ -52,6 +52,10 @@ func (f *fakeAuditStore) PurgeSSHSessions(context.Context, time.Time) (int64, er
 	return 0, nil
 }
 
+func (f *fakeAuditStore) PurgeCLITelemetryEvents(context.Context, time.Time) (int64, error) {
+	return 0, nil
+}
+
 // TestAuditSurfaceParity is w4/m10's t007: REST's GET
 // /v1/owners/{ownerId}/audit-logs and GraphQL's auditLogs(ownerId: …) both
 // delegate to audit.Service.List, so the same store data must render

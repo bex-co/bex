@@ -159,6 +159,10 @@ var (
 	// and the delivery queue are control-plane tables, so there is nothing to
 	// degrade to.
 	ErrWebhooksUnavailable = Unavailable("webhook store not configured")
+	// ErrCLITelemetryUnavailable is returned by the CLI-telemetry ingest verb
+	// (POST /v1/cli-telemetry-events) when the control-plane store
+	// (BEX_CP_DB_URI) isn't wired; adapters surface it as 503 (w5/m92).
+	ErrCLITelemetryUnavailable = Unavailable("cli telemetry store not configured")
 	// ErrLogoutUnavailable is returned by the CLI-logout revoke verb
 	// (POST /v1/oauth/revoke) when the Hydra admin endpoint that clears a human's
 	// consent chain is unwired (BEX_HYDRA_ADMIN_URL unset) or unreachable;

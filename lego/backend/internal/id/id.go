@@ -107,12 +107,17 @@ var (
 	// pre-tenant billing flow. It is never a workspace id and never appears in
 	// tenant/resource APIs.
 	WorkspaceCreationAttempt = Kind{prefix: "wca", desc: "workspace creation attempt"}
+	// CLITelemetryEvent is a bex-native row (Render never exposes its own
+	// telemetry ids): one ingested `POST /v1/cli-telemetry-events` delivery.
+	// w5/m92 — the imported CLI already speaks this endpoint; bex-api is the
+	// collection side.
+	CLITelemetryEvent = Kind{prefix: "cte", desc: "ingested CLI telemetry event"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, AgentSession, Disk, WorkspaceCreationAttempt}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

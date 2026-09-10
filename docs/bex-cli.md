@@ -59,12 +59,21 @@ These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable 
 | `BEX_OUTPUT` | Default output mode accepted by the upstream CLI. |
 | `BEX_ACCESS_TOKEN` | Already-issued, short-lived OAuth bearer token for an unattended invocation. It is not persisted by the bridge. `bex logout` neither revokes nor unsets this environment credential. |
 | `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z` plus a `compatible with Render CLI v2.27.0` line) and checks this repo's `bex-cli/v*` releases for something newer; after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
+| `BEX_CLI_DISABLE_ANALYTICS` | Any non-empty value disables CLI usage telemetry (see below). Telemetry is otherwise on: one event per invocation to bex-api, never to Render. |
 
 For example, a local run never needs a `RENDER_*` setting:
 
 ```bash
 BEX_HOST=http://localhost:8090/v1/ bex workspaces -o json
 ```
+
+## CLI usage telemetry
+
+Each `bex` invocation sends one usage event to bex-api (`POST /v1/cli-telemetry-events`, w5/m92): the command path, duration, exit code, OS/arch, output format, TTY/CI/agent signals (environment-variable _names_ only, never values), the active workspace id, and a stable per-machine install id. Command arguments, prompts, and secret values are never collected. Sending is best-effort in a detached subprocess — it cannot fail or slow your command — and events are attributed to your authenticated identity server-side, retained under the platform audit-retention window, and never shared with Render.
+
+Opt out with `BEX_CLI_DISABLE_ANALYTICS=1` (or the cross-tool `DO_NOT_TRACK=1`, which the imported CLI honors directly). An explicit `RENDER_CLI_DISABLE_ANALYTICS` is left untouched as the upstream-developer escape hatch.
+
+On a fresh machine the imported CLI prints its one-time upstream analytics notice once (a Render-branded block ending in a `render.com/docs` link). That copy describes Render's telemetry, not Bex's — and its "remove `RENDER_CLI_DISABLE_ANALYTICS` to enable telemetry" instruction must not be followed: re-enabling the upstream flag would phone Render, not Bex. The notice never repeats (upstream marker file) and is otherwise unrelated to the Bex telemetry above.
 
 ## CI and automation
 
@@ -130,6 +139,7 @@ Safe rewrites preserve **`render.yaml`** (and the `bex.yml` filename alias). The
 - hard-coded OAuth public client id (Hydra bootstrap contract)
 - `~/.render/skills.yaml` + `render-oss/skills` for `bex skills`
 - login-view update banner via const `cfg.RepoURL` (mitigation: bump the pin; do not reopen the withdrawn upstream PR without an explicit decision)
+- one-time analytics notice copy (Render-branded disclosure + `render.com/docs` link + an invitation to re-enable Render telemetry — do not follow; see CLI usage telemetry above)
 
 The server-side compatibility ledger, including known Bex non-goals such as workflows, ephemeral SSH, and `ea` objects, is [`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md). The imported command can only work where Bex implements the corresponding API operation; it does not turn an unimplemented Bex feature into a supported one.
 

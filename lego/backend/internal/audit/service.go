@@ -41,6 +41,7 @@ type AuditStore interface {
 	ListAuditEvents(ctx context.Context, workspaceID string, filter store.AuditFilter) ([]store.AuditRow, error)
 	PurgeAuditEvents(ctx context.Context, before time.Time) (int64, error)
 	PurgeSSHSessions(ctx context.Context, before time.Time) (int64, error)
+	PurgeCLITelemetryEvents(ctx context.Context, before time.Time) (int64, error)
 }
 
 // Service is the audit-log feature. Base carries the authz gate every verb
@@ -290,7 +291,12 @@ func (s *Service) purge(ctx context.Context) {
 		log.Printf("audit: purge SSH sessions before %s: %v", before.Format(time.RFC3339), err)
 		return
 	}
-	if events+sessions > 0 {
-		log.Printf("audit: purged %d events and %d SSH sessions older than %s", events, sessions, before.Format(time.RFC3339))
+	telemetry, err := s.Store.PurgeCLITelemetryEvents(ctx, before)
+	if err != nil {
+		log.Printf("audit: purge CLI telemetry events before %s: %v", before.Format(time.RFC3339), err)
+		return
+	}
+	if events+sessions+telemetry > 0 {
+		log.Printf("audit: purged %d events, %d SSH sessions, and %d CLI telemetry events older than %s", events, sessions, telemetry, before.Format(time.RFC3339))
 	}
 }

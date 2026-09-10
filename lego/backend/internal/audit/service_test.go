@@ -57,6 +57,8 @@ type fakeStore struct {
 	sessionPurgeN         int64
 	sessionPurgeErr       error
 	sessionPurgeCalls     int
+
+	telemetryPurgeCalls int
 }
 
 func (f *fakeStore) ListAuditEvents(_ context.Context, workspaceID string, filter store.AuditFilter) ([]store.AuditRow, error) {
@@ -80,6 +82,13 @@ func (f *fakeStore) PurgeSSHSessions(_ context.Context, before time.Time) (int64
 	f.gotSessionPurgeBefore = before
 	f.sessionPurgeCalls++
 	return f.sessionPurgeN, f.sessionPurgeErr
+}
+
+func (f *fakeStore) PurgeCLITelemetryEvents(_ context.Context, before time.Time) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.telemetryPurgeCalls++
+	return 0, nil
 }
 
 func (f *fakeStore) calls() (int, time.Time) {

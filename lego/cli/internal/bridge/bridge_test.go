@@ -106,37 +106,51 @@ func TestApplyTreatsBlankRenderVariablesAsUnset(t *testing.T) {
 	}
 }
 
-func TestApplyDisablesUpstreamAnalyticsByDefault(t *testing.T) {
+func TestApplySendsTelemetryToBexByDefault(t *testing.T) {
+	// Telemetry flows to bex-api (the bridge repoints the API base at Bex, so
+	// the imported sender already targets us) unless the user opts out.
 	env := map[string]string{bexHost: "http://127.0.0.1:8090/v1/"}
 	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	if got, want := env[renderDisableAnalytics], "1"; got != want {
-		t.Errorf("%s = %q, want %q — bex must not ship default-on Render telemetry", renderDisableAnalytics, got, want)
+	if got, exists := env[renderDisableAnalytics]; exists {
+		t.Errorf("%s = %q, want unset (default sends to bex-api)", renderDisableAnalytics, got)
 	}
 }
 
-func TestApplyKeepsExplicitAnalyticsOptIn(t *testing.T) {
-	// A user who explicitly re-enables upstream analytics (falsey opt-out) has
-	// expressed intent; the launcher must not silently override it back to 1.
-	env := map[string]string{renderDisableAnalytics: "0"}
+func TestApplyMapsBexAnalyticsOptOut(t *testing.T) {
+	env := map[string]string{bexDisableAnalytics: "1"}
 	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	if got, want := env[renderDisableAnalytics], "0"; got != want {
-		t.Errorf("%s = %q, want %q (explicit user setting preserved)", renderDisableAnalytics, got, want)
+	if got, want := env[renderDisableAnalytics], "1"; got != want {
+		t.Errorf("%s = %q, want %q (Bex opt-out mapped through)", renderDisableAnalytics, got, want)
+	}
+}
+
+func TestApplyKeepsExplicitAnalyticsSetting(t *testing.T) {
+	// An explicit upstream setting wins over the Bex opt-out: the user spoke
+	// to the imported CLI directly, so the launcher must not override it.
+	for _, explicit := range []string{"0", "1"} {
+		env := map[string]string{renderDisableAnalytics: explicit, bexDisableAnalytics: "1"}
+		if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+		if got := env[renderDisableAnalytics]; got != explicit {
+			t.Errorf("%s = %q, want %q (explicit user setting preserved)", renderDisableAnalytics, got, explicit)
+		}
 	}
 }
 
 func TestApplyTreatsBlankAnalyticsOptOutAsUnset(t *testing.T) {
-	// A profile that exports RENDER_CLI_DISABLE_ANALYTICS= (blank) must not
-	// leave telemetry on — blank counts as unset, so the launcher fills in "1".
-	env := map[string]string{renderDisableAnalytics: "", doNotTrack: ""}
+	// A profile that exports BEX_CLI_DISABLE_ANALYTICS= (blank) has not opted
+	// out — blank counts as unset throughout, so telemetry still flows.
+	env := map[string]string{bexDisableAnalytics: "", doNotTrack: ""}
 	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	if got, want := env[renderDisableAnalytics], "1"; got != want {
-		t.Errorf("%s = %q, want %q (blank opt-out is unset)", renderDisableAnalytics, got, want)
+	if got, exists := env[renderDisableAnalytics]; exists {
+		t.Errorf("%s = %q, want unset (blank opt-out is unset)", renderDisableAnalytics, got)
 	}
 }
 

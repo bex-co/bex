@@ -18,6 +18,12 @@ const (
 	bexWorkspace  = "BEX_WORKSPACE"
 	bexOutput     = "BEX_OUTPUT"
 	bexAccess     = "BEX_ACCESS_TOKEN"
+	// Bex-owned telemetry opt-out. The imported CLI's analytics sender POSTs
+	// its per-invocation events to the configured API base — which the bridge
+	// above repoints at bex-api, whose `POST /v1/cli-telemetry-events`
+	// (w5/m92) is the collection side. Telemetry therefore flows to Bex by
+	// default, never to Render; setting this opts back out.
+	bexDisableAnalytics = "BEX_CLI_DISABLE_ANALYTICS"
 
 	renderConfigPath = "RENDER_CLI_CONFIG_PATH"
 	renderHost       = "RENDER_HOST"
@@ -25,14 +31,11 @@ const (
 	renderOutput     = "RENDER_OUTPUT"
 	renderAPIKey     = "RENDER_API_KEY"
 
-	// Upstream telemetry opt-outs. render-oss/cli v2.26.0+ made usage analytics
-	// opt-out (on by default), sending events — including a stable install id
-	// and the active workspace — to Render's telemetry endpoint. That endpoint
-	// belongs to Render, not Bex; a bex user never consented to it and gains
-	// nothing from it, so the launcher disables it by default. Either upstream
-	// opt-out (its own RENDER_CLI_DISABLE_ANALYTICS, or the cross-tool
-	// DO_NOT_TRACK convention) already denies consent, so an explicit user
-	// setting is left untouched.
+	// Upstream telemetry opt-outs. The imported CLI resolves consent itself:
+	// either its own RENDER_CLI_DISABLE_ANALYTICS or the cross-tool
+	// DO_NOT_TRACK convention denies it. An explicit upstream setting is
+	// always left untouched; otherwise the Bex opt-out above is the only
+	// thing the launcher maps through.
 	renderDisableAnalytics = "RENDER_CLI_DISABLE_ANALYTICS"
 	doNotTrack             = "DO_NOT_TRACK"
 )
@@ -91,9 +94,15 @@ func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
 		}
 	}
 
-	if !isSet(lookup, renderDisableAnalytics) && !isSet(lookup, doNotTrack) {
-		if err := set(renderDisableAnalytics, "1"); err != nil {
-			return fmt.Errorf("set %s: %w", renderDisableAnalytics, err)
+	// Telemetry consent now flows toward bex-api (see the const block): map
+	// the Bex opt-out through only when the user expressed one and no
+	// explicit upstream setting already decides the matter. DO_NOT_TRACK
+	// needs no mapping — upstream honors it directly.
+	if !isSet(lookup, renderDisableAnalytics) {
+		if value, exists := lookup(bexDisableAnalytics); exists && value != "" {
+			if err := set(renderDisableAnalytics, "1"); err != nil {
+				return fmt.Errorf("set %s: %w", renderDisableAnalytics, err)
+			}
 		}
 	}
 	return nil
