@@ -8,7 +8,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Match connected Blueprints independently of App candidates | 45m | w8/m37/t009 |
+| t001 | Match connected Blueprints independently of App candidates | 45m | w8/m39/t008, w8/m40/t008 |
 | t002 | Detect changes to the configured Blueprint manifest | 45m | w8/m38/t001 |
 | t003 | Persist deduplicated Blueprint intent before webhook acknowledgment | 60m | w8/m38/t002 |
 | t004 | Process automatic syncs through bounded durable execution | 60m | w8/m38/t003 |
@@ -49,7 +49,7 @@ The paths/functions below were reviewed on 2026-09-08; recheck current code befo
 
 ## Dependencies and execution
 
-t001 depends on w8/m37/t009 (verified closeout). Resolve the task under done/ after archival; never recreate its old path.
+t001 depends on w8/m39/t008 and w8/m40/t008 (verified corrective closeouts, approved 2026-09-09). m39 owns the missing m37 execution guarantee and dev-8 walkthrough; m40 closes resource-ownership races before automatic intake expands. Resolve the task under done/ after archival; never recreate its old path.
 
 Use the workstream's isolated dev-8 environment for any live development checks, following [.pm/w8/README.md](../README.md). Preserve namespace, authorization, billing, ownership, and protected-environment boundaries throughout. IDs in depends_on remain canonical when their files move under done/.
 
