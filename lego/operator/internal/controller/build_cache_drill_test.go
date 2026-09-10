@@ -139,16 +139,21 @@ func TestRegistryBuildCacheDrill(t *testing.T) {
 	t.Logf("repository=%s/%s commit=%s", ws, name, commit)
 	workload := os.Getenv("BEX_CACHE_DRILL_WORKLOAD")
 	generations := int64(2)
-	if workload == "native-env" {
+	switch workload {
+	case "", "node-api":
+	case "native-env":
 		// Cold MESSAGE=A, env-only MESSAGE=B (must miss cache), unchanged MESSAGE=B (may hit).
 		generations = 3
+	case "native-clear":
+		// A random build artifact must survive a warm build, change on clear,
+		// then survive the next warm build. Image digests alone cannot prove this.
+		generations = 4
+	default:
+		t.Fatalf("unknown cache drill workload %q", workload)
 	}
-	for _, rev := range []string{appv1alpha1.BuildRevision(1), appv1alpha1.BuildRevision(2), appv1alpha1.BuildRevision(3)} {
-		if generations < 3 && rev == appv1alpha1.BuildRevision(3) {
-			continue
-		}
+	for generation := int64(1); generation <= generations; generation++ {
 		var job batchv1.Job
-		err := live.Get(ctx, client.ObjectKey{Namespace: ns, Name: build.JobName(name, rev)}, &job)
+		err := live.Get(ctx, client.ObjectKey{Namespace: ns, Name: build.JobName(name, appv1alpha1.BuildRevision(generation))}, &job)
 		if client.IgnoreNotFound(err) != nil {
 			t.Fatal(err)
 		}
@@ -156,65 +161,112 @@ func TestRegistryBuildCacheDrill(t *testing.T) {
 			t.Fatal("benchmark Job already exists; mint a fresh service id")
 		}
 	}
-	t.Cleanup(func() {
-		background := metav1.DeletePropagationBackground
-		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 3*time.Minute)
-		defer cleanupCancel()
-		for gen := int64(1); gen <= generations; gen++ {
-			var job batchv1.Job
-			key := client.ObjectKey{Namespace: ns, Name: build.JobName(name, appv1alpha1.BuildRevision(gen))}
-			if err := live.Get(cleanupCtx, key, &job); err != nil {
-				if client.IgnoreNotFound(err) != nil {
-					t.Error(err)
-				}
-				continue
-			}
-			uid := job.UID
-			if err := live.Delete(cleanupCtx, &job, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &uid}, PropagationPolicy: &background}); client.IgnoreNotFound(err) != nil {
+	t.Cleanup(func() { cleanupCacheDrill(t, live, name, generations) })
+	previousArtifact := ""
+	for generation := int64(1); generation <= generations; generation++ {
+		app := cacheDrillApp(name, ws, commit, workload, generation)
+		runCacheDrillBuild(t, ctx, live, app)
+		if workload == "native-env" || workload == "native-clear" {
+			got := readCacheDrillNativeMessage(t, ctx, live, app, registryHost)
+			checkCacheDrillArtifact(t, workload, generation, previousArtifact, got)
+			previousArtifact = got
+		}
+	}
+}
+
+func cacheDrillApp(name, ws, commit, workload string, generation int64) *appv1alpha1.App {
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ws, UID: types.UID(name), Generation: generation, Labels: map[string]string{labelWorkspace: ws}},
+		Spec:   appv1alpha1.AppSpec{Repo: "https://github.com/bex-co/bex", BuildCommit: commit, RootDir: "dashboard", Builder: "dockerfile", DockerfilePath: "Dockerfile", Port: 3000},
+		Status: appv1alpha1.AppStatus{ReleaseGeneration: generation}}
+	if workload == "" {
+		return app
+	}
+	app.Spec.Repo = "https://github.com/hagopj13/node-express-boilerplate"
+	app.Spec.RootDir = ""
+	app.Spec.DockerfilePath = ""
+	app.Spec.Builder = "native"
+	app.Spec.Runtime = "node"
+	app.Spec.StartCommand = "node -e \"process.exit(0)\""
+	switch workload {
+	case "node-api":
+		app.Spec.BuildCommand = "corepack yarn@1.22.22 install --frozen-lockfile"
+		app.Spec.StartCommand = "node src/index.js"
+	case "native-env":
+		// Only MESSAGE changes at this fixed source commit.
+		app.Spec.BuildCommand = `printf '%s' "$MESSAGE" > message.txt`
+		app.Spec.Env = []appv1alpha1.EnvVar{{Name: "MESSAGE", Value: []string{"A", "B", "B"}[generation-1]}}
+	case "native-clear":
+		// A random artifact proves clear and subsequent reuse.
+		app.Spec.BuildCommand = `node -e 'require("fs").writeFileSync("message.txt", require("crypto").randomUUID())'`
+		if generation == 3 {
+			app.Annotations = map[string]string{appv1alpha1.AnnotationClearCacheReleaseGeneration: "3"}
+		}
+	}
+	return app
+}
+
+func cleanupCacheDrill(t *testing.T, live client.Client, name string, generations int64) {
+	t.Helper()
+	const ns = "bex-build"
+	background := metav1.DeletePropagationBackground
+	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cleanupCancel()
+	for gen := int64(1); gen <= generations; gen++ {
+		var job batchv1.Job
+		key := client.ObjectKey{Namespace: ns, Name: build.JobName(name, appv1alpha1.BuildRevision(gen))}
+		if err := live.Get(cleanupCtx, key, &job); err != nil {
+			if client.IgnoreNotFound(err) != nil {
 				t.Error(err)
 			}
+			continue
 		}
-	})
-	messages := []string{"", ""}
+		uid := job.UID
+		if err := live.Delete(cleanupCtx, &job, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &uid}, PropagationPolicy: &background}); client.IgnoreNotFound(err) != nil {
+			t.Error(err)
+		}
+	}
+	// Native literal env creates an App-owned projection even though App
+	// bookkeeping is in memory. It has no live owner to garbage-collect it.
+	var secrets corev1.SecretList
+	if err := live.List(cleanupCtx, &secrets, client.InNamespace(ns), client.MatchingLabels{
+		"app.bex.co/app": name, "app.bex.co/app-uid": name,
+	}); err != nil {
+		t.Error(err)
+		return
+	}
+	for i := range secrets.Items {
+		secret := &secrets.Items[i]
+		uid := secret.UID
+		if err := live.Delete(cleanupCtx, secret, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &uid}}); client.IgnoreNotFound(err) != nil {
+			t.Error(err)
+		}
+	}
+}
+
+func checkCacheDrillArtifact(t *testing.T, workload string, generation int64, previous, got string) {
+	t.Helper()
 	if workload == "native-env" {
-		messages = []string{"A", "B", "B"}
-	}
-	for generation := int64(1); generation <= generations; generation++ {
-		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ws, UID: types.UID(name), Generation: generation, Labels: map[string]string{labelWorkspace: ws}},
-			Spec:   appv1alpha1.AppSpec{Repo: "https://github.com/bex-co/bex", BuildCommit: commit, RootDir: "dashboard", Builder: "dockerfile", DockerfilePath: "Dockerfile", Port: 3000},
-			Status: appv1alpha1.AppStatus{ReleaseGeneration: generation}}
-		switch workload {
-		case "node-api":
-			app.Spec.Repo = "https://github.com/hagopj13/node-express-boilerplate"
-			app.Spec.RootDir = ""
-			app.Spec.DockerfilePath = ""
-			app.Spec.Builder = "native"
-			app.Spec.Runtime = "node"
-			app.Spec.BuildCommand = "corepack yarn@1.22.22 install --frozen-lockfile"
-			app.Spec.StartCommand = "node src/index.js"
-		case "native-env":
-			// Tiny native build whose only product is the synthetic MESSAGE bytes.
-			// Source stays fixed; only the literal env (and therefore the opaque
-			// native env revision) changes across generations.
-			app.Spec.Repo = "https://github.com/hagopj13/node-express-boilerplate"
-			app.Spec.RootDir = ""
-			app.Spec.DockerfilePath = ""
-			app.Spec.Builder = "native"
-			app.Spec.Runtime = "node"
-			app.Spec.BuildCommand = `printf '%s' "$MESSAGE" > message.txt`
-			app.Spec.StartCommand = "node -e \"process.exit(0)\""
-			app.Spec.Env = []appv1alpha1.EnvVar{{Name: "MESSAGE", Value: messages[generation-1]}}
+		want := "B"
+		if generation == 1 {
+			want = "A"
 		}
-		runCacheDrillBuild(t, ctx, live, app)
-		if workload == "native-env" {
-			want := messages[generation-1]
-			got := readCacheDrillNativeMessage(t, ctx, live, app, registryHost, user, password)
-			t.Logf("generation=%d MESSAGE want=%q got=%q", generation, want, got)
-			if got != want {
-				t.Fatalf("native-env generation %d artifact MESSAGE=%q, want %q", generation, got, want)
-			}
+		t.Logf("generation=%d MESSAGE want=%q got=%q", generation, want, got)
+		if got != want {
+			t.Fatalf("native-env generation %d artifact MESSAGE=%q, want %q", generation, got, want)
 		}
+		return
 	}
+	if !regexp.MustCompile(`^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$`).MatchString(got) {
+		t.Fatalf("native-clear generation %d did not produce a UUID artifact: %q", generation, got)
+	}
+	if generation == 3 {
+		if got == previous {
+			t.Fatal("clear build reused the pre-clear artifact")
+		}
+	} else if generation > 1 && got != previous {
+		t.Fatalf("warm generation %d did not reuse the preceding artifact", generation)
+	}
+	t.Logf("generation=%d clear=%t artifact_reused=%t artifact=%s", generation, generation == 3, got == previous, got)
 }
 
 func runCacheDrillBuild(t *testing.T, ctx context.Context, live client.Client, app *appv1alpha1.App) {
@@ -230,13 +282,17 @@ func runCacheDrillBuild(t *testing.T, ctx context.Context, live client.Client, a
 		t.Fatal(err)
 	}
 	jobName := build.JobName(app.Name, releaseBuildRevision(app))
-	if err := wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		if err := local.Get(ctx, client.ObjectKeyFromObject(app), app); err != nil {
 			return false, err
 		}
 		image, _, halt, err := r.buildFromSource(ctx, app)
+		if err == nil && app.Status.Phase == appv1alpha1.PhaseFailed {
+			return false, fmt.Errorf("build entered Failed phase")
+		}
 		return !halt && image != "", err
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("%s failed: %v", jobName, err)
 	}
 
@@ -276,14 +332,14 @@ func runCacheDrillBuild(t *testing.T, ctx context.Context, live client.Client, a
 // reads the synthetic message.txt the native-env drill writes. Using an
 // in-cluster Pod keeps registry auth on the existing build-plane pull Secret
 // and avoids a host-side skopeo/crane dependency.
-func readCacheDrillNativeMessage(t *testing.T, ctx context.Context, live client.Client, app *appv1alpha1.App, registryHost, _, _ string) string {
+func readCacheDrillNativeMessage(t *testing.T, ctx context.Context, live client.Client, app *appv1alpha1.App, registryHost string) string {
 	t.Helper()
 	const ns = "bex-build"
 	image := build.Options{
 		Name: app.Name, AppUID: string(app.UID), Registry: registryHost,
 		Revision: releaseBuildRevision(app), Workspace: app.Labels[labelWorkspace],
 	}.ImageRef()
-	podName := fmt.Sprintf("m87-msg-%s-%d", app.Name[len(app.Name)-8:], app.Generation)
+	podName := fmt.Sprintf("cache-msg-%s-%d", app.Name[len(app.Name)-8:], app.Generation)
 	var zero, deadline int64 = 0, 120
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: ns},
@@ -308,7 +364,10 @@ func readCacheDrillNativeMessage(t *testing.T, ctx context.Context, live client.
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		_ = live.Delete(cleanupCtx, pod)
+		uid := pod.UID
+		if err := live.Delete(cleanupCtx, pod, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &uid}}); client.IgnoreNotFound(err) != nil {
+			t.Error(err)
+		}
 	})
 	if err := wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
 		var current corev1.Pod
