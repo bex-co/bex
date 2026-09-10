@@ -479,9 +479,10 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description: "Toast shown when syncBlueprint returns an error",
   },
   "blueprints.syncBusy": {
-    message: "Another sync is already running — retry after it settles",
+    message:
+      "This sync no longer owns execution (busy, interrupted, or superseded) — start a new sync; partial work is never replayed",
     description:
-      "Toast shown when syncBlueprint refuses with BLUEPRINT_SYNC_BUSY",
+      "Toast shown when syncBlueprint refuses with BLUEPRINT_SYNC_BUSY (admission race, mid-apply fence, or disconnect-busy)",
   },
   // --- Update action ---
   "blueprints.editField": {

@@ -124,6 +124,10 @@ func (f *blueprintFixtureStore) StageBlueprintManifest(context.Context, string, 
 	return store.Blueprint{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
 }
 
+func (f *blueprintFixtureStore) AssertBlueprintExecution(context.Context, string, string, int64, string) error {
+	return fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+}
+
 func (f *blueprintFixtureStore) CompleteBlueprintSync(context.Context, string, string, string, int64, string, time.Time, *string) (store.Blueprint, error) {
 	return store.Blueprint{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
 }
