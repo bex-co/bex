@@ -161,6 +161,33 @@ func TestOriginMetricsFamiliesAppearOnAScrape(t *testing.T) {
 	}
 }
 
+// TestOriginMetricsTelemetrySeries is the cardinality companion to
+// TestOriginMetricsRouteLabelIsAPatternNeverAnId for the CLI usage counter
+// (w5/m92): stored events only, bounded labels, and identity dimensions
+// absent by construction.
+func TestOriginMetricsTelemetrySeries(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	m := NewOriginMetrics(reg)
+	m.ObserveTelemetry("bex services", "success", "2.27.0", "json")
+	m.ObserveTelemetry("bex services", "execution_error", "2.27.0", "text")
+
+	w := httptest.NewRecorder()
+	promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	scrape := w.Body.String()
+	// NB: exposition sorts label names alphabetically, not in declaration order.
+	for _, series := range []string{
+		`bex_api_cli_telemetry_events_total{cli_version="2.27.0",command="bex services",completion_kind="success",output_format="json"} 1`,
+		`bex_api_cli_telemetry_events_total{cli_version="2.27.0",command="bex services",completion_kind="execution_error",output_format="text"} 1`,
+	} {
+		if !strings.Contains(scrape, series) {
+			t.Errorf("scrape is missing %s", series)
+		}
+	}
+	// Nil-safe: metrics-off ingest must not panic.
+	var off *OriginMetrics
+	off.ObserveTelemetry("bex services", "success", "2.27.0", "json")
+}
+
 // TestOriginMetricsRouteLabelIsAPatternNeverAnId is the cardinality guard: ids
 // are the one thing that turns a bounded histogram into an unbounded memory
 // leak, so every route label must be a registered mux pattern.
