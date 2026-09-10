@@ -377,6 +377,10 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			`DELETE FROM notification_settings WHERE subject = $1`,
 			`DELETE FROM ssh_keys WHERE subject = $1`,
 			`DELETE FROM github_connect_transactions WHERE subject = $1`,
+			// CLI telemetry rows are the reporter's own diagnostics (w5/m92):
+			// delete, don't anonymize — the stable installation_id would
+			// keep anonymized rows linkable, so a marker swap is incomplete.
+			`DELETE FROM cli_telemetry_events WHERE subject = $1`,
 		}
 		for _, statement := range deletes {
 			if _, err := tx.Exec(ctx, statement, subject); err != nil {
