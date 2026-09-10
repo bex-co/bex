@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m39** — [Complete Blueprint execution fencing](m39/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 1
+- [x] **m39** — [Complete Blueprint execution fencing](done/m39/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 1 — done 2026-09-10
 - [ ] **m40** — [Make Blueprint ownership reliable during apply](m40/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 2
 - [ ] **m41** — [Bind manual Blueprint sync to its reviewed source](m41/README.md) (8 tasks; 2h50m implementation, 4h50m total) ← approved 2026-09-09 pm-brainstorm proposal 3
 
