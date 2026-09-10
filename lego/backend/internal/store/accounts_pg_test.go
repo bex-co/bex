@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -42,7 +43,7 @@ func TestAccountDeletionStorePG(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	if _, err := pool.Exec(ctx, `TRUNCATE account_deletions, oauth_revocations, owner_ids, tenants CASCADE`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE account_deletions, cli_telemetry_events, oauth_revocations, owner_ids, tenants CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	st := NewPGStore(pool)
@@ -94,6 +95,14 @@ func TestAccountDeletionStorePG(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO oauth_revocations (subject, client_id) VALUES ('identity-a', 'agent-client')`); err != nil {
+		t.Fatal(err)
+	}
+	// CLI telemetry carries a stable install UUID, so its disposition is a hard
+	// delete rather than an anonymized marker (ADR086 data disposition).
+	if err := st.InsertCLITelemetryEvent(ctx, CLITelemetryEvent{
+		ID: "clt-deletion", Subject: "identity-a", WorkspaceID: solo.ID,
+		Command: "services list", InstallationID: "install-a", ReceivedAt: time.Now(),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	deletion, err := st.BeginAccountDeletion(ctx, "identity-a", "a@example.com", machineSubjects)
@@ -165,6 +174,13 @@ func TestAccountDeletionStorePG(t *testing.T) {
 	}
 	if revocationSubject != deletion.DeletedMarker {
 		t.Fatalf("OAuth revocation subject=%q want deleted marker", revocationSubject)
+	}
+	var telemetryRows int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM cli_telemetry_events WHERE subject = 'identity-a'`).Scan(&telemetryRows); err != nil {
+		t.Fatal(err)
+	}
+	if telemetryRows != 0 {
+		t.Fatalf("CLI telemetry survived account cleanup: %d rows", telemetryRows)
 	}
 
 	if err := st.FailAccountDeletion(ctx, "identity-a", strings.Repeat("x", 700)); err != nil {

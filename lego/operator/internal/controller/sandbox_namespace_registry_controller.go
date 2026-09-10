@@ -80,7 +80,7 @@ func (r *SandboxNamespaceRegistryReconciler) Reconcile(ctx context.Context, req 
 
 	if err := r.Registry.EnsureSnapshotCreds(ctx, ns.Name); err != nil {
 		if errors.Is(err, registry.ErrConflictRequeue) {
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: settleRequeue}, nil
 		}
 		return ctrl.Result{}, err
 	}
