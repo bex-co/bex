@@ -63,6 +63,7 @@ Key entry points:
 
 - **Never `git commit`/`push` unless user runs `/ship` (Claude) or `$ship` (Codex), or explicitly requests a `routine-*` run.** A routine request authorizes planning, fixing, verification, and invoking ship in the same run without first filing a `.pm` milestone. Honor explicit audit-only or no-ship limits; follow the ship skill’s safety rules.
 - Never commit/print `.env` or `*.kubeconfig`.
+- **Local dev environments are pre-approved (user decision 2026-09-09).** `scripts/dev-env.sh <N> {up,down,status,clean,env}` for any `dev-N`, and `scripts/mock-cluster.sh` (bring-up, reprovision, `scale N`) on the local kind/CAPD cluster, never require user approval — run them whenever the work needs it, including destructive recovery (reprovision, `clean`) when the harness's own diagnostics point there. Still respect each harness's isolation boundaries (own `dev-N` namespaces/ports; read-only on other workstreams' stacks), and report what was rebuilt.
 - **Skill layout:** canonical `.claude/skills/<name>/SKILL.md`; `.agents/skills/<name>` is `../../.claude/skills/<name>` symlink; no `.claude/commands/`. Validate: `bash scripts/skill-layout-validate.sh`.
 - **`.env.example` mirrors `.env` names** (no values). `cp .env.example .env` must never fall out of date; `scripts/gh-secrets.sh` pushes `.env` → GitHub secrets.
 - Markdown CI: `npx prettier@3.4.2 --write "**/*.md"` before finishing.
