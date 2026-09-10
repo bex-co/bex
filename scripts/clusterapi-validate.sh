@@ -209,13 +209,11 @@ burst_max="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-t
 burst_labels="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .metadata.annotations."capacity.cluster-autoscaler.kubernetes.io/labels"' "$OVERLAY")"
 burst_infra="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .spec.template.spec.infrastructureRef.name' "$OVERLAY")"
 burst_type="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$burst_infra\") | .spec.template.spec.type" "$OVERLAY")"
-# min=1 keeps one stable serving node always warm; max=2 (docs/ADR060
-# § dedicated build pool, 2026-08-15) lets serving OVERFLOW grow this stable
-# pool instead of leaking onto the tainted lg/burst build pools and pinning
-# them (observed: single-instance CNPG PDBs kept bex-tenant-burst undrainable
-# for 6 days).
-if [ "$tenant_min" != "1" ] || [ "$tenant_max" != "2" ]; then
-  echo "FAIL: bex-tenant-0 must stay the elastic serving baseline (want min=1 max=2 per docs/ADR060, got min=$tenant_min max=$tenant_max)" >&2
+# min=1 keeps one stable serving node warm; max=3 allows rollout surge when
+# two serving nodes are occupied (docs/ADR060 § dedicated build pool,
+# 2026-09-09). Serving workloads still cannot use the tainted build pools.
+if [ "$tenant_min" != "1" ] || [ "$tenant_max" != "3" ]; then
+  echo "FAIL: bex-tenant-0 must retain serving rollout capacity (want min=1 max=3 per docs/ADR060, got min=$tenant_min max=$tenant_max)" >&2
   fail=1
 fi
 if [ "$burst_min" != "0" ] || [ "$burst_max" != "2" ]; then

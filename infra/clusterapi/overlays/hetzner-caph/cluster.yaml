@@ -370,12 +370,12 @@ metadata:
     # fsn1 (checked 2026-08-08; ~4.7x cheaper than cpx32 at identical specs), so
     # the immutable template is rotated back to cx33 (docs/ADR053). cpx32 stays
     # the documented fallback for the next fsn1 cx stock-out.
-    # max 2 (2026-08-15, docs/ADR060 § dedicated build pool): serving overflow
-    # must add a STABLE node here instead of leaking onto the burst/lg build
-    # pools and pinning them (observed: single-instance CNPG PDBs made
-    # bex-tenant-burst undrainable for 6 days).
+    # max 3 (2026-09-09, docs/ADR060 § dedicated build pool): two occupied
+    # serving nodes left standard-tier rollout pods unschedulable. Allow a
+    # third node for rollout surge while keeping serving workloads off the
+    # tainted burst/lg build pools.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "2"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "3"
     # Capacity hints (kept for DR bring-up / if min ever returns to 0):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-08-08).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
