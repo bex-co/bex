@@ -69,7 +69,9 @@ BEX_HOST=http://localhost:8090/v1/ bex workspaces -o json
 
 ## CLI usage telemetry
 
-Each `bex` invocation sends one usage event to bex-api (`POST /v1/cli-telemetry-events`, w5/m92): the command path, duration, exit code, OS/arch, output format, TTY/CI/agent signals (environment-variable _names_ only, never values), the active workspace id, and a stable per-machine install id. Command arguments, prompts, and secret values are never collected. Sending is best-effort in a detached subprocess — it cannot fail or slow your command — and events are attributed to your authenticated identity server-side, retained under the platform audit-retention window, and never shared with Render.
+Eligible `bex` invocations send a usage event to bex-api (`POST /v1/cli-telemetry-events`, w5/m92): the command path, duration, exit code, OS/arch, output format, TTY/CI/agent signals (environment-variable _names_ only, never values), the active workspace id, and a stable per-machine install id. Command arguments, prompts, and secret values are never collected. Sending is best-effort and cannot fail your command; the upstream sender chooses detached or bounded synchronous delivery according to the execution environment. Events are attributed to your authenticated identity server-side, retained under the platform audit-retention window, and never shared with Render.
+
+The ops-only [CLI usage board](https://obs.bex.co/d/bex-cli-usage/cli-usage) visualizes observed adoption, repeat usage, command outcomes/duration, and agent/CI signals. It does not measure all installed CLIs: opt-outs, unavailable authentication, early initialization failures, root version requests, and successful provider launchers that replace the process are absent. The recorded version is the upstream Render CLI version, not Bex's release version. See [metric definitions](runbooks/cli-analytics.md).
 
 Opt out with `BEX_CLI_DISABLE_ANALYTICS=1` (or the cross-tool `DO_NOT_TRACK=1`, which the imported CLI honors directly). An explicit `RENDER_CLI_DISABLE_ANALYTICS` is left untouched as the upstream-developer escape hatch.
 

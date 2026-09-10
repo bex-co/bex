@@ -15,6 +15,8 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m93** — [CLI adoption and reliability dashboard at obs.bex.co](m93/README.md) (8 tasks) ← user request 2026-09-10; extends m92 telemetry into adoption, retention, command reliability, duration and automation analytics.
+
 **Approved corrective queue (2026-09-08):** m90 → m91. Execute sequentially because both touch the Application Metrics card; m91 has no technical dependency on m90.
 
 - [x] **m92** — [CLI analytics parity with render.com](done/m92/README.md) (9 tasks) ← from user request 2026-09-10: bex-api accepts/stores the imported CLI's telemetry events (`POST /v1/cli-telemetry-events`), launcher consent flip with disclosure, stub-capture + handler + real-Postgres proof. — **DONE 2026-09-10**
