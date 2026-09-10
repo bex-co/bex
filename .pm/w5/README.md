@@ -17,6 +17,8 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 **Approved corrective queue (2026-09-08):** m90 → m91. Execute sequentially because both touch the Application Metrics card; m91 has no technical dependency on m90.
 
+- [x] **m92** — [CLI analytics parity with render.com](done/m92/README.md) (9 tasks) ← from user request 2026-09-10: bex-api accepts/stores the imported CLI's telemetry events (`POST /v1/cli-telemetry-events`), launcher consent flip with disclosure, stub-capture + handler + real-Postgres proof. — **DONE 2026-09-10**
+
 - [x] **m90** — [Correct CPU/memory percentages across replicas and rollouts](done/m90/README.md) (8 tasks; 3h30m implementation, 5h total) ← approved pm-brainstorm proposal 1; corrects specific incomplete m89 acceptance coverage. — **DONE 2026-09-09**: per-instance own-limit normalization before replica aggregation across REST/GraphQL/MCP/dashboard, truthful limit/unavailable states, live-verified (service-level + authed REST/GraphQL/MCP + dashboard Percentage/Total with desktop/narrow-mobile pending/ready captures); two real bugs fixed in tree (REST gate 400 on percentage/aggregateAllMethod, retained-percentage suppression on empty current-limit read).
 - [x] **m91** — [Preserve instance selection through empty windows and refreshes](done/m91/README.md) (7 tasks; 2h implementation, 3h30m total) ← approved pm-brainstorm proposal 2; corrects specific incomplete m89 acceptance coverage.
 

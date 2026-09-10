@@ -46,6 +46,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/cliauth"
+	"github.com/bex-co/bex/lego/backend/internal/clitelemetry"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/datastorelogs"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
@@ -102,24 +103,25 @@ type Server struct {
 	// unwired) ⇒ the loop is a no-op; main.go starts it with the serve
 	// context.
 	BlueprintRecovery *apps.BlueprintRecoverer
-	Postgres              *postgres.Service
-	KeyValue              *keyvalue.Service
-	Secrets               *secrets.Service
-	EnvGroups             *envgroups.Service
-	Workspaces            *workspaces.Service
-	Members               *members.Service
-	Billing               *billing.Service
-	Usage                 *usage.Service
-	Deploys               *deploys.Service
-	Events                *events.Service
-	Audit                 *audit.Service
-	GitHub                *github.Service
-	Notifications         *notifications.Service
-	Projects              *projects.Service
-	Environments          *environments.Service
-	RegistryCreds         *registrycreds.Service
-	Webhooks              *webhooks.Service
-	Jobs                  *jobs.Service
+	Postgres          *postgres.Service
+	KeyValue          *keyvalue.Service
+	Secrets           *secrets.Service
+	EnvGroups         *envgroups.Service
+	Workspaces        *workspaces.Service
+	Members           *members.Service
+	Billing           *billing.Service
+	Usage             *usage.Service
+	Deploys           *deploys.Service
+	Events            *events.Service
+	Audit             *audit.Service
+	GitHub            *github.Service
+	Notifications     *notifications.Service
+	Projects          *projects.Service
+	Environments      *environments.Service
+	RegistryCreds     *registrycreds.Service
+	Webhooks          *webhooks.Service
+	Jobs              *jobs.Service
+	CLITelemetry      *clitelemetry.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
 	StripeWebhook http.Handler
@@ -493,6 +495,13 @@ type Deps struct {
 	// credentials per workspace (default 50, 0 disables). Over-cap creates are
 	// refused with REGISTRY_CREDENTIAL_LIMIT across all surfaces.
 	MaxRegistryCredentialsPerWorkspace int
+	// CLITelemetryStore, when set (the control-plane store is wired), backs
+	// the CLI-telemetry ingest feature (w5/m92) — one row per
+	// `POST /v1/cli-telemetry-events` delivery. Concrete *store.PGStore (not
+	// the interface) so a store-off nil stays a comparable nil instead of a
+	// typed-nil trap; nil => the verb reports
+	// core.ErrCLITelemetryUnavailable.
+	CLITelemetryStore *store.PGStore
 
 	// MaxCustomDomainsPerService and MaxCustomDomainsPerWorkspace cap
 	// custom-domain cardinality (codex-security round 18; defaults 100/500, 0
@@ -627,6 +636,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Base: base, Store: d.RegistryCredsStore, Secret: d.Secrets,
 		MaxCredentials: d.MaxRegistryCredentialsPerWorkspace,
 	}
+	// The CLI-telemetry ingest service is always non-nil; its verb 503s until
+	// the control-plane store is wired (same convention as rc above).
+	var telStore clitelemetry.TelemetryStore
+	if d.CLITelemetryStore != nil {
+		telStore = d.CLITelemetryStore
+	}
+	telSvc := &clitelemetry.Service{Base: base, Store: telStore}
 	// pg and kv are also the projects and environments features' Database/
 	// KeyValue grouping seam (w1/m31 extension, internal/projects.DatabaseIndex/
 	// KeyValueIndex; w6/m20 extension, internal/environments' counterparts) —
@@ -867,6 +883,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		RegistryCreds:    rc,
 		Webhooks:         &webhooks.Service{Base: base, Store: d.WebhookStore, Metrics: d.WebhookMetrics},
 		Jobs:             &jobs.Service{Base: base, Store: d.JobStore, EventFacts: d.EventFacts},
+		CLITelemetry:     telSvc,
 		Onboard:          d.Onboard,
 		OAuthRevocations: d.OAuthRevocations,
 		Usage:            d.Usage,
@@ -985,6 +1002,7 @@ func (s *Server) features() []any {
 	out = appendFeature(out, s.Projects)
 	out = appendFeature(out, s.Environments)
 	out = appendFeature(out, s.RegistryCreds)
+	out = appendFeature(out, s.CLITelemetry)
 	out = appendFeature(out, s.Webhooks)
 	out = appendFeature(out, s.Jobs)
 	return out

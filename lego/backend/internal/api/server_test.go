@@ -46,6 +46,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/cliauth"
+	"github.com/bex-co/bex/lego/backend/internal/clitelemetry"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
@@ -968,6 +969,7 @@ func sweepableServices(base *core.Base) []any {
 		&events.Service{Base: base},
 		&notifications.Service{Base: base},
 		&webhooks.Service{Base: base},
+		&clitelemetry.Service{Base: base},
 	}
 }
 
