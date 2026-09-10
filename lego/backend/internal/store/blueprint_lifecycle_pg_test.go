@@ -515,3 +515,49 @@ func TestPGListAbandonedBounded(t *testing.T) {
 		}
 	}
 }
+
+// AssertBlueprintExecution holds only while (generation, runID) own the claim
+// (w8/m39): abandon and successor admission both fence it.
+func TestPGAssertBlueprintExecution(t *testing.T) {
+	st := openLifecyclePG(t)
+	tenant := lifecycleTenant(t, st, "assert")
+	bp := lifecycleBlueprint(t, st, tenant, "assert")
+	ctx := context.Background()
+	_, run, err := st.AdmitBlueprintSyncRun(ctx, bp.ID, tenant.ID, BlueprintSync{
+		State: BlueprintSyncStateRunning, StartedAt: time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AssertBlueprintExecution(ctx, bp.ID, tenant.ID, run.ExecutionGeneration, run.ID); err != nil {
+		t.Fatalf("assert while owning: %v", err)
+	}
+	if err := st.AssertBlueprintExecution(ctx, bp.ID, tenant.ID, run.ExecutionGeneration, "bsr-other"); !errors.Is(err, ErrBlueprintSyncBusy) {
+		t.Fatalf("wrong run = %v, want busy", err)
+	}
+	if err := st.AssertBlueprintExecution(ctx, bp.ID, tenant.ID, run.ExecutionGeneration+1, run.ID); !errors.Is(err, ErrBlueprintSyncBusy) {
+		t.Fatalf("wrong gen = %v, want busy", err)
+	}
+	now := time.Now().UTC()
+	if _, err := st.Pool.Exec(ctx, `UPDATE blueprint_syncs SET started_at = $2 WHERE id = $1`, run.ID, now.Add(-2*BlueprintRunRecoveryBound)); err != nil {
+		t.Fatal(err)
+	}
+	settled, err := st.AbandonBlueprintSync(ctx, run.ID, now, BlueprintRunInterruptedReason)
+	if err != nil || !settled {
+		t.Fatalf("abandon = (%v, %v)", settled, err)
+	}
+	if err := st.AssertBlueprintExecution(ctx, bp.ID, tenant.ID, run.ExecutionGeneration, run.ID); !errors.Is(err, ErrBlueprintSyncBusy) {
+		t.Fatalf("assert after abandon = %v, want busy", err)
+	}
+	var gen int64
+	var active *string
+	if err := st.Pool.QueryRow(ctx, `SELECT execution_generation, active_run_id FROM blueprints WHERE id = $1`, bp.ID).Scan(&gen, &active); err != nil {
+		t.Fatal(err)
+	}
+	if active != nil {
+		t.Fatalf("active_run_id still set after abandon: %v", active)
+	}
+	if gen != run.ExecutionGeneration+1 {
+		t.Fatalf("generation after abandon = %d, want %d (bumped)", gen, run.ExecutionGeneration+1)
+	}
+}

@@ -169,7 +169,7 @@ func appServiceName(a *appv1alpha1.App) string {
 	return a.Name
 }
 
-func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID string, generation int64, st parsedStack) {
+func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID string, generation int64, runID string, st parsedStack) {
 	if blueprintID == "" {
 		return
 	}
@@ -177,12 +177,17 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 	if !ok {
 		return
 	}
-	// A fenced run must not restamp ownership after a disconnect or a newer
-	// admission took authority (w8/m37 t003): the stamp lands only while the
-	// admitted generation still owns the row. Unguarded (zero) applies stamp
-	// as before. Skips are logged, never retried — the fencing writer owns
-	// the row now.
-	if generation != 0 && s.Blueprints != nil {
+	// A fenced run must not restamp ownership after abandon, disconnect, or a
+	// newer admission took authority (w8/m37 t003 + w8/m39): the stamp lands
+	// only while the admitted (generation, runID) claim still owns the row.
+	// Unguarded (zero generation / empty run) applies stamp as before. Skips
+	// are logged, never retried — the fencing writer owns the row now.
+	if generation != 0 && runID != "" && s.Blueprints != nil {
+		if err := s.Blueprints.AssertBlueprintExecution(ctx, blueprintID, tenantID, generation, runID); err != nil {
+			log.Printf("blueprint %s: skipping ownership stamp (generation %d run %s fenced: %v)", blueprintID, generation, runID, err)
+			return
+		}
+	} else if generation != 0 && s.Blueprints != nil {
 		current, err := s.Blueprints.GetBlueprint(ctx, blueprintID, tenantID)
 		if err != nil {
 			log.Printf("blueprint %s: skipping ownership stamp (row absent, generation %d fenced)", blueprintID, generation)

@@ -310,6 +310,16 @@ func (f *fakeBlueprintStore) StageBlueprintManifest(_ context.Context, id, tenan
 	return b, nil
 }
 
+func (f *fakeBlueprintStore) AssertBlueprintExecution(_ context.Context, id, tenantID string, generation int64, runID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	b, ok := f.blueprints[id]
+	if !ok || b.TenantID != tenantID || b.ExecutionGeneration != generation || b.ActiveRunID != runID || b.Status == "disconnected" {
+		return fakeBusy()
+	}
+	return nil
+}
+
 // fakeProjectStatus mirrors CompleteBlueprintSync's projection from the
 // current row: success lands in_sync unless auto-sync is off (paused);
 // failure lands error unless auto-sync is off (paused).
@@ -412,6 +422,7 @@ func (f *fakeBlueprintStore) AbandonBlueprintSync(_ context.Context, runID strin
 			(b.ActiveRunID == "" && b.Status == store.BlueprintStatusSyncing)) {
 		b.Status = store.BlueprintStatusError
 		b.ActiveRunID = ""
+		b.ExecutionGeneration++
 		f.blueprints[run.BlueprintID] = b
 	}
 	return true, nil
@@ -1941,6 +1952,7 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
 		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
 		Status: "active", Name: "app", AutoSync: true, ExecutionGeneration: 7,
+		ActiveRunID: "bsr-current",
 	})
 	cl := fakeClient()
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs}
@@ -1958,7 +1970,7 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 	mkApp("api")
 
 	st := parsedStack{services: []parsedService{{req: CreateRequest{Name: "web"}}}}
-	svc.stampBlueprintOwnership(ctx, "blp-1", 7, st)
+	svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", st)
 	var web appv1alpha1.App
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &web); err != nil {
 		t.Fatalf("get web: %v", err)
@@ -1968,7 +1980,7 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 	}
 
 	stale := parsedStack{services: []parsedService{{req: CreateRequest{Name: "api"}}}}
-	svc.stampBlueprintOwnership(ctx, "blp-1", 6, stale)
+	svc.stampBlueprintOwnership(ctx, "blp-1", 6, "bsr-old", stale)
 	var api appv1alpha1.App
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "api"}, &api); err != nil {
 		t.Fatalf("get api: %v", err)
@@ -1979,7 +1991,7 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 	if err := svc.DisconnectBlueprint(ctx, "blp-1", "tea-a"); err != nil {
 		t.Fatalf("disconnect: %v", err)
 	}
-	svc.stampBlueprintOwnership(ctx, "blp-1", 7, stale)
+	svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", stale)
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "api"}, &api); err != nil {
 		t.Fatalf("get api: %v", err)
 	}
@@ -2171,6 +2183,9 @@ func TestBlueprintRecovererSettlesAbandoned(t *testing.T) {
 	if b := fs.blueprints["blp-1"]; b.Status != store.BlueprintStatusError || b.ActiveRunID != "" {
 		t.Fatalf("abandoned blueprint = %+v, want error with released claim", b)
 	}
+	if b := fs.blueprints["blp-1"]; b.ExecutionGeneration != oldRun.ExecutionGeneration+1 {
+		t.Fatalf("abandon did not bump generation: got %d want %d", b.ExecutionGeneration, oldRun.ExecutionGeneration+1)
+	}
 	liveCount := 0
 	for _, run := range fs.syncs {
 		if run.BlueprintID == "blp-2" {
@@ -2193,6 +2208,82 @@ func TestBlueprintRecovererSettlesAbandoned(t *testing.T) {
 	r.recoverOnce(ctx)
 	if run := fs.syncs[oldRun.ID]; run.State != store.BlueprintSyncStateError {
 		t.Fatalf("second sweep changed settled run: %+v", run)
+	}
+}
+
+// TestPausedApplyAssertsAfterAbandon pins w8/m39: a worker paused between
+// mutation families cannot start the next write or restamp ownership after
+// recovery retires its claim.
+func TestPausedApplyAssertsAfterAbandon(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
+		Status: "active", Name: "app", AutoSync: true,
+	})
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	old := time.Now().UTC().Add(-store.BlueprintRunRecoveryBound - time.Hour)
+	b, run, err := fs.AdmitBlueprintSyncRun(ctx, "blp-1", "tea-a", store.BlueprintSync{
+		State: store.BlueprintSyncStateRunning, StartedAt: old,
+	})
+	if err != nil {
+		t.Fatalf("admit: %v", err)
+	}
+	req := DeployRequest{
+		BlueprintID: b.ID, BlueprintGeneration: b.ExecutionGeneration, BlueprintRunID: run.ID,
+	}
+	if err := svc.requireBlueprintExecution(ctx, req); err != nil {
+		t.Fatalf("assert while owning: %v", err)
+	}
+
+	settled, err := fs.AbandonBlueprintSync(ctx, run.ID, time.Now().UTC(), store.BlueprintRunInterruptedReason)
+	if err != nil || !settled {
+		t.Fatalf("abandon = (%v, %v)", settled, err)
+	}
+	if err := svc.requireBlueprintExecution(ctx, req); err == nil {
+		t.Fatalf("assert after abandon = nil, want BLUEPRINT_SYNC_BUSY")
+	} else {
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_SYNC_BUSY" {
+			t.Fatalf("assert after abandon = %v, want BLUEPRINT_SYNC_BUSY", err)
+		}
+	}
+
+	st := parsedStack{services: []parsedService{{req: CreateRequest{Name: "web"}}}}
+	mkApp := func(name string) {
+		a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+			Name: name, Namespace: "default",
+			Labels: map[string]string{core.LabelTenant: "tea-a"},
+		}}
+		if err := svc.Client.Create(ctx, a); err != nil {
+			t.Fatalf("create app %s: %v", name, err)
+		}
+	}
+	mkApp("web")
+	svc.stampBlueprintOwnership(ctx, b.ID, run.ExecutionGeneration, run.ID, st)
+	var web appv1alpha1.App
+	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &web); err != nil {
+		t.Fatalf("get web: %v", err)
+	}
+	if web.Labels[core.LabelBlueprint] != "" {
+		t.Fatalf("abandoned run restamped ownership")
+	}
+
+	// Successor admits under a fresh generation; the retired worker still cannot write.
+	b2, run2, err := fs.AdmitBlueprintSyncRun(ctx, "blp-1", "tea-a", store.BlueprintSync{
+		State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("successor admit: %v", err)
+	}
+	if err := svc.requireBlueprintExecution(ctx, req); err == nil {
+		t.Fatalf("retired worker assert succeeded against successor claim")
+	}
+	succ := DeployRequest{BlueprintID: b2.ID, BlueprintGeneration: b2.ExecutionGeneration, BlueprintRunID: run2.ID}
+	if err := svc.requireBlueprintExecution(ctx, succ); err != nil {
+		t.Fatalf("successor assert: %v", err)
 	}
 }
 

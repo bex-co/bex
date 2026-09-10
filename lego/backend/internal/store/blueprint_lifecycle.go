@@ -26,20 +26,41 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// blueprint_lifecycle.go (w8/m37) is the persisted execution boundary for
-// Blueprint syncs: at most one admitted apply per Blueprint across API
+// blueprint_lifecycle.go (w8/m37 + w8/m39) is the persisted execution boundary
+// for Blueprint syncs: at most one admitted apply per Blueprint across API
 // replicas, fenced by a generation counter so a stale worker cannot complete,
 // restamp ownership, or resurrect a disconnected row.
 //
 // A process-local mutex cannot coordinate production bex-api replicas, and a
 // database transaction must never stay open across Git or Kubernetes network
-// work — so admission, staging, completion, disconnect, and recovery are each
-// short conditional transactions over two columns (migration 0111):
-// blueprints.execution_generation (bumped by every admission, disconnect, and
-// explicit re-creation) and blueprints.active_run_id (the one admitted but
-// uncompleted run). Every lifecycle write re-checks both; zero matched rows
-// means another writer won, and the loser takes the busy path instead of
-// overwriting.
+// work — so admission, staging, completion, disconnect, recovery, and
+// mid-apply authority checks are each short conditional transactions over two
+// columns (migration 0111): blueprints.execution_generation (bumped by every
+// admission, disconnect, abandon that clears the claim, and explicit
+// re-creation) and blueprints.active_run_id (the one admitted but uncompleted
+// run). Every lifecycle write re-checks both; zero matched rows means another
+// writer won, and the loser takes the busy path instead of overwriting.
+//
+// # Execution authority contract (w8/m39)
+//
+// Authority is the pair (execution_generation, active_run_id). Admission mints
+// it; Stage/Complete/FailAdmitted/Assert consume it. Expiry
+// (BlueprintRunRecoveryBound) is NOT proof of process death — it only lets
+// disconnect settle a stale claim inline and lets the recoverer Abandon a run
+// so a successor can admit. A live worker past the bound is still fenced on
+// late Complete and on every AssertBlueprintExecution between resource writes.
+//
+// Mutation boundaries: deployParsedStack must Assert before groupings, env
+// groups, datastores, services, deferred patches, and ownership stamps. A
+// read-before-write GetBlueprint alone is insufficient — between the read and
+// the sink write another replica can Abandon/Disconnect/Admit. The sink
+// precondition that closes that race is the conditional WHERE on
+// (execution_generation, active_run_id) in Assert/Stage/Complete (Postgres)
+// plus Abandon bumping generation when it clears the claim (so a paused
+// worker's late stamp and later Assert fail even when no successor has
+// admitted yet). A single Kubernetes API call already past Assert may still
+// land; no further mutation family begins, Complete cannot report success, and
+// the bumped generation fences restamp / successor-clobber via Assert.
 
 // ErrBlueprintSyncBusy reports that a Blueprint lifecycle verb lost (or never
 // held) execution authority: another apply owns the active claim, or the
@@ -195,6 +216,30 @@ func (s *PGStore) AdmitBlueprintCreate(ctx context.Context, b Blueprint, run Blu
 		return Blueprint{}, BlueprintSync{}, classify("blueprint_sync", err)
 	}
 	return out, outRun, nil
+}
+
+// AssertBlueprintExecution confirms the caller's admitted (generation, runID)
+// still owns the Blueprint claim (w8/m39). Callers invoke it before each
+// resource-mutation family so a retired worker cannot start further side
+// effects. Zero rows → ErrBlueprintSyncBusy. The same WHERE shape as Stage /
+// Complete is the sink precondition: a Get-then-act race loses here rather
+// than writing under a freed claim.
+func (s *PGStore) AssertBlueprintExecution(ctx context.Context, id, tenantID string, generation int64, runID string) error {
+	var one int
+	err := s.Pool.QueryRow(ctx, `
+		SELECT 1 FROM blueprints
+		WHERE id = $1 AND tenant_id = $2
+		  AND execution_generation = $3 AND active_run_id = $4
+		  AND status != 'disconnected'`,
+		id, tenantID, generation, runID,
+	).Scan(&one)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrBlueprintSyncBusy
+		}
+		return classify("blueprint", err)
+	}
+	return nil
 }
 
 // StageBlueprintManifest stores the admitted sync's preflighted manifest. Only
@@ -406,11 +451,14 @@ func (s *PGStore) ListAbandonedBlueprintSyncs(ctx context.Context, before time.T
 }
 
 // AbandonBlueprintSync settles one stale running run as interrupted (w8/m37
-// t004). The run settles only from running; the Blueprint flips to error only
-// while the abandoned generation still owns the claim (or for a legacy row
-// stuck syncing with no claim). Disconnected rows and newer generations are
-// never overwritten. It returns false when another writer settled first — an
-// idempotent no-op, not an error.
+// t004 + w8/m39). The run settles only from running; the Blueprint flips to
+// error only while the abandoned generation still owns the claim (or for a
+// legacy row stuck syncing with no claim). Clearing the claim also bumps
+// execution_generation so a paused worker cannot restamp ownership or pass
+// AssertBlueprintExecution after recovery frees the row — expiry alone is not
+// proof of death, but the generation bump is the fence. Disconnected rows and
+// newer generations are never overwritten. It returns false when another
+// writer settled first — an idempotent no-op, not an error.
 func (s *PGStore) AbandonBlueprintSync(ctx context.Context, runID string, now time.Time, reason string) (bool, error) {
 	settled := false
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
@@ -456,7 +504,8 @@ func (s *PGStore) AbandonBlueprintSync(ctx context.Context, runID string, now ti
 		}
 		if (active == runID && bpGen == generation) || (active == "" && status == BlueprintStatusSyncing) {
 			_, err = tx.Exec(ctx, `
-				UPDATE blueprints SET status = 'error', active_run_id = NULL, updated_at = now()
+				UPDATE blueprints SET status = 'error', active_run_id = NULL,
+					execution_generation = execution_generation + 1, updated_at = now()
 				WHERE id = $1 AND execution_generation = $2`, bpID, bpGen)
 			return err
 		}
