@@ -44,11 +44,19 @@ type TelemetryStore interface {
 	InsertCLITelemetryEvent(ctx context.Context, ev store.CLITelemetryEvent) error
 }
 
+// TelemetryMetrics is the Service's seam to the origin metrics registry.
+// *api.OriginMetrics satisfies it (declared here so the dependency points
+// api -> clitelemetry, never back). nil => metrics off, silently skipped.
+type TelemetryMetrics interface {
+	ObserveTelemetry(command, completionKind, cliVersion, outputFormat string)
+}
+
 // Service ingests CLI telemetry events over the injected control-plane
 // store. Always non-nil; its verbs 503 until the store is wired.
 type Service struct {
 	*core.Base
-	Store TelemetryStore
+	Store   TelemetryStore
+	Metrics TelemetryMetrics
 }
 
 // Field bounds keep one hostile delivery from bloating the table: the
@@ -141,6 +149,11 @@ func (s *Service) Record(ctx context.Context, in EventInput) (string, error) {
 	}
 	if err := s.Store.InsertCLITelemetryEvent(ctx, ev); err != nil {
 		return "", err
+	}
+	// Count only stored events: rejections stay on the origin request
+	// counter's status axis instead of double-appearing here.
+	if s.Metrics != nil {
+		s.Metrics.ObserveTelemetry(ev.Command, ev.CompletionKind, ev.CLIVersion, ev.OutputFormat)
 	}
 	return eventID, nil
 }

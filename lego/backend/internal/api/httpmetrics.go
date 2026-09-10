@@ -65,11 +65,12 @@ import (
 // make the p95 of ordinary unary requests unreadable. Their latency question is
 // "did it start and stay up", answered by the in-flight gauge and the counter.
 type OriginMetrics struct {
-	duration *prometheus.HistogramVec
-	requests *prometheus.CounterVec
-	inFlight *prometheus.GaugeVec
-	graphql  *prometheus.HistogramVec
-	mcpTools *prometheus.HistogramVec
+	duration  *prometheus.HistogramVec
+	requests  *prometheus.CounterVec
+	inFlight  *prometheus.GaugeVec
+	graphql   *prometheus.HistogramVec
+	mcpTools  *prometheus.HistogramVec
+	telemetry *prometheus.CounterVec
 }
 
 // Request surfaces — the coarse "which product surface" axis every panel and
@@ -166,9 +167,33 @@ func NewOriginMetrics(reg prometheus.Registerer) *OriginMetrics {
 			Help:    "MCP tool call duration by registered tool name and outcome (ok/error/denied).",
 			Buckets: originDurationBuckets,
 		}, []string{"tool", "outcome"}),
+		// Stored CLI telemetry events only (w5/m92) — rejections stay on
+		// http_requests_total's status axis instead. Labels are bounded by
+		// construction: command paths come from the CLI's fixed subcommand
+		// tree (~dozens), completion_kind is the sender's small enum,
+		// cli_version changes per release, output_format has four values.
+		// Workspace/installation/user identity NEVER becomes a label — that
+		// split lives in Postgres behind the retention window, per the
+		// cardinality rule. Abuse is contained one layer down: the endpoint
+		// is authenticated and identity-rate-limited, so a hostile client
+		// can mint series no faster than it can write retained rows.
+		telemetry: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "api", Name: "cli_telemetry_events_total",
+			Help: "Stored CLI telemetry events by command path, completion kind, CLI version, and output format.",
+		}, []string{"command", "completion_kind", "cli_version", "output_format"}),
 	}
-	reg.MustRegister(m.duration, m.requests, m.inFlight, m.graphql, m.mcpTools)
+	reg.MustRegister(m.duration, m.requests, m.inFlight, m.graphql, m.mcpTools, m.telemetry)
 	return m
+}
+
+// ObserveTelemetry counts one stored CLI telemetry event (w5/m92). Nil-safe
+// like observeMCPTool: the ingest service calls it only after a successful
+// insert, and a nil receiver (metrics off) is a silent no-op.
+func (m *OriginMetrics) ObserveTelemetry(command, completionKind, cliVersion, outputFormat string) {
+	if m == nil {
+		return
+	}
+	m.telemetry.WithLabelValues(command, completionKind, cliVersion, outputFormat).Inc()
 }
 
 // Middleware meters the public listener, deriving the surface from the request

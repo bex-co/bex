@@ -355,6 +355,7 @@ func main() {
 	wireDiskSnapshots(&deps, cfg)
 	srv := api.NewServer(base, deps)
 	srv.OriginMetrics = originMetrics
+	srv.CLITelemetry.Metrics = originMetrics
 	if mode := cfg.EnvGroupNameClaimAudit; mode != "" {
 		report, auditErr := envgroups.AuditNameClaims(ctx, deps.Secrets, mode == "dry-run")
 		if auditErr != nil {

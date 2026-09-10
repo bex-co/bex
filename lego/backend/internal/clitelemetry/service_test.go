@@ -45,6 +45,17 @@ func (f *fakeStore) InsertCLITelemetryEvent(_ context.Context, ev store.CLITelem
 	return nil
 }
 
+type fakeMetrics struct {
+	mu    sync.Mutex
+	calls [][4]string
+}
+
+func (f *fakeMetrics) ObserveTelemetry(command, completionKind, cliVersion, outputFormat string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, [4]string{command, completionKind, cliVersion, outputFormat})
+}
+
 func newTestService() (*Service, *fakeStore) {
 	st := &fakeStore{}
 	return &Service{Base: &core.Base{}, Store: st}, st
@@ -159,6 +170,46 @@ func TestRecordTruncatesHostileFields(t *testing.T) {
 	}
 	if strings.Count(got.CISignals, ",")+1 != maxTelemetrySignals {
 		t.Errorf("ci signals kept = %d entries, want %d", strings.Count(got.CISignals, ",")+1, maxTelemetrySignals)
+	}
+}
+
+func TestRecordObservesStoredEventsOnce(t *testing.T) {
+	s, _ := newTestService()
+	fm := &fakeMetrics{}
+	s.Metrics = fm
+	in := sampleInput()
+	in.CLIVersion = strings.Repeat("v", maxTelemetryFieldBytes+10)
+	if _, err := s.Record(context.Background(), in); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	if len(fm.calls) != 1 {
+		t.Fatalf("observe calls = %d, want 1", len(fm.calls))
+	}
+	got := fm.calls[0]
+	// Labels carry the stored (truncated) values, so the series matches the row.
+	if got[0] != "services list" || got[1] != "success" || got[3] != "json" {
+		t.Errorf("labels = %q", got)
+	}
+	if len(got[2]) != maxTelemetryFieldBytes {
+		t.Errorf("cli_version label len = %d, want truncated %d", len(got[2]), maxTelemetryFieldBytes)
+	}
+}
+
+func TestRecordSkipsMetricsOnRejection(t *testing.T) {
+	s, _ := newTestService()
+	fm := &fakeMetrics{}
+	s.Metrics = fm
+	in := sampleInput()
+	in.Command = ""
+	if _, err := s.Record(context.Background(), in); err == nil {
+		t.Fatal("want validation error")
+	}
+	s.Store.(*fakeStore).retErr = errors.New("boom")
+	if _, err := s.Record(context.Background(), sampleInput()); err == nil {
+		t.Fatal("want store error")
+	}
+	if len(fm.calls) != 0 {
+		t.Errorf("observe calls = %d, want 0 (rejections stay on the request counter)", len(fm.calls))
 	}
 }
 
