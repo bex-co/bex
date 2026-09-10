@@ -15,9 +15,15 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m39** — [Complete Blueprint execution fencing](m39/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 1
+- [ ] **m40** — [Make Blueprint ownership reliable during apply](m40/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 2
+- [ ] **m41** — [Bind manual Blueprint sync to its reviewed source](m41/README.md) (8 tasks; 2h50m implementation, 4h50m total) ← approved 2026-09-09 pm-brainstorm proposal 3
+
+**Execution order:** m39 → m40 → existing m38; m41 depends on m39 and is scheduled after m40 to avoid shared-file collisions. m38 stays blocked until both corrective closeouts are verified.
+
 - [x] **m36** — [Blueprint Git source integrity](done/m36/README.md) (8 tasks; 3h15m implementation, 5h total) ← approved 2026-09-08 pm-brainstorm proposal 1 — done 2026-09-08
 - [x] **m37** — [Blueprint lifecycle consistency](done/m37/README.md) (9 tasks; 4h30m implementation, 6h30m total) ← approved 2026-09-08 pm-brainstorm proposal 2 — done 2026-09-08 (dev-8 two-client walkthrough outstanding: Docker Desktop VM crash-loops headlessly; see done/m37/README.md evidence)
-- [ ] **m38** — [Resource-independent Blueprint auto-sync](m38/README.md) (9 tasks; 4h implementation, 6h total) ← approved 2026-09-08 pm-brainstorm proposal 3. **Blocked:** t001 depends on w8/m37/t009 (verified closeout).
+- [ ] **m38** — [Resource-independent Blueprint auto-sync](m38/README.md) (9 tasks; 4h implementation, 6h total) ← approved 2026-09-08 pm-brainstorm proposal 3. **Blocked:** t001 depends on w8/m39/t008 and w8/m40/t008 (verified corrective closeouts; m37’s missing execution guarantee/walkthrough is owned by m39).
 
 - [x] **m1** — Metering pipeline: hourly usage rollups into the control-plane store (9 tasks) ← from `/pm-brainstorm w8` 2026-07-09
 - [x] **m2** — Usage API: month-to-date usage over REST · GraphQL · MCP (9 tasks) ← from `/pm-brainstorm w8` 2026-07-09, needs m1
