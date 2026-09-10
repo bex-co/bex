@@ -57,7 +57,11 @@ const (
 type deployAuthorityKey struct{}
 
 func withDeployAuthority(ctx context.Context, req DeployRequest) context.Context {
-	if req.BlueprintID == "" || req.BlueprintGeneration == 0 || req.BlueprintRunID == "" {
+	// Carry BlueprintID (and Confirm) for resource claims even when generation
+	// is zero — mid-apply execution asserts still require generation+runID
+	// (requireBlueprintExecution), but ownership claims need the identity on
+	// every Blueprint apply path (w8/m40).
+	if req.BlueprintID == "" {
 		return ctx
 	}
 	return context.WithValue(ctx, deployAuthorityKey{}, req)
@@ -771,7 +775,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
-	s.stampBlueprintOwnership(ctx, req.BlueprintID, req.BlueprintGeneration, req.BlueprintRunID, st)
+	if err := s.stampBlueprintOwnership(ctx, req.BlueprintID, req.BlueprintGeneration, req.BlueprintRunID, st); err != nil {
+		return res, err
+	}
 	return res, nil
 }
 
@@ -2622,6 +2628,9 @@ func (s *Service) applyBlueprintCreate(ctx context.Context, req CreateRequest, f
 }
 
 func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, fields map[string]BlueprintField) (AppView, error) {
+	if err := s.claimBlueprintResourceName(ctx, "service", req.Name); err != nil {
+		return AppView{}, err
+	}
 	desired, err := specFromCreate(req)
 	if err != nil {
 		return AppView{}, err
@@ -2931,6 +2940,9 @@ func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map
 // re-apply is a no-op. databases is deployParsedStack's pre-fetched workspace
 // snapshot.
 func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignment core.EnvironmentAssignment, databases []appv1alpha1.Database) (StackDatabaseView, error) {
+	if err := s.claimBlueprintResourceName(ctx, "database", db.name); err != nil {
+		return StackDatabaseView{}, err
+	}
 	tenantID, scoped := s.Tenant(ctx)
 	existing, duplicate := uniqueDatabaseByDisplayName(databases, scoped, tenantID, db.name)
 	if duplicate {
@@ -2996,6 +3008,9 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 	// of the same render.yaml entry must match on the user-facing name (w9/m6,
 	// mirroring applyDatabase). keyValues is deployParsedStack's pre-fetched
 	// workspace snapshot.
+	if err := s.claimBlueprintResourceName(ctx, "key_value", kv.name); err != nil {
+		return StackKeyValueView{}, err
+	}
 	tenantID, scoped := s.Tenant(ctx)
 	existing, duplicate := uniqueKeyValueByDisplayName(keyValues, scoped, tenantID, kv.name)
 	if duplicate {
