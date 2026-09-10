@@ -84,7 +84,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **061** — [Reject empty registry tokens before saving metadata](061.md) (45m) ← approved w4 brainstorm, 2026-09-08; reject invalid updates before persistence. Independent of m97/m98.
+> **061** transferred to [w7/044](../w7/044.md) on 2026-09-09 by user-approved `/pm-brainstorm for w7 for top 3 customer-impactfully work` #3; archived in `done/061.md`.
 
 The earlier instance-identity findings **059** + **060** were absorbed into [w5/m87](../w5/done/m87/README.md) by user approval; their original evidence is preserved in [done/059.md](done/059.md) and [done/060.md](done/060.md). Their move recorded promotion; implementation and verification are recorded in that milestone. The earlier open alias note (filed as colliding `055`) closed as **056**; notes 052–055 remain done.
 
