@@ -211,7 +211,7 @@ APPLY=1 scripts/stripe-billing-reconcile.sh repair TRANSACTION_ID mark_repaired 
 - `mark_repaired` stamps a rejected/ambiguous row only after reconciliation proves the provider-side outcome or an explicit provider adjustment was made.
 - An ambiguous row can never use `retry`. Every applied resolution requires actor/reason and creates `billing.ResolveExportIssue` audit evidence.
 
-Prometheus scrapes the cluster-internal `bex-api.bex-system.svc:8091/metrics`; the public product listener does not expose process metrics. The tested alerts are `BillingExportBacklog`, `BillingPermanentReject`, `BillingExportAmbiguity`, `BillingLocalStampFailure`, `BillingProviderDuplicate`, `BillingInvoiceReadDegraded`, `BillingWebhookDrift`, and `BillingProvisioningFailure`. Disabled billing (`bex_billing_enabled=0`) suppresses all eight.
+Prometheus scrapes the cluster-internal `bex-api.bex-system.svc:8091/metrics`; the public product listener does not expose process metrics. The tested alerts are `BillingExportBacklog`, `BillingPermanentReject`, `BillingExportAmbiguity`, `BillingLocalStampFailure`, `BillingProviderDuplicate`, `BillingInvoiceReadDegraded`, `BillingWebhookDrift` (a signed event with the wrong pinned API version or test/live mode — pages), `BillingWebhookSignatureRejects` (a burst of >5 signature failures in 15 minutes — a warning; a trickle is unsigned scanner/replay POSTs to the public endpoint and is ignored), and `BillingProvisioningFailure`. Disabled billing (`bex_billing_enabled=0`) suppresses all nine.
 
 For the recurring production-hosted test, provision isolated paid/excluded/comp workspaces with explicit owner/24-hour expiry metadata, seed four bounded dimensions, and clean exactly those ids:
 

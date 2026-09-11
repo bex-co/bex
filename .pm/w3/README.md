@@ -69,6 +69,9 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 
 ## Inbox
 
+- [ ] **036** — Reconcile the 257 permanently-rejected Stripe billing rows behind `BillingPermanentReject` ← from the 2026-09-11 alert-noise cleanup: needs the out-of-band control-plane token, so it was filed rather than done
+- [ ] **037** — Show the ACME challenge reason on a tenant's pending custom-domain row ← from the same cleanup: the tenant sees "Pending" for a Cloudflare-proxied apex with no way to learn why; likely a milestone
+- [ ] **038** — Move the warning digest off email to a low-noise operator channel (ntfy/Telegram/Discord webhook) ← needs a channel decision + one out-of-band Secret
 - [x] **035** — ADR008 vision status refresh: pillars 4/5 and roadmap items 1–4 read "planned" but shipped — **done 2026-09-09** ([done/035.md](done/035.md)): pillars 4–5 ✅ with ADR pointers; original roadmap 1–4 marked shipped; "What's next" points at m79 / w11 / pillar-5 follow-ons / canary fixture
 
 > `034.md` — **promoted 2026-09-07 → [`w8/m35`](../w8/m35/README.md)** (note moved to `done/034.md`): fold Postgres/Key Value by-id reads onto the m81 consistent-absence contract (option 1), scheduled under w8 by the `/pm-brainstorm for w8` round approved the same day.

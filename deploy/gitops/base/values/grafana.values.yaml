@@ -4915,7 +4915,7 @@ dashboards:
               "id": 9,
               "type": "timeseries",
               "title": "Egress meter fleet: expected vs up vs unhealthy",
-              "description": "EgressMeterTargetMissing's own comparison: scrapeable meters vs untainted tenant nodes (the alert fires when they differ — do not collect affected hourly windows). Unhealthy reads 0 only while meters are scrapeable and No data when none are, so a vanished fleet cannot render as healthy.",
+              "description": "EgressMeterTargetMissing's own comparison: scrapeable meters vs nodes with no pool taint, i.e. every node the meter DaemonSet can schedule on (the alert fires when they differ — do not collect affected hourly windows). Unhealthy reads 0 only while meters are scrapeable and No data when none are, so a vanished fleet cannot render as healthy.",
               "gridPos": { "h": 9, "w": 12, "x": 0, "y": 18 },
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "fieldConfig": {
@@ -4925,8 +4925,8 @@ dashboards:
               "targets": [
                 {
                   "refId": "A",
-                  "expr": "count(kube_node_info unless on (node) kube_node_spec_taint{key=\"bex.co/platform\", value=\"true\"} unless on (node) kube_node_role{role=\"control-plane\"})",
-                  "legendFormat": "expected (untainted tenant nodes)"
+                  "expr": "count(kube_node_info unless on (node) kube_node_spec_taint{effect=~\"NoSchedule|NoExecute\", key!~\"node\\\\.kubernetes\\\\.io/.*\"})",
+                  "legendFormat": "expected (nodes with no pool taint)"
                 },
                 {
                   "refId": "B",

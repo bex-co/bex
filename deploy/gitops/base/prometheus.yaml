@@ -67,19 +67,36 @@ spec:
             bex.co/pool: platform
           tolerations:
             - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
-        # Single-replica Alertmanager: the paging fan-out. No persistence — the
-        # silence/notification log is ephemeral by design here (minimal footprint;
-        # a restart at worst re-notifies once). One email receiver on the SendGrid
-        # relay bex already runs (the w4/m12 invite / Kratos-courier relay,
-        # smtp.sendgrid.net:587 STARTTLS, docs/ADR012-auth.md §Email) — no new
-        # credential to mint. The SendGrid API key is read from a file mounted off
-        # the out-of-band Secret `alertmanager-smtp` (key `smtp-password`), so no
-        # credential ever lands in git; `to`/`from` are non-secret and committed.
+        # Single-replica Alertmanager: the paging fan-out. PERSISTENT (small PVC,
+        # 2026-09-11): silences and the notification log survive a pod restart,
+        # so "silence it and file the .pm note" is a reliable way to acknowledge a
+        # known alert, and a restart never re-notifies. It was ephemeral before,
+        # and a restart dropped every silence — with four alerts firing for weeks
+        # that meant the only working mute was the inbox's delete key
+        # (docs/ADR010-observability.md §Three tiers). One email receiver on the
+        # SendGrid relay bex already runs (the w4/m12 invite / Kratos-courier
+        # relay, smtp.sendgrid.net:587 STARTTLS, docs/ADR012-auth.md §Email) — no
+        # new credential to mint. The SendGrid API key is read from a file mounted
+        # off the out-of-band Secret `alertmanager-smtp` (key `smtp-password`), so
+        # no credential ever lands in git; `to`/`from` are non-secret and committed.
         alertmanager:
           enabled: true
           replicaCount: 1
+          # A StatefulSet's volumeClaimTemplates are immutable, so turning
+          # persistence on (or resizing it) cannot be applied over the existing
+          # object. Force+Replace lets Argo delete+recreate the StatefulSet; the
+          # PVC outlives it (StatefulSet deletion never cascades to PVCs). Paired
+          # with ApplyOutOfSyncOnly on the Application so this only happens when
+          # the StatefulSet itself drifted, not on every rule edit.
+          statefulSet:
+            annotations:
+              argocd.argoproj.io/sync-options: Force=true,Replace=true
           persistence:
-            enabled: false
+            enabled: true
+            # The data is kilobytes (silences + notification log); hcloud-csi
+            # rounds any request up to its 10Gi minimum on prod, local-path
+            # allocates lazily on the mock cluster (where AM is disabled anyway).
+            size: 1Gi
           nodeSelector:
             bex.co/pool: platform
           tolerations:
@@ -101,6 +118,18 @@ spec:
               smtp_auth_username: apikey # SendGrid's literal SMTP username; key is the password
               smtp_auth_password_file: /etc/alertmanager/secrets/smtp-password
               smtp_require_tls: true
+            # Three tiers (docs/ADR010-observability.md §Three tiers):
+            #   critical → PAGE.   Its own email per alert group, re-sent every 4h
+            #              while firing, resolved mail sent.
+            #   warning  → TICKET. ONE digest email listing every open warning,
+            #              re-sent at most daily. A new warning joins the digest
+            #              within group_interval; nothing is sent on resolve (the
+            #              next digest simply omits it). A warning that fires for
+            #              days is visible every day without being six emails a
+            #              day — four such alerts were 24 emails/day before this.
+            #   info     → DASHBOARD. Black-holed at the `null` receiver; visible
+            #              in Alertmanager/Grafana only (customer-actionable, e.g.
+            #              a tenant's own custom-domain DNS not pointing at bex).
             route:
               receiver: platform
               group_by: [alertname, namespace]
@@ -108,15 +137,16 @@ spec:
               group_interval: 5m
               repeat_interval: 4h
               routes:
-                # severity=info is a customer-actionable signal surfaced on the
-                # dashboard, NOT an operator page (e.g. TenantCustomDomainCertNotReady
-                # — a tenant's own custom-domain DNS isn't pointing at bex). It
-                # terminates here at the black-hole "null" receiver so it never
-                # emails on-call, while still being visible in Prometheus/Alertmanager
-                # for the dashboard/API. Everything else falls through to `platform`.
                 - matchers:
                     - severity="info"
                   receiver: "null"
+                - matchers:
+                    - severity="warning"
+                  receiver: platform-digest
+                  group_by: [severity]
+                  group_wait: 5m
+                  group_interval: 30m
+                  repeat_interval: 24h
             receivers:
               - name: platform
                 email_configs:
@@ -124,9 +154,30 @@ spec:
                   # Alertmanager cannot detect a recipient domain with no MX.
                   - to: puncsky@gmail.com # operator on-call inbox; non-secret
                     send_resolved: true
+              # Same mailbox, digest semantics: one message for the whole warning
+              # group, no resolved mail. The subject carries the open count so an
+              # inbox filter can key on it.
+              - name: platform-digest
+                email_configs:
+                  - to: puncsky@gmail.com
+                    send_resolved: false
+                    headers:
+                      Subject: "[bex] {{ .Alerts.Firing | len }} warning(s) open (daily digest)"
               # Black hole for non-paging (info) alerts: a receiver with no notifier
               # config delivers nowhere while Alertmanager still tracks the alert.
               - name: "null"
+            # One page per broken thing. A not-Ready cert is already paging, so its
+            # "expiring" twin is redundant; and a tenant custom-domain cert owned
+            # by the info rules must never reach the platform rules even if a
+            # future edit loosens their carve-out. `equal` pins both to the same
+            # Certificate — both rule families carry namespace + name.
+            inhibit_rules:
+              - source_matchers: [alertname="CertificateNotReady"]
+                target_matchers: [alertname="CertificateExpiringSoon"]
+                equal: [namespace, name]
+              - source_matchers: [alertname=~"TenantCustomDomainCert.*"]
+                target_matchers: [alertname=~"CertificateNotReady|CertificateExpiringSoon"]
+                equal: [namespace, name]
         server:
           # Covers the dashboard's widest range preset (24h) with headroom;
           # cardinality is tiny (a handful of scrape jobs), so this is
@@ -764,15 +815,47 @@ spec:
                       summary: "Tenant custom-domain certificate {{ $labels.namespace }}/{{ $labels.name }} is not Ready (customer DNS)"
                       description: "A tenant custom-domain TLS cert has been not-Ready for >1h — almost always customer-side DNS, not a platform fault (so this is surfaced to the tenant, not paged). The domain must resolve to bex: point the apex via ALIAS/ANAME/CNAME-flattening at the app's <name>.onbex.co and keep it DNS-only — a Cloudflare-proxied record makes the ACME HTTP-01 challenge return 404 and the cert never issues. Confirm: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}; kubectl -n {{ $labels.namespace }} get order,challenge. Runbook: docs/ADR005-custom-domain.md"
 
+                  # Expiry is a statement about an ISSUED certificate. cert-manager
+                  # exports expiration_timestamp_seconds = 0 for a Certificate that
+                  # has never issued, and "0 - time() < 14d" is always true — which
+                  # is how a tenant's never-issued custom-domain cert paged on-call
+                  # every 4h for weeks (2026-08/09). So the rule joins on Ready == 1
+                  # (a never-issued or already-expired cert is CertificateNotReady's
+                  # job: one page per broken thing) and subtracts the tenant
+                  # custom-domain population with the same selector as
+                  # CertificateNotReady — a tenant cert that cannot RENEW is the
+                  # same customer-DNS class as one that cannot issue, and goes to
+                  # the info-tier twin below, never to on-call.
                   - alert: CertificateExpiringSoon
                     expr: |
-                      (certmanager_certificate_expiration_timestamp_seconds - time()) < (14 * 24 * 3600)
+                      (
+                        (certmanager_certificate_expiration_timestamp_seconds - time()) < (14 * 24 * 3600)
+                        and on (namespace, name) certmanager_certificate_ready_status{condition="True"} == 1
+                      )
+                      unless on (namespace, name)
+                      certmanager_certificate_ready_status{condition="True", namespace=~"tea-.*", name=~".+-tls-.+", name!~".*-tls-.*onbex\\.co.*"}
                     for: 1h
                     labels:
                       severity: warning
                     annotations:
                       summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} expires in <14d"
-                      description: "A cert-manager Certificate expires in under 14 days and has not renewed. Debug: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}"
+                      description: "An issued cert-manager Certificate expires in under 14 days and has not renewed (renewal normally completes at 30 days out). Debug: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}; kubectl -n {{ $labels.namespace }} get certificaterequest,order,challenge"
+
+                  # The info-tier twin: a tenant custom-domain cert that WAS issued
+                  # but is not renewing. Same customer-DNS cause (the domain moved
+                  # behind a proxy or away from bex after issuance), same routing
+                  # as TenantCustomDomainCertNotReady (null receiver, dashboard-
+                  # visible, never paged).
+                  - alert: TenantCustomDomainCertExpiringSoon
+                    expr: |
+                      (certmanager_certificate_expiration_timestamp_seconds{namespace=~"tea-.*", name=~".+-tls-.+", name!~".*-tls-.*onbex\\.co.*"} - time()) < (14 * 24 * 3600)
+                      and on (namespace, name) certmanager_certificate_ready_status{condition="True"} == 1
+                    for: 1h
+                    labels:
+                      severity: info
+                    annotations:
+                      summary: "Tenant custom-domain certificate {{ $labels.namespace }}/{{ $labels.name }} expires in <14d and is not renewing (customer DNS)"
+                      description: "A tenant custom-domain TLS cert was issued but has not renewed with under 14 days left — almost always the domain's DNS moved after issuance (proxied through Cloudflare, or pointed away from bex), so the ACME HTTP-01 challenge no longer reaches bex. Not a platform fault; surfaced to the tenant, not paged. Confirm: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}; kubectl -n {{ $labels.namespace }} get order,challenge. Runbook: docs/ADR005-custom-domain.md"
 
                   # Admin-cert expiry: the CAPI-minted kubernetes-admin client cert
                   # (CN=kubernetes-admin, O=system:masters) has ~1-year validity.
@@ -934,21 +1017,31 @@ spec:
                       summary: "ClusterBuilder image pin is older than the 30-day freshness SLO"
                       description: "Committed builder resolution metadata is missing, malformed, or older than 30 days. Resolve with python3 scripts/lib/toolchain-freshness.py resolve, review the observed digest, update the listed files and resolved_at together. The workflow never applies a pin. Runbook: docs/ADR060-build-worker-reliability-and-performance.md D7."
 
+                  # The meter DaemonSet tolerates nothing
+                  # (lego/operator/config/egress-meter/daemonset.yaml), so its
+                  # population is exactly "nodes with no scheduling taint": every
+                  # pool taint (bex.co/platform, bex.co/sandbox, bex.co/build-only,
+                  # the control-plane role taint) excludes a node by design, while
+                  # the kubelet's own node.kubernetes.io/* condition taints are
+                  # exempt because DaemonSet pods tolerate those automatically.
+                  # Naming one pool taint here (the previous shape) fired
+                  # continuously once the sandbox pool and the build-only node
+                  # existed. The Grafana "Egress meter fleet" panel mirrors this
+                  # expression verbatim — keep the two in sync.
                   - alert: EgressMeterTargetMissing
                     expr: |
                       count(up{job="bex-egress-meter"} == 1)
                       !=
                       count(
                         kube_node_info
-                        unless on (node) kube_node_spec_taint{key="bex.co/platform", value="true"}
-                        unless on (node) kube_node_role{role="control-plane"}
+                        unless on (node) kube_node_spec_taint{effect=~"NoSchedule|NoExecute", key!~"node\\.kubernetes\\.io/.*"}
                       )
                     for: 2m
                     labels:
                       severity: critical
                     annotations:
                       summary: "Not every tenant node has a scrapeable egress meter"
-                      description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the untainted tenant-node count. Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes --show-labels"
+                      description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
 
                   - alert: EgressMeterUnhealthy
                     expr: min by (node) (bex_egress_meter_healthy) == 0
@@ -1331,18 +1424,39 @@ spec:
                       summary: "Stripe invoice read-back is degraded"
                       description: "Repeated invoice preview/history reads failed; the usage surface is falling back to estimates. Check restricted-key permissions and Stripe API health. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
 
+                  # Version/mode mismatches only come from Stripe itself (a SIGNED
+                  # event carrying the wrong pinned API version or test/live mode),
+                  # so one is drift and pages. Signature rejects are different: the
+                  # endpoint is public, and any unsigned POST from a scanner or a
+                  # replay counts one — a handful a day is background (13 in the
+                  # three days to 2026-09-11, each paging on-call as "drift" for
+                  # 15 minutes). A real secret mismatch rejects EVERY Stripe
+                  # delivery, so it shows as a burst; that is the warning below.
                   - alert: BillingWebhookDrift
                     expr: |
                       sum by (job, instance) (
-                        increase(bex_billing_operations_total{operation=~"webhook_signature|webhook_version|webhook_mode",result="error"}[15m])
+                        increase(bex_billing_operations_total{operation=~"webhook_version|webhook_mode",result="error"}[15m])
                       ) > 0
                       and on (job, instance) bex_billing_enabled == 1
                     for: 1m
                     labels:
                       severity: critical
                     annotations:
-                      summary: "Stripe billing webhook signature, API version, or mode drifted"
-                      description: "Webhook intake rejected a signature, pinned API version, or test/live mode mismatch. Verify the test endpoint and rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      summary: "Stripe billing webhook API version or mode drifted"
+                      description: "Webhook intake rejected a signed Stripe event for its pinned API version or test/live mode. Verify the endpoint's API version and mode in the Stripe dashboard; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+                  - alert: BillingWebhookSignatureRejects
+                    expr: |
+                      sum by (job, instance) (
+                        increase(bex_billing_operations_total{operation="webhook_signature",result="error"}[15m])
+                      ) > 5
+                      and on (job, instance) bex_billing_enabled == 1
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Stripe billing webhook is rejecting signatures in a burst"
+                      description: "More than 5 webhook deliveries failed signature verification within 15 minutes. A few a day are unsigned scanner or replay POSTs to the public endpoint and are ignored; a burst means the endpoint secret no longer matches Stripe's and every real delivery is being rejected. Check the endpoint's recent deliveries in the Stripe dashboard, then rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
 
                   - alert: BillingProvisioningFailure
                     expr: |
@@ -1396,4 +1510,8 @@ spec:
     namespace: monitoring
   syncPolicy:
     automated: { prune: true, selfHeal: true }
-    syncOptions: [CreateNamespace=true]
+    # ApplyOutOfSyncOnly: the Alertmanager StatefulSet carries Force+Replace
+    # (its volumeClaimTemplates are immutable; see the alertmanager block), and
+    # without this every rule edit would delete+recreate it. Only drifted
+    # resources are applied, so a rule change touches the server ConfigMap alone.
+    syncOptions: [CreateNamespace=true, ApplyOutOfSyncOnly=true]
