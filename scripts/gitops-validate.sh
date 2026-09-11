@@ -1142,6 +1142,19 @@ if ! yq -e '
   fail=1
 fi
 
+echo "==> Product analytics uses its restricted reader with verified TLS and bounded pooling"
+if ! yq -e '
+  (.datasources."datasources.yaml".datasources[] | select(.uid == "product-analytics")) as $ds |
+  (($ds.user == "bex_product_analytics") and
+   ($ds.jsonData.sslmode == "verify-full") and
+   ($ds.jsonData.sslRootCertFile == "/etc/grafana/product-analytics/ca.crt") and
+   ($ds.jsonData.maxOpenConns == 4) and ($ds.jsonData.maxIdleConns == 2) and
+   ($ds.secureJsonData.password == "$BEX_PRODUCT_ANALYTICS_PASSWORD"))
+' deploy/gitops/base/values/grafana.values.yaml >/dev/null; then
+  echo "FAIL: Product analytics datasource lost its restricted-reader contract" >&2
+  fail=1
+fi
+
 # etcd snapshot image guard (w7/m29 drill): the CronJob's snapshot image must be ≥3.6.x.
 # etcdutl (required for 'snapshot restore' in the runbook) ships only in 3.6.x+ images.
 # A 3.5.x pin breaks the restore path even though the backup itself succeeds.

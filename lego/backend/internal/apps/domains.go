@@ -29,6 +29,7 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -306,12 +307,20 @@ func tlsSecretForHost(app *appv1alpha1.App, host string) string {
 // the host by looking for the corresponding TLS Secret. Any absence or error
 // is treated as "pending" — the conservative state during cert issuance.
 func (s *Service) domainVerified(ctx context.Context, app *appv1alpha1.App, host string) bool {
+	ready, _ := domainCertificateReady(ctx, s.Client, app, host)
+	return ready
+}
+
+func domainCertificateReady(ctx context.Context, cl client.Client, app *appv1alpha1.App, host string) (bool, error) {
 	var sec corev1.Secret
 	// cert-manager writes the TLS Secret into the App's own namespace (its
 	// Ingress lives there), which is the per-tenant `<ws>` namespace under ADR043,
 	// not the shared one — read it from the App's namespace.
-	err := s.Client.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: tlsSecretForHost(app, host)}, &sec)
-	return err == nil && len(sec.Data["tls.crt"]) > 0
+	err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: tlsSecretForHost(app, host)}, &sec)
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	return err == nil && len(sec.Data["tls.crt"]) > 0, err
 }
 
 // domainView builds a DomainView for one host on the given App. platformHost is
@@ -945,6 +954,9 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 		}
 		if err != nil {
 			return DomainView{}, false, fmt.Errorf("create domain claim: %w", err)
+		}
+		if created && redirectForName == "" {
+			s.ObserveProductActivity(ctx, core.ProductActivity{WorkspaceID: app.Labels[core.LabelTenant], ResourceID: claim.ID, ParentID: appID, ResourceType: "domain", EventType: "domain_added", At: claim.CreatedAt})
 		}
 		if claim.ClaimState == "verified" {
 			rows, listErr := claims.ListDomainClaims(ctx, appID)

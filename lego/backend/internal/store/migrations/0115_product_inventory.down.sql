@@ -1,0 +1,2 @@
+DROP TABLE product_inventory_lifecycle, product_inventory_counts, product_inventory_batches;
+ALTER TABLE product_analytics_collection DROP COLUMN inventory_started_at, DROP COLUMN events_retained_from;

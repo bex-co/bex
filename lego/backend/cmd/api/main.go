@@ -283,6 +283,9 @@ func main() {
 		// classifies a sole-member ops workspace blocked instead of delete.
 		st.OpsWorkspaceID = cfg.OpsWorkspace
 		rec = store.NewReconciler(cl, st)
+		rec.ProductObserver = func(ctx context.Context, desired store.DesiredApp, app *appv1alpha1.App) {
+			apps.ObserveProductApp(ctx, st, cl, desired, app)
+		}
 		rec.Metrics = store.NewReconcilerMetrics(metricRegistry)
 		if cfg.CPResyncSet {
 			rec.Resync = cfg.CPResync
@@ -686,6 +689,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
 	// starts recording the instant the store is wired — no extra plumbing.
 	base.Audit = st
+	base.ProductActivity = st.RecordProductActivity
 	base.Billing = st
 
 	// Workspace lifecycle (w6/m1): the workspaces feature writes through the
@@ -1195,6 +1199,7 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 		}
 		go rec.Run(ctx)
 		go nsRec.Run(ctx)
+		go (&store.ProductInventoryCollector{Store: st, Client: cl, Identity: cpIdentity}).Run(ctx)
 	}
 }
 

@@ -35,11 +35,26 @@ admin:
 # Bootstrap once with scripts/cli-analytics-bootstrap.sh. A dedicated reader
 # can SELECT only cli_analytics.events, with database-side query/connection caps.
 envValueFrom:
+  BEX_PRODUCT_ANALYTICS_PASSWORD:
+    secretKeyRef:
+      name: grafana-product-analytics
+      key: password
+      # A missing new reader must not take existing ops dashboards offline.
+      # Its own queries fail closed until bootstrap and a Grafana restart.
+      optional: true
   BEX_CLI_ANALYTICS_PASSWORD:
     secretKeyRef:
       name: grafana-cli-analytics
       key: password
 extraSecretMounts:
+  - name: product-analytics-ca
+    secretName: grafana-product-analytics
+    optional: true
+    mountPath: /etc/grafana/product-analytics
+    readOnly: true
+    items:
+      - key: ca.crt
+        path: ca.crt
   - name: cli-analytics-ca
     secretName: grafana-cli-analytics
     mountPath: /etc/grafana/cli-analytics
@@ -91,6 +106,28 @@ datasources:
         access: proxy
         url: http://loki.monitoring.svc:3100
         editable: false
+
+      - name: Product analytics
+        uid: product-analytics
+        type: grafana-postgresql-datasource
+        access: proxy
+        url: bex-db-rw.bex-system.svc:5432
+        user: bex_product_analytics
+        editable: false
+        secureJsonData:
+          password: $BEX_PRODUCT_ANALYTICS_PASSWORD
+        jsonData:
+          database: bex
+          sslmode: verify-full
+          tlsConfigurationMethod: file-path
+          sslRootCertFile: /etc/grafana/product-analytics/ca.crt
+          postgresVersion: 1700
+          timescaledb: false
+          maxOpenConns: 4
+          maxIdleConns: 2
+          maxIdleConnsAuto: false
+          connMaxLifetime: 300
+          timeInterval: 1h
 
       - name: CLI analytics
         uid: cli-analytics
@@ -149,6 +186,2439 @@ dashboardProviders:
 
 dashboards:
   platform:
+    product-adoption:
+      json: |
+        {
+          "uid": "bex-product-adoption",
+          "title": "Product adoption",
+          "description": "Customer resource inventory over time, workspace reach, explicit domains, observed changes and provisioning health. Complete snapshots, freshness and unknown data are explicit.",
+          "schemaVersion": 41,
+          "version": 2,
+          "timezone": "utc",
+          "editable": false,
+          "tags": [
+            "bex",
+            "product",
+            "adoption"
+          ],
+          "time": {
+            "from": "now-30d",
+            "to": "now"
+          },
+          "refresh": "5m",
+          "templating": {
+            "list": [
+              {
+                "name": "audience",
+                "label": "Audience",
+                "type": "custom",
+                "query": "customer,unclassified,internal,qa,canary",
+                "multi": true,
+                "includeAll": true,
+                "allValue": "'__all'",
+                "current": {
+                  "selected": true,
+                  "text": [
+                    "customer",
+                    "unclassified"
+                  ],
+                  "value": [
+                    "customer",
+                    "unclassified"
+                  ]
+                },
+                "options": [
+                  {
+                    "text": "customer",
+                    "value": "customer",
+                    "selected": true
+                  },
+                  {
+                    "text": "unclassified",
+                    "value": "unclassified",
+                    "selected": true
+                  },
+                  {
+                    "text": "internal",
+                    "value": "internal",
+                    "selected": false
+                  },
+                  {
+                    "text": "qa",
+                    "value": "qa",
+                    "selected": false
+                  },
+                  {
+                    "text": "canary",
+                    "value": "canary",
+                    "selected": false
+                  }
+                ]
+              },
+              {
+                "name": "kind",
+                "label": "Resource type",
+                "type": "custom",
+                "query": "static_site,web_service,private_service,background_worker,cron_job,postgres,keyvalue",
+                "multi": true,
+                "includeAll": true,
+                "allValue": "'__all'",
+                "current": {
+                  "selected": true,
+                  "text": [
+                    "All"
+                  ],
+                  "value": [
+                    "$__all"
+                  ]
+                },
+                "options": []
+              },
+              {
+                "name": "resolution",
+                "label": "Min interval",
+                "type": "custom",
+                "query": "1 day,1 hour,5 minutes",
+                "current": {
+                  "text": "1 day",
+                  "value": "1 day"
+                },
+                "options": [
+                  {
+                    "text": "1 day",
+                    "value": "1 day",
+                    "selected": true
+                  },
+                  {
+                    "text": "1 hour",
+                    "value": "1 hour",
+                    "selected": false
+                  },
+                  {
+                    "text": "5 minutes",
+                    "value": "5 minutes",
+                    "selected": false
+                  }
+                ],
+                "multi": false,
+                "includeAll": false
+              }
+            ]
+          },
+          "panels": [
+            {
+              "id": 101,
+              "type": "text",
+              "title": "Customer inventory, growth, and provisioning health",
+              "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 24,
+                "h": 4
+              },
+              "options": {
+                "mode": "markdown",
+                "content": "Inventory ≠ uptime. Gaps mean unknown. Unclassified included by default. [Definitions](https://github.com/bex-co/bex/blob/main/docs/runbooks/product-analytics.md)."
+              }
+            },
+            {
+              "id": 102,
+              "title": "Collection coverage — as of selected end (global)",
+              "type": "table",
+              "description": "All audiences and types; intentionally ignores product filters. Each source has its own freshness. Unknown state never removes a resource from inventory.",
+              "gridPos": {
+                "x": 0,
+                "y": 4,
+                "w": 24,
+                "h": 6
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH sources(source) AS (VALUES ('services'),('postgres'),('keyvalue'),('domains'))\nSELECT s.source AS \"Source\",b.observed_at AS \"Latest observation\",\n EXTRACT(epoch FROM ($__timeTo()::timestamptz-b.observed_at)) AS \"Age\",\n CASE WHEN b.bucket IS NULL THEN 'No data' WHEN b.observed_at<$__timeTo()::timestamptz-interval '15 minutes' THEN 'Stale'\n      WHEN NOT b.complete THEN 'Collection failed' ELSE 'Complete' END AS \"Inventory coverage\",\n CASE WHEN b.complete THEN COALESCE(sum(i.resources),0) END AS \"Resources\",\n CASE WHEN b.complete THEN COALESCE(sum(i.resources) FILTER(WHERE i.state IN ('unknown','verified_tls_unknown')),0) END AS \"Unknown state\",\n count(DISTINCT i.workspace_id) FILTER(WHERE i.audience='unclassified') AS \"Unclassified workspaces\"\nFROM sources s LEFT JOIN LATERAL\n (SELECT * FROM product_analytics.inventory_batches b WHERE b.source=s.source AND b.observed_at<=$__timeTo()::timestamptz\n  ORDER BY b.bucket DESC LIMIT 1) b ON true\nLEFT JOIN product_analytics.inventory i ON i.source=b.source AND i.bucket=b.bucket\nGROUP BY s.source,b.observed_at,b.bucket,b.complete ORDER BY s.source",
+                  "format": "table",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 0,
+                  "noValue": "—",
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "inspect": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Age"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "s"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Latest observation"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "dateTimeAsIso"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Source"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Latest observation"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 185
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Age"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 75
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Inventory coverage"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 135
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Resources"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 120
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "Snapshot count"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Unknown state"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 120
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Unclassified workspaces"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 200
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Inventory coverage"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
+                      },
+                      {
+                        "id": "mappings",
+                        "value": [
+                          {
+                            "type": "value",
+                            "options": {
+                              "Complete": {
+                                "color": "green",
+                                "index": 0
+                              },
+                              "Stale": {
+                                "color": "yellow",
+                                "index": 1
+                              },
+                              "Collection failed": {
+                                "color": "red",
+                                "index": 2
+                              },
+                              "No data": {
+                                "color": "gray",
+                                "index": 3
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              },
+              "transformations": [
+                {
+                  "id": "organize",
+                  "options": {
+                    "indexByName": {
+                      "Source": 0,
+                      "Inventory coverage": 1,
+                      "Age": 2,
+                      "Latest observation": 3,
+                      "Resources": 4,
+                      "Unknown state": 5,
+                      "Unclassified workspaces": 6
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 103,
+              "title": "Services over time",
+              "type": "timeseries",
+              "description": "Last complete sample within 15 minutes of each bucket end (selected end for the partial final bucket). Missing/failed collections are gaps, not zeros. Inventory includes unavailable and suspended resources. No pre-collection backfill. Min interval is automatically coarsened for long ranges (at most 1,001 points per series).",
+              "gridPos": {
+                "x": 0,
+                "y": 10,
+                "w": 12,
+                "h": 9
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH kinds(resource_type,source) AS (VALUES\n ('static_site','services'),('web_service','services'),('private_service','services'),\n ('background_worker','services'),('cron_job','services'),('postgres','postgres'),('keyvalue','keyvalue')),\nselected_kinds AS (SELECT * FROM kinds WHERE ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),requested_bounds AS (SELECT $__timeFrom()::timestamptz lo,$__timeTo()::timestamptz hi),\nbounds AS (SELECT lo,hi,GREATEST(\n CASE ${resolution:sqlstring} WHEN '5 minutes' THEN interval '5 minutes' WHEN '1 hour' THEN interval '1 hour' ELSE interval '1 day' END,\n CASE WHEN hi-lo<=interval '3 days' THEN interval '5 minutes'\n      WHEN hi-lo<=interval '40 days' THEN interval '1 hour'\n      ELSE GREATEST(1,ceil(extract(epoch FROM hi-lo)/86400/1000)) * interval '1 day' END) step\n FROM requested_bounds),\npoints AS (SELECT LEAST(t+step,hi) AS time,GREATEST(t,lo) AS from_time FROM bounds,\n LATERAL generate_series(date_bin(step,lo,'2000-01-01'::timestamptz),hi,step) t WHERE t<hi),\nsources AS (SELECT DISTINCT source AS source FROM selected_kinds),\nsamples AS (SELECT p.time,s.source,b.bucket,b.complete AND b.observed_at>=p.time-interval '15 minutes' AS valid\n FROM points p CROSS JOIN sources s LEFT JOIN LATERAL\n (SELECT * FROM product_analytics.inventory_batches b WHERE b.source=s.source AND b.bucket<=p.time\n   AND b.observed_at<=p.time ORDER BY b.bucket DESC LIMIT 1) b ON true),\nscoped AS (SELECT * FROM product_analytics.inventory WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})))\nSELECT s.time,k.resource_type AS metric,\n CASE WHEN s.valid THEN COALESCE(sum(i.resources),0) END AS value\nFROM samples s JOIN selected_kinds k ON k.source=s.source\nLEFT JOIN scoped i ON i.source=s.source AND i.bucket=s.bucket AND i.resource_type=k.resource_type\nWHERE k.source='services' GROUP BY s.time,k.resource_type,s.valid ORDER BY s.time,metric",
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "min": 0,
+                  "noValue": "Unknown",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "stepAfter",
+                    "lineWidth": 2,
+                    "fillOpacity": 8,
+                    "spanNulls": false,
+                    "insertNulls": false,
+                    "showPoints": "auto",
+                    "pointSize": 4,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisBorderShow": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "static_site"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Static sites"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#73BF69"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "web_service"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Web services"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#5794F2"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "private_service"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Private services"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#B877D9"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "background_worker"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Workers"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#FADE2A"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "cron_job"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Cron jobs"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#FF9830"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": [
+                    "last"
+                  ]
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 104,
+              "title": "Datastores over time",
+              "type": "timeseries",
+              "description": "Last complete sample within 15 minutes of each bucket end (selected end for the partial final bucket). Missing/failed collections are gaps, not zeros. Inventory includes unavailable and suspended resources. No pre-collection backfill. Counts come from complete authoritative CR lists; a stale health sample cannot delete a datastore. Min interval is automatically coarsened for long ranges (at most 1,001 points per series).",
+              "gridPos": {
+                "x": 12,
+                "y": 10,
+                "w": 12,
+                "h": 9
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH kinds(resource_type,source) AS (VALUES\n ('static_site','services'),('web_service','services'),('private_service','services'),\n ('background_worker','services'),('cron_job','services'),('postgres','postgres'),('keyvalue','keyvalue')),\nselected_kinds AS (SELECT * FROM kinds WHERE ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),requested_bounds AS (SELECT $__timeFrom()::timestamptz lo,$__timeTo()::timestamptz hi),\nbounds AS (SELECT lo,hi,GREATEST(\n CASE ${resolution:sqlstring} WHEN '5 minutes' THEN interval '5 minutes' WHEN '1 hour' THEN interval '1 hour' ELSE interval '1 day' END,\n CASE WHEN hi-lo<=interval '3 days' THEN interval '5 minutes'\n      WHEN hi-lo<=interval '40 days' THEN interval '1 hour'\n      ELSE GREATEST(1,ceil(extract(epoch FROM hi-lo)/86400/1000)) * interval '1 day' END) step\n FROM requested_bounds),\npoints AS (SELECT LEAST(t+step,hi) AS time,GREATEST(t,lo) AS from_time FROM bounds,\n LATERAL generate_series(date_bin(step,lo,'2000-01-01'::timestamptz),hi,step) t WHERE t<hi),\nsources AS (SELECT DISTINCT source AS source FROM selected_kinds),\nsamples AS (SELECT p.time,s.source,b.bucket,b.complete AND b.observed_at>=p.time-interval '15 minutes' AS valid\n FROM points p CROSS JOIN sources s LEFT JOIN LATERAL\n (SELECT * FROM product_analytics.inventory_batches b WHERE b.source=s.source AND b.bucket<=p.time\n   AND b.observed_at<=p.time ORDER BY b.bucket DESC LIMIT 1) b ON true),\nscoped AS (SELECT * FROM product_analytics.inventory WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})))\nSELECT s.time,k.resource_type AS metric,\n CASE WHEN s.valid THEN COALESCE(sum(i.resources),0) END AS value\nFROM samples s JOIN selected_kinds k ON k.source=s.source\nLEFT JOIN scoped i ON i.source=s.source AND i.bucket=s.bucket AND i.resource_type=k.resource_type\nWHERE k.source IN ('postgres','keyvalue') GROUP BY s.time,k.resource_type,s.valid ORDER BY s.time,metric",
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "min": 0,
+                  "noValue": "Unknown",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "stepAfter",
+                    "lineWidth": 2,
+                    "fillOpacity": 8,
+                    "spanNulls": false,
+                    "insertNulls": false,
+                    "showPoints": "auto",
+                    "pointSize": 4,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisBorderShow": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "postgres"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Postgres"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#B877D9"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "keyvalue"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "KeyValue"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#F2495C"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": [
+                    "last"
+                  ]
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 105,
+              "title": "Workspaces owning resources",
+              "type": "timeseries",
+              "description": "Last complete sample within 15 minutes of each bucket end (selected end for the partial final bucket). Missing/failed collections are gaps, not zeros. Inventory includes unavailable and suspended resources. No pre-collection backfill. Overall counts deduplicate across features. Feature lines overlap: never sum them. Overall is unknown if any selected source is missing. Min interval is automatically coarsened for long ranges (at most 1,001 points per series).",
+              "gridPos": {
+                "x": 0,
+                "y": 19,
+                "w": 12,
+                "h": 9
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH kinds(resource_type,source) AS (VALUES\n ('static_site','services'),('web_service','services'),('private_service','services'),\n ('background_worker','services'),('cron_job','services'),('postgres','postgres'),('keyvalue','keyvalue')),\nselected_kinds AS (SELECT * FROM kinds WHERE ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),requested_bounds AS (SELECT $__timeFrom()::timestamptz lo,$__timeTo()::timestamptz hi),\nbounds AS (SELECT lo,hi,GREATEST(\n CASE ${resolution:sqlstring} WHEN '5 minutes' THEN interval '5 minutes' WHEN '1 hour' THEN interval '1 hour' ELSE interval '1 day' END,\n CASE WHEN hi-lo<=interval '3 days' THEN interval '5 minutes'\n      WHEN hi-lo<=interval '40 days' THEN interval '1 hour'\n      ELSE GREATEST(1,ceil(extract(epoch FROM hi-lo)/86400/1000)) * interval '1 day' END) step\n FROM requested_bounds),\npoints AS (SELECT LEAST(t+step,hi) AS time,GREATEST(t,lo) AS from_time FROM bounds,\n LATERAL generate_series(date_bin(step,lo,'2000-01-01'::timestamptz),hi,step) t WHERE t<hi),\nsources AS (SELECT DISTINCT source AS source FROM selected_kinds),\nsamples AS (SELECT p.time,s.source,b.bucket,b.complete AND b.observed_at>=p.time-interval '15 minutes' AS valid\n FROM points p CROSS JOIN sources s LEFT JOIN LATERAL\n (SELECT * FROM product_analytics.inventory_batches b WHERE b.source=s.source AND b.bucket<=p.time\n   AND b.observed_at<=p.time ORDER BY b.bucket DESC LIMIT 1) b ON true),\nscoped AS NOT MATERIALIZED (SELECT * FROM product_analytics.inventory WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})))\nSELECT s.time,'All selected features'::text AS metric,\n CASE WHEN bool_and(COALESCE(s.valid,false)) THEN count(DISTINCT i.workspace_id) END AS value\nFROM samples s LEFT JOIN scoped i ON i.source=s.source AND i.bucket=s.bucket\nGROUP BY s.time\nUNION ALL\nSELECT s.time,k.resource_type,\n CASE WHEN s.valid THEN count(DISTINCT i.workspace_id) END\nFROM samples s JOIN selected_kinds k ON k.source=s.source\nLEFT JOIN scoped i ON i.source=s.source AND i.bucket=s.bucket AND i.resource_type=k.resource_type\nGROUP BY s.time,k.resource_type,s.valid ORDER BY time,metric",
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "min": 0,
+                  "noValue": "Unknown",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "stepAfter",
+                    "lineWidth": 2,
+                    "fillOpacity": 8,
+                    "spanNulls": false,
+                    "insertNulls": false,
+                    "showPoints": "auto",
+                    "pointSize": 4,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisBorderShow": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "static_site"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Static sites"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#73BF69"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "web_service"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Web services"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#5794F2"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "private_service"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Private services"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#B877D9"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "background_worker"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Workers"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#FADE2A"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "cron_job"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Cron jobs"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#FF9830"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "postgres"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Postgres"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#B877D9"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "keyvalue"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "KeyValue"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#F2495C"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": [
+                    "last"
+                  ]
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 106,
+              "title": "Custom domains over time",
+              "type": "timeseries",
+              "description": "Last complete sample within 15 minutes of each bucket end (selected end for the partial final bucket). Missing/failed collections are gaps, not zeros. Inventory includes unavailable and suspended resources. No pre-collection backfill. Explicit domains only; generated redirect aliases excluded. Lines are overlapping subsets, not stacked. Certificate evidence is not a public HTTPS or expiry probe; older than 30 minutes is unknown. Min interval is automatically coarsened for long ranges (at most 1,001 points per series).",
+              "gridPos": {
+                "x": 12,
+                "y": 19,
+                "w": 12,
+                "h": 9
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH kinds(resource_type,source) AS (VALUES\n ('static_site','services'),('web_service','services'),('private_service','services'),\n ('background_worker','services'),('cron_job','services'),('postgres','postgres'),('keyvalue','keyvalue')),\nselected_kinds AS (SELECT * FROM kinds WHERE ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),requested_bounds AS (SELECT $__timeFrom()::timestamptz lo,$__timeTo()::timestamptz hi),\nbounds AS (SELECT lo,hi,GREATEST(\n CASE ${resolution:sqlstring} WHEN '5 minutes' THEN interval '5 minutes' WHEN '1 hour' THEN interval '1 hour' ELSE interval '1 day' END,\n CASE WHEN hi-lo<=interval '3 days' THEN interval '5 minutes'\n      WHEN hi-lo<=interval '40 days' THEN interval '1 hour'\n      ELSE GREATEST(1,ceil(extract(epoch FROM hi-lo)/86400/1000)) * interval '1 day' END) step\n FROM requested_bounds),\npoints AS (SELECT LEAST(t+step,hi) AS time,GREATEST(t,lo) AS from_time FROM bounds,\n LATERAL generate_series(date_bin(step,lo,'2000-01-01'::timestamptz),hi,step) t WHERE t<hi),\nsources AS (SELECT DISTINCT 'domains'::text AS source FROM selected_kinds WHERE source='services'),\nsamples AS (SELECT p.time,s.source,b.bucket,b.complete AND b.observed_at>=p.time-interval '15 minutes' AS valid\n FROM points p CROSS JOIN sources s LEFT JOIN LATERAL\n (SELECT * FROM product_analytics.inventory_batches b WHERE b.source=s.source AND b.bucket<=p.time\n   AND b.observed_at<=p.time ORDER BY b.bucket DESC LIMIT 1) b ON true),\nscoped AS (SELECT * FROM product_analytics.inventory WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),\nmeasures(metric) AS (VALUES ('Configured'),('Ownership verified'),('Certificate-ready (observed)'),('Certificate unknown'))\nSELECT s.time,m.metric,\n CASE WHEN s.valid THEN COALESCE(sum(i.resources) FILTER (WHERE\n m.metric='Configured' OR (m.metric='Ownership verified' AND i.state LIKE 'verified_%')\n OR (m.metric='Certificate-ready (observed)' AND i.state='verified_tls_ready')\n OR (m.metric='Certificate unknown' AND i.state='verified_tls_unknown')),0) END AS value\nFROM samples s CROSS JOIN measures m LEFT JOIN scoped i ON i.source=s.source AND i.bucket=s.bucket\nGROUP BY s.time,s.valid,m.metric ORDER BY s.time,m.metric",
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "min": 0,
+                  "noValue": "Unknown",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "stepAfter",
+                    "lineWidth": 2,
+                    "fillOpacity": 8,
+                    "spanNulls": false,
+                    "insertNulls": false,
+                    "showPoints": "auto",
+                    "pointSize": 4,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisBorderShow": false
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": [
+                    "last"
+                  ]
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 107,
+              "title": "Observed creations and deletions",
+              "type": "timeseries",
+              "description": "Successful creations and deletions in each interval. Datastore removal is detected by absence from a complete list, not an exact API deletion timestamp. Best-effort events may miss short-lived datastores; classification, workspace erasure and collection gaps mean these are not an exact inventory ledger. Min interval is automatically coarsened for long ranges (at most 1,001 points per series).",
+              "gridPos": {
+                "x": 0,
+                "y": 28,
+                "w": 12,
+                "h": 9
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH kinds(resource_type,source) AS (VALUES\n ('static_site','services'),('web_service','services'),('private_service','services'),\n ('background_worker','services'),('cron_job','services'),('postgres','postgres'),('keyvalue','keyvalue')),\nselected_kinds AS (SELECT * FROM kinds WHERE ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),requested_bounds AS (SELECT $__timeFrom()::timestamptz lo,$__timeTo()::timestamptz hi),\nbounds AS (SELECT lo,hi,GREATEST(\n CASE ${resolution:sqlstring} WHEN '5 minutes' THEN interval '5 minutes' WHEN '1 hour' THEN interval '1 hour' ELSE interval '1 day' END,\n CASE WHEN hi-lo<=interval '3 days' THEN interval '5 minutes'\n      WHEN hi-lo<=interval '40 days' THEN interval '1 hour'\n      ELSE GREATEST(1,ceil(extract(epoch FROM hi-lo)/86400/1000)) * interval '1 day' END) step\n FROM requested_bounds),\npoints AS (SELECT LEAST(t+step,hi) AS time,GREATEST(t,lo) AS from_time FROM bounds,\n LATERAL generate_series(date_bin(step,lo,'2000-01-01'::timestamptz),hi,step) t WHERE t<hi),\nevents AS (SELECT * FROM product_analytics.events WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))\n AND event_type IN ('created','deleted') AND resource_type IN (SELECT resource_type FROM selected_kinds)\n AND provenance='observed' AND $__timeFilter(at)),\nchanges(metric,event_type,sign) AS (VALUES ('Created','created',1),('Deleted / observed absent','deleted',-1))\nSELECT p.time,c.metric,\n CASE WHEN p.from_time>=(SELECT GREATEST(started_at,events_retained_from) FROM product_analytics.collection)\n THEN count(e.source_key)*c.sign END AS value\nFROM points p CROSS JOIN bounds b CROSS JOIN changes c\nLEFT JOIN events e ON e.event_type=c.event_type AND e.at>=p.from_time AND (e.at<p.time OR (p.time=b.hi AND e.at=p.time))\nGROUP BY p.time,p.from_time,c.metric,c.sign ORDER BY p.time,c.metric",
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "noValue": "Unknown",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "bars",
+                    "lineInterpolation": "stepAfter",
+                    "lineWidth": 0,
+                    "fillOpacity": 70,
+                    "spanNulls": false,
+                    "insertNulls": false,
+                    "showPoints": "auto",
+                    "pointSize": 4,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisBorderShow": false
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": [
+                    "last"
+                  ]
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 108,
+              "title": "Resource state over time",
+              "type": "timeseries",
+              "description": "Last complete sample within 15 minutes of each bucket end (selected end for the partial final bucket). Missing/failed collections are gaps, not zeros. Inventory includes unavailable and suspended resources. No pre-collection backfill. Current-generation readiness; idle cron jobs can be ready. Suspended, canceled and deleting are explicit non-failure states. A Ready status is not an uptime measurement. Min interval is automatically coarsened for long ranges (at most 1,001 points per series).",
+              "gridPos": {
+                "x": 12,
+                "y": 28,
+                "w": 12,
+                "h": 9
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH kinds(resource_type,source) AS (VALUES\n ('static_site','services'),('web_service','services'),('private_service','services'),\n ('background_worker','services'),('cron_job','services'),('postgres','postgres'),('keyvalue','keyvalue')),\nselected_kinds AS (SELECT * FROM kinds WHERE ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),requested_bounds AS (SELECT $__timeFrom()::timestamptz lo,$__timeTo()::timestamptz hi),\nbounds AS (SELECT lo,hi,GREATEST(\n CASE ${resolution:sqlstring} WHEN '5 minutes' THEN interval '5 minutes' WHEN '1 hour' THEN interval '1 hour' ELSE interval '1 day' END,\n CASE WHEN hi-lo<=interval '3 days' THEN interval '5 minutes'\n      WHEN hi-lo<=interval '40 days' THEN interval '1 hour'\n      ELSE GREATEST(1,ceil(extract(epoch FROM hi-lo)/86400/1000)) * interval '1 day' END) step\n FROM requested_bounds),\npoints AS (SELECT LEAST(t+step,hi) AS time,GREATEST(t,lo) AS from_time FROM bounds,\n LATERAL generate_series(date_bin(step,lo,'2000-01-01'::timestamptz),hi,step) t WHERE t<hi),\nsources AS (SELECT DISTINCT source AS source FROM selected_kinds),\nsamples AS (SELECT p.time,s.source,b.bucket,b.complete AND b.observed_at>=p.time-interval '15 minutes' AS valid\n FROM points p CROSS JOIN sources s LEFT JOIN LATERAL\n (SELECT * FROM product_analytics.inventory_batches b WHERE b.source=s.source AND b.bucket<=p.time\n   AND b.observed_at<=p.time ORDER BY b.bucket DESC LIMIT 1) b ON true),\nscoped AS (SELECT * FROM product_analytics.inventory WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),\nstates(metric) AS (VALUES ('ready'),('provisioning'),('failed'),('suspended'),('canceled'),('deleting'),('unknown'))\nSELECT s.time,m.metric,\n CASE WHEN bool_and(COALESCE(s.valid,false)) THEN COALESCE(sum(i.resources) FILTER(WHERE i.state=m.metric),0) END AS value\nFROM samples s CROSS JOIN states m LEFT JOIN scoped i ON i.source=s.source AND i.bucket=s.bucket\nGROUP BY s.time,m.metric ORDER BY s.time,m.metric",
+                  "format": "time_series",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "min": 0,
+                  "noValue": "Unknown",
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "stepAfter",
+                    "lineWidth": 2,
+                    "fillOpacity": 8,
+                    "spanNulls": false,
+                    "insertNulls": false,
+                    "showPoints": "auto",
+                    "pointSize": 4,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisBorderShow": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ready"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Ready"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#73BF69"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "failed"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Failed"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#F2495C"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "provisioning"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Provisioning"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#5794F2"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "suspended"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Suspended"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#8F9299"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "unknown"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Unknown"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#FADE2A"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "canceled"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Canceled"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#FF9830"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "deleting"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Deleting"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#B877D9"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": [
+                    "last"
+                  ]
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            {
+              "id": 109,
+              "title": "Provisioning progress — created in range",
+              "type": "table",
+              "description": "Resources created after inventory collection began and first seen by the selected end. Reached ready means first OBSERVED ready, not proof of continuous health. Removed before ready is not a canceled deployment. Unresolved includes provisioning, failed, suspended and missing observations. Resources created and removed between snapshots may not appear.",
+              "gridPos": {
+                "x": 0,
+                "y": 37,
+                "w": 24,
+                "h": 9
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH kinds(resource_type,source) AS (VALUES\n ('static_site','services'),('web_service','services'),('private_service','services'),\n ('background_worker','services'),('cron_job','services'),('postgres','postgres'),('keyvalue','keyvalue')),\nselected_kinds AS (SELECT * FROM kinds WHERE ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),\ncohort AS (SELECT * FROM product_analytics.provisioning WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))\n AND created_at >= (SELECT inventory_started_at FROM product_analytics.collection)\n AND $__timeFilter(created_at) AND first_seen_at<=$__timeTo()::timestamptz),\nclassified AS (SELECT *,\n first_ready_at<=$__timeTo()::timestamptz AS ready_by_end,\n removed_at<=$__timeTo()::timestamptz AS removed_by_end FROM cohort)\nSELECT k.resource_type AS \"Type\",count(c.resource_id) AS \"Observed creations\",\n count(c.resource_id) FILTER(WHERE ready_by_end) AS \"Reached ready\",\n count(c.resource_id) FILTER(WHERE NOT COALESCE(ready_by_end,false) AND removed_by_end) AS \"Removed before ready\",\n count(c.resource_id) FILTER(WHERE NOT COALESCE(ready_by_end,false) AND NOT COALESCE(removed_by_end,false)) AS \"Unresolved\"\nFROM selected_kinds k LEFT JOIN classified c USING(resource_type) GROUP BY k.resource_type ORDER BY k.resource_type",
+                  "format": "table",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 0,
+                  "noValue": "—",
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "inspect": false
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 110,
+              "title": "First observed readiness — timing and unfinished age",
+              "type": "table",
+              "description": "Creation to first sampled ready is an upper-bound observation, normally up to five minutes late and longer across gaps. p95 is withheld below 20 completed samples. Oldest unresolved prevents completed-only latency from hiding unfinished work. Legacy resources are excluded.",
+              "gridPos": {
+                "x": 0,
+                "y": 46,
+                "w": 24,
+                "h": 9
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH kinds(resource_type,source) AS (VALUES\n ('static_site','services'),('web_service','services'),('private_service','services'),\n ('background_worker','services'),('cron_job','services'),('postgres','postgres'),('keyvalue','keyvalue')),\nselected_kinds AS (SELECT * FROM kinds WHERE ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),\ncohort AS (SELECT * FROM product_analytics.provisioning WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))\n AND created_at >= (SELECT inventory_started_at FROM product_analytics.collection)\n AND $__timeFilter(created_at) AND first_seen_at<=$__timeTo()::timestamptz),\nclassified AS (SELECT *,\n first_ready_at<=$__timeTo()::timestamptz AS ready_by_end,\n removed_at<=$__timeTo()::timestamptz AS removed_by_end FROM cohort)\nSELECT k.resource_type AS \"Type\",\n count(c.resource_id) FILTER(WHERE ready_by_end AND first_ready_at>=created_at) AS \"Timed samples\",\n percentile_cont(0.5) WITHIN GROUP(ORDER BY EXTRACT(epoch FROM first_ready_at-created_at))\n FILTER(WHERE ready_by_end AND first_ready_at>=created_at) AS \"p50\",\n CASE WHEN count(c.resource_id) FILTER(WHERE ready_by_end AND first_ready_at>=created_at)>=20\n THEN percentile_cont(0.95) WITHIN GROUP(ORDER BY EXTRACT(epoch FROM first_ready_at-created_at))\n FILTER(WHERE ready_by_end AND first_ready_at>=created_at) END AS \"p95 (20+ samples)\",\n max(EXTRACT(epoch FROM $__timeTo()::timestamptz-created_at))\n FILTER(WHERE NOT COALESCE(ready_by_end,false) AND NOT COALESCE(removed_by_end,false)) AS \"Oldest unresolved\"\nFROM selected_kinds k LEFT JOIN classified c USING(resource_type) GROUP BY k.resource_type ORDER BY k.resource_type",
+                  "format": "table",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 0,
+                  "noValue": "—",
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "inspect": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p50"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "s"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p95 (20+ samples)"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "s"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Oldest unresolved"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "s"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 111,
+              "title": "Inventory at range end — with seven-day net change",
+              "type": "table",
+              "description": "Both endpoints require a complete fresh snapshot. Net change is NULL when either endpoint is unknown; it is not gross creation count. Audience labels are applied consistently using current classification. Workspace counts overlap by feature.",
+              "gridPos": {
+                "x": 0,
+                "y": 55,
+                "w": 24,
+                "h": 9
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "product-analytics"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "rawSql": "WITH kinds(resource_type,source) AS (VALUES\n ('static_site','services'),('web_service','services'),('private_service','services'),\n ('background_worker','services'),('cron_job','services'),('postgres','postgres'),('keyvalue','keyvalue')),\nselected_kinds AS (SELECT * FROM kinds WHERE ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))),\npoints AS (SELECT $__timeTo()::timestamptz AS time UNION ALL SELECT $__timeTo()::timestamptz-interval '7 days'),\ncounts AS (\n SELECT k.resource_type,p.time,b.complete AND b.observed_at>=p.time-interval '15 minutes' AS valid,\n COALESCE(sum(i.resources),0) AS resources,count(DISTINCT i.workspace_id) AS workspaces\n FROM selected_kinds k CROSS JOIN points p LEFT JOIN LATERAL\n (SELECT * FROM product_analytics.inventory_batches b WHERE b.source=k.source AND b.observed_at<=p.time ORDER BY bucket DESC LIMIT 1) b ON true\n LEFT JOIN product_analytics.inventory i ON i.source=k.source AND i.bucket=b.bucket AND i.resource_type=k.resource_type AND ('__all' IN (${audience:sqlstring}) OR i.audience IN (${audience:sqlstring}))\n GROUP BY k.resource_type,p.time,b.complete,b.observed_at)\nSELECT n.resource_type AS \"Type\",CASE WHEN n.valid THEN n.resources END AS \"At range end\",\n CASE WHEN n.valid THEN n.workspaces END AS \"Owning workspaces\",\n CASE WHEN n.valid AND o.valid THEN n.resources-o.resources END AS \"7-day net change\"\nFROM counts n JOIN counts o USING(resource_type)\nWHERE n.time=$__timeTo()::timestamptz AND o.time=n.time-interval '7 days' ORDER BY n.resource_type",
+                  "format": "table",
+                  "rawQuery": true,
+                  "editorMode": "code"
+                }
+              ],
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 0,
+                  "noValue": "—",
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "inspect": false
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
+            },
+            {
+              "id": 112,
+              "type": "row",
+              "title": "Adoption detail — creators, activation, deployments and cohorts",
+              "collapsed": true,
+              "gridPos": {
+                "x": 0,
+                "y": 64,
+                "w": 24,
+                "h": 1
+              },
+              "panels": [
+                {
+                  "id": 2,
+                  "title": "Creator accounts",
+                  "type": "stat",
+                  "description": "Distinct human-authenticated account identities on successful creations/domain additions. Automation using a human account remains that account. Unknown creators are not guessed.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 65,
+                    "w": 6,
+                    "h": 4
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "SELECT count(DISTINCT actor_id) AS \"Creator accounts\" FROM product_analytics.events WHERE $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) AND event_type IN ('created','domain_added') AND resource_type<>'workspace' AND actor_type='human' AND actor_id<>''"
+                    }
+                  ],
+                  "options": {
+                    "reduceOptions": {
+                      "calcs": [
+                        "lastNotNull"
+                      ],
+                      "fields": "",
+                      "values": false
+                    },
+                    "colorMode": "value",
+                    "graphMode": "none",
+                    "textMode": "auto"
+                  }
+                },
+                {
+                  "id": 3,
+                  "title": "Creating workspaces",
+                  "type": "stat",
+                  "description": "Workspaces with a recorded creation or explicit domain addition. Not dashboard visits, read-only usage, or every configuration operation.",
+                  "gridPos": {
+                    "x": 6,
+                    "y": 65,
+                    "w": 6,
+                    "h": 4
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "SELECT count(DISTINCT workspace_id) AS \"Creating workspaces\" FROM product_analytics.events WHERE $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) AND event_type IN ('created','domain_added') AND resource_type<>'workspace'"
+                    }
+                  ],
+                  "options": {
+                    "reduceOptions": {
+                      "calcs": [
+                        "lastNotNull"
+                      ],
+                      "fields": "",
+                      "values": false
+                    },
+                    "colorMode": "value",
+                    "graphMode": "none",
+                    "textMode": "auto"
+                  }
+                },
+                {
+                  "id": 4,
+                  "title": "Newly activated",
+                  "type": "stat",
+                  "description": "First successful service deployment in retained selected-type history. A retained-history boundary, not a lifetime first. Datastores activate through hosting observations instead.",
+                  "gridPos": {
+                    "x": 12,
+                    "y": 65,
+                    "w": 6,
+                    "h": 4
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "WITH first_live AS (SELECT workspace_id,min(at) AS at FROM product_analytics.events WHERE event_type='deploy_finished' AND outcome='succeeded' AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY workspace_id) SELECT count(*) AS \"Newly activated workspaces\" FROM first_live WHERE $__timeFilter(at)"
+                    }
+                  ],
+                  "options": {
+                    "reduceOptions": {
+                      "calcs": [
+                        "lastNotNull"
+                      ],
+                      "fields": "",
+                      "values": false
+                    },
+                    "colorMode": "value",
+                    "graphMode": "none",
+                    "textMode": "auto"
+                  }
+                },
+                {
+                  "id": 5,
+                  "title": "Hosting workspaces",
+                  "type": "stat",
+                  "description": "Distinct workspaces sampled live on UTC days touching the selected range. Not a sum of daily counts. Snapshot history begins at rollout; day buckets include the whole day.",
+                  "gridPos": {
+                    "x": 18,
+                    "y": 65,
+                    "w": 6,
+                    "h": 4
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "SELECT count(DISTINCT workspace_id) AS \"Hosting workspaces\" FROM product_analytics.hosting WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) AND was_live AND day>=($__timeFrom()::timestamptz AT TIME ZONE 'UTC')::date AND day<=($__timeTo()::timestamptz AT TIME ZONE 'UTC')::date"
+                    }
+                  ],
+                  "options": {
+                    "reduceOptions": {
+                      "calcs": [
+                        "lastNotNull"
+                      ],
+                      "fields": "",
+                      "values": false
+                    },
+                    "colorMode": "value",
+                    "graphMode": "none",
+                    "textMode": "auto"
+                  }
+                },
+                {
+                  "id": 6,
+                  "title": "Feature adoption — creators, reach and deployments",
+                  "type": "table",
+                  "description": "Successful creations, distinct creator accounts/workspaces and deployed services in the selected period. These are separate measures: deployments need not belong to newly created services. Unknown creators include legacy history. Inventory is shown in the main snapshot panels.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 69,
+                    "w": 24,
+                    "h": 10
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      },
+                      "custom": {
+                        "minWidth": 60,
+                        "width": 100
+                      }
+                    },
+                    "overrides": [
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Feature"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 185
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Unknown creator"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 145
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Deployed"
+                        },
+                        "properties": [
+                          {
+                            "id": "noValue",
+                            "value": "—"
+                          },
+                          {
+                            "id": "custom.width",
+                            "value": 110
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "WITH kinds(resource_type) AS (VALUES ('static_site'),('web_service'),('private_service'),('background_worker'),('cron_job'),('postgres'),('keyvalue')),\ncreated AS (SELECT resource_type,count(*) AS creations,count(DISTINCT actor_id) FILTER(WHERE actor_type='human' AND actor_id<>'') AS creators,count(DISTINCT workspace_id) AS workspaces,count(*) FILTER(WHERE actor_type='unknown') AS unknown FROM product_analytics.events WHERE event_type='created' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY resource_type),\nactivated AS (SELECT resource_type,count(DISTINCT parent_id) AS activated FROM product_analytics.events WHERE event_type='deploy_finished' AND outcome='succeeded' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY resource_type)\nSELECT k.resource_type AS \"Feature\",COALESCE(c.creators,0) AS \"Creators\",COALESCE(c.workspaces,0) AS \"Workspaces\",COALESCE(c.creations,0) AS \"Created\",COALESCE(c.unknown,0) AS \"Unknown creator\",CASE WHEN k.resource_type NOT IN ('postgres','keyvalue') THEN COALESCE(a.activated,0) END AS \"Deployed\"\nFROM kinds k LEFT JOIN created c USING(resource_type) LEFT JOIN activated a USING(resource_type) WHERE ('__all' IN (${kind:sqlstring}) OR k.resource_type IN (${kind:sqlstring})) ORDER BY COALESCE(c.creations,0) DESC,k.resource_type"
+                    }
+                  ],
+                  "options": {
+                    "showHeader": true,
+                    "cellHeight": "sm",
+                    "footer": {
+                      "show": false
+                    }
+                  }
+                },
+                {
+                  "id": 7,
+                  "title": "Resource creations per day",
+                  "type": "timeseries",
+                  "description": "Received successful creation effects, with legacy surviving inventory explicitly included. No events means no observations, not proof of zero platform usage.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 79,
+                    "w": 12,
+                    "h": 8
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "time_series",
+                      "rawQuery": true,
+                      "rawSql": "SELECT date_trunc('day',at) AS time,resource_type AS metric,count(*) AS value FROM product_analytics.events WHERE event_type='created' AND resource_type<>'workspace' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
+                    }
+                  ],
+                  "options": {
+                    "legend": {
+                      "displayMode": "list",
+                      "placement": "bottom"
+                    },
+                    "tooltip": {
+                      "mode": "multi"
+                    }
+                  }
+                },
+                {
+                  "id": 8,
+                  "title": "Daily creating and hosting workspaces",
+                  "type": "timeseries",
+                  "description": "Creating workspaces take a recorded creation action; hosting workspaces may have no interactive activity. Unobserved hosting days remain unavailable.",
+                  "gridPos": {
+                    "x": 12,
+                    "y": 79,
+                    "w": 12,
+                    "h": 8
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "time_series",
+                      "rawQuery": true,
+                      "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day',$__timeFrom()::timestamptz),date_trunc('day',$__timeTo()::timestamptz),interval '1 day') AS time), creators AS (SELECT date_trunc('day',at) AS time,count(DISTINCT workspace_id) AS n FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type<>'workspace' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1), hosts AS (SELECT day::timestamptz AS time,count(DISTINCT workspace_id) FILTER(WHERE was_live) AS n FROM product_analytics.hosting WHERE day >= ($__timeFrom()::timestamptz AT TIME ZONE 'UTC')::date AND day <= ($__timeTo()::timestamptz AT TIME ZONE 'UTC')::date AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1) SELECT d.time,COALESCE(c.n,0) AS \"Creating\",CASE WHEN d.time::date >= (SELECT started_at::date FROM product_analytics.collection) THEN h.n END AS \"Hosting\" FROM days d LEFT JOIN creators c USING(time) LEFT JOIN hosts h USING(time) ORDER BY 1"
+                    }
+                  ],
+                  "options": {
+                    "legend": {
+                      "displayMode": "list",
+                      "placement": "bottom"
+                    },
+                    "tooltip": {
+                      "mode": "multi"
+                    }
+                  }
+                },
+                {
+                  "id": 9,
+                  "title": "Workspace activation — within 7 days",
+                  "type": "table",
+                  "description": "Only workspaces created after analytics rollout whose complete seven-day window has elapsed by the selected end. Custom domains are optional, not an activation requirement. Resource filter changes the destination, never silently the signup denominator.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 87,
+                    "w": 24,
+                    "h": 7
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      },
+                      "custom": {
+                        "minWidth": 60,
+                        "width": 100
+                      }
+                    },
+                    "overrides": [
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Mature workspaces"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 170
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Created a service"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 165
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Reached live"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 130
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Activation rate"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 145
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "p50 time to live"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 190
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Activation rate"
+                        },
+                        "properties": [
+                          {
+                            "id": "unit",
+                            "value": "percentunit"
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "p50 time to live"
+                        },
+                        "properties": [
+                          {
+                            "id": "unit",
+                            "value": "s"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "WITH cohort AS (SELECT workspace_id,created_at FROM product_analytics.workspaces WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND $__timeFilter(created_at) AND created_at >= (SELECT started_at FROM product_analytics.collection) AND created_at+interval '7 days'<=$__timeTo()::timestamptz),\nsteps AS (SELECT c.*,min(e.at) FILTER(WHERE e.event_type='created') AS first_create,min(e.at) FILTER(WHERE e.event_type='deploy_finished' AND e.outcome='succeeded') AS first_live FROM cohort c LEFT JOIN product_analytics.events e ON e.workspace_id=c.workspace_id AND e.resource_type IN ('static_site','web_service','private_service','background_worker','cron_job') AND ('__all' IN (${kind:sqlstring}) OR e.resource_type IN (${kind:sqlstring})) AND e.at>=c.created_at AND e.at<=c.created_at+interval '7 days' GROUP BY c.workspace_id,c.created_at)\nSELECT count(*) AS \"Mature workspaces\",count(first_create) AS \"Created a service\",count(first_live) AS \"Reached live\",count(first_live)::float/NULLIF(count(*),0) AS \"Activation rate\",percentile_cont(0.5) WITHIN GROUP(ORDER BY EXTRACT(epoch FROM first_live-created_at)) FILTER(WHERE first_live IS NOT NULL) AS \"p50 time to live\" FROM steps"
+                    }
+                  ],
+                  "options": {
+                    "showHeader": true,
+                    "cellHeight": "sm",
+                    "footer": {
+                      "show": false
+                    }
+                  }
+                },
+                {
+                  "id": 10,
+                  "title": "Deployment outcomes",
+                  "type": "timeseries",
+                  "description": "Terminal deployment outcomes counted once by deploy ID, including deactivated releases as historical successes. Time axis is completion time.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 94,
+                    "w": 24,
+                    "h": 8
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "time_series",
+                      "rawQuery": true,
+                      "rawSql": "SELECT date_trunc('day',at) AS time,outcome AS metric,count(*) AS value FROM product_analytics.events WHERE event_type='deploy_finished' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
+                    }
+                  ],
+                  "options": {
+                    "legend": {
+                      "displayMode": "list",
+                      "placement": "bottom"
+                    },
+                    "tooltip": {
+                      "mode": "multi"
+                    }
+                  }
+                },
+                {
+                  "id": 11,
+                  "title": "Deployment experience by service type",
+                  "type": "table",
+                  "description": "Failure share excludes cancellations; timings span recorded start to finish and exclude unknown/negative durations. This is deployment duration, not just build time.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 102,
+                    "w": 24,
+                    "h": 8
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      },
+                      "custom": {
+                        "minWidth": 60,
+                        "width": 100
+                      }
+                    },
+                    "overrides": [
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Type"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 150
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Affected workspaces"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 165
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Failure share"
+                        },
+                        "properties": [
+                          {
+                            "id": "unit",
+                            "value": "percentunit"
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "p50"
+                        },
+                        "properties": [
+                          {
+                            "id": "unit",
+                            "value": "ms"
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "p95"
+                        },
+                        "properties": [
+                          {
+                            "id": "unit",
+                            "value": "ms"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "SELECT resource_type AS \"Type\",count(*) AS \"Finished\",count(*) FILTER(WHERE outcome='failed') AS \"Failed\",count(DISTINCT workspace_id) FILTER(WHERE outcome='failed') AS \"Affected workspaces\",count(*) FILTER(WHERE outcome='failed')::float/NULLIF(count(*) FILTER(WHERE outcome<>'canceled'),0) AS \"Failure share\",count(duration_ms) AS \"Timed samples\",percentile_cont(0.5) WITHIN GROUP(ORDER BY duration_ms) AS \"p50\",percentile_cont(0.95) WITHIN GROUP(ORDER BY duration_ms) AS \"p95\" FROM product_analytics.events WHERE event_type='deploy_finished' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1 ORDER BY count(*) DESC"
+                    }
+                  ],
+                  "options": {
+                    "showHeader": true,
+                    "cellHeight": "sm",
+                    "footer": {
+                      "show": false
+                    }
+                  }
+                },
+                {
+                  "id": 12,
+                  "title": "Custom domains — current setup state",
+                  "type": "table",
+                  "description": "Current inventory, independent of selected time range. Explicit domains only; generated redirect aliases excluded. TLS means certificate bytes observed, not a DNS/HTTPS reachability check. Failed sample or older than 30 minutes is unknown.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 110,
+                    "w": 24,
+                    "h": 7
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      },
+                      "custom": {
+                        "minWidth": 60,
+                        "width": 100
+                      }
+                    },
+                    "overrides": [
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Explicit domains"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 150
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Ownership pending"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 150
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Ownership verified"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 150
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "TLS observed ready"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 150
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "TLS unknown or stale"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 150
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Pending over 24h"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 150
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "SELECT count(*) AS \"Explicit domains\",count(DISTINCT workspace_id) AS \"Workspaces\",count(*) FILTER(WHERE claim_state='pending') AS \"Ownership pending\",count(*) FILTER(WHERE claim_state='verified') AS \"Ownership verified\",count(*) FILTER(WHERE tls_ready IS TRUE) AS \"TLS observed ready\",count(*) FILTER(WHERE tls_ready IS NULL) AS \"TLS unknown or stale\",count(*) FILTER(WHERE claim_state='pending' AND created_at<now()-interval '24 hours') AS \"Pending over 24h\" FROM product_analytics.domains WHERE ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))"
+                    }
+                  ],
+                  "options": {
+                    "showHeader": true,
+                    "cellHeight": "sm",
+                    "footer": {
+                      "show": false
+                    }
+                  }
+                },
+                {
+                  "id": 13,
+                  "title": "Domain adoption and verification",
+                  "type": "table",
+                  "description": "Domain additions in the selected range and audience; the resource-type filter does not apply to this cross-service domain adoption panel. Repeated verification attempts are not new domains. Historical verification time can be a migration backfill, not a measured duration.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 117,
+                    "w": 24,
+                    "h": 7
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      },
+                      "custom": {
+                        "minWidth": 60,
+                        "width": 100
+                      }
+                    },
+                    "overrides": [
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Domains added"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 180
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Creator accounts"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 180
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Verified by range end"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 180
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "p50 verification time"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 180
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "p50 verification time"
+                        },
+                        "properties": [
+                          {
+                            "id": "unit",
+                            "value": "s"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "WITH additions AS (SELECT * FROM product_analytics.events WHERE event_type='domain_added' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring}))), verified AS (SELECT resource_id,min(at) AS verified_at FROM product_analytics.events WHERE event_type='domain_verified' AND at<=$__timeTo()::timestamptz GROUP BY resource_id)\nSELECT count(*) AS \"Domains added\",count(DISTINCT a.actor_id) FILTER(WHERE a.actor_type='human' AND a.actor_id<>'') AS \"Creator accounts\",count(DISTINCT a.workspace_id) AS \"Workspaces\",count(v.verified_at) AS \"Verified by range end\",percentile_cont(0.5) WITHIN GROUP(ORDER BY EXTRACT(epoch FROM v.verified_at-a.at)) FILTER(WHERE v.verified_at>=a.at) AS \"p50 verification time\" FROM additions a LEFT JOIN verified v ON v.resource_id=a.resource_id"
+                    }
+                  ],
+                  "options": {
+                    "showHeader": true,
+                    "cellHeight": "sm",
+                    "footer": {
+                      "show": false
+                    }
+                  }
+                },
+                {
+                  "id": 14,
+                  "title": "Next-week creating-workspace return",
+                  "type": "table",
+                  "description": "Repeat resource-creation/domain-adoption activity, not all product use. Only complete next-calendar-week cohorts. First observed activity is not necessarily first-ever use; collection and retention can truncate cohorts.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 124,
+                    "w": 12,
+                    "h": 8
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      },
+                      "custom": {
+                        "minWidth": 60,
+                        "width": 100
+                      }
+                    },
+                    "overrides": [
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Return share"
+                        },
+                        "properties": [
+                          {
+                            "id": "unit",
+                            "value": "percentunit"
+                          }
+                        ]
+                      },
+                      {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Cohort"
+                        },
+                        "properties": [
+                          {
+                            "id": "custom.width",
+                            "value": 170
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "WITH firsts AS (SELECT workspace_id,date_trunc('week',min(at)) AS cohort FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type<>'workspace' AND provenance='observed' AND at<=$__timeTo()::timestamptz AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY workspace_id), activity AS (SELECT DISTINCT workspace_id,date_trunc('week',at) AS week FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type<>'workspace' AND provenance='observed' AND at<=$__timeTo()::timestamptz AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))) SELECT f.cohort AS \"Cohort\",count(*) AS \"Workspaces\",count(a.workspace_id) AS \"Returned\",count(a.workspace_id)::float/NULLIF(count(*),0) AS \"Return share\" FROM firsts f LEFT JOIN activity a ON a.workspace_id=f.workspace_id AND a.week=f.cohort+interval '7 days' WHERE f.cohort>=date_trunc('week',$__timeFrom()::timestamptz) AND f.cohort+interval '14 days'<=$__timeTo()::timestamptz GROUP BY 1 ORDER BY 1"
+                    }
+                  ],
+                  "options": {
+                    "showHeader": true,
+                    "cellHeight": "sm",
+                    "footer": {
+                      "show": false
+                    }
+                  }
+                },
+                {
+                  "id": 15,
+                  "title": "Attribution and history coverage",
+                  "type": "table",
+                  "description": "Legacy rows are only surviving pre-rollout resources; historical deleted resources and creators cannot be recovered. System deploy outcomes are not proof of human activity. Current backend creation recording is best effort.",
+                  "gridPos": {
+                    "x": 12,
+                    "y": 124,
+                    "w": 12,
+                    "h": 8
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      },
+                      "custom": {
+                        "minWidth": 60,
+                        "width": 100
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "SELECT provenance AS \"History\",actor_type AS \"Actor\",count(*) AS \"Creation events\",count(DISTINCT workspace_id) AS \"Workspaces\" FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type<>'workspace' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
+                    }
+                  ],
+                  "options": {
+                    "showHeader": true,
+                    "cellHeight": "sm",
+                    "footer": {
+                      "show": false
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "links": [
+            {
+              "title": "Platform availability",
+              "url": "/d/bex-platform-availability",
+              "type": "link",
+              "targetBlank": false
+            },
+            {
+              "title": "Builds",
+              "url": "/d/bex-builds",
+              "type": "link",
+              "targetBlank": false
+            }
+          ]
+        }
     # Platform availability (ADR088 §6 row 1, the landing page): is the
     # platform itself up — edge traffic/5xx/latency against TraefikHigh5xxRate's
     # 5% line, platform Deployment/pod health on the same namespace allowlist

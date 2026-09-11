@@ -200,9 +200,12 @@ type DeployNotifier interface {
 // It is level-triggered — a full resync every Resync plus a Kick after API
 // writes — so etcd stays a rebuildable projection of Postgres.
 type Reconciler struct {
-	Client client.Client
-	Store  Store
-	Resync time.Duration // full-resync interval
+	// ProductObserver samples hosting/TLS without changing reconciliation intent.
+	ProductObserver          func(context.Context, DesiredApp, *appv1alpha1.App)
+	productObservationCursor int
+	Client                   client.Client
+	Store                    Store
+	Resync                   time.Duration // full-resync interval
 	// Identity names this control-plane instance (BEX_CP_IDENTITY). It is
 	// stamped on every App CR this projector owns and scopes its delete-by-
 	// absence pass. Empty is read as DefaultControlPlaneIdentity.
@@ -585,6 +588,27 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	// row here, so this is a sibling pass rather than part of the loop above.
 	if err := r.recordDatastoreObservations(ctx); err != nil {
 		errs = append(errs, err)
+	}
+	// Product sampling gets one shared pass budget AFTER deployment/lifecycle
+	// write-back, not a fresh timeout per App ahead of critical reconciliation.
+	if r.ProductObserver != nil {
+		analyticsCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		start := 0
+		if len(desired) > 0 {
+			start = r.productObservationCursor % len(desired)
+		}
+		for offset := 0; offset < len(desired); offset++ {
+			if analyticsCtx.Err() != nil {
+				break
+			}
+			index := (start + offset) % len(desired)
+			d := desired[index]
+			r.productObservationCursor = (index + 1) % len(desired)
+			if cur := byID[d.ID]; cur != nil && seen[d.ID] && ownedBy(cur.Labels, r.identity()) {
+				r.ProductObserver(analyticsCtx, d, cur)
+			}
+		}
+		cancel()
 	}
 	return errors.Join(errs...)
 }
