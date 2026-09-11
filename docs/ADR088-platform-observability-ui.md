@@ -60,7 +60,7 @@ The local overlay runs Grafana with only the local admin — no OIDC client, no 
 
 Division of record: **this section says what we watch and why; the committed dashboard JSON says how it is drawn.** Two standing principles:
 
-- **Every alert gets a panel.** Prometheus evaluates 48 platform alert rules today (`deploy/gitops/base/prometheus.yaml`); an alert only says "broken", so each rule's backing series must appear on a dashboard that answers _how bad, since when, trending which way_. A new alert rule lands with (or names) its panel; a panel-less alert is review feedback. `scripts/obs-coverage-check.sh` generates the audit and fails CI, so this is enforced rather than remembered.
+- **Every alert gets a panel.** Prometheus evaluates 51 platform alert rules today (`deploy/gitops/base/prometheus.yaml`); an alert only says "broken", so each rule's backing series must appear on a dashboard that answers _how bad, since when, trending which way_. A new alert rule lands with (or names) its panel; a panel-less alert is review feedback. `scripts/obs-coverage-check.sh` generates the audit and fails CI, so this is enforced rather than remembered.
 - **Every tenant-facing surface gets a falsifiable signal** — an alert rule, a scheduled probe, or a written waiver. The per-surface ledger is the [coverage table](#tenant-facing-surface-coverage-w3m83-t001) below.
 - **Bounded labels only.** Platform dashboards query the same bounded label sets the alert rules do — never per-path/per-host/per-tenant-unbounded dimensions (the ADR010 cardinality rule applies to dashboards too).
 
@@ -100,7 +100,7 @@ Each "covered" cell below names the rule (`deploy/gitops/base/prometheus.yaml`) 
 | Deploy email | — | — | **waived** — one SMTP relay, and `KratosCourierNotReady` already pages when it stalls (sign-up verification shares it, so a dead relay is caught at the higher-stakes surface first) |
 | Deploy from git → Ready → URL | — | `deploy-canary` job, weekly | **probe** — w3/m83 t004. The Render promise itself; no series says "a push became a running URL" |
 | Static-site serving + teardown | — | `deploy-canary` job (static variant), weekly | **probe** — w3/m83 t004. Teardown is the half that fails silently: a deleted site that keeps serving is invisible to every metric |
-| Custom domains / TLS | `CertificateNotReady`, `CertificateExpiringSoon`, `TenantCustomDomainCertNotReady` (info) | `onbex-default-tls-verify` step, 6h | **covered** — cert-manager's own series plus the public wildcard-fallback synthetic |
+| Custom domains / TLS | `CertificateNotReady`, `CertificateExpiringSoon`, `TenantCustomDomainCertNotReady` (info), `TenantCustomDomainCertExpiringSoon` (info) | `onbex-default-tls-verify` step, 6h | **covered** — cert-manager's own series plus the public wildcard-fallback synthetic |
 | SSH edge | — | `ssh-kexinit-probe` step, 6h | **probe** — shipped w6/m132 t004. The failure was pre-authentication, so no in-cluster series saw it |
 | Web Shell | — | `shell-ws-probe` step, 6h | **probe** — shipped w2/m90 (alive-but-refusing 401 is the healthy shape) |
 | Agent sessions — provision | `AgentSessionProvisionFailing` | — | **alert** — w3/m83 t006 |
@@ -109,7 +109,7 @@ Each "covered" cell below names the rule (`deploy/gitops/base/prometheus.yaml`) 
 | Tenant / sandbox isolation | — | `isolation-matrix` job, weekly | **probe** — w3/m83 t005. An invariant, not a series: only an actual denied connection proves it |
 | Datastore provisioning | `DatastoreStuckProvisioning`, `DatastoreObservationFailing` | — | **covered by alerts** — absence is the symptom, which is why the observation-error rule exists beside it |
 | Datastore backups | `DatabaseNotArchivingWAL`, `BackupCronJobStale`, `PlatformDatabaseBackupStale` | — | **covered by alerts** |
-| Billing | `BillingExportBacklog`, `BillingPermanentReject`, `BillingExportAmbiguity`, `BillingLocalStampFailure`, `BillingProviderDuplicate`, `BillingInvoiceReadDegraded`, `BillingWebhookDrift`, `BillingProvisioningFailure` | — | **covered by alerts** |
+| Billing | `BillingExportBacklog`, `BillingPermanentReject`, `BillingExportAmbiguity`, `BillingLocalStampFailure`, `BillingProviderDuplicate`, `BillingInvoiceReadDegraded`, `BillingWebhookDrift`, `BillingWebhookSignatureRejects`, `BillingProvisioningFailure` | — | **covered by alerts** |
 
 Two properties of this table are load-bearing:
 

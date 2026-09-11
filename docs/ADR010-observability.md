@@ -217,7 +217,7 @@ REST: `GET /v1/metrics/{cpu,memory}-target?resource=<app>` (same shape as the ot
 
 ## Platform alerting (Alertmanager)
 
-Logs and metrics above make _tenant_ deploys observable. Platform alerting is the operator-facing half of `GOAL.md` #2: when **bex itself** breaks — a bad rollout in `bex-system`, a node gone, OpenBao sealed after a restart, a nightly backup silently rotting — a human gets paged instead of finding out at restore time. It rides the same Prometheus (w3/m6): the chart's bundled **Alertmanager** is enabled with one webhook receiver, and a small, high-signal rule pack (`serverFiles.alerting_rules.yml` in `prometheus.yaml`) evaluates platform and bex-specific invariants.
+Logs and metrics above make _tenant_ deploys observable. Platform alerting is the operator-facing half of `GOAL.md` #2: when **bex itself** breaks — a bad rollout in `bex-system`, a node gone, OpenBao sealed after a restart, a nightly backup silently rotting — a human gets paged instead of finding out at restore time. It rides the same Prometheus (w3/m6): the chart's bundled **Alertmanager** is enabled with an email receiver, and a small, high-signal rule pack (`serverFiles.alerting_rules.yml` in `prometheus.yaml`) evaluates platform and bex-specific invariants.
 
 Deliberately minimal: still no pushgateway/node-exporter. The only exporters are **kube-state-metrics** (object state) and the existing kubelet scrape (PVC usage) — the rules need no host-level series.
 
@@ -234,7 +234,8 @@ Two groups, all with actionable `description`s (each carries the `kubectl` comma
 | `platform` | `PersistentVolumeFillingUp` | a PVC is >85% full >15m (hcloud-csi/local-path single-copy volumes) | warning |
 | `platform` | `CertificateNotReady` | a **platform** cert-manager Certificate is not-Ready >15m — every not-Ready cert **except** a tenant's own custom-domain cert (which bex can't fix; see the next row) | warning |
 | `platform` | `TenantCustomDomainCertNotReady` | a tenant **custom-domain** cert (`tea-*` ns, `<app>-tls-<host>` for a non-`onbex.co` host) is not-Ready >1h — almost always customer DNS not pointing at bex (e.g. a Cloudflare-proxied apex ⇒ ACME HTTP-01 404s). Routed to the `null` receiver (dashboard-surfaced, **never paged**); the platform `<app>-tls` onbex host cert stays on `CertificateNotReady` because bex owns `*.onbex.co` DNS | info |
-| `platform` | `CertificateExpiringSoon` | a Certificate expires in <14d and hasn't renewed | warning |
+| `platform` | `CertificateExpiringSoon` | an **issued** (Ready) Certificate expires in <14d and hasn't renewed — joined on `ready_status == 1` because cert-manager exports expiry `0` for a never-issued cert (which made "0 − now < 14d" page for weeks), with the same tenant custom-domain carve-out as `CertificateNotReady` | warning |
+| `platform` | `TenantCustomDomainCertExpiringSoon` | a tenant **custom-domain** cert was issued but is not renewing (<14d left) — the domain's DNS moved after issuance; the info-tier twin of the row above, `null`-routed | info |
 | `bex` | `BackupCronJobStale` | `etcd-backup`/`openbao-backup` last succeeded >26h ago (silent rot) | critical |
 | `bex` | `OpenBaoSealed` | any OpenBao member reports sealed >5m (⇒ 503s the env-vars API) | critical |
 | `bex` | `BexApiDown` | `bex-api` has zero available replicas >5m | critical |
@@ -277,9 +278,27 @@ Both rules use a traffic floor rather than an `or vector(0)` coercion: a window 
 
 The rule pack and the tenant reads above are two of three answers to "how would we know". The third is the scheduled probe, for failures visible only from the tenant's side — a query that returns empty, a URL that 404s, an isolation invariant. [ADR088 §6](ADR088-platform-observability-ui.md#tenant-facing-surface-coverage-w3m83-t001) carries the per-surface ledger: each tenant-facing surface classified as covered by an alert rule, covered by a scheduled probe, or waived with its reason, and no surface left implicitly uncovered.
 
-### Severity routing: `info` never pages
+### Three tiers: critical pages, warning is a daily digest, info never pages
 
-The default route sends every alert to the `platform` email receiver — **except** `severity: info`, which a child route terminates at a no-config `null` (black-hole) receiver. `info` is the tier for **customer-actionable** signals that must stay visible to the dashboard/API (and in Alertmanager) but must never wake on-call: the first of them is `TenantCustomDomainCertNotReady`, where a tenant's own custom-domain DNS isn't pointing at bex, so the platform can do nothing but surface it to the tenant. Everything the operator actually owns is `warning`/`critical` and still emails. `scripts/alerts-verify.sh` preserves the `null` receiver when it swaps the email receiver for its capture webhook, so its throwaway Alertmanager still loads the committed route.
+Every rule carries one of three severities, and the Alertmanager route in `prometheus.yaml` gives each a different delivery contract. The tier _is_ the routing, so a rule's `severity` label is a product decision, not a hint.
+
+| tier | who owns it | delivery | timers |
+| --- | --- | --- | --- |
+| `critical` | on-call, now | its own email per alert group (`alertname` + `namespace`); resolved mail sent | `group_wait` 30s; re-sent every 4h while firing |
+| `warning` | someone, this week | **one digest email** listing every open warning (`group_by: [severity]`, receiver `platform-digest`); no resolved mail — the next digest simply omits what cleared | a new warning joins within 30m; re-sent at most every 24h |
+| `info` | the tenant | none — terminates at the no-config `null` receiver; visible in Alertmanager/Grafana only | — |
+
+Why the digest exists (2026-09-11): before it every warning repeated every 4h exactly like a page, and four alerts that had been firing for days — one a false positive, three real but unowned — were 24 emails a day. That is the inbox-delete-key failure mode, where real pages get deleted with the noise. A warning is a ticket, so it is delivered like one: visible every day, never six times a day.
+
+`info` is the tier for **customer-actionable** signals that must stay visible to the dashboard/API (and in Alertmanager) but must never wake on-call: `TenantCustomDomainCertNotReady` and `TenantCustomDomainCertExpiringSoon`, where a tenant's own custom-domain DNS isn't pointing at bex (or moved after issuance), so the platform can do nothing but surface it to the tenant. Everything the operator actually owns is `warning`/`critical` and still emails.
+
+**Inhibitions** keep it to one page per broken thing: `CertificateNotReady` silences `CertificateExpiringSoon` for the same Certificate, and either tenant-cert info alert silences both platform cert rules for the same Certificate — belt-and-braces over the rules' own carve-out, so a loosened selector cannot leak a tenant cert onto on-call. `equal: [namespace, name]` pins the pair to one object. A generic critical-inhibits-warning rule was rejected: Alertmanager treats a label missing on _both_ sides as equal, and most `bex`-group alerts carry no `namespace`, so one namespace-less critical would have muted every namespace-less warning.
+
+**Silences persist.** Alertmanager runs on a small PVC (`persistence.enabled`), so a silence — the standard way to acknowledge a known alert while its `.pm` item is open — survives a pod restart. Before this the pod was ephemeral and every restart dropped every silence, which is why none existed while four alerts fired for weeks. A StatefulSet's `volumeClaimTemplates` are immutable, so the resource carries `Force=true,Replace=true` and the Application syncs with `ApplyOutOfSyncOnly=true`: Argo delete-and-recreates the StatefulSet only when the StatefulSet itself drifted, never on a rule edit. Create silences through the Alertmanager API (`kubectl -n monitoring port-forward svc/prometheus-alertmanager 9093`, then `amtool --alertmanager.url=http://127.0.0.1:9093 silence add …`) with a comment naming the `.pm` item.
+
+**Ownership rule.** An alert firing for more than three days must have either a fix in flight or a silence whose comment names its `.pm` note; the daily digest is the audit that keeps an unowned warning visible without making it noise. The never-issued-certificate lesson generalizes: an alert that fires on a state nobody can act on is not "a warning we tolerate", it is a bug in the rule, fixed at the rule — with a `promtool` test for the exact input that fooled it — and never muted at the inbox. Two more rules were re-shaped the same day for the same reason: `EgressMeterTargetMissing`'s expected-node count now means "nodes the meter DaemonSet can schedule on" (it named one pool taint and fired continuously once a sandbox pool and a build-only node existed), and `BillingWebhookDrift` no longer counts a single unsigned POST to the public webhook endpoint as drift (thirteen scanner hits in three days had each paged on-call for 15 minutes); a signature-reject _burst_ is the new `BillingWebhookSignatureRejects` warning.
+
+`scripts/alerts-verify.sh` preserves the `null` and `platform-digest` receivers when it swaps the email receivers for its capture webhook, so its throwaway Alertmanager still loads the committed route.
 
 ### The receiver secret (out-of-band, never in git)
 

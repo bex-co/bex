@@ -109,8 +109,8 @@ tests:
         exp_alerts:
           - exp_labels: { severity: critical, job: bex-api, instance: prod }
             exp_annotations:
-              summary: "Stripe billing webhook signature, API version, or mode drifted"
-              description: "Webhook intake rejected a signature, pinned API version, or test/live mode mismatch. Verify the test endpoint and rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              summary: "Stripe billing webhook API version or mode drifted"
+              description: "Webhook intake rejected a signed Stripe event for its pinned API version or test/live mode. Verify the endpoint's API version and mode in the Stripe dashboard; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
       - eval_time: 20m
         alertname: BillingProvisioningFailure
         exp_alerts:
@@ -118,6 +118,40 @@ tests:
             exp_annotations:
               summary: "Stripe Customer or Subscription provisioning is repeatedly failing"
               description: "Usage cannot export until the workspace's unique Customer and metered Subscription converge. Inspect catalog/key permissions and duplicate-object alerts. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+  # The webhook endpoint is public: unsigned POSTs from scanners and replays
+  # each count one signature reject. 13 of those over three days paged on-call
+  # thirteen times as "drift" before the split (2026-09-11). Drift is now only
+  # a SIGNED event with the wrong version/mode; signature rejects need a burst.
+  - name: a trickle of webhook signature rejects is background noise
+    interval: 1m
+    input_series:
+      - series: 'bex_billing_enabled{job="bex-api",instance="prod"}'
+        values: "1x40"
+      # One unsigned POST every 5 minutes (3 per 15m window).
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="webhook_signature",result="error"}'
+        values: "0 0 0 0 0 1 1 1 1 1 2 2 2 2 2 3 3 3 3 3 4 4 4 4 4 5 5 5 5 5 6 6 6 6 6 7 7 7 7 7 8"
+    alert_rule_test:
+      - { eval_time: 30m, alertname: BillingWebhookDrift, exp_alerts: [] }
+      - { eval_time: 30m, alertname: BillingWebhookSignatureRejects, exp_alerts: [] }
+
+  - name: a burst of webhook signature rejects is a warning, not a page
+    interval: 1m
+    input_series:
+      - series: 'bex_billing_enabled{job="bex-api",instance="prod"}'
+        values: "1x40"
+      # Two rejects a minute: every Stripe delivery bouncing off a stale secret.
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="webhook_signature",result="error"}'
+        values: "0+2x40"
+    alert_rule_test:
+      - { eval_time: 25m, alertname: BillingWebhookDrift, exp_alerts: [] }
+      - eval_time: 25m
+        alertname: BillingWebhookSignatureRejects
+        exp_alerts:
+          - exp_labels: { severity: warning, job: bex-api, instance: prod }
+            exp_annotations:
+              summary: "Stripe billing webhook is rejecting signatures in a burst"
+              description: "More than 5 webhook deliveries failed signature verification within 15 minutes. A few a day are unsigned scanner or replay POSTs to the public endpoint and are ignored; a burst means the endpoint secret no longer matches Stripe's and every real delivery is being rejected. Check the endpoint's recent deliveries in the Stripe dashboard, then rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
 
   - name: disabled billing never alerts on stale retained series
     interval: 1m
@@ -140,6 +174,8 @@ tests:
         values: "0+10x30"
       - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="provisioning",result="error"}'
         values: "0+10x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="webhook_signature",result="error"}'
+        values: "0+10x30"
     alert_rule_test:
       - { eval_time: 20m, alertname: BillingExportBacklog, exp_alerts: [] }
       - { eval_time: 20m, alertname: BillingPermanentReject, exp_alerts: [] }
@@ -152,6 +188,7 @@ tests:
           exp_alerts: [],
         }
       - { eval_time: 20m, alertname: BillingWebhookDrift, exp_alerts: [] }
+      - { eval_time: 20m, alertname: BillingWebhookSignatureRejects, exp_alerts: [] }
       - {
           eval_time: 20m,
           alertname: BillingProvisioningFailure,
@@ -175,27 +212,88 @@ tests:
               severity: critical
             exp_annotations:
               summary: "Not every tenant node has a scrapeable egress meter"
-              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the untainted tenant-node count. Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes --show-labels"
+              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
 
-  - name: platform and control-plane nodes do not require egress meters
+  # The expected population is "nodes the meter DaemonSet can schedule on":
+  # it tolerates nothing, so any pool taint excludes a node, while the
+  # kubelet's own node.kubernetes.io/* condition taints are auto-tolerated and
+  # a PreferNoSchedule taint never blocks. The previous fixture named only the
+  # platform taint — and the rule fired for weeks on prod the moment a sandbox
+  # pool and a build-only node existed (2026-09-11).
+  - name: only nodes the meter DaemonSet can schedule on count as expected
     interval: 1m
     input_series:
+      # Untainted tenant node with its meter: expected and present.
       - series: 'kube_node_info{node="tenant-a"}'
         values: "1x10"
-      - series: 'kube_node_info{node="platform-a"}'
+      - series: 'up{job="bex-egress-meter", node="tenant-a"}'
         values: "1x10"
-      - series: 'kube_node_info{node="control-plane-a"}'
+      # A kubelet condition taint is auto-tolerated by DaemonSet pods: still
+      # expected, and its meter is still up.
+      - series: 'kube_node_info{node="tenant-b"}'
+        values: "1x10"
+      - series: 'kube_node_spec_taint{node="tenant-b", key="node.kubernetes.io/memory-pressure", effect="NoSchedule"}'
+        values: "1x10"
+      - series: 'up{job="bex-egress-meter", node="tenant-b"}'
+        values: "1x10"
+      # A PreferNoSchedule taint does not block scheduling: still expected.
+      - series: 'kube_node_info{node="tenant-c"}'
+        values: "1x10"
+      - series: 'kube_node_spec_taint{node="tenant-c", key="bex.co/soft", value="true", effect="PreferNoSchedule"}'
+        values: "1x10"
+      - series: 'up{job="bex-egress-meter", node="tenant-c"}'
+        values: "1x10"
+      # Pool taints the DaemonSet does not tolerate: not expected, no meter.
+      - series: 'kube_node_info{node="platform-a"}'
         values: "1x10"
       - series: 'kube_node_spec_taint{node="platform-a", key="bex.co/platform", value="true", effect="NoSchedule"}'
         values: "1x10"
-      - series: 'kube_node_role{node="control-plane-a", role="control-plane"}'
+      - series: 'kube_node_info{node="sandbox-a"}'
         values: "1x10"
-      - series: 'up{job="bex-egress-meter", node="tenant-a"}'
+      - series: 'kube_node_spec_taint{node="sandbox-a", key="bex.co/sandbox", value="true", effect="NoSchedule"}'
+        values: "1x10"
+      - series: 'kube_node_info{node="build-a"}'
+        values: "1x10"
+      - series: 'kube_node_spec_taint{node="build-a", key="bex.co/build-only", value="true", effect="NoSchedule"}'
+        values: "1x10"
+      - series: 'kube_node_info{node="control-plane-a"}'
+        values: "1x10"
+      - series: 'kube_node_spec_taint{node="control-plane-a", key="node-role.kubernetes.io/control-plane", effect="NoSchedule"}'
+        values: "1x10"
+      - series: 'kube_node_role{node="control-plane-a", role="control-plane"}'
         values: "1x10"
     alert_rule_test:
       - eval_time: 3m
         alertname: EgressMeterTargetMissing
         exp_alerts: []
+
+  # The other direction: a pool-tainted node that somehow lost its taint is
+  # expected from that moment on, and until a meter lands there the alert fires.
+  - name: a node that loses its pool taint becomes expected
+    interval: 1m
+    input_series:
+      - series: 'kube_node_info{node="tenant-a"}'
+        values: "1x10"
+      - series: 'up{job="bex-egress-meter", node="tenant-a"}'
+        values: "1x10"
+      - series: 'kube_node_info{node="was-sandbox"}'
+        values: "1x10"
+      # `stale` ends the series at once (a bare gap would still be found by
+      # the 5m lookback and the node would stay excluded until it aged out).
+      - series: 'kube_node_spec_taint{node="was-sandbox", key="bex.co/sandbox", value="true", effect="NoSchedule"}'
+        values: "1 1 1 1 stale"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: EgressMeterTargetMissing
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: EgressMeterTargetMissing
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "Not every tenant node has a scrapeable egress meter"
+              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
 
   - name: egress meter unhealthy is per tenant node
     interval: 1m
@@ -987,6 +1085,83 @@ tests:
             exp_annotations:
               summary: "Certificate tea-abc/tea-abc-web-tls-web.onbex.co is not Ready"
               description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls-web.onbex.co; kubectl -n tea-abc get certificaterequest,order,challenge"
+
+  # Expiry is about ISSUED certificates. cert-manager exports
+  # expiration_timestamp_seconds = 0 for a Certificate that never issued, and
+  # "0 - time() < 14d" is trivially true — the exact input that paged on-call
+  # every 4h for weeks (blockeden.xyz, 2026-08/09). promtool's clock starts at
+  # unix 0, so "expires in 10d" is the literal value 864000.
+  - name: expiring-soon is only for issued certs, and tenant custom domains go to the info twin
+    interval: 1m
+    input_series:
+      # Issued platform cert, 10d left: pages.
+      - series: 'certmanager_certificate_expiration_timestamp_seconds{namespace="bex-system", name="bex-api-tls"}'
+        values: "864000x90"
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="bex-system", name="bex-api-tls"}'
+        values: "1x90"
+      # Issued platform cert, 20d left: renewal not due yet, silent.
+      - series: 'certmanager_certificate_expiration_timestamp_seconds{namespace="auth", name="kratos-public-tls"}'
+        values: "1728000x90"
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="auth", name="kratos-public-tls"}'
+        values: "1x90"
+      # NEVER-issued platform cert: expiry reads 0. CertificateNotReady's job,
+      # so ExpiringSoon must stay silent (the bug this test pins).
+      - series: 'certmanager_certificate_expiration_timestamp_seconds{namespace="bex-system", name="bex-ssh-shell-tls"}'
+        values: "0x90"
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="bex-system", name="bex-ssh-shell-tls"}'
+        values: "0x90"
+      # NEVER-issued tenant custom-domain cert (the blockeden.xyz shape): fires
+      # neither expiry rule — only TenantCustomDomainCertNotReady owns it.
+      - series: 'certmanager_certificate_expiration_timestamp_seconds{namespace="tea-abc", name="tea-abc-web-tls-blockeden.xyz"}'
+        values: "0x90"
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="tea-abc", name="tea-abc-web-tls-blockeden.xyz"}'
+        values: "0x90"
+      # Issued tenant custom-domain cert not renewing, 10d left: customer DNS,
+      # so the info twin — and subtracted from the paging rule.
+      - series: 'certmanager_certificate_expiration_timestamp_seconds{namespace="tea-abc", name="tea-abc-web-tls-shop.example.com"}'
+        values: "864000x90"
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="tea-abc", name="tea-abc-web-tls-shop.example.com"}'
+        values: "1x90"
+      # A tenant's platform-host certs ("<app>-tls" and a secondary onbex.co
+      # host): bex owns that DNS, so a stuck renewal still pages.
+      - series: 'certmanager_certificate_expiration_timestamp_seconds{namespace="tea-abc", name="tea-abc-web-tls"}'
+        values: "864000x90"
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="tea-abc", name="tea-abc-web-tls"}'
+        values: "1x90"
+      - series: 'certmanager_certificate_expiration_timestamp_seconds{namespace="tea-abc", name="tea-abc-web-tls-web.onbex.co"}'
+        values: "864000x90"
+      - series: 'certmanager_certificate_ready_status{condition="True", namespace="tea-abc", name="tea-abc-web-tls-web.onbex.co"}'
+        values: "1x90"
+    alert_rule_test:
+      # Inside the 1h `for` window nothing has fired yet.
+      - eval_time: 30m
+        alertname: CertificateExpiringSoon
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: TenantCustomDomainCertExpiringSoon
+        exp_alerts: []
+      - eval_time: 65m
+        alertname: CertificateExpiringSoon
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: bex-system, name: bex-api-tls }
+            exp_annotations:
+              summary: "Certificate bex-system/bex-api-tls expires in <14d"
+              description: "An issued cert-manager Certificate expires in under 14 days and has not renewed (renewal normally completes at 30 days out). Debug: kubectl -n bex-system describe certificate bex-api-tls; kubectl -n bex-system get certificaterequest,order,challenge"
+          - exp_labels: { severity: warning, namespace: tea-abc, name: tea-abc-web-tls }
+            exp_annotations:
+              summary: "Certificate tea-abc/tea-abc-web-tls expires in <14d"
+              description: "An issued cert-manager Certificate expires in under 14 days and has not renewed (renewal normally completes at 30 days out). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls; kubectl -n tea-abc get certificaterequest,order,challenge"
+          - exp_labels: { severity: warning, namespace: tea-abc, name: tea-abc-web-tls-web.onbex.co }
+            exp_annotations:
+              summary: "Certificate tea-abc/tea-abc-web-tls-web.onbex.co expires in <14d"
+              description: "An issued cert-manager Certificate expires in under 14 days and has not renewed (renewal normally completes at 30 days out). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls-web.onbex.co; kubectl -n tea-abc get certificaterequest,order,challenge"
+      - eval_time: 65m
+        alertname: TenantCustomDomainCertExpiringSoon
+        exp_alerts:
+          - exp_labels: { severity: info, namespace: tea-abc, name: tea-abc-web-tls-shop.example.com }
+            exp_annotations:
+              summary: "Tenant custom-domain certificate tea-abc/tea-abc-web-tls-shop.example.com expires in <14d and is not renewing (customer DNS)"
+              description: "A tenant custom-domain TLS cert was issued but has not renewed with under 14 days left — almost always the domain's DNS moved after issuance (proxied through Cloudflare, or pointed away from bex), so the ACME HTTP-01 challenge no longer reaches bex. Not a platform fault; surfaced to the tenant, not paged. Confirm: kubectl -n tea-abc describe certificate tea-abc-web-tls-shop.example.com; kubectl -n tea-abc get order,challenge. Runbook: docs/ADR005-custom-domain.md"
 
   # ── w3/m83 t006: the three subsystems that exported health series with no
   # rule. Each rule's whole design is a discriminator — a tenant's broken
