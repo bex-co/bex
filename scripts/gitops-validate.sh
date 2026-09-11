@@ -1142,6 +1142,24 @@ if ! yq -e '
   fail=1
 fi
 
+# w5/m95: an alert rule that evaluates a series Prometheus never scrapes is worse
+# than no rule -- it reports health it cannot observe (the m86 death-layer
+# lesson). Every bex_* family an alert reads must therefore survive the bex-api
+# scrape job's keep-list. Checked by name because the keep-list is one regex:
+# editing it to drop a family is a one-character change with no other signal.
+echo "==> alerted bex-api series survive the scrape keep-list"
+keep_regex=$(grep -oE 'regex: bex_\([a-z_|]+\)_\.\*' deploy/gitops/base/prometheus.yaml | head -1 || true)
+if [[ -z "$keep_regex" ]]; then
+  echo "FAIL: could not read the bex-api scrape keep-list regex from deploy/gitops/base/prometheus.yaml" >&2
+  fail=1
+fi
+for family in sandbox agent_session api billing webhooks push; do
+  if [[ "$keep_regex" != *"$family"* ]]; then
+    echo "FAIL: bex_${family}_* is alerted but absent from the bex-api scrape keep-list ($keep_regex) — the rule would evaluate a series that is never scraped" >&2
+    fail=1
+  fi
+done
+
 echo "==> Product analytics uses its restricted reader with verified TLS and bounded pooling"
 if ! yq -e '
   (.datasources."datasources.yaml".datasources[] | select(.uid == "product-analytics")) as $ds |
