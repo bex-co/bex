@@ -302,6 +302,8 @@ type Base struct {
 	// Audit records write-verb authorization decisions (w4/m10); nil => audit.go's
 	// NoopAuditSink, the store-off degrade every other store-backed feature uses.
 	Audit AuditSink
+	// ProductActivity records successful product effects, never authorization decisions.
+	ProductActivity func(context.Context, ProductActivity) error
 	// Billing gates only explicitly billable feature mutations. Reads and
 	// payment/Portal recovery remain available while enforcement is active.
 	Billing BillingMutationGate

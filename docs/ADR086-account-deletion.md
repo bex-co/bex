@@ -73,6 +73,7 @@ The opaque deleted marker is `deleted:<own-id>`. It retains event correlation bu
 | `ssh_sessions.subject` | anonymize | operational history, not active credential |
 | `github_connect_transactions.subject` | hard-delete | transient authorization transaction |
 | `cli_telemetry_events.subject` | hard-delete | usage telemetry, not security history; the row's stable `installation_id` would re-link an anonymized subject |
+| `product_activity_events.actor_id` | clear identifier and set actor type to unknown; workspace cascade on workspace deletion | retain bounded resource-adoption facts without a creator identity; recorder checks the deletion tombstone under the subject lock |
 | `oauth_revocations.subject` | replace with deleted marker and retain | retain fail-closed revocation history without an active subject |
 | `device_push_subscriptions`, `webpush_subscriptions`, `push_notifications`, `push_deliveries`, `membership_role_reconciliations` | membership FK cascade | member-scoped state |
 | `tenant_invites.invited_by` | anonymize | retain inviter provenance |

@@ -284,7 +284,7 @@ func assertAccountDeletionInventory(t *testing.T, ctx context.Context, pool *pgx
 		WHERE table_schema = 'public'
 		  AND column_name = ANY($1::text[])
 		ORDER BY table_name, column_name`, []string{
-		"subject", "owner_identity_id", "email", "invited_by", "caller", "created_by",
+		"subject", "owner_identity_id", "email", "invited_by", "caller", "created_by", "actor_id",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -311,6 +311,7 @@ func assertAccountDeletionInventory(t *testing.T, ctx context.Context, pool *pgx
 		"notification_settings.subject",
 		"oauth_revocations.subject",
 		"owner_ids.subject",
+		"product_activity_events.actor_id",
 		"push_deliveries.subject",
 		"push_notifications.subject",
 		"registry_credentials.created_by",
