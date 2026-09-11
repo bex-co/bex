@@ -606,6 +606,9 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		Name:        "create_web_service",
 		Description: "Create a web service from a repo or a prebuilt image and get back the service to poll until its url is live. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
+		if _, err := parseAutoDeploy(in.AutoDeploy, ""); err != nil {
+			return nil, renderService{}, err
+		}
 		in.OwnerID = core.NamedWorkspace(ctx)
 		return s.createWithAllowList(ctx, in.toCreateRequest(), in.IPAllowListEntries, in.IPAllowList)
 	})
@@ -614,6 +617,9 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		Name:        "create_cron_job",
 		Description: "Create a cron job that runs a repo/image's command on a schedule, and get back the service. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
+		if _, err := parseAutoDeploy(in.AutoDeploy, ""); err != nil {
+			return nil, renderService{}, err
+		}
 		in.OwnerID = core.NamedWorkspace(ctx)
 		return renderServiceResult(s.Create(ctx, in.toCreateRequest()))
 	})
@@ -622,6 +628,9 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		Name:        "create_static_site",
 		Description: "Create a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. A name already used in the target workspace is rejected (name already in use) rather than republished — use restart_service to republish an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
+		if _, err := parseAutoDeploy(in.AutoDeploy, ""); err != nil {
+			return nil, renderService{}, err
+		}
 		in.OwnerID = core.NamedWorkspace(ctx)
 		return s.createWithAllowList(ctx, in.toCreateRequest(), in.IPAllowListEntries, in.IPAllowList)
 	})

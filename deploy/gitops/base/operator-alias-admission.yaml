@@ -38,10 +38,28 @@ spec:
         has(object.metadata.ownerReferences)
           ? object.metadata.ownerReferences.filter(owner, owner.?controller.orValue(false))
           : []
+    # Match platformAliasName without renaming existing Services. CEL cannot
+    # recompute SHA-256: the suffix is a shape check, while the operator identity,
+    # exact App controller owner and fixed target below remain the trust boundary.
+    - name: aliasPrefix
+      expression: >-
+        variables.purpose == 'static-server' ? 'bex-static-' :
+        variables.purpose == 'maintenance' ? 'bex-maintenance-' :
+        variables.purpose == 'activator' ? 'bex-activator-' : ''
+    - name: fullAliasName
+      expression: variables.aliasPrefix + variables.app
+    - name: validAliasName
+      expression: >-
+        variables.aliasPrefix != '' &&
+        (size(variables.fullAliasName) <= 63
+          ? object.metadata.name == variables.fullAliasName
+          : size(object.metadata.name) == 63 &&
+            object.metadata.name.startsWith(variables.fullAliasName.substring(0, 54) + '-') &&
+            object.metadata.name.substring(55).matches('^[a-f0-9]{8}$'))
     - name: exactStaticAlias
       expression: >-
         variables.purpose == 'static-server' &&
-        object.metadata.name == 'bex-static-' + variables.app &&
+        variables.validAliasName &&
         object.spec.externalName == 'bex-static-server.bex-system.svc.cluster.local' &&
         size(object.spec.ports) == 1 &&
         object.spec.ports[0].name == 'http' &&
@@ -49,7 +67,7 @@ spec:
     - name: exactMaintenanceAlias
       expression: >-
         variables.purpose == 'maintenance' &&
-        object.metadata.name == 'bex-maintenance-' + variables.app &&
+        variables.validAliasName &&
         object.spec.externalName == 'bex-activator.bex-system.svc.cluster.local' &&
         size(object.spec.ports) == 1 &&
         object.spec.ports[0].name == 'http' &&
@@ -61,7 +79,7 @@ spec:
     - name: exactActivatorAlias
       expression: >-
         variables.purpose == 'activator' &&
-        object.metadata.name == 'bex-activator-' + variables.app &&
+        variables.validAliasName &&
         object.spec.externalName == 'bex-activator.bex-system.svc.cluster.local' &&
         size(object.spec.ports) == 1 &&
         object.spec.ports[0].name == 'http' &&

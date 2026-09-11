@@ -31,6 +31,33 @@ services:
       url: nginx:1.27
 `
 
+func TestBlueprintCompilerImageAutoDeployPolicy(t *testing.T) {
+	for _, kind := range []string{"web", "pserv", "worker", "cron"} {
+		for _, tc := range []struct {
+			field string
+			valid bool
+		}{
+			{"", true}, {"autoDeploy: false", true}, {"autoDeployTrigger: off", true},
+			{"autoDeploy: true", false}, {"autoDeployTrigger: commit", false},
+			{"autoDeployTrigger: checksPass", false}, {"autoDeployTrigger: invalid", false},
+		} {
+			t.Run(kind+"/"+tc.field, func(t *testing.T) {
+				raw := "services:\n  - type: " + kind + "\n    name: image\n    runtime: image\n    image: {url: nginx:1.27}\n"
+				if kind == "cron" {
+					raw += "    schedule: '* * * * *'\n"
+				}
+				if tc.field != "" {
+					raw += "    " + tc.field + "\n"
+				}
+				_, problems := CompileBlueprintSource(raw)
+				if (len(problems) == 0) != tc.valid {
+					t.Fatalf("valid=%v, problems=%+v", tc.valid, problems)
+				}
+			})
+		}
+	}
+}
+
 func TestBlueprintCompilerAcceptsReviewedRenderBlueprint(t *testing.T) {
 	source, problems := CompileBlueprintSource(compilerValidBlueprint)
 	if len(problems) != 0 {
@@ -58,8 +85,8 @@ services:
     buildFilter: {paths: [cmd/api/**]}
     buildCommand: go build ./cmd/api
     dockerfilePath: Dockerfile
-    autoDeploy: false
-    autoDeployTrigger: off
+    autoDeploy: true
+    autoDeployTrigger: commit
 `)
 	want := map[string]bool{
 		"#/services/0/repo":              false,

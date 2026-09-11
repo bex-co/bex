@@ -614,7 +614,11 @@ func parseAutoDeploy(autoDeploy, trigger string) (*bool, error) {
 	if t != nil {
 		return t, nil
 	}
-	return parseYesNo(autoDeploy), nil
+	legacy := parseYesNo(autoDeploy)
+	if legacy == nil && autoDeploy != "" {
+		return nil, fmt.Errorf("%w: autoDeploy must be yes or no", core.ErrBadRequest)
+	}
+	return legacy, nil
 }
 
 // servicesBase is Render's canonical /v1/services route prefix, shared by the

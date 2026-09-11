@@ -32,6 +32,7 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -115,6 +116,59 @@ func TestRenderCLIBinaryAgainstLiveServer(t *testing.T) {
 			}
 		}
 	}
+
+	t.Run("image create disabled auto deploy", func(t *testing.T) {
+		for _, explicit := range []bool{false, true} {
+			name := "image-omitted"
+			if explicit {
+				name = "image-disabled"
+			}
+			args := []string{"services", "create", "--name", name, "--type", "web_service", "--runtime", "image",
+				"--image", "docker.io/traefik/whoami:v1.11.0", "--env-var", "WHOAMI_PORT_NUMBER=3000",
+				"--env-var", "QA_MARKER=m99", "--plan", "free", "--region", "frankfurt", "--num-instances", "1",
+				"--health-check-path", "/", "--confirm", "-o", "json"}
+			if explicit {
+				args = append(args, "--auto-deploy=false")
+			}
+			out, errb, err := runCLI(liveWorkspace, args...)
+			if err != nil {
+				t.Fatalf("create: %v stdout=%s stderr=%s", err, out, errb)
+			}
+			var created struct {
+				ID         string `json:"id"`
+				AutoDeploy string `json:"autoDeploy"`
+				Trigger    string `json:"autoDeployTrigger"`
+			}
+			if err := json.Unmarshal([]byte(out), &created); err != nil {
+				t.Fatal(err)
+			}
+			if created.ID != "" {
+				t.Cleanup(func() {
+					// The CLI delete picker needs a projects store; delete directly in this
+					// in-memory harness, through the same authenticated backend route.
+					req, err := http.NewRequest(http.MethodDelete, srv.URL+"/v1/services/"+created.ID, nil)
+					if err != nil {
+						t.Error(err)
+						return
+					}
+					req.Header.Set("Authorization", "Bearer "+testToken)
+					response, err := srv.Client().Do(req)
+					if err != nil {
+						t.Error(err)
+						return
+					}
+					defer response.Body.Close()
+					if response.StatusCode >= 300 {
+						t.Errorf("fixture cleanup: HTTP %d", response.StatusCode)
+					}
+				})
+			}
+			if created.ID == "" || created.AutoDeploy != "no" || created.Trigger != "off" {
+				t.Fatalf("unexpected create: %s", out)
+			}
+
+		}
+	})
 
 	// read — `bex services`, the exact command in the bug report. The decisive
 	// assertion is that the human device-flow token is NEVER refused (before the

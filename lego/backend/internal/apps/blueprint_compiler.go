@@ -274,8 +274,8 @@ type prebuiltImageSourceField struct {
 }
 
 // prebuiltImageSourceFields is the shared policy for settings that only have
-// meaning while a service builds from Git. The Blueprint compiler reports every
-// declared field; the direct create API checks the subset it exposes.
+// meaning while a service builds from Git. The Blueprint compiler rejects enabled
+// automation and other declared build fields; the direct create API checks the subset it exposes.
 var prebuiltImageSourceFields = []prebuiltImageSourceField{
 	{blueprintName: "repo", createName: "repo", declaredInCreate: func(req CreateRequest) bool { return req.Repo != "" }},
 	{blueprintName: "branch", createName: "branch", declaredInCreate: func(req CreateRequest) bool { return req.Branch != "" }},
@@ -283,7 +283,7 @@ var prebuiltImageSourceFields = []prebuiltImageSourceField{
 	{blueprintName: "buildFilter", createName: "buildFilter", declaredInCreate: func(req CreateRequest) bool { return req.BuildFilter != nil }},
 	{blueprintName: "buildCommand", createName: "buildCommand", declaredInCreate: func(req CreateRequest) bool { return req.BuildCommand != "" }},
 	{blueprintName: "dockerfilePath", createName: "dockerfilePath", declaredInCreate: func(req CreateRequest) bool { return req.DockerfilePath != "" }},
-	{blueprintName: "autoDeploy", createName: "autoDeploy", declaredInCreate: func(req CreateRequest) bool { return req.AutoDeploy != nil }},
+	{blueprintName: "autoDeploy", createName: "autoDeploy", declaredInCreate: func(req CreateRequest) bool { return req.AutoDeploy != nil && *req.AutoDeploy }},
 	{blueprintName: "autoDeployTrigger"},
 }
 
@@ -328,13 +328,17 @@ func blueprintPrebuiltImageProblems(object map[string]any, path []string, locati
 		if _, declared := object[sourceField.blueprintName]; !declared {
 			continue
 		}
-		// Only the two otherwise-supported trigger values are a prebuilt-image
-		// incompatibility. checksPass and an invalid enum already have a more
+		// Explicitly disabled automation is meaningful for image services too.
+		if sourceField.blueprintName == "autoDeploy" && object["autoDeploy"] == false {
+			continue
+		}
+		// Only the enabled, otherwise-supported trigger is incompatible.
+		// checksPass and an invalid enum already have a more
 		// specific registry/schema diagnosis at this same path; emitting both
 		// would make one edit look like two independently actionable errors.
 		if sourceField.blueprintName == "autoDeployTrigger" {
 			trigger, _ := object[sourceField.blueprintName].(string)
-			if trigger != "commit" && trigger != "off" {
+			if trigger != "commit" {
 				continue
 			}
 		}

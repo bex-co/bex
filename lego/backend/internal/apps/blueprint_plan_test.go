@@ -25,7 +25,7 @@ import (
 )
 
 func TestSpecFromCreateRejectsIgnoredPrebuiltImageInputs(t *testing.T) {
-	falseValue := false
+	trueValue := true
 	for _, tc := range []struct {
 		name  string
 		input CreateRequest
@@ -37,7 +37,7 @@ func TestSpecFromCreateRejectsIgnoredPrebuiltImageInputs(t *testing.T) {
 		{name: "build filter", input: CreateRequest{BuildFilter: &BuildFilterView{}}, field: "buildFilter"},
 		{name: "build command", input: CreateRequest{BuildCommand: "go build ./cmd/api"}, field: "buildCommand"},
 		{name: "dockerfile path", input: CreateRequest{DockerfilePath: "Dockerfile"}, field: "dockerfilePath"},
-		{name: "auto deploy", input: CreateRequest{AutoDeploy: &falseValue}, field: "autoDeploy"},
+		{name: "auto deploy", input: CreateRequest{AutoDeploy: &trueValue}, field: "autoDeploy"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.input.Name = "api"
@@ -46,6 +46,26 @@ func TestSpecFromCreateRejectsIgnoredPrebuiltImageInputs(t *testing.T) {
 				t.Fatalf("specFromCreate(%+v) = %v, want %s incompatibility", tc.input, err, tc.field)
 			}
 		})
+	}
+}
+
+func TestSpecFromCreateAcceptsDisabledImageAutoDeploy(t *testing.T) {
+	disabled := false
+	for _, kind := range []string{"web_service", "private_service", "background_worker", "cron_job"} {
+		for _, setting := range []*bool{nil, &disabled} {
+			req := CreateRequest{Name: "image", Image: "nginx:1.27", Type: kind, AutoDeploy: setting}
+			if kind == "cron_job" {
+				req.Schedule = "* * * * *"
+				req.Command = "echo ok"
+			}
+			spec, err := specFromCreate(req)
+			if err != nil {
+				t.Fatalf("%s/%v: %v", kind, setting, err)
+			}
+			if spec.AutoDeploy || spec.Image != req.Image {
+				t.Fatalf("unexpected image spec: %+v", spec)
+			}
+		}
 	}
 }
 
