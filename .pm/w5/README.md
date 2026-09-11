@@ -129,6 +129,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **057** — [A `dev-N` stack has no resource-metrics source, so the Metrics page cannot be walked locally](057.md) — install metrics-server in `mock-cluster.sh`; unblocks the m89/m90/m91 deferred walks ← w5/m98 2026-09-11.
 - [ ] **056** — [Blueprint-created Postgres and Key Value record no product-activity event](056.md) — pre-existing v1 gap surfaced by the m97 review; the surface panel would otherwise read zero Blueprint datastores as a finding ← w5/m97 review 2026-09-11.
 
 - [ ] **055** — [Retire the stale FUTURE-MAYBE entry for datastore lifecycle webhook events](055.md) — sub-hour; `w3/m82` landed 2026-09-08 but `.pm/FUTURE-MAYBE.md` still lists it as deferred ← `/pm-brainstorm for w5` 2026-09-10 proposal 7.
