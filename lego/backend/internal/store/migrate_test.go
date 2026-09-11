@@ -1020,3 +1020,70 @@ func TestBlueprintPathDefaultMigrationUsesCanonicalRenderFilename(t *testing.T) 
 		t.Fatalf("Blueprint path down migration = %q, want legacy default restoration", down)
 	}
 }
+
+// TestCLITelemetryBexVersionMigrationAppliesAndRollsBack pins migration 0116
+// in both directions: the column lands with a safe default so existing rows
+// stay valid (an unmodified upstream CLI sends no header), and the down path
+// removes it cleanly.
+func TestCLITelemetryBexVersionMigrationAppliesAndRollsBack(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	up, err := migrationsFS.ReadFile("migrations/0116_cli_telemetry_bex_version.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0116_cli_telemetry_bex_version.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0116_bex_version;
+		SET LOCAL search_path TO migration_0116_bex_version;
+		CREATE TABLE cli_telemetry_events (id text PRIMARY KEY, cli_version text NOT NULL DEFAULT '');
+		INSERT INTO cli_telemetry_events (id, cli_version) VALUES ('cte-pre', '2.27.0');
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply migration 0116: %v", err)
+	}
+	// A row written before the launcher ever sent the header must survive the
+	// ALTER and read as unknown, not NULL.
+	var existing string
+	if err := tx.QueryRow(ctx, `SELECT bex_version FROM cli_telemetry_events WHERE id = 'cte-pre'`).Scan(&existing); err != nil {
+		t.Fatalf("read back pre-existing row: %v", err)
+	}
+	if existing != "" {
+		t.Errorf("pre-existing row bex_version = %q, want the empty default", existing)
+	}
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("roll back migration 0116: %v", err)
+	}
+	var stillThere bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_schema='migration_0116_bex_version'
+			  AND table_name='cli_telemetry_events'
+			  AND column_name='bex_version'
+		)`).Scan(&stillThere); err != nil {
+		t.Fatal(err)
+	}
+	if stillThere {
+		t.Error("bex_version survived the down migration")
+	}
+}
