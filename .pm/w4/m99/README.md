@@ -45,4 +45,8 @@ The long runtime fixture and short live control were deleted with the installed 
 
 ### Remaining acceptance (do not close early)
 
-Ship the implementation so the runtime can consume it, then run the exact post-fix CLI create, long/short initial deployment and HTTPS checks, GraphQL/deploy-state comparison, free sleep/wake, and owned-fixture teardown. The configured local kind and OrbStack API servers are unavailable; the `hetzner-prod` cluster is reachable. No production policy/workload was changed directly during implementation. No long-name, HTTPS, or sleep/wake post-fix pass is claimed yet. Keep t001/t002/t004/t006/t007 and the milestone open until those observations exist; do not substitute envtest admission for a running service.
+Implementation shipped as `818de80b8`. The long-name first deploy, HTTPS, GraphQL agreement, free sleep/wake and fixture teardown now pass ([live evidence](live-acceptance.md)). The explicit disabled create and short-name control still need the updated backend, followed by final baseline reconciliation and isolated-session cleanup. The configured local kind and OrbStack API servers are unavailable; the production cluster is reachable. No production policy/workload was changed directly during implementation. Keep the milestone open until the remaining observations exist; do not substitute local regression tests for deployed behavior.
+
+## Live acceptance progress
+
+[2026-09-11 live evidence](live-acceptance.md) proves the long-name first deployment, HTTPS, GraphQL agreement, actual alias ownership, sleep/wake, and fixture teardown. The short-name and explicit disabled-create acceptance still await the backend update; the milestone remains open.
