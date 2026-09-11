@@ -1,6 +1,6 @@
 # w5 · m93 — CLI adoption and reliability dashboard at obs.bex.co
 
-**Worker:** worker5 **Goal:** Make observed CLI adoption, repeat usage, command reliability and automation usage visible in the existing ops Grafana dashboard. **Status:** in progress (t001–t006 done; ship/live verification and closeout pending)
+**Worker:** worker5 **Goal:** Make observed CLI adoption, repeat usage, command reliability and automation usage visible in the existing ops Grafana dashboard. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,8 +12,8 @@
 | t004 | Document metric definitions and coverage boundaries — **DONE** | 25m | t003 |
 | t005 | Simplify — **DONE** | 30m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t005 |
-| t007 | Ship and verify the live obs dashboard | 30m | t006 |
-| t008 | Closeout | 10m | t007 |
+| t007 | Ship and verify the live obs dashboard — **DONE** | 30m | t006 |
+| t008 | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
@@ -42,4 +42,8 @@ m92 landed in 9504b0de1 (endpoint/store/consent), b9797df53 (deletion inventory)
 - Three simplify reviews completed: retained-history cohort calculation now joins distinct weekly activity once; SQL test roles are isolated across concurrent runs. Reuse review found no further changes.
 - Base and prod Grafana Helm rendering and the full GitOps validation pass, including the datasource contract guard and sealed credential manifest. Local promtool is unavailable (existing alert rules unchanged); the GitOps CI workflow installs it.
 - Production restricted view/role provisioned; can read the view and cannot read the raw telemetry table. A real authenticated source-built `bex workspaces -o json` invocation reached the collector at 2026-09-10 23:52:56 UTC. This first direct Go build reported upstream version `dev`; subsequent verification uses the pinned 2.27.0 build flag.
-- Implementation shipped in `e52e9f287`; Grafana and the encrypted Secret synced. The first live query exposed a bundled-plugin auto-update failure on the read-only root filesystem (`plugin.notRegistered`); automatic plugin installation is now disabled so the pinned image's Postgres plugin stays registered. A GitOps guard pins this requirement. Live query recheck and closeout pending.
+- Implementation shipped in `e52e9f287`; Grafana and the encrypted Secret synced. The first live query exposed a bundled-plugin auto-update failure on the read-only root filesystem (`plugin.notRegistered`); fixed in `f8f150f73` by disabling automatic plugin installation so the pinned image's Postgres plugin stays registered. A GitOps guard pins this requirement.
+- Live verification completed on 2026-09-11 UTC (2026-09-10 local). Argo reports Grafana **Synced / Healthy** at layout revision `ceaafd4ce`; the datasource health endpoint reports **Database Connection OK**. All 23 data-panel queries (20 SQL, three Prometheus) return HTTP 200 without query errors through Grafana.
+- The [live CLI usage board](https://obs.bex.co/d/bex-cli-usage/cli-usage) shows two real verification deliveries, one installation, one attributed workspace and 0% command failure share. Selecting upstream version `2.27.0` reduces the observed command count to one. No synthetic production fixture rows were inserted. CI-provider and mature-cohort panels correctly show **No observations**.
+- Inspected the 1440×1150 desktop and 390×844 narrow views. Shortened the overview to avoid clipping and sized the main command table to expose p50/p95 on desktop. Narrow document width equals viewport width; tables may scroll within their panels. Local evidence: `.playwright-mcp/cli-analytics-desktop-final.png`, `.playwright-mcp/cli-analytics-mobile-final.png`, `.playwright-mcp/cli-analytics-retention-final.png` (gitignored).
+- Re-ran pinned Helm rendering, the full GitOps validator and `git diff --check` after visual adjustments. Local behavioral tests and live queries passed; hosted GitOps CI was queued when checked, so no CI-pass claim is made.
