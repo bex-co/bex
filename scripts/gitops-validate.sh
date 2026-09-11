@@ -1124,6 +1124,11 @@ echo "==> every platform alert's backing series has a Grafana panel (ADR088 §6)
 bash scripts/obs-coverage-check.sh || fail=1
 
 echo "==> CLI analytics uses its restricted reader with verified TLS and bounded pooling"
+if ! yq -e '."grafana.ini".plugins.preinstall_disabled == true' \
+  deploy/gitops/base/values/grafana.values.yaml >/dev/null; then
+  echo "FAIL: Grafana must keep its image-bundled plugins on the read-only root filesystem" >&2
+  fail=1
+fi
 if ! yq -e '
   (.datasources."datasources.yaml".datasources[] |
     select(.uid == "cli-analytics")) as $ds |
