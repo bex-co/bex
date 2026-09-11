@@ -224,3 +224,58 @@ func TestRecordBadTimestampDegradesToAbsent(t *testing.T) {
 		t.Errorf("started_at = %v, want nil for unparseable input", st.rows[0].StartedAt)
 	}
 }
+
+// TestRecordRejectsNonReleaseBexVersion covers the low-cardinality guard: the
+// version column feeds per-release panels, so a value that is not release-tag
+// shaped is dropped whole rather than truncated into a plausible release.
+func TestRecordRejectsNonReleaseBexVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name, in, want string
+	}{
+		{"plain release", "0.2.1", "0.2.1"},
+		{"prerelease and build metadata", "1.2.3-rc.1+build.4", "1.2.3-rc.1+build.4"},
+		{"dev build", "dev", "dev"},
+		{"surrounding space is trimmed", "  0.2.1  ", "0.2.1"},
+		{"absent", "", ""},
+		{"spaces inside", "0.2.1 evil", ""},
+		{"newline injection", "0.2.1\nX-Evil: 1", ""},
+		{"sql-ish punctuation", "0.2.1'; DROP TABLE--", ""},
+		{"over the length bound", strings.Repeat("9", 65), ""},
+		{"at the length bound", strings.Repeat("9", 64), strings.Repeat("9", 64)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, st := newTestService()
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-1"})
+			if _, err := s.Record(ctx, EventInput{Command: "workspaces", BexVersion: tc.in}); err != nil {
+				t.Fatalf("Record: %v", err)
+			}
+			if got := st.rows[0].BexVersion; got != tc.want {
+				t.Errorf("BexVersion = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestVersionAxesAreDeliberatelyAsymmetric documents a difference that looks
+// like a bug from either side. The bex release is rejected whole when it is not
+// release-shaped; the upstream pin beside it is merely truncated, because
+// w5/m92 shipped every body field as truncate-never-reject and tightening one
+// now would drop data that is stored today. Anyone "fixing" the asymmetry is
+// changing that rule, and should say so.
+func TestVersionAxesAreDeliberatelyAsymmetric(t *testing.T) {
+	s, st := newTestService()
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-1"})
+	if _, err := s.Record(ctx, EventInput{
+		Command:    "workspaces",
+		CLIVersion: "2.27.0 not a version",
+		BexVersion: "0.2.1 not a version",
+	}); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	if got := st.rows[0].BexVersion; got != "" {
+		t.Errorf("BexVersion = %q, want it rejected whole", got)
+	}
+	if got := st.rows[0].CLIVersion; got != "2.27.0 not a version" {
+		t.Errorf("CLIVersion = %q, want it kept verbatim under m92's liberal-ingest rule", got)
+	}
+}

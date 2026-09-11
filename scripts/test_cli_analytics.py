@@ -16,6 +16,19 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# The view's column list exactly as w5/m92 released it. CREATE OR REPLACE VIEW
+# can only APPEND columns, so a later generation that inserts, reorders or
+# renames anything in this prefix fails against every cluster that already holds
+# the older view -- production included, where the bootstrap script would abort
+# mid-transaction. Never edit this list; only append below it.
+RELEASED_VIEW_COLUMNS = [
+    "received_at", "installation_id", "subject", "workspace_id", "command",
+    "outcome", "failed", "duration_ms", "duration_mode", "upstream_version",
+    "os", "arch", "output_format", "launched_full_screen_tui",
+    "agent_signals", "ci_signals",
+]
+
+
 class CLIAnalyticsTest(unittest.TestCase):
     @classmethod
     def psql(cls, sql, database=None, check=True):
@@ -41,6 +54,7 @@ class CLIAnalyticsTest(unittest.TestCase):
         cls.psql(f'CREATE DATABASE "{cls.database}"', "postgres")
         cls.addClassCleanup(cls.cleanup_database)
         cls.psql((ROOT / "lego/backend/internal/store/migrations/0113_cli_telemetry_events.up.sql").read_text())
+        cls.psql((ROOT / "lego/backend/internal/store/migrations/0116_cli_telemetry_bex_version.up.sql").read_text())
         cls.psql("CREATE TABLE private_accounts (secret text); INSERT INTO private_accounts VALUES ('private')")
         cls.psql((ROOT / "scripts/cli-analytics.sql").read_text())
         # Applying twice must preserve access without duplicate objects.
@@ -66,29 +80,43 @@ class CLIAnalyticsTest(unittest.TestCase):
             ("unknown", "g", "09-10 11:00", "future_kind", 200, 1, "bex workspaces", False, "", ""),
             ("future", "a", "09-11 12:00", "success", 100, 0, "bex workspaces", False, "", ""),
         ]
+        # The bex launcher release is a second version axis beside the upstream
+        # pin every fixture shares (w5/m94). Most rows come from one release, a
+        # couple from the next, and two send nothing at all -- an unmodified
+        # upstream `render` binary and a pre-m94 bex build, which the view must
+        # report as 'unknown' rather than hide.
+        bex_releases = {"one": "0.2.2", "two": "0.2.2", "three": "", "stream": ""}
         for event_id, install, when, outcome, duration, exit_code, command, tui, agents, ci in rows:
+            bex_version = bex_releases.get(event_id, "0.2.1")
             # These literals are fixed fixtures, not user input. Shared subject and
             # workspace deliberately prove that installations are not people.
             cls.psql(f"""INSERT INTO cli_telemetry_events
                 (id, installation_id, subject, workspace_id, received_at,
                  command, completion_kind, duration_ms, exit_code,
                  launched_full_screen_tui, agent_signals, ci_signals,
-                 cli_version, os, arch, output_format)
+                 cli_version, bex_version, os, arch, output_format)
                 VALUES ('{event_id}', '{install}', 'one-identity', 'tea-one',
                  '2026-{when}+00', '{command}', '{outcome}', {duration}, {exit_code},
-                 {str(tui).lower()}, '{agents}', '{ci}', '2.27.0', 'linux', 'arm64', 'json')""")
+                 {str(tui).lower()}, '{agents}', '{ci}', '2.27.0', '{bex_version}',
+                 'linux', 'arm64', 'json')""")
 
     @classmethod
     def cleanup_database(cls):
         cls.psql(f'DROP DATABASE "{cls.database}" WITH (FORCE)', "postgres")
         cls.psql("DROP ROLE IF EXISTS bex_cli_analytics", "postgres")
 
-    def query(self, panel_id, start="2026-09-03T00:00:00Z", end="2026-09-10T12:00:00Z", command="__all"):
+    def query(self, panel_id, start="2026-09-03T00:00:00Z", end="2026-09-10T12:00:00Z",
+              command="__all", bexrelease="__all"):
         sql = self.panels[panel_id]["targets"][0]["rawSql"]
         sql = sql.replace("$__timeFilter(received_at)", f"received_at >= '{start}' AND received_at <= '{end}'")
         sql = sql.replace("$__timeFrom()", f"'{start}'").replace("$__timeTo()", f"'{end}'")
-        for variable, value in (("command", command), ("version", "__all"), ("output", "__all")):
+        for variable, value in (("command", command), ("version", "__all"),
+                                ("bexrelease", bexrelease), ("output", "__all")):
             sql = sql.replace("${" + variable + ":sqlstring}", "'" + value.replace("'", "''") + "'")
+        return self.read_as_reader(sql)
+
+    def read_as_reader(self, sql):
+        """Run sql as the restricted reader, in UTC, decoded."""
         result = self.psql("SET ROLE bex_cli_analytics; SET timezone = 'UTC'; "
                            + "SELECT coalesce(json_agg(q), '[]'::json) FROM (" + sql + ") q")
         return json.loads(result.stdout)
@@ -163,6 +191,58 @@ class CLIAnalyticsTest(unittest.TestCase):
         self.assertEqual(self.query(5, command="bex logs"), [{"Command failure share": 0}])
         self.assertEqual(self.query(2, command="x'); DROP VIEW cli_analytics.events; --"), [{"Observed commands": 0}])
         self.assertEqual(self.query(2)[0]["Observed commands"], 10)
+
+    def test_bex_release_is_an_axis_independent_of_the_upstream_pin(self):
+        # Every fixture shares one upstream pin, so any split the reader sees
+        # here can only come from the launcher's own release (w5/m94).
+        rows = self.read_as_reader("SELECT bex_version, upstream_version, count(*) AS n "
+                                   "FROM cli_analytics.events GROUP BY 1, 2 ORDER BY 1")
+        self.assertEqual({r["upstream_version"] for r in rows}, {"2.27.0"})
+        self.assertEqual({r["bex_version"]: r["n"] for r in rows},
+                         {"0.2.1": 10, "0.2.2": 2, "unknown": 2})
+
+    def test_release_adoption_panel_counts_installations_per_release(self):
+        rows = self.query(25)
+        by_release = {r["Bex release"]: r for r in rows}
+        # Fixtures: ten rows on 0.2.1, two on 0.2.2, two with no header. Only
+        # the rows inside the queried window are counted, so this also pins that
+        # the panel respects the range rather than reporting all-time totals.
+        self.assertEqual(set(by_release), {"0.2.1", "0.2.2", "unknown"})
+        self.assertEqual(by_release["0.2.2"]["Installations"], 1)
+        # Ten of the fourteen fixture rows fall inside the queried window; two
+        # are 0.2.2 and two carry no header, leaving exactly six on 0.2.1. An
+        # all-time total would read ten, so this pins range-scoping too.
+        self.assertEqual(by_release["0.2.1"]["Commands"], 6)
+
+    def test_bex_release_filter_scopes_product_panels(self):
+        # Selecting one release must narrow the product panels; a release with
+        # no rows in range must read as zero rather than falling back to all.
+        everything = self.query(2)[0]["Observed commands"]
+        one_release = self.query(2, bexrelease="0.2.2")[0]["Observed commands"]
+        self.assertLess(one_release, everything)
+        self.assertGreater(one_release, 0)
+        self.assertEqual(self.query(2, bexrelease="not-a-release")[0]["Observed commands"], 0)
+
+    def test_view_columns_are_append_only(self):
+        rows = self.psql("SELECT column_name FROM information_schema.columns "
+                         "WHERE table_schema = 'cli_analytics' AND table_name = 'events' "
+                         "ORDER BY ordinal_position").stdout.split()
+        self.assertEqual(rows[:len(RELEASED_VIEW_COLUMNS)], RELEASED_VIEW_COLUMNS)
+        self.assertEqual(rows[len(RELEASED_VIEW_COLUMNS):], ["bex_version"])
+
+    def test_every_product_panel_carries_the_release_filter(self):
+        # The predicate was threaded into each panel by hand; without this the
+        # next panel added would silently ignore the Bex release selector.
+        for panel in self.panels.values():
+            sql = (panel.get("targets") or [{}])[0].get("rawSql") or ""
+            if "${command:sqlstring}" in sql:
+                self.assertIn("${bexrelease:sqlstring}", sql, panel["title"])
+
+    def test_collection_health_ignores_the_release_filter(self):
+        # Last-event-received answers "is anything arriving at all", so a
+        # product filter must not be able to make a healthy collector look dead.
+        sql = self.panels[21]["targets"][0]["rawSql"]
+        self.assertNotIn("bexrelease", sql)
 
     def test_reader_cannot_read_product_tables_or_mutate(self):
         for sql in (

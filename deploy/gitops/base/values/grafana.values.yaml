@@ -5042,6 +5042,31 @@ dashboards:
                 "options": []
               },
               {
+                "name": "bexrelease",
+                "label": "Bex release",
+                "type": "query",
+                "datasource": {
+                  "type": "grafana-postgresql-datasource",
+                  "uid": "cli-analytics"
+                },
+                "query": "SELECT DISTINCT bex_version FROM cli_analytics.events ORDER BY 1",
+                "refresh": 1,
+                "sort": 1,
+                "multi": true,
+                "includeAll": true,
+                "allValue": "'__all'",
+                "current": {
+                  "selected": true,
+                  "text": [
+                    "All"
+                  ],
+                  "value": [
+                    "$__all"
+                  ]
+                },
+                "options": []
+              },
+              {
                 "name": "output",
                 "label": "Output",
                 "type": "query",
@@ -5118,7 +5143,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT count(*) AS \"Observed commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
+                  "rawSql": "SELECT count(*) AS \"Observed commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
                 }
               ],
               "options": {
@@ -5170,7 +5195,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT count(DISTINCT installation_id) AS \"Active installations\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
+                  "rawSql": "SELECT count(DISTINCT installation_id) AS \"Active installations\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
                 }
               ],
               "options": {
@@ -5222,7 +5247,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT count(DISTINCT workspace_id) AS \"Active workspaces\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
+                  "rawSql": "SELECT count(DISTINCT workspace_id) AS \"Active workspaces\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
                 }
               ],
               "options": {
@@ -5274,7 +5299,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT avg(failed::int) AS \"Command failure share\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
+                  "rawSql": "SELECT avg(failed::int) AS \"Command failure share\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))"
                 }
               ],
               "options": {
@@ -5332,7 +5357,7 @@ dashboards:
                   },
                   "format": "time_series",
                   "rawQuery": true,
-                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, count(DISTINCT e.installation_id) AS installations, count(DISTINCT e.subject) AS identities, count(DISTINCT e.workspace_id) AS workspaces FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' GROUP BY d.day ORDER BY d.day"
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, count(DISTINCT e.installation_id) AS installations, count(DISTINCT e.subject) AS identities, count(DISTINCT e.workspace_id) AS workspaces FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' GROUP BY d.day ORDER BY d.day"
                 }
               ],
               "options": {
@@ -5386,7 +5411,7 @@ dashboards:
                   },
                   "format": "time_series",
                   "rawQuery": true,
-                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, count(e.received_at) AS commands, count(*) FILTER (WHERE e.failed IS TRUE) AS failed FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' GROUP BY d.day ORDER BY d.day"
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, count(e.received_at) AS commands, count(*) FILTER (WHERE e.failed IS TRUE) AS failed FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' GROUP BY d.day ORDER BY d.day"
                 }
               ],
               "options": {
@@ -5507,7 +5532,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT command AS \"Command\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\", count(*) FILTER (WHERE failed IS TRUE) AS \"Failures\", count(DISTINCT installation_id) FILTER (WHERE failed IS TRUE) AS \"Affected installations\", avg(failed::int) AS \"Failure share\", count(duration_ms) FILTER (WHERE duration_mode = 'non-interactive') AS \"Duration samples\", percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_mode = 'non-interactive') AS \"p50\", percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_mode = 'non-interactive') AS \"p95\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY command ORDER BY count(*) DESC, command LIMIT 50"
+                  "rawSql": "SELECT command AS \"Command\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\", count(*) FILTER (WHERE failed IS TRUE) AS \"Failures\", count(DISTINCT installation_id) FILTER (WHERE failed IS TRUE) AS \"Affected installations\", avg(failed::int) AS \"Failure share\", count(duration_ms) FILTER (WHERE duration_mode = 'non-interactive') AS \"Duration samples\", percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_mode = 'non-interactive') AS \"p50\", percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_mode = 'non-interactive') AS \"p95\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY command ORDER BY count(*) DESC, command LIMIT 50"
                 }
               ],
               "options": {
@@ -5558,7 +5583,7 @@ dashboards:
                   },
                   "format": "time_series",
                   "rawQuery": true,
-                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, avg((cardinality(e.agent_signals) > 0)::int) AS \"Agent detected\", avg((cardinality(e.ci_signals) > 0)::int) AS \"CI detected\" FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' GROUP BY d.day ORDER BY d.day"
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, avg((cardinality(e.agent_signals) > 0)::int) AS \"Agent detected\", avg((cardinality(e.ci_signals) > 0)::int) AS \"CI detected\" FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' GROUP BY d.day ORDER BY d.day"
                 }
               ],
               "options": {
@@ -5606,7 +5631,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "WITH events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT a.family AS \"Agent\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\" FROM events CROSS JOIN LATERAL (SELECT DISTINCT CASE marker WHEN 'CLAUDECODE' THEN 'Claude Code' WHEN 'CODEX_THREAD_ID' THEN 'Codex' WHEN 'CURSOR_AGENT' THEN 'Cursor' WHEN 'CURSOR_TRACE_ID' THEN 'Cursor' WHEN 'AMP_CURRENT_THREAD_ID' THEN 'Amp' WHEN 'CLINE' THEN 'Cline / compatible' WHEN 'CLINE_ACTIVE' THEN 'Cline / compatible' WHEN 'COPILOT_AGENT_SESSION_ID' THEN 'GitHub Copilot' WHEN 'GEMINI_CLI' THEN 'Gemini CLI' WHEN 'GOOSE_TERMINAL' THEN 'Goose' WHEN 'OPENCODE_CLIENT' THEN 'OpenCode' WHEN 'PI_CODING_AGENT' THEN 'Pi' WHEN 'VSCODE_AGENT' THEN 'VS Code agent' ELSE 'Other' END AS family FROM unnest(agent_signals) marker) a GROUP BY a.family ORDER BY count(*) DESC, a.family"
+                  "rawSql": "WITH events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT a.family AS \"Agent\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\" FROM events CROSS JOIN LATERAL (SELECT DISTINCT CASE marker WHEN 'CLAUDECODE' THEN 'Claude Code' WHEN 'CODEX_THREAD_ID' THEN 'Codex' WHEN 'CURSOR_AGENT' THEN 'Cursor' WHEN 'CURSOR_TRACE_ID' THEN 'Cursor' WHEN 'AMP_CURRENT_THREAD_ID' THEN 'Amp' WHEN 'CLINE' THEN 'Cline / compatible' WHEN 'CLINE_ACTIVE' THEN 'Cline / compatible' WHEN 'COPILOT_AGENT_SESSION_ID' THEN 'GitHub Copilot' WHEN 'GEMINI_CLI' THEN 'Gemini CLI' WHEN 'GOOSE_TERMINAL' THEN 'Goose' WHEN 'OPENCODE_CLIENT' THEN 'OpenCode' WHEN 'PI_CODING_AGENT' THEN 'Pi' WHEN 'VSCODE_AGENT' THEN 'VS Code agent' ELSE 'Other' END AS family FROM unnest(agent_signals) marker) a GROUP BY a.family ORDER BY count(*) DESC, a.family"
                 }
               ],
               "options": {
@@ -5651,7 +5676,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "WITH events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT c.provider AS \"CI\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\" FROM events CROSS JOIN LATERAL (SELECT DISTINCT CASE marker WHEN 'GITHUB_ACTIONS' THEN 'GitHub Actions' WHEN 'GITLAB_CI' THEN 'GitLab' WHEN 'CIRCLECI' THEN 'CircleCI' WHEN 'BUILDKITE' THEN 'Buildkite' WHEN 'JENKINS_URL' THEN 'Jenkins' WHEN 'BUILD_TAG' THEN 'Jenkins' WHEN 'TEAMCITY_VERSION' THEN 'TeamCity' WHEN 'BITBUCKET_BUILD_NUMBER' THEN 'Bitbucket' WHEN 'TF_BUILD' THEN 'Azure Pipelines' WHEN 'TRAVIS' THEN 'Travis CI' WHEN 'NETLIFY' THEN 'Netlify' WHEN 'VERCEL' THEN 'Vercel' WHEN 'RENDER' THEN 'Render' ELSE 'Generic / other' END AS provider FROM unnest(ci_signals) marker WHERE marker <> 'CI' OR cardinality(ci_signals) = 1) c GROUP BY c.provider ORDER BY count(*) DESC, c.provider"
+                  "rawSql": "WITH events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT c.provider AS \"CI\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\" FROM events CROSS JOIN LATERAL (SELECT DISTINCT CASE marker WHEN 'GITHUB_ACTIONS' THEN 'GitHub Actions' WHEN 'GITLAB_CI' THEN 'GitLab' WHEN 'CIRCLECI' THEN 'CircleCI' WHEN 'BUILDKITE' THEN 'Buildkite' WHEN 'JENKINS_URL' THEN 'Jenkins' WHEN 'BUILD_TAG' THEN 'Jenkins' WHEN 'TEAMCITY_VERSION' THEN 'TeamCity' WHEN 'BITBUCKET_BUILD_NUMBER' THEN 'Bitbucket' WHEN 'TF_BUILD' THEN 'Azure Pipelines' WHEN 'TRAVIS' THEN 'Travis CI' WHEN 'NETLIFY' THEN 'Netlify' WHEN 'VERCEL' THEN 'Vercel' WHEN 'RENDER' THEN 'Render' ELSE 'Generic / other' END AS provider FROM unnest(ci_signals) marker WHERE marker <> 'CI' OR cardinality(ci_signals) = 1) c GROUP BY c.provider ORDER BY count(*) DESC, c.provider"
                 }
               ],
               "options": {
@@ -5702,7 +5727,7 @@ dashboards:
                   },
                   "format": "time_series",
                   "rawQuery": true,
-                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))), first_seen AS (SELECT installation_id, min(received_at) AS first_at FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY installation_id) SELECT d.day AS time, count(DISTINCT e.installation_id) FILTER (WHERE f.first_at >= d.day) AS \"First seen\", count(DISTINCT e.installation_id) FILTER (WHERE f.first_at < d.day) AS \"Returning\" FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' LEFT JOIN first_seen f USING (installation_id) GROUP BY d.day ORDER BY d.day"
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT * FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))), first_seen AS (SELECT installation_id, min(received_at) AS first_at FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY installation_id) SELECT d.day AS time, count(DISTINCT e.installation_id) FILTER (WHERE f.first_at >= d.day) AS \"First seen\", count(DISTINCT e.installation_id) FILTER (WHERE f.first_at < d.day) AS \"Returning\" FROM days d LEFT JOIN events e ON e.received_at >= d.day AND e.received_at < d.day + interval '1 day' LEFT JOIN first_seen f USING (installation_id) GROUP BY d.day ORDER BY d.day"
                 }
               ],
               "options": {
@@ -5763,7 +5788,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "WITH first_seen AS (SELECT installation_id, min(received_at) AS first_at FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY installation_id), cohorts AS (SELECT installation_id, date_trunc('week', first_at) AS cohort FROM first_seen), activity AS (SELECT DISTINCT installation_id, date_trunc('week', received_at) AS week FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at >= date_trunc('week', $__timeFrom()::timestamptz) + interval '7 days' AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT c.cohort AS \"Cohort (UTC)\", count(*) AS \"Installations\", count(a.installation_id) AS \"Returned next week\", count(a.installation_id)::float / count(*) AS \"Week 1 return\" FROM cohorts c LEFT JOIN activity a ON a.installation_id = c.installation_id AND a.week = c.cohort + interval '7 days' WHERE c.cohort >= date_trunc('week', $__timeFrom()::timestamptz) AND c.cohort + interval '14 days' <= $__timeTo()::timestamptz GROUP BY c.cohort ORDER BY c.cohort"
+                  "rawSql": "WITH first_seen AS (SELECT installation_id, min(received_at) AS first_at FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY installation_id), cohorts AS (SELECT installation_id, date_trunc('week', first_at) AS cohort FROM first_seen), activity AS (SELECT DISTINCT installation_id, date_trunc('week', received_at) AS week FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at >= date_trunc('week', $__timeFrom()::timestamptz) + interval '7 days' AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT c.cohort AS \"Cohort (UTC)\", count(*) AS \"Installations\", count(a.installation_id) AS \"Returned next week\", count(a.installation_id)::float / count(*) AS \"Week 1 return\" FROM cohorts c LEFT JOIN activity a ON a.installation_id = c.installation_id AND a.week = c.cohort + interval '7 days' WHERE c.cohort >= date_trunc('week', $__timeFrom()::timestamptz) AND c.cohort + interval '14 days' <= $__timeTo()::timestamptz GROUP BY c.cohort ORDER BY c.cohort"
                 }
               ],
               "options": {
@@ -5814,7 +5839,7 @@ dashboards:
                   },
                   "format": "time_series",
                   "rawQuery": true,
-                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT installation_id, received_at FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at >= $__timeFrom()::timestamptz - interval '30 days' AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, count(DISTINCT e.installation_id) FILTER (WHERE e.received_at > LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) - interval '1 day') AS \"1 day\", count(DISTINCT e.installation_id) FILTER (WHERE e.received_at > LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) - interval '7 days') AS \"7 days\", count(DISTINCT e.installation_id) AS \"30 days\" FROM days d LEFT JOIN events e ON e.received_at > LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) - interval '30 days' AND e.received_at <= LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) GROUP BY d.day ORDER BY d.day"
+                  "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day', $__timeFrom()::timestamptz), date_trunc('day', $__timeTo()::timestamptz), interval '1 day') AS day), events AS (SELECT installation_id, received_at FROM cli_analytics.events WHERE installation_id IS NOT NULL AND received_at >= $__timeFrom()::timestamptz - interval '30 days' AND received_at <= $__timeTo()::timestamptz AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring}))) SELECT d.day AS time, count(DISTINCT e.installation_id) FILTER (WHERE e.received_at > LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) - interval '1 day') AS \"1 day\", count(DISTINCT e.installation_id) FILTER (WHERE e.received_at > LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) - interval '7 days') AS \"7 days\", count(DISTINCT e.installation_id) AS \"30 days\" FROM days d LEFT JOIN events e ON e.received_at > LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) - interval '30 days' AND e.received_at <= LEAST(d.day + interval '1 day', $__timeTo()::timestamptz) GROUP BY d.day ORDER BY d.day"
                 }
               ],
               "options": {
@@ -5875,7 +5900,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT outcome AS \"Outcome\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\", count(*)::float / sum(count(*)) OVER () AS \"Share\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY outcome ORDER BY count(*) DESC, outcome"
+                  "rawSql": "SELECT outcome AS \"Outcome\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\", count(*)::float / sum(count(*)) OVER () AS \"Share\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY outcome ORDER BY count(*) DESC, outcome"
                 }
               ],
               "options": {
@@ -5933,7 +5958,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT command AS \"Command\", duration_mode AS \"Mode\", count(duration_ms) AS \"Samples\", percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms) AS \"p50\", percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) AS \"p95\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) AND duration_ms IS NOT NULL GROUP BY command, duration_mode ORDER BY count(duration_ms) DESC, command, duration_mode LIMIT 50"
+                  "rawSql": "SELECT command AS \"Command\", duration_mode AS \"Mode\", count(duration_ms) AS \"Samples\", percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms) AS \"p50\", percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) AS \"p95\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) AND duration_ms IS NOT NULL GROUP BY command, duration_mode ORDER BY count(duration_ms) DESC, command, duration_mode LIMIT 50"
                 }
               ],
               "options": {
@@ -5978,7 +6003,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT os || ' / ' || arch AS \"Platform\", count(DISTINCT installation_id) AS \"Installations\", count(*) AS \"Commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY os, arch ORDER BY count(*) DESC, os, arch"
+                  "rawSql": "SELECT os || ' / ' || arch AS \"Platform\", count(DISTINCT installation_id) AS \"Installations\", count(*) AS \"Commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY os, arch ORDER BY count(*) DESC, os, arch"
                 }
               ],
               "options": {
@@ -6023,7 +6048,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT output_format AS \"Output\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY output_format ORDER BY count(*) DESC, output_format"
+                  "rawSql": "SELECT output_format AS \"Output\", count(*) AS \"Commands\", count(DISTINCT installation_id) AS \"Installations\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY output_format ORDER BY count(*) DESC, output_format"
                 }
               ],
               "options": {
@@ -6038,7 +6063,7 @@ dashboards:
               "id": 19,
               "title": "Upstream CLI version adoption",
               "type": "table",
-              "description": "Version is the imported Render CLI version, not bex-cli/v*. An installation can report multiple upstream versions in the selected range; counts are not additive.",
+              "description": "Version is the imported Render CLI version, the pin bex tracks for API compatibility. The bex launcher's own release is the separate table below. An installation can report multiple upstream versions in the selected range; counts are not additive.",
               "gridPos": {
                 "x": 0,
                 "y": 58,
@@ -6068,7 +6093,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT upstream_version AS \"Upstream version\", count(DISTINCT installation_id) AS \"Installations\", count(*) AS \"Commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY upstream_version ORDER BY count(*) DESC, upstream_version"
+                  "rawSql": "SELECT upstream_version AS \"Upstream version\", count(DISTINCT installation_id) AS \"Installations\", count(*) AS \"Commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY upstream_version ORDER BY count(*) DESC, upstream_version"
                 }
               ],
               "options": {
@@ -6113,7 +6138,7 @@ dashboards:
                   },
                   "format": "table",
                   "rawQuery": true,
-                  "rawSql": "SELECT CASE launched_full_screen_tui WHEN true THEN 'Launched' WHEN false THEN 'Not launched' ELSE 'Unknown' END AS \"TUI\", count(*) AS \"Commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY launched_full_screen_tui ORDER BY count(*) DESC"
+                  "rawSql": "SELECT CASE launched_full_screen_tui WHEN true THEN 'Launched' WHEN false THEN 'Not launched' ELSE 'Unknown' END AS \"TUI\", count(*) AS \"Commands\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY launched_full_screen_tui ORDER BY count(*) DESC"
                 }
               ],
               "options": {
@@ -6183,7 +6208,7 @@ dashboards:
               "description": "Server-side receipt of CLI telemetry deliveries (bex_api_http_requests_total on the ingest route, by status) — includes rejections the stored-events counter below deliberately excludes. Global, independent of product filters.",
               "gridPos": {
                 "x": 0,
-                "y": 66,
+                "y": 74,
                 "w": 8,
                 "h": 8
               },
@@ -6213,7 +6238,7 @@ dashboards:
               "description": "Share of telemetry deliveries answered 4xx/5xx (auth, scope, rate limit, store off). The self-guard coerces to 0 only while the route serves traffic — an empty panel with an empty ingest-rate panel means no CLI traffic, not a healthy endpoint. Global, independent of product filters.",
               "gridPos": {
                 "x": 8,
-                "y": 66,
+                "y": 74,
                 "w": 8,
                 "h": 8
               },
@@ -6243,7 +6268,7 @@ dashboards:
               "description": "Server-side p95 for storing one delivery (origin duration histogram on the ingest route). Insert is one bounded row write; a climbing p95 points at the control-plane database, not the CLI. Global, independent of product filters.",
               "gridPos": {
                 "x": 16,
-                "y": 66,
+                "y": 74,
                 "w": 8,
                 "h": 8
               },
@@ -6265,10 +6290,54 @@ dashboards:
                   "legendFormat": "p95 store"
                 }
               ]
+            },
+            {
+              "id": 25,
+              "title": "Bex release adoption",
+              "type": "table",
+              "description": "The bex launcher's own release (X-Bex-CLI-Version, w5/m94), independent of the upstream pin above. 'unknown' is a real population, not a gap: an unmodified upstream `render` binary pointed at bex sends no release header, and neither does any build older than the header. An installation can report several releases in the selected range (it upgraded), so counts are not additive.",
+              "gridPos": {
+                "x": 0,
+                "y": 66,
+                "w": 24,
+                "h": 8
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "cli-analytics"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "noValue": "No observations",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "cli-analytics"
+                  },
+                  "format": "table",
+                  "rawQuery": true,
+                  "rawSql": "SELECT bex_version AS \"Bex release\", count(DISTINCT installation_id) AS \"Installations\", count(DISTINCT workspace_id) AS \"Workspaces\", count(*) AS \"Commands\", min(received_at) AS \"First seen\", max(received_at) AS \"Last seen\" FROM cli_analytics.events WHERE $__timeFilter(received_at) AND ('__all' IN (${command:sqlstring}) OR command IN (${command:sqlstring})) AND ('__all' IN (${version:sqlstring}) OR upstream_version IN (${version:sqlstring})) AND ('__all' IN (${bexrelease:sqlstring}) OR bex_version IN (${bexrelease:sqlstring})) AND ('__all' IN (${output:sqlstring}) OR output_format IN (${output:sqlstring})) GROUP BY bex_version ORDER BY count(*) DESC, bex_version"
+                }
+              ],
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                }
+              }
             }
           ]
         }
-
 # No bats test pod — the same minimal posture as loki.yaml (no canary, no
 # self-monitoring): datasource/SQL tests run in the GitOps CI workflow.
 testFramework:

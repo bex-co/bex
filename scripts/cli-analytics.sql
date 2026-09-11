@@ -1,5 +1,6 @@
--- Run as the database administrator after migration 0113. The reader receives
--- only this view; product tables and the unprojected telemetry row stay private.
+-- Run as the database administrator after migrations 0113 and 0116. The reader
+-- receives only this view; product tables and the unprojected telemetry row stay
+-- private.
 BEGIN;
 DO $$
 BEGIN
@@ -42,7 +43,16 @@ SELECT
     COALESCE(NULLIF(output_format, ''), 'unknown') AS output_format,
     launched_full_screen_tui,
     string_to_array(agent_signals, ',') AS agent_signals,
-    string_to_array(ci_signals, ',') AS ci_signals
+    string_to_array(ci_signals, ',') AS ci_signals,
+    -- Appended deliberately, and new columns must keep being appended:
+    -- CREATE OR REPLACE VIEW can only add columns at the end, so inserting one
+    -- mid-list fails on any cluster that already holds the previous generation
+    -- of this view -- which is to say, on production.
+    --
+    -- The bex launcher's own release, a separate axis from the pinned upstream
+    -- version above (w5/m94). 'unknown' covers an unmodified upstream `render`
+    -- binary and every pre-m94 bex build; it is a real population, not a gap.
+    COALESCE(NULLIF(bex_version, ''), 'unknown') AS bex_version
 FROM public.cli_telemetry_events;
 
 GRANT CONNECT ON DATABASE :"DBNAME" TO bex_cli_analytics;
