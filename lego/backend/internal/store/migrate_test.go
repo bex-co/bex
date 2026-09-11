@@ -1087,3 +1087,97 @@ func TestCLITelemetryBexVersionMigrationAppliesAndRollsBack(t *testing.T) {
 		t.Error("bex_version survived the down migration")
 	}
 }
+
+// TestProductActivitySurfaceMigrationAppliesAndRollsBack pins migration 0117 in
+// both directions: rows written before the column existed stay valid and read
+// as unknown, the CHECK refuses anything outside the closed set, and the down
+// path removes it cleanly.
+func TestProductActivitySurfaceMigrationAppliesAndRollsBack(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	up, err := migrationsFS.ReadFile("migrations/0117_product_activity_surface.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0117_product_activity_surface.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0117_surface;
+		SET LOCAL search_path TO migration_0117_surface;
+		CREATE TABLE product_activity_events (source_key text PRIMARY KEY, resource_id text NOT NULL);
+		INSERT INTO product_activity_events VALUES ('created:srv-legacy', 'srv-legacy');
+		CREATE TABLE product_analytics_collection (singleton boolean PRIMARY KEY DEFAULT true);
+		INSERT INTO product_analytics_collection DEFAULT VALUES;
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply migration 0117: %v", err)
+	}
+	var legacy string
+	if err := tx.QueryRow(ctx, `SELECT surface FROM product_activity_events WHERE source_key='created:srv-legacy'`).Scan(&legacy); err != nil {
+		t.Fatalf("read back the pre-existing row: %v", err)
+	}
+	if legacy != "unknown" {
+		t.Errorf("legacy row surface = %q, want unknown — backfill predates collection and must not be guessed", legacy)
+	}
+	// The watermark is what lets the agent-share panel refuse to score a range
+	// those legacy rows fall in, instead of quietly deflating it.
+	var watermarked bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_schema='migration_0117_surface'
+			  AND table_name='product_analytics_collection'
+			  AND column_name='surface_started_at'
+		)`).Scan(&watermarked); err != nil {
+		t.Fatal(err)
+	}
+	if !watermarked {
+		t.Error("surface_started_at watermark was not added")
+	}
+	// The closed set is enforced by the database, not only by the recorder. The
+	// savepoint keeps the expected failure from poisoning the transaction the
+	// down-migration check still needs.
+	if _, err := tx.Exec(ctx, `SAVEPOINT check_probe`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO product_activity_events VALUES ('created:srv-bad', 'srv-bad', 'tenant-chosen')`); err == nil {
+		t.Error("an out-of-set surface was accepted; the CHECK constraint is not enforcing the closed set")
+	}
+	if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT check_probe`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("roll back migration 0117: %v", err)
+	}
+	var stillThere bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_schema='migration_0117_surface'
+			  AND table_name='product_activity_events'
+			  AND column_name='surface'
+		)`).Scan(&stillThere); err != nil {
+		t.Fatal(err)
+	}
+	if stillThere {
+		t.Error("surface survived the down migration")
+	}
+}

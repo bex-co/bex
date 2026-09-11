@@ -2600,6 +2600,114 @@ dashboards:
                       "show": false
                     }
                   }
+                },
+                {
+                  "id": 16,
+                  "title": "Creations by surface per day",
+                  "type": "timeseries",
+                  "description": "Which surface created each resource — dashboard, CLI, MCP, direct API, or Blueprint (w5/m97). Categories are mutually exclusive, so these do sum, unlike the overlapping feature lines above. A Blueprint apply is attributed to the Blueprint, not to whichever transport triggered the sync. 'unknown' is a real population, not a gap: legacy backfill predates collection, and anything recorded outside a classified request is labelled rather than guessed at. This is a different question from actor type, which records human-vs-machine credential and cannot tell a dashboard click from a CLI invocation. Known gap: a Blueprint apply that creates a managed Postgres or Key Value does not currently record a creation event at all, so those datastores are missing from this panel rather than mis-attributed — do not read the blueprint slice as complete for datastores.",
+                  "gridPos": {
+                    "x": 0,
+                    "y": 132,
+                    "w": 12,
+                    "h": 8
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "short",
+                      "noValue": "No observations",
+                      "color": {
+                        "mode": "palette-classic"
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "time_series",
+                      "rawQuery": true,
+                      "rawSql": "SELECT date_trunc('day',at) AS time,surface AS metric,count(*) AS value FROM product_analytics.events WHERE event_type='created' AND resource_type<>'workspace' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
+                    }
+                  ],
+                  "options": {
+                    "legend": {
+                      "displayMode": "list",
+                      "placement": "bottom"
+                    },
+                    "tooltip": {
+                      "mode": "multi"
+                    }
+                  }
+                },
+                {
+                  "id": 17,
+                  "title": "Agent-driven share of creations",
+                  "type": "stat",
+                  "description": "Share of successful resource creations that arrived over MCP — the agent-native measurement ADR008's thesis rests on (w5/m97). Scored only over the part of the range that surface attribution actually covers: creations predating it all default to 'unknown', so counting them would quietly understate the share. A range entirely before collection began reads null, as does an empty one — an absence of evidence, not evidence of no agent usage. Deliberately narrow: it counts only MCP, because that is the surface agents demonstrably use. An agent driving the CLI is indistinguishable from a person driving it without joining CLI telemetry, which this board does not do, so that usage lands under 'cli' and is understated here rather than guessed at. Blueprint-created managed datastores are not yet recorded as creations at all (see the Creations by surface panel).",
+                  "gridPos": {
+                    "x": 12,
+                    "y": 132,
+                    "w": 12,
+                    "h": 8
+                  },
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "product-analytics"
+                  },
+                  "fieldConfig": {
+                    "defaults": {
+                      "unit": "percentunit",
+                      "min": 0,
+                      "max": 1,
+                      "noValue": "No creations in range",
+                      "color": {
+                        "mode": "thresholds"
+                      },
+                      "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                          {
+                            "color": "text",
+                            "value": null
+                          }
+                        ]
+                      }
+                    },
+                    "overrides": []
+                  },
+                  "targets": [
+                    {
+                      "refId": "A",
+                      "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "product-analytics"
+                      },
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "SELECT count(*) FILTER (WHERE surface='mcp')::float8 / NULLIF(count(*),0) AS \"Agent-driven share\" FROM product_analytics.events WHERE event_type='created' AND resource_type<>'workspace' AND at >= (SELECT surface_started_at FROM product_analytics.collection) AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))"
+                    }
+                  ],
+                  "options": {
+                    "reduceOptions": {
+                      "calcs": [
+                        "lastNotNull"
+                      ],
+                      "fields": "",
+                      "values": false
+                    },
+                    "textMode": "auto",
+                    "colorMode": "value",
+                    "graphMode": "none"
+                  }
                 }
               ]
             }

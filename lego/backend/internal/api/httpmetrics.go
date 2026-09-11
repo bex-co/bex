@@ -76,11 +76,14 @@ type OriginMetrics struct {
 // Request surfaces — the coarse "which product surface" axis every panel and
 // both origin alert rules group by.
 const (
-	surfaceREST     = "rest"
-	surfaceGraphQL  = "graphql"
-	surfaceMCP      = "mcp"
-	surfaceAuth     = "auth"
-	surfaceInternal = "internal"
+	// Aliases, not copies: core.ProductSurface switches on these same values to
+	// attribute a creation to a surface (w5/m97), so a second set of literals
+	// here could drift from it silently.
+	surfaceREST     = core.TransportREST
+	surfaceGraphQL  = core.TransportGraphQL
+	surfaceMCP      = core.TransportMCP
+	surfaceAuth     = core.TransportAuth
+	surfaceInternal = core.TransportInternal
 )
 
 // routeUnmatched is the single series every unrouted request (404s, scanners)
@@ -510,4 +513,22 @@ func mcpErrorOutcome(err error) string {
 		return mcpOutcomeDenied
 	}
 	return mcpOutcomeError
+}
+
+// RequestOriginMiddleware records how each request arrived so a successful
+// resource effect can later be attributed to the surface that caused it
+// (w5/m97).
+//
+// Deliberately separate from the metrics middleware above, and unconditional.
+// That one returns the handler untouched when metrics are disabled, which is
+// correct for telemetry and would be quietly wrong here: analytics attribution
+// must not depend on whether a Prometheus registry happens to be wired. It
+// reuses the same publicSurface classification so the two axes cannot drift.
+func RequestOriginMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r.WithContext(core.WithRequestOrigin(r.Context(), core.RequestOrigin{
+			Transport: publicSurface(r),
+			UserAgent: r.Header.Get("User-Agent"),
+		})))
+	})
 }
