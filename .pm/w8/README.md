@@ -16,7 +16,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [x] **m39** — [Complete Blueprint execution fencing](done/m39/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 1 — done 2026-09-10
-- [ ] **m40** — [Make Blueprint ownership reliable during apply](m40/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 2
+- [x] **m40** — [Make Blueprint ownership reliable during apply](done/m40/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 2 — done 2026-09-11
 - [ ] **m41** — [Bind manual Blueprint sync to its reviewed source](m41/README.md) (8 tasks; 2h50m implementation, 4h50m total) ← approved 2026-09-09 pm-brainstorm proposal 3
 
 **Execution order:** m39 → m40 → existing m38; m41 depends on m39 and is scheduled after m40 to avoid shared-file collisions. m38 stays blocked until both corrective closeouts are verified.

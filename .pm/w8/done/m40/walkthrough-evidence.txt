@@ -1,0 +1,19 @@
+# w8/m40 t007 — two-Blueprint ownership walkthrough
+Date: 2026-09-11
+Stack: bash scripts/dev-env.sh 8 up + supervisor; SQL via kubectl exec into bex-db-1 (no host PF for claims).
+
+## Concurrent claim
+- Blueprint A createBlueprint (examples/hello-go) → blp-dahqpg9jg4r7nbsrlhhg in_sync
+- Blueprint B (SQL-inserted distinct repo) syncBlueprint naming hello-go → BLUEPRINT_RESOURCE_CONFLICT
+  owningBlueprintId=blp-dahqpg9jg4r7nbsrlhhg
+
+## Takeover
+- syncBlueprint with confirm="takeover blueprint <A>" → B status paused (autoSync false)
+- blueprint_resource_claims.hello-go → B id
+
+## Disconnect / cleanup
+- disconnectBlueprint B → true; claims_for_B=0
+- disconnect A; kubectl delete apps in tea-dahqpg1jg4r7nbsrlhgg; Kratos identity 204
+
+## Automated
+- TestPGClaimBlueprintResource + race/intervening-owner unit tests (shipped bb85560cb)
