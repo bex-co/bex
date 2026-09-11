@@ -170,7 +170,7 @@ databases:
 		gate := &rejectingPaymentGate{}
 		svc.Payment = gate
 		svc.Blueprints = blueprints
-		_, err := svc.SyncBlueprint(paidGateContext(), "blp-paid-gate", "tea-a", stackManifest, "")
+		_, err := svc.SyncBlueprint(paidGateContext(), "blp-paid-gate", "tea-a", stackManifest, "", nil)
 		if !errors.Is(err, core.ErrPaymentRequired) || len(gate.calls) != 1 {
 			t.Fatalf("paid Blueprint sync err=%v calls=%v", err, gate.calls)
 		}

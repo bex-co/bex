@@ -1,6 +1,6 @@
 # w8 · m41 — Bind manual Blueprint sync to its reviewed source
 
-**Worker:** worker8 **Goal:** Manual sync cannot silently apply a Git source different from the one the user or agent reviewed. **Status:** todo
+**Worker:** worker8 **Goal:** Manual sync cannot silently apply a Git source different from the one the user or agent reviewed. **Status:** done
 
 **Estimate:** 2h50m implementation; 4h50m including standing closing tasks. **Priority:** 3 in the approved 2026-09-09 proposal.
 
@@ -8,14 +8,14 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Define the reviewed-source precondition | 40m | w8/m39/t008 |
-| t002 | Enforce reviewed source across API adapters | 55m | w8/m41/t001 |
-| t003 | Carry review through dashboard confirmation retries | 45m | w8/m41/t002 |
-| t004 | Offer actionable refresh and renewed review | 30m | w8/m41/t003 |
-| t005 | Render parity | 30m | w8/m41/t004 |
-| t006 | Simplify | 30m | w8/m41/t005 |
-| t007 | Test coverage | 45m | w8/m41/t005, w8/m41/t006 |
-| t008 | Closeout | 15m | w8/m41/t007 |
+| t001 | Define the reviewed-source precondition — **DONE**| 40m | w8/m39/t008 |
+| t002 | Enforce reviewed source across API adapters — **DONE**| 55m | w8/m41/t001 |
+| t003 | Carry review through dashboard confirmation retries — **DONE**| 45m | w8/m41/t002 |
+| t004 | Offer actionable refresh and renewed review — **DONE**| 30m | w8/m41/t003 |
+| t005 | Render parity — **DONE**| 30m | w8/m41/t004 |
+| t006 | Simplify — **DONE**| 30m | w8/m41/t005 |
+| t007 | Test coverage — **DONE**| 45m | w8/m41/t005, w8/m41/t006 |
+| t008 | Closeout — **DONE**| 15m | w8/m41/t007 |
 
 ## Definition of done
 

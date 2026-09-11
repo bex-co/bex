@@ -1387,7 +1387,7 @@ func TestListBlueprintsEmpty(t *testing.T) {
 
 func TestSyncBlueprintNoStore(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "tea-a", "", ""); !errors.Is(err, ErrBlueprintsUnavailable) {
+	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "tea-a", "", "", nil); !errors.Is(err, ErrBlueprintsUnavailable) {
 		t.Errorf("SyncBlueprint no store: want ErrBlueprintsUnavailable, got %v", err)
 	}
 }
@@ -1403,7 +1403,7 @@ func TestSyncBlueprintNotFound(t *testing.T) {
 	// row into a 404 on REST/GraphQL/MCP instead of a 500 "internal error".
 	// MapError deliberately keeps the store error in the message (%v) rather
 	// than the chain, so the core sentinel is the one callers match on.
-	if _, err := svc.SyncBlueprint(ctx, "blp-missing", "tea-a", "", ""); !errors.Is(err, core.ErrNotFound) {
+	if _, err := svc.SyncBlueprint(ctx, "blp-missing", "tea-a", "", "", nil); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("SyncBlueprint missing id: want core.ErrNotFound, got %v", err)
 	}
 }
@@ -1430,7 +1430,7 @@ func TestSyncBlueprintReappliesManifest(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
+	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "", nil)
 	if err != nil {
 		t.Fatalf("SyncBlueprint: %v", err)
 	}
@@ -1474,7 +1474,7 @@ services:
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
+	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "", nil)
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("SyncBlueprint invalid fetched manifest: want ErrBadRequest, got %v", err)
 	}
@@ -1552,14 +1552,14 @@ func TestBlueprintCoreEntrypointsRefuseUnsupportedManifestBeforeWrites(t *testin
 		{
 			name: "manual sync",
 			run: func() error {
-				_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", unsupported, "")
+				_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", unsupported, "", nil)
 				return err
 			},
 		},
 		{
 			name: "Git sync",
 			run: func() error {
-				_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
+				_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "", nil)
 				return err
 			},
 		},
@@ -1607,7 +1607,7 @@ func TestSyncBlueprintFetchFailureRecordsErrorRun(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
+	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "", nil)
 	if err == nil {
 		t.Fatal("SyncBlueprint unreachable source: want error, got success")
 	}
@@ -1649,7 +1649,7 @@ func TestSyncBlueprintWithoutFetcherFailsGitBackedSync(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
+	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "", nil)
 	if !errors.Is(err, ErrBlueprintFetchUnavailable) {
 		t.Fatalf("Git-backed sync without fetcher: want ErrBlueprintFetchUnavailable, got %v", err)
 	}
@@ -1683,7 +1683,7 @@ func TestSyncBlueprintFailedRunInsertBlocksApply(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, ""); err == nil {
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "", nil); err == nil {
 		t.Fatal("SyncBlueprint with failing run insert: want error, got success")
 	}
 	if stored := fs.blueprints["blp-1"]; stored.Manifest != stackManifest {
@@ -1716,7 +1716,7 @@ func TestSyncBlueprintFailedCompletionWriteIsError(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "")
+	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "", nil)
 	if err == nil || !strings.Contains(err.Error(), "record completion") {
 		t.Fatalf("SyncBlueprint with failing completion write: want record-completion error, got %v", err)
 	}
@@ -1734,7 +1734,7 @@ func TestSyncBlueprintSuppliedManifestClaimsNoCommit(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, ""); err != nil {
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "", nil); err != nil {
 		t.Fatalf("SyncBlueprint supplied manifest: %v", err)
 	}
 	if len(fs.insertedSyncs) != 1 {
@@ -1825,7 +1825,7 @@ func TestBlueprintDisconnectedReadsAsAbsent(t *testing.T) {
 	if _, err := svc.UpdateBlueprint(ctx, "blp-1", "tea-a", UpdateBlueprintRequest{Name: &newName}); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("update disconnected = %v, want not-found", err)
 	}
-	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", ""); !errors.Is(err, core.ErrNotFound) {
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "", nil); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("sync disconnected = %v, want not-found", err)
 	}
 	if err := svc.DisconnectBlueprint(ctx, "blp-1", "tea-a"); !errors.Is(err, core.ErrNotFound) {
@@ -1922,7 +1922,7 @@ func TestSyncAdmissionRaceAdmitsOne(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := newSvc().SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "")
+			_, err := newSvc().SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "", nil)
 			wins <- err
 		}()
 	}
@@ -2102,7 +2102,7 @@ func TestSettingsChangeDuringRunPreserved(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "")
+		_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "", nil)
 		done <- err
 	}()
 	<-gated.entered
@@ -2376,7 +2376,7 @@ services:
     runtime: image
     image: {url: "nginx:latest"}
 `
-	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", newManifest, "")
+	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", newManifest, "", nil)
 	if err != nil {
 		t.Fatalf("SyncBlueprint replace: %v", err)
 	}
@@ -2416,7 +2416,7 @@ func TestSyncBlueprintPersistsFailureReason(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", groupedManifest, ""); !errors.Is(err, core.ErrWorkspacesUnavailable) {
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", groupedManifest, "", nil); !errors.Is(err, core.ErrWorkspacesUnavailable) {
 		t.Fatalf("SyncBlueprint grouped manifest without BlueprintGroups: want ErrWorkspacesUnavailable, got %v", err)
 	}
 	if fs.lastSyncUpdate.State != store.BlueprintSyncStateError {
@@ -2427,7 +2427,7 @@ func TestSyncBlueprintPersistsFailureReason(t *testing.T) {
 	}
 
 	// A successful sync leaves the run's error message nil.
-	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, ""); err != nil {
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "", nil); err != nil {
 		t.Fatalf("SyncBlueprint valid manifest: %v", err)
 	}
 	if fs.lastSyncUpdate.State != store.BlueprintSyncStateSuccess || fs.lastSyncUpdate.ErrorMessage != nil {
@@ -3060,7 +3060,7 @@ func TestBlueprintAutoSyncScopedMatchingIgnoresForeignResources(t *testing.T) {
 	// The ctx exactly as triggerBlueprintSync builds it (webhook-shaped
 	// workspace-named ctx + the acting-tenant binding from the blueprint row).
 	syncCtx := core.WithActingTenant(core.WithWorkspace(context.Background(), "tea-a"), "tea-a")
-	if _, err := svc.runSync(syncCtx, bp, "", ""); err != nil {
+	if _, err := svc.runSync(syncCtx, bp, "", "", nil); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
 
@@ -3119,7 +3119,7 @@ func TestRunSyncFailsClosedWithoutResolvableTenant(t *testing.T) {
 	cl := fakeClient()
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
 
-	if _, err := svc.runSync(context.Background(), bp, "", ""); !errors.Is(err, ErrBlueprintSyncWorkspaceUnresolved) {
+	if _, err := svc.runSync(context.Background(), bp, "", "", nil); !errors.Is(err, ErrBlueprintSyncWorkspaceUnresolved) {
 		t.Fatalf("runSync(identity-less, workspace-less ctx) err = %v, want ErrBlueprintSyncWorkspaceUnresolved", err)
 	}
 
@@ -3204,7 +3204,7 @@ func TestSyncBlueprintRefusesLegacyUnapprovedPath(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", ""); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "", nil); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("legacy unapproved path sync: want ErrBadRequest, got %v", err)
 	}
 	if len(fetcher.paths) != 0 {
@@ -3445,7 +3445,7 @@ func TestBlueprintByIDNotFoundIsIdenticalAcrossSurfaces(t *testing.T) {
 			return svc.DisconnectBlueprint(ctx, "blp-absent", "tea-a")
 		},
 		"SyncBlueprint": func() error {
-			_, err := svc.SyncBlueprint(ctx, "blp-absent", "tea-a", "", "")
+			_, err := svc.SyncBlueprint(ctx, "blp-absent", "tea-a", "", "", nil)
 			return err
 		},
 	} {

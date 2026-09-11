@@ -174,7 +174,7 @@ func TestSyncBlueprint_ProtectedOverrideSucceedsWithConfirm(t *testing.T) {
 		Status:   "active",
 	})
 
-	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "", "", ""); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "", "", "", nil); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("SyncBlueprint override on a protected member: got %v, want ErrBadRequest", err)
 	}
 	if got := getApp(t, cl, "web").Spec.Image; got != "old:1" {
@@ -182,7 +182,7 @@ func TestSyncBlueprint_ProtectedOverrideSucceedsWithConfirm(t *testing.T) {
 	}
 
 	confirm := ProtectedConfirmation("deploy", "web")
-	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "", "", confirm); err != nil {
+	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "", "", confirm, nil); err != nil {
 		t.Fatalf("SyncBlueprint with correct confirm: %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.Image; got != "new:1" {

@@ -38,3 +38,20 @@ func CanonicalRepo(u string) string {
 	s = strings.ReplaceAll(s, ":", "/") // scp-style host:owner/repo -> host/owner/repo
 	return strings.TrimSuffix(strings.TrimRight(s, "/"), ".git")
 }
+
+// ValidCommitSHA accepts Git object IDs GitHub returns for a branch HEAD:
+// 40 hex chars (SHA-1) or 64 (SHA-256 repos). Anything else is malformed
+// provenance a Blueprint pin must refuse (w8/m36 / w8/m41).
+func ValidCommitSHA(sha string) bool {
+	if len(sha) != 40 && len(sha) != 64 {
+		return false
+	}
+	for i := 0; i < len(sha); i++ {
+		c := sha[i]
+		if c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F' {
+			continue
+		}
+		return false
+	}
+	return true
+}

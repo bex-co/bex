@@ -350,11 +350,14 @@ type getBlueprintArgs struct {
 	ID string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
 }
 
-// syncBlueprintArgs is sync_blueprint's input (w2/m15).
+// syncBlueprintArgs is sync_blueprint's input (w2/m15 + w8/m41 reviewed pin).
 type syncBlueprintArgs struct {
-	ID      string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
-	BexYAML string `json:"bexYaml,omitempty" jsonschema:"optional updated render.yaml content to store and apply; omit to re-apply the stored manifest unchanged"`
-	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned by a protected-environment error when the sync overrides an existing service"`
+	ID       string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
+	BexYAML  string `json:"bexYaml,omitempty" jsonschema:"optional updated render.yaml content to store and apply; omit to pull from Git (or re-apply the stored manifest when the Blueprint has no repo). Mutually exclusive with commitId"`
+	Confirm  string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned by a protected-environment error when the sync overrides an existing service"`
+	CommitID string `json:"commitId,omitempty" jsonschema:"optional immutable commit SHA from preview_blueprint.commitId — when set, sync applies that revision and never re-resolves the branch tip; omit to resolve HEAD (default / auto-sync semantics)"`
+	Path     string `json:"path,omitempty" jsonschema:"required with commitId: the Blueprint path that was reviewed (must still match the Blueprint's configured path)"`
+	Repo     string `json:"repo,omitempty" jsonschema:"optional with commitId: the repo URL that was reviewed (must CanonicalRepo-match the Blueprint)"`
 }
 
 // previewBlueprintArgs is preview_blueprint's input.
@@ -1039,9 +1042,10 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "sync_blueprint",
-		Description: "Re-apply a Blueprint by pulling the latest render.yaml from its Git repo (or from the stored manifest if no fetcher is configured). Records a sync run. Returns {blueprint, stack: {services, databases}}. bex extension (pillar 4, validate-then-deploy flow).",
+		Description: "Re-apply a Blueprint by pulling render.yaml from its Git repo (or from the stored manifest if no repo). Pass commitId+path from a prior preview_blueprint to pin the reviewed revision (branch moves cannot silently apply unreviewed bytes); omit commitId to resolve the current branch HEAD. Records a sync run. Returns {blueprint, stack: {services, databases}}. bex extension (pillar 4, validate-then-deploy flow).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in syncBlueprintArgs) (*mcp.CallToolResult, SyncBlueprintResult, error) {
-		res, err := s.SyncBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), in.BexYAML, in.Confirm)
+		reviewed := optionalReviewedBlueprintSource(in.Repo, in.Path, in.CommitID)
+		res, err := s.SyncBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), in.BexYAML, in.Confirm, reviewed)
 		return nil, res, err
 	})
 
