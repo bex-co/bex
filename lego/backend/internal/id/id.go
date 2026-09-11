@@ -96,6 +96,10 @@ var (
 	// BlueprintSync is a recorded sync run (w2/m62 — Git-connected Blueprints).
 	// Each manual or auto-triggered sync produces one row in blueprint_syncs.
 	BlueprintSync = Kind{prefix: "bsr", desc: "blueprint sync run"}
+	// BlueprintAutoSyncIntent is a durable accepted automatic sync (w8/m38):
+	// one row per verified git-webhook delivery × Blueprint, claimed by the
+	// bounded worker before runSync. bex-native (Render has no public intent id).
+	BlueprintAutoSyncIntent = Kind{prefix: "asi", desc: "blueprint auto-sync intent"}
 	// AgentSession is bex-native (Render has no coding-agent session resource).
 	// "ags" keeps the public id short, typed, and DNS-safe for sandbox metadata.
 	AgentSession = Kind{prefix: "ags", desc: "cloud coding-agent session"}
@@ -117,7 +121,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

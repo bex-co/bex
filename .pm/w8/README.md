@@ -23,7 +23,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m36** — [Blueprint Git source integrity](done/m36/README.md) (8 tasks; 3h15m implementation, 5h total) ← approved 2026-09-08 pm-brainstorm proposal 1 — done 2026-09-08
 - [x] **m37** — [Blueprint lifecycle consistency](done/m37/README.md) (9 tasks; 4h30m implementation, 6h30m total) ← approved 2026-09-08 pm-brainstorm proposal 2 — done 2026-09-08 (dev-8 two-client walkthrough outstanding: Docker Desktop VM crash-loops headlessly; see done/m37/README.md evidence)
-- [ ] **m38** — [Resource-independent Blueprint auto-sync](m38/README.md) (9 tasks; 4h implementation, 6h total) ← approved 2026-09-08 pm-brainstorm proposal 3. Unblocked after m39+m40 closeouts (2026-09-11).
+- [x] **m38** — [Resource-independent Blueprint auto-sync](done/m38/README.md) (9 tasks; 4h implementation, 6h total) ← approved 2026-09-08 pm-brainstorm proposal 3 — done 2026-09-11
 
 - [x] **m1** — Metering pipeline: hourly usage rollups into the control-plane store (9 tasks) ← from `/pm-brainstorm w8` 2026-07-09
 - [x] **m2** — Usage API: month-to-date usage over REST · GraphQL · MCP (9 tasks) ← from `/pm-brainstorm w8` 2026-07-09, needs m1
