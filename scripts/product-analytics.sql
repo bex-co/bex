@@ -20,7 +20,17 @@ CREATE OR REPLACE VIEW product_analytics.events AS
 SELECT e.source_key, e.workspace_id, e.resource_id, e.parent_id,
        e.resource_type, e.event_type, e.at, e.recorded_at, e.actor_id,
        e.actor_type, e.provenance, e.outcome, e.duration_ms,
-       COALESCE(a.audience,'unclassified') AS audience
+       COALESCE(a.audience,'unclassified') AS audience,
+       -- Appended, and new columns must keep being appended: CREATE OR REPLACE
+       -- VIEW can only add at the end, so inserting one mid-list fails against
+       -- any cluster already holding the previous generation -- production
+       -- included, where the bootstrap would abort mid-transaction (learned in
+       -- w5/m94, guarded by the append-only test).
+       --
+       -- Which surface created the resource (w5/m97): a different axis from
+       -- actor_type beside it, which records human-vs-machine credential and
+       -- cannot tell a dashboard click from a CLI invocation.
+       e.surface
 FROM public.product_activity_events e
 LEFT JOIN public.product_analytics_audiences a USING(workspace_id);
 
@@ -51,7 +61,10 @@ LEFT JOIN public.product_analytics_audiences c ON c.workspace_id=a.tenant_id
 WHERE COALESCE(d.redirect_for_name,'')='';
 
 CREATE OR REPLACE VIEW product_analytics.collection AS
-SELECT started_at, inventory_started_at, events_retained_from
+SELECT started_at, inventory_started_at, events_retained_from,
+       -- Appended, not inserted: CREATE OR REPLACE VIEW can only add at the end
+       -- (w5/m94).
+       surface_started_at
 FROM public.product_analytics_collection;
 
 CREATE OR REPLACE VIEW product_analytics.inventory_batches AS

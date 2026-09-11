@@ -145,3 +145,75 @@ func TestPGProductRollbackRemovesOnlyProvisionalAppAndFacts(t *testing.T) {
 		}
 	}
 }
+
+// TestPGProductActivityRecordsTheCreatingSurface drives the real recorder once
+// per surface, through the same context plumbing production uses, and asserts
+// each lands as itself. Without this the derivation rules are only unit-tested
+// against a context; here they have to survive the actual write.
+func TestPGProductActivityRecordsTheCreatingSurface(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	at := time.Now().UTC()
+
+	session := core.Identity{Subject: "user-surface", Method: "session"}
+	machine := core.Identity{Subject: "key-surface", Method: "oauth2"}
+	origin := func(transport, agent string) core.RequestOrigin {
+		return core.RequestOrigin{Transport: transport, UserAgent: agent}
+	}
+	cases := []struct {
+		name     string
+		ctx      context.Context
+		expected string
+	}{
+		{"dashboard", core.WithIdentity(core.WithRequestOrigin(ctx, origin("graphql", "Mozilla/5.0")), session), core.SurfaceDashboard},
+		{"cli", core.WithIdentity(core.WithRequestOrigin(ctx, origin("rest", "render-cli/2.27.0")), session), core.SurfaceCLI},
+		{"mcp", core.WithIdentity(core.WithRequestOrigin(ctx, origin("mcp", "")), machine), core.SurfaceMCP},
+		{"api", core.WithIdentity(core.WithRequestOrigin(ctx, origin("rest", "curl/8.4.0")), machine), core.SurfaceAPI},
+		{"blueprint", core.WithBlueprintApply(core.WithRequestOrigin(ctx, origin("mcp", ""))), core.SurfaceBlueprint},
+		{"unknown", ctx, core.SurfaceUnknown},
+	}
+	base := &core.Base{ProductActivity: st.RecordProductActivity, Clock: func() time.Time { return at }}
+
+	for _, tc := range cases {
+		resource := "srv-surface-" + tc.name
+		base.ObserveProductActivity(tc.ctx, core.ProductActivity{
+			WorkspaceID: tenant.ID, ResourceID: resource, ResourceType: "web_service", EventType: "created", At: at,
+		})
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM product_activity_events WHERE resource_id=$1`, resource)
+		})
+		var got string
+		if err := pool.QueryRow(ctx, `SELECT surface FROM product_activity_events WHERE resource_id=$1`, resource).Scan(&got); err != nil {
+			t.Fatalf("%s: read back: %v", tc.name, err)
+		}
+		if got != tc.expected {
+			t.Errorf("%s: surface = %q, want %q", tc.name, got, tc.expected)
+		}
+	}
+}
+
+// TestPGProductActivityUnsetSurfaceIsNormalizedNotRejected covers the path that
+// bypasses ObserveProductActivity. The column's CHECK is strict, and this write
+// sits behind a completed resource creation, so an unset surface has to become
+// 'unknown' rather than fail the insert.
+func TestPGProductActivityUnsetSurfaceIsNormalizedNotRejected(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	resource := "srv-unset-surface"
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM product_activity_events WHERE resource_id=$1`, resource)
+	})
+	if err := st.RecordProductActivity(ctx, core.ProductActivity{
+		WorkspaceID: tenant.ID, ResourceID: resource, ResourceType: "web_service",
+		EventType: "created", At: time.Now().UTC(), ActorType: "unknown",
+	}); err != nil {
+		t.Fatalf("an unset surface must not fail the write: %v", err)
+	}
+	var got string
+	if err := pool.QueryRow(ctx, `SELECT surface FROM product_activity_events WHERE resource_id=$1`, resource).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != "unknown" {
+		t.Errorf("surface = %q, want unknown", got)
+	}
+}

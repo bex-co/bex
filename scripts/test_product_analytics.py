@@ -10,6 +10,26 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# Real schema dependencies, not copies of the analytics schema under test.
+MIGRATIONS = ["0001_core", "0005_deploys", "0035_domain_redirect_for_name",
+              "0086_domain_claim_state", "0095_apps_service_type",
+              "0114_product_analytics", "0115_product_inventory",
+              "0117_product_activity_surface"]
+
+
+# Each view's column list as previously released, in order. CREATE OR REPLACE
+# VIEW can only append, so every later generation must keep these exact prefixes
+# or the bootstrap aborts against a cluster that already has the older view --
+# which is to say, against production (w5/m94). Never reorder or edit these
+# lists; only append new columns after them.
+RELEASED_VIEW_COLUMNS = {
+    "events": ["source_key", "workspace_id", "resource_id", "parent_id", "resource_type",
+               "event_type", "at", "recorded_at", "actor_id", "actor_type", "provenance",
+               "outcome", "duration_ms", "audience"],
+    "collection": ["started_at", "inventory_started_at", "events_retained_from"],
+}
+
+
 class ProductAnalyticsTest(unittest.TestCase):
     @classmethod
     def psql(cls, sql, database=None, check=True):
@@ -32,9 +52,7 @@ class ProductAnalyticsTest(unittest.TestCase):
         cls.addClassCleanup(cls.cleanup_database)
         migrations = ROOT / "lego/backend/internal/store/migrations"
         # Real schema dependencies, not copies of the analytics schema under test.
-        for name in ["0001_core", "0005_deploys", "0035_domain_redirect_for_name",
-                     "0086_domain_claim_state", "0095_apps_service_type",
-                     "0114_product_analytics", "0115_product_inventory"]:
+        for name in MIGRATIONS:
             cls.psql((migrations / (name + ".up.sql")).read_text())
         cls.psql((ROOT / "scripts/product-analytics.sql").read_text())
         cls.psql((ROOT / "scripts/product-analytics.sql").read_text())
@@ -45,7 +63,7 @@ class ProductAnalyticsTest(unittest.TestCase):
         for panel in cls.board["panels"]:
             cls.panels.update({p["id"]: p for p in panel.get("panels", [])})
         cls.psql("""
-          UPDATE product_analytics_collection SET started_at='2026-08-01',inventory_started_at='2026-09-01';
+          UPDATE product_analytics_collection SET started_at='2026-08-01',inventory_started_at='2026-09-01',surface_started_at='2026-09-01';
           INSERT INTO tenants(id,name,created_at) VALUES
             ('w1','one','2026-09-01'),('w2','two','2026-09-02'),('internal','internal','2026-09-01');
           INSERT INTO product_analytics_audiences VALUES ('w1','customer'),('internal','qa');
@@ -54,11 +72,11 @@ class ProductAnalyticsTest(unittest.TestCase):
             ('a2','w1','web','repo','web_service','2026-09-04'),
             ('a3','w2','web','repo','web_service','2026-09-04'),
             ('qa-app','internal','qa','repo','static_site','2026-09-04');
-          INSERT INTO product_activity_events(source_key,workspace_id,resource_id,resource_type,event_type,at,actor_id,actor_type) VALUES
-            ('created:a1','w1','a1','static_site','created','2026-09-03','user-one','human'),
-            ('created:a2','w1','a2','web_service','created','2026-09-04','user-one','human'),
-            ('created:a3','w2','a3','web_service','created','2026-09-04','api-key','machine'),
-            ('created:qa-app','internal','qa-app','static_site','created','2026-09-04','qa-user','human');
+          INSERT INTO product_activity_events(source_key,workspace_id,resource_id,resource_type,event_type,at,actor_id,actor_type,surface) VALUES
+            ('created:a1','w1','a1','static_site','created','2026-09-03','user-one','human','dashboard'),
+            ('created:a2','w1','a2','web_service','created','2026-09-04','user-one','human','mcp'),
+            ('created:a3','w2','a3','web_service','created','2026-09-04','api-key','machine','mcp'),
+            ('created:qa-app','internal','qa-app','static_site','created','2026-09-04','qa-user','human','cli');
           INSERT INTO deploys(id,app_id,trigger,status,created_at,started_at,finished_at) VALUES
             ('d1','a1','create','live','2026-09-03','2026-09-04 12:00','2026-09-04 12:01'),
             ('d2','a2','create','build_failed','2026-09-04','2026-09-05 12:00','2026-09-05 12:01:30'),
@@ -354,13 +372,31 @@ class ProductAnalyticsTest(unittest.TestCase):
             with self.subTest(statement=statement):
                 self.assertNotEqual(self.psql("SET ROLE bex_product_analytics; " + statement, check=False).returncode, 0)
 
+    def test_view_columns_are_append_only(self):
+        # CREATE OR REPLACE VIEW can only APPEND. w5/m94 shipped a projection
+        # inserted mid-list, which aborts the bootstrap transaction on any
+        # cluster already holding the previous generation -- production.
+        #
+        # Pinning the released prefix is what catches that. Deriving a "previous"
+        # generation from the current file cannot: the shrunk copy inherits the
+        # same bad ordering and re-applies cleanly (verified -- that approach was
+        # tried here and silently passed the mutation).
+        for view, released in RELEASED_VIEW_COLUMNS.items():
+            with self.subTest(view=view):
+                columns = self.psql(
+                    "SELECT string_agg(column_name,' ' ORDER BY ordinal_position) "
+                    "FROM information_schema.columns WHERE table_schema='product_analytics' "
+                    f"AND table_name='{view}'").stdout.strip().split()
+                self.assertEqual(columns[:len(released)], released,
+                                 f"{view}: released columns must keep their order; only append after them")
+
     def test_reader_columns_are_an_explicit_allowlist(self):
         expected = {
-            "events": "source_key workspace_id resource_id parent_id resource_type event_type at recorded_at actor_id actor_type provenance outcome duration_ms audience",
+            "events": "source_key workspace_id resource_id parent_id resource_type event_type at recorded_at actor_id actor_type provenance outcome duration_ms audience surface",
             "workspaces": "workspace_id created_at audience",
             "hosting": "workspace_id resource_id resource_type day observed_at live was_live audience",
             "domains": "domain_id resource_id workspace_id resource_type created_at claim_state verified_at verification_attempts observed_at tls_ready first_tls_ready_at audience",
-            "collection": "started_at inventory_started_at events_retained_from",
+            "collection": "started_at inventory_started_at events_retained_from surface_started_at",
             "inventory_batches": "source bucket observed_at complete",
             "inventory": "source bucket workspace_id resource_type state resources audience",
             "provisioning": "resource_id workspace_id source resource_type created_at first_seen_at last_seen_at first_ready_at removed_at state audience",
@@ -381,6 +417,48 @@ class ProductAnalyticsTest(unittest.TestCase):
             for table in tables:
                 self.psql(f"ALTER TABLE {table} DROP COLUMN IF EXISTS private_future_field")
 
+    def test_creations_by_surface_are_exclusive_and_audience_filtered(self):
+        # Fixtures: a1 dashboard (w1), a2 mcp (w1), a3 mcp (w2), qa-app cli (qa).
+        # Default audience excludes qa, so the CLI row must not appear.
+        rows = self.query(16)
+        by_surface = {}
+        for r in rows:
+            by_surface[r["metric"]] = by_surface.get(r["metric"], 0) + r["value"]
+        self.assertEqual(by_surface, {"dashboard": 1, "mcp": 2})
+        # Exclusive categories, so unlike the overlapping feature lines these sum
+        # to the total creation count.
+        self.assertEqual(sum(by_surface.values()), 3)
+        # The excluded audience's creation is reachable when it is selected.
+        qa = {r["metric"] for r in self.query(16, audience="'qa'")}
+        self.assertEqual(qa, {"cli"})
+
+    def test_agent_driven_share_is_null_not_zero_without_creations(self):
+        # Two of three in-audience creations arrived over MCP.
+        self.assertAlmostEqual(self.query(17)[0]["Agent-driven share"], 2 / 3)
+        # An empty window is an absence of evidence, not evidence of no agent
+        # usage: the stat must read null rather than a confident 0%.
+        empty = self.query(17, start="2026-01-01T00:00:00Z", end="2026-01-02T00:00:00Z")
+        self.assertIsNone(empty[0]["Agent-driven share"])
+
+    def test_agent_share_ignores_creations_predating_surface_collection(self):
+        # Rows written before attribution began all default to 'unknown'. Left in
+        # the denominator they would quietly deflate the share, which on a board
+        # whose discipline is "gaps are labelled, never synthetic zeros" is the
+        # worst failure mode: a confident, wrong, low number.
+        self.psql("""
+          INSERT INTO product_activity_events(source_key,workspace_id,resource_id,resource_type,event_type,at,actor_id,actor_type,provenance)
+          VALUES ('created:legacy1','w1','legacy1','web_service','created','2026-08-15','','unknown','legacy'),
+                 ('created:legacy2','w1','legacy2','web_service','created','2026-08-16','','unknown','legacy');
+        """)
+        self.addCleanup(lambda: self.psql(
+            "DELETE FROM product_activity_events WHERE resource_id IN ('legacy1','legacy2')"))
+        # Widened to cover the legacy rows; the score must not move.
+        self.assertAlmostEqual(
+            self.query(17, start="2026-08-01T00:00:00Z")[0]["Agent-driven share"], 2 / 3)
+        # And a range entirely before collection began is unscorable, not 0%.
+        before = self.query(17, start="2026-08-01T00:00:00Z", end="2026-08-20T00:00:00Z")
+        self.assertIsNone(before[0]["Agent-driven share"])
+
     def test_dashboard_geometry_and_provisioning(self):
         for i, left in enumerate(self.board["panels"]):
             a = left["gridPos"]
@@ -391,6 +469,25 @@ class ProductAnalyticsTest(unittest.TestCase):
                                  and a["y"] < b["y"]+b["h"] and b["y"] < a["y"]+a["h"])
         self.assertFalse(self.board["editable"])
         self.assertEqual(self.board["uid"], "bex-product-adoption")
+
+
+    def test_collapsed_row_panels_do_not_overlap(self):
+        # The geometry check above iterates board["panels"] only, so every child
+        # of a collapsed row -- more than half this board -- was never checked.
+        # Grafana reflows overlaps on load, which is exactly why they survive
+        # review unnoticed.
+        for row in self.board["panels"]:
+            children = row.get("panels") or []
+            for panel in children:
+                rect = panel["gridPos"]
+                self.assertLessEqual(rect["x"] + rect["w"], 24, panel["title"])
+                for other in children:
+                    if other["id"] <= panel["id"]:
+                        continue
+                    b = other["gridPos"]
+                    overlap = (rect["x"] < b["x"] + b["w"] and b["x"] < rect["x"] + rect["w"]
+                               and rect["y"] < b["y"] + b["h"] and b["y"] < rect["y"] + rect["h"])
+                    self.assertFalse(overlap, (panel["title"], other["title"]))
 
 
 if __name__ == "__main__":

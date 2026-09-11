@@ -33,6 +33,9 @@ type ProductActivity struct {
 	At           time.Time
 	ActorID      string
 	ActorType    string
+	// Surface is set by ObserveProductActivity from the request context;
+	// callers must not populate it, as it is overwritten.
+	Surface string
 }
 
 // ObserveProductActivity is best effort and bounded; analytics must never turn
@@ -44,6 +47,9 @@ func (b *Base) ObserveProductActivity(ctx context.Context, event ProductActivity
 	if event.At.IsZero() {
 		event.At = b.Now()
 	}
+	// Resolved here rather than at the call sites: every create tail already
+	// carries the request context, so none of them need to know the rules.
+	event.Surface = validSurface(ProductSurface(ctx))
 	event.ActorType = "unknown"
 	if identity, ok := IdentityFrom(ctx); ok && identity.Subject != "" {
 		event.ActorID = identity.Subject

@@ -129,6 +129,8 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **056** — [Blueprint-created Postgres and Key Value record no product-activity event](056.md) — pre-existing v1 gap surfaced by the m97 review; the surface panel would otherwise read zero Blueprint datastores as a finding ← w5/m97 review 2026-09-11.
+
 - [ ] **055** — [Retire the stale FUTURE-MAYBE entry for datastore lifecycle webhook events](055.md) — sub-hour; `w3/m82` landed 2026-09-08 but `.pm/FUTURE-MAYBE.md` still lists it as deferred ← `/pm-brainstorm for w5` 2026-09-10 proposal 7.
 
 - _(`051.md` **DONE 2026-09-06**, moved to `done/`) — repository, image and branch saves use Source-specific English/Chinese toasts; Root Directory messages and server refusal details preserved. Full dashboard tests and lint pass._

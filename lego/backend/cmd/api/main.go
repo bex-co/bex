@@ -484,7 +484,11 @@ func main() {
 	// The request-telemetry middleware is the OUTERMOST wrapper (w3/m84): a
 	// request shed by the auth gate, a rate limiter, or the body cap is part of
 	// the origin's error picture, so it has to be counted too.
-	httpSrv := newHTTPServer(addr, originMetrics.Middleware(root))
+	// Origin classification sits inside the metrics wrapper but outside
+	// everything else, and unlike the metrics wrapper it is unconditional:
+	// product-analytics attribution must not depend on whether metrics are
+	// enabled (w5/m97).
+	httpSrv := newHTTPServer(addr, originMetrics.Middleware(api.RequestOriginMiddleware(root)))
 	log.Printf("bex-api listening on %s (namespace %s)", addr, base.Namespace)
 	// Serve in a goroutine and block on ctx (SIGTERM/SIGINT via
 	// ctrl.SetupSignalHandler above) so the process shuts the server down
