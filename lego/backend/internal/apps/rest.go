@@ -1279,12 +1279,16 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST /v1/blueprints/{id}/sync", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
-			BexYAML string `json:"bexYaml"`
-			OwnerID string `json:"ownerId"`
-			Confirm string `json:"confirm"`
+			BexYAML  string `json:"bexYaml"`
+			OwnerID  string `json:"ownerId"`
+			Confirm  string `json:"confirm"`
+			Repo     string `json:"repo"`
+			Path     string `json:"path"`
+			CommitID string `json:"commitId"`
 		}
 		_ = core.DecodeJSON(r, &body)
-		return s.SyncBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, body.BexYAML, body.Confirm)
+		reviewed := optionalReviewedBlueprintSource(body.Repo, body.Path, body.CommitID)
+		return s.SyncBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, body.BexYAML, body.Confirm, reviewed)
 	}))
 }
 

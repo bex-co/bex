@@ -2129,9 +2129,12 @@ export type MutationSuspendServiceArgs = {
 
 export type MutationSyncBlueprintArgs = {
   bexYaml?: InputMaybe<Scalars['String']['input']>;
+  commitId?: InputMaybe<Scalars['String']['input']>;
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
+  path?: InputMaybe<Scalars['String']['input']>;
+  repo?: InputMaybe<Scalars['String']['input']>;
 };
 
 

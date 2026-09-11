@@ -16,12 +16,20 @@ import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 
 export type BlueprintSyncActionResult =
   | { status: "success"; result: SyncBlueprintResult | null }
+  | { status: "source_changed" }
   | Exclude<ProtectedActionResult, { status: "success" }>;
+
+/** Reviewed Git source pinned at confirm time (w8/m41). */
+export interface ReviewedBlueprintSource {
+  commitId: string;
+  path: string;
+  repo: string;
+}
 
 export interface UseSyncBlueprintResult {
   sync: (
     id: string,
-    confirmation?: string,
+    opts: { reviewed: ReviewedBlueprintSource; confirmation?: string },
   ) => Promise<BlueprintSyncActionResult>;
   busy: boolean;
 }
@@ -36,7 +44,7 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
   const sync = useCallback(
     async (
       id: string,
-      confirmation?: string,
+      opts: { reviewed: ReviewedBlueprintSource; confirmation?: string },
     ): Promise<BlueprintSyncActionResult> => {
       setBusy(true);
       try {
@@ -45,7 +53,10 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
             variables: {
               id,
               ownerId: currentWorkspaceId,
-              confirm: confirmation,
+              confirm: opts.confirmation,
+              commitId: opts.reviewed.commitId,
+              path: opts.reviewed.path,
+              repo: opts.reviewed.repo,
             },
           }),
         );
@@ -62,6 +73,10 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
             status: "confirmation_required",
             confirmation: requiredConfirmation,
           };
+        }
+        if (hasGraphQLErrorCode(err, "BLUEPRINT_SOURCE_CHANGED")) {
+          toast.error(t("blueprints.syncSourceChanged"));
+          return { status: "source_changed" };
         }
         // A fenced sync is actionable, not a failure of the manifest: tell the
         // caller to retry after the recorded run settles (w8/m37 t005).
