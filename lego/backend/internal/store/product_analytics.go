@@ -26,6 +26,13 @@ import (
 
 // RecordProductActivity enriches the durable, deduplicated successful effect.
 // Subject locking prevents an in-flight recorder restoring identity after deletion.
+//
+// An unset surface falls back to the column's default rather than being sent as
+// an empty string, which its CHECK would reject. This is defensive only: the
+// sole caller reaches here through ObserveProductActivity, which clamps the
+// value, and logs-and-swallows any error — so no value written here can fail a
+// resource creation. It does not make arbitrary input safe; a direct caller
+// passing "Dashboard" still violates the CHECK, and should.
 func (s *PGStore) RecordProductActivity(ctx context.Context, e core.ProductActivity) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if e.ActorID != "" {
@@ -37,11 +44,11 @@ func (s *PGStore) RecordProductActivity(ctx context.Context, e core.ProductActiv
 			}
 		}
 		_, err := tx.Exec(ctx, `INSERT INTO product_activity_events
-            (source_key,workspace_id,resource_id,parent_id,resource_type,event_type,at,actor_id,actor_type)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            (source_key,workspace_id,resource_id,parent_id,resource_type,event_type,at,actor_id,actor_type,surface)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE(NULLIF($10,''),'unknown'))
             ON CONFLICT(source_key) DO UPDATE SET actor_id=EXCLUDED.actor_id,actor_type=EXCLUDED.actor_type
             WHERE product_activity_events.actor_id='' AND EXCLUDED.actor_id<>''`,
-			e.EventType+":"+e.ResourceID, e.WorkspaceID, e.ResourceID, e.ParentID, e.ResourceType, e.EventType, e.At, e.ActorID, e.ActorType)
+			e.EventType+":"+e.ResourceID, e.WorkspaceID, e.ResourceID, e.ParentID, e.ResourceType, e.EventType, e.At, e.ActorID, e.ActorType, e.Surface)
 		return err
 	})
 }

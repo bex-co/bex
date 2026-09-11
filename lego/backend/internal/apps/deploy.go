@@ -677,6 +677,15 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 // 9. Auto-register Blueprint row (enables subsequent sync operations)
 // 10. Stamp ownership only while the admitted (generation, run) claim still holds
 func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack) (StackResult, error) {
+	// Every resource created below inherits the Blueprint attribution (w5/m97).
+	// Keyed on the request rather than set by each caller because this is the
+	// one function all three Blueprint paths funnel through — initial create,
+	// manual sync, and the webhook auto-sync worker, which is not an HTTP
+	// request at all. A direct DeployStack of a render.yaml carries no
+	// BlueprintID and correctly keeps the surface it arrived on.
+	if req.BlueprintID != "" {
+		ctx = core.WithBlueprintApply(ctx)
+	}
 	if err := s.resolveBlueprintRegistryCredentials(ctx, &st); err != nil {
 		return StackResult{}, err
 	}
