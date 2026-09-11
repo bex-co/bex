@@ -8,6 +8,7 @@ resources:
   - onbex-default-tls.yaml
   - openfga-pdb.yaml
   - grafana-cli-analytics.sealedsecret.yaml
+  - grafana-product-analytics.sealedsecret.yaml
 patches:
   # The shared controller values retain the local snapshot registry so the CAPD
   # mock remains usable. Production clears it because the secure namespace's
