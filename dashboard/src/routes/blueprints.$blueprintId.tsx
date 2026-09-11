@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -223,6 +223,11 @@ export function BlueprintDetailPage() {
   const [protectedConfirmation, setProtectedConfirmation] = useState<
     string | null
   >(null);
+  // The pin the protected-confirmation retry resends. Closing the sync dialog
+  // drops the reviewed pin, and the server's phrase only arrives after that
+  // close — without carrying it here the retry has nothing to send (w8/m41).
+  const [protectedReviewed, setProtectedReviewed] =
+    useState<ReviewedBlueprintSource | null>(null);
 
   const busy = syncBusy || updateBusy || disconnectBusy;
 
@@ -232,41 +237,42 @@ export function BlueprintDetailPage() {
 
   // Capture a reviewed pin only from a valid preview for the current
   // blueprint settings. Do not overwrite an existing pin with a later fetch
-  // the user has not re-confirmed (w8/m41).
-  useEffect(() => {
-    if (!confirming || !blueprint || awaitingFreshPreview) return;
-    if (reviewedSource) return;
-    if (
-      syncPreview?.found &&
-      syncPreview.validation?.valid === true &&
-      syncPreview.commitId
-    ) {
-      setReviewedSource({
-        commitId: syncPreview.commitId,
-        path: blueprint.path,
-        repo: blueprint.repo,
-      });
-      setSourceChangedHint(false);
-    }
-  }, [confirming, blueprint, syncPreview, reviewedSource, awaitingFreshPreview]);
+  // the user has not re-confirmed (w8/m41). Captured while rendering the
+  // preview the user is looking at, not in an effect one paint later.
+  if (
+    !reviewedSource &&
+    confirming &&
+    !awaitingFreshPreview &&
+    blueprint &&
+    syncPreview?.found &&
+    syncPreview.validation?.valid === true &&
+    syncPreview.commitId
+  ) {
+    setReviewedSource({
+      commitId: syncPreview.commitId,
+      path: blueprint.path,
+      repo: blueprint.repo,
+    });
+  }
 
   function clearReviewedSource() {
     setReviewedSource(null);
   }
 
-  async function handleSync(confirmation?: string) {
-    if (!reviewedSource) return;
-    const result = await sync(blueprintId, {
-      reviewed: reviewedSource,
-      confirmation,
-    });
+  async function handleSync(
+    reviewed: ReviewedBlueprintSource,
+    confirmation?: string,
+  ) {
+    const result = await sync(blueprintId, { reviewed, confirmation });
     if (result.status === "confirmation_required") {
       setConfirming(false);
+      setProtectedReviewed(reviewed);
       setProtectedConfirmation(result.confirmation);
       return;
     }
     if (result.status === "source_changed") {
       setProtectedConfirmation(null);
+      setProtectedReviewed(null);
       setConfirming(true);
       clearReviewedSource();
       setAwaitingFreshPreview(true);
@@ -276,6 +282,7 @@ export function BlueprintDetailPage() {
     if (result.status === "success") {
       setConfirming(false);
       setProtectedConfirmation(null);
+      setProtectedReviewed(null);
       clearReviewedSource();
       setSourceChangedHint(false);
       setAwaitingFreshPreview(false);
@@ -601,7 +608,7 @@ export function BlueprintDetailPage() {
         // pin so nobody applies bytes they have not seen (w8/m41).
         destructive={false}
         confirmDisabled={!canConfirmSync || syncBusy}
-        onConfirm={() => void handleSync()}
+        onConfirm={() => reviewedSource && void handleSync(reviewedSource)}
       >
         {syncPreviewLoading ? (
           <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
@@ -683,9 +690,15 @@ export function BlueprintDetailPage() {
         requiredConfirmation={protectedConfirmation ?? ""}
         actionLabel={t("blueprints.syncConfirmAction")}
         busy={syncBusy}
-        onOpenChange={(open) => !open && setProtectedConfirmation(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProtectedConfirmation(null);
+            setProtectedReviewed(null);
+          }
+        }}
         onConfirm={async (confirmation) => {
-          await handleSync(confirmation);
+          if (protectedReviewed)
+            await handleSync(protectedReviewed, confirmation);
         }}
       />
     </DashboardLayout>

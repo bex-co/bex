@@ -118,6 +118,55 @@ function bp(overrides: Partial<BlueprintView> = {}): BlueprintView {
   };
 }
 
+/** A valid pre-sync preview — the only state that arms the sync button (w8/m41). */
+function validPreview(
+  commitId = "abc1234",
+): import("@/features/blueprints/types").BlueprintPreviewResult {
+  return {
+    found: true,
+    commitId,
+    error: null,
+    validation: {
+      valid: true,
+      errors: [],
+      plan: {
+        mode: "current_state",
+        services: ["web"],
+        databases: ["db"],
+        keyValue: [],
+        envGroups: [],
+        syncFalseVars: null,
+        totalActions: 2,
+        actions: null,
+      },
+      estimatedPricing: {
+        totalUsd: "17.50",
+        lines: [
+          {
+            name: "web",
+            tierLabel: "Standard",
+            monthlyUsd: "17.50",
+            instanceUsd: "17.50",
+            storageUsd: null,
+            storageGb: null,
+          },
+        ],
+        variable: [],
+      },
+    },
+  };
+}
+
+/** What the page pins from `validPreview()` for a `bp()` blueprint. */
+const reviewedFrom = (blueprint: BlueprintView, commitId = "abc1234") => ({
+  reviewed: {
+    commitId,
+    path: blueprint.path,
+    repo: blueprint.repo,
+  },
+  confirmation: undefined as string | undefined,
+});
+
 function renderBlueprintsPage() {
   const rootRoute = createRootRoute();
   const route = createRoute({
@@ -173,6 +222,11 @@ beforeEach(() => {
   blueprintSyncsState.syncs = [];
   blueprintSyncsState.loading = false;
   blueprintSyncsState.error = undefined;
+  // Reset here, not at the end of each test: a failing assertion would
+  // otherwise leak one test's preview into the next one's dialog.
+  syncPreviewState.preview = null;
+  syncPreviewState.loading = false;
+  syncPreviewState.error = undefined;
   sync.mockReset();
   sync.mockResolvedValue({ status: "success", result: null });
 });
@@ -347,52 +401,40 @@ describe("BlueprintDetailPage", () => {
     expect(router.state.location.pathname).toBe("/blueprints/blp-missing");
   });
 
-  it("calls sync when the confirm dialog is accepted", async () => {
-    blueprintDetailState.blueprint = bp();
+  it("syncs the commit the dialog reviewed (w8/m41)", async () => {
+    const blueprint = bp();
+    blueprintDetailState.blueprint = blueprint;
+    syncPreviewState.preview = validPreview();
     renderDetailPage();
 
     await userEvent.click(await screen.findByRole("button", { name: /sync/i }));
     await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
 
-    expect(sync).toHaveBeenCalledWith("blp-abc123", undefined);
+    expect(sync).toHaveBeenCalledWith("blp-abc123", reviewedFrom(blueprint));
     expect(blueprintDetailState.refetch).not.toHaveBeenCalled();
   });
 
+  it("keeps the reviewed pin when a later preview arrives (w8/m41)", async () => {
+    const blueprint = bp();
+    blueprintDetailState.blueprint = blueprint;
+    syncPreviewState.preview = validPreview();
+    renderDetailPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /sync/i }));
+    expect(await screen.findByText(/reviewed commit/i)).toBeInTheDocument();
+
+    // A refetch lands a newer commit while the dialog is open: the user
+    // confirmed what they read, so the pin must not follow it.
+    syncPreviewState.preview = validPreview("f00dcafe");
+    await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
+
+    expect(sync).toHaveBeenCalledWith("blp-abc123", reviewedFrom(blueprint));
+  });
+
   it("shows the computed sync plan in the dialog before applying (w8/m21)", async () => {
-    blueprintDetailState.blueprint = bp();
-    syncPreviewState.preview = {
-      found: true,
-      commitId: "abc1234",
-      error: null,
-      validation: {
-        valid: true,
-        errors: [],
-        plan: {
-          mode: "current_state",
-          services: ["web"],
-          databases: ["db"],
-          keyValue: [],
-          envGroups: [],
-          syncFalseVars: null,
-          totalActions: 2,
-          actions: null,
-        },
-        estimatedPricing: {
-          totalUsd: "17.50",
-          lines: [
-            {
-              name: "web",
-              tierLabel: "Standard",
-              monthlyUsd: "17.50",
-              instanceUsd: "17.50",
-              storageUsd: null,
-              storageGb: null,
-            },
-          ],
-          variable: [],
-        },
-      },
-    };
+    const blueprint = bp();
+    blueprintDetailState.blueprint = blueprint;
+    syncPreviewState.preview = validPreview();
     renderDetailPage();
 
     await userEvent.click(await screen.findByRole("button", { name: /sync/i }));
@@ -401,11 +443,10 @@ describe("BlueprintDetailPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("(Standard) $17.50 / month")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
-    expect(sync).toHaveBeenCalledWith("blp-abc123", undefined);
-    syncPreviewState.preview = null;
+    expect(sync).toHaveBeenCalledWith("blp-abc123", reviewedFrom(blueprint));
   });
 
-  it("degrades to a proceed-anyway warning when the sync preview fails (w8/m21)", async () => {
+  it("blocks sync when the preview is unavailable (w8/m41)", async () => {
     blueprintDetailState.blueprint = bp();
     syncPreviewState.error = new Error("network");
     renderDetailPage();
@@ -414,11 +455,12 @@ describe("BlueprintDetailPage", () => {
     expect(
       await screen.findByText(/couldn't compute the sync plan/i),
     ).toBeInTheDocument();
-    const confirm = screen.getByRole("button", { name: /^sync$/i });
-    expect(confirm).toBeEnabled();
-    await userEvent.click(confirm);
-    expect(sync).toHaveBeenCalledWith("blp-abc123", undefined);
-    syncPreviewState.error = undefined;
+    // No reviewed commit, no sync: proceed-anyway is gone (w8/m41).
+    expect(screen.getByRole("button", { name: /^sync$/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /refresh preview/i }),
+    ).toBeInTheDocument();
+    expect(sync).not.toHaveBeenCalled();
   });
 
   it("does not call sync when the confirm dialog is cancelled", async () => {
@@ -481,7 +523,9 @@ describe("BlueprintDetailPage", () => {
         confirmation: "sudo deploy service api",
       })
       .mockResolvedValueOnce({ status: "success", result: null });
-    blueprintDetailState.blueprint = bp();
+    const blueprint = bp();
+    blueprintDetailState.blueprint = blueprint;
+    syncPreviewState.preview = validPreview();
     const user = userEvent.setup();
     renderDetailPage();
 
@@ -502,11 +546,10 @@ describe("BlueprintDetailPage", () => {
     await user.type(input, "i");
     await user.click(retry);
 
-    expect(sync).toHaveBeenNthCalledWith(
-      2,
-      "blp-abc123",
-      "sudo deploy service api",
-    );
+    expect(sync).toHaveBeenNthCalledWith(2, "blp-abc123", {
+      ...reviewedFrom(blueprint),
+      confirmation: "sudo deploy service api",
+    });
     expect(blueprintDetailState.refetch).not.toHaveBeenCalled();
   });
 });
