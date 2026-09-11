@@ -56,6 +56,13 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
     canManageBilling: true,
     loading: false,
     loaded: true,
+    stale: false,
+    unavailable: false,
+    generation: 1,
+    allows: () => true,
+    denied: () => false,
+    reasonKey: () => undefined,
+    refresh: async () => undefined,
   })),
 }));
 

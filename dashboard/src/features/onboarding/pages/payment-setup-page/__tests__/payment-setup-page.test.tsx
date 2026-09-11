@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 import type { BillingReadiness } from "@/features/usage/hooks/use-billing-onboarding";
 import PaymentSetupPage from "..";
 
@@ -51,19 +52,7 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
   }),
 }));
 
-const permissiveCapabilities = {
-  role: "ADMIN",
-  canView: true,
-  canViewLogs: true,
-  canOperate: true,
-  canCreate: true,
-  canViewSensitive: true,
-  canManageKeys: true,
-  canManage: true,
-  canManageBilling: true,
-  loading: false,
-  loaded: true,
-};
+const permissiveCapabilities = mockCapabilities();
 
 function readiness(
   overrides: Partial<BillingReadiness> = {},

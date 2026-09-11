@@ -4,7 +4,6 @@ import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
@@ -12,6 +11,14 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import type { ServiceView } from "@/features/services/types";
+import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
+import {
+  gateAction,
+  gateReason,
+  resourceDecision,
+} from "@/features/capabilities/lib/resource-actions";
 
 export interface ManualDeployButtonProps {
   service: ServiceView;
@@ -25,28 +32,18 @@ export interface ManualDeployButtonProps {
  *
  * Both "Deploy" and "Restart service" route through the same `triggerDeploy`
  * mutation (w2/m30 consolidation) so every rollout — including a restart —
- * opens a deploy-history row in the Events tab.
- *
- * For repo-backed services "Restart service" triggers a rebuild from Branch
- * HEAD (bex has no way to restart pods without a new build — any spec change
- * increments the generation and unconditionally re-enters the build path).
- * For image-backed services it re-pulls and restarts the containers in place.
- *
- * "Clear build cache & deploy" mirrors Render's dropdown item (w3/m46): it sends
- * clearCache="clear". With BEX_BUILD_CACHE=registry the operator skips importing
- * this App's prior registry cache for that release and still exports a fresh
- * cache (w7/m88); with the gate off the rebuild is already cache-free. Kept for
- * Render/CLI parity. "Deploy a specific commit" (per-commit targeting via
- * commitId) stays an API-only feature for now.
+ * opens a deploy-history row in the Events tab. Permission gates on the
+ * deploy verb (w6/m143).
  */
 export function ManualDeployButton({
   service,
   pending,
 }: ManualDeployButtonProps) {
   const { t } = useTranslations();
+  const { currentWorkspaceId } = useWorkspace();
+  const deployActions = useDeployActions(service.id);
   const { deploying, trigger } = useTriggerDeploy();
   const navigate = useNavigate();
-  // A static_site's deploys live under /static (Render parity, w5/m57).
   const base = serviceBaseForType(service.type);
   const busy = deploying || pending;
   const repoBacked = !!service.repo;
@@ -55,17 +52,29 @@ export function ManualDeployButton({
     ? t("services.deployMenuLatestCommit")
     : t("services.deployMenuLatestImage");
 
+  const decision =
+    deployActions.status === "ready"
+      ? resourceDecision(
+          deployActions.snapshot,
+          currentWorkspaceId,
+          service.id,
+          "deploy",
+        )
+      : null;
+  const gate = gateAction(
+    decision,
+    deployActions.status === "ready" ? "ready" : deployActions.status,
+  );
+  const permissionReason = gateReason(gate, t);
+
   async function handleDeploy(opts?: { clearCache?: boolean }) {
-    // "Deploy", "Clear build cache & deploy", and "Restart" all go through
-    // triggerDeploy — the same mutation — so each opens a deploy-history row
-    // (w2/m30). clearCache="clear" requests a release-scoped cache reset when
-    // registry caching is on. Restart passes no extra options: for image-backed
-    // services this re-pulls and restarts; for repo-backed it rebuilds from HEAD.
+    if (permissionReason) return;
+    // Fresh recheck before dispatch so a stale allow cannot fire after
+    // permission loss while the menu stayed open.
+    await deployActions.refresh();
     const deployId = opts?.clearCache
       ? await trigger(service.id, { clearCache: "clear" })
       : await trigger(service.id);
-    // Render lands the user straight on the new deploy's page (w9/m1/t004); a
-    // failed trigger already toasted and has no deploy id to navigate to.
     if (deployId) {
       void navigate({
         to: `${base}/$serviceId/deploys/$deployId`,
@@ -83,19 +92,28 @@ export function ManualDeployButton({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled={busy} onSelect={() => void handleDeploy()}>
-          {deployLabel}
-        </DropdownMenuItem>
-        <DropdownMenuItem
+        <PermissionMenuItem
           disabled={busy}
+          permissionReason={permissionReason}
+          onSelect={() => void handleDeploy()}
+        >
+          {deployLabel}
+        </PermissionMenuItem>
+        <PermissionMenuItem
+          disabled={busy}
+          permissionReason={permissionReason}
           onSelect={() => void handleDeploy({ clearCache: true })}
         >
           {t("services.deployMenuClearCache")}
-        </DropdownMenuItem>
+        </PermissionMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled={busy} onSelect={() => void handleDeploy()}>
+        <PermissionMenuItem
+          disabled={busy}
+          permissionReason={permissionReason}
+          onSelect={() => void handleDeploy()}
+        >
           {t("services.deployMenuRestart")}
-        </DropdownMenuItem>
+        </PermissionMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

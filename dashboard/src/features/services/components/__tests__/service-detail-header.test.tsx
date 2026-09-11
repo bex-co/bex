@@ -37,6 +37,18 @@ vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
   useTriggerDeploy: () => ({ deploying: false, trigger: triggerDeploy }),
 }));
 
+vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
+  const { mockAllowedResourceActions } = await import(
+    "@/test/mocks/resource-actions"
+  );
+  return mockAllowedResourceActions("app");
+});
+
+vi.mock("@/features/workspaces/context/hooks", async () => {
+  const { mockWorkspaceContext } = await import("@/test/mocks/workspace");
+  return mockWorkspaceContext();
+});
+
 vi.mock(
   "@/features/registry-credentials/hooks/use-registry-credentials",
   () => ({

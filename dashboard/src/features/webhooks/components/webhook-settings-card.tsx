@@ -51,6 +51,7 @@ export function WebhookSettingsCard({
   const { remove, deleting } = useDeleteWebhook();
   const { endpoints } = useWebhooks({ poll: false });
   const { canManage, loaded: capabilitiesLoaded } = useCapabilities();
+  // Fail-closed: confirmed denial keeps manageRequired; unknown never enables writes.
 
   const [name, setName] = useState(endpoint.name);
   const [url, setUrl] = useState(endpoint.url);
@@ -109,7 +110,7 @@ export function WebhookSettingsCard({
 
   return (
     <div className="space-y-6">
-      {capabilitiesLoaded && !canManage ? (
+      {!canManage && capabilitiesLoaded ? (
         <p className="text-muted-foreground text-sm" role="status">
           {t("webhooks.manageRequired")}
         </p>

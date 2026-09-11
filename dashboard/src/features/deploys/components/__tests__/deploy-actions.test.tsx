@@ -9,10 +9,13 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { DeployActions } from "../deploy-actions";
+import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
 
 const cancelDeploy = vi.fn();
 const rollbackService = vi.fn();
 const mutationOptions: Record<string, { refetchQueries?: string[] }> = {};
+const apolloQuery = vi.fn();
+
 vi.mock("@apollo/client/react", () => ({
   useMutation: vi.fn(
     (
@@ -26,6 +29,40 @@ vi.mock("@apollo/client/react", () => ({
         : [cancelDeploy, { loading: false }];
     },
   ),
+  useApolloClient: () => ({ query: apolloQuery }),
+  useQuery: vi.fn(),
+}));
+
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId: "tea-test" }),
+}));
+
+const allowedSnapshot = toResourceSnapshot("tea-test", "web", [
+  { action: "cancel_deploy", outcome: "allowed", reason: null, precondition: null },
+  { action: "rollback", outcome: "allowed", reason: null, precondition: null },
+  { action: "deploy", outcome: "allowed", reason: null, precondition: null },
+]);
+
+const deniedCreateSnapshot = toResourceSnapshot("tea-test", "web", [
+  { action: "cancel_deploy", outcome: "allowed", reason: null, precondition: null },
+  {
+    action: "rollback",
+    outcome: "denied",
+    reason: "insufficient_permission",
+    precondition: null,
+  },
+  { action: "deploy", outcome: "allowed", reason: null, precondition: null },
+]);
+
+let deployState = {
+  status: "ready" as const,
+  snapshot: allowedSnapshot,
+  refresh: vi.fn().mockResolvedValue(undefined),
+};
+
+vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
+  useDeployActions: () => deployState,
+  useServerActions: () => deployState,
 }));
 
 function renderActions(status: string) {
@@ -51,6 +88,20 @@ function renderActions(status: string) {
 beforeEach(() => {
   cancelDeploy.mockReset();
   rollbackService.mockReset();
+  apolloQuery.mockReset();
+  deployState = {
+    status: "ready",
+    snapshot: allowedSnapshot,
+    refresh: vi.fn().mockResolvedValue(undefined),
+  };
+  apolloQuery.mockResolvedValue({
+    data: {
+      deployActions: [
+        { action: "cancel_deploy", outcome: "allowed", reason: null, precondition: null },
+        { action: "rollback", outcome: "allowed", reason: null, precondition: null },
+      ],
+    },
+  });
 });
 
 describe("DeployActions", () => {
@@ -119,9 +170,6 @@ describe("DeployActions", () => {
     ).toBeInTheDocument();
   });
 
-  // w4/051: the current live deploy is NOT a rollback target — "rolling back" to
-  // it only restarts the service and mints a redundant deploy. The detail page
-  // (which mounts DeployActions unguarded) must not offer it, matching the list.
   it("does not offer rollback on the current live deploy", async () => {
     renderActions("live");
 
@@ -130,11 +178,6 @@ describe("DeployActions", () => {
     ).not.toBeInTheDocument();
   });
 
-  // w6/m45 t003: the header's status pill reads the `Server` query, which is
-  // otherwise only polled every 30s — so a Cancel or Rollback that refetched
-  // only Deploys/ServiceEvents left the header claiming "Building" next to a
-  // "Canceled" latest-deploy chip on the very same page, on all three surfaces
-  // that mount DeployActions, until a reload.
   it("refetches the service header's own query after cancel and rollback", async () => {
     renderActions("update_in_progress");
 
@@ -156,5 +199,52 @@ describe("DeployActions", () => {
     expect(
       screen.queryByRole("button", { name: "Cancel" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("dispatches zero rollback mutations when create is denied", async () => {
+    deployState = {
+      status: "ready",
+      snapshot: deniedCreateSnapshot,
+      refresh: vi.fn().mockResolvedValue(undefined),
+    };
+    const user = userEvent.setup();
+    renderActions("deactivated");
+
+    const btn = await screen.findByRole("button", { name: "Rollback" });
+    expect(btn).toBeDisabled();
+    await user.click(btn);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(rollbackService).not.toHaveBeenCalled();
+  });
+
+  it("still enables cancel under billing when the server permits it", async () => {
+    deployState = {
+      status: "ready",
+      snapshot: toResourceSnapshot("tea-test", "web", [
+        {
+          action: "cancel_deploy",
+          outcome: "allowed",
+          reason: null,
+          precondition: null,
+        },
+        {
+          action: "deploy",
+          outcome: "allowed",
+          reason: null,
+          precondition: "billing_blocked",
+        },
+        {
+          action: "rollback",
+          outcome: "allowed",
+          reason: null,
+          precondition: "billing_blocked",
+        },
+      ]),
+      refresh: vi.fn().mockResolvedValue(undefined),
+    };
+    renderActions("update_in_progress");
+    const btn = await screen.findByRole("button", { name: "Cancel" });
+    expect(btn).not.toBeDisabled();
+    expect(btn).not.toHaveAttribute("aria-disabled", "true");
   });
 });

@@ -33,7 +33,8 @@ export function CronDeploySection({
 }: CronDeploySectionProps) {
   const { t } = useTranslations();
   const { updateCronJob, busy } = useCronJob();
-  const { canCreate, canOperate } = useCapabilities();
+  const capabilities = useCapabilities();
+  const { canCreate, canOperate } = capabilities;
   const loading = schedule === null;
 
   // Setting the entrypoint command is can_create (it chooses code the job runs).
@@ -44,16 +45,16 @@ export function CronDeploySection({
   const hasCommand = (command ?? "").trim() !== "";
   const scheduleNeedsCreate = hasCommand;
   const scheduleBlocked = scheduleNeedsCreate ? !canCreate : !canOperate;
+  const scheduleReasonKey = capabilities.reasonKey(
+    scheduleNeedsCreate ? "can_create" : "can_operate",
+  );
   const scheduleReason = scheduleBlocked
-    ? t(
-        scheduleNeedsCreate
-          ? "capabilities.reasonCanCreate"
-          : "capabilities.reasonCanOperate",
-      )
+    ? scheduleReasonKey
+      ? t(scheduleReasonKey)
+      : undefined
     : undefined;
-  const commandReason = !canCreate
-    ? t("capabilities.reasonCanCreate")
-    : undefined;
+  const commandReasonKey = capabilities.reasonKey("can_create");
+  const commandReason = commandReasonKey ? t(commandReasonKey) : undefined;
 
   return (
     <Card>

@@ -45,6 +45,8 @@ interface BillingOnboardingViewProps {
    *  so the shared payment-onboarding dialog (paid-intent gate) is unaffected —
    *  only the billing page's container passes the real capability. */
   canManageBilling?: boolean;
+  /** Disable-with-reason copy (role denial or grant recovery). */
+  billingReason?: string;
 }
 
 function StatusRow({
@@ -117,11 +119,12 @@ export function BillingOnboardingView({
   onCheckout,
   onPortal,
   canManageBilling = true,
+  billingReason: billingReasonProp,
 }: BillingOnboardingViewProps) {
   const { t } = useTranslations();
-  const billingReason = canManageBilling
-    ? undefined
-    : t("capabilities.reasonCanManageBilling");
+  const billingReason =
+    billingReasonProp ??
+    (canManageBilling ? undefined : t("capabilities.reasonCanManageBilling"));
   return (
     <Card>
       <CardHeader>
@@ -219,8 +222,10 @@ export function BillingOnboardingView({
 }
 
 export function BillingOnboardingCard() {
+  const { t } = useTranslations();
   const state = useBillingOnboarding();
-  const { canManageBilling } = useCapabilities();
+  const capabilities = useCapabilities();
+  const reasonKey = capabilities.reasonKey("can_manage_billing");
   return (
     <BillingOnboardingView
       readiness={state.readiness}
@@ -230,7 +235,8 @@ export function BillingOnboardingCard() {
       portalBusy={state.portalBusy}
       onCheckout={() => void state.openCheckout()}
       onPortal={() => void state.openPortal()}
-      canManageBilling={canManageBilling}
+      canManageBilling={capabilities.canManageBilling}
+      billingReason={reasonKey ? t(reasonKey) : undefined}
     />
   );
 }

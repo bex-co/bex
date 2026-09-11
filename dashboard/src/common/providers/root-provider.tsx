@@ -3,6 +3,7 @@ import { I18nextProvider } from "react-i18next";
 import { ThemeProvider } from "@/common/providers/theme-provider";
 import { VisualViewportHeight } from "@/common/providers/visual-viewport-height";
 import { WorkspaceProvider } from "@/features/workspaces/context";
+import { CapabilitiesProvider } from "@/features/capabilities/context/capabilities-provider";
 import { PaymentRequiredProvider } from "@/features/usage/context/payment-required";
 import { getActiveI18n } from "@/i18n/request-scope";
 
@@ -38,7 +39,9 @@ export const RootProvider = ({
           initialWorkspaceId={initialWorkspaceId}
           onWorkspaceChange={onWorkspaceChange}
         >
-          <PaymentRequiredProvider>{children}</PaymentRequiredProvider>
+          <CapabilitiesProvider>
+            <PaymentRequiredProvider>{children}</PaymentRequiredProvider>
+          </CapabilitiesProvider>
         </WorkspaceProvider>
         <VisualViewportHeight />
         <Suspense fallback={null}>
