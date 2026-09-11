@@ -265,7 +265,7 @@ spec:
                     # construction (route = registered mux pattern, never a path;
                     # tool/operation = closed registry) — see
                     # lego/backend/internal/api/httpmetrics.go.
-                    regex: bex_(billing|agent_session|webhooks|push|api)_.*
+                    regex: bex_(billing|agent_session|sandbox|webhooks|push|api)_.*
                     action: keep
               # Build-plane SLIs from the operator's own registry (docs/ADR060
               # D5). This job is why the series are readable at all: the manager
@@ -1226,6 +1226,38 @@ spec:
                     annotations:
                       summary: "{{ $value | humanizePercentage }} of agent-session sandbox provisions are failing"
                       description: "More than a quarter of agent-session sandbox creations failed to reach Running in the last hour, so users are accepting a session that never boots (ADR047 accept-fast/provision-async). Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_AGENT_SESSION_IMAGE. bex_agent_session_provision_seconds{outcome} separates a slow provision from a failed one. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
+
+                  # w5/m95. ADR088's tenant-facing coverage table carried one
+                  # row reading "none (accepted for now) ... Owner: unfiled":
+                  # sandbox creation OUTSIDE an agent session. The sibling alert
+                  # above watches the same substrate through its busiest caller,
+                  # so a substrate outage is caught — but a regression specific
+                  # to /v1/sandboxes (its authorization, template resolution, or
+                  # the create verb itself) was invisible to every signal bex
+                  # had. Same shape as that sibling deliberately, so the pair
+                  # reads together.
+                  #
+                  # Numerator and denominator both exclude rejected/unavailable:
+                  # those are refused before any runtime call, so counting them
+                  # would let a client spraying invalid requests either raise a
+                  # false alarm or dilute a real one. capacity IS a failure here
+                  # — it is returned when a pod never became ready in the
+                  # platform's wait, which is a substrate symptom bex attributes
+                  # to a plan limit, not a clean refusal.
+                  - alert: SandboxProvisionFailing
+                    expr: |
+                      (
+                        sum(rate(bex_sandbox_create_total{outcome=~"failed|capacity"}[1h]))
+                        / sum(rate(bex_sandbox_create_total{outcome=~"failed|capacity|succeeded"}[1h]))
+                      ) > 0.25
+                      and
+                      sum(rate(bex_sandbox_create_total{outcome=~"failed|capacity|succeeded"}[1h])) > 0.0028
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "{{ $value | humanizePercentage }} of /v1/sandboxes creations are failing"
+                      description: "More than a quarter of sandbox creations through the public API failed or timed out waiting for the pod to become ready in the last hour, so agents calling /v1/sandboxes cannot get an execution environment. Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_SANDBOX_IMAGE. bex_sandbox_create_total{outcome} separates a capacity timeout from an unexplained failure, and bex_sandbox_create_seconds shows whether creates are merely slow. Agent-session sandboxes report separately (AgentSessionProvisionFailing); both firing points at the shared substrate rather than either API. Runbook: docs/ADR014-sandboxes.md"
 
                   - alert: BillingExportBacklog
                     expr: |
