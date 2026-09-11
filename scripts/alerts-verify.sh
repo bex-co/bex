@@ -133,19 +133,23 @@ yq '.spec.source.helm.values' deploy/gitops/base/prometheus.yaml >"$TMP/values.y
 # email receiver for a webhook pointed at the in-cluster capture sink — so the
 # test observes fire/resolve directly, sends no real mail, and needs no SMTP
 # secret (extraSecretMounts dropped). The committed config is untouched — we edit
-# the extracted copy. The "null" black-hole receiver is preserved alongside the
-# swapped webhook because the committed route sends severity=info there; dropping
-# it would leave that sub-route referencing an undefined receiver and Alertmanager
-# would reject the config on load.
+# the extracted copy. Every receiver the committed route references must survive
+# the swap — "null" (severity=info) and "platform-digest" (severity=warning) —
+# or Alertmanager rejects the config on load. Persistence and the Argo
+# Force+Replace annotation are prod concerns; the throwaway AM stays ephemeral.
+# The probe below is severity=critical, so it takes the top-level route whose
+# timers are shortened here (the warning digest route keeps its own).
 CAPTURE_URL="http://${CAPTURE}.${NS}.svc:9099/" \
 yq -i '
   .server.enabled=false
   | (.["kube-state-metrics"].enabled)=false
   | .alertmanager.extraSecretMounts=[]
+  | .alertmanager.persistence.enabled=false
+  | .alertmanager.statefulSet.annotations={}
   | .alertmanager.config.route.group_wait="5s"
   | .alertmanager.config.route.group_interval="10s"
   | .alertmanager.config.route.repeat_interval="30s"
-  | .alertmanager.config.receivers=[{"name":"platform","webhook_configs":[{"url":env(CAPTURE_URL),"send_resolved":true}]},{"name":"null"}]
+  | .alertmanager.config.receivers=[{"name":"platform","webhook_configs":[{"url":env(CAPTURE_URL),"send_resolved":true}]},{"name":"platform-digest","webhook_configs":[{"url":env(CAPTURE_URL),"send_resolved":false}]},{"name":"null"}]
 ' "$TMP/values.yaml"
 helm template "$REL" prometheus \
   --repo https://prometheus-community.github.io/helm-charts \
