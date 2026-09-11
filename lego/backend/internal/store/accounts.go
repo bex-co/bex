@@ -388,6 +388,7 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			}
 		}
 		updates := []string{
+			`UPDATE product_activity_events SET actor_id = '', actor_type = 'unknown' WHERE actor_id = $1 AND $2 <> ''`,
 			`UPDATE ssh_sessions SET subject = $2 WHERE subject = $1`,
 			`UPDATE oauth_revocations SET subject = $2 WHERE subject = $1`,
 			`UPDATE tenant_invites SET invited_by = $2 WHERE invited_by = $1`,

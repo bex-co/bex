@@ -242,3 +242,6 @@ func TestAuditReadSurfaceAuthMatrix(t *testing.T) {
 		}
 	})
 }
+func (f *fakeAuditStore) PurgeProductAnalytics(context.Context, time.Time) (int64, error) {
+	return 0, nil
+}

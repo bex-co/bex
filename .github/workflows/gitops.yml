@@ -19,6 +19,10 @@ on:
       - "scripts/obs-coverage-check.sh"
       - "scripts/cli-analytics*"
       - "scripts/test_cli_analytics.py"
+      - "scripts/product-analytics*"
+      - "scripts/test_product_analytics.py"
+      - "scripts/lib/analytics-bootstrap.sh"
+      - "lego/backend/internal/store/migrations/**"
       - "scripts/gitops-hardening-guard-test.sh"
       - "scripts/lib/platform-pod-hardening-guard.yq"
       - "scripts/platform-deprecations-validate.sh"
@@ -48,6 +52,10 @@ on:
       - "scripts/obs-coverage-check.sh"
       - "scripts/cli-analytics*"
       - "scripts/test_cli_analytics.py"
+      - "scripts/product-analytics*"
+      - "scripts/test_product_analytics.py"
+      - "scripts/lib/analytics-bootstrap.sh"
+      - "lego/backend/internal/store/migrations/**"
       - "scripts/gitops-hardening-guard-test.sh"
       - "scripts/lib/platform-pod-hardening-guard.yq"
       - "scripts/platform-deprecations-validate.sh"
@@ -83,10 +91,10 @@ jobs:
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: verify CLI analytics SQL and restricted reader
+      - name: verify CLI and product analytics SQL and restricted readers
         env:
           BEX_CLI_ANALYTICS_TEST_CONTAINER: ${{ job.services.postgres.id }}
-        run: python3 -m unittest scripts/test_cli_analytics.py -v
+        run: python3 -m unittest scripts/test_cli_analytics.py scripts/test_product_analytics.py -v
 
   render:
     # Public-repo safety: fork PR code must never reach persistent self-hosted runners.

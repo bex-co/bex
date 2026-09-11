@@ -534,6 +534,9 @@ func RecordInviteAccepted(ctx context.Context, sink AuditSink, at time.Time, wor
 // effect for the outbound-webhook feed. Callers pair it with
 // WithDeferredAllowedWriteAudit so failed validation/writes never emit.
 func (b *Base) RecordDatabaseEffect(ctx context.Context, d *appv1alpha1.Database, effect DatabaseAuditEffect) {
+	if effect == DatabaseCreated {
+		b.ObserveProductActivity(ctx, ProductActivity{WorkspaceID: d.Labels[LabelTenant], ResourceID: d.Name, ResourceType: "postgres", EventType: "created"})
+	}
 	ev, ok := b.databaseEffectEvent(ctx, d, effect)
 	if !ok {
 		return
@@ -646,6 +649,9 @@ func (b *Base) databaseAuditEvent(ctx context.Context, d *appv1alpha1.Database, 
 // documents as unsupported (docs/render-artifacts/datastore-webhook-events.md),
 // so it is deliberately absent from eventvocab.DatastoreAuditTypes.
 func (b *Base) RecordKeyValueEffect(ctx context.Context, kv *appv1alpha1.KeyValue, effect KeyValueAuditEffect) {
+	if effect == KeyValueCreated {
+		b.ObserveProductActivity(ctx, ProductActivity{WorkspaceID: kv.Labels[LabelTenant], ResourceID: kv.Name, ResourceType: "keyvalue", EventType: "created"})
+	}
 	ev, ok := b.keyValueEffectEvent(ctx, kv, effect)
 	if !ok {
 		return

@@ -2070,7 +2070,15 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 		if createdRowID == "" || s.Store == nil {
 			return cause
 		}
-		if err := s.Store.DeleteApp(ctx, createdRowID); err != nil && !errors.Is(err, store.ErrNotFound) {
+		var err error
+		if rollback, ok := s.Store.(interface {
+			RollbackAppCreation(context.Context, string) error
+		}); ok {
+			err = rollback.RollbackAppCreation(ctx, createdRowID)
+		} else {
+			err = s.Store.DeleteApp(ctx, createdRowID)
+		}
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
 			return errors.Join(cause, fmt.Errorf("rolling back service record: %w", err))
 		}
 		if s.Kick != nil {
@@ -2134,6 +2142,7 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 	}
 	v := s.view(a)
 	v.LatestDeployID = firstDeployID
+	s.ObserveProductActivity(ctx, core.ProductActivity{WorkspaceID: tenantID, ResourceID: a.Labels[core.LabelAppID], ResourceType: effectiveType(a.Spec.Type), EventType: "created"})
 	return v, nil
 }
 

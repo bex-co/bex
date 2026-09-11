@@ -59,6 +59,8 @@ type fakeStore struct {
 	sessionPurgeCalls     int
 
 	telemetryPurgeCalls int
+	productPurgeCalls   int
+	productPurgeBefore  time.Time
 }
 
 func (f *fakeStore) ListAuditEvents(_ context.Context, workspaceID string, filter store.AuditFilter) ([]store.AuditRow, error) {
@@ -454,5 +456,22 @@ func TestRunWithIntervalSweepsOnStartupAndOnTick(t *testing.T) {
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatal("RunWithInterval did not return after ctx cancellation")
+	}
+}
+func (f *fakeStore) PurgeProductAnalytics(_ context.Context, before time.Time) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.productPurgeCalls++
+	f.productPurgeBefore = before
+	return 0, nil
+}
+
+func TestPurgeIncludesProductAnalyticsRetention(t *testing.T) {
+	st := &fakeStore{}
+	now := time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)
+	s := &Service{Base: &core.Base{Clock: func() time.Time { return now }}, Store: st, RetentionDays: 30}
+	s.purge(context.Background())
+	if st.productPurgeCalls != 1 || !st.productPurgeBefore.Equal(now.AddDate(0, 0, -30)) {
+		t.Fatalf("product purge calls=%d before=%s", st.productPurgeCalls, st.productPurgeBefore)
 	}
 }
