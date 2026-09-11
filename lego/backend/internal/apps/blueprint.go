@@ -45,7 +45,20 @@ type BlueprintStore interface {
 	UpsertBlueprint(ctx context.Context, b store.Blueprint) (store.Blueprint, error)
 	GetBlueprint(ctx context.Context, id, tenantID string) (store.Blueprint, error)
 	GetBlueprintByRepo(ctx context.Context, tenantID, repo, branch string) (store.Blueprint, error)
+	// ListAutoSyncBlueprints returns auto-sync-enabled, non-disconnected
+	// Blueprints on branch (w8/m38). tenantScope "" = all workspaces;
+	// otherwise confine to that installation-bound workspace. Repo URL
+	// matching is the caller's responsibility (repoURLsMatch).
+	ListAutoSyncBlueprints(ctx context.Context, branch, tenantScope string) ([]store.Blueprint, error)
 	ListBlueprints(ctx context.Context, tenantID string) ([]store.Blueprint, error)
+	// EnqueueBlueprintAutoSyncIntent persists accepted automatic work before
+	// webhook acknowledgment (w8/m38). inserted=false on duplicate delivery.
+	EnqueueBlueprintAutoSyncIntent(ctx context.Context, intent store.BlueprintAutoSyncIntent) (inserted bool, err error)
+	// ClaimBlueprintAutoSyncIntents leases a bounded pending batch for the
+	// durable auto-sync worker (w8/m38).
+	ClaimBlueprintAutoSyncIntents(ctx context.Context, limit int, lease time.Duration) ([]store.BlueprintAutoSyncIntent, error)
+	CompleteBlueprintAutoSyncIntent(ctx context.Context, id string) error
+	FailBlueprintAutoSyncIntent(ctx context.Context, id, errMsg string) error
 	UpdateBlueprint(ctx context.Context, id, tenantID string, name *string, autoSync *bool, path *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error)
 	DisconnectBlueprint(ctx context.Context, id, tenantID string) error
 	InsertBlueprintSync(ctx context.Context, run store.BlueprintSync) (store.BlueprintSync, error)

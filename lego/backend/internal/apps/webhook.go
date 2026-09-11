@@ -27,6 +27,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -322,51 +323,50 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, err)
 		return
 	}
+	// Branch-delete carries no commit — Apps only (disable auto-deploy). Skip
+	// Blueprint discovery/enqueue entirely (w8/m38).
 	if ev.Deleted || isZeroSHA(ev.After) {
 		candidates = branchCandidates(candidates, branch)
+		if len(candidates) == 0 {
+			core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
+			return
+		}
+		w, finishClaim, ok := h.claimReplay(r.Context(), w, key, replayScope(key, scope, ev.Installation.ID), body)
+		if !ok {
+			return
+		}
+		defer finishClaim()
+		h.writeBranchDeletedCandidates(r.Context(), w, candidates, branch, ev.DeliveryKey)
+		return
+	}
+	blueprintTargets, err := h.blueprintAutoSyncTargets(r.Context(), branch, scope, urls, ev.changedPaths())
+	if err != nil {
+		core.WriteErr(w, err)
+		return
 	}
 	// A valid delivery for a repository/branch bex does not track must not
 	// allocate a permanent replay row. There is no mutation to deduplicate, and
-	// a later App creation should still be allowed to consume a redelivery.
-	if len(candidates) == 0 {
-		if ev.Deleted || isZeroSHA(ev.After) {
-			core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
-		} else {
-			core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
-		}
+	// a later App/Blueprint creation should still be allowed to consume a redelivery.
+	if len(candidates) == 0 && len(blueprintTargets) == 0 {
+		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
 		return
 	}
 	// codex round-8 #9: claim the exact signed bytes before either mutation
-	// branch. Everything below may mutate Apps (redeploy or branch-delete
-	// handling); without the claim a captured delivery replays.
+	// branch. Everything below may mutate Apps (redeploy) or persist Blueprint
+	// intents; without the claim a captured delivery replays.
 	w, finishClaim, ok := h.claimReplay(r.Context(), w, key, replayScope(key, scope, ev.Installation.ID), body)
 	if !ok {
 		return
 	}
 	defer finishClaim()
-	// A branch-delete push (git push --delete: deleted=true, or an all-zero
-	// `after`) carries no commit to build — record branch_deleted and disable
-	// auto-deploy for services tracking it rather than attempting a redeploy.
-	if ev.Deleted || isZeroSHA(ev.After) {
-		h.writeBranchDeletedCandidates(r.Context(), w, candidates, branch, ev.DeliveryKey)
+	// Durable Blueprint intents before acknowledgment (w8/m38): enqueue first so
+	// a failure returns 5xx (claim released → GitHub retries) without having
+	// already mutated Apps. Successful inserts survive an API restart.
+	if err := h.enqueueBlueprintAutoSyncIntents(r.Context(), key, body, ev.After, blueprintTargets); err != nil {
+		core.WriteErrStatus(w, http.StatusInternalServerError, "failed to persist blueprint auto-sync intent")
 		return
 	}
-	redeployed, tenants := h.redeployCandidates(r.Context(), ev, branch, candidates)
-	// Trigger blueprint auto-sync for workspaces whose apps share this repo.
-	// Runs in a goroutine so the webhook response is not blocked.
-	if h.Svc.Blueprints != nil && len(tenants) > 0 {
-		repo := ev.Repository.CloneURL
-		if repo == "" {
-			repo = ev.Repository.HTMLURL
-		}
-		go func() {
-			for tenantID := range tenants {
-				// Preserve tenant context for background sync to maintain isolation
-				bgCtx := core.WithWorkspace(context.Background(), tenantID)
-				h.Svc.triggerBlueprintSync(bgCtx, tenantID, repo, branch)
-			}
-		}()
-	}
+	redeployed, _ := h.redeployCandidates(r.Context(), ev, branch, candidates)
 	core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": redeployed})
 }
 
@@ -568,6 +568,76 @@ func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, bra
 		return nil, err
 	}
 	return h.recordBranchDeletedCandidates(ctx, branchCandidates(candidates, branch), branch, deliveryKey), nil
+}
+
+// blueprintAutoSyncTargets discovers connected Blueprints independently of
+// App candidates (w8/m38): auto_sync + branch + installation scope, then
+// canonical repo URL match, then path gate against changedPaths.
+func (h *GitWebhook) blueprintAutoSyncTargets(ctx context.Context, branch, scope string, urls, changed []string) ([]store.Blueprint, error) {
+	if h.Svc == nil || h.Svc.Blueprints == nil {
+		return nil, nil
+	}
+	listed, err := h.Svc.Blueprints.ListAutoSyncBlueprints(ctx, branch, scope)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]store.Blueprint, 0, len(listed))
+	for _, b := range listed {
+		if !repoURLsMatch(b.Repo, urls...) {
+			continue
+		}
+		if !blueprintManifestPathChanged(b.Path, changed) {
+			continue
+		}
+		out = append(out, b)
+	}
+	return out, nil
+}
+
+// blueprintManifestPathChanged reports whether the Blueprint's configured
+// manifest path is among the push's changed files. Empty/incomplete path
+// evidence fails open (do not suppress a real change — w8/m38 t002).
+func blueprintManifestPathChanged(bpPath string, changed []string) bool {
+	if len(changed) == 0 {
+		return true
+	}
+	if bpPath == "" {
+		bpPath = CanonicalBlueprintFilename
+	}
+	want := path.Clean(bpPath)
+	for _, p := range changed {
+		if path.Clean(p) == want {
+			return true
+		}
+	}
+	return false
+}
+
+// enqueueBlueprintAutoSyncIntents persists one intent per selected Blueprint
+// before the webhook acknowledges success. A store failure fails the delivery
+// (5xx) so GitHub retries; the replay claim is released by finishClaim.
+func (h *GitWebhook) enqueueBlueprintAutoSyncIntents(ctx context.Context, key verifiedKey, body []byte, commitSHA string, targets []store.Blueprint) error {
+	if len(targets) == 0 || h.Svc == nil || h.Svc.Blueprints == nil {
+		return nil
+	}
+	digest := replayDigest(key, body)
+	for _, b := range targets {
+		bpPath := b.Path
+		if bpPath == "" {
+			bpPath = CanonicalBlueprintFilename
+		}
+		_, err := h.Svc.Blueprints.EnqueueBlueprintAutoSyncIntent(ctx, store.BlueprintAutoSyncIntent{
+			TenantID:       b.TenantID,
+			BlueprintID:    b.ID,
+			DeliveryDigest: digest,
+			CommitSHA:      commitSHA,
+			Path:           bpPath,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // repoCandidates resolves the non-mutating repository/workspace match before a

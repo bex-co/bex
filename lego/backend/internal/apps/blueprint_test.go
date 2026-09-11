@@ -53,6 +53,10 @@ type fakeBlueprintStore struct {
 	syncs      map[string]store.BlueprintSync
 	// claims keys are tenant|kind|name → blueprint id (w8/m40).
 	claims map[string]string
+	// autoSyncIntents keys are delivery_digest|blueprint_id (w8/m38).
+	autoSyncIntents map[string]store.BlueprintAutoSyncIntent
+	// enqueueIntentErr, when set, fails EnqueueBlueprintAutoSyncIntent.
+	enqueueIntentErr error
 	// gotSyncLimit records the limit ListBlueprintSyncs was called with, so the
 	// service's clamp is asserted where it is applied rather than re-derived.
 	gotSyncLimit int
@@ -142,6 +146,97 @@ func (f *fakeBlueprintStore) ListBlueprints(_ context.Context, tenantID string) 
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeBlueprintStore) ListAutoSyncBlueprints(_ context.Context, branch, tenantScope string) ([]store.Blueprint, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []store.Blueprint
+	for _, b := range f.blueprints {
+		if !b.AutoSync || b.Status == "disconnected" || b.Branch != branch {
+			continue
+		}
+		if tenantScope != "" && b.TenantID != tenantScope {
+			continue
+		}
+		out = append(out, b)
+	}
+	return out, nil
+}
+
+func (f *fakeBlueprintStore) EnqueueBlueprintAutoSyncIntent(_ context.Context, intent store.BlueprintAutoSyncIntent) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.enqueueIntentErr != nil {
+		return false, f.enqueueIntentErr
+	}
+	if f.autoSyncIntents == nil {
+		f.autoSyncIntents = map[string]store.BlueprintAutoSyncIntent{}
+	}
+	key := intent.DeliveryDigest + "|" + intent.BlueprintID
+	if _, ok := f.autoSyncIntents[key]; ok {
+		return false, nil
+	}
+	if intent.ID == "" {
+		intent.ID = fmt.Sprintf("asi-fake-%d", len(f.autoSyncIntents)+1)
+	}
+	if intent.State == "" {
+		intent.State = store.BlueprintAutoSyncIntentPending
+	}
+	intent.CreatedAt = time.Now().UTC()
+	f.autoSyncIntents[key] = intent
+	return true, nil
+}
+
+func (f *fakeBlueprintStore) ClaimBlueprintAutoSyncIntents(_ context.Context, limit int, _ time.Duration) ([]store.BlueprintAutoSyncIntent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []store.BlueprintAutoSyncIntent
+	for k, intent := range f.autoSyncIntents {
+		if intent.State != store.BlueprintAutoSyncIntentPending && intent.State != store.BlueprintAutoSyncIntentClaimed {
+			continue
+		}
+		now := time.Now().UTC()
+		intent.State = store.BlueprintAutoSyncIntentClaimed
+		intent.ClaimedAt = &now
+		f.autoSyncIntents[k] = intent
+		out = append(out, intent)
+		if limit > 0 && len(out) >= limit {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeBlueprintStore) CompleteBlueprintAutoSyncIntent(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for k, intent := range f.autoSyncIntents {
+		if intent.ID == id {
+			now := time.Now().UTC()
+			intent.State = store.BlueprintAutoSyncIntentCompleted
+			intent.CompletedAt = &now
+			f.autoSyncIntents[k] = intent
+			return nil
+		}
+	}
+	return store.ErrNotFound
+}
+
+func (f *fakeBlueprintStore) FailBlueprintAutoSyncIntent(_ context.Context, id, errMsg string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for k, intent := range f.autoSyncIntents {
+		if intent.ID == id {
+			now := time.Now().UTC()
+			intent.State = store.BlueprintAutoSyncIntentFailed
+			intent.CompletedAt = &now
+			intent.ErrorMessage = &errMsg
+			f.autoSyncIntents[k] = intent
+			return nil
+		}
+	}
+	return store.ErrNotFound
 }
 
 func (f *fakeBlueprintStore) UpdateBlueprint(_ context.Context, id, tenantID string, name *string, autoSync *bool, bpPath *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error) {

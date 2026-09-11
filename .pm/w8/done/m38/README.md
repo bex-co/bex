@@ -1,6 +1,6 @@
 # w8 · m38 — Resource-independent Blueprint auto-sync
 
-**Worker:** worker8 **Goal:** A signed push reliably schedules the affected connected Blueprint even when no repository-backed App exists, and acknowledged automatic work survives an API restart. **Status:** todo
+**Worker:** worker8 **Goal:** A signed push reliably schedules the affected connected Blueprint even when no repository-backed App exists, and acknowledged automatic work survives an API restart. **Status:** done
 
 **Estimate:** 4h implementation; 6h including standing closing tasks. **Priority:** 3 in the approved 2026-09-08 queue.
 
@@ -8,15 +8,15 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Match connected Blueprints independently of App candidates | 45m | w8/m39/t008, w8/m40/t008 |
-| t002 | Detect changes to the configured Blueprint manifest | 45m | w8/m38/t001 |
-| t003 | Persist deduplicated Blueprint intent before webhook acknowledgment | 60m | w8/m38/t002 |
-| t004 | Process automatic syncs through bounded durable execution | 60m | w8/m38/t003 |
-| t005 | Wire automatic run lifecycle into existing startup and history surfaces | 30m | w8/m38/t004 |
-| t006 | Render parity | 30m | w8/m38/t005 |
-| t007 | Simplify | 30m | w8/m38/t006 |
-| t008 | Test coverage | 45m | w8/m38/t006, w8/m38/t007 |
-| t009 | Closeout | 15m | w8/m38/t008 |
+| t001 | Match connected Blueprints independently of App candidates — **DONE**| 45m | w8/m39/t008, w8/m40/t008 |
+| t002 | Detect changes to the configured Blueprint manifest — **DONE**| 45m | w8/m38/t001 |
+| t003 | Persist deduplicated Blueprint intent before webhook acknowledgment — **DONE**| 60m | w8/m38/t002 |
+| t004 | Process automatic syncs through bounded durable execution — **DONE**| 60m | w8/m38/t003 |
+| t005 | Wire automatic run lifecycle into existing startup and history surfaces — **DONE**| 30m | w8/m38/t004 |
+| t006 | Render parity — **DONE**| 30m | w8/m38/t005 |
+| t007 | Simplify — **DONE**| 30m | w8/m38/t006 |
+| t008 | Test coverage — **DONE**| 45m | w8/m38/t006, w8/m38/t007 |
+| t009 | Closeout — **DONE**| 15m | w8/m38/t008 |
 
 ## Definition of done
 

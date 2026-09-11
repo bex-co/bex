@@ -102,6 +102,26 @@ func (f *blueprintFixtureStore) ListBlueprints(context.Context, string) ([]store
 	return nil, nil
 }
 
+func (f *blueprintFixtureStore) ListAutoSyncBlueprints(context.Context, string, string) ([]store.Blueprint, error) {
+	return nil, nil
+}
+
+func (f *blueprintFixtureStore) EnqueueBlueprintAutoSyncIntent(context.Context, store.BlueprintAutoSyncIntent) (bool, error) {
+	return false, nil
+}
+
+func (f *blueprintFixtureStore) ClaimBlueprintAutoSyncIntents(context.Context, int, time.Duration) ([]store.BlueprintAutoSyncIntent, error) {
+	return nil, nil
+}
+
+func (f *blueprintFixtureStore) CompleteBlueprintAutoSyncIntent(context.Context, string) error {
+	return nil
+}
+
+func (f *blueprintFixtureStore) FailBlueprintAutoSyncIntent(context.Context, string, string) error {
+	return nil
+}
+
 func (f *blueprintFixtureStore) InsertBlueprintSync(_ context.Context, run store.BlueprintSync) (store.BlueprintSync, error) {
 	return run, nil
 }

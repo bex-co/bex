@@ -1,0 +1,24 @@
+# w8/m38 signed-push auto-sync walkthrough
+stack healthy; github webhook secret loaded
+owner=tea-dahrdmhjg4rb3f19qjig identity=d355e433-b8ab-421e-b5dc-9da1532b3d76
+create: {"data": {"createBlueprint": {"autoSync": true, "id": "blp-dahrdmhjg4rb3f19qjjg", "status": "in_sync"}}}
+autoSync: {"data": {"updateBlueprint": {"autoSync": true, "id": "blp-dahrdmhjg4rb3f19qjjg"}}}
+preview: {"data": {"blueprintPreview": {"commitId": "818de80b8797ba095faef0132ff432cf376b9f59", "found": true, "validation": {"valid": true}}}}
+push_commit=818de80b8797ba095faef0132ff432cf376b9f59
+git_connections installation=93800038 → tea-dahrdmhjg4rb3f19qjig
+apps_in_namespace=app.app.bex.co/tea-dahrdmhjg4rb3f19qjig-hello-go
+WARN: Apps still present; Blueprint path still exercised
+webhook status=200 body={"redeployed":["tea-dahrdmhjg4rb3f19qjig-hello-go"]}
+
+intent_row=asi-dahrdn9jg4rb3f19qjmg pending 818de80b8797ba095faef0132ff432cf376b9f59 blp-dahrdmhjg4rb3f19qjjg
+intent_final_state=completed
+syncHistory: {"data": {"blueprintSyncs": [{"commitId": "818de80b8797ba095faef0132ff432cf376b9f59", "state": "success"}, {"commitId": "818de80b8797ba095faef0132ff432cf376b9f59", "state": "success"}]}}
+history names push commit OK
+duplicate_webhook status=200 body={"redeployed":[],"replayed":true}
+
+intent_count_for_commit=1
+unrelated_path_webhook status=200 body={"redeployed":[],"replayed":true}
+
+unrelated_intent_count=0
+cleanup done
+PASS

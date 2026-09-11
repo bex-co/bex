@@ -420,6 +420,9 @@ func main() {
 	// The Blueprint recovery sweep settles sync runs abandoned by process
 	// loss (w8/m37 t004). No-op unless the control-plane store is wired.
 	go srv.BlueprintRecovery.Run(ctx)
+	// Durable Blueprint auto-sync worker (w8/m38): claims intents accepted at
+	// the signed git webhook. No-op unless Blueprints store is wired.
+	go srv.BlueprintAutoSync.Run(ctx)
 	if stripeLifecycleWorker != nil {
 		stripeLifecycleWorker.Notifier = notifications.BillingNotifier{Service: srv.Notifications}
 		go stripeLifecycleWorker.Run(ctx)
