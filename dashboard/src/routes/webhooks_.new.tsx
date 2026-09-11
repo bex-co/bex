@@ -50,6 +50,8 @@ export function NewWebhookPage() {
   } = useWebhookEventTypes();
   const { endpoints } = useWebhooks({ poll: false });
   const { canManage, loaded: capabilitiesLoaded } = useCapabilities();
+  // Fail-closed: only render the create form when affirmatively allowed.
+  // Confirmed denial keeps the existing manageRequired copy.
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -119,10 +121,12 @@ export function NewWebhookPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {capabilitiesLoaded && !canManage ? (
-                  <p className="text-muted-foreground text-sm" role="status">
-                    {t("webhooks.manageRequired")}
-                  </p>
+                {!canManage ? (
+                  capabilitiesLoaded ? (
+                    <p className="text-muted-foreground text-sm" role="status">
+                      {t("webhooks.manageRequired")}
+                    </p>
+                  ) : null
                 ) : (
                   <form
                     className="space-y-6"

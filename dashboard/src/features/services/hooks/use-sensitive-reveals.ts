@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 
 export type RevealKind = "env" | "file";
 
@@ -13,37 +14,75 @@ export interface SensitiveReveals {
   clear: () => void;
 }
 
+type RevealStore = {
+  generation: number;
+  values: Record<string, string>;
+  pending: string | null;
+};
+
 /**
  * Reveal state for the masked env-var and secret-file rows. Both kinds are one
  * name→plaintext map under a composite key, so the reveal/hide/in-flight rules
- * are written once instead of once per kind.
+ * are written once instead of once per kind. Access-generation bumps and loss of
+ * can_view_sensitive clear every reveal (w6/m144) by discarding a stale store
+ * without an effect-driven reset.
  */
 export function useSensitiveReveals(
   reveal: Record<RevealKind, (name: string) => Promise<string>>,
   onError: (kind: RevealKind) => void,
 ): SensitiveReveals {
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [pending, setPending] = useState<string | null>(null);
+  const { generation, canViewSensitive } = useCapabilities();
+  const [store, setStore] = useState<RevealStore>({
+    generation,
+    values: {},
+    pending: null,
+  });
+
+  const active =
+    canViewSensitive && store.generation === generation
+      ? store
+      : { generation, values: {}, pending: null };
 
   return {
-    value: (kind, name) => values[`${kind}:${name}`],
-    busy: (kind, name) => pending === `${kind}:${name}`,
-    clear: () => setValues({}),
+    value: (kind, name) => active.values[`${kind}:${name}`],
+    busy: (kind, name) => active.pending === `${kind}:${name}`,
+    clear: () =>
+      setStore({ generation, values: {}, pending: null }),
     toggle: (kind, name) => {
+      if (!canViewSensitive) return;
       const id = `${kind}:${name}`;
-      if (values[id] !== undefined) {
-        setValues((current) =>
-          Object.fromEntries(
-            Object.entries(current).filter(([key]) => key !== id),
+      if (active.values[id] !== undefined) {
+        setStore({
+          generation,
+          pending: null,
+          values: Object.fromEntries(
+            Object.entries(active.values).filter(([key]) => key !== id),
           ),
-        );
+        });
         return;
       }
-      setPending(id);
+      setStore({ generation, values: active.values, pending: id });
       void reveal[kind](name)
-        .then((value) => setValues((current) => ({ ...current, [id]: value })))
-        .catch(() => onError(kind))
-        .finally(() => setPending(null));
+        .then((value) =>
+          setStore((current) => {
+            if (current.generation !== generation) {
+              return { generation, values: {}, pending: null };
+            }
+            return {
+              generation,
+              pending: null,
+              values: { ...current.values, [id]: value },
+            };
+          }),
+        )
+        .catch(() => {
+          onError(kind);
+          setStore((current) =>
+            current.generation === generation
+              ? { ...current, pending: null }
+              : { generation, values: {}, pending: null },
+          );
+        });
     },
   };
 }

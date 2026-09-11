@@ -145,7 +145,7 @@ describe("ServiceEnvironmentEditor", () => {
     expect(revealEnv).not.toHaveBeenCalled();
   });
 
-  it("stays permissive until capabilities are definitive", async () => {
+  it("fail-closes edit until capabilities are definitive", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({
         role: null,
@@ -155,15 +155,10 @@ describe("ServiceEnvironmentEditor", () => {
         loaded: false,
       }),
     );
-    const user = userEvent.setup();
     renderEditor();
 
-    expect(await screen.findByRole("button", { name: "Edit" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    expect(screen.getAllByRole("textbox", { name: "Value" })).not.toHaveLength(
-      0,
-    );
+    expect(await screen.findByRole("button", { name: "Edit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
   });
 
   it("freezes an already-open draft if create permission is revoked", async () => {

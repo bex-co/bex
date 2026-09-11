@@ -76,9 +76,13 @@ vi.mock("@/features/git/hooks/use-claim-git", () => ({
 vi.mock("@/features/git/hooks/use-disconnect-git", () => ({
   useDisconnectGit: () => ({ disconnect: vi.fn(), busy: false }),
 }));
-vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
-  useCapabilities: () => ({ canCreate: true }),
-}));
+vi.mock("@/features/capabilities/hooks/use-capabilities", async () => {
+  const { mockCapabilities } =
+    await import("@/test/mocks/capabilities");
+  return {
+    useCapabilities: () => mockCapabilities({ canCreate: true }),
+  };
+});
 vi.mock("@/features/services/components/registry-credential-select", () => ({
   RegistryCredentialSelect: () => null,
 }));

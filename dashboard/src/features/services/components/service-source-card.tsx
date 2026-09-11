@@ -47,8 +47,10 @@ export interface ServiceSourceCardProps {
  */
 export function ServiceSourceCard(props: ServiceSourceCardProps) {
   const { t } = useTranslations();
-  const { canCreate } = useCapabilities();
-  const reason = canCreate ? undefined : t("capabilities.reasonCanCreate");
+  const capabilities = useCapabilities();
+  const { canCreate } = capabilities;
+  const reasonKey = capabilities.reasonKey("can_create");
+  const reason = reasonKey ? t(reasonKey) : undefined;
 
   return (
     <Card>

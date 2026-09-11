@@ -14,6 +14,18 @@ vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
   useTriggerDeploy: () => ({ deploying: false, trigger }),
 }));
 
+vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
+  const { mockAllowedResourceActions } = await import(
+    "@/test/mocks/resource-actions"
+  );
+  return mockAllowedResourceActions("web");
+});
+
+vi.mock("@/features/workspaces/context/hooks", async () => {
+  const { mockWorkspaceContext } = await import("@/test/mocks/workspace");
+  return mockWorkspaceContext();
+});
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "web",

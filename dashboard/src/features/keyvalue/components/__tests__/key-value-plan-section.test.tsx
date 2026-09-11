@@ -84,11 +84,11 @@ describe("KeyValuePlanSection", () => {
     expect(updatePlan).not.toHaveBeenCalled();
   });
 
-  it("does not disable before capabilities are definitive", () => {
+  it("fail-closes plan controls until capabilities are definitive", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ canOperate: false, loading: true, loaded: false }),
     );
     render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
-    expect(screen.getByRole("radio", { name: /Starter/ })).toBeEnabled();
+    expect(screen.getByRole("radio", { name: /Starter/ })).toBeDisabled();
   });
 });

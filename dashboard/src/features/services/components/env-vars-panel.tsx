@@ -134,13 +134,12 @@ export function EnvVarsEditor({
 }) {
   const { t } = useTranslations();
   // Reveal is can_view_sensitive; add/edit/delete are can_create.
-  const { canCreate, canViewSensitive } = useCapabilities();
-  const revealReason = canViewSensitive
-    ? undefined
-    : t("capabilities.reasonCanViewSensitive");
-  const createReason = !canCreate
-    ? t("capabilities.reasonCanCreate")
-    : undefined;
+  const capabilities = useCapabilities();
+  const { canCreate, canViewSensitive } = capabilities;
+  const revealReasonKey = capabilities.reasonKey("can_view_sensitive");
+  const createReasonKey = capabilities.reasonKey("can_create");
+  const revealReason = revealReasonKey ? t(revealReasonKey) : undefined;
+  const createReason = createReasonKey ? t(createReasonKey) : undefined;
   const initialLoading = loading && keys.length === 0 && !errorKind;
   const gated = errorKind === "unavailable" || errorKind === "forbidden";
 

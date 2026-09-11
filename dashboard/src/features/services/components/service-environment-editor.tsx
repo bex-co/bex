@@ -190,18 +190,15 @@ export function EnvironmentEditor({
   generateOnServer = false,
 }: EnvironmentEditorProps) {
   const { t } = useTranslations();
-  const {
-    canCreate,
-    canViewSensitive,
-    loaded: capabilitiesLoaded,
-  } = useCapabilities();
-  const createDenied = capabilitiesLoaded && !canCreate;
-  const sensitiveDenied = capabilitiesLoaded && !canViewSensitive;
-  const createReason = createDenied
-    ? t("capabilities.reasonCanCreate")
-    : undefined;
-  const sensitiveReason = sensitiveDenied
-    ? t("capabilities.reasonCanViewSensitive")
+  const capabilities = useCapabilities();
+  const { canCreate, canViewSensitive } = capabilities;
+  const createDenied = !canCreate;
+  const sensitiveDenied = !canViewSensitive;
+  const createReasonKey = capabilities.reasonKey("can_create");
+  const sensitiveReasonKey = capabilities.reasonKey("can_view_sensitive");
+  const createReason = createReasonKey ? t(createReasonKey) : undefined;
+  const sensitiveReason = sensitiveReasonKey
+    ? t(sensitiveReasonKey)
     : undefined;
   const writeReasonID = useId();
   const nextID = useRef(0);

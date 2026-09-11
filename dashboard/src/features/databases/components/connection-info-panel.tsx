@@ -33,10 +33,10 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
   const { t } = useTranslations();
   const { info, loading, error, reveal, hide } = useConnectionInfo(id);
   // Revealing the connection strings + password is can_view_sensitive (w9/m84).
-  const { canViewSensitive } = useCapabilities();
-  const revealReason = canViewSensitive
-    ? undefined
-    : t("capabilities.reasonCanViewSensitive");
+  const capabilities = useCapabilities();
+  const { canViewSensitive } = capabilities;
+  const revealReasonKey = capabilities.reasonKey("can_view_sensitive");
+  const revealReason = revealReasonKey ? t(revealReasonKey) : undefined;
 
   return (
     <Card>

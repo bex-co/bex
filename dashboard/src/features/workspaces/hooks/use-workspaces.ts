@@ -31,6 +31,12 @@ export interface UseWorkspacesResult {
   workspaces: WorkspaceView[];
   loading: boolean;
   error: Error | undefined;
+  /**
+   * True when a successful membership list has arrived (including empty).
+   * False while loading, skipped, or on transport/GraphQL failure — never
+   * treat those as confirmed removal (w6/m144).
+   */
+  ready: boolean;
   /** Re-run the list query (callers refresh after create/rename/delete). */
   refetch: () => Promise<unknown>;
 }
@@ -55,6 +61,8 @@ export function useWorkspaces(): UseWorkspacesResult {
   });
 
   const workspaces = useMemo(() => toWorkspaceViews(data?.workspaces), [data]);
+  const ready =
+    authenticated && !loading && data !== undefined && error == null;
 
-  return { workspaces, loading, error, refetch };
+  return { workspaces, loading, error, ready, refetch };
 }

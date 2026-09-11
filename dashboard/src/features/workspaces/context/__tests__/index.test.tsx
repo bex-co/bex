@@ -1,19 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 
-const mockUseWorkspaces = vi.fn();
-const cookieFns = vi.hoisted(() => ({
-  get: vi.fn(),
-  set: vi.fn(),
+const { mockNavigate, mockUseWorkspaces, cookieFns } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockUseWorkspaces: vi.fn(),
+  cookieFns: {
+    get: vi.fn(),
+    set: vi.fn(),
+    remove: vi.fn(),
+  },
 }));
-let persistedCookie: string | undefined;
 
 vi.mock("@/features/workspaces/hooks/use-workspaces", () => ({
   useWorkspaces: (...args: unknown[]) => mockUseWorkspaces(...args),
 }));
+vi.mock("@tanstack/react-router", async () => {
+  const actual =
+    await vi.importActual<typeof import("@tanstack/react-router")>(
+      "@tanstack/react-router",
+    );
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 vi.mock("@/common/hooks/use-cookie-storage-state/cookie", () => ({
   getCookie: cookieFns.get,
   setCookie: cookieFns.set,
+  removeCookie: cookieFns.remove,
 }));
 
 import { WorkspaceProvider } from "@/features/workspaces/context";
@@ -40,8 +54,11 @@ const WORKSPACES = [
   },
 ];
 
+let persistedCookie: string | undefined;
+
 beforeEach(() => {
   mockUseWorkspaces.mockReset();
+  mockNavigate.mockReset();
   vi.mocked(localStorage.getItem).mockReset();
   vi.mocked(localStorage.setItem).mockReset();
   persistedCookie = undefined;
@@ -51,16 +68,26 @@ beforeEach(() => {
   cookieFns.set.mockImplementation((_key: string, value: string) => {
     persistedCookie = value;
   });
+  cookieFns.remove.mockReset();
+  cookieFns.remove.mockImplementation(() => {
+    persistedCookie = undefined;
+  });
 });
+
+function mockReady(workspaces = WORKSPACES, extra: Record<string, unknown> = {}) {
+  mockUseWorkspaces.mockReturnValue({
+    workspaces,
+    loading: false,
+    error: undefined,
+    ready: true,
+    refetch: vi.fn(),
+    ...extra,
+  });
+}
 
 describe("WorkspaceProvider", () => {
   it("falls back to the first workspace when nothing is stored", async () => {
-    mockUseWorkspaces.mockReturnValue({
-      workspaces: WORKSPACES,
-      loading: false,
-      error: undefined,
-      refetch: vi.fn(),
-    });
+    mockReady();
     const { result } = renderHook(() => useWorkspace(), {
       wrapper: WorkspaceProvider,
     });
@@ -80,12 +107,7 @@ describe("WorkspaceProvider", () => {
   });
 
   it("restores the cookie-backed server selection when it still exists", async () => {
-    mockUseWorkspaces.mockReturnValue({
-      workspaces: WORKSPACES,
-      loading: false,
-      error: undefined,
-      refetch: vi.fn(),
-    });
+    mockReady();
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <WorkspaceProvider initialWorkspaceId="tea-2">
         {children}
@@ -100,12 +122,7 @@ describe("WorkspaceProvider", () => {
   });
 
   it("keeps the server-selected workspace stable through hydration", async () => {
-    mockUseWorkspaces.mockReturnValue({
-      workspaces: WORKSPACES,
-      loading: false,
-      error: undefined,
-      refetch: vi.fn(),
-    });
+    mockReady();
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <WorkspaceProvider initialWorkspaceId="tea-1">
         {children}
@@ -121,12 +138,7 @@ describe("WorkspaceProvider", () => {
   });
 
   it("falls back to the first workspace when the persisted selection was deleted", async () => {
-    mockUseWorkspaces.mockReturnValue({
-      workspaces: WORKSPACES,
-      loading: false,
-      error: undefined,
-      refetch: vi.fn(),
-    });
+    mockReady();
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <WorkspaceProvider initialWorkspaceId="tea-deleted">
         {children}
@@ -140,13 +152,60 @@ describe("WorkspaceProvider", () => {
     expect(getPersistedWorkspaceId()).toBe("tea-1");
   });
 
-  it("persists switching in the cookie and restores it after a hard reload", async () => {
+  it("clears selection and routes to /new/workspace on successful empty membership", async () => {
+    mockReady();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <WorkspaceProvider initialWorkspaceId="tea-1">
+        {children}
+      </WorkspaceProvider>
+    );
+    const { result, rerender } = renderHook(() => useWorkspace(), { wrapper });
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-1"),
+    );
+
+    mockReady([], {});
+    rerender();
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBeNull(),
+    );
+    expect(cookieFns.remove).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/new/workspace",
+        replace: true,
+      }),
+    );
+  });
+
+  it("does not clear selection on membership transport errors", async () => {
+    mockReady();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <WorkspaceProvider initialWorkspaceId="tea-1">
+        {children}
+      </WorkspaceProvider>
+    );
+    const { result, rerender } = renderHook(() => useWorkspace(), { wrapper });
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-1"),
+    );
+
     mockUseWorkspaces.mockReturnValue({
-      workspaces: WORKSPACES,
+      workspaces: [],
       loading: false,
-      error: undefined,
+      error: new Error("network"),
+      ready: false,
       refetch: vi.fn(),
     });
+    rerender();
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-1"),
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("persists switching in the cookie and restores it after a hard reload", async () => {
+    mockReady();
     const firstWrapper = ({ children }: { children: React.ReactNode }) => (
       <WorkspaceProvider initialWorkspaceId="tea-1">
         {children}

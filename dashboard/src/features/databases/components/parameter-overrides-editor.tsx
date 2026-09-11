@@ -79,7 +79,8 @@ export function ParameterOverridesEditor({
   onSave,
 }: ParameterOverridesEditorProps) {
   const { t } = useTranslations();
-  const { canCreate, canOperate } = useCapabilities();
+  const capabilities = useCapabilities();
+  const { canCreate, canOperate } = capabilities;
   const initial = initialDrafts(parameters);
   const [rows, setRows] = useState(initial);
   const [savedRows, setSavedRows] = useState(initial);
@@ -102,12 +103,11 @@ export function ParameterOverridesEditor({
   // (w9/m84). Add/remove/edit stay enabled so the member can still see the shape.
   const setsSensitiveLogging = setsSensitiveLoggingParameter(names);
   const permissionBlocked = setsSensitiveLogging ? !canCreate : !canOperate;
-  const permissionReason = permissionBlocked
-    ? t(
-        setsSensitiveLogging
-          ? "capabilities.reasonCanCreate"
-          : "capabilities.reasonCanOperate",
-      )
+  const permissionReasonKey = capabilities.reasonKey(
+    setsSensitiveLogging ? "can_create" : "can_operate",
+  );
+  const permissionReason = permissionReasonKey
+    ? t(permissionReasonKey)
     : undefined;
 
   const validationError = hasBlank

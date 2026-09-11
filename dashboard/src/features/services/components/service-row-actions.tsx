@@ -4,7 +4,6 @@ import { Button } from "@/common/components/ui/button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu.tsx";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
@@ -15,6 +14,19 @@ import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { publiclyRoutable } from "@/features/services/lib/service-type";
+import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import {
+  useDeployActions,
+  useServerActions,
+} from "@/features/capabilities/hooks/use-resource-actions";
+import { useBoundActionConfirm } from "@/features/capabilities/hooks/use-bound-action-confirm";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
+import {
+  gateAction,
+  gateReason,
+  resourceDecision,
+  type ResourceActionId,
+} from "@/features/capabilities/lib/resource-actions";
 
 const ACTION_LABEL: Record<LifecycleAction, keyof typeof en> = {
   suspend: "services.actionSuspend",
@@ -22,10 +34,11 @@ const ACTION_LABEL: Record<LifecycleAction, keyof typeof en> = {
   restart: "services.actionRestart",
 };
 
-// Confirm copy per verb. Suspend and restart are disruptive, so they confirm
-// first (Render guards only its destructive verbs); resume is a safe recovery
-// and runs immediately — expressed by its *absence* from this table, not a dead
-// placeholder entry.
+// UI "restart" routes through triggerDeploy — gate on the deploy verb.
+function decisionActionFor(action: LifecycleAction): ResourceActionId {
+  return action === "restart" ? "deploy" : action;
+}
+
 const CONFIRM: Partial<
   Record<LifecycleAction, { title: keyof typeof en; body: keyof typeof en }>
 > = {
@@ -39,12 +52,6 @@ const CONFIRM: Partial<
   },
 };
 
-/**
- * The confirm body for a verb, dropping the "Its URL and certificates are kept"
- * clause for the types that never had either — a private service has only an
- * internal address, and a worker or cron job has no address at all (w6/041).
- * Restart's copy makes no URL claim, so it is type-independent.
- */
 function confirmBodyKey(
   action: LifecycleAction,
   service: ServiceView,
@@ -89,16 +96,17 @@ export function ServiceRowActions({
   hideSuspend = false,
 }: ServiceRowActionsProps) {
   const { t } = useTranslations();
-  const [confirm, setConfirm] = useState<LifecycleAction | null>(null);
+  const { currentWorkspaceId } = useWorkspace();
+  const serverActions = useServerActions(service.id);
+  const deployActions = useDeployActions(service.id);
+  const { pending: confirmBinding, openConfirm, clearConfirm, recheckBeforeDispatch } =
+    useBoundActionConfirm({ resourceId: service.id });
   const [protectedConfirm, setProtectedConfirm] = useState<{
     action: LifecycleAction;
     confirmation: string;
   } | null>(null);
   const busy = pending !== null;
 
-  // A suspended App can only be resumed; a live one can be suspended or
-  // restarted (restart omitted when the caller already surfaces it elsewhere).
-  // Suspend/resume are omitted when the settings page card already surfaces them.
   const actions: LifecycleAction[] = hideSuspend
     ? hideRestart
       ? []
@@ -109,15 +117,43 @@ export function ServiceRowActions({
         ? ["suspend"]
         : ["suspend", "restart"];
 
+  const confirmAction: LifecycleAction | null =
+    confirmBinding === null
+      ? null
+      : confirmBinding.action === "deploy"
+        ? "restart"
+        : (confirmBinding.action as LifecycleAction);
+
+  function reasonFor(action: LifecycleAction): string | undefined {
+    const decisionId = decisionActionFor(action);
+    const state = action === "restart" ? deployActions : serverActions;
+    const decision =
+      state.status === "ready"
+        ? resourceDecision(
+            state.snapshot,
+            currentWorkspaceId,
+            service.id,
+            decisionId,
+          )
+        : null;
+    const gate = gateAction(
+      decision,
+      state.status === "ready" ? "ready" : state.status,
+    );
+    return gateReason(gate, t);
+  }
+
   function handleSelect(action: LifecycleAction) {
+    if (reasonFor(action)) return;
     if (CONFIRM[action]) {
-      setConfirm(action);
+      openConfirm(decisionActionFor(action));
     } else {
       void runAction(action);
     }
   }
 
   async function runAction(action: LifecycleAction, confirmation?: string) {
+    if (reasonFor(action) && !confirmation) return;
     const result = confirmation
       ? await onRun(action, service, confirmation)
       : await onRun(action, service);
@@ -129,6 +165,13 @@ export function ServiceRowActions({
     } else if (result.status === "success") {
       setProtectedConfirm(null);
     }
+  }
+
+  async function handleConfirm() {
+    const { ok } = await recheckBeforeDispatch();
+    if (!ok || !confirmAction) return;
+    await runAction(confirmAction);
+    clearConfirm();
   }
 
   return (
@@ -145,16 +188,20 @@ export function ServiceRowActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {actions.map((action) => (
-            <DropdownMenuItem
-              key={action}
-              disabled={busy}
-              variant={action === "suspend" ? "destructive" : "default"}
-              onSelect={() => handleSelect(action)}
-            >
-              {t(ACTION_LABEL[action])}
-            </DropdownMenuItem>
-          ))}
+          {actions.map((action) => {
+            const permissionReason = reasonFor(action);
+            return (
+              <PermissionMenuItem
+                key={action}
+                disabled={busy}
+                permissionReason={permissionReason}
+                variant={action === "suspend" ? "destructive" : "default"}
+                onSelect={() => handleSelect(action)}
+              >
+                {t(ACTION_LABEL[action])}
+              </PermissionMenuItem>
+            );
+          })}
           <MoveToProjectMenu
             kind="service"
             resourceId={service.id}
@@ -165,19 +212,24 @@ export function ServiceRowActions({
       </DropdownMenu>
 
       <ConfirmDialog
-        open={confirm !== null}
-        onOpenChange={(open) => !open && setConfirm(null)}
-        title={confirm ? t(CONFIRM[confirm]!.title, { name: service.name }) : ""}
+        open={confirmAction !== null}
+        onOpenChange={(open) => !open && clearConfirm()}
+        title={
+          confirmAction
+            ? t(CONFIRM[confirmAction]!.title, { name: service.name })
+            : ""
+        }
         description={
-          confirm
-            ? t(confirmBodyKey(confirm, service), { name: service.name })
+          confirmAction
+            ? t(confirmBodyKey(confirmAction, service), {
+                name: service.name,
+              })
             : ""
         }
         cancelLabel={t("services.confirmCancel")}
-        confirmLabel={confirm ? t(ACTION_LABEL[confirm]) : ""}
+        confirmLabel={confirmAction ? t(ACTION_LABEL[confirmAction]) : ""}
         onConfirm={() => {
-          if (confirm) void runAction(confirm);
-          setConfirm(null);
+          void handleConfirm();
         }}
       />
 

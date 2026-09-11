@@ -47,14 +47,13 @@ export function KeyValueRowActionsWithCapabilities({
   onDeleted,
   capabilities,
 }: KeyValueRowActionsProps & {
-  capabilities: Pick<Capabilities, "canCreate" | "loaded">;
+  capabilities: Pick<Capabilities, "canCreate" | "reasonKey">;
 }) {
   const { t } = useTranslations();
-  const { canCreate, loaded: capabilitiesLoaded } = capabilities;
-  const createDenied = capabilitiesLoaded && !canCreate;
-  const createReason = createDenied
-    ? t("capabilities.reasonCanCreate")
-    : undefined;
+  const { canCreate } = capabilities;
+  const createDenied = !canCreate;
+  const createReasonKey = capabilities.reasonKey("can_create");
+  const createReason = createReasonKey ? t(createReasonKey) : undefined;
   const { remove, deleting } = useDeleteKeyValue();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [protectedConfirmation, setProtectedConfirmation] = useState<

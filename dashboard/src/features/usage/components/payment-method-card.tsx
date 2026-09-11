@@ -97,7 +97,10 @@ export interface PaymentMethodCardViewProps {
   portalBusy: boolean;
   onCheckout: () => void;
   onPortal: () => void;
+  /** Fail-closed; false disables checkout/portal. */
   canManageBilling: boolean;
+  /** Disable-with-reason copy (role denial or grant recovery). */
+  billingReason?: string;
 }
 
 export function PaymentMethodCardView({
@@ -109,11 +112,12 @@ export function PaymentMethodCardView({
   onCheckout,
   onPortal,
   canManageBilling,
+  billingReason,
 }: PaymentMethodCardViewProps) {
   const { t } = useTranslations();
-  const reason = canManageBilling
-    ? undefined
-    : t("capabilities.reasonCanManageBilling");
+  const reason =
+    billingReason ??
+    (canManageBilling ? undefined : t("capabilities.reasonCanManageBilling"));
   const testMode = readiness?.mode === "test";
   const brand = brandLabel(readiness?.paymentMethodBrand ?? "");
   const last4 = readiness?.paymentMethodLast4 ?? "";
@@ -194,8 +198,10 @@ export function PaymentMethodCardView({
 }
 
 export function PaymentMethodCard() {
+  const { t } = useTranslations();
   const state = useBillingOnboarding();
-  const { canManageBilling } = useCapabilities();
+  const capabilities = useCapabilities();
+  const reasonKey = capabilities.reasonKey("can_manage_billing");
   return (
     <PaymentMethodCardView
       readiness={state.readiness}
@@ -205,7 +211,8 @@ export function PaymentMethodCard() {
       portalBusy={state.portalBusy}
       onCheckout={() => void state.openCheckout()}
       onPortal={() => void state.openPortal()}
-      canManageBilling={canManageBilling}
+      canManageBilling={capabilities.canManageBilling}
+      billingReason={reasonKey ? t(reasonKey) : undefined}
     />
   );
 }

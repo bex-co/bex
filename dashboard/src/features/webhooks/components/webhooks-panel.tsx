@@ -42,7 +42,9 @@ export function WebhooksPanel() {
   const { t } = useTranslations();
   const { endpoints, loading, error } = useWebhooks();
   const { setEnabled, toggling } = useSetWebhookEnabled();
-  const { canManage, loaded: capabilitiesLoaded } = useCapabilities();
+  const { canManage } = useCapabilities();
+  // Fail-closed: only show create when affirmatively allowed.
+  const showCreate = canManage;
   const [search, setSearch] = useState("");
 
   const forbidden = isForbiddenError(error);
@@ -84,13 +86,13 @@ export function WebhooksPanel() {
         <CardDescription>{t("webhooks.description")}</CardDescription>
         <CardAction>
           {/* Render's create flow is a page, not a dialog (w1/m49/t003). */}
-          {capabilitiesLoaded && !canManage ? null : (
+          {showCreate ? (
             <Button variant="outline" size="sm" asChild>
               <Link to="/webhooks/new">
                 <Plus /> {t("webhooks.create")}
               </Link>
             </Button>
-          )}
+          ) : null}
         </CardAction>
       </CardHeader>
       <CardContent>

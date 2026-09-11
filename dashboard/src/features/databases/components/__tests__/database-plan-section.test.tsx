@@ -87,11 +87,11 @@ describe("DatabasePlanSection", () => {
     expect(updatePlan).not.toHaveBeenCalled();
   });
 
-  it("does not disable before capabilities are definitive", () => {
+  it("fail-closes plan controls until capabilities are definitive", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ canOperate: false, loading: true, loaded: false }),
     );
     render(<DatabasePlanSection database={DATABASE} onChanged={vi.fn()} />);
-    expect(screen.getByRole("radio", { name: /Starter/ })).toBeEnabled();
+    expect(screen.getByRole("radio", { name: /Starter/ })).toBeDisabled();
   });
 });

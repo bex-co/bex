@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 import { PaymentSetupGate } from "../payment-setup-gate";
 
 const query = vi.hoisted(() => ({
@@ -36,19 +37,7 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: workspace.id }),
 }));
 
-const permissiveCapabilities = {
-  role: "ADMIN",
-  canView: true,
-  canViewLogs: true,
-  canOperate: true,
-  canCreate: true,
-  canViewSensitive: true,
-  canManageKeys: true,
-  canManage: true,
-  canManageBilling: true,
-  loading: false,
-  loaded: true,
-};
+const permissiveCapabilities = mockCapabilities();
 
 function renderGate(initialPath = "/") {
   // The gate reads the browser location (not the memory router's) for `next`,

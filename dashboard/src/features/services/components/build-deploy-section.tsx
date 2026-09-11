@@ -141,11 +141,11 @@ export function BuildDeploySection({
   // Dockerfile path, pre-deploy) is can_create — a contributor is refused on save
   // (docs/ADR024-members.md). Disable those rows with a reason instead (w9/m84);
   // Auto-Deploy stays editable (it is can_operate, contributor-and-up).
-  const { canCreate, canOperate } = useCapabilities();
+  const capabilities = useCapabilities();
+  const { canCreate, canOperate } = capabilities;
   const createDisabled = !canCreate;
-  const createReason = createDisabled
-    ? t("capabilities.reasonCanCreate")
-    : undefined;
+  const createReasonKey = capabilities.reasonKey("can_create");
+  const createReason = createReasonKey ? t(createReasonKey) : undefined;
   const { setRootDir, busy } = useRootDir();
   const { setStartCommand, busy: startCommandBusy } = useStartCommand();
   const { setBuildCommand, busy: buildCommandBusy } = useBuildCommand();
@@ -483,6 +483,7 @@ function BuildFilterEditor({
   const { t } = useTranslations();
   const { setBuildFilter, busy } = useBuildFilter();
   // SetBuildFilter is RelCanOperate, same class as Auto-Deploy.
+  // Caller passes fail-closed canOperate; reason stays role copy when denied.
   const operateReason = canOperate
     ? undefined
     : t("capabilities.reasonCanOperate");
