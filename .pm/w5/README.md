@@ -15,6 +15,14 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m98** — [Live-verification sweep on dev-5](m98/README.md) (9 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 6: the m89 / m88 / m65 / m66 / 053 residuals recorded as "deferred — cluster unavailable"; ranks last (local cluster API refused at filing).
+- [ ] **m97** — [Product adoption v2: creation-surface attribution](m97/README.md) (6 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 5; gate satisfied 2026-09-10 — product-adoption v1 (migrations 0114/0115, recorders, `docs/runbooks/product-analytics.md`) shipped as `a99e13750`, pinned for deploy by `ba00f3c98`; it was never board-tracked (brainstorm proposal 1 not materialized).
+- [ ] **m96** — [Production canary fixture: authorize, first green and red runs, classify](m96/README.md) (8 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 4; ADR088 § canary fixture `_owed_` settings + the `w3/m83` owed runs; the user's materialization is the authorization for the first-party production resources (README § Authorization).
+- [ ] **m95** — [Sandbox provisioning SLI: first-party series, alert, and panel](m95/README.md) (6 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 3; closes the ADR088 coverage-table row "Sandboxes — none (accepted for now), owner: unfiled".
+- [ ] **m94** — [CLI telemetry sender completeness: bex release version, launcher-native commands, exec-based provider launches](m94/README.md) (9 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 2; closes the `w5/m93` coverage boundary (bex release attribution + exec-based `bex code` / `bex glm` events).
+
+**Approved queue (2026-09-10):** m94 → m95 → m96 → m97 (gate satisfied — v1 shipped as `a99e13750`) → m98 (gated on the local cluster). Brainstorm proposal 1 (finish + ship the in-flight Product adoption dashboard) was **not** materialized; its code remains uncommitted in the working tree and is not board-tracked.
+
 - [x] **m93** — [CLI adoption and reliability dashboard at obs.bex.co](done/m93/README.md) (8 tasks) ← user request 2026-09-10; extends m92 telemetry into adoption, retention, command reliability, duration and automation analytics.
 
 **Approved corrective queue (2026-09-08):** m90 → m91. Execute sequentially because both touch the Application Metrics card; m91 has no technical dependency on m90.
@@ -121,9 +129,11 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **055** — [Retire the stale FUTURE-MAYBE entry for datastore lifecycle webhook events](055.md) — sub-hour; `w3/m82` landed 2026-09-08 but `.pm/FUTURE-MAYBE.md` still lists it as deferred ← `/pm-brainstorm for w5` 2026-09-10 proposal 7.
+
 - _(`051.md` **DONE 2026-09-06**, moved to `done/`) — repository, image and branch saves use Source-specific English/Chinese toasts; Root Directory messages and server refusal details preserved. Full dashboard tests and lint pass._
 
-No pending inbox notes remain after 2026-09-06 triage. Six notes were implemented, verified, retired with explicit evidence limits, or promoted to completed m85; four duplicate/deferred audit or decision notes were deleted. Dispositions below distinguish completed implementation from retired scope.
+No pending inbox notes remained after the 2026-09-06 triage until `055` was filed on 2026-09-10. Six notes were implemented, verified, retired with explicit evidence limits, or promoted to completed m85; four duplicate/deferred audit or decision notes were deleted. Dispositions below distinguish completed implementation from retired scope.
 
 - **`done/050.md`** (promoted to **m85**, completed 2026-09-06) — agent-session dispatch is not crash-safe across a bex-api restart: a mid-rollout create can strand a session with `sandbox_id=''` (every mint denied, no failure reason, burns the 30 m turn timeout). Observed live 2026-08-30 (`ags-da9p720k98cs738k20c0`) during the m83 E2E.
 
