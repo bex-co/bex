@@ -201,6 +201,10 @@ func TestWakeRestoresAppServiceAsIngressBackend(t *testing.T) {
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
 	app := hibernatingApp("tea-abc123")
+	// This tests routing transitions, not expiration. RFC3339 truncates the
+	// activity stamp to seconds, so a one-second TTL can expire mid-reconcile.
+	// The initial hour-old stamp still hibernates with this ordinary idle window.
+	app.Spec.IdleTTLSeconds = 300
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
 		WithStatusSubresource(&appv1alpha1.App{}).Build()
 	r := &AppReconciler{
