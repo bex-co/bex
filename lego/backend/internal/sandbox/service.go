@@ -102,6 +102,9 @@ type Service struct {
 	// Ordinary Render
 	// sandboxes retain the m35 compatibility policy when it is nil.
 	SessionEgress SessionEgress
+	// Metrics reports /v1/sandboxes lifecycle outcomes (w5/m95). nil is a
+	// working no-op, so a Service built without a registry needs no guard.
+	Metrics *Metrics
 }
 
 // CreateRequest is the caller's create input. OwnerID binds the workspace (as
@@ -333,6 +336,16 @@ func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 // Create authorizes, resolves the template, and starts a sandbox scoped to the
 // caller's workspace.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error) {
+	started := s.Now()
+	box, err := s.create(ctx, req)
+	// Measured here rather than in createResolved so agent-session sandboxes,
+	// which enter through their own dispatch path, stay out of this surface's
+	// signal (see Metrics).
+	s.Metrics.observeCreate(err, s.Now().Sub(started))
+	return box, err
+}
+
+func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return Sandbox{}, err
@@ -928,7 +941,9 @@ func (s *Service) Resume(ctx context.Context, id string) error {
 	return s.lifecycle(ctx, core.RelCanOperate, id, StatusResuming, s.clientResume)
 }
 func (s *Service) Terminate(ctx context.Context, id string) error {
-	return s.lifecycle(ctx, core.RelCanCreate, id, StatusTerminated, s.clientTerminate)
+	err := s.lifecycle(ctx, core.RelCanCreate, id, StatusTerminated, s.clientTerminate)
+	s.Metrics.observeTerminate(err)
+	return err
 }
 
 func (s *Service) clientSuspend(ctx context.Context, key string, raw osSandbox) error {

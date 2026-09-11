@@ -385,6 +385,12 @@ func main() {
 	// the other registries so ModelAuthFailer on :8091 can observe too (w5/m88).
 	srv.AgentSessionCompleter.Metrics = agentMetrics
 	srv.AgentSessions.Metrics = agentMetrics
+	// The /v1/sandboxes surface reports separately from agent sessions above:
+	// they share a runtime, but only this series answers whether the sandbox API
+	// itself is healthy — the gap ADR088's coverage table left unfiled (w5/m95).
+	if srv.Sandbox != nil {
+		srv.Sandbox.Metrics = sandbox.NewMetrics(metricRegistry)
+	}
 	// codex round-8 #9: the signed git webhook durably claims each processed
 	// delivery body so a captured (body, signature) pair cannot be replayed into
 	// repeated deploys. A configured webhook without this durable store is

@@ -1139,6 +1139,87 @@ tests:
         alertname: AgentSessionProvisionFailing
         exp_alerts: []
 
+  # w5/m95 — the /v1/sandboxes surface, the row ADR088's coverage table left
+  # unfiled. Same three cases as the agent-session sibling above, plus the one
+  # that is specific to this rule: refusals must not move it in either direction.
+  - name: a failing sandbox API pages
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_create_total{outcome="failed",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+      - series: 'bex_sandbox_create_total{outcome="succeeded",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxProvisionFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "50% of /v1/sandboxes creations are failing"
+              description: "More than a quarter of sandbox creations through the public API failed or timed out waiting for the pod to become ready in the last hour, so agents calling /v1/sandboxes cannot get an execution environment. Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_SANDBOX_IMAGE. bex_sandbox_create_total{outcome} separates a capacity timeout from an unexplained failure, and bex_sandbox_create_seconds shows whether creates are merely slow. Agent-session sandboxes report separately (AgentSessionProvisionFailing); both firing points at the shared substrate rather than either API. Runbook: docs/ADR014-sandboxes.md"
+
+  - name: pods timing out waiting for ready page the same way as outright failures
+    interval: 1m
+    input_series:
+      # capacity is a substrate symptom bex attributes to a plan limit, not a
+      # clean refusal, so it belongs in the numerator.
+      - series: 'bex_sandbox_create_total{outcome="capacity",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+      - series: 'bex_sandbox_create_total{outcome="succeeded",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxProvisionFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "50% of /v1/sandboxes creations are failing"
+              description: "More than a quarter of sandbox creations through the public API failed or timed out waiting for the pod to become ready in the last hour, so agents calling /v1/sandboxes cannot get an execution environment. Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_SANDBOX_IMAGE. bex_sandbox_create_total{outcome} separates a capacity timeout from an unexplained failure, and bex_sandbox_create_seconds shows whether creates are merely slow. Agent-session sandboxes report separately (AgentSessionProvisionFailing); both firing points at the shared substrate rather than either API. Runbook: docs/ADR014-sandboxes.md"
+
+  - name: a client spraying invalid sandbox requests neither pages nor hides a fault
+    interval: 1m
+    input_series:
+      # 100x more refusals than attempts. rejected/unavailable are decided before
+      # any runtime call, so they must not enter the ratio on either side --
+      # here they would otherwise dilute a genuinely broken substrate into
+      # silence. Two real attempts, both failed: still 100%, still pages.
+      - series: 'bex_sandbox_create_total{outcome="rejected",job="bex-api",instance="prod-a"}'
+        values: "0+100x200"
+      - series: 'bex_sandbox_create_total{outcome="unavailable",job="bex-api",instance="prod-a"}'
+        values: "0+100x200"
+      - series: 'bex_sandbox_create_total{outcome="failed",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxProvisionFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "100% of /v1/sandboxes creations are failing"
+              description: "More than a quarter of sandbox creations through the public API failed or timed out waiting for the pod to become ready in the last hour, so agents calling /v1/sandboxes cannot get an execution environment. Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_SANDBOX_IMAGE. bex_sandbox_create_total{outcome} separates a capacity timeout from an unexplained failure, and bex_sandbox_create_seconds shows whether creates are merely slow. Agent-session sandboxes report separately (AgentSessionProvisionFailing); both firing points at the shared substrate rather than either API. Runbook: docs/ADR014-sandboxes.md"
+
+  - name: occasional sandbox create failures on a healthy substrate stay silent
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_create_total{outcome="failed",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+      - series: 'bex_sandbox_create_total{outcome="succeeded",job="bex-api",instance="prod-a"}'
+        values: "0+10x200"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxProvisionFailing
+        exp_alerts: []
+
+  - name: a quiet hour with one failed sandbox create stays under the traffic floor
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_create_total{outcome="failed",job="bex-api",instance="prod-a"}'
+        values: "0x40 1x40 2x40 3x100"
+    alert_rule_test:
+      - eval_time: 180m
+        alertname: SandboxProvisionFailing
+        exp_alerts: []
+
   # w3/m84 — bex-api's own origin SLIs. Both rules are per-surface with a traffic
   # floor, so the interesting cases are "a busy surface really is broken" and
   # "a quiet surface's handful of errors must stay silent".
