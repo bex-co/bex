@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m99** — [Restore image-create compatibility and long-name alias admission](m99/README.md) (7 tasks, ~3h 30m) ← continuous CLI QA, 2026-09-09
+
 - [x] **m97** — [Preserve environment-group metadata during concurrent edits](done/m97/README.md) (8 tasks, ~5h 30m) ← approved w4 brainstorm, 2026-09-08; done 2026-09-08 (metadata `PutCAS` for name/scope/links/`updatedAt`; content compensation no longer restores stale meta; delete tombstone fence; `ENV_GROUP_METADATA_CONFLICT`; Core race tests + ADR/drill evidence; live `dev-4` OpenBao drill deferred), moved to `done/m97/`
 - [x] **m98** — [Recover interrupted environment-group saves](done/m98/README.md) (8 tasks, ~6h) ← approved w4 brainstorm, 2026-09-08; done 2026-09-09 (durable op recovery + list/detail `availability` on REST/GraphQL/dashboard; Core race tests; live drill deferred), moved to `done/m98/`
 
