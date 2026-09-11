@@ -60,6 +60,7 @@ func TestPGStoreCLITelemetryInsertAndPurge(t *testing.T) {
 			DurationMs: 7, ExitCode: 0, CompletionKind: "success",
 			CLIVersion: "2.27.0", OS: "linux", Arch: "arm64",
 			OutputFormat: "json", InstallationID: "install-pg",
+			BexVersion:            "0.2.1",
 			LaunchedFullScreenTUI: &tui,
 			IsStdoutTTY:           true,
 			AgentSignals:          "CLAUDECODE", CISignals: "GITHUB_ACTIONS",
@@ -74,16 +75,23 @@ func TestPGStoreCLITelemetryInsertAndPurge(t *testing.T) {
 	var got CLITelemetryEvent
 	if err := pool.QueryRow(ctx, `SELECT id, subject, workspace_id, reported_workspace_id, command,
 		duration_ms, exit_code, completion_kind, cli_version, os, arch, output_format,
-		installation_id, launched_full_screen_tui, is_stdout_tty, agent_signals, ci_signals
+		installation_id, bex_version, launched_full_screen_tui, is_stdout_tty,
+		agent_signals, ci_signals
 		FROM cli_telemetry_events WHERE id = $1`, freshID).Scan(
 		&got.ID, &got.Subject, &got.WorkspaceID, &got.ReportedWorkspaceID, &got.Command,
 		&got.DurationMs, &got.ExitCode, &got.CompletionKind, &got.CLIVersion, &got.OS, &got.Arch,
-		&got.OutputFormat, &got.InstallationID, &got.LaunchedFullScreenTUI, &got.IsStdoutTTY,
+		&got.OutputFormat, &got.InstallationID, &got.BexVersion,
+		&got.LaunchedFullScreenTUI, &got.IsStdoutTTY,
 		&got.AgentSignals, &got.CISignals); err != nil {
 		t.Fatalf("read back: %v", err)
 	}
 	if got.Subject != "user-pg" || got.WorkspaceID != "tea-pg" || got.Command != "services list" {
 		t.Errorf("round trip = %+v", got)
+	}
+	// The two version axes are independent: upstream's pin and bex's own
+	// release must both survive the write (w5/m94).
+	if got.CLIVersion != "2.27.0" || got.BexVersion != "0.2.1" {
+		t.Errorf("versions = upstream %q / bex %q, want 2.27.0 / 0.2.1", got.CLIVersion, got.BexVersion)
 	}
 
 	purged, err := st.PurgeCLITelemetryEvents(ctx, now.AddDate(0, 0, -30))

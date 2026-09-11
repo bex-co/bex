@@ -37,7 +37,10 @@ import (
 // launch resolves the provider key (environment → stored → first-launch
 // capture), then replaces this process with Claude Code pointed at the
 // provider, in an isolated per-provider configuration directory.
-func launch(p Provider, args []string, errOut io.Writer) error {
+// launch resolves the provider and replaces this process with claude.
+// beforeExec runs immediately before that replacement — the last moment any bex
+// code executes for this invocation.
+func launch(p Provider, args []string, errOut io.Writer, beforeExec func()) error {
 	claudePath, err := exec.LookPath("claude")
 	if err != nil {
 		return fmt.Errorf("no `claude` on PATH; install Claude Code with `npm install -g @anthropic-ai/claude-code` or see https://claude.com/claude-code")
@@ -57,7 +60,7 @@ func launch(p Provider, args []string, errOut io.Writer) error {
 	if len(args) > 0 {
 		switch args[0] {
 		case "-h", "--help", "-v", "--version":
-			return execClaude(claudePath, args, launchEnv(os.Environ(), p, configDir, ""))
+			return execClaude(claudePath, args, launchEnv(os.Environ(), p, configDir, ""), beforeExec)
 		}
 	}
 
@@ -73,7 +76,7 @@ func launch(p Provider, args []string, errOut io.Writer) error {
 		}
 	}
 
-	return execClaude(claudePath, args, launchEnv(os.Environ(), p, configDir, key))
+	return execClaude(claudePath, args, launchEnv(os.Environ(), p, configDir, key), beforeExec)
 }
 
 // launchEnv builds the child environment: the provider's Anthropic-compatible
@@ -112,7 +115,8 @@ func launchEnv(environment []string, p Provider, configDir, key string) []string
 	return out
 }
 
-func execClaude(claudePath string, args []string, env []string) error {
+func execClaude(claudePath string, args []string, env []string, beforeExec func()) error {
+	beforeExec()
 	if err := syscall.Exec(claudePath, append([]string{"claude"}, args...), env); err != nil {
 		return fmt.Errorf("exec %s: %w", claudePath, err)
 	}

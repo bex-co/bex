@@ -14,6 +14,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/branding"
 	"github.com/bex-co/bex/lego/cli/internal/bridge"
 	"github.com/bex-co/bex/lego/cli/internal/code"
+	"github.com/bex-co/bex/lego/cli/internal/telemetry"
 	"github.com/bex-co/bex/lego/cli/internal/update"
 	"github.com/bex-co/bex/lego/cli/internal/upgrade"
 	"github.com/render-oss/cli/cmd"
@@ -33,6 +34,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "bex: configure upstream CLI: %v\n", err)
 		os.Exit(1)
 	}
+	// Must follow Apply, which resolves the control-plane host this stamps
+	// against. It covers the detached analytics sender too: that subprocess
+	// re-executes this binary, so it runs main and installs the same wrapper.
+	bridge.InstallVersionHeader(bexVersion)
 	// The Bex-native coding commands (`bex code`, `bex glm`, …) and the
 	// self-update command are additions to the imported command tree; the
 	// upstream commands remain untouched.
@@ -46,7 +51,11 @@ func main() {
 	// render-oss/cli releases (const cfg.RepoURL) and would direct bex users
 	// to Render's upgrade docs.
 	if update.IsRootVersionRequest(os.Args[1:], cmd.RootCmd.PersistentFlags()) {
+		startedAt := time.Now()
 		printVersion(os.Stdout)
+		// This path exits without reaching cmd.Execute(), so upstream's
+		// post-run analytics hook never sees it.
+		telemetry.EmitVersion(cmd.RootCmd.CommandPath(), startedAt, os.Stderr)
 		os.Exit(0)
 	}
 

@@ -16,6 +16,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/bex-co/bex/lego/cli/internal/bridge"
 )
 
 var bexBinary string
@@ -473,12 +475,18 @@ func buildBex() string {
 // telemetryStub records POST /cli-telemetry-events bodies while serving the
 // minimal workspace list the CLI needs to complete a command.
 type telemetryStub struct {
-	mu     sync.Mutex
-	bodies []string
+	mu sync.Mutex
+	// headers records the release header seen on every request, telemetry or
+	// not, so a test can prove the stamp reaches both request classes.
+	headers []string
+	bodies  []string
 }
 
 func (s *telemetryStub) handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.mu.Lock()
+		s.headers = append(s.headers, r.URL.Path+" "+r.Header.Get(bridge.VersionHeader))
+		s.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v1/owners":
@@ -500,20 +508,6 @@ func (s *telemetryStub) count() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.bodies)
-}
-
-func (s *telemetryStub) first(t *testing.T) map[string]any {
-	t.Helper()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(s.bodies) == 0 {
-		t.Fatal("no telemetry event captured")
-	}
-	var decoded map[string]any
-	if err := json.Unmarshal([]byte(s.bodies[0]), &decoded); err != nil {
-		t.Fatalf("decode telemetry body: %v", err)
-	}
-	return decoded
 }
 
 // seedNoticeMarker pre-creates the upstream one-time-notice marker under the
@@ -538,25 +532,13 @@ func TestBexEmitsTelemetryToBexAPI(t *testing.T) {
 	home := t.TempDir()
 	seedNoticeMarker(t, home)
 
-	// TestMain disables telemetry for the harness; blank counts as unset in
-	// the bridge, so this explicit empty value re-enables it for this child
-	// (duplicate env keys resolve to the last value).
 	command := exec.Command(buildBex(), "workspaces", "-o", "json")
-	command.Env = append(withoutRenderEnv(os.Environ()),
-		"HOME="+home,
-		"BEX_HOST="+api.URL+"/v1/",
-		"BEX_ACCESS_TOKEN=test-access-token",
-		"BEX_CLI_DISABLE_ANALYTICS=",
-	)
+	command.Env = telemetryEnv(t, home, api.URL)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("bex workspaces: %v\n%s", err, output)
 	}
 
-	deadline := time.Now().Add(20 * time.Second)
-	for stub.count() == 0 && time.Now().Before(deadline) {
-		time.Sleep(200 * time.Millisecond)
-	}
-	event := stub.first(t)
+	event := awaitEvents(t, stub, 1)[0]
 	// Upstream reports the full command path including the binary name —
 	// which the branding overlay renamed, so a bex binary reports "bex …".
 	if event["command"] != "bex workspaces" {
@@ -581,18 +563,233 @@ func TestBexOptOutSuppressesTelemetry(t *testing.T) {
 	home := t.TempDir()
 	seedNoticeMarker(t, home)
 
-	// Inherits BEX_CLI_DISABLE_ANALYTICS=1 from TestMain: nothing may send.
 	command := exec.Command(buildBex(), "workspaces", "-o", "json")
-	command.Env = append(withoutRenderEnv(os.Environ()),
-		"HOME="+home,
-		"BEX_HOST="+api.URL+"/v1/",
-		"BEX_ACCESS_TOKEN=test-access-token",
-	)
+	command.Env = telemetryEnv(t, home, api.URL, "BEX_CLI_DISABLE_ANALYTICS=1")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("bex workspaces: %v\n%s", err, output)
 	}
 	time.Sleep(3 * time.Second)
 	if got := stub.count(); got != 0 {
 		t.Errorf("telemetry events = %d, want 0 under opt-out", got)
+	}
+}
+
+// stamps returns the recorded "<path> <release header>" lines.
+func (s *telemetryStub) stamps() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.headers...)
+}
+
+// events returns every captured telemetry body, decoded.
+func (s *telemetryStub) events(t *testing.T) []map[string]any {
+	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	decoded := make([]map[string]any, 0, len(s.bodies))
+	for _, body := range s.bodies {
+		var event map[string]any
+		if err := json.Unmarshal([]byte(body), &event); err != nil {
+			t.Fatalf("decode telemetry body: %v", err)
+		}
+		decoded = append(decoded, event)
+	}
+	return decoded
+}
+
+// awaitEvents waits for the detached sender, then holds still long enough that
+// a second (wrongly emitted) event would also have landed — so "exactly one"
+// means one, not one-so-far.
+func awaitEvents(t *testing.T, stub *telemetryStub, want int) []map[string]any {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for stub.count() < want && time.Now().Before(deadline) {
+		time.Sleep(200 * time.Millisecond)
+	}
+	time.Sleep(2 * time.Second)
+	events := stub.events(t)
+	if len(events) != want {
+		t.Fatalf("telemetry events = %d, want %d: %v", len(events), want, events)
+	}
+	return events
+}
+
+// telemetryEnv is the child environment for a launcher run that is allowed to
+// report: BEX_CLI_DISABLE_ANALYTICS="" re-enables sending past TestMain's
+// harness-wide opt-out (blank counts as unset in the bridge).
+func telemetryEnv(t *testing.T, home, apiURL string, extra ...string) []string {
+	t.Helper()
+	return append(append(withoutRenderEnv(os.Environ()),
+		"HOME="+home,
+		"BEX_HOST="+apiURL+"/v1/",
+		"BEX_ACCESS_TOKEN=test-access-token",
+		"BEX_CLI_DISABLE_ANALYTICS=",
+	), extra...)
+}
+
+// stubClaudeOnPath installs a harmless `claude` so a provider launch reaches
+// its exec instead of failing on a missing binary, and returns the PATH entry.
+func stubClaudeOnPath(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	script := "#!/bin/sh\nexit 0\n"
+	if err := os.WriteFile(filepath.Join(dir, "claude"), []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+// TestBexStampsReleaseHeaderOnEveryControlPlaneRequest pins the mechanism the
+// whole release axis rests on (w5/m94): wrapping http.DefaultTransport reaches
+// both the command's own API call and the telemetry POST, which is sent by a
+// detached subprocess that re-executes this binary.
+func TestBexStampsReleaseHeaderOnEveryControlPlaneRequest(t *testing.T) {
+	stub := &telemetryStub{}
+	api := httptest.NewServer(stub.handler())
+	t.Cleanup(api.Close)
+
+	home := t.TempDir()
+	seedNoticeMarker(t, home)
+
+	command := exec.Command(buildBex(), "workspaces", "-o", "json")
+	command.Env = telemetryEnv(t, home, api.URL)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("bex workspaces: %v\n%s", err, output)
+	}
+	awaitEvents(t, stub, 1)
+
+	stamps := stub.stamps()
+	var sawAPI, sawTelemetry bool
+	for _, stamp := range stamps {
+		switch stamp {
+		case "/v1/owners " + testBexVersion:
+			sawAPI = true
+		case "/v1/cli-telemetry-events " + testBexVersion:
+			sawTelemetry = true
+		}
+	}
+	if !sawAPI {
+		t.Errorf("release header missing from the API call; saw %v", stamps)
+	}
+	if !sawTelemetry {
+		t.Errorf("release header missing from the detached telemetry POST; saw %v", stamps)
+	}
+}
+
+// TestBexVersionEmitsExactlyOneVersionEvent covers a path upstream cannot see:
+// the root version answer exits before cmd.Execute(), so nothing else reports
+// it.
+func TestBexVersionEmitsExactlyOneVersionEvent(t *testing.T) {
+	stub := &telemetryStub{}
+	api := httptest.NewServer(stub.handler())
+	t.Cleanup(api.Close)
+
+	home := t.TempDir()
+	seedNoticeMarker(t, home)
+
+	command := exec.Command(buildBex(), "--version")
+	// CI=1 keeps the release-channel update check off the network without
+	// touching the telemetry path.
+	command.Env = telemetryEnv(t, home, api.URL, "CI=1")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("bex --version: %v\n%s", err, output)
+	}
+
+	event := awaitEvents(t, stub, 1)[0]
+	if event["completion_kind"] != "version" {
+		t.Errorf("completion_kind = %v, want version", event["completion_kind"])
+	}
+	if event["exit_code"] != float64(0) {
+		t.Errorf("exit_code = %v, want 0", event["exit_code"])
+	}
+}
+
+// TestBexProviderLaunchEmitsExactlyOneEvent covers the other invisible path: the
+// launcher replaces its own process, so upstream's post-run hook never fires.
+func TestBexProviderLaunchEmitsExactlyOneEvent(t *testing.T) {
+	stub := &telemetryStub{}
+	api := httptest.NewServer(stub.handler())
+	t.Cleanup(api.Close)
+
+	home := t.TempDir()
+	seedNoticeMarker(t, home)
+
+	command := exec.Command(buildBex(), "glm")
+	command.Env = telemetryEnv(t, home, api.URL,
+		"PATH="+stubClaudeOnPath(t)+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"ZAI_API_KEY=test-provider-key")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("bex glm: %v\n%s", err, output)
+	}
+
+	event := awaitEvents(t, stub, 1)[0]
+	if event["command"] != "bex glm" {
+		t.Errorf("command = %v, want bex glm", event["command"])
+	}
+	// Only the matched command names may travel; the launched agent's
+	// arguments, prompts and paths never do.
+	if path, _ := event["command"].(string); strings.ContainsAny(path, "/-") {
+		t.Errorf("command %q looks like it carries an argument", path)
+	}
+}
+
+// TestBexFailedLaunchIsReportedOnceByUpstream is the no-double-count half. With
+// no claude to exec, the process is never replaced, so Cobra finishes normally
+// and upstream's hook reports it — the launcher must not add a second event.
+func TestBexFailedLaunchIsReportedOnceByUpstream(t *testing.T) {
+	stub := &telemetryStub{}
+	api := httptest.NewServer(stub.handler())
+	t.Cleanup(api.Close)
+
+	home := t.TempDir()
+	seedNoticeMarker(t, home)
+
+	command := exec.Command(buildBex(), "glm")
+	command.Env = telemetryEnv(t, home, api.URL, "PATH="+t.TempDir())
+	if output, err := command.CombinedOutput(); err == nil {
+		t.Fatalf("bex glm succeeded with no claude on PATH:\n%s", output)
+	}
+
+	event := awaitEvents(t, stub, 1)[0]
+	if event["command"] != "bex glm" {
+		t.Errorf("command = %v, want bex glm", event["command"])
+	}
+	if event["completion_kind"] != "execution_error" {
+		t.Errorf("completion_kind = %v, want execution_error", event["completion_kind"])
+	}
+}
+
+// TestBexOptOutSuppressesLauncherNativeTelemetry proves the new emitters are
+// gated by the same consent the imported commands obey — they delegate to
+// upstream's sender rather than reimplementing the policy.
+func TestBexOptOutSuppressesLauncherNativeTelemetry(t *testing.T) {
+	for _, optOut := range []string{"BEX_CLI_DISABLE_ANALYTICS=1", "DO_NOT_TRACK=1", "RENDER_CLI_DISABLE_ANALYTICS=1"} {
+		t.Run(strings.SplitN(optOut, "=", 2)[0], func(t *testing.T) {
+			stub := &telemetryStub{}
+			api := httptest.NewServer(stub.handler())
+			t.Cleanup(api.Close)
+
+			home := t.TempDir()
+			seedNoticeMarker(t, home)
+
+			version := exec.Command(buildBex(), "--version")
+			version.Env = telemetryEnv(t, home, api.URL, "CI=1", optOut)
+			if output, err := version.CombinedOutput(); err != nil {
+				t.Fatalf("bex --version: %v\n%s", err, output)
+			}
+
+			launch := exec.Command(buildBex(), "glm")
+			launch.Env = telemetryEnv(t, home, api.URL,
+				"PATH="+stubClaudeOnPath(t)+string(os.PathListSeparator)+os.Getenv("PATH"),
+				"ZAI_API_KEY=test-provider-key", optOut)
+			if output, err := launch.CombinedOutput(); err != nil {
+				t.Fatalf("bex glm: %v\n%s", err, output)
+			}
+
+			time.Sleep(3 * time.Second)
+			if got := stub.count(); got != 0 {
+				t.Errorf("telemetry events = %d, want 0 under %s", got, optOut)
+			}
+		})
 	}
 }

@@ -125,3 +125,56 @@ func TestRESTStoreOffIs503(t *testing.T) {
 		t.Errorf("store off => 503, got %d: %s", rec.Code, rec.Body)
 	}
 }
+
+// TestRESTStoresBexVersionFromHeader pins the w5/m94 attribution axis: the
+// launcher announces its own release in a header rather than the body, because
+// the body is Render's input schema and must stay diffable field-for-field.
+func TestRESTStoresBexVersionFromHeader(t *testing.T) {
+	_, st, mux := testMux()
+	req := httptest.NewRequest("POST", "/v1/cli-telemetry-events", strings.NewReader(upstreamSampleBody))
+	req.Header.Set(BexVersionHeader, "0.2.1")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("ingest => 202, got %d: %s", rec.Code, rec.Body)
+	}
+	if len(st.rows) != 1 {
+		t.Fatalf("stored rows = %+v", st.rows)
+	}
+	if got := st.rows[0].BexVersion; got != "0.2.1" {
+		t.Errorf("BexVersion = %q, want the header value", got)
+	}
+	// The upstream pin must remain its own axis, not be overwritten.
+	if got := st.rows[0].CLIVersion; got != "2.27.0" {
+		t.Errorf("CLIVersion = %q, want the body's upstream version", got)
+	}
+}
+
+// TestRESTHeaderlessClientStillIngests is the compatibility half: an unmodified
+// upstream `render` binary pointed at bex sends no such header, and a pre-m94
+// bex build sends none either. Both must be accepted and recorded as unknown,
+// never rejected.
+func TestRESTHeaderlessClientStillIngests(t *testing.T) {
+	_, st, mux := testMux()
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/cli-telemetry-events", strings.NewReader(upstreamSampleBody)))
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("headerless ingest => 202, got %d: %s", rec.Code, rec.Body)
+	}
+	if got := st.rows[0].BexVersion; got != "" {
+		t.Errorf("BexVersion = %q, want empty for a client that sent no header", got)
+	}
+}
+
+// TestBexVersionHeaderNameIsPinned is half of a cross-module drift guard. The
+// bex CLI declares this same header name independently (lego/cli imports no
+// sibling module by design), so nothing the compiler sees connects them. Both
+// sides pin the literal in their own test: rename one and its test fails,
+// which is the prompt to rename the other. Without this pair a rename would
+// silently stop attributing any release.
+func TestBexVersionHeaderNameIsPinned(t *testing.T) {
+	if BexVersionHeader != "X-Bex-CLI-Version" {
+		t.Fatalf("BexVersionHeader = %q; the bex CLI sends X-Bex-CLI-Version "+
+			"(lego/cli/internal/bridge). Change both sides or neither.", BexVersionHeader)
+	}
+}

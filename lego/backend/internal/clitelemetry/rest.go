@@ -72,6 +72,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Arch:                  req.Arch,
 			OutputFormat:          req.OutputFormat,
 			InstallationID:        req.InstallationID,
+			BexVersion:            r.Header.Get(BexVersionHeader),
 			LaunchedFullScreenTUI: req.LaunchedFullScreenTUI,
 			IsStdinTTY:            req.IsStdinTTY,
 			IsStdoutTTY:           req.IsStdoutTTY,

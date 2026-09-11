@@ -21,8 +21,11 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/bex-co/bex/lego/cli/internal/telemetry"
 )
 
 // Commands returns every Bex-native coding command: one launcher per catalog
@@ -50,7 +53,10 @@ func newLaunchCmd(p Provider) *cobra.Command {
 		DisableFlagParsing: true,
 		SilenceUsage:       true,
 		RunE: func(c *cobra.Command, args []string) error {
-			return launch(p, args, c.ErrOrStderr())
+			startedAt := time.Now()
+			return launch(p, args, c.ErrOrStderr(), func() {
+				telemetry.EmitLaunch(c.CommandPath(), startedAt, c.ErrOrStderr())
+			})
 		},
 	}
 }

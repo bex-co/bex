@@ -67,7 +67,24 @@ const (
 	maxTelemetryCommandBytes = 512
 	maxTelemetryFieldBytes   = 256
 	maxTelemetrySignals      = 32
+	// A release tag is short by construction (`0.2.1`, `1.2.3-rc.1+build.4`);
+	// anything longer is not one of ours, so the value is dropped rather than
+	// truncated into a plausible-looking release that never existed.
+	maxTelemetryVersionBytes = 64
 )
+
+// BexVersionHeader carries the bex launcher's own release identity out of band.
+// It is a header rather than a body field because the body is Render's
+// CliTelemetryEventPOSTInput and must stay diffable against it field-for-field;
+// and it cannot ride User-Agent, which upstream owns that string and it must keep naming the
+// pinned render-oss/cli release the compatibility ledger tracks (w5/m94). The
+// launcher sets it in lego/cli/internal/bridge. The two constants are
+// deliberately not shared — `cli` imports no sibling module by design — so the
+// compiler cannot catch a rename. Each side instead pins the literal in its own
+// test (TestBexVersionHeaderNameIsPinned here, and its twin in lego/cli), which
+// is what makes a one-sided rename fail loudly instead of silently dropping the
+// release axis.
+const BexVersionHeader = "X-Bex-CLI-Version"
 
 // EventInput is the validated ingest shape. JSON names mirror Render's
 // CliTelemetryEventPOSTInput one-for-one (see rest.go); unknown future
@@ -83,6 +100,7 @@ type EventInput struct {
 	Arch                  string
 	OutputFormat          string
 	InstallationID        string
+	BexVersion            string
 	LaunchedFullScreenTUI *bool
 	IsStdinTTY            bool
 	IsStdoutTTY           bool
@@ -137,6 +155,7 @@ func (s *Service) Record(ctx context.Context, in EventInput) (string, error) {
 		Arch:                  truncate(in.Arch, maxTelemetryFieldBytes),
 		OutputFormat:          truncate(in.OutputFormat, maxTelemetryFieldBytes),
 		InstallationID:        truncate(in.InstallationID, maxTelemetryFieldBytes),
+		BexVersion:            sanitizeVersion(in.BexVersion),
 		LaunchedFullScreenTUI: in.LaunchedFullScreenTUI,
 		IsStdinTTY:            in.IsStdinTTY,
 		IsStdoutTTY:           in.IsStdoutTTY,
@@ -156,6 +175,36 @@ func (s *Service) Record(ctx context.Context, in EventInput) (string, error) {
 		s.Metrics.ObserveTelemetry(ev.Command, ev.CompletionKind, ev.CLIVersion, ev.OutputFormat)
 	}
 	return eventID, nil
+}
+
+// sanitizeVersion accepts only a release-tag shape and otherwise stores
+// nothing: rejecting the whole value, rather than stripping bad characters out
+// of it, keeps a mangled input from masquerading as a real release on a
+// low-cardinality dashboard axis.
+//
+// It deliberately guards only BexVersion, not the CLIVersion beside it. That
+// asymmetry is the conservative choice, not an oversight: every body field is
+// truncated-never-rejected by w5/m92's explicit "ingest stays liberal" rule, and
+// tightening a shipped field would silently drop data that is stored today.
+// BexVersion is new and header-borne, so it can start strict. If the upstream
+// axis ever needs the same treatment, that is a change to m92's rule and needs
+// its own decision.
+func sanitizeVersion(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" || len(v) > maxTelemetryVersionBytes {
+		return ""
+	}
+	for _, r := range v {
+		switch {
+		case r >= '0' && r <= '9',
+			r >= 'a' && r <= 'z',
+			r >= 'A' && r <= 'Z',
+			r == '.', r == '-', r == '+', r == '_':
+		default:
+			return ""
+		}
+	}
+	return v
 }
 
 func truncate(v string, max int) string {
