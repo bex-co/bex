@@ -8,6 +8,8 @@ The [CLI usage dashboard](https://obs.bex.co/d/bex-cli-usage/cli-usage) is the i
 
 The role has no superuser, role/database creation, replication or RLS-bypass privilege. Its connection limit is six, default transactions are read-only, and statement/idle-transaction timeouts are ten seconds. Grafana pools at most four connections, retains at most two idle connections, and verifies the CNPG server hostname and CA. Product counts come from SQL; Prometheus stores no user, workspace or installation labels.
 
+Grafana uses the Postgres plugin bundled in its pinned image. `plugins.preinstall_disabled=true` disables the automatic installer: otherwise Grafana 13 stops the bundled plugin before trying to replace its files, then fails on the deliberately read-only root filesystem, leaving `plugin.notRegistered`. See [the pinned Grafana configuration implementation](https://github.com/grafana/grafana/blob/v13.2.1/pkg/setting/setting_plugins.go).
+
 SQL uses the existing receipt-time index and the retained event window. Distinct first-seen/cohort queries may scan all retained rows; the timeouts bound their database occupancy. At materially larger event volume, measure query plans before adding indexes or daily aggregates. Do not silently replace distinct counts with summed daily counts.
 
 ## Bootstrap and recovery

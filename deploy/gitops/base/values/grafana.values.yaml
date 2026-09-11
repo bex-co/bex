@@ -49,6 +49,10 @@ extraSecretMounts:
         path: ca.crt
 
 grafana.ini:
+  plugins:
+    # Bundled plugins are part of the pinned image. The background updater
+    # stops them before attempting writes to the read-only image filesystem.
+    preinstall_disabled: true
   analytics:
     check_for_updates: false
     reporting_enabled: false
