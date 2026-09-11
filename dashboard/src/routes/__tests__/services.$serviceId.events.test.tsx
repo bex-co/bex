@@ -31,7 +31,39 @@ const cancelDeploy = vi.fn();
 vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useMutation: vi.fn(),
+  useApolloClient: () => ({
+    query: vi.fn().mockResolvedValue({
+      data: {
+        deployActions: [
+          {
+            action: "cancel_deploy",
+            outcome: "allowed",
+            reason: null,
+            precondition: null,
+          },
+          {
+            action: "rollback",
+            outcome: "allowed",
+            reason: null,
+            precondition: null,
+          },
+        ],
+      },
+    }),
+  }),
 }));
+
+vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
+  const { mockAllowedResourceActions } = await import(
+    "@/test/mocks/resource-actions"
+  );
+  return mockAllowedResourceActions("app");
+});
+
+vi.mock("@/features/workspaces/context/hooks", async () => {
+  const { mockWorkspaceContext } = await import("@/test/mocks/workspace");
+  return mockWorkspaceContext();
+});
 
 function deployEvent(over: Record<string, unknown> = {}) {
   return {

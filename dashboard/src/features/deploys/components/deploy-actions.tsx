@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { useNavigate } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
@@ -16,6 +15,17 @@ import {
   isCancelableDeployStatus,
   isRollbackableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
+import { useBoundActionConfirm } from "@/features/capabilities/hooks/use-bound-action-confirm";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
+import {
+  decisionForSelectedRollback,
+  gateAction,
+  gateReason,
+  resourceDecision,
+  type ResourceActionId,
+} from "@/features/capabilities/lib/resource-actions";
 
 type ConfirmAction = "cancel" | "rollback";
 
@@ -27,9 +37,11 @@ export interface DeployActionsProps {
 }
 
 /**
- * The shared Cancel/Rollback controls used by both the Events list and deploy
- * detail page. Mutation, confirmation, toast, and post-rollback navigation
- * live here so the two surfaces cannot drift in behavior.
+ * Shared Cancel/Rollback controls for Events list and deploy detail.
+ * Status eligibility binds the selected deploy; operation permission and
+ * shared preconditions come from deployActions. Service-wide
+ * no_eligible_rollback_target does not disable an older selected eligible
+ * row (w6/m143/t003).
  */
 export function DeployActions({
   serviceId,
@@ -40,7 +52,10 @@ export function DeployActions({
   const { t } = useTranslations();
   const navigate = useNavigate();
   const base = useServiceBase();
-  const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
+  const { currentWorkspaceId } = useWorkspace();
+  const deployActions = useDeployActions(serviceId);
+  const { pending, openConfirm, clearConfirm, recheckBeforeDispatch } =
+    useBoundActionConfirm({ resourceId: serviceId, deployId });
   const [cancelDeploy, { loading: canceling }] = useMutation(
     CancelDeployDocument,
     { refetchQueries: DEPLOY_REFETCH_QUERIES },
@@ -51,15 +66,63 @@ export function DeployActions({
   );
   const busy = canceling || rollingBack;
 
+  const statusCancel = isCancelableDeployStatus(status);
+  const statusRollback = isRollbackableDeployStatus(status);
+
+  function reasonFor(action: "cancel_deploy" | "rollback"): string | undefined {
+    if (deployActions.status !== "ready") {
+      return gateReason(gateAction(null, deployActions.status), t);
+    }
+    let decision = resourceDecision(
+      deployActions.snapshot,
+      currentWorkspaceId,
+      serviceId,
+      action,
+    );
+    // Exact-target eligibility: do not let the latest-20 summary disable a
+    // selected row that itself is rollbackable by status.
+    if (action === "rollback") {
+      decision = decisionForSelectedRollback(decision);
+    }
+    // Cancel: selected-row status is authoritative for "is this deploy open";
+    // ignore a stale service-wide no_active_deploy when this row is cancelable.
+    if (
+      action === "cancel_deploy" &&
+      decision?.outcome === "allowed" &&
+      decision.precondition === "no_active_deploy" &&
+      statusCancel
+    ) {
+      decision = { ...decision, precondition: "" };
+    }
+    return gateReason(gateAction(decision, "ready"), t);
+  }
+
+  const cancelReason = statusCancel ? reasonFor("cancel_deploy") : undefined;
+  const rollbackReason = statusRollback ? reasonFor("rollback") : undefined;
+
+  const confirm: ConfirmAction | null =
+    pending?.action === "cancel_deploy"
+      ? "cancel"
+      : pending?.action === "rollback"
+        ? "rollback"
+        : null;
+
   async function handleConfirm() {
-    if (!confirm) return;
+    const { ok, binding } = await recheckBeforeDispatch();
+    if (!ok || !binding) return;
+    const action = binding.action;
     try {
-      if (confirm === "cancel") {
-        await cancelDeploy({ variables: { serviceId, deployId } });
+      if (action === "cancel_deploy") {
+        await cancelDeploy({
+          variables: { serviceId, deployId: binding.deployId ?? deployId },
+        });
         toast.success(t("services.cancelDeploySuccess"));
-      } else {
+      } else if (action === "rollback") {
         const { data } = await rollbackService({
-          variables: { serviceId, deployId },
+          variables: {
+            serviceId,
+            deployId: binding.deployId ?? deployId,
+          },
         });
         const rollbackId = data?.rollbackService?.id;
         if (!rollbackId)
@@ -73,49 +136,59 @@ export function DeployActions({
       onChanged?.();
     } catch {
       toast.error(
-        confirm === "cancel"
+        action === "cancel_deploy"
           ? t("services.cancelDeployError")
           : t("services.rollbackError"),
       );
     } finally {
-      setConfirm(null);
+      clearConfirm();
     }
   }
 
-  const canCancel = isCancelableDeployStatus(status);
-  const canRollback = isRollbackableDeployStatus(status);
-  if (!canCancel && !canRollback) return null;
+  function open(action: ConfirmAction) {
+    const id: ResourceActionId =
+      action === "cancel" ? "cancel_deploy" : "rollback";
+    const reason = action === "cancel" ? cancelReason : rollbackReason;
+    if (reason) return;
+    openConfirm(id);
+  }
+
+  if (!statusCancel && !statusRollback) return null;
 
   return (
     <>
       <div className="flex shrink-0 gap-2">
-        {canCancel ? (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy}
-            onClick={() => setConfirm("cancel")}
-          >
-            {t("services.eventsCancelDeploy")}
-          </Button>
+        {statusCancel ? (
+          <PermissionTooltip reason={cancelReason}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || !!cancelReason}
+              onClick={() => open("cancel")}
+            >
+              {t("services.eventsCancelDeploy")}
+            </Button>
+          </PermissionTooltip>
         ) : null}
-        {canRollback ? (
-          <Button
-            size="sm"
-            variant="link"
-            disabled={busy}
-            onClick={() => setConfirm("rollback")}
-            className="h-8 gap-1.5 px-0 text-muted-foreground hover:text-foreground"
-          >
-            <RotateCcw />
-            {t("services.eventsRollback")}
-          </Button>
+        {statusRollback ? (
+          <PermissionTooltip reason={rollbackReason}>
+            <Button
+              size="sm"
+              variant="link"
+              disabled={busy || !!rollbackReason}
+              onClick={() => open("rollback")}
+              className="h-8 gap-1.5 px-0 text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw />
+              {t("services.eventsRollback")}
+            </Button>
+          </PermissionTooltip>
         ) : null}
       </div>
 
       <ConfirmDialog
         open={confirm !== null}
-        onOpenChange={(open) => !open && setConfirm(null)}
+        onOpenChange={(openState) => !openState && clearConfirm()}
         title={
           confirm === "cancel"
             ? t("services.eventsCancelConfirmTitle")

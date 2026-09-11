@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useApolloClient } from "@apollo/client/react";
 import { KeyValueConnectionInfoDocument } from "@/graphql/definitions";
 import type { KeyValueConnectionInfoView } from "@/features/keyvalue/types";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 
 export interface UseConnectionInfoResult {
   /** The revealed connection info, or null until the user asks for it. */
@@ -18,18 +19,29 @@ export interface UseConnectionInfoResult {
  * On-demand fetch of a Key Value store's connection info (Render's Connections
  * panel). Deliberately NOT a `useQuery` — nothing fires on mount, so the
  * password-bearing URI never lands in the Apollo cache or on the wire until the
- * user clicks Reveal. `network-only` so a reveal is always fresh; `errorPolicy:
- * none` so an authz/not-provisioned error surfaces to the panel
- * (docs/ADR021-keyvalue-management.md: connection-info 404s until the Secret exists).
- * Mirrors databases' `useConnectionInfo`.
+ * user clicks Reveal. Confirmed access loss clears the reveal (w6/m144).
  */
 export function useConnectionInfo(id: string): UseConnectionInfoResult {
   const client = useApolloClient();
+  const { generation, canViewSensitive } = useCapabilities();
   const [info, setInfo] = useState<KeyValueConnectionInfoView | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | undefined>();
 
+  useEffect(() => {
+    setInfo(null);
+    setError(undefined);
+  }, [generation, id]);
+
+  useEffect(() => {
+    if (!canViewSensitive) {
+      setInfo(null);
+      setError(undefined);
+    }
+  }, [canViewSensitive]);
+
   const reveal = useCallback(async () => {
+    if (!canViewSensitive) return;
     setLoading(true);
     setError(undefined);
     try {
@@ -50,7 +62,7 @@ export function useConnectionInfo(id: string): UseConnectionInfoResult {
     } finally {
       setLoading(false);
     }
-  }, [client, id]);
+  }, [client, id, canViewSensitive]);
 
   const hide = useCallback(() => {
     setInfo(null);

@@ -1,6 +1,7 @@
 import {
   getCookie,
   setCookie,
+  removeCookie,
 } from "@/common/hooks/use-cookie-storage-state/cookie";
 
 export const WORKSPACE_SELECTION_KEY = "bex.selectedWorkspaceId";
@@ -16,4 +17,9 @@ export function persistWorkspaceId(id: string): void {
     sameSite: "lax",
     path: "/",
   });
+}
+
+/** Clears the cookie after confirmed last-workspace removal (w6/m144). */
+export function clearPersistedWorkspaceId(): void {
+  removeCookie(WORKSPACE_SELECTION_KEY, { path: "/" });
 }

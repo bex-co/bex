@@ -35,10 +35,10 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
   // Revealing the URIs is can_view_sensitive — the password lives inside the
   // `redis://` string, so the whole reveal is gated exactly like the databases
   // twin's connection strings + password (w9/m84).
-  const { canViewSensitive } = useCapabilities();
-  const revealReason = canViewSensitive
-    ? undefined
-    : t("capabilities.reasonCanViewSensitive");
+  const capabilities = useCapabilities();
+  const { canViewSensitive } = capabilities;
+  const revealReasonKey = capabilities.reasonKey("can_view_sensitive");
+  const revealReason = revealReasonKey ? t(revealReasonKey) : undefined;
 
   return (
     <Card>

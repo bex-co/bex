@@ -1,0 +1,21 @@
+# Per-resource action projections (ADR087 / w6/m143). Minimum fields for
+# target/action permission, blocking precondition, and confirmation — no
+# configuration, secrets, or scopes. Acting workspace comes from request
+# context (same convention as other dashboard verbs).
+query ServerActions($id: String!) {
+  serverActions(id: $id) {
+    action
+    outcome
+    reason
+    precondition
+  }
+}
+
+query DeployActions($serviceId: String!) {
+  deployActions(serviceId: $serviceId) {
+    action
+    outcome
+    reason
+    precondition
+  }
+}

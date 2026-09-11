@@ -82,7 +82,8 @@ export function DiskSection({
   const { t } = useTranslations();
   const { disk, loading, error, refetch } = useDisk(serviceId);
   const mutations = useDiskMutations(serviceId, refetch);
-  const { canCreate } = useCapabilities();
+  const capabilities = useCapabilities();
+  const { canCreate } = capabilities;
   // Two independent refusals the API makes, both surfaced up front rather than
   // as a failed submit: a disk needs a long-running instance to mount on (so
   // no cron job or static site) and a paid instance type. Type is checked

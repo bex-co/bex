@@ -27,11 +27,11 @@ export function DatabasePlanSection({
   onChanged,
 }: DatabasePlanSectionProps) {
   const { t } = useTranslations();
-  const { canOperate, loaded: capabilitiesLoaded } = useCapabilities();
-  const operateDenied = capabilitiesLoaded && !canOperate;
-  const operateReason = operateDenied
-    ? t("capabilities.reasonCanOperate")
-    : undefined;
+  const capabilities = useCapabilities();
+  const { canOperate } = capabilities;
+  const operateDenied = !canOperate;
+  const operateReasonKey = capabilities.reasonKey("can_operate");
+  const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
   const { instanceTypes, loading } = useDatabaseInstanceTypes();
   const { updatePlan, busy } = useUpdateDatabasePlan();
   const [selected, setSelected] = useState<string | null>(database.plan);

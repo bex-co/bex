@@ -25,7 +25,18 @@ Materialized from the mobile source review at `e609e9322` and the user's `$pm` h
 
 Existing physical-device qualification remains in `w11/002` and `w11/m5`/`m6`/`m8`; live transcript attach remains in `w11/m7`.
 
+## Approved queue (priority order, 2026-09-10)
+
+Materialized from the three proposals in `$pm-brainstorm for w6`, approved by the user's `$pm for them all for w6`. These are scheduled items for worker6, not a workstream specialty.
+
+1. **[m143 — Make dashboard service and deploy actions permission-aware](done/m143/README.md)** — **done** — ~5h, 8 tasks. Next actionable task: `w6/m143/t001`; its m136 prerequisite is done.
+2. **[m144 — Refresh dashboard permissions after workspace access changes](done/m144/README.md)** — **done** — ~5h, 8 tasks. Its final implementation task depends on `w6/m143/t008`; the earlier contract/refresh work can proceed independently. This approval supersedes the older permissive-while-unknown dashboard UI policy for affected actions and sensitive reads.
+3. **[073 — Refresh request-validator OpenAPI pin to include outbound-ips](073.md)** — ~45–60m, existing inbox note; no dependency on m143/m144. Retained as a note under the sub-hour sizing rule.
+
 ## Milestones
+
+- [x] **m143** — [Make dashboard service and deploy actions permission-aware](done/m143/README.md) (8 tasks; ~5h) ← approved brainstorm proposal 1, 2026-09-10
+- [x] **m144** — [Refresh dashboard permissions after workspace access changes](done/m144/README.md) (8 tasks; ~5h) ← approved brainstorm proposal 2, 2026-09-10; final integration depends on m143 closeout
 
 - [x] **m142** — ADR018 upstream drift re-baseline round 4 (6 tasks) ← `/pm-brainstorm for w6` 2026-09-09 #3 (proposal label m144; next free id)
 - [x] **m139** — Complete mobile access-change recovery (8 tasks) ← mobile review proposal 2, user handoff to w6 on 2026-09-07; targeted freshness/recovery/invalidation follow-up to m138
@@ -168,12 +179,13 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **071** — [Fix mobile GraphQL token-refresh recovery](071.md) (45m) ← mobile review proposal 1; successful refresh currently retries the expired bearer and logs out
-- [ ] **072** — [Refresh mobile session details opened directly](072.md) (45m; depends on `w6/m139/t002` + `t003`) ← mobile review proposal 5; a direct entry cannot depend on the Sessions list's polling
+- [ ] **073** — [Refresh request-validator OpenAPI pin to include outbound-ips](073.md) (~45–60m) ← w6/m142 residual; approved brainstorm proposal 3, 2026-09-10
+- [x] **071** — [Fix mobile GraphQL token-refresh recovery](done/071.md) — done 2026-09-09; see the mobile review handoff above.
+- [x] **072** — [Refresh mobile session details opened directly](done/072.md) — done 2026-09-09; see the mobile review handoff above.
 
-_(`070.md` promoted to [m141](m141/README.md) on 2026-09-07; original source archived at [done/070.md](done/070.md). The capability-consumption work remains pending in the milestone.)_
+_(`070.md` promoted to [m141](done/m141/README.md) on 2026-09-07; original source archived at [done/070.md](done/070.md). The capability-consumption milestone is done.)_
 
-- `026.md` — decide: should Suspend require typed confirmation, matching Delete? (product decision, same QA pass) — premise re-verified at HEAD and re-triaged 2026-09-03 (recommendation recorded in the note); awaiting the product call
+- [026 — Suspend confirmation product decision](done/026.md) — closed; retained as a historical source, not an open inbox item.
 
 > `068.md` promoted to **[`w8/m34`](../w8/m34/README.md)** 2026-09-07 after the product call ratified option 1 (rename to Render's `disk_created`/`disk_deleted` spellings; `/pm-brainstorm for w8` #2) — moved to `done/068.md`.
 

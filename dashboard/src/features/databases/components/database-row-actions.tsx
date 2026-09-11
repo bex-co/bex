@@ -57,18 +57,19 @@ export function DatabaseRowActionsWithCapabilities({
   lifecycle,
   capabilities,
 }: DatabaseRowActionsProps & {
-  capabilities: Pick<Capabilities, "canCreate" | "canOperate" | "loaded">;
+  capabilities: Pick<
+    Capabilities,
+    "canCreate" | "canOperate" | "reasonKey"
+  >;
 }) {
   const { t } = useTranslations();
-  const { canCreate, canOperate, loaded: capabilitiesLoaded } = capabilities;
-  const createDenied = capabilitiesLoaded && !canCreate;
-  const operateDenied = capabilitiesLoaded && !canOperate;
-  const createReason = createDenied
-    ? t("capabilities.reasonCanCreate")
-    : undefined;
-  const operateReason = operateDenied
-    ? t("capabilities.reasonCanOperate")
-    : undefined;
+  const { canCreate, canOperate } = capabilities;
+  const createDenied = !canCreate;
+  const operateDenied = !canOperate;
+  const createReasonKey = capabilities.reasonKey("can_create");
+  const operateReasonKey = capabilities.reasonKey("can_operate");
+  const createReason = createReasonKey ? t(createReasonKey) : undefined;
+  const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
   const { remove, deleting } = useDeleteDatabase();
   const [confirmOpen, setConfirmOpen] = useState(false);
   // The disruptive lifecycle verb awaiting confirmation (suspend | restart).

@@ -25,6 +25,44 @@ vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
 
+vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
+  const { mockAllowedResourceActions } = await import(
+    "@/test/mocks/resource-actions"
+  );
+  return mockAllowedResourceActions("app");
+});
+
+vi.mock("@/features/workspaces/context/hooks", async () => {
+  const { mockWorkspaceContext } = await import("@/test/mocks/workspace");
+  return mockWorkspaceContext();
+});
+vi.mock("@apollo/client/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@apollo/client/react")>();
+  return {
+    ...actual,
+    useApolloClient: () => ({
+      query: vi.fn().mockResolvedValue({
+        data: {
+          serverActions: [
+            {
+              action: "suspend",
+              outcome: "allowed",
+              reason: null,
+              precondition: null,
+            },
+            {
+              action: "resume",
+              outcome: "allowed",
+              reason: null,
+              precondition: null,
+            },
+          ],
+        },
+      }),
+    }),
+  };
+});
+
 vi.mock("@/features/services/hooks/use-custom-domains", () => ({
   useCustomDomains: () => ({
     domains: [],
