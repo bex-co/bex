@@ -1,6 +1,6 @@
 # w5 · m96 — Production canary fixture: authorize, first green and red runs, classify
 
-**Worker:** worker5 **Goal:** the first-party `bex-canary` workspace, its free hello-go web service, and its scoped API key exist in production and are wired into the repository as the `BEX_CANARY_*` secret and variables, so the four credentialed synthetic probes shipped by `w3/m83` stop soft-skipping and each has a recorded green run and a recorded red-path proof. **Status:** BLOCKED on t001 — provisioning the production canary fixture is an authorized human action per ADR088 (see § Authorization); t002 onward is unblocked once the ids and key exist
+**Worker:** worker5 **Goal:** the first-party `bex-canary` workspace, its free hello-go web service, and its scoped API key exist in production and are wired into the repository as the `BEX_CANARY_*` secret and variables, so the four credentialed synthetic probes shipped by `w3/m83` stop soft-skipping and each has a recorded green run and a recorded red-path proof. **Status:** BLOCKED on t001 — attempted 2026-09-10 with authorization and refused by the production payment gate (PAYMENT_REQUIRED on the free plan; `BEX_REQUIRE_PAYMENT_METHOD=all`). Nothing was created. Needs a browser Stripe card step or a policy decision — see § t001 attempted
 
 ## Tasks (in order)
 
@@ -33,3 +33,28 @@
 - **Why now:** the probes shipped 2026-09-09 and have skipped on every schedule since; every skipped run is the exact failure the milestone was built to end.
 - **Render parity omitted:** pure platform operations; no REST/GraphQL/MCP/dashboard change.
 - **Anti-goals:** `#CI-RUNNERS` / `#RUNNER-HOSTS` respected — credentialed jobs stay on the existing `bex-production` pool; nothing changes on the runner hosts.
+
+## t001 attempted 2026-09-10 — blocked by the production payment gate
+
+Authorization was granted in-session (`/loop-worker w5 m96 m97 m98`, naming m96 after the blocker was raised), so t001 was attempted under the operator's own production credentials. It is blocked by something authorization cannot clear.
+
+**What happened.** `createWorkspace(name: "bex-canary", plan: "hobby")` against `https://api.bex.co/graphql` was refused server-side:
+
+```
+PAYMENT_REQUIRED — Payment information is required for paid plans.
+Call create_billing_checkout_session to add a payment method, then retry.
+```
+
+**Nothing was created.** The workspace list is unchanged (`bex`, `tian-personal`); no `bex-canary`, no Stripe Customer, no partial attempt. The refusal happens before any write.
+
+**Why it blocks.** The message says "paid plans", but the request was for `hobby` — the free plan. Production therefore runs `BEX_REQUIRE_PAYMENT_METHOD` in **`all`** mode, which per [the backend env reference](../../../lego/backend/CLAUDE.md) "includes free + agent-sessions". So the canary fixture cannot be created without first binding a payment method through Stripe Checkout — an interactive browser flow that an agent cannot and should not complete. This is an access limit, not a permission one.
+
+**This also corrects an assumption in ADR088.** Its "owed operator steps" read as though the operator can simply create the workspace and deploy the service. Since `w4/m90` made a payment method mandatory for workspace creation under the `all` policy, even the deliberately-free canary now has to pass that gate. Whoever schedules this work next should know that before starting.
+
+**What would clear it** (a decision for the user, not a default an agent should pick):
+
+1. **Create `bex-canary` in the dashboard**, completing the Stripe card step in a browser, then hand over the four ids. t002 onward is then ordinary work and needs nothing further.
+2. **Temporarily set the policy to `paid`** so free-plan creation skips the gate, create the canary, restore the setting. Cheapest, but it changes a production billing control for the duration and wants a deliberate choice.
+3. **Reuse an existing first-party workspace** as the canary. Avoids the gate entirely but abandons ADR088's isolated-fixture intent and its `billing_excluded` premise; recorded for completeness, not recommended.
+
+**Verified reachable, so only the gate is missing:** the production control plane answers `kubectl` (needed for the `billing_excluded` flag, which GraphQL does not expose), the GraphQL surface authenticates with the operator's CLI token, and the GitHub token can write repository variables and secrets. Every step after workspace creation is unblocked.
