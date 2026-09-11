@@ -104,6 +104,74 @@ func errBlueprintSyncBusy(msg string) error {
 	return core.NewConflictError("BLUEPRINT_SYNC_BUSY", msg, nil)
 }
 
+// errBlueprintSourceChanged is the documented 409 when a manual sync's
+// reviewed-source precondition no longer matches the Blueprint's configured
+// repo/path (w8/m41). Callers must refresh the preview and confirm again —
+// the apply never silently follows a moved branch tip.
+func errBlueprintSourceChanged(msg string, params map[string]any) error {
+	return core.NewConflictError("BLUEPRINT_SOURCE_CHANGED", msg, params)
+}
+
+// ReviewedBlueprintSource is the optional manual-sync precondition (w8/m41):
+// when set, sync fetches that immutable commit and refuses repo/path drift
+// instead of re-resolving the branch HEAD. Omit (nil / empty CommitID) to
+// keep today's HEAD-resolve semantics — auto-sync and older clients.
+type ReviewedBlueprintSource struct {
+	Repo     string // optional; CanonicalRepo-must-match the Blueprint row
+	Path     string // required with CommitID; must match the configured path
+	CommitID string // immutable SHA from preview.commitId
+}
+
+// optionalReviewedBlueprintSource builds the pin from adapter fields; nil when
+// every field is empty (omit-precondition / old clients).
+func optionalReviewedBlueprintSource(repo, path, commitID string) *ReviewedBlueprintSource {
+	if commitID == "" && repo == "" && path == "" {
+		return nil
+	}
+	return &ReviewedBlueprintSource{Repo: repo, Path: path, CommitID: commitID}
+}
+
+// matchReviewedBlueprintSource rejects incomplete pins and settings that
+// drifted between preview and confirm. It does not fetch Git.
+func matchReviewedBlueprintSource(b store.Blueprint, reviewed *ReviewedBlueprintSource) error {
+	if reviewed == nil || reviewed.CommitID == "" {
+		return fmt.Errorf("%w: reviewed commitId is required", core.ErrBadRequest)
+	}
+	if !core.ValidCommitSHA(reviewed.CommitID) {
+		return fmt.Errorf("%w: reviewed commitId must be a full git object id", core.ErrBadRequest)
+	}
+	if reviewed.Path == "" {
+		return fmt.Errorf("%w: reviewed path is required with commitId", core.ErrBadRequest)
+	}
+	cleanConfigured, err := approvedBlueprintPath(b.Path)
+	if err != nil {
+		return err
+	}
+	cleanReviewed, err := approvedBlueprintPath(reviewed.Path)
+	if err != nil {
+		return fmt.Errorf("%w: reviewed path must be a clean repository-relative .yaml/.yml path", core.ErrBadRequest)
+	}
+	if cleanReviewed != cleanConfigured {
+		return errBlueprintSourceChanged(
+			"blueprint path no longer matches the reviewed source; refresh the preview and confirm again",
+			map[string]any{
+				"expectedPath":   cleanConfigured,
+				"reviewedPath":   cleanReviewed,
+				"expectedCommit": reviewed.CommitID,
+			})
+	}
+	if reviewed.Repo != "" && core.CanonicalRepo(reviewed.Repo) != core.CanonicalRepo(b.Repo) {
+		return errBlueprintSourceChanged(
+			"blueprint repository no longer matches the reviewed source; refresh the preview and confirm again",
+			map[string]any{
+				"expectedRepo":   b.Repo,
+				"reviewedRepo":   reviewed.Repo,
+				"expectedCommit": reviewed.CommitID,
+			})
+	}
+	return nil
+}
+
 // errBlueprintExecutionLost is the busy conflict for a mid-apply assert that
 // lost authority — actionable: start an explicit new sync; partial work is
 // never replayed automatically.
@@ -660,8 +728,10 @@ func (s *Service) canReadManifest(ctx context.Context) bool {
 	return s.AuthorizeFresh(ctx, core.RelCanViewSensitive) == nil
 }
 
-// SyncBlueprint re-applies the blueprint by id.
-func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, confirm string) (SyncBlueprintResult, error) {
+// SyncBlueprint re-applies the blueprint by id. reviewed is optional (w8/m41):
+// when non-nil with CommitID set, the apply pins that revision and never
+// re-resolves the branch tip; omit for HEAD-resolve (auto-sync / old clients).
+func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, confirm string, reviewed *ReviewedBlueprintSource) (SyncBlueprintResult, error) {
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
 	}
@@ -676,7 +746,7 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 	if err != nil {
 		return SyncBlueprintResult{}, store.MapError(err)
 	}
-	return s.runSync(ctx, b, bexYAML, confirm)
+	return s.runSync(ctx, b, bexYAML, confirm, reviewed)
 }
 
 // runSync is the shared sync engine: admits the apply, pulls-from-repo or uses
@@ -731,7 +801,7 @@ func (s *Service) failSync(ctx context.Context, b store.Blueprint, commitSHA str
 	return SyncBlueprintResult{}, srcErr
 }
 
-func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confirm string) (SyncBlueprintResult, error) {
+func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confirm string, reviewed *ReviewedBlueprintSource) (SyncBlueprintResult, error) {
 	tenantID := b.TenantID
 	// w1/m69: a sync that cannot name the workspace it acts in must refuse
 	// rather than apply identity-less (ErrBlueprintSyncWorkspaceUnresolved's
@@ -754,9 +824,18 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	// t003) — the stored manifest is preserved untouched for the next attempt.
 	useStored := false
 
+	// Empty reviewed struct is treated as omitted (compat with zero values).
+	if reviewed != nil && reviewed.CommitID == "" && reviewed.Repo == "" && reviewed.Path == "" {
+		reviewed = nil
+	}
+
 	if bexYAML != "" {
 		// Explicit supplied-manifest sync (the documented bex extension): no
-		// Git commit is consumed, so none is claimed.
+		// Git commit is consumed, so none is claimed. A reviewed pin would
+		// contradict that provenance claim (w8/m41).
+		if reviewed != nil {
+			return SyncBlueprintResult{}, fmt.Errorf("%w: bexYaml and reviewed commitId cannot both be set", core.ErrBadRequest)
+		}
 		manifest = bexYAML
 	} else if b.Repo != "" {
 		if s.GitFetcher == nil {
@@ -768,19 +847,38 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		if _, pathErr := approvedBlueprintPath(b.Path); pathErr != nil {
 			return s.failSync(ctx, b, "", now, pathErr)
 		}
-		// Resolve-then-read at one immutable commit (w8/m36 t002): the commit
-		// is known before the run is recorded, and any fetch failure below
-		// fails the sync without touching the stored manifest.
-		sha, resolveErr := s.GitFetcher.ResolveBlueprintCommit(ctx, tenantID, b.Repo, b.Branch)
-		if resolveErr != nil {
-			return s.failSync(ctx, b, "", now, resolveErr)
+		if reviewed != nil {
+			// Manual sync with reviewed-source pin (w8/m41): never Resolve the
+			// branch tip — fetch exactly the previewed commit. Settings that
+			// drifted since review fail before any Git read or admission.
+			if matchErr := matchReviewedBlueprintSource(b, reviewed); matchErr != nil {
+				// Precondition refusal — no Git read yet; do not invent a history row.
+				return SyncBlueprintResult{}, matchErr
+			}
+			contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, b.Repo, reviewed.CommitID, b.Path)
+			if fetchErr != nil {
+				return s.failSync(ctx, b, reviewed.CommitID, now, fetchErr)
+			}
+			commitSHA, manifest = reviewed.CommitID, contents
+		} else {
+			// Resolve-then-read at one immutable commit (w8/m36 t002): the commit
+			// is known before the run is recorded, and any fetch failure below
+			// fails the sync without touching the stored manifest. Auto-sync and
+			// callers that omit the reviewed pin keep this HEAD-resolve path.
+			sha, resolveErr := s.GitFetcher.ResolveBlueprintCommit(ctx, tenantID, b.Repo, b.Branch)
+			if resolveErr != nil {
+				return s.failSync(ctx, b, "", now, resolveErr)
+			}
+			contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, b.Repo, sha, b.Path)
+			if fetchErr != nil {
+				return s.failSync(ctx, b, sha, now, fetchErr)
+			}
+			commitSHA, manifest = sha, contents
 		}
-		contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, b.Repo, sha, b.Path)
-		if fetchErr != nil {
-			return s.failSync(ctx, b, sha, now, fetchErr)
-		}
-		commitSHA, manifest = sha, contents
 	} else {
+		if reviewed != nil {
+			return SyncBlueprintResult{}, fmt.Errorf("%w: reviewed commitId requires a Git-backed blueprint", core.ErrBadRequest)
+		}
 		useStored = true
 	}
 
@@ -870,7 +968,7 @@ func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, bran
 	// run with Tenant(ctx)=="". The acting tenant is derived from this store
 	// row, never from the push payload.
 	ctx = core.WithActingTenant(ctx, b.TenantID)
-	_, _ = s.runSync(ctx, b, "", "")
+	_, _ = s.runSync(ctx, b, "", "", nil)
 }
 
 // ListBlueprintSyncs returns recorded sync runs for a blueprint, newest first.

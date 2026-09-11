@@ -1,0 +1,18 @@
+# w8/m41 reviewed-source walkthrough
+stack healthy
+owner=tea-dahr1h1jg4r3hegqd4dg identity=70565947-3fd9-449d-b034-bb5e0c00b9d2
+create: {"data": {"createBlueprint": {"id": "blp-dahr1h1jg4r3hegqd4eg", "status": "in_sync"}}}
+preview: {"data": {"blueprintPreview": {"commitId": "ef8443422ec5ce873087ea6ddf0b5e833a80c6db", "found": true, "validation": {"valid": true}}}}
+reviewed commit A=ef8443422ec5ce873087ea6ddf0b5e833a80c6db
+pathMismatch: {"data": {"syncBlueprint": null}, "errors": [{"message": "blueprint path no longer matches the reviewed source; refresh the preview and confirm again", "locations": [{"line": 1, "column": 83}], "path": ["syncBlueprint"], "extensions": {"code": "BLUEPRINT_SOURCE_CHANGED", "expectedCommit": "ef8443422ec5ce873087ea6ddf0b5e833a80c6db", "expectedPath": "examples/hello-go/render.yaml", "reviewedPath": "render.yaml"}}]}
+path mismatch → BLUEPRINT_SOURCE_CHANGED OK
+pinnedSync: {"data": {"syncBlueprint": {"blueprint": {"id": "blp-dahr1h1jg4r3hegqd4eg", "status": "in_sync"}}}}
+historyAfterPin: {"data": {"blueprintSyncs": [{"commitId": "ef8443422ec5ce873087ea6ddf0b5e833a80c6db", "state": "success"}, {"commitId": "ef8443422ec5ce873087ea6ddf0b5e833a80c6db", "state": "success"}]}}
+history names consumed revision A OK
+omitPinSync: {"data": {"syncBlueprint": {"blueprint": {"id": "blp-dahr1h1jg4r3hegqd4eg", "status": "in_sync"}}}}
+omit-precondition HEAD sync OK
+restPinned: {"blueprint": {"id": "blp-dahr1h1jg4r3hegqd4eg", "name": "m41-1789112516", "repo": "https://github.com/bex-co/bex", "branch": "main", "path": "examples/hello-go/render.yaml", "autoSync": true, "manifest": "# render.yaml \u2014 the manifest for deploy-from-chat (pillar 4).\n# Deploy in one call: give an agent the repo + this file via the MCP `deploy`\n# tool (or POST it to /v1/services). The operator builds from git (Dockerfile\n# here), runs it, and returns a live https URL. A signed git push th
+REST reviewed-source sync OK
+disconnect: {"data": {"disconnectBlueprint": true}}
+identity deleted 70565947-3fd9-449d-b034-bb5e0c00b9d2
+PASS

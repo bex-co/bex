@@ -21,6 +21,12 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const reviewed = {
+  commitId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  path: "render.yaml",
+  repo: "https://github.com/a/app",
+};
+
 beforeEach(() => {
   mutate.mockReset();
   toastSuccess.mockReset();
@@ -38,7 +44,7 @@ describe("useSyncBlueprint", () => {
 
     let outcome;
     await act(async () => {
-      outcome = await result.current.sync("blp-1");
+      outcome = await result.current.sync("blp-1", { reviewed });
     });
 
     expect(outcome).toEqual({
@@ -64,7 +70,7 @@ describe("useSyncBlueprint", () => {
 
     let outcome;
     await act(async () => {
-      outcome = await result.current.sync("blp-1");
+      outcome = await result.current.sync("blp-1", { reviewed });
     });
 
     expect(outcome).toEqual({ status: "error" });
@@ -73,18 +79,43 @@ describe("useSyncBlueprint", () => {
     );
   });
 
+  it("surfaces BLUEPRINT_SOURCE_CHANGED for renewed review", async () => {
+    mutate.mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message: "blueprint path no longer matches",
+            extensions: { code: "BLUEPRINT_SOURCE_CHANGED" },
+          },
+        ],
+      }),
+    );
+    const { result } = renderHook(() => useSyncBlueprint());
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.sync("blp-1", { reviewed });
+    });
+
+    expect(outcome).toEqual({ status: "source_changed" });
+    expect(toastError).toHaveBeenCalledWith(
+      "The Blueprint source changed since your review — refresh the preview and confirm again",
+    );
+  });
+
   it("shows generic failure for non-busy errors", async () => {
     mutate.mockRejectedValue(new Error("boom"));
     const { result } = renderHook(() => useSyncBlueprint());
 
     await act(async () => {
-      await result.current.sync("blp-1");
+      await result.current.sync("blp-1", { reviewed });
     });
 
     expect(toastError).toHaveBeenCalledWith("Sync failed");
   });
 
-  it("forwards the exact phrase on retry and reports success", async () => {
+  it("forwards the reviewed source and phrase on retry", async () => {
     mutate.mockResolvedValue({
       data: { syncBlueprint: { blueprint: { id: "blp-1" } } },
     });
@@ -92,7 +123,10 @@ describe("useSyncBlueprint", () => {
 
     let outcome;
     await act(async () => {
-      outcome = await result.current.sync("blp-1", "sudo deploy service api");
+      outcome = await result.current.sync("blp-1", {
+        reviewed,
+        confirmation: "sudo deploy service api",
+      });
     });
 
     expect(mutate).toHaveBeenCalledWith({
@@ -100,6 +134,9 @@ describe("useSyncBlueprint", () => {
         id: "blp-1",
         ownerId: "tea-1",
         confirm: "sudo deploy service api",
+        commitId: reviewed.commitId,
+        path: reviewed.path,
+        repo: reviewed.repo,
       },
     });
     expect(outcome).toMatchObject({ status: "success" });

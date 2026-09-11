@@ -106,7 +106,7 @@ func TestBlueprintOwnershipStampAndConflictAndTakeover(t *testing.T) {
 	}
 
 	// A's own re-sync now conflicts the other way (B owns it).
-	if _, err := svc.SyncBlueprint(ctx, a.ID, "tea-a", "", ""); err == nil {
+	if _, err := svc.SyncBlueprint(ctx, a.ID, "tea-a", "", "", nil); err == nil {
 		t.Fatal("A's sync after takeover must conflict")
 	}
 	_ = fs

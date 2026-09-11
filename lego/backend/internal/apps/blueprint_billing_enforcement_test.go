@@ -100,7 +100,7 @@ databases:
 		svc.Billing = &enforcingBillingGate{enforced: "tea-a"}
 		svc.Blueprints = blueprints
 
-		_, err := svc.SyncBlueprint(paidGateContext(), "blp-enforced", "tea-a", freeManifest, "")
+		_, err := svc.SyncBlueprint(paidGateContext(), "blp-enforced", "tea-a", freeManifest, "", nil)
 		if !errors.Is(err, core.ErrBillingEnforced) {
 			t.Fatalf("enforced Blueprint sync err = %v, want ErrBillingEnforced", err)
 		}

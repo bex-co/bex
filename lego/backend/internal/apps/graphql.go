@@ -1722,17 +1722,27 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		// syncBlueprint: re-apply a stored blueprint idempotently (w2/m15 + w2/m62).
 		// If bexYaml is provided, the stored manifest is replaced before re-apply.
+		// Optional commitId/path/repo pin the reviewed source (w8/m41); omit to
+		// resolve the branch HEAD (auto-sync / older clients).
 		"syncBlueprint": &graphql.Field{
 			Type: syncBlueprintResultGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      gqlutil.ReqArg(graphql.String),
-				"bexYaml": gqlutil.Arg(graphql.String),
-				"ownerId": gqlutil.Arg(graphql.String),
-				"confirm": gqlutil.Arg(graphql.String),
+				"id":       gqlutil.ReqArg(graphql.String),
+				"bexYaml":  gqlutil.Arg(graphql.String),
+				"ownerId":  gqlutil.Arg(graphql.String),
+				"confirm":  gqlutil.Arg(graphql.String),
+				"commitId": gqlutil.Arg(graphql.String),
+				"path":     gqlutil.Arg(graphql.String),
+				"repo":     gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				reviewed := optionalReviewedBlueprintSource(
+					gqlutil.Str(p.Args, "repo"),
+					gqlutil.Str(p.Args, "path"),
+					gqlutil.Str(p.Args, "commitId"),
+				)
 				return s.SyncBlueprint(p.Context, p.Args["id"].(string),
-					gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "bexYaml"), gqlutil.Str(p.Args, "confirm"))
+					gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "bexYaml"), gqlutil.Str(p.Args, "confirm"), reviewed)
 			},
 		},
 		// updateBlueprint: PATCH name/autoSync/path (w2/m62).

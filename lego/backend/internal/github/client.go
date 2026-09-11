@@ -36,6 +36,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // defaultBaseURL is GitHub's REST API root. Overridable in tests.
@@ -814,22 +816,8 @@ const maxBlueprintFileBytes = 1 << 20
 // partial content without raising the accepted Blueprint size limit.
 var errFileTooLarge = errors.New("github: file exceeds the 1 MiB blueprint limit")
 
-// validCommitSHA accepts the Git object IDs GitHub returns for a branch HEAD:
-// 40 hex chars (SHA-1) or 64 (SHA-256 repos). Anything else is a malformed
-// provenance the Blueprint fetcher must refuse, never persist (w8/m36 t002).
-func validCommitSHA(sha string) bool {
-	if len(sha) != 40 && len(sha) != 64 {
-		return false
-	}
-	for i := 0; i < len(sha); i++ {
-		c := sha[i]
-		if c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F' {
-			continue
-		}
-		return false
-	}
-	return true
-}
+// validCommitSHA is the GitHub client's local name for core.ValidCommitSHA.
+func validCommitSHA(sha string) bool { return core.ValidCommitSHA(sha) }
 
 // GetFileContents fetches the raw contents of path at ref in owner/repo using
 // the supplied installation access token (GitHub GET /repos/{owner}/{repo}/contents/{path}).

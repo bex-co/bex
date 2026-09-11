@@ -461,9 +461,23 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.syncPreviewUnavailable": {
     message:
-      "无法计算同步计划（预览不可用）。仍可同步——后端会在应用前重新校验。",
+      "无法计算同步计划（预览不可用）。请在预览成功后再刷新——同步需要已审阅的提交。",
     description:
-      "Pre-sync dialog — graceful-degrade warning when the preview query fails",
+      "Pre-sync dialog — preview transport failure; sync is disabled until a valid preview pins a commit (w8/m41)",
+  },
+  "blueprints.syncPreviewCommit": {
+    message: "已审阅提交 {sha}",
+    description: "Pre-sync dialog — short SHA of the previewed Git revision",
+  },
+  "blueprints.syncRefreshPreview": {
+    message: "刷新预览",
+    description:
+      "Pre-sync dialog — refetch Git + re-validate after BLUEPRINT_SOURCE_CHANGED or an invalid preview",
+  },
+  "blueprints.syncSourceChanged": {
+    message: "蓝图源自审阅后已变更——请刷新预览并重新确认",
+    description:
+      "Toast when syncBlueprint refuses with BLUEPRINT_SOURCE_CHANGED (path/repo drift or stale pin)",
   },
   "blueprints.syncSuccess": {
     message: "蓝图同步成功",

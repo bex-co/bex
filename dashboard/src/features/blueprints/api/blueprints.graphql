@@ -208,12 +208,18 @@ mutation SyncBlueprint(
   $ownerId: String
   $bexYaml: String
   $confirm: String
+  $commitId: String
+  $path: String
+  $repo: String
 ) {
   syncBlueprint(
     id: $id
     ownerId: $ownerId
     bexYaml: $bexYaml
     confirm: $confirm
+    commitId: $commitId
+    path: $path
+    repo: $repo
   ) {
     blueprint {
       id

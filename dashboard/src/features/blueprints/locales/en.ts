@@ -466,9 +466,24 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.syncPreviewUnavailable": {
     message:
-      "Couldn't compute the sync plan (preview unavailable). You can still sync — the backend re-validates before applying.",
+      "Couldn't compute the sync plan (preview unavailable). Refresh after the preview succeeds — sync requires a reviewed commit.",
     description:
-      "Pre-sync dialog — graceful-degrade warning when the preview query fails",
+      "Pre-sync dialog — preview transport failure; sync is disabled until a valid preview pins a commit (w8/m41)",
+  },
+  "blueprints.syncPreviewCommit": {
+    message: "Reviewed commit {sha}",
+    description: "Pre-sync dialog — short SHA of the previewed Git revision",
+  },
+  "blueprints.syncRefreshPreview": {
+    message: "Refresh preview",
+    description:
+      "Pre-sync dialog — refetch Git + re-validate after BLUEPRINT_SOURCE_CHANGED or an invalid preview",
+  },
+  "blueprints.syncSourceChanged": {
+    message:
+      "The Blueprint source changed since your review — refresh the preview and confirm again",
+    description:
+      "Toast when syncBlueprint refuses with BLUEPRINT_SOURCE_CHANGED (path/repo drift or stale pin)",
   },
   "blueprints.syncSuccess": {
     message: "Blueprint synced",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -36,7 +36,10 @@ import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
 import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
-import { useSyncBlueprint } from "@/features/blueprints/hooks/use-sync-blueprint";
+import {
+  useSyncBlueprint,
+  type ReviewedBlueprintSource,
+} from "@/features/blueprints/hooks/use-sync-blueprint";
 import { useUpdateBlueprint } from "@/features/blueprints/hooks/use-update-blueprint";
 import { useDisconnectBlueprint } from "@/features/blueprints/hooks/use-disconnect-blueprint";
 import { useBlueprintSyncs } from "@/features/blueprints/hooks/use-blueprint-syncs";
@@ -91,6 +94,10 @@ function validBlueprintPath(path: string): boolean {
     return false;
   }
   return /\.(yaml|yml)$/.test(p);
+}
+
+function shortCommit(sha: string): string {
+  return sha.slice(0, 8);
 }
 
 /** Inline value editor for the metadata card (w8/m21 t003): pencil toggles
@@ -190,6 +197,15 @@ export function BlueprintDetailPage() {
   const { syncs, loading: syncsLoading } = useBlueprintSyncs(blueprintId);
 
   const [confirming, setConfirming] = useState(false);
+  // Snapshot of the preview the user is about to confirm (w8/m41). Never
+  // silently adopt a newer preview after this is set — path/repo edits and
+  // dialog close clear it; source-changed forces an explicit refresh.
+  const [reviewedSource, setReviewedSource] =
+    useState<ReviewedBlueprintSource | null>(null);
+  const [sourceChangedHint, setSourceChangedHint] = useState(false);
+  // After BLUEPRINT_SOURCE_CHANGED, block auto-capture until the user
+  // explicitly refreshes — otherwise the still-cached valid preview re-pins.
+  const [awaitingFreshPreview, setAwaitingFreshPreview] = useState(false);
   // Pre-sync plan (w8/m21 t002): fetched only while the dialog is open — an
   // empty repo skips the query. Render shows a computed diff before sync;
   // applying blindly is the pre-m21 behavior this replaces.
@@ -197,6 +213,7 @@ export function BlueprintDetailPage() {
     preview: syncPreview,
     loading: syncPreviewLoading,
     error: syncPreviewError,
+    refetch: refetchSyncPreview,
   } = useBlueprintPreview(
     confirming && blueprint ? blueprint.repo : "",
     confirming && blueprint ? blueprint.branch : "",
@@ -213,17 +230,64 @@ export function BlueprintDetailPage() {
   useLoaderErrorRetry(Route.useLoaderData(), blueprintId);
   const loadErrorVariant = resourceLoadErrorVariant(blueprint, loading, error);
 
+  // Capture a reviewed pin only from a valid preview for the current
+  // blueprint settings. Do not overwrite an existing pin with a later fetch
+  // the user has not re-confirmed (w8/m41).
+  useEffect(() => {
+    if (!confirming || !blueprint || awaitingFreshPreview) return;
+    if (reviewedSource) return;
+    if (
+      syncPreview?.found &&
+      syncPreview.validation?.valid === true &&
+      syncPreview.commitId
+    ) {
+      setReviewedSource({
+        commitId: syncPreview.commitId,
+        path: blueprint.path,
+        repo: blueprint.repo,
+      });
+      setSourceChangedHint(false);
+    }
+  }, [confirming, blueprint, syncPreview, reviewedSource, awaitingFreshPreview]);
+
+  function clearReviewedSource() {
+    setReviewedSource(null);
+  }
+
   async function handleSync(confirmation?: string) {
-    setConfirming(false);
-    const result = await sync(blueprintId, confirmation);
+    if (!reviewedSource) return;
+    const result = await sync(blueprintId, {
+      reviewed: reviewedSource,
+      confirmation,
+    });
     if (result.status === "confirmation_required") {
+      setConfirming(false);
       setProtectedConfirmation(result.confirmation);
       return;
     }
-    if (result.status === "success") {
+    if (result.status === "source_changed") {
       setProtectedConfirmation(null);
+      setConfirming(true);
+      clearReviewedSource();
+      setAwaitingFreshPreview(true);
+      setSourceChangedHint(true);
+      return;
+    }
+    if (result.status === "success") {
+      setConfirming(false);
+      setProtectedConfirmation(null);
+      clearReviewedSource();
+      setSourceChangedHint(false);
+      setAwaitingFreshPreview(false);
       void router.invalidate();
     }
+  }
+
+  async function handleRefreshPreview() {
+    clearReviewedSource();
+    setSourceChangedHint(false);
+    setAwaitingFreshPreview(false);
+    await refetchSyncPreview();
   }
 
   async function handleAutoSyncToggle(value: boolean) {
@@ -238,6 +302,8 @@ export function BlueprintDetailPage() {
       void router.navigate({ to: "/blueprints", replace: true });
     }
   }
+
+  const canConfirmSync = !!reviewedSource && !syncPreviewLoading;
 
   return (
     <DashboardLayout>
@@ -329,6 +395,7 @@ export function BlueprintDetailPage() {
                           validate={validBlueprintPath}
                           invalidMessage={t("blueprints.pathInvalid")}
                           onSave={async (next) => {
+                            clearReviewedSource();
                             await update(blueprintId, { path: next });
                             void router.invalidate();
                           }}
@@ -517,16 +584,23 @@ export function BlueprintDetailPage() {
 
       <ConfirmDialog
         open={confirming}
-        onOpenChange={setConfirming}
+        onOpenChange={(open) => {
+          setConfirming(open);
+          if (!open) {
+            clearReviewedSource();
+            setSourceChangedHint(false);
+            setAwaitingFreshPreview(false);
+          }
+        }}
         contentClassName="max-h-[85vh] overflow-y-auto sm:max-w-xl"
         title={t("blueprints.syncConfirmTitle")}
         description={t("blueprints.syncConfirmBody")}
         cancelLabel={t("blueprints.syncCancel")}
         confirmLabel={t("blueprints.syncConfirmAction")}
-        // Syncing is the primary action, and it is gated on the preview having
-        // loaded so nobody applies a plan they have not seen.
+        // Syncing is the primary action, and it is gated on a reviewed commit
+        // pin so nobody applies bytes they have not seen (w8/m41).
         destructive={false}
-        confirmDisabled={syncPreviewLoading}
+        confirmDisabled={!canConfirmSync || syncBusy}
         onConfirm={() => void handleSync()}
       >
         {syncPreviewLoading ? (
@@ -539,6 +613,15 @@ export function BlueprintDetailPage() {
             <BlueprintPlanSummary
               plan={syncPreview.validation.plan}
               pricing={syncPreview.validation.estimatedPricing}
+              note={
+                reviewedSource ? (
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {t("blueprints.syncPreviewCommit", {
+                      sha: shortCommit(reviewedSource.commitId),
+                    })}
+                  </p>
+                ) : null
+              }
             />
           </div>
         ) : syncPreview ? (
@@ -553,11 +636,29 @@ export function BlueprintDetailPage() {
                   <li key={i}>{e}</li>
                 ))}
             </ul>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleRefreshPreview()}
+            >
+              {t("blueprints.syncRefreshPreview")}
+            </Button>
           </div>
-        ) : syncPreviewError ? (
-          <p className="text-sm text-amber-600 dark:text-amber-500">
-            {t("blueprints.syncPreviewUnavailable")}
-          </p>
+        ) : syncPreviewError || sourceChangedHint ? (
+          <div className="space-y-2">
+            <p className="text-sm text-amber-600 dark:text-amber-500">
+              {sourceChangedHint
+                ? t("blueprints.syncSourceChanged")
+                : t("blueprints.syncPreviewUnavailable")}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleRefreshPreview()}
+            >
+              {t("blueprints.syncRefreshPreview")}
+            </Button>
+          </div>
         ) : null}
       </ConfirmDialog>
 
