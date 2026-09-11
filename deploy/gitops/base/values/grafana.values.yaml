@@ -2611,7 +2611,7 @@ dashboards:
               },
               "options": {
                 "mode": "markdown",
-                "content": "Track adoption, command reliability and automation across retained CLI events. **All product panels follow the time range and filters**; telemetry health remains global. Daily buckets use UTC; the final bucket may be partial.\n\nOpt-outs, logged-out/early failures and delivery loss are unobserved. Bex release versions and successful `glm` / `muse` / `kimi` / `deepseek` launches are not recorded by the current sender. [Metric definitions and setup](https://github.com/bex-co/bex/blob/main/docs/runbooks/cli-analytics.md)."
+                "content": "Observed CLI activity, by UTC day. Installations are not people. [Definitions and collection gaps](https://github.com/bex-co/bex/blob/main/docs/runbooks/cli-analytics.md)."
               }
             },
             {
@@ -2951,6 +2951,10 @@ dashboards:
                   "noValue": "No observations",
                   "color": {
                     "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "width": 90,
+                    "minWidth": 60
                   }
                 },
                 "overrides": [
@@ -2963,6 +2967,10 @@ dashboards:
                       {
                         "id": "unit",
                         "value": "percentunit"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 110
                       }
                     ]
                   },
@@ -2975,6 +2983,46 @@ dashboards:
                       {
                         "id": "unit",
                         "value": "ms"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 70
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Command"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 180
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Affected installations"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 140
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Duration samples"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 125
                       }
                     ]
                   }
