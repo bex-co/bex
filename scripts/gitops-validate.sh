@@ -2593,4 +2593,73 @@ for openbao_marker in 'unauthenticated_metrics_access = true' 'prometheus_retent
   }
 done
 
+echo "==> tenant rollout headroom stays preemptible, pool-scoped, and tier-sized"
+# Every invariant below fails SILENTLY: the placeholder keeps running, the
+# render stays green, and the only symptom is the original outage coming back
+# (a rollout mints a node, the autoscaler reclaims it, the single replica is
+# evicted mid-flight). See deploy/gitops/base/tenant-headroom.yaml for the
+# 2026-09-12 production timeline this reconstructs.
+headroom_yaml=deploy/gitops/base/tenant-headroom.yaml
+headroom_priority="$(yq -N 'select(.kind=="PriorityClass" and .metadata.name=="bex-tenant-headroom") | .value' "$headroom_yaml")"
+headroom_preemption="$(yq -N 'select(.kind=="PriorityClass" and .metadata.name=="bex-tenant-headroom") | .preemptionPolicy' "$headroom_yaml")"
+# Two-sided bound. Non-negative => the placeholder stops being preemptible and
+# starts EVICTING tenant workloads to seat itself. At or below -10 => it falls
+# under Cluster Autoscaler's --expendable-pods-priority-cutoff default, so CA
+# ignores it for scale-up and treats it as free to delete during scale-down
+# simulation — the reservation silently stops reserving anything.
+if ! [ "$headroom_priority" -lt 0 ] 2>/dev/null || [ "$headroom_priority" -le -10 ]; then
+  echo "FAIL: bex-tenant-headroom priority is '$headroom_priority' (want -9..-1: below every real Pod, above CA's -10 expendable cutoff)" >&2
+  fail=1
+fi
+if [ "$headroom_preemption" != Never ]; then
+  echo "FAIL: bex-tenant-headroom preemptionPolicy is '$headroom_preemption' (want Never — the placeholder yields capacity, never takes it)" >&2
+  fail=1
+fi
+headroom_pod="select(.kind==\"Deployment\" and .metadata.name==\"tenant-headroom\") | .spec.template.spec"
+headroom_class="$(yq -N "$headroom_pod | .priorityClassName" "$headroom_yaml")"
+headroom_grace="$(yq -N "$headroom_pod | .terminationGracePeriodSeconds" "$headroom_yaml")"
+headroom_pool="$(yq -N "$headroom_pod | .nodeSelector.\"bex.co/pool\"" "$headroom_yaml")"
+# `(.tolerations // []) | map(...)` and not `[.tolerations[]? | ...]`: the array
+# collector materializes even for the documents `select` filtered out, so the
+# bracket form answers "0" once per document in the file and never compares equal.
+headroom_build_tol="$(yq -N "$headroom_pod | (.tolerations // []) | map(select(.key==\"bex.co/build-only\")) | length" "$headroom_yaml")"
+if [ "$headroom_class" != bex-tenant-headroom ]; then
+  echo "FAIL: tenant-headroom Pods run at priorityClassName '$headroom_class' (want bex-tenant-headroom, or they are unpreemptible priority-0 Pods squatting on the serving pool)" >&2
+  fail=1
+fi
+if [ "$headroom_grace" != 0 ]; then
+  echo "FAIL: tenant-headroom terminationGracePeriodSeconds is '$headroom_grace' (want 0 — a preempting surge Pod waits out this grace before it gets the slot)" >&2
+  fail=1
+fi
+if [ "$headroom_pool" != tenant ]; then
+  echo "FAIL: tenant-headroom nodeSelector bex.co/pool is '$headroom_pool' (want tenant — headroom on the platform pool reserves capacity no rollout can use)" >&2
+  fail=1
+fi
+if [ "$headroom_build_tol" != 0 ]; then
+  echo "FAIL: tenant-headroom tolerates bex.co/build-only — that holds an elastic BUILD node (ADR060 D8) warm for serving rollouts that may not schedule there" >&2
+  fail=1
+fi
+# Drift guard against the tier catalog: the reservation must be the shape of the
+# Pod it stands in for. If `standard` grows and this does not, the placeholder
+# under-reserves and the surge Pod is unschedulable again — with the added
+# insult of paying for headroom that no longer fits anything.
+for dim in cpu memory ephemeral-storage; do
+  catalog_key=$dim
+  case "$dim" in ephemeral-storage) catalog_key=ephemeralStorage ;; esac
+  want="$(yq -N "(.compute.tiers[] | select(.id==\"standard\") | .$catalog_key) | tostring" lego/types/tiers/tiers.yaml)"
+  for side in requests limits; do
+    got="$(yq -N "$headroom_pod | (.containers[0].resources.$side.\"$dim\") | tostring" "$headroom_yaml")"
+    if [ "$got" != "$want" ]; then
+      echo "FAIL: tenant-headroom $side.$dim is '$got' but the standard compute tier is '$want' (lego/types/tiers/tiers.yaml) — the reservation must match the Pod it reserves for, requests == limits (Guaranteed)" >&2
+      fail=1
+    fi
+  done
+done
+# The whole mechanism rests on CA's default expendable cutoff. Raising it above
+# the placeholder's priority would make every reservation invisible in one line.
+if grep -q 'expendable-pods-priority-cutoff' infra/clusterapi/autoscaler-values.yaml; then
+  echo "FAIL: autoscaler-values.yaml sets expendable-pods-priority-cutoff — bex-tenant-headroom's priority is chosen against the -10 default; re-derive both together before pinning it" >&2
+  fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }

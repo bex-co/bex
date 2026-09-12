@@ -104,6 +104,21 @@ patches:
         name: opensandbox-server
         namespace: argocd
       $patch: delete
+  # No rollout headroom locally. The placeholder reserves a real standard-tier
+  # slot (1 CPU / 2Gi) on bex.co/pool=tenant, and the CAPD workers are
+  # containers sharing one laptop: reserving that much would either sit Pending
+  # or drive `mock-cluster.sh scale` decisions that mean nothing here. The
+  # production problem it solves — a rollout minting a node the autoscaler later
+  # reclaims out from under the App — does not exist on a mock with no cost
+  # pressure. The PriorityClass stays (harmless, and keeps the local render
+  # honest about the class tenant workloads are compared against).
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: tenant-headroom
+        namespace: bex-system
+      $patch: delete
   # No etcd backups locally: the CAPD cluster is disposable and has no
   # object-storage creds.
   - patch: |-

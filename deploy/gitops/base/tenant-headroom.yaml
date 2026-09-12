@@ -1,0 +1,143 @@
+# tenant-headroom — keep one standard-tier slot warm on the serving pool so a
+# rollout's surge Pod never has to wait for (or ride on) a brand-new node.
+#
+# THE FAILURE THIS REMOVES (observed on hetzner-prod 2026-09-12, App
+# tea-d98210cbbpdc73dcrkvg-beancount-cms-v2, twice inside one hour):
+#
+#   1. A deploy's surge Pod (1 CPU / 2Gi, Guaranteed) does not fit on the two
+#      ~80%-full serving nodes         -> FailedScheduling
+#   2. Cluster Autoscaler adds a node  -> bex-tenant-0 2 -> 3, ~2 min of Pending
+#   3. The surge Pod lands on THAT node, goes Ready, the old Pod is torn down
+#   4. The new node now holds one 1-CPU Pod on a 4-vCPU machine (28.9%), which
+#      is below --scale-down-utilization-threshold, and that Pod is reschedulable
+#      elsewhere now that the old replica's slot is free
+#   5. scale-down-delay-after-add (5m) + scale-down-unneeded-time (5m) elapse ->
+#      `Scale-down: removing node bex-tenant-0-bdn2q-zhhp7 ... pods to
+#      reschedule: <the tenant's only replica>`
+#   6. The single replica is evicted, rescheduled, and re-pulls a 633 MB image
+#      (72s measured) -> the Service has zero ready endpoints -> Traefik 503.
+#
+# So a deploy MANUFACTURED the node that would later evict it. Raising
+# scale-down-unneeded-time does not fix this — the node is still under-utilized
+# and the Pod is still movable, so the same eviction lands later, decoupled from
+# the deploy that caused it and therefore harder to diagnose. What actually
+# breaks the chain is making step 1 impossible: the surge Pod must fit on a node
+# that already exists.
+#
+# MECHANISM: a Deployment of do-nothing `pause` Pods holding a real standard-tier
+# reservation at NEGATIVE priority. Every tenant Pod runs at priority 0 (no
+# priorityClassName), so the scheduler preempts a placeholder and takes its slot
+# immediately — no scale-up, no new node, no later consolidation eviction. The
+# displaced placeholder goes Pending and reclaims a slot as soon as the rollout
+# retires the old replica.
+#
+# WHY -1 AND NOT LOWER: Cluster Autoscaler's --expendable-pods-priority-cutoff
+# defaults to -10, and pods BELOW it are ignored for scale-up and assumed
+# deletable during scale-down simulation. A placeholder at, say, -100 would be
+# invisible to CA: it would never hold a node warm, which is the entire job.
+# -1 is below every real workload and above the cutoff.
+#
+# THIS DOES NOT MAKE A SINGLE-REPLICA SERVICE HIGHLY AVAILABLE. It removes the
+# deploy-correlated eviction. A node upgrade, a CAPI machine roll, or a hardware
+# failure still takes a `replicas: 1` App down, because one replica has no
+# disruption budget to spend — that needs replicas >= 2 plus a PDB, per service.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: bex-tenant-headroom
+# Below every real Pod (tenant workloads and build Jobs alike; the lowest real
+# class on the cluster is kpack-build-low-priority at 1, and a Pod with no class
+# is 0), and above CA's -10 expendable cutoff. Both bounds are load-bearing.
+value: -1
+globalDefault: false
+# The placeholder yields capacity; it must never take it. Without this a
+# pending placeholder could evict a tenant Pod to seat itself.
+preemptionPolicy: Never
+description: >-
+  Negative-priority capacity reservation for the tenant serving pool. Preempted
+  by any real workload so rollout surge Pods schedule on existing nodes instead
+  of minting a node the autoscaler later reclaims out from under them.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tenant-headroom
+  namespace: bex-system
+  labels:
+    app: tenant-headroom
+spec:
+  # One standard-tier slot = one concurrent rollout absorbed without a node.
+  # Raise this to cover N simultaneous rollouts; each replica costs a real
+  # 1 CPU / 2Gi reservation on the serving pool, so it is a direct trade of
+  # money for deploy smoothness. Two apps deploying at the same instant still
+  # fall back to the old scale-up path for the second one, which is degraded
+  # (slow) rather than broken.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tenant-headroom
+  template:
+    metadata:
+      labels:
+        app: tenant-headroom
+      annotations:
+        # Explicit, though it is also the default: a placeholder must never be
+        # the reason a node cannot be drained for an upgrade. Its whole value is
+        # being the cheapest possible thing to evict.
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+    spec:
+      priorityClassName: bex-tenant-headroom
+      # Instant yield. The default 30s grace would make every preempting surge
+      # Pod wait half a minute for a slot it was granted immediately — which
+      # would reintroduce a smaller version of the delay this exists to remove.
+      terminationGracePeriodSeconds: 0
+      # The serving pool only. bex-tenant-lg and bex-tenant-burst also carry
+      # bex.co/pool=tenant but are tainted bex.co/build-only (ADR060 D8), and
+      # this deliberately does NOT tolerate it: reserving capacity on a build
+      # pool would hold an elastic build node warm for a rollout that is not
+      # allowed to schedule there anyway.
+      nodeSelector:
+        bex.co/pool: tenant
+      # With replicas > 1 the reservations must sit on DIFFERENT nodes to be
+      # worth anything — two placeholders stacked on one node reserve one
+      # node's worth of scheduling freedom, not two. ScheduleAnyway, because a
+      # placeholder that cannot spread is still better than one that is Pending.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: tenant-headroom
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65535
+        runAsGroup: 65535
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.10@sha256:ee6521f290b2168b6e0935a181d4cff9be1ac3f505666ef0e3c98fae8199917a
+          imagePullPolicy: IfNotPresent
+          # = the `standard` compute tier (lego/types/tiers/tiers.yaml), the
+          # modal paid shape and the one whose surge did not fit. requests ==
+          # limits so the reservation is Guaranteed, exactly like the Pod it
+          # stands in for — a Burstable placeholder would reserve less than the
+          # scheduler will later be asked for, and would be evicted first under
+          # node pressure.
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+              ephemeral-storage: 4Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+              ephemeral-storage: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
