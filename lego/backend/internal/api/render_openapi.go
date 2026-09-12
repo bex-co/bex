@@ -38,14 +38,16 @@ import (
 )
 
 const (
-	renderOpenAPISHA256 = "2d27d5834d8bbc586e0aee62160cf996bb07f4be747112f15ec02c14fc11b315"
+	renderOpenAPISHA256 = "c6851bc830fa0f01fa58face22c8cf46d4762054c6fe879d724fae5ade72a520"
 	renderAPIPrefix     = "/v1"
 )
 
 // renderOpenAPISource is Render's complete, unversioned public contract,
 // fetched from https://api-docs.render.com/openapi/render-public-api-1.json on
-// 2026-07-20. It is deliberately embedded: API startup and CI never depend on
-// Render's availability or silently accept an upstream contract change.
+// 2026-09-11 (refreshed from the 2026-07-20 pin by w6/073 to admit
+// retrieve-service-outbound-ips). It is deliberately embedded: API startup and
+// CI never depend on Render's availability or silently accept an upstream
+// contract change.
 //
 //go:embed openapi/render-public-api-1.json
 var renderOpenAPISource []byte

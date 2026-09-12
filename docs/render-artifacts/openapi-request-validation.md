@@ -7,12 +7,12 @@ This artifact defines the REST request boundary introduced in w7/m49. It is the 
 | property | value |
 | --- | --- |
 | upstream | `https://api-docs.render.com/openapi/render-public-api-1.json` |
-| fetched | 2026-07-20 |
+| fetched | 2026-09-11 (refresh of the 2026-07-20 pin — w6/073) |
 | checked-in asset | `lego/backend/internal/api/openapi/render-public-api-1.json` |
 | OpenAPI / info version | 3.0.2 / 1.0.0 |
-| size | 331,391 bytes |
-| SHA-256 | `2d27d5834d8bbc586e0aee62160cf996bb07f4be747112f15ec02c14fc11b315` |
-| coverage | 130 paths · 207 operations · 58 request bodies · 163 component schemas |
+| size | 345,074 bytes |
+| SHA-256 | `c6851bc830fa0f01fa58face22c8cf46d4762054c6fe879d724fae5ade72a520` |
+| coverage | 131 paths · 208 operations · 58 request bodies · 164 component schemas |
 | validator | `github.com/getkin/kin-openapi` v0.142.0 |
 
 The API embeds this file and verifies its digest while constructing `Server.Handler()`. Loading and document validation happen once, offline. External references are disabled. The only upstream document compatibility option is `AllowExtraSiblingFields("description", "default")`; a guard test pins the three exact `$ref` objects that need it. The in-memory server list is cleared so validation accepts bex hosts, and a cloned request loses exactly one leading `/v1` before kin routing. The request delivered to the handler is not rewritten.
@@ -30,13 +30,13 @@ Only the intersection of an actual authenticated bex mux match and a pinned Rend
 - A Render operation bex does not implement keeps bex's existing 404/405 instead of becoming an OpenAPI 400.
 - A bex route or alias absent from Render passes through unchanged and does not receive strict JSON context.
 
-The operation-ID inventory guard currently finds exactly 119 enforced operations. `TestRenderRouteIntersectionInventory` pins the complete sorted list, so a route or upstream-spec refresh cannot silently enter or leave the boundary.
+The operation-ID inventory guard currently finds exactly 120 enforced operations. `TestRenderRouteIntersectionInventory` pins the complete sorted list, so a route or upstream-spec refresh cannot silently enter or leave the boundary.
 
 ### Route-family classification
 
 | Render family | classification | current boundary |
 | --- | --- | --- |
-| Services, service instances, autoscaling, one-off jobs, cron current-run verbs, static routes/headers, notification overrides | enforce where implemented | CRUD, lifecycle, scale, instances, jobs, current cron run, route/header, and per-service notification operations in the 119-operation guard |
+| Services, service instances, autoscaling, one-off jobs, cron current-run verbs, static routes/headers, notification overrides, outbound IPs | enforce where implemented | CRUD, lifecycle, scale, instances, jobs, current cron run, route/header, per-service notification, and outbound-IPs read operations in the 120-operation guard |
 | Deploys | enforce where implemented | list/get/create/cancel/rollback |
 | Environment variables, secret files, environment groups | enforce where implemented | service and group CRUD/link operations |
 | Custom Domains | enforce where implemented | create/list/get/delete/refresh |
@@ -105,6 +105,21 @@ The validator never returns or logs kin's raw error string. Those errors can con
 
 Unknown-field rejection is a deliberate bex security extension. Render's public schemas mostly omit `additionalProperties:false`, and this document does not claim render.com's live API makes the same rejection.
 
+## Refresh history
+
+| date       | SHA-256     | ops | change               |
+| ---------- | ----------- | --- | -------------------- |
+| 2026-07-20 | `2d27d583…` | 207 | initial pin (w7/m49) |
+| 2026-09-11 | `c6851bc8…` | 208 | w6/073 — see below   |
+
+### 2026-09-11 (w6/073)
+
+Live-vs-pin diff reviewed in full before the swap; no loader exception was broadened. One new operation: `GET /services/{serviceId}/outbound-ips` (`retrieve-service-outbound-ips`, new `outboundIps` component schema). bex has served that route since w2/023, so it moves from an ungated bex extension into the enforced intersection (119 → 120); `TestOutboundIPsThroughComposedServer` proves a valid read still reaches the handler with a schema-conformant body while an undeclared query is now a 400. No operation was removed or renamed. Other deltas, none of which change bex behavior beyond what the gate now admits:
+
+- Plan enums grew by pure addition — `plan`/`paidPlan` (+14 spec-based compute names such as `0.5c-512mb`), `keyValuePlan`/`redisPlan` (+6, e.g. `256mb`, `1g`), Postgres plan (+23, e.g. `0.1c-256mb`). No legacy name was dropped, so bex's own plan spellings still round-trip through response conformance. Consequence: the w8/011 input aliases, which the datastore handlers already accepted, now also clear the REST gate (`TestRenderRequestValidatorAdmitsRefreshedPlanSpellings`); every other spec-based name still fails bex's tier catalog with a named 400, as before.
+- `$ref` targets were restructured upstream (autoscaling, secret files, Postgres plan, env vars now point at component schemas; several path refs use percent-encoded `%7B`/`%7D` braces). kin resolves both spellings. The non-extension `$ref` sibling set is still exactly three objects; only the `newTrigger` entry's pointer moved, and the guard test was updated to the new pointer.
+- Additive response/schema changes: `413RequestEntityTooLarge` on Blueprint validate, `errorCode` component + `error.code`, `user.id`, four new event types, two new audit-log events, one more log-stream label and Blueprint resource type, an extra `dedicated-ips` list parameter; the `secretFileInput` component was inlined; Workflows tags dropped their "(Beta)" suffix. Blueprint `blp-`/`exs-` widening and the five-parameter ID-pattern inventory from w6/m96 are unchanged and green.
+
 ## Manual pin refresh
 
 Render describes the source as unversioned, so refresh is deliberate and review-gated. Never fetch it at API startup or in ordinary CI.
@@ -122,7 +137,7 @@ Render describes the source as unversioned, so refresh is deliberate and review-
    ```
 
 2. Review the full diff against `lego/backend/internal/api/openapi/render-public-api-1.json`. Recount operations/request bodies, external `$ref` values, and non-extension `$ref` siblings. Do not broaden loader exceptions to make an unexplained change pass.
-3. Review the 119-operation intersection, requiredness compatibility map, query-extension map, accepted body table, newly implemented/unsupported operations, and official CLI request shapes.
+3. Review the 120-operation intersection, requiredness compatibility map, query-extension map, accepted body table, newly implemented/unsupported operations, and official CLI request shapes.
 4. Deliberately replace the asset, then update the source date, byte count, SHA constant, exact guard counts/sibling list, and this artifact in the same change.
 5. From `lego/backend`, run:
 

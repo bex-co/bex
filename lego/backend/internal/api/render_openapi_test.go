@@ -41,17 +41,17 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(renderOpenAPISource); got != 331391 {
-		t.Fatalf("snapshot size = %d, want 331391", got)
+	if got := len(renderOpenAPISource); got != 345074 {
+		t.Fatalf("snapshot size = %d, want 345074", got)
 	}
 	if got := contract.document.OpenAPI; got != "3.0.2" {
 		t.Fatalf("OpenAPI = %q, want 3.0.2", got)
 	}
-	if got := contract.document.Paths.Len(); got != 130 {
-		t.Fatalf("paths = %d, want 130", got)
+	if got := contract.document.Paths.Len(); got != 131 {
+		t.Fatalf("paths = %d, want 131", got)
 	}
-	if got := len(contract.document.Components.Schemas); got != 163 {
-		t.Fatalf("schemas = %d, want 163", got)
+	if got := len(contract.document.Components.Schemas); got != 164 {
+		t.Fatalf("schemas = %d, want 164", got)
 	}
 	operations, requestBodies := 0, 0
 	for _, item := range contract.document.Paths.Map() {
@@ -62,8 +62,8 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 			}
 		}
 	}
-	if operations != 207 || requestBodies != 58 {
-		t.Fatalf("operations/request bodies = %d/%d, want 207/58", operations, requestBodies)
+	if operations != 208 || requestBodies != 58 {
+		t.Fatalf("operations/request bodies = %d/%d, want 208/58", operations, requestBodies)
 	}
 	if len(contract.document.Servers) != 0 {
 		t.Fatalf("runtime contract retained upstream servers: %#v", contract.document.Servers)
@@ -116,7 +116,7 @@ func TestRenderOpenAPIRefPolicyGuard(t *testing.T) {
 	want := []string{
 		"#/components/schemas/DeployMode|description",
 		"#/components/schemas/plan|default,description",
-		"#/components/schemas/serviceEventWithCursor/properties/event/properties/details/oneOf/41/properties/newTrigger|description",
+		"#/paths/~1events~1{eventId}/get/responses/200/content/application~1json/schema/properties/details/oneOf/0/oneOf/45/properties/newTrigger|description",
 	}
 	if fmt.Sprint(siblings) != fmt.Sprint(want) {
 		t.Fatalf("non-extension $ref siblings = %v, want %v", siblings, want)
@@ -198,7 +198,7 @@ func TestRenderRouteIntersectionInventory(t *testing.T) {
 		}
 	}
 	sort.Strings(operationIDs)
-	const expected = "add-disk,add-or-update-secret-file,autoscale-service,cancel-cron-job-run,cancel-deploy,cancel-job,create-custom-domain,create-deploy,create-env-group,create-environment,create-key-value,create-postgres,create-postgres-export,create-project,create-registry-credential,create-service,create-webhook,delete-autoscaling-config,delete-custom-domain,delete-disk,delete-env-group,delete-env-group-env-var,delete-env-group-secret-file,delete-env-var,delete-environment,delete-key-value,delete-postgres,delete-project,delete-registry-credential,delete-secret-file,delete-service,delete-webhook,disconnect-blueprint,failover-postgres,get-bandwidth,get-cpu,get-cpu-target,get-disk-capacity,get-env-vars-for-service,get-http-latency,get-http-requests,get-instance-count,get-memory,get-memory-target,get-replication-lag,get-user,link-service-to-env-group,list-blueprint-syncs,list-blueprints,list-custom-domains,list-deploys,list-disks,list-env-groups,list-environments,list-events,list-headers,list-instances,list-job,list-key-value,list-logs,list-logs-values,list-owners,list-postgres,list-postgres-export,list-projects,list-registry-credentials,list-routes,list-secret-files-for-service,list-services,list-snapshots,list-webhook-events,list-webhooks,listWorkflows,patch-service-notification-overrides,post-job,put-routes,refresh-custom-domain,restart-postgres,restart-service,restore-snapshot,resume-key-value,resume-postgres,resume-service,retrieve-blueprint,retrieve-custom-domain,retrieve-deploy,retrieve-disk,retrieve-env-group,retrieve-env-group-env-var,retrieve-env-group-secret-file,retrieve-env-var,retrieve-environment,retrieve-event,retrieve-job,retrieve-key-value,retrieve-key-value-connection-info,retrieve-owner,retrieve-owner-members,retrieve-postgres,retrieve-postgres-connection-info,retrieve-project,retrieve-registry-credential,retrieve-secret-file,retrieve-service,retrieve-service-notification-overrides,retrieve-webhook,rollback-deploy,run-cron-job,scale-service,subscribe-logs,suspend-key-value,suspend-postgres,suspend-service,unlink-service-from-env-group,update-blueprint,update-disk,update-env-group,update-env-group-env-var,update-env-group-secret-file,update-env-var,update-env-vars-for-service,update-environment,update-headers,update-key-value,update-postgres,update-project,update-registry-credential,update-service,update-webhook,validate-blueprint"
+	const expected = "add-disk,add-or-update-secret-file,autoscale-service,cancel-cron-job-run,cancel-deploy,cancel-job,create-custom-domain,create-deploy,create-env-group,create-environment,create-key-value,create-postgres,create-postgres-export,create-project,create-registry-credential,create-service,create-webhook,delete-autoscaling-config,delete-custom-domain,delete-disk,delete-env-group,delete-env-group-env-var,delete-env-group-secret-file,delete-env-var,delete-environment,delete-key-value,delete-postgres,delete-project,delete-registry-credential,delete-secret-file,delete-service,delete-webhook,disconnect-blueprint,failover-postgres,get-bandwidth,get-cpu,get-cpu-target,get-disk-capacity,get-env-vars-for-service,get-http-latency,get-http-requests,get-instance-count,get-memory,get-memory-target,get-replication-lag,get-user,link-service-to-env-group,list-blueprint-syncs,list-blueprints,list-custom-domains,list-deploys,list-disks,list-env-groups,list-environments,list-events,list-headers,list-instances,list-job,list-key-value,list-logs,list-logs-values,list-owners,list-postgres,list-postgres-export,list-projects,list-registry-credentials,list-routes,list-secret-files-for-service,list-services,list-snapshots,list-webhook-events,list-webhooks,listWorkflows,patch-service-notification-overrides,post-job,put-routes,refresh-custom-domain,restart-postgres,restart-service,restore-snapshot,resume-key-value,resume-postgres,resume-service,retrieve-blueprint,retrieve-custom-domain,retrieve-deploy,retrieve-disk,retrieve-env-group,retrieve-env-group-env-var,retrieve-env-group-secret-file,retrieve-env-var,retrieve-environment,retrieve-event,retrieve-job,retrieve-key-value,retrieve-key-value-connection-info,retrieve-owner,retrieve-owner-members,retrieve-postgres,retrieve-postgres-connection-info,retrieve-project,retrieve-registry-credential,retrieve-secret-file,retrieve-service,retrieve-service-notification-overrides,retrieve-service-outbound-ips,retrieve-webhook,rollback-deploy,run-cron-job,scale-service,subscribe-logs,suspend-key-value,suspend-postgres,suspend-service,unlink-service-from-env-group,update-blueprint,update-disk,update-env-group,update-env-group-env-var,update-env-group-secret-file,update-env-var,update-env-vars-for-service,update-environment,update-headers,update-key-value,update-postgres,update-project,update-registry-credential,update-service,update-webhook,validate-blueprint"
 	if got := strings.Join(operationIDs, ","); got != expected {
 		t.Fatalf("Render route intersection changed (got %d operations).\n got: %s\nwant: %s", len(operationIDs), got, expected)
 	}
@@ -574,5 +574,103 @@ func TestMetricsPercentageQueryThroughComposedServer(t *testing.T) {
 	w := do(t, h, http.MethodGet, "/v1/metrics/cpu?resource=srv-x&bogusParam=1", testToken, "")
 	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "unsupported query parameter") {
 		t.Fatalf("unknown param = %d, want 400 unsupported query parameter: %s", w.Code, w.Body.String())
+	}
+}
+
+// TestOutboundIPsThroughComposedServer is the w6/073 evidence that the
+// 2026-09-11 pin refresh admits Render's retrieve-service-outbound-ips
+// (GET /services/{serviceId}/outbound-ips) through the composed request
+// validator. Under the 2026-07-20 pin the operation was absent, so the route
+// was an ungated bex extension: a valid read passed, but so did any stray
+// query. Now the read still reaches the existing handler (w2/023) and its body
+// conforms to the pinned outboundIps response schema, while the strict-query
+// gate rejects an undeclared parameter — the same shape every other enforced
+// operation has.
+func TestOutboundIPsThroughComposedServer(t *testing.T) {
+	base := &core.Base{
+		Client:    fakeClient(),
+		Namespace: "default",
+		Workspace: fakeWorkspace{"client-1": "tea-cli"},
+	}
+	h, _ := serverWith(t, base, Deps{APIKeys: newFakeKeyStore()})
+
+	w := do(t, h, http.MethodPost, "/v1/services", testToken,
+		`{"name":"egress","ownerId":"tea-cli","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":""}}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create service = %d: %s", w.Code, w.Body.String())
+	}
+	var created struct {
+		Service struct {
+			ID string `json:"id"`
+		} `json:"service"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil || created.Service.ID == "" {
+		t.Fatalf("decode create response: id=%q err=%v body=%s", created.Service.ID, err, w.Body.String())
+	}
+
+	w = do(t, h, http.MethodGet, "/v1/services/"+created.Service.ID+"/outbound-ips", testToken, "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("outbound-ips through the gate = %d, want 200: %s", w.Code, w.Body.String())
+	}
+	if got := strings.TrimSpace(w.Body.String()); got != `{"type":"shared","ips":[]}` {
+		t.Fatalf("outbound-ips body = %s, want the shared empty-pool answer", got)
+	}
+	if divergences := loadRenderSpec(t).validate("retrieve-service-outbound-ips", w.Body.Bytes()); len(divergences) != 0 {
+		t.Fatalf("outbound-ips response diverges from the pinned outboundIps schema: %v", divergences)
+	}
+
+	w = do(t, h, http.MethodGet, "/v1/services/"+created.Service.ID+"/outbound-ips?bogusParam=1", testToken, "")
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "unsupported query parameter") {
+		t.Fatalf("undeclared query on outbound-ips = %d, want 400 unsupported query parameter: %s", w.Code, w.Body.String())
+	}
+
+	w = do(t, h, http.MethodGet, "/v1/services/srv-00000000000000000000/outbound-ips", testToken, "")
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("unknown service outbound-ips = %d, want 404 (gate passed, store miss): %s", w.Code, w.Body.String())
+	}
+}
+
+// TestRenderRequestValidatorAdmitsRefreshedPlanSpellings locks in the other
+// documented delta of the 2026-09-11 pin: Render's spec-based plan spellings
+// joined the plan/paidPlan/keyValuePlan/postgres enums (pure additions — no
+// legacy name was dropped). The w8/011 input aliases (0.1c-256mb, 0.5c-1g,
+// 256mb, 1g) were therefore rejected at this gate over REST under the old pin
+// even though the datastore handlers accepted them. An unknown plan is still a
+// 400 that never echoes the submitted value.
+func TestRenderRequestValidatorAdmitsRefreshedPlanSpellings(t *testing.T) {
+	reached := 0
+	mux := http.NewServeMux()
+	for _, pattern := range []string{"POST /v1/postgres", "POST /v1/key-value", "POST /v1/services"} {
+		mux.HandleFunc(pattern, func(w http.ResponseWriter, _ *http.Request) {
+			reached++
+			w.WriteHeader(http.StatusNoContent)
+		})
+	}
+	h, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admitted := []struct{ target, body string }{
+		{"/v1/postgres", `{"name":"db","plan":"0.1c-256mb"}`},
+		{"/v1/postgres", `{"name":"db","plan":"0.5c-1g"}`},
+		{"/v1/postgres", `{"name":"db","plan":"basic-256mb"}`},
+		{"/v1/key-value", `{"name":"kv","plan":"256mb"}`},
+		{"/v1/key-value", `{"name":"kv","plan":"1g"}`},
+		{"/v1/services", `{"name":"web","type":"web_service","serviceDetails":{"plan":"0.5c-512mb"}}`},
+	}
+	for i, tt := range admitted {
+		w := requestOpenAPITest(t, h, http.MethodPost, tt.target, "", tt.body)
+		if w.Code != http.StatusNoContent || reached != i+1 {
+			t.Fatalf("%s %s: status=%d reached=%d body=%s", tt.target, tt.body, w.Code, reached, w.Body.String())
+		}
+	}
+	for _, tt := range []struct{ target, body string }{
+		{"/v1/postgres", `{"name":"db","plan":"secret-plan-marker"}`},
+		{"/v1/key-value", `{"name":"kv","plan":"secret-plan-marker"}`},
+	} {
+		w := requestOpenAPITest(t, h, http.MethodPost, tt.target, "", tt.body)
+		if w.Code != http.StatusBadRequest || reached != len(admitted) || strings.Contains(w.Body.String(), "secret-plan-marker") {
+			t.Fatalf("%s unknown plan: status=%d reached=%d body=%s", tt.target, w.Code, reached, w.Body.String())
+		}
 	}
 }
