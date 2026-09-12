@@ -31,7 +31,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 1. **[m143 — Make dashboard service and deploy actions permission-aware](done/m143/README.md)** — **done** — ~5h, 8 tasks. Next actionable task: `w6/m143/t001`; its m136 prerequisite is done.
 2. **[m144 — Refresh dashboard permissions after workspace access changes](done/m144/README.md)** — **done** — ~5h, 8 tasks. Its final implementation task depends on `w6/m143/t008`; the earlier contract/refresh work can proceed independently. This approval supersedes the older permissive-while-unknown dashboard UI policy for affected actions and sensitive reads.
-3. **[073 — Refresh request-validator OpenAPI pin to include outbound-ips](073.md)** — ~45–60m, existing inbox note; no dependency on m143/m144. Retained as a note under the sub-hour sizing rule.
+3. **[073 — Refresh request-validator OpenAPI pin to include outbound-ips](done/073.md)** — **done** 2026-09-11 — ~45–60m, existing inbox note; no dependency on m143/m144. Retained as a note under the sub-hour sizing rule.
 
 ## Milestones
 
@@ -179,7 +179,8 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **073** — [Refresh request-validator OpenAPI pin to include outbound-ips](073.md) (~45–60m) ← w6/m142 residual; approved brainstorm proposal 3, 2026-09-10
+- [ ] **074** — [Live-verify m143/m144 permission UI on dev-6](074.md) (~1h) ← m143/m144 closeout residual (DoD walkthrough needs a running `dev-6` stack), filed 2026-09-10; not in the approved queue
+- [x] **073** — [Refresh request-validator OpenAPI pin to include outbound-ips](done/073.md) — done 2026-09-11 (pin refreshed to the live 208-op document; `retrieve-service-outbound-ips` enforced through the composed validator; m96 Blueprint-ID guards green).
 - [x] **071** — [Fix mobile GraphQL token-refresh recovery](done/071.md) — done 2026-09-09; see the mobile review handoff above.
 - [x] **072** — [Refresh mobile session details opened directly](done/072.md) — done 2026-09-09; see the mobile review handoff above.
 
