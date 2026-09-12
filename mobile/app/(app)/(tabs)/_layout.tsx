@@ -99,11 +99,7 @@ export default function TabLayout() {
             <NativeTabs.Trigger.Icon sf={nativeTabIcons.sessions} />
           </NativeTabs.Trigger>
         ) : null}
-        <NativeTabs.Trigger
-          name="notifications"
-          hidden={!__DEV__}
-          contentStyle={contentStyle}
-        >
+        <NativeTabs.Trigger name="notifications" contentStyle={contentStyle}>
           <NativeTabs.Trigger.Label>
             {t("navigation.notifications")}
           </NativeTabs.Trigger.Label>
@@ -205,7 +201,6 @@ export default function TabLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          href: __DEV__ ? undefined : null,
           title: t("navigation.notifications"),
           tabBarBadge: unread > 0 ? unread : undefined,
           tabBarIcon: ({ color, focused }) => (
