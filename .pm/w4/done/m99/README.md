@@ -1,18 +1,18 @@
 # w4 · m99 — Restore image-create compatibility and long-name alias admission
 
-**Worker:** worker4 **Goal:** Valid CLI image creates accept an explicitly disabled setting, and long service names reconcile their required platform aliases so healthy first deploys reach live. **Status:** in progress — implementation and local regressions complete; live acceptance pending
+**Worker:** worker4 **Goal:** Valid CLI image creates accept an explicitly disabled setting, and long service names reconcile their required platform aliases so healthy first deploys reach live. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Accept explicitly disabled auto-deploy on prebuilt image creates | 35m | — |
-| t002 | Admit bounded platform alias names without weakening target ownership | 45m | — |
-| t003 | Verify both shared validation and alias families | 45m | t001, t002 |
-| t004 | Render parity across create and deployment surfaces | 20m | t003 |
-| t005 | Simplify | 20m | t004 |
-| t006 | Test the CLI failures and admission boundary | 35m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t001 | Accept explicitly disabled auto-deploy on prebuilt image creates — **DONE** | 35m | — |
+| t002 | Admit bounded platform alias names without weakening target ownership — **DONE** | 45m | — |
+| t003 | Verify both shared validation and alias families — **DONE** | 45m | t001, t002 |
+| t004 | Render parity across create and deployment surfaces — **DONE** | 20m | t003 |
+| t005 | Simplify — **DONE** | 20m | t004 |
+| t006 | Test the CLI failures and admission boundary — **DONE** | 35m | t004, t005 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@
 - **Source:** continuous `$qa-find-bugs-cli` requested for w4, 2026-09-09 PDT / 2026-09-10 UTC. Durable sanitized commands, wire bodies, output and attribution are in t001/t002.
 - **Goal linkage:** Render-compatible hosting (ADR006/ADR018), tenant namespace isolation (ADR043), truthful image/Blueprint configuration (ADR049), and working free-tier wake routing (w6/m47).
 - **Expected outcome:** no false rejection of explicit disabled image auto-deploy; no failed initial deployment caused by the operator's own long-name alias format.
-- **Why now:** the shipped v2.27.0 CLI makes both journeys reproducible against production; current main still contains both causes. Implementation is now present; the live runtime acceptance below still gates closeout.
+- **Why now:** the shipped v2.27.0 CLI makes both journeys reproducible against production; both causes were present when filed. Implementation shipped as `818de80b8`; the remaining deployed acceptance passed on 2026-09-12 UTC.
 - **Render parity included:** both successful create semantics and deployment state are tenant-visible. Shared-code blast-radius work is separate t003.
 
 ## Hunt cleanup and limits
@@ -43,10 +43,8 @@ The long runtime fixture and short live control were deleted with the installed 
 - Validation: full backend `GOWORK=off go test ./...`, operator `GOWORK=off make test`, focused real-admission tests, installed-binary integration test, and `bash scripts/gitops-validate.sh` passed. Full `make lint` passed using a private Go 1.27-built pinned deadcode analyzer; the existing cached analyzer had been built with Go 1.26 and could not load the CLI module. The database/OpenFGA env-gated integration suites were not supplied external services by this local run. Simplify reuse/quality/efficiency reviews completed; stronger policy-specific negative assertions and early fixture-cleanup registration were applied.
 - Earlier QA fixture `srv-dah41v9c7cos73dm39ug` was recovered from this run's private creation ledger and deleted. Final detail/instances returned 404; resource-list reconciliation found no run-owned IDs and no missing baseline IDs. No pre-existing tenant resources were mutated.
 
-### Remaining acceptance (do not close early)
+### Final acceptance — complete
 
-Implementation shipped as `818de80b8`. The long-name first deploy, HTTPS, GraphQL agreement, free sleep/wake and fixture teardown now pass ([live evidence](live-acceptance.md)). The explicit disabled create and short-name control still need the updated backend, followed by final baseline reconciliation and isolated-session cleanup. The configured local kind and OrbStack API servers are unavailable; the production cluster is reachable. No production policy/workload was changed directly during implementation. Keep the milestone open until the remaining observations exist; do not substitute local regression tests for deployed behavior.
+Implementation shipped as `818de80b8`. The [live evidence](live-acceptance.md) records the hashed long-name first deploy, HTTPS, GraphQL agreement and free sleep/wake from 2026-09-11, plus the final 2026-09-12 explicit-disabled create, short-name first deploy, HTTPS, enabled/invalid controls, Blueprint validation, alias ownership and teardown. The backend-update blocker is resolved by observed deployed behavior.
 
-## Live acceptance progress
-
-[2026-09-11 live evidence](live-acceptance.md) proves the long-name first deployment, HTTPS, GraphQL agreement, actual alias ownership, sleep/wake, and fixture teardown. The short-name and explicit disabled-create acceptance still await the backend update; the milestone remains open.
+Both final-run fixtures were deleted and detail/instances returned 404; Kubernetes confirmed no corresponding runtime objects. The resource-list reconciliation records unrelated concurrent changes in the shared workspace rather than claiming an unchanged baseline. No pre-existing resource was mutated by this run. The isolated CLI and browser sessions were logged out and private artifacts removed. All seven tasks are complete.
