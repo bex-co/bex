@@ -22,6 +22,7 @@ resources:
   - log-shipper.yaml             # Alloy DaemonSet: tails App pod logs -> Loki (after loki)
   - grafana.yaml                 # platform observability UI over prometheus+loki; obs.bex.co in prod (docs/ADR088-platform-observability-ui.md)
   - build-image-prewarm.yaml     # DaemonSet: keeps the BuildKit image warm on every worker (w1/030)
+  - tenant-headroom.yaml         # negative-priority placeholder holding one standard slot warm, so rollout surge never mints a node the autoscaler then evicts it from (docs/ADR004-app-deployment.md § Rollout headroom)
   - cert-manager.yaml            # automated Let's Encrypt TLS
   - cert-manager-issuers.yaml    # letsencrypt-staging + -prod ClusterIssuers (after cert-manager)
   - cnpg-operator.yaml           # CloudNativePG operator (Postgres)
