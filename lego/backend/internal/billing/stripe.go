@@ -338,9 +338,27 @@ func (c *StripeClient) IngestBatch(ctx context.Context, events []Event) IngestRe
 	return result
 }
 
+// duplicateMeterEvent reports whether err is Stripe's idempotent-duplicate
+// answer for a meter event — the identifier is already recorded, so this exact
+// event is provably at Stripe and the local row is safe to stamp accepted.
+//
+// The v1 meter-event API does not return a `duplicate_meter_event` code: it
+// answers with a bare 400 invalid_request_error carrying no code at all and the
+// message "An event already exists with identifier <id>.". Matching only the
+// code therefore missed every production occurrence, and the two-replica race
+// this guard exists for dead-lettered 257 already-billed rows as permanent
+// rejects (.pm/w3/036). Both shapes are accepted; the code check stays in case
+// Stripe starts populating it.
 func duplicateMeterEvent(err error) bool {
 	var se *stripe.Error
-	return errors.As(err, &se) && string(se.Code) == "duplicate_meter_event"
+	if !errors.As(err, &se) {
+		return false
+	}
+	if string(se.Code) == "duplicate_meter_event" {
+		return true
+	}
+	return se.Type == stripe.ErrorTypeInvalidRequest &&
+		strings.Contains(strings.ToLower(se.Msg), "event already exists with identifier")
 }
 
 // safeStripeError reduces an SDK error to bounded, non-payment diagnostics.
