@@ -26,6 +26,7 @@ import (
 	"github.com/render-oss/cli/pkg/dashboard"
 	"github.com/render-oss/cli/pkg/style"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // DocsURL is opened by the overridden `bex docs` command. There is no
@@ -70,7 +71,27 @@ func Apply(root *cobra.Command, bexVersion string) {
 }
 
 func brandTree(root *cobra.Command) {
+	// Flags may already include inherited persistent flags after rendering help.
+	// Visit each flag pointer once per walk, including persistent-only flags.
+	seen := make(map[*pflag.Flag]bool)
+	rewriteFlag := func(f *pflag.Flag) {
+		if !seen[f] {
+			f.Usage = RewriteText(f.Usage)
+			seen[f] = true
+		}
+	}
 	walk(root, func(c *cobra.Command) {
+		if c.Name() == "set" && c.Parent() != nil && c.Parent().Name() == "workspace" && c.Parent().Parent() == root {
+			c.Long = `Set the CLI's active workspace. All CLI commands run against the active workspace.
+
+The active workspace is saved in $HOME/.bex/cli.yaml by default. Set
+BEX_CLI_CONFIG_DIR to use cli.yaml in another directory, or BEX_CLI_CONFIG_PATH
+to use an exact file path (takes precedence over BEX_CLI_CONFIG_DIR).
+An explicit, non-empty RENDER_CLI_CONFIG_PATH overrides both Bex inputs and
+the default. Empty values are treated as unset.`
+		}
+		c.Flags().VisitAll(rewriteFlag)
+		c.PersistentFlags().VisitAll(rewriteFlag)
 		c.Example = RewriteText(c.Example)
 		c.Short = RewriteText(c.Short)
 		c.Long = RewriteText(c.Long)
@@ -129,6 +150,7 @@ func RewriteText(s string) string {
 		{"the Render ", "the Bex "},
 		{"`render ", "`bex "},
 		{"`render`", "`bex`"},
+		{"'render workspace set", "'bex workspace set"},
 	} {
 		out = strings.ReplaceAll(out, pair.old, pair.new)
 	}
