@@ -86,6 +86,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **064** — [Fix oversized static-site purge Job names](064.md) (55m) ← live CLI QA; deleted fixture remains terminating until operator fix
+
 - [x] **063** — [Correct Bex CLI configuration guidance and command references in nested help](done/063.md) (55m) ← live CLI QA, 2026-09-11; reproduced in installed v0.2.1 and HEAD
 
 > **061** transferred to [w7/044](../w7/044.md) on 2026-09-09 by user-approved `/pm-brainstorm for w7 for top 3 customer-impactfully work` #3; archived in `done/061.md`.
