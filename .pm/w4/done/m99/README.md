@@ -45,6 +45,14 @@ The long runtime fixture and short live control were deleted with the installed 
 
 ### Final acceptance — complete
 
+<<<<<<< Updated upstream:.pm/w4/done/m99/README.md
 Implementation shipped as `818de80b8`. The [live evidence](live-acceptance.md) records the hashed long-name first deploy, HTTPS, GraphQL agreement and free sleep/wake from 2026-09-11, plus the final 2026-09-12 explicit-disabled create, short-name first deploy, HTTPS, enabled/invalid controls, Blueprint validation, alias ownership and teardown. The backend-update blocker is resolved by observed deployed behavior.
 
 Both final-run fixtures were deleted and detail/instances returned 404; Kubernetes confirmed no corresponding runtime objects. The resource-list reconciliation records unrelated concurrent changes in the shared workspace rather than claiming an unchanged baseline. No pre-existing resource was mutated by this run. The isolated CLI and browser sessions were logged out and private artifacts removed. All seven tasks are complete.
+=======
+Implementation shipped as `818de80b8`. The long-name first deploy, HTTPS, GraphQL agreement, free sleep/wake and fixture teardown now pass ([live evidence](live-acceptance.md)). The subsequent CLI QA sweep at 2026-09-12 05:24–05:33 UTC also proved explicit disabled creates, disabled Blueprint validation, and final baseline reconciliation. The short-name control and post-fix enabled/invalid controls remain unverified. The configured local kind and OrbStack API servers were unavailable during implementation; the production cluster was reachable. No production policy/workload was changed directly during implementation. Keep the milestone open until the remaining observations exist; do not substitute local regression tests for deployed behavior.
+
+## Live acceptance progress
+
+[2026-09-11 live evidence](live-acceptance.md) proves the long-name first deployment, HTTPS, GraphQL agreement, actual alias ownership, sleep/wake, and fixture teardown. Its subsequent CLI QA section proves explicit disabled-create acceptance against production. The short-name and enabled/invalid controls remain outstanding; the milestone remains open.
+>>>>>>> Stashed changes:.pm/w4/m99/README.md
