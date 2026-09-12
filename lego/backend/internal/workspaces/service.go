@@ -252,9 +252,10 @@ type IdentityAttrs struct {
 // KeyOwnerReader resolves a machine caller's API key (Hydra client id) to the
 // identity subject that minted it — the key→identity binding stamped as the
 // client's bex.co/created-by metadata (w4/m13), read back here so a machine
-// caller's GET /v1/users can report its owning human's email/name (w4/m25).
-// ok=false for an unknown/non-API-key client or a key minted before the stamp
-// existed. Nil => machine callers fall back to the earliest-admin email alone.
+// caller's GET /v1/users can report its owning human's id/email/name (w4/m25,
+// w4/062). ok=false for an unknown/non-API-key client or a key minted before
+// the stamp existed. Nil => machine callers fall back to the earliest-admin
+// email alone (no fabricated id).
 type KeyOwnerReader interface {
 	KeyOwner(ctx context.Context, clientID string) (subject string, ok bool)
 }
@@ -627,14 +628,15 @@ func (s *Service) defaultWorkspace(ctx context.Context) (WorkspaceView, error) {
 }
 
 // UserView is the caller's own account info — GET /v1/users
-// (components.schemas.user: {email, name}).
+// (components.schemas.user: {id, email, name}).
 type UserView struct {
+	ID    string
 	Email string
 	Name  string
 }
 
 // CurrentUser answers GET /v1/users, Render's "who am I" endpoint (used by e.g.
-// the official Render CLI's `render whoami`). A session caller's email + name
+// the official Render CLI's `render whoami`). A session caller's id/email/name
 // come straight off their Kratos identity (already resolved onto core.Identity
 // by the auth gate). A machine (API-key/OAuth) caller carries no traits of its
 // own: a user-consented OAuth token's subject is a Kratos identity id, looked
@@ -643,28 +645,27 @@ type UserView struct {
 // binding (KeyOwners, w4/m25) to the human who minted it. A key with no
 // resolvable owning human (minted before the created-by stamp, or a
 // service-account-style key) degrades to the bound workspace's earliest-admin
-// email with no name — the documented honest subset. No GraphQL/MCP
-// equivalent: the dashboard authenticates with its Kratos session directly
-// rather than this REST-only endpoint, and no MCP tool needs "who am I".
+// email with no name and no fabricated id — the documented honest subset. No
+// GraphQL/MCP equivalent: the dashboard authenticates with its Kratos session
+// directly rather than this REST-only endpoint, and no MCP tool needs "who am I".
 func (s *Service) CurrentUser(ctx context.Context) (UserView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return UserView{}, err
 	}
 	id, _ := core.IdentityFrom(ctx)
 	u := UserView{Email: id.Email, Name: id.Name}
-	if u.Email == "" && s.Identities != nil {
-		subject := id.Subject
-		if id.Subject == id.ClientID {
-			// The caller IS an API key — its subject can never be in Kratos.
-			subject = ""
-			if s.KeyOwners != nil {
-				subject, _ = s.KeyOwners.KeyOwner(ctx, id.Subject)
-			}
+	human := id.Subject
+	if id.Subject == id.ClientID {
+		// The caller IS an API key — its subject can never be a human id.
+		human = ""
+		if s.KeyOwners != nil {
+			human, _ = s.KeyOwners.KeyOwner(ctx, id.Subject)
 		}
-		if subject != "" {
-			if attrs, ok := s.Identities.Lookup(ctx, subject); ok {
-				u.Email, u.Name = attrs.Email, attrs.Name
-			}
+	}
+	u.ID = human
+	if u.Email == "" && s.Identities != nil && human != "" {
+		if attrs, ok := s.Identities.Lookup(ctx, human); ok {
+			u.Email, u.Name = attrs.Email, attrs.Name
 		}
 	}
 	if u.Email == "" {
