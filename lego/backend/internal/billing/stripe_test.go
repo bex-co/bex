@@ -280,18 +280,29 @@ func TestStripeIngestBatchDeadLettersPermanent4xx(t *testing.T) {
 }
 
 func TestStripeIngestBatchTreatsDuplicateIdentifierAsAccepted(t *testing.T) {
-	c, _ := newStripeTest(t, func(_ string, path string) (int, string) {
-		if strings.Contains(path, "/billing/meter_events") {
-			return 400, `{"error":{"type":"invalid_request_error","code":"duplicate_meter_event","message":"already submitted"}}`
-		}
-		return 200, `{"id":"cus_1","object":"customer"}`
-	})
-	c.storeCustomer("tea-a", "cus_1")
-	result := c.IngestBatch(context.Background(), []Event{
-		{TransactionID: "tx1", CustomerID: "tea-a", EventType: "instance_seconds", Timestamp: time.Now(), Properties: map[string]string{"tier": "starter", "resource_kind": "service", "value": "1"}},
-	})
-	if len(result.Accepted) != 1 || result.Accepted[0] != "tx1" || len(result.Failed) != 0 {
-		t.Fatalf("IngestBatch duplicate result = %+v, want accepted tx1", result)
+	// The first case is the shape production actually observed (.pm/w3/036): the
+	// v1 meter-event API answers a duplicate identifier with a bare
+	// invalid_request_error and no `code`. Matching only the code dead-lettered
+	// 257 already-billed rows, so both shapes must resolve to accepted.
+	for name, body := range map[string]string{
+		"bare invalid_request_error": `{"error":{"type":"invalid_request_error","message":"An event already exists with identifier 4c0becfc6f2ac7b42fda22a3a2880509fca16fa67230490a36c51ad7912e03aa."}}`,
+		"duplicate_meter_event code": `{"error":{"type":"invalid_request_error","code":"duplicate_meter_event","message":"already submitted"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			c, _ := newStripeTest(t, func(_ string, path string) (int, string) {
+				if strings.Contains(path, "/billing/meter_events") {
+					return 400, body
+				}
+				return 200, `{"id":"cus_1","object":"customer"}`
+			})
+			c.storeCustomer("tea-a", "cus_1")
+			result := c.IngestBatch(context.Background(), []Event{
+				{TransactionID: "tx1", CustomerID: "tea-a", EventType: "instance_seconds", Timestamp: time.Now(), Properties: map[string]string{"tier": "starter", "resource_kind": "service", "value": "1"}},
+			})
+			if len(result.Accepted) != 1 || result.Accepted[0] != "tx1" || len(result.Failed) != 0 {
+				t.Fatalf("IngestBatch duplicate result = %+v, want accepted tx1", result)
+			}
+		})
 	}
 }
 
