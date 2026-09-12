@@ -48,9 +48,6 @@ const (
 	BlueprintAutoSyncIntentFailed    = "failed"
 )
 
-const blueprintAutoSyncIntentColumns = `id, tenant_id, blueprint_id, delivery_digest, commit_sha, path, state,
-		        error_message, created_at, claimed_at, completed_at`
-
 func scanBlueprintAutoSyncIntent(scan interface {
 	Scan(dest ...any) error
 }) (BlueprintAutoSyncIntent, error) {
