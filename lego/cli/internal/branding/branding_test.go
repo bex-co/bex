@@ -53,6 +53,8 @@ func TestRewriteTextBrandingPhrases(t *testing.T) {
 		{"  render services\n  render login", "  bex services\n  bex login"},
 		{"Visit https://render.com/docs/ssh", "Visit https://render.com/docs/ssh"},
 		{"bex.yml is a filename alias", "bex.yml is a filename alias"},
+		{"'render workspace set <name|ID>'", "'bex workspace set <name|ID>'"},
+		{"render.yaml bex.yml ~/.render/skills https://render.com RENDER_HOST renderer", "render.yaml bex.yml ~/.render/skills https://render.com RENDER_HOST renderer"},
 	}
 	for _, tc := range cases {
 		if got := RewriteText(tc.in); got != tc.want {
@@ -128,5 +130,25 @@ func TestHelpFuncRebrandsLateAddedCommands(t *testing.T) {
 	}
 	if !strings.Contains(late.Example, "bex postgres list") {
 		t.Errorf("late Example = %q", late.Example)
+	}
+}
+
+func TestBrandTreeFlagHelpIsIdempotent(t *testing.T) {
+	root := &cobra.Command{Use: "bex"}
+	root.PersistentFlags().String("workspace", "", "Set via 'render workspace set'")
+	child := &cobra.Command{Use: "child"}
+	child.Flags().String("file", "render.yaml", "Read render.yaml or bex.yml")
+	root.AddCommand(child)
+	// Cobra may merge inherited flags into Flags while preparing help.
+	child.InheritedFlags()
+	for i := 0; i < 2; i++ {
+		brandTree(root)
+		if got := child.InheritedFlags().Lookup("workspace").Usage; got != "Set via 'bex workspace set'" {
+			t.Fatalf("walk %d: inherited flag usage = %q", i, got)
+		}
+		file := child.Flags().Lookup("file")
+		if file.Usage != "Read render.yaml or bex.yml" || file.DefValue != "render.yaml" {
+			t.Fatalf("walk %d changed file metadata: %+v", i, file)
+		}
 	}
 }

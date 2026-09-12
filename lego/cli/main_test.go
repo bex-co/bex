@@ -793,3 +793,57 @@ func TestBexOptOutSuppressesLauncherNativeTelemetry(t *testing.T) {
 		})
 	}
 }
+
+// Exercise the imported tree in fresh processes, including commands registered
+// after branding.Apply and flag descriptions rendered by upstream's template.
+func TestBexNestedHelp(t *testing.T) {
+	cases := []struct {
+		command string
+		want    []string
+		absent  []string
+	}{
+		{"workspace set", []string{"$HOME/.bex/cli.yaml", "BEX_CLI_CONFIG_DIR", "BEX_CLI_CONFIG_PATH", "takes precedence over BEX_CLI_CONFIG_DIR", "RENDER_CLI_CONFIG_PATH overrides both Bex inputs"}, []string{"$HOME/.render", "RENDER_CLI_CONFIG_DIR"}},
+		{"blueprints validate", []string{"render.yaml", "bex blueprints validate"}, []string{"bex.yaml"}},
+	}
+	for _, resource := range []string{"postgres", "pg", "keyvalues", "kv"} {
+		for _, action := range []string{"create", "get", "update", "delete", "suspend", "resume"} {
+			cases = append(cases, struct {
+				command string
+				want    []string
+				absent  []string
+			}{
+				resource + " " + action, []string{"bex workspace set"}, []string{"render workspace set"},
+			})
+		}
+	}
+	for _, tc := range cases {
+		t.Run(tc.command, func(t *testing.T) {
+			command := exec.Command(buildBex(), append(strings.Fields(tc.command), "--help")...)
+			for _, item := range updateTestEnv(t.TempDir()) {
+				if !strings.HasPrefix(item, "BEX_") {
+					command.Env = append(command.Env, item)
+				}
+			}
+			command.Env = append(command.Env, "BEX_NO_UPDATE_NOTIFIER=1", "BEX_CLI_DISABLE_ANALYTICS=1")
+			var stdout, stderr bytes.Buffer
+			command.Stdout, command.Stderr = &stdout, &stderr
+			if err := command.Run(); err != nil {
+				t.Fatalf("help failed: %v\n%s", err, stderr.String())
+			}
+			if stderr.Len() != 0 {
+				t.Errorf("unexpected stderr: %s", stderr.String())
+			}
+			text := strings.Join(strings.Fields(stdout.String()), " ")
+			for _, want := range tc.want {
+				if !strings.Contains(text, want) {
+					t.Errorf("help missing %q:\n%s", want, text)
+				}
+			}
+			for _, absent := range tc.absent {
+				if strings.Contains(text, absent) {
+					t.Errorf("help contains %q:\n%s", absent, text)
+				}
+			}
+		})
+	}
+}
