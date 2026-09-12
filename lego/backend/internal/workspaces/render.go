@@ -48,14 +48,17 @@ type ownerWithCursor struct {
 	Cursor string      `json:"cursor"`
 }
 
-// renderUser mirrors components.schemas.user — GET /v1/users' response shape.
+// renderUser mirrors components.schemas.user — GET /v1/users' response shape
+// (pinned CLI pkg/client.User: id, email, name). Id is the authenticated human
+// subject's ID; "" only for unbound machine credentials with no owning human.
 type renderUser struct {
 	Email string `json:"email"`
+	ID    string `json:"id"`
 	Name  string `json:"name"`
 }
 
 func toRenderUser(u UserView) renderUser {
-	return renderUser{Email: u.Email, Name: u.Name}
+	return renderUser{Email: u.Email, ID: u.ID, Name: u.Name}
 }
 
 func toRenderOwner(o OwnerView) renderOwner {
