@@ -11,7 +11,8 @@
 | t003 | Apply static custom header rules to the error response classes                         | 50m | —                          |
 | t004 | Name the autoscaling enable switches, and fix "utilisation" in the same panel          | 30m | —                          |
 | t005 | Blast-radius + control-case regression tests for both fixes                            | 45m | w4/m101/t001, w4/m101/t003 |
-| t006 | Render parity sweep over the changed surfaces                                          | 30m | w4/m101/t002, w4/m101/t004, w4/m101/t005 |
+| t010 | Name the shared IP-allowlist and database-user inputs across their four surfaces        | 35m | —                          |
+| t006 | Render parity sweep over the changed surfaces                                          | 30m | w4/m101/t002, w4/m101/t004, w4/m101/t005, w4/m101/t010 |
 | t007 | Simplify pass over this milestone's changes                                            | 30m | w4/m101/t006               |
 | t008 | Test coverage for the shipped behavior                                                 | 40m | w4/m101/t006               |
 | t009 | Closeout                                                                               | 15m | w4/m101/t008               |
