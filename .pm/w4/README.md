@@ -15,6 +15,10 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m103** — [A first deploy whose rollout fails leaves the service reading "Deploying" forever, while its deploy reads "Failed"](m103/README.md) (6 tasks, ~3h 35m) ← continuous live `/qa-find-bugs`, 2026-09-13 pass 5, journey 14; the deploy row settles to `update_failed` at the documented 900s budget with an excellent `failureReason`, but `status.phase` has no writer for a rollout failure (`PhaseFailed`'s only writer is `r.fail` on reconcile errors), so the header contradicted the deploy row on REST, GraphQL and the UI — the third case in the taxonomy `w6/m52` + `w6/m124` built
+
+- [ ] **m102** — [Blueprint validation names the field that is actually wrong, and the shipped static-site example validates](m102/README.md) (8 tasks, ~5h 5m) ← continuous live `/qa-find-bugs`, 2026-09-13 pass 5, journey 13; `examples/static-site/render.yaml` is the 1 of 7 shipped manifests bex's own validator rejects, and the `anyOf` "closest branch" heuristic blames `staticPublishPath` (legal) instead of `plan` (the offender), then sends the author round a three-message loop that never names it
+
 - [ ] **m101** — [Refuse autoscaling the runtime cannot honor, and apply static header rules to error responses](m101/README.md) (10 tasks, ~6h 5m) ← continuous live `/qa-find-bugs`, 2026-09-13 passes 2–3; a cron job accepts and stores `autoscaling.enabled=true` that the reconciler never reads (it returns before the replica path), the dashboard offers the editor above its own type gate, and a static site's `/*` header rule reaches 200/301 but none of the six error classes
 
 - [ ] **m100** — [Stop bex-api shedding a legitimate dashboard page load, and record the running commit on config-change deploys](m100/README.md) (9 tasks, ~6h 15m) ← continuous live `/qa-find-bugs`, 2026-09-13; a single Metrics page load draws 2–8 × `429 RATE_LIMITED` from the per-credential auth in-flight bound (not `BEX_RATE_LIMIT`), silently, and overturns `w6/028`'s "efficiency, not correctness" disposition; rides along with `config_change` deploy rows carrying no commit
