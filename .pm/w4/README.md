@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m100** — [Stop bex-api shedding a legitimate dashboard page load, and record the running commit on config-change deploys](m100/README.md) (9 tasks, ~6h 15m) ← continuous live `/qa-find-bugs`, 2026-09-13; a single Metrics page load draws 2–8 × `429 RATE_LIMITED` from the per-credential auth in-flight bound (not `BEX_RATE_LIMIT`), silently, and overturns `w6/028`'s "efficiency, not correctness" disposition; rides along with `config_change` deploy rows carrying no commit
+
 - [x] **m99** — [Restore image-create compatibility and long-name alias admission](done/m99/README.md) (7 tasks, ~3h 30m) ← continuous CLI QA, 2026-09-09
 
 - [x] **m97** — [Preserve environment-group metadata during concurrent edits](done/m97/README.md) (8 tasks, ~5h 30m) ← approved w4 brainstorm, 2026-09-08; done 2026-09-08 (metadata `PutCAS` for name/scope/links/`updatedAt`; content compensation no longer restores stale meta; delete tombstone fence; `ENV_GROUP_METADATA_CONFLICT`; Core race tests + ADR/drill evidence; live `dev-4` OpenBao drill deferred), moved to `done/m97/`
