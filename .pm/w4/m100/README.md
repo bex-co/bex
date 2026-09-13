@@ -44,6 +44,17 @@ Each bullet is a command or a click the next person can repeat against productio
 
 - **2026-09-13 pass 8 (independent re-confirmation).** The concurrency mechanism reproduced on a different service at a different time: 25 parallel identical `Metrics` queries → 5 × 429; 40 parallel → 17 × 429, after 90 sequential requests returned 90 × 200. The **page-load** symptom did **not** reproduce: one metrics load on the 1-instance `eden-dash-v3` issued 23 POSTs and shed none. The DoD above was corrected accordingly — the concurrency bullet is now the load-bearing one and the page-load bullet carries an explicit warning that it passes today on a single-instance service. `w6/028`'s disposition remains overturned: it attributed the sheds to `BEX_RATE_LIMIT` and to sweep pace, and both remain disproved (rate-driven shedding is absent at 90 sequential requests; concurrency-driven shedding is present twice).
 
+### Bearer control case — settled 2026-09-13 pass 13
+
+`t001` step 1 asked for this and it comes out as the code predicts, which strengthens the filing rather than correcting it. An API key was minted, exchanged for an access token, and used against the identical endpoint:
+
+| caller | 90 sequential | 25 parallel | 40 parallel |
+| --- | --- | --- | --- |
+| **bearer** (API-key token) | 0 × 429 | **0 × 429** | **0 × 429** |
+| **session cookie** (pass 8) | 0 × 429 | 5 × 429 | 17 × 429 |
+
+Same endpoint, same workspace, same machine. So the shed is specific to the **session** credential class — exactly what `auth.go:572-575` predicts, since `introspect` positively caches while `whoami` deliberately does not. t001's fix should therefore target the session path or the caching asymmetry, not the in-flight bound globally. The key was revoked at the end of that run; full journey in `w4/m105`.
+
 ## Unverified this run
 
 Carried from the findings so nothing inferred arrives as something observed:
