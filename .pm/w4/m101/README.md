@@ -1,0 +1,57 @@
+# w4 · m101 — Refuse autoscaling the runtime cannot honor, and apply static header rules to error responses
+
+**Worker:** worker4 **Goal:** a service type with no replica concept can no longer be configured to autoscale — on any surface — and a `/*` custom-header rule on a static site reaches every response its site serves, not only the successful and redirected ones. **Status:** todo
+
+## Tasks (in order)
+
+| id   | title                                                                               | est | depends_on                 |
+| ---- | ----------------------------------------------------------------------------------- | --- | -------------------------- |
+| t001 | Refuse autoscaling for types the runtime cannot scale, and settle the worker case      | 50m | —                          |
+| t002 | Gate the Scaling surface per type the way manual scaling and Disk already are          | 40m | w4/m101/t001               |
+| t003 | Apply static custom header rules to the error response classes                         | 50m | —                          |
+| t004 | Name the autoscaling enable switches, and fix "utilisation" in the same panel          | 30m | —                          |
+| t005 | Blast-radius + control-case regression tests for both fixes                            | 45m | w4/m101/t001, w4/m101/t003 |
+| t006 | Render parity sweep over the changed surfaces                                          | 30m | w4/m101/t002, w4/m101/t004, w4/m101/t005 |
+| t007 | Simplify pass over this milestone's changes                                            | 30m | w4/m101/t006               |
+| t008 | Test coverage for the shipped behavior                                                 | 40m | w4/m101/t006               |
+| t009 | Closeout                                                                               | 15m | w4/m101/t008               |
+
+## Definition of done
+
+Each bullet is a command or a click the next person can repeat against production.
+
+- **A cron job cannot be configured to autoscale, on any surface.** `PUT /v1/services/<cron-srv-id>/autoscaling` with a valid body returns a named 4xx naming the service type, and `GET …/autoscaling` still reads `{"enabled":false,…}`. Today the PUT succeeds and the GET reads back `{"enabled":true,"minInstances":1,"maxInstances":1,"targetCPUPercent":60}` for a service the reconciler never even consults for replicas.
+- **The same refusal holds on every write entry point**, not just REST: GraphQL `setAutoscaling`, the settings-patch path (`apps/settings.go:295`), and the create/Blueprint `scaling:` block (`apps/service.go:2579`) all refuse for the same types with the same error. Asserted by a test per entry point.
+- **The dashboard stops offering it.** `/services/<cron-srv-id>/scaling` does not render an autoscaling editor, and the cron job's sidebar has no Scaling entry — matching how `ManualScalingSection` is already gated in the same file and how `DISK` is already gated in the same function. Today the editor renders, its Save persists, and the nav lists Scaling.
+- **The background-worker question is answered in writing, not left implicit.** Either a worker's accepted autoscaling config is honored by the reconciler (the `!worker` exclusion at `app_controller.go:2294` removed, with a test that a worker actually scales), or it is refused like cron with the divergence from Render recorded in `docs/ADR018-render-parity.md`. Not both, and not silence: today the API accepts it and the reconciler discards it.
+- **A `/*` header rule reaches a 404.** On a static site with one saved rule `path=/*, X-Qa-Marker: <v>`, `curl -sSI https://<site>.onbex.co/<missing>.html` includes `x-qa-marker`. Today it is present on the 200 and on a 301 redirect and absent on the 404.
+- **Every resolved-site response class is decided explicitly.** For each of the six response sites that today apply no headers with a site in hand — `staticserver.go:262` (400 invalid redirect target), `:273` / `:281` / `:303` (404), `:311` / `:314` / `:316` via `serveOriginError` (413 / 503 / 502), `:334` (503 live-body shed) — the milestone records whether headers apply and why, and a test pins each decision. The two sites with **no** resolved site (`:205` 405, `:211` unknown-host 404) stay headerless, because there are no rules to apply.
+- **A custom rule cannot corrupt an error response.** A rule whose name is `Content-Type` (or `Content-Length`) does not change what an error body actually is — asserted by a test.
+- **Both autoscaling enable switches are named.** `await page.locator('main').ariaSnapshot()` on the Scaling tab shows named switches for `#cpu-enabled` and `#mem-enabled`, as it already does for `#autoscaling-enabled`. Today the first two come back as bare `- switch` nodes.
+- **One spelling.** The panel reads "utilization" throughout; the validation message no longer says "utilisation" beside three labels that say "Utilization".
+
+## Source + Goal linkage
+
+- **Source:** live `/qa-find-bugs` hunt of `https://dashboard.bex.co`, 2026-09-13 UTC (second pass of the same day's loop; the first filed `w4/m100`). Workspace `bex` / `tea-d98210cbbpdc73dcrkvg`. Throwaway resources created and deleted within the run: project `qa-20260913b-proj` (`prj-daj7qbi6m8ac739r5690`), environment `qa-staging` (`env-daj7qjogsm7s73f63o00`), static site `qa-0913b-static` (`srv-daj7r28gsm7s73f63o20`), cron job `qa-0913b-cron` (`srv-daj7srogsm7s73f63o5g`). Exact probes and responses are pasted into t001, t003 and t004.
+- **Goal linkage:** ADR008 pillar 1 and `docs/ADR018-render-parity.md`. The repo's own dated capture is explicit that the Scaling page is **"web/private/background services only—not cron jobs"** (`docs/render-artifacts/manual-scaling.md:7`, repeated at `:21` as "non-cron/static only"), so offering it for a cron job is a captured-contract violation, not a judgement call. `docs/ADR029-static-sites.md` for the header-rule contract; ADR043/ADR029 for the shared static-server.
+- **Expected outcome:** the product stops accepting configuration it cannot act on — the class of defect where a save succeeds, the UI shows the new state, and nothing happens — and a customer's security or CORS header rule covers their error responses instead of silently stopping at 2xx/3xx.
+- **Why now:** both are reachable by an ordinary user on a default path, and both are silent. Autoscaling on a cron job leaves a user believing a scaling policy is active forever; a missing `X-Frame-Options` or `Access-Control-Allow-Origin` on a 404 is invisible until something depends on it. Each also has an in-repo control case sitting next to the defect, so the fix shape is already settled by precedent rather than needing design.
+- **Render parity task included:** yes — REST, GraphQL and MCP share the autoscaling verbs, the dashboard renders the gate, and the static-server's response headers are a user-visible surface.
+
+## Dedupe
+
+- **`w4/043` (done) — adjacent, not a duplicate, and it is why the fork below was worth chasing.** 043 fixed accessible names on this same panel's **sliders and number inputs** (`SliderInput`, the Radix thumb) and its fix is live: this run's `ariaSnapshot()` shows `spinbutton "Minimum instances"`, `slider "Minimum"`, `slider "Maximum"`, `spinbutton "Maximum instances"` all named. The **`role=switch`** enable toggles were never in its scope. 043's own "Unverified" line records "autoscaling-on UI, CPU/memory sibling controls in production" as unprobed — this run probed them.
+- **A contradiction in `w4/043` is resolved, not carried forward.** 043 states "Static and cron are excluded by `services.$serviceId.scaling.tsx:42-44`". That is true of **manual** scaling only: the `scalable` flag (`:42-43`, `!isCron(service) && !isStaticSite(service)`) gates `<ManualScalingSection>` at `:51-58`, while `<AutoscalingSection>` renders unconditionally at `:47`, above the gate. The file's own comment — _"Only service types with a replica concept scale manually — cron jobs have no long-running pods"_ — applies equally to the card that escaped it. 043's sentence was accurate for its scope and is not being re-litigated.
+- **`w4/m94` (done) deliberately preserved the header call sites it did not touch.** Its t003 audit recorded "applyHeaders has two [production calls] (redirect and success)" as existing state to keep while fixing precedence, and its own DoD notes "The live hunt did not exercise origin errors". So the error classes were never in scope — this is a gap m94 knowingly stepped around, not a regression of it. m94's request-path contract itself still holds and must keep holding.
+- Searched `.pm` open and `done/` for autoscaling, cron+autoscaling, `applyHeaders`, scaling accessibility, and slider/switch labels. `w7/m43` is the original manual-scaling implementation; `w6/m118` is free-plan instance caps, a different and working constraint. `.pm/DO_NOT_DO.md` has no matching anti-goal (persistent disks were re-opened; nothing there covers scaling gates or static headers).
+- **Not already fixed on `main`:** `staticserver.go` still calls `applyHeaders` from exactly two sites; `autoscalingSpec` still never reads `a.Spec.Type`; `services.$serviceId.scaling.tsx` still renders `<AutoscalingSection>` above the `scalable` gate; `service-nav.tsx` still puts `SCALING` in the ungated `manageTail`. The `!worker` exclusion traces to `a58a64967` (2026-07-11, the original feature) with no rationale comment and no test.
+
+## Verified this run, and not claimed
+
+Carried so nothing inferred arrives as something observed.
+
+- **Confirmed live end to end:** cron-job autoscaling accepted and read back; header rule present on 200 and 301, absent on 404; both enable switches unnamed in the real accessibility tree; the "utilisation" string.
+- **Traced in code, not probed live:** the background-worker exclusion (`app_controller.go:2294`); that a static site reached by direct URL also renders the ungated autoscaling card (its nav correctly omits Scaling, `service-nav.tsx:87-96`, so it is URL-only reachable); whether the API accepts autoscaling for a static site at all; the 400/413/502/503 header-less classes (only the 404 was produced live).
+- **Checked and found correct, so not filed:** `/cron/<srv-id>` redirects to the canonical service route; the Shell tab on a cron job fails honestly ("Shell access requires a running paid web, private, or background service and an active SSH gateway") — which is the second in-repo precedent for how a type-ineligible surface should behave; a redirect rule took effect on the public URL with no redeploy; the contextual New Service link carried project + environment into the create form and the resource landed in the right environment on every list; a short-named static site purged cleanly on delete, which incidentally corroborates `w4/064`'s length-based diagnosis.
+- **Observed but not filed for lack of evidence:** a newly created project has **no** environment and cannot accept resources until one is made (its empty state says so honestly). Whether Render creates a default `production` environment at project create is not captured anywhere in `docs/render-artifacts/`, and the parity ledger's Projects row is ✅ with no mention of it, so asserting drift would rest on memory. Capture it from a real Render account before filing.
+- **Not exercised this run:** Postgres, Key Value, background/private service, blueprint sync apply, rollback execution, free-tier sleep/wake, deploy hook, logs filters and time ranges.
