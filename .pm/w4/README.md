@@ -98,6 +98,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **071** — [The SQL console answers every query mistake with a bare SQLSTATE code, and the redaction it inherits has no sink left to protect](071.md) (~1h) ← live `/qa-find-bugs` 2026-09-13 pass 15, journey 11; `postgres/query.go:380` collapses every unclassified Postgres error while the two classified classes return clear prose, and `audit_events` has no column the message could leak into. Also closes `w4/m95` t007's and `w4/m91`'s deferred live re-probes with evidence
 - [ ] **070** — [Two active workspace members are unattributable on every surface, because the Kratos lookup miss is silently discarded](070.md) (~1h) ← live `/qa-find-bugs` 2026-09-13 pass 14; `members/service.go:426` drops the `ok` bool, `status` is hardcoded `"active"`, and the Team row renders the `own-` fallback in the same typography as a resolved email
 - [ ] **069** — [The audit log and API-keys table still show a raw Kratos subject where webhooks show an email](069.md) (~45m) ← live `/qa-find-bugs` 2026-09-13 pass 12; `use-webhook-creator.ts` is already generic and used on one of three surfaces
 - [ ] **068** — [QA coverage record: deploy hook, logs filters and free-tier sleep/wake all verified correct (no findings)](068.md) ← live `/qa-find-bugs` 2026-09-13; a record of what was exercised, not work to do
