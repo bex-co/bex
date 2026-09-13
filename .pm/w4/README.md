@@ -23,7 +23,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m102** — [Blueprint validation names the field that is actually wrong, and the shipped static-site example validates](m102/README.md) (8 tasks, ~5h 5m) ← continuous live `/qa-find-bugs`, 2026-09-13 pass 5, journey 13; `examples/static-site/render.yaml` is the 1 of 7 shipped manifests bex's own validator rejects, and the `anyOf` "closest branch" heuristic blames `staticPublishPath` (legal) instead of `plan` (the offender), then sends the author round a three-message loop that never names it
 
-- [ ] **m101** — [Refuse autoscaling the runtime cannot honor, and apply static header rules to error responses](m101/README.md) (11 tasks, ~6h 35m) ← continuous live `/qa-find-bugs`, 2026-09-13 passes 2–3 + 7; a cron job accepts and stores `autoscaling.enabled=true` that the reconciler never reads (it returns before the replica path), the dashboard offers the editor above its own type gate, and a static site's `/*` header rule reaches 200/301 but none of the six error classes
+- [ ] **m101** — [Refuse autoscaling the runtime cannot honor, and apply static header rules to error responses](m101/README.md) (12 tasks, ~7h 5m) ← continuous live `/qa-find-bugs`, 2026-09-13 passes 2–3 + 7; a cron job accepts and stores `autoscaling.enabled=true` that the reconciler never reads (it returns before the replica path), the dashboard offers the editor above its own type gate, and a static site's `/*` header rule reaches 200/301 but none of the six error classes
 
 - [ ] **m100** — [Stop bex-api shedding a legitimate dashboard page load, and record the running commit on config-change deploys](m100/README.md) (9 tasks, ~6h 15m) ← continuous live `/qa-find-bugs`, 2026-09-13; a single Metrics page load draws 2–8 × `429 RATE_LIMITED` from the per-credential auth in-flight bound (not `BEX_RATE_LIMIT`), silently, and overturns `w6/028`'s "efficiency, not correctness" disposition; rides along with `config_change` deploy rows carrying no commit
 
@@ -98,6 +98,12 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **070** — [Two active workspace members are unattributable on every surface, because the Kratos lookup miss is silently discarded](070.md) (~1h) ← live `/qa-find-bugs` 2026-09-13 pass 14; `members/service.go:426` drops the `ok` bool, `status` is hardcoded `"active"`, and the Team row renders the `own-` fallback in the same typography as a resolved email
+- [ ] **069** — [The audit log and API-keys table still show a raw Kratos subject where webhooks show an email](069.md) (~45m) ← live `/qa-find-bugs` 2026-09-13 pass 12; `use-webhook-creator.ts` is already generic and used on one of three surfaces
+- [ ] **068** — [QA coverage record: deploy hook, logs filters and free-tier sleep/wake all verified correct (no findings)](068.md) ← live `/qa-find-bugs` 2026-09-13; a record of what was exercised, not work to do
+- [ ] **067** — [An environment group's own page says its secret files are "mounted into this service"](067.md) ← live `/qa-find-bugs` 2026-09-13
+- [ ] **066** — [Key Value `persistenceMode` is invisible and unchangeable in the dashboard, though `w6/m127` made it updatable](066.md) ← live `/qa-find-bugs` 2026-09-13
+- [ ] **065** — [Blueprint "Managed Resources" tells a synced blueprint to sync](065.md) ← live `/qa-find-bugs` 2026-09-13
 - [ ] **064** — [Fix oversized static-site purge Job names](064.md) (55m) ← live CLI QA; deleted fixture remains terminating until operator fix
 
 - [x] **063** — [Correct Bex CLI configuration guidance and command references in nested help](done/063.md) (55m) ← live CLI QA, 2026-09-11; reproduced in installed v0.2.1 and HEAD
