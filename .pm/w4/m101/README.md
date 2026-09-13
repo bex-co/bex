@@ -13,7 +13,8 @@
 | t005 | Blast-radius + control-case regression tests for both fixes                            | 45m | w4/m101/t001, w4/m101/t003 |
 | t010 | Name the shared IP-allowlist and database-user inputs across their four surfaces        | 35m | —                          |
 | t011 | Name the global search input, which cmdk actively un-names                              | 30m | —                          |
-| t006 | Render parity sweep over the changed surfaces                                          | 30m | w4/m101/t002, w4/m101/t004, w4/m101/t005, w4/m101/t010, w4/m101/t011 |
+| t012 | Wire the SSH-key dialog's validation error to its textarea                               | 30m | —                          |
+| t006 | Render parity sweep over the changed surfaces                                          | 30m | w4/m101/t002, w4/m101/t004, w4/m101/t005, w4/m101/t010, w4/m101/t011, w4/m101/t012 |
 | t007 | Simplify pass over this milestone's changes                                            | 30m | w4/m101/t006               |
 | t008 | Test coverage for the shipped behavior                                                 | 40m | w4/m101/t006               |
 | t009 | Closeout                                                                               | 15m | w4/m101/t008               |
@@ -32,6 +33,7 @@ Each bullet is a command or a click the next person can repeat against productio
 - **Every resolved-site response class is decided explicitly.** For each of the six response sites that today apply no headers with a site in hand — `staticserver.go:262` (400 invalid redirect target), `:273` / `:281` / `:303` (404), `:311` / `:314` / `:316` via `serveOriginError` (413 / 503 / 502), `:334` (503 live-body shed) — the milestone records whether headers apply and why, and a test pins each decision. The two sites with **no** resolved site (`:205` 405, `:211` unknown-host 404) stay headerless, because there are no rules to apply.
 - **A custom rule cannot corrupt an error response.** A rule whose name is `Content-Type` (or `Content-Length`) does not change what an error body actually is — asserted by a test.
 - **Both autoscaling enable switches are named.** `await page.locator('main').ariaSnapshot()` on the Scaling tab shows named switches for `#cpu-enabled` and `#mem-enabled`, as it already does for `#autoscaling-enabled`. Today the first two come back as bare `- switch` nodes.
+- **An invalid SSH public key is announced, not just greyed out.** In the Add-SSH-key dialog with an invalid key pasted, the textarea is `aria-invalid` and its accessible description is the validation message — the shape `invite-member-dialog.tsx:117-137` already uses one card away on the same page. Today the message renders as an unassociated `<p>` with no `id` and no `role="alert"`, the field is never marked invalid, and Save disables silently (measured pass 14; see t012).
 - **One spelling.** The panel reads "utilization" throughout; the validation message no longer says "utilisation" beside three labels that say "Utilization".
 
 ## Source + Goal linkage
