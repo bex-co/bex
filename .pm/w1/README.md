@@ -141,6 +141,8 @@ Open inbox notes:
 
 - [086](086.md) — "Move to project" from a resource row joins a project with no environment, so the project page opens on an empty environment (`environments-panel.tsx:100-104` prefers `environments[0]` over a non-empty Unassigned) while the create form's hint (`environments/locales/en.ts:324-326`) says project-only membership can't happen (~45m, dashboard-only) ← live `/qa-find-bugs` 2026-09-14 pass 4.
 
+- [087](087.md) — A deploy waiting on the workspace build cap reads only "Queued" / `==> Build queued` for its whole wait (8¾ min live), though the operator already wrote `"workspace has 2/2 concurrent builds active; waiting for a slot"` (`app_controller.go:796-797`); the backend surfaces it only via `failureReason` on timeout (`reconciler.go:1320-1323`) (~60m, backend progress narration) ← live `/qa-find-bugs` 2026-09-14 pass 5.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
