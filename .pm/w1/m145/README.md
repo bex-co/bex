@@ -52,6 +52,15 @@ Fixture: project `qa-20260914-proj` (`prj-dajra3q6m8ac739r5iq0`) › environment
 
    Save changes was enabled beforehand, and the row stayed in edit mode with `0 0 * * 7` kept.
 
+4. **A non-cron site, live (2026-09-14 pass 8).** The shared `EnvironmentEditor.commit` (`dashboard/src/features/services/components/service-environment-editor.tsx:497-502`, used by both the service Environment tab and environment groups) saved a 614,400-byte secret file on env group `qa-20260914-grp` (`evg-dajtooq6m8ac739r5q60`, created and deleted in the run):
+
+   ```text
+   PatchEnvGroupEnvironment → {"data":{"patchEnvGroupEnvironment":null},"errors":[{"message":"bad request: total secret file size limit of 524288 bytes exceeded","path":["patchEnvGroupEnvironment"]}]}
+   toast: "Couldn't save the environment. Your draft is still here."
+   ```
+
+   The server named the exact limit, and the user saw only the generic copy. The draft stayed open, which is correct. This is one of the non-cron sites t003 step 5 asks for, with the server sentence captured. The related quota bypass on the **service** path is `w1/m147`.
+
 No screenshots were taken. The probes above are the durable evidence.
 
 ## Root cause
@@ -85,7 +94,7 @@ No screenshots were taken. The probes above are the durable evidence.
 
 - `0 0 ? * *` on the live server (reasoned from `parser.go:262`), and whether the pinned Render schema or Render itself accepts `?` or `7`. Render's cron docs (`render.com/docs/cronjobs`, fetched 2026-09-14) show only `*/10 * * * *`, `0 12 * * *` and `MON-FRI` examples and do not say either way.
 - REST `POST /v1/services`, `PATCH /v1/services/{id}`, MCP `create_cron_job`/`update_service`, and the Blueprint validator on `schedule: "0 0 * * 7"`. They are expected to refuse through the same `validCronSchedule`, but only GraphQL was exercised.
-- Every one of the 77 sites except `use-create-service.ts` and `use-cron-job.ts`: inferred from code shape, not driven live.
+- Every one of the 77 sites except `use-create-service.ts`, `use-cron-job.ts` and `service-environment-editor.tsx:497-502` (driven live 2026-09-14 pass 8, Evidence 4): inferred from code shape, not driven live.
 
 ## Dedupe
 

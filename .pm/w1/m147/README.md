@@ -38,6 +38,17 @@ Fixture: free web service `qa-20260914-sf` (`srv-dajtb80gsm7s73f649s0`, `example
 
    The deploy it opened, `dep-dajtefi6m8ac739r5pc0` (`config_change`), went `build_in_progress` 11:15:37 → `live` 11:16:49. Afterwards `service.secretFile(name:"big.bin").content` measured **614,400 UTF-8 bytes** (over 512 KiB), and `secretFileNames` listed `["big.bin","qa-pass7"]`.
 
+3. **The guarded control was confirmed live, 2026-09-14 pass 8.** I sent the same 614,400-byte `big.bin` through the **same shared editor** (`EnvironmentEditor`) on an environment group, `qa-20260914-grp` (`evg-dajtooq6m8ac739r5q60`, created and deleted in the run). The env-group bulk patch refused it:
+
+   ```text
+   PatchEnvGroupEnvironment → 200
+   {"data":{"patchEnvGroupEnvironment":null},"errors":[{"message":"bad request: total secret file size limit of 524288 bytes exceeded","path":["patchEnvGroupEnvironment"]}]}
+   group after: revision "egr1_AAAAAAAAAAE" (unchanged), secretFiles []
+   toast: "Couldn't save the environment. Your draft is still here."
+   ```
+
+   Same editor, same payload, opposite outcomes: the env-group path (`envgroups/patch.go:186-189`) enforces the quota, and the service path (item 2) does not. The toast also confirms t003's copy problem: the server's sentence is discarded (`service-environment-editor.tsx:497-502`; the class belongs to `w1/m145`). In the same pass, linking that group to a free service returned `linkEnvGroup: true`, showed "Linked services are redeploying to apply the change.", and opened a `config_change` deploy (`dep-dajtp9ogsm7s73f64avg`), so linking works as promised.
+
 No screenshots were taken; the transcripts above are the evidence.
 
 ## Root cause
