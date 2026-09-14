@@ -161,6 +161,8 @@ Open inbox notes:
 
 - [093](093.md) — Render's `GET /notification-settings/overrides` (list a workspace's service notification overrides) answers bex's bare `404 page not found`, while the per-service override route works. ADR018 row 227 records the per-member owner-settings divergence but not this gap (~30m) ← live `/qa-find-bugs` 2026-09-14 pass 15.
 
+- [094](094.md) — A suspended web service answers every visitor with Traefik's raw `503 no available server` (text/plain, the same for browser and JSON clients), not a bex "service suspended" response. A suspended App keeps its Ingress pointed at its own endpoint-less Service (`ingressBackend`, `app_controller.go:2317-2347`), while suspended static sites (`w3/m46`) and sleeping services (`w6/m94` activator) already get real responses (~45m) ← live `/qa-find-bugs` 2026-09-14 pass 18.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
