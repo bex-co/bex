@@ -1,19 +1,19 @@
 # w4 · m102 — Blueprint validation names the field that is actually wrong, and the shipped static-site example validates
 
-**Worker:** worker4 **Goal:** a blueprint author who makes one mistake is told which key caused it, instead of being sent around a three-message loop that never names the offender — and the repository's own static-site example passes the validator it is meant to demonstrate. **Status:** todo
+**Worker:** worker4 **Goal:** a blueprint author who makes one mistake is told which key caused it, instead of being sent around a three-message loop that never names the offender — and the repository's own static-site example passes the validator it is meant to demonstrate. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                            | est | depends_on                 |
 | ---- | -------------------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Fix `examples/static-site/render.yaml` and guard every shipped manifest in CI       | 40m | —                          |
-| t002 | Pick the `anyOf` branch by its discriminator, not by leaf count alone               | 60m | —                          |
-| t003 | Speak manifest vocabulary in blueprint-surfaced create-validator errors             | 45m | —                          |
-| t004 | Blast-radius + control-case regression tests for branch selection                   | 45m | w4/m102/t002, w4/m102/t003 |
-| t005 | Render parity sweep over the changed surfaces                                       | 30m | w4/m102/t001, w4/m102/t004 |
-| t006 | Simplify pass over this milestone's changes                                         | 30m | w4/m102/t005               |
-| t007 | Test coverage for the shipped behavior                                              | 40m | w4/m102/t005               |
-| t008 | Closeout                                                                            | 15m | w4/m102/t007               |
+| t001 | Fix `examples/static-site/render.yaml` and guard every shipped manifest in CI — **DONE** | 40m | — |
+| t002 | Pick the `anyOf` branch by its discriminator, not by leaf count alone — **DONE** | 60m | — |
+| t003 | Speak manifest vocabulary in blueprint-surfaced create-validator errors — **DONE** | 45m | — |
+| t004 | Blast-radius + control-case regression tests for branch selection — **DONE** | 45m | w4/m102/t002, w4/m102/t003 |
+| t005 | Render parity sweep over the changed surfaces — **DONE** | 30m | w4/m102/t001, w4/m102/t004 |
+| t006 | Simplify pass over this milestone's changes — **DONE** | 30m | w4/m102/t005 |
+| t007 | Test coverage for the shipped behavior — **DONE** | 40m | w4/m102/t005 |
+| t008 | Closeout — **DONE** | 15m | w4/m102/t007 |
 
 ## Definition of done
 
