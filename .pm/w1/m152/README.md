@@ -10,7 +10,8 @@
 | t002 | Cancel settles to the last successful release's full runtime identity (image and config), never the current spec | 60m | t001       |
 | t003 | Truth surfaces: the canceled change stays saved and reads "not deployed"; the Live row is what actually runs     | 45m | t002       |
 | t004 | Blast radius: every config source a `config_change` deploy carries, plus the m52/m104 controls                  | 45m | t002       |
-| t005 | Render parity                                                                                                   | 30m | t003, t004 |
+| t009 | Rollback restores the target deploy's configuration (env vars, start command), and a dashboard rollback turns auto-deploy off | 60m | t001 |
+| t005 | Render parity                                                                                                   | 30m | t003, t004, t009 |
 | t006 | Simplify                                                                                                        | 20m | t005       |
 | t007 | Test coverage                                                                                                   | 45m | t005       |
 | t008 | Closeout                                                                                                        | 10m | t007       |
