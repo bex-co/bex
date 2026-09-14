@@ -150,6 +150,10 @@ Open inbox notes:
 
 - [088](088.md) — Billing → Charges names a deleted service (3 live rows, all `app not found`) and every sandbox (14 rows; 13 of the UUIDs are listed nowhere) only by bare id, because `usage/service.go:286-313` resolves names from live resources only and has no sandbox branch (~60–90m) ← live `/qa-find-bugs` 2026-09-14 pass 6.
 
+- [089](089.md) — `GET /v1/webhooks/event-types` always answers `400 invalid path parameter "webhookId"`. The strict Render validator (`api/render_openapi.go:360-409`) matches it as Render's `GET /webhooks/{webhookId}` before bex's handler (`webhooks/rest.go:250-254`) runs. It is the only one of 183 REST routes shadowed this way, and no test walks bex literals against Render templates (~45m) ← live `/qa-find-bugs` 2026-09-14 pass 13.
+
+- [090](090.md) — A webhook's Recent deliveries table shows each row's service only as the bare `srv-` id (`webhook-deliveries-card.tsx:288-290`), though every delivery payload already carries `serviceName` (~40m, dashboard + delivery view) ← live `/qa-find-bugs` 2026-09-14 pass 13.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
