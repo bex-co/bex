@@ -127,15 +127,51 @@ token_for() {
   jq -er '.access_token' "$output"
 }
 
-create_api_key() {
-  local workspace="$1" name="$2" output="$3" code
-  code="$(api_call "$fixture_dir/bootstrap.curl" POST /v1/api-keys "$output" \
-    --header 'Content-Type: application/json' \
-    --data-binary "$(jq -nc --arg name "$name" --arg owner "$workspace" \
-      '{name:$name,ownerId:$owner}')")"
-  [ "$code" = 201 ] || fail "creating disposable API key $name returned HTTP $code"
-  jq -e '(.id | length > 0) and (.secret | length > 0)' "$output" >/dev/null \
-    || fail "creating disposable API key $name returned no credential"
+# Mint a disposable workspace principal the same way CreateAPIKey does
+# (Hydra client + tenant_members row + OpenFGA membership), without calling
+# POST /v1/api-keys — AuthorizeMintClass refuses client_credentials callers
+# (codex round-7 F3), and this wrapper's bootstrap is exactly that class.
+# relation is the OpenFGA workspace relation / tenant_members.role
+# (developer for ordinary members, admin for the elevated principal).
+create_bound_principal() {
+  local workspace="$1" name="$2" relation="$3" output="$4"
+  local client_id client_secret client_body code
+  case "$relation" in developer | admin) ;; *)
+    fail "create_bound_principal: relation must be developer or admin, got $relation"
+    ;;
+  esac
+  client_id="m35-$(openssl rand -hex 10)"
+  client_secret="$(openssl rand -hex 32)"
+  client_body="$fixture_dir/hydra-$client_id.json"
+  jq -nc --arg id "$client_id" --arg secret "$client_secret" --arg name "$name" \
+    '{client_id:$id,client_name:$name,client_secret:$secret,
+      grant_types:["client_credentials"],token_endpoint_auth_method:"client_secret_post",
+      metadata:{"bex.co/api-key":true}}' >"$client_body"
+  code="$(curl --silent --show-error --output "$fixture_dir/hydra-create-$client_id.json" \
+    --write-out '%{http_code}' --request POST --header 'Content-Type: application/json' \
+    --data-binary "@$client_body" "$hydra_admin/admin/clients")"
+  [ "$code" = 201 ] || fail "creating Hydra client for $name returned HTTP $code"
+
+  primary="$(kubectl -n "$api_namespace" get clusters.postgresql.cnpg.io bex-db \
+    -o jsonpath='{.status.currentPrimary}')"
+  [ -n "$primary" ] || fail "bex-db has no primary for binding $name"
+  # BindClient shape: one developer/admin membership row per client subject.
+  kubectl -n "$api_namespace" exec -i "$primary" -c postgres -- \
+    psql -X -q -v ON_ERROR_STOP=1 -U postgres -d bex \
+    -v client="$client_id" -v tenant="$workspace" -v role="$relation" <<'SQL' >/dev/null \
+    || fail "binding $name into tenant_members failed"
+DELETE FROM tenant_members WHERE subject = :'client';
+INSERT INTO tenant_members (tenant_id, subject, role)
+VALUES (:'tenant', :'client', :'role');
+SQL
+
+  grant_body="$(jq -nc --arg user "user:$client_id" --arg rel "$relation" --arg ws "workspace:$workspace" \
+    '{writes:{tuple_keys:[{user:$user,relation:$rel,object:$ws}]}}')"
+  code="$(fga_call POST "/stores/$store_id/write" "$fixture_dir/fga-bind-$client_id.json" \
+    --header 'Content-Type: application/json' --data-binary "$grant_body")"
+  [ "$code" = 200 ] || fail "granting $relation on $workspace for $name returned HTTP $code"
+
+  jq -nc --arg id "$client_id" --arg secret "$client_secret" '{id:$id,secret:$secret}' >"$output"
 }
 
 delete_workspace() {
@@ -310,25 +346,20 @@ for workspace in "$workspace_a" "$workspace_b"; do
 done
 
 echo "==> create four independent owner/member/admin principals"
-create_api_key "$workspace_a" "m35-owner-a-$run_id" "$fixture_dir/key-owner-a.json"
+# Direct Hydra+DB+FGA mint (not POST /v1/api-keys): AuthorizeMintClass forbids
+# the bootstrap's client_credentials token from self-replicating.
+create_bound_principal "$workspace_a" "m35-owner-a-$run_id" developer "$fixture_dir/key-owner-a.json"
 key_owner_a="$(jq -er '.id' "$fixture_dir/key-owner-a.json")"
 secret_owner_a="$(jq -er '.secret' "$fixture_dir/key-owner-a.json")"
-create_api_key "$workspace_a" "m35-member-b-$run_id" "$fixture_dir/key-member-b.json"
+create_bound_principal "$workspace_a" "m35-member-b-$run_id" developer "$fixture_dir/key-member-b.json"
 key_member_b="$(jq -er '.id' "$fixture_dir/key-member-b.json")"
 secret_member_b="$(jq -er '.secret' "$fixture_dir/key-member-b.json")"
-create_api_key "$workspace_a" "m35-admin-a-$run_id" "$fixture_dir/key-admin-a.json"
+create_bound_principal "$workspace_a" "m35-admin-a-$run_id" admin "$fixture_dir/key-admin-a.json"
 key_admin_a="$(jq -er '.id' "$fixture_dir/key-admin-a.json")"
 secret_admin_a="$(jq -er '.secret' "$fixture_dir/key-admin-a.json")"
-create_api_key "$workspace_b" "m35-owner-b-$run_id" "$fixture_dir/key-owner-b.json"
+create_bound_principal "$workspace_b" "m35-owner-b-$run_id" developer "$fixture_dir/key-owner-b.json"
 key_owner_b="$(jq -er '.id' "$fixture_dir/key-owner-b.json")"
 secret_owner_b="$(jq -er '.secret' "$fixture_dir/key-owner-b.json")"
-
-code="$(api_call "$fixture_dir/bootstrap.curl" PATCH \
-  "/v1/workspaces/$workspace_a/members/$key_admin_a" "$fixture_dir/admin-role.json" \
-  --header 'Content-Type: application/json' --data-binary '{"role":"ADMIN"}')"
-[ "$code" = 200 ] || fail "promoting the disposable admin principal returned HTTP $code"
-[ "$(jq -r '.role' "$fixture_dir/admin-role.json")" = ADMIN ] \
-  || fail "disposable admin role did not round-trip as ADMIN"
 
 token_owner_a="$(token_for "$key_owner_a" "$secret_owner_a" owner-a)"
 token_member_b="$(token_for "$key_member_b" "$secret_member_b" member-b)"
