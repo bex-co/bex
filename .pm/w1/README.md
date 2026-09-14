@@ -143,6 +143,8 @@ Open inbox notes:
 
 - [087](087.md) — A deploy waiting on the workspace build cap reads only "Queued" / `==> Build queued` for its whole wait (8¾ min live), though the operator already wrote `"workspace has 2/2 concurrent builds active; waiting for a slot"` (`app_controller.go:796-797`); the backend surfaces it only via `failureReason` on timeout (`reconciler.go:1320-1323`) (~60m, backend progress narration) ← live `/qa-find-bugs` 2026-09-14 pass 5.
 
+- [088](088.md) — Billing → Charges names a deleted service (3 live rows, all `app not found`) and every sandbox (14 rows; 13 of the UUIDs are listed nowhere) only by bare id, because `usage/service.go:286-313` resolves names from live resources only and has no sandbox branch (~60–90m) ← live `/qa-find-bugs` 2026-09-14 pass 6.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
