@@ -18,6 +18,11 @@ const zhApiKeys: Record<string, TranslationEntry> = {
     message: "名称",
     description: "API Keys table column header",
   },
+  "apiKeys.colClientId": {
+    message: "客户端 ID",
+    description:
+      "API Keys table column header — OAuth2 client_id paired with the secret",
+  },
   "apiKeys.colCreated": {
     message: "创建时间",
     description: "API Keys table column header",
@@ -92,8 +97,30 @@ const zhApiKeys: Record<string, TranslationEntry> = {
     description: "Mint dialog title (secret-shown step)",
   },
   "apiKeys.createdWarning": {
-    message: "请立即复制此密钥——之后将无法再次查看。",
+    message: "请立即复制客户端 ID 和密钥——之后将无法再次查看密钥。",
     description: "Mint dialog warning (secret-shown step)",
+  },
+  "apiKeys.fieldClientId": {
+    message: "客户端 ID",
+    description: "Mint dialog label for the OAuth2 client_id",
+  },
+  "apiKeys.fieldSecret": {
+    message: "客户端密钥",
+    description: "Mint dialog label for the one-time client_secret",
+  },
+  "apiKeys.copyClientId": {
+    message: "复制客户端 ID",
+    description: "Copy button aria-label for the client_id",
+  },
+  "apiKeys.copySecret": {
+    message: "复制客户端密钥",
+    description: "Copy button aria-label for the client_secret",
+  },
+  "apiKeys.exchangeHelp": {
+    message:
+      "这是 OAuth2 client_credentials 客户端，不是 Bearer 令牌。请先在 {tokenEndpoint} 交换：\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\n可选 scope=bex.read bex.write bex.sensitive。将返回的 access_token 用作 Authorization: Bearer。",
+    description:
+      "Mint dialog usage copy for the client_credentials exchange (token endpoint from config)",
   },
   "apiKeys.createdDone": {
     message: "完成",

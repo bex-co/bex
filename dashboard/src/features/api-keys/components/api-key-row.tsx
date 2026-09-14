@@ -1,5 +1,6 @@
 import { TableRow, TableCell } from "@/common/components/ui/table";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
+import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
 import type { ApiKeyView } from "@/features/api-keys/types";
@@ -11,7 +12,7 @@ export interface ApiKeyRowProps {
   revoking: boolean;
 }
 
-/** One API Keys row: name, provenance, usage ages, and revoke behind a confirm. */
+/** One API Keys row: name, client id, provenance, usage ages, and revoke. */
 export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
   const { t } = useTranslations();
 
@@ -19,6 +20,19 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
     <TableRow>
       <TableCell className="font-mono text-sm break-all">
         {entry.name}
+      </TableCell>
+      <TableCell className="font-mono text-sm">
+        <div className="flex max-w-[14rem] items-center gap-1">
+          <code className="min-w-0 flex-1 truncate" title={entry.id}>
+            {entry.id}
+          </code>
+          <CopyButton
+            value={entry.id}
+            label={t("apiKeys.copyClientId")}
+            successText={t("apiKeys.copied")}
+            errorText={t("apiKeys.copyError")}
+          />
+        </div>
       </TableCell>
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
         <RelativeAge value={entry.createdAt} />

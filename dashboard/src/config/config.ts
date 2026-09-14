@@ -18,11 +18,21 @@ interface Config {
    * `VITE_AGENT_STREAM_URL` points this straight at the gateway attach listener.
    */
   agentStreamBaseUrl: string;
+  /**
+   * Hydra public issuer (e.g. https://oauth.bex.co). Used to show the
+   * client_credentials token endpoint when minting an API key (w4/m105).
+   */
+  oauthIssuer: string;
+  /** `{oauthIssuer}/oauth2/token` — the exchange an API key requires. */
+  oauthTokenEndpoint: string;
 }
 
 const apiUrl = import.meta.env.VITE_API_URL;
 const ssrApiUrl = import.meta.env.VITE_SSR_API_URL || apiUrl;
 const apiBaseUrl = (apiUrl ?? "").replace(/\/graphql\/?$/, "");
+const oauthIssuer = (
+  import.meta.env.VITE_OAUTH_ISSUER || "https://oauth.bex.co"
+).replace(/\/$/, "");
 
 if (import.meta.env.DEV && !apiUrl) {
   console.warn("[Config] VITE_API_URL is not set!");
@@ -33,4 +43,6 @@ export const config: Config = {
   apiBaseUrl,
   ssrApiUrl,
   agentStreamBaseUrl: import.meta.env.VITE_AGENT_STREAM_URL || apiBaseUrl,
+  oauthIssuer,
+  oauthTokenEndpoint: `${oauthIssuer}/oauth2/token`,
 };

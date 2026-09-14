@@ -653,8 +653,9 @@ func fakeHydraAdmin(t *testing.T) *httptest.Server {
 		case r.Method == http.MethodPost && r.URL.Path == "/admin/clients":
 			var c hydraClient
 			_ = json.NewDecoder(r.Body).Decode(&c)
+			wantScope := strings.Join(core.AdvertisedScopes(), " ")
 			if len(c.GrantTypes) != 1 || c.GrantTypes[0] != "client_credentials" ||
-				c.AuthMethod != "client_secret_post" || !isAPIKey(c) {
+				c.AuthMethod != "client_secret_post" || c.Scope != wantScope || !isAPIKey(c) {
 				http.Error(w, "unexpected client shape", http.StatusBadRequest)
 				return
 			}
@@ -748,6 +749,88 @@ func TestHydraAPIKeysStore(t *testing.T) {
 	}
 	if err := store.Delete(ctx, created.ID); !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("Delete of missing => ErrNotFound, got %v", err)
+	}
+}
+
+// TestAPIKeyMintGrantsAdvertisedScopes pins w4/m105: every scope RFC 9728
+// discovery advertises must be grantable on a freshly minted API-key client,
+// otherwise a discovery-driven client_credentials exchange is refused with
+// invalid_scope. The token-exchange leg itself needs a live Hydra and is not
+// covered here; this asserts the Hydra admin create payload that would make
+// that exchange succeed.
+func TestAPIKeyMintGrantsAdvertisedScopes(t *testing.T) {
+	var gotScope string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/admin/clients" {
+			http.NotFound(w, r)
+			return
+		}
+		var c hydraClient
+		_ = json.NewDecoder(r.Body).Decode(&c)
+		gotScope = c.Scope
+		c.ClientID = "minted-key"
+		c.ClientSecret = "secret-once"
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(c)
+	}))
+	t.Cleanup(srv.Close)
+
+	created, err := NewHydraAPIKeys(srv.URL).Create(context.Background(), "qa-key", "user:qa")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	want := strings.Join(core.AdvertisedScopes(), " ")
+	if gotScope != want {
+		t.Fatalf("mint Scope = %q, want advertised %q", gotScope, want)
+	}
+	if created.Secret == "" || created.ID != "minted-key" {
+		t.Fatalf("create response incomplete: %+v", created)
+	}
+}
+
+// TestAPIKeyRoundTripListRevokeTouch covers the Hydra-admin legs of mint →
+// list (no secret) → touch last-used → revoke. Token exchange and bearer
+// introspection need a live Hydra public endpoint and stay uncovered in CI.
+func TestAPIKeyRoundTripListRevokeTouch(t *testing.T) {
+	store := NewHydraAPIKeys(fakeHydraAdmin(t).URL)
+	ctx := context.Background()
+
+	created, err := store.Create(ctx, "round-trip", "user:qa")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	keys, err := store.List(ctx)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(keys) != 1 || keys[0].ID != created.ID || keys[0].Secret != "" {
+		t.Fatalf("list after mint: %+v", keys)
+	}
+	if keys[0].LastUsedAt != "" {
+		t.Fatalf("fresh key last-used = %q, want empty", keys[0].LastUsedAt)
+	}
+
+	at := time.Date(2026, 9, 13, 19, 8, 38, 0, time.UTC)
+	if err := store.Touch(ctx, created.ID, at); err != nil {
+		t.Fatalf("Touch: %v", err)
+	}
+	keys, err = store.List(ctx)
+	if err != nil {
+		t.Fatalf("List after touch: %v", err)
+	}
+	if keys[0].LastUsedAt != at.Format(time.RFC3339) {
+		t.Fatalf("lastUsedAt = %q, want %s", keys[0].LastUsedAt, at.Format(time.RFC3339))
+	}
+
+	if err := store.Delete(ctx, created.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	keys, err = store.List(ctx)
+	if err != nil || len(keys) != 0 {
+		t.Fatalf("list after revoke: %v %+v", err, keys)
+	}
+	if err := store.Delete(ctx, created.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("re-revoke: %v", err)
 	}
 }
 

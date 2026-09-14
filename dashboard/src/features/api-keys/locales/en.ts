@@ -18,6 +18,11 @@ const enApiKeys: Record<string, TranslationEntry> = {
     message: "Name",
     description: "API Keys table column header",
   },
+  "apiKeys.colClientId": {
+    message: "Client ID",
+    description:
+      "API Keys table column header — OAuth2 client_id paired with the secret",
+  },
   "apiKeys.colCreated": {
     message: "Created",
     description: "API Keys table column header",
@@ -92,8 +97,31 @@ const enApiKeys: Record<string, TranslationEntry> = {
     description: "Mint dialog title (secret-shown step)",
   },
   "apiKeys.createdWarning": {
-    message: "Copy this key now — you won't be able to see it again.",
+    message:
+      "Copy the client ID and secret now — you won't be able to see the secret again.",
     description: "Mint dialog warning (secret-shown step)",
+  },
+  "apiKeys.fieldClientId": {
+    message: "Client ID",
+    description: "Mint dialog label for the OAuth2 client_id",
+  },
+  "apiKeys.fieldSecret": {
+    message: "Client secret",
+    description: "Mint dialog label for the one-time client_secret",
+  },
+  "apiKeys.copyClientId": {
+    message: "Copy client ID",
+    description: "Copy button aria-label for the client_id",
+  },
+  "apiKeys.copySecret": {
+    message: "Copy client secret",
+    description: "Copy button aria-label for the client_secret",
+  },
+  "apiKeys.exchangeHelp": {
+    message:
+      "This is an OAuth2 client_credentials client, not a bearer token. Exchange it at {tokenEndpoint}:\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\nOptional scope=bex.read bex.write bex.sensitive. Use the returned access_token as Authorization: Bearer.",
+    description:
+      "Mint dialog usage copy for the client_credentials exchange (token endpoint from config)",
   },
   "apiKeys.createdDone": {
     message: "Done",

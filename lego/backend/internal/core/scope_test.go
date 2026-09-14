@@ -284,6 +284,16 @@ func TestIdentityZeroComparabilityAndEmptyOAuthFields(t *testing.T) {
 	if !machine.CapabilityExempt() {
 		t.Error("machine token must be scope-exempt")
 	}
+	// w4/m105 privilege finding: a scopeless client_credentials key is
+	// CapabilityExempt, so RelCanViewSensitive (and every other RelCan…)
+	// passes the OAuth half. OpenFGA workspace binding is the real gate —
+	// scopes do not narrow machine keys. Asserted so a later scope change
+	// cannot silently narrow them.
+	for _, rel := range []string{RelCanView, RelCanViewSensitive, RelCanOperate, RelCanManageKeys} {
+		if err := machine.RequireCapability(rel); err != nil {
+			t.Errorf("scopeless machine RequireCapability(%s) = %v, want nil", rel, err)
+		}
+	}
 	ev := AuditEvent{}
 	machine.AttachOAuthProvenance(&ev)
 	if ev.OAuthClientID != "" || len(ev.OAuthScopes) != 0 {

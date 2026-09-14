@@ -5,6 +5,11 @@ import { ApiKeyRow } from "@/features/api-keys/components/api-key-row";
 import type { ApiKeyView } from "@/features/api-keys/types";
 import { hydrateAcrossBoundary } from "@/test/hydration";
 
+const copy = vi.fn();
+vi.mock("@/common/hooks/use-copy-to-clipboard", () => ({
+  useCopyToClipboard: () => ({ copied: false, copy }),
+}));
+
 const entry: ApiKeyView = {
   id: "key-1",
   name: "deploy-agent",
@@ -17,8 +22,8 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-07-08T00:00:00Z"));
 });
 
-describe("ApiKeyRow — metadata columns (w4/m13/t003)", () => {
-  it("shows created-by and a relative last-used age", () => {
+describe("ApiKeyRow — metadata columns (w4/m13/t003, w4/m105)", () => {
+  it("shows client_id with a copy affordance alongside created-by and last-used", () => {
     render(
       <table>
         <tbody>
@@ -26,6 +31,10 @@ describe("ApiKeyRow — metadata columns (w4/m13/t003)", () => {
         </tbody>
       </table>,
     );
+    expect(screen.getByText("key-1")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy client ID" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("user:minter")).toBeInTheDocument();
     expect(screen.getByText("3d")).toBeInTheDocument(); // 2026-07-05 → 2026-07-08
   });

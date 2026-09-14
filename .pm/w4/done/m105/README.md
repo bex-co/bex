@@ -1,18 +1,18 @@
 # w4 · m105 — A dashboard-minted API key cannot be used from the dashboard alone: no `client_id`, and the advertised scopes are refused
 
-**Worker:** worker4 **Goal:** a user who mints an API key in Settings can authenticate with it without leaving the dashboard — closing `w4/m8`'s own stated goal ("handing an agent a credential no longer requires `curl`") and the round trip `w4/m8` recorded as unverified. **Status:** todo
+**Worker:** worker4 **Goal:** a user who mints an API key in Settings can authenticate with it without leaving the dashboard — closing `w4/m8`'s own stated goal ("handing an agent a credential no longer requires `curl`") and the round trip `w4/m8` recorded as unverified. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                      | est | depends_on   |
 | ---- | -------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Surface the `client_id` and what to do with the credential                    | 45m | —            |
-| t002 | Settle the scope story: discovery advertises scopes the key cannot request     | 45m | —            |
-| t003 | Tests: the mint → exchange → authenticate → revoke round trip                 | 40m | w4/m105/t001, w4/m105/t002 |
-| t004 | Render parity sweep over the changed surfaces                                 | 25m | w4/m105/t003 |
-| t005 | Simplify pass over this milestone's changes                                   | 20m | w4/m105/t004 |
-| t006 | Test coverage for the shipped behavior                                        | 30m | w4/m105/t004 |
-| t007 | Closeout                                                                     | 15m | w4/m105/t006 |
+| t001 | Surface the `client_id` and what to do with the credential — **DONE**       | 45m | —            |
+| t002 | Settle the scope story: discovery advertises scopes the key cannot request — **DONE** | 45m | —            |
+| t003 | Tests: the mint → exchange → authenticate → revoke round trip — **DONE**   | 40m | w4/m105/t001, w4/m105/t002 |
+| t004 | Render parity sweep over the changed surfaces — **DONE**                   | 25m | w4/m105/t003 |
+| t005 | Simplify pass over this milestone's changes — **DONE**                     | 20m | w4/m105/t004 |
+| t006 | Test coverage for the shipped behavior — **DONE**                          | 30m | w4/m105/t004 |
+| t007 | Closeout — **DONE**                                                        | 15m | w4/m105/t006 |
 
 ## Definition of done
 
