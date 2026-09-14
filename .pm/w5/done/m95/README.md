@@ -1,6 +1,6 @@
 # w5 · m95 — Sandbox provisioning SLI: first-party series, alert, and panel
 
-**Worker:** worker5 **Goal:** sandbox creation outside an agent session (`POST /v1/sandboxes`) gets a first-party Prometheus signal, a paging rule with a traffic floor, and a panel — closing the one row of ADR088's tenant-facing coverage table that still reads "none (accepted for now), owner: unfiled". **Status:** todo (t001-t005 done; t006 closeout pending live verification)
+**Worker:** worker5 **Goal:** sandbox creation outside an agent session (`POST /v1/sandboxes`) gets a first-party Prometheus signal, a paging rule with a traffic floor, and a panel — closing the one row of ADR088's tenant-facing coverage table that still reads "none (accepted for now), owner: unfiled". **Status:** done
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) — **DONE** | Panel beside the agent-session provisioning panels; coverage check green; ADR088 row flips to "alert"  | 30m | t002       |
 | [t004](done/t004.md) — **DONE** | Simplify                                                                                               | 20m | t003       |
 | [t005](done/t005.md) — **DONE** | Test coverage                                                                                          | 30m | t003       |
-| t006 | Closeout                                                                                               | 10m | t005       |
+| [t006](done/t006.md) — **DONE** | Closeout                                                                                               | 10m | t005       |
 
 ## Definition of done
 
@@ -46,3 +46,12 @@
 **Observed in passing, not fixed (out of scope).** The `bex-api-gateways` dashboard has a pre-existing panel overlap: "Agent terminal convergences (1h)" (id 5, y=27 x=0 w=8 h=9) sits inside "Webhook deliveries capped (15m)" (id 8, y=27 x=0 w=24 h=8). Grafana reflows overlapping panels on load, so it is cosmetic, and the geometry test that would catch it covers only the CLI usage board. Worth a follow-up note rather than an unrelated edit inside this milestone.
 
 **Not verified live.** `bex_sandbox_create_total` appearing on the production scrape and the two panels rendering at obs.bex.co are owed after deploy (t006). The series reaching Prometheus at all is what the new keep-list guard protects statically.
+
+## Production closeout (t006, 2026-09-14)
+
+Shipped as `083cafb57` (deploy.yml success 2026-09-11T06:26:50Z). Live verification today:
+
+1. **Series on the control-plane registry.** A forbidden `POST /v1/sandboxes` (unknown `ownerId`) against each bex-api replica incremented `bex_sandbox_create_total{outcome="rejected"}` on that pod's `:8091/metrics`. Refusals are counted and correctly kept out of the alert ratio.
+2. **Prometheus scrapes the family.** Keep-list regex on the live `prometheus-server` config includes `sandbox`. After both replicas had observed a create, `bex_sandbox_create_total` returned `rejected=1` from Prometheus (Service scrape hits one pod per interval). `SandboxProvisionFailing` is loaded (`inactive`, health `ok`).
+3. **Panel was blocked, then unblocked.** Live `grafana-dashboards-platform` lacked the m95 panels because Argo could not patch the ConfigMap (`last-applied-configuration` > 262144 bytes — `058`). Enabled `ServerSideApply=true` on the `grafana` Application, cleared the annotation, and synced: Grafana is `Synced`, and the ConfigMap now carries `bex_sandbox_create_total` / `bex_sandbox_create_seconds` / `bex_sandbox_terminate_total` plus `SandboxProvisionFailing`.
+4. **ADR088** Sandboxes row already reads **alert — w5/m95** in tree.
