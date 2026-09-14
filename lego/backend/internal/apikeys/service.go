@@ -458,8 +458,14 @@ type hydraClient struct {
 	ClientSecret string         `json:"client_secret,omitempty"`
 	GrantTypes   []string       `json:"grant_types,omitempty"`
 	AuthMethod   string         `json:"token_endpoint_auth_method,omitempty"`
-	Metadata     map[string]any `json:"metadata,omitempty"`
-	CreatedAt    time.Time      `json:"created_at,omitzero"`
+	// Scope is the space-separated allowlist Hydra accepts on token exchange.
+	// Minted keys carry core.AdvertisedScopes so a discovery-driven
+	// client_credentials caller requesting bex.read/write/sensitive is not
+	// refused (w4/m105). Authority for machine keys remains the workspace
+	// binding — CapabilityExempt — not these scopes.
+	Scope     string         `json:"scope,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
+	CreatedAt time.Time      `json:"created_at,omitzero"`
 }
 
 // Hydra client `metadata` keys bex owns. apiKeyMarker stamps the Hydra clients
@@ -501,6 +507,7 @@ func (h *hydraAPIKeys) Create(ctx context.Context, name, createdBy string) (APIK
 		ClientName: name,
 		GrantTypes: []string{"client_credentials"},
 		AuthMethod: "client_secret_post",
+		Scope:      strings.Join(core.AdvertisedScopes(), " "),
 		Metadata:   meta,
 	})
 	var out hydraClient

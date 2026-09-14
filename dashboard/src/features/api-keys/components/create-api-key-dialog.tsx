@@ -15,6 +15,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { config } from "@/config/config";
 import { useCreateApiKey } from "@/features/api-keys/hooks/use-create-api-key";
 import type { CreatedApiKey } from "@/features/api-keys/types";
 
@@ -24,9 +25,10 @@ export interface CreateApiKeyDialogProps {
 }
 
 /**
- * The mint flow (w4/m8/t003): a name, then the secret shown exactly once with
- * a copy affordance and an explicit "won't see this again" warning. `created`
- * is local component state only — never written to Apollo's cache (the hook
+ * The mint flow (w4/m8/t003, extended w4/m105): a name, then both the
+ * `client_id` and the one-time secret with copy affordances, plus the
+ * client_credentials exchange the credential actually needs. `created` is
+ * local component state only — never written to Apollo's cache (the hook
  * uses `fetchPolicy: "no-cache"`) — and is discarded on close, so there is no
  * path to re-display a minted secret after the dialog dismisses. The dialog is
  * uncontrolled (no `open` state of our own): Radix already fires
@@ -72,16 +74,22 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
                 {t("apiKeys.createdWarning")}
               </DialogDescription>
             </DialogHeader>
-            <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-3">
-              <code className="flex-1 overflow-x-auto font-mono text-sm break-all">
-                {created.secret}
-              </code>
-              <CopyButton
-                value={created.secret}
-                label={t("apiKeys.copy")}
-                successText={t("apiKeys.copied")}
-                errorText={t("apiKeys.copyError")}
+            <div className="space-y-3">
+              <CredentialField
+                label={t("apiKeys.fieldClientId")}
+                value={created.id}
+                copyLabel={t("apiKeys.copyClientId")}
               />
+              <CredentialField
+                label={t("apiKeys.fieldSecret")}
+                value={created.secret}
+                copyLabel={t("apiKeys.copySecret")}
+              />
+              <p className="text-muted-foreground text-sm whitespace-pre-line">
+                {t("apiKeys.exchangeHelp", {
+                  tokenEndpoint: config.oauthTokenEndpoint,
+                })}
+              </p>
             </div>
             <DialogFooter>
               <DialogClose asChild>
@@ -129,5 +137,33 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CredentialField({
+  label,
+  value,
+  copyLabel,
+}: {
+  label: string;
+  value: string;
+  copyLabel: string;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-3">
+        <code className="flex-1 overflow-x-auto font-mono text-sm break-all">
+          {value}
+        </code>
+        <CopyButton
+          value={value}
+          label={copyLabel}
+          successText={t("apiKeys.copied")}
+          errorText={t("apiKeys.copyError")}
+        />
+      </div>
+    </div>
   );
 }
