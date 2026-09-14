@@ -98,6 +98,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need the courier) and closes a live lockout risk; m10's one-interception-point argument strengthens as w2/m4–m5 add write verbs; m11 before real tenants means no forced-enrollment migration; m12 stays gated on w1/m9 + m7.
 
+- [ ] **m107** — Log history past the newest 100 lines is unreachable on GraphQL and MCP (7 tasks) ← from live `/qa-find-bugs` 2026-09-14 pass 37; a 1-hour and a 7-day window return identical 100-entry results spanning ~14s, so "Last 7 days" shows fifteen seconds with no truncation notice and no way to page back. REST carries `{hasMore,nextStartTime,nextEndTime}` (`logs/render.go:63-66`); GraphQL and MCP drop it, and the dashboard is a GraphQL client — the first concrete instance of the cross-surface response-shape hole `w4/086`/`w4/087` named
+
 ## Inbox
 
 - [x] **076** — [Pre-`w4/m105` API keys cannot request advertised scopes until reminted](done/076.md) ← residual from `w4/m105/t004`; keys minted before m105 have an empty Hydra `scope` and get `invalid_scope` if the caller passes `scope=`. Omitting `scope` still works; remint or admin-patch to get a scoped exchange
