@@ -26,6 +26,8 @@ export interface MemberView {
   role: Role;
   createdAt: string | null;
   mfaEnabled: boolean;
+  /** False when Kratos lookup misses; true when resolved or identity reader is unwired (w4/070). */
+  identityResolved: boolean;
 }
 
 /** A pending (unaccepted) invite — Render's pendingInvites shape. */

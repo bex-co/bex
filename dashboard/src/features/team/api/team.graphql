@@ -17,6 +17,7 @@ query WorkspaceMembers($workspaceId: String!) {
     role
     createdAt
     mfaEnabled
+    identityResolved
   }
   workspaceSeatUsage(workspaceId: $workspaceId) {
     used

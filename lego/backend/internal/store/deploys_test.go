@@ -96,7 +96,7 @@ func TestCloseDeployIsIdempotentAndListIsNewestFirst(t *testing.T) {
 		t.Fatalf("open deploy after close: ok=%v (err %v), want none open", ok, err)
 	}
 
-	second, err := s.CreateDeploy(ctx, app.ID, "api", "img:2", 2, CommitInfo{})
+	second, err := s.CreateDeploy(ctx, app.ID, "api", "img:2", 2, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("trigger deploy: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestLiveTransitionDeactivatesPriorLiveDeploy(t *testing.T) {
 	}
 	firstLive, _ := s.GetDeploy(ctx, app.ID, first.ID)
 
-	second, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:2", 2, CommitInfo{})
+	second, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:2", 2, CommitInfo{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestCreateDeployKeepsActiveAndQueuesLatestOverlap(t *testing.T) {
 	if changed, err := s.TransitionDeploy(ctx, first.ID, DeployBuildInProgress, "", "", "", nil); err != nil || !changed {
 		t.Fatalf("start first build: changed=%v err=%v", changed, err)
 	}
-	second, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "", 2, CommitInfo{})
+	second, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "", 2, CommitInfo{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestCreateDeployKeepsActiveAndQueuesLatestOverlap(t *testing.T) {
 	if second.Status != DeployQueued || !second.OverlapPending || second.FinishedAt != nil {
 		t.Fatalf("overlapping deploy = %+v, want queued and unfinished", second)
 	}
-	third, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "", 3, CommitInfo{})
+	third, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "", 3, CommitInfo{}, "")
 	if err != nil || third.Status != DeployQueued || !third.OverlapPending {
 		t.Fatalf("latest overlapping deploy = %+v (err %v), want queued", third, err)
 	}
@@ -221,7 +221,7 @@ func TestActiveBuildCapacityQueueCoexistsWithOverlapQueue(t *testing.T) {
 	if changed, err := s.TransitionDeploy(ctx, first.ID, DeployQueued, "", "", "", nil); err != nil || !changed {
 		t.Fatalf("queue active build for capacity: changed=%v err=%v", changed, err)
 	}
-	second, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 2, CommitInfo{})
+	second, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 2, CommitInfo{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestQueuedOverlapAdoptionKeepsStatusAndFreesPendingSlot(t *testing.T) {
 	ten, _ := s.CreateTenant(ctx, "acme", "free")
 	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Repo: "https://example.com/repo.git", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
 	first, _, _ := openDeployFor(ctx, s, app.ID)
-	second, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 2, CommitInfo{})
+	second, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 2, CommitInfo{}, "")
 	if err != nil || !second.OverlapPending {
 		t.Fatalf("overlap = %+v (err %v), want pending", second, err)
 	}
@@ -262,7 +262,7 @@ func TestQueuedOverlapAdoptionKeepsStatusAndFreesPendingSlot(t *testing.T) {
 	if second.Status != DeployQueued || second.OverlapPending || !second.UpdatedAt.Equal(second.CreatedAt) {
 		t.Fatalf("adopted overlap = %+v, want queued active without public timestamp churn", second)
 	}
-	third, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 3, CommitInfo{})
+	third, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 3, CommitInfo{}, "")
 	if err != nil || third.Status != DeployQueued || !third.OverlapPending {
 		t.Fatalf("next overlap = %+v (err %v), want new pending slot", third, err)
 	}
@@ -277,11 +277,11 @@ func TestDelayedLowerGenerationDeployCannotSupersedeNewerOpenDeploy(t *testing.T
 	s := newMemStore()
 	ten, _ := s.CreateTenant(ctx, "acme", "free")
 	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
-	newer, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:3", 3, CommitInfo{})
+	newer, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:3", 3, CommitInfo{}, "")
 	if err != nil || newer.Status != DeployQueued {
 		t.Fatalf("newer deploy = %+v (err %v), want queued behind the active create deploy", newer, err)
 	}
-	delayed, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:2", 2, CommitInfo{})
+	delayed, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:2", 2, CommitInfo{}, "")
 	if err != nil || delayed.Status != DeployCanceled || delayed.FinishedAt == nil {
 		t.Fatalf("delayed deploy = %+v (err %v), want immediately canceled", delayed, err)
 	}
@@ -302,7 +302,7 @@ func TestCreateRollbackDeployRecordsProvenanceAndResolvedImage(t *testing.T) {
 	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
 	first, _, _ := openDeployFor(ctx, s, app.ID)
 
-	rb, err := s.CreateRollbackDeploy(ctx, app.ID, "img:1", first.ID, 2, CommitInfo{})
+	rb, err := s.CreateRollbackDeploy(ctx, app.ID, "img:1", first.ID, 2, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("create rollback deploy: %v", err)
 	}
@@ -488,7 +488,7 @@ func TestLatestDeployCommit(t *testing.T) {
 	if _, err := s.CloseDeploy(ctx, first.ID, DeployLive, "img:1"); err != nil {
 		t.Fatalf("close first: %v", err)
 	}
-	withCommit, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 2, CommitInfo{Hash: "abc1234def", Message: "feat: land", AuthorAt: &authorAt})
+	withCommit, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 2, CommitInfo{Hash: "abc1234def", Message: "feat: land", AuthorAt: &authorAt}, "")
 	if err != nil {
 		t.Fatalf("CreateDeploy with commit: %v", err)
 	}
@@ -505,7 +505,7 @@ func TestLatestDeployCommit(t *testing.T) {
 	}
 
 	// A later empty config_change-style row must not hide the prior commit.
-	if _, err := s.CreateDeploy(ctx, app.ID, TriggerConfigChange, "", 3, CommitInfo{}); err != nil {
+	if _, err := s.CreateDeploy(ctx, app.ID, TriggerConfigChange, "", 3, CommitInfo{}, ""); err != nil {
 		t.Fatalf("empty config_change: %v", err)
 	}
 	got, err = s.LatestDeployCommit(ctx, app.ID)
@@ -520,3 +520,41 @@ func TestLatestDeployCommit(t *testing.T) {
 	}
 }
 
+func TestCreateDeployPersistsTriggeredBy(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	first, _, _ := openDeployFor(ctx, s, app.ID)
+	if _, err := s.CloseDeploy(ctx, first.ID, DeployLive, "img:1"); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	attributed, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:2", 2, CommitInfo{}, "user-x")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if attributed.TriggeredBy != "user-x" {
+		t.Fatalf("triggeredBy = %q, want user-x", attributed.TriggeredBy)
+	}
+	got, err := s.GetDeploy(ctx, app.ID, attributed.ID)
+	if err != nil || got.TriggeredBy != "user-x" {
+		t.Fatalf("get triggeredBy = %+v (err %v)", got, err)
+	}
+
+	anon, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "img:3", 3, CommitInfo{}, "")
+	if err != nil {
+		t.Fatalf("anon create: %v", err)
+	}
+	if anon.TriggeredBy != "" {
+		t.Fatalf("unattributed triggeredBy = %q, want empty", anon.TriggeredBy)
+	}
+
+	rb, err := s.CreateRollbackDeploy(ctx, app.ID, "img:1", first.ID, 4, CommitInfo{}, "user-y")
+	if err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	if rb.TriggeredBy != "user-y" {
+		t.Fatalf("rollback triggeredBy = %q, want user-y", rb.TriggeredBy)
+	}
+}

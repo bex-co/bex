@@ -29,6 +29,7 @@ import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-i
 import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
 import { KeyValuePlanSection } from "@/features/keyvalue/components/key-value-plan-section";
 import { KeyValueMaxmemoryPolicySection } from "@/features/keyvalue/components/key-value-maxmemory-policy-section";
+import { KeyValuePersistenceModeSection } from "@/features/keyvalue/components/key-value-persistence-mode-section";
 import { KeyValueNameRow } from "@/features/keyvalue/components/key-value-name-row";
 import { KeyValueDetailNavigation } from "@/features/keyvalue/components/key-value-detail-navigation";
 import { KeyValueLogViewer } from "@/features/keyvalue/components/key-value-log-viewer";
@@ -244,6 +245,9 @@ export function KeyValueDetailPage() {
                 </section>
                 <section id="maxmemory-policy" className="scroll-mt-6">
                   <KeyValueMaxmemoryPolicySection id={keyValue.id} />
+                </section>
+                <section id="persistence-mode" className="scroll-mt-6">
+                  <KeyValuePersistenceModeSection id={keyValue.id} />
                 </section>
                 <section id="danger-zone" className="scroll-mt-6">
                   <KeyValueDangerActions

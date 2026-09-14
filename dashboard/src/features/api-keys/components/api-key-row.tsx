@@ -2,6 +2,7 @@ import { TableRow, TableCell } from "@/common/components/ui/table";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { RelativeAge } from "@/common/components/relative-time";
 import type { ApiKeyView } from "@/features/api-keys/types";
 
@@ -15,6 +16,7 @@ export interface ApiKeyRowProps {
 /** One API Keys row: name, client id, provenance, usage ages, and revoke. */
 export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
   const { t } = useTranslations();
+  const createdBy = useWorkspaceSubjectLabel(entry.createdBy ?? "");
 
   return (
     <TableRow>
@@ -37,8 +39,8 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
         <RelativeAge value={entry.createdAt} />
       </TableCell>
-      <TableCell className="text-muted-foreground max-w-[12rem] truncate font-mono text-sm">
-        {entry.createdBy ?? "—"}
+      <TableCell className="text-muted-foreground max-w-[12rem] truncate text-sm">
+        {entry.createdBy ? createdBy : "—"}
       </TableCell>
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
         <RelativeAge

@@ -52,7 +52,7 @@ func TestTransitionDeployFailureSkipStartedAt(t *testing.T) {
 
 	// Terminal skip with the operator's recorded window: the real start.
 	start := time.Date(2026, 8, 27, 19, 56, 10, 0, time.UTC)
-	d2, _ := s.CreateDeploy(ctx, app.ID, "web", "img:2", 2, CommitInfo{})
+	d2, _ := s.CreateDeploy(ctx, app.ID, "web", "img:2", 2, CommitInfo{}, "")
 	mustTransition(t, s, d2.ID, DeployQueued, nil)
 	mustTransition(t, s, d2.ID, DeployBuildFailed, &start)
 	evidenced, _ := s.GetDeploy(ctx, app.ID, d2.ID)
@@ -64,7 +64,7 @@ func TestTransitionDeployFailureSkipStartedAt(t *testing.T) {
 	}
 
 	// Canceled while queued keeps its null start (correct today, regression).
-	d3, _ := s.CreateDeploy(ctx, app.ID, "web", "img:3", 3, CommitInfo{})
+	d3, _ := s.CreateDeploy(ctx, app.ID, "web", "img:3", 3, CommitInfo{}, "")
 	mustTransition(t, s, d3.ID, DeployQueued, nil)
 	mustTransition(t, s, d3.ID, DeployCanceled, nil)
 	canceled, _ := s.GetDeploy(ctx, app.ID, d3.ID)
@@ -73,7 +73,7 @@ func TestTransitionDeployFailureSkipStartedAt(t *testing.T) {
 	}
 
 	// The dispatch-observing path still stamps the clock (correct today).
-	d4, _ := s.CreateDeploy(ctx, app.ID, "web", "img:4", 4, CommitInfo{})
+	d4, _ := s.CreateDeploy(ctx, app.ID, "web", "img:4", 4, CommitInfo{}, "")
 	mustTransition(t, s, d4.ID, DeployBuildInProgress, nil)
 	dispatched, _ := s.GetDeploy(ctx, app.ID, d4.ID)
 	if dispatched.StartedAt == nil {
@@ -138,7 +138,7 @@ func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
 
 	// With evidence: the recorded window's start, exactly.
 	start := time.Date(2026, 8, 27, 19, 56, 10, 0, time.UTC)
-	d2, err := s.CreateDeploy(ctx, app.ID, "web", "img:2", 2, CommitInfo{})
+	d2, err := s.CreateDeploy(ctx, app.ID, "web", "img:2", 2, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
 
 	// An in-progress transition still stamps, and a later failure close must
 	// not overwrite it with the (older) evidence.
-	d3, err := s.CreateDeploy(ctx, app.ID, "web", "img:3", 3, CommitInfo{})
+	d3, err := s.CreateDeploy(ctx, app.ID, "web", "img:3", 3, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("deploy: %v", err)
 	}

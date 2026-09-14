@@ -149,12 +149,36 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   );
 }
 
+export interface EnvironmentEditorCopy {
+  envTitle?: string;
+  envDescription?: string;
+  envEmptyTitle?: string;
+  envEmptyBody?: string;
+  secretFilesTitle?: string;
+  secretFilesDescription?: string;
+  secretFilesEmptyTitle?: string;
+  secretFilesEmptyBody?: string;
+}
+
+export interface EnvironmentEditorCopy {
+  envTitle: string;
+  envDescription: string;
+  envEmptyTitle: string;
+  envEmptyBody: string;
+  secretFilesTitle: string;
+  secretFilesDescription: string;
+  secretFilesEmptyTitle: string;
+  secretFilesEmptyBody: string;
+}
+
 export interface EnvironmentEditorProps {
   resourceId: string;
   envKeys: Array<{ id: string; key: string }>;
   secretFileNames: Array<{ id: string; name: string }>;
   loading: boolean;
   errorKind: EnvVarErrorKind | null;
+  /** Section copy. Defaults to the service Environment tab; env groups pass group-scoped strings. */
+  copy?: EnvironmentEditorCopy;
   revealEnv: (key: string) => Promise<string>;
   revealFile: (name: string) => Promise<string>;
   save: (
@@ -168,6 +192,8 @@ export interface EnvironmentEditorProps {
   retryRollout: (choice: Exclude<SaveChoice, "only">) => Promise<boolean>;
   saving: boolean;
   generateOnServer?: boolean;
+  /** Override section copy when the editor is hosted outside a service (w4/067). */
+  copy?: EnvironmentEditorCopy;
 }
 
 /**
@@ -188,8 +214,21 @@ export function EnvironmentEditor({
   retryRollout,
   saving,
   generateOnServer = false,
+  copy,
 }: EnvironmentEditorProps) {
   const { t } = useTranslations();
+  const envTitle = copy?.envTitle ?? t("services.envTitle");
+  const envDescription = copy?.envDescription ?? t("services.envDescription");
+  const envEmptyTitle = copy?.envEmptyTitle ?? t("services.envEmptyTitle");
+  const envEmptyBody = copy?.envEmptyBody ?? t("services.envEmptyBody");
+  const secretFilesTitle =
+    copy?.secretFilesTitle ?? t("services.secretFilesTitle");
+  const secretFilesDescription =
+    copy?.secretFilesDescription ?? t("services.secretFilesDescription");
+  const secretFilesEmptyTitle =
+    copy?.secretFilesEmptyTitle ?? t("services.secretFilesEmptyTitle");
+  const secretFilesEmptyBody =
+    copy?.secretFilesEmptyBody ?? t("services.secretFilesEmptyBody");
   const capabilities = useCapabilities();
   const { canCreate, canViewSensitive } = capabilities;
   const createDenied = !canCreate;
@@ -591,11 +630,11 @@ export function EnvironmentEditor({
       ) : null}
 
       <EnvironmentSection
-        title={t("services.envTitle")}
-        description={t("services.envDescription")}
+        title={envTitle}
+        description={envDescription}
         empty={{
-          title: t("services.envEmptyTitle"),
-          body: t("services.envEmptyBody"),
+          title: envEmptyTitle,
+          body: envEmptyBody,
         }}
         loading={loading}
         action={
@@ -690,11 +729,11 @@ export function EnvironmentEditor({
       </EnvironmentSection>
 
       <EnvironmentSection
-        title={t("services.secretFilesTitle")}
-        description={t("services.secretFilesDescription")}
+        title={secretFilesTitle}
+        description={secretFilesDescription}
         empty={{
-          title: t("services.secretFilesEmptyTitle"),
-          body: t("services.secretFilesEmptyBody"),
+          title: secretFilesEmptyTitle,
+          body: secretFilesEmptyBody,
           // In read mode the panel's only enabling control (Edit) lives under
           // the Environment Variables header — so the empty state carries its
           // own affordance that enters the draft with a blank file row (w6/057).

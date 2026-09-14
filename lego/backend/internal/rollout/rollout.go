@@ -39,6 +39,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -47,7 +48,7 @@ import (
 // and opening the row. *store.PGStore satisfies it, as does apps.IntentStore's
 // own superset.
 type DeployStore interface {
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error)
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
 	// LatestDeployCommit returns the newest non-empty commit for the app, or
 	// zero CommitInfo.
 	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
@@ -173,7 +174,7 @@ func (t *Tracker) open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 	} else if prior.Hash != "" {
 		commit = prior
 	}
-	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, a.Spec.Image, generation, commit); err != nil {
+	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, a.Spec.Image, generation, commit, core.SubjectFrom(ctx)); err != nil {
 		log.Printf("rollout: record %s deploy for %s: %v", trigger, a.Name, err)
 	}
 }

@@ -259,7 +259,7 @@ type IntentStore interface {
 	// must be the generation this deploy actually runs under). commit is the
 	// resolved commit this deploy runs (w9/001), zero when unresolvable. The
 	// reconciler's write-back closes the row once the CR reaches Running/Failed.
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error)
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
 	// LatestDeployCommit returns the newest non-empty commit for the app — the
 	// rollout.Tracker seam that carries a prior release's provenance onto
 	// config_change re-rolls (w4/m100). Zero when none exists.
@@ -2909,7 +2909,7 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 			// make the git host redeliver the push, re-bumping every matched App.
 			// The reconciler's superseded-row cancel is the backstop for the
 			// open row this row would have replaced.
-			if _, err := s.Store.CreateDeploy(ctx, appID, store.TriggerNewCommit, a.Spec.Image, releaseGeneration, commit); err != nil {
+			if _, err := s.Store.CreateDeploy(ctx, appID, store.TriggerNewCommit, a.Spec.Image, releaseGeneration, commit, ""); err != nil {
 				log.Printf("webhook: recording redeploy of %s: %v", a.Name, err)
 			}
 		}

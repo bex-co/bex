@@ -19,9 +19,10 @@ limitations under the License.
 // session, not by parsing the caller's SQL: every statement has a server-side
 // timeout and bounded result set. MCP and ordinary dashboard reads additionally
 // run inside an explicit read-only transaction; the dashboard can explicitly
-// opt into a write transaction after its confirmation step. Errors are mapped to
-// fixed, value-free messages — SQL text and result values never reach logs or
-// error strings (the env-var-values rule).
+// opt into a write transaction after its confirmation step. Schema/syntax
+// errors may return the Postgres message to the caller (their own SQL);
+// integrity errors stay SQLSTATE-only. SQL text and result values never reach
+// logs or audit events (the env-var-values rule; w4/071).
 package postgres
 
 import (
@@ -74,6 +75,7 @@ const (
 var (
 	errQueryReadOnly       = fmt.Errorf("%w: read-only transaction; write and DDL statements are not permitted", core.ErrBadRequest)
 	errQueryTimeout        = fmt.Errorf("%w: query exceeded the statement timeout", core.ErrBadRequest)
+	errQueryMultiStatement = fmt.Errorf("%w: only one statement per query", core.ErrBadRequest)
 	errQueryResultTooLarge = fmt.Errorf("%w: query result exceeds the size limit", core.ErrBadRequest)
 	errQueryConnClose      = core.Err("could not connect to the database")
 	errQueryFailed         = core.Err("query failed")
@@ -362,9 +364,13 @@ func newQueryFrontend(r io.Reader, w io.Writer) *pgproto3.Frontend {
 	return frontend
 }
 
-// mapPGError collapses a Postgres/driver error to one of the fixed, value-free
-// sentinels. Non-classified DB errors surface only their SQLSTATE code — never the
-// Postgres message, which can echo a query token or a literal value.
+// mapPGError maps a Postgres/driver error onto a caller-facing sentinel.
+//
+// Schema/syntax classes whose messages only quote the caller's own SQL or
+// their own catalog identifiers surface Message (+ Position when set) so the
+// SQL console / MCP agent can self-correct (w4/071). Integrity and input-
+// casting classes whose messages quote stored row values stay collapsed to
+// SQLSTATE only — never write those messages to logs, metrics, or events.
 func mapPGError(err error) error {
 	if err == nil {
 		return nil
@@ -376,7 +382,30 @@ func mapPGError(err error) error {
 			return errQueryReadOnly
 		case pgerrcode.QueryCanceled: // statement_timeout fired
 			return errQueryTimeout
+		case pgerrcode.SyntaxError:
+			// Extended protocol refuses multi-statement with 42601 + a fixed
+			// message; keep product copy rather than the driver prose.
+			if strings.Contains(strings.ToLower(pgErr.Message), "multiple commands") {
+				return errQueryMultiStatement
+			}
+			fallthrough
+		case pgerrcode.UndefinedColumn,
+			pgerrcode.UndefinedTable,
+			pgerrcode.UndefinedFunction,
+			pgerrcode.UndefinedParameter,
+			pgerrcode.InvalidCatalogName,
+			pgerrcode.InvalidSchemaName:
+			msg := strings.TrimSpace(pgErr.Message)
+			if msg == "" {
+				return fmt.Errorf("%w (SQLSTATE %s)", core.ErrBadRequest, pgErr.Code)
+			}
+			if pgErr.Position > 0 {
+				return fmt.Errorf("%w: %s (at character %d)", core.ErrBadRequest, msg, pgErr.Position)
+			}
+			return fmt.Errorf("%w: %s", core.ErrBadRequest, msg)
 		}
+		// Integrity / cast failures quote stored or literal values — keep the
+		// SQLSTATE-only collapse (23505 unique_violation, 23503 FK, 22P02, …).
 		return fmt.Errorf("%w (SQLSTATE %s)", core.ErrBadRequest, pgErr.Code)
 	}
 	if errors.Is(err, context.DeadlineExceeded) {

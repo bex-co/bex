@@ -2858,7 +2858,7 @@ func (s *Service) recordBlueprintRedeploy(ctx context.Context, existing *appv1al
 	}
 	if id := managedAppID(existing); id != "" {
 		commit := s.resolveDeployCommit(ctx, s.AppWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
-		if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit); err != nil {
+		if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit, core.SubjectFrom(ctx)); err != nil {
 			return fmt.Errorf("recording redeploy: %w", err)
 		}
 	}

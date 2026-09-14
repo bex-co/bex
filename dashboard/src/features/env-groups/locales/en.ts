@@ -383,7 +383,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group linked-services card title",
   },
   "envGroups.servicesDescription": {
-    message: "Linking or unlinking redeploys the affected service.",
+    message: "Linking or unlinking redeploys every affected service.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {

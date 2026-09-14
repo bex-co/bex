@@ -442,6 +442,33 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Couldn't update the maxmemory policy. Please try again.",
     description: "Toast when an eviction-policy update fails",
   },
+  // --- Persistence mode section (w4/066) ---
+  "keyvalue.persistenceTitle": {
+    message: "Persistence Mode",
+    description: "Key Value detail persistence-mode card title",
+  },
+  "keyvalue.persistenceDescription": {
+    message:
+      "Change how data is written to disk so it survives a restart. The operator applies the new mode on the next reconcile — a rolling update that preserves data.",
+    description: "Key Value detail persistence-mode card description",
+  },
+  "keyvalue.persistenceLabel": {
+    message: "Persistence mode",
+    description: "Accessible label for the persistence-mode select",
+  },
+  "keyvalue.persistenceEdit": {
+    message: "Edit persistence mode",
+    description:
+      "Accessible label for the persistence-mode edit-in-place pencil",
+  },
+  "keyvalue.persistenceSuccess": {
+    message: "Updating persistence mode to {mode}…",
+    description: "Toast after a persistence-mode update is accepted",
+  },
+  "keyvalue.persistenceError": {
+    message: "Couldn't update the persistence mode. Please try again.",
+    description: "Toast when a persistence-mode update fails",
+  },
   // --- Networking (external-endpoint IP allowlist) ---
   "keyvalue.networkingTitle": {
     message: "Networking",
