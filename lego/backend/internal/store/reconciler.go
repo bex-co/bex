@@ -78,10 +78,11 @@ const (
 	// so their control-plane budgets must be longer than the mechanism they
 	// observe. Each budget starts from the deploy row's last phase transition.
 	// The shorter rollout budget is needed because a bad image
-	// (ImagePullBackOff) never makes the App CR's own phase machine reach PhaseFailed — it polls PhaseDeploying
-	// forever (lego/operator/internal/controller/app_controller.go) — so
-	// health gating (docs/ADR004-app-deployment.md) needs its own timeout, not just the
-	// CR's phase, to ever report a deploy as failed.
+	// (ImagePullBackOff) historically left the App CR polling PhaseDeploying
+	// forever (operator reportRolloutProgress before w4/m103). w4/m103 settles
+	// PhaseFailed once the Deployment reports ProgressDeadlineExceeded with no
+	// prior ActiveRevision, so the row can close from the phase; the gate remains
+	// the backstop when the CR has not yet observed that verdict.
 	defaultBuildGateTimeout     = 35 * time.Minute
 	defaultPreDeployGateTimeout = 12 * time.Minute
 	// defaultDeployGateTimeout observes the rollout the same way the two gates

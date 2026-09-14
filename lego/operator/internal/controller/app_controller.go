@@ -2010,10 +2010,6 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Service, no Ingress, no URL, no auto-sleep (nothing routes traffic to wake it).
 	worker := app.Spec.Type == appv1alpha1.TypeBackgroundWorker
 
-	if rolloutPending(app, image) {
-		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
-	}
-
 	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, app, worker)
 
 	// Hibernating drains the App's own Service. Let the public Ingress move to
@@ -2065,6 +2061,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
+	}
+	// Stamp Deploying only while the Deployment is still progressing. After
+	// ProgressDeadlineExceeded, reportRolloutProgress settles a terminal phase
+	// (Failed / prior-release Running|Hibernated); re-stamping Deploying here
+	// every requeue would flap the service header against the deploy row (w4/m103).
+	if rolloutPending(app, image) && !deploymentProgressDeadlineExceeded(dep) {
+		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 	}
 
 	// Clean up any per-App NetworkPolicy a pre-ADR043 reconcile left behind
@@ -2622,7 +2625,15 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 // block: the ReplicaSet's FailedCreate verdict is stamped the same way, so the
 // mechanism's specific cause reaches the deploy record instead of the generic
 // health-gate timeout line (deployment_projection.go's two-timer design).
+//
+// When the Deployment has ProgressDeadlineExceeded, this settles a terminal
+// phase instead of leaving Deploying forever (w4/m103): Failed when nothing
+// ever served (ActiveRevision empty), or the prior-release Running/Hibernated
+// shape when an earlier release is still the truth.
 func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32, port int, notReadyMessage string) (ctrl.Result, error) {
+	if deploymentProgressDeadlineExceeded(dep) {
+		return r.settleFailedRollout(ctx, app, dep, port)
+	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	notReadyReason := "RolloutProgressing"
 	if r.currentRevisionFullyReady(ctx, dep, replicas) {
@@ -2649,6 +2660,80 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 			"app", app.Name, "error", err.Error())
 	}
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
+// deploymentProgressDeadlineExceeded reports Kubernetes' Progressing=False
+// ProgressDeadlineExceeded verdict — the operator's own rolloutBudgetSeconds
+// projected onto Deployment.spec.progressDeadlineSeconds.
+func deploymentProgressDeadlineExceeded(dep *appsv1.Deployment) bool {
+	if dep == nil {
+		return false
+	}
+	for _, c := range dep.Status.Conditions {
+		if c.Type == appsv1.DeploymentProgressing &&
+			c.Status == corev1.ConditionFalse &&
+			c.Reason == "ProgressDeadlineExceeded" {
+			return true
+		}
+	}
+	return false
+}
+
+// settleFailedRollout is the ProgressDeadlineExceeded terminal for a rollout
+// that never became ready (w4/m103). ActiveRevision empty ⇒ first release never
+// served ⇒ PhaseFailed. ActiveRevision set ⇒ prior release still describes what
+// is (or was) serving ⇒ Running / Hibernated, deploy fact only.
+func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (ctrl.Result, error) {
+	if app.Status.ActiveRevision != "" {
+		r.settleFailedRolloutOverPriorRelease(ctx, app)
+		return ctrl.Result{}, nil
+	}
+	reason, msg := r.stuckPodMessage(ctx, dep, port)
+	if msg == "" {
+		if qr, qm := r.rolloutQuotaBlockMessage(ctx, dep); qm != "" {
+			reason, msg = qr, qm
+		} else {
+			reason = "ProgressDeadlineExceeded"
+			msg = "rollout did not become healthy within the progress deadline"
+		}
+	}
+	app.Status.Phase = appv1alpha1.PhaseFailed
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
+		Message: msg, ObservedGeneration: app.Generation,
+	})
+	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{}, nil
+}
+
+// settleFailedRolloutOverPriorRelease mirrors settleFailedBuildOverPriorRelease
+// for a rollout that hit ProgressDeadlineExceeded while an earlier release is
+// still the truthful service state (w4/m103).
+func (r *AppReconciler) settleFailedRolloutOverPriorRelease(ctx context.Context, app *appv1alpha1.App) {
+	phase := appv1alpha1.PhaseRunning
+	condition := metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reasonPriorReleaseServing,
+		Message:            "the latest rollout failed; the previously deployed release keeps serving",
+		ObservedGeneration: app.Generation,
+	}
+	if r.Mode == ModeKubernetes {
+		var dep appsv1.Deployment
+		if getErr := r.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, &dep); getErr == nil &&
+			dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0 {
+			phase = appv1alpha1.PhaseHibernated
+			condition.Status = metav1.ConditionFalse
+			condition.Reason = reasonAutoHibernated
+			condition.Message = "the latest rollout failed; the previously deployed release stays parked"
+			if app.Spec.Suspended {
+				condition.Reason = reasonSuspended
+			}
+		}
+	}
+	app.Status.Phase = phase
+	meta.SetStatusCondition(&app.Status.Conditions, condition)
+	r.updateStatusRetrying(ctx, app, "failedRolloutOverPriorRelease")
 }
 
 // deploymentRolloutReady follows the Deployment controller's rollout-complete
