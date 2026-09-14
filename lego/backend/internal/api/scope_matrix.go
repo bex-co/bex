@@ -191,18 +191,23 @@ func graphqlTopLevelOps(query, operationName string) []string {
 // every operation in the document is walked so a multi-op document cannot
 // sneak a write past a read-only scope check.
 func graphqlTopLevelOpsFrom(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, operationName string) []string {
-	if operationName != "" {
-		if op := selectGraphQLOperation(ops, operationName); op != nil {
-			ops = []*ast.OperationDefinition{op}
-		} else {
-			ops = nil
-		}
-	}
 	var out []string
-	for _, op := range ops {
+	for _, op := range selectedGraphQLOperations(ops, operationName) {
 		collectGraphQLTopLevel(op.SelectionSet, fragments, graphQLOperationKind(op), map[string]bool{}, &out)
 	}
 	return out
+}
+
+// selectedGraphQLOperations applies the same named-op / multi-op rules the
+// scope gate and nested-sensitive walk share.
+func selectedGraphQLOperations(ops []*ast.OperationDefinition, operationName string) []*ast.OperationDefinition {
+	if operationName == "" {
+		return ops
+	}
+	if op := selectGraphQLOperation(ops, operationName); op != nil {
+		return []*ast.OperationDefinition{op}
+	}
+	return nil
 }
 
 // graphQLOperationKind maps an AST operation to the GQL Query./Mutation. prefix
@@ -295,8 +300,29 @@ func selectGraphQLOperation(ops []*ast.OperationDefinition, operationName string
 	return nil
 }
 
+// graphQLSensitiveNestedFields are nested GraphQL field names whose resolvers
+// return secret values (apps/graphql.go Service.envVar / Service.secretFile).
+// Selecting any of them escalates the document to OpClassSensitive regardless
+// of the root's class (w4/m106). Keys-only projections (envVarKeys,
+// secretFileNames) are intentionally absent so masked lists stay read-class.
+//
+// Option (a): walk the selection set and escalate — keeps the root matrix and
+// telemetry label cardinality unchanged. Env-group and datastore secret reads
+// stay root fields (already OpClassSensitive); they do not nest value reveals
+// under a below-sensitive root.
+var graphQLSensitiveNestedFields = map[string]struct{}{
+	"envVar":     {},
+	"secretFile": {},
+}
+
+// graphQLSensitiveNestedOp is the audit target when a nested sensitive
+// selection escalates the document. It is not a live classifiedOps key —
+// RequireOpClass is called directly for OpClassSensitive.
+const graphQLSensitiveNestedOp = "GQL Nested.sensitiveSelection"
+
 func (s *Server) requireGraphQLScopeFrom(ctx context.Context, fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, operationName string) error {
-	if id, ok := core.IdentityFrom(ctx); !ok || id.CapabilityExempt() {
+	id, ok := core.IdentityFrom(ctx)
+	if !ok || id.CapabilityExempt() {
 		return nil
 	}
 	for _, op := range graphqlTopLevelOpsFrom(fragments, ops, operationName) {
@@ -304,7 +330,73 @@ func (s *Server) requireGraphQLScopeFrom(ctx context.Context, fragments map[stri
 			return err
 		}
 	}
+	if !graphQLSelectsSensitiveNested(fragments, ops, operationName) {
+		return nil
+	}
+	if err := id.RequireOpClass(core.OpClassSensitive); err != nil {
+		s.recordScopeClassDenial(ctx, graphQLSensitiveNestedOp, core.OpClassSensitive)
+		return err
+	}
 	return nil
+}
+
+// graphQLSelectsSensitiveNested reports whether any selected operation's
+// selection set (including fragments) names a field in
+// graphQLSensitiveNestedFields. Same multi-op / named-op rules as
+// graphqlTopLevelOpsFrom so a nested secret cannot hide in an unnamed
+// sibling operation.
+func graphQLSelectsSensitiveNested(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, operationName string) bool {
+	for _, op := range selectedGraphQLOperations(ops, operationName) {
+		if walkGraphQLSensitiveNested(op.SelectionSet, fragments, map[string]bool{}, 0) {
+			return true
+		}
+	}
+	return false
+}
+
+const maxGraphQLSensitiveWalkDepth = 64
+
+func walkGraphQLSensitiveNested(sel *ast.SelectionSet, fragments map[string]*ast.FragmentDefinition, visiting map[string]bool, depth int) bool {
+	if sel == nil || depth > maxGraphQLSensitiveWalkDepth {
+		return false
+	}
+	for _, s := range sel.Selections {
+		switch n := s.(type) {
+		case *ast.Field:
+			if n.Name == nil || strings.HasPrefix(n.Name.Value, "__") {
+				continue
+			}
+			if _, ok := graphQLSensitiveNestedFields[n.Name.Value]; ok {
+				return true
+			}
+			if walkGraphQLSensitiveNested(n.SelectionSet, fragments, visiting, depth+1) {
+				return true
+			}
+		case *ast.InlineFragment:
+			if walkGraphQLSensitiveNested(n.SelectionSet, fragments, visiting, depth+1) {
+				return true
+			}
+		case *ast.FragmentSpread:
+			if n.Name == nil {
+				continue
+			}
+			name := n.Name.Value
+			if visiting[name] {
+				continue
+			}
+			frag, ok := fragments[name]
+			if !ok {
+				continue
+			}
+			visiting[name] = true
+			hit := walkGraphQLSensitiveNested(frag.SelectionSet, fragments, visiting, depth+1)
+			delete(visiting, name)
+			if hit {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (s *Server) requireMCPScope(ctx context.Context, tool string) error {

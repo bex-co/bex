@@ -205,6 +205,69 @@ func TestMintAndSensitiveHeuristics(t *testing.T) {
 	}
 }
 
+// TestGraphQLSensitiveNestedFieldsPinned fails closed when a value-returning
+// nested resolver is added under Service without registering its field name in
+// graphQLSensitiveNestedFields (w4/m106/t002). Keys-only resolvers must stay out.
+func TestGraphQLSensitiveNestedFieldsPinned(t *testing.T) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller")
+	}
+	src, err := os.ReadFile(filepath.Join(filepath.Dir(file), "..", "apps", "graphql.go"))
+	if err != nil {
+		t.Fatalf("read apps/graphql.go: %v", err)
+	}
+	text := string(src)
+	// Each value-returning nested resolver is registered as:
+	//   "<name>": &graphql.Field{ ... Resolve: <fn>, }
+	// within a few lines of the Resolve line. Pin name ↔ resolve pairs.
+	want := map[string]string{
+		"envVarValueResolve":       "envVar",
+		"secretFileContentResolve": "secretFile",
+	}
+	for resolve, field := range want {
+		if _, ok := graphQLSensitiveNestedFields[field]; !ok {
+			t.Errorf("graphQLSensitiveNestedFields missing %q (resolver %s)", field, resolve)
+		}
+		idx := strings.Index(text, "Resolve: "+resolve)
+		if idx < 0 {
+			t.Errorf("apps/graphql.go: missing Resolve: %s", resolve)
+			continue
+		}
+		window := text[max(0, idx-400):idx]
+		needle := `"` + field + `":`
+		if !strings.Contains(window, needle) {
+			t.Errorf("resolver %s must sit on field %q; window=%q", resolve, field, window)
+		}
+	}
+	for _, keysOnly := range []string{"envVarKeysResolve", "secretFileNamesResolve"} {
+		idx := strings.Index(text, "Resolve: "+keysOnly)
+		if idx < 0 {
+			t.Errorf("apps/graphql.go: missing Resolve: %s", keysOnly)
+			continue
+		}
+		window := text[max(0, idx-400):idx]
+		for field := range graphQLSensitiveNestedFields {
+			if strings.Contains(window, `"`+field+`":`) {
+				t.Errorf("keys-only resolver %s must not be registered as sensitive field %q", keysOnly, field)
+			}
+		}
+	}
+	// No other Resolve lines may use EnvVarsFrom/SecretFilesFrom for values
+	// without being in the registry — grep the two reader call sites that are
+	// value paths (EnvVarValue / SecretFileContent are method names on the
+	// reader; the nested resolvers above are the only GraphQL entry points).
+	if n := strings.Count(text, "EnvVarValue("); n != 1 {
+		t.Errorf("apps/graphql.go EnvVarValue call sites = %d, want 1 (envVarValueResolve)", n)
+	}
+	if n := strings.Count(text, "SecretFileContent("); n != 1 {
+		t.Errorf("apps/graphql.go SecretFileContent call sites = %d, want 1 (secretFileContentResolve)", n)
+	}
+	if len(graphQLSensitiveNestedFields) != 2 {
+		t.Errorf("graphQLSensitiveNestedFields has %d entries, want 2 — expand the pin when adding a nested secret field", len(graphQLSensitiveNestedFields))
+	}
+}
+
 func TestGenerateScopeMatrix(t *testing.T) {
 	if os.Getenv("GENERATE_SCOPE_MATRIX") != "1" {
 		t.Skip("set GENERATE_SCOPE_MATRIX=1 to rewrite scope_matrix_ops.go")
