@@ -303,23 +303,43 @@ write_auth_config "$bootstrap_token" "$fixture_dir/bootstrap.curl"
 # Workspace B stays hobby (one sandbox). Billing-exclude both immediately so
 # sandbox create itself is not payment-gated either.
 echo "==> create two disposable workspaces through the control-plane tenant API"
-cp_port="$(free_port)"
-kubectl -n "$api_namespace" port-forward deploy/bex-api "$cp_port:8091" \
+# Match verify-tenant-isolation.sh: let the kernel pick the local port and
+# parse it out of the forward's own log. free_port()+bind races with other
+# forwards on the shared runner and was what left this step red after the
+# tenant leg had already proven the same API is reachable.
+kubectl -n "$api_namespace" port-forward deploy/bex-api ":8091" \
   >"$fixture_dir/cp-forward.log" 2>&1 &
 forward_pids+=("$!")
+cp_port=""
+for _ in $(seq 1 30); do
+  cp_port="$(sed -n 's/^Forwarding from 127\.0\.0\.1:\([0-9][0-9]*\).*/\1/p' \
+    "$fixture_dir/cp-forward.log" | head -1)"
+  [ -n "$cp_port" ] && break
+  sleep 1
+done
+[ -n "$cp_port" ] || {
+  echo "---- cp-forward.log ----" >&2
+  cat "$fixture_dir/cp-forward.log" >&2 || true
+  fail "control-plane port-forward never reported a local port"
+}
 cp_token="$(kubectl -n "$api_namespace" get secret bex-control-plane -o 'jsonpath={.data.token}' | base64 -d)"
 [ -n "$cp_token" ] || fail "control-plane internal API token is empty"
 printf 'header = "Authorization: Bearer %s"\n' "$cp_token" >"$fixture_dir/cp.curl"
 chmod 600 "$fixture_dir/cp.curl"
 cp_ready=false
 for _ in $(seq 1 30); do
-  if [ "$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$cp_port/" 2>/dev/null)" != 000 ]; then
+  if [ "$(curl -sS --connect-timeout 2 --max-time 3 -o /dev/null -w '%{http_code}' \
+    "http://127.0.0.1:$cp_port/" 2>/dev/null)" != 000 ]; then
     cp_ready=true
     break
   fi
   sleep 1
 done
-[ "$cp_ready" = true ] || fail "control-plane internal API forward did not become ready"
+[ "$cp_ready" = true ] || {
+  echo "---- cp-forward.log ----" >&2
+  cat "$fixture_dir/cp-forward.log" >&2 || true
+  fail "control-plane internal API forward did not become ready"
+}
 
 create_cp_tenant() {
   local name="$1" plan="$2" output="$3" code
