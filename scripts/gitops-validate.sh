@@ -15,6 +15,9 @@ cd "$(dirname "$0")/.."
 
 fail=0
 
+echo "==> Helm artifact download recovery and checksum enforcement"
+bash scripts/helm-artifact.test.sh
+
 echo "==> privileged manifests and charts have immutable source identities"
 if grep -En 'repoURL: https://|chart:' deploy/gitops/base/*.yaml; then
   echo "FAIL: base Applications must not resolve live external Helm repositories" >&2

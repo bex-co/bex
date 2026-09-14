@@ -45,13 +45,25 @@ pull_locked() {
   local destination=$2
   lookup "$chart"
   install -d -m 700 "$destination"
-  helm pull "$locked_name" \
-    --repo "$locked_repo" \
-    --version "$locked_version" \
-    --destination "$destination"
+  # Upstream chart servers can close a download with EOF. Retry only the
+  # fetch; a downloaded archive that fails authentication must still abort.
+  # Keep Helm diagnostics off stdout: callers capture the archive path.
+  local attempt
+  for attempt in 1 2 3; do
+    if helm pull "$locked_name" \
+      --repo "$locked_repo" \
+      --version "$locked_version" \
+      --destination "$destination" >&2; then
+      break
+    fi
+    [ "$attempt" != 3 ] || die "failed to download $locked_name after 3 attempts"
+    printf 'helm-artifact: download failed for %s (%s/3); retrying\n' "$locked_name" "$attempt" >&2
+    sleep 5
+  done
   local archives=("$destination/$locked_name-"*.tgz)
   [ "${#archives[@]}" = 1 ] || die "expected one downloaded archive for $locked_name"
-  printf '%s  %s\n' "$locked_archive_sha" "${archives[0]}" | sha256sum -c - >&2
+  printf '%s  %s\n' "$locked_archive_sha" "${archives[0]}" | sha256sum -c - >&2 \
+    || die "archive checksum mismatch for $locked_name"
   printf '%s\n' "${archives[0]}"
 }
 
