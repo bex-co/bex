@@ -1145,6 +1145,11 @@ const (
 	// a deploy fact — the Build condition and the deploy row carry it — and the
 	// phase keeps describing the release that is still serving (or parked), the
 	// same rule PhaseCanceled above applies to user cancels (w6/m52 → w6/m124).
+	// A ROLLOUT failure (Deployment ProgressDeadlineExceeded — crash-loop,
+	// unpullable image, …) reaches this state the same way when
+	// Status.ActiveRevision is empty: nothing ever served. With an ActiveRevision
+	// the failed rollout is likewise a deploy fact and the phase keeps describing
+	// the release that is still serving or parked (w4/m103).
 	PhaseFailed AppPhase = "Failed"
 )
 
