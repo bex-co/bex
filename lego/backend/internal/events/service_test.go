@@ -100,14 +100,19 @@ func TestViewMapsEverySource(t *testing.T) {
 		wantDetails: Details{DeployID: "dep-1", Trigger: &Trigger{FirstBuild: true}},
 	}, {
 		name:        "deploy triggered through the API",
-		row:         store.ServiceEventRow{Key: "dep-2:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-2", Trigger: store.TriggerAPI},
+		row:         store.ServiceEventRow{Key: "dep-2:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-2", Trigger: store.TriggerAPI, Caller: "user-x"},
 		wantType:    TypeDeployStarted,
-		wantDetails: Details{DeployID: "dep-2", Trigger: &Trigger{Manual: true}},
+		wantDetails: Details{DeployID: "dep-2", Trigger: &Trigger{Manual: true}, TriggeredByUser: "user-x"},
 	}, {
 		name:        "deploy went live",
-		row:         store.ServiceEventRow{Key: "dep-1:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-1", Status: store.DeployLive},
+		row:         store.ServiceEventRow{Key: "dep-1:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-1", Status: store.DeployLive, Caller: "user-x"},
 		wantType:    TypeDeployEnded,
-		wantDetails: Details{DeployID: "dep-1", DeployStatus: "succeeded"},
+		wantDetails: Details{DeployID: "dep-1", DeployStatus: "succeeded", TriggeredByUser: "user-x"},
+	}, {
+		name:        "unattributed deploy (git/hook) leaves triggeredByUser empty",
+		row:         store.ServiceEventRow{Key: "dep-hook:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-hook", Trigger: store.TriggerDeployHook},
+		wantType:    TypeDeployStarted,
+		wantDetails: Details{DeployID: "dep-hook", Trigger: &Trigger{Manual: true}},
 	}, {
 		name:        "deploy failed",
 		row:         store.ServiceEventRow{Key: "dep-3:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-3", Status: store.DeployUpdateFailed},

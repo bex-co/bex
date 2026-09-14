@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   MAXMEMORY_POLICIES,
+  PERSISTENCE_MODES,
   maxmemoryPolicyToUi,
+  persistenceModeToUi,
 } from "@/features/keyvalue/lib/labels";
 
 // w4/046: bex-api reads the eviction policy back with underscores while the UI
@@ -27,5 +29,23 @@ describe("maxmemoryPolicyToUi", () => {
 
   it("passes an unrecognized value through untouched", () => {
     expect(maxmemoryPolicyToUi("something_else")).toBe("something_else");
+  });
+});
+
+describe("persistenceModeToUi", () => {
+  it("maps journal_snapshot onto the hyphen UI option", () => {
+    expect(persistenceModeToUi("journal_snapshot")).toBe("journal-snapshot");
+    expect(PERSISTENCE_MODES).toContain(
+      persistenceModeToUi("journal_snapshot"),
+    );
+  });
+
+  it("leaves snapshot and off unchanged", () => {
+    expect(persistenceModeToUi("snapshot")).toBe("snapshot");
+    expect(persistenceModeToUi("off")).toBe("off");
+  });
+
+  it("passes an empty read through, never fabricating a mode", () => {
+    expect(persistenceModeToUi("")).toBe("");
   });
 });

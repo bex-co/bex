@@ -582,7 +582,7 @@ func assertConcurrentDeployTriggers(ctx context.Context, t *testing.T, s *PGStor
 		go func(i int) {
 			defer wg.Done()
 			<-start
-			created[i], errs[i] = s.CreateDeploy(ctx, app.ID, TriggerAPI, app.Image, int64(i+2), CommitInfo{})
+			created[i], errs[i] = s.CreateDeploy(ctx, app.ID, TriggerAPI, app.Image, int64(i+2), CommitInfo{}, "")
 		}(i)
 	}
 	close(start)
@@ -946,6 +946,9 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	if len(deploys) != 1 || deploys[0].Trigger != "create" || deploys[0].Status != DeployCreated {
 		t.Fatalf("deploy #1 (from CreateApp) = %+v", deploys)
 	}
+	if deploys[0].TriggeredBy != "" {
+		t.Fatalf("create-app deploy triggeredBy = %q, want empty (no request identity)", deploys[0].TriggeredBy)
+	}
 	first := deploys[0]
 
 	open, ok, err := openDeployFor(ctx, s, app.ID)
@@ -969,15 +972,18 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 		t.Fatalf("open deploy after close: ok=%v (err %v), want none open", ok, err)
 	}
 
-	second, err := s.CreateDeploy(ctx, app.ID, "api", app.Image, 2, CommitInfo{Hash: "abc1234def", Message: "fix: header"})
+	second, err := s.CreateDeploy(ctx, app.ID, "api", app.Image, 2, CommitInfo{Hash: "abc1234def", Message: "fix: header"}, "user-deployer")
 	if err != nil || second.Status != DeployCreated {
 		t.Fatalf("trigger deploy: %+v (err %v)", second, err)
+	}
+	if second.TriggeredBy != "user-deployer" {
+		t.Fatalf("create deploy triggeredBy = %q, want user-deployer", second.TriggeredBy)
 	}
 	// Commit metadata round-trips through the real columns (w9/001) — `commit`
 	// is an unreserved SQL keyword, so this also proves the unquoted column
 	// name survives real Postgres.
-	if got, err := s.GetDeploy(ctx, app.ID, second.ID); err != nil || got.Commit != "abc1234def" || got.CommitMessage != "fix: header" {
-		t.Fatalf("commit round-trip = %+v (err %v), want hash+message back", got, err)
+	if got, err := s.GetDeploy(ctx, app.ID, second.ID); err != nil || got.Commit != "abc1234def" || got.CommitMessage != "fix: header" || got.TriggeredBy != "user-deployer" {
+		t.Fatalf("commit/triggeredBy round-trip = %+v (err %v), want hash+message+triggeredBy back", got, err)
 	}
 	if prior, err := s.LatestDeployCommit(ctx, app.ID); err != nil || prior.Hash != "abc1234def" || prior.Message != "fix: header" {
 		t.Fatalf("LatestDeployCommit = %+v (err %v), want the newest non-empty commit", prior, err)
@@ -1417,6 +1423,18 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	for _, e := range deploysOnly {
 		if e.Source != EventSourceDeploy || e.Phase != EventPhaseStarted {
 			t.Errorf("type-filtered page leaked %+v — the filter must run in SQL, before the LIMIT", e)
+		}
+	}
+	// w4/072: the API-triggered deploy (assertDeployLifecycle) carries its
+	// opener; the CreateApp first deploy stays unattributed.
+	byID := map[string]Deploy{}
+	for _, d := range deploys {
+		byID[d.ID] = d
+	}
+	for _, e := range deploysOnly {
+		want := byID[e.DeployID].TriggeredBy
+		if e.Caller != want {
+			t.Errorf("deploy %s caller = %q, want %q (persisted as triggered_by)", e.DeployID, e.Caller, want)
 		}
 	}
 	// The converse: no phases ⇒ no deploy rows at all.

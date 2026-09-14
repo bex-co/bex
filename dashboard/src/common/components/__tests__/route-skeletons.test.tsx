@@ -170,7 +170,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
 
   it.each([
     [<DatabaseOverviewSkeleton key="database" />, 10],
-    [<KeyValueOverviewSkeleton key="keyvalue" />, 6],
+    [<KeyValueOverviewSkeleton key="keyvalue" />, 7],
     [<WorkspaceSettingsPageSkeleton key="workspace" />, 3],
     [<ServiceSettingsSkeleton key="service" />, 11],
   ])(

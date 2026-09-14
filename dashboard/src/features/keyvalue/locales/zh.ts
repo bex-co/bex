@@ -438,6 +438,33 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "无法更新内存淘汰策略，请重试。",
     description: "Toast when an eviction-policy update fails",
   },
+  // --- Persistence mode section (w4/066) ---
+  "keyvalue.persistenceTitle": {
+    message: "持久化模式",
+    description: "Key Value detail persistence-mode card title",
+  },
+  "keyvalue.persistenceDescription": {
+    message:
+      "更改数据写入磁盘的方式，以便在重启后保留。操作器将在下次协调时应用新模式——滚动更新，数据得以保留。",
+    description: "Key Value detail persistence-mode card description",
+  },
+  "keyvalue.persistenceLabel": {
+    message: "持久化模式",
+    description: "Accessible label for the persistence-mode select",
+  },
+  "keyvalue.persistenceEdit": {
+    message: "编辑持久化模式",
+    description:
+      "Accessible label for the persistence-mode edit-in-place pencil",
+  },
+  "keyvalue.persistenceSuccess": {
+    message: "正在将持久化模式更新为 {mode}……",
+    description: "Toast after a persistence-mode update is accepted",
+  },
+  "keyvalue.persistenceError": {
+    message: "无法更新持久化模式，请重试。",
+    description: "Toast when a persistence-mode update fails",
+  },
   // --- Networking (external-endpoint IP allowlist) ---
   "keyvalue.networkingTitle": {
     message: "网络",

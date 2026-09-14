@@ -38,10 +38,10 @@ func (f *fakeDeployStore) LatestDeployCommit(_ context.Context, _ string) (store
 	return f.prior, nil
 }
 
-func (f *fakeDeployStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
+func (f *fakeDeployStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
 	d := store.Deploy{
 		ID: "dep-recorded", AppID: appID, Trigger: trigger, Image: image, Generation: generation,
-		Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt,
+		Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy,
 	}
 	f.created = append(f.created, d)
 	return d, nil

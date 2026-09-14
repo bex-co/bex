@@ -69,7 +69,7 @@ func TestConfigChangeFailsTerminallyThenSelfHeals(t *testing.T) {
 	// Step 1 — the broken Start Command. bex-api patches the spec and, since the
 	// patch moves release identity, opens a deploy row for the rollout it forces.
 	broken := patchStartCommand(t, cl, "./app --qa-simple-test")
-	brokenDeploy, err := st.CreateDeploy(ctx, row.ID, TriggerConfigChange, "", broken, CommitInfo{})
+	brokenDeploy, err := st.CreateDeploy(ctx, row.ID, TriggerConfigChange, "", broken, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("open deploy for the broken edit: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestConfigChangeFailsTerminallyThenSelfHeals(t *testing.T) {
 
 	// Step 2 — the correction, and nothing else. No Manual Deploy, no Restart.
 	fixed := patchStartCommand(t, cl, "./app")
-	fixedDeploy, err := st.CreateDeploy(ctx, row.ID, TriggerConfigChange, "", fixed, CommitInfo{})
+	fixedDeploy, err := st.CreateDeploy(ctx, row.ID, TriggerConfigChange, "", fixed, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("open deploy for the corrected edit: %v", err)
 	}

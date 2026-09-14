@@ -391,7 +391,13 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.resourcesEmpty": {
     message: "暂无资源——请同步蓝图以应用您的 render.yaml。",
-    description: "Blueprint managed-resources empty state",
+    description: "Blueprint managed-resources empty state (never synced)",
+  },
+  "blueprints.resourcesEmptyAfterError": {
+    message:
+      "尚未关联托管资源。上次同步失败——请查看同步历史中的错误，修复蓝图后再次同步。",
+    description:
+      "Blueprint managed-resources empty state when status is error after a sync",
   },
   // --- Sync history ---
   "blueprints.syncHistoryTitle": {

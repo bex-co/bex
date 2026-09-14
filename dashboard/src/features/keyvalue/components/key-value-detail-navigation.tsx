@@ -1,5 +1,6 @@
 import {
   Info,
+  HardDrive,
   MemoryStick,
   Network,
   Package,
@@ -34,6 +35,11 @@ export function KeyValueDetailNavigation({
       href: "#maxmemory-policy",
       label: t("keyvalue.maxmemoryTitle"),
       icon: MemoryStick,
+    },
+    {
+      href: "#persistence-mode",
+      label: t("keyvalue.persistenceTitle"),
+      icon: HardDrive,
     },
     {
       href: "#danger-zone",

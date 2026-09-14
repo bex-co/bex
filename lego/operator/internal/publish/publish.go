@@ -599,9 +599,23 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 		env = append(env, corev1.EnvVar{Name: "AWS_DEFAULT_REGION", Value: store.Region})
 	}
 	sum := sha256.Sum256([]byte(appUID))
-	jobName := fmt.Sprintf("purge-%s-%x", appName, sum[:4])
+	// Same budget math as controller.cleanupJobName: the short form is
+	// purge-<app>-<8 hex>; on overflow truncate the parent so
+	// prefix+parent+suffix stays ≤ 63 (w4/064). The old "%.45s" fallback
+	// produced 64-character names and left long static sites stuck terminating.
+	const prefix = "purge-"
+	jobName := fmt.Sprintf("%s%s-%x", prefix, appName, sum[:4])
 	if len(jobName) > 63 {
-		jobName = fmt.Sprintf("purge-%.45s-%x", appName, sum[:6])
+		suffix := fmt.Sprintf("-%x", sum[:6])
+		maxParent := 63 - len(prefix) - len(suffix)
+		if maxParent < 1 {
+			maxParent = 1
+		}
+		parent := appName
+		if len(parent) > maxParent {
+			parent = parent[:maxParent]
+		}
+		jobName = prefix + parent + suffix
 	}
 	labels := execution.PodLabels(appName, appUID, "static-purge", workspace, appNamespace, false)
 	labels["app.bex.co/purge"] = appName

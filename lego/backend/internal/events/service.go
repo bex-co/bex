@@ -35,8 +35,8 @@ limitations under the License.
 // Render's list-events enum has 39 types; bex emits the subset its three sources
 // can support truthfully, under Render's exact names:
 //
-//	deploy_started              deploys row opened
-//	deploy_ended                deploys row closed (details.deployStatus succeeded|failed)
+//	deploy_started              deploys row opened (details.triggeredByUser = opener when known)
+//	deploy_ended                deploys row closed (details.deployStatus succeeded|failed; triggeredByUser as above)
 //	suspender_added             apps.Suspend      (details.actor = the caller)
 //	suspender_removed           apps.Resume       (details.actor = the caller)
 //	server_restarted            apps.Restart      (details.triggeredByUser = the caller)
@@ -237,27 +237,27 @@ const (
 	// TypeAutoDeployChanged is the bex-named fallback for legacy audit rows without
 	// a recorded auto_deploy_enabled value. New rows always produce
 	// TypeAutoDeployEnabled or TypeAutoDeployDisabled.
-	TypeAutoDeployChanged         = "auto_deploy_changed"
-	TypeIdleTimeoutChanged        = "idle_timeout_changed"
-	TypeRootDirectoryChanged      = "root_directory_changed"
-	TypeDockerfilePathChanged     = "dockerfile_path_changed"
-	TypeBuildFilterChanged        = "build_filter_changed"
-	TypeCommandsChanged           = "commands_changed"
-	TypeSourceChanged             = "source_changed"
-	TypeDisplayNameChanged        = "display_name_changed"
-	TypePreDeployChanged          = "pre_deploy_command_changed"
-	TypeMaxShutdownDelayChanged   = "max_shutdown_delay_changed"
-	TypePublishPathChanged        = "publish_path_changed"
-	TypeRoutesChanged             = "routes_changed"
-	TypeHeadersChanged            = "headers_changed"
+	TypeAutoDeployChanged       = "auto_deploy_changed"
+	TypeIdleTimeoutChanged      = "idle_timeout_changed"
+	TypeRootDirectoryChanged    = "root_directory_changed"
+	TypeDockerfilePathChanged   = "dockerfile_path_changed"
+	TypeBuildFilterChanged      = "build_filter_changed"
+	TypeCommandsChanged         = "commands_changed"
+	TypeSourceChanged           = "source_changed"
+	TypeDisplayNameChanged      = "display_name_changed"
+	TypePreDeployChanged        = "pre_deploy_command_changed"
+	TypeMaxShutdownDelayChanged = "max_shutdown_delay_changed"
+	TypePublishPathChanged      = "publish_path_changed"
+	TypeRoutesChanged           = "routes_changed"
+	TypeHeadersChanged          = "headers_changed"
 	// Disk lifecycle types match Render's eventTypeParam / webhook enum
 	// (w8/m34): disk_created/disk_deleted — not the earlier bex spellings
 	// disk_attached/disk_detached. TypeDiskRestored is a labeled bex extension
 	// (Render has no restore-from-snapshot event).
-	TypeDiskCreated  = "disk_created"
-	TypeDiskUpdated  = "disk_updated"
-	TypeDiskDeleted  = "disk_deleted"
-	TypeDiskRestored = "disk_restored"
+	TypeDiskCreated               = "disk_created"
+	TypeDiskUpdated               = "disk_updated"
+	TypeDiskDeleted               = "disk_deleted"
+	TypeDiskRestored              = "disk_restored"
 	TypeCustomDomainAdded         = "custom_domain_added"
 	TypeCustomDomainRemoved       = "custom_domain_removed"
 	TypeCustomDomainVerified      = "custom_domain_verified"
@@ -707,6 +707,9 @@ func view(r store.ServiceEventRow, service string) Event {
 		ev.Details.CommitMessage = r.CommitMessage
 		ev.Details.StartedAt = r.StartedAt
 		ev.Details.FinishedAt = r.FinishedAt
+		// Same field server_restarted uses: the opener's identity subject
+		// (empty for unattributed git/hook triggers) — w4/072.
+		ev.Details.TriggeredByUser = r.Caller
 		if r.Phase == store.EventPhaseStarted {
 			ev.Type = TypeDeployStarted
 			ev.Details.Trigger = &Trigger{
