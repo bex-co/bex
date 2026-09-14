@@ -25,6 +25,10 @@ vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
 
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: (subject: string) => subject,
+}));
+
 const mockUseQuery = vi.fn();
 const rollbackService = vi.fn();
 const cancelDeploy = vi.fn();

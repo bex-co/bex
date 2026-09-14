@@ -23,6 +23,10 @@ vi.mock("@/features/api-keys/components/create-api-key-dialog", () => ({
   CreateApiKeyDialog: () => null,
 }));
 
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: (subject: string) => subject,
+}));
+
 beforeEach(() => {
   apiKeysState.keys = [];
   apiKeysState.loading = false;

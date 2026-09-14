@@ -4,6 +4,10 @@ import { AuditLogPanel } from "@/features/audit/components/audit-log-panel";
 import { formatDateTime } from "@/common/lib/format";
 import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
 
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: (subject: string) => subject,
+}));
+
 // The panel is presentational (w4/m15): its owner (SecurityComplianceSection)
 // runs the query and passes the result down, so tests inject `state` directly.
 const loadMore = vi.fn();
