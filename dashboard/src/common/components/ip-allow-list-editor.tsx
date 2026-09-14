@@ -12,6 +12,14 @@ interface IPAllowListEditorLabels {
   hint: string;
   open: string;
   descriptionPlaceholder: string;
+  /** Accessible name for the "add" CIDR input (placeholder stays the example). */
+  cidr: string;
+  /** Accessible name for an existing-row CIDR; `{number}` is 1-based. */
+  cidrRule: (number: number) => string;
+  /** Accessible name for the "add" description input. */
+  description: string;
+  /** Accessible name for an existing-row description; `{number}` is 1-based. */
+  descriptionRule: (number: number) => string;
   add: string;
   save: string;
   invalid: string;
@@ -98,7 +106,7 @@ export function IPAllowListEditor({
                   replace(index, "cidrBlock", event.target.value)
                 }
                 aria-invalid={!isValidCIDR(entry.cidrBlock)}
-                aria-label={`CIDR ${index + 1}`}
+                aria-label={labels.cidrRule(index + 1)}
                 className="max-w-xs font-mono"
               />
               <Input
@@ -106,7 +114,7 @@ export function IPAllowListEditor({
                 onChange={(event) =>
                   replace(index, "description", event.target.value)
                 }
-                aria-label={`${labels.descriptionPlaceholder} ${index + 1}`}
+                aria-label={labels.descriptionRule(index + 1)}
                 placeholder={labels.descriptionPlaceholder}
                 className="max-w-xs"
               />
@@ -158,6 +166,7 @@ export function IPAllowListEditor({
             event.key === "Enter" && (event.preventDefault(), add())
           }
           placeholder="203.0.113.0/24"
+          aria-label={labels.cidr}
           aria-invalid={invalid}
           className="max-w-xs"
         />
@@ -167,6 +176,7 @@ export function IPAllowListEditor({
           onKeyDown={(event) =>
             event.key === "Enter" && (event.preventDefault(), add())
           }
+          aria-label={labels.description}
           placeholder={labels.descriptionPlaceholder}
           className="max-w-xs"
         />

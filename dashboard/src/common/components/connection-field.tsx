@@ -1,10 +1,13 @@
 import { CopyButton } from "@/common/components/copy-button";
+import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface ConnectionFieldProps {
   label: string;
   value: string;
   copiedText: string;
   copyErrorText: string;
+  /** Accessible name for the copy control. Defaults to "Copy {label}". */
+  copyLabel?: string;
 }
 
 /**
@@ -18,14 +21,16 @@ export function ConnectionField({
   value,
   copiedText,
   copyErrorText,
+  copyLabel,
 }: ConnectionFieldProps) {
+  const { t } = useTranslations();
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium">{label}</span>
         <CopyButton
           value={value}
-          label={label}
+          label={copyLabel ?? t("common.copyField", { field: label })}
           successText={copiedText}
           errorText={copyErrorText}
         />

@@ -2580,7 +2580,7 @@ func applyOptionalCreateSpec(spec *appv1alpha1.AppSpec, svcType string, req Crea
 		spec.Hosts = hosts[1:]
 	}
 	if req.Autoscaling != nil {
-		as, err := autoscalingSpec(*req.Autoscaling, spec.Tier)
+		as, err := autoscalingSpec(*req.Autoscaling, svcType, spec.Tier)
 		if err != nil {
 			return err
 		}
@@ -4357,13 +4357,42 @@ type SetAutoscalingRequest struct {
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
 }
 
+// autoscalingEligible reports whether the runtime can honor autoscaling for
+// this service type (w4/m101). Cron jobs and static sites have no long-running
+// replica set; web, private, and background workers do. Empty type defaults to
+// web_service (the CRD default).
+func autoscalingEligible(serviceType string) bool {
+	if serviceType == "" {
+		serviceType = appv1alpha1.TypeWebService
+	}
+	switch serviceType {
+	case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
+		return true
+	default:
+		return false
+	}
+}
+
+func refuseAutoscalingType(serviceType string) error {
+	if serviceType == "" {
+		serviceType = appv1alpha1.TypeWebService
+	}
+	return fmt.Errorf("%w: a %s cannot use autoscaling; autoscaling is supported on web services, private services and background workers",
+		core.ErrBadRequest, serviceType)
+}
+
 // autoscalingSpec validates a SetAutoscalingRequest and returns the
 // corresponding AutoscalingSpec (Enabled:true). Shared by SetAutoscaling and
 // specFromCreate (the Blueprint scaling: block path, w2/m49) so validation
 // is identical regardless of entry point. tier is the App's spec.tier: the
 // autoscaler drives replicas up to maxInstances, so an uncapped maxInstances
 // would reintroduce the over-cap outcome by a different door (w6/m118 t003).
-func autoscalingSpec(req SetAutoscalingRequest, tier string) (appv1alpha1.AutoscalingSpec, error) {
+// serviceType is checked first so ineligible types never store a config the
+// reconciler cannot honor (w4/m101).
+func autoscalingSpec(req SetAutoscalingRequest, serviceType, tier string) (appv1alpha1.AutoscalingSpec, error) {
+	if !autoscalingEligible(serviceType) {
+		return appv1alpha1.AutoscalingSpec{}, refuseAutoscalingType(serviceType)
+	}
 	if req.MinInstances < 0 {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be ≥ 0", core.ErrBadRequest)
 	}
@@ -4407,7 +4436,13 @@ func autoscalingSpec(req SetAutoscalingRequest, tier string) (appv1alpha1.Autosc
 
 // autoscalingView projects spec.autoscaling onto the neutral view. Nil
 // spec.autoscaling => disabled with zero bounds (the disabled state).
+// Ineligible types always report disabled even if a stale enabled config was
+// stored before the type gate existed (w4/m101) — echoing enabled:true made
+// the accept-then-discard invisible.
 func autoscalingView(a *appv1alpha1.App) AutoscalingView {
+	if !autoscalingEligible(a.Spec.Type) {
+		return AutoscalingView{}
+	}
 	as := a.Spec.Autoscaling
 	if as == nil {
 		return AutoscalingView{}
@@ -4440,7 +4475,7 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
-	as, err := autoscalingSpec(req, a.Spec.Tier)
+	as, err := autoscalingSpec(req, a.Spec.Type, a.Spec.Tier)
 	if err != nil {
 		return AutoscalingView{}, err
 	}

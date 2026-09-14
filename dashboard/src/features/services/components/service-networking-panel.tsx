@@ -64,6 +64,11 @@ export function ServiceNetworkingPanel({
             hint: t("services.networkingHint"),
             open: t("services.networkingOpen"),
             descriptionPlaceholder: t("services.networkingEntryDescription"),
+            cidr: t("services.networkingCIDR"),
+            cidrRule: (number) => t("services.networkingCIDRRule", { number }),
+            description: t("services.networkingDescriptionLabel"),
+            descriptionRule: (number) =>
+              t("services.networkingDescriptionRule", { number }),
             add: t("services.networkingAdd"),
             save: t("services.networkingSave"),
             invalid: t("services.networkingInvalid"),

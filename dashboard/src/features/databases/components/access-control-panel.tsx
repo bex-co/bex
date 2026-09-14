@@ -62,6 +62,12 @@ function AllowListSection({ access }: { access: Access }) {
           hint: t("databases.accessAllowListHint"),
           open: t("databases.accessAllowListOpen"),
           descriptionPlaceholder: t("databases.accessAllowListDescription"),
+          cidr: t("databases.accessAllowListCIDR"),
+          cidrRule: (number) =>
+            t("databases.accessAllowListCIDRRule", { number }),
+          description: t("databases.accessAllowListDescriptionLabel"),
+          descriptionRule: (number) =>
+            t("databases.accessAllowListDescriptionRule", { number }),
           add: t("databases.accessAllowListAdd"),
           save: t("databases.accessAllowListSave"),
           invalid: t("databases.accessAllowListInvalid"),
@@ -132,7 +138,7 @@ function UsersSection({ access }: { access: Access }) {
               </code>
               <CopyButton
                 value={revealed.password}
-                label={t("databases.accessUserPassword")}
+                label={t("databases.accessUserPasswordCopy")}
                 successText={t("databases.copied")}
                 errorText={t("databases.copyError")}
               />
@@ -145,6 +151,7 @@ function UsersSection({ access }: { access: Access }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="reporting"
+          aria-label={t("databases.accessUserName")}
           className="max-w-xs"
         />
         <Button

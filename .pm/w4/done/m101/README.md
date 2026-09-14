@@ -1,25 +1,25 @@
 # w4 · m101 — Refuse autoscaling the runtime cannot honor, and apply static header rules to error responses
 
-**Worker:** worker4 **Goal:** a service type with no replica concept can no longer be configured to autoscale — on any surface — and a `/*` custom-header rule on a static site reaches every response its site serves, not only the successful and redirected ones. **Status:** todo
+**Worker:** worker4 **Goal:** a service type with no replica concept can no longer be configured to autoscale — on any surface — and a `/*` custom-header rule on a static site reaches every response its site serves, not only the successful and redirected ones. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                               | est | depends_on                 |
 | ---- | ----------------------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Refuse autoscaling for types the runtime cannot scale, and settle the worker case      | 50m | —                          |
-| t002 | Gate the Scaling surface per type the way manual scaling and Disk already are          | 40m | w4/m101/t001               |
-| t003 | Apply static custom header rules to the error response classes                         | 50m | —                          |
-| t004 | Name the autoscaling enable switches, and fix "utilisation" in the same panel          | 30m | —                          |
-| t005 | Blast-radius + control-case regression tests for both fixes                            | 45m | w4/m101/t001, w4/m101/t003 |
-| t010 | Name the shared IP-allowlist and database-user inputs across their four surfaces        | 35m | —                          |
-| t011 | Name the global search input, which cmdk actively un-names                              | 30m | —                          |
-| t012 | Wire the SSH-key dialog's validation error to its textarea                               | 30m | —                          |
-| t013 | Name each environment row's controls by their variable                                   | 30m | —                          |
-| t014 | Give `CopyButton` an action-shaped name at the two shared field wrappers                  | 30m | —                          |
-| t006 | Render parity sweep over the changed surfaces                                          | 30m | w4/m101/t002, w4/m101/t004, w4/m101/t005, w4/m101/t010, w4/m101/t011, w4/m101/t012, w4/m101/t013, w4/m101/t014 |
-| t007 | Simplify pass over this milestone's changes                                            | 30m | w4/m101/t006               |
-| t008 | Test coverage for the shipped behavior                                                 | 40m | w4/m101/t006               |
-| t009 | Closeout                                                                               | 15m | w4/m101/t008               |
+| t001 | Refuse autoscaling for types the runtime cannot scale, and settle the worker case      | 50m | — DONE |
+| t002 | Gate the Scaling surface per type the way manual scaling and Disk already are          | 40m | w4/m101/t001 — DONE |
+| t003 | Apply static custom header rules to the error response classes                         | 50m | — DONE |
+| t004 | Name the autoscaling enable switches, and fix "utilisation" in the same panel          | 30m | — DONE |
+| t005 | Blast-radius + control-case regression tests for both fixes                            | 45m | w4/m101/t001, w4/m101/t003 — DONE |
+| t010 | Name the shared IP-allowlist and database-user inputs across their four surfaces        | 35m | — DONE |
+| t011 | Name the global search input, which cmdk actively un-names                              | 30m | — DONE |
+| t012 | Wire the SSH-key dialog's validation error to its textarea                               | 30m | — DONE |
+| t013 | Name each environment row's controls by their variable                                   | 30m | — DONE |
+| t014 | Give `CopyButton` an action-shaped name at the two shared field wrappers                  | 30m | — DONE |
+| t006 | Render parity sweep over the changed surfaces                                          | 30m | w4/m101/t002, w4/m101/t004, w4/m101/t005, w4/m101/t010, w4/m101/t011, w4/m101/t012, w4/m101/t013, w4/m101/t014 — DONE |
+| t007 | Simplify pass over this milestone's changes                                            | 30m | w4/m101/t006 — DONE |
+| t008 | Test coverage for the shipped behavior                                                 | 40m | w4/m101/t006 — DONE |
+| t009 | Closeout                                                                               | 15m | w4/m101/t008 — DONE |
 
 ## Definition of done
 

@@ -39,7 +39,6 @@ func TestDesiredReplicas(t *testing.T) {
 	cases := []struct {
 		name                string
 		app                 *appv1alpha1.App
-		worker              bool
 		activator           string
 		wantReplicas        int32
 		wantAutoHibernating bool
@@ -74,7 +73,6 @@ func TestDesiredReplicas(t *testing.T) {
 				app.Spec.Type = appv1alpha1.TypeBackgroundWorker
 				return app
 			}(),
-			worker:    true,
 			activator: "bex-activator",
 			// mkIdleApp leaves spec.replicas 0 => default 1.
 			wantReplicas: 1,
@@ -110,18 +108,18 @@ func TestDesiredReplicas(t *testing.T) {
 			wantReplicas: 4,
 		},
 		{
-			name: "autoscaling annotation ignored for a worker",
+			name: "worker honors autoscaling annotation (w4/m101)",
 			app: &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{annotAutoscaleReplicas: "4"},
 				},
 				Spec: appv1alpha1.AppSpec{
+					Type:        appv1alpha1.TypeBackgroundWorker,
 					Replicas:    2,
 					Autoscaling: &appv1alpha1.AutoscalingSpec{Enabled: true},
 				},
 			},
-			worker:       true,
-			wantReplicas: 2,
+			wantReplicas: 4,
 		},
 		{
 			name: "autoscaling annotation ignored while suspended",
@@ -141,7 +139,7 @@ func TestDesiredReplicas(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &AppReconciler{ActivatorService: tc.activator}
-			replicas, requeue, autoHibernating := r.desiredReplicas(context.Background(), tc.app, tc.worker)
+			replicas, requeue, autoHibernating := r.desiredReplicas(context.Background(), tc.app)
 			if replicas != tc.wantReplicas {
 				t.Errorf("replicas = %d, want %d", replicas, tc.wantReplicas)
 			}

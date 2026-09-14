@@ -50,6 +50,11 @@ export function KeyValueNetworkingPanel({
             hint: t("keyvalue.networkingHint"),
             open: t("keyvalue.networkingOpen"),
             descriptionPlaceholder: t("keyvalue.networkingEntryDescription"),
+            cidr: t("keyvalue.networkingCIDR"),
+            cidrRule: (number) => t("keyvalue.networkingCIDRRule", { number }),
+            description: t("keyvalue.networkingDescriptionLabel"),
+            descriptionRule: (number) =>
+              t("keyvalue.networkingDescriptionRule", { number }),
             add: t("keyvalue.networkingAdd"),
             save: t("keyvalue.networkingSave"),
             invalid: t("keyvalue.networkingInvalid"),

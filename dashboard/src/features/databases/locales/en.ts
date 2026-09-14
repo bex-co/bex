@@ -714,6 +714,22 @@ const enDatabases: Record<string, TranslationEntry> = {
     description:
       "Placeholder for the optional per-entry allowlist description input",
   },
+  "databases.accessAllowListCIDR": {
+    message: "New CIDR block",
+    description: "Accessible label for the add-row CIDR input",
+  },
+  "databases.accessAllowListCIDRRule": {
+    message: "CIDR block for rule {number}",
+    description: "Accessible label for an existing allowlist CIDR row",
+  },
+  "databases.accessAllowListDescriptionLabel": {
+    message: "New rule description",
+    description: "Accessible label for the add-row description input",
+  },
+  "databases.accessAllowListDescriptionRule": {
+    message: "Description for rule {number}",
+    description: "Accessible label for an existing allowlist description row",
+  },
   "databases.accessAllowListRemove": {
     message: "Remove {cidr}",
     description: "Accessible label to remove a CIDR chip",
@@ -759,6 +775,10 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Add user",
     description: "Access panel button to create a database user",
   },
+  "databases.accessUserName": {
+    message: "Database username",
+    description: "Accessible label for the add-database-user name input",
+  },
   "databases.accessUserDelete": {
     message: "Delete {name}",
     description: "Accessible label to delete a database user",
@@ -766,6 +786,10 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.accessUserPassword": {
     message: "Password",
     description: "Label for a newly-created user's password",
+  },
+  "databases.accessUserPasswordCopy": {
+    message: "Copy password",
+    description: "Accessible label for copying a newly-created user password",
   },
   "databases.accessUserPasswordOnce": {
     message: "Password for {name} — shown once:",

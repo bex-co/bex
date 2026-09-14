@@ -443,11 +443,31 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.scalingTargetCPU": {
     message: "目标 CPU 使用率 %",
-    description: "Autoscaling target CPU utilisation input label",
+    description: "Autoscaling target CPU utilization input label",
   },
   "services.scalingTargetMemory": {
     message: "目标内存使用率 %",
-    description: "Autoscaling target memory utilisation input label",
+    description: "Autoscaling target memory utilization input label",
+  },
+  "services.scalingUnavailableTitle": {
+    message: "不支持伸缩",
+    description:
+      "Scaling tab heading when this service type cannot be scaled (cron)",
+  },
+  "services.scalingUnavailableBody": {
+    message:
+      "伸缩适用于具有长期运行实例的 Web、私有和后台服务。此服务类型没有可调整的副本数。",
+    description:
+      "Scaling tab explanation when reached by direct URL for an ineligible type",
+  },
+  "services.scalingValidationMinMax": {
+    message: "最少实例数必须 ≤ 最多实例数。",
+    description: "Autoscaling form validation when min exceeds max",
+  },
+  "services.scalingValidationTargets": {
+    message: "必须启用至少一个利用率目标（CPU 或内存）。",
+    description:
+      "Autoscaling form validation when both CPU and memory targets are off",
   },
   "services.scalingSave": {
     message: "保存",
@@ -660,6 +680,16 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.envDelete": {
     message: "删除",
     description: "Environment row button to remove a variable",
+  },
+  "services.envValueFor": {
+    message: "{name} 的值",
+    description:
+      "Accessible name for a Value textbox once its Key is set (m101/t013)",
+  },
+  "services.envDeleteOne": {
+    message: "删除 {name}",
+    description:
+      "Accessible name for a Delete button once its Key is set (m101/t013)",
   },
   "services.envSave": {
     message: "保存",
@@ -1419,6 +1449,16 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.domainRecordTarget": {
     message: "目标",
     description: "Label for the DNS record target/value field",
+  },
+  "services.domainCopyHost": {
+    message: "复制 {type} 主机",
+    description:
+      "Accessible label for copying a DNS host field — type discriminates ownership TXT vs traffic CNAME",
+  },
+  "services.domainCopyTarget": {
+    message: "复制 {type} 目标",
+    description:
+      "Accessible label for copying a DNS target/value field — type discriminates ownership TXT vs traffic CNAME",
   },
   "services.domainDnsUnavailable": {
     message: "DNS 目标尚不可用——服务运行后请重新检查。",
@@ -3853,6 +3893,22 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "描述（可选）",
     description: "Placeholder for a service allowlist entry description",
   },
+  "services.networkingCIDR": {
+    message: "新 CIDR 网段",
+    description: "Accessible label for the add-row CIDR input",
+  },
+  "services.networkingCIDRRule": {
+    message: "规则 {number} 的 CIDR 网段",
+    description: "Accessible label for an existing allowlist CIDR row",
+  },
+  "services.networkingDescriptionLabel": {
+    message: "新规则描述",
+    description: "Accessible label for the add-row description input",
+  },
+  "services.networkingDescriptionRule": {
+    message: "规则 {number} 的描述",
+    description: "Accessible label for an existing allowlist description row",
+  },
   "services.networkingInvalid": {
     message: "请输入有效的 IPv4 或 IPv6 CIDR。",
     description: "Validation error for an invalid service allowlist CIDR",
@@ -4122,9 +4178,19 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "查看内容",
     description: "Reveal or inspect secret-file contents in a dialog",
   },
+  "services.secretFileViewContentOne": {
+    message: "查看 {name} 的内容",
+    description:
+      "Accessible name for View contents once the file has a name (m101/t013)",
+  },
   "services.secretFileEditContent": {
     message: "编辑内容",
     description: "Edit staged secret-file contents in a dialog",
+  },
+  "services.secretFileEditContentOne": {
+    message: "编辑 {name} 的内容",
+    description:
+      "Accessible name for Edit contents once the file has a name (m101/t013)",
   },
   "services.secretFileContentDialogTitle": {
     message: "{name} 的内容",
@@ -4149,6 +4215,11 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.secretFileDelete": {
     message: "删除机密文件",
     description: "Accessible label for a staged secret-file deletion",
+  },
+  "services.secretFileDeleteOne": {
+    message: "删除机密文件 {name}",
+    description:
+      "Accessible name for Delete secret file once the file has a name (m101/t013)",
   },
   "services.envGroupsLinkedTitle": {
     message: "已关联的环境组",

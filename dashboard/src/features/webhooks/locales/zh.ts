@@ -206,7 +206,7 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     description: "Secret-reveal step warning (shown exactly once)",
   },
   "webhooks.copy": {
-    message: "复制",
+    message: "复制签名密钥",
     description: "Copy-secret button label",
   },
   "webhooks.copied": {

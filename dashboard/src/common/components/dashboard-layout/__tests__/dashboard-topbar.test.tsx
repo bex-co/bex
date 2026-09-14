@@ -262,6 +262,10 @@ describe("dashboard topbar navigation", () => {
     expect(
       await screen.findByPlaceholderText("Search pages and resources…"),
     ).toBeInTheDocument();
+    // cmdk's label prop names the combobox (m101/t011); aria-label alone is not enough.
+    expect(
+      screen.getByRole("combobox", { name: "Search" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("primary-db")).toBeInTheDocument();
     expect(screen.getByText("session-cache")).toBeInTheDocument();
 

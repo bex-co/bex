@@ -77,6 +77,11 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "No matching pages or resources.",
     description: "Empty state in the workspace-wide topbar command search",
   },
+  "common.copyField": {
+    message: "Copy {field}",
+    description:
+      "Accessible name for a copy control when the caller only has a field label (m101/t014)",
+  },
   "common.topbarNavigation": {
     message: "Navigation",
     description: "Page-links group in the workspace-wide topbar search",

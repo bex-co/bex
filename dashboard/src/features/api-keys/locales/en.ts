@@ -128,7 +128,7 @@ const enApiKeys: Record<string, TranslationEntry> = {
     description: "Mint dialog close button (secret-shown step)",
   },
   "apiKeys.copy": {
-    message: "Copy",
+    message: "Copy secret",
     description: "Copy-to-clipboard icon button label",
   },
   "apiKeys.copied": {

@@ -16,7 +16,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { UseAutoscalingResult } from "@/features/services/hooks/use-autoscaling";
 
-// Render uses 1–100 for instance count and 1–90 for utilisation targets, with
+// Render uses 1–100 for instance count and 1–90 for utilization targets, with
 // 60% as the first-enable default target (live capture 2026-07-16, w7/m43).
 // The backend validates the same 1–100 (store.MaxReplicas). The bounds are
 // exported for the Manual Scaling card, which shares them.
@@ -35,15 +35,19 @@ interface FormState {
   targetMemoryPercent: number;
 }
 
+type ValidationKey =
+  | "services.scalingValidationMinMax"
+  | "services.scalingValidationTargets";
+
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-function validate(form: FormState): string | null {
+function validate(form: FormState): ValidationKey | null {
   if (form.minInstances > form.maxInstances)
-    return "Min instances must be ≤ max instances.";
+    return "services.scalingValidationMinMax";
   if (!form.cpuEnabled && !form.memEnabled)
-    return "At least one utilisation target (CPU or memory) must be enabled.";
+    return "services.scalingValidationTargets";
   return null;
 }
 
@@ -182,7 +186,9 @@ export function AutoscalingSection({
   // is what keeps the card open, so a draft is always "enabled" — the old
   // separate enabled flag was invariantly true (w7/m43 simplify).
   const [draft, setDraft] = useState<FormState | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<ValidationKey | null>(
+    null,
+  );
   // Disabling reverts the service to its fixed Manual Scaling instance count —
   // confirm first with that explanation (Render's disable dialog, w7/m43).
   const [confirmDisable, setConfirmDisable] = useState(false);
@@ -346,6 +352,7 @@ export function AutoscalingSection({
                   checked={form.cpuEnabled}
                   disabled={as.saving}
                   onCheckedChange={(v) => patch({ cpuEnabled: v })}
+                  aria-label={t("services.scalingCPUTitle")}
                 />
               </div>
               {form.cpuEnabled && (
@@ -380,6 +387,7 @@ export function AutoscalingSection({
                   checked={form.memEnabled}
                   disabled={as.saving}
                   onCheckedChange={(v) => patch({ memEnabled: v })}
+                  aria-label={t("services.scalingMemoryTitle")}
                 />
               </div>
               {form.memEnabled && (
@@ -398,9 +406,9 @@ export function AutoscalingSection({
               )}
             </div>
 
-            {validationError && (
-              <p className="text-sm text-destructive">{validationError}</p>
-            )}
+            {validationError ? (
+              <p className="text-sm text-destructive">{t(validationError)}</p>
+            ) : null}
 
             <div className="flex gap-2">
               <Button

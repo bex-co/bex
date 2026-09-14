@@ -75,6 +75,9 @@ describe("ConnectionInfoPanel", () => {
 
     // Masked initially — the raw password is not on screen.
     expect(screen.getByText("Password")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Copy .*[Pp]assword/ }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("s3cretpw")).not.toBeInTheDocument();
     expect(screen.getByText(/•+/)).toBeInTheDocument();
 

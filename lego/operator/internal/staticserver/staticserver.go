@@ -251,7 +251,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !errors.Is(err, ErrNotFound) {
-		serveOriginError(w, err)
+		serveOriginError(w, site, requestPath, err)
 		return
 	}
 
@@ -259,7 +259,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	act, target := matchRoutes(site.Routes, requestPath)
 	if act == actRedirect {
 		if !safeRedirectTarget(target) {
-			http.Error(w, "invalid redirect target", http.StatusBadRequest)
+			serveSiteError(w, site, requestPath, http.StatusBadRequest, "invalid redirect target")
 			return
 		}
 		applyHeaders(w.Header(), site.Headers, requestPath)
@@ -270,7 +270,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if act == actNone && overlong {
 		// No rule claimed the over-long path; it can never be an object and is
 		// not plausibly an SPA route either.
-		http.Error(w, "not found", http.StatusNotFound)
+		serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
 		return
 	}
 
@@ -278,12 +278,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if act == actRewrite {
 		fallbackPath = normalizePath(target)
 		if overlongKey(site, fallbackPath) {
-			http.Error(w, "not found", http.StatusNotFound)
+			serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
 			return
 		}
 		obj, servedPath, err = h.fetch(r.Context(), site, fallbackPath)
 		if err != nil && !errors.Is(err, ErrNotFound) {
-			serveOriginError(w, err)
+			serveOriginError(w, site, requestPath, err)
 			return
 		}
 		if err == nil {
@@ -300,20 +300,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveObject(w, r, site, fallback, "/index.html", requestPath)
 		return
 	}
-	http.Error(w, "not found", http.StatusNotFound)
+	serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
 }
 
 // serveOriginError maps a non-miss fetch failure onto its response class:
-// oversize 413, overload 503 + Retry-After, anything else 502.
-func serveOriginError(w http.ResponseWriter, err error) {
+// oversize 413, overload 503 + Retry-After, anything else 502. Custom headers
+// still apply (w4/m101) — a CORS/security rule must cover origin failures too.
+func serveOriginError(w http.ResponseWriter, site Site, requestPath string, err error) {
 	switch {
 	case errors.Is(err, ErrObjectTooLarge):
-		http.Error(w, "object too large", http.StatusRequestEntityTooLarge)
+		serveSiteError(w, site, requestPath, http.StatusRequestEntityTooLarge, "object too large")
 	case errors.Is(err, ErrOverloaded):
-		w.Header().Set("Retry-After", "1")
-		http.Error(w, "server busy", http.StatusServiceUnavailable)
+		serveSiteBusy(w, site, requestPath)
 	default:
-		http.Error(w, "origin error", http.StatusBadGateway)
+		serveSiteError(w, site, requestPath, http.StatusBadGateway, "origin error")
 	}
 }
 
@@ -330,8 +330,7 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	if r.Method != http.MethodHead {
 		lease := int64(len(obj.Body))
 		if !h.liveBodies.TryAcquire(lease) {
-			w.Header().Set("Retry-After", "1")
-			http.Error(w, "server busy", http.StatusServiceUnavailable)
+			serveSiteBusy(w, site, requestPath)
 			return
 		}
 		defer h.liveBodies.Release(lease)
@@ -516,6 +515,48 @@ func applyHeaders(h http.Header, headers []appv1alpha1.StaticHeader, reqPath str
 			h.Set(rule.Name, rule.Value)
 		}
 	}
+}
+
+// errorBodyHeaderNames are hop/body metadata a custom rule must never rewrite
+// on an error path — http.Error owns Content-Type/Length, and clobbering them
+// would make the error body lie about what it is (w4/m101).
+var errorBodyHeaderNames = map[string]struct{}{
+	"Content-Type":      {},
+	"Content-Length":    {},
+	"Transfer-Encoding": {},
+}
+
+// applyErrorHeaders adds matching custom headers for a resolved-site error
+// response, skipping body-identity names. Callers that need a platform
+// Retry-After must set it after this helper (see serveSiteBusy).
+func applyErrorHeaders(h http.Header, headers []appv1alpha1.StaticHeader, reqPath string) {
+	for _, rule := range headers {
+		if _, blocked := errorBodyHeaderNames[http.CanonicalHeaderKey(rule.Name)]; blocked {
+			continue
+		}
+		if _, ok := matchPattern(rule.Path, reqPath); ok {
+			h.Set(rule.Name, rule.Value)
+		}
+	}
+}
+
+// serveSiteError writes an error for a resolved site. Custom headers apply
+// before http.Error so every response class for a known site — including 404 —
+// carries the visitor's matching rules (w4/m101). Requests that never resolved
+// a site (405, unknown host) stay on bare http.Error: there are no rules, and
+// applying host-derived headers on unknown-host would be an existence oracle.
+func serveSiteError(w http.ResponseWriter, site Site, requestPath string, code int, msg string) {
+	applyErrorHeaders(w.Header(), site.Headers, requestPath)
+	http.Error(w, msg, code)
+}
+
+// serveSiteBusy is the shared 503 shed path (origin overload + live-body
+// exhaustion). Platform Retry-After is set after custom headers so a customer
+// rule cannot disable shedding backoff.
+func serveSiteBusy(w http.ResponseWriter, site Site, requestPath string) {
+	applyErrorHeaders(w.Header(), site.Headers, requestPath)
+	w.Header().Set("Retry-After", "1")
+	http.Error(w, "server busy", http.StatusServiceUnavailable)
 }
 
 // normalizePath cleans a request path to a rooted, slash-separated form,

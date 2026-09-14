@@ -172,7 +172,7 @@ describe("NewWebhookPage — /webhooks/new (w1/m49/t003)", () => {
       true,
     );
 
-    await user.click(screen.getByLabelText("Copy"));
+    await user.click(screen.getByLabelText("Copy signing secret"));
     expect(copy).toHaveBeenCalledWith("whsec_s3cret");
   });
 

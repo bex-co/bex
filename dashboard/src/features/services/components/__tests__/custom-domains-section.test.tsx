@@ -273,8 +273,21 @@ describe("CustomDomainsSection", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("api")).toBeInTheDocument();
     expect(screen.getByText("web.onbex.co")).toBeInTheDocument();
-    // Copy affordances for the host + target (labels double as aria-labels).
-    expect(screen.getAllByRole("button", { name: "Target" })).toHaveLength(2);
+    // Verb-shaped, type-discriminated copy names (m101/t014) — not bare "Host"/"Target".
+    expect(
+      screen.getByRole("button", { name: "Copy TXT host" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy TXT target" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy CNAME host" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy CNAME target" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Host" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Target" })).not.toBeInTheDocument();
   });
 
   it("shows apex guidance for an apex domain", () => {

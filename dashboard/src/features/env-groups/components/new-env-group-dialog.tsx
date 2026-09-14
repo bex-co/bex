@@ -192,10 +192,18 @@ export function NewEnvGroupDialog({
             }}
             placeholder={t("envGroups.namePlaceholder")}
             aria-invalid={invalid && !isValidEnvGroupName(name)}
+            aria-describedby={
+              invalid && !isValidEnvGroupName(name)
+                ? "env-group-name-invalid"
+                : undefined
+            }
             autoComplete="off"
           />
           {invalid && !isValidEnvGroupName(name) ? (
-            <p className="text-destructive text-sm">
+            <p
+              id="env-group-name-invalid"
+              className="text-destructive text-sm"
+            >
               {t("envGroups.invalidName")}
             </p>
           ) : null}

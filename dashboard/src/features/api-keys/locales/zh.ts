@@ -127,7 +127,7 @@ const zhApiKeys: Record<string, TranslationEntry> = {
     description: "Mint dialog close button (secret-shown step)",
   },
   "apiKeys.copy": {
-    message: "复制",
+    message: "复制密钥",
     description: "Copy-to-clipboard icon button label",
   },
   "apiKeys.copied": {

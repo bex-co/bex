@@ -47,7 +47,10 @@ export function WebPushSettingsPanel() {
           </p>
         ) : null}
         {status === "error" ? (
-          <p className="text-destructive text-sm">
+          // Panel-level failure (subscription setup), not a field validation —
+          // role="alert" is enough; no control to attach aria-describedby to
+          // (m101/t012 sibling decision).
+          <p className="text-destructive text-sm" role="alert">
             {t("notifications.webPushError")}
           </p>
         ) : null}

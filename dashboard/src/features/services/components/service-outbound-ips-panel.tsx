@@ -39,6 +39,7 @@ export function ServiceOutboundIpsPanel({
             <ConnectionField
               key={ip}
               label={t("services.outboundIpsCopy", { ip })}
+              copyLabel={t("services.outboundIpsCopy", { ip })}
               value={ip}
               copiedText={t("services.outboundIpsCopied")}
               copyErrorText={t("services.outboundIpsCopyError")}

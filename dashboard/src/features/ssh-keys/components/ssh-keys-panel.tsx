@@ -23,6 +23,7 @@ import {
 } from "@/common/components/ui/dialog";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { Textarea } from "@/common/components/ui/textarea";
 import {
   PanelCenteredState,
   PanelTableSkeleton,
@@ -111,9 +112,9 @@ export function SSHKeysPanel() {
                   <Label htmlFor="ssh-public-key">
                     {t("sshKeys.publicKey")}
                   </Label>
-                  <textarea
+                  <Textarea
                     id="ssh-public-key"
-                    className="border-input min-h-28 w-full rounded-md border bg-transparent px-3 py-2 font-mono text-xs"
+                    className="min-h-28 font-mono text-xs"
                     value={publicKey}
                     onChange={(event) => setPublicKey(event.target.value)}
                     autoComplete="off"
@@ -121,9 +122,18 @@ export function SSHKeysPanel() {
                     autoCorrect="off"
                     maxLength={16384}
                     spellCheck={false}
+                    aria-invalid={publicKey.length > 0 && !keyValid}
+                    aria-describedby={
+                      publicKey && !keyValid
+                        ? "ssh-public-key-invalid"
+                        : undefined
+                    }
                   />
                   {publicKey && !keyValid ? (
-                    <p className="text-destructive text-sm">
+                    <p
+                      id="ssh-public-key-invalid"
+                      className="text-destructive text-sm"
+                    >
                       {t("sshKeys.invalid")}
                     </p>
                   ) : null}

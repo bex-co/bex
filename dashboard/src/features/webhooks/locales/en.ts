@@ -210,7 +210,7 @@ const enWebhooks: Record<string, TranslationEntry> = {
     description: "Secret-reveal step warning (shown exactly once)",
   },
   "webhooks.copy": {
-    message: "Copy",
+    message: "Copy signing secret",
     description: "Copy-secret button label",
   },
   "webhooks.copied": {

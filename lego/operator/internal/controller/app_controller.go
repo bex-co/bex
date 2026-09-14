@@ -2010,7 +2010,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Service, no Ingress, no URL, no auto-sleep (nothing routes traffic to wake it).
 	worker := app.Spec.Type == appv1alpha1.TypeBackgroundWorker
 
-	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, app, worker)
+	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, app)
 
 	// Hibernating drains the App's own Service. Let the public Ingress move to
 	// the activator FIRST and give Traefik a pass to ingest it, because the two
@@ -2287,14 +2287,16 @@ func (r *AppReconciler) ingressRoutesToActivator(ctx context.Context, app *appv1
 // touching spec.suspended, so manual-suspend semantics are preserved. Other
 // types never auto-hibernate: they have no public Ingress wake path (private,
 // worker, cron), or no per-App workload to scale (static).
-func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App, worker bool) (replicas int32, autoscaleRequeue, autoHibernating bool) {
+func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App) (replicas int32, autoscaleRequeue, autoHibernating bool) {
 	autoHibernating = r.ActivatorService != "" && shouldAutoHibernate(app)
 
 	replicas = effectiveReplicas(app)
 	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
 	// to spec.replicas (the user's static count). applyAutoscaling writes the
 	// annotation instead of spec.replicas to avoid bumping generation (see annotAutoscaleReplicas).
-	if app.Spec.Autoscaling != nil && app.Spec.Autoscaling.Enabled && !worker && !app.Spec.Suspended {
+	// Web, private, and background_worker all honor autoscaling (w4/m101); cron/static
+	// never reach this path. The API refuses config for types that cannot scale.
+	if app.Spec.Autoscaling != nil && app.Spec.Autoscaling.Enabled && !app.Spec.Suspended {
 		if raw := app.Annotations[annotAutoscaleReplicas]; raw != "" {
 			if n, err := strconv.ParseInt(raw, 10, 32); err == nil && n > 0 {
 				replicas = int32(n)

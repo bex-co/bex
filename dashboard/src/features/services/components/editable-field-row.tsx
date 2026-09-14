@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Loader2, Pencil } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
@@ -127,6 +127,7 @@ export function EditableFieldRow({
   onSave,
 }: EditableFieldRowProps) {
   const { t } = useTranslations();
+  const errorId = useId();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [confirming, setConfirming] = useState(false);
@@ -246,6 +247,9 @@ export function EditableFieldRow({
             disabled={disabled || !editing || busy}
             aria-label={label}
             aria-invalid={validationError !== null || undefined}
+            aria-describedby={
+              validationError !== null ? errorId : undefined
+            }
             placeholder={placeholder}
             autoComplete="off"
             className={cn("flex-1", mono && "font-mono text-sm")}
@@ -289,7 +293,9 @@ export function EditableFieldRow({
       )}
 
       {validationError !== null && (
-        <p className="text-destructive text-sm">{validationError}</p>
+        <p id={errorId} className="text-destructive text-sm">
+          {validationError}
+        </p>
       )}
 
       {disabled && disabledReason != null && (

@@ -199,7 +199,12 @@ function CustomRangeDialog({
             />
           </div>
           {error !== null && (
-            <p className="text-destructive text-sm">{error}</p>
+            // Form-level span over start+end (not a single-field validation) —
+            // announce once; aria-describedby on one input would mis-associate
+            // (m101/t012 sibling decision).
+            <p className="text-destructive text-sm" role="alert">
+              {error}
+            </p>
           )}
         </div>
         <DialogFooter>

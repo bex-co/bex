@@ -61,7 +61,7 @@ describe("ServiceNetworkingPanel", () => {
     );
 
     const firstDescription = screen.getByRole("textbox", {
-      name: "Description (optional) 1",
+      name: "Description for rule 1",
     });
     await user.clear(firstDescription);
     await user.type(firstDescription, "headquarters");

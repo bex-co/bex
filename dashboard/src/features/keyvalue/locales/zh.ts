@@ -469,6 +469,22 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description:
       "Placeholder for the optional per-entry allowlist description input",
   },
+  "keyvalue.networkingCIDR": {
+    message: "新 CIDR 网段",
+    description: "Accessible label for the add-row CIDR input",
+  },
+  "keyvalue.networkingCIDRRule": {
+    message: "规则 {number} 的 CIDR 网段",
+    description: "Accessible label for an existing allowlist CIDR row",
+  },
+  "keyvalue.networkingDescriptionLabel": {
+    message: "新规则描述",
+    description: "Accessible label for the add-row description input",
+  },
+  "keyvalue.networkingDescriptionRule": {
+    message: "规则 {number} 的描述",
+    description: "Accessible label for an existing allowlist description row",
+  },
   "keyvalue.networkingRemove": {
     message: "移除 {cidr}",
     description: "Accessible label to remove a CIDR chip",

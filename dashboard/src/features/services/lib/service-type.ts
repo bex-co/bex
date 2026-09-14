@@ -136,3 +136,17 @@ export function publiclyRoutable(type: string): boolean {
 export function supportsMaxShutdownDelay(s: ServiceView): boolean {
   return servesHttp(s.type) || isWorker(s);
 }
+
+/**
+ * True when horizontal scaling (manual + autoscaling) applies — web, private,
+ * and background_worker (m101/t001+t002). Cron has no long-running pods;
+ * static sites serve from the object store.
+ */
+export function supportsScaling(s: ServiceView): boolean {
+  return supportsScalingType(deriveServiceType(s.type));
+}
+
+/** Type-key form for nav gating (mirrors `diskEligible` in service-nav). */
+export function supportsScalingType(type: ServiceTypeKey | null): boolean {
+  return type === "web" || type === "private" || type === "worker";
+}

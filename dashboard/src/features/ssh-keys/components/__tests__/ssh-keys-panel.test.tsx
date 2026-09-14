@@ -65,6 +65,11 @@ describe("SSHKeysPanel", () => {
       "private key text",
     );
     expect(submit).toBeDisabled();
+    const publicKey = within(dialog).getByLabelText("Public key");
+    expect(publicKey).toHaveAttribute("aria-invalid", "true");
+    expect(publicKey).toHaveAccessibleDescription(
+      "Enter one supported OpenSSH public key (RSA must be at least 2048 bits).",
+    );
     expect(
       within(dialog).getByText(
         "Enter one supported OpenSSH public key (RSA must be at least 2048 bits).",
@@ -83,6 +88,8 @@ describe("SSHKeysPanel", () => {
       within(dialog).getByLabelText("Public key"),
       "ssh-ed25519 AAAATEST public-comment",
     );
+    expect(publicKey).toHaveAttribute("aria-invalid", "false");
+    expect(publicKey).not.toHaveAccessibleDescription();
     await user.click(submit);
     expect(create).toHaveBeenCalledWith(
       "laptop",
