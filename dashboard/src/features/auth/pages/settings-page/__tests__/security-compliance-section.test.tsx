@@ -18,6 +18,10 @@ vi.mock("@/features/audit/hooks/use-audit-log", () => ({
   useAuditLog: () => auditState,
 }));
 
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: (subject: string) => subject,
+}));
+
 vi.mock("@/features/connected-agents/hooks/use-connected-agents", () => ({
   useConnectedAgents: () => ({
     agents: [],
