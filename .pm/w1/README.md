@@ -163,6 +163,8 @@ Open inbox notes:
 
 - [094](094.md) — A suspended web service answers every visitor with Traefik's raw `503 no available server` (text/plain, the same for browser and JSON clients), not a bex "service suspended" response. A suspended App keeps its Ingress pointed at its own endpoint-less Service (`ingressBackend`, `app_controller.go:2317-2347`), while suspended static sites (`w3/m46`) and sleeping services (`w6/m94` activator) already get real responses (~45m) ← live `/qa-find-bugs` 2026-09-14 pass 18.
 
+- [095](095.md) — A linked environment group's secret file silently replaces the service's own secret file of the same name. Live: service `qa.txt` = `from-service`, group `qa.txt` = `from-group`, and `/etc/secrets/qa.txt` served `from-group` after the link, while the API and dashboard still showed the service's file with no override marker. That is the reverse of the env-var rule, where the service always wins (`envFromSources`). `secretFileMounts` projects `filesFromSecrets` in link order with the service's own files Secret first (`app_controller.go:3894-3925`, `secrets/files.go:228`) (~45m, major) ← live `/qa-find-bugs` 2026-09-14 pass 22.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
