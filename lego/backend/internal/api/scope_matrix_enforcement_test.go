@@ -152,6 +152,35 @@ func TestScopeClassEnforcementReadToken(t *testing.T) {
 	if strings.Contains(w.Body.String(), core.InsufficientScopeCode) {
 		t.Fatalf("read query refused: %s", w.Body.String())
 	}
+	// Nested secret reveals under a read-classified root (w4/m106). Human
+	// OAuth with only bex.read — API keys are CapabilityExempt and never hit
+	// this gate.
+	assertGQLInsufficientScope(t, do(t, h, http.MethodPost, "/graphql", testToken,
+		`{"query":"{ service(id:\"web\") { envVar(key:\"FOO\") { value } } }"}`), core.ScopeSensitive)
+	assertGQLInsufficientScope(t, do(t, h, http.MethodPost, "/graphql", testToken,
+		`{"query":"{ service(id:\"web\") { secretFile(name:\"a.txt\") { content } } }"}`), core.ScopeSensitive)
+	// Keys-only projections must not escalate at dispatch. Authorize may still
+	// demand bex.sensitive for EnvVarKeys (RelCanViewSensitive) — that is the
+	// relation axis, and refusal then carries a GraphQL path.
+	keysOnly := do(t, h, http.MethodPost, "/graphql", testToken,
+		`{"query":"{ service(id:\"web\") { envVarKeys { key } secretFileNames { name } } }"}`)
+	if keysOnly.Code != http.StatusOK {
+		t.Fatalf("keys-only status = %d", keysOnly.Code)
+	}
+	var keysBody struct {
+		Errors []struct {
+			Path       []any          `json:"path"`
+			Extensions map[string]any `json:"extensions"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(keysOnly.Body.Bytes(), &keysBody); err != nil {
+		t.Fatalf("keys-only body: %v", err)
+	}
+	for _, e := range keysBody.Errors {
+		if len(e.Path) == 0 && e.Extensions["code"] == core.InsufficientScopeCode {
+			t.Fatalf("keys-only must not escalate at dispatch: %s", keysOnly.Body.String())
+		}
+	}
 	assertGQLInsufficientScope(t, do(t, h, http.MethodPost, "/graphql", testToken,
 		`{"query":"mutation { suspendService(id:\"web\") { id } }"}`), core.ScopeWrite)
 
@@ -188,6 +217,10 @@ func TestScopeClassEnforcementWriteToken(t *testing.T) {
 	assertRESTInsufficientScope(t, do(t, h, http.MethodPost, "/v1/env-groups/evg-test/services/web", testToken, ""), core.ScopeSensitive)
 	assertGQLInsufficientScope(t, do(t, h, http.MethodPost, "/graphql", testToken,
 		`{"query":"mutation { linkEnvGroup(id:\"evg-test\", serviceId:\"web\") }"}`), core.ScopeSensitive)
+	// Write does not imply sensitive: nested envVar under a write mutation
+	// still demands bex.sensitive.
+	assertGQLInsufficientScope(t, do(t, h, http.MethodPost, "/graphql", testToken,
+		`{"query":"mutation { suspendService(id:\"web\") { envVar(key:\"FOO\") { value } } }"}`), core.ScopeSensitive)
 
 	cs := mcpSessionIdentity(t, srv, core.Identity{
 		Subject: "identity-1", Method: "oauth2", ClientID: "dcr-client", Human: true,
@@ -309,6 +342,39 @@ func TestGraphQLTopLevelOps(t *testing.T) {
 	got = graphqlTopLevelOps("query { __schema { types { name } } services { id } }", "")
 	if strings.Join(got, ",") != "GQL Query.services" {
 		t.Errorf("introspection skipped = %v", got)
+	}
+}
+
+func TestGraphQLSensitiveNestedSelection(t *testing.T) {
+	cases := []struct {
+		query, opName string
+		want          bool
+	}{
+		{`{ service(id:"web") { id } }`, "", false},
+		{`{ service(id:"web") { envVarKeys { key } secretFileNames { name } } }`, "", false},
+		{`{ service(id:"web") { envVar(key:"FOO") { value } } }`, "", true},
+		{`{ service(id:"web") { secretFile(name:"a.txt") { content } } }`, "", true},
+		{`{ services { envVar(key:"FOO") { key } } }`, "", true},
+		{`fragment S on Service { envVar(key:"FOO") { value } } query { service(id:"web") { ...S } }`, "", true},
+		{`query { service(id:"web") { ... on Service { secretFile(name:"a.txt") { content } } } }`, "", true},
+		{`mutation { suspendService(id:"web") { envVar(key:"FOO") { value } } }`, "", true},
+		{`mutation Foo { suspendService(id:"web") { id } } query Bar { service(id:"web") { envVar(key:"X") { value } } }`, "Foo", false},
+		{`mutation Foo { suspendService(id:"web") { id } } query Bar { service(id:"web") { envVar(key:"X") { value } } }`, "Bar", true},
+	}
+	for _, tc := range cases {
+		fragments, ops, ok := parseGraphQLDocument(tc.query)
+		if !ok {
+			t.Fatalf("parse %q", tc.query)
+		}
+		if got := graphQLSelectsSensitiveNested(fragments, ops, tc.opName); got != tc.want {
+			t.Errorf("query=%q op=%q got %v want %v", tc.query, tc.opName, got, tc.want)
+		}
+	}
+	// Telemetry label stays the root field — nested escalation must not
+	// invent a new series key.
+	op, _ := graphqlOperationDims(`{ service(id:"web") { envVar(key:"FOO") { value } } }`, "")
+	if op != "service" {
+		t.Errorf("telemetry label = %q, want service", op)
 	}
 }
 
