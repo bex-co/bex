@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { RenameKeyValueDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseRenameKeyValueResult {
   rename: (id: string, name: string) => Promise<boolean>;
@@ -28,7 +29,7 @@ export function useRenameKeyValue(): UseRenameKeyValueResult {
         } else if (message.includes("name must")) {
           toast.error(t("keyvalue.nameInvalid"));
         } else {
-          toast.error(t("keyvalue.nameError"));
+          toast.error(mutationErrorMessage(error, t("keyvalue.nameError")));
         }
         return false;
       } finally {

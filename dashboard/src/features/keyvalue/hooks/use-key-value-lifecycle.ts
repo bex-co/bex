@@ -6,6 +6,7 @@ import {
   ResumeKeyValueDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   protectedConfirmationFromError,
   type ProtectedActionResult,
@@ -70,7 +71,7 @@ export function useKeyValueLifecycle(): UseKeyValueLifecycleResult {
             confirmation: requiredConfirmation,
           } as const;
         }
-        toast.error(t(ERROR_KEY[action], { name }));
+        toast.error(mutationErrorMessage(err, t(ERROR_KEY[action], { name })));
         return { status: "error" } as const;
       } finally {
         setPending(null);

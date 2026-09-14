@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mockUseMutation = vi.fn();
 vi.mock("@apollo/client/react", () => ({
@@ -77,6 +78,46 @@ describe("useCronJob", () => {
     expect(ok).toBe(false);
     expect(toastError).toHaveBeenCalled();
     expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  // w1/m145: bex-api's refusal is the only thing that says what to fix, and no
+  // retry saves a schedule the server refuses.
+  it("toasts bex-api's own reason when the server refuses the update", async () => {
+    const mutate = vi.fn().mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message:
+              "bad request: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+          },
+        ],
+      }),
+    );
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCronJob());
+    await act(async () => {
+      await result.current.updateCronJob("nightly", "0 0 * * 7", "");
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      "Schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+    );
+  });
+
+  it("keeps the generic copy when the request never got an answer", async () => {
+    const mutate = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCronJob());
+    await act(async () => {
+      await result.current.updateCronJob("nightly", "0 6 * * *", "");
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't save cron job settings. Please try again.",
+    );
   });
 
   it("tracks busy only for the duration of the in-flight mutation", async () => {

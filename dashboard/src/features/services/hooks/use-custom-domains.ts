@@ -11,6 +11,7 @@ import {
 import {
   graphQLErrorMessage,
   hasGraphQLErrorCode,
+  mutationErrorMessage,
   refusalReason,
 } from "@/common/lib/graphql-error";
 import {
@@ -224,8 +225,10 @@ export function useCustomDomainMutations(
         await refetch();
         toast.success(t("services.domainDeleteSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("services.domainDeleteError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("services.domainDeleteError", { name })),
+        );
         return false;
       } finally {
         setBusy(false);
@@ -253,7 +256,12 @@ export function useCustomDomainMutations(
         if (hasGraphQLErrorCode(error, "DOMAIN_OWNERSHIP_PENDING")) {
           toast.info(t("services.domainVerifyPending", { name }));
         } else {
-          toast.error(t("services.domainVerifyError", { name }));
+          toast.error(
+            mutationErrorMessage(
+              error,
+              t("services.domainVerifyError", { name }),
+            ),
+          );
         }
         return null;
       } finally {

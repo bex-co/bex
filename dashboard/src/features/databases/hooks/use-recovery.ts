@@ -15,6 +15,7 @@ import {
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { nonNull } from "@/common/lib/non-null";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface BackupItem {
   id: string;
@@ -145,8 +146,10 @@ export function useRecovery(id: string) {
       await createExportMut({ variables: { id } });
       toast.success(t("databases.recoveryExportStarted"));
       void refetchExports();
-    } catch {
-      toast.error(t("databases.recoveryExportError"));
+    } catch (err) {
+      toast.error(
+        mutationErrorMessage(err, t("databases.recoveryExportError")),
+      );
     }
   }, [createExportMut, id, refetchExports, t]);
 

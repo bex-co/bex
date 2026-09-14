@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteKeyValueDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   protectedConfirmationFromError,
   type ProtectedActionResult,
@@ -45,7 +46,9 @@ export function useDeleteKeyValue(): UseDeleteKeyValueResult {
             confirmation: requiredConfirmation,
           } as const;
         }
-        toast.error(t("keyvalue.deleteError", { name }));
+        toast.error(
+          mutationErrorMessage(err, t("keyvalue.deleteError", { name })),
+        );
         return { status: "error" } as const;
       } finally {
         setDeleting(null);

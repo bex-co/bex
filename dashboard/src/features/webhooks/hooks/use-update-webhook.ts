@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { UpdateWebhookEndpointDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   WebhookMutationError,
@@ -51,13 +52,12 @@ export function useUpdateWebhook(): UseUpdateWebhookResult {
         return true;
       } catch (err) {
         const normalized = toWebhookMutationError(err);
-        const failure =
-          normalized instanceof Error
-            ? normalized
-            : new Error(t("webhooks.updateError"));
-        setError(failure);
-        if (!(failure instanceof WebhookMutationError)) {
-          toast.error(t("webhooks.updateError"));
+        if (normalized instanceof WebhookMutationError) {
+          setError(normalized);
+        } else {
+          const message = mutationErrorMessage(err, t("webhooks.updateError"));
+          setError(new Error(message));
+          toast.error(message);
         }
         return false;
       } finally {

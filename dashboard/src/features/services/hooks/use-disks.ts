@@ -10,8 +10,11 @@ import {
   RestoreDiskSnapshotDocument,
   UpdateDiskDocument,
 } from "@/graphql/definitions";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
-import { RESOURCE_POLL_INTERVAL_MS, skipPollWhenHidden } from "@/common/lib/polling";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 /** A service's persistent disk, as the Disk tab presents it. */
@@ -95,7 +98,9 @@ export interface UseDiskSnapshotsResult {
  * Lists a disk's snapshots. Skipped entirely when the service has no disk, so a
  * diskless service never asks the API for snapshots that cannot exist.
  */
-export function useDiskSnapshots(diskId: string | null): UseDiskSnapshotsResult {
+export function useDiskSnapshots(
+  diskId: string | null,
+): UseDiskSnapshotsResult {
   const { data, loading, error, refetch } = useQuery(DiskSnapshotsDocument, {
     variables: { id: diskId ?? "" },
     skip: !diskId,
@@ -110,7 +115,13 @@ export function useDiskSnapshots(diskId: string | null): UseDiskSnapshotsResult 
   return {
     snapshots: (data?.diskSnapshots ?? []).flatMap((s) =>
       s?.snapshotKey
-        ? [{ createdAt: s.createdAt ?? "", snapshotKey: s.snapshotKey, instanceId: s.instanceId ?? "" }]
+        ? [
+            {
+              createdAt: s.createdAt ?? "",
+              snapshotKey: s.snapshotKey,
+              instanceId: s.instanceId ?? "",
+            },
+          ]
         : [],
     ),
     // First load only, for the same reason as useDisk above: otherwise the
@@ -126,7 +137,7 @@ export interface UseDiskMutationsResult {
   growDisk: (diskId: string, sizeGB: number) => Promise<boolean>;
   deleteDisk: (diskId: string) => Promise<boolean>;
   restoreSnapshot: (diskId: string, snapshotKey: string) => Promise<boolean>;
-  /** The server's own reason for the last failed add, kept visible beside the toast. */
+  /** Why the last add failed (the server's reason, else generic copy), kept visible beside the toast. */
   addError: string | null;
   clearAddError: () => void;
   busy: boolean;
@@ -138,7 +149,10 @@ export interface UseDiskMutationsResult {
  * redeploys the service, and a restore stops it, so what the API decided is the
  * only thing worth showing.
  */
-export function useDiskMutations(serviceId: string, refetch: () => Promise<void>): UseDiskMutationsResult {
+export function useDiskMutations(
+  serviceId: string,
+  refetch: () => Promise<void>,
+): UseDiskMutationsResult {
   const { t } = useTranslations();
   const [busy, setBusy] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
@@ -148,7 +162,11 @@ export function useDiskMutations(serviceId: string, refetch: () => Promise<void>
   const [restoreMutation] = useMutation(RestoreDiskSnapshotDocument);
 
   const run = useCallback(
-    async (action: () => Promise<unknown>, successKey: string, onError?: (message: string) => void) => {
+    async (
+      action: () => Promise<unknown>,
+      successKey: string,
+      onError?: (message: string) => void,
+    ) => {
       setBusy(true);
       try {
         await action();
@@ -156,7 +174,10 @@ export function useDiskMutations(serviceId: string, refetch: () => Promise<void>
         toast.success(t(successKey));
         return true;
       } catch (error) {
-        const message = graphQLErrorMessage(error) ?? t("common.errorDefaultMessage");
+        const message = mutationErrorMessage(
+          error,
+          t("common.errorDefaultMessage"),
+        );
         onError?.(message);
         toast.error(message);
         return false;
@@ -186,18 +207,28 @@ export function useDiskMutations(serviceId: string, refetch: () => Promise<void>
 
   const growDisk = useCallback(
     (diskId: string, sizeGB: number) =>
-      run(() => updateDiskMutation({ variables: { id: diskId, sizeGB } }), "services.diskResizeSuccess"),
+      run(
+        () => updateDiskMutation({ variables: { id: diskId, sizeGB } }),
+        "services.diskResizeSuccess",
+      ),
     [run, updateDiskMutation],
   );
 
   const deleteDisk = useCallback(
-    (diskId: string) => run(() => deleteDiskMutation({ variables: { id: diskId } }), "services.diskDeleteSuccess"),
+    (diskId: string) =>
+      run(
+        () => deleteDiskMutation({ variables: { id: diskId } }),
+        "services.diskDeleteSuccess",
+      ),
     [deleteDiskMutation, run],
   );
 
   const restoreSnapshot = useCallback(
     (diskId: string, snapshotKey: string) =>
-      run(() => restoreMutation({ variables: { id: diskId, snapshotKey } }), "services.diskRestoreStarted"),
+      run(
+        () => restoreMutation({ variables: { id: diskId, snapshotKey } }),
+        "services.diskRestoreStarted",
+      ),
     [restoreMutation, run],
   );
 

@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { ClaimGitDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface UseClaimGitResult {
@@ -40,8 +41,8 @@ export function useClaimGit(): UseClaimGitResult {
       const url = res.data?.claimGit?.claimUrl;
       if (!url) throw new Error("claimGit returned no claim URL");
       window.location.href = url;
-    } catch {
-      toast.error(t("git.claimError"));
+    } catch (err) {
+      toast.error(mutationErrorMessage(err, t("git.claimError")));
       setBusy(false);
     }
   }, [mutate, t, currentWorkspaceId]);

@@ -7,6 +7,7 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   graphQLErrorMessage,
   isNameConflictError,
+  mutationErrorMessage,
 } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
@@ -131,14 +132,20 @@ export function useCreateService(): UseCreateServiceResult {
         // rather than a toast that leaves the user with nowhere to go (w7/m9).
         // A name conflict (w4/m19; w6/m49 moved the detection off message
         // text) — a raced duplicate the debounced check missed; same inline
-        // treatment, not a toast.
+        // treatment, not a toast. Any other refusal is toasted in the server's
+        // own words, since only it says what to fix (w1/m145).
         const msg = graphQLErrorMessage(err) ?? "";
         if (msg.toLowerCase().includes("workspace is limited")) {
           setCapLimit(msg);
         } else if (isNameConflictError(err)) {
           setNameConflict(true);
         } else {
-          toast.error(t("services.createError", { name: input.name }));
+          toast.error(
+            mutationErrorMessage(
+              err,
+              t("services.createError", { name: input.name }),
+            ),
+          );
         }
         return null;
       }

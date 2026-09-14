@@ -7,6 +7,7 @@ import {
   RestartDatabaseDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import type { DatabaseView } from "@/features/databases/types";
 import {
   protectedConfirmationFromError,
@@ -90,7 +91,10 @@ export function useDatabaseLifecycle(
           } as const;
         }
         toast.error(
-          t("databases.toastLifecycleError", { name: database.name }),
+          mutationErrorMessage(
+            err,
+            t("databases.toastLifecycleError", { name: database.name }),
+          ),
         );
         return { status: "error" } as const;
       } finally {

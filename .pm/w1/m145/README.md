@@ -1,6 +1,6 @@
 # w1 · m145 — A refused edit tells the user why: the cron schedule contract, and server refusals behind generic toasts
 
-**Worker:** worker1 **Goal:** the dashboard's cron-schedule check accepts exactly what bex-api accepts, and when bex-api refuses a mutation the user reads bex-api's reason. Today both are broken on one journey: the form previews an unusable schedule as valid, then shows "Please try again" for a refusal that retrying can never fix. **Status:** todo
+**Worker:** worker1 **Goal:** the dashboard's cron-schedule check accepts exactly what bex-api accepts, and when bex-api refuses a mutation the user reads bex-api's reason. Today both are broken on one journey: the form previews an unusable schedule as valid, then shows "Please try again" for a refusal that retrying can never fix. **Status:** in progress. t004–t006 are done. t001–t003 are implemented and green in CI suites, and they close after the live DoD re-probe on the deployed build.
 
 ## Tasks (in order)
 
@@ -9,9 +9,9 @@
 | t001 | Make the dashboard cron validator match `validCronSchedule` (robfig `ParseStandard`): day-of-week 0–6, `?`, and one shared vector table | 45m | —                |
 | t002 | `useCreateService` and `useCronJob` show the server's refusal (w6/037's contract) instead of their generic toast                        | 30m | —                |
 | t003 | Blast radius: classify and migrate the remaining fixed-generic `toast.error` catch sites, and add a source-sweep guard                  | 90m | t002             |
-| t004 | Render parity                                                                                                                           | 30m | t001, t002, t003 |
-| t005 | Simplify                                                                                                                                | 20m | t004             |
-| t006 | Test coverage                                                                                                                           | 40m | t004             |
+| t004 | Render parity — **DONE**                                                                                                                | 30m | t001, t002, t003 |
+| t005 | Simplify — **DONE**                                                                                                                     | 20m | t004             |
+| t006 | Test coverage — **DONE**                                                                                                                | 40m | t004             |
 | t007 | Closeout                                                                                                                                | 10m | t006             |
 
 ## Definition of done
@@ -62,6 +62,25 @@ Fixture: project `qa-20260914-proj` (`prj-dajra3q6m8ac739r5iq0`) › environment
    The server named the exact limit, and the user saw only the generic copy. The draft stayed open, which is correct. This is one of the non-cron sites t003 step 5 asks for, with the server sentence captured. The related quota bypass on the **service** path is `w1/m147`.
 
 No screenshots were taken. The probes above are the durable evidence.
+
+## Render parity (t004, 2026-09-14)
+
+Both schedules went through every bex write surface in `lego/backend/internal/apps/cron_schedule_surfaces_test.go`. That test uses the REST mux over `httptest`, the in-process GraphQL schema, the exact verbs the MCP tool handlers call (`Create(createCronJobArgs.toCreateRequest())` and `applyServicePatch(updateServiceArgs)`), and `ValidateBlueprint`. Each outcome is asserted against the shared vector table (`testdata/cron-schedule-vectors.json`), which the dashboard's `isValidCron` is also tested against.
+
+| Surface                                  | `0 0 * * 7`                                                                         | `0 0 ? * *`                                     |
+| ---------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------- |
+| REST `POST /v1/services`                 | 400 `schedule must be a valid 5-field cron expression (e.g. '0 * * * *')`           | 201                                             |
+| REST `PATCH /v1/services/{id}`           | 400, same sentence                                                                  | 200                                             |
+| GraphQL `createService`                  | error `bad request: schedule must be a valid 5-field cron expression …`             | created                                         |
+| GraphQL `updateCronJob`                  | error, same sentence                                                                | updated                                         |
+| MCP `create_cron_job`                    | `ErrBadRequest`, same sentence                                                      | created                                         |
+| MCP `update_service`                     | `ErrBadRequest`, same sentence                                                      | updated                                         |
+| Blueprint validate (`render.yaml`)       | `valid: false`, the error names the schedule                                        | `valid: true`                                   |
+| Dashboard `isValidCron` / `describeCron` | `false`: the field shows the invalid-schedule error, Deploy / Save changes disabled | `true`, previews "Every day at 00:00 · runs in UTC" |
+
+There is no drift between bex surfaces, so no `w1/NNN` note was filed. Every write path reaches the one `validCronSchedule`: create via `specFromCreate` → `validateTypeSpecificCreate` (`service.go:2289`, `:2444`), including the Blueprint validate/create/plan paths (`deploy.go:1310`, `blueprint_state_plan.go:177`), and update via `SetCronJob` (`service.go:3685`).
+
+**Render: unobtainable.** The pinned `render-public-api-1.json` types `cronJobDetails.schedule`, `cronJobDetailsPOST.schedule` and `cronJobDetailsPATCH.schedule` as a bare `{"type": "string"}` with no pattern or description, and `render.com/docs/cronjobs` does not say either way. This environment has no Render account or API key to create a cron job with, so Render's own acceptance of `7` and `?` is not recorded. No normalize-on-write follow-up was filed, because nothing shows Render accepts `7`.
 
 ## Root cause
 

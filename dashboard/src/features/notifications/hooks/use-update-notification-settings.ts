@@ -6,6 +6,7 @@ import {
   UpdateNotificationSettingsDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import type { NotificationSettingsView } from "@/features/notifications/hooks/use-notification-settings";
 
 export interface UseUpdateNotificationSettingsResult {
@@ -40,8 +41,8 @@ export function useUpdateNotificationSettings(): UseUpdateNotificationSettingsRe
       try {
         await mutate({ variables: settings });
         return true;
-      } catch {
-        toast.error(t("notifications.updateError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("notifications.updateError")));
         return false;
       } finally {
         setBusy(false);

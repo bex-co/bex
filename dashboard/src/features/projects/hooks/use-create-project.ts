@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { CreateProjectDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { conflictOrGenericMessage } from "@/common/lib/graphql-error";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseCreateProjectResult {
   /** Fires createProject; resolves the new id on success, null on failure. */
@@ -40,7 +40,7 @@ export function useCreateProject(): UseCreateProjectResult {
         return id;
       } catch (err) {
         toast.error(
-          conflictOrGenericMessage(err, t("projects.createError", { name })),
+          mutationErrorMessage(err, t("projects.createError", { name })),
         );
         return null;
       } finally {

@@ -15,6 +15,7 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface PooledStrings {
   internal: string;
@@ -107,8 +108,13 @@ export function useAccessControl(id: string) {
         await deleteUserMut({ variables: { id, name } });
         void usersQuery.refetch();
         toast.success(t("databases.accessUserDeleted", { name }));
-      } catch {
-        toast.error(t("databases.accessUserDeleteError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("databases.accessUserDeleteError", { name }),
+          ),
+        );
       }
     },
     [deleteUserMut, usersQuery, id, t],
@@ -131,8 +137,8 @@ export function useAccessControl(id: string) {
         internal: ci?.internalConnectionPoolString ?? "",
         external: ci?.externalConnectionPoolString ?? "",
       });
-    } catch {
-      toast.error(t("databases.accessPoolerError"));
+    } catch (err) {
+      toast.error(mutationErrorMessage(err, t("databases.accessPoolerError")));
     } finally {
       setPoolLoading(false);
     }

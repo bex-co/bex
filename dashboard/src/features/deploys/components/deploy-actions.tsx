@@ -10,6 +10,7 @@ import { Button } from "@/common/components/ui/button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { DEPLOY_REFETCH_QUERIES } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import {
   isCancelableDeployStatus,
@@ -134,11 +135,14 @@ export function DeployActions({
         });
       }
       onChanged?.();
-    } catch {
+    } catch (err) {
       toast.error(
-        action === "cancel_deploy"
-          ? t("services.cancelDeployError")
-          : t("services.rollbackError"),
+        mutationErrorMessage(
+          err,
+          action === "cancel_deploy"
+            ? t("services.cancelDeployError")
+            : t("services.rollbackError"),
+        ),
       );
     } finally {
       clearConfirm();

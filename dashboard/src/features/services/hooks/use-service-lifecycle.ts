@@ -7,6 +7,7 @@ import {
   TriggerDeployDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { sleep } from "@/common/lib/utils/time";
 import { deriveStatus } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
@@ -128,7 +129,12 @@ export function useServiceLifecycle(
             confirmation: requiredConfirmation,
           } as const;
         }
-        toast.error(t("services.toastError", { name: service.name }));
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("services.toastError", { name: service.name }),
+          ),
+        );
         return { status: "error" } as const;
       } finally {
         setPending(null);
