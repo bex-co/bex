@@ -135,7 +135,11 @@ implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps onl
 
 ## Inbox
 
-No open inbox notes. Open milestones: `m138`, `m139` (materialized 2026-09-09).
+Open inbox notes:
+
+- [085](085.md) — The Key Value and Postgres Details cards print raw `status` and plan ids, so a suspended store reads "Suspended" in its header and "available" in its own Status row (`keyvalue.$keyValueId.tsx:293-294`, `databases.$databaseId.tsx:363-364`; ~40m, dashboard-only) ← live `/qa-find-bugs` 2026-09-14 pass 2.
+
+Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
 
