@@ -24,7 +24,7 @@ The production liveness workflows run on schedule against `api.bex.co` / the pro
 ## Evidence (2026-09-09)
 
 - **Shipped code:** `38f0f65cf` — coverage table in ADR088 §6; `request-logs-liveness.sh` asserts `type=request` + `type=app`; `tenant-view-liveness.sh` + job; `deploy-canary.yml` + `isolation-matrix.yml`; alerts `WebhookDeliveryFailing` / `PushDeliveryStale` / `AgentSessionProvisionFailing` with Grafana panels. `scripts/obs-coverage-check.sh` PASS (45 covered, 1 waived); `scripts/github-actions-validate.sh` PASS.
-- **Owed live fixture + runs (m46/m81 precedent):** no `BEX_CANARY_*` secret/vars exist on the repo yet; creating the first-party `bex-canary` workspace, minting the key, and recording green + red-path `workflow_dispatch` runs is an authorized operator step (documented in ADR088 §6 + ADR019). Until then canary jobs soft-skip with `::notice::` rather than false-red. App-log assertion ships with the existing six-hourly job and will fire on the next schedule once deployed.
+- **Canary fixture + runs (closed by w5/m96, 2026-09-14):** `BEX_CANARY_*` secret/vars live; workspace `tea-daif693dqjvc73e7as3g`, service `srv-daif6dsmg29s73d1umvg`, URL `https://hello-go.onbex.co`. Green dispatch: tenant-view [34900604101](https://github.com/bex-co/bex/actions/runs/34900604101), deploy-canary [34900607525](https://github.com/bex-co/bex/actions/runs/34900607525), isolation-matrix [34904592320](https://github.com/bex-co/bex/actions/runs/34904592320). Red-path: #68 / #69 / #66+#67 opened then closed.
 
 ## Source + Goal linkage
 
@@ -37,4 +37,4 @@ The production liveness workflows run on schedule against `api.bex.co` / the pro
 ## Notes / constraints
 
 - `.pm/DO_NOT_DO.md` `#CI-RUNNERS` / `#RUNNER-HOSTS`: everything stays on the existing self-hosted pools; credentialed jobs use `bex-production`.
-- Canary secret: `BEX_CANARY_API_KEY` in `.env.example` + `scripts/gh-secrets.sh` + ADR019; fixture ids are repository variables (owed).
+- Canary secret: `BEX_CANARY_API_KEY` in `.env.example` + `scripts/gh-secrets.sh` + ADR019; fixture ids are repository variables (set in w5/m96).

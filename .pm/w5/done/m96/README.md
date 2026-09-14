@@ -1,19 +1,19 @@
 # w5 · m96 — Production canary fixture: authorize, first green and red runs, classify
 
-**Worker:** worker5 **Goal:** the first-party `bex-canary` workspace, its free hello-go web service, and its scoped API key exist in production and are wired into the repository as the `BEX_CANARY_*` secret and variables, so the four credentialed synthetic probes shipped by `w3/m83` stop soft-skipping and each has a recorded green run and a recorded red-path proof. **Status:** BLOCKED on t001 — attempted 2026-09-10 with authorization and refused by the production payment gate (PAYMENT_REQUIRED on the free plan; `BEX_REQUIRE_PAYMENT_METHOD=all`). Nothing was created. Needs a browser Stripe card step or a policy decision — see § t001 attempted
+**Worker:** worker5 **Goal:** the first-party `bex-canary` workspace, its free hello-go web service, and its scoped API key exist in production and are wired into the repository as the `BEX_CANARY_*` secret and variables, so the four credentialed synthetic probes shipped by `w3/m83` stop soft-skipping and each has a recorded green run and a recorded red-path proof. **Status:** done — fixture live; greens 34900604101 / 34900607525 / 34904592320; red-paths #68 #69 #66+#67
 
 ## Tasks (in order)
 
 | id   | title                                                                                                     | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Provision the fixture: `bex-canary` workspace (billing-excluded), hello-go free web service, scoped API key | 30m | —          |
-| t002 | Wire the repository: fixture ids as variables, key via `.env` + `scripts/gh-secrets.sh`                    | 15m | t001       |
-| t003 | Dispatch the three credentialed workflows once; record green run ids in ADR088 and the m83 evidence        | 30m | t002       |
-| t004 | Red-path proof per credentialed probe: break, confirm the issue opens, restore, confirm it closes           | 30m | t003       |
-| t005 | Classify the canary workspace as `canary` for product analytics; confirm the ops boards exclude it         | 15m | t003       |
-| t006 | Simplify                                                                                                  | 15m | t004, t005 |
-| t007 | Test coverage                                                                                             | 20m | t004, t005 |
-| t008 | Closeout                                                                                                  | 10m | t007       |
+| t001 | Provision the fixture: `bex-canary` workspace (billing-excluded), hello-go free web service, scoped API key | 30m | —          | — **DONE**
+| t002 | Wire the repository: fixture ids as variables, key via `.env` + `scripts/gh-secrets.sh`                    | 15m | t001       | — **DONE**
+| t003 | Dispatch the three credentialed workflows once; record green run ids in ADR088 and the m83 evidence        | 30m | t002       | — **DONE**
+| t004 | Red-path proof per credentialed probe: break, confirm the issue opens, restore, confirm it closes           | 30m | t003       | — **DONE**
+| t005 | Classify the canary workspace as `canary` for product analytics; confirm the ops boards exclude it         | 15m | t003       | — **DONE**
+| t006 | Simplify                                                                                                  | 15m | t004, t005 | — **DONE**
+| t007 | Test coverage                                                                                             | 20m | t004, t005 | — **DONE**
+| t008 | Closeout                                                                                                  | 10m | t007       | — **DONE**
 
 ## Definition of done
 

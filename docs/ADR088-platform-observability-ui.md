@@ -137,13 +137,15 @@ Configuration is split by secrecy, not convenience: the key is a repository **se
 
 | setting | kind | value |
 | --- | --- | --- |
-| `BEX_CANARY_API_KEY` | secret | _owed_ — `<key-id>:<key-secret>` from `POST /v1/api-keys` in the canary workspace |
-| `BEX_CANARY_WORKSPACE_ID` | variable | _owed_ — the `tea-…` id of `bex-canary` |
-| `BEX_CANARY_SERVICE_ID` | variable | _owed_ — the `srv-…` id of the canary web service |
-| `BEX_CANARY_URL` | variable | _owed_ — that service's assigned `https://….onbex.co` host |
+| `BEX_CANARY_API_KEY` | secret | set (w5/m96) — `<key-id>:<key-secret>` from `POST /v1/api-keys` in the canary workspace; value only in `.env` / GitHub Actions secret |
+| `BEX_CANARY_WORKSPACE_ID` | variable | `tea-daif693dqjvc73e7as3g` (`bex-canary`, `billing_excluded`, product-analytics audience `canary`) |
+| `BEX_CANARY_SERVICE_ID` | variable | `srv-daif6dsmg29s73d1umvg` (`hello-go`, free) |
+| `BEX_CANARY_URL` | variable | `https://hello-go.onbex.co` |
 | `BEX_CANARY_STATIC_REPO` | variable | _owed, optional_ — a public no-build static-site repo; unset leaves the deploy canary's static leg skipped |
 
-**Owed operator steps** (they provision real first-party production resources, so they are an authorized human action, not something a scheduled job or an agent may do): create the `bex-canary` workspace and mark it `billing_excluded`; deploy the `examples/hello-go` web service into it on the free plan; mint one workspace API key; record the four ids as repository variables; put the key in `.env` and run `scripts/gh-secrets.sh`; dispatch each workflow once and record the run ids. **No placeholder id is committed** — a fabricated `srv-…` that reads as live is worse than an absent one, so until these exist every affected job soft-skips with a `::notice::` naming what is missing. A soft-skip is deliberately not a failure: a red run on these workflows must always mean production is broken.
+**First green `workflow_dispatch` runs (w5/m96, 2026-09-14):** tenant-view [34900604101](https://github.com/bex-co/bex/actions/runs/34900604101) / recover [34901991820](https://github.com/bex-co/bex/actions/runs/34901991820); deploy-canary [34900607525](https://github.com/bex-co/bex/actions/runs/34900607525) / recover [34901994088](https://github.com/bex-co/bex/actions/runs/34901994088); isolation-matrix [34904592320](https://github.com/bex-co/bex/actions/runs/34904592320). Red-path proofs: tenant-view #68 (break `BEX_CANARY_SERVICE_ID`), deploy-canary #69 (break `BEX_CANARY_WORKSPACE_ID`), isolation #66/#67 (pre-fix harness failures, closed by the green isolation run).
+
+**Operator steps (completed w5/m96):** create the `bex-canary` workspace and mark it `billing_excluded`; deploy the `examples/hello-go` web service into it on the free plan; mint one workspace API key; record the four ids as repository variables; put the key in `.env` and run `scripts/gh-secrets.sh`; dispatch each workflow once and record the run ids. **No placeholder id is committed** — a fabricated `srv-…` that reads as live is worse than an absent one. A soft-skip is deliberately not a failure: a red run on these workflows must always mean production is broken.
 
 Two probes stay narrower than their scripts allow, on purpose. The deploy canary's static leg needs a public no-build static-site repository that does not exist yet, which is what keeps the `w3/m46` t008 and `w3/m81` t004 static legs owed. And the sandbox matrix's model-key check ([`scripts/verify-sandbox-isolation.sh`](../scripts/verify-sandbox-isolation.sh) `BEX_VERIFY_AGENT_DRIVER=1` + `BEX_VERIFY_AGENT_MODEL=1`, both default 0) costs real model tokens per run while adding nothing to the admission-regression class the weekly run exists to catch; it remains a manual invocation. Enabling it later is two flags plus `BEX_LIVE_AGENT_MODEL_API_KEY` on the job — no script change.
 
