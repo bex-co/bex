@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteRegistryCredentialDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseDeleteRegistryCredentialResult {
   /** Fires deleteRegistryCredential; resolves true on success (toasted either way). */
@@ -28,8 +29,13 @@ export function useDeleteRegistryCredential(): UseDeleteRegistryCredentialResult
         await mutate({ variables: { id } });
         toast.success(t("registryCredentials.deleteSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("registryCredentials.deleteError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("registryCredentials.deleteError", { name }),
+          ),
+        );
         return false;
       } finally {
         setDeleting(null);

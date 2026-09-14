@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { RenameProjectDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseRenameProjectResult {
   /** Fires renameProject; resolves true on success (toasted either way). */
@@ -23,8 +24,10 @@ export function useRenameProject(): UseRenameProjectResult {
         await mutate({ variables: { id, name } });
         toast.success(t("projects.renameSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("projects.renameError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("projects.renameError", { name })),
+        );
         return false;
       } finally {
         setBusy(false);

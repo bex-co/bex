@@ -192,7 +192,35 @@ describe("useCreateService", () => {
     expect(toastError).not.toHaveBeenCalled();
   });
 
-  it("falls through to the generic toast for a non-conflict error (control case, w6/m49)", async () => {
+  // w1/m145: every other refusal bex-api answers with is toasted in its own
+  // words — "Please try again" never fixed a schedule the server can't run.
+  it("toasts bex-api's own reason for a non-conflict refusal", async () => {
+    const mutate = vi.fn().mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message:
+              "bad request: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+          },
+        ],
+      }),
+    );
+    mockUseMutation.mockReturnValue([mutate, { loading: false }]);
+
+    const { result } = renderHook(() => useCreateService());
+    await act(async () => {
+      await result.current.create({ name: "nightly", type: "cron_job" });
+    });
+
+    expect(result.current.nameConflict).toBe(false);
+    expect(result.current.capLimit).toBeNull();
+    expect(toastError).toHaveBeenCalledWith(
+      "Schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+    );
+  });
+
+  it("keeps the generic toast when the request never got an answer (control case, w6/m49)", async () => {
     const mutate = vi.fn().mockRejectedValue(new Error("network error"));
     mockUseMutation.mockReturnValue([mutate, { loading: false }]);
 

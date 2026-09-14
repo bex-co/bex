@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteProjectDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseDeleteProjectResult {
   /** Fires deleteProject; resolves true on success (toasted either way). */
@@ -27,8 +28,10 @@ export function useDeleteProject(): UseDeleteProjectResult {
         await mutate({ variables: { id } });
         toast.success(t("projects.deleteSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("projects.deleteError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("projects.deleteError", { name })),
+        );
         return false;
       } finally {
         setDeleting(null);

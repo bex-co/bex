@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { UpdateCronJobDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseCronJobResult {
   /** Fires updateCronJob; resolves true on success (toasted either way). */
@@ -37,8 +38,8 @@ export function useCronJob(): UseCronJobResult {
           description: t("services.deployConverging"),
         });
         return true;
-      } catch {
-        toast.error(t("services.deployError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("services.deployError")));
         return false;
       } finally {
         setBusy(false);

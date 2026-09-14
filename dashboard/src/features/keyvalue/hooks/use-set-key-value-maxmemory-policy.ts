@@ -6,6 +6,7 @@ import {
   SetKeyValueMaxmemoryPolicyDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { maxmemoryPolicyToUi } from "@/features/keyvalue/lib/labels";
 
 export interface UseSetKeyValueMaxmemoryPolicyResult {
@@ -57,8 +58,8 @@ export function useSetKeyValueMaxmemoryPolicy(
         toast.success(t("keyvalue.maxmemorySuccess", { policy: next }));
         void policyQuery.refetch();
         return true;
-      } catch {
-        toast.error(t("keyvalue.maxmemoryError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("keyvalue.maxmemoryError")));
         return false;
       }
     },

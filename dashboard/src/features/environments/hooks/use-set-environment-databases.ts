@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentDatabasesDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseSetEnvironmentDatabasesResult {
   /**
@@ -42,8 +43,13 @@ export function useSetEnvironmentDatabases(): UseSetEnvironmentDatabasesResult {
           t("environments.assignDatabasesSuccess", { name: envName }),
         );
         return true;
-      } catch {
-        toast.error(t("environments.assignDatabasesError", { name: envName }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("environments.assignDatabasesError", { name: envName }),
+          ),
+        );
         return false;
       } finally {
         setBusyId(null);

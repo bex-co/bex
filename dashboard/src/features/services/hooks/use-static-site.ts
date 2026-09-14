@@ -7,6 +7,7 @@ import {
   SetPublishPathDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import type {
   ServiceView,
   StaticRouteView,
@@ -48,8 +49,8 @@ export function useStaticSiteMutations(
         await refetch();
         toast.success(t("services.staticRoutesSaved"));
         return true;
-      } catch {
-        toast.error(t("services.staticRoutesError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("services.staticRoutesError")));
         return false;
       } finally {
         setBusy(false);
@@ -66,8 +67,10 @@ export function useStaticSiteMutations(
         await refetch();
         toast.success(t("services.staticHeadersSaved"));
         return true;
-      } catch {
-        toast.error(t("services.staticHeadersError"));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("services.staticHeadersError")),
+        );
         return false;
       } finally {
         setBusy(false);
@@ -86,8 +89,8 @@ export function useStaticSiteMutations(
           description: t("services.publishPathRepublishNote"),
         });
         return true;
-      } catch {
-        toast.error(t("services.publishPathError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("services.publishPathError")));
         return false;
       } finally {
         setBusy(false);

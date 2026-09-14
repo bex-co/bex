@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { UpdateKeyValuePlanDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
@@ -30,7 +31,7 @@ export function useUpdateKeyValuePlan(): UseUpdateKeyValuePlanResult {
         return true;
       } catch (error) {
         if (isPaymentOnboardingCancelled(error)) return false;
-        toast.error(t("keyvalue.planPickerError"));
+        toast.error(mutationErrorMessage(error, t("keyvalue.planPickerError")));
         return false;
       } finally {
         setBusy(false);

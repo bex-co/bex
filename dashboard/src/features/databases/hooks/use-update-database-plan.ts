@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { UpdateDatabasePlanDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
@@ -30,7 +31,9 @@ export function useUpdateDatabasePlan(): UseUpdateDatabasePlanResult {
         return true;
       } catch (error) {
         if (isPaymentOnboardingCancelled(error)) return false;
-        toast.error(t("databases.planPickerError"));
+        toast.error(
+          mutationErrorMessage(error, t("databases.planPickerError")),
+        );
         return false;
       } finally {
         setBusy(false);

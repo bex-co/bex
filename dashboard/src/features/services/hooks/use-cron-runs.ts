@@ -7,6 +7,7 @@ import {
   RunCronJobDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import type { CronRunView } from "@/features/services/types";
 
 const PAGE_SIZE = 5;
@@ -107,8 +108,10 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
         await cancelRun({ variables: { serviceId, runId } });
         toast.success(t("services.cronRunCancelSuccess"));
         return true;
-      } catch {
-        toast.error(t("services.cronRunCancelError"));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("services.cronRunCancelError")),
+        );
         return false;
       } finally {
         setCancelingId(null);

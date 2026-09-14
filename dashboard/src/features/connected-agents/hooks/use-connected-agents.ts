@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useFetchedList } from "@/common/hooks/use-fetched-list";
 import type { ConnectedAgentView } from "@/features/connected-agents/types";
 
@@ -48,8 +49,13 @@ export function useConnectedAgents(): UseConnectedAgentsResult {
         setAgents((prev) => prev.filter((a) => a.clientId !== clientId));
         toast.success(t("connectedAgents.revokeSuccess", { name: clientName }));
         return true;
-      } catch {
-        toast.error(t("connectedAgents.revokeError", { name: clientName }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("connectedAgents.revokeError", { name: clientName }),
+          ),
+        );
         return false;
       } finally {
         setRevoking(null);

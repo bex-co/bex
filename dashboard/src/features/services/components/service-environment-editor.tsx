@@ -44,6 +44,7 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useReauthDraft } from "@/common/hooks/use-reauth-draft";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -497,9 +498,11 @@ export function EnvironmentEditor({
     };
     try {
       result = await save(patch, choice);
-    } catch {
+    } catch (err) {
       setSaveError(true);
-      toast.error(t("services.environmentSaveError"));
+      toast.error(
+        mutationErrorMessage(err, t("services.environmentSaveError")),
+      );
       return;
     }
 

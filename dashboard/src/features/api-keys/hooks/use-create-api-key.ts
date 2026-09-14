@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { CreateApiKeyDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { CreatedApiKey } from "@/features/api-keys/types";
 
@@ -50,8 +51,10 @@ export function useCreateApiKey(): UseCreateApiKeyResult {
         }
         toast.success(t("apiKeys.createSuccess", { name }));
         return { id: key.id, name: key.name ?? name, secret: key.secret };
-      } catch {
-        toast.error(t("apiKeys.createError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("apiKeys.createError", { name })),
+        );
         return null;
       } finally {
         setBusy(false);

@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { ScaleServiceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseScaleServiceResult {
   scaleService: (id: string, numInstances: number) => Promise<boolean>;
@@ -19,8 +20,8 @@ export function useScaleService(): UseScaleServiceResult {
         await mutate({ variables: { id, numInstances } });
         toast.success(t("services.scaleSuccess", { count: numInstances }));
         return true;
-      } catch {
-        toast.error(t("services.scaleError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("services.scaleError")));
         return false;
       }
     },

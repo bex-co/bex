@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { TriggerDeployDocument } from "@/graphql/definitions";
 import { DEPLOY_REFETCH_QUERIES } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface TriggerOptions {
   /** Pin the build to a specific Git ref instead of Branch HEAD. Repo-backed only. */
@@ -68,8 +69,8 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
       });
       toast.success(t("services.triggerDeploySuccess"));
       return data?.triggerDeploy?.id ?? null;
-    } catch {
-      toast.error(t("services.triggerDeployError"));
+    } catch (err) {
+      toast.error(mutationErrorMessage(err, t("services.triggerDeployError")));
       return null;
     }
   }
