@@ -17,6 +17,10 @@ implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps onl
 
 ## Milestones
 
+- [ ] **m155** — [Render's metrics contract is partly unserved on REST and MCP: `aggregateBy` is silently ignored, eight Render paths return 404, and MCP rejects Render's metric names](m155/README.md) (10 tasks; ~2h50m implementation, ~4h15m total) ← live `/qa-find-bugs` 2026-09-14 pass 29.
+  - **Silently ignored `aggregateBy`.** REST `http-requests?aggregateBy=statusCode` returned one ungrouped series, while GraphQL `aggregateBy:["STATUS_CODE"]` over the same window split it into `code=200/404/501`. `parseMetricParams` reads bex's `groupBy` (`metrics/rest.go:185`), which the strict Render validator now refuses (`api/render_openapi.go:386-388`). Render's `aggregateBy` passes validation and is dropped.
+  - **Bare 404s.** `/v1/metrics/{cpu-limit, memory-limit, filters/http, filters/application, filters/path, active-connections, disk-usage, bandwidth-sources}` all returned `404 page not found`, though the limit metrics exist (`service.go:46,48`) and ADR018:198 marks them ✅ on REST.
+  - **MCP names.** MCP `get_metrics(metricTypes:["cpu_usage"])` returned "unknown metric", a name from Render's MCP enum.
 - [ ] **m154** — [A deploy or config-change rollout drops live requests with `502 Bad Gateway` at the pod switchover](m154/README.md) (6 tasks; ~1h20m implementation, ~2h50m total) ← live `/qa-find-bugs` 2026-09-14 pass 28.
   - **Symptom.** A free web service's URL was sampled through two `MESSAGE` config-change rollouts, and each returned one `502 Bad Gateway`: 19:31:51, and 19:35:56.729 in 209 samples, right after the new pod's first response. ADR004:223 says a rolling update is zero-downtime by construction.
   - **Cause.** Tenant pods have no `lifecycle.preStop` (0 hits in `lego/operator`). The old pod gets `SIGTERM` and closes its listener while Traefik still routes to it. bex already fixed this exact `502` for its own dashboard (`dashboard/deploy/deployment.yaml:108-116`, `w1/m52`). Render switches traffic, waits 60 s, then sends `SIGTERM`.
