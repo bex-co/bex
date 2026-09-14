@@ -474,6 +474,22 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description:
       "Placeholder for the optional per-entry allowlist description input",
   },
+  "keyvalue.networkingCIDR": {
+    message: "New CIDR block",
+    description: "Accessible label for the add-row CIDR input",
+  },
+  "keyvalue.networkingCIDRRule": {
+    message: "CIDR block for rule {number}",
+    description: "Accessible label for an existing allowlist CIDR row",
+  },
+  "keyvalue.networkingDescriptionLabel": {
+    message: "New rule description",
+    description: "Accessible label for the add-row description input",
+  },
+  "keyvalue.networkingDescriptionRule": {
+    message: "Description for rule {number}",
+    description: "Accessible label for an existing allowlist description row",
+  },
   "keyvalue.networkingRemove": {
     message: "Remove {cidr}",
     description: "Accessible label to remove a CIDR chip",

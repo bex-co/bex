@@ -51,6 +51,7 @@ const EMPTY_METRIC: UseMetricsResult = {
   loading: false,
   unavailable: false,
   storeUnavailable: false,
+  throttled: false,
   degradedSources: [],
   error: undefined,
 };
@@ -166,6 +167,15 @@ describe("ServiceScalingPage (w7/m43)", () => {
     autoscalingState.targetMemoryPercent = 70;
     renderScaling();
     await screen.findByText("Autoscaling");
+    expect(
+      screen.getByRole("switch", { name: "Autoscaling on" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Target CPU Utilization" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Target Memory Utilization" }),
+    ).toBeInTheDocument();
     for (const name of [
       "Target CPU Utilization",
       "Target Memory Utilization",
@@ -177,16 +187,37 @@ describe("ServiceScalingPage (w7/m43)", () => {
     expect(screen.getByRole("slider", { name: "Maximum" })).toBeInTheDocument();
   });
 
+  it("does not flash Autoscaling while the service type is still loading", () => {
+    serverState.service = null;
+    renderScaling();
+    expect(screen.queryByText("Autoscaling")).not.toBeInTheDocument();
+    expect(screen.queryByText("Manual Scaling")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Scaling isn't available"),
+    ).not.toBeInTheDocument();
+  });
+
   it.each(["cron_job", "static_site"] as const)(
-    "hides the Manual Scaling card for a %s (no replica concept)",
+    "explains that Scaling is unavailable for a %s (no replica concept)",
     async (type) => {
       serverState.service = svc({ type });
       renderScaling();
 
-      expect(await screen.findByText("Autoscaling")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Scaling isn't available"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Autoscaling")).not.toBeInTheDocument();
       expect(screen.queryByText("Manual Scaling")).not.toBeInTheDocument();
+      expect(screen.queryByText("Recent Metrics")).not.toBeInTheDocument();
     },
   );
+
+  it("still offers Autoscaling for a background_worker", async () => {
+    serverState.service = svc({ type: "background_worker" });
+    renderScaling();
+    expect(await screen.findByText("Autoscaling")).toBeInTheDocument();
+    expect(screen.getByText("Manual Scaling")).toBeInTheDocument();
+  });
 
   it("saves a drafted manual instance count through scaleService", async () => {
     renderScaling();

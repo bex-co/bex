@@ -45,6 +45,20 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
     ).toBe(true);
   });
 
+  it("worker keeps Disk + Scaling (same eligible set as the API)", () => {
+    const flat = labels(serviceNavGroups("worker")).flat();
+    expect(flat).toContain("services.navDisk");
+    expect(flat).toContain("services.navScaling");
+  });
+
+  it("cron omits Disk and Scaling (no long-running instance)", () => {
+    const flat = labels(serviceNavGroups("cron")).flat();
+    expect(flat).toContain("services.navShell");
+    expect(flat).toContain("services.navPlan");
+    expect(flat).not.toContain("services.navDisk");
+    expect(flat).not.toContain("services.navScaling");
+  });
+
   it("null (still loading): only the shared entries, so nothing type-specific flashes", () => {
     const groups = serviceNavGroups(null, "/services");
     const flat = labels(groups).flat();
@@ -55,6 +69,7 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
     ]);
     expect(flat).not.toContain("services.navDeploys");
     expect(flat).not.toContain("services.navShell");
+    expect(flat).not.toContain("services.navScaling");
   });
 
   it("defaults the base to /services", () => {

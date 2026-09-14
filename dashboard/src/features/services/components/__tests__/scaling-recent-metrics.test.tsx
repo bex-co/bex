@@ -34,6 +34,7 @@ function emptyResult(): UseMetricsResult {
     loading: false,
     unavailable: false,
     storeUnavailable: false,
+    throttled: false,
     error: undefined,
     degradedSources: [],
   };

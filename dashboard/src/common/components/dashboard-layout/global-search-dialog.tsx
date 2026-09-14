@@ -57,6 +57,7 @@ export function GlobalSearchDialog({
         onOpenChange(next);
       }}
       shouldFilter={false}
+      label={t("common.topbarSearch")}
     >
       <DialogTitle className="sr-only">{t("common.topbarSearch")}</DialogTitle>
       <DialogDescription className="sr-only">

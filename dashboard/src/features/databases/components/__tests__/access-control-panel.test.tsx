@@ -38,7 +38,23 @@ describe("AccessControlPanel database-user creation", () => {
     expect(
       screen.getByText("Password for analytics — shown once:"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Copy .*password/i }),
+    ).toBeInTheDocument();
     expect(screen.getByPlaceholderText("reporting")).toHaveValue("");
+  });
+
+  it("names the allowlist and database-user inputs", () => {
+    render(<AccessControlPanel id="dpg-source" />);
+    expect(
+      screen.getByRole("textbox", { name: "New CIDR block" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "New rule description" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Database username" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps the username recoverable and shows no credential on failure", async () => {
@@ -46,7 +62,7 @@ describe("AccessControlPanel database-user creation", () => {
     const user = userEvent.setup();
     render(<AccessControlPanel id="dpg-source" />);
 
-    const name = screen.getByPlaceholderText("reporting");
+    const name = screen.getByRole("textbox", { name: "Database username" });
     await user.type(name, "analytics");
     await user.click(screen.getByRole("button", { name: "Add user" }));
 
