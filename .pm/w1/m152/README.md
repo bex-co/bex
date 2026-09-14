@@ -62,6 +62,18 @@ No screenshots were taken; the transcripts above are the evidence.
   - service env vars and secret files (`secrets/service.go`);
   - environment groups, whose shared `<evg>-env` / `<evg>-files` Secrets are rewritten in place for **every** linked service (`envgroups/service.go:653-657`), so canceling one service's deploy cannot restore the group's old values for it;
   - start command, health check path, pre-deploy command and plan, all in `releaseIdentityInput`.
+- **Automatic supersede reaches the same path, not only a user's Cancel.** Verified in pass 20 (2026-09-14) on `qa-20260914-gen` (`srv-dak27726m8ac739r6260`, `examples/hello-go`, since deleted: `DELETE` 16:48:35Z → `204`, then `GET` → `404`; URL `404` at 16:48:44). Values are compared by SHA-256 prefix only.
+
+  ```text
+  16:44:47  dep-…f64j40 config_change live; curl serves len=44 sha8=5eac54f2 (the first generated MESSAGE)
+  ~16:45:1x PUT …/env-vars [{MESSAGE, generateValue:true}, {KEEP, "k"}] → MESSAGE sha8=913b5b9c; opens dep-…f64j50
+  ~16:45:1x PUT …/env-vars/MESSAGE {generateValue:true} → sha8=38c9b794; opens dep-…9r627g
+  16:46:29  dep-…f64j50 → canceled (superseded, no user action); curl now serves sha8=38c9b794
+            deploy list at that moment: 9r627g build_in_progress | f64j50 canceled | f64j40 live
+  16:47:47  dep-…9r627g live   (78 s after its value was already being served)
+  ```
+
+  The superseded deploy settled through the same canceled branch and rolled pods from the current spec and Secret. The newest value therefore went out before its own deploy built, while the list still named an older deploy Live. t002 and t003 must cover supersede as well as a user's Cancel.
 - **Must stay correct:**
   - cancel of a first deploy with no prior release (`Canceled`, `w6/m52`);
   - cancel of an image-backed deploy with a prior release (image restored, `w6/m104`);
