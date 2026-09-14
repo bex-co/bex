@@ -45,10 +45,11 @@ spec:
           # CI's image override (dashboard=...) rewrites this tag — see
           # deploy/gitops/base/dashboard.yaml and .github/workflows/deploy.yml.
           #
-          # NOTE: VITE_API_URL / VITE_KRATOS_PUBLIC_URL / VITE_KRATOS_SSR_URL
-          # are Vite build-time values (dashboard/Dockerfile ARGs) baked into
-          # the JS bundle at image build — setting them here as container env
-          # vars would have no effect. Rebuild the image to change them.
+          # NOTE: VITE_API_URL / VITE_KRATOS_PUBLIC_URL / VITE_KRATOS_SSR_URL /
+          # VITE_OAUTH_ISSUER are Vite build-time values (dashboard/Dockerfile
+          # ARGs) baked into the JS bundle at image build — setting them here
+          # as container env vars would have no effect. Rebuild the image to
+          # change them.
           image: dashboard:latest
           imagePullPolicy: Always
           env:

@@ -10,6 +10,8 @@ declare global {
     readonly VITE_KRATOS_PUBLIC_URL?: string;
     /** Optional in-cluster Kratos URL used during SSR (defaults to VITE_KRATOS_PUBLIC_URL) */
     readonly VITE_KRATOS_SSR_URL?: string;
+    /** Hydra public issuer (token endpoint base) for API-key exchange copy */
+    readonly VITE_OAUTH_ISSUER?: string;
   }
 
   interface ImportMeta {

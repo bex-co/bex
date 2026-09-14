@@ -40,7 +40,7 @@ describe("ApiKeysPanel", () => {
     ).toHaveAttribute("href", "https://bex.co/docs/cli");
   });
 
-  it("lists the workspace's keys (w4/m8/t002)", () => {
+  it("lists the workspace's keys with a Client ID column (w4/m8/t002, w4/m105)", () => {
     apiKeysState.keys = [
       {
         id: "key-1",
@@ -61,6 +61,9 @@ describe("ApiKeysPanel", () => {
 
     expect(screen.getByText("deploy-agent")).toBeInTheDocument();
     expect(screen.getByText("ci-bot")).toBeInTheDocument();
+    expect(screen.getByText("Client ID")).toBeInTheDocument();
+    expect(screen.getByText("key-1")).toBeInTheDocument();
+    expect(screen.getByText("key-2")).toBeInTheDocument();
   });
 
   it("shows an empty state with no keys", () => {

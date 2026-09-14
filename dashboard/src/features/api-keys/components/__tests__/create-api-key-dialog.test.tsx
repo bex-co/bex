@@ -13,13 +13,19 @@ vi.mock("@/common/hooks/use-copy-to-clipboard", () => ({
   useCopyToClipboard: () => ({ copied: false, copy }),
 }));
 
+vi.mock("@/config/config", () => ({
+  config: {
+    oauthTokenEndpoint: "https://oauth.example.test/oauth2/token",
+  },
+}));
+
 beforeEach(() => {
   create.mockReset();
   copy.mockReset();
 });
 
-describe("CreateApiKeyDialog — mint-once-visibility (w4/m8/t003)", () => {
-  it("shows the secret exactly once after create, with a copy affordance", async () => {
+describe("CreateApiKeyDialog — mint-once-visibility (w4/m8/t003, w4/m105)", () => {
+  it("shows client_id and secret after create, each with a copy affordance", async () => {
     create.mockResolvedValue({
       id: "key-1",
       name: "deploy-agent",
@@ -33,11 +39,41 @@ describe("CreateApiKeyDialog — mint-once-visibility (w4/m8/t003)", () => {
     await user.type(within(dialog).getByLabelText("Name"), "deploy-agent");
     await user.click(within(dialog).getByRole("button", { name: "Create" }));
 
-    expect(await within(dialog).findByText("s3cret-value")).toBeInTheDocument();
+    expect(await within(dialog).findByText("key-1")).toBeInTheDocument();
+    expect(within(dialog).getByText("s3cret-value")).toBeInTheDocument();
     expect(create).toHaveBeenCalledWith("deploy-agent");
 
-    await user.click(within(dialog).getByLabelText("Copy"));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Copy client secret" }),
+    );
     expect(copy).toHaveBeenCalledWith("s3cret-value");
+
+    await user.click(
+      within(dialog).getByRole("button", { name: "Copy client ID" }),
+    );
+    expect(copy).toHaveBeenCalledWith("key-1");
+  });
+
+  it("states the client_credentials exchange with the configured token endpoint", async () => {
+    create.mockResolvedValue({
+      id: "key-1",
+      name: "deploy-agent",
+      secret: "s3cret-value",
+    });
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Create API key" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "deploy-agent");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+
+    expect(
+      await within(dialog).findByText(/client_credentials/i),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/https:\/\/oauth\.example\.test\/oauth2\/token/),
+    ).toBeInTheDocument();
   });
 
   it("the secret exists nowhere after the dialog is dismissed and reopened", async () => {
@@ -80,7 +116,7 @@ describe("CreateApiKeyDialog — mint-once-visibility (w4/m8/t003)", () => {
 
     expect(within(dialog).getByLabelText("Name")).toBeInTheDocument();
     expect(
-      within(dialog).queryByText(/won't be able to see it again/i),
+      within(dialog).queryByText(/won't be able to see the secret again/i),
     ).not.toBeInTheDocument();
   });
 

@@ -29,6 +29,10 @@ ENV VITE_KRATOS_PUBLIC_URL=$VITE_KRATOS_PUBLIC_URL
 ARG VITE_KRATOS_SSR_URL
 ENV VITE_KRATOS_SSR_URL=$VITE_KRATOS_SSR_URL
 
+# Hydra public issuer — baked into the mint-dialog exchange copy (w4/m105)
+ARG VITE_OAUTH_ISSUER
+ENV VITE_OAUTH_ISSUER=$VITE_OAUTH_ISSUER
+
 # Public signing identities for verified mobile invitation links. Both are
 # optional together: absent keeps the association documents valid but disabled;
 # a partial or malformed configuration fails the build. These values identify
