@@ -17,6 +17,10 @@ implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps onl
 
 ## Milestones
 
+- [ ] **m154** — [A deploy or config-change rollout drops live requests with `502 Bad Gateway` at the pod switchover](m154/README.md) (6 tasks; ~1h20m implementation, ~2h50m total) ← live `/qa-find-bugs` 2026-09-14 pass 28.
+  - **Symptom.** A free web service's URL was sampled through two `MESSAGE` config-change rollouts, and each returned one `502 Bad Gateway`: 19:31:51, and 19:35:56.729 in 209 samples, right after the new pod's first response. ADR004:223 says a rolling update is zero-downtime by construction.
+  - **Cause.** Tenant pods have no `lifecycle.preStop` (0 hits in `lego/operator`). The old pod gets `SIGTERM` and closes its listener while Traefik still routes to it. bex already fixed this exact `502` for its own dashboard (`dashboard/deploy/deployment.yaml:108-116`, `w1/m52`). Render switches traffic, waits 60 s, then sends `SIGTERM`.
+  - **Fix.** A native `preStop.sleep` drain, with the grace period widened so `maxShutdownDelaySeconds` still counts from `SIGTERM`.
 - [ ] **m153** — [Background polls close open dialogs and interrupt typing on the environment card, the source picker and the env-group editor](m153/README.md) (8 tasks; ~1h50m implementation, ~3h05m total) ← live `/qa-find-bugs` 2026-09-14 pass 25.
   - **Symptoms.**
     - On a project page, an environment's "All settings" dialog closed itself 0.6 s after the 30 s `Environments` poll (24.9 s after opening) and discarded a typed CIDR.
