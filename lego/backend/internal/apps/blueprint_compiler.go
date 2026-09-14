@@ -90,7 +90,7 @@ func CompileBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourc
 		}}
 	}
 	if err := schema.Validate(source.Value); err != nil {
-		problems = append(problems, blueprintSchemaProblems(err, source.Locations)...)
+		problems = append(problems, blueprintSchemaProblems(err, source.Locations, source.Value)...)
 	}
 	problems = append(problems, blueprintCapabilityProblems(source.Value, nil, source.Locations, registry)...)
 	return source, sortBlueprintSourceProblems(problems)
@@ -1069,35 +1069,28 @@ func addBlueprintExtension(document, extension map[string]any) error {
 	return nil
 }
 
-func blueprintSchemaProblems(err error, locations map[string]BlueprintSourceLocation) []BlueprintSourceProblem {
+func blueprintSchemaProblems(err error, locations map[string]BlueprintSourceLocation, instance any) []BlueprintSourceProblem {
 	var validation *jsonschema.ValidationError
 	if !errors.As(err, &validation) {
 		return []BlueprintSourceProblem{{Code: "BLUEPRINT_SCHEMA_INVALID", Path: "#", Message: "Blueprint does not satisfy the reviewed Render schema"}}
 	}
 	var problems []BlueprintSourceProblem
-	appendBlueprintSchemaProblems(validation, locations, &problems)
+	appendBlueprintSchemaProblems(validation, locations, instance, &problems)
 	return problems
 }
 
-func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locations map[string]BlueprintSourceLocation, problems *[]BlueprintSourceProblem) {
+func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locations map[string]BlueprintSourceLocation, instance any, problems *[]BlueprintSourceProblem) {
 	if len(validation.Causes) > 0 {
-		// A failed anyOf reports every alternative (Redis, cron, server, static;
-		// likewise each env-var form). Only the closest alternative is useful to
-		// a Blueprint author. Selecting the branch with the fewest leaf failures
-		// retains the schema's strictness while avoiding misleading errors from
-		// unrelated service kinds.
+		// A failed anyOf reports every alternative. Report the branch the
+		// instance actually declared (type/runtime const, or which env-var
+		// key is present). Leaf count is last resort: it prefers the
+		// shallowest failure and otherwise names an unrelated kind.
 		if _, isAnyOf := validation.ErrorKind.(*kind.AnyOf); isAnyOf && len(validation.Causes) > 1 {
-			closest := validation.Causes[0]
-			for _, cause := range validation.Causes[1:] {
-				if blueprintSchemaLeafCount(cause) < blueprintSchemaLeafCount(closest) {
-					closest = cause
-				}
-			}
-			appendBlueprintSchemaProblems(closest, locations, problems)
+			appendBlueprintSchemaProblems(selectBlueprintAnyOfCause(validation.Causes, blueprintInstanceAt(instance, validation.InstanceLocation)), locations, instance, problems)
 			return
 		}
 		for _, cause := range validation.Causes {
-			appendBlueprintSchemaProblems(cause, locations, problems)
+			appendBlueprintSchemaProblems(cause, locations, instance, problems)
 		}
 		return
 	}
@@ -1108,9 +1101,213 @@ func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locat
 	location := lookupBlueprintLocation(path, locations)
 	message := "Blueprint does not satisfy the reviewed Render schema"
 	if validation.ErrorKind != nil {
-		message = validation.Error()
+		message = blueprintSchemaLeafMessage(validation)
 	}
 	*problems = append(*problems, BlueprintSourceProblem{Code: "BLUEPRINT_SCHEMA_INVALID", Path: path, Message: message, Line: location.Line, Column: location.Column})
+}
+
+// blueprintServiceTypeValues is the union of services[] discriminators.
+const blueprintServiceTypeValues = "'web', 'worker', 'pserv', 'cron', 'keyvalue', 'redis'"
+
+func blueprintSchemaLeafMessage(validation *jsonschema.ValidationError) string {
+	message := validation.Error()
+	if loc := validation.InstanceLocation; blueprintServiceTypeLocation(loc) {
+		if got, ok := blueprintSchemaGotValue(validation.ErrorKind); ok && !blueprintKnownServiceType(got) {
+			if i := strings.LastIndex(message, ": "); i >= 0 {
+				return message[:i+2] + "value must be one of " + blueprintServiceTypeValues
+			}
+			return "value must be one of " + blueprintServiceTypeValues
+		}
+	}
+	return message
+}
+
+func blueprintServiceTypeLocation(location []string) bool {
+	if len(location) < 3 || location[len(location)-1] != "type" {
+		return false
+	}
+	for i, token := range location[:len(location)-1] {
+		if token == "services" && i+1 < len(location)-1 {
+			if _, err := strconv.Atoi(location[i+1]); err == nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func blueprintSchemaGotValue(errorKind jsonschema.ErrorKind) (string, bool) {
+	switch k := errorKind.(type) {
+	case *kind.Enum:
+		s, ok := k.Got.(string)
+		return s, ok
+	case *kind.Const:
+		s, ok := k.Got.(string)
+		return s, ok
+	default:
+		return "", false
+	}
+}
+
+func blueprintKnownServiceType(value string) bool {
+	switch value {
+	case "web", "worker", "pserv", "cron", "keyvalue", "redis":
+		return true
+	default:
+		return false
+	}
+}
+
+func selectBlueprintAnyOfCause(causes []*jsonschema.ValidationError, instance any) *jsonschema.ValidationError {
+	object, _ := instance.(map[string]any)
+	bestScore := -1
+	var matched []*jsonschema.ValidationError
+	for _, cause := range causes {
+		score := blueprintAnyOfDiscriminatorScore(cause, object)
+		if score < 0 {
+			continue
+		}
+		if score > bestScore {
+			bestScore = score
+			matched = []*jsonschema.ValidationError{cause}
+			continue
+		}
+		if score == bestScore {
+			matched = append(matched, cause)
+		}
+	}
+	pool := causes
+	if len(matched) > 0 {
+		pool = matched
+	}
+	closest := pool[0]
+	for _, cause := range pool[1:] {
+		if blueprintSchemaLeafCount(cause) < blueprintSchemaLeafCount(closest) {
+			closest = cause
+		}
+	}
+	return closest
+}
+
+func blueprintAnyOfDiscriminatorScore(cause *jsonschema.ValidationError, object map[string]any) int {
+	if object == nil {
+		return 0
+	}
+	switch blueprintSchemaBranchName(cause) {
+	case "redisServer":
+		return blueprintEnumMatch(blueprintObjectString(object, "type"), "keyvalue", "redis")
+	case "cronService":
+		return blueprintConstMatch(blueprintObjectString(object, "type"), "cron")
+	case "staticService":
+		typeScore := blueprintConstMatch(blueprintObjectString(object, "type"), "web")
+		runtimeScore := blueprintConstMatch(blueprintObjectString(object, "runtime"), "static")
+		if typeScore < 0 || runtimeScore < 0 {
+			return -1
+		}
+		return typeScore + runtimeScore
+	case "serverService":
+		if blueprintObjectString(object, "type") == "web" && blueprintObjectString(object, "runtime") == "static" {
+			return -1
+		}
+		return blueprintEnumMatch(blueprintObjectString(object, "type"), "web", "worker", "pserv")
+	case "envVarFromDatabase":
+		return blueprintPresenceMatch(object, "fromDatabase")
+	case "envVarFromService":
+		return blueprintPresenceMatch(object, "fromService")
+	case "envVarFromGroup":
+		return blueprintPresenceMatch(object, "fromGroup")
+	case "envVarFromKeyValue":
+		if _, fromRef := object["fromDatabase"]; fromRef {
+			return -1
+		}
+		if _, fromRef := object["fromService"]; fromRef {
+			return -1
+		}
+		if _, fromRef := object["fromGroup"]; fromRef {
+			return -1
+		}
+		if _, ok := object["value"]; ok {
+			return 1
+		}
+		if _, ok := object["generateValue"]; ok {
+			return 1
+		}
+		if _, ok := object["key"]; ok {
+			return 0
+		}
+		return -1
+	default:
+		return 0
+	}
+}
+
+func blueprintSchemaBranchName(cause *jsonschema.ValidationError) string {
+	url := cause.SchemaURL
+	if ref, ok := cause.ErrorKind.(*kind.Reference); ok && ref.URL != "" {
+		url = ref.URL
+	}
+	const marker = "#/definitions/"
+	if i := strings.Index(url, marker); i >= 0 {
+		name := url[i+len(marker):]
+		if j := strings.IndexAny(name, "/?#"); j >= 0 {
+			name = name[:j]
+		}
+		return name
+	}
+	return ""
+}
+
+func blueprintObjectString(object map[string]any, key string) string {
+	value, _ := object[key].(string)
+	return value
+}
+
+func blueprintConstMatch(got, want string) int {
+	if got == "" {
+		return 0
+	}
+	if got == want {
+		return 2
+	}
+	return -1
+}
+
+func blueprintEnumMatch(got string, want ...string) int {
+	if got == "" {
+		return 0
+	}
+	for _, allowed := range want {
+		if got == allowed {
+			return 1
+		}
+	}
+	return -1
+}
+
+func blueprintPresenceMatch(object map[string]any, key string) int {
+	if _, ok := object[key]; ok {
+		return 2
+	}
+	return -1
+}
+
+func blueprintInstanceAt(root any, location []string) any {
+	current := root
+	for _, token := range location {
+		switch node := current.(type) {
+		case map[string]any:
+			current = node[token]
+		case []any:
+			index, err := strconv.Atoi(token)
+			if err != nil || index < 0 || index >= len(node) {
+				return nil
+			}
+			current = node[index]
+		default:
+			return nil
+		}
+	}
+	return current
 }
 
 func blueprintSchemaLeafCount(validation *jsonschema.ValidationError) int {

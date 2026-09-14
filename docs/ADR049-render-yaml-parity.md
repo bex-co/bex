@@ -182,6 +182,10 @@ Any temporary audit switch is removed at closeout. The end state has one grammar
 - Validation errors, plans, logs, and persisted Blueprint metadata never expose secret values.
 - REST, GraphQL, MCP, dashboard, deploy-from-chat, and helper workflows cannot disagree about manifest validity.
 
+### Diagnostics (w4/m102, 2026-09-14)
+
+`anyOf` failures (service kinds and env-var forms) pick the branch the instance actually declared — `type`/`runtime` consts, or which env-var key is present — instead of the fewest leaf errors. A static service with a disallowed `plan` is told `plan` is extra, not that legal `staticPublishPath` is illegal. Create-validator messages that reach a Blueprint author use manifest keys (`staticPublishPath`); REST/MCP `POST` create still say `publishPath`. A `type` that matches no service kind lists the union `web`, `worker`, `pserv`, `cron`, `keyvalue`, `redis`. The schema pin and SHA are unchanged: static sites still have no per-instance `plan`.
+
 ## Consequences
 
 ### Positive
