@@ -293,7 +293,12 @@ type CapabilityGrant struct {
 }
 
 func memberView(m store.TenantMember) MemberView {
-	return MemberView{Subject: m.Subject, Role: wireRole(m.Role), CreatedAt: rfc3339(m.CreatedAt)}
+	return MemberView{
+		Subject: m.Subject, Role: wireRole(m.Role), CreatedAt: rfc3339(m.CreatedAt),
+		// Mutations do not re-run Kratos lookup; treat as resolved unless List
+		// overwrites this after a wired miss (w4/070).
+		IdentityResolved: true,
+	}
 }
 
 func inviteView(inv store.Invite) InviteView {

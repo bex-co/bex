@@ -1,5 +1,4 @@
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useTranslations } from "@/common/hooks/use-translations";
 import { EnvironmentEditor } from "@/features/services/components/service-environment-editor";
 import {
   classifyEnvGroupError,
@@ -23,7 +22,6 @@ export function EnvGroupEditors({
   refetch: () => Promise<unknown>;
 }) {
   const { t } = useTranslations();
-  const { t } = useTranslations();
   const revealEnv = useRevealEnvGroupVar(group.id);
   const revealFile = useRevealEnvGroupSecretFile(group.id);
   const patch = useEnvGroupEnvironmentPatch(group.id, group.revision, refetch);
@@ -39,16 +37,6 @@ export function EnvGroupEditors({
       revealFile={revealFile}
       saving={patch.saving}
       generateOnServer
-      copy={{
-        envTitle: t("envGroups.varsTitle"),
-        envDescription: t("envGroups.varsDescription"),
-        envEmptyTitle: t("envGroups.varsEmptyTitle"),
-        envEmptyBody: t("envGroups.varsEmptyBody"),
-        secretFilesTitle: t("envGroups.filesTitle"),
-        secretFilesDescription: t("envGroups.filesDescription"),
-        secretFilesEmptyTitle: t("envGroups.filesEmptyTitle"),
-        secretFilesEmptyBody: t("envGroups.filesEmptyBody"),
-      }}
       copy={{
         envTitle: t("envGroups.varsTitle"),
         envDescription: t("envGroups.varsDescription"),
