@@ -15,7 +15,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m98** — [Live-verification sweep on dev-5](m98/README.md) (9 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 6: the m89 / m88 / m65 / m66 / 053 residuals recorded as "deferred — cluster unavailable"; ranks last (local cluster API refused at filing).
+- [x] **m98** — [Live-verification sweep on dev-5](done/m98/README.md) (9 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 6: the m89 / m88 / m65 / m66 / 053 residuals recorded as "deferred — cluster unavailable"; ranks last (local cluster API refused at filing).
 - [x] **m97** — [Product adoption v2: creation-surface attribution](done/m97/README.md) (6 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 5. — **DONE 2026-09-14**: `surface` live in prod (dashboard/api/cli attributed); panels SQL-verified; closeout evidence in README.
 - [x] **m96** — [Production canary fixture: authorize, first green and red runs, classify](done/m96/README.md) (8 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 4. — **DONE 2026-09-14**: canary fixture + `BEX_CANARY_*` wired; green tenant-view/deploy/isolation; red-paths #68/#69/#66+#67.
 - [x] **m95** — [Sandbox provisioning SLI: first-party series, alert, and panel](done/m95/README.md) (6 tasks) ← from `/pm-brainstorm for w5` 2026-09-10 proposal 3; closes the ADR088 coverage-table row "Sandboxes — none (accepted for now), owner: unfiled". — **DONE 2026-09-14**: live `bex_sandbox_create_total{rejected}` scraped; `SandboxProvisionFailing` loaded; Grafana panels published after ServerSideApply fixed the ConfigMap annotation stall (`058`).
