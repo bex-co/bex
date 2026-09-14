@@ -8,7 +8,8 @@
 | ---- | ---------------------------------------------------------------------------------- | --- | ------------ |
 | t001 | Settle the App phase when the rollout budget expires with nothing ever served        | 60m | —            |
 | t002 | Place the adjacent cases: prior release, hibernated, suspended, cancel, pre-deploy    | 45m | w4/m103/t001 |
-| t003 | Render parity sweep over the changed surfaces                                        | 30m | w4/m103/t002 |
+| t007 | Cover the image-pull class, closed by the 18m observer not the 900s budget            | 40m | w4/m103/t001 |
+| t003 | Render parity sweep over the changed surfaces                                        | 30m | w4/m103/t002, w4/m103/t007 |
 | t004 | Simplify pass over this milestone's changes                                          | 25m | w4/m103/t003 |
 | t005 | Test coverage for the shipped behavior                                               | 40m | w4/m103/t003 |
 | t006 | Closeout                                                                            | 15m | w4/m103/t005 |
@@ -20,6 +21,7 @@
 - **A rollout failure over a healthy prior release does NOT change the phase.** The service keeps reading the state that describes what is actually serving, exactly as `w6/m124` established for build failures via `settleFailedBuildOverPriorRelease`. Asserted as the control case — this is the half that must not regress.
 - **Every adjacent case is stated and tested**, not left implicit: cancel with no prior release (`PhaseCanceled`, `w6/m52`), build failure with no prior release (`PhaseFailed`, verified by `w6/m124`'s own control), pre-deploy failure (`failPreDeploy` → `fail`), suspended, and free-tier hibernated. One test per case, naming the phase each lands on.
 - **The two clocks agree.** Whatever closes the deploy row at the rollout budget and whatever settles the phase reach their verdict for the same release, so no ordering leaves the pair contradictory for more than one reconcile.
+- **A second failure class settles too, and a rollout row can close on either of two timers.** An **unpullable image** reproduces the same stuck phase: measured 2026-09-13 pass 20, `phase` stayed `"Deploying"` after the row reached `update_failed`. Its row closed at **1091s after `updatedAt`** — bex-api's 18-minute `DeployGateTimeout`, not the 900s rollout budget, because `deployTimedOut` (`store/reconciler.go:1047-1065`) gives an `update_in_progress` row the deploy gate. The crash-loop fixture above closed at 898s, so the two classes take different paths to the same contradiction and the phase must settle under both. The verdict text needs no change — `failureReason` already reads "image pull is failing: … failed to resolve image: … not found". See t007.
 
 ## Source + Goal linkage
 
