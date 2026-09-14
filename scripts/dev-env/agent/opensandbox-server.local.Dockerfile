@@ -7,18 +7,23 @@
 # runners and must keep the digest pin; this sibling exists only so `dev-env.sh N
 # agent-up` can build a natively-runnable server for the CAPD mock cluster.
 #
-# Everything else — the pinned server version and the full resolved dependency
-# lock — is identical to the production image, and the same
-# `grep -qx opensandbox-server==<version>` release gate is enforced here.
+# Everything else — the pinned server version, the full resolved dependency
+# lock, and the perl-base CVE upgrade layer — is identical to the production
+# image, and the same `grep -qx opensandbox-server==<version>` release gate is
+# enforced here.
 #
 #   docker build -f scripts/dev-env/agent/opensandbox-server.local.Dockerfile \
 #     -t opensandbox-server:0.2.2-local deploy/opensandbox
 #
-# The base is pinned to the MULTI-ARCH INDEX digest of python:3.12.13-slim-trixie
+# The base is pinned to the MULTI-ARCH INDEX digest of python:3.12.14-slim-trixie
 # (not production's amd64-specific pin), so scripts/image-pin-validate.sh's
 # supply-chain gate is satisfied while `docker build` on Apple Silicon still
 # resolves the arm64 variant from the index.
-FROM python:3.12.13-slim-trixie@sha256:229a2c5bfa27522db7815ea81f9bed70af17ccb9de9fc7ad142b1877b5830d36
+FROM python:3.12.14-slim-trixie@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends --only-upgrade perl-base \
+    && rm -rf /var/lib/apt/lists/*
 
 ARG OPENSANDBOX_SERVER_VERSION=0.2.2
 
