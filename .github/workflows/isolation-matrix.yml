@@ -92,18 +92,32 @@ jobs:
         run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
       # ADR043's matrix: cross-workspace DENY, platform-service DENY, node and
       # cloud-metadata egress DENY, same-workspace and public-internet ALLOW.
-      # The harness body is the pre-ADR043 shared-namespace shape (two workspaces
-      # distinguished by label inside APPS_NS); it still exercises the real
-      # per-App and platform policies, which is what an admission regression
-      # would break. Re-running the per-namespace form needs two real workspaces
-      # and is recorded in the script header as the manual variant.
+      # The harness is the real ADR043 per-namespace shape: it provisions two
+      # disposable workspaces through the control-plane tenant API, waits for the
+      # NamespaceReconciler to build their `<ws>` namespaces, and plants the test
+      # Apps and probe pods inside them — so every cross-workspace cell crosses a
+      # genuinely different namespace, the boundary production enforces. It
+      # deletes the disposable tenant rows on every exit path, which is what makes
+      # the reconciler prune those namespaces again.
+      #
+      # Exit 2 is the harness's "I was not given what I need" code (missing tool,
+      # no control-plane forward), the same convention the sandbox leg uses: an
+      # operator to-do, not an isolation breach, so it reports as a notice and
+      # does not open the security label.
       - name: Tenant isolation matrix (ADR043)
         id: tenant
         run: |
           code=0
           bash scripts/verify-tenant-isolation.sh > tenant-isolation.txt 2>&1 || code=$?
           echo "code=$code" >> "$GITHUB_OUTPUT"
-          if [ "$code" = 0 ]; then echo "down=false" >> "$GITHUB_OUTPUT"; else echo "down=true" >> "$GITHUB_OUTPUT"; fi
+          if [ "$code" = 0 ]; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          elif [ "$code" = 2 ]; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::tenant isolation matrix could not run (exit 2 — missing tool or unreachable control plane on this runner); see the step log. Not treated as an isolation failure."
+          else
+            echo "down=true" >> "$GITHUB_OUTPUT"
+          fi
           cat tenant-isolation.txt
       - name: Open or update the tenant-isolation issue
         if: always() && steps.tenant.outputs.down == 'true'
