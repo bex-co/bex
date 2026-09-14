@@ -400,7 +400,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.resourcesEmptyAfterError": {
     message:
-      "No managed resources are linked yet. The last sync failed — check Sync History for the error, then fix the Blueprint and sync again.",
+      "No claimed resources. The last sync failed — check Sync History for the error, then retry after fixing the Blueprint.",
     description:
       "Blueprint managed-resources empty state when status is error after a sync",
   },
@@ -591,7 +591,8 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.stateCreated": {
     message: "Queued",
-    description: "Sync-run state: the run has been created but has not started.",
+    description:
+      "Sync-run state: the run has been created but has not started.",
   },
   "blueprints.stateRunning": {
     message: "Running",
