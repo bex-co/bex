@@ -1,6 +1,6 @@
 # w5 · m94 — CLI telemetry sender completeness: bex release version, launcher-native commands, exec-based provider launches
 
-**Worker:** worker5 **Goal:** every CLI telemetry row bex-api stores carries the bex launcher release next to the upstream pin, and the launcher-owned commands the upstream sender never sees — root `--version`, `bex upgrade`, and the `bex code` / `bex glm` provider launches that `exec` away — emit one Render-shaped event each under the same consent rules, so the CLI usage board can measure release adoption and agent-launch usage instead of labeling them as gaps. **Status:** todo (t001-t008 done; t009 closeout pending live board verification)
+**Worker:** worker5 **Goal:** every CLI telemetry row bex-api stores carries the bex launcher release next to the upstream pin, and the launcher-owned commands the upstream sender never sees — root `--version`, `bex upgrade`, and the `bex code` / `bex glm` provider launches that `exec` away — emit one Render-shaped event each under the same consent rules, so the CLI usage board can measure release adoption and agent-launch usage instead of labeling them as gaps. **Status:** done
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | [t006](done/t006.md) — **DONE** | Render parity                                                                                               | 30m | t005       |
 | [t007](done/t007.md) — **DONE** | Simplify                                                                                                    | 30m | t006       |
 | [t008](done/t008.md) — **DONE** | Test coverage                                                                                               | 45m | t006       |
-| t009 | Closeout                                                                                                    | 15m | t008       |
+| [t009](done/t009.md) — **DONE** | Closeout                                                                                                    | 15m | t008       |
 
 ## Definition of done
 
@@ -78,3 +78,20 @@ Three parallel reviews (reuse, quality, efficiency) ran over the whole change se
 - `cd lego/backend && go test ./...` — 62 packages green against a disposable PostgreSQL 17. One local-only failure, `TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest`, is a harness artifact and not a regression: PostgreSQL roles are cluster-wide, so grants left in the extra databases this session created block the test's own role cleanup. It passes once those are dropped, and CI gives each run a dedicated server. Verified, not assumed.
 - `python3 -m unittest scripts.test_cli_analytics` — 16 tests green, executing every committed panel query.
 - `bash scripts/gitops-validate.sh` — PASS.
+
+## Production closeout (t009, 2026-09-14)
+
+Shipped as `9d56330b7` (deploy.yml success 2026-09-11T06:03:21Z). Live verification today:
+
+1. **Migration present, view was stale.** `cli_telemetry_events.bex_version` existed, but `cli_analytics.events` still had the pre-m94 16-column shape (no `bex_version`). Re-ran `bash scripts/cli-analytics-bootstrap.sh` against production; the view now ends with `bex_version` (17 columns). Reused the existing reader password (sealed custody unchanged).
+2. **Real post-deploy rows carry both axes.** A tree-built launcher (`-X …cfg.Version=2.27.0 -X main.bexVersion=0.0.0-m94-verify`) against `api.bex.co` produced:
+
+   | command | completion_kind | cli_version | bex_version |
+   | --- | --- | --- | --- |
+   | `bex` | `version` | `2.27.0` | `0.0.0-m94-verify` |
+   | `bex workspaces` | `success` | `2.27.0` | `0.0.0-m94-verify` |
+   | `bex glm` (stub `claude`) | `success` | `2.27.0` | `0.0.0-m94-verify` |
+
+   Pre-m94 / headerless deliveries remain as `bex_version = ''` → view projects `unknown` (two retained rows). No fixture INSERT.
+3. **Board dimension is live.** `monitoring/grafana-dashboards-platform` already carries the `Bex release` variable (`SELECT DISTINCT bex_version …`), the release filter on every product panel, and the `Bex release adoption` panel. As `bex_cli_analytics`, the exact filter/adoption queries return `0.0.0-m94-verify` (1 installation / 2+ commands) and `unknown` (1 / 2); the reader still cannot `SELECT` the base table. `https://obs.bex.co/d/bex-cli-usage/cli-usage` still gates behind the ops OIDC login (302 → `/login`).
+4. **Ops residual (not DoD).** Argo `grafana` is `OutOfSync`: sync fails patching `grafana-dashboards-platform` because `metadata.annotations` exceeds 262144 bytes (`last-applied-configuration`). The live ConfigMap already has the m94 panels; further dashboard GitOps updates will stall until that annotation bloat is cleared. Filed as inbox `058`.
