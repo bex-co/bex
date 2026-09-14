@@ -24,6 +24,8 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/sync/semaphore"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -612,5 +614,149 @@ func TestTransientOriginFailureIsNotNegativelyCached(t *testing.T) {
 	origin.objs[key("flaky.txt")] = Object{Body: []byte("ok")}
 	if rec := do(h, http.MethodGet, "/flaky.txt"); rec.Code != http.StatusOK {
 		t.Fatalf("recovered origin => %d, want 200 (failure must not be cached)", rec.Code)
+	}
+}
+
+// --- w4/m101: custom headers on every resolved-site response class ---
+
+func markerHeaders() []appv1alpha1.StaticHeader {
+	return []appv1alpha1.StaticHeader{
+		{Path: "/*", Name: "X-Qa-Marker", Value: "m101"},
+		{Path: "/*", Name: "Content-Type", Value: "text/evil"},
+		{Path: "/*", Name: "Content-Length", Value: "999"},
+		{Path: "/*", Name: "Retry-After", Value: "999"},
+	}
+}
+
+func assertMarker(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	if got := rec.Header().Get("X-Qa-Marker"); got != "m101" {
+		t.Errorf("X-Qa-Marker = %q, want m101", got)
+	}
+	ct := rec.Header().Get("Content-Type")
+	if strings.Contains(ct, "evil") {
+		t.Errorf("Content-Type corrupted by custom rule: %q", ct)
+	}
+}
+
+func TestErrorResponsesCarryCustomHeaders(t *testing.T) {
+	t.Run("404 miss", func(t *testing.T) {
+		h, _ := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
+		rec := do(h, http.MethodGet, "/nope.html")
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("code = %d, want 404", rec.Code)
+		}
+		assertMarker(t, rec)
+	})
+
+	t.Run("400 invalid redirect", func(t *testing.T) {
+		h, _ := newTestHandler(t, Site{
+			Headers: markerHeaders(),
+			Routes:  []appv1alpha1.StaticRoute{{Type: "redirect", Source: "/go", Destination: "//evil.example"}},
+		}, nil)
+		rec := do(h, http.MethodGet, "/go")
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("code = %d, want 400", rec.Code)
+		}
+		assertMarker(t, rec)
+	})
+
+	t.Run("404 overlong path", func(t *testing.T) {
+		pad := maxObjectKeyBytes - len(key(""))
+		p := "/" + strings.Repeat("a", pad+1-len(".html")) + ".html"
+		h, _ := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
+		rec := do(h, http.MethodGet, p)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("code = %d, want 404", rec.Code)
+		}
+		assertMarker(t, rec)
+	})
+
+	t.Run("404 overlong rewrite target", func(t *testing.T) {
+		pad := maxObjectKeyBytes - len(key(""))
+		dest := "/" + strings.Repeat("b", pad+1-len(".html")) + ".html"
+		h, _ := newTestHandler(t, Site{
+			Headers: markerHeaders(),
+			Routes:  []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/short", Destination: dest}},
+		}, nil)
+		rec := do(h, http.MethodGet, "/short")
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("code = %d, want 404", rec.Code)
+		}
+		assertMarker(t, rec)
+	})
+
+	t.Run("413 oversize", func(t *testing.T) {
+		h, origin := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
+		origin.errs[key("big.bin")] = ErrObjectTooLarge
+		rec := do(h, http.MethodGet, "/big.bin")
+		if rec.Code != http.StatusRequestEntityTooLarge {
+			t.Fatalf("code = %d, want 413", rec.Code)
+		}
+		assertMarker(t, rec)
+	})
+
+	t.Run("502 origin denial", func(t *testing.T) {
+		h, origin := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
+		origin.errs[key("denied.bin")] = errors.New("api error AccessDenied")
+		rec := do(h, http.MethodGet, "/denied.bin")
+		if rec.Code != http.StatusBadGateway {
+			t.Fatalf("code = %d, want 502", rec.Code)
+		}
+		assertMarker(t, rec)
+	})
+
+	t.Run("503 origin overload keeps platform Retry-After", func(t *testing.T) {
+		h, origin := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
+		origin.errs[key("busy.bin")] = ErrOverloaded
+		rec := do(h, http.MethodGet, "/busy.bin")
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Fatalf("code = %d, want 503", rec.Code)
+		}
+		assertMarker(t, rec)
+		if got := rec.Header().Get("Retry-After"); got != "1" {
+			t.Errorf("Retry-After = %q, want platform 1 (not custom 999)", got)
+		}
+	})
+
+	t.Run("503 live-body shed keeps platform Retry-After", func(t *testing.T) {
+		h, _ := newTestHandler(t, Site{Headers: markerHeaders()}, map[string]Object{
+			key("index.html"): {Body: []byte("0123456789abcdef"), ContentType: "text/html"},
+		})
+		h.liveBodies = semaphore.NewWeighted(1) // body is 16 bytes — will not fit
+		rec := do(h, http.MethodGet, "/")
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Fatalf("code = %d, want 503", rec.Code)
+		}
+		assertMarker(t, rec)
+		if got := rec.Header().Get("Retry-After"); got != "1" {
+			t.Errorf("Retry-After = %q, want platform 1", got)
+		}
+	})
+}
+
+func TestUnresolvedHostAndMethodStayHeaderless(t *testing.T) {
+	h, _ := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "http://"+testHost+"/", nil)
+	req.Host = testHost
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("POST => %d, want 405", rec.Code)
+	}
+	if got := rec.Header().Get("X-Qa-Marker"); got != "" {
+		t.Errorf("405 must stay headerless, got X-Qa-Marker=%q", got)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "http://unknown.onbex.co/nope.html", nil)
+	req.Host = "unknown.onbex.co"
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown host => %d, want 404", rec.Code)
+	}
+	if got := rec.Header().Get("X-Qa-Marker"); got != "" {
+		t.Errorf("unknown-host 404 must stay headerless, got X-Qa-Marker=%q", got)
 	}
 }

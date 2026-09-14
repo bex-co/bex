@@ -426,17 +426,22 @@ function DnsRecordFieldsRow({
 }) {
   const { t } = useTranslations();
   if (!record) return null;
+  // Discriminate ownership TXT vs traffic CNAME/ALIAS so the four copy
+  // buttons in a pending-domain dialog do not share two identical names.
+  const type = record.type;
   return (
     <div className="grid gap-2 sm:grid-cols-3">
-      <RecordField label={t("services.domainRecordType")} value={record.type} />
+      <RecordField label={t("services.domainRecordType")} value={type} />
       <RecordField
         label={t("services.domainRecordHost")}
         value={record.name}
+        copyLabel={t("services.domainCopyHost", { type })}
         copy
       />
       <RecordField
         label={t("services.domainRecordTarget")}
         value={record.value}
+        copyLabel={t("services.domainCopyTarget", { type })}
         copy
       />
     </div>
@@ -480,10 +485,13 @@ function RecordField({
   label,
   value,
   copy,
+  copyLabel,
 }: {
   label: string;
   value: string;
   copy?: boolean;
+  /** Verb-shaped accessible name; required when `copy` is set. */
+  copyLabel?: string;
 }) {
   const { t } = useTranslations();
   return (
@@ -495,7 +503,7 @@ function RecordField({
         {copy && value ? (
           <CopyButton
             value={value}
-            label={label}
+            label={copyLabel ?? t("common.copyField", { field: label })}
             successText={t("services.domainCopied")}
             errorText={t("services.domainCopyError")}
           />

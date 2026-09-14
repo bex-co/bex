@@ -170,7 +170,9 @@ function PasswordField({ value }: { value: string }) {
           </Button>
           <CopyButton
             value={value}
-            label={t("databases.connPassword")}
+            label={t("common.copyField", {
+              field: t("databases.connPassword"),
+            })}
             successText={t("databases.copied")}
             errorText={t("databases.copyError")}
           />

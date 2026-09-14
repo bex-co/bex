@@ -1114,6 +1114,8 @@ function EnvDraftItem({
           aria-describedby={disabled ? permissionDescriptionID : undefined}
           onChange={(event) => onChange({ key: event.target.value })}
           className="min-w-0 font-mono text-sm"
+          // Key keeps the generic column name — its own value *is* the
+          // variable identity; interpolating would be circular (m101/t013).
           aria-label={t("services.envColKey")}
           aria-invalid={Boolean(error)}
           placeholder={t("services.envKeyPlaceholder")}
@@ -1140,7 +1142,11 @@ function EnvDraftItem({
           })
         }
         className="min-w-0 font-mono text-sm"
-        aria-label={t("services.envColValue")}
+        aria-label={
+          row.key.trim()
+            ? t("services.envValueFor", { name: row.key.trim() })
+            : t("services.envColValue")
+        }
         placeholder={
           row.originalKey && !row.valueChanged
             ? t("services.environmentUnchangedMasked")
@@ -1152,7 +1158,11 @@ function EnvDraftItem({
         variant="ghost"
         disabled={disabled}
         aria-describedby={disabled ? permissionDescriptionID : undefined}
-        aria-label={t("services.envDelete")}
+        aria-label={
+          row.key.trim()
+            ? t("services.envDeleteOne", { name: row.key.trim() })
+            : t("services.envDelete")
+        }
         onClick={() => onChange({ deleted: true })}
       >
         <Trash2 className="text-destructive" />
@@ -1202,6 +1212,7 @@ function FileDraftItem({
           onChange={(event) => onChange({ name: event.target.value })}
           onBlur={() => setTouched(true)}
           className="min-w-0 font-mono text-sm"
+          // File name keeps the generic column name, same decision as Key.
           aria-label={t("services.secretFileColName")}
           aria-invalid={showError}
           placeholder={t("services.secretFileNamePlaceholder")}
@@ -1224,6 +1235,17 @@ function FileDraftItem({
         variant="outline"
         disabled={disabled}
         aria-describedby={disabled ? permissionDescriptionID : undefined}
+        aria-label={
+          row.name.trim()
+            ? row.contentChanged
+              ? t("services.secretFileEditContentOne", {
+                  name: row.name.trim(),
+                })
+              : t("services.secretFileViewContentOne", {
+                  name: row.name.trim(),
+                })
+            : undefined
+        }
         onClick={onContent}
       >
         <Pencil />
@@ -1236,7 +1258,11 @@ function FileDraftItem({
         variant="ghost"
         disabled={disabled}
         aria-describedby={disabled ? permissionDescriptionID : undefined}
-        aria-label={t("services.secretFileDelete")}
+        aria-label={
+          row.name.trim()
+            ? t("services.secretFileDeleteOne", { name: row.name.trim() })
+            : t("services.secretFileDelete")
+        }
         onClick={() => onChange({ deleted: true })}
       >
         <Trash2 className="text-destructive" />

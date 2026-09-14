@@ -95,6 +95,6 @@ describe("EnvGroupEditors — role-gated writes", () => {
     expect(edit).toBeEnabled();
     await user.click(edit);
     expect(screen.getByRole("button", { name: "Add variable" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Delete" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Delete FOO" })).toBeEnabled();
   });
 });

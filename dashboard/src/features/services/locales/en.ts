@@ -449,11 +449,32 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.scalingTargetCPU": {
     message: "Target CPU %",
-    description: "Autoscaling target CPU utilisation input label",
+    description: "Autoscaling target CPU utilization input label",
   },
   "services.scalingTargetMemory": {
     message: "Target memory %",
-    description: "Autoscaling target memory utilisation input label",
+    description: "Autoscaling target memory utilization input label",
+  },
+  "services.scalingUnavailableTitle": {
+    message: "Scaling isn't available",
+    description:
+      "Scaling tab heading when this service type cannot be scaled (cron)",
+  },
+  "services.scalingUnavailableBody": {
+    message:
+      "Scaling applies to web, private, and background services with long-running instances. This service type has no replica count to adjust.",
+    description:
+      "Scaling tab explanation when reached by direct URL for an ineligible type",
+  },
+  "services.scalingValidationMinMax": {
+    message: "Min instances must be ≤ max instances.",
+    description: "Autoscaling form validation when min exceeds max",
+  },
+  "services.scalingValidationTargets": {
+    message:
+      "At least one utilization target (CPU or memory) must be enabled.",
+    description:
+      "Autoscaling form validation when both CPU and memory targets are off",
   },
   "services.scalingSave": {
     message: "Save",
@@ -673,6 +694,16 @@ const enServices: Record<string, TranslationEntry> = {
   "services.envDelete": {
     message: "Delete",
     description: "Environment row button to remove a variable",
+  },
+  "services.envValueFor": {
+    message: "Value for {name}",
+    description:
+      "Accessible name for a Value textbox once its Key is set (m101/t013)",
+  },
+  "services.envDeleteOne": {
+    message: "Delete {name}",
+    description:
+      "Accessible name for a Delete button once its Key is set (m101/t013)",
   },
   "services.envSave": {
     message: "Save",
@@ -1448,6 +1479,16 @@ const enServices: Record<string, TranslationEntry> = {
   "services.domainRecordTarget": {
     message: "Target",
     description: "Label for the DNS record target/value field",
+  },
+  "services.domainCopyHost": {
+    message: "Copy {type} host",
+    description:
+      "Accessible label for copying a DNS host field — type discriminates ownership TXT vs traffic CNAME",
+  },
+  "services.domainCopyTarget": {
+    message: "Copy {type} target",
+    description:
+      "Accessible label for copying a DNS target/value field — type discriminates ownership TXT vs traffic CNAME",
   },
   "services.domainDnsUnavailable": {
     message:
@@ -3923,6 +3964,22 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Description (optional)",
     description: "Placeholder for a service allowlist entry description",
   },
+  "services.networkingCIDR": {
+    message: "New CIDR block",
+    description: "Accessible label for the add-row CIDR input",
+  },
+  "services.networkingCIDRRule": {
+    message: "CIDR block for rule {number}",
+    description: "Accessible label for an existing allowlist CIDR row",
+  },
+  "services.networkingDescriptionLabel": {
+    message: "New rule description",
+    description: "Accessible label for the add-row description input",
+  },
+  "services.networkingDescriptionRule": {
+    message: "Description for rule {number}",
+    description: "Accessible label for an existing allowlist description row",
+  },
   "services.networkingInvalid": {
     message: "Enter a valid IPv4 or IPv6 CIDR block.",
     description: "Validation error for an invalid service allowlist CIDR",
@@ -4205,9 +4262,19 @@ const enServices: Record<string, TranslationEntry> = {
     message: "View contents",
     description: "Reveal or inspect secret-file contents in a dialog",
   },
+  "services.secretFileViewContentOne": {
+    message: "View contents of {name}",
+    description:
+      "Accessible name for View contents once the file has a name (m101/t013)",
+  },
   "services.secretFileEditContent": {
     message: "Edit contents",
     description: "Edit staged secret-file contents in a dialog",
+  },
+  "services.secretFileEditContentOne": {
+    message: "Edit contents of {name}",
+    description:
+      "Accessible name for Edit contents once the file has a name (m101/t013)",
   },
   "services.secretFileContentDialogTitle": {
     message: "Contents of {name}",
@@ -4233,6 +4300,11 @@ const enServices: Record<string, TranslationEntry> = {
   "services.secretFileDelete": {
     message: "Delete secret file",
     description: "Accessible label for a staged secret-file deletion",
+  },
+  "services.secretFileDeleteOne": {
+    message: "Delete secret file {name}",
+    description:
+      "Accessible name for Delete secret file once the file has a name (m101/t013)",
   },
   "services.envGroupsLinkedTitle": {
     message: "Linked Environment Groups",

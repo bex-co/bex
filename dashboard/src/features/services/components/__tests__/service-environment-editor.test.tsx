@@ -116,7 +116,7 @@ describe("ServiceEnvironmentEditor", () => {
       "Your role can’t make this change.",
     );
     await user.click(edit);
-    expect(screen.queryByRole("textbox", { name: "Value" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: /Value for / })).toBeNull();
     expect(save).not.toHaveBeenCalled();
 
     await user.click(screen.getAllByRole("button", { name: "Reveal" })[0]);
@@ -139,7 +139,7 @@ describe("ServiceEnvironmentEditor", () => {
     ).toBe(true);
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    expect(screen.getAllByRole("textbox", { name: "Value" })).not.toHaveLength(
+    expect(screen.getAllByRole("textbox", { name: /Value for / })).not.toHaveLength(
       0,
     );
     expect(revealEnv).not.toHaveBeenCalled();
@@ -166,7 +166,7 @@ describe("ServiceEnvironmentEditor", () => {
     renderEditor();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     await user.type(
-      screen.getAllByRole("textbox", { name: "Value" })[0],
+      screen.getAllByRole("textbox", { name: /Value for / })[0],
       "pending",
     );
 
@@ -176,14 +176,14 @@ describe("ServiceEnvironmentEditor", () => {
     // This last pre-revocation input event schedules the component render that
     // observes the freshly denied capability; all subsequent handlers are the
     // guarded versions.
-    await user.type(screen.getAllByRole("textbox", { name: "Value" })[0], "x");
+    await user.type(screen.getAllByRole("textbox", { name: /Value for / })[0], "x");
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "Your role can’t make this change.",
     );
     expect(
       screen
-        .getAllByRole("textbox", { name: "Value" })
+        .getAllByRole("textbox", { name: /Value for / })
         .every((input) => input.hasAttribute("disabled")),
     ).toBe(true);
     expect(screen.getByRole("button", { name: "Add variable" })).toBeDisabled();
@@ -219,7 +219,7 @@ describe("ServiceEnvironmentEditor", () => {
     const user = userEvent.setup();
     renderEditor();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
-    const valueInputs = screen.getAllByRole("textbox", { name: "Value" });
+    const valueInputs = screen.getAllByRole("textbox", { name: /Value for / });
     await user.type(valueInputs[0], "changed");
     expect(save).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
@@ -232,7 +232,7 @@ describe("ServiceEnvironmentEditor", () => {
     const user = userEvent.setup();
     renderEditor();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
-    const valueInputs = screen.getAllByRole("textbox", { name: "Value" });
+    const valueInputs = screen.getAllByRole("textbox", { name: /Value for / });
     await user.type(valueInputs[0], "replacement");
     await user.click(screen.getByRole("button", { name: "Save and deploy" }));
 
@@ -276,7 +276,7 @@ describe("ServiceEnvironmentEditor", () => {
     expect(
       (
         within(generatedRow!).getByRole("textbox", {
-          name: "Value",
+          name: "Value for NEW_SECRET",
         }) as HTMLInputElement
       ).value,
     ).toHaveLength(44);
@@ -302,7 +302,7 @@ describe("ServiceEnvironmentEditor", () => {
     renderEditor();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     await user.type(
-      screen.getAllByRole("textbox", { name: "Value" })[0],
+      screen.getAllByRole("textbox", { name: /Value for / })[0],
       "replacement",
     );
     await user.click(
@@ -342,8 +342,31 @@ describe("ServiceEnvironmentEditor", () => {
     await user.click(edit);
     expect(screen.getByRole("button", { name: "Add variable" })).toBeEnabled();
     expect(
-      screen.getAllByRole("button", { name: "Delete" }).length,
-    ).toBeGreaterThan(0);
+      screen.getByRole("button", { name: "Delete ALPHA" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete BETA" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Value for ALPHA" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Value for BETA" }),
+    ).toBeInTheDocument();
+    // Key textboxes keep the generic column name (their value is the identity).
+    expect(screen.getAllByRole("textbox", { name: "Key" })).toHaveLength(2);
+  });
+
+  it("keeps generic names on a still-empty new env row (m101/t013)", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Add variable" }),
+    );
+    expect(screen.getByRole("textbox", { name: /^Value$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Delete$/ })).toBeInTheDocument();
   });
 
   it("names the per-row copy button and toast after the one value copied (w6/044)", async () => {

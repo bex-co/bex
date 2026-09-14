@@ -319,3 +319,152 @@ func TestGraphQLDisableAutoscalingMutation(t *testing.T) {
 		t.Fatal("spec.autoscaling not cleared")
 	}
 }
+
+// --- w4/m101: refuse autoscaling for types without a replica set ---
+
+func validAutoscalingReq() SetAutoscalingRequest {
+	return SetAutoscalingRequest{
+		MinInstances:     1,
+		MaxInstances:     1,
+		TargetCPUPercent: int32p(60),
+	}
+}
+
+func TestSetAutoscalingRefusesCronAndStatic(t *testing.T) {
+	for _, svcType := range []string{appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite} {
+		t.Run(svcType, func(t *testing.T) {
+			svc, _ := newService(nil, typedApp("svc", svcType))
+			_, err := svc.SetAutoscaling(context.Background(), "svc", validAutoscalingReq())
+			if !errors.Is(err, core.ErrBadRequest) {
+				t.Fatalf("SetAutoscaling(%s) = %v, want bad-request", svcType, err)
+			}
+			if !strings.Contains(err.Error(), svcType) {
+				t.Errorf("error %q must name the service type", err)
+			}
+			if !strings.Contains(err.Error(), "autoscaling") {
+				t.Errorf("error %q must mention autoscaling", err)
+			}
+		})
+	}
+}
+
+func TestSetAutoscalingAllowsWorkerAndPrivate(t *testing.T) {
+	for _, svcType := range []string{
+		appv1alpha1.TypeWebService,
+		appv1alpha1.TypePrivateService,
+		appv1alpha1.TypeBackgroundWorker,
+	} {
+		t.Run(svcType, func(t *testing.T) {
+			app := typedApp("svc", svcType)
+			if svcType == appv1alpha1.TypeBackgroundWorker {
+				app.Spec.Tier = "starter"
+			}
+			svc, cl := newService(nil, app)
+			v, err := svc.SetAutoscaling(context.Background(), "svc", validAutoscalingReq())
+			if err != nil {
+				t.Fatalf("SetAutoscaling(%s): %v", svcType, err)
+			}
+			if !v.Enabled {
+				t.Fatalf("%s: expected enabled view, got %+v", svcType, v)
+			}
+			if as := getApp(t, cl, "svc").Spec.Autoscaling; as == nil || !as.Enabled {
+				t.Fatalf("%s: CR autoscaling not stored: %+v", svcType, as)
+			}
+		})
+	}
+}
+
+func TestGetAutoscalingNormalizesIneligibleStoredConfig(t *testing.T) {
+	// Stale enabled config on a cron (accepted before the type gate) must not
+	// keep echoing enabled:true — that is what made the accept-then-discard
+	// invisible.
+	cron := typedApp("cron", appv1alpha1.TypeCronJob)
+	cron.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{
+		Enabled: true, MinReplicas: 1, MaxReplicas: 1, TargetCPUPercent: int32p(60),
+	}
+	svc, _ := newService(nil, cron)
+	v, err := svc.GetAutoscaling(context.Background(), "cron")
+	if err != nil {
+		t.Fatalf("GetAutoscaling: %v", err)
+	}
+	if v.Enabled || v.MinInstances != 0 || v.MaxInstances != 0 {
+		t.Fatalf("ineligible GET must report disabled zeros, got %+v", v)
+	}
+}
+
+func TestDeleteAutoscalingClearsIneligibleStoredConfig(t *testing.T) {
+	cron := typedApp("cron", appv1alpha1.TypeCronJob)
+	cron.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{
+		Enabled: true, MinReplicas: 1, MaxReplicas: 1, TargetCPUPercent: int32p(60),
+	}
+	svc, cl := newService(nil, cron)
+	if err := svc.DeleteAutoscaling(context.Background(), "cron"); err != nil {
+		t.Fatalf("DeleteAutoscaling: %v", err)
+	}
+	if as := getApp(t, cl, "cron").Spec.Autoscaling; as != nil {
+		t.Fatalf("expected nil after delete, got %+v", as)
+	}
+}
+
+func TestGraphQLSetAutoscalingRefusesCron(t *testing.T) {
+	svc, cl := newService(nil, typedApp("cron", appv1alpha1.TypeCronJob))
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:  schema,
+		Context: context.Background(),
+		RequestString: `mutation {
+			setAutoscaling(id:"cron",minInstances:1,maxInstances:1,targetCPUPercent:60) {
+				enabled
+			}
+		}`,
+	})
+	if len(res.Errors) == 0 {
+		t.Fatal("expected GraphQL error refusing cron autoscaling")
+	}
+	msg := res.Errors[0].Error()
+	if !strings.Contains(msg, appv1alpha1.TypeCronJob) {
+		t.Errorf("error %q must name cron_job", msg)
+	}
+	if as := getApp(t, cl, "cron").Spec.Autoscaling; as != nil {
+		t.Fatalf("cron CR must remain without autoscaling, got %+v", as)
+	}
+}
+
+func TestApplyServicePatchAutoscalingRefusesCron(t *testing.T) {
+	svc, _ := newService(nil, typedApp("cron", appv1alpha1.TypeCronJob))
+	req := validAutoscalingReq()
+	_, err := svc.ApplyServicePatch(context.Background(), "cron", ServicePatch{Autoscaling: &req})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("ApplyServicePatch autoscaling on cron = %v, want bad-request", err)
+	}
+	if !strings.Contains(err.Error(), appv1alpha1.TypeCronJob) {
+		t.Errorf("error %q must name cron_job", err)
+	}
+}
+
+func TestCreateAutoscalingRefusesCronBlueprint(t *testing.T) {
+	svc, _ := newService(nil)
+	req := CreateRequest{
+		Name:     "nightly",
+		Type:     appv1alpha1.TypeCronJob,
+		Image:    "job:v1",
+		Schedule: "*/5 * * * *",
+		Command:  "bin/report",
+		Autoscaling: &SetAutoscalingRequest{
+			MinInstances: 1, MaxInstances: 1, TargetCPUPercent: int32p(60),
+		},
+	}
+	_, err := svc.Create(context.Background(), req)
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("Create cron with scaling = %v, want bad-request", err)
+	}
+	if !strings.Contains(err.Error(), appv1alpha1.TypeCronJob) {
+		t.Errorf("error %q must name cron_job", err)
+	}
+}

@@ -76,6 +76,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "没有匹配的页面或资源。",
     description: "Empty state in the workspace-wide topbar command search",
   },
+  "common.copyField": {
+    message: "复制{field}",
+    description:
+      "Accessible name for a copy control when the caller only has a field label (m101/t014)",
+  },
   "common.topbarNavigation": {
     message: "导航",
     description: "Page-links group in the workspace-wide topbar search",

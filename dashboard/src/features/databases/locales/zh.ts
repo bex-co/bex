@@ -702,6 +702,22 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description:
       "Placeholder for the optional per-entry allowlist description input",
   },
+  "databases.accessAllowListCIDR": {
+    message: "新 CIDR 网段",
+    description: "Accessible label for the add-row CIDR input",
+  },
+  "databases.accessAllowListCIDRRule": {
+    message: "规则 {number} 的 CIDR 网段",
+    description: "Accessible label for an existing allowlist CIDR row",
+  },
+  "databases.accessAllowListDescriptionLabel": {
+    message: "新规则描述",
+    description: "Accessible label for the add-row description input",
+  },
+  "databases.accessAllowListDescriptionRule": {
+    message: "规则 {number} 的描述",
+    description: "Accessible label for an existing allowlist description row",
+  },
   "databases.accessAllowListRemove": {
     message: "移除 {cidr}",
     description: "Accessible label to remove a CIDR chip",
@@ -746,6 +762,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "添加用户",
     description: "Access panel button to create a database user",
   },
+  "databases.accessUserName": {
+    message: "数据库用户名",
+    description: "Accessible label for the add-database-user name input",
+  },
   "databases.accessUserDelete": {
     message: "删除 {name}",
     description: "Accessible label to delete a database user",
@@ -753,6 +773,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.accessUserPassword": {
     message: "密码",
     description: "Label for a newly-created user's password",
+  },
+  "databases.accessUserPasswordCopy": {
+    message: "复制密码",
+    description: "Accessible label for copying a newly-created user password",
   },
   "databases.accessUserPasswordOnce": {
     message: "{name} 的密码（仅显示一次）：",

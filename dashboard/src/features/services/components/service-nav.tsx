@@ -109,10 +109,19 @@ export function serviceNavGroups(
   // has no long-running instance to mount a volume on, so offering the tab
   // there would lead to an Add Disk button that always 400s.
   const diskEligible = type === "web" || type === "private" || type === "worker";
+  // Scaling matches the same eligible set the API/operator honor for
+  // autoscaling (m101/t001+t002) — web, private, worker. Cron is omitted from
+  // the nav (Disk's pattern); a direct URL still reaches an explanation page.
+  const scalingEligible = diskEligible;
   const manageTail =
     type === null
       ? []
-      : [...(diskEligible ? [DISK] : []), SHELL, SCALING, PLAN];
+      : [
+          ...(diskEligible ? [DISK] : []),
+          SHELL,
+          ...(scalingEligible ? [SCALING] : []),
+          PLAN,
+        ];
   return [
     { items: topLevel },
     { labelKey: "common.navMonitorGroup", items: [EVENTS, LOGS, METRICS] },
