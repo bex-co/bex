@@ -192,6 +192,12 @@ Open inbox notes:
 
 - [098](098.md) — Seven `{count}` strings still break the native-plural rule `w6/done/062` set. The Blueprint review reads "1 resources to sync" live, and `(s)` survives in `envGroups.serviceCount` and `services.scaleSuccess`. All seven predate 062's close, and `locale-parity.test.ts` never checks that a `{count}` message uses plural keys (~40m) ← live `/qa-find-bugs` 2026-09-14 pass 26.
 
+- [099](099.md) — Env var values don't round-trip through the dashboard, and both failures are silent on save:
+  - **Control characters.** "Copy env vars" writes `CTRL="esc\u001bend"`, and "Import from .env" reads it back as `escu001bend`, which is then saved. Export uses `JSON.stringify` (`env-export.ts`), but the parser understands only `\n`, `\r` and `\t` (`dotenv-import.ts:79-88`).
+  - **Line breaks.** Every env value field is a single-line `<Input>` (`service-environment-editor.tsx:1159-1181`, `new-env-group-dialog.tsx:248-251`, `env-var-row.tsx:114`), so a pasted `first\nsecond` saved as `first second`.
+
+  (~55m, major) ← live `/qa-find-bugs` 2026-09-14 pass 30.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
