@@ -37,7 +37,8 @@ var memberGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"email":      gqlutil.StrField(func(m MemberView) any { return m.Email }),
 		"role":       gqlutil.StrField(func(m MemberView) any { return m.Role }),
 		"createdAt":  gqlutil.StrField(func(m MemberView) any { return m.CreatedAt }),
-		"mfaEnabled": gqlutil.BoolField(func(m MemberView) any { return m.MFAEnabled }),
+		"mfaEnabled":       gqlutil.BoolField(func(m MemberView) any { return m.MFAEnabled }),
+		"identityResolved": gqlutil.ReqBoolField(func(m MemberView) any { return m.IdentityResolved }),
 	},
 })
 

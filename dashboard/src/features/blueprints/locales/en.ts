@@ -396,7 +396,13 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.resourcesEmpty": {
     message: "No resources yet — sync the Blueprint to apply your render.yaml.",
-    description: "Blueprint managed-resources empty state",
+    description: "Blueprint managed-resources empty state (never synced)",
+  },
+  "blueprints.resourcesEmptyAfterError": {
+    message:
+      "No managed resources are linked yet. The last sync failed — check Sync History for the error, then fix the Blueprint and sync again.",
+    description:
+      "Blueprint managed-resources empty state when status is error after a sync",
   },
   // --- Sync history ---
   "blueprints.syncHistoryTitle": {

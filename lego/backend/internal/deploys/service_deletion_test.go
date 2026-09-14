@@ -42,7 +42,7 @@ func TestDeletingServiceHidesDeployHistory(t *testing.T) {
 
 	// Seed a real deploy so the assertion proves the deletion gate rather than an
 	// incidentally empty store.
-	d, err := ds.CreateDeploy(context.Background(), "srv-1", "manual", "web:v1", 1, store.CommitInfo{})
+	d, err := ds.CreateDeploy(context.Background(), "srv-1", "manual", "web:v1", 1, store.CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("seed deploy: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestDeletingServiceHidesDeployHistory(t *testing.T) {
 func TestActiveServiceDeployHistoryUnaffected(t *testing.T) {
 	ds := newFakeStore()
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
-	if _, err := ds.CreateDeploy(context.Background(), "srv-1", "manual", "web:v1", 1, store.CommitInfo{}); err != nil {
+	if _, err := ds.CreateDeploy(context.Background(), "srv-1", "manual", "web:v1", 1, store.CommitInfo{}, ""); err != nil {
 		t.Fatalf("seed deploy: %v", err)
 	}
 	list, err := svc.List(context.Background(), "web", ListFilter{})

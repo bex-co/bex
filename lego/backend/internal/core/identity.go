@@ -83,6 +83,17 @@ func IdentityFrom(ctx context.Context) (Identity, bool) {
 	return id, ok
 }
 
+// SubjectFrom returns Identity.Subject when the request carries an identity,
+// otherwise "". Used to stamp audit-shaped attribution (e.g. deploys.triggered_by)
+// without inventing a synthetic actor for unauthenticated paths.
+func SubjectFrom(ctx context.Context) string {
+	id, ok := IdentityFrom(ctx)
+	if !ok {
+		return ""
+	}
+	return id.Subject
+}
+
 // WithIdentity returns ctx carrying id — the auth middleware's setter, kept here
 // so the context key stays private to core (the only reader is Authorize).
 func WithIdentity(ctx context.Context, id Identity) context.Context {

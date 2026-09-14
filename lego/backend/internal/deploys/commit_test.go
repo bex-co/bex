@@ -131,7 +131,7 @@ func TestTriggerSkipsResolutionForImageBackedApp(t *testing.T) {
 func TestRollbackCopiesCommitFromTarget(t *testing.T) {
 	ds := newFakeStore()
 	target, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:v1", 1,
-		store.CommitInfo{Hash: "abc1234def5678", Message: "fix: header"})
+		store.CommitInfo{Hash: "abc1234def5678", Message: "fix: header"}, "")
 	if _, err := ds.CloseDeploy(context.Background(), target.ID, store.DeployLive, "web@sha256:aa"); err != nil {
 		t.Fatalf("close target: %v", err)
 	}

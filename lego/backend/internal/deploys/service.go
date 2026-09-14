@@ -53,14 +53,14 @@ type DeployStore interface {
 	// (w2/m10) — Cancel derives its build-Job identity from the stored value,
 	// never a fresh re-fetch (see buildJobName). commit is the resolved commit
 	// this deploy runs (w9/001), zero when unresolvable.
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error)
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
 	// LatestDeployCommit returns the newest non-empty commit for the app, or
 	// zero CommitInfo — rollout.Tracker carries it onto config_change rows.
 	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
 	// CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10)
 	// restoring image, provenance-tagged with the source deploy id and the
 	// target's own commit metadata (w9/001).
-	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo) (store.Deploy, error)
+	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
 	ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error)
 	GetDeploy(ctx context.Context, appID, deployID string) (store.Deploy, error)
 	// CloseDeploy transitions a still-open deploy row terminal, CAS-guarded
@@ -569,7 +569,14 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		return DeployView{}, err
 	}
 	releaseGeneration = patchedGeneration(previousGeneration, a.Generation)
-	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, releaseGeneration, commit)
+	// Deploy-hook URLs are unauthenticated; git paths use TriggerNewCommit
+	// elsewhere. Manual/API (and any other authenticated Trigger) stamps the
+	// request subject — including API keys — the same form audit uses (w4/072).
+	triggeredBy := ""
+	if trigger != store.TriggerDeployHook {
+		triggeredBy = core.SubjectFrom(ctx)
+	}
+	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, releaseGeneration, commit, triggeredBy)
 	if err != nil {
 		return DeployView{}, err
 	}
@@ -840,7 +847,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 	}
 	releaseGeneration = patchedGeneration(previousGeneration, a.Generation)
 	d, err := s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID, releaseGeneration,
-		store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage})
+		store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage}, core.SubjectFrom(ctx))
 	if err != nil {
 		return DeployView{}, err
 	}

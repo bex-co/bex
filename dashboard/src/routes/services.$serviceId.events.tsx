@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, AlertCircle, ListFilter, RefreshCcw } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { EventIcon } from "@/features/events/components/event-icon";
 import {
   eventIconClass,
@@ -350,6 +351,7 @@ function EventSummary({
   details: ServiceEventView["details"];
 }) {
   const { t } = useTranslations();
+  const actorLabel = useWorkspaceSubjectLabel(actor);
   const image = details?.image || null;
   const commitId = details?.commitId || null;
   const commitMessage = details?.commitMessage || null;
@@ -421,7 +423,9 @@ function EventSummary({
           {trigger ? (
             <span>{t(trigger as Parameters<typeof t>[0])}</span>
           ) : null}
-          {actor ? <span>{t("services.eventsActor", { actor })}</span> : null}
+          {actor ? (
+            <span>{t("services.eventsActor", { actor: actorLabel })}</span>
+          ) : null}
           {deployId ? (
             <span className="font-mono">
               {t("services.eventsDeployReference", { id: deployId })}

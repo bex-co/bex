@@ -51,3 +51,18 @@ export function maxmemoryPolicyToUi(apiValue: string): string {
     ? hyphenated
     : apiValue;
 }
+
+/** Persistence modes offered at create and on the detail editor (w4/066). */
+export const PERSISTENCE_MODES = [
+  "journal-snapshot",
+  "snapshot",
+  "off",
+] as const;
+
+/** Normalize underscored API reads onto the hyphen UI vocabulary. */
+export function persistenceModeToUi(apiValue: string): string {
+  const hyphenated = apiValue.replace(/_/g, "-");
+  return (PERSISTENCE_MODES as readonly string[]).includes(hyphenated)
+    ? hyphenated
+    : apiValue;
+}

@@ -98,6 +98,7 @@ describe("TeamPanel", () => {
         role: "ADMIN",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
       {
         subject: "id-bob",
@@ -106,6 +107,7 @@ describe("TeamPanel", () => {
         role: "VIEWER",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     render(<TeamPanel />);
@@ -122,6 +124,7 @@ describe("TeamPanel", () => {
         role: "ADMIN",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     render(<TeamPanel />);
@@ -139,6 +142,7 @@ describe("TeamPanel", () => {
         role: "VIEWER",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     render(<TeamPanel />);
@@ -155,6 +159,7 @@ describe("TeamPanel", () => {
         role: "VIEWER",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     render(<TeamPanel />);
@@ -170,6 +175,7 @@ describe("TeamPanel", () => {
         role: "VIEWER",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     render(<TeamPanel />);
@@ -189,6 +195,7 @@ describe("TeamPanel", () => {
         role: "VIEWER",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     render(<TeamPanel />);
@@ -258,6 +265,7 @@ describe("TeamPanel", () => {
         role: "ADMIN",
         createdAt: null,
         mfaEnabled: true,
+        identityResolved: true,
       },
       {
         subject: "id-plain",
@@ -266,6 +274,7 @@ describe("TeamPanel", () => {
         role: "VIEWER",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     render(<TeamPanel />);
@@ -284,6 +293,7 @@ describe("TeamPanel", () => {
         role: "ADMIN",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
       {
         subject: "id-bob",
@@ -292,6 +302,7 @@ describe("TeamPanel", () => {
         role: "VIEWER",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     teamState.invites = [
@@ -328,6 +339,7 @@ describe("TeamPanel", () => {
         role: "ADMIN",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     rerender(<TeamPanel />);
@@ -350,6 +362,7 @@ describe("TeamPanel", () => {
         role: "VIEWER",
         createdAt: null,
         mfaEnabled: false,
+        identityResolved: true,
       },
     ];
     removeMember.mockResolvedValue(true);

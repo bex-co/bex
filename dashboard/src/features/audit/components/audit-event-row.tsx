@@ -1,6 +1,7 @@
 import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { LocalDateTime } from "@/common/components/local-time";
 import type { AuditEvent } from "@/features/audit/types";
 
@@ -13,6 +14,7 @@ export interface AuditEventRowProps {
  *  features/team/components/member-row.tsx. */
 export function AuditEventRow({ event }: AuditEventRowProps) {
   const { t } = useTranslations();
+  const actor = useWorkspaceSubjectLabel(event.actor ?? "");
 
   return (
     <TableRow>
@@ -22,8 +24,8 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
         <LocalDateTime value={event.timestamp} fallback={null} />
       </TableCell>
-      <TableCell className="max-w-[16rem] truncate font-mono text-sm">
-        {event.actor || t("audit.actorUnknown")}
+      <TableCell className="max-w-[16rem] truncate text-sm">
+        {event.actor ? actor : t("audit.actorUnknown")}
         {event.actorMethod ? (
           <span className="text-muted-foreground block text-xs">
             {event.actorMethod}

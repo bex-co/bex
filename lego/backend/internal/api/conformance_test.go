@@ -59,13 +59,13 @@ type conformDeployStore struct {
 	byApp map[string][]store.Deploy
 }
 
-func (s *conformDeployStore) CreateDeploy(_ context.Context, _, _, _ string, _ int64, _ store.CommitInfo) (store.Deploy, error) {
+func (s *conformDeployStore) CreateDeploy(_ context.Context, _, _, _ string, _ int64, _ store.CommitInfo, _ string) (store.Deploy, error) {
 	return store.Deploy{}, errors.New("conformDeployStore: CreateDeploy not expected in conformance tests")
 }
 func (s *conformDeployStore) LatestDeployCommit(_ context.Context, _ string) (store.CommitInfo, error) {
 	return store.CommitInfo{}, errors.New("conformDeployStore: LatestDeployCommit not expected")
 }
-func (s *conformDeployStore) CreateRollbackDeploy(_ context.Context, _, _, _ string, _ int64, _ store.CommitInfo) (store.Deploy, error) {
+func (s *conformDeployStore) CreateRollbackDeploy(_ context.Context, _, _, _ string, _ int64, _ store.CommitInfo, _ string) (store.Deploy, error) {
 	return store.Deploy{}, errors.New("conformDeployStore: CreateRollbackDeploy not expected")
 }
 func (s *conformDeployStore) ListDeploys(_ context.Context, appID string, _ store.DeployFilter) ([]store.Deploy, error) {

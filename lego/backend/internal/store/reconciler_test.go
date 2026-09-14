@@ -1259,7 +1259,7 @@ func TestReconcileRollbackDeployEmitsNoBuildFacts(t *testing.T) {
 
 	// Roll back to it: the new row is born with the restored image (the
 	// CreateRollbackDeploy contract), then converges live as generation 2.
-	rb, err := st.CreateRollbackDeploy(ctx, row.ID, "reg/web:gen-1@sha256:c0dd", buildDeployID, 2, CommitInfo{})
+	rb, err := st.CreateRollbackDeploy(ctx, row.ID, "reg/web:gen-1@sha256:c0dd", buildDeployID, 2, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("create rollback deploy: %v", err)
 	}
@@ -1319,7 +1319,7 @@ func TestRecordDeploySupersededRollbackEmitsNoBuildFacts(t *testing.T) {
 		t.Fatalf("clear the create row: %v", err)
 	}
 
-	rb, err := st.CreateRollbackDeploy(ctx, row.ID, "reg/web:gen-1@sha256:c0dd", deploys[0].ID, 2, CommitInfo{})
+	rb, err := st.CreateRollbackDeploy(ctx, row.ID, "reg/web:gen-1@sha256:c0dd", deploys[0].ID, 2, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("create rollback deploy: %v", err)
 	}
@@ -1383,7 +1383,7 @@ func TestReconcileOverlapRecordsActiveLiveBeforeLatestQueuedDeploy(t *testing.T)
 	if first.Status != DeployBuildInProgress {
 		t.Fatalf("generation 1 status = %q, want build_in_progress", first.Status)
 	}
-	second, err := st.CreateDeploy(ctx, row.ID, TriggerNewCommit, "", 2, CommitInfo{})
+	second, err := st.CreateDeploy(ctx, row.ID, TriggerNewCommit, "", 2, CommitInfo{}, "")
 	if err != nil || second.Status != DeployQueued {
 		t.Fatalf("overlapping generation 2 = %+v (err %v), want queued", second, err)
 	}

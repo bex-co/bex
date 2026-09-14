@@ -110,7 +110,7 @@ func staticLogs(lines map[string][]string) logs.PodLogSource {
 // other methods satisfy deploys.DeployStore but are not part of this test.
 type deployHookStore struct{}
 
-func (deployHookStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, _ store.CommitInfo) (store.Deploy, error) {
+func (deployHookStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, _ store.CommitInfo, _ string) (store.Deploy, error) {
 	return store.Deploy{
 		ID:         "dep-public-hook",
 		AppID:      appID,
@@ -125,7 +125,7 @@ func (deployHookStore) LatestDeployCommit(context.Context, string) (store.Commit
 	return store.CommitInfo{}, nil
 }
 
-func (deployHookStore) CreateRollbackDeploy(context.Context, string, string, string, int64, store.CommitInfo) (store.Deploy, error) {
+func (deployHookStore) CreateRollbackDeploy(context.Context, string, string, string, int64, store.CommitInfo, string) (store.Deploy, error) {
 	return store.Deploy{}, errors.New("unexpected CreateRollbackDeploy")
 }
 

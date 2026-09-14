@@ -162,7 +162,7 @@ func reloadDeploy(t *testing.T, st *memStore, appID, deployID string) Deploy {
 func TestQueuedDeployBehindFailedBuildReachesTerminalStates(t *testing.T) {
 	rec, st, desired, first, second := newQueuedBehindFailureFixture(t,
 		func(m *memStore, appID string) (Deploy, error) {
-			return m.CreateDeploy(context.Background(), appID, TriggerAPI, "", 2, CommitInfo{})
+			return m.CreateDeploy(context.Background(), appID, TriggerAPI, "", 2, CommitInfo{}, "")
 		})
 
 	cr := crAdoptedPendingAfterBuildFailure(first.Generation, second.Generation)
@@ -197,7 +197,7 @@ func TestQueuedDeployBehindFailedBuildReachesTerminalStates(t *testing.T) {
 func TestRollbackQueuedBehindFailedBuildReachesTerminalState(t *testing.T) {
 	rec, st, desired, first, rollback := newQueuedBehindFailureFixture(t,
 		func(m *memStore, appID string) (Deploy, error) {
-			return m.CreateRollbackDeploy(context.Background(), appID, "web:v1", "dep-previous", 2, CommitInfo{})
+			return m.CreateRollbackDeploy(context.Background(), appID, "web:v1", "dep-previous", 2, CommitInfo{}, "")
 		})
 	if rollback.Trigger != TriggerRollback {
 		t.Fatalf("fixture trigger = %q, want rollback", rollback.Trigger)

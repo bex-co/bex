@@ -48,6 +48,15 @@ export function MemberRow({
       <TableCell className="break-all">
         <div className="flex items-center gap-2">
           <span>{identity}</span>
+          {!member.identityResolved ? (
+            <Badge
+              variant="outline"
+              className="text-muted-foreground"
+              title={t("team.identityUnresolvedTooltip")}
+            >
+              {t("team.identityUnresolved")}
+            </Badge>
+          ) : null}
           {member.mfaEnabled ? (
             <Badge
               variant="outline"

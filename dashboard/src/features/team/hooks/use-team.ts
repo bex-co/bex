@@ -29,6 +29,7 @@ function toMembers(
       role: (m.role as Role) ?? "VIEWER",
       createdAt: m.createdAt,
       mfaEnabled: m.mfaEnabled ?? false,
+      identityResolved: m.identityResolved ?? true,
     }));
 }
 

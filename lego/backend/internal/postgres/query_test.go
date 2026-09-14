@@ -54,9 +54,9 @@ func (c *queryAuthzChecker) Check(_ context.Context, _, relation, _ string) (boo
 	return c.allow, nil
 }
 
-// TestMapPGError checks the driver-error → value-free sentinel mapping without a
-// database: read-only and timeout classes get their own sentinels; any other DB
-// error surfaces only its SQLSTATE (never the Postgres message).
+// TestMapPGError checks the driver-error → sentinel mapping without a database:
+// read-only and timeout get dedicated sentinels; schema/syntax classes surface
+// Message (+ Position); integrity classes stay SQLSTATE-only (w4/071).
 func TestMapPGError(t *testing.T) {
 	if got := mapPGError(nil); got != nil {
 		t.Fatalf("nil => %v", got)
@@ -78,17 +78,43 @@ func TestMapPGError(t *testing.T) {
 	if got := mapPGError(bodyLen); !errors.Is(got, errQueryResultTooLarge) || !errors.Is(got, core.ErrBadRequest) {
 		t.Errorf("oversized protocol body => %v, want errQueryResultTooLarge wrapping ErrBadRequest", got)
 	}
-	// Syntax error echoes a query token in .Message; the mapped error must not.
-	syn := &pgconn.PgError{Code: pgerrcode.SyntaxError, Message: `syntax error at or near "SECRETVALUE"`}
+	// Schema/syntax: Message (+ Position) reaches the caller — it only quotes
+	// their own SQL / catalog identifiers (w4/071).
+	syn := &pgconn.PgError{
+		Code:     pgerrcode.SyntaxError,
+		Message:  `syntax error at or near "selct"`,
+		Position: 1,
+	}
 	got := mapPGError(syn)
 	if !errors.Is(got, core.ErrBadRequest) {
 		t.Errorf("syntax => %v, want ErrBadRequest", got)
 	}
-	if strings.Contains(got.Error(), "SECRETVALUE") {
-		t.Errorf("mapped error leaked the Postgres message: %q", got.Error())
+	if !strings.Contains(got.Error(), `syntax error at or near "selct"`) {
+		t.Errorf("syntax mapped error missing Message: %q", got.Error())
 	}
-	if !strings.Contains(got.Error(), pgerrcode.SyntaxError) {
-		t.Errorf("mapped error should carry the SQLSTATE: %q", got.Error())
+	if !strings.Contains(got.Error(), "at character 1") {
+		t.Errorf("syntax mapped error missing Position: %q", got.Error())
+	}
+	undef := &pgconn.PgError{Code: pgerrcode.UndefinedColumn, Message: `column "nosuchcol" does not exist`}
+	got = mapPGError(undef)
+	if !errors.Is(got, core.ErrBadRequest) || !strings.Contains(got.Error(), `column "nosuchcol" does not exist`) {
+		t.Errorf("undefined_column => %v, want Message", got)
+	}
+	multi := &pgconn.PgError{Code: pgerrcode.SyntaxError, Message: "cannot insert multiple commands into a prepared statement"}
+	if got := mapPGError(multi); !errors.Is(got, errQueryMultiStatement) {
+		t.Errorf("multi-statement => %v, want errQueryMultiStatement", got)
+	}
+	// Integrity: Message quotes a stored/literal value — keep SQLSTATE-only.
+	uniq := &pgconn.PgError{Code: pgerrcode.UniqueViolation, Message: `duplicate key value violates unique constraint "t_pkey" DETAIL: Key (id)=(SECRETVALUE) already exists.`}
+	got = mapPGError(uniq)
+	if !errors.Is(got, core.ErrBadRequest) {
+		t.Errorf("unique => %v, want ErrBadRequest", got)
+	}
+	if strings.Contains(got.Error(), "SECRETVALUE") {
+		t.Errorf("integrity mapped error leaked the Postgres message: %q", got.Error())
+	}
+	if !strings.Contains(got.Error(), pgerrcode.UniqueViolation) {
+		t.Errorf("integrity mapped error should carry the SQLSTATE: %q", got.Error())
 	}
 }
 
@@ -343,6 +369,51 @@ func TestExecuteQueryRESTAndGraphQL(t *testing.T) {
 	}
 	if got, want := fmt.Sprint(modes), "[true false]"; got != want {
 		t.Fatalf("read-only modes = %s, want %s", got, want)
+	}
+}
+
+// TestExecuteQueryErrorSurfacesRESTAndGraphQL pins that mapPGError's schema
+// Message reaches every wire surface unchanged — REST body, GraphQL errors[],
+// and (by the same Service.Query path) MCP (w4/071).
+func TestExecuteQueryErrorSurfacesRESTAndGraphQL(t *testing.T) {
+	svc, _ := newService()
+	seedDatabaseAt(t, svc, "err-db", "postgres://resolved/uri")
+	svc.queryExecutor = func(context.Context, string, string, queryLimits, bool) (QueryResult, error) {
+		return QueryResult{}, mapPGError(&pgconn.PgError{
+			Code:    pgerrcode.UndefinedColumn,
+			Message: `column "nosuchcol" does not exist`,
+		})
+	}
+	ctx := context.Background()
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/postgres/err-db/query", strings.NewReader(`{"sql":"SELECT nosuchcol"}`)).WithContext(ctx))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("REST query => %d: %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), "nosuchcol") {
+		t.Fatalf("REST body missing Message: %s", rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), "SQLSTATE") {
+		t.Fatalf("REST body still collapsed to SQLSTATE: %s", rec.Body)
+	}
+
+	schema, err := pgGQLSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	gqlResult := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { executeDatabaseQuery(id:"err-db", sql:"SELECT nosuchcol") { rowCount } }`,
+		Context:       ctx,
+	})
+	if len(gqlResult.Errors) == 0 {
+		t.Fatal("GraphQL query: want error")
+	}
+	if !strings.Contains(gqlResult.Errors[0].Message, `column "nosuchcol" does not exist`) {
+		t.Fatalf("GraphQL error missing Message: %v", gqlResult.Errors)
 	}
 }
 

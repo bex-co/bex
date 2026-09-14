@@ -59,10 +59,11 @@ const (
 
 // ServiceEventRow is one row of the composed feed — the raw projection, before
 // internal/events maps it onto Render's event vocabulary. Deploy rows fill
-// DeployID/Trigger/Status; audit rows fill Verb/Caller and the typed per-verb
-// detail fields. No column here can carry a free-form value: deploy rows hold
-// ids and a status enum, audit rows hold a verb name, a caller subject, and
-// typed scalars mirroring audit_events' typed columns.
+// DeployID/Trigger/Status and Caller (the opener's subject, w4/072); audit rows
+// fill Verb/Caller and the typed per-verb detail fields. No column here can
+// carry a free-form value: deploy rows hold ids, a status enum, and the same
+// identity subject audit_events.caller stores; audit rows hold a verb name, a
+// caller subject, and typed scalars mirroring audit_events' typed columns.
 type ServiceEventRow struct {
 	// Key is the row's stable identity within the feed: "<source row id>:<phase>"
 	// for a deploy ("dep-abc:started"), "<audit row id>:" for an audit event. It
@@ -98,9 +99,9 @@ type ServiceEventRow struct {
 	// When the deploy finished (terminal status reached); nil for non-deploy or ongoing. (w1/m47)
 	FinishedAt *time.Time
 
-	// Audit rows only.
-	Verb   string // e.g. "apps.Suspend"
-	Caller string // core.Identity.Subject
+	// Audit rows and deploy rows (w4/072). Same subject form as audit_events.caller.
+	Verb   string // e.g. "apps.Suspend"; empty on deploy rows
+	Caller string // core.Identity.Subject; empty when the source has none
 	// Typed per-verb detail fields from audit_events — nil for every other verb.
 	PlanFrom           *string
 	PlanTo             *string
@@ -239,7 +240,7 @@ WITH feed AS (
            ''::text                            AS pre_deploy_status,
            ''::text                            AS failure_reason,
            ''::text                            AS verb,
-           ''::text                            AS caller,
+           d.triggered_by                      AS caller,
            NULL::text                          AS plan_from,
            NULL::text                          AS plan_to,
            NULL::integer                       AS instance_count_from,
@@ -285,7 +286,7 @@ WITH feed AS (
            d.pre_deploy_status,
            d.failure_reason,
            ''::text,
-           ''::text,
+           d.triggered_by,
            NULL::text,
            NULL::text,
            NULL::integer,
@@ -525,7 +526,11 @@ SELECT h.event_key AS key,
            ELSE ''
        END AS failure_reason,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.verb ELSE '' END AS verb,
-       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.caller ELSE '' END AS caller,
+       CASE
+           WHEN h.source = '` + EventSourceAudit + `' THEN a.caller
+           WHEN h.source = '` + EventSourceDeploy + `' THEN d.triggered_by
+           ELSE ''
+       END AS caller,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.plan_from END AS plan_from,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.plan_to END AS plan_to,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.instance_count_from END AS instance_count_from,

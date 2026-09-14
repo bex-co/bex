@@ -25,6 +25,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -91,6 +92,77 @@ func TestPrefixWorkspaceScoped(t *testing.T) {
 	o.Workspace = ""
 	if got, want := o.Prefix(), "mysite/rev-3/"; got != want {
 		t.Errorf("unlabeled Prefix() = %q, want %q", got, want)
+	}
+}
+
+// TestPurgeJobNameBoundary pins Kubernetes' 63-char DNS-label cap for the
+// terminal static-site purge Job (w4/064). Parent length 48 still fits the
+// short form; 49+ must use the budgeted fallback (44-char parent + 12-hex
+// UID hash), never the old %.45s off-by-one that produced 64-char names.
+func TestPurgeJobNameBoundary(t *testing.T) {
+	o := testOptions()
+	const uid = "15c840e0-ff4c-46bf-aec6-b7de5dfa78e9"
+	const otherUID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+
+	for _, n := range []int{48, 49, 50, 63} {
+		parent := strings.Repeat("a", n)
+		job := PurgeJob(parent, uid, "tea-aaaaaaaaaaaaaaaaaaaa", "tea-aaaaaaaaaaaaaaaaaaaa",
+			o.Store, "bex-system", "", "")
+		name := job.Name
+		if len(name) > 63 {
+			t.Errorf("parent length %d: Job name %q is %d chars, want ≤63", n, name, len(name))
+		}
+		if errs := validation.IsDNS1123Label(name); len(errs) > 0 {
+			t.Errorf("parent length %d: Job name %q is not a DNS label: %v", n, name, errs)
+		}
+		if n == 48 {
+			if len(name) != 63 {
+				t.Errorf("parent length 48: want short-form length 63, got %d (%q)", len(name), name)
+			}
+			if !strings.HasPrefix(name, "purge-"+parent+"-") {
+				t.Errorf("parent length 48: short form must keep the full parent, got %q", name)
+			}
+		}
+		if n >= 49 {
+			if !strings.HasPrefix(name, "purge-") || len(name) != 63 {
+				t.Errorf("parent length %d: fallback must be exactly 63 chars, got %d (%q)", n, len(name), name)
+			}
+			// 6 ("purge-") + 44 (parent budget) + 1 ("-") + 12 (hex) = 63
+			if got := name[len("purge-") : len("purge-")+44]; got != parent[:44] {
+				t.Errorf("parent length %d: truncated parent = %q, want %q", n, got, parent[:44])
+			}
+		}
+	}
+
+	// Real tenant-prefixed static-site shape from the live 064 fixture (50 chars).
+	tenantParent := "tea-d98210cbbpdc73dcrkvg-qa-20260911-b83d2f-static"
+	if len(tenantParent) != 50 {
+		t.Fatalf("fixture parent length = %d, want 50", len(tenantParent))
+	}
+	a := PurgeJob(tenantParent, uid, "tea-d98210cbbpdc73dcrkvg", "tea-d98210cbbpdc73dcrkvg",
+		o.Store, "bex-system", "", "")
+	b := PurgeJob(tenantParent, uid, "tea-d98210cbbpdc73dcrkvg", "tea-d98210cbbpdc73dcrkvg",
+		o.Store, "bex-system", "", "")
+	c := PurgeJob(tenantParent, otherUID, "tea-d98210cbbpdc73dcrkvg", "tea-d98210cbbpdc73dcrkvg",
+		o.Store, "bex-system", "", "")
+	if len(a.Name) > 63 {
+		t.Errorf("tenant-prefixed Job name %q is %d chars, want ≤63", a.Name, len(a.Name))
+	}
+	if errs := validation.IsDNS1123Label(a.Name); len(errs) > 0 {
+		t.Errorf("tenant-prefixed Job name %q is not a DNS label: %v", a.Name, errs)
+	}
+	if a.Name != b.Name {
+		t.Errorf("same UID must be deterministic: %q vs %q", a.Name, b.Name)
+	}
+	if a.Name == c.Name {
+		t.Errorf("different UIDs must produce distinct Job names, both %q", a.Name)
+	}
+
+	// Short parents keep the untruncated form (UID separation via 8 hex).
+	short := PurgeJob("web", uid, "tea-aaaaaaaaaaaaaaaaaaaa", "tea-aaaaaaaaaaaaaaaaaaaa",
+		o.Store, "bex-system", "", "")
+	if wantPrefix := "purge-web-"; !strings.HasPrefix(short.Name, wantPrefix) || len(short.Name) != len(wantPrefix)+8 {
+		t.Errorf("short parent name = %q, want purge-web-<8hex>", short.Name)
 	}
 }
 

@@ -377,7 +377,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group linked-services card title",
   },
   "envGroups.servicesDescription": {
-    message: "关联或取消关联都会重新部署受影响的服务。",
+    message: "关联或取消关联都会重新部署每个受影响的服务。",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {

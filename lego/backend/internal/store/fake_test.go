@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -235,7 +236,7 @@ func (m *memStore) slugTaken(slug string) bool {
 	return false
 }
 
-func (m *memStore) CreateApp(_ context.Context, a App) (App, error) {
+func (m *memStore) CreateApp(ctx context.Context, a App) (App, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.tenants[a.TenantID]; !ok {
@@ -257,7 +258,7 @@ func (m *memStore) CreateApp(_ context.Context, a App) (App, error) {
 	a.CreatedAt = time.Now()
 	m.apps[a.ID] = a
 	now := time.Now()
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: a.ID, Trigger: TriggerCreate, Image: a.Image, Generation: 1, Status: DeployCreated, CreatedAt: now, UpdatedAt: now}
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: a.ID, Trigger: TriggerCreate, Image: a.Image, Generation: 1, TriggeredBy: core.SubjectFrom(ctx), Status: DeployCreated, CreatedAt: now, UpdatedAt: now}
 	m.deploys[d.ID] = d
 	return a, nil
 }
@@ -643,7 +644,7 @@ func (m *memStore) CompactUsage(_ context.Context, before time.Time) (UsageCompa
 	return res, nil
 }
 
-func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit CommitInfo) (Deploy, error) {
+func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.apps[appID]; !ok {
@@ -651,7 +652,7 @@ func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string,
 	}
 	now := time.Now()
 	status := m.prepareDeployCreate(appID, generation, now)
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == DeployCanceled {
 		d.FinishedAt = &now
 	}
@@ -681,7 +682,7 @@ func (m *memStore) LatestDeployCommit(_ context.Context, appID string) (CommitIn
 	return CommitInfo{Hash: best.Commit, Message: best.CommitMessage, AuthorAt: best.CommitAuthorAt}, nil
 }
 
-func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo) (Deploy, error) {
+func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.apps[appID]; !ok {
@@ -691,7 +692,7 @@ func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbac
 	status := m.prepareDeployCreate(appID, generation, now)
 	d := Deploy{
 		ID: ids.New(ids.Deploy), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now,
+		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now,
 	}
 	if status == DeployCanceled {
 		d.FinishedAt = &now

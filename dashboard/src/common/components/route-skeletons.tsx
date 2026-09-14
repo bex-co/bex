@@ -2051,7 +2051,7 @@ export function KeyValueOverviewSkeleton() {
       route="keyvalue-overview"
       className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10"
     >
-      <ResponsiveSectionNavigationSkeleton count={6} />
+      <ResponsiveSectionNavigationSkeleton count={7} />
       <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
         <Region name="metadata">
           <EditableMetadataSkeleton rows={8} />
@@ -2066,6 +2066,9 @@ export function KeyValueOverviewSkeleton() {
           <ReservedCardSkeleton className="h-[207px] sm:h-[167px]" />
         </Region>
         <Region name="maxmemory-policy">
+          <ReservedCardSkeleton className="h-[174px] sm:h-[134px]" />
+        </Region>
+        <Region name="persistence-mode">
           <ReservedCardSkeleton className="h-[174px] sm:h-[134px]" />
         </Region>
         <Region

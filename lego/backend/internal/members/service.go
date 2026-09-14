@@ -203,14 +203,17 @@ type Mailer interface {
 // (""/unset) when the identity reader is nil or a lookup misses (w6/m10).
 // Role is UPPERCASE (Render enum). MFAEnabled mirrors Render's per-member
 // otpEnabled under bex's own owners-API spelling — honest-false when the
-// identity reader is nil or the lookup misses, like Email.
+// identity reader is nil or the lookup misses, like Email. IdentityResolved
+// is true when the identity reader is unwired (cannot distinguish) or the
+// lookup succeeds; false only when a wired reader misses (w4/070).
 type MemberView struct {
-	Subject    string `json:"subject"`
-	UserID     string `json:"userId"`
-	Email      string `json:"email"`
-	Role       string `json:"role"`
-	CreatedAt  string `json:"createdAt"`
-	MFAEnabled bool   `json:"mfaEnabled"`
+	Subject          string `json:"subject"`
+	UserID           string `json:"userId"`
+	Email            string `json:"email"`
+	Role             string `json:"role"`
+	CreatedAt        string `json:"createdAt"`
+	MFAEnabled       bool   `json:"mfaEnabled"`
+	IdentityResolved bool   `json:"identityResolved"`
 }
 
 // InviteView is the neutral projection of a pending invite — Render's
@@ -422,10 +425,13 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 			return nil, err
 		}
 		mv.UserID = ownID
+		mv.IdentityResolved = true
 		if s.Identities != nil {
 			if attrs, ok := s.Identities.LookupIdentity(ctx, m.Subject); ok {
 				mv.Email = attrs.Email
 				mv.MFAEnabled = attrs.MFAEnabled
+			} else {
+				mv.IdentityResolved = false
 			}
 		}
 		out = append(out, mv)

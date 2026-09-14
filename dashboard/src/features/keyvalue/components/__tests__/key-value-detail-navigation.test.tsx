@@ -17,6 +17,7 @@ describe("KeyValueDetailNavigation", () => {
       ["Networking", "#networking"],
       ["Instance type", "#plan"],
       ["Maxmemory Policy", "#maxmemory-policy"],
+      ["Persistence Mode", "#persistence-mode"],
       ["Danger Zone", "#danger-zone"],
     ];
     for (const [name, href] of expected) {

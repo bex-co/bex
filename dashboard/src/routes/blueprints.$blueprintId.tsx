@@ -478,7 +478,11 @@ export function BlueprintDetailPage() {
                     </Table>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      {t("blueprints.resourcesEmpty")}
+                      {t(
+                        blueprint.status === "error" && blueprint.lastSync
+                          ? "blueprints.resourcesEmptyAfterError"
+                          : "blueprints.resourcesEmpty",
+                      )}
                     </p>
                   )}
                 </CardContent>

@@ -190,6 +190,16 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "已启用两步验证",
     description: "Tooltip for the member-row 2FA badge",
   },
+  "team.identityUnresolved": {
+    message: "未解析",
+    description:
+      "Badge on a member row whose Kratos identity lookup missed (w4/070)",
+  },
+  "team.identityUnresolvedTooltip": {
+    message:
+      "无法查找此成员的账户。在管理员移除之前，他们仍占用一个席位。",
+    description: "Tooltip for the unresolved-identity member badge",
+  },
   "team.inviteAccepted": {
     message: "你已加入 {workspace}",
     description: "Toast after an emailed invite link is redeemed successfully",

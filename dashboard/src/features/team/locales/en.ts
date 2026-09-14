@@ -199,6 +199,16 @@ const enTeam: Record<string, TranslationEntry> = {
     message: "Two-factor authentication enabled",
     description: "Tooltip for the member-row 2FA badge",
   },
+  "team.identityUnresolved": {
+    message: "Unresolved",
+    description:
+      "Badge on a member row whose Kratos identity lookup missed (w4/070)",
+  },
+  "team.identityUnresolvedTooltip": {
+    message:
+      "This member's account could not be looked up. They still hold a seat until an admin removes them.",
+    description: "Tooltip for the unresolved-identity member badge",
+  },
   "team.inviteAccepted": {
     message: "You've joined {workspace}",
     description: "Toast after an emailed invite link is redeemed successfully",

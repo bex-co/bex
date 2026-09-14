@@ -99,7 +99,7 @@ type fakeStore struct {
 
 func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Deploy{}} }
 
-func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
+func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	now := time.Now()
@@ -129,7 +129,7 @@ func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string
 		}
 	}
 	f.nextID++
-	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
+	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == store.DeployCanceled {
 		d.FinishedAt = &now
 	}
@@ -148,7 +148,7 @@ func (f *fakeStore) LatestDeployCommit(_ context.Context, appID string) (store.C
 	return store.CommitInfo{}, nil
 }
 
-func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
+func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	now := time.Now()
@@ -180,7 +180,7 @@ func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollba
 	f.nextID++
 	d := store.Deploy{
 		ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now,
+		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now,
 	}
 	if status == store.DeployCanceled {
 		d.FinishedAt = &now
@@ -378,7 +378,7 @@ func TestDeployRecordSurfacesPreDeployStatus(t *testing.T) {
 
 func TestListGetTriggerLifecycle(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{}, "")
 	svc, cl := newService(ds, sampleApp("web", "srv-1"))
 
 	list, err := svc.List(context.Background(), "web", ListFilter{})
@@ -754,7 +754,7 @@ func TestVerbsUnavailableWithoutStore(t *testing.T) {
 
 func TestRESTListGetTrigger(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{}, "")
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 	do := newRESTHarness(t, svc)
 
@@ -878,7 +878,7 @@ func TestREST503WithoutStore(t *testing.T) {
 // not a second implementation.
 func TestMCPMatchesREST(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{}, "")
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 	ctx := context.Background()
 	cs := newMCPSession(t, svc)

@@ -252,6 +252,10 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 - `status.readReplicaStatuses: [{name, internalHost, externalHost}]` tracks the resolved hosts. The proxy rebuilds its exact route table from current CR intent; the operator removes any pre-m15 Traefik routes during reconciliation.
 - Connection strings (with password) are in `connection-info` as `readReplicaConnectionStrings: [{name, internalConnectionString, externalConnectionString}]` — host-only info (without password) is also in the view.
 
+## SQL console error mapping (w4/071)
+
+The dashboard SQL console, REST `POST /v1/postgres/{id}/query`, and MCP `query_render_postgres` share `mapPGError`. Schema and syntax SQLSTATEs (`42601`, `42703`, `42P01`, `42883`, `42P02`, `3D000`, `3F000`) return the Postgres `Message` (and `Position` when set) to the authenticated caller — those strings only quote the caller's own SQL or catalog identifiers. Multi-statement input (still `42601`, but with Postgres's "multiple commands" message) returns the product sentence `only one statement per query`, matching the console's single-statement copy. Write/DDL refusals and statement timeouts keep their fixed prose. Integrity and cast failures (`23505`, `23503`, `22P02`, …) stay collapsed to `bad request (SQLSTATE …)` so stored/literal values never leave the DB response. Neither class is written to logs, metrics, or audit events.
+
 ## Consequences
 
 - Deferred: the Accelerated tier and payment collection. Backups + PITR + lifecycle + access shipped in **w1/m17**; HA/replicas/failover in **w1/m22**; disk autoscaling in **w8/m14**.

@@ -271,6 +271,11 @@ type Deploy struct {
 	// extension beyond Render's deploy shape, like RollbackOf and
 	// PreDeployStatus.
 	FailureReason string `json:"failureReason,omitempty"`
+	// TriggeredBy is core.Identity.Subject for the caller that opened this row
+	// (w4/072) — same form as audit_events.caller. Empty for unattributed
+	// triggers (git push, deploy hook). Not a Render deploy field — kept off
+	// the REST wire; the events feed projects it as Details.TriggeredByUser.
+	TriggeredBy string `json:"-"`
 }
 
 // Domain is a row of `domains` — a BYOD custom domain attached to an app.
@@ -512,9 +517,11 @@ type Store interface {
 	// (w2/m10) — Cancel's build-Job identity is derived from this stored
 	// value, not a fresh re-fetch, so a later unrelated spec write can't make
 	// it compute the wrong Job name. commit is the resolved commit this deploy
-	// runs (w9/001), zero when unresolvable. The reconciler's write-back
-	// closes it.
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo) (Deploy, error)
+	// runs (w9/001), zero when unresolvable. triggeredBy is
+	// core.Identity.Subject for the caller that opened the row (w4/072), or
+	// "" for git auto-deploy / deploy-hook / system paths. The reconciler's
+	// write-back closes it.
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error)
 	// LatestDeployCommit returns the newest non-empty commit for the app, or
 	// zero CommitInfo when none exists (image-backed history, or only empty
 	// rows). Used by rollout.Tracker to carry a prior release's provenance
@@ -526,7 +533,8 @@ type Store interface {
 	// (w2/m10). rollbackOf records provenance: the source deploy id being
 	// rolled back to; commit is the target's own commit metadata (w9/001),
 	// copied rather than re-resolved against a branch that has since moved.
-	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo) (Deploy, error)
+	// triggeredBy is core.Identity.Subject for the rollback caller (w4/072).
+	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error)
 	// ListDeploys returns an app's deploy history, newest first, narrowed by
 	// filter (w2/m31) — a zero DeployFilter returns the full history, the
 	// pre-m31 contract.
@@ -871,8 +879,8 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 				return err
 			}
 			_, err := tx.Exec(ctx,
-				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-				deployID, a.ID, TriggerCreate, a.Image, FirstDeployGeneration, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated)
+				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status, triggered_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+				deployID, a.ID, TriggerCreate, a.Image, FirstDeployGeneration, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated, core.SubjectFrom(ctx))
 			return err
 		})
 		if err == nil {
@@ -1781,8 +1789,8 @@ func (s *PGStore) SetAppImage(ctx context.Context, id string, image string) erro
 	return nil
 }
 
-func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo) (Deploy, error) {
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, Status: DeployCreated}
+func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: DeployCreated}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		status, err := prepareDeployCreate(ctx, tx, appID, generation)
 		if err != nil {
@@ -1791,10 +1799,10 @@ func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string
 		d.Status = status
 		d.OverlapPending = status == DeployQueued
 		return tx.QueryRow(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, status, overlap_pending, finished_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $9 = $11 THEN clock_timestamp() END)
+			`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END)
 			 RETURNING created_at, updated_at, finished_at`,
-			d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.Status, d.OverlapPending, DeployCanceled,
+			d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled,
 		).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 	})
 	if err != nil {
@@ -1890,8 +1898,8 @@ func cancelPendingDeploys(ctx context.Context, tx pgx.Tx, appID string) error {
 // TARGET deploy's commit metadata (w9/001) — a rollback re-runs what the
 // restored deploy built, so its provenance is copied, never re-resolved
 // against a branch that has since moved.
-func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo) (Deploy, error) {
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, Status: DeployCreated}
+func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: DeployCreated}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		status, err := prepareDeployCreate(ctx, tx, appID, generation)
 		if err != nil {
@@ -1900,10 +1908,10 @@ func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollba
 		d.Status = status
 		d.OverlapPending = status == DeployQueued
 		return tx.QueryRow(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, status, overlap_pending, finished_at)
-			 VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END)
+			`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at)
+			 VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, $11, $12, CASE WHEN $11 = $13 THEN clock_timestamp() END)
 			 RETURNING created_at, updated_at, finished_at`,
-			d.ID, d.AppID, d.Trigger, image, rollbackOf, generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.Status, d.OverlapPending, DeployCanceled,
+			d.ID, d.AppID, d.Trigger, image, rollbackOf, generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled,
 		).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 	})
 	if err != nil {
@@ -1975,11 +1983,11 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason`
+const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason)
 	return d, err
 }
 

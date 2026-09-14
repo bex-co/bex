@@ -10,6 +10,10 @@ vi.mock("@/common/hooks/use-copy-to-clipboard", () => ({
   useCopyToClipboard: () => ({ copied: false, copy }),
 }));
 
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: (subject: string) => subject,
+}));
+
 const entry: ApiKeyView = {
   id: "key-1",
   name: "deploy-agent",
