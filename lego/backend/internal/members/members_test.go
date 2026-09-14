@@ -677,6 +677,10 @@ func TestListNilIdentitiesOmitsEmail(t *testing.T) {
 	if ms[0].UserID == "" {
 		t.Errorf("userId should still be minted with no identity reader: %+v", ms[0])
 	}
+	// Unwired reader cannot distinguish a miss — do not pretend unresolved (w4/070).
+	if !ms[0].IdentityResolved {
+		t.Errorf("identityResolved = false with nil Identities, want true")
+	}
 }
 
 func TestListEmailLookupMissDegradesOnlyThatMember(t *testing.T) {
@@ -690,14 +694,22 @@ func TestListEmailLookupMissDegradesOnlyThatMember(t *testing.T) {
 		t.Fatalf("list: %v", err)
 	}
 	byEmail := map[string]string{}
+	byResolved := map[string]bool{}
 	for _, m := range ms {
 		byEmail[m.Subject] = m.Email
+		byResolved[m.Subject] = m.IdentityResolved
 	}
 	if byEmail["admin-1"] != "admin@example.com" {
 		t.Errorf("admin-1 email = %q", byEmail["admin-1"])
 	}
+	if !byResolved["admin-1"] {
+		t.Errorf("admin-1 identityResolved = false, want true")
+	}
 	if byEmail["admin-2"] != "" {
 		t.Errorf("admin-2 email = %q, want empty (lookup miss)", byEmail["admin-2"])
+	}
+	if byResolved["admin-2"] {
+		t.Errorf("admin-2 identityResolved = true, want false (wired miss)")
 	}
 }
 
