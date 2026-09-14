@@ -94,12 +94,20 @@ vi.mock("@/features/keyvalue/hooks/use-set-key-value-maxmemory-policy", () => ({
   }),
 }));
 
+vi.mock("@/features/keyvalue/hooks/use-set-key-value-persistence-mode", () => ({
+  useSetKeyValuePersistenceMode: () => ({
+    mode: "journal-snapshot",
+    loading: false,
+    saving: false,
+    save: vi.fn(),
+  }),
+}));
+
 // KeyValueNameSection's rename hook wraps Apollo's useMutation — mocked at the
 // hook boundary like every other data hook above (no ApolloProvider here).
 vi.mock("@/features/keyvalue/hooks/use-rename-key-value", () => ({
   useRenameKeyValue: () => ({ rename: vi.fn(), busy: false }),
 }));
-
 function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
   return {
     id: "red-sessions",
