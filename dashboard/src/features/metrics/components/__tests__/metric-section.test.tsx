@@ -10,6 +10,7 @@ function result(over: Partial<UseMetricsResult> = {}): UseMetricsResult {
     loading: false,
     unavailable: false,
     storeUnavailable: false,
+    throttled: false,
     error: undefined,
     degradedSources: [],
     ...over,
@@ -124,5 +125,37 @@ describe("MetricSection error state", () => {
     // MetricUnavailable, not MetricError — the two states stay distinct.
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByTestId("chart")).toBeNull();
+  });
+});
+
+// w4/m100 t003: a throttled read must never look like empty data or an
+// unwired metrics backend — cold loads get a throttle card; warm caches keep
+// the series with an explicit staleness note.
+describe("MetricSection throttled state", () => {
+  it("renders a throttle-specific card on a cold shed (no cached series)", () => {
+    render(
+      <MetricSection title="CPU" result={result({ throttled: true, series: [] })}>
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(screen.queryByTestId("chart")).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Catching up — traffic was briefly limited",
+    );
+  });
+
+  it("keeps cached series and names the staleness on a warm shed", () => {
+    render(
+      <MetricSection
+        title="CPU"
+        result={result({ throttled: true, series: [aSeries] })}
+      >
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(screen.getByTestId("chart")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Showing cached data — refreshing after a brief limit",
+    );
   });
 });

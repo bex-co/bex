@@ -43,10 +43,14 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// DeployStore is the one store method this package needs: opening the row.
-// *store.PGStore satisfies it, as does apps.IntentStore's own superset.
+// DeployStore is the store seam this package needs: looking up a prior commit
+// and opening the row. *store.PGStore satisfies it, as does apps.IntentStore's
+// own superset.
 type DeployStore interface {
 	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error)
+	// LatestDeployCommit returns the newest non-empty commit for the app, or
+	// zero CommitInfo.
+	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
 }
 
 // Tracker opens deploy-history rows for spec patches that roll a release. A nil
@@ -158,7 +162,18 @@ func (t *Tracker) open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 	// metadata.generation on the patch; the fake client used off-cluster and in
 	// tests has not (deploys.patchedGeneration, the same monotonic fallback).
 	generation := max(a.Generation, snapshot.generation+1)
-	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, a.Spec.Image, generation, store.CommitInfo{}); err != nil {
+	// Carry the prior release's commit onto config_change (and any other
+	// Tracker-opened) rows so history still answers "what code is live?".
+	// Read here — not inside CreateDeploy — so callers that pass empty
+	// intentionally keep "none". Image-backed apps with no prior commit stay
+	// empty; never synthesize one.
+	commit := store.CommitInfo{}
+	if prior, err := t.Store.LatestDeployCommit(ctx, snapshot.appID); err != nil {
+		log.Printf("rollout: prior commit for %s: %v", a.Name, err)
+	} else if prior.Hash != "" {
+		commit = prior
+	}
+	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, a.Spec.Image, generation, commit); err != nil {
 		log.Printf("rollout: record %s deploy for %s: %v", trigger, a.Name, err)
 	}
 }

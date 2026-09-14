@@ -260,6 +260,10 @@ type IntentStore interface {
 	// resolved commit this deploy runs (w9/001), zero when unresolvable. The
 	// reconciler's write-back closes the row once the CR reaches Running/Failed.
 	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error)
+	// LatestDeployCommit returns the newest non-empty commit for the app — the
+	// rollout.Tracker seam that carries a prior release's provenance onto
+	// config_change re-rolls (w4/m100). Zero when none exists.
+	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
 	// DeleteApp removes the apps row — the single writer of intent for a
 	// store-managed App's existence. Delete keeps this durable row until every
 	// external, name-keyed secret has been purged, then removes it before the CR.

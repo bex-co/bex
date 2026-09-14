@@ -1311,9 +1311,11 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	// spend a source-IP budget; every credential also has its own HMAC-keyed
 	// request/concurrency partition, so one stolen valid session is shed before
 	// upstream I/O without throttling unrelated SSR users behind the same IP.
-	// BEX_AUTH_FAILURE_LIMIT=0 + BEX_AUTH_MAX_INFLIGHT=0 disables both.
+	// BEX_AUTH_FAILURE_LIMIT=0 + BEX_AUTH_MAX_INFLIGHT=0 disables both rate
+	// and global concurrency; BEX_AUTH_MAX_INFLIGHT_PER_CREDENTIAL=0 leaves
+	// per-credential concurrency unbounded (default 64).
 	authFailureRPM, authFailureBurst := cfg.AuthFailureRPM, cfg.AuthFailureBurst
-	srv.AuthAdmission = api.NewAuthAdmission(authFailureRPM, authFailureBurst, cfg.AuthMaxInflight)
+	srv.AuthAdmission = api.NewAuthAdmission(authFailureRPM, authFailureBurst, cfg.AuthMaxInflight, cfg.AuthMaxInflightPerCredential)
 	if srv.AuthAdmission != nil {
 		srv.AuthAdmission.TrustedProxies = trustedProxies
 	}

@@ -226,24 +226,25 @@ type Config struct {
 
 	// Serving knobs (skipped entirely in stdio mode, like the inline reads
 	// they replaced — a local agent's leftover env must not fail a subprocess).
-	MaxBodyBytes                int64
-	MaxQueryHours               int
-	MaxSSEConns                 int64
-	MaxSSEConnsPerSubject       int
-	MaxSSEConnsPerWorkspace     int
-	LogStreamRevalidateInterval time.Duration
-	TrustedProxies              core.TrustedProxies
-	RateLimitRPM                float64
-	RateLimitBurst              int
-	DeviceRateRPM               float64
-	DeviceRateBurst             int
-	WebhookRateRPM              float64
-	WebhookRateBurst            int
-	DeployHookLookupRPM         float64
-	DeployHookLookupBurst       int
-	AuthFailureRPM              float64
-	AuthFailureBurst            int
-	AuthMaxInflight             int
+	MaxBodyBytes                 int64
+	MaxQueryHours                int
+	MaxSSEConns                  int64
+	MaxSSEConnsPerSubject        int
+	MaxSSEConnsPerWorkspace      int
+	LogStreamRevalidateInterval  time.Duration
+	TrustedProxies               core.TrustedProxies
+	RateLimitRPM                 float64
+	RateLimitBurst               int
+	DeviceRateRPM                float64
+	DeviceRateBurst              int
+	WebhookRateRPM               float64
+	WebhookRateBurst             int
+	DeployHookLookupRPM          float64
+	DeployHookLookupBurst        int
+	AuthFailureRPM               float64
+	AuthFailureBurst             int
+	AuthMaxInflight              int
+	AuthMaxInflightPerCredential int
 }
 
 // loadConfig parses and validates the complete environment contract. It is
@@ -556,6 +557,11 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 			p.errorf("bad BEX_AUTH_MAX_INFLIGHT: %v", err)
 		}
 		cfg.AuthMaxInflight = inflight
+		perCred, err := strconv.Atoi(p.str("BEX_AUTH_MAX_INFLIGHT_PER_CREDENTIAL", "64"))
+		if err != nil {
+			p.errorf("bad BEX_AUTH_MAX_INFLIGHT_PER_CREDENTIAL: %v", err)
+		}
+		cfg.AuthMaxInflightPerCredential = perCred
 	}
 
 	return cfg, p.warnings, errors.Join(p.errs...)

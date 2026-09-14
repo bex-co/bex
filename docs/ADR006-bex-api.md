@@ -595,9 +595,17 @@ The bound deliberately meters **failures, not traffic**. A per-request IP budget
 | --- | --- | --- |
 | Invalid credentials per client IP per minute | 60 (burst = limit) | `BEX_AUTH_FAILURE_LIMIT` / `BEX_AUTH_FAILURE_BURST` |
 | Concurrent upstream auth calls, process-wide | 64 | `BEX_AUTH_MAX_INFLIGHT` |
+| Concurrent upstream auth calls, per credential | 64 (`0` ⇒ unbounded; independent of the process-wide cap) | `BEX_AUTH_MAX_INFLIGHT_PER_CREDENTIAL` |
 | Credential size accepted before any upstream call | 4 KiB → 401 | (constant) |
 
-A credential that authenticates costs nothing, however many users share its source. Each credential that comes back invalid spends one token; once a source's bucket is dry the next attempt is refused **before** the upstream call, with the same surface-shaped 429 + `Retry-After` as the per-caller limiter (a client cannot tell which limiter shed it). Client IPs resolve through `BEX_TRUSTED_PROXY_CIDRS` like every other IP-keyed budget. Setting both limits to `0` restores the pre-m67 behavior exactly.
+A credential that authenticates costs nothing against the per-source failure budget, however many users share its source. Each credential that comes back invalid spends one token; once a source's bucket is dry the next attempt is refused **before** the upstream call. The per-credential in-flight ceiling stops one session from monopolizing upstream auth capacity without deriving from the global pool (so ordinary dashboard page-load parallelism fits under the default of 64). Client IPs resolve through `BEX_TRUSTED_PROXY_CIDRS` like every other IP-keyed budget. Setting the failure limit and both inflight knobs to `0` restores the pre-m67 behavior exactly.
+
+Admission overload and the per-caller rate limiter both answer **HTTP 429 + `Retry-After`**, but with distinct wire codes so clients can tell them apart:
+
+| Shed class | GraphQL `extensions.code` | REST/MCP `id` |
+| --- | --- | --- |
+| Per-caller rate limit | `RATE_LIMITED` | `rate_limited` |
+| Auth admission (failure budget / in-flight) | `AUTH_OVERLOADED` | `auth_overloaded` |
 
 **Request caps** (companion limits that rate-limiting alone doesn't catch):
 

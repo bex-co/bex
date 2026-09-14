@@ -137,6 +137,17 @@ func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string
 	return d, nil
 }
 
+func (f *fakeStore) LatestDeployCommit(_ context.Context, appID string) (store.CommitInfo, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, d := range f.byApp[appID] {
+		if d.Commit != "" {
+			return store.CommitInfo{Hash: d.Commit, Message: d.CommitMessage, AuthorAt: d.CommitAuthorAt}, nil
+		}
+	}
+	return store.CommitInfo{}, nil
+}
+
 func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -208,8 +208,12 @@ const (
 
 // CommitInfo is the git commit a build-from-git deploy runs — the resolved
 // SHA, message, and author timestamp (w9/001 + w2/m42). Zero value = unknown:
-// image-backed app, no GitHub connection to resolve through, or resolution
-// failed. Commit metadata is best-effort provenance, never load-bearing — a
+// image-backed app, no GitHub connection to resolve through, resolution
+// failed, or no prior deploy ever recorded a commit. Callers that pass zero
+// mean "none" — CreateDeploy does not inherit. The rollout tracker is what
+// carries a prior release's commit forward onto config_change re-rolls
+// (hash + message + authorAt); image-backed apps with no prior commit stay
+// empty. Commit metadata is best-effort provenance, never load-bearing — a
 // deploy with an empty CommitInfo is still a fully valid deploy.
 type CommitInfo struct {
 	Hash     string     `json:"hash,omitempty"`
@@ -511,6 +515,11 @@ type Store interface {
 	// runs (w9/001), zero when unresolvable. The reconciler's write-back
 	// closes it.
 	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo) (Deploy, error)
+	// LatestDeployCommit returns the newest non-empty commit for the app, or
+	// zero CommitInfo when none exists (image-backed history, or only empty
+	// rows). Used by rollout.Tracker to carry a prior release's provenance
+	// onto config_change re-rolls — CreateDeploy itself never inherits.
+	LatestDeployCommit(ctx context.Context, appID string) (CommitInfo, error)
 	// CreateRollbackDeploy opens a new deploy row for appID whose trigger is
 	// "rollback" and whose image/resolvedImage are the target being restored
 	// — Render models rollback as a fresh deploy, never a history rewrite
@@ -1792,6 +1801,28 @@ func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string
 		return Deploy{}, classify("deploy", err)
 	}
 	return d, nil
+}
+
+// LatestDeployCommit returns the newest non-empty commit for appID. Rows with
+// an empty commit (image-backed creates, unresolved git) are skipped so a
+// later empty config_change does not hide an earlier repo-backed release.
+func (s *PGStore) LatestDeployCommit(ctx context.Context, appID string) (CommitInfo, error) {
+	var c CommitInfo
+	err := s.Pool.QueryRow(ctx,
+		`SELECT commit, commit_message, commit_author_at
+		 FROM deploys
+		 WHERE app_id = $1 AND commit <> ''
+		 ORDER BY created_at DESC
+		 LIMIT 1`,
+		appID,
+	).Scan(&c.Hash, &c.Message, &c.AuthorAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return CommitInfo{}, nil
+		}
+		return CommitInfo{}, classify("deploy", err)
+	}
+	return c, nil
 }
 
 // prepareDeployCreate serializes creation for one App, then compares App
