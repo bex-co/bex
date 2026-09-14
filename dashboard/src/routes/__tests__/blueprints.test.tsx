@@ -384,6 +384,22 @@ describe("BlueprintDetailPage", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("does not tell a failed empty blueprint to sync (w4/065)", async () => {
+    blueprintDetailState.blueprint = bp({
+      status: "error",
+      lastSync: "2026-08-26T10:26:53Z",
+      resources: [],
+    });
+    renderDetailPage();
+
+    expect(
+      await screen.findByText(/the last sync failed/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/sync the Blueprint to apply/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("redirects a dead blueprint id home (w9/m55)", async () => {
     blueprintDetailState.blueprint = null;
     const router = renderDetailPage("blp-missing");

@@ -66,7 +66,7 @@ func TestThreeSurfaceParity_UserIDAndEmail(t *testing.T) {
 	}
 	result := graphql.Do(graphql.Params{
 		Schema:         schema,
-		RequestString:  `query($w: String!) { workspaceMembers(workspaceId: $w) { subject userId email role } }`,
+		RequestString:  `query($w: String!) { workspaceMembers(workspaceId: $w) { subject userId email role identityResolved } }`,
 		VariableValues: map[string]any{"w": "tea-1"},
 		Context:        ctx,
 	})
@@ -77,6 +77,7 @@ func TestThreeSurfaceParity_UserIDAndEmail(t *testing.T) {
 	var gqlOut struct {
 		WorkspaceMembers []struct {
 			Subject, UserID, Email, Role string
+			IdentityResolved             bool `json:"identityResolved"`
 		} `json:"workspaceMembers"`
 	}
 	if err := json.Unmarshal(b, &gqlOut); err != nil {
@@ -124,5 +125,8 @@ func TestThreeSurfaceParity_UserIDAndEmail(t *testing.T) {
 	}
 	if rv.Email != gv.Email || rv.Email != mv.Email {
 		t.Errorf("email drift: rest=%q graphql=%q mcp=%q", rv.Email, gv.Email, mv.Email)
+	}
+	if !rv.IdentityResolved || !gv.IdentityResolved || !mv.IdentityResolved {
+		t.Errorf("identityResolved drift: rest=%v graphql=%v mcp=%v", rv.IdentityResolved, gv.IdentityResolved, mv.IdentityResolved)
 	}
 }
