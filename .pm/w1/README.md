@@ -175,6 +175,15 @@ Open inbox notes:
 
 - [096](096.md) — A service env var named `PORT` saves as given (API `PORT=8080`, no dashboard warning) but is silently ignored. The process still gets the platform `PORT` (3000), because `appEnv` appends the operator-owned `PORT` as a container `Env` that beats `envFrom` (`app_controller.go:3816-3846`, ADR004:152). Render lets users override `PORT` (default 10000), and ADR018 records no divergence (~40m) ← live `/qa-find-bugs` 2026-09-14 pass 23.
 
+- [097](097.md) — Blueprint preview shows every fetch failure under "Blueprint file not found" with raw backend text:
+  - a wrong branch or a missing repo reads only `github: unexpected status 404`;
+  - a missing file shows the full commit SHA;
+  - path-rule refusals appear as "not found".
+
+  `PreviewBlueprint` passes `err.Error()` straight through (`apps/blueprint.go:557-562`), so the dashboard's friendly fallback never renders (`blueprints.new.tsx:243-253`). The fix is a coded `reason` (~45m) ← live `/qa-find-bugs` 2026-09-14 pass 26.
+
+- [098](098.md) — Seven `{count}` strings still break the native-plural rule `w6/done/062` set. The Blueprint review reads "1 resources to sync" live, and `(s)` survives in `envGroups.serviceCount` and `services.scaleSuccess`. All seven predate 062's close, and `locale-parity.test.ts` never checks that a `{count}` message uses plural keys (~40m) ← live `/qa-find-bugs` 2026-09-14 pass 26.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
