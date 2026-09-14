@@ -367,14 +367,14 @@ func HandleMapped[T, V any](status int, fn func(*http.Request) (T, error), view 
 	})
 }
 
-// DecodeBody decodes the JSON request body into T, mapping any decode failure
-// to the bare ErrBadRequest sentinel — the apps-surface dialect (postgres's
-// decodeOr400 keeps its flat WriteErrStatus 400 instead).
+// DecodeBody decodes the JSON request body into T. Decode failures wrap
+// ErrBadRequest and keep a safe, field-naming detail when one is available —
+// a bare "bad request" alone is unreachable for body validation (w4/m104).
 func DecodeBody[T any](r *http.Request) (T, error) {
 	var v T
 	if err := DecodeJSON(r, &v); err != nil {
 		var zero T
-		return zero, ErrBadRequest
+		return zero, fmt.Errorf("%w: %s", ErrBadRequest, err.Error())
 	}
 	return v, nil
 }

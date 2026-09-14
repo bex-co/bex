@@ -19,6 +19,7 @@ package apps
 import (
 	"cmp"
 	"context"
+	"fmt"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -179,14 +180,83 @@ type renderOwner struct {
 	Type  string `json:"type"`
 }
 
-// renderAutoscaling is Render's autoscaling sub-object shape (verified against
-// Render's PUT /v1/services/{id}/autoscaling request/response contract).
+// renderAutoscaling is the nested autoscaling object on a service list/detail
+// payload. It uses bex's GraphQL/MCP dialect (minInstances / targetCPUPercent)
+// — deliberate: the nested service shape is a bex extension over Render's
+// service schema. The dedicated PUT/GET …/autoscaling subresource uses
+// renderAutoscalingConfig (Render's pinned OpenAPI: min/max/criteria) instead.
 type renderAutoscaling struct {
 	Enabled             bool   `json:"enabled"`
 	MinInstances        int32  `json:"minInstances"`
 	MaxInstances        int32  `json:"maxInstances"`
 	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty"`
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
+}
+
+// renderAutoscalingConfig is Render's PUT /services/{id}/autoscaling request
+// and response body (pinned OpenAPI: required enabled/min/max/criteria).
+type renderAutoscalingConfig struct {
+	Enabled  bool                        `json:"enabled"`
+	Min      int32                       `json:"min"`
+	Max      int32                       `json:"max"`
+	Criteria renderAutoscalingCriteria   `json:"criteria"`
+}
+
+type renderAutoscalingCriteria struct {
+	CPU    renderAutoscalingCriterion `json:"cpu"`
+	Memory renderAutoscalingCriterion `json:"memory"`
+}
+
+type renderAutoscalingCriterion struct {
+	Enabled    bool `json:"enabled"`
+	Percentage int  `json:"percentage"`
+}
+
+// setAutoscalingRequestFromRender maps the Render wire body onto the shared
+// SetAutoscalingRequest used by GraphQL/MCP/Blueprint. enabled:false means
+// disable (caller should DeleteAutoscaling); ok is false in that case.
+func setAutoscalingRequestFromRender(body renderAutoscalingConfig) (SetAutoscalingRequest, bool, error) {
+	if !body.Enabled {
+		return SetAutoscalingRequest{}, false, nil
+	}
+	req := SetAutoscalingRequest{
+		MinInstances: body.Min,
+		MaxInstances: body.Max,
+	}
+	if body.Criteria.CPU.Enabled {
+		p := int32(body.Criteria.CPU.Percentage)
+		req.TargetCPUPercent = &p
+	}
+	if body.Criteria.Memory.Enabled {
+		p := int32(body.Criteria.Memory.Percentage)
+		req.TargetMemoryPercent = &p
+	}
+	if req.TargetCPUPercent == nil && req.TargetMemoryPercent == nil {
+		return SetAutoscalingRequest{}, true, fmt.Errorf(
+			"%w: at least one of criteria.cpu or criteria.memory must have enabled:true",
+			core.ErrBadRequest,
+		)
+	}
+	return req, true, nil
+}
+
+func renderAutoscalingConfigFromView(v AutoscalingView) renderAutoscalingConfig {
+	out := renderAutoscalingConfig{
+		Enabled: v.Enabled,
+		Min:     v.MinInstances,
+		Max:     v.MaxInstances,
+		Criteria: renderAutoscalingCriteria{
+			CPU:    renderAutoscalingCriterion{Enabled: false, Percentage: 0},
+			Memory: renderAutoscalingCriterion{Enabled: false, Percentage: 0},
+		},
+	}
+	if v.TargetCPUPercent != nil {
+		out.Criteria.CPU = renderAutoscalingCriterion{Enabled: true, Percentage: int(*v.TargetCPUPercent)}
+	}
+	if v.TargetMemoryPercent != nil {
+		out.Criteria.Memory = renderAutoscalingCriterion{Enabled: true, Percentage: int(*v.TargetMemoryPercent)}
+	}
+	return out
 }
 
 // serviceWithCursor is components.schemas.serviceWithCursor — the list-item

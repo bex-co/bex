@@ -1,19 +1,19 @@
 # w4 · m104 — `PUT /v1/services/{id}/autoscaling` is unusable: the pinned contract and the handler want different bodies
 
-**Worker:** worker4 **Goal:** a Render-compatible client can actually set autoscaling over REST, and the class of defect that makes a validator-gated route unusable is audited away rather than fixed one route at a time — this is its third recorded instance. **Status:** todo
+**Worker:** worker4 **Goal:** a Render-compatible client can actually set autoscaling over REST, and the class of defect that makes a validator-gated route unusable is audited away rather than fixed one route at a time — this is its third recorded instance. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                         | est | depends_on   |
 | ---- | ----------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Make the autoscaling PUT accept a body, and say which shape is canonical         | 60m | —            |
-| t002 | Audit every validator-gated write route against its handler's decoder            | 75m | w4/m104/t001 |
-| t003 | Stop answering a schema-rejected body with a bare `bad request`                  | 40m | —            |
-| t004 | Regression tests: one per route shape, plus the GraphQL/MCP control pair          | 45m | w4/m104/t001, w4/m104/t002 |
-| t005 | Render parity sweep over the changed surfaces                                    | 30m | w4/m104/t004 |
-| t006 | Simplify pass over this milestone's changes                                      | 25m | w4/m104/t005 |
-| t007 | Test coverage for the shipped behavior                                           | 40m | w4/m104/t005 |
-| t008 | Closeout                                                                        | 15m | w4/m104/t007 |
+| t001 | Make the autoscaling PUT accept a body, and say which shape is canonical — **DONE** | 60m | —            |
+| t002 | Audit every validator-gated write route against its handler's decoder — **DONE** | 75m | w4/m104/t001 |
+| t003 | Stop answering a schema-rejected body with a bare `bad request` — **DONE**       | 40m | —            |
+| t004 | Regression tests: one per route shape, plus the GraphQL/MCP control pair — **DONE** | 45m | w4/m104/t001, w4/m104/t002 |
+| t005 | Render parity sweep over the changed surfaces — **DONE**                         | 30m | w4/m104/t004 |
+| t006 | Simplify pass over this milestone's changes — **DONE**                           | 25m | w4/m104/t005 |
+| t007 | Test coverage for the shipped behavior — **DONE**                                | 40m | w4/m104/t005 |
+| t008 | Closeout — **DONE**                                                              | 15m | w4/m104/t007 |
 
 ## Definition of done
 
@@ -39,3 +39,14 @@
 - **`autoscalingSpec`'s own bounds are not the cause**: `min:1/max:1` is within the free plan's cap, and the same values succeed through GraphQL on the same service.
 - **Scoped by sampling (pass 10):** nine validator-gated write routes were probed with schema-conformant bodies and **all nine succeeded** — full table in t002. The historical recurrence (three instances) is real but the current surface looks clean apart from autoscaling, which is why t002 is framed as a guard rather than a fix list.
 - **Not probed:** MCP's autoscaling surface (`apps/mcp.go:865` exposes only the delete; whether a setter exists through the folded settings tool is unconfirmed — `w4/m101/t001` already owns that question), and whether any of the other 57 Render request-bodied paths mismatch. t002 owns the latter.
+
+## Closeout evidence (2026-09-14)
+
+Code + suite verification (production re-probe of the _fixed_ REST surface rides the deploy from this ship; the pre-fix production probes are in t001 from 2026-09-13 pass 9):
+
+- REST PUT accepts Render `{enabled,min,max,criteria}` and GET returns the same shape (`TestPUTAutoscalingAcceptsRenderBody`, `TestRESTGetAutoscaling` / `TestRESTPutAutoscaling`).
+- Bex dialect and union bodies refuse with named `unknown field` detail (`TestPUTAutoscalingRejectsBexDialectWithNamedError`, `TestPUTAutoscalingUnionBodyNamesUnknownFields`, `TestDecodeBodyPreservesUnknownFieldDetail`); `enabled:false` disables (`TestPUTAutoscalingEnabledFalseDisables`).
+- GraphQL-shaped `SetAutoscaling` and REST PUT produce the same stored config (control pair in `TestPUTAutoscalingAcceptsRenderBody`).
+- Gated-write inventory: `TestGatedWriteBodiesAgreeWithHandlers` — autoscaling was the sole (a) mismatch; required props now covered by `renderAutoscalingConfig`.
+- Docs: ADR006 REST table + wire-shape note; ADR018 autoscaling row updated for w4/m104.
+- Residual: none filed — nested `service.autoscaling` remaining on the bex dialect is deliberate and documented.
