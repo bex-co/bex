@@ -154,6 +154,10 @@ Open inbox notes:
 
 - [090](090.md) — A webhook's Recent deliveries table shows each row's service only as the bare `srv-` id (`webhook-deliveries-card.tsx:288-290`), though every delivery payload already carries `serviceName` (~40m, dashboard + delivery view) ← live `/qa-find-bugs` 2026-09-14 pass 13.
 
+- [091](091.md) — Two linked environment groups define the same key: the service runs the most recently **linked** group's value (live `from-group-a` over the later-created B; Render currently uses the most recently created), but its Environment page marks neither key as shadowed (`env-groups-panel.tsx:185-190` compares groups only with service keys) (~50m) ← live `/qa-find-bugs` 2026-09-14 pass 14.
+
+- [092](092.md) — Changing a linked environment group redeploys a service whose auto-deploy is off. Live: `autoDeploy: no`, then `PUT /v1/env-groups/<id>/env-vars/MESSAGE` opened `config_change` deploy `dep-dak0h1i6m8ac739r60q0` and the new value served. Render deploys only auto-deploy-enabled linked services. Six Render-shaped writes hard-code `SaveModeDeploy` (`envgroups/service.go:884, 938, 961, 980, 1003, 1372`), and link/unlink roll unconditionally (~60m, major) ← live `/qa-find-bugs` 2026-09-14 pass 14.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
