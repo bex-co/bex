@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { ConnectGitDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface UseConnectGitOptions {
@@ -69,9 +70,9 @@ export function useConnectGit(
       } else {
         window.location.href = url;
       }
-    } catch {
+    } catch (err) {
       pending?.close();
-      toast.error(t("git.connectError"));
+      toast.error(mutationErrorMessage(err, t("git.connectError")));
       setBusy(false);
     }
   }, [mutate, t, currentWorkspaceId, newTab]);

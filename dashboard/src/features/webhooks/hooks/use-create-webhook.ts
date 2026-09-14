@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { CreateWebhookEndpointDocument } from "@/features/webhooks/api/operations";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { CreatedWebhookEndpoint } from "@/features/webhooks/types";
 import {
@@ -80,15 +81,15 @@ export function useCreateWebhook(): UseCreateWebhookResult {
         };
       } catch (err) {
         const normalized = toWebhookMutationError(err);
-        const failure =
-          normalized instanceof Error
-            ? normalized
-            : new Error(t("webhooks.createError"));
-        setError(failure);
-        // Named refusals render inline beside their actionable field. Unknown
-        // network/transport failures still need a transient global signal.
-        if (!(failure instanceof WebhookMutationError)) {
-          toast.error(t("webhooks.createError"));
+        // Named refusals render inline beside their actionable field. Anything
+        // else — a refusal without a webhook code, or a transport failure —
+        // shows one message both inline and as a transient toast.
+        if (normalized instanceof WebhookMutationError) {
+          setError(normalized);
+        } else {
+          const message = mutationErrorMessage(err, t("webhooks.createError"));
+          setError(new Error(message));
+          toast.error(message);
         }
         return null;
       } finally {

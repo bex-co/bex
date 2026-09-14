@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { UpdateRegistryCredentialDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UpdateRegistryCredentialInput {
   id: string;
@@ -52,8 +53,10 @@ export function useUpdateRegistryCredential(): UseUpdateRegistryCredentialResult
         });
         toast.success(t("registryCredentials.updateSuccess"));
         return true;
-      } catch {
-        toast.error(t("registryCredentials.updateError"));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("registryCredentials.updateError")),
+        );
         return false;
       } finally {
         setBusy(false);

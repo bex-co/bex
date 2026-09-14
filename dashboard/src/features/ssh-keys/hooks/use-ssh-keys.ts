@@ -11,6 +11,7 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import type { SSHKeyView } from "@/features/ssh-keys/types";
 
 export function useSSHKeys() {
@@ -54,7 +55,9 @@ export function useSSHKeys() {
           cause instanceof Error &&
           cause.message.toLowerCase().includes("already registered");
         toast.error(
-          t(duplicate ? "sshKeys.duplicateError" : "sshKeys.createError"),
+          duplicate
+            ? t("sshKeys.duplicateError")
+            : mutationErrorMessage(cause, t("sshKeys.createError")),
         );
         return false;
       } finally {
@@ -72,8 +75,8 @@ export function useSSHKeys() {
         await refetch();
         toast.success(t("sshKeys.deleteSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("sshKeys.deleteError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("sshKeys.deleteError")));
         return false;
       } finally {
         setBusy(null);

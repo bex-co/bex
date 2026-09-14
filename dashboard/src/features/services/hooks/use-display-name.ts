@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetDisplayNameDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseDisplayNameResult {
   setDisplayName: (id: string, displayName: string) => Promise<boolean>;
@@ -26,8 +27,8 @@ export function useDisplayName(): UseDisplayNameResult {
             : t("services.displayNameCleared"),
         );
         return true;
-      } catch {
-        toast.error(t("services.displayNameError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("services.displayNameError")));
         return false;
       } finally {
         setBusy(false);

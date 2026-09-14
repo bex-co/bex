@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentServicesDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseSetEnvironmentServicesResult {
   /**
@@ -46,8 +47,13 @@ export function useSetEnvironmentServices(): UseSetEnvironmentServicesResult {
         await mutate({ variables: { id, serviceIds } });
         toast.success(t("environments.assignSuccess", { name: envName }));
         return true;
-      } catch {
-        toast.error(t("environments.assignError", { name: envName }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("environments.assignError", { name: envName }),
+          ),
+        );
         return false;
       } finally {
         setBusyId(null);

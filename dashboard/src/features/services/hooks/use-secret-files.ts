@@ -8,6 +8,7 @@ import {
   DeleteSecretFileDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import type { SecretFileName } from "@/features/services/types";
 
 // bex-api's secret-files GraphQL mirrors the env-vars shape (docs/ADR006-bex-api.md):
@@ -201,8 +202,13 @@ export function useSecretFileMutations(
           description: t("services.envRolloutNote"),
         });
         return true;
-      } catch {
-        toast.error(t("services.secretFileSaveError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("services.secretFileSaveError", { name }),
+          ),
+        );
         return false;
       } finally {
         setBusy(false);
@@ -221,8 +227,13 @@ export function useSecretFileMutations(
           description: t("services.envRolloutNote"),
         });
         return true;
-      } catch {
-        toast.error(t("services.secretFileDeleteError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("services.secretFileDeleteError", { name }),
+          ),
+        );
         return false;
       } finally {
         setBusy(false);

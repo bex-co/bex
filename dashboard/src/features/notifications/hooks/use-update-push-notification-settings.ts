@@ -7,6 +7,7 @@ import {
   type PushNotificationSettingsInput,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export function useUpdatePushNotificationSettings() {
   const { t } = useTranslations();
@@ -37,8 +38,10 @@ export function useUpdatePushNotificationSettings() {
         await mutate({ variables: { settings } });
         toast.success(t("notifications.pushSaved"));
         return true;
-      } catch {
-        toast.error(t("notifications.pushUpdateError"));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("notifications.pushUpdateError")),
+        );
         return false;
       } finally {
         setBusy(false);

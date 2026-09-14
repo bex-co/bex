@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentEnvGroupsDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseSetEnvironmentEnvGroupsResult {
   setEnvGroups: (
@@ -33,9 +34,12 @@ export function useSetEnvironmentEnvGroups(): UseSetEnvironmentEnvGroupsResult {
           }),
         );
         return true;
-      } catch {
+      } catch (err) {
         toast.error(
-          t("environments.assignEnvGroupsError", { name: environmentName }),
+          mutationErrorMessage(
+            err,
+            t("environments.assignEnvGroupsError", { name: environmentName }),
+          ),
         );
         return false;
       } finally {

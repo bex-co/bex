@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetWebhookEndpointEnabledDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { webhookErrorMessageKey } from "@/features/webhooks/lib/errors";
 
@@ -39,7 +40,11 @@ export function useSetWebhookEnabled(): UseSetWebhookEnabledResult {
         return true;
       } catch (error) {
         const key = webhookErrorMessageKey(error);
-        toast.error(key ? t(key) : t("webhooks.toggleError", { name }));
+        toast.error(
+          key
+            ? t(key)
+            : mutationErrorMessage(error, t("webhooks.toggleError", { name })),
+        );
         return false;
       } finally {
         setToggling(null);

@@ -3,7 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { CreateEnvironmentDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { conflictOrGenericMessage } from "@/common/lib/graphql-error";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseCreateEnvironmentResult {
   /** Fires createEnvironment; resolves the new id on success, null on failure. */
@@ -40,10 +40,7 @@ export function useCreateEnvironment(
         return id;
       } catch (err) {
         toast.error(
-          conflictOrGenericMessage(
-            err,
-            t("environments.createError", { name }),
-          ),
+          mutationErrorMessage(err, t("environments.createError", { name })),
         );
         return null;
       } finally {

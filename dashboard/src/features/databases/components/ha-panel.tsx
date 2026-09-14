@@ -36,6 +36,7 @@ import {
   DialogTitle,
 } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { FailoverDatabaseDocument } from "@/graphql/definitions";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
@@ -68,8 +69,13 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
       toast.success(t("databases.haFailoverSuccess", { name: database.name }));
       setConfirmOpen(false);
       refetch();
-    } catch {
-      toast.error(t("databases.haFailoverError", { name: database.name }));
+    } catch (err) {
+      toast.error(
+        mutationErrorMessage(
+          err,
+          t("databases.haFailoverError", { name: database.name }),
+        ),
+      );
     }
   }
 

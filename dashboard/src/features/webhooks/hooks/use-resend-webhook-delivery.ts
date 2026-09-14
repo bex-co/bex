@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { ResendWebhookDeliveryDocument } from "@/features/webhooks/api/operations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { webhookErrorMessageKey } from "@/features/webhooks/lib/errors";
@@ -59,7 +60,9 @@ export function useResendWebhookDelivery(): UseResendWebhookDeliveryResult {
         return true;
       } catch (error) {
         const key = webhookErrorMessageKey(error);
-        toast.error(key ? t(key) : t("webhooks.resendError"));
+        toast.error(
+          key ? t(key) : mutationErrorMessage(error, t("webhooks.resendError")),
+        );
         return false;
       } finally {
         inFlight.current.delete(attemptId);

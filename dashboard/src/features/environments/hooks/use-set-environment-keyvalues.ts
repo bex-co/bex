@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentKeyValuesDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseSetEnvironmentKeyValuesResult {
   /**
@@ -42,8 +43,13 @@ export function useSetEnvironmentKeyValues(): UseSetEnvironmentKeyValuesResult {
           t("environments.assignKeyValuesSuccess", { name: envName }),
         );
         return true;
-      } catch {
-        toast.error(t("environments.assignKeyValuesError", { name: envName }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("environments.assignKeyValuesError", { name: envName }),
+          ),
+        );
         return false;
       } finally {
         setBusyId(null);

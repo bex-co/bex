@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { UpdateDatabaseDiskAutoscalingDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseUpdateDatabaseDiskAutoscalingResult {
   updateDiskAutoscaling: (id: string, enabled: boolean) => Promise<boolean>;
@@ -27,8 +28,10 @@ export function useUpdateDatabaseDiskAutoscaling(): UseUpdateDatabaseDiskAutosca
           ),
         );
         return true;
-      } catch {
-        toast.error(t("databases.diskAutoscalingError"));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("databases.diskAutoscalingError")),
+        );
         return false;
       } finally {
         setBusy(false);

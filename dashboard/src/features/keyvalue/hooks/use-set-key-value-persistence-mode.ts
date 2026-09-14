@@ -6,6 +6,7 @@ import {
   SetKeyValuePersistenceModeDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { persistenceModeToUi } from "@/features/keyvalue/lib/labels";
 
 export interface UseSetKeyValuePersistenceModeResult {
@@ -44,8 +45,8 @@ export function useSetKeyValuePersistenceMode(
         toast.success(t("keyvalue.persistenceSuccess", { mode: next }));
         void modeQuery.refetch();
         return true;
-      } catch {
-        toast.error(t("keyvalue.persistenceError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("keyvalue.persistenceError")));
         return false;
       }
     },

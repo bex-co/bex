@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import {
-  conflictOrGenericMessage,
   hasGraphQLErrorCode,
   isNameConflictError,
   isThrottledError,
+  mutationErrorMessage,
   planLimitExtensions,
   refusalReason,
 } from "@/common/lib/graphql-error";
@@ -111,10 +111,11 @@ describe("isNameConflictError", () => {
   });
 });
 
-// w6/m49/t008: the four `use-create-*` hooks each wrote the identical
-// isNameConflictError/refusalReason branch, so it graduated here.
-describe("conflictOrGenericMessage", () => {
-  it("returns the backend's specific reason on a name conflict", () => {
+// w1/m145: a mutation the server answered with a refusal toasts the server's
+// reason, since no retry fixes "schedule must be a valid 5-field cron
+// expression"; only an unanswered or throttled request toasts generic copy.
+describe("mutationErrorMessage", () => {
+  it("returns the backend's specific reason on a name conflict (w6/m49)", () => {
     const err = new CombinedGraphQLErrors({
       data: null,
       errors: [
@@ -124,15 +125,58 @@ describe("conflictOrGenericMessage", () => {
         },
       ],
     });
-    expect(conflictOrGenericMessage(err, "generic fallback")).toBe(
+    expect(mutationErrorMessage(err, "generic fallback")).toBe(
       'A project named "acme" already exists in this workspace',
     );
   });
 
-  it("returns the caller's generic message for a non-conflict error", () => {
+  it("returns the server's sentence for a bad-request refusal, prefix stripped", () => {
+    const err = new CombinedGraphQLErrors({
+      data: null,
+      errors: [
+        {
+          message:
+            "bad request: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+        },
+      ],
+    });
+    expect(mutationErrorMessage(err, "generic fallback")).toBe(
+      "Schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+    );
+  });
+
+  it("returns the caller's generic copy for a transport failure", () => {
     expect(
-      conflictOrGenericMessage(new Error("network error"), "generic fallback"),
+      mutationErrorMessage(
+        new TypeError("Failed to fetch"),
+        "generic fallback",
+      ),
     ).toBe("generic fallback");
+  });
+
+  it("returns the caller's generic copy when the server throttled the request", () => {
+    const err = new CombinedGraphQLErrors({
+      data: null,
+      errors: [
+        {
+          message: "rate limit exceeded",
+          extensions: { code: "RATE_LIMITED" },
+        },
+      ],
+    });
+    expect(mutationErrorMessage(err, "generic fallback")).toBe(
+      "generic fallback",
+    );
+  });
+
+  it("returns the caller's generic copy for an answer with no message", () => {
+    const err = new CombinedGraphQLErrors({
+      data: null,
+      errors: [{ message: "" }],
+    });
+    expect(mutationErrorMessage(err, "generic fallback")).toBe(
+      "generic fallback",
+    );
   });
 });
 

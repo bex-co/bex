@@ -5,8 +5,8 @@ import { CreateDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
-  conflictOrGenericMessage,
   graphQLErrorMessage,
+  mutationErrorMessage,
 } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
@@ -91,7 +91,7 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
           setCapLimit(msg);
         } else {
           toast.error(
-            conflictOrGenericMessage(
+            mutationErrorMessage(
               err,
               t("databases.createError", { name: input.name }),
             ),

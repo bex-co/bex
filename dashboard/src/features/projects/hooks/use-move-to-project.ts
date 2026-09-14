@@ -9,6 +9,7 @@ import {
   SetProjectKeyValuesDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   useProjects,
   type ProjectView,
@@ -127,8 +128,13 @@ export function useMoveToProject(
         // (w6/036). With one call the move is all-or-nothing, and the stale
         // source list is reconciled by refreshProjects below.
         await runSet(to.id, [...idsOf(kind, to), resourceId]);
-      } catch {
-        toast.error(t("projects.moveError", { name: resourceName }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("projects.moveError", { name: resourceName }),
+          ),
+        );
         return false;
       } finally {
         setBusyId(null);
@@ -152,8 +158,13 @@ export function useMoveToProject(
           from.id,
           idsOf(kind, from).filter((id) => id !== resourceId),
         );
-      } catch {
-        toast.error(t("projects.removeError", { name: resourceName }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("projects.removeError", { name: resourceName }),
+          ),
+        );
         return false;
       } finally {
         setBusyId(null);

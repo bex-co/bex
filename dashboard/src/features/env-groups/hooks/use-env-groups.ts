@@ -29,6 +29,7 @@ import {
 import { isNotFoundError } from "@/common/lib/document-head";
 import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type {
   CreateEnvGroupInput,
@@ -271,8 +272,8 @@ export function useEnvGroupMutations(
         await bestEffortRefetch(refetch);
         toast.success(t("envGroups.deleteSuccess"));
         return true;
-      } catch {
-        toast.error(t("envGroups.deleteError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("envGroups.deleteError")));
         return false;
       } finally {
         setBusy(false);
@@ -291,8 +292,8 @@ export function useEnvGroupMutations(
           description: t("envGroups.rolloutNote"),
         });
         return true;
-      } catch {
-        toast.error(t("envGroups.linkError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("envGroups.linkError")));
         return false;
       } finally {
         setBusy(false);
@@ -311,8 +312,8 @@ export function useEnvGroupMutations(
           description: t("envGroups.rolloutNote"),
         });
         return true;
-      } catch {
-        toast.error(t("envGroups.unlinkError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("envGroups.unlinkError")));
         return false;
       } finally {
         setBusy(false);
@@ -491,8 +492,8 @@ export function useEnvGroupVarMutations(
           });
         } else toast.success(t("envGroups.varsSaveSuccess"));
         return true;
-      } catch {
-        toast.error(t("envGroups.varsSaveError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("envGroups.varsSaveError")));
         return false;
       } finally {
         setBusy(false);
@@ -520,8 +521,10 @@ export function useEnvGroupVarMutations(
           });
         } else toast.success(t("envGroups.varSaveSuccess", { key }));
         return true;
-      } catch {
-        toast.error(t("envGroups.varSaveError", { key }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("envGroups.varSaveError", { key })),
+        );
         return false;
       } finally {
         setBusy(false);
@@ -542,8 +545,10 @@ export function useEnvGroupVarMutations(
           });
         } else toast.success(t("envGroups.varDeleteSuccess", { key }));
         return true;
-      } catch {
-        toast.error(t("envGroups.varDeleteError", { key }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("envGroups.varDeleteError", { key })),
+        );
         return false;
       } finally {
         setBusy(false);
@@ -597,8 +602,10 @@ export function useEnvGroupSecretFileMutations(
           });
         } else toast.success(t("envGroups.fileSaveSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("envGroups.fileSaveError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("envGroups.fileSaveError", { name })),
+        );
         return false;
       } finally {
         setBusy(false);
@@ -619,8 +626,10 @@ export function useEnvGroupSecretFileMutations(
           });
         } else toast.success(t("envGroups.fileDeleteSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("envGroups.fileDeleteError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("envGroups.fileDeleteError", { name })),
+        );
         return false;
       } finally {
         setBusy(false);

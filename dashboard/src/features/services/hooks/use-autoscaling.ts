@@ -7,6 +7,7 @@ import {
   DisableAutoscalingDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface AutoscalingFormValues {
   minInstances: number;
@@ -58,8 +59,8 @@ export function useAutoscaling(serviceId: string): UseAutoscalingResult {
         });
         toast.success(t("services.scalingSaved"));
         return true;
-      } catch {
-        toast.error(t("services.scalingError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("services.scalingError")));
         return false;
       } finally {
         setSaving(false);
@@ -79,8 +80,8 @@ export function useAutoscaling(serviceId: string): UseAutoscalingResult {
       });
       toast.success(t("services.scalingDisabled"));
       return true;
-    } catch {
-      toast.error(t("services.scalingError"));
+    } catch (err) {
+      toast.error(mutationErrorMessage(err, t("services.scalingError")));
       return false;
     } finally {
       setSaving(false);

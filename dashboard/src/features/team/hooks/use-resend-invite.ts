@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { ResendWorkspaceInviteDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseResendInviteResult {
   /** Re-sends a pending invite's email (fresh expiry + freshly minted link,
@@ -33,8 +34,8 @@ export function useResendInvite(workspaceId: string): UseResendInviteResult {
         const email = data?.resendWorkspaceInvite?.email ?? "";
         toast.success(t("team.resendInviteSuccess", { email }));
         return true;
-      } catch {
-        toast.error(t("team.resendInviteError"));
+      } catch (err) {
+        toast.error(mutationErrorMessage(err, t("team.resendInviteError")));
         return false;
       } finally {
         setResending(null);

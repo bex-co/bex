@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   protectedConfirmationFromError,
   type ProtectedActionResult,
@@ -44,7 +45,9 @@ export function useDeleteDatabase(): UseDeleteDatabaseResult {
             confirmation: requiredConfirmation,
           } as const;
         }
-        toast.error(t("databases.deleteError", { name }));
+        toast.error(
+          mutationErrorMessage(err, t("databases.deleteError", { name })),
+        );
         return { status: "error" } as const;
       } finally {
         setDeleting(null);

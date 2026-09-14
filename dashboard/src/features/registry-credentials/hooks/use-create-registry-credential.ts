@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { CreateRegistryCredentialDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface CreateRegistryCredentialInput {
   host: string;
@@ -49,8 +50,13 @@ export function useCreateRegistryCredential(): UseCreateRegistryCredentialResult
           t("registryCredentials.createSuccess", { host: input.host }),
         );
         return true;
-      } catch {
-        toast.error(t("registryCredentials.createError", { host: input.host }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("registryCredentials.createError", { host: input.host }),
+          ),
+        );
         return false;
       } finally {
         setBusy(false);

@@ -12,7 +12,10 @@ import {
 } from "@/features/services/lib/protected-confirmation";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
-import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 
 export type BlueprintSyncActionResult =
   | { status: "success"; result: SyncBlueprintResult | null }
@@ -83,7 +86,7 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
         if (hasGraphQLErrorCode(err, "BLUEPRINT_SYNC_BUSY")) {
           toast.error(t("blueprints.syncBusy"));
         } else {
-          toast.error(t("blueprints.syncError"));
+          toast.error(mutationErrorMessage(err, t("blueprints.syncError")));
         }
         return { status: "error" };
       } finally {

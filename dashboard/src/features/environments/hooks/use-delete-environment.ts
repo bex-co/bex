@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteEnvironmentDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseDeleteEnvironmentResult {
   /** Fires deleteEnvironment; resolves true on success (toasted either way). */
@@ -31,8 +32,10 @@ export function useDeleteEnvironment(): UseDeleteEnvironmentResult {
         await mutate({ variables: { id } });
         toast.success(t("environments.deleteSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("environments.deleteError", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("environments.deleteError", { name })),
+        );
         return false;
       } finally {
         setDeleting(null);

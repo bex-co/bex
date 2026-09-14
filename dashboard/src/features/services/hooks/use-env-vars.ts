@@ -8,6 +8,7 @@ import {
   DeleteEnvVarDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import type { EnvVarKey } from "@/features/services/types";
 
 // bex-api's env-vars GraphQL is Render dashboard-shaped (docs/ADR006-bex-api.md#env-vars):
@@ -208,8 +209,10 @@ export function useEnvVarMutations(
           description: t("services.envRolloutNote"),
         });
         return true;
-      } catch {
-        toast.error(t("services.envSaveError", { key }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("services.envSaveError", { key })),
+        );
         return false;
       } finally {
         setBusy(false);
@@ -228,8 +231,10 @@ export function useEnvVarMutations(
           description: t("services.envRolloutNote"),
         });
         return true;
-      } catch {
-        toast.error(t("services.envDeleteError", { key }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("services.envDeleteError", { key })),
+        );
         return false;
       } finally {
         setBusy(false);

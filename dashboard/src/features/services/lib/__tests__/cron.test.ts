@@ -1,46 +1,30 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { describeCron, isValidCron } from "@/features/services/lib/cron";
 
+// The one acceptance table for a cron schedule. bex-api's validCronSchedule is
+// tested against the same file (lego/backend/internal/apps/
+// cron_schedule_vectors_test.go), and its answers are the source of truth: the
+// form must accept exactly what the server accepts (w1/m145).
+const VECTORS: { schedule: string; valid: boolean }[] = JSON.parse(
+  readFileSync(
+    `${process.cwd()}/../lego/backend/internal/apps/testdata/cron-schedule-vectors.json`,
+    "utf8",
+  ),
+);
+
 describe("isValidCron", () => {
-  it("accepts ordinary valid 5-field expressions", () => {
-    for (const ok of [
-      "*/5 * * * *",
-      "0 0 * * *",
-      "0 8 * * 1",
-      "15 3 1-5 * *",
-      "0 0 1 1 *",
-      "0 0 * * MON",
-      "0 0 * JAN *",
-      "0,30 * * * *",
-      "0 9-17 * * 1-5",
-      "0 0 * * 7",
-    ]) {
-      expect(isValidCron(ok), ok).toBe(true);
-    }
-  });
+  it.each(VECTORS.map((v) => [v.schedule, v.valid] as const))(
+    "isValidCron(%j) is %s, the same as bex-api",
+    (schedule, valid) => {
+      expect(isValidCron(schedule)).toBe(valid);
+    },
+  );
 
-  it("rejects the wrong number of fields", () => {
-    for (const bad of ["", "* * *", "not a cron", "* * * * * *", "*"]) {
-      expect(isValidCron(bad), bad).toBe(false);
-    }
-  });
-
-  it("rejects 5-field expressions with out-of-range values (the 99 99 * * * bug)", () => {
-    for (const bad of [
-      "99 99 * * *",
-      "0 24 * * *",
-      "60 * * * *",
-      "* * 0 * *",
-      "* * 32 * *",
-      "* * * 13 *",
-      "* * * * 8",
-      "*/0 * * * *",
-      "5-2 * * * *",
-      "abc * * * *",
-    ]) {
-      expect(isValidCron(bad), bad).toBe(false);
-    }
+  it("is checked against a non-trivial table", () => {
+    expect(VECTORS.filter((v) => v.valid).length).toBeGreaterThanOrEqual(10);
+    expect(VECTORS.filter((v) => !v.valid).length).toBeGreaterThanOrEqual(10);
   });
 });
 
@@ -90,8 +74,15 @@ describe("describeCron", () => {
     it("produces the numeric path's exact phrases for named single tokens", () => {
       expect(describeCron("0 0 * * MON")).toBe("Every Monday at 00:00");
       expect(describeCron("0 0 * * SUN")).toBe("Every Sunday at 00:00");
-      // 0 and 7 are both Sunday; the name resolves to 0.
-      expect(describeCron("0 0 * * SUN")).toBe(describeCron("0 0 * * 7"));
     });
+  });
+
+  // w1/m145: 7 is not Sunday to bex-api, so it gets no Sunday preview; ? is
+  // robfig's synonym for *, so it previews exactly like *.
+  it("previews ? like * and gives 7 no preview", () => {
+    expect(describeCron("0 0 * * 7")).toBeNull();
+    expect(describeCron("0 0 ? * *")).toBe("Every day at 00:00");
+    expect(describeCron("0 8 ? * 1")).toBe("Every Monday at 08:00");
+    expect(describeCron("? ? ? ? ?")).toBe("Every minute");
   });
 });

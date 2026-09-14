@@ -6,6 +6,7 @@ import {
   RegenerateDeployHookDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseDeployHookResult {
   /** The copy-ready secret URL, or null while loading / on read failure. */
@@ -58,8 +59,10 @@ export function useDeployHook(serviceId: string): UseDeployHookResult {
       setURL(next);
       toast.success(t("services.deployHookRegenerated"));
       return true;
-    } catch {
-      toast.error(t("services.deployHookRegenerateError"));
+    } catch (err) {
+      toast.error(
+        mutationErrorMessage(err, t("services.deployHookRegenerateError")),
+      );
       return false;
     } finally {
       setRegenerating(false);

@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { downloadTextFile } from "@/common/lib/download-file";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useServices } from "@/features/services/hooks/use-services";
@@ -132,8 +133,8 @@ export function GenerateBlueprintDialog({
         return;
       }
       setManifest(out.manifest);
-    } catch {
-      toast.error(t("blueprints.generateError"));
+    } catch (err) {
+      toast.error(mutationErrorMessage(err, t("blueprints.generateError")));
     }
   }
 

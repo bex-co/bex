@@ -4,7 +4,10 @@ import { toast } from "sonner";
 import { DisconnectBlueprintDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 
 export interface UseDisconnectBlueprintResult {
   disconnect: (id: string) => Promise<boolean>;
@@ -30,7 +33,9 @@ export function useDisconnectBlueprint(): UseDisconnectBlueprintResult {
         if (hasGraphQLErrorCode(err, "BLUEPRINT_SYNC_BUSY")) {
           toast.error(t("blueprints.disconnectBusy"));
         } else {
-          toast.error(t("blueprints.disconnectError"));
+          toast.error(
+            mutationErrorMessage(err, t("blueprints.disconnectError")),
+          );
         }
         return false;
       } finally {
