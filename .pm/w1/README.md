@@ -165,6 +165,8 @@ Open inbox notes:
 
 - [095](095.md) — A linked environment group's secret file silently replaces the service's own secret file of the same name. Live: service `qa.txt` = `from-service`, group `qa.txt` = `from-group`, and `/etc/secrets/qa.txt` served `from-group` after the link, while the API and dashboard still showed the service's file with no override marker. That is the reverse of the env-var rule, where the service always wins (`envFromSources`). `secretFileMounts` projects `filesFromSecrets` in link order with the service's own files Secret first (`app_controller.go:3894-3925`, `secrets/files.go:228`) (~45m, major) ← live `/qa-find-bugs` 2026-09-14 pass 22.
 
+- [096](096.md) — A service env var named `PORT` saves as given (API `PORT=8080`, no dashboard warning) but is silently ignored. The process still gets the platform `PORT` (3000), because `appEnv` appends the operator-owned `PORT` as a container `Env` that beats `envFrom` (`app_controller.go:3816-3846`, ADR004:152). Render lets users override `PORT` (default 10000), and ADR018 records no divergence (~40m) ← live `/qa-find-bugs` 2026-09-14 pass 23.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
