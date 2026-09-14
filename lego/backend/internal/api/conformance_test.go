@@ -62,6 +62,9 @@ type conformDeployStore struct {
 func (s *conformDeployStore) CreateDeploy(_ context.Context, _, _, _ string, _ int64, _ store.CommitInfo) (store.Deploy, error) {
 	return store.Deploy{}, errors.New("conformDeployStore: CreateDeploy not expected in conformance tests")
 }
+func (s *conformDeployStore) LatestDeployCommit(_ context.Context, _ string) (store.CommitInfo, error) {
+	return store.CommitInfo{}, errors.New("conformDeployStore: LatestDeployCommit not expected")
+}
 func (s *conformDeployStore) CreateRollbackDeploy(_ context.Context, _, _, _ string, _ int64, _ store.CommitInfo) (store.Deploy, error) {
 	return store.Deploy{}, errors.New("conformDeployStore: CreateRollbackDeploy not expected")
 }

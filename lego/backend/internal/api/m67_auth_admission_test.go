@@ -87,7 +87,7 @@ func bearerRequest(token, sourceIP string) *http.Request {
 func TestInvalidCredentialFloodIsBoundedBeforeUpstream(t *testing.T) {
 	p := newCountingIdentityProvider(t, "", "")
 	const budget = 5
-	mw := gateWithAdmission(p, NewAuthAdmission(budget, budget, 0))
+	mw := gateWithAdmission(p, NewAuthAdmission(budget, budget, 0, 0))
 
 	const attempts = 50
 	var shed int
@@ -116,7 +116,7 @@ func TestInvalidCredentialFloodIsBoundedBeforeUpstream(t *testing.T) {
 // source IP do not share a bucket even though each credential is bounded.
 func TestValidCredentialsAreIsolated(t *testing.T) {
 	p := newCountingIdentityProvider(t, "good-token", "")
-	mw := gateWithAdmission(p, NewAuthAdmission(2, 2, 0))
+	mw := gateWithAdmission(p, NewAuthAdmission(2, 2, 0, 0))
 
 	for i := range 20 {
 		w := httptest.NewRecorder()
@@ -132,7 +132,7 @@ func TestValidCredentialsAreIsolated(t *testing.T) {
 
 func TestValidSessionIsRejectedBeforeAnotherKratosCallWhenOverBudget(t *testing.T) {
 	p := newCountingIdentityProvider(t, "", "live-session")
-	mw := gateWithAdmission(p, NewAuthAdmission(2, 2, 0))
+	mw := gateWithAdmission(p, NewAuthAdmission(2, 2, 0, 0))
 	for i := range 3 {
 		r := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
 		r.Header.Set("X-Session-Token", "live-session")
@@ -152,7 +152,7 @@ func TestValidSessionIsRejectedBeforeAnotherKratosCallWhenOverBudget(t *testing.
 }
 
 func TestSessionCookieBudgetCannotBeBypassedWithIrrelevantCookies(t *testing.T) {
-	adm := NewAuthAdmission(1, 1, 0)
+	adm := NewAuthAdmission(1, 1, 0, 0)
 	request := func(extra string) *http.Request {
 		r := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
 		r.Header.Set("Cookie", "ory_kratos_session=live-session; noise="+extra)
@@ -170,7 +170,8 @@ func TestSessionCookieBudgetCannotBeBypassedWithIrrelevantCookies(t *testing.T) 
 }
 
 func TestOneCredentialCannotOccupyTheGlobalAuthenticationPool(t *testing.T) {
-	adm := NewAuthAdmission(10_000, 10_000, 64)
+	// Explicit tight per-credential bound (not derived from the global pool).
+	adm := NewAuthAdmission(10_000, 10_000, 64, 8)
 	r := bearerRequest("one-credential", "203.0.113.22")
 	var releases []func()
 	for range 8 {
@@ -199,7 +200,7 @@ func TestOneCredentialCannotOccupyTheGlobalAuthenticationPool(t *testing.T) {
 func TestInvalidSessionFloodIsBounded(t *testing.T) {
 	p := newCountingIdentityProvider(t, "", "live-session")
 	const budget = 4
-	mw := gateWithAdmission(p, NewAuthAdmission(budget, budget, 0))
+	mw := gateWithAdmission(p, NewAuthAdmission(budget, budget, 0, 0))
 
 	for i := range 30 {
 		r := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
@@ -215,7 +216,7 @@ func TestInvalidSessionFloodIsBounded(t *testing.T) {
 // One source exhausting its budget must not shed another's traffic.
 func TestBudgetIsPerSource(t *testing.T) {
 	p := newCountingIdentityProvider(t, "good", "")
-	mw := gateWithAdmission(p, NewAuthAdmission(3, 3, 0))
+	mw := gateWithAdmission(p, NewAuthAdmission(3, 3, 0, 0))
 
 	for i := range 20 {
 		mw.ServeHTTP(httptest.NewRecorder(), bearerRequest(fmt.Sprintf("bad-%d", i), "203.0.113.40"))
@@ -231,7 +232,7 @@ func TestBudgetIsPerSource(t *testing.T) {
 // edge's single address (which would let one abusive client shed everyone).
 func TestBudgetKeysOnForwardedClientBehindTrustedProxy(t *testing.T) {
 	p := newCountingIdentityProvider(t, "good", "")
-	adm := NewAuthAdmission(3, 3, 0)
+	adm := NewAuthAdmission(3, 3, 0, 0)
 	trusted, err := core.ParseTrustedProxies("192.0.2.0/24")
 	if err != nil {
 		t.Fatalf("parse trusted proxies: %v", err)
@@ -303,7 +304,7 @@ func TestAdmissionOffIsUnchangedBehavior(t *testing.T) {
 // per-source budget, so an anonymous flood of unique tokens grew the map
 // one entry per request even while being correctly shed.
 func TestShedRequestsDoNotAllocateCredentialEntries(t *testing.T) {
-	adm := NewAuthAdmission(1, 1, 0)
+	adm := NewAuthAdmission(1, 1, 0, 0)
 	// Drain the source's failure budget the way the real path does: one
 	// admitted attempt whose upstream verdict was invalid (penalize).
 	first := bearerRequest("first-token", "203.0.113.70")
@@ -321,5 +322,108 @@ func TestShedRequestsDoNotAllocateCredentialEntries(t *testing.T) {
 	}
 	if got := adm.credentials.Entries(); got > 1 {
 		t.Errorf("credentials limiter holds %d entries after an exhausted-source flood; want ≤ 1 — shed requests must not allocate", got)
+	}
+}
+
+// TestPerCredentialInflightBudgetIsIndependentOfGlobalPool pins w4/m100: the
+// per-credential ceiling is its own knob (default 64), not maxInflight/8. Drive
+// via admit() holding releases — no wall-clock races.
+func TestPerCredentialInflightBudgetIsIndependentOfGlobalPool(t *testing.T) {
+	const defaultPerCred = 64
+	// Generous global pool so only the per-credential bound can shed.
+	adm := NewAuthAdmission(10_000, 10_000, 256, defaultPerCred)
+	r := bearerRequest("page-load-session", "203.0.113.80")
+	var releases []func()
+	for i := range defaultPerCred {
+		release, err := adm.admit(r)
+		if err != nil {
+			t.Fatalf("admit %d of %d under default per-cred budget: %v", i+1, defaultPerCred, err)
+		}
+		releases = append(releases, release)
+	}
+	if _, err := adm.admit(r); !errors.Is(err, errAuthOverloaded) {
+		t.Fatalf("admit past default per-cred budget = %v, want errAuthOverloaded", err)
+	}
+	for _, release := range releases {
+		release()
+	}
+
+	tight := NewAuthAdmission(10_000, 10_000, 256, 8)
+	var tightReleases []func()
+	for i := range 8 {
+		release, err := tight.admit(r)
+		if err != nil {
+			t.Fatalf("admit %d under tight per-cred budget: %v", i+1, err)
+		}
+		tightReleases = append(tightReleases, release)
+	}
+	if _, err := tight.admit(r); !errors.Is(err, errAuthOverloaded) {
+		t.Fatalf("ninth under tight bound = %v, want errAuthOverloaded", err)
+	}
+	for _, release := range tightReleases {
+		release()
+	}
+
+	// 0 ⇒ unbounded per-credential (global pool still applies).
+	unbounded := NewAuthAdmission(10_000, 10_000, 16, 0)
+	var uReleases []func()
+	for i := range 16 {
+		release, err := unbounded.admit(r)
+		if err != nil {
+			t.Fatalf("admit %d with per-cred=0 (unbounded): %v", i+1, err)
+		}
+		uReleases = append(uReleases, release)
+	}
+	if _, err := unbounded.admit(r); !errors.Is(err, errAuthOverloaded) {
+		t.Fatalf("past global pool with per-cred=0 = %v, want errAuthOverloaded from global", err)
+	}
+	for _, release := range uReleases {
+		release()
+	}
+}
+
+// TestAuthOverloadedIsDistinguishableFromRateLimited pins that admission shed
+// and rate-limit shed share HTTP 429 + Retry-After but carry distinct wire codes.
+func TestAuthOverloadedIsDistinguishableFromRateLimited(t *testing.T) {
+	gql := httptest.NewRequest(http.MethodPost, "/graphql", nil)
+	rest := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
+
+	authW := httptest.NewRecorder()
+	writeAuthOverloaded(authW, gql)
+	if authW.Code != http.StatusTooManyRequests {
+		t.Fatalf("auth GraphQL status = %d, want 429", authW.Code)
+	}
+	if got := authW.Header().Get("Retry-After"); got != "1" {
+		t.Errorf("auth GraphQL Retry-After = %q, want 1", got)
+	}
+	if !strings.Contains(authW.Body.String(), `"AUTH_OVERLOADED"`) {
+		t.Errorf("auth GraphQL body missing AUTH_OVERLOADED: %s", authW.Body.String())
+	}
+	if strings.Contains(authW.Body.String(), `"RATE_LIMITED"`) {
+		t.Errorf("auth GraphQL body must not use RATE_LIMITED: %s", authW.Body.String())
+	}
+
+	rateW := httptest.NewRecorder()
+	rateW.Header().Set("Retry-After", "2")
+	writeTooManyRequests(rateW, gql)
+	if rateW.Code != http.StatusTooManyRequests {
+		t.Fatalf("rate GraphQL status = %d, want 429", rateW.Code)
+	}
+	if !strings.Contains(rateW.Body.String(), `"RATE_LIMITED"`) {
+		t.Errorf("rate GraphQL body missing RATE_LIMITED: %s", rateW.Body.String())
+	}
+	if strings.Contains(rateW.Body.String(), `"AUTH_OVERLOADED"`) {
+		t.Errorf("rate GraphQL body must not use AUTH_OVERLOADED: %s", rateW.Body.String())
+	}
+
+	authREST := httptest.NewRecorder()
+	writeAuthOverloaded(authREST, rest)
+	if !strings.Contains(authREST.Body.String(), `"auth_overloaded"`) {
+		t.Errorf("auth REST body missing auth_overloaded: %s", authREST.Body.String())
+	}
+	rateREST := httptest.NewRecorder()
+	writeTooManyRequests(rateREST, rest)
+	if !strings.Contains(rateREST.Body.String(), `"rate_limited"`) {
+		t.Errorf("rate REST body missing rate_limited: %s", rateREST.Body.String())
 	}
 }

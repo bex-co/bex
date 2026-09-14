@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { skipPollWhenHidden } from "@/common/lib/polling";
+import { isThrottledError } from "@/common/lib/graphql-error";
 import { MetricsDocument } from "@/graphql/definitions";
 import {
   RENDER_METRIC_NAMES,
@@ -77,6 +78,8 @@ export interface UseMetricsOptions {
   path?: string;
   /** Polling cadence; 0 disables polling. Defaults to 30s. */
   pollIntervalMs?: number;
+  /** Skip the network request entirely (inactive tab series, etc.). */
+  skip?: boolean;
 }
 
 export interface UseMetricsResult {
@@ -91,6 +94,11 @@ export interface UseMetricsResult {
    * unfiltered chart — the Logs-tab 503 pattern.
    */
   storeUnavailable: boolean;
+  /**
+   * true when the read was shed for throttling (RATE_LIMITED / AUTH_OVERLOADED).
+   * Distinct from unavailable — transient, retryable (w4/m100).
+   */
+  throttled: boolean;
   /** Any other error (network, auth, ...). */
   error: Error | undefined;
   /**
@@ -132,6 +140,7 @@ export function useMetrics(
     host,
     path,
     percentage,
+    skip = false,
   } = opts;
 
   const { data, loading, error } = useQuery(MetricsDocument, {
@@ -171,6 +180,7 @@ export function useMetrics(
         percentage: percentage ?? undefined,
       },
     },
+    skip,
     pollInterval: pollIntervalMs,
     skipPollAttempt: skipPollWhenHidden,
     fetchPolicy: "cache-and-network",
@@ -179,6 +189,8 @@ export function useMetrics(
 
   const unavailable = isMetricsUnavailable(error);
   const storeUnavailable = !unavailable && isLogStoreUnavailable(error);
+  const throttled =
+    !unavailable && !storeUnavailable && isThrottledError(error);
 
   // Memoized on data identity: a stable series identity is what lets the
   // charts' geometry useMemos actually cache across poll-tick re-renders.
@@ -199,7 +211,8 @@ export function useMetrics(
     loading,
     unavailable,
     storeUnavailable,
-    error: unavailable || storeUnavailable ? undefined : error,
+    throttled,
+    error: unavailable || storeUnavailable || throttled ? undefined : error,
     degradedSources,
   };
 }

@@ -15,6 +15,7 @@ function emptyResult() {
     loading: false,
     unavailable: false,
     storeUnavailable: false,
+    throttled: false,
     error: undefined,
     degradedSources: [],
   };
@@ -36,6 +37,7 @@ function seriesResult(unit: string, values: number[], instance?: string) {
     loading: false,
     unavailable: false,
     storeUnavailable: false,
+    throttled: false,
     error: undefined,
     degradedSources: [],
   };
@@ -228,6 +230,7 @@ describe("DatastoreMetricsPanel", () => {
           loading: false,
           unavailable: true,
           storeUnavailable: false,
+          throttled: false,
           error: undefined,
           degradedSources: [],
         };

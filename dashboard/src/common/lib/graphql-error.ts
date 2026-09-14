@@ -59,6 +59,18 @@ export function hasGraphQLErrorCode(err: unknown, code: string): boolean {
 }
 
 /**
+ * True when the server shed the read for throttling — either the per-caller
+ * rate budget (`RATE_LIMITED`) or auth-admission overload (`AUTH_OVERLOADED`,
+ * w4/m100). Keyed on extensions.code so copy changes cannot hide it.
+ */
+export function isThrottledError(err: unknown): boolean {
+  return (
+    hasGraphQLErrorCode(err, "RATE_LIMITED") ||
+    hasGraphQLErrorCode(err, "AUTH_OVERLOADED")
+  );
+}
+
+/**
  * True when a create mutation failed because the name is already taken in
  * scope (a workspace, a project, …) — keyed on the backend's stable
  * `extensions.code: "CONFLICT"` (`core.NewConflictError`, w6/m49) rather than

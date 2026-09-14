@@ -197,6 +197,16 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Shown when a metrics query fails with a real error (not a 503/no-data) — distinct from the empty 'No data in range' state (w9/m86)",
   },
+  "metrics.chartThrottled": {
+    message: "正在追赶——请求曾被短暂限流",
+    description:
+      "Cold-load state when a metrics read was shed (RATE_LIMITED / AUTH_OVERLOADED) with no cached series — transient, not 'metrics unavailable' (w4/m100)",
+  },
+  "metrics.chartStaleThrottled": {
+    message: "显示缓存数据——限流后正在刷新",
+    description:
+      "Warm-cache banner when a metrics refetch was throttled; cached series remain visible but must not read as current (w4/m100)",
+  },
   "metrics.applicationTitle": {
     message: "应用指标",
     description: "Application metrics card title",

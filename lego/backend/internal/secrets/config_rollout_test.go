@@ -26,12 +26,19 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-type recordingDeploys struct{ rows []store.Deploy }
+type recordingDeploys struct {
+	rows  []store.Deploy
+	prior store.CommitInfo
+}
 
-func (r *recordingDeploys) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, _ store.CommitInfo) (store.Deploy, error) {
-	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Generation: generation}
+func (r *recordingDeploys) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
+	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message}
 	r.rows = append(r.rows, d)
 	return d, nil
+}
+
+func (r *recordingDeploys) LatestDeployCommit(_ context.Context, _ string) (store.CommitInfo, error) {
+	return r.prior, nil
 }
 
 func managedApp(name string) *appv1alpha1.App {
@@ -71,6 +78,9 @@ func TestEnvWritesOpenDeployHistory(t *testing.T) {
 	if rec.rows[0].AppID != "srv-web" {
 		t.Errorf("appID = %q, want the service's control-plane row id", rec.rows[0].AppID)
 	}
+	if rec.rows[0].Commit != "" {
+		t.Errorf("commit = %q, want empty when no prior release commit (image-backed control)", rec.rows[0].Commit)
+	}
 
 	if _, err := svc.SetSecretFile(ctx, "web", "ca.pem", "CERT"); err != nil {
 		t.Fatalf("SetSecretFile: %v", err)
@@ -104,4 +114,44 @@ func TestSaveOnlyEnvPatchOpensNoDeploy(t *testing.T) {
 	if len(rec.rows) != 1 {
 		t.Fatalf("a deploying env patch opened %d rows, want 1", len(rec.rows))
 	}
+}
+
+// TestEnvWritesCarryPriorCommit is w4/m100 t005: the secrets single-write and
+// batch paths must open config_change rows that inherit the running release's
+// commit when LatestDeployCommit returns one.
+func TestEnvWritesCarryPriorCommit(t *testing.T) {
+	ctx := context.Background()
+	prior := store.CommitInfo{Hash: "5ef5e18799fa7edbc6477ca3128c78686833b06b", Message: "update"}
+
+	t.Run("SetEnvVars", func(t *testing.T) {
+		rec := &recordingDeploys{prior: prior}
+		svc := newService(newFakeSecretStore(), managedApp("web"))
+		svc.Rollout = &rollout.Tracker{Store: rec}
+		if _, err := svc.SetEnvVars(ctx, "web", []EnvVarView{{Key: "MYVAR", Value: "one"}}); err != nil {
+			t.Fatalf("SetEnvVars: %v", err)
+		}
+		if len(rec.rows) != 1 {
+			t.Fatalf("rows = %d, want 1", len(rec.rows))
+		}
+		if rec.rows[0].Commit != prior.Hash || rec.rows[0].CommitMessage != prior.Message {
+			t.Fatalf("commit = %q/%q, want prior %q/%q", rec.rows[0].Commit, rec.rows[0].CommitMessage, prior.Hash, prior.Message)
+		}
+	})
+
+	t.Run("PatchEnvironment deploy", func(t *testing.T) {
+		rec := &recordingDeploys{prior: prior}
+		svc := newService(newFakeSecretStore(), managedApp("web"))
+		svc.Rollout = &rollout.Tracker{Store: rec}
+		if _, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{
+			EnvVars: []EnvVarPatch{{Key: "NOW", Value: "applied", ValueSet: true}}, SaveMode: SaveModeDeploy,
+		}); err != nil {
+			t.Fatalf("PatchEnvironment(deploy): %v", err)
+		}
+		if len(rec.rows) != 1 {
+			t.Fatalf("rows = %d, want 1", len(rec.rows))
+		}
+		if rec.rows[0].Commit != prior.Hash {
+			t.Fatalf("batch commit = %q, want %q", rec.rows[0].Commit, prior.Hash)
+		}
+	})
 }

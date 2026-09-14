@@ -28,12 +28,19 @@ import (
 )
 
 // recordingDeploys captures the deploy-history rows an env-group write opens.
-type recordingDeploys struct{ rows []store.Deploy }
+type recordingDeploys struct {
+	rows  []store.Deploy
+	prior store.CommitInfo
+}
 
-func (r *recordingDeploys) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, _ store.CommitInfo) (store.Deploy, error) {
-	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Generation: generation}
+func (r *recordingDeploys) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
+	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message}
 	r.rows = append(r.rows, d)
 	return d, nil
+}
+
+func (r *recordingDeploys) LatestDeployCommit(_ context.Context, _ string) (store.CommitInfo, error) {
+	return r.prior, nil
 }
 
 // managedApp is sampleApp with the control-plane labels a store-managed service
@@ -62,7 +69,8 @@ func trackedService(kv core.SecretKV, rec *recordingDeploys, name string) *Servi
 // revision bumped rev-1 -> rev-2 with no second deploy row.
 func TestEnvGroupWritesOpenDeployHistory(t *testing.T) {
 	ctx := context.Background()
-	rec := &recordingDeploys{}
+	prior := store.CommitInfo{Hash: "5ef5e18799fa7edbc6477ca3128c78686833b06b", Message: "update"}
+	rec := &recordingDeploys{prior: prior}
 	svc := trackedService(newFakeStore(), rec, "web")
 
 	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
@@ -87,6 +95,9 @@ func TestEnvGroupWritesOpenDeployHistory(t *testing.T) {
 	}
 	if rec.rows[0].AppID != "srv-web" {
 		t.Errorf("appID = %q, want the linked service's row id", rec.rows[0].AppID)
+	}
+	if rec.rows[0].Commit != prior.Hash {
+		t.Errorf("link commit = %q, want prior %q (w4/m100)", rec.rows[0].Commit, prior.Hash)
 	}
 
 	// Re-linking is idempotent and changes no spec field, so it is not a rollout.

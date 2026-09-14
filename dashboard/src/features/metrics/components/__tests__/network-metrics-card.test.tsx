@@ -50,6 +50,7 @@ function emptyResult() {
     loading: false,
     unavailable: false,
     storeUnavailable: false,
+    throttled: false,
     error: undefined,
     degradedSources: [],
   };
@@ -145,6 +146,7 @@ describe("NetworkMetricsCard", () => {
           loading: false,
           unavailable: false,
           storeUnavailable: false,
+          throttled: false,
           degradedSources: [],
           error: undefined,
         };
@@ -296,6 +298,7 @@ describe("NetworkMetricsCard", () => {
           loading: false,
           unavailable: false,
           storeUnavailable: false,
+          throttled: false,
           degradedSources: [],
           error: undefined,
         };
@@ -327,6 +330,7 @@ describe("NetworkMetricsCard", () => {
           loading: false,
           unavailable: false,
           storeUnavailable: false,
+          throttled: false,
           degradedSources: [],
           error: undefined,
         };
@@ -367,6 +371,7 @@ describe("NetworkMetricsCard", () => {
           loading: false,
           unavailable: false,
           storeUnavailable: false,
+          throttled: false,
           degradedSources: [],
           error: undefined,
         };
@@ -392,6 +397,7 @@ describe("NetworkMetricsCard", () => {
           loading: false,
           unavailable: true,
           storeUnavailable: false,
+          throttled: false,
           error: undefined,
           degradedSources: [],
         };
@@ -439,6 +445,7 @@ describe("NetworkMetricsCard", () => {
           loading: false,
           unavailable: false,
           storeUnavailable: false,
+          throttled: false,
           degradedSources: ["direct"],
           error: undefined,
         };

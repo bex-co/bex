@@ -239,6 +239,28 @@ func TestDeployRowFailureDoesNotFailTheEdit(t *testing.T) {
 	}
 }
 
+// TestSettingsPatchCarriesPriorCommit is w4/m100 t005: apps.patchTracked must
+// open a config_change row that inherits the running release's commit.
+func TestSettingsPatchCarriesPriorCommit(t *testing.T) {
+	prior := store.CommitInfo{Hash: "5ef5e18799fa7edbc6477ca3128c78686833b06b", Message: "update"}
+	st := &recordingStore{priorCommit: prior}
+	svc, _ := newService(st, managedRepoApp("web"))
+	start := "./app --serve"
+	if _, err := svc.SetCommands(context.Background(), "web", nil, &start); err != nil {
+		t.Fatalf("SetCommands: %v", err)
+	}
+	if len(st.deployCalls) != 1 {
+		t.Fatalf("deploy rows = %d, want 1", len(st.deployCalls))
+	}
+	got := st.deployCalls[0]
+	if got.Trigger != store.TriggerConfigChange {
+		t.Errorf("trigger = %q, want config_change", got.Trigger)
+	}
+	if got.Commit != prior.Hash || got.CommitMessage != prior.Message {
+		t.Fatalf("commit = %q/%q, want prior %q/%q", got.Commit, got.CommitMessage, prior.Hash, prior.Message)
+	}
+}
+
 // TestSurfacesAgreeOnDeployHistory is w6/m51's Render-parity check (t004): the
 // same edit must be equally visible whichever surface made it. GraphQL drives
 // each field through its own mutation; REST PATCH and the update_service MCP

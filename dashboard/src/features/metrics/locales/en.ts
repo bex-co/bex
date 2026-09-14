@@ -207,6 +207,16 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Shown when a metrics query fails with a real error (not a 503/no-data) — distinct from the empty 'No data in range' state (w9/m86)",
   },
+  "metrics.chartThrottled": {
+    message: "Catching up — traffic was briefly limited",
+    description:
+      "Cold-load state when a metrics read was shed (RATE_LIMITED / AUTH_OVERLOADED) with no cached series — transient, not 'metrics unavailable' (w4/m100)",
+  },
+  "metrics.chartStaleThrottled": {
+    message: "Showing cached data — refreshing after a brief limit",
+    description:
+      "Warm-cache banner when a metrics refetch was throttled; cached series remain visible but must not read as current (w4/m100)",
+  },
   "metrics.applicationTitle": {
     message: "Application Metrics",
     description: "Application metrics card title",

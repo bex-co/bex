@@ -8,6 +8,10 @@ import { MetricsFiltersDocument } from "@/graphql/definitions";
  * dropdowns with codes the App has actually returned, not a hardcoded guess.
  * Errors (including "source not configured") degrade to an empty list — the
  * dropdown just offers no discovered values.
+ *
+ * Always requests INSTANCE + STATUS_CODE together so the Application and
+ * Network cards share one document (w4/m100 t002) instead of two POSTs that
+ * used to duplicate under concurrency.
  */
 export function useMetricsFilterValues(
   resource: string,
@@ -19,7 +23,7 @@ export function useMetricsFilterValues(
     variables: {
       query: {
         filters: [{ field: "RESOURCE", values: [resource] }],
-        outputFilters: [field],
+        outputFilters: ["INSTANCE", "STATUS_CODE"],
       },
     },
     errorPolicy: "all",

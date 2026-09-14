@@ -22,7 +22,8 @@ interface MetricSectionProps {
  * header typography and 503 handling. Two honest 503 states: no metrics backend
  * ("source not configured") and — for a host/path-filtered request read — no
  * durable log store ("host/path filters need the log store", w5/m58); the
- * filtered chart is never silently unfiltered.
+ * filtered chart is never silently unfiltered. Throttled reads (w4/m100) are a
+ * third, transient class — never conflated with METRICS_UNAVAILABLE.
  */
 export function MetricSection({
   title,
@@ -43,6 +44,8 @@ export function MetricSection({
   // genuinely empty window (the conflation that hid the w5/m71 bug for months).
   // A refetch error over existing data keeps the chart, mirroring loadingEmpty.
   const errorEmpty = !!result.error && result.series.length === 0;
+  const throttledEmpty = result.throttled && result.series.length === 0;
+  const throttledStale = result.throttled && result.series.length > 0;
   const body = result.storeUnavailable ? (
     <MetricUnavailable message={t("metrics.hostPathStoreUnavailable")} />
   ) : result.unavailable ? (
@@ -54,10 +57,22 @@ export function MetricSection({
       style={{ height: CHART_HEIGHT }}
       aria-label={t("common.loading")}
     />
+  ) : throttledEmpty ? (
+    <MetricError message={t("metrics.chartThrottled")} />
   ) : errorEmpty ? (
     <MetricError message={errorMessage} />
   ) : (
-    children
+    <>
+      {throttledStale && (
+        <p
+          role="status"
+          className="text-muted-foreground mb-2 text-xs"
+        >
+          {t("metrics.chartStaleThrottled")}
+        </p>
+      )}
+      {children}
+    </>
   );
   return (
     <div>

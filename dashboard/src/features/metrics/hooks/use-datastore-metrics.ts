@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { skipPollWhenHidden } from "@/common/lib/polling";
+import { isThrottledError } from "@/common/lib/graphql-error";
 import { DatastoreMetricsDocument } from "@/graphql/definitions";
 import {
   RENDER_DATASTORE_METRIC_NAMES,
@@ -75,7 +76,8 @@ export function useDatastoreMetrics(
     // Datastore metrics take no host/path filter, so the log-store-unavailable
     // state (w5/m58) never applies here.
     storeUnavailable: false,
-    error: unavailable ? undefined : error,
+    throttled: !unavailable && isThrottledError(error),
+    error: unavailable || (!unavailable && isThrottledError(error)) ? undefined : error,
     // Datastore metrics never carry the bandwidth degraded_sources label.
     degradedSources: EMPTY_DEGRADED,
   };

@@ -704,6 +704,9 @@ type recordingStore struct {
 	deleteCalls []string
 	appCreates  []store.App
 	deployCalls []store.Deploy
+	// priorCommit is what LatestDeployCommit returns — set in tests that assert
+	// config_change rows inherit the running release's provenance (w4/m100).
+	priorCommit store.CommitInfo
 	imageCalls  []struct{ id, image string }
 	// notFoundOnDelete makes DeleteApp report the row is already gone, so a test
 	// can assert the verb still deletes the CR (idempotent end state).
@@ -753,6 +756,13 @@ func (r *recordingStore) CreateDeploy(_ context.Context, appID, trigger, image s
 	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: store.DeployUpdateInProgress}
 	r.deployCalls = append(r.deployCalls, d)
 	return d, nil
+}
+
+func (r *recordingStore) LatestDeployCommit(_ context.Context, _ string) (store.CommitInfo, error) {
+	if r.err != nil {
+		return store.CommitInfo{}, r.err
+	}
+	return r.priorCommit, nil
 }
 
 func (r *recordingStore) DeleteApp(_ context.Context, id string) error {

@@ -71,9 +71,9 @@ export function ApplicationMetricsCard({
 
   const liveInstances = useMetricsFilterValues(resource, "INSTANCE");
   // Unfiltered CPU series seeds historical instance choices (terminated pods
-  // still in the window). The selection itself is retained below even when a
-  // choice leaves, so it never silently broadens.
-  const inventory = useMetrics(resource, "cpu", window);
+  // still in the window). When there is no INSTANCE selection and no aggregate,
+  // this is the same query as cpuAbsolute — share it so we don't double-POST
+  // the identical Metrics(CPU) document (w4/m100 t002).
   const resourceOpts: UseMetricsOptions = {
     ...window,
     ...(selectedInstances.length > 0
@@ -81,18 +81,27 @@ export function ApplicationMetricsCard({
       : {}),
     ...(aggregateMethod ? { aggregateMethod } : {}),
   };
+  const shareInventoryWithAbsolute =
+    selectedInstances.length === 0 && !aggregateMethod;
+  const inventory = useMetrics(resource, "cpu", {
+    ...window,
+    skip: shareInventoryWithAbsolute,
+  });
   // Absolute usage (Total tab; also the "is there anything to percentize?"
   // witness for the percentage-unavailable state).
   const cpuAbsolute = useMetrics(resource, "cpu", resourceOpts);
   const memoryAbsolute = useMetrics(resource, "memory", resourceOpts);
-  // Server-side per-instance percentages (w5/m90) — rendered as returned.
+  // Server-side per-instance percentages (w5/m90) — only fetched while the
+  // Percentage tab is active so Total mode does not double the fan-out.
   const cpuPercentage = useMetrics(resource, "cpu", {
     ...resourceOpts,
     percentage: true,
+    skip: !percentage,
   });
   const memoryPercentage = useMetrics(resource, "memory", {
     ...resourceOpts,
     percentage: true,
+    skip: !percentage,
   });
   // Per-instance limits for truthful headers (w5/m90): no aggregate collapse,
   // so a uniform limit still reads as one value while mixed limits read as
@@ -117,14 +126,17 @@ export function ApplicationMetricsCard({
   // window or discovery gaps — the selection is explicit state, never pruned
   // into all-instances mode (w5/m91). An empty/error discovery read therefore
   // never removes the active INSTANCE filter.
+  const inventorySeries = shareInventoryWithAbsolute
+    ? cpuAbsolute.series
+    : inventory.series;
   const availableInstances = useMemo(() => {
     const fromSeries = new Set<string>();
-    for (const s of inventory.series) {
+    for (const s of inventorySeries) {
       const id = s.labels["instance"];
       if (id) fromSeries.add(id);
     }
     return new Set([...liveInstances, ...fromSeries]);
-  }, [liveInstances, inventory.series]);
+  }, [liveInstances, inventorySeries]);
   const instanceChoices = useMemo(
     () =>
       Array.from(new Set([...availableInstances, ...selectedInstances])).sort(),

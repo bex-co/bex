@@ -4,6 +4,7 @@ import {
   conflictOrGenericMessage,
   hasGraphQLErrorCode,
   isNameConflictError,
+  isThrottledError,
   planLimitExtensions,
   refusalReason,
 } from "@/common/lib/graphql-error";
@@ -70,6 +71,18 @@ describe("hasGraphQLErrorCode", () => {
     expect(
       hasGraphQLErrorCode(gqlError({ code: "FORBIDDEN" }), "PAYMENT_REQUIRED"),
     ).toBe(false);
+  });
+});
+
+describe("isThrottledError", () => {
+  it("matches RATE_LIMITED and AUTH_OVERLOADED", () => {
+    expect(isThrottledError(gqlError({ code: "RATE_LIMITED" }))).toBe(true);
+    expect(isThrottledError(gqlError({ code: "AUTH_OVERLOADED" }))).toBe(true);
+  });
+
+  it("does not match other codes or plain Errors", () => {
+    expect(isThrottledError(gqlError({ code: "PLAN_LIMIT" }))).toBe(false);
+    expect(isThrottledError(new Error("rate limit exceeded"))).toBe(false);
   });
 });
 

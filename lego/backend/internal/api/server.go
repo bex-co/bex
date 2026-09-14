@@ -25,10 +25,12 @@ limitations under the License.
 package api
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"maps"
 	"net/http"
@@ -1327,38 +1329,88 @@ func (s *Server) graphqlHandler() http.Handler {
 	})
 }
 
+// graphqlRequestBody is one GraphQL-over-HTTP operation (single or batch element).
+type graphqlRequestBody struct {
+	Query         string         `json:"query"`
+	OperationName string         `json:"operationName"`
+	Variables     map[string]any `json:"variables"`
+}
+
 // serveGraphQL answers one GraphQL request and returns its bounded telemetry
 // dimensions. The request context already carries the caller Identity (attached
 // by the auth middleware), which the feature resolvers' authorize gate reads.
+//
+// Bodies may be a single operation object or a JSON array of operations (the
+// Apollo BatchHttpLink shape). A batch shares one auth admission slot — which
+// is what stops the Metrics page's fan-out from shedding the session (w4/m100).
 func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation, opType, outcome string) {
 	operation, opType = gqlOperationOther, gqlTypeQuery
-	var body struct {
-		Query         string         `json:"query"`
-		OperationName string         `json:"operationName"`
-		Variables     map[string]any `json:"variables"`
-	}
-	if err := core.DecodeJSON(r, &body); err != nil {
+	raw, err := io.ReadAll(io.LimitReader(r.Body, 1<<20+1))
+	if err != nil {
 		core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
 		return operation, opType, gqlOutcomeInvalid
 	}
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 {
+		core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
+		return operation, opType, gqlOutcomeInvalid
+	}
+	if raw[0] == '[' {
+		var bodies []graphqlRequestBody
+		if err := json.Unmarshal(raw, &bodies); err != nil || len(bodies) == 0 {
+			core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
+			return operation, opType, gqlOutcomeInvalid
+		}
+		// Cap batch size so one POST cannot amplify into unbounded resolver work.
+		const maxGraphQLBatch = 32
+		if len(bodies) > maxGraphQLBatch {
+			core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
+			return operation, opType, gqlOutcomeInvalid
+		}
+		results := make([]*graphql.Result, len(bodies))
+		for i := range bodies {
+			op, typ, out, result := s.executeGraphQL(r.Context(), bodies[i])
+			results[i] = result
+			if i == 0 {
+				operation, opType, outcome = op, typ, out
+			} else if out != gqlOutcomeOK && outcome == gqlOutcomeOK {
+				outcome = out
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(results)
+		return operation, opType, outcome
+	}
+	var body graphqlRequestBody
+	if err := json.Unmarshal(raw, &body); err != nil {
+		core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
+		return operation, opType, gqlOutcomeInvalid
+	}
+	operation, opType, outcome, result := s.executeGraphQL(r.Context(), body)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(result)
+	return operation, opType, outcome
+}
+
+// executeGraphQL runs one document against the compiled schema.
+func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody) (operation, opType, outcome string, result *graphql.Result) {
+	operation, opType = gqlOperationOther, gqlTypeQuery
 	// One parse feeds telemetry dims, the cost gate, and the scope check;
 	// graphql.Do still re-parses for execution (its own AST).
 	if fragments, ops, ok := parseGraphQLDocument(body.Query); ok {
 		operation, opType = graphqlOperationDimsFrom(fragments, ops, body.OperationName)
 		// Cost gate (w1/m65 F9): reject an over-budget document before execution.
 		if err := validateGraphQLComplexityParsed(fragments, ops); err != nil {
-			writeGraphQLErrors(w, err)
-			return operation, opType, gqlOutcomeInvalid
+			return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(err)
 		}
-		if err := s.requireGraphQLScopeFrom(r.Context(), fragments, ops, body.OperationName); err != nil {
-			writeGraphQLErrors(w, err)
-			return operation, opType, graphqlOutcome(err)
+		if err := s.requireGraphQLScopeFrom(parent, fragments, ops, body.OperationName); err != nil {
+			return operation, opType, graphqlOutcome(err), graphqlErrorResult(err)
 		}
 	}
 	// Env-var reads nest under the apps Service type but live in the secrets
 	// feature; inject the reader so those resolvers reach it via context (the
 	// shared Service GraphQL type stays stateless — no per-server closure).
-	ctx := r.Context()
+	ctx := parent
 	if s.Secrets != nil {
 		ctx = core.WithEnvVars(ctx, s.Secrets)
 		ctx = core.WithSecretFiles(ctx, s.Secrets)
@@ -1372,7 +1424,7 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 	// resolver goroutine indefinitely (F9).
 	ctx, cancel := context.WithTimeout(ctx, gqlExecTimeout)
 	defer cancel()
-	result := graphql.Do(graphql.Params{
+	result = graphql.Do(graphql.Params{
 		Schema:         s.schema,
 		RequestString:  body.Query,
 		OperationName:  body.OperationName,
@@ -1380,9 +1432,20 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 		Context:        ctx,
 	})
 	result.Errors = sanitizeGraphQLErrors(result.Errors)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(result)
-	return operation, opType, graphqlResultOutcome(result.Errors)
+	return operation, opType, graphqlResultOutcome(result.Errors), result
+}
+
+// graphqlErrorResult is the pre-execution error envelope (cost gate / scope)
+// for both single-document and batch execute paths.
+func graphqlErrorResult(err error) *graphql.Result {
+	fe := gqlerrors.FormattedError{Message: err.Error()}
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		if ext := coded.Extensions(); len(ext) > 0 {
+			fe.Extensions = ext
+		}
+	}
+	return &graphql.Result{Errors: []gqlerrors.FormattedError{fe}}
 }
 
 // graphqlResultOutcome classifies a completed document by its FIRST error —

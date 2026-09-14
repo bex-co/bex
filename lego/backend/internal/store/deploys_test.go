@@ -466,3 +466,57 @@ func TestGetDeployIsScopedToItsApp(t *testing.T) {
 		t.Errorf("get unknown deploy: want ErrNotFound, got %v", err)
 	}
 }
+
+// TestLatestDeployCommit returns the newest non-empty commit and skips later
+// empty rows — the lookup rollout.Tracker uses to carry provenance onto
+// config_change re-rolls without inheriting inside CreateDeploy itself.
+func TestLatestDeployCommit(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if got, err := s.LatestDeployCommit(ctx, app.ID); err != nil || got != (CommitInfo{}) {
+		t.Fatalf("no prior commit = %+v (err %v), want zero", got, err)
+	}
+
+	authorAt := time.Date(2026, 9, 13, 9, 35, 0, 0, time.UTC)
+	first, _, err := openDeployFor(ctx, s, app.ID)
+	if err != nil {
+		t.Fatalf("open first: %v", err)
+	}
+	if _, err := s.CloseDeploy(ctx, first.ID, DeployLive, "img:1"); err != nil {
+		t.Fatalf("close first: %v", err)
+	}
+	withCommit, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 2, CommitInfo{Hash: "abc1234def", Message: "feat: land", AuthorAt: &authorAt})
+	if err != nil {
+		t.Fatalf("CreateDeploy with commit: %v", err)
+	}
+	if _, err := s.CloseDeploy(ctx, withCommit.ID, DeployLive, "img:2"); err != nil {
+		t.Fatalf("close with-commit: %v", err)
+	}
+
+	got, err := s.LatestDeployCommit(ctx, app.ID)
+	if err != nil || got.Hash != "abc1234def" || got.Message != "feat: land" {
+		t.Fatalf("LatestDeployCommit = %+v (err %v), want hash+message", got, err)
+	}
+	if got.AuthorAt == nil || !got.AuthorAt.Equal(authorAt) {
+		t.Fatalf("AuthorAt = %v, want %v", got.AuthorAt, authorAt)
+	}
+
+	// A later empty config_change-style row must not hide the prior commit.
+	if _, err := s.CreateDeploy(ctx, app.ID, TriggerConfigChange, "", 3, CommitInfo{}); err != nil {
+		t.Fatalf("empty config_change: %v", err)
+	}
+	got, err = s.LatestDeployCommit(ctx, app.ID)
+	if err != nil || got.Hash != "abc1234def" || got.Message != "feat: land" {
+		t.Fatalf("after empty row = %+v (err %v), want prior non-empty commit", got, err)
+	}
+
+	// Image-backed history only: empty stays empty.
+	img, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "api", Image: "nginx:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if got, err := s.LatestDeployCommit(ctx, img.ID); err != nil || got.Hash != "" {
+		t.Fatalf("image-backed = %+v (err %v), want empty", got, err)
+	}
+}
+
