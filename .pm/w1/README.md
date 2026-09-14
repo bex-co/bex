@@ -158,6 +158,8 @@ Open inbox notes:
 
 - [092](092.md) — Changing a linked environment group redeploys a service whose auto-deploy is off. Live: `autoDeploy: no`, then `PUT /v1/env-groups/<id>/env-vars/MESSAGE` opened `config_change` deploy `dep-dak0h1i6m8ac739r60q0` and the new value served. Render deploys only auto-deploy-enabled linked services. Six Render-shaped writes hard-code `SaveModeDeploy` (`envgroups/service.go:884, 938, 961, 980, 1003, 1372`), and link/unlink roll unconditionally (~60m, major) ← live `/qa-find-bugs` 2026-09-14 pass 14.
 
+- [093](093.md) — Render's `GET /notification-settings/overrides` (list a workspace's service notification overrides) answers bex's bare `404 page not found`, while the per-service override route works. ADR018 row 227 records the per-member owner-settings divergence but not this gap (~30m) ← live `/qa-find-bugs` 2026-09-14 pass 15.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
