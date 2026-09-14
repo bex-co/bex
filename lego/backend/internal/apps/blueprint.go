@@ -463,7 +463,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 				return BlueprintValidation{}, planErr
 			}
 			msg := strings.TrimPrefix(planErr.Error(), "bad request: ")
-			return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, msg)}}, nil
+			return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, blueprintManifestCreateMessage(msg))}}, nil
 		} else if available {
 			plan.Mode = "current_state"
 			plan.Actions = actionPlan.Actions
@@ -478,7 +478,17 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 	if after, ok := strings.CutPrefix(msg, "bad request: "); ok {
 		msg = after
 	}
-	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, msg)}}, nil
+	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, blueprintManifestCreateMessage(msg))}}, nil
+}
+
+// blueprintManifestCreateMessage maps create-API field names onto the keys
+// a render.yaml author can actually write. publishPath is the only current
+// split: REST/MCP create keep that spelling; the pinned schema rejects it.
+func blueprintManifestCreateMessage(message string) string {
+	if !strings.Contains(message, "publishPath") || strings.Contains(message, "staticPublishPath") {
+		return message
+	}
+	return strings.ReplaceAll(message, "publishPath", "staticPublishPath")
 }
 
 func blueprintCompilerValidationErrors(problems []BlueprintSourceProblem) []BlueprintValidationError {
@@ -1460,7 +1470,7 @@ func blueprintErrorPath(ir BlueprintIR, message string) string {
 }
 
 func blueprintErrorField(message string) string {
-	for _, field := range []string{"maintenanceMode", "plan", "domains", "schedule", "runtime", "type", "image", "name", "ipAllowList", "renderSubdomainPolicy", "scaling"} {
+	for _, field := range []string{"maintenanceMode", "plan", "domains", "schedule", "runtime", "type", "image", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
 			return "." + field
 		}

@@ -13,4 +13,3 @@ services:
     rootDir: examples/static-site
     branch: main
     staticPublishPath: . # publish this directory as-is; set to "dist" for a real build step
-    plan: free

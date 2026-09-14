@@ -47,13 +47,14 @@ describe("ValidatePanel", () => {
     expect(await screen.findByText(/manifest is valid/i)).toBeInTheDocument();
   });
 
-  it("shows per-entry errors when validation fails", async () => {
+  it("shows every problem when validation returns several", async () => {
     validateState.validate = vi.fn(async () => {
       validateState.result = {
         valid: false,
         errors: [
-          "missing required field: name",
-          "unknown field: fromService.envVarKey",
+          "at '/services/0/plan': additional properties 'plan' not allowed",
+          "at '/services/1': additional properties 'totallyUnknownField' not allowed",
+          "service \"qa-static-bp\": staticPublishPath is required for a static_site",
         ],
       };
       return validateState.result;
@@ -66,10 +67,17 @@ describe("ValidatePanel", () => {
 
     expect(await screen.findByText(/manifest has errors/i)).toBeInTheDocument();
     expect(
-      screen.getByText("missing required field: name"),
+      screen.getByText("at '/services/0/plan': additional properties 'plan' not allowed"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("unknown field: fromService.envVarKey"),
+      screen.getByText(
+        "at '/services/1': additional properties 'totallyUnknownField' not allowed",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'service "qa-static-bp": staticPublishPath is required for a static_site',
+      ),
     ).toBeInTheDocument();
   });
 
