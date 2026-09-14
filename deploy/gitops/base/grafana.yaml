@@ -47,4 +47,8 @@ spec:
     namespace: monitoring
   syncPolicy:
     automated: { prune: true, selfHeal: true }
-    syncOptions: [CreateNamespace=true]
+    # Server-side apply: grafana-dashboards-platform is a multi-dashboard
+    # ConfigMap whose client-side last-applied annotation already exceeds the
+    # 262144-byte metadata limit (w5/058), so every further dashboard patch
+    # aborted OutOfSync and left m95's sandbox panels unpublished.
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
