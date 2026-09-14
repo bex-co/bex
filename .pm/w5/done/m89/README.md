@@ -56,5 +56,5 @@ Shipped with w5/m89 implementation:
 - Shared `MetricQuery.Instances` + `ReplicaAggregate` (MIN/MAX/AVG); GraphQL INSTANCE filter + aggregateAllMethod; REST `instance` / `aggregateAllMethod`; MCP `instance` / `aggregateAllMethod`.
 - Unit proofs: select one → 30; both + MIN/MAX/AVG → 10/30/20; gaps not zero-filled; unknown selector does not broaden (`select_test.go`).
 - Dashboard Application Metrics: instance multi-select + Raw/Min/Max/Avg + Percentage/Total; historical choices from unfiltered window series ∪ live discovery; pending skeleton control slots updated.
-- Docs: ADR010 query-param note. Live multi-replica walk deferred when cluster unavailable.
+- Docs: ADR010 query-param note. Live multi-replica walk deferred when cluster unavailable. **Discharged 2026-09-14 by [w5/m98](../m98/README.md) t002:** metrics-server installed on the mock cluster; 3-replica whoami on `dev-5` → REST/GraphQL CPU/memory/instance-count + `percentage=true` + `aggregateAllMethod=AVG` + `instance=` selection all green (see m98 Evidence).
 - Suites: `go test ./internal/metrics/`; dashboard application-metrics-card + use-metrics tests.

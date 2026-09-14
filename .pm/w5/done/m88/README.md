@@ -55,4 +55,4 @@ Shipped 2026-09-08 as `38e1082b1c86f3c571e4b985fe3df8c4dd3bad8f`:
 - Unit regressions: pin-during-turn duration, double-finalize once, never-running dispatch, cancel idempotency (`m88_test.go`).
 - Grafana agent panels + ADR047/ADR088 updated; `scripts/obs-coverage-check.sh` PASS.
 - Suites: `go test ./internal/{store,agentsessions,agentsession,sshgateway/modelproxy}/ ./cmd/api/`.
-- Limitation: live dev-5 registry/panel walk deferred (kubectl/dev-5 unavailable at closeout); contract proven in unit tests including pin-timing.
+- Limitation: live dev-5 registry/panel walk deferred (kubectl/dev-5 unavailable at closeout); contract proven in unit tests including pin-timing. **Follow-up 2026-09-14 [w5/m98](../m98/README.md) t003 — BLOCKED:** needs `dev-5/.agent/enabled` + `dev-env.sh 5 agent-up` and a real model key before `bex_agent_session_turn_*` series can appear on the CP registry.

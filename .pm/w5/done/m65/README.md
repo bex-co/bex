@@ -55,4 +55,4 @@ Shipped and verified against every DoD item.
 
 **Follow-ups filed:** `041` (test files escape typecheck — the hole that let the fixture rot), `042` (mobile composer has no PR opt-in; deliberate per ADR048, recorded rather than left implicit).
 
-**Not verified live.** Everything above is proven by the automated suites and a stubbed completion, which the DoD allows. The `scripts/agent-session-verify.sh` legs — including the new 1b — need a real cluster + GitHub App and have not been run.
+**Not verified live.** Everything above is proven by the automated suites and a stubbed completion, which the DoD allows. The `scripts/agent-session-verify.sh` legs — including the new 1b — need a real cluster + GitHub App and have not been run. **Follow-up 2026-09-14 [w5/m98](../m98/README.md) t005 — BLOCKED:** agent opt-in (`dev-5/.agent/enabled` + `agent-up`) still required for repo-less legs; leg 1b still needs a developer-supplied GitHub App installation (same as `w3/m79` t012).
