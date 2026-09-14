@@ -139,6 +139,8 @@ Open inbox notes:
 
 - [085](085.md) — The Key Value and Postgres Details cards print raw `status` and plan ids, so a suspended store reads "Suspended" in its header and "available" in its own Status row (`keyvalue.$keyValueId.tsx:293-294`, `databases.$databaseId.tsx:363-364`; ~40m, dashboard-only) ← live `/qa-find-bugs` 2026-09-14 pass 2.
 
+- [086](086.md) — "Move to project" from a resource row joins a project with no environment, so the project page opens on an empty environment (`environments-panel.tsx:100-104` prefers `environments[0]` over a non-empty Unassigned) while the create form's hint (`environments/locales/en.ts:324-326`) says project-only membership can't happen (~45m, dashboard-only) ← live `/qa-find-bugs` 2026-09-14 pass 4.
+
 Open milestones: `m139` (materialized 2026-09-09); `m145`, `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 
 > **Done 2026-09-09:** [084](done/084.md) fixes missing-image exit-status handling with reconciliation-level regression coverage; [083](done/083.md) reconciles these queue summaries and the deferred architecture-review record.
