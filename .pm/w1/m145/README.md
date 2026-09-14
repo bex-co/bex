@@ -100,7 +100,7 @@ No screenshots were taken. The probes above are the durable evidence.
 
 - `w6/done/037.md` fixed `useFieldMutation` only; this is the residual of the same class, not a regression of what it fixed.
 - `w6/done/m49` moved **name conflicts** onto `extensions.code: CONFLICT`; non-conflict refusals were out of its scope.
-- `w1/m139/t006` checks that the **server** refuses `99 99 * * *` (w9/m91), which is correct and untouched here.
+- The **server** refusing `99 99 * * *` (w9/m91) is correct and untouched here; t001's vector table covers it (the live check `w1/m139/t006` was dropped 2026-09-14).
 - `.pm/DO_NOT_DO.md`: no conflict.
 - Not already fixed on `main`: `cron.ts:47` and `use-cron-job.ts:40` are unchanged at `34d0fa153`.
 
