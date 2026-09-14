@@ -1107,13 +1107,31 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 	// GET   …/autoscaling — current config (bex extension; Render has no GET)
 	// PUT   …/autoscaling — upsert autoscaling (Render: PUT, 200)
 	// DELETE …/autoscaling — disable autoscaling (Render: DELETE, 204)
-	getAutoscaling := core.HandleByID(s.GetAutoscaling)
+	// REST wire: Render OpenAPI {enabled,min,max,criteria}. GraphQL/MCP keep
+	// minInstances/targetCPUPercent (ADR006/ADR018, w4/m104).
+	getAutoscaling := core.HandleMapped(http.StatusOK, func(r *http.Request) (AutoscalingView, error) {
+		return s.GetAutoscaling(r.Context(), r.PathValue("id"))
+	}, renderAutoscalingConfigFromView)
 	putAutoscaling := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		req, err := core.DecodeBody[SetAutoscalingRequest](r)
+		body, err := core.DecodeBody[renderAutoscalingConfig](r)
 		if err != nil {
 			return nil, err
 		}
-		return s.SetAutoscaling(r.Context(), r.PathValue("id"), req)
+		req, enable, err := setAutoscalingRequestFromRender(body)
+		if err != nil {
+			return nil, err
+		}
+		if !enable {
+			if err := s.DeleteAutoscaling(r.Context(), r.PathValue("id")); err != nil {
+				return nil, err
+			}
+			return renderAutoscalingConfigFromView(AutoscalingView{}), nil
+		}
+		view, err := s.SetAutoscaling(r.Context(), r.PathValue("id"), req)
+		if err != nil {
+			return nil, err
+		}
+		return renderAutoscalingConfigFromView(view), nil
 	})
 	deleteAutoscaling := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteAutoscaling(r.Context(), r.PathValue("id"))
