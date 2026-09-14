@@ -192,14 +192,11 @@ func TestRESTGetAutoscaling(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET autoscaling => 200, got %d: %s", rec.Code, rec.Body)
 	}
-	var out struct {
-		Enabled      bool  `json:"enabled"`
-		MaxInstances int32 `json:"maxInstances"`
-	}
+	var out renderAutoscalingConfig
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if !out.Enabled || out.MaxInstances != 5 {
+	if !out.Enabled || out.Max != 5 {
 		t.Errorf("unexpected body: %+v", out)
 	}
 }
@@ -209,15 +206,24 @@ func TestRESTPutAutoscaling(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	body := `{"minInstances":2,"maxInstances":6,"targetCPUPercent":70}`
+	body := `{"enabled":true,"min":2,"max":6,"criteria":{"cpu":{"enabled":true,"percentage":70},"memory":{"enabled":false,"percentage":0}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PUT", "/v1/services/web/autoscaling", strings.NewReader(body)))
+	req := httptest.NewRequest("PUT", "/v1/services/web/autoscaling", strings.NewReader(body))
+	req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
+	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PUT autoscaling => 200, got %d: %s", rec.Code, rec.Body)
 	}
 	app := getApp(t, cl, "web")
 	if app.Spec.Autoscaling == nil || app.Spec.Autoscaling.MaxReplicas != 6 {
 		t.Errorf("unexpected spec: %+v", app.Spec.Autoscaling)
+	}
+	var out renderAutoscalingConfig
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !out.Enabled || out.Min != 2 || out.Max != 6 || out.Criteria.CPU.Percentage != 70 {
+		t.Errorf("unexpected response: %+v", out)
 	}
 }
 

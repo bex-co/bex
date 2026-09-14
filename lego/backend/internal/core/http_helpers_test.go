@@ -40,6 +40,21 @@ func TestDecodeBodyDecodesAValidBody(t *testing.T) {
 	}
 }
 
+func TestDecodeBodyPreservesUnknownFieldDetail(t *testing.T) {
+	r := httptest.NewRequest(http.MethodPost, "/v1/things", strings.NewReader(`{"name":"web","mystery":1}`))
+	r = r.WithContext(WithStrictJSONDecoding(r.Context()))
+	_, err := DecodeBody[helperBody](r)
+	if !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("err = %v, want ErrBadRequest", err)
+	}
+	if !strings.Contains(err.Error(), `unknown field "mystery"`) {
+		t.Fatalf("err = %v, want named unknown-field detail", err)
+	}
+	if err.Error() == "bad request" {
+		t.Fatal("bare bad request must not be returned for a body rejection")
+	}
+}
+
 func TestDecodeBodyMapsAMalformedBodyToErrBadRequest(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "/v1/things", strings.NewReader(`not-json`))
 	body, err := DecodeBody[helperBody](r)
@@ -64,9 +79,9 @@ func TestDecodeBodyMapsAMalformedBodyToErrBadRequest(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", w.Code)
 	}
-	want := `{"error":"bad request","id":"bad_request","message":"bad request"}` + "\n"
-	if got := w.Body.String(); got != want {
-		t.Fatalf("body = %q, want %q", got, want)
+	wantPrefix := `{"error":"bad request:`
+	if got := w.Body.String(); !strings.HasPrefix(got, wantPrefix) || !strings.Contains(got, `"id":"bad_request"`) {
+		t.Fatalf("body = %q, want Render-dialect 400 that names the decode failure", got)
 	}
 }
 
