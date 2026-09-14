@@ -54,6 +54,9 @@ type DeployStore interface {
 	// never a fresh re-fetch (see buildJobName). commit is the resolved commit
 	// this deploy runs (w9/001), zero when unresolvable.
 	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error)
+	// LatestDeployCommit returns the newest non-empty commit for the app, or
+	// zero CommitInfo — rollout.Tracker carries it onto config_change rows.
+	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
 	// CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10)
 	// restoring image, provenance-tagged with the source deploy id and the
 	// target's own commit metadata (w9/001).

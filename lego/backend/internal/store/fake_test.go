@@ -651,12 +651,34 @@ func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string,
 	}
 	now := time.Now()
 	status := m.prepareDeployCreate(appID, generation, now)
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == DeployCanceled {
 		d.FinishedAt = &now
 	}
 	m.deploys[d.ID] = d
 	return d, nil
+}
+
+// LatestDeployCommit returns the newest non-empty commit for appID, mirroring
+// PGStore's ORDER BY created_at DESC skip-empty semantics.
+func (m *memStore) LatestDeployCommit(_ context.Context, appID string) (CommitInfo, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var best Deploy
+	found := false
+	for _, d := range m.deploys {
+		if d.AppID != appID || d.Commit == "" {
+			continue
+		}
+		if !found || d.CreatedAt.After(best.CreatedAt) {
+			best = d
+			found = true
+		}
+	}
+	if !found {
+		return CommitInfo{}, nil
+	}
+	return CommitInfo{Hash: best.Commit, Message: best.CommitMessage, AuthorAt: best.CommitAuthorAt}, nil
 }
 
 func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo) (Deploy, error) {

@@ -979,6 +979,9 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	if got, err := s.GetDeploy(ctx, app.ID, second.ID); err != nil || got.Commit != "abc1234def" || got.CommitMessage != "fix: header" {
 		t.Fatalf("commit round-trip = %+v (err %v), want hash+message back", got, err)
 	}
+	if prior, err := s.LatestDeployCommit(ctx, app.ID); err != nil || prior.Hash != "abc1234def" || prior.Message != "fix: header" {
+		t.Fatalf("LatestDeployCommit = %+v (err %v), want the newest non-empty commit", prior, err)
+	}
 	deploys, err = s.ListDeploys(ctx, app.ID, DeployFilter{})
 	if err != nil || len(deploys) != 2 || deploys[0].ID != second.ID {
 		t.Fatalf("list after trigger (want newest first) = %+v (err %v)", deploys, err)

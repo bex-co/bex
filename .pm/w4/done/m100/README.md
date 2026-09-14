@@ -1,20 +1,22 @@
 # w4 · m100 — Stop bex-api shedding a legitimate dashboard page load, and record the running commit on config-change deploys
 
-**Worker:** worker4 **Goal:** one signed-in user opening one dashboard page never receives a `429 RATE_LIMITED`, and a deploy row opened by a configuration save names the commit that is actually running. **Status:** todo
+**Worker:** worker4 **Goal:** one signed-in user opening one dashboard page never receives a `429 RATE_LIMITED`, and a deploy row opened by a configuration save names the commit that is actually running. **Status:** done
+
+Fix landed: per-cred knob + `AUTH_OVERLOADED`; GraphQL batch + `BatchHttpLink`; throttle UI; commit carry via `LatestDeployCommit`.
 
 ## Tasks (in order)
 
 | id   | title                                                                                | est | depends_on         |
 | ---- | ------------------------------------------------------------------------------------ | --- | ------------------ |
-| t001 | Give valid-credential concurrency its own budget, separate from the amplification bound | 60m | —                  |
-| t002 | Collapse the Metrics page's per-chart GraphQL fan-out into few round trips             | 60m | —                  |
-| t003 | Surface `RATE_LIMITED` instead of silently rendering a chart with missing series       | 40m | w4/m100/t001       |
-| t004 | Carry the running release's commit into `config_change` deploy rows                    | 50m | —                  |
-| t005 | Blast-radius + control-case regression tests for both budgets and all rollout callers  | 50m | w4/m100/t001, w4/m100/t004 |
-| t006 | Render parity sweep over the changed surfaces                                          | 30m | w4/m100/t002, w4/m100/t003, w4/m100/t005 |
-| t007 | Simplify pass over this milestone's changes                                            | 30m | w4/m100/t006       |
-| t008 | Test coverage for the shipped behavior                                                 | 40m | w4/m100/t006       |
-| t009 | Closeout                                                                               | 15m | w4/m100/t008       |
+| t001 | Give valid-credential concurrency its own budget, separate from the amplification bound — **DONE** | 60m | —                  |
+| t002 | Collapse the Metrics page's per-chart GraphQL fan-out into few round trips — **DONE**             | 60m | —                  |
+| t003 | Surface `RATE_LIMITED` instead of silently rendering a chart with missing series — **DONE**       | 40m | w4/m100/t001       |
+| t004 | Carry the running release's commit into `config_change` deploy rows — **DONE**                    | 50m | —                  |
+| t005 | Blast-radius + control-case regression tests for both budgets and all rollout callers — **DONE**  | 50m | w4/m100/t001, w4/m100/t004 |
+| t006 | Render parity sweep over the changed surfaces — **DONE**                                          | 30m | w4/m100/t002, w4/m100/t003, w4/m100/t005 |
+| t007 | Simplify pass over this milestone's changes — **DONE**                                            | 30m | w4/m100/t006       |
+| t008 | Test coverage for the shipped behavior — **DONE**                                                 | 40m | w4/m100/t006       |
+| t009 | Closeout — **DONE**                                                                               | 15m | w4/m100/t008       |
 
 ## Definition of done
 

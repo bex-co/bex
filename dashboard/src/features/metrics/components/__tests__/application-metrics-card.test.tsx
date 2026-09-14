@@ -38,6 +38,7 @@ function emptyResult() {
     loading: false,
     unavailable: false,
     storeUnavailable: false,
+    throttled: false,
     error: undefined,
     degradedSources: [],
   };
@@ -60,6 +61,7 @@ function seriesResult(unit: string, values: number[], instance?: string) {
     loading: false,
     unavailable: false,
     storeUnavailable: false,
+    throttled: false,
     error: undefined,
     degradedSources: [],
   };
@@ -81,6 +83,7 @@ function multiSeriesResult(
     loading: false,
     unavailable: false,
     storeUnavailable: false,
+    throttled: false,
     error: undefined,
     degradedSources: [],
   };
@@ -123,6 +126,12 @@ describe("ApplicationMetricsCard", () => {
     renderCard("beancount-cms");
     await screen.findByText("Application Metrics");
 
+    // Inventory shares the absolute CPU query when unfiltered (w4/m100) —
+    // the dedicated inventory hook is skipped.
+    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu", {
+      ...WINDOW,
+      skip: true,
+    });
     // Absolute usage (Total tab + percentage-unavailable witness).
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
@@ -134,14 +143,16 @@ describe("ApplicationMetricsCard", () => {
       "memory",
       WINDOW,
     );
-    // Server-side percentages (w5/m90) — never divided client-side.
+    // Server-side percentages (w5/m90) — only while the Percentage tab is on.
     expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu", {
       ...WINDOW,
       percentage: true,
+      skip: false,
     });
     expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "memory", {
       ...WINDOW,
       percentage: true,
+      skip: false,
     });
     // Limits are per-instance (no aggregateMax collapse) over the same window.
     expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu_limit", {
@@ -369,6 +380,7 @@ describe("ApplicationMetricsCard", () => {
           loading: false,
           unavailable: false,
           storeUnavailable: false,
+          throttled: false,
           error: undefined,
           degradedSources: [],
         };
@@ -391,6 +403,7 @@ describe("ApplicationMetricsCard", () => {
           loading: false,
           unavailable: true,
           storeUnavailable: false,
+          throttled: false,
           error: undefined,
           degradedSources: [],
         };

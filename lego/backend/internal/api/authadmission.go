@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"sync"
@@ -96,9 +97,11 @@ type AuthAdmission struct {
 }
 
 // NewAuthAdmission builds the bound from configuration. failuresPerMin ≤ 0
-// disables the per-source budget; maxInflight ≤ 0 disables the concurrency
-// bound; with both disabled it returns nil (feature off).
-func NewAuthAdmission(failuresPerMin float64, burst, maxInflight int) *AuthAdmission {
+// disables the per-source budget; maxInflight ≤ 0 disables the process-wide
+// concurrency bound; maxInflightPerCredential ≤ 0 leaves per-credential
+// concurrency unbounded (independent of the global pool). With every budget
+// disabled it returns nil (feature off).
+func NewAuthAdmission(failuresPerMin float64, burst, maxInflight, maxInflightPerCredential int) *AuthAdmission {
 	a := &AuthAdmission{
 		failures:           core.NewKeyedRateLimiter[string](failuresPerMin, burst, authAdmissionIdle, authAdmissionSweep),
 		credentials:        core.NewKeyedRateLimiter[string](failuresPerMin, burst, authAdmissionIdle, authAdmissionSweep),
@@ -107,12 +110,11 @@ func NewAuthAdmission(failuresPerMin float64, burst, maxInflight int) *AuthAdmis
 	_, _ = rand.Read(a.fingerprintKey[:])
 	if maxInflight > 0 {
 		a.inflight = make(chan struct{}, maxInflight)
-		a.credentialMaxInflight = maxInflight / 8
-		if a.credentialMaxInflight < 1 {
-			a.credentialMaxInflight = 1
-		}
 	}
-	if a.failures == nil && a.credentials == nil && a.inflight == nil {
+	if maxInflightPerCredential > 0 {
+		a.credentialMaxInflight = maxInflightPerCredential
+	}
+	if a.failures == nil && a.credentials == nil && a.inflight == nil && a.credentialMaxInflight <= 0 {
 		return nil
 	}
 	return a
@@ -206,10 +208,25 @@ func (a *AuthAdmission) penalize(r *http.Request) {
 // forwarding upstream. Checked before any allocation or network call.
 func oversizedCredential(s string) bool { return len(s) > maxCredentialBytes }
 
-// writeAuthOverloaded answers a shed authentication attempt. It reuses the
-// surface-aware 429 body the per-caller limiter writes, so a client cannot
-// distinguish which limiter shed it.
+// writeAuthOverloaded answers a shed authentication attempt. Same HTTP shape
+// as the per-caller limiter (429 + Retry-After) but a distinct wire code so
+// clients can tell admission overload from rate limiting (w4/m100).
 func writeAuthOverloaded(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Retry-After", "1")
-	writeTooManyRequests(w, r)
+	if r.URL.Path == "/graphql" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": nil,
+			"errors": []map[string]any{{
+				"message":    "authentication upstream overloaded; retry shortly",
+				"extensions": map[string]string{"code": "AUTH_OVERLOADED"},
+			}},
+		})
+		return
+	}
+	core.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
+		"id":      "auth_overloaded",
+		"message": "authentication upstream overloaded; see Retry-After header",
+	})
 }
