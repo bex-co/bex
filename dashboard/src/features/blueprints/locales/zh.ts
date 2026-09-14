@@ -395,7 +395,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.resourcesEmptyAfterError": {
     message:
-      "尚未关联托管资源。上次同步失败——请查看同步历史中的错误，修复蓝图后再次同步。",
+      "没有归属此蓝图的资源。上次同步失败——请查看同步历史中的错误，修复蓝图后再重试。",
     description:
       "Blueprint managed-resources empty state when status is error after a sync",
   },
@@ -585,7 +585,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.stateCreated": {
     message: "已排队",
-    description: "Sync-run state: the run has been created but has not started.",
+    description:
+      "Sync-run state: the run has been created but has not started.",
   },
   "blueprints.stateRunning": {
     message: "进行中",

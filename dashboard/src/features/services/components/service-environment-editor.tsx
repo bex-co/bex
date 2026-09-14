@@ -160,25 +160,12 @@ export interface EnvironmentEditorCopy {
   secretFilesEmptyBody?: string;
 }
 
-export interface EnvironmentEditorCopy {
-  envTitle: string;
-  envDescription: string;
-  envEmptyTitle: string;
-  envEmptyBody: string;
-  secretFilesTitle: string;
-  secretFilesDescription: string;
-  secretFilesEmptyTitle: string;
-  secretFilesEmptyBody: string;
-}
-
 export interface EnvironmentEditorProps {
   resourceId: string;
   envKeys: Array<{ id: string; key: string }>;
   secretFileNames: Array<{ id: string; name: string }>;
   loading: boolean;
   errorKind: EnvVarErrorKind | null;
-  /** Section copy. Defaults to the service Environment tab; env groups pass group-scoped strings. */
-  copy?: EnvironmentEditorCopy;
   revealEnv: (key: string) => Promise<string>;
   revealFile: (name: string) => Promise<string>;
   save: (

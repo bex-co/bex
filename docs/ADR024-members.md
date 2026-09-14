@@ -131,6 +131,7 @@ The gaps a live side-by-side against Render's Team Members section surfaced, clo
 - **No `name` trait.** bex's Kratos identity schema defines only `email` (no `name`), so nothing above ever surfaces a Render-style `user.name` — there is no field to omit-on-unset here, the trait simply doesn't exist. → future work only if a real consumer needs it. (Avatar likewise — bex has no avatar upload anywhere.)
 - **Flatter GraphQL.** Render nests members under `owner.team.members`; bex has no polymorphic `owner` type, so it exposes workspace-scoped `workspaceMembers` / `workspaceInvites` queries. Field names (role, email, expiresAt, userId) match.
 - **Active-workspace resolution** stays single-tenant (w1/m9): a caller resolves to one workspace for resource queries. The member verbs sidestep this by taking an explicit workspace id; a full workspace switcher is future work (the `workspaces` query already returns every membership).
+- **Unresolved identity is not a Render `status`.** Render's `teamMember.status` is `active | inactive`. A Kratos lookup miss is not deactivation, so owners REST stays `active` while bex-native GraphQL/MCP carry `identityResolved`. Unresolved rows are kept until an admin removes them.
 
 ## Account-deletion offboarding (ADR086)
 
