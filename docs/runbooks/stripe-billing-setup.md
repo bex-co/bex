@@ -87,7 +87,7 @@ Store the value out of band as `BEX_STRIPE_SECRET_KEY` using the same custody pa
 
 ## 3. Create and custody the webhook
 
-The receiver uses stripe-go v86.1.1's API version `2026-06-24.dahlia`. Create the endpoint in test mode with exactly the events consumed by payment onboarding and the m52 lifecycle:
+The receiver uses stripe-go v86.1.1's API version `2026-06-24.dahlia`. A registered endpoint belongs to exactly one deployment: the one that serves its URL publicly **and** runs a key of the same mode. Stripe issues a distinct signing secret per endpoint per mode, so an endpoint registered in one mode can never be verified by a deployment holding the other mode's secret — it fails at `webhook.ConstructEvent` with a 400 on every delivery until Stripe disables it. Register one only when such a deployment exists; a local test cluster does not need one (see the `stripe listen` form below). Create it with exactly the events consumed by payment onboarding and the m52 lifecycle:
 
 ```bash
 stripe webhook_endpoints create \
@@ -107,7 +107,7 @@ stripe webhook_endpoints create \
 
 Capture the returned signing `secret` once and store it out of band as `BEX_STRIPE_WEBHOOK_SECRET`. It is a distinct credential from the restricted API key. Do not paste it into git, `.env.example`, logs, or a ticket.
 
-For local signature verification, use Stripe CLI forwarding and its temporary signing secret:
+For local signature verification — the normal test-mode path, since a dev cluster has no public HTTPS origin — use Stripe CLI forwarding and its temporary signing secret. This registers no endpoint object: the secret it prints is ephemeral and belongs to that `listen` session, so put it in the gitignored `.env` for §4 and expect it to change on the next run. Never point a test-mode endpoint at the production URL to avoid running a local receiver; production holds only the live signing secret and will reject every test delivery.
 
 ```bash
 stripe listen \
