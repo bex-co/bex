@@ -45,11 +45,15 @@
 #          BEX_CANARY_LOG_BUDGET    seconds for stage 2 (default 180)
 #          BEX_CANARY_EVENT_WINDOW  seconds an event may be older than (default 3600)
 #          BEX_CANARY_REQUIRE_NONCE 1 (default) = stage 2 must find THIS run's
-#                       request line. Traefik's access log records RequestPath
-#                       including the query string, so the nonce is there — set
-#                       to 0 only if a future edge configuration strips it, and
-#                       record why (the probe then degrades to "some request
-#                       line exists for this service", which is weaker).
+#                       request line. The nonce rides in the URL PATH, never in a
+#                       query parameter: the edge drops every query parameter
+#                       before the access-log sink on purpose (deploy-hook `key=`
+#                       redaction — deploy/gitops/base/values/traefik.values.yaml),
+#                       so a `?nonce=…` marker never reaches Loki and this stage
+#                       could never pass. Set to 0 only if a future edge
+#                       configuration also strips the path, and record why (the
+#                       probe then degrades to "some request line exists for this
+#                       service", which is weaker).
 # Exit:    0 pass · 2 config error · 3 wake · 4 logs · 5 metrics · 6 events
 #
 # Nothing secret is printed: the API key is exchanged through a private file and
@@ -96,7 +100,13 @@ canary_login "$TMP_DIR"
 # from this run. `date +%s` alone is not enough — two runs in the same second
 # (a dispatch racing the cron) would alias.
 NONCE="tvl$(date -u +%s)$(head -c 6 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-PROBE_PATH="/?bexProbe=$NONCE"
+# In the path, not the query string: Traefik is configured with
+# `accessLog.fields.queryParameters.defaultMode: drop` so deploy-hook `key=`
+# credentials never reach the log sink, which strips a `?marker=…` too. RequestPath
+# is kept verbatim, so `/bexProbe/<nonce>` survives into the line stage 2 reads.
+# The canary (examples/hello-go) answers 200 on every path, so this is still a
+# plain successful request.
+PROBE_PATH="/bexProbe/$NONCE"
 # Loki/Prometheus ingestion is not instantaneous and clocks are not identical;
 # start the query window before the request so a few seconds of skew cannot
 # hide the line the probe is looking for.
