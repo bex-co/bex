@@ -99,7 +99,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **044** — [Reject empty registry tokens before saving metadata](044.md) (45m) ← transferred from `w4/061`; `/pm-brainstorm for w7 for top 3 customer-impactfully work` 2026-09-09 #3.
+- [x] **044** — [Reject empty registry tokens before saving metadata](done/044.md) (45m) ← transferred from `w4/061`; `/pm-brainstorm for w7 for top 3 customer-impactfully work` 2026-09-09 #3. **DONE 2026-09-15:** whole-request validation precedes the metadata write; refusal leaves row, `updatedAt`, and token untouched (regression test with mutation check).
 - [ ] **045** — [Brand the remaining Render command references and docs link in supported nested help](045.md) (40m) ← continuous `/qa-find-bugs-cli` for w7, 2026-09-14; `ea sandboxes*` help's double-quoted `"render …"` references + "your Render workspace", and `jobs create`'s `render.com/docs` link — the remainder `w4/done/063` did not reach.
 
 > **043** promoted to **m89** 2026-09-09 (Sep 9 approval expanded recommend-only scope past the inbox sizing rule); archived in `done/043.md`.
