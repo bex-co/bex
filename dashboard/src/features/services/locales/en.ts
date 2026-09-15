@@ -1090,7 +1090,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.settingsIdleTimeoutHint": {
     message:
-      "Free services sleep after this idle window, then wake on the next request.",
+      "Free services sleep after this long without inbound requests or WebSocket messages, then wake on the next request.",
     description: "Settings tab: idle-timeout control help text (bex extension)",
   },
   "services.settingsIdleTimeoutPaid": {
