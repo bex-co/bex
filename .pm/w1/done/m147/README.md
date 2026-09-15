@@ -1,19 +1,19 @@
 # w1 · m147 — A service's bulk environment save skips the secret-map quota every sibling write path enforces
 
-**Worker:** worker1 **Goal:** every write to a service's env-var or secret-file map (per-key, bulk replace, blueprint seed, and the bulk **patch** the dashboard's Environment editor uses) is bounded by the same aggregate quota. That quota is 500 entries and 512 KiB per map, and security review round 11 set it (ADR066 #6) so a map can always fit the Kubernetes Secret it is projected into. A guard stops the next write path from skipping it. **Status:** in progress. t002 and t004–t007 are done. t001 and t003 are implemented and green, and they close after the live DoD on the deployed build.
+**Worker:** worker1 **Goal:** every write to a service's env-var or secret-file map (per-key, bulk replace, blueprint seed, and the bulk **patch** the dashboard's Environment editor uses) is bounded by the same aggregate quota. That quota is 500 entries and 512 KiB per map, and security review round 11 set it (ADR066 #6) so a map can always fit the Kubernetes Secret it is projected into. A guard stops the next write path from skipping it. **Status:** done (2026-09-15). All eight tasks are complete. The quota now holds on the bulk patch, and the guard test pins every write path. Live on production, REST and the dashboard refuse an over-quota save with the server's sentence, and the in-quota control still rolls out.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Enforce `envMapWithinQuota`/`filesMapWithinQuota` inside every `PatchEnvironment` mutate, before any write | 45m | — |
+| t001 | Enforce `envMapWithinQuota`/`filesMapWithinQuota` inside every `PatchEnvironment` mutate, before any write — **DONE** | 45m | — |
 | t002 | Guard test: enumerate every service secret-map write path and fail when one reaches the store without the quota check — **DONE** | 40m | t001 |
-| t003 | Dashboard: validate secret files against the server's aggregate contract (not 1 MiB per file) and show the server's refusal on save | 40m | t001 |
+| t003 | Dashboard: validate secret files against the server's aggregate contract (not 1 MiB per file) and show the server's refusal on save — **DONE** | 40m | t001 |
 | t004 | Read-only sweep: find service env/file maps already over quota because of this gap, and record the remediation decision — **DONE** | 30m | t001 |
 | t005 | Render parity — **DONE** | 30m | t001, t002, t003, t004 |
 | t006 | Simplify — **DONE** | 20m | t005 |
 | t007 | Test coverage — **DONE** | 40m | t005 |
-| t008 | Closeout | 10m | t007 |
+| t008 | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
@@ -78,6 +78,53 @@ No screenshots were taken; the transcripts above are the evidence.
 - **Pushing a map past the 1 MiB Secret ceiling** through this path, and so the source/projection divergence ADR066 describes. It was deliberately not attempted on production, because a failed projection could leave residue that blocks deleting the fixture. It is reasoned from ADR066 #6 and the missing check.
 - **REST (`rest.go:77`) and MCP (`mcp.go:113`)** were not driven live; the claim rests on the shared verb. The **env var** half (500 keys / 512 KiB) was not probed either, only secret files.
 - **Whether any existing production service already holds an over-quota map** (t004).
+
+## Render parity (t005, 2026-09-15)
+
+The same 614,400-byte `big.bin` secret-file patch was driven in-process through each real adapter: the REST mux, the GraphQL field resolver, and an MCP in-memory client session.
+
+| Resource | Surface | Response | Store after |
+| --- | --- | --- | --- |
+| service | REST `PATCH /v1/services/{id}/environment` | 400 `bad request: total secret file size limit of 524288 bytes exceeded` | unchanged |
+| service | GraphQL `patchServiceEnvironment` | error wrapping `core.ErrBadRequest`, same sentence | unchanged |
+| service | MCP `patch_service_environment` | tool error carrying the same sentence | unchanged |
+| env group | REST `PATCH /v1/env-groups/{id}/contents` | 400, same sentence | unchanged |
+| env group | GraphQL `patchEnvGroupEnvironment` | error wrapping `core.ErrBadRequest`, same sentence | unchanged |
+| env group | MCP `patch_env_group_environment` | tool error carrying the same sentence | unchanged |
+
+- **Evidence.** Service rows: `TestPatchEnvironmentQuotaRefusalIsIdenticalAcrossAdapters` (`secrets/batch_quota_test.go`). Env-group rows: `TestEnvGroupPatchQuotaRefusalIsIdenticalAcrossAdapters` (`envgroups/quota_guard_test.go`). Before the fix the service rows returned 200 and stored the file (§ Evidence 2); the env-group rows already refused (§ Evidence 3).
+- **No surface disagreement.** One naming trap: the env-group batch patch is REST `/contents`, while `/environment` on an env group moves it between environments.
+- **Render.** Render documents 1 MB combined for secret files per service or environment group. bex caps each map at 512 KiB so its base64 projection fits a 1 MiB Kubernetes Secret. This divergence is recorded in `docs/ADR018-render-parity.md` (Secret files row) and ADR066 #6.
+
+## Live verification (2026-09-15, production)
+
+**Fixture.** `qa-20260915-m147` (`srv-dakeca81e15c73bfgpq0`), a free web service from `examples/hello-go` (docker). `seed.bin` (400,000 bytes) was stored before the first deploy, which went live at 06:47:31Z. The build was pinned to `c4212ec71` at 07:22:30Z.
+
+**In-quota control (t001).** A 1 KiB `small.txt` was saved through the Environment editor at 07:51:02Z. It opened `config_change` `dep-dakfhphvi8js739uilm0`, which waited behind the workspace build cap and went `live` at 08:02:26Z. Secret files afterwards: `[seed.bin, small.txt]`.
+
+**REST refusal (t001, 07:57Z).** `PATCH /v1/services/srv-dakeca81e15c73bfgpq0/environment`, `saveMode: deploy`:
+
+```text
+secretFiles extra.bin 200,000 bytes (over quota only together with the stored seed) → 400 bad request: total secret file size limit of 524288 bytes exceeded
+secretFiles big.bin   614,400 bytes                                              → 400 bad request: total secret file size limit of 524288 bytes exceeded
+after: secret files [seed.bin, small.txt]; no new deploy row
+```
+
+**Dashboard refusal (t003, 10:14:22Z).** Environment → **Edit**, each attempt in a fresh editor. Headless Chrome was signed in with the QA session because the Playwright MCP browser was disconnected. The service was suspended at the time, which a refusal before any write does not depend on.
+
+```text
+big.bin 614,400 bytes attached to the editor's file input
+  → role=alert "Secret files are limited to 500 and 512 KiB in total per service or group."
+  → bar "0 variable operations · 1 file operation"; Save and deploy disabled; no PatchServiceEnvironment sent
+extra.bin 200,000 bytes attached (the client cannot see the stored seed's size, so its draft check passes)
+  → Save and deploy enabled → clicked
+  → +88.5 s PatchServiceEnvironment 200 {"data":null,"errors":[{"message":"bad request: total secret file size limit of 524288 bytes exceeded","path":["patchServiceEnvironment"]}]}
+  → toast "Total secret file size limit of 524288 bytes exceeded" (the server's sentence, not a success toast)
+after: secret files [seed.bin, small.txt]; latest deploy still dep-dakfhphvi8js739uilm0 (no config_change opened)
+```
+
+- **DoD bullet 1 holds end to end.** The editor now refuses a single over-quota upload before sending it. When only the server can see that the aggregate is over quota, the server refuses and the UI shows its sentence.
+- **t003's forced-refusal check** used this real refusal instead of a `page.route` rewrite.
 
 ## Dedupe
 
