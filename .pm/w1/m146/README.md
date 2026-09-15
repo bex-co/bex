@@ -1,17 +1,17 @@
 # w1 · m146 — The live log tail stays connected when a service has no running instance, instead of reconnecting every 3 seconds
 
-**Worker:** worker1 **Goal:** a live log subscription to a service whose instances have all exited, such as a cron job between runs, stays open. It idles, heartbeats, and picks up the next instance's output when that instance starts. Today the stream ends after about 300 ms and the page shows "Live tail disconnected — reconnecting…" while re-subscribing forever. **Status:** todo
+**Worker:** worker1 **Goal:** a live log subscription to a service whose instances have all exited, such as a cron job between runs, stays open. It idles, heartbeats, and picks up the next instance's output when that instance starts. Today the stream ends after about 300 ms and the page shows "Live tail disconnected — reconnecting…" while re-subscribing forever. **Status:** in progress. t001, t004, t005 and t006 are done. t002's live tab count, t003's live probes and t007's closeout wait on the deployed build.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                               | est | depends_on       |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | `FollowLogs` keeps the stream open: heartbeat, and attach to each new app pod as it appears (the `followBuildLogs` watch shape)      | 75m | —                |
+| t001 | `FollowLogs` keeps the stream open: heartbeat, and attach to each new app pod as it appears (the `followBuildLogs` watch shape) — **DONE** | 75m | —                |
 | t002 | Adjacent classes: subscription slot caps under long-idle streams, the codex #3 no-producer rule, watchdog/deletion, edge idle limits | 30m | t001             |
 | t003 | Aliases and sibling states: the WebSocket transport, NDJSON/Render CLI tail, and zero-pod states (suspended, hibernated, pre-first-pod) | 45m | t001             |
-| t004 | Render parity                                                                                                                       | 30m | t001, t002, t003 |
-| t005 | Simplify                                                                                                                            | 20m | t004             |
-| t006 | Test coverage                                                                                                                       | 45m | t004             |
+| t004 | Render parity — **DONE**                                                                                                            | 30m | t001, t002, t003 |
+| t005 | Simplify — **DONE**                                                                                                                 | 20m | t004             |
+| t006 | Test coverage — **DONE**                                                                                                            | 45m | t004             |
 | t007 | Closeout                                                                                                                            | 10m | t006             |
 
 ## Definition of done

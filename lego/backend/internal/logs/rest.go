@@ -335,12 +335,17 @@ func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, q L
 			}
 		}
 	}()
-	followErr := s.FollowLogs(r.Context(), q, func(e LogEntry) error {
+	followErr := s.followLogs(r.Context(), q, func(e LogEntry) error {
 		payload, mErr := json.Marshal(toRenderLog(e))
 		if mErr != nil {
 			return mErr
 		}
 		return conn.WriteMessage(websocket.TextMessage, payload)
+	}, func() error {
+		// A ping keeps an idle tail open through the proxies in front of
+		// bex-api; the client's library answers it without any frame reaching
+		// the caller (w1/m146).
+		return conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second))
 	})
 	if errors.Is(followErr, core.ErrLogsUnavailable) || errors.Is(followErr, core.ErrLogStoreUnavailable) {
 		msg, _ := json.Marshal(map[string]string{"error": followErr.Error()})
@@ -394,17 +399,28 @@ func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, q LogQ
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
-	err := s.FollowLogs(r.Context(), q, func(e LogEntry) error {
-		payload, mErr := json.Marshal(toRenderLog(e))
-		if mErr != nil {
-			return mErr
-		}
-		if _, wErr := io.WriteString(w, frame(payload, e.Timestamp)); wErr != nil {
+	// keepalive holds an idle tail — a cron job between runs — open through the
+	// proxies in front of bex-api, and neither decoder sees it: an SSE comment
+	// line fires no EventSource event, and a line-delimited JSON reader skips a
+	// blank line (w1/m146).
+	keepalive := "\n"
+	if useSSE {
+		keepalive = ": keepalive\n\n"
+	}
+	write := func(chunk string) error {
+		if _, wErr := io.WriteString(w, chunk); wErr != nil {
 			return wErr
 		}
 		flusher.Flush()
 		return nil
-	})
+	}
+	err := s.followLogs(r.Context(), q, func(e LogEntry) error {
+		payload, mErr := json.Marshal(toRenderLog(e))
+		if mErr != nil {
+			return mErr
+		}
+		return write(frame(payload, e.Timestamp))
+	}, func() error { return write(keepalive) })
 	// Headers are already sent, so a refusal can't be an HTTP status. For SSE
 	// callers surface it as a terminal error event; for NDJSON callers it is
 	// a best-effort final line (the client should treat a non-JSON tail as EOF).
