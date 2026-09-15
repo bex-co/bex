@@ -87,8 +87,9 @@ A Bex API key is an OAuth client-credentials pair. Its **secret is not a bearer 
 # Keep BEX_CLIENT_ID/BEX_CLIENT_SECRET in the CI secret store.
 access_token="$({
   curl --fail --silent --show-error \
-    --user "$BEX_CLIENT_ID:$BEX_CLIENT_SECRET" \
     --data grant_type=client_credentials \
+    --data-urlencode "client_id=$BEX_CLIENT_ID" \
+    --data-urlencode "client_secret=$BEX_CLIENT_SECRET" \
     "$BEX_OAUTH_TOKEN_URL"
 } | jq -er '.access_token')"
 
@@ -96,7 +97,13 @@ BEX_ACCESS_TOKEN="$access_token" bex services -o json
 unset access_token
 ```
 
-Set `BEX_OAUTH_TOKEN_URL` to the platform's Hydra public token endpoint. Do not enable shell tracing around this exchange, print the response, or make the token a job artifact. Prefer device login for a human terminal.
+Set `BEX_OAUTH_TOKEN_URL` to the platform's Hydra public token endpoint: `https://oauth.bex.co/oauth2/token` on hosted bex, as named by `https://api.bex.co/.well-known/oauth-protected-resource` and the issuer metadata.
+
+- **Send the credentials in the form body.** An API key's OAuth client authenticates with `client_secret_post` (`lego/backend/internal/apikeys/service.go`). HTTP Basic (`curl --user id:secret`) is refused with `401 invalid_client`.
+- **Keep the token secret.** Do not enable shell tracing around this exchange, print the response, or make the token a job artifact.
+- **Humans should use device login** in a terminal.
+
+Verified 2026-09-15 on production: a form-body exchange returned a 15-minute token, and `BEX_ACCESS_TOKEN="$access_token" bex logs --resources <cron srv-id> --tail -o text` streamed a cron job's next run live.
 
 `bex logout` manages the stored interactive OAuth session only. For a job that uses `BEX_ACCESS_TOKEN`, unset the variable when the job ends and revoke the issued credential through the authority that minted it when needed.
 

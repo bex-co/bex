@@ -1,18 +1,18 @@
 # w1 · m146 — The live log tail stays connected when a service has no running instance, instead of reconnecting every 3 seconds
 
-**Worker:** worker1 **Goal:** a live log subscription to a service whose instances have all exited, such as a cron job between runs, stays open. It idles, heartbeats, and picks up the next instance's output when that instance starts. Today the stream ends after about 300 ms and the page shows "Live tail disconnected — reconnecting…" while re-subscribing forever. **Status:** in progress. t001, t004, t005 and t006 are done. t002's live tab count, t003's live probes and t007's closeout wait on the deployed build.
+**Worker:** worker1 **Goal:** a live log subscription to a service whose instances have all exited, such as a cron job between runs, stays open. It idles, heartbeats, and picks up the next instance's output when that instance starts. Today the stream ends after about 300 ms and the page shows "Live tail disconnected — reconnecting…" while re-subscribing forever. **Status:** done (2026-09-15). Every task is complete, and the definition of done passed live on production (images pinned to `c4212ec71`). The dashboard Logs-page check on zero-pod services could not run once the browser disconnected; the stream-level checks passed, see § Live verification.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                               | est | depends_on       |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
 | t001 | `FollowLogs` keeps the stream open: heartbeat, and attach to each new app pod as it appears (the `followBuildLogs` watch shape) — **DONE** | 75m | —                |
-| t002 | Adjacent classes: subscription slot caps under long-idle streams, the codex #3 no-producer rule, watchdog/deletion, edge idle limits | 30m | t001             |
-| t003 | Aliases and sibling states: the WebSocket transport, NDJSON/Render CLI tail, and zero-pod states (suspended, hibernated, pre-first-pod) | 45m | t001             |
+| t002 | Adjacent classes: subscription slot caps under long-idle streams, the codex #3 no-producer rule, watchdog/deletion, edge idle limits — **DONE** | 30m | t001             |
+| t003 | Aliases and sibling states: the WebSocket transport, NDJSON/Render CLI tail, and zero-pod states (suspended, hibernated, pre-first-pod) — **DONE** | 45m | t001             |
 | t004 | Render parity — **DONE**                                                                                                            | 30m | t001, t002, t003 |
 | t005 | Simplify — **DONE**                                                                                                                 | 20m | t004             |
 | t006 | Test coverage — **DONE**                                                                                                            | 45m | t004             |
-| t007 | Closeout                                                                                                                            | 10m | t006             |
+| t007 | Closeout — **DONE**                                                                                                                            | 10m | t006             |
 
 ## Definition of done
 
@@ -81,6 +81,34 @@ A pod already followed to EOF is not re-followed. Resume via `Last-Event-ID` and
 - That the Kubernetes follow of a terminated container returns at EOF. Inferred from the observed 276 ms close; `PodLogsFollow`'s client-go path was not read.
 - Whether the next scheduled run's output reaches an already-open tab today on its next reconnect. It probably does, a few seconds late, but no second run was observed with the tab open.
 - The Cloudflare idle-stream timeout in front of `api.bex.co`.
+
+## Live verification (2026-09-15, production pinned to `c4212ec71`)
+
+- **Fixtures.**
+  - `qa-20260915-m146` (`srv-dakecao1e15c73bfgprg`): a free cron job from `examples/hello-go` running `echo qa-cron-ran`, with a Sunday schedule, run by hand.
+  - `qa-20260915-m146pf` (`srv-dakfshjidljc7398tnng`): a free web service tailed before its first pod.
+  - `qa-20260915-m147` (suspended) and `qa-20260915-m151ws` (hibernated), borrowed from the same run.
+- **Before (production still on `137a5186e`, 06:49:08Z).** On the cron job after one successful run, the SSE tail closed after 336 ms (413 bytes, the replayed `qa-cron-ran`), and NDJSON after 231 ms.
+
+| Check | Result |
+| --- | --- |
+| SSE stays open (DoD) | 07:32:56Z: `200`, still open after 8 s |
+| NDJSON stays open (DoD) | 07:33:04Z: `200`, still open after 8 s |
+| No reconnect loop (DoD) | 07:33:10Z, cron Logs page for 60 s: exactly 1 `/v1/logs/subscribe` (at 1.7 s); the "Live tail disconnected" banner never appeared (sampled every 5 s) |
+| The next run arrives live (DoD) | A run triggered at +63.7 s: the second `qa-cron-ran` line appeared in the open page at +69.7 s, with 0 extra subscribes and no banner |
+| Web control (DoD) | A running web service's Logs page for 21 s: 1 subscribe, no banner |
+| Deleting the service ends the tail (DoD) | `qa-20260915-m146pf`: tail open at 09:17:26.850Z; `DELETE` → `204` at 09:17:27.239Z; keepalives at 09:17:47Z and 09:18:12Z; the response ended at 09:18:22.115Z, 54.9 s after the delete (within the 1-minute revalidation watchdog). Then `GET` → `404` and a new subscribe → `404`. The cron job's own deletion (09:14:12Z) also ended its tail; that run did not capture the time. |
+| WebSocket transport (t003) | 08:12:44Z: `101 Switching Protocols` without an Origin header; the last run replayed; pings at 08:13:09, 08:13:34, 08:13:59 and 08:14:24 (25 s); a run triggered at 08:13:19Z delivered its `qa-cron-ran` frame at 08:13:24Z; held for 100 s. The same upgrade with `Origin: https://dashboard.bex.co` gets `403`: the default gorilla upgrader's same-origin check. The Render CLI sends no Origin. |
+| Render CLI tail (t003) | A temporary API key (created, then revoked `204`) exchanged for a 15-minute token; `BEX_ACCESS_TOKEN=… bex logs --resources srv-dakecao1e15c73bfgprg --tail -o text` printed the two earlier runs, kept running through 35 s idle, printed `2026-09-15 08:19:27  qa-cron-ran` for a run triggered at 08:19:25Z, and was still running at 95 s |
+| Suspended service (t003) | 08:13:49Z: the suspended `qa-20260915-m147` (phase Hibernated) tail → `200`, open after 8 s |
+| Before the first pod (t003) | 08:13:59Z: `qa-20260915-m146pf` tailed right after create → `200`, open after 8 s |
+| Hibernated service, and a wake's line arrives (t003) | `qa-20260915-m151ws` hibernated at 09:11:26Z; its tail → `200`, open after 10 s; wake requests from 09:11:50Z (`503`), `200` at 09:12:02Z; the new pod's `ws server on 3000` arrived in the open tail at 09:11:53Z, and the tail stayed open |
+| Subscription cap (t002) | 08:11:58Z, twelve concurrent tails as one user: tails 1–10 accepted and held open, tails 11 and 12 got `429 too many active log subscriptions`. The per-subject share (5) is counted per bex-api process, and production runs 2 replicas; `docs/ADR006-bex-api.md` now says so. |
+
+- **Not probed live.**
+  - The dashboard Logs page (1 subscribe, no banner over 60 s) on the suspended, hibernated and pre-first-pod services: the Playwright browser disconnected before those checks. Their streams passed at the SSE level above.
+  - Revoking `can_view_logs` on an open tail. That stays pinned by `TestIdleTailStillEndsOnRevocationAndDeletion`.
+- **Found along the way.** The CI recipe in `docs/bex-cli.md` exchanged the API key with HTTP Basic, which Hydra refuses (`401 invalid_client`), because API-key clients authenticate with `client_secret_post`. The recipe now sends the credentials in the form body and names `https://oauth.bex.co/oauth2/token`. The form-body exchange drove the CLI tail above.
 
 ## Dedupe
 

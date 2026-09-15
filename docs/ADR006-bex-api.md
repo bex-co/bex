@@ -618,15 +618,19 @@ Admission overload and the per-caller rate limiter both answer **HTTP 429 + `Ret
 | --- | --- | --- |
 | Non-GET body size | 2 MiB (2097152 bytes) → 413 | `BEX_MAX_BODY_BYTES` |
 | Log / metrics query window (`startTime`..`endTime`) | 720 h (30 days) → 400 | `BEX_MAX_QUERY_HOURS` |
-| Concurrent `GET /v1/logs/subscribe` SSE streams | 100 → 429 | `BEX_MAX_SSE_CONNS` |
-| … per subject (one user or API key) | 5 → 429 | `BEX_MAX_SSE_CONNS_PER_SUBJECT` |
-| … per workspace | 20 → 429 | `BEX_MAX_SSE_CONNS_PER_WORKSPACE` |
+| Concurrent `GET /v1/logs/subscribe` SSE streams | 100 → 429, per bex-api replica | `BEX_MAX_SSE_CONNS` |
+| … per subject (one user or API key) | 5 → 429, per bex-api replica | `BEX_MAX_SSE_CONNS_PER_SUBJECT` |
+| … per workspace | 20 → 429, per bex-api replica | `BEX_MAX_SSE_CONNS_PER_WORKSPACE` |
 
-**An idle tail holds its slot (w1/m146).** A live tail now stays open for as long as it is authorized and its service exists, including a cron job between runs or a hibernated service. Every open Logs tab therefore holds one subscription slot for as long as it is open, idle or not. That was already true of a running service's tab. Before w1/m146 an idle service's tab only looked cheaper, because it was reconnecting every ~3 s. The caps are unchanged: a sixth concurrent tail for one subject is refused with `429 too many active log subscriptions`, whether the other five are busy or idle. Counting idle tails separately would give a reconnect loop's apparent cost back to exactly the streams that cost nothing while idle (one keepalive every 25 s), so they are not treated differently.
+**An idle tail holds its slot (w1/m146).** A live tail now stays open for as long as it is authorized and its service exists, including a cron job between runs or a hibernated service. Every open Logs tab therefore holds one subscription slot for as long as it is open, idle or not. That was already true of a running service's tab. Before w1/m146 an idle service's tab only looked cheaper, because it was reconnecting every ~3 s.
+
+- **Idle tails count like busy ones.** A tail over a subject's share is refused with `429 too many active log subscriptions`, whether the other tails are busy or idle. Counting idle tails separately would hand a reconnect loop's apparent cost back to exactly the streams that cost nothing while idle (one keepalive every 25 s).
+- **The caps are counted in memory by each bex-api process.** Production runs two replicas (`lego/operator/config/prod/kustomization.yaml`, `/spec/replicas: 2`), so one subject's ceiling is up to twice the configured share, depending on how the load balancer spreads its connections.
+- **Measured 2026-09-15 on production** as the QA user, with twelve concurrent tails of one idle cron job: tails 1–10 were accepted and held open, and tails 11 and 12 got the 429.
 
 All limits are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely (per-plan differentiated budgets are a follow-up once real traffic data exists).
 
-**Note:** bex-api is currently single-replica; the per-caller token-bucket is in-process. In a multi-replica deployment each replica has its own map, so the effective per-caller budget is `BEX_RATE_LIMIT × replicas` — a distributed counter (Redis token bucket) is the follow-up when bex-api scales out.
+**Note:** production runs bex-api with two replicas (`lego/operator/config/prod/kustomization.yaml`), and the per-caller token bucket and the log-subscription caps are in-process. Each replica has its own map, so the effective per-caller budget is `BEX_RATE_LIMIT × replicas`, and a subscription share is likewise per replica. A distributed counter (for example a Redis token bucket) is the follow-up.
 
 ## Per-workspace resource caps (w7/m9, retired to ResourceQuota in w3/m34)
 
