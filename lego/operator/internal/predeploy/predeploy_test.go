@@ -149,26 +149,23 @@ func TestJobCoLocatedOmitsAppNamespaceLabel(t *testing.T) {
 
 func TestObserve(t *testing.T) {
 	running := &batchv1.Job{}
-	if s, _ := Observe(running); s != StatePending {
+	if s := Observe(running); s != StatePending {
 		t.Errorf("no terminal condition => %s, want Pending", s)
 	}
 
 	done := &batchv1.Job{Status: batchv1.JobStatus{Conditions: []batchv1.JobCondition{
 		{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
 	}}}
-	if s, _ := Observe(done); s != StateSucceeded {
+	if s := Observe(done); s != StateSucceeded {
 		t.Errorf("JobComplete => %s, want Succeeded", s)
 	}
 
+	// The failure's explanation is FailureMessage's (failure_message_test.go).
 	failed := &batchv1.Job{Status: batchv1.JobStatus{Conditions: []batchv1.JobCondition{
 		{Type: batchv1.JobFailed, Status: corev1.ConditionTrue, Reason: "BackoffLimitExceeded", Message: "boom"},
 	}}}
-	s, msg := Observe(failed)
-	if s != StateFailed {
+	if s := Observe(failed); s != StateFailed {
 		t.Errorf("JobFailed => %s, want Failed", s)
-	}
-	if !strings.Contains(msg, "boom") || !strings.Contains(msg, "BackoffLimitExceeded") {
-		t.Errorf("failure message = %q, want the condition reason+message", msg)
 	}
 }
 

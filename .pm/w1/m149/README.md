@@ -1,18 +1,18 @@
 # w1 · m149 — A failed pre-deploy command marks a still-serving service Failed, and explains the failure wrongly
 
-**Worker:** worker1 **Goal:** when a pre-deploy command fails on a service that already has a healthy release, the service keeps reporting what is actually serving (Running) and only the deploy reads failed. That failed deploy says truthfully why it failed: the command's exit code and a pointer to its logs. It never says "did not finish within its window" about an immediate exit, and never shows raw Kubernetes Job text. **Status:** todo
+**Worker:** worker1 **Goal:** when a pre-deploy command fails on a service that already has a healthy release, the service keeps reporting what is actually serving (Running) and only the deploy reads failed. That failed deploy says truthfully why it failed: the command's exit code and a pointer to its logs. It never says "did not finish within its window" about an immediate exit, and never shows raw Kubernetes Job text. **Status:** in progress — t005 and t006 done; t001–t004 implemented with tests green, and their live probes (the DoD bullets, t004's surface table) wait for the deploy; then t007 closeout.
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                              | est | depends_on       |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | A pre-deploy failure over a healthy prior release keeps the service phase on what is serving (mirror `settleFailedBuildOverPriorRelease`) | 60m | —                |
-| t002 | The failed deploy's reason is deterministic and human: the exit code plus the log pointer, never timeout text or `BackoffLimitExceeded`   | 60m | —                |
-| t003 | Pre-deploy log records carry a `predeploy` type label (a line returned for `type=predeploy` is labelled `app`)                    | 20m | —                |
-| t004 | Render parity                                                                                                                      | 30m | t001, t002, t003 |
-| t005 | Simplify                                                                                                                           | 20m | t004             |
-| t006 | Test coverage                                                                                                                      | 45m | t004             |
-| t007 | Closeout                                                                                                                           | 10m | t006             |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | A pre-deploy failure over a healthy prior release keeps the service phase on what is serving (mirror `settleFailedBuildOverPriorRelease`) | 60m | — |
+| t002 | The failed deploy's reason is deterministic and human: the exit code plus the log pointer, never timeout text or `BackoffLimitExceeded` | 60m | — |
+| t003 | Pre-deploy log records carry a `predeploy` type label (a line returned for `type=predeploy` is labelled `app`) | 20m | — |
+| t004 | Render parity | 30m | t001, t002, t003 |
+| t005 | Simplify — **DONE** | 20m | t004 |
+| t006 | Test coverage — **DONE** | 45m | t004 |
+| t007 | Closeout | 10m | t006 |
 
 ## Definition of done
 
@@ -67,6 +67,41 @@ No screenshots were taken; the transcripts above are the evidence.
 - **Which of the two reason paths runs is timing-dependent.** Only two failures were observed, and the exact mechanism of the timeout text is not proven.
 - **A first-ever deploy whose pre-deploy fails** (no prior release) was not exercised.
 - **REST and MCP** reads of the same deploys were not compared, only GraphQL and the dashboard.
+
+## Implementation (2026-09-14)
+
+**Phase (t001).** `failPreDeploy` (`lego/operator/internal/controller/app_controller.go`) now applies w6/m124's rule: when a release has served (`status.activeRevision` set — not `status.image`, which a first release that crash-looped leaves behind without ever serving) it calls `settleFailureOverPriorRelease` — the build path's settle, generalized to name the failed step — so the phase is Running (Hibernated when parked) with Ready `True/PriorReleaseServing` ("the latest pre-deploy command failed; the previously deployed release keeps serving"). A first release still reads Failed with Ready `False/PreDeployFailed`. The pending/running branch is unchanged (`Deploying`, never `Failed`); the filing-time `Failed` sample at 12:17:38Z is most likely the CR already failed while the deploy row still read `pre_deploy_in_progress` (the store polls), which the settle removes.
+
+**Reason (t002).** Two changes make it deterministic:
+
+- **Operator:** `predeploy.FailureMessage` reads the Job pod's terminated `predeploy` container: "the pre-deploy command exited with code N; check the pre-deploy logs", "…ran out of memory (exit code 137)…", or, for a Job reaped by its deadline, "…did not finish within its 10-minute window…". With no terminated container (pod reaped, never started) it says "the pre-deploy command failed; check the pre-deploy logs". The Job controller's `BackoffLimitExceeded` text is never used. A step bex could not start (superseding an older run or the network policy failed) reads "the pre-deploy command could not be started: …". `status.preDeploy.message` carries it, and `Observe` now returns only the state.
+- **Store:** `deployCloseFailureReason` reads that durable, release-generation-scoped verdict (`recordedPreDeployFailure`) before the Ready condition, as build rows read the Build condition (w6/m100). The timeout text came from `failureReasonFor` requiring `Ready.observedGeneration == metadata.generation`: once the generation moved past the condition (or Ready described the prior release) it fell through to `timedOutDeployReason`. `TestPreDeployFailureReasonSurvivesAGenerationBump` reproduces exactly that input. Whether production's generation bump came from a projector write was not traced; the fix removes the dependency either way.
+
+**Log type (t003).** `collectPreDeployLogs` (`lego/backend/internal/logs/service.go`) stamps `type: predeploy` on each record (it went through `parseLogLine`, which hard-codes `app`). Decision on untyped queries: unchanged — they do not include pre-deploy lines. `predeploy` is a live Job-pod read that must be requested on its own (mixing it with app/request is already refused), and Render shows deploy output apart from the service's log stream.
+
+**Parity (t004, docs).** ADR018 row 71 and ADR004 § Pre-deploy command record the phase rule, the reason wording and the log label. **Free plan: divergence recorded, not gated.** Render offers the pre-deploy command only on paid web services, private services and background workers; bex allows it on free web services too. Gating it is a pricing decision and would break free services already using it, so the behavior is unchanged and flagged for the owner. The live per-surface table (REST, GraphQL, MCP, dashboard) waits for the deploy.
+
+**Simplify (t005).** Three review passes (reuse, quality, efficiency). Applied:
+
+- `settleFailedRolloutOverPriorRelease` was a copy of the generalized settle and is gone; the rollout path calls `settleFailureOverPriorRelease(ctx, app, "the latest rollout failed")`.
+- The prior-release test for pre-deploy is `status.activeRevision` only (see t001), with a test for the crash-looped first release.
+- The persisted-verdict re-check returns a nil error after re-stamping, like the build verdict gate: a terminal pre-deploy failure used to requeue on error backoff forever. The first failing pass still surfaces the error once.
+- The Job's pod is found by `batch.kubernetes.io/controller-uid`, not the Job name, so a same-named earlier Job's pod can't supply the exit code.
+- `readContainerLogs` takes the log type, so pre-deploy and datastore records are labelled (type and container) when parsed instead of patched afterwards; `parseLogLine` is gone. Before this, pre-deploy records also carried `container: app`.
+
+Declined:
+
+- A shared Job-pod lookup across `build`, `publish` and `predeploy` — it would reach into two unrelated packages; each builds a different message.
+- An `OOMKilled` constant shared with `build/signals.go`.
+- Dropping the timeout-wording control test (t002 asks for it).
+- The build path's own `status.image != ""` prior-release check has the crash-looped-first-release edge the review found; it is w6/m124's code, filed as `w1/101` rather than changed here.
+
+**Tests (t006).**
+
+- Operator: `controller/predeploy_prior_release_phase_test.go` (Running over a serving image; Running over an active revision; Hibernated when parked; first release Failed with the step's message; could-not-start wording) and `predeploy/failure_message_test.go` (exit code, OOM, deadline with its window, no terminated pod / waiting / other namespace / other Job's pod). The envtest spec "fails the deploy and leaves the previous revision serving" now stands in a Job pod exiting 1 and expects phase Running and "the pre-deploy command exited with code 1; check the pre-deploy logs", stable across a second reconcile.
+- Store: `failed_predeploy_reason_test.go` (the verdict wins with the phase held Running, the generation-bump case, a verdict from another release is ignored, service state Running/healthy, build/pre-deploy/rollout timeout lines unchanged).
+- Logs: `TestPreDeployLogsReadFromJobPod` pins `type: predeploy`.
+- **Shown failing on pre-fix `HEAD` (`0299e0e70`) in a scratch worktree:** the store tests (reason = the timeout line, or empty), the logs test (`labelled type="app"`), and the envtest spec (phase not Running). The controller unit tests and `FailureMessage` tests call the new signatures and cannot compile pre-fix.
 
 ## Dedupe
 

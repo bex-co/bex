@@ -1391,12 +1391,9 @@ func (s *Service) collectDatastorePodLogs(ctx context.Context, namespace string,
 		if !q.keepPod(pods[i].Name) {
 			continue
 		}
-		entries, err := s.readContainerLogs(ctx, namespace, ds.name, pods[i].Name, ds.container, q.Limit)
+		entries, err := s.readContainerLogs(ctx, namespace, ds.name, pods[i].Name, ds.container, ds.kind, q.Limit)
 		if err != nil {
 			return nil, err
-		}
-		for j := range entries {
-			entries[j].Labels[LabelType] = ds.kind
 		}
 		out = append(out, entries...)
 	}
@@ -1422,13 +1419,14 @@ func (s *Service) appPodNames(ctx context.Context, namespace string, q LogQuery)
 }
 
 func (s *Service) readPodLogs(ctx context.Context, namespace, service, pod string, tail int64) ([]LogEntry, error) {
-	return s.readContainerLogs(ctx, namespace, service, pod, core.AppContainer, tail)
+	return s.readContainerLogs(ctx, namespace, service, pod, core.AppContainer, LogTypeApp, tail)
 }
 
 // readContainerLogs reads up to tail lines from one pod's container, tagged with
-// service+pod. Generalizes readPodLogs so the pre-deploy path can read the
-// "predeploy" container (in the App's own namespace) with the same parsing.
-func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod, container string, tail int64) ([]LogEntry, error) {
+// service+pod and labelled with that container and logType. Generalizes
+// readPodLogs so the pre-deploy and datastore paths read their containers with
+// the same parsing and say what they are.
+func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod, container, logType string, tail int64) ([]LogEntry, error) {
 	rc, err := s.PodLogs(ctx, namespace, pod, container, tail)
 	if err != nil {
 		return nil, err
@@ -1439,7 +1437,7 @@ func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod
 	sc := bufio.NewScanner(rc)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // allow long lines
 	for sc.Scan() {
-		entries = append(entries, parseLogLine(service, pod, sc.Text()))
+		entries = append(entries, parseContainerLogLine(service, pod, container, logType, sc.Text()))
 	}
 	return entries, sc.Err()
 }
@@ -1462,7 +1460,7 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, appNS string, q LogQ
 	var out []LogEntry
 	for i := range pods {
 		pod := pods[i].Name
-		entries, err := s.readContainerLogs(ctx, appNS, q.App, pod, core.PreDeployContainer, q.Limit)
+		entries, err := s.readContainerLogs(ctx, appNS, q.App, pod, core.PreDeployContainer, LogTypePreDeploy, q.Limit)
 		if err != nil {
 			// A reaped pod (or a container that never produced logs) drops out of
 			// the read rather than failing the whole query.
@@ -1493,13 +1491,6 @@ func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, p
 		case ch <- parseContainerLogLine(service, pod, container, logType, sc.Text()):
 		}
 	}
-}
-
-// parseLogLine splits kubelet's "Timestamps: true" prefix (an RFC3339Nano stamp,
-// a space, then the message) off a log line, tagging it with Render-shaped
-// labels. A line without a parseable stamp is kept whole as the message.
-func parseLogLine(service, pod, line string) LogEntry {
-	return parseContainerLogLine(service, pod, core.AppContainer, LogTypeApp, line)
 }
 
 // maxLogMessageBytes caps one log record's message (round-5 finding 17). The
