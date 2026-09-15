@@ -90,6 +90,15 @@ to use an exact file path (takes precedence over BEX_CLI_CONFIG_DIR).
 An explicit, non-empty RENDER_CLI_CONFIG_PATH overrides both Bex inputs and
 the default. Empty values are treated as unset.`
 		}
+		// `jobs create` cites render.com's one-off-job plan list; Bex has no
+		// such page and hostnames are deliberately never rewritten globally, so
+		// the comment is replaced narrowly (w7/045). The example commands below
+		// it still go through RewriteText.
+		if c.Name() == "create" && c.Parent() != nil && c.Parent().Name() == "jobs" && c.Parent().Parent() == root {
+			c.Example = strings.ReplaceAll(c.Example,
+				"  # See https://render.com/docs/one-off-jobs for available job plans\n",
+				"  # Plan IDs match the service plans listed by `bex services get`\n")
+		}
 		c.Flags().VisitAll(rewriteFlag)
 		c.PersistentFlags().VisitAll(rewriteFlag)
 		c.Example = RewriteText(c.Example)
@@ -148,7 +157,9 @@ func RewriteText(s string) string {
 		{"with Render", "with Bex"},
 		{"from Render", "from Bex"},
 		{"the Render ", "the Bex "},
+		{"your Render ", "your Bex "},
 		{"`render ", "`bex "},
+		{"\"render ", "\"bex "},
 		{"`render`", "`bex`"},
 		{"'render workspace set", "'bex workspace set"},
 	} {
