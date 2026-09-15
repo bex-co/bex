@@ -202,7 +202,9 @@ Mechanism (`internal/predeploy`, dispatched from `reconcileKubernetes`'s `reconc
 
 Skipped when there is no rollout to gate (suspended / auto-hibernating, both scaling to 0) and for `cron_job`/`static_site` (a cron runs its own `command`; a static site has no running container). Unset `preDeployCommand` is byte-identical to prior behavior — no Job, no gate.
 
-The step's outcome and logs are visible on the deploy record: `preDeployStatus` (`internal/store`/`internal/deploys`) distinguishes a migration failure from a health-check failure, and the `predeploy` log type ([ADR006](ADR006-bex-api.md), [ADR010](ADR010-observability.md)) reads the Job pod's logs.
+The step's outcome and logs are visible on the deploy record: `preDeployStatus` (`internal/store`/`internal/deploys`) distinguishes a migration failure from a health-check failure, and the `predeploy` log type ([ADR006](ADR006-bex-api.md), [ADR010](ADR010-observability.md)) reads the Job pod's logs, each record labelled `type: predeploy`.
+
+**A failed step is a deploy fact, not an outage (w1/m149).** The step runs before the rollout, so when it fails over a released image the previous release never stopped serving: the phase stays Running (Hibernated when parked) with Ready describing the serving release, exactly as w6/m124 settles a failed build. Only a first release whose step fails reads Failed. `status.preDeploy` is the durable, release-generation-scoped verdict, and its message — built from the Job pod's terminated container ("exited with code N", an out-of-memory kill, or the 10-minute deadline, each pointing at the pre-deploy logs) — is what bex-api closes the `pre_deploy_failed` row with. Reading it from `status.preDeploy` rather than the Ready condition keeps the reason correct when `metadata.generation` has moved past the condition, and when Ready describes the prior release.
 
 ## Control-plane deploy lifecycle
 

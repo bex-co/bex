@@ -2687,7 +2687,7 @@ func deploymentProgressDeadlineExceeded(dep *appsv1.Deployment) bool {
 // is (or was) serving ⇒ Running / Hibernated, deploy fact only.
 func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (ctrl.Result, error) {
 	if app.Status.ActiveRevision != "" {
-		r.settleFailedRolloutOverPriorRelease(ctx, app)
+		r.settleFailureOverPriorRelease(ctx, app, "the latest rollout failed")
 		return ctrl.Result{}, nil
 	}
 	reason, msg := r.stuckPodMessage(ctx, dep, port)
@@ -2708,34 +2708,6 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
-}
-
-// settleFailedRolloutOverPriorRelease mirrors settleFailedBuildOverPriorRelease
-// for a rollout that hit ProgressDeadlineExceeded while an earlier release is
-// still the truthful service state (w4/m103).
-func (r *AppReconciler) settleFailedRolloutOverPriorRelease(ctx context.Context, app *appv1alpha1.App) {
-	phase := appv1alpha1.PhaseRunning
-	condition := metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reasonPriorReleaseServing,
-		Message:            "the latest rollout failed; the previously deployed release keeps serving",
-		ObservedGeneration: app.Generation,
-	}
-	if r.Mode == ModeKubernetes {
-		var dep appsv1.Deployment
-		if getErr := r.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, &dep); getErr == nil &&
-			dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0 {
-			phase = appv1alpha1.PhaseHibernated
-			condition.Status = metav1.ConditionFalse
-			condition.Reason = reasonAutoHibernated
-			condition.Message = "the latest rollout failed; the previously deployed release stays parked"
-			if app.Spec.Suspended {
-				condition.Reason = reasonSuspended
-			}
-		}
-	}
-	app.Status.Phase = phase
-	meta.SetStatusCondition(&app.Status.Conditions, condition)
-	r.updateStatusRetrying(ctx, app, "failedRolloutOverPriorRelease")
 }
 
 // deploymentRolloutReady follows the Deployment controller's rollout-complete
@@ -4320,7 +4292,7 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 		// (w6/m52); w6/m124 extends it to the failure path. The Build condition
 		// above stays the durable verdict bex-api closes the deploy row from.
 		if app.Status.Image != "" {
-			r.settleFailedBuildOverPriorRelease(ctx, app)
+			r.settleFailureOverPriorRelease(ctx, app, "the latest build failed")
 			return ctrl.Result{}, err
 		}
 	}
@@ -4329,21 +4301,26 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 	return ctrl.Result{}, err
 }
 
-// settleFailedBuildOverPriorRelease stamps the terminal status for a build
-// failure whose App still has a released image. The phase returns to the state
-// that truthfully describes that release — Running, or Hibernated when the
-// workload is parked at 0 replicas (manual suspension / free-tier auto-sleep,
-// which must not be swept into "running") — and Ready describes the release
-// the service is actually answering with, so bex-api's availability projection
-// does not read the failed build as an instance that stopped passing readiness
-// checks. The reconcile quiesces after this write (buildFromSource's verdict
-// gate holds every later pass terminal), so nothing comes back to correct it:
-// the stamp must be truthful on this one pass.
-func (r *AppReconciler) settleFailedBuildOverPriorRelease(ctx context.Context, app *appv1alpha1.App) {
+// settleFailureOverPriorRelease stamps the terminal status for a build,
+// pre-deploy or rollout failure while an earlier release is still the truthful
+// service state: a build or pre-deploy step runs before the rollout, and a
+// rollout that hit ProgressDeadlineExceeded left the old ReplicaSet serving
+// (w4/m103). The phase
+// returns to the state that truthfully describes that release — Running, or
+// Hibernated when the workload is parked at 0 replicas (manual suspension /
+// free-tier auto-sleep, which must not be swept into "running") — and Ready
+// describes the release the service is actually answering with, so bex-api's
+// availability projection does not read the failed step as an instance that
+// stopped passing readiness checks. The reconcile quiesces after this write
+// (the build verdict gate and the per-release pre-deploy record hold every later
+// pass terminal), so nothing comes back to correct it: the stamp must be
+// truthful on this one pass. failed names the step, e.g. "the latest build
+// failed".
+func (r *AppReconciler) settleFailureOverPriorRelease(ctx context.Context, app *appv1alpha1.App, failed string) {
 	phase := appv1alpha1.PhaseRunning
 	condition := metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reasonPriorReleaseServing,
-		Message:            "the latest build failed; the previously deployed release keeps serving",
+		Message:            failed + "; the previously deployed release keeps serving",
 		ObservedGeneration: app.Generation,
 	}
 	// The Deployment's desired scale is the mechanism's own record of a parked
@@ -4358,7 +4335,7 @@ func (r *AppReconciler) settleFailedBuildOverPriorRelease(ctx context.Context, a
 			phase = appv1alpha1.PhaseHibernated
 			condition.Status = metav1.ConditionFalse
 			condition.Reason = reasonAutoHibernated
-			condition.Message = "the latest build failed; the previously deployed release stays parked"
+			condition.Message = failed + "; the previously deployed release stays parked"
 			if app.Spec.Suspended {
 				condition.Reason = reasonSuspended
 			}
@@ -4366,7 +4343,7 @@ func (r *AppReconciler) settleFailedBuildOverPriorRelease(ctx context.Context, a
 	}
 	app.Status.Phase = phase
 	meta.SetStatusCondition(&app.Status.Conditions, condition)
-	r.updateStatusRetrying(ctx, app, "failedBuildOverPriorRelease")
+	r.updateStatusRetrying(ctx, app, "failureOverPriorRelease")
 }
 
 // reconcilePreDeploy runs spec.preDeployCommand to completion against image
@@ -4408,7 +4385,11 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		case appv1alpha1.PreDeploySucceeded:
 			return ctrl.Result{}, false, nil // passed — proceed to the rollout
 		case appv1alpha1.PreDeployFailed:
-			return r.failPreDeploy(ctx, app, pd, fmt.Errorf("pre-deploy command failed: %s", pd.Message))
+			// Terminal for this release: re-stamp the same verdict and go quiet,
+			// like the build verdict gate. A new release generation is what runs
+			// the step again, so retrying this one on error backoff buys nothing.
+			res, halt, _ := r.failPreDeploy(ctx, app, pd)
+			return res, halt, nil
 		}
 		// Running/Pending: fall through to re-check the live Job.
 	}
@@ -4442,7 +4423,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	// 0 exists to prevent.
 	if firstForGen || (recordedJob != "" && recordedJob != jobName) {
 		if err := predeploy.CancelSuperseded(ctx, app.Name, string(app.UID), ns, jobName, r.Client); err != nil {
-			return r.failPreDeploy(ctx, app, failedPD(jobName, err.Error()), fmt.Errorf("pre-deploy: %w", err))
+			return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(err)))
 		}
 	}
 
@@ -4459,7 +4440,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	}
 	pullSecrets := r.imagePullSecrets(app, image)
 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
-		return r.failPreDeploy(ctx, app, failedPD(jobName, err.Error()), fmt.Errorf("pre-deploy network policy: %w", err))
+		return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(err)))
 	}
 	job, err := predeploy.Ensure(ctx, predeploy.Options{
 		Name:             app.Name,
@@ -4488,7 +4469,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	switch state, msg := predeploy.Observe(job); state {
+	switch predeploy.Observe(job) {
 	case predeploy.StateSucceeded:
 		app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
 			Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeploySucceeded,
@@ -4498,7 +4479,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		logf.FromContext(ctx).Info("pre-deploy succeeded", "name", app.Name, "job", job.Name)
 		return ctrl.Result{}, false, nil // proceed to the rollout
 	case predeploy.StateFailed:
-		return r.failPreDeploy(ctx, app, failedPD(job.Name, msg), fmt.Errorf("pre-deploy command failed: %s", msg))
+		return r.failPreDeploy(ctx, app, failedPD(job.Name, predeploy.FailureMessage(ctx, r.Client, job)))
 	default: // Pending/Running — keep the old revision serving and requeue
 		app.Status.Phase = appv1alpha1.PhaseDeploying
 		app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
@@ -4514,14 +4495,34 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	}
 }
 
-// failPreDeploy records the failed pre-deploy step (status.preDeploy = pd, phase
-// Failed) and blocks the rollout — the one place the three failure paths (a
-// persisted-Failed re-check, the Job's non-zero exit, and a cancel-superseded
-// error) converge, so the status shape can't drift between them.
-func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App, pd *appv1alpha1.PreDeployStatus, err error) (ctrl.Result, bool, error) {
+// failPreDeploy records the failed pre-deploy step and blocks the rollout — the
+// one place the three failure paths (a persisted-Failed re-check, the Job's
+// non-zero exit, and a step that could not start) converge, so the status shape
+// can't drift between them. status.preDeploy is the durable verdict: it is
+// attributed to the release generation, and its message is what bex-api closes
+// the deploy row with. The phase follows w6/m124's rule for builds (w1/m149): a
+// pre-deploy step runs before the rollout, so over a released image the prior
+// release never stopped serving and the phase keeps describing it. Only a
+// first release that fails its pre-deploy step reads Failed.
+func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App, pd *appv1alpha1.PreDeployStatus) (ctrl.Result, bool, error) {
 	app.Status.PreDeploy = pd
-	res, ferr := r.fail(ctx, app, "PreDeployFailed", err)
+	err := errors.New(pd.Message)
+	// ActiveRevision, not status.image: markRunning sets it only once a release
+	// actually served, while status.image can outlive a first release that
+	// crash-looped and never did (settleFailedRollout keys on it the same way).
+	if app.Status.ActiveRevision != "" {
+		r.settleFailureOverPriorRelease(ctx, app, "the latest pre-deploy command failed")
+		return ctrl.Result{}, true, err
+	}
+	res, ferr := r.fail(ctx, app, appv1alpha1.ReasonPreDeployFailed, err)
 	return res, true, ferr
+}
+
+// preDeployNotStarted is the pre-deploy verdict when bex could not run the
+// command at all (superseding an older run or its network policy failed): an
+// infrastructure fault, worded so it never reads as the command's own failure.
+func preDeployNotStarted(err error) string {
+	return "the pre-deploy command could not be started: " + err.Error()
 }
 
 // reconcileNetworkPolicy converges the protected-environment exception. The
