@@ -115,6 +115,14 @@ The router (`src/router.tsx`) holds the outgoing page for `defaultPendingMs: 150
 - Title loaders pass `cause` to `titleLoaderFetchPolicy` (`common/lib/document-head`): `network-only` on entry/preload, `cache-first` on retained-match re-runs (`stay` — tab switches, search-param changes, the loader-error retry) so tab clicks don't refire the title query.
 - Links to a service must target its canonical base (`serviceBaseForType`: `static_site` → `/static/<id>`, else `/services/<id>` — see `ResourceLink`, global search). Both detail **parents** (`services.$serviceId`, `static.$serviceId`) call `loadServiceDetail`, which canonicalizes the base (with subpath via `redirectPreservingSuffix`) before render — so a static site hit at `/services/<id>/<subpath>` still lands, under `/static/...`. Prefer the canonical link up front to skip that bounce (loader RTT + chunk).
 
+## Polling and loading (w1/m153)
+
+**A poll or refetch over data already on screen never unmounts it.** Every Apollo client (`common/apollo/factory.{client,server}.ts`) takes `apolloDefaultOptions` (`common/apollo/default-options.ts`), which sets `watchQuery.notifyOnNetworkStatusChange: false`. Apollo 4 changed that default to `true`, so every 30 s poll re-announced `loading` and each `loading ? <Skeleton/> : …` gate unmounted the page under it: open dialogs closed, drafts and focus were lost. Keep that default when constructing a new client (tests included, when they exercise polling).
+
+- **Gate a skeleton on "loading and no data yet"** — a hook returns `loading && data === undefined` (see `use-environments`, `use-git-connection`, `use-env-groups`). The default stops polls, `refetch()` and `fetchMore` from re-announcing `loading`, but a `cache-and-network` mount over a warm cache (or a switch to already-cached variables) still reports `loading` with data present.
+- **Opt back in** with `notifyOnNetworkStatusChange: true` on a query that needs a visible in-flight state, and never gate stateful UI on that flag. **Every `useLazyQuery` opts in:** a lazy query learns of its own request only through that emission, so without it `loading` never turns true when it runs (no spinner, no double-submit guard). `grep -rn notifyOnNetworkStatusChange src` lists the opt-ins.
+- **A failed refresh over cached data** (`errorPolicy: "all"` keeps it) shows the error inline; replacing the ready content with an error body loses its state the same way.
+
 ## Sign-up payment wall (ADR075 D7, revised 2026-08-29)
 
 Hosted bex requires a bound payment method before any resource use (`BEX_REQUIRE_PAYMENT_METHOD=all`). The dashboard collects it as the last onboarding step, not by intercepting the first create:

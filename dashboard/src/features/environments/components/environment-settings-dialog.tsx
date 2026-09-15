@@ -32,6 +32,10 @@ export function EnvironmentSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <EnvironmentSettingsForm
+          // Keyed on the ACL on purpose (w1/m153): a poll that brings a
+          // teammate's change remounts the form, so a stale draft can't
+          // silently overwrite it. An unchanged poll no longer re-renders the
+          // card, so the dialog itself stays open either way.
           key={JSON.stringify([
             environment.protectedStatus,
             environment.networkIsolationEnabled,
