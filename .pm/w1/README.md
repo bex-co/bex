@@ -15,7 +15,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m158** — [A background worker whose newest release is held (a pre-deploy step or a build) ignores suspend, resume and scale](m158/README.md) (7 tasks; ~1h30m implementation, ~3h40m total) ← `w1/103`, promoted 2026-09-15.
+- [ ] **m158** — **BLOCKED (needs your judgement: a paid background worker for the live check)** — [A background worker whose newest release is held (a pre-deploy step or a build) ignores suspend, resume and scale](blocked/m158/README.md) (7 tasks; ~1h30m implementation, ~3h40m total) ← `w1/103`, promoted 2026-09-15.
 - [ ] **m157** — [A service whose newest build failed or is still building cannot wake, resume, sleep or scale its serving release](m157/README.md) (7 tasks; ~2h15m implementation, ~4h45m total) ← `w1/104`, promoted 2026-09-15; reproduced live in `w1/m156` t003.
   - **Symptom.** After a suspend and resume over two `build_failed` deploys, `qa-20260915-m156b` answered `503 service hibernated` to 112 of 113 requests over 180 s and was still `503` 4.5 minutes later, while the phase read Running. A healthy service resumed in 11.5 s.
   - **Cause.** `Reconcile` returns on `resolveDeployImage`'s build halt (`app_controller.go:591-596`, `:692-696`) before `reconcileKubernetes`, so replicas, routing and the idle check never converge while a newer release has no image.

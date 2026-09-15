@@ -2042,9 +2042,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// the new revision's image before rolling the Deployment to it; a non-zero
 	// exit fails the deploy. While a prior release serves, holdUnpassedRelease keeps
 	// the template on it until the step passes and keeps its replicas and routing
-	// converging (w1/m156). For a first release the gate below halts the pass, and
+	// converging (w1/m156; a worker's replicas alone, w1/m158). For a first release
+	// the gate below halts the pass, and
 	// it is skipped while suspended or auto-hibernating, where nothing rolls.
-	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, worker, plan); held {
+	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, plan); held {
 		return res, err
 	}
 	if !app.Spec.Suspended && !autoHibernating {
@@ -2216,9 +2217,14 @@ func rolloutPending(app *appv1alpha1.App, image string) bool {
 		app.Status.Image != image
 }
 
+// workerSuspendedMessage is a suspended worker's Ready message, the same whether
+// a held pass or reconcileWorkerStatus parks it.
+const workerSuspendedMessage = "worker suspended (scaled to 0)"
+
 // parkKubernetes settles an App that serves nothing this pass.
 // Suspended: parked at 0 replicas with Service/Ingress/TLS (and spec.replicas)
-// all kept — resume is just scaling back. Report Hibernated and stop.
+// all kept — resume is just scaling back. Report Hibernated and stop. A held
+// background worker parks here too, with none of those to keep (w1/m158).
 // Auto-hibernated: idle free-tier app scaled to 0, Ingress now points at the
 // activator. The next inbound request will wake it; no further requeue needed.
 func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App, image string, hosts []string, autoHibernating, routingHold bool) (ctrl.Result, error) {
@@ -2230,6 +2236,9 @@ func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App
 		return ctrl.Result{RequeueAfter: hibernateRoutingGrace}, nil
 	}
 	reason, message := reasonSuspended, "suspended (scaled to 0; config, host and certs kept)"
+	if !app.Spec.InternallyAddressable() {
+		message = workerSuspendedMessage // a held worker parks here (w1/m158)
+	}
 	// The effective window, not the raw spec value — a created-default free App
 	// hibernates on defaultIdleTTL with idleTTLSeconds still 0 (w6/m116). Read
 	// once so the message and the log provably report the same number.
@@ -2499,7 +2508,7 @@ func (r *AppReconciler) runningRequeue(ctx context.Context, app *appv1alpha1.App
 }
 
 // hibernated reports an App parked at 0 replicas with its Service, Ingress and
-// certificates intact. Manual suspension and idle auto-hibernation reach the
+// certificates intact (a held background worker has none of them). Manual suspension and idle auto-hibernation reach the
 // same resting state and differ only in why, so they share one terminal status
 // write rather than two that can drift apart.
 func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, image string, hosts []string, reason, message string) (ctrl.Result, error) {
@@ -2662,7 +2671,7 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 		app.Status.Phase = appv1alpha1.PhaseHibernated
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
-			Message: "worker suspended (scaled to 0)", ObservedGeneration: app.Generation,
+			Message: workerSuspendedMessage, ObservedGeneration: app.Generation,
 		})
 		if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 			return ctrl.Result{}, err
@@ -4623,8 +4632,7 @@ func preDeployNotStarted(err error) string {
 // hasPreDeployStep reports whether spec.preDeployCommand gates this App's
 // rollouts. Cron jobs and static sites run no pre-deploy step.
 func hasPreDeployStep(app *appv1alpha1.App) bool {
-	return strings.TrimSpace(app.Spec.PreDeployCommand) != "" &&
-		app.Spec.Type != appv1alpha1.TypeCronJob && app.Spec.Type != appv1alpha1.TypeStaticSite
+	return strings.TrimSpace(app.Spec.PreDeployCommand) != "" && scalableRuntime(app)
 }
 
 // preDeployPassed reports whether the current release may reach the pod
@@ -4649,7 +4657,7 @@ type replicaPlan struct {
 }
 
 // priorRelease is the Deployment a serving prior release runs from and the port
-// its Service exposes.
+// its Service exposes (0 for a background worker, which has none).
 type priorRelease struct {
 	dep  *appsv1.Deployment
 	port int
@@ -4659,6 +4667,13 @@ func (p replicaPlan) parked(app *appv1alpha1.App) bool {
 	return app.Spec.Suspended || p.autoHibernating
 }
 
+// scalableRuntime reports whether the App runs as a Deployment a held release
+// can scale: web and private services and background workers. Cron jobs and
+// static sites have none.
+func scalableRuntime(app *appv1alpha1.App) bool {
+	return app.Spec.Type != appv1alpha1.TypeCronJob && app.Spec.Type != appv1alpha1.TypeStaticSite
+}
+
 // wakeReadyPoll is how soon a held release's pass comes back while a woken free
 // service waits for its first ready pod, so the public route leaves the
 // activator promptly. The Deployment watch usually gets there first.
@@ -4666,14 +4681,15 @@ const wakeReadyPoll = 5 * time.Second
 
 // holdUnpassedRelease keeps a newer release whose pre-deploy step has not passed
 // off the pod template while a prior release serves, and keeps that prior
-// release's replicas and routing following the App (w1/m156). Parked passes are
-// held too: the gate does not run while parked, so a parking pass would otherwise
-// write the unmigrated release onto the parked Deployment for the next wake to
-// start. held=false hands the pass to the normal path: a worker, no prior
-// release, no prior Deployment or Service, or a step that has passed, including
-// one that passes on this pass.
-func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha1.App, image string, port int, worker bool, plan replicaPlan) (bool, ctrl.Result, error) {
-	if worker || preDeployPassed(app) {
+// release's replicas and routing following the App (w1/m156; for a background
+// worker, its replicas alone, w1/m158). Parked passes are held too: the gate
+// does not run while parked, so a parking pass would otherwise write the
+// unmigrated release onto the parked Deployment for the next wake to start.
+// held=false hands the pass to the normal path: no prior release, no prior
+// Deployment (or Service, for a web or private service), or a step that has
+// passed, including one that passes on this pass.
+func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha1.App, image string, port int, plan replicaPlan) (bool, ctrl.Result, error) {
+	if preDeployPassed(app) {
 		return false, ctrl.Result{}, nil
 	}
 	prior, err := r.servingPriorRelease(ctx, app)
@@ -4719,12 +4735,12 @@ func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha
 // Building keeps it: that phase pins the release to its build (buildRunning), so
 // the hold neither parks over it nor records a failure in its place.
 //
-// held=false keeps the pass on its halt: a worker (w1/m158), a cron job or
-// static site, the opensandbox runtime, no serving prior release, or a build
-// failure recorded only in the legacy Ready marker, which a held pass's status
-// write would erase.
+// held=false keeps the pass on its halt: a cron job or static site, the
+// opensandbox runtime, no serving prior release, or a build failure recorded
+// only in the legacy Ready marker, which a held pass's status write would
+// erase. A background worker is held too (w1/m158): only its replicas move.
 func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result) (bool, ctrl.Result, error) {
-	if r.Mode != ModeKubernetes || !app.Spec.InternallyAddressable() || legacyReadyBuildVerdict(app) {
+	if r.Mode != ModeKubernetes || !scalableRuntime(app) || legacyReadyBuildVerdict(app) {
 		return false, ctrl.Result{}, nil
 	}
 	prior, err := r.servingPriorRelease(ctx, app)
@@ -4779,8 +4795,8 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 }
 
 // servingPriorRelease returns the release a held pass keeps serving, or nil when
-// there is none to hold: nothing has served yet, or its Deployment or Service is
-// gone (a worker changed to a web service has no Service yet).
+// there is none to hold: nothing has served yet, or its Deployment, or a web or
+// private service's Service, is gone.
 func (r *AppReconciler) servingPriorRelease(ctx context.Context, app *appv1alpha1.App) (*priorRelease, error) {
 	if app.Status.ActiveRevision == "" {
 		return nil, nil
@@ -4789,6 +4805,11 @@ func (r *AppReconciler) servingPriorRelease(ctx context.Context, app *appv1alpha
 	dep := &appsv1.Deployment{}
 	if err := r.Get(ctx, key, dep); err != nil {
 		return nil, client.IgnoreNotFound(err)
+	}
+	// A background worker has no Service or port: its runtime is the Deployment's
+	// replicas alone (w1/m158).
+	if !app.Spec.InternallyAddressable() {
+		return &priorRelease{dep: dep}, nil
 	}
 	var svc corev1.Service
 	if err := r.Get(ctx, key, &svc); err != nil {
@@ -4821,8 +4842,9 @@ func (r *AppReconciler) settleHeldRuntime(ctx context.Context, app *appv1alpha1.
 	return res, nil
 }
 
-// convergeServingRuntime moves a serving prior release's replicas and public
-// routing to what the App wants, then parks it or keeps its running requeue.
+// convergeServingRuntime moves a serving prior release's replicas and, unless it
+// is a background worker, its public routing to what the App wants, then parks
+// it or keeps its running requeue.
 func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1alpha1.App, prior *priorRelease, plan replicaPlan) (ctrl.Result, error) {
 	hosts, serving, err := r.convergeServingRoute(ctx, app, prior, plan)
 	if err != nil {
@@ -4844,7 +4866,8 @@ func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1al
 
 // convergeServingRoute scales the prior release's Deployment and routes its
 // public Ingress without touching the pod template, and reports the hosts routed
-// and whether a pod is ready. Errors carry their failure reason (stepFailure).
+// and whether a pod is ready. A background worker returns right after the scale,
+// with no hosts. Errors carry their failure reason (stepFailure).
 func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alpha1.App, prior *priorRelease, plan replicaPlan) ([]string, bool, error) {
 	dep := prior.dep
 	scaled := dep.Spec.Replicas == nil || *dep.Spec.Replicas != plan.replicas
@@ -4856,12 +4879,15 @@ func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alph
 		}
 	}
 
+	serving := dep.Status.ReadyReplicas > 0
+	if !app.Spec.InternallyAddressable() {
+		return nil, serving, nil // a worker has no Service, Ingress or URL to route (w1/m158)
+	}
 	hosts := effectiveHosts(app, r.BaseDomain)
 	if !app.Spec.PubliclyRoutable() {
 		hosts = nil
 	}
 	r.setPublicRoutingCondition(app, hosts)
-	serving := dep.Status.ReadyReplicas > 0
 	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, prior.port, plan.autoHibernating, serving)
 	if err != nil {
 		return nil, false, &stepFailure{reason: "MaintenanceRoutingFailed", err: err}
