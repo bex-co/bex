@@ -144,6 +144,9 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 	if err := applyEnvPatch(env, patch.EnvVars); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
+	if err := patchWithinQuota(oldEnv, env, envMapWithinQuota); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
 	envChanged := !maps.Equal(oldEnv, env)
 	result := environmentPatchResult(env, nil, false)
 
@@ -193,9 +196,16 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 	var envChanged, filesChanged bool
 	var applyErr error
 
+	// Each mutate checks the quota on the map it is about to write, so the check
+	// re-runs against the latest committed map on every CAS retry (ADR066 #6).
+	// A refused map is not written: the mutate reports "unchanged".
 	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
 		oldEnv = core.CloneStringMap(current)
 		if err := applyEnvPatch(current, patch.EnvVars); err != nil {
+			applyErr = err
+			return false
+		}
+		if err := patchWithinQuota(oldEnv, current, envMapWithinQuota); err != nil {
 			applyErr = err
 			return false
 		}
@@ -212,6 +222,10 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
 		oldFiles = core.CloneStringMap(current)
 		if err := applyFilePatch(current, patch.SecretFiles); err != nil {
+			applyErr = err
+			return false
+		}
+		if err := patchWithinQuota(oldFiles, current, filesMapWithinQuota); err != nil {
 			applyErr = err
 			return false
 		}
@@ -594,6 +608,20 @@ func (s *Service) rollbackCASEnvProjection(ctx context.Context, originalApp *app
 		return safeCASProjectionError(err)
 	}
 	return nil
+}
+
+// patchWithinQuota is the quota rule for a batch patch (w1/m147): the map it
+// produces must fit, unless the map was already over quota and the patch does
+// not grow it. Deleting or shrinking entries frees room and stays possible
+// (ADR066 #6); adding an entry or bytes to an over-quota map does not. Before
+// w1/m147 the batch patch ran no check at all, so the dashboard's Environment
+// editor stored and deployed a 614,400-byte secret file past the 512 KiB cap.
+func patchWithinQuota(before, after map[string]string, within func(map[string]string) error) error {
+	err := within(after)
+	if err == nil || (len(after) <= len(before) && mapBytes(after) <= mapBytes(before)) {
+		return nil
+	}
+	return err
 }
 
 func (s *Service) restoreSourceMaps(ctx context.Context, service string, oldEnv, oldFiles map[string]string, envChanged, filesChanged bool) error {
