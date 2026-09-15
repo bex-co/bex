@@ -219,8 +219,12 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
   - a parking pass baked the unmigrated release into the template, so the next wake would have started it.
 - **Unchanged:**
   - a first release (nothing serves yet);
-  - background workers (`w1/m158`);
   - a fresh step failure, which still returns its reconcile error.
+
+**Background workers are held the same way (w1/m158).** A worker has no Service, Ingress or auto-sleep, but its replicas follow resume, manual scale and autoscale.
+
+- **Both holds now apply.** The pre-deploy hold and the build hold below both move a held worker's replicas on the prior release's template.
+- **Before m158,** a resume or a scale over a pending, running or failed pre-deploy step or build waited for a new release. Suspend still parked a worker, because the gate is skipped while suspended, but that pass also wrote the held release onto the worker's pod template.
 
 **A release without an image does not freeze the serving one either (w1/m157).** A build halts the pass before the runtime, so the same gap existed one stage earlier. While a newer release's build was queued, running, waiting on a registry credential or failed, the prior release could not wake, sleep, resume or scale. On production a resume over a failed build answered `503 service hibernated` for minutes while the service read Running.
 
@@ -234,7 +238,6 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
 - **Suspended.** A suspended App reuses its serving image instead of building. That pass now parks through the hold, and no longer writes the unbuilt release's config onto the parked template.
 - **Unchanged:**
   - a first release;
-  - background workers (`w1/m158`);
   - cron jobs and static sites;
   - a build failure recorded only in the legacy Ready marker (written before w6/m100). It stays on the halt, so no status write can erase the marker and dispatch the build again.
 

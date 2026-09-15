@@ -106,6 +106,52 @@ func serveReleaseOne(t *testing.T, r *AppReconciler, cl client.Client, nn types.
 	return deploymentTemplateRevision(t, cl, nn), live.Status.Image
 }
 
+// jobsIn lists the Jobs in namespace: pre-deploy steps in these tests.
+func jobsIn(t *testing.T, cl client.Client, namespace string) []batchv1.Job {
+	t.Helper()
+	var jobs batchv1.JobList
+	if err := cl.List(context.Background(), &jobs, client.InNamespace(namespace)); err != nil {
+		t.Fatal(err)
+	}
+	return jobs.Items
+}
+
+// heldWorkerApp is a background worker: no Service, Ingress or auto-sleep, and
+// no plan instance cap, so a manual scale takes effect.
+func heldWorkerApp(namespace string) *appv1alpha1.App {
+	app := activeApp(namespace)
+	app.Spec.Type = appv1alpha1.TypeBackgroundWorker
+	app.Spec.Tier = ""
+	app.Spec.Expose = false
+	return app
+}
+
+// storeFailedPreDeploy makes release 2 add a pre-deploy command whose step
+// failed, with the verdict stored against that release.
+func storeFailedPreDeploy(t *testing.T, cl client.Client, nn types.NamespacedName) {
+	t.Helper()
+	ctx := context.Background()
+	var live appv1alpha1.App
+	if err := cl.Get(ctx, nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	live.Spec.PreDeployCommand = "exit 3"
+	live.Generation = 2
+	live.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "2"
+	if err := cl.Update(ctx, &live); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	live.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
+		Job: predeploy.JobName(nn.Name, appv1alpha1.BuildRevision(2)), Generation: 2, Status: appv1alpha1.PreDeployFailed, Message: exitThree,
+	}
+	if err := cl.Status().Update(ctx, &live); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func setSuspendedAt(t *testing.T, cl client.Client, nn types.NamespacedName, suspended bool, generation int64) {
 	t.Helper()
 	var live appv1alpha1.App
@@ -130,28 +176,10 @@ func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 
 	// Release 1 serves.
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
-	var live appv1alpha1.App
-	if err := cl.Get(ctx, nn, &live); err != nil {
-		t.Fatal(err)
-	}
 
 	// A config change adds a failing pre-deploy command as release 2, and the
 	// step's failed verdict is stored against that release.
-	live.Spec.PreDeployCommand = "exit 3"
-	live.Generation = 2
-	live.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "2"
-	if err := cl.Update(ctx, &live); err != nil {
-		t.Fatal(err)
-	}
-	if err := cl.Get(ctx, nn, &live); err != nil {
-		t.Fatal(err)
-	}
-	live.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
-		Job: predeploy.JobName(app.Name, appv1alpha1.BuildRevision(2)), Generation: 2, Status: appv1alpha1.PreDeployFailed, Message: exitThree,
-	}
-	if err := cl.Status().Update(ctx, &live); err != nil {
-		t.Fatal(err)
-	}
+	storeFailedPreDeploy(t, cl, nn)
 	reconcileTwice(t, r, nn)
 
 	// It goes idle: the route moves to the activator, then the pods drain. The
@@ -190,13 +218,10 @@ func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
 		t.Fatalf("pod template revision = %q, want the prior release's %q — the failed release must not roll", got, priorRevision)
 	}
-	var jobs batchv1.JobList
-	if err := cl.List(ctx, &jobs, client.InNamespace(app.Namespace)); err != nil {
-		t.Fatal(err)
+	if jobs := jobsIn(t, cl, app.Namespace); len(jobs) != 0 {
+		t.Fatalf("jobs = %d, want none — a stored verdict must not re-run the pre-deploy command", len(jobs))
 	}
-	if len(jobs.Items) != 0 {
-		t.Fatalf("jobs = %d, want none — a stored verdict must not re-run the pre-deploy command", len(jobs.Items))
-	}
+	var live appv1alpha1.App
 	if err := cl.Get(ctx, nn, &live); err != nil {
 		t.Fatal(err)
 	}
@@ -219,14 +244,6 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 	r := wakeReconciler(cl, scheme)
 	ctx := context.Background()
 	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
-	listJobs := func() []batchv1.Job {
-		t.Helper()
-		var jobs batchv1.JobList
-		if err := cl.List(ctx, &jobs, client.InNamespace(app.Namespace)); err != nil {
-			t.Fatal(err)
-		}
-		return jobs.Items
-	}
 
 	// Release 1 serves, then goes idle and parks.
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
@@ -254,7 +271,7 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
 		t.Fatalf("parked template revision = %q, want the prior release's %q — an unmigrated release must not be parked into the template", got, priorRevision)
 	}
-	if jobs := listJobs(); len(jobs) != 0 {
+	if jobs := jobsIn(t, cl, app.Namespace); len(jobs) != 0 {
 		t.Fatalf("jobs = %d, want none while parked", len(jobs))
 	}
 
@@ -264,7 +281,7 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 	if got := deploymentReplicas(t, cl, nn); got != 1 {
 		t.Fatalf("woken replicas = %d, want 1 while the pre-deploy step runs", got)
 	}
-	jobs := listJobs()
+	jobs := jobsIn(t, cl, app.Namespace)
 	if len(jobs) != 1 {
 		t.Fatalf("jobs = %d, want the release 2 pre-deploy Job", len(jobs))
 	}
@@ -306,30 +323,11 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
 		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
 	r := wakeReconciler(cl, scheme)
-	ctx := context.Background()
 	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	// Release 1 serves; release 2's pre-deploy step failed.
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
-	var live appv1alpha1.App
-	if err := cl.Get(ctx, nn, &live); err != nil {
-		t.Fatal(err)
-	}
-	live.Spec.PreDeployCommand = "exit 3"
-	live.Generation = 2
-	live.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "2"
-	if err := cl.Update(ctx, &live); err != nil {
-		t.Fatal(err)
-	}
-	if err := cl.Get(ctx, nn, &live); err != nil {
-		t.Fatal(err)
-	}
-	live.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
-		Job: predeploy.JobName(app.Name, appv1alpha1.BuildRevision(2)), Generation: 2, Status: appv1alpha1.PreDeployFailed, Message: exitThree,
-	}
-	if err := cl.Status().Update(ctx, &live); err != nil {
-		t.Fatal(err)
-	}
+	storeFailedPreDeploy(t, cl, nn)
 	reconcileTwice(t, r, nn)
 
 	// Suspend: scaled to 0 on the prior release's template.
@@ -356,11 +354,113 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
 		t.Fatalf("resumed template revision = %q, want the prior release's %q", got, priorRevision)
 	}
-	var jobs batchv1.JobList
-	if err := cl.List(ctx, &jobs, client.InNamespace(app.Namespace)); err != nil {
+	if jobs := jobsIn(t, cl, app.Namespace); len(jobs) != 0 {
+		t.Fatalf("jobs = %d, want none — resume must not re-run a failed step", len(jobs))
+	}
+}
+
+// A background worker's replicas follow suspend and resume too. Before w1/m158
+// suspending one still parked it (the gate is skipped while suspended), but that
+// pass also wrote the unmigrated release onto the parked template, and a resume
+// waited behind the stored failed verdict and stayed at 0 until a new release
+// shipped.
+func TestSuspendAndResumeWorkerOverFailedPreDeployKeepPriorRelease(t *testing.T) {
+	scheme := wakeScheme()
+	app := heldWorkerApp("tea-m158")
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
+	r := wakeReconciler(cl, scheme)
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+
+	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
+	storeFailedPreDeploy(t, cl, nn)
+	reconcileTwice(t, r, nn)
+
+	setSuspendedAt(t, cl, nn, true, 3)
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("suspended worker replicas = %d, want 0: a failed pre-deploy verdict must not keep a suspended worker running", got)
+	}
+	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseHibernated {
+		t.Fatalf("suspended worker phase = %q, want Hibernated", got)
+	}
+	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
+		t.Fatalf("suspended worker template revision = %q, want the prior release's %q — an unmigrated release must not be parked into the template", got, priorRevision)
+	}
+
+	setSuspendedAt(t, cl, nn, false, 4)
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 1 {
+		t.Fatalf("resumed worker replicas = %d, want 1: a failed pre-deploy verdict must not keep a resumed worker at 0", got)
+	}
+	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseRunning {
+		t.Fatalf("resumed worker phase = %q, want Running", got)
+	}
+	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
+		t.Fatalf("worker template revision = %q, want the prior release's %q", got, priorRevision)
+	}
+	if jobs := jobsIn(t, cl, app.Namespace); len(jobs) != 0 {
+		t.Fatalf("jobs = %d, want none — resume must not re-run a failed step", len(jobs))
+	}
+}
+
+// A worker's manual scale while its newer release's pre-deploy step runs takes
+// effect on the prior release, and the new release rolls once the step passes.
+func TestWorkerScaleWhilePreDeployRunsTakesEffect(t *testing.T) {
+	scheme := wakeScheme()
+	app := heldWorkerApp("tea-m158")
+	app.UID = "uid-worker" // the fake client assigns none; the pre-deploy Job is keyed on it
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}, &batchv1.Job{}).Build()
+	r := wakeReconciler(cl, scheme)
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+
+	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
+	var live appv1alpha1.App
+	if err := cl.Get(ctx, nn, &live); err != nil {
 		t.Fatal(err)
 	}
-	if len(jobs.Items) != 0 {
-		t.Fatalf("jobs = %d, want none — resume must not re-run a failed step", len(jobs.Items))
+	live.Spec.PreDeployCommand = "echo migrate"
+	live.Generation = 2
+	live.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "2"
+	if err := cl.Update(ctx, &live); err != nil {
+		t.Fatal(err)
+	}
+	reconcileTwice(t, r, nn)
+	jobs := jobsIn(t, cl, app.Namespace)
+	if len(jobs) != 1 {
+		t.Fatalf("setup: jobs = %d, want release 2's running pre-deploy Job", len(jobs))
+	}
+
+	// Scale to 2 while the step runs.
+	if err := cl.Get(ctx, nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	live.Spec.Replicas = 2
+	live.Generation = 3
+	if err := cl.Update(ctx, &live); err != nil {
+		t.Fatal(err)
+	}
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 2 {
+		t.Fatalf("worker replicas while the step runs = %d, want 2: a manual scale must not wait for the pre-deploy step", got)
+	}
+	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
+		t.Fatalf("worker template revision while the step runs = %q, want the prior release's %q", got, priorRevision)
+	}
+
+	// The step passes: release 2 rolls at the scaled count.
+	job := jobs[0]
+	job.Status.Conditions = append(job.Status.Conditions, batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue})
+	if err := cl.Status().Update(ctx, &job); err != nil {
+		t.Fatal(err)
+	}
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplateRevision(t, cl, nn); got == priorRevision {
+		t.Fatalf("worker template revision = %q, want release 2 to roll once its step passed", got)
+	}
+	if got := deploymentReplicas(t, cl, nn); got != 2 {
+		t.Fatalf("worker replicas after the rollout = %d, want 2", got)
 	}
 }

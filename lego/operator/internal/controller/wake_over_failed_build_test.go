@@ -436,6 +436,41 @@ func TestDeployWhileSuspendedKeepsTemplateOnServingRelease(t *testing.T) {
 	assertNoBuildJobs(t, cl, nn)
 }
 
+// A background worker whose newest build failed could not be resumed: resume
+// needs the Deployment scale the build halt returned before (w1/m158).
+func TestSuspendAndResumeWorkerOverFailedBuildKeepPriorRelease(t *testing.T) {
+	scheme := wakeScheme()
+	app := heldWorkerApp("tea-m158")
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
+	r := wakeReconciler(cl, scheme)
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+
+	priorRevision, priorImage := serveReleaseOne(t, r, cl, nn)
+	releaseTwoFromSource(t, cl, nn)
+	storeReleaseTwoBuildFailure(t, cl, nn, appv1alpha1.ConditionBuild)
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 1 {
+		t.Fatalf("setup: worker replicas = %d over the failed build, want release 1 still running", got)
+	}
+
+	setSuspendedAt(t, cl, nn, true, 3)
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("suspended worker replicas = %d, want 0", got)
+	}
+
+	setSuspendedAt(t, cl, nn, false, 4)
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 1 {
+		t.Fatalf("resumed worker replicas = %d, want 1: a recorded build failure must not keep a resumed worker at 0", got)
+	}
+	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseRunning {
+		t.Fatalf("resumed worker phase = %q, want Running", got)
+	}
+	assertPriorReleaseKept(t, cl, nn, priorRevision, priorImage)
+}
+
 // An IP allow-list edit made while a failed build is held must reach the
 // Ingress. The held pass used to skip the rewrite whenever the route already
 // matched, and the route never changes for an allow-list edit, so the old list
