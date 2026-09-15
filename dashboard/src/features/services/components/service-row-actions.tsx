@@ -34,7 +34,8 @@ const ACTION_LABEL: Record<LifecycleAction, keyof typeof en> = {
   restart: "services.actionRestart",
 };
 
-// UI "restart" routes through triggerDeploy — gate on the deploy verb.
+// UI "restart" runs restartServer, which opens a deploy under the same
+// authorization as triggerDeploy — gate on the deploy verb.
 function decisionActionFor(action: LifecycleAction): ResourceActionId {
   return action === "restart" ? "deploy" : action;
 }
@@ -99,8 +100,12 @@ export function ServiceRowActions({
   const { currentWorkspaceId } = useWorkspace();
   const serverActions = useServerActions(service.id);
   const deployActions = useDeployActions(service.id);
-  const { pending: confirmBinding, openConfirm, clearConfirm, recheckBeforeDispatch } =
-    useBoundActionConfirm({ resourceId: service.id });
+  const {
+    pending: confirmBinding,
+    openConfirm,
+    clearConfirm,
+    recheckBeforeDispatch,
+  } = useBoundActionConfirm({ resourceId: service.id });
   const [protectedConfirm, setProtectedConfirm] = useState<{
     action: LifecycleAction;
     confirmation: string;

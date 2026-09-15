@@ -47,8 +47,8 @@ mutation ResumeService($id: String!) {
   }
 }
 
-# restartServer removed (w2/m30): restart now routes through triggerDeploy
-# so every restart opens a deploy-history row in the Events tab.
+# restartServer lives in events.graphql beside triggerDeploy: it returns the
+# Deploy it opens (w2/m30) and keeps the running commit (w1/m148).
 
 # deleteService returns a success boolean — there's no service left to select
 # (backend/internal/apps/graphql.go, following the deleteDatabase shape). The

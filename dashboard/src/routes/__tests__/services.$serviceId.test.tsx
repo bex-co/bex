@@ -25,9 +25,8 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions("app");
 });
 
@@ -132,7 +131,14 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
   }),
 }));
 vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
-  useTriggerDeploy: () => ({ deploying: false, trigger: vi.fn() }),
+  useTriggerDeploy: () => ({
+    deploying: false,
+    trigger: vi.fn(),
+    restart: vi.fn(),
+  }),
+}));
+vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
+  useAutoDeploy: () => ({ setAutoDeploy: vi.fn(), busy: false }),
 }));
 // The header's row-actions menu renders a "Move to project" submenu over Apollo.
 vi.mock("@/features/projects/hooks/use-move-to-project", () => ({

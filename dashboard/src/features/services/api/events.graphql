@@ -89,6 +89,20 @@ mutation TriggerDeploy(
   }
 }
 
+# restartServer restarts on the commit (or image) that is live — never the
+# branch head, unlike a plain triggerDeploy (w1/m148). Returns the Deploy it
+# opens, so a restart lands on its deploy page like any manual deploy.
+mutation RestartServer($serviceId: String!) {
+  restartServer(serviceId: $serviceId) {
+    id
+    status
+    createdAt
+    trigger
+    rollbackOf
+    image
+  }
+}
+
 mutation CancelDeploy($serviceId: String!, $deployId: String!) {
   cancelDeploy(serviceId: $serviceId, deployId: $deployId) {
     id

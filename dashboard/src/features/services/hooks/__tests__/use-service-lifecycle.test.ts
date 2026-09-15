@@ -126,7 +126,9 @@ describe("useServiceLifecycle", () => {
     expect(mutateCalls.map((c) => c.op)).toEqual([
       "SuspendService",
       "ResumeService",
-      "TriggerDeploy", // restart consolidated into triggerDeploy (w2/m30)
+      // restartServer keeps the running commit; a bare triggerDeploy would
+      // build the branch head (w1/m148).
+      "RestartServer",
     ]);
     expect(mutateCalls.every((c) => c.id === "app")).toBe(true);
   });
