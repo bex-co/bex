@@ -19,6 +19,8 @@ package registrycreds
 import (
 	"context"
 	"errors"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -346,18 +348,72 @@ func TestUpdateUsernameAndExpiryAndRotateSecret(t *testing.T) {
 }
 
 func TestUpdateRejectsEmptySecretOrUsername(t *testing.T) {
-	s, _, _ := newTestService()
+	s, st, kv := newTestService()
 	ctx := context.Background()
-	created, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "hunter2"})
+	expires := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+	created, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Name: "prod-pull", Username: "alice", Secret: "hunter2", ExpiresAt: &expires})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
+	}
+	before, err := st.GetRegistryCredential(ctx, core.DefaultTenant, created.ID)
+	if err != nil {
+		t.Fatalf("GetRegistryCredential: %v", err)
+	}
+	unchanged := func(t *testing.T, label string) {
+		t.Helper()
+		after, err := st.GetRegistryCredential(ctx, core.DefaultTenant, created.ID)
+		if err != nil {
+			t.Fatalf("%s: GetRegistryCredential: %v", label, err)
+		}
+		if !reflect.DeepEqual(after, before) {
+			t.Errorf("%s: rejected update changed stored metadata:\n before=%+v\n after=%+v", label, before, after)
+		}
+		secret, _ := kv.Get(ctx, secretPath(core.DefaultTenant, created.ID))
+		if secret["password"] != "hunter2" {
+			t.Errorf("%s: rejected update changed the stored token", label)
+		}
 	}
 	empty := ""
 	if _, err := s.Update(ctx, created.ID, UpdateRequest{Secret: &empty}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("Update secret=\"\" = %v, want ErrBadRequest", err)
 	}
+	unchanged(t, "secret=\"\"")
 	if _, err := s.Update(ctx, created.ID, UpdateRequest{Username: &empty}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("Update username=\"\" = %v, want ErrBadRequest", err)
+	}
+	unchanged(t, "username=\"\"")
+
+	// w7/044: an empty token sent together with metadata changes must be
+	// refused before the metadata write, not after it.
+	name, username := "renamed", "mallory"
+	later := expires.Add(24 * time.Hour)
+	if _, err := s.Update(ctx, created.ID, UpdateRequest{Name: &name, Username: &username, ExpiresAtSet: true, ExpiresAt: &later, Secret: &empty}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("Update metadata+secret=\"\" = %v, want ErrBadRequest", err)
+	}
+	unchanged(t, "metadata+secret=\"\"")
+	oversized := strings.Repeat("x", maxCredentialSecretBytes+1)
+	if _, err := s.Update(ctx, created.ID, UpdateRequest{Name: &name, Secret: &oversized}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("Update metadata+oversized secret = %v, want ErrBadRequest", err)
+	}
+	unchanged(t, "metadata+oversized secret")
+
+	// Omitting the token still updates metadata and keeps the secret; a
+	// non-empty token still rotates it.
+	if _, err := s.Update(ctx, created.ID, UpdateRequest{Name: &name}); err != nil {
+		t.Fatalf("metadata-only Update: %v", err)
+	}
+	if got, _ := st.GetRegistryCredential(ctx, core.DefaultTenant, created.ID); got.Name != "renamed" || got.Username != "alice" {
+		t.Errorf("metadata-only update: name=%q username=%q", got.Name, got.Username)
+	}
+	if secret, _ := kv.Get(ctx, secretPath(core.DefaultTenant, created.ID)); secret["password"] != "hunter2" {
+		t.Error("metadata-only update rotated the token")
+	}
+	rotated := "hunter3"
+	if _, err := s.Update(ctx, created.ID, UpdateRequest{Secret: &rotated}); err != nil {
+		t.Fatalf("rotate Update: %v", err)
+	}
+	if secret, _ := kv.Get(ctx, secretPath(core.DefaultTenant, created.ID)); secret["password"] != "hunter3" {
+		t.Error("non-empty token did not rotate the secret")
 	}
 }
 

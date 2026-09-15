@@ -299,8 +299,18 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 			return CredentialView{}, fmt.Errorf("%w: username must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
 		}
 	}
-	if req.Secret != nil && len(*req.Secret) > maxCredentialSecretBytes {
-		return CredentialView{}, fmt.Errorf("%w: secret must be at most %d bytes", core.ErrBadRequest, maxCredentialSecretBytes)
+	// Validate the whole request before any persistence: a rejected update
+	// must leave name, username, expiry, updatedAt, and the stored token
+	// exactly as they were, so a private-image deploy keeps using the last
+	// accepted credential (w7/044). An explicitly empty secret is refused
+	// here, ahead of the metadata write; a nil secret still means "keep".
+	if req.Secret != nil {
+		if *req.Secret == "" {
+			return CredentialView{}, fmt.Errorf("%w: secret cannot be set to empty", core.ErrBadRequest)
+		}
+		if len(*req.Secret) > maxCredentialSecretBytes {
+			return CredentialView{}, fmt.Errorf("%w: secret must be at most %d bytes", core.ErrBadRequest, maxCredentialSecretBytes)
+		}
 	}
 	expiresAt := existing.ExpiresAt
 	if req.ExpiresAtSet {
@@ -311,9 +321,6 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 		return CredentialView{}, mapStoreErr(err)
 	}
 	if req.Secret != nil {
-		if *req.Secret == "" {
-			return CredentialView{}, fmt.Errorf("%w: secret cannot be set to empty", core.ErrBadRequest)
-		}
 		if err := s.Secret.Put(ctx, secretPath(workspaceID, id), map[string]string{"password": *req.Secret}); err != nil {
 			return CredentialView{}, fmt.Errorf("rotate registry credential secret: %w", err)
 		}
