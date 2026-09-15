@@ -4063,6 +4063,12 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Enter a value for this new variable.",
     description: "Draft validation for a new variable without a value",
   },
+  "services.environmentLimit": {
+    message:
+      "Environment variables are limited to 500 and 512 KiB in total per service or group.",
+    description:
+      "Draft validation when the environment variables would exceed bex-api's per-service quota",
+  },
   "services.environmentStagedDelete": {
     message: "Will be removed",
     description: "Badge on a staged environment deletion",
@@ -4257,6 +4263,12 @@ const enServices: Record<string, TranslationEntry> = {
   "services.secretFileContentRequired": {
     message: "Add contents for this new file.",
     description: "Draft validation for missing new-file content",
+  },
+  "services.secretFileLimit": {
+    message:
+      "Secret files are limited to 500 and 512 KiB in total per service or group.",
+    description:
+      "Draft validation when the secret files would exceed bex-api's per-service quota",
   },
   "services.secretFileViewContent": {
     message: "View contents",
