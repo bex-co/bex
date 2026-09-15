@@ -1,6 +1,6 @@
 # w1 · m157 — A service whose newest build failed or is still building cannot wake, resume, sleep or scale its serving release
 
-**Worker:** worker1 **Goal:** while a newer release has no image yet (its build is queued, running, waiting on a registry credential, or failed), the release that is actually serving keeps following the App. It sleeps when idle, wakes on a request, suspends and resumes, and scales. The pending or failed release never reaches the pod template, and a build in flight keeps its own polling. **Status:** in progress. t001, t002, t005 and t006 are done: the hold, its blast radius and the simplify review are recorded below, and the tests each fail under a mutation of the part they pin. `make test` passes, and lint reports only the three findings already on main. The live check (t003) and the Render parity comparison (t004) wait for the deploy, then t007 closeout.
+**Worker:** worker1 **Goal:** while a newer release has no image yet (its build is queued, running, waiting on a registry credential, or failed), the release that is actually serving keeps following the App. It sleeps when idle, wakes on a request, suspends and resumes, and scales. The pending or failed release never reaches the pod template, and a build in flight keeps its own polling. **Status:** done (2026-09-15). t001, t002, t004, t005 and t006 are done, and every definition-of-done bullet passed live on production after the `82fed6791` pin: resume (11.6 s), idle sleep and wake (11.7 s), a wake while a build runs (12.0 s), the rollout control, and the surface comparison. Both fixtures are deleted.
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | t001 | Runtime convergence over a release still waiting for its image: the prior release's replicas and routing follow the App while the build halts — **DONE** | 1h30m | — |
 | t002 | Blast radius: every `buildFromSource` halt against every runtime transition, plus the legacy Ready marker and the disk restore — **DONE** | 45m | t001 |
-| t003 | Live: resume, idle sleep and wake over a failed build, and a wake while a build runs, on production | 1h | t002 |
-| t004 | Render parity | 20m | t003 |
+| t003 | Live: resume, idle sleep and wake over a failed build, and a wake while a build runs, on production — **DONE** | 1h | t002 |
+| t004 | Render parity — **DONE** | 20m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t004 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -163,6 +163,82 @@ Controls on the same operator build: `qa-20260915-m156d` (healthy, suspend and r
 | Background worker | Needs work | `w1/m158` |
 | Cron job, static site, direct static publish | Cannot occur: no Deployment | — |
 | First release, opensandbox runtime | Unchanged: nothing serves, or no Deployment | — |
+
+## Live verification (2026-09-15, production)
+
+**Rollout.** Deploy run 35021555678 for `4f0c2c3e2`; images pinned at `82fed6791` (21:27:20Z).
+
+**Fixtures.** Free web services from `examples/hello-go` (docker) in the QA workspace:
+
+- `qa-20260915-m157a` (`srv-dakqtorlse3s739rlnj0`, `MESSAGE=m157-failed-build`). First deploy live at 20:49:53Z. A PATCH of `envSpecificDetails.dockerfilePath` to `./Dockerfile.qa-missing` opened `dep-dakqusjlse3s739rlnmg`, which read `build_failed` at 20:50:57Z. The phase stayed Running and the URL kept answering `200 m157-failed-build`.
+- `qa-20260915-m157b` (`srv-dakqtrjlse3s739rlnkg`, `MESSAGE=m157-inflight`). Live at 20:50:30Z, then left without requests.
+
+**Render parity (t004, 21:30:01Z).** `qa-20260915-m157a`, serving its first release over the failed build on the pinned operator:
+
+| Surface | Service | Failed deploy |
+| --- | --- | --- |
+| REST `GET /v1/services/srv-dakqtorlse3s739rlnj0`, `…/deploys/dep-dakqusjlse3s739rlnmg` | `phase: Running`, `suspended: not_suspended` | `status: build_failed`, `failureReason` "build failed in the docker build step: … load build definition from ./Dockerfile.qa-missing …" |
+| GraphQL `deploy(serviceId, deployId)` | — | `status: build_failed`, `trigger: config_change`, same `failureReason` |
+| MCP `get_service` / `get_deploy` | `phase: Running`, `suspended: not_suspended` | `status: build_failed`, same `failureReason` |
+
+- **Agreement.** The surfaces agree, which is Render's "the previous deploy stays live". ADR018 records no divergence.
+- **Not compared: the dashboard header.** It reads the same GraphQL fields.
+
+**DoD: resume over a failed build (t003).** On `qa-20260915-m157a`, with its newest deploy `dep-dakqusjlse3s739rlnmg` at `build_failed`:
+
+```text
+21:33:05.0    phase Running; deploys dep-dakqusjlse3s739rlnmg build_failed, dep-dakqtorlse3s739rlnjg live; URL 200 m157-failed-build
+21:33:05.4    POST /suspend → 202; 21:33:23 phase Hibernated, suspended; 21:33:33.6 URL 503 no available server
+21:33:34.1    POST /resume → 202
+21:33:34.7    URL (every 1 s from here): 503 {"error":"service hibernated","retryAfter":5}
+21:33:45.7    URL: 200 m157-failed-build  (8 requests, 11.6 s after the resume)
+21:33:49.4    phase Running, not_suspended; deploys unchanged (build_failed; the first release live)
+```
+
+- **Before the fix,** the same sequence on `qa-20260915-m156b` gave 112 of 113 `503`s over 180 s, still `503` 4.5 minutes later.
+- **The failed release stayed off the pod.** The deploy stays `build_failed` and no new deploy opened. The URL answers the first release's `MESSAGE`.
+
+**DoD: idle sleep and wake over a failed build (t003).** `qa-20260915-m157a` stayed awake over `dep-dakqusjlse3s739rlnmg` (`build_failed`) after the resume.
+
+- **Scanner traffic.** Requests from the outside scanner (`10.10.0.7`) arrived at 21:36, 21:47, 21:50, 21:59, 22:02 and 22:06 and kept resetting the idle clock.
+- **The check.** A 5 s phase poll caught the sleep and requested the URL at once:
+
+```text
+22:21:46.7    phase Hibernated (15 min after the 22:06 scanner request)
+22:21:47.6    URL (every 1 s from here): 503 {"error":"service hibernated","retryAfter":5}
+22:21:58.7    URL: 200 m157-failed-build  (8 requests, 11.7 s after the first)
+22:22:04.3    phase Running; deploys unchanged (build_failed; the first release live)
+```
+
+- **Before the fix,** the idle check never ran while a build halted (§ Root cause), and a service parked over a failed build could not wake.
+
+**DoD: a wake while a build runs (t003).** `qa-20260915-m157b`, on a clean run that made no request until the build was running:
+
+```text
+22:37:50.7    phase Hibernated
+22:37:52.3    POST /deploys {clearCache: clear} → dep-dakshg031mas7389obo0
+22:38:08.8    deploy build_in_progress; phase Building; still no request sent
+22:38:09.5    URL (every 1 s from here): 503 {"error":"service hibernated","retryAfter":5}
+22:38:20.4    URL: 200 m157-inflight  (8 requests, 12.0 s after the first)
+22:38:21.2    the deploy is still build_in_progress at that first 200; phase Building
+22:39:14.2    dep-dakshg031mas7389obo0 live; phase Running; URL 200 m157-inflight
+```
+
+The wake therefore starts while the newer release has no image, which is the state that halted every reconcile before the fix. The prior release answers well inside the 60 s the DoD allows.
+
+**Control: a successful build still rolls out, over a waking service (t003).** `qa-20260915-m157b`:
+
+```text
+22:21:49.4    phase Hibernated
+22:21:50.9    POST /deploys {clearCache: clear} → dep-daks9vg31mas7389objg (deploy_started 22:21:50; build_started 22:22:08)
+22:21:51.5    URL (every 1 s from here): 503 {"error":"service hibernated","retryAfter":5}
+22:22:01.0    URL: 200 m157-inflight  (7 requests, 10.4 s); the deploy still queued, phase Building
+22:23:14.8    dep-daks9vg31mas7389objg live; phase Running; URL 200 m157-inflight
+```
+
+- **What this shows.** The prior release keeps serving while a newer release waits for its build, and the build then rolls out normally.
+- **What it does not show.** A separate probe hit the URL at 22:21:47, before the deploy was created, and probably started the wake on the normal path. So this run does not prove a wake that starts during a build.
+- **Rerun.** A clean run triggers the deploy first and makes no request until it reads `build_in_progress`.
 
 ## Adjacent classes
 
