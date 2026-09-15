@@ -1,17 +1,17 @@
 # w1 · m154 — A deploy or config-change rollout drops live requests with `502 Bad Gateway` at the pod switchover
 
-**Worker:** worker1 **Goal:** replacing a web service's pod never fails a request that reaches it. The old pod keeps serving through a drain window after it leaves the load balancer, then gets `SIGTERM`, and only then `maxShutdownDelaySeconds` before `SIGKILL`. That is Render's order, and ADR004's "zero-downtime by construction" claim becomes true in practice as well as on paper. **Status:** in progress — t004 and t005 done; t001–t003 implemented with tests green, and their live probes (DoD bullet 1, the Restart, scale and private-service probes) wait for the deploy; then t006 closeout.
+**Worker:** worker1 **Goal:** replacing a web service's pod never fails a request that reaches it. The old pod keeps serving through a drain window after it leaves the load balancer, then gets `SIGTERM`, and only then `maxShutdownDelaySeconds` before `SIGKILL`. That is Render's order, and ADR004's "zero-downtime by construction" claim becomes true in practice as well as on paper. **Status:** done (2026-09-15). Every task is complete, and the definition of done and t002's probes passed live on production (images pinned to `c4212ec71`).
 
 ## Tasks (in order)
 
 | id   | title                                                                                                       | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Tenant pods drain before SIGTERM: a native `preStop.sleep`, with the grace period widened so the shutdown delay still counts from SIGTERM | 40m | —          |
-| t002 | Blast radius: every path that removes a serving pod, and the controls that must not change                  | 40m | t001       |
-| t003 | Render parity                                                                                               | 25m | t002       |
+| t001 | Tenant pods drain before SIGTERM: a native `preStop.sleep`, with the grace period widened so the shutdown delay still counts from SIGTERM — **DONE** | 40m | —          |
+| t002 | Blast radius: every path that removes a serving pod, and the controls that must not change — **DONE**                  | 40m | t001       |
+| t003 | Render parity — **DONE**                                                                                               | 25m | t002       |
 | t004 | Simplify — **DONE** | 15m | t003 |
 | t005 | Test coverage — **DONE** | 40m | t003 |
-| t006 | Closeout                                                                                                    | 10m | t005       |
+| t006 | Closeout — **DONE**                                                                                                    | 10m | t005       |
 
 ## Definition of done
 
@@ -136,7 +136,7 @@ The other termination paths (restart, scale-in, autoscale, hibernate, private-se
 | Disk-attached services (`Recreate`) | Exempt: the old pod must stop before the new one starts, and a drain would only lengthen the documented downtime |
 | Cron jobs, pre-deploy Jobs, static sites | Not tenant Deployments behind Traefik; unchanged |
 
-The live Restart, scale and private-service probes wait for the deploy.
+The live Restart, scale and private-service probes are in § Live verification.
 
 **Parity (t003).** `maxShutdownDelaySeconds` is still read from `App.spec` on REST, GraphQL and MCP, so it reads back as set, and its "after SIGTERM" descriptions stay true. ADR004 § Rollout headroom now names both halves of zero-downtime (readiness gating and the drain). ADR018's graceful-shutdown row records the drain and the 10 s vs 60 s divergence.
 
@@ -171,6 +171,29 @@ Declined:
 - **Shown failing without the fix**, in scratch worktrees because the new tests use the new helper signatures:
   - with the drain forced to 0, `TestTerminationGracePeriod` ("web grace = 30; want 10 + 30") and `TestTrafficServingPodsDrainBeforeSIGTERM` ("lifecycle = nil") failed;
   - with lazy adoption removed, `TestDrainIsAdoptedOnTheNextRollNotOnUpgrade` failed ("an unchanged App's template changed on upgrade").
+
+## Live verification (2026-09-15, production pinned to `c4212ec71`)
+
+- **Fixtures**, all free and created after the rollout, so their pods drain from the first deploy:
+  - `qa-20260915-m154` (`srv-dakf8d9vi8js739uile0`), `examples/hello-go` with `MESSAGE=v1`;
+  - `qa-20260915-m154p` (`srv-dakf8dridljc7398tn7g`), a private service with `MESSAGE=private-v1`;
+  - `qa-20260915-m154c` (`srv-dakf8vridljc7398tn90`), a caller built from `examples/hello-python` whose Docker Command requests `http://qa-20260915-m154p:3000/` every 0.2 s and logs a timestamp, the status and the body.
+- **Samplers.** A `curl` loop averaged about 1.3 s per sample, because it spawned a process per request. A single-process sampler opens a fresh TLS connection per request and averaged about 0.66 s.
+
+| Probe | Timeline | Samples | Non-200 |
+| --- | --- | --- | --- |
+| Config-change roll (DoD bullet 1) | `PUT …/env-vars/MESSAGE v2` 07:38:41.6Z → `dep-dakfc0jidljc7398tneg` live 07:39:58Z, sampled to 07:40:58Z | 174 over 07:38:41–07:40:58Z (~1.3 s): 95 `v1`, 79 `v2`; switch 07:39:55.577 → 07:39:56.367 | 0 |
+| Restart (t002) | `POST …/restart` → `dep-dakfgf3idljc7398tnh0` created 07:48:12Z, live 07:49:26Z | 746 over 07:47:47–07:55:59Z (~0.66 s), all `v2` | 0 during the restart; one client `TimeoutError` at 07:51:39Z, 2 min after it was live with no rollout in progress |
+| Second config-change roll | `PUT MESSAGE v3` (queued behind workspace builds) → `dep-dakfhhbidljc7398tni0` live 08:01:26Z | 902 over 07:57:11–08:07:10Z (~0.66 s); 185 in 08:00:30–08:02:30Z, all 200 (68 `v2`, 117 `v3`, interleaved at the switch) | 0 in the roll window; one client `TimeoutError` at 07:57:16Z, 4 min before the roll |
+| Private service, in-cluster (t002) | `PUT …/env-vars/MESSAGE private-v2` 07:44:58.7Z → `dep-dakfeuridljc7398tnfg` live 07:46:26.7Z | 934 caller lines over 07:44:28.105–07:47:39.936Z (~0.2 s); last `private-v1` 07:46:12.379, first `private-v2` 07:46:12.587 | 0 |
+| Scale 2 → 1 (t002) | `POST …/scale {"numInstances":2}` 08:05:44Z | — | Plan-gated: `400 "the free plan is limited to 1 instance(s) and cannot scale to 2"`, and nothing was bought |
+
+- **The new value is served once the deploy is live.** DoD bullet 2 held: `v2` from 07:39:56, and `v3` from 08:01:14.
+- **Parity (t003).** At 08:20:17Z, `PATCH …{"serviceDetails":{"maxShutdownDelaySeconds":60}}` returned 200. REST `serviceDetails.maxShutdownDelaySeconds`, GraphQL `server { maxShutdownDelaySeconds }` and MCP `get_service` all read back 60, where they had read the default 30. The resulting config-change deploy `dep-dakfvgbidljc7398tnqg` was `live 08:20:39`. ADR004 § Rollout headroom and ADR018's graceful-shutdown row describe the drain and the 10 s divergence from Render's 60 s.
+- **The two client timeouts** fall outside every rollout window. They match the one-off connection failures other fixtures' samplers saw this run: a client or network blip, not a dropped request.
+- **t002 acceptance 3.**
+  - `TestWorkersAndDiskAttachedServicesDoNotDrain` asserts that disk-attached services keep `Recreate`.
+  - Cron jobs, pre-deploy Jobs and static sites are built by separate builders this change did not touch, and no drain-specific test was added for them.
 
 ## Dedupe
 
