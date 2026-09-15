@@ -163,6 +163,25 @@ var _ = Describe("Pre-deploy gate (kubernetes runtime)", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(dep.Spec.Template.Spec.Containers[0].Image).To(Equal("traefik/whoami:v1"))
 
+			By("revision 1 becoming ready and serving (envtest has no kubelet)")
+			dep.Status.ObservedGeneration = dep.Generation
+			dep.Status.Replicas = 1
+			dep.Status.UpdatedReplicas = 1
+			dep.Status.ReadyReplicas = 1
+			dep.Status.AvailableReplicas = 1
+			Expect(k8sClient.Status().Update(ctx, dep)).To(Succeed())
+			v1Pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: name + "-v1", Namespace: "default", Labels: dep.Spec.Template.Labels},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "traefik/whoami:v1"}}},
+			}
+			Expect(k8sClient.Create(ctx, v1Pod)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(context.Background(), v1Pod) })
+			v1Pod.Status.Phase = corev1.PodRunning
+			v1Pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+			Expect(k8sClient.Status().Update(ctx, v1Pod)).To(Succeed())
+			reconcile1(nn)
+			Expect(getApp(nn).Status.ActiveRevision).NotTo(BeEmpty(), "revision 1 must be the serving release")
+
 			By("updating to revision 2: a new image plus a pre-deploy command")
 			app = getApp(nn)
 			app.Spec.Image = "traefik/whoami:v2"
@@ -175,8 +194,28 @@ var _ = Describe("Pre-deploy gate (kubernetes runtime)", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(dep.Spec.Template.Spec.Containers[0].Image).To(Equal("traefik/whoami:v1"))
 
-			By("the migration failing: the deploy fails and v1 keeps serving")
-			failJob(job2NN, "boom")
+			By("the migration exiting 1: the deploy fails and v1 keeps serving")
+			// envtest has no kubelet: stand in for the Job's pod and its exit.
+			job2 := &batchv1.Job{}
+			Expect(k8sClient.Get(ctx, job2NN, job2)).To(Succeed())
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: job2NN.Name + "-x7k2p", Namespace: "default",
+					Labels: map[string]string{batchv1.ControllerUidLabel: string(job2.UID)},
+				},
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyNever,
+					Containers:    []corev1.Container{{Name: "predeploy", Image: "traefik/whoami:v2"}},
+				},
+			}
+			Expect(k8sClient.Create(ctx, pod)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
+			pod.Status.ContainerStatuses = []corev1.ContainerStatus{{
+				Name: "predeploy", Image: "traefik/whoami:v2",
+				State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 1, Reason: "Error"}},
+			}}
+			Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
+			failJob(job2NN, "Job has reached the specified backoff limit")
 			_, err = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 			Expect(err).To(HaveOccurred()) // a failed migration surfaces as a reconcile error
 			dep, derr := getDep(nn)
@@ -184,9 +223,18 @@ var _ = Describe("Pre-deploy gate (kubernetes runtime)", func() {
 			Expect(dep.Spec.Template.Spec.Containers[0].Image).To(Equal("traefik/whoami:v1"),
 				"the previous revision must stay live on a pre-deploy failure")
 			got := getApp(nn)
-			Expect(got.Status.Phase).To(Equal(appv1alpha1.PhaseFailed))
+			// w1/m149: the step runs before the rollout, so v1 never stopped
+			// serving and the phase keeps describing it (w6/m124's rule for builds).
+			Expect(got.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
 			Expect(got.Status.PreDeploy.Status).To(Equal(appv1alpha1.PreDeployFailed))
-			Expect(got.Status.PreDeploy.Message).To(ContainSubstring("boom"))
+			Expect(got.Status.PreDeploy.Message).To(Equal("the pre-deploy command exited with code 1; check the pre-deploy logs"))
+
+			By("re-reconciling the terminal step: quiet, still Running, same verdict")
+			_, err = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+			Expect(err).NotTo(HaveOccurred())
+			got = getApp(nn)
+			Expect(got.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+			Expect(got.Status.PreDeploy.Message).To(Equal("the pre-deploy command exited with code 1; check the pre-deploy logs"))
 		})
 	})
 

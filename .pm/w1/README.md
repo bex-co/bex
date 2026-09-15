@@ -198,6 +198,7 @@ Open inbox notes:
   (~55m, major) ← live `/qa-find-bugs` 2026-09-14 pass 30.
 
 - [100](100.md) — An environment group already over the secret-map quota refuses every batch save, even a delete that would bring it back under. `envgroups/patch.go:186-189` checks the patched maps unconditionally, while `w1/m147`'s service batch patch allows a shrink (`patchWithinQuota`). The fix reuses that helper (~40m, minor) ← `w1/m147` t006 code triage, 2026-09-15; reasoned, not probed.
+- [101](101.md) — A build failure or cancel after a first release that never served reads Running. `fail` and the canceled-release path decide "a prior release exists" from `status.image`, which a crash-looped first release leaves behind; `settleFailedRollout` and `w1/m149`'s pre-deploy path use `status.activeRevision`. Switch both checks and add the never-served cases (~30m, minor) ← `w1/m149` t005 review, 2026-09-14; reasoned, not probed.
 
 Open milestones: `m146` (live `/qa-find-bugs` 2026-09-14 pass 1).
 

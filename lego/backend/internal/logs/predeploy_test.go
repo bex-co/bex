@@ -69,6 +69,10 @@ func TestPreDeployLogsReadFromJobPod(t *testing.T) {
 		if e.Message == "app line" {
 			t.Errorf("type=predeploy leaked an app-container line: %+v", got)
 		}
+		// w1/m149: the record says what it is; at filing time it was labelled app.
+		if e.Labels[LabelType] != LogTypePreDeploy {
+			t.Errorf("record %q labelled type=%q, want %q", e.Message, e.Labels[LabelType], LogTypePreDeploy)
+		}
 	}
 }
 

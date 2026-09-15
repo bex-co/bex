@@ -765,8 +765,10 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 // prior release keeps the service's phase Running — the Ready condition then
 // describes the release that kept serving, not the failed build. The current
 // generation's Ready condition stays the fallback for an App that failed under
-// a pre-m100 operator, then the build-window line. Pre-deploy and rollout
-// failures keep reading the matching generation's Ready condition.
+// a pre-m100 operator, then the build-window line. pre_deploy_failed reads the
+// operator's durable status.preDeploy verdict first, for the same two reasons
+// (w1/m149); rollout failures keep reading the matching generation's Ready
+// condition.
 func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, matchesObservedRelease bool) (string, string) {
 	switch {
 	case status == DeployBuildFailed:
@@ -777,13 +779,32 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 			return failureReasonFor(cur, status)
 		}
 		return timedOutDeployReason(status), ""
-	case matchesObservedRelease:
-		switch status {
-		case DeployPreDeployFailed, DeployUpdateFailed:
+	case status == DeployPreDeployFailed:
+		if msg := recordedPreDeployFailure(cur, open.Generation); msg != "" {
+			return msg, ""
+		}
+		if matchesObservedRelease {
 			return failureReasonFor(cur, status)
 		}
+	case matchesObservedRelease && status == DeployUpdateFailed:
+		return failureReasonFor(cur, status)
 	}
 	return "", ""
+}
+
+// recordedPreDeployFailure is the operator's durable pre-deploy verdict
+// (status.preDeploy) for one deploy row's release generation. Like the Build
+// condition it is attributed to the release rather than to metadata.generation,
+// so it survives what the Ready condition does not: a metadata generation that
+// moved past the condition's observedGeneration, which sent an immediate exit
+// to the pre-deploy timeout line (w1/m149), and a phase held Running over the
+// prior release, where Ready describes the serving release.
+func recordedPreDeployFailure(app *appv1alpha1.App, generation int64) string {
+	pd := app.Status.PreDeploy
+	if generation == 0 || pd == nil || pd.Status != appv1alpha1.PreDeployFailed || pd.Generation != generation {
+		return ""
+	}
+	return pd.Message
 }
 
 // recordLifecycleFacts emits the build and pre-deploy beats Render shows as

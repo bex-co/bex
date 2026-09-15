@@ -60,6 +60,8 @@ const (
 	LabelComponent = "app.bex.co/component"
 	ComponentValue = "predeploy"
 	labelWorkspace = "app.bex.co/workspace"
+	// containerName is the Job's single container.
+	containerName = "predeploy"
 )
 
 // predeployTimeout bounds a single pre-deploy Job's wall-clock (its Job
@@ -135,7 +137,7 @@ func Job(o Options) *batchv1.Job {
 	ttl := int32(jobTTL)
 
 	container := corev1.Container{
-		Name:            "predeploy",
+		Name:            containerName,
 		Image:           o.Image,
 		Command:         []string{"sh", "-c", o.Command},
 		Env:             o.Env,
@@ -198,18 +200,61 @@ func Ensure(ctx context.Context, o Options) (*batchv1.Job, error) {
 	return cur, err
 }
 
-// Observe reports a Job's pre-deploy state and, on failure, a short human
-// message from the JobFailed condition (surfaced on the App status / deploy
-// record). A Job with neither terminal condition is StatePending.
-func Observe(j *batchv1.Job) (State, string) {
+// Observe reports a Job's pre-deploy state. A Job with neither terminal
+// condition is StatePending; FailureMessage explains a StateFailed one.
+func Observe(j *batchv1.Job) State {
 	switch {
 	case execution.JobHasCondition(j, batchv1.JobComplete):
-		return StateSucceeded, ""
+		return StateSucceeded
 	case execution.JobHasCondition(j, batchv1.JobFailed):
-		return StateFailed, execution.JobFailureMessage(j, "pre-deploy command failed")
+		return StateFailed
 	default:
-		return StatePending, ""
+		return StatePending
 	}
+}
+
+// FailureMessage explains a failed pre-deploy Job in the service owner's terms
+// (w1/m149): the window it ran past, an out-of-memory kill, or the command's
+// exit code read from the pod's terminated container. Never the Job
+// controller's condition text — "BackoffLimitExceeded" only says a zero-retry
+// Job failed once. Every message ends with the pointer to the step's logs; it
+// is what the App status and the deploy record carry.
+func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) string {
+	const logs = "; check the pre-deploy logs"
+	if execution.JobFailedReason(j) == batchv1.JobReasonDeadlineExceeded {
+		return fmt.Sprintf("the pre-deploy command did not finish within its %d-minute window%s",
+			int(predeployTimeout/time.Minute), logs)
+	}
+	if t := terminatedContainer(ctx, cl, j); t != nil {
+		switch {
+		case t.Reason == "OOMKilled":
+			return fmt.Sprintf("the pre-deploy command ran out of memory (exit code %d)%s", t.ExitCode, logs)
+		case t.ExitCode != 0:
+			return fmt.Sprintf("the pre-deploy command exited with code %d%s", t.ExitCode, logs)
+		}
+	}
+	return "the pre-deploy command failed" + logs
+}
+
+// terminatedContainer is the pre-deploy container's terminated state on the
+// Job's pod, or nil when no pod reports one (reaped, or never started). With
+// BackoffLimit 0 a Job runs exactly one pod.
+func terminatedContainer(ctx context.Context, cl client.Reader, j *batchv1.Job) *corev1.ContainerStateTerminated {
+	var pods corev1.PodList
+	// The controller-uid label, not the Job name: a TTL-reaped Job recreated
+	// under the same name must never borrow the old run's pod.
+	if err := cl.List(ctx, &pods, client.InNamespace(j.Namespace),
+		client.MatchingLabels{batchv1.ControllerUidLabel: string(j.UID)}); err != nil {
+		return nil
+	}
+	for i := range pods.Items {
+		for _, cs := range pods.Items[i].Status.ContainerStatuses {
+			if cs.Name == containerName && cs.State.Terminated != nil {
+				return cs.State.Terminated
+			}
+		}
+	}
+	return nil
 }
 
 // CancelSuperseded deletes active (not Complete, not Failed) pre-deploy Jobs for
