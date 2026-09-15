@@ -131,14 +131,13 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 - [x] **058** — [Grafana Argo sync stalls: dashboard ConfigMap annotations exceed 262144 bytes](done/058.md) — **DONE 2026-09-14**: `ServerSideApply=true` on the `grafana` Application; annotation cleared; app `Synced`; m95 sandbox panels published.
 
-- [ ] **057** — [A `dev-N` stack has no resource-metrics source, so the Metrics page cannot be walked locally](057.md) — install metrics-server in `mock-cluster.sh`; unblocks the m89/m90/m91 deferred walks ← w5/m98 2026-09-11.
-- [ ] **056** — [Blueprint-created Postgres and Key Value record no product-activity event](056.md) — pre-existing v1 gap surfaced by the m97 review; the surface panel would otherwise read zero Blueprint datastores as a finding ← w5/m97 review 2026-09-11.
-
-- [ ] **055** — [Retire the stale FUTURE-MAYBE entry for datastore lifecycle webhook events](055.md) — sub-hour; `w3/m82` landed 2026-09-08 but `.pm/FUTURE-MAYBE.md` still lists it as deferred ← `/pm-brainstorm for w5` 2026-09-10 proposal 7.
+- [x] **057** — [A `dev-N` stack has no resource-metrics source, so the Metrics page cannot be walked locally](done/057.md) — **DONE 2026-09-15**: metrics-server baked into `scripts/mock-cluster.sh` (helm 3.12.2, CA-verified kubelet TLS); optional Prometheus/`BEX_PROM_URL` still out of scope ← w5/m98 2026-09-11.
+- [x] **056** — [Blueprint-created Postgres and Key Value record no product-activity event](done/056.md) — **DONE 2026-09-15**: Blueprint create paths call the same effect hooks; panel/runbook gap copy removed; `TestProductBlueprintDatastoreCreation` green ← w5/m97 review 2026-09-11.
+- [x] **055** — [Retire the stale FUTURE-MAYBE entry for datastore lifecycle webhook events](done/055.md) — **DONE 2026-09-15**: FUTURE-MAYBE entry moved Deferred → Done (`w3/m82`, 2026-09-08) ← `/pm-brainstorm for w5` 2026-09-10 proposal 7.
 
 - _(`051.md` **DONE 2026-09-06**, moved to `done/`) — repository, image and branch saves use Source-specific English/Chinese toasts; Root Directory messages and server refusal details preserved. Full dashboard tests and lint pass._
 
-No pending inbox notes remained after the 2026-09-06 triage until `055` was filed on 2026-09-10. Six notes were implemented, verified, retired with explicit evidence limits, or promoted to completed m85; four duplicate/deferred audit or decision notes were deleted. Dispositions below distinguish completed implementation from retired scope.
+No pending inbox notes remain after the 2026-09-15 drain of `055`/`056`/`057` (board hygiene + Blueprint datastore product-activity + metrics-server in mock-cluster). Earlier: no pending notes after the 2026-09-06 triage until `055` was filed on 2026-09-10. Six notes were implemented, verified, retired with explicit evidence limits, or promoted to completed m85; four duplicate/deferred audit or decision notes were deleted. Dispositions below distinguish completed implementation from retired scope.
 
 - **`done/050.md`** (promoted to **m85**, completed 2026-09-06) — agent-session dispatch is not crash-safe across a bex-api restart: a mid-rollout create can strand a session with `sandbox_id=''` (every mint denied, no failure reason, burns the 30 m turn timeout). Observed live 2026-08-30 (`ags-da9p720k98cs738k20c0`) during the m83 E2E.
 

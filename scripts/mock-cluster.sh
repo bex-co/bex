@@ -159,6 +159,32 @@ for d in cert-manager cert-manager-cainjector cert-manager-webhook; do
 done
 KUBECONFIG="$WL_KUBECONFIG" kubectl -n cert-manager wait deploy --all --for=condition=Available --timeout=300s >/dev/null || true
 
+# metrics-server — resource metrics (metrics.k8s.io) for bex-api's CPU/memory
+# fallback and `kubectl top` (w5/057). Without it, Metrics-page walks on every
+# `dev-N` stack see empty CPU/memory regardless of replica count. Installed
+# after kubelet-csr-approver so kubelets present approved serving certs; same
+# --kubelet-certificate-authority path as deploy/gitops/base/metrics-server.yaml
+# (no --kubelet-insecure-tls). Pin to the control-plane node for the same
+# OrbStack+Calico apiserver-reachability reason as coredns/cert-manager above;
+# the platform-pool nodeSelector from the GitOps Application is a prod concern.
+KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install metrics-server \
+  metrics-server --repo https://kubernetes-sigs.github.io/metrics-server/ \
+  --version 3.12.2 \
+  -n kube-system \
+  --set 'args[0]=--kubelet-preferred-address-types=InternalIP,Hostname,ExternalIP' \
+  --set 'args[1]=--kubelet-certificate-authority=/etc/kubernetes/pki/kubelet-ca/ca.crt' \
+  --set 'extraVolumes[0].name=kubelet-ca' \
+  --set 'extraVolumes[0].configMap.name=kube-root-ca.crt' \
+  --set 'extraVolumeMounts[0].name=kubelet-ca' \
+  --set 'extraVolumeMounts[0].mountPath=/etc/kubernetes/pki/kubelet-ca' \
+  --set 'extraVolumeMounts[0].readOnly=true' \
+  --set 'metrics.enabled=false' \
+  --set-string 'nodeSelector.node-role\.kubernetes\.io/control-plane=' \
+  --set 'tolerations[0].key=node-role.kubernetes.io/control-plane' \
+  --set 'tolerations[0].effect=NoSchedule' >/dev/null
+KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system wait deploy/metrics-server \
+  --for=condition=Available --timeout=180s >/dev/null || true
+
 # 5. cluster-autoscaler beside CAPI (w1/m3) — same installer as prod CI.
 #    Why on the mgmt cluster: infra/clusterapi/autoscaler-values.yaml.
 bash scripts/install-autoscaler.sh "$MGMT"

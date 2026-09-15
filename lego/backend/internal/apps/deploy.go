@@ -3008,6 +3008,10 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 	if err := s.Client.Create(ctx, d); err != nil {
 		return StackDatabaseView{}, err
 	}
+	// Same successful-create effect hook as interactive CreatePostgres so
+	// Blueprint-provisioned managed Postgres lands in product_activity_events
+	// (creation-surface panel; w5/056). Re-apply of an existing DB returns above.
+	s.RecordDatabaseEffect(ctx, d, core.DatabaseCreated)
 	return stackDatabaseView(d), nil
 }
 
@@ -3059,6 +3063,9 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 	if err := s.Client.Create(ctx, resource); err != nil {
 		return StackKeyValueView{}, err
 	}
+	// Same successful-create effect hook as interactive CreateKeyValue so
+	// Blueprint-provisioned Key Value lands in product_activity_events (w5/056).
+	s.RecordKeyValueEffect(ctx, resource, core.KeyValueCreated)
 	return stackKeyValueView(resource), nil
 }
 
