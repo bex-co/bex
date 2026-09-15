@@ -110,4 +110,49 @@ describe("useTriggerDeploy", () => {
       },
     });
   });
+
+  it("restarts through restartServer, not a bare triggerDeploy that would build the branch head (w1/m148)", async () => {
+    const triggerDeploy = vi.fn();
+    const restartServer = vi.fn().mockResolvedValue({
+      data: { restartServer: { id: "dep-restart-1" } },
+    });
+    mockUseMutation.mockImplementation(
+      (doc: { definitions: { name: { value: string } }[] }) =>
+        doc.definitions[0].name.value === "RestartServer"
+          ? [restartServer, { loading: false }]
+          : [triggerDeploy, { loading: false }],
+    );
+
+    const { result } = renderHook(() => useTriggerDeploy());
+    let id: string | null = null;
+    await act(async () => {
+      id = await result.current.restart("web");
+    });
+
+    expect(id).toBe("dep-restart-1");
+    expect(restartServer).toHaveBeenCalledWith({
+      variables: { serviceId: "web" },
+    });
+    expect(triggerDeploy).not.toHaveBeenCalled();
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Restart started on the running release.",
+    );
+  });
+
+  it("relays the server's restart refusal and resolves null", async () => {
+    const restartServer = vi
+      .fn()
+      .mockRejectedValue(new Error("no live deploy"));
+    mockUseMutation.mockReturnValue([restartServer, { loading: false }]);
+
+    const { result } = renderHook(() => useTriggerDeploy());
+    let id: string | null = "dep-should-be-overwritten";
+    await act(async () => {
+      id = await result.current.restart("web");
+    });
+
+    expect(id).toBeNull();
+    expect(toastError).toHaveBeenCalled();
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
 });

@@ -209,16 +209,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				})
 			},
 		},
-		// restartServer is kept for API callers that already send this mutation
-		// name; the dashboard uses triggerDeploy directly. Returns Deploy (not
-		// Service) — every restart opens a deploy-history row (w2/m30).
+		// restartServer restarts on the running commit (Service.Restart, w1/m148),
+		// the dashboard's header and row Restart included. Returns Deploy (not
+		// Service): every restart opens a deploy-history row (w2/m30).
 		"restartServer": &graphql.Field{
 			Type: deployGQLType,
 			Args: graphql.FieldConfigArgument{
 				"serviceId": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Trigger(p.Context, p.Args["serviceId"].(string), TriggerParams{})
+				return s.Restart(p.Context, p.Args["serviceId"].(string))
 			},
 		},
 		"cancelDeploy": &graphql.Field{

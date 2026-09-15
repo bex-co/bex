@@ -801,6 +801,17 @@ func NewServer(base *core.Base, d Deps) *Server {
 		_, err := deploysSvc.Trigger(ctx, serviceID, deploys.TriggerParams{})
 		return err
 	}
+	// REST and MCP restart (in apps) run the same deploys verb as GraphQL
+	// restartServer, so every surface keeps the running commit (w1/m148).
+	// Without a deploy store there is no live commit, so apps keeps its CR-only
+	// restart.
+	var restartDeploy func(ctx context.Context, service string) error
+	if d.DeployStore != nil {
+		restartDeploy = func(ctx context.Context, service string) error {
+			_, err := deploysSvc.Restart(ctx, service)
+			return err
+		}
+	}
 	apiKeysSvc := &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, CreationLimiter: apikeys.NewCreationRateLimiter()}
 	membersSvc := &members.Service{
 		Base: base, Store: d.MembersStore, Granter: d.MembersGranter,
@@ -822,7 +833,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		APIKeys:    accountKeys,
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
 	}
-	appsSvc := &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata}
+	appsSvc := &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
 	srv := &Server{
 		Apps: appsSvc,
 		Logs: logSvc,

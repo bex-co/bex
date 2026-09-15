@@ -33,14 +33,21 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
   }),
 }));
 const triggerDeploy = vi.fn(async () => {});
+const restartServer = vi.fn(async () => null);
 vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
-  useTriggerDeploy: () => ({ deploying: false, trigger: triggerDeploy }),
+  useTriggerDeploy: () => ({
+    deploying: false,
+    trigger: triggerDeploy,
+    restart: restartServer,
+  }),
+}));
+vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
+  useAutoDeploy: () => ({ setAutoDeploy: vi.fn(), busy: false }),
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions("app");
 });
 
@@ -424,8 +431,9 @@ describe("ServiceDetailHeader", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("restarts through the Manual Deploy dropdown via triggerDeploy (w2/m30)", async () => {
+  it("restarts through the Manual Deploy dropdown via restartServer, after the shared confirmation (w1/m148)", async () => {
     triggerDeploy.mockClear();
+    restartServer.mockClear();
     const user = userEvent.setup();
     renderHeader(svc());
 
@@ -436,10 +444,14 @@ describe("ServiceDetailHeader", () => {
       await screen.findByRole("menuitem", { name: "Restart service" }),
     );
 
-    // Restart routes through the same triggerDeploy mutation as Deploy,
-    // so every restart opens a deploy-history row (not a separate onRun path).
-    expect(triggerDeploy).toHaveBeenCalledWith("app");
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    // Restart keeps the running commit; a bare triggerDeploy would build the
+    // branch head. It asks the same question as the services-list row.
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
+      "restarts on the commit or image it is running now",
+    );
+    await user.click(screen.getByRole("button", { name: "Restart" }));
+    expect(restartServer).toHaveBeenCalledWith("app");
+    expect(triggerDeploy).not.toHaveBeenCalled();
   });
 
   it('has no "•••" actions menu — only Connect + Manual Deploy; restart in Manual Deploy, suspend/resume on Settings', async () => {
