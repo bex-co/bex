@@ -1,20 +1,20 @@
 # w7 · m147 — Restore `bex ea sandboxes exec` under the pinned Render CLI: run connect-token handshake + SSE exit/error shapes
 
-**Worker:** worker7 **Goal:** the shipped `bex` launcher (Render CLI v2.27.0 pin) runs a command in a sandbox end to end and returns that command's real exit status and error messages, as the compatibility ledger already claims. **Status:** todo
+**Worker:** worker7 **Goal:** the shipped `bex` launcher (Render CLI v2.27.0 pin) runs a command in a sandbox end to end and returns that command's real exit status and error messages, as the compatibility ledger already claims. **Status:** code shipped 2026-09-15 (t002–t009 done); open on t001 + t010 — the live pinned-launcher run against production needs human device login this harness could not perform. Resume: run t001 (now expected to pass), then t010 closeout.
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est | depends_on                 |
 | ---- | ----------------------------------------------------------------------------------------- | --- | -------------------------- |
 | t001 | Reproduce both failures live with the pinned CLI and capture the redacted wire            | 30m | —                          |
-| t002 | Emit the pinned client's SSE `exit`/`error` payload shapes without breaking internal readers | 40m | —                          |
-| t003 | Mint run connect tokens: `POST /v1/sandboxes/{sandboxId}/runs/{operation}/token`          | 60m | —                          |
-| t004 | Redeem the connect token at the returned `uri` and stream the exec                         | 75m | w7/m147/t003               |
-| t005 | Blast-radius verification across exec callers, legacy route, and route guards              | 40m | w7/m147/t002, w7/m147/t004 |
-| t006 | Re-grade the sandbox rows in the CLI ledger, including pinned-but-ungraded commands        | 25m | w7/m147/t005               |
-| t007 | Render parity                                                                              | 20m | w7/m147/t006               |
-| t008 | Simplify                                                                                   | 20m | w7/m147/t007               |
-| t009 | Test coverage                                                                              | 45m | w7/m147/t007               |
+| t002 | Emit the pinned client's SSE `exit`/`error` payload shapes without breaking internal readers — **DONE** | 40m | —                          |
+| t003 | Mint run connect tokens: `POST /v1/sandboxes/{sandboxId}/runs/{operation}/token` — **DONE** | 60m | —                          |
+| t004 | Redeem the connect token at the returned `uri` and stream the exec — **DONE** | 75m | w7/m147/t003               |
+| t005 | Blast-radius verification across exec callers, legacy route, and route guards — **DONE** | 40m | w7/m147/t002, w7/m147/t004 |
+| t006 | Re-grade the sandbox rows in the CLI ledger, including pinned-but-ungraded commands — **DONE** | 25m | w7/m147/t005               |
+| t007 | Render parity — **DONE** | 20m | w7/m147/t006               |
+| t008 | Simplify — **DONE** | 20m | w7/m147/t007               |
+| t009 | Test coverage — **DONE** | 45m | w7/m147/t007               |
 | t010 | Closeout                                                                                   | 10m | w7/m147/t008, w7/m147/t009 |
 
 ## Definition of done
@@ -47,6 +47,15 @@ Filed from a continuous `/qa-find-bugs-cli` sweep for w7 on 2026-09-14 UTC. Live
 - A non-zero remote exit decodes as `0`. `cmd/sandboxexec.go:106-114` `exitSandboxExec` then returns nil, so **a failing sandbox command reports success**.
 - An error event decodes as `status 0` with an empty message, printed as `sandbox exec stream error status 0: `.
 - m33's live acceptance (`.pm/w3/done/m33/done/t005.md:40`) only ran exit-0 commands (`echo`, `uname -r`), which hid this. The backend tests pin the wrong key: `sandboxsse_test.go:111-115`, and `sandbox/exec_test.go:72,89,138,209,241,306`.
+
+## Shipped 2026-09-15 (t002–t009)
+
+- **Routes:** gated `POST /v1/sandboxes/{id}/runs/{operation}/token` mints Render's `SandboxConnectResponse`; outside-gate `POST /v1/sandboxes/{id}/runs/{executionId}/stream` redeems it (single-use, ≤60 s, bound to workspace + sandbox + execution + command; IP limiter shared with deploy hooks; exec gate re-applied under the minter). Legacy `POST /exec` unchanged.
+- **SSE:** gateway emits `exit_code` and `{status,message}` (404/403/503) beside the internal keys for one release; bex-api readers decode both.
+- **Contract:** `lego/cli/testdata/sandbox-exec-contract.json` is driven from the pinned client (`lego/cli/sandbox_contract_test.go`) and proven from the real handlers (`lego/backend/internal/sandbox/connect_test.go`); three mutation spot-checks red.
+- **Caller census:** 2 streaming callers (legacy REST, redeem), 1 `ExecBuffered` (MCP), 1 `systemBufferedExec` (scrub), 2 direct `bufferExec` (session status, hibernate) — all on the shared decoder.
+- **Docs:** ledger rows (exec re-graded; `copy` and `sandbox-groups list` graded `[ ]`, snapshots `[-]`), `ea-sandbox.md`, `UPSTREAM_RENDER_CLI.md` step 5, `internal/api/CLAUDE.md` inventory. Gap candidate `w7/046`.
+- **Still owed:** t001 live capture and t010 closeout (human device login against production).
 
 ## Source + Goal linkage
 

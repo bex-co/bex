@@ -701,6 +701,7 @@ var classifiedOps = map[string]string{
 	"REST POST /v1/sandboxes/{id}/exec":                                core.OpClassWrite,
 	"REST POST /v1/sandboxes/{id}/pause":                               core.OpClassWrite,
 	"REST POST /v1/sandboxes/{id}/resume":                              core.OpClassWrite,
+	"REST POST /v1/sandboxes/{id}/runs/{operation}/token":              core.OpClassWrite,
 	"REST POST /v1/sandboxes/{id}/terminate":                           core.OpClassWrite,
 	"REST POST /v1/services":                                           core.OpClassWrite,
 	"REST POST /v1/services/{id}/custom-domains":                       core.OpClassWrite,

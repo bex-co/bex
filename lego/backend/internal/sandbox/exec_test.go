@@ -69,7 +69,7 @@ func TestStreamExecAuthorizesMintsTicketAndRelaysSSE(t *testing.T) {
 		gotNamespace, gotSandbox, gotCommand = claims.Namespace, claims.SandboxID, claims.Command
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"hi\\n\"}\n\nevent: exit\ndata: {\"exitCode\":0}\n\n"))
+		_, _ = w.Write([]byte("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"hi\\n\"}\n\nevent: exit\ndata: {\"exit_code\":0}\n\n"))
 	}))
 	defer gw.Close()
 
@@ -86,7 +86,7 @@ func TestStreamExecAuthorizesMintsTicketAndRelaysSSE(t *testing.T) {
 	if rr.Code != http.StatusOK || rr.Header().Get("Content-Type") != "text/event-stream" {
 		t.Fatalf("resp code=%d ct=%q", rr.Code, rr.Header().Get("Content-Type"))
 	}
-	if body := rr.Body.String(); !strings.Contains(body, `"stream":"stdout"`) || !strings.Contains(body, `"exitCode":0`) {
+	if body := rr.Body.String(); !strings.Contains(body, `"stream":"stdout"`) || !strings.Contains(body, `"exit_code":0`) {
 		t.Errorf("relayed body missing events:\n%s", body)
 	}
 	// bex-api derived the sandbox namespace from the RESOLVED workspace and signed
@@ -135,7 +135,7 @@ func TestExecBufferedParsesSSE(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"hi\\n\"}\n\n" +
 			"event: output\ndata: {\"stream\":\"stderr\",\"data\":\"oops\\n\"}\n\n" +
-			"event: exit\ndata: {\"exitCode\":7}\n\n"))
+			"event: exit\ndata: {\"exit_code\":7}\n\n"))
 	}))
 	defer gw.Close()
 	svc := &Service{
@@ -175,8 +175,9 @@ func TestExecBufferedFailsClosedWithoutExitEvent(t *testing.T) {
 }
 
 func TestBufferExecMapsTerminalGatewayCodeToNotFound(t *testing.T) {
+	// The gateway's real shape since w7/m147 (pinned CLI keys + internal code).
 	resp := &http.Response{Body: io.NopCloser(strings.NewReader(
-		"event: error\ndata: {\"error\":\"sandbox is no longer running\",\"code\":\"sandbox_terminated\"}\n\n",
+		"event: error\ndata: {\"status\":404,\"message\":\"sandbox is no longer running\",\"error\":\"sandbox is no longer running\",\"code\":\"sandbox_terminated\"}\n\n",
 	))}
 	_, err := bufferExec(resp)
 	if !errors.Is(err, core.ErrNotFound) {
@@ -206,7 +207,7 @@ func TestExecBufferedCapsCumulativeOutput(t *testing.T) {
 				fl.Flush()
 			}
 		}
-		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":0}\n\n"))
 	}))
 	defer gw.Close()
 	svc := &Service{
@@ -238,7 +239,7 @@ func TestExecEnforcesOwnerAndWorkspaceAdminOverride(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":0}\n\n"))
 	}))
 	t.Cleanup(gw.Close)
 
@@ -303,7 +304,7 @@ func TestReadSessionStatusMintsSystemSubjectWithoutIdentity(t *testing.T) {
 		gotSubject = claims.Subject
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = w.Write([]byte("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"{\\\"state\\\":\\\"succeeded\\\"}\"}\n\n"))
-		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":0}\n\n"))
 	}))
 	defer gateway.Close()
 
@@ -361,7 +362,7 @@ func TestReadSessionTranscriptHarvestsLogOverExecBoundary(t *testing.T) {
 		out, _ := json.Marshal(map[string]string{"stream": "stdout", "data": logLine + "\n"})
 		w.Header().Set("Content-Type", "text/event-stream")
 		fmt.Fprintf(w, "event: output\ndata: %s\n\n", out)
-		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":0}\n\n"))
 	}))
 	defer gateway.Close()
 
@@ -480,7 +481,7 @@ func TestExecAgentSessionSandboxSignsSessionClaimForDeveloper(t *testing.T) {
 		}
 		gotAgentSession = claims.AgentSessionID
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":0}\n\n"))
 	}))
 	t.Cleanup(gw.Close)
 
@@ -527,7 +528,7 @@ func TestSuspendRunsPlatformScrubUnderContributor(t *testing.T) {
 		}
 		execCalls++
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":0}\n\n"))
 	}))
 	t.Cleanup(gateway.Close)
 

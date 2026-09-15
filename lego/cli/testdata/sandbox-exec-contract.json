@@ -1,0 +1,32 @@
+{
+  "_comment": "Shared contract between the pinned Render CLI's sandbox exec transport (lego/cli/sandbox_contract_test.go drives the real pkg/sandbox.Repo against this) and bex-api's handlers (lego/backend/internal/sandbox/connect_test.go proves the real mint + redeem + gateway produce exactly these bytes). w7/m147. Update both sides together.",
+  "workspace": "tea-a",
+  "sandboxId": "os-1",
+  "command": "sh -c 'echo out; echo err >&2; exit 7'",
+  "connect": {
+    "method": "POST",
+    "path": "/v1/sandboxes/os-1/runs/stream/token",
+    "query": "ownerId=tea-a",
+    "requestBody": { "command": "sh -c 'echo out; echo err >&2; exit 7'" },
+    "status": 201,
+    "fields": ["executionId", "expiresAt", "method", "token", "uri"],
+    "responseMethod": "POST",
+    "uriPath": "/v1/sandboxes/os-1/runs/{executionId}/stream"
+  },
+  "stream": {
+    "headers": { "Authorization": "Bearer {token}", "Content-Type": "application/json", "Accept": "text/event-stream" },
+    "requestBody": { "command": "sh -c 'echo out; echo err >&2; exit 7'" },
+    "status": 200,
+    "contentType": "text/event-stream"
+  },
+  "transcripts": {
+    "exit7": "event: output\ndata: {\"stream\":\"stdout\",\"data\":\"out\\n\"}\n\nevent: output\ndata: {\"stream\":\"stderr\",\"data\":\"err\\n\"}\n\nevent: exit\ndata: {\"exit_code\":7,\"exitCode\":7}\n\n",
+    "terminated": "event: error\ndata: {\"status\":404,\"message\":\"sandbox is no longer running\",\"error\":\"sandbox is no longer running\",\"code\":\"sandbox_terminated\"}\n\n"
+  },
+  "expected": {
+    "stdout": "out\n",
+    "stderr": "err\n",
+    "exitCode": 7,
+    "terminatedError": "sandbox exec stream error status 404: sandbox is no longer running"
+  }
+}
