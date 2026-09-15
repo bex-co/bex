@@ -108,7 +108,41 @@ Coordinate the desired-state removal with the emergency command: while Git still
 
 `deploy.yml` recovered on 2026-09-10 ([run 34444812690](https://github.com/bex-co/bex/actions/runs/34444812690), from `46e16ec38835`, which contains both `1343b7f17070` and `3aea3310212f`). Every green run since has built and deployed; the latest at the time of writing, [run 34936503315](https://github.com/bex-co/bex/actions/runs/34936503315) from `c4212ec71909`, rolled `bex-controller-manager` onto `ghcr.io/bex-co/bex-operator@sha256:1f3648adb9598bd2d73304b2ebc346bfffe04542d3db13a55e4d198168711a46`, the digest pinned in `deploy/gitops/base/bex.yaml`. The first start condition (corrected image live) is therefore met.
 
-The second condition is not: the Zot PVC and peak were not re-measured on 2026-09-15 because the session had no production kubeconfig, and the September 9 numbers above are not current after six days of deploys. `BEX_BUILD_CACHE` remains unset. The trial stays held on the PVC re-check and the representative cache-size projection (`w7/m89` t002–t003).
+The second condition was re-checked later the same day (next section): the Zot PVC and peak are within budget and the size projection fits. `BEX_BUILD_CACHE` remains unset pending the trial start (`w7/m89` t004).
+
+## 2026-09-15 23:30 UTC re-check (w7/m89 t002 + t003)
+
+Read through the production kubeconfig (`scripts/fetch-app-kubeconfig.sh`, trust-on-first-use) with loopback port-forwards to Prometheus and Zot; the build-plane push credential was used in memory for the catalog read only. Nothing was written to the cluster.
+
+| Item | Observed 2026-09-15 |
+| --- | --- |
+| Operator | `bex-system/bex-controller-manager` 1/1 ready; `BEX_BUILD_CACHE` absent (env: `BEX_CNB_BUILDER`, `BEX_BUILD_NAMESPACE`, `BEX_MAX_CONCURRENT_BUILDS`, `BEX_MAX_ACTIVE_BUILDS`) |
+| Live image | `ghcr.io/bex-co/bex-operator@sha256:b00306f7514a89a46d55aecd556a291c4b1b30f97eaf6a2ac02252dc021d5c09`, pinned by `1df779f8a` ("pin platform images to 1cb1f2d27dda"); Argo `bex-operator` Synced/Healthy. `1cb1f2d27dda` contains `1343b7f17070` (m87) and `3aea3310212f` (m88) — **start condition 1 met** |
+| Zot filesystem | capacity 98.31 GiB (105,559,699,456 B); used **40.79 GiB, 41.49%**; available 57.50 GiB |
+| Retained-window peak | **43.87 GiB, 44.62%** (7-day query; retention starts 2026-09-12 18:59 UTC, so ~3.2 days present); minimum 40.11 GiB |
+| Thresholds | 60% = 58.99 GiB; 65% admission ceiling = 63.90 GiB; 70% rollback = 68.82 GiB |
+| Headroom | 23.11 GiB from current use to 65%; **20.03 GiB above the peak to 65%**; 24.95 GiB above the peak to the 70% rollback line |
+| GC / retention | unchanged: dedupe, GC on, `gcDelay=1h`, `gcInterval=1h`, delete untagged, keep 5 most recently pushed tags per repository |
+| Alerts firing | only `TenantCustomDomainCertNotReady`; no `Zot*` / `Build*` |
+| Catalog | 49 repositories, **38.20 GiB dedupe-unique reachable content** (sum over repositories 43.66 GiB; the workspace-scoped and legacy copies of the same App share blobs); **no `*-cache` repository exists** |
+
+Build signals (Prometheus, counters rounded; the 7-day query again covers only the retained ~3.2 days):
+
+| Signal | Last 24 h | Retained window |
+| --- | --: | --: |
+| Run samples | 102 | 272 |
+| Outcomes succeeded / user-failed / canceled / superseded | 91 / 8 / 5 / 24 | 260 / 8 / 21 / 65 |
+| Run p50 / p95 | 713 / 1652 s | 688 / 1679 s |
+| Queue p50 / p95 | 2.5 / 4.75 s | 2.5 / 4.75 s |
+| Push p50 / p95 | 9.1 / 27.4 s | 7.8 / 24.8 s |
+| Push errors | 0 | 0 |
+| Oldest-queued maximum | 620 s | 1104 s |
+
+The push p95 baseline for the trial's stop rule is therefore ~27 s; the rule's floor (60 s) still governs, i.e. stop at a persistent push p95 above 60 s.
+
+**Representative cache-size projection (t003).** There is no per-App cache switch (`BEX_BUILD_CACHE` is a manager-wide flag, `lego/operator/cmd/manager/main.go`), and the largest actively rebuilt Apps build private sources, so an isolated same-shape fixture could not be built; this is an analytic bound from the live catalog, not a measurement, and is labelled as such. The actively rebuilt production shapes (5 retained tags each) and their per-image compressed size: `block-eden-mono` (native) 2.32 GiB, `tianpan-v4-web` (native) 1.41 GiB, `beancount-forum` (Dockerfile) 1.07 GiB, `beancount-cms-v2` (auto) 0.61 GiB, `eden-cms-v2` (auto) 0.36 GiB, `agentmarketcap-1` (auto) 0.18 GiB — 5.95 GiB of images in total. The cache is one rolling `cache` tag per App in `<repo>-cache` (`lego/operator/internal/build/build.go`), so steady state retains one cache set per App; final-image layers dedupe against the image repository, and the unique cache content is the builder-stage layers. The September 5 native measurement (517 MB restored, ~2 KB unique beside the image) puts native shapes near 1×; a multi-stage Dockerfile is the 2–3× case. Projection: **expected steady-state growth ≈ 6–9 GiB** (1× for the two native Apps, up to 3× for the Dockerfile and auto Apps); worst case at 3× for every App ≈ 17.9 GiB; during a rebuild burst the previous cache set lingers for up to ~2 h (`gcDelay` + `gcInterval`), so a transient of one extra set per rebuilt App (≈ 6–18 GiB) can stack on top. **Fit:** expected growth fits the 20.03 GiB reserve above the retained peak with room to spare; the all-3× worst case fits only without a concurrent transient, and a burst on top of it would cross the 65% line but is caught by the trial's own 70%-for-10-minutes stop rule (24.95 GiB above the peak). Transfer: at ~100 builds/day a full restore of the largest cache set (≈2.3–7 GiB) on every build of that App is the dominant cost; restores are per-App, so the fleet figure is far below the 28 GB/day sizing example above.
+
+**Go/no-go:** admission passes on the expected footprint, so t004 may start — with the observer and the independently verified 72-hour rollback the procedure requires, and with the understanding that the 3× worst case relies on the 70% stop rule rather than on the 65% reserve. The switch remains **off** at the time of writing.
 
 ## Closeout state
 
