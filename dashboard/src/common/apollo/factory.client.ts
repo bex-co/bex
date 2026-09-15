@@ -2,6 +2,7 @@ import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client";
 import { BatchHttpLink } from "@apollo/client/link/batch-http";
 import { config } from "@/config/config";
 import { apolloCacheConfig } from "./cache";
+import { apolloDefaultOptions } from "./default-options";
 import { createRetryLink } from "./retry-link";
 import { createAuthErrorLink } from "./auth-error-link";
 import { handleUnauthenticated } from "./auth-redirect";
@@ -43,6 +44,7 @@ function createApolloCsrClientImpl() {
       createTerminatingLink(),
     ]),
     cache: new InMemoryCache(apolloCacheConfig),
+    defaultOptions: apolloDefaultOptions,
   });
 }
 

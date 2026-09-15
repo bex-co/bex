@@ -94,6 +94,34 @@ describe("EnvironmentsPanel", () => {
     ).toBeInTheDocument();
   });
 
+  // w1/m153: a refresh that fails over environments already on screen keeps the
+  // card (and whatever dialog or draft it holds) and says so inline.
+  it("keeps the card mounted and shows the error inline when a refresh fails over cached data", () => {
+    environmentsState.environments = [
+      {
+        id: "env-1",
+        projectId: "prj-1",
+        name: "staging",
+        ownerId: "tea-1",
+        createdAt: null,
+        serviceIds: [],
+        databaseIds: [],
+        keyValueIds: [],
+        envGroupIds: [],
+        protectedStatus: "unprotected",
+        networkIsolationEnabled: false,
+        ipAllowListEntries: [],
+      },
+    ];
+    environmentsState.error = new Error("poll failed");
+    renderPanel();
+
+    expect(screen.getByTestId("env-card")).toHaveTextContent("staging");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't refresh environments. Showing the last loaded data.",
+    );
+  });
+
   it("renders only the selected environment", () => {
     environmentsState.environments = [
       {

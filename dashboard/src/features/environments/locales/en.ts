@@ -27,6 +27,11 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: "Something went wrong loading environments. Try again shortly.",
     description: "Error state shown when the environments query fails",
   },
+  "environments.refreshErrorBody": {
+    message: "Couldn't refresh environments. Showing the last loaded data.",
+    description:
+      "Inline notice when a background refresh of environments fails while the previously loaded environments stay on screen",
+  },
   "environments.resourceCount_one": {
     message: "{count} resource",
     description:

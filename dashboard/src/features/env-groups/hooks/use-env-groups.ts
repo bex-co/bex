@@ -107,9 +107,10 @@ export function useEnvGroups(): UseEnvGroupsResult {
 
   return {
     groups: mapEnvGroups(data?.envGroups),
-    // cache-and-network reports `loading` again while refreshing a cached
-    // result. Keep rendering that result — especially the empty list after a
-    // delete — and reserve the page skeleton for the true first load.
+    // A mount over a warm cache reports `loading` with the cached result
+    // present (polls no longer do, w1/m153). Keep rendering that result —
+    // especially the empty list after a delete — and reserve the page skeleton
+    // for the true first load.
     loading: !resolved || (loading && data === undefined),
     error,
     refetch: refetchGroups,
@@ -140,7 +141,9 @@ export function useEnvGroup(id: string): UseEnvGroupResult {
 
   return {
     group: mapEnvGroup(data?.envGroup),
-    loading,
+    // First-load only (w1/m153): the detail page's editors disable their
+    // controls and swap rows for a skeleton on this flag.
+    loading: loading && data === undefined,
     error,
     refetch: refetchGroup,
   };

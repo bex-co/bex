@@ -26,6 +26,11 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "加载环境时出错，请稍后重试。",
     description: "Error state shown when the environments query fails",
   },
+  "environments.refreshErrorBody": {
+    message: "无法刷新环境，正在显示上次加载的数据。",
+    description:
+      "Inline notice when a background refresh of environments fails while the previously loaded environments stay on screen",
+  },
   "environments.resourceCount_other": {
     message: "{count} 项资源",
     description:
