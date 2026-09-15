@@ -1,6 +1,6 @@
 # w7 · m89 — Finish production build-cache enablement
 
-**Worker:** worker7 **Goal:** Land the corrected operator image, confirm Zot headroom, and complete the approved 48–72h production `BEX_BUILD_CACHE=registry` trial (or record an explicit hold). **Status:** todo
+**Worker:** worker7 **Goal:** Land the corrected operator image, confirm Zot headroom, and complete the approved 48–72h production `BEX_BUILD_CACHE=registry` trial (or record an explicit hold). **Status:** BLOCKED on t002 — t001 DONE 2026-09-15 (deploy green since run 34444812690; live digest `sha256:1f3648adb9…` from `c4212ec71909` contains m87+m88). t002 step 1 satisfied from CI; the Zot PVC re-measure, the t003 projection, and the t004 trial start all need the production kubeconfig (`HCLOUD_TOKEN` + `~/.ssh/id_bex`), which this harness could not read from `.env`. Resume from t002 in a session with production access.
 
 **Estimate:** ~4–6h including standing closing tasks.
 
@@ -8,7 +8,7 @@
 
 | id   | title                                                                                                                          | est  | depends_on      |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------ | ---- | --------------- |
-| t001 | Unblock `deploy.yml` so an image containing m87+m88 ships                                                                      | 1.5h | —               |
+| t001 | Unblock `deploy.yml` so an image containing m87+m88 ships — **DONE** 2026-09-15                                                | 1.5h | —               |
 | t002 | Confirm production runs the post-m87/m88 digest; re-check Zot PVC vs 60%/65% budget                                            | 30m  | w7/m89/t001     |
 | t003 | Representative cache-size projection on largest actively rebuilt prod shape (≥2 GC intervals)                                  | 1h   | w7/m89/t002     |
 | t004 | Start bounded trial: `BEX_BUILD_CACHE=registry` in prod overlay; 48h observe / 72h hard stop + rollback armed                  | 45m  | w7/m89/t003     |
