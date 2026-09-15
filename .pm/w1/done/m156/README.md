@@ -1,34 +1,40 @@
 # w1 · m156 — A hibernated free service whose latest deploy failed never wakes: the failed-release gate halts the reconcile before replicas and routing
 
-**Worker:** worker1 **Goal:** a free service whose newest release failed (its pre-deploy command, or its build) still sleeps and wakes on the release that is actually serving. A request gets the wake response and then the prior release's own reply, and the service never reads Running while its URL can only answer `503 service hibernated`. **Status:** in progress. t001, t002, t005 and t006 are done: the pre-deploy hold is shipped-ready with failing-then-passing tests, and the build-path hold was withdrawn to `w1/104`. t003 (live, after the deploy), t004 (live cross-surface comparison) and t007 (closeout) remain.
+**Worker:** worker1 **Goal:** a free service whose newest release failed (its pre-deploy command, or its build) still sleeps and wakes on the release that is actually serving. A request gets the wake response and then the prior release's own reply, and the service never reads Running while its URL can only answer `503 service hibernated`. **Status:** done (2026-09-15). All seven tasks are complete. The pre-deploy hold shipped in `1cb1f2d27`. On production it recovered the stuck fixture, and it passed three live checks: a timed idle-sleep wake over a failed pre-deploy (`200` in 11.9 s), the healthy idle-sleep control (11.5 s), and the REST/GraphQL/MCP comparison. The failed-build variant reproduces live and is carved out to `w1/104`, which owns its fix.
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                                                  | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Runtime convergence survives a terminal failed release: a serving prior release still wakes, hibernates, scales and routes while the failed verdict stands — **DONE** | 1h  | —          |
-| t002 | Blast radius: every halt before the Deployment write, against every runtime transition that needs that write — **DONE**                                            | 45m | t001       |
-| t003 | Live: reproduce and then verify the wake over a failed pre-deploy (and probe the failed-build variant) on production                                     | 40m | t002       |
-| t004 | Render parity                                                                                                                                          | 20m | t003       |
-| t005 | Simplify — **DONE**                                                                                                                                               | 15m | t004       |
-| t006 | Test coverage — **DONE**                                                                                                                                          | 40m | t004       |
-| t007 | Closeout                                                                                                                                               | 10m | t006       |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Runtime convergence survives a terminal failed release: a serving prior release still wakes, hibernates, scales and routes while the failed verdict stands — **DONE** | 1h | — |
+| t002 | Blast radius: every halt before the Deployment write, against every runtime transition that needs that write — **DONE** | 45m | t001 |
+| t003 | Live: reproduce and then verify the wake over a failed pre-deploy (and probe the failed-build variant) on production — **DONE** | 40m | t002 |
+| t004 | Render parity — **DONE** | 20m | t003 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 40m | t004 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
 Repeat on a throwaway free web service (`bex-co/bex` `examples/hello-go`, docker) that is live, returns `200`, and receives no traffic. Only states observed at filing time are listed:
 
 - **It wakes over a failed pre-deploy.**
+
   1. Set Pre-Deploy Command `echo qa; exit 3`, so the latest deploy reads `pre_deploy_failed`.
   2. Leave the service idle until `service_hibernated`.
   3. Request its URL every second.
 
   The first requests may get the activator's `503 {"error":"service hibernated","retryAfter":5}`. Within 60 s they get the prior release's own `200`. At filing time 188 of 188 requests over five minutes (07:30:02–07:35:01Z) got that `503`, and so did three more at 07:41:41–50Z, although `service_woken` and `server_available` had been recorded at 07:26:17Z.
+
 - **The phase does not claim Running while the URL cannot serve.** At filing time `GET /v1/services/<srv>` read `phase: Running` and the dashboard header read "Service Running · Latest deploy: Pre-Deploy Failed" throughout those `503`s.
 - **The failed release stays unrolled.** After the wake, the pod serves the prior release's response, the failed deploy stays `pre_deploy_failed`, and no new pre-deploy Job runs for that release.
 - **Control (must not regress).** A hibernated free service whose latest deploy is live wakes on request. At filing time `qa-20260915-m151ws` answered `503` at 07:30:00 and 07:30:06 and `200` at 07:30:12.
 
-The failed-build variant was traced, not observed. t003 probes it and adds its bullet here if it reproduces.
+- **It wakes over a failed build. Reproduced 2026-09-15 and owned by `w1/104`, not met by m156.**
+  - **Setup.** A free service serves its first release while its newest deploys are `build_failed`.
+  - **Observed.** After a suspend and resume it answered `503 {"error":"service hibernated","retryAfter":5}` to 112 of 113 requests over 180 s, and was still `503` 4.5 minutes later, while the phase read Running.
+  - **Required.** The prior release's own `200` within 60 s, as the healthy resume control gets in 11.5 s.
+  - **Scope.** m156 fixed the held pre-deploy step only; the build-path hold was withdrawn in review (§ Implementation, Simplify). Transcript: § Live verification.
 
 ## Evidence (probes run 2026-09-15, production, workspace `bex` / `tea-d98210cbbpdc73dcrkvg`)
 
@@ -105,12 +111,14 @@ The failed-build variant was traced, not observed. t003 probes it and adds its b
 **Simplify (t005).** Three review passes (reuse, quality, efficiency) over the first version.
 
 - **Withdrawn: the build-path hold.** The first version also held a release still waiting for its image, from `resolveDeployImage`. The review found it unsafe:
+
   - a parked App with a build in flight lost the build's own requeue, and nothing watches build Jobs, so a finished build could go unobserved for hours while the phase flipped between Building and Hibernated;
   - it ran before `reconcileDiskLifecycle`, so it could scale a service back up during a disk restore;
   - on every 5 s build poll it ran autoscaling and routing without completing the transition or persisting status;
   - its status writes could overwrite a legacy Ready-only build-failure marker.
 
   The failed-build case stays traced, not fixed. t003 probes it, and `w1/104` records these constraints for the fix.
+
 - **Applied:**
   - a stored failed verdict no longer passes through `failPreDeploy`'s cached settle before the scale; `settleFailureOverPriorRelease` delegates to `settlePriorRelease(…, parked)`;
   - the hold applies only when the prior Service exists (a worker changed to web has none);
@@ -145,7 +153,17 @@ The failed-build variant was traced, not observed. t003 probes it and adds its b
 
 - `docs/ADR004-app-deployment.md` § Pre-deploy command, "A held release does not freeze the serving one", states the invariant, the parking rule, what changed and what did not (`w1/103`, `w1/104`).
 - `docs/ADR018-render-parity.md` row 71 records the same against Render's "continues running its most recent successful deploy".
-- The live cross-surface comparison waits for the deploy (t003).
+- **Live cross-surface comparison (10:03:39Z, after the wake).** The m149 fixture over its failed release `dep-dakf8lpvi8js739uilfg`:
+
+| Surface | Service | Failed deploy |
+| --- | --- | --- |
+| REST `GET /v1/services/srv-dakeca15v75s738uf84g` and `…/deploys/dep-dakf8lpvi8js739uilfg` | `phase: Running`, `suspended: not_suspended` | `status: pre_deploy_failed`, `preDeployStatus: failed`, `failureReason: "the pre-deploy command exited with code 3; check the pre-deploy logs"` |
+| GraphQL `deploy(serviceId, deployId)` | — | same three fields, same text |
+| MCP `get_service` / `get_deploy` | `phase: Running`, `suspended: not_suspended` | same three fields, same text |
+| URL | `200 m149-predeploy` (the prior release) | — |
+
+- **Result.** The surfaces agree, and Running now matches what the URL does. This is Render's "continues running its most recent successful deploy", so ADR018 records no divergence.
+- **Not compared.** The dashboard header, because the Playwright browser was disconnected this run. Its header reads the same GraphQL service phase and deploy status.
 
 **Blast radius (t002).** Every `Reconcile` path that returns before the Deployment, Service or Ingress write, crossed with the runtime transitions that need that write: wake, auto-hibernate, suspend, resume, manual scale, autoscale, maintenance on or off, custom domains, and the IP allow-list.
 
@@ -161,6 +179,77 @@ The failed-build variant was traced, not observed. t003 probes it and adds its b
 | Disk lifecycle (`reconcileDiskLifecycle`, a restore in progress) | Unchanged, deliberately: the hold runs after it, and a restore needs the volume detached | — |
 | Registry credential gate (`deployRegistryGate`) | Unchanged: transient, holds the whole runtime pass until zot accepts the App's credential | — |
 | Namespace guard, finalizer, protected-secret refusal, registry credential errors | Unchanged: genuine errors that set Failed, or no-op guards | — |
+
+## Live verification (2026-09-15, production)
+
+**Rollout.** Deploy run 34950840699 for `1cb1f2d27` succeeded, and the images were pinned at `1df779f8a` (09:57:29Z).
+
+**The stuck fixture recovers (t003).** `qa-20260915-m149` had answered `503 service hibernated` since 07:30Z. Its phase read Running and its latest deploy was `pre_deploy_failed`.
+
+```text
+09:23:00–09:58:16Z  URL every ~62 s: 35/35 `503 {"error":"service hibernated","retryAfter":5}`
+09:57:29Z           production images pinned to 1cb1f2d27dda (1df779f8a)
+10:02:18.524Z       URL (first 1 s sample after the operator rolled): `200 m149-predeploy`
+10:02:20Z           GET /v1/services/srv-dakeca15v75s738uf84g → phase Running, numInstances 1
+10:02:21Z           latest deploy dep-dakf8lpvi8js739uilfg still pre_deploy_failed; no new release
+```
+
+- The operator woke the prior release on its first pass after the rollout. No request was needed, because the stored wake left `desiredReplicas` at 1.
+- The events list since 09:00Z is empty. The phase already read Running, so no `service_woken` was projected.
+
+**DoD: a wake over a failed pre-deploy (t003).** The same fixture was left idle with no requests from 10:02:21Z. Its latest deploy was still `dep-dakf8lpvi8js739uilfg`, `pre_deploy_failed`.
+
+```text
+10:28:49Z     service_hibernated
+10:29:04.600  GET /v1/services/srv-dakeca15v75s738uf84g → phase Hibernated
+10:29:05.977  URL (every 1 s from here): 503 {"error":"service hibernated","retryAfter":5}
+10:29:17.174  URL: 200 m149-predeploy  (8 requests, 11.9 s after the first; no other responses)
+10:29:19Z     service_woken
+10:29:22.8    phase Running
+10:29:23.4    deploys: dep-dakf8lpvi8js739uilfg pre_deploy_failed, dep-dakf80pvi8js739uild0 pre_deploy_failed (no new release)
+```
+
+- **All three DoD bullets hold.** The prior release's own `200` arrives within 60 s. Running is claimed only once the URL serves. The failed release stays unrolled.
+- **The pre-deploy Job was not observed directly** (no cluster access). No deploy row opened, and the pod served the prior release's `MESSAGE`.
+- At filing time the same state gave 188/188 `503`s over five minutes.
+
+**The failed-build variant reproduces (t003 probe; the fix belongs to `w1/104`).** Fixture: `qa-20260915-m156b` (`srv-dakhhdfr0t2c73fc63gg`), a free web service from `examples/hello-go` with `MESSAGE=m156-build`.
+
+- **Why suspend and resume.** Waiting for an auto-sleep could not conclude, because outside scanner requests (`10.10.0.7`, at 10:24:33, 10:24:49 and 10:34:18Z) kept resetting the idle clock. Resume needs the same Deployment and Ingress write that the build halt returns before (§ Blast radius, the "release still waiting for its image" row).
+
+```text
+10:09:22Z     first deploy dep-dakhhdfr0t2c73fc63h0 live; URL 200 m156-build
+10:09:23Z     PATCH envSpecificDetails.dockerfilePath ./Dockerfile.qa-missing → 200; that change opened dep-dakhikvqniac73emh130 → build_failed
+10:09:25Z     POST /deploys → dep-dakhilfr0t2c73fc63i0 → build_failed 10:10:07Z ("failed to read dockerfile: open ./Dockerfile.qa-missing")
+10:10:09Z     phase Running; URL 200 m156-build (the prior release keeps serving)
+10:38:45.9    POST /suspend → 202; 10:38:46.9 phase Hibernated, suspended
+10:38:57.4    URL 503 no available server
+10:38:57.9    POST /resume → 202; 10:39:02Z service_resumed
+10:38:58.5–10:41:59  URL every ~1.6 s: 112/113 `503 {"error":"service hibernated","retryAfter":5}`, 1 `503 no available server`; no 200 in 180.9 s
+10:41:59Z     phase Running, not_suspended; deploys unchanged (both build_failed)
+10:43:25Z     URL 503 {"error":"service hibernated","retryAfter":5}; phase Running (stuck, not slow)
+```
+
+- **DoD control: an idle sleep and a wake on a healthy service (must not regress).** Fixture `qa-20260915-m156c` (`srv-dakhuuvqniac73emh18g`); its only deploy went live at 10:37:49Z. The probe sent no requests from 10:37:57Z. Scanner requests kept arriving until at least 10:45:37Z, so the sleep came late.
+
+```text
+11:31:46Z     service_hibernated
+11:32:04.230  URL (every 1 s from here): 503 {"error":"service hibernated","retryAfter":5}
+11:32:15.099  URL: 200 m156-control  (8 requests, 11.5 s after the first)
+11:32:20.7    phase Running; latest deploy dep-dakhuuvqniac73emh190 live
+```
+
+- **Resume control, same operator build.** The same sequence ran on a fresh healthy fixture, `qa-20260915-m156d` (`srv-daki2d7r0t2c73fc63p0`), whose only deploy was live:
+
+```text
+10:45:28.0    first deploy dep-daki2d7r0t2c73fc63pg live; URL 200 m156-resume-control
+10:45:28.9    POST /suspend → 202; 10:45:29.9 phase Hibernated, suspended; 10:45:40.5 URL 503 no available server
+10:45:41.2    POST /resume → 202
+10:45:41.8    URL 503 {"error":"service hibernated","retryAfter":5}
+10:45:52.8    URL 200 m156-resume-control  (8 requests, 11.5 s after the resume); phase Running
+```
+
+- **Conclusion.** Resume recovers in about 11 s on a healthy service, so `m156b`'s stuck `503`s come from the failed-build halt. That DoD bullet is not met by m156, which fixed the pre-deploy hold only (§ Implementation, Simplify). It is recorded as reproduced in `w1/104`, which owns the fix.
 
 ## Dedupe
 
