@@ -1,20 +1,6 @@
 # w1 · m158 — A background worker whose newest release is held (a pre-deploy step or a build) ignores suspend, resume and scale
 
-**Worker:** worker1 **Goal:** a background worker's replicas follow suspend, resume, manual scale and autoscale while a newer release waits on its pre-deploy step or its image. They move on the prior release's pod template, and the held release never rolls. **Status:** blocked (2026-09-15). The fix and its tests are shipped: t001, t002, t005 and t006 are done. The live check (t003) needs your judgement; see § Blocked.
-
-## Blocked — needs your judgement (2026-09-15)
-
-The fix and its tests shipped in the same commit that moved this milestone here: t001, t002, t005 and t006 are done. Only the live check (t003) is left, and it needs a decision.
-
-- **Why it is blocked.**
-  - **Background workers are paid-only.** bex-api refuses the free plan on a background worker (`errWorkerFreePlan`, `lego/backend/internal/apps/service.go`), and an omitted plan defaults to `starter`.
-  - **The loop may not buy anything,** so no worker was created.
-- **The question.** May I create one `starter` background worker from `examples/hello-go` in the QA workspace (`bex` / `tea-d98210cbbpdc73dcrkvg`) for about 20 minutes, run t003 on it, and delete it?
-  - The check: suspend, resume and scale over a failed pre-deploy step and over a failed build.
-  - Whether that bills anything depends on the workspace's `tenants.billing_excluded` flag (ADR040, Mode A), which the loop cannot see.
-- **Alternatives.**
-  - Close m158 on the test evidence: three tests fail with workers excluded from either hold, and the envtest suite is green.
-  - Keep it blocked.
+**Worker:** worker1 **Goal:** a background worker's replicas follow suspend, resume, manual scale and autoscale while a newer release waits on its pre-deploy step or its image. They move on the prior release's pod template, and the held release never rolls. **Status:** done (2026-09-15). All seven tasks are done and the definition of done is met live on production, on a paid worker the user approved for the check and that was deleted afterwards.
 
 ## Tasks (in order)
 
@@ -22,15 +8,21 @@ The fix and its tests shipped in the same commit that moved this milestone here:
 | --- | --- | --- | --- |
 | t001 | Worker replica convergence under both holds: a scale-only patch of the prior Deployment plus the worker's parked or running status — **DONE** | 1h | — |
 | t002 | Blast radius: every worker transition against the pre-deploy hold and the artifact hold — **DONE** | 30m | t001 |
-| t003 | Live: suspend, resume and scale a background worker over a failed pre-deploy step and a failed build | 45m | t002 |
-| t004 | Render parity | 20m | t003 |
+| t003 | Live: suspend, resume and scale a background worker over a failed pre-deploy step and a failed build — **DONE** | 45m | t002 |
+| t004 | Render parity — **DONE** | 20m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
-Traced, not yet observed. t003 probes each bullet first and records the pre-fix result.
+Met (2026-09-15). t003 recorded the pre-fix result first; § Live verification has every transcript. Per-bullet verdict:
+
+- **Resume over a failed pre-deploy step — live.** Pre-fix it stayed parked for 124 s; post-fix the same resume converged. **Suspend — live, and it already worked pre-fix** (§ Correction): what the fix changes there is the pod template the parked worker keeps.
+- **Suspend and resume over a failed build — live,** 0.4 s and 0.9 s.
+- **Manual scale — live over a _failed_ pre-deploy verdict** (1 → 2 instances in 15.7 s). Scaling while a step is still _running_, and release 2 rolling once the step passes, are pinned by `TestWorkerScaleWhilePreDeployRunsTakesEffect`, not by a live transcript: production's pre-deploy step is too short to act inside.
+- **The held release stays held — live** (the deploy row stays `pre_deploy_failed` / `build_failed` and release 1 keeps running). "No pre-deploy Job runs again" is test-only: Jobs are not observable through the API.
+- **Control — test-only on a worker.** A healthy worker's suspend, resume and scale are covered by the envtest suite; the live healthy controls in `w1/m156` and `w1/m157` are web services. The worker fixture was put into a held state before it was ever suspended.
 
 - **Suspend and resume over a failed pre-deploy step.** A worker serving release 1 whose release 2 recorded `pre_deploy_failed`:
   - **Suspend.** Within one reconcile its Deployment scales to 0 and the service reads suspended (Hibernated).
@@ -105,10 +97,82 @@ Traced, not yet observed. t003 probes each bullet first and records the pre-fix 
 
 Autoscale follows `desiredReplicas` like manual scale; workers never auto-sleep.
 
-## Live-verification constraint
+## Live verification (2026-09-15, production)
 
-- **Plan.** Background workers may require a paid plan. t003 creates one only when the QA workspace can do so without a purchase.
-- **Otherwise.** The live step moves to `w1/blocked/` with the exact question, and the unit and envtest coverage stands in for it.
+**Fixture.** `qa-20260915-m158w` (`srv-dakst9031mas7389obrg`), a background worker from `examples/hello-go` on the `starter` plan, created 23:03:01Z with the user's approval for this check and deleted afterwards. Workers are paid-only (`errWorkerFreePlan`), which is why the check waited for that approval.
+
+**Held release.** A PATCH of `serviceDetails.preDeployCommand` to `echo qa-m158; exit 3` at 23:11:47Z opened `dep-dakt1cpcin2c7382cjc0`, which read `pre_deploy_failed` at 23:12:08Z ("the pre-deploy command exited with code 3"). The phase stayed Running: release 1 keeps running.
+
+**Before the fix**, on the `w1/m157` operator (`82fed6791`), which still excluded workers from both holds:
+
+```text
+23:12:46.1  POST /suspend → 202; phase Hibernated
+23:12:48.4  POST /resume → 202
+23:14:52.9  phase still Hibernated — 124 s after the resume, the worker never came back
+```
+
+- **The filed symptom, reproduced.** A resumed worker stays parked while a failed pre-deploy verdict stands.
+- **Caveat.** Suspend and resume were 2.2 s apart, so the suspend had not fully settled. What makes it conclusive is the 124 s with no change after the resume.
+- **What is observable.** `serviceDetails.numInstances` is the spec value and stays 1 throughout, so the phase is the signal for a worker's live replica state.
+
+**After the fix (t003).** The worker was deliberately left resumed-but-parked, so the `w1/m158` operator (pinned `eb035151a`, 23:30:41Z) had to converge it with no further action.
+
+```text
+23:15:31Z  phase Hibernated (resume already issued at 23:12:48, ignored by the m157 operator)
+23:30:41Z  images pinned to 3be66b1d0259 (eb035151a); the deploy job rolls the operator
+23:36:11Z  phase Hibernated → Running, with no request, no second resume and no new deploy
+```
+
+- **The resume finally lands.** The same resume that sat unhonoured for 124 s on the old operator is converged by the new one as soon as it reconciles the App.
+- **The held release stays held.** `dep-dakt1cpcin2c7382cjc0` is still `pre_deploy_failed`, and release 1 is what runs.
+
+
+**Manual scale over the held verdict (t003).** With `dep-dakt1cpcin2c7382cjc0` still `pre_deploy_failed`:
+
+```text
+23:37:23.5  instance-count = 1; phase Running
+23:37:23.9  POST /scale {numInstances: 2} → 202
+23:37:39.6  instance-count = 2 (+15.7 s) — the scale landed while the verdict stood
+23:37:59.2  deploys unchanged: dep-dakt1cpcin2c7382cjc0 pre_deploy_failed, dep-dakst9031mas7389obs0 live
+23:37:59.6  POST /scale {numInstances: 1} → 202
+```
+
+- **Why the metric, not `numInstances`.** `serviceDetails.numInstances` is the spec value the API echoes back, so it flips instantly and proves nothing. `GET /v1/metrics/instance-count` is the live count, and it reached 2 fifteen seconds later.
+- **A first attempt did not count.** It read `numInstances` and scaled back down 1.7 s later, before any second pod could exist. It is not evidence and is not counted here.
+- **Blemishes.** One mid-run metric read returned empty (a transient read), and the read after the scale-down still showed 2 because the metric had not caught up; the spec was back to 1.
+
+**Suspend and resume over a failed build (t003).** The second DoD bullet, on the same worker and the same `w1/m158` operator:
+
+```text
+23:41:38.2  before: Running / not_suspended; held deploy dep-dakt1cpcin2c7382cjc0 pre_deploy_failed
+23:41:38.6  PATCH serviceDetails.envSpecificDetails.dockerfilePath = ./Dockerfile.qa-missing → 200
+23:42:10.0  dep-daktfcgb3bfc73eq7udg build_failed ("build failed in the docker build step: … load build definition from …")
+23:42:10.4  over the failed build: phase Running — release 1 still runs
+23:42:10.7  POST /suspend → 202
+23:42:11.1  phase Hibernated (0.4 s)
+23:42:21.5  POST /resume → 202
+23:42:22.4  phase Running (0.9 s) → resumed over the failed build
+23:42:22.7  deploys: dep-daktfcgb3bfc73eq7udg build_failed · dep-dakt1cpcin2c7382cjc0 pre_deploy_failed · dep-dakst9031mas7389obs0 live
+```
+
+- **The contrast with the baseline.** The same resume on the `w1/m157` operator was still unhonoured 124 s later. Here it lands in under a second, with two held releases stacked (a failed build on top of a failed pre-deploy step) and release 1 serving.
+- **No rebuild.** The failed build's deploy row stays `build_failed`; no new deploy was opened by the suspend or the resume.
+
+**Cleanup.** `DELETE /v1/services/srv-dakst9031mas7389obrg` → `204` at 23:44:30Z, `GET` → `404`. The paid worker existed 23:03:01–23:44:30Z (~41 minutes) and was the only resource created for this milestone.
+
+## Render parity (t004)
+
+**Live (REST).** Every step above was read through REST: `phase`, `suspended` (`suspended` / `not_suspended`), `serviceDetails.numInstances`, the deploys list, and `GET /v1/metrics/instance-count`. They stayed consistent with each other across the suspend, the resume, the scale and the failed build.
+
+**The other three surfaces read the same object, by construction.**
+
+- **MCP** `get_service` returns `toRenderService(app)` (`lego/backend/internal/apps/mcp.go:1110`) — the identical struct the REST handler serialises (`render.go:309`), so the two cannot disagree.
+- **GraphQL** projects the same `AppView`: `suspended` → `core.SuspendedEnum(a.Suspended)` (`graphql.go:312`), `phase` → `a.Phase` (`:328`), and `replicas` just below it. The field name differs from REST's nested `serviceDetails.numInstances`; the value is the same one.
+- **The dashboard** scales through the same verb the REST and MCP `scale` calls use (`dashboard/src/features/services/hooks/use-scale-service.ts` → `scaleService`) and renders the GraphQL fields above.
+
+`w1/m157` t004 exercised all four surfaces live on a web service in the same held state; for the worker the fixture was deleted on schedule, so the three non-REST surfaces rest on the shared projection rather than on their own transcripts.
+
+**What every surface reports is the desired count, not the running one.** `view()` sets `Replicas: a.Spec.Replicas` (`lego/backend/internal/apps/service.go:943`), so `numInstances` / `replicas` flips the instant a scale is accepted, whatever the pods are doing. The live count is `GET /v1/metrics/instance-count`. This matches Render, whose `numInstances` is also the configured count, so **no divergence is recorded in ADR018** — but it is written down here because it invalidated a first scale attempt (§ Manual scale).
 
 ## Dedupe
 
