@@ -1,6 +1,6 @@
 # w7 · m90 — CNPG `enablePDB: false` for single-instance clusters
 
-**Worker:** worker7 **Goal:** Single-instance managed Postgres stops installing a zero-disruption PDB that pins autoscaled serving nodes. **Status:** todo
+**Worker:** worker7 **Goal:** Single-instance managed Postgres stops installing a zero-disruption PDB that pins autoscaled serving nodes. **Status:** done — 2026-09-15
 
 **Estimate:** ~3h including standing closing tasks.
 
@@ -8,13 +8,13 @@
 
 | id   | title                                                                                   | est | depends_on      |
 | ---- | --------------------------------------------------------------------------------------- | --- | --------------- |
-| t001 | Project `enablePDB: false` when `instances == 1`; leave HA (≥2) on CNPG default         | 45m | —               |
-| t002 | Envtest: single-instance gets `false`; HA cluster unchanged                             | 45m | w7/m90/t001     |
-| t003 | Existing single-instance Clusters reconcile to `false` (or documented one-shot)         | 30m | w7/m90/t001     |
-| t004 | Close ADR060 D8 residual with drain/elasticity note                                     | 20m | w7/m90/t001     |
-| t005 | Simplify                                                                                | 30m | w7/m90/t004     |
-| t006 | Test coverage                                                                           | 45m | w7/m90/t004     |
-| t007 | Closeout                                                                                | 15m | w7/m90/t005, w7/m90/t006 |
+| t001 | Project `enablePDB: false` when `instances == 1`; leave HA (≥2) on CNPG default — **DONE** | 45m | —               |
+| t002 | Envtest: single-instance gets `false`; HA cluster unchanged — **DONE** | 45m | w7/m90/t001     |
+| t003 | Existing single-instance Clusters reconcile to `false` (or documented one-shot) — **DONE** | 30m | w7/m90/t001     |
+| t004 | Close ADR060 D8 residual with drain/elasticity note — **DONE** | 20m | w7/m90/t001     |
+| t005 | Simplify — **DONE** | 30m | w7/m90/t004     |
+| t006 | Test coverage — **DONE** | 45m | w7/m90/t004     |
+| t007 | Closeout — **DONE** | 15m | w7/m90/t005, w7/m90/t006 |
 
 ## Definition of done
 
