@@ -15,8 +15,9 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m89** — [Finish production build-cache enablement](m89/README.md) (8 tasks; ~4–6h) ← promoted from `043`; `/pm-brainstorm for w7 for top 3 customer-impactfully work` 2026-09-09 #1. Unblock deploy of m87+m88 image, cache-size budget, 48–72h trial.
+- [ ] **m89** — [Finish production build-cache enablement](m89/README.md) (8 tasks; ~4–6h) ← promoted from `043`; `/pm-brainstorm for w7 for top 3 customer-impactfully work` 2026-09-09 #1. Unblock deploy of m87+m88 image, cache-size budget, 48–72h trial. **BLOCKED on t002 (2026-09-15):** t001 done — `deploy.yml` green since 2026-09-10 and the live digest contains both fixes; the PVC re-measure, size projection, and trial start need the production kubeconfig, which this harness could not obtain (`.env` unreadable). Resume from t002 with production access.
 - [ ] **m90** — [CNPG `enablePDB: false` for single-instance clusters](m90/README.md) (7 tasks; ~3h) ← same brainstorm #2; ADR060 D8 residual.
+- [ ] **m147** — [Restore `bex ea sandboxes exec` under the pinned Render CLI: run connect-token handshake + SSE exit/error shapes](m147/README.md) (10 tasks; ~6h) ← continuous `/qa-find-bugs-cli` for w7, 2026-09-14; source-proven, live repro is t001. Since the v2.24 pin the client first mints `POST /v1/sandboxes/{id}/runs/stream/token`, a route bex never shipped (`w3/m33/t002` deferred). Every pin also decodes `exit_code`/`{status,message}` while the gateway emits `exitCode`/`{error,code}`, so failing sandbox commands exit 0.
 
 - [x] **m87** — [Rebuild native output when build-time environment changes](done/m87/README.md) (8 tasks; 3h implementation, ~5h total) ← approved 2026-09-08 pm-brainstorm proposal 1. **DONE 2026-09-08:** opaque native env revision busts BuildKit cache on environment-only changes; local BuildKit A→B proof + unit coverage; ADR018/ADR060 updated. Unblocks m88/t001.
 - [x] **m88** — [Make clear-cache deploys effective](done/m88/README.md) (9 tasks; 4h implementation, ~6h total) ← approved proposal 2. **DONE 2026-09-08:** clearCache=clear skips registry import for that release, still exports fresh cache; sibling Job fence; ADR018/ADR060 + drill evidence.
@@ -99,6 +100,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - [ ] **044** — [Reject empty registry tokens before saving metadata](044.md) (45m) ← transferred from `w4/061`; `/pm-brainstorm for w7 for top 3 customer-impactfully work` 2026-09-09 #3.
+- [ ] **045** — [Brand the remaining Render command references and docs link in supported nested help](045.md) (40m) ← continuous `/qa-find-bugs-cli` for w7, 2026-09-14; `ea sandboxes*` help's double-quoted `"render …"` references + "your Render workspace", and `jobs create`'s `render.com/docs` link — the remainder `w4/done/063` did not reach.
 
 > **043** promoted to **m89** 2026-09-09 (Sep 9 approval expanded recommend-only scope past the inbox sizing rule); archived in `done/043.md`.
 
