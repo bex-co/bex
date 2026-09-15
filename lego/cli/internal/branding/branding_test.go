@@ -54,6 +54,9 @@ func TestRewriteTextBrandingPhrases(t *testing.T) {
 		{"Visit https://render.com/docs/ssh", "Visit https://render.com/docs/ssh"},
 		{"bex.yml is a filename alias", "bex.yml is a filename alias"},
 		{"'render workspace set <name|ID>'", "'bex workspace set <name|ID>'"},
+		{"groups with \"render ea sandbox-groups\".", "groups with \"bex ea sandbox-groups\"."},
+		{"Manage sandboxes for your Render workspace.", "Manage sandboxes for your Bex workspace."},
+		{"validate \"render.yaml\" and \"bex.yml\"", "validate \"render.yaml\" and \"bex.yml\""},
 		{"render.yaml bex.yml ~/.render/skills https://render.com RENDER_HOST renderer", "render.yaml bex.yml ~/.render/skills https://render.com RENDER_HOST renderer"},
 	}
 	for _, tc := range cases {
