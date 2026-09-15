@@ -11,7 +11,7 @@
       "env": {}
     },
     "expo": {
-      "type": "http",
+      "type": "streamable-http",
       "url": "https://mcp.expo.dev/mcp"
     }
   }
