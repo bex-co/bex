@@ -78,6 +78,56 @@ func TestProductStaticSiteCreation(t *testing.T) {
 	}
 }
 
+// TestProductBlueprintDatastoreCreation records postgres/keyvalue product-
+// activity on Blueprint create (w5/056) and not again on idempotent re-apply.
+func TestProductBlueprintDatastoreCreation(t *testing.T) {
+	svc, _ := newTenantService(fakeWorkspace{"dana": "tea-2"})
+	var events []core.ProductActivity
+	svc.ProductActivity = func(_ context.Context, e core.ProductActivity) error {
+		events = append(events, e)
+		return nil
+	}
+	ctx := ctxAs("dana")
+	manifest := `
+databases:
+  - name: db
+    plan: basic-256mb
+    diskSizeGB: 5
+    postgresMajorVersion: "16"
+services:
+  - name: cache
+    type: redis
+    plan: free
+    ipAllowList: []
+`
+	res, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-2", Manifest: manifest})
+	if err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if len(res.Databases) != 1 || len(res.KeyValues) != 1 {
+		t.Fatalf("result databases=%d keyValues=%d", len(res.Databases), len(res.KeyValues))
+	}
+	var postgres, keyvalue int
+	for _, e := range events {
+		switch {
+		case e.ResourceType == "postgres" && e.EventType == "created" && e.ResourceID == res.Databases[0].ID && e.WorkspaceID == "tea-2":
+			postgres++
+		case e.ResourceType == "keyvalue" && e.EventType == "created" && e.ResourceID == res.KeyValues[0].ID && e.WorkspaceID == "tea-2":
+			keyvalue++
+		}
+	}
+	if postgres != 1 || keyvalue != 1 {
+		t.Fatalf("create events postgres=%d keyvalue=%d all=%+v", postgres, keyvalue, events)
+	}
+	n := len(events)
+	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-2", Manifest: manifest}); err != nil {
+		t.Fatalf("re-apply: %v", err)
+	}
+	if len(events) != n {
+		t.Fatalf("re-apply recorded %d new events: %+v", len(events)-n, events[n:])
+	}
+}
+
 type productRollbackStore struct {
 	recordingStore
 	rolledBack []string
