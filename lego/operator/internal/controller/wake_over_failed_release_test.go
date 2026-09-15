@@ -89,6 +89,36 @@ func deploymentTemplateRevision(t *testing.T, cl client.Client, nn types.Namespa
 	return dep.Spec.Template.Labels[labelRevision]
 }
 
+// serveReleaseOne reconciles the fixture's prebuilt release until it is the
+// active release, and returns its pod template revision and image.
+func serveReleaseOne(t *testing.T, r *AppReconciler, cl client.Client, nn types.NamespacedName) (string, string) {
+	t.Helper()
+	reconcileTwice(t, r, nn)
+	markDeploymentRolledOut(t, cl, nn)
+	reconcileTwice(t, r, nn)
+	var live appv1alpha1.App
+	if err := cl.Get(context.Background(), nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	if live.Status.ActiveRevision == "" || live.Status.Phase != appv1alpha1.PhaseRunning {
+		t.Fatalf("setup: release 1 never became active (phase %q, activeRevision %q)", live.Status.Phase, live.Status.ActiveRevision)
+	}
+	return deploymentTemplateRevision(t, cl, nn), live.Status.Image
+}
+
+func setSuspendedAt(t *testing.T, cl client.Client, nn types.NamespacedName, suspended bool, generation int64) {
+	t.Helper()
+	var live appv1alpha1.App
+	if err := cl.Get(context.Background(), nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	live.Spec.Suspended = suspended
+	live.Generation = generation
+	if err := cl.Update(context.Background(), &live); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 	scheme := wakeScheme()
 	app := activeApp("tea-m156")
@@ -99,17 +129,11 @@ func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	// Release 1 serves.
-	reconcileTwice(t, r, nn)
-	markDeploymentRolledOut(t, cl, nn)
-	reconcileTwice(t, r, nn)
+	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
 	var live appv1alpha1.App
 	if err := cl.Get(ctx, nn, &live); err != nil {
 		t.Fatal(err)
 	}
-	if live.Status.ActiveRevision == "" || live.Status.Phase != appv1alpha1.PhaseRunning {
-		t.Fatalf("setup: release 1 never became active (phase %q, activeRevision %q)", live.Status.Phase, live.Status.ActiveRevision)
-	}
-	priorRevision := deploymentTemplateRevision(t, cl, nn)
 
 	// A config change adds a failing pre-deploy command as release 2, and the
 	// step's failed verdict is stored against that release.
@@ -205,10 +229,7 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 	}
 
 	// Release 1 serves, then goes idle and parks.
-	reconcileTwice(t, r, nn)
-	markDeploymentRolledOut(t, cl, nn)
-	reconcileTwice(t, r, nn)
-	priorRevision := deploymentTemplateRevision(t, cl, nn)
+	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
 	stampLastActiveAt(t, cl, nn, time.Now().Add(-time.Hour))
 	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
 		t.Fatalf("reconcile: %v", err)
@@ -287,24 +308,9 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 	r := wakeReconciler(cl, scheme)
 	ctx := context.Background()
 	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
-	setSuspended := func(suspended bool, generation int64) {
-		t.Helper()
-		var live appv1alpha1.App
-		if err := cl.Get(ctx, nn, &live); err != nil {
-			t.Fatal(err)
-		}
-		live.Spec.Suspended = suspended
-		live.Generation = generation
-		if err := cl.Update(ctx, &live); err != nil {
-			t.Fatal(err)
-		}
-	}
 
 	// Release 1 serves; release 2's pre-deploy step failed.
-	reconcileTwice(t, r, nn)
-	markDeploymentRolledOut(t, cl, nn)
-	reconcileTwice(t, r, nn)
-	priorRevision := deploymentTemplateRevision(t, cl, nn)
+	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
 	var live appv1alpha1.App
 	if err := cl.Get(ctx, nn, &live); err != nil {
 		t.Fatal(err)
@@ -327,7 +333,7 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 	reconcileTwice(t, r, nn)
 
 	// Suspend: scaled to 0 on the prior release's template.
-	setSuspended(true, 3)
+	setSuspendedAt(t, cl, nn, true, 3)
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 0 {
 		t.Fatalf("suspended replicas = %d, want 0", got)
@@ -337,7 +343,7 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 	}
 
 	// Resume: replicas come back, and the route follows once a pod is ready.
-	setSuspended(false, 4)
+	setSuspendedAt(t, cl, nn, false, 4)
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 1 {
 		t.Fatalf("resumed replicas = %d, want 1: a failed pre-deploy verdict must not block resume", got)
