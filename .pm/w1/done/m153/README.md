@@ -1,38 +1,42 @@
 # w1 · m153 — Background polls close open dialogs and interrupt typing on the environment card, the source picker and the env-group editor
 
-**Worker:** worker1 **Goal:** once a polled dashboard query has data, a background poll or refetch never swaps the rendered content for its loading skeleton. Open dialogs stay open, unsaved drafts keep their values, and a focused input keeps focus across every 30 s tick. The skeleton renders only on the true first load, when there is no data yet. **Status:** in progress — t006 and t007 done; t001–t005 implemented with tests green, and their live probes (the DoD bullets, t003's pre-fix env-group probe, t002's menu checks) and t005's Render comparison wait for the deploy; then t008 closeout.
+**Worker:** worker1 **Goal:** once a polled dashboard query has data, a background poll or refetch never swaps the rendered content for its loading skeleton. Open dialogs stay open, unsaved drafts keep their values, and a focused input keeps focus across every 30 s tick. The skeleton renders only on the true first load, when there is no data yet. **Status:** done (2026-09-15). All eight tasks are complete. Every DoD bullet, t002's menu checks and t003's editor pass live on production. t002 and t003 have their own vitests, which fail on the pre-fix code. t005's Render dashboard comparison was not performed, because no Render session was available; see § Parity.
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                | est | depends_on       |
-| ---- | -------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | The project environment card stays mounted across `Environments` polls (`useEnvironments` reports first-load-only `loading`) | 25m | —                |
-| t002 | The service source picker's GitHub tab stays mounted across `GitConnections` polls                                   | 20m | —                |
-| t003 | The env-group Environment editor keeps its rows mounted across `EnvGroup` polls (probe live first)                   | 25m | —                |
-| t004 | Blast radius: every polled hook that returns raw `loading`, the `refetchQueries` path, and one written convention    | 40m | t001, t002, t003 |
-| t005 | Render parity                                                                                                        | 10m | t004             |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | The project environment card stays mounted across `Environments` polls (`useEnvironments` reports first-load-only `loading`) — **DONE** | 25m | — |
+| t002 | The service source picker's GitHub tab stays mounted across `GitConnections` polls — **DONE** | 20m | — |
+| t003 | The env-group Environment editor keeps its rows mounted across `EnvGroup` polls (probe live first) — **DONE** | 25m | — |
+| t004 | Blast radius: every polled hook that returns raw `loading`, the `refetchQueries` path, and one written convention — **DONE** | 40m | t001, t002, t003 |
+| t005 | Render parity — **DONE** | 10m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 40m | t005 |
-| t008 | Closeout                                                                                                             | 10m | t007             |
+| t008 | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
 Run each bullet on the production dashboard while watching GraphQL operation names, either in the browser's Network tab or with a Playwright request listener. The baseline poll is `RESOURCE_POLL_INTERVAL_MS` = 30 s (`dashboard/src/common/lib/polling.ts:11`). Fixtures are a throwaway project with one environment holding one throwaway service. Only states observed at filing time are listed:
 
 - **The environment settings dialog survives polls.**
+
   1. On the project page, open the environment's "More actions" → "All settings".
   2. Type `203.0.113.0/24` into "New CIDR block".
   3. Wait 65 s without clicking, covering at least two `Environments` polls.
 
   The dialog is still open and the field still holds `203.0.113.0/24`. At filing time the `Environments` poll went out 24.3 s after the dialog opened, and the dialog was gone at 24.9 s, taking the typed CIDR with it.
+
 - **The Manage resources dialog survives polls.** Open "Manage resources", tick an unassigned service without saving, and wait 65 s. The dialog is still open and the box is still ticked. At filing time the poll went out at 26.0 s and the dialog closed at 26.9 s. Nothing was written: `GET /v1/environments/<env>` still returned the one previously assigned `serviceIds`.
 - **The environment card is never replaced by its skeleton after first load.** 150 ms after an `Environments` poll request, the "Manage resources" button is present and `main` contains no skeleton nodes. At filing time the button was absent, `main` had 26 skeleton nodes (`[data-slot=skeleton]` / `.animate-pulse`), and the card was back 2.5 s later (`.playwright-mcp/qa-env-2.png`, local only).
 - **The source picker keeps focus.**
+
   1. Open `/services/new?type=web_service` on the GitHub tab.
   2. Click "Search repositories…" and type `bex`.
   3. Wait 65 s.
 
   The input keeps focus and the repo list stays rendered. At filing time the `GitConnections` poll went out 30.0 s after page load. At 30.3 s the search input and every repo button were gone from the DOM and `document.activeElement` was `BODY`. After remounting, the input held `bex` again but did not have focus.
+
 - **The control stays green.** On a service's Environment tab, click Edit → Add variable → Add variable, type a key, and wait 65 s. The draft row and its value survive. At filing time this passed: the draft was still present 50 s later, across polls at 28.5–30.8 s, because `ServiceEnvironmentEditor` already guards the flag (`service-environment-editor.tsx:121-124`). The fix must keep it green.
 
 The env-group editor is not a DoD bullet because it was traced, not observed. t003 probes it live first and adds its bullet here.
@@ -91,6 +95,20 @@ Fixtures, all created and deleted inside the run:
    +50 s   draft input still present; bar "1 variable operation · 0 file operations"
            Cancel; GET /v1/services/srv-dak3go0gsm7s73f64jqg/env-vars → 0 vars
    ```
+
+6. **The env-group editor (t003, pre-fix, probed 2026-09-15).** Production still served the dashboard image pinned to `137a5186e`, which predates this milestone. Fixture: env group `qa-20260915-egpoll` (`evg-dakeflp5v75s738uf890`) with one variable `QA_K`. Sampled once a second.
+
+   ```text
+   06:42:45.656Z  /env-groups/evg-dakeflp5v75s738uf890 → Edit → Add variable (menu) → Add variable; Key = QA_POLL
+   +0.8 s   draft present, focused; keys QA_K,QA_POLL; 0 skeleton nodes
+   +26.4…+27.9 s  three POST /graphql (the EnvGroup poll tick)
+   +27.0 s  activeElement BODY
+   +28.0 s  no key inputs in main; 12 skeleton nodes
+   +29.0 s  rows back, draft value QA_POLL kept; activeElement still BODY
+   +56.4…+58.4 s  second poll tick; no further sampled change; Add variable / Save and deploy never disabled
+   ```
+
+   It reproduces: a poll unmounts the rows and drops focus, while the draft value survives because it lives above the rows. The disabled-controls half of the trace was not observed.
 
 ## Root cause
 
@@ -181,7 +199,22 @@ The explicit `notifyOnNetworkStatusChange: true` opt-ins keep reporting refreshi
 - t001 step 2: `environments-panel.tsx` renders the error body only when no environments are cached. A failed refresh over cached data shows "Couldn't refresh environments. Showing the last loaded data." inline (`role="alert"`, en + zh) above the still-mounted card.
 - t001 step 4, the settings form's ACL key: kept. A poll that brings a teammate's changed ACL remounts the form so a stale draft cannot silently overwrite it. The dialog stays open, because the card no longer unmounts.
 
-**Parity (t005).** The diff touches only `dashboard/` and `dashboard/CLAUDE.md`, with no schema, REST or MCP change. The Render dashboard comparison is not recorded yet: it needs a Render account session, which this run does not have.
+**Blast-radius counts (t004, re-run 2026-09-15 on main, `dashboard/src`, excluding `__tests__`).**
+
+| Grep | Count | Verdict |
+| --- | --- | --- |
+| `pollInterval` | 43 files, 62 lines | Covered by the client default: a poll over unchanged data emits nothing |
+| `notifyOnNetworkStatusChange: true` | 6 | 2 lazy queries (`generate-blueprint-dialog`, `use-validate-blueprint`), which must opt in; `use-resource-actions` guards `loading && data === undefined`; `use-invite-redemption`, `use-service-events` and `use-webhook-event-types` are not polled |
+| `useLazyQuery(` | 2 | Both opt in |
+| `loading ? <…Skeleton` in `.tsx` | 1 | `services.$serviceId.scaling.tsx:73` on `useAutoscaling`, which is not polled. Its `refetchQueries` after a save or disable is covered by the default |
+
+No polled raw `loading` gates a skeleton.
+
+**Parity (t005).**
+
+- **Scope confirmed (2026-09-15).** The shipped fix, `f3cc6ee97`, touches only `dashboard/src/**`, `dashboard/CLAUDE.md` and `.pm/w1/m153/done/`, with no schema, REST or MCP change.
+- **Render comparison: not performed.** It needs a signed-in Render dashboard session, and none was available to this run. Render's documentation does not describe background refresh behavior.
+- **No drift filed.** What bex now does (open dialogs, typed input and focus survive background polls) is the baseline users expect of any dashboard. If a future Render session shows otherwise, file it as `w1/NNN`.
 
 **Tests (t007).**
 
@@ -193,7 +226,75 @@ The explicit `notifyOnNetworkStatusChange: true` opt-ins keep reporting refreshi
   - a lazy query reports `loading` when it opts in, and never without the opt-in (why every lazy query must opt in);
   - a query that opts in still reports refreshing.
 - `environments-panel.test.tsx`: a failed refresh over cached environments keeps the card mounted with the error inline. It was shown failing on pre-fix `HEAD` in a scratch worktree ("Unable to find an element by: [data-testid=\"env-card\"]").
-- Live DoD probes (bullets 1–5, t002's `GitCredentialsMenu`/`/blueprints/new` checks, and t003's pre-fix env-group probe while production still runs the old dashboard) wait for the batched live session.
+- The live DoD probes are recorded under § Live verification: bullets 1–5, t002's `GitCredentialsMenu` and `/blueprints/new` checks, and t003's editor after the fix. t003's pre-fix probe is § Evidence 6.
+- **Added at closeout (2026-09-15).** t002 and t003 each required a vitest of their own, and `f3cc6ee97` shipped none. Each of the following runs the real hooks against a real client with `apolloDefaultOptions` and a gate link that holds a `refetchQueries` response in flight, and asserts both in flight and settled:
+  - `features/services/components/__tests__/service-source-picker.test.tsx` (t002): the same "Search repositories…" input stays mounted and focused with its typed filter; the repo list and skeleton count are unchanged.
+  - `routes/__tests__/env-groups-detail-refetch.test.tsx` (t003): the real `EnvGroupDetailPage` keeps the draft row, which stays focused and typed, keeps its key rows, adds no skeletons, and keeps Add variable and Save and deploy enabled.
+  - **Pre-fix proof.** With `default-options.ts` stubbed to `{}` and `use-git-connection.ts` / `use-env-groups.ts` at `f3cc6ee97^`, the tests fail at the in-flight check: `Unable to find an accessible element with the role "textbox" and name "Search repositories…"`, and `… name "Value for API_TOKEN"`. Either layer alone keeps them green, so the fix is defended in depth.
+  - **Suite.** Full `yarn test` 416 files and 3262 tests pass; `yarn typecheck` and `yarn lint` exit 0.
+
+## Live verification (2026-09-15, production)
+
+**Build.** The dashboard has been pinned to `c4212ec71` since 07:22:30Z. Its bundle contains `watchQuery:{notifyOnNetworkStatusChange:!1}`.
+
+**Browser.** Headless Chrome (playwright-core 1.58.2, `channel: "chrome"`), signed in with the QA session and at 1440×900. The Playwright MCP browser was disconnected. Each check ran in its own page, and GraphQL operation names were recorded from request bodies. Run 1 started at 10:11:12Z; times below are seconds from page load.
+
+**The environment card is never replaced by its skeleton (bullet 3).** On `/project/prj-dake9ih5v75s738uf7q0`, each `Environments` request was checked 150 ms after it was sent:
+
+```text
++33.0 s  Manage resources count 1 · main skeleton nodes 0
++64.5 s  Manage resources count 1 · main skeleton nodes 0
+```
+
+**The source picker keeps focus (bullet 4).** "Search repositories…" was clicked, `bex` was typed, then 65 s passed:
+
+```text
+/services/new?type=web_service  GitConnections at +32.1, +35.0, +62.5, +65.2 s → activeElement is the search input, value "bex"; 76 repo buttons
+/blueprints/new                 GitConnections at +32.5, +34.8, +62.9, +65.1 s → activeElement is the search input, value "bex"; 76 repo buttons
+```
+
+**`GitCredentialsMenu` (t002).** On `/services/new?type=web_service`:
+
+- "Credentials (1)" was opened at +5.3 s. It stayed open, with its account row, through `GitConnections` at +32.7, +34.8, +62.9 and +65.1 s.
+- Its disconnect button opened "Disconnect GitHub?" at +70.3 s. That stayed open through `GitConnections` at +93.2, +95.3, +123.4 and +125.5 s.
+- The confirm was closed with Escape; its Disconnect action was never clicked.
+
+**The environment settings dialog survives polls (bullet 1, run 3 at 10:17:33Z).**
+
+```text
++2.9 s    More actions → All settings; "New CIDR block" = 203.0.113.0/24
++31.4 s   graphql Environments+EnvGroups+Services+Databases+KeyValues (poll)
++63.0 s   graphql Environments+… (poll)
++94.4 s   graphql Environments+… (poll)
++103.5 s  dialogs 1; "New CIDR block" still 203.0.113.0/24 → Escape (nothing saved)
+```
+
+**Manage resources survives polls (bullet 2, run 2 at 10:14:22Z).**
+
+```text
++6.2 s   Manage resources; tick qa-20260915-m156b (was unticked; not saved)
++37.9 s  graphql Workspaces+Environments+… (poll)
++69.7 s  graphql Workspaces+Environments+… (poll)
++73 s    dialogs 1; qa-20260915-m156b still ticked → Escape
+         GET /v1/environments/env-dake9ih5v75s738uf7qg → serviceIds ["srv-dakeca81e15c73bfgpq0"] (unchanged)
+```
+
+**The env-group editor keeps its draft row (t003, after the fix, run 2).** On `/env-groups/evg-dakeflp5v75s738uf890`, Edit → Add variable, sampled once a second:
+
+```text
++39.2 s          Key = QA_POLL typed
++64.8 s, +95.1 s graphql Workspaces+EnvGroup+Services (poll ticks)
++39.2…+106 s     one unchanged sample throughout: draft present and focused · 2 key inputs · 0 skeleton nodes · Add variable enabled · Save and deploy enabled
+                 → Cancel (nothing saved)
+```
+
+Before the fix (§ Evidence 6), the same poll unmounted the rows, left 12 skeleton nodes and dropped focus to `BODY`.
+
+**Control: the service Environment editor (bullet 5, run 2).** On `/services/srv-dakeca81e15c73bfgpq0/env`:
+
+- Edit → Add variable, with Key `QA_DRAFT_PROBE` typed at +8.4 s.
+- Poll ticks followed at +34.4–35.7 s and +64.4–65.9 s (ViewerCapabilities, Workspaces, Server, EnvGroups, Deploys).
+- The draft was still present after 65 s. The edit was then cancelled.
 
 ## Dedupe
 
