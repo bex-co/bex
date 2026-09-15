@@ -1,6 +1,6 @@
 # w1 · m154 — A deploy or config-change rollout drops live requests with `502 Bad Gateway` at the pod switchover
 
-**Worker:** worker1 **Goal:** replacing a web service's pod never fails a request that reaches it. The old pod keeps serving through a drain window after it leaves the load balancer, then gets `SIGTERM`, and only then `maxShutdownDelaySeconds` before `SIGKILL`. That is Render's order, and ADR004's "zero-downtime by construction" claim becomes true in practice as well as on paper. **Status:** todo
+**Worker:** worker1 **Goal:** replacing a web service's pod never fails a request that reaches it. The old pod keeps serving through a drain window after it leaves the load balancer, then gets `SIGTERM`, and only then `maxShutdownDelaySeconds` before `SIGKILL`. That is Render's order, and ADR004's "zero-downtime by construction" claim becomes true in practice as well as on paper. **Status:** in progress — t004 and t005 done; t001–t003 implemented with tests green, and their live probes (DoD bullet 1, the Restart, scale and private-service probes) wait for the deploy; then t006 closeout.
 
 ## Tasks (in order)
 
@@ -9,8 +9,8 @@
 | t001 | Tenant pods drain before SIGTERM: a native `preStop.sleep`, with the grace period widened so the shutdown delay still counts from SIGTERM | 40m | —          |
 | t002 | Blast radius: every path that removes a serving pod, and the controls that must not change                  | 40m | t001       |
 | t003 | Render parity                                                                                               | 25m | t002       |
-| t004 | Simplify                                                                                                    | 15m | t003       |
-| t005 | Test coverage                                                                                               | 40m | t003       |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage — **DONE** | 40m | t003 |
 | t006 | Closeout                                                                                                    | 10m | t005       |
 
 ## Definition of done
@@ -108,6 +108,69 @@ The other termination paths (restart, scale-in, autoscale, hibernate, private-se
 - **The routing path.** That Traefik routes straight to pod endpoints is read from the missing `nativelb` annotation in the operator, not from a Traefik configuration dump.
 - **The propagation lag** itself was not measured. One failed sample per roll at ~0.8 s sampling bounds it at roughly 1–2 s.
 - **An earlier contrary result.** `w6/done/m51` (2026-08-23) recorded a manual Restart's zero-downtime claim as a "non-issue". Its sampling cadence isn't recorded, so it may have been too coarse to catch a one-second window.
+
+## Implementation (2026-09-14)
+
+**Drain before SIGTERM (t001).** `lego/operator/internal/controller/deployment_projection.go`:
+
+- `drainSecondsFor` gives web and private services' pods a native `lifecycle.preStop.sleep` of `drainSeconds` = **10 s**, and `applyDrain` sets it together with the grace period so the two cannot drift. The sleep needs no shell or `sleep` binary in the tenant image, unlike the dashboard's `exec sleep 10`.
+- `terminationGracePeriodSeconds(maxShutdownDelaySeconds, drain)` returns drain + delay (default 30), so the user's value still means "after SIGTERM": `maxShutdownDelaySeconds: 60` gives 70.
+- An undrained pod with no delay keeps a nil grace period, which the server-default pass writes as Kubernetes' 30, as before.
+- **Why 10 s:** production lost one request per roll at ~0.8 s sampling, and bex's dashboard measured ~3 s of 502s per roll before `w1/m52` fixed it with a 10 s sleep. 10 s covers endpoint propagation with margin without stretching every rollout, scale-in and hibernation by Render's full 60 s. Recorded as a divergence in ADR018.
+- **Adopted on each service's next roll, not on upgrade.** A Deployment already stored without the drain keeps its template until the template changes for its own reason (a deploy, a config change, a restart); that pass adds the drain. A new Deployment gets it at creation.
+  - **Why not eagerly:** adding the drain to every stored template would change every awake web and private service's template on the same operator upgrade and roll them all at once. The tenant headroom holds one warm slot (`deploy/gitops/base/tenant-headroom.yaml`), so the surge pods would mint nodes platform-wide, the eviction chain ADR004 § Rollout headroom describes. Found in t004's review.
+  - **The cost:** the roll that adopts the drain still terminates an old, undrained pod, so it can drop one request. A service that is scaled in, hibernated or node-drained before its next roll is not drained yet. Every roll after adoption is drained, and the projection is idempotent from then on (`TestDrainIsAdoptedOnTheNextRollNotOnUpgrade`, `TestProjectionIsIdempotent`).
+
+**Paths that remove a serving pod (t002).** The drain lives on the pod, and the kubelet runs `preStop` for every deletion or eviction, so one mechanism covers every path.
+
+| Path | Verdict |
+| --- | --- |
+| Deploy, config-change roll, restart (`spec.restartedAt` → template annotation) | Drained: RollingUpdate deletes the old pod after the new one is Ready |
+| Manual scale-in (`POST …/scale`), autoscaler scale-in (`applyAutoscaling`) | Drained: a replica-count decrease deletes pods |
+| Node drain and Cluster Autoscaler consolidation (ADR004 § Rollout headroom) | Drained: eviction honors `preStop` and the grace period |
+| Hibernation's scale-to-0 (`desiredReplicas` → `autoHibernating`) | Drained; the Ingress already routes to the activator on that pass (`ingressBackend`), so a waking request is not sent to a draining pod |
+| Suspend | Drained; it only delays the documented 503 by the drain |
+| Private services' in-cluster callers (ClusterIP + kube-proxy) | Drained: the same endpoint-propagation race, the same fix |
+| Maintenance mode | Not a removal: pods keep running while routing switches |
+| Background workers | Exempt: no inbound traffic, so no drain and an unchanged grace period |
+| Disk-attached services (`Recreate`) | Exempt: the old pod must stop before the new one starts, and a drain would only lengthen the documented downtime |
+| Cron jobs, pre-deploy Jobs, static sites | Not tenant Deployments behind Traefik; unchanged |
+
+The live Restart, scale and private-service probes wait for the deploy.
+
+**Parity (t003).** `maxShutdownDelaySeconds` is still read from `App.spec` on REST, GraphQL and MCP, so it reads back as set, and its "after SIGTERM" descriptions stay true. ADR004 § Rollout headroom now names both halves of zero-downtime (readiness gating and the drain). ADR018's graceful-shutdown row records the drain and the 10 s vs 60 s divergence.
+
+**Simplify (t004).** One combined review pass (reuse, quality, correctness, efficiency). It confirmed:
+
+- the API server defaults nothing inside `preStop.sleep`, so reconciles stay no-op;
+- release identity fingerprints `spec.maxShutdownDelaySeconds`, not the projected grace period, so there are no rebuilds or deploy rows;
+- hibernation's routing hold switches the Ingress before the drain starts;
+- no finalizer or test waits on pod termination.
+
+Applied:
+
+- **Lazy adoption** (see t001), for the platform-wide roll the review found.
+- `applyDrain` sets the preStop drain and the grace period together, with `terminationGracePeriodSeconds` moved beside it from `app_controller.go`.
+- `podDrainSeconds` renamed to `drainSecondsFor`, and the constant's comment trimmed to the mechanism plus ADR links.
+- In the envtest, the `lifecycle` variable is renamed and the compound grace-period `It` is split in two.
+
+Declined:
+
+- Always returning drain + delay instead of nil for an undrained pod: it would store the same bytes, but churns the w7/m84 "reconciler authors no default" contract for no gain.
+- Adding private and disk shapes to the convergence envtest table; the unit tests cover both.
+
+**Tests (t005).**
+
+- `deployment_projection_test.go`:
+  - `TestTrafficServingPodsDrainBeforeSIGTERM`: web and private get the native sleep, never `exec`;
+  - `TestWorkersAndDiskAttachedServicesDoNotDrain`: no lifecycle, `Recreate` kept, the default grace period;
+  - `TestTerminationGracePeriod`: an undrained pod gets the default or its delay; a drained pod gets drain + default or drain + delay.
+- `app_controller_test.go` envtest: web, private and worker stored grace periods and preStop, and the default case for a worker and a web service.
+- `server_defaults_envtest_test.go`: the w7/m84 no-roll guard now strips only the server's own 30 s grace default, so it still proves server defaults roll nothing, over a drained template.
+- `TestDrainIsAdoptedOnTheNextRollNotOnUpgrade`: an undrained stored template is left unchanged by an unchanged App, a restart adopts the drain (grace 40), and the adopted template re-projects unchanged.
+- **Shown failing without the fix**, in scratch worktrees because the new tests use the new helper signatures:
+  - with the drain forced to 0, `TestTerminationGracePeriod` ("web grace = 30; want 10 + 30") and `TestTrafficServingPodsDrainBeforeSIGTERM` ("lifecycle = nil") failed;
+  - with lazy adoption removed, `TestDrainIsAdoptedOnTheNextRollNotOnUpgrade` failed ("an unchanged App's template changed on upgrade").
 
 ## Dedupe
 

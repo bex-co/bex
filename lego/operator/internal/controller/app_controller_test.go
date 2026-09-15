@@ -308,9 +308,13 @@ var _ = Describe("App Controller", func() {
 			for _, tc := range []struct {
 				name        string
 				serviceType string
+				drain       int64
 			}{
-				{name: "shutdown-web", serviceType: appv1alpha1.TypeWebService},
-				{name: "shutdown-private", serviceType: appv1alpha1.TypePrivateService},
+				// Traffic-serving pods drain before SIGTERM (w1/m154), and the
+				// grace period covers the drain so the delay still counts from
+				// SIGTERM; a worker takes no traffic and does not drain.
+				{name: "shutdown-web", serviceType: appv1alpha1.TypeWebService, drain: drainSeconds},
+				{name: "shutdown-private", serviceType: appv1alpha1.TypePrivateService, drain: drainSeconds},
 				{name: "shutdown-worker", serviceType: appv1alpha1.TypeBackgroundWorker},
 			} {
 				podSpec := appPodSpec(tc.name, appv1alpha1.AppSpec{
@@ -318,20 +322,37 @@ var _ = Describe("App Controller", func() {
 					MaxShutdownDelaySeconds: &seconds,
 				})
 				Expect(podSpec.TerminationGracePeriodSeconds).NotTo(BeNil(), tc.name)
-				Expect(*podSpec.TerminationGracePeriodSeconds).To(Equal(int64(seconds)), tc.name)
+				Expect(*podSpec.TerminationGracePeriodSeconds).To(Equal(tc.drain+int64(seconds)), tc.name)
+				lifecycle := podSpec.Containers[0].Lifecycle
+				if tc.drain == 0 {
+					Expect(lifecycle).To(BeNil(), tc.name)
+					continue
+				}
+				Expect(lifecycle).NotTo(BeNil(), tc.name)
+				Expect(lifecycle.PreStop.Sleep).NotTo(BeNil(), "%s: a native sleep needs no shell in the tenant image", tc.name)
+				Expect(lifecycle.PreStop.Sleep.Seconds).To(Equal(tc.drain), tc.name)
 			}
 		})
 
-		It("leaves the desired grace period absent when unset and receives Kubernetes' 30-second default", func() {
-			Expect(terminationGracePeriodSeconds(nil)).To(BeNil(), "the reconciler must not author a default")
-			podSpec := appPodSpec("shutdown-default", appv1alpha1.AppSpec{
-				Image: "traefik/whoami", Port: 3000,
+		It("leaves the desired grace period absent for an undrained pod with no delay and receives Kubernetes' 30-second default", func() {
+			Expect(terminationGracePeriodSeconds(nil, 0)).To(BeNil(), "the reconciler must not author a default for an undrained pod")
+			worker := appPodSpec("shutdown-default-worker", appv1alpha1.AppSpec{
+				Image: "traefik/whoami", Port: 3000, Type: appv1alpha1.TypeBackgroundWorker,
 			})
 			// The API server defaults PodSpec.terminationGracePeriodSeconds on
 			// storage, so the retrieved Deployment contains 30 even though the
 			// reconciler submitted nil (asserted directly above).
-			Expect(podSpec.TerminationGracePeriodSeconds).NotTo(BeNil())
-			Expect(*podSpec.TerminationGracePeriodSeconds).To(Equal(int64(30)))
+			Expect(worker.TerminationGracePeriodSeconds).NotTo(BeNil())
+			Expect(*worker.TerminationGracePeriodSeconds).To(Equal(int64(30)))
+		})
+
+		It("drains a web pod ahead of the 30-second default when no delay is set", func() {
+			web := appPodSpec("shutdown-default", appv1alpha1.AppSpec{
+				Image: "traefik/whoami", Port: 3000,
+			})
+			Expect(web.TerminationGracePeriodSeconds).NotTo(BeNil())
+			Expect(*web.TerminationGracePeriodSeconds).To(Equal(drainSeconds+30),
+				"the drain plus Kubernetes' 30-second default after SIGTERM")
 		})
 
 		It("rejects maxShutdownDelaySeconds outside 1-300 at the CRD boundary", func() {
