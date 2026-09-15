@@ -6,10 +6,10 @@
 
 | id   | title                                                                | est | depends_on         |
 | ---- | -------------------------------------------------------------------- | --- | ------------------ |
+| t008 | REST's next-page cursors follow Render's contract: feeding `nextStartTime`/`nextEndTime` back fetches the next page | 30m | — |
 | t001 | Return the Render paging envelope from the GraphQL `logs` field       | 40m | t008               |
 | t002 | Return the same envelope from MCP `list_logs`                          | 25m | t001               |
 | t003 | Page backward in the log viewer, and say when a view is truncated      | 50m | t001               |
-| t008 | REST's next-page cursors follow Render's contract: feeding `nextStartTime`/`nextEndTime` back fetches the next page | 30m | — |
 | t004 | Render parity across REST / GraphQL / MCP / UI                          | 30m | t002, t003, t008   |
 | t005 | Simplify                                                               | 20m | t004               |
 | t006 | Test coverage                                                          | 40m | t004               |
@@ -28,7 +28,7 @@ Each bullet is a command or a click the next person can repeat against productio
   The repeat returns the next page, and the chain reaches `hasMore:false` with every line of the window exactly once. At filing (2026-09-14, w1 `/qa-find-bugs` pass 27, `srv-dak4bta6m8ac739r63j0`), page 2 was `400 bad request: startTime must be before endTime` in both directions (t008).
 - **GraphQL `logs` returns the envelope REST already returns, with t008's cursors.** `{ logs(...) { ... } }` answers with `hasMore`, `nextStartTime` and `nextEndTime` alongside the entries, matching `logs/render.go:63-66`'s `{hasMore,nextStartTime,nextEndTime,logs}` — the shape `w4/m96/t003` records as the unchanged Render wire contract. Today the field's type is a bare `[LogEntry]` (verified by introspection, 2026-09-14).
 - **MCP `list_logs` returns the same envelope.** Today `logs/mcp.go:83` is `Logs []LogEntry` with no `hasMore`.
-- **The 100-row cap itself is unchanged.** `maxLogLimit = 100` (`logs/service.go:106`) is deliberate Render parity — "Render defaults the logs `limit` to 20 and caps it at 100; bex matches". This milestone must not raise it; reaching history is paging's job, not the cap's.
+- **The 100-row cap itself is unchanged.** `maxLogLimit = 100` (`logs/service.go:116`) is deliberate Render parity — "Render defaults the logs `limit` to 20 and caps it at 100; bex matches". This milestone must not raise it; reaching history is paging's job, not the cap's.
 - **Live tail still appends forward.** The `Live` switch continues to append arriving lines, and paging backward does not disable or fight it.
 
 ## Source + Goal linkage
@@ -44,7 +44,7 @@ Each bullet is a command or a click the next person can repeat against productio
 - **Goal linkage:** ADR006 (bex-api's three surfaces carry the same contract) and the logs surface of ADR018's parity ledger. It is also the first concrete instance of the hole `w4/086` and `w4/087` named — "bex's MCP is hash-pinned against upstream Render, but bex's own three surfaces are pinned against each other by nothing". Those notes predicted a same-verb-narrower-response divergence existed and had not found one; this is it, in the predicted direction.
 - **Expected outcome:** a busy service's operator can read yesterday's logs. Today they cannot, from the dashboard or from an agent over MCP, and neither surface tells them so.
 - **Why now:** the dashboard is a GraphQL client (`dashboard/CLAUDE.md`), so it is **structurally** unable to page or to warn — the information it would need is absent from its surface. That makes this a backend-shape fix first and a UI fix second, and it is why no amount of dashboard work alone can close it.
-- **Render parity task included:** the change alters response shape on GraphQL and MCP and behavior in the UI. REST is the reference and should not move — `logs/render.go:94-119` already computes `HasMore = limit > 0 && len(entries) >= limit` with both cursors, and Render marks `nextStartTime`/`nextEndTime` REQUIRED.
+- **Render parity task included:** the change alters response shape on GraphQL and MCP and behavior in the UI. REST is the reference and should not move — `logs/render.go:100-121` already computes `HasMore = limit > 0 && len(entries) >= limit` with both cursors, and Render marks `nextStartTime`/`nextEndTime` REQUIRED.
 - **Correction (2026-09-14, w1 `/qa-find-bugs` pass 27):** REST's cursors cannot be followed, so REST does move, in those two fields only.
   - `render.go:105-108` sets them to the page's own bounds (newest and oldest line), not to the next page's window.
   - Render's API docs, `render-mcp-server`'s `list_logs` description, and the official Render CLI's scroll-to-load (`render-oss/cli` `pkg/tui/views/logview.go:196-199`) all feed them straight back as `startTime`/`endTime`, which bex answers with a `400`.
