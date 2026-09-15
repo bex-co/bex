@@ -36,9 +36,9 @@ import (
 type getMetricsArgs struct {
 	// ResourceID is Render's single-id spelling. Resource is the legacy bex
 	// multi-id array; when ResourceID is set it wins as a one-element list.
-	ResourceID string   `json:"resourceId,omitempty" jsonschema:"service id (srv-...) to read metrics for — Render's MCP spelling"`
-	Resource   []string `json:"resource,omitempty" jsonschema:"legacy bex alias of resourceId as a list of service ids/names; ignored when resourceId is also set"`
-	MetricTypes []string `json:"metricTypes" jsonschema:"metric ids: cpu|memory|instance_count|http_requests|http_latency|bandwidth|cpu_target|memory_target (cpu_target/memory_target are bex extensions: the App's configured autoscale-target utilization, w1/m20 — omitted when autoscaling is disabled)"`
+	ResourceID  string   `json:"resourceId,omitempty" jsonschema:"service id (srv-...) to read metrics for — Render's MCP spelling"`
+	Resource    []string `json:"resource,omitempty" jsonschema:"legacy bex alias of resourceId as a list of service ids/names; ignored when resourceId is also set"`
+	MetricTypes []string `json:"metricTypes" jsonschema:"Render's metric types: cpu_usage|memory_usage|http_request_count|http_latency|instance_count|bandwidth_usage|cpu_limit|memory_limit|cpu_target|memory_target, plus active_connections for a Postgres (dpg-) or Key Value (red-) resource. bex's own ids cpu|memory|http_requests|bandwidth keep working. cpu_target/memory_target report the App's configured autoscale-target utilization and are omitted when autoscaling is disabled"`
 	StartTime   string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window (request metrics)"`
 	EndTime     string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window (request metrics)"`
 	// Resolution is Render's spelling; ResolutionSeconds is the legacy bex alias.
@@ -107,31 +107,62 @@ func (a getMetricsArgs) path() string {
 	return mcputil.PreferString(a.HTTPPath, a.Path)
 }
 
-// applyCPUAggregation enforces the thin AVG-only wiring of
-// cpuUsageAggregationMethod. Empty/AVG are no-ops; MAX/MIN are capability gaps.
-func applyCPUAggregation(method string) error {
+// cpuAggregation is the AVG-only rule for Render's CPU interval aggregation,
+// under the caller's parameter name: MCP cpuUsageAggregationMethod, REST
+// aggregationMethod (w1/m155 — REST used to accept and ignore it). Empty/AVG
+// are no-ops; MAX/MIN are capability gaps.
+func cpuAggregation(param, method string) error {
 	switch strings.ToUpper(strings.TrimSpace(method)) {
 	case "", "AVG":
 		return nil
 	case "MAX", "MIN":
-		return fmt.Errorf("%w: cpuUsageAggregationMethod %q is unsupported — bex CPU is a metrics-server snapshot without interval aggregation (only AVG)", core.ErrBadRequest, method)
+		return fmt.Errorf("%w: %s %q is unsupported — bex CPU is a metrics-server snapshot without interval aggregation (only AVG)", core.ErrBadRequest, param, method)
 	default:
-		return fmt.Errorf("%w: unknown cpuUsageAggregationMethod %q (want AVG|MAX|MIN)", core.ErrBadRequest, method)
+		return fmt.Errorf("%w: unknown %s %q (want AVG|MAX|MIN)", core.ErrBadRequest, param, method)
 	}
 }
 
-// applyHTTPRequestAggregate maps aggregateHttpRequestCountsBy onto MetricQuery.GroupBy.
-func applyHTTPRequestAggregate(by string) (string, error) {
+// groupByStatus is MetricQuery.GroupBy's per-status-code breakdown.
+const groupByStatus = "status"
+
+// requestGroupBy maps Render's request-count breakdown — REST `aggregateBy`, MCP
+// `aggregateHttpRequestCountsBy`, both `statusCode|host` — onto
+// MetricQuery.GroupBy. One mapping for both surfaces (w1/m155): REST used to
+// read a non-Render `groupBy` the request validator refuses, and dropped
+// Render's `aggregateBy` on the floor.
+func requestGroupBy(param, by string) (string, error) {
 	switch strings.TrimSpace(by) {
 	case "":
 		return "", nil
 	case "statusCode":
-		return "status", nil
+		return groupByStatus, nil
 	case "host":
-		return "", fmt.Errorf("%w: aggregateHttpRequestCountsBy=host is unsupported — neither Traefik Prometheus counters nor the Loki request-log path expose a host group-by axis (filter with httpHost instead)", core.ErrBadRequest)
+		return "", fmt.Errorf("%w: %s=host is unsupported — neither Traefik Prometheus counters nor the Loki request-log path expose a host group-by axis (filter by host instead)", core.ErrBadRequest, param)
 	default:
-		return "", fmt.Errorf("%w: unknown aggregateHttpRequestCountsBy %q (want statusCode|host)", core.ErrBadRequest, by)
+		return "", fmt.Errorf("%w: unknown %s %q (want statusCode|host)", core.ErrBadRequest, param, by)
 	}
+}
+
+// renderMetricTypes maps Render's MCP metric-type names onto bex metric ids
+// where they differ (w1/m155); every other name, Render's or bex's own, passes
+// through unchanged and Metrics rejects an unknown one.
+var renderMetricTypes = map[string]string{
+	"cpu_usage":          MetricCPU,
+	"memory_usage":       MetricMemory,
+	"http_request_count": MetricHTTPRequests,
+	"bandwidth_usage":    MetricBandwidth,
+}
+
+// renderActiveConnections is Render's MCP metric type for a datastore's live
+// connections. It targets a Postgres or Key Value resource, so get_metrics
+// answers it from the datastore verb rather than the App verb.
+const renderActiveConnections = "active_connections"
+
+func metricIDFor(metricType string) string {
+	if id, ok := renderMetricTypes[metricType]; ok {
+		return id
+	}
+	return metricType
 }
 
 // RegisterMCP adds the get_metrics tool to the shared MCP server.
@@ -144,10 +175,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, getMetricsResult{}, err
 		}
-		if err := applyCPUAggregation(in.CPUUsageAggregationMethod); err != nil {
+		if err := cpuAggregation("cpuUsageAggregationMethod", in.CPUUsageAggregationMethod); err != nil {
 			return nil, getMetricsResult{}, err
 		}
-		groupBy, err := applyHTTPRequestAggregate(in.AggregateHTTPRequestCountsBy)
+		groupBy, err := requestGroupBy("aggregateHttpRequestCountsBy", in.AggregateHTTPRequestCountsBy)
 		if err != nil {
 			return nil, getMetricsResult{}, err
 		}
@@ -178,8 +209,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		// http_latency; a mixed list over-approximates the product, which only
 		// errs toward refusing extreme requests.
 		quantileFan := 1
-		for _, metric := range in.MetricTypes {
-			if fan := latencyFan(metric, in.Quantiles); fan > quantileFan {
+		for _, metricType := range in.MetricTypes {
+			if fan := latencyFan(metricIDFor(metricType), in.Quantiles); fan > quantileFan {
 				quantileFan = fan
 			}
 		}
@@ -188,18 +219,27 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		var all []MetricSeries
 		for _, id := range resources {
-			for _, metric := range in.MetricTypes {
-				q.App, q.Metric = id, metric
-				// MetricsWithQuantiles fans http_latency out over q.Quantiles (the
-				// percentile "All" overlay), tagging each series with its quantile.
-				series, err := s.MetricsWithQuantiles(ctx, q)
+			for _, metricType := range in.MetricTypes {
+				var series []MetricSeries
+				if metricType == renderActiveConnections {
+					series, err = s.activeConnections(ctx, id, q.Start, q.End, q.Resolution)
+				} else {
+					q.App, q.Metric = id, metricIDFor(metricType)
+					// MetricsWithQuantiles fans http_latency out over q.Quantiles (the
+					// percentile "All" overlay), tagging each series with its quantile.
+					var withQuantiles []QuantileSeries
+					withQuantiles, err = s.MetricsWithQuantiles(ctx, q)
+					for i := range withQuantiles {
+						series = append(series, withQuantiles[i].MetricSeries)
+					}
+				}
 				if err != nil {
 					return nil, getMetricsResult{}, err
 				}
-				// Tag each series with its metric so multi-metric results stay distinct.
-				for i := range series {
-					ser := series[i].MetricSeries
-					ser.SetLabel(LabelMetric, metric)
+				// Tag each series with the metric type the caller asked for, so
+				// multi-metric results stay distinct in the caller's own vocabulary.
+				for _, ser := range series {
+					ser.SetLabel(LabelMetric, metricType)
 					all = append(all, ser)
 				}
 			}
@@ -218,7 +258,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 type getDatastoreMetricsArgs struct {
 	ResourceID        string   `json:"resourceId,omitempty" jsonschema:"the Database, KeyValue, or service id (dpg-…/red-…/srv-…) — Render-shaped alias of resource"`
 	Resource          string   `json:"resource,omitempty" jsonschema:"legacy spelling of resourceId — the CR name, not the display name; ignored when resourceId is also set"`
-	Kind              string   `json:"kind,omitempty" jsonschema:"database|keyvalue|service (default database); service reads the disk attached to a service (ADR082)"`
+	Kind              string   `json:"kind,omitempty" jsonschema:"database|keyvalue|service; omit to infer it from the id prefix (red- keyvalue, srv- service, otherwise database); service reads the disk attached to a service (ADR082)"`
 	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database, KeyValue, or a service with an attached disk) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22) | kv_memory|kv_connections (KeyValue only)"`
 	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window"`
 	EndTime           string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window"`
@@ -248,7 +288,9 @@ func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 		}
 		kind := in.Kind
 		if kind == "" {
-			kind = DatastoreDatabase
+			// The same inference as REST's datastore paths (w1/m155), so a red- id
+			// without a kind answers alike on both surfaces.
+			kind = datastoreKindFor(resource)
 		}
 		q := DatastoreMetricQuery{
 			Kind:       kind,
