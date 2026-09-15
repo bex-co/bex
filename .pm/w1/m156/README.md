@@ -1,17 +1,17 @@
 # w1 · m156 — A hibernated free service whose latest deploy failed never wakes: the failed-release gate halts the reconcile before replicas and routing
 
-**Worker:** worker1 **Goal:** a free service whose newest release failed (its pre-deploy command, or its build) still sleeps and wakes on the release that is actually serving. A request gets the wake response and then the prior release's own reply, and the service never reads Running while its URL can only answer `503 service hibernated`. **Status:** todo
+**Worker:** worker1 **Goal:** a free service whose newest release failed (its pre-deploy command, or its build) still sleeps and wakes on the release that is actually serving. A request gets the wake response and then the prior release's own reply, and the service never reads Running while its URL can only answer `503 service hibernated`. **Status:** in progress. t001, t002, t005 and t006 are done: the pre-deploy hold is shipped-ready with failing-then-passing tests, and the build-path hold was withdrawn to `w1/104`. t003 (live, after the deploy), t004 (live cross-surface comparison) and t007 (closeout) remain.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                                  | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Runtime convergence survives a terminal failed release: a serving prior release still wakes, hibernates, scales and routes while the failed verdict stands | 1h  | —          |
-| t002 | Blast radius: every halt before the Deployment write, against every runtime transition that needs that write                                            | 45m | t001       |
+| t001 | Runtime convergence survives a terminal failed release: a serving prior release still wakes, hibernates, scales and routes while the failed verdict stands — **DONE** | 1h  | —          |
+| t002 | Blast radius: every halt before the Deployment write, against every runtime transition that needs that write — **DONE**                                            | 45m | t001       |
 | t003 | Live: reproduce and then verify the wake over a failed pre-deploy (and probe the failed-build variant) on production                                     | 40m | t002       |
 | t004 | Render parity                                                                                                                                          | 20m | t003       |
-| t005 | Simplify                                                                                                                                               | 15m | t004       |
-| t006 | Test coverage                                                                                                                                          | 40m | t004       |
+| t005 | Simplify — **DONE**                                                                                                                                               | 15m | t004       |
+| t006 | Test coverage — **DONE**                                                                                                                                          | 40m | t004       |
 | t007 | Closeout                                                                                                                                               | 10m | t006       |
 
 ## Definition of done
@@ -81,6 +81,86 @@ The failed-build variant was traced, not observed. t003 probes it and adds its b
 - **The failed-build variant.**
 - **The 07:26:17Z events.** Whether `service_woken` and `server_available` came from a real scale-up or from a projection of the phase after the operator restarted onto `c4212ec71`.
 - **The failed rollout deadline.** Whether a service whose newest rollout failed its deadline is affected. Probably not, because `settleFailedRollout` (`:2698`) runs after the Deployment write.
+
+## Implementation (2026-09-15)
+
+**Runtime convergence over a held pre-deploy step (t001).** All in `lego/operator/internal/controller/app_controller.go`.
+
+- **The invariant.** While a prior release serves, the pod template only advances to a release whose pre-deploy step passed. Every pass that holds a newer release, waking or parking, moves only replicas and routing on the Deployment that already serves the prior release.
+- **`holdUnpassedRelease`** runs in `reconcileKubernetes` after `reconcileDiskLifecycle` and before the existing gate. It holds only a web or private service with an active revision, an existing Deployment and Service, and a step that has not passed for the current release (`preDeployPassed`, `hasPreDeployStep`).
+  - **A stored failed verdict** converges directly, then settles the phase from the scale that pass wrote (`settlePriorRelease`). The wake pass therefore reads Running, not a stale Hibernated from the cache.
+  - **A pending or running step** runs or observes `reconcilePreDeploy`. If the step passes on this pass, the normal rollout proceeds.
+  - **While suspended or auto-hibernating** the step does not run, and the parked Deployment keeps the prior template.
+- **`convergeServingRuntime`**:
+  - patches only `spec.replicas` (a `MergeFrom` patch; the template is never written);
+  - routes the Ingress through `ingressBackend` on the prior Service's port, and rewrites it, with its uncached middleware reads, only when the scale changed or `ingressRoutes` finds the live route or hosts differ;
+  - parks with `status.image`, or completes the autoscaling transition and keeps the running requeue. It comes back after `wakeReadyPoll` (5 s) only while a woken free service waits on the activator.
+- **Unchanged:**
+  - a first release;
+  - workers (`w1/103`);
+  - a release still waiting for its image (`w1/104`);
+  - a fresh step failure, which still returns its reconcile error;
+  - an App with no Deployment or Service yet.
+
+**Simplify (t005).** Three review passes (reuse, quality, efficiency) over the first version.
+
+- **Withdrawn: the build-path hold.** The first version also held a release still waiting for its image, from `resolveDeployImage`. The review found it unsafe:
+  - a parked App with a build in flight lost the build's own requeue, and nothing watches build Jobs, so a finished build could go unobserved for hours while the phase flipped between Building and Hibernated;
+  - it ran before `reconcileDiskLifecycle`, so it could scale a service back up during a disk restore;
+  - on every 5 s build poll it ran autoscaling and routing without completing the transition or persisting status;
+  - its status writes could overwrite a legacy Ready-only build-failure marker.
+
+  The failed-build case stays traced, not fixed. t003 probes it, and `w1/104` records these constraints for the fix.
+- **Applied:**
+  - a stored failed verdict no longer passes through `failPreDeploy`'s cached settle before the scale; `settleFailureOverPriorRelease` delegates to `settlePriorRelease(…, parked)`;
+  - the hold applies only when the prior Service exists (a worker changed to web has none);
+  - the Ingress and middleware write is skipped when nothing changed (`ingressRoutes`);
+  - the 5 s poll runs only while waking behind the activator, not forever for a prior release that never becomes ready;
+  - `completeAutoscalingTransition` and one status write on the awake path;
+  - `soonerRequeue` is reused, `hasPreDeployStep` is shared with `reconcileKubernetes`, and a `replicaPlan` struct replaces four adjacent bools;
+  - stale comments on the gate and on the settle ("the reconcile quiesces") are fixed, and the new doc comments trimmed;
+  - the tests use `predeploy.JobName`, assert the phase on the parking and wake passes, and no longer point at this README.
+- **Declined:**
+  - extracting the routing tail shared with `reconcileKubernetes`, because the held path adds the skip-when-unchanged check and parks with the prior image;
+  - a shared test harness for the setup the three tests repeat;
+  - `reconcilePreDeploy` running twice on the pass where a step succeeds, because the second call returns from memory with no I/O.
+
+**Tests (t006).** `wake_over_failed_release_test.go`, on the fake client:
+
+| Test | Pins | With the hold not called |
+| --- | --- | --- |
+| `TestWakeOverFailedPreDeployRestoresPriorRelease` | Release 1 serves; release 2's failed pre-deploy verdict is stored; parking reads Hibernated; the wake pass scales to 1 and reads Running; the route returns to the App's Service; the template stays on release 1; no Job; the verdict is kept | `woken replicas = 0, want 1` (also failed this way against `c4212ec71`, before any change) |
+| `TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses` | A pre-deploy command lands while parked: the template stays on release 1 and no Job runs; the wake starts the Job while release 1 serves; the Job completing rolls release 2 | `parked template revision = "rev-2", want the prior release's "rev-0"` |
+| `TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease` | Suspend, then resume, over a failed verdict: 0 then 1 replicas on release 1's template, route restored, no Job | `suspended template revision = "rev-2", want the prior release's "rev-0"` |
+
+- **How "hold not called" was produced.** The call site was replaced with `if held, res, err := false, (ctrl.Result{}), error(nil); held {`, the tests were run, and the reworked file was restored and re-run green. An earlier mutation that still called the helpers was discarded as unfaithful.
+
+**Suites.**
+
+- After the rework, `go test ./internal/controller` with envtest passes (61.1 s), including the Ginkgo pre-deploy gate specs and the suspend, resume and hibernate envtests.
+- The first version also passed the full `make test`.
+- `make lint` reports only the two findings already on main: `backend/internal/api/scope_matrix.go:163` has an unused `writeGraphQLErrors`, and `operator/internal/publish/publish.go:611` has a `modernize` minmax.
+
+**Render parity (t004, docs).**
+
+- `docs/ADR004-app-deployment.md` § Pre-deploy command, "A held release does not freeze the serving one", states the invariant, the parking rule, what changed and what did not (`w1/103`, `w1/104`).
+- `docs/ADR018-render-parity.md` row 71 records the same against Render's "continues running its most recent successful deploy".
+- The live cross-surface comparison waits for the deploy (t003).
+
+**Blast radius (t002).** Every `Reconcile` path that returns before the Deployment, Service or Ingress write, crossed with the runtime transitions that need that write: wake, auto-hibernate, suspend, resume, manual scale, autoscale, maintenance on or off, custom domains, and the IP allow-list.
+
+| Halt before the runtime write | Verdict | Evidence |
+| --- | --- | --- |
+| Pre-deploy step pending or running over a prior release (web, private) | Covered by `holdUnpassedRelease`. Replicas follow `desiredReplicas` (wake, hibernate, suspend, resume, scale, autoscale); routing follows `ingressBackend` (maintenance precedence) and `reconcileIngressWithMiddlewares` (domains, allow-list) | `TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses` |
+| Pre-deploy step failed over a prior release (web, private) | Covered: same path | `TestWakeOverFailedPreDeployRestoresPriorRelease`, `TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease` |
+| A release still waiting for its image: build queued, running, credential wait, or terminal failure (every type) | Needs work: `resolveDeployImage` still halts before the runtime. The first fix was withdrawn after review | `w1/104`; t003 probes the failed-build case live |
+| A held pre-deploy step on a background worker | Needs work: suspend, resume and manual scale still freeze behind the halt | `w1/103` |
+| Cron job, static site | Cannot occur: no Deployment; their releases dispatch through `reconcileCronJob` / `reconcileStaticSite` | — |
+| First release (no active revision) | Unchanged by design: nothing serves yet | `predeploy_test.go`: "gates the rollout on the Job" |
+| Canceled release (`settleCanceledRelease`) | Not a halt: it dispatches the runtime with `status.image`. Its config-restore gap is w1/m152, blocked | — |
+| Disk lifecycle (`reconcileDiskLifecycle`, a restore in progress) | Unchanged, deliberately: the hold runs after it, and a restore needs the volume detached | — |
+| Registry credential gate (`deployRegistryGate`) | Unchanged: transient, holds the whole runtime pass until zot accepts the App's credential | — |
+| Namespace guard, finalizer, protected-secret refusal, registry credential errors | Unchanged: genuine errors that set Failed, or no-op guards | — |
 
 ## Dedupe
 
