@@ -206,6 +206,23 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
 
 **A failed step is a deploy fact, not an outage (w1/m149).** The step runs before the rollout, so when it fails over a released image the previous release never stopped serving: the phase stays Running (Hibernated when parked) with Ready describing the serving release, exactly as w6/m124 settles a failed build. Only a first release whose step fails reads Failed. `status.preDeploy` is the durable, release-generation-scoped verdict, and its message — built from the Job pod's terminated container ("exited with code N", an out-of-memory kill, or the 10-minute deadline, each pointing at the pre-deploy logs) — is what bex-api closes the `pre_deploy_failed` row with. Reading it from `status.preDeploy` rather than the Ready condition keeps the reason correct when `metadata.generation` has moved past the condition, and when Ready describes the prior release.
 
+**A held release does not freeze the serving one (w1/m156).** "Not created or updated until the step succeeds" applies to the pod template, not to the prior release's runtime.
+
+- **The invariant.** While a prior release serves, the template advances only to a release whose pre-deploy step passed. A newer release is held while its step is pending, running or failed.
+- **While it is held**, `holdUnpassedRelease` and `convergeServingRuntime` keep the prior release converging:
+  - a replicas-only patch of the existing Deployment, so a wake, hibernation, suspend, resume, manual scale or autoscale still lands;
+  - the Ingress routed to the activator or to the prior release's Service, on the port that Service exposes, rewritten only when the scale changed or the live route differs;
+  - for a failed step, the phase settled from the scale that pass wrote: Running once awake, Hibernated while parked.
+- **Parking.** A suspended or auto-hibernating pass still does not run the step, and it no longer writes the held release's template onto the parked Deployment either.
+- **Before m156** the gate returned before every runtime write:
+  - a free service parked over a failed pre-deploy answered `503 service hibernated` indefinitely while reading Running;
+  - a parking pass baked the unmigrated release into the template, so the next wake would have started it.
+- **Unchanged:**
+  - a first release (nothing serves yet);
+  - a release still waiting for its image: a queued, running or failed build still halts the pass before the runtime (`w1/104`);
+  - background workers (`w1/103`);
+  - a fresh step failure, which still returns its reconcile error.
+
 ## Control-plane deploy lifecycle
 
 For store-managed Apps, bex-api projects the operator's current-release facts into Render's deploy vocabulary without adding an operator-to-database dependency. A deploy row begins `created`; `BuildQueued` and `Building` evidence yield `queued` and `build_in_progress`; a release-generation-scoped pre-deploy Job yields `pre_deploy_in_progress`; rollout reconciliation yields `update_in_progress`; and the corresponding failure or convergence facts yield `build_failed`, `pre_deploy_failed`, `update_failed`, or `live`. A later operational metadata generation does not detach the open row: the projector matches it to `status.releaseGeneration` and the active `rev-<release-generation>`. A row whose own release generation carries a terminal `status.conditions[Build]` verdict closes `build_failed` with that verdict's message even once the release has advanced past it — otherwise the deploy that actually failed would report the `canceled` a bare generation comparison infers (w6/m100). Fast phases may be skipped when the polling control plane never observes them. Invalid regressions are rejected.
