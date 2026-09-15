@@ -73,7 +73,11 @@ func TestSandboxExecCodesTerminalTarget(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), `"code":"`+sandboxexec.ErrorCodeTargetTerminated+`"`) {
+	// The pinned CLI decodes {status, message} and prints
+	// "sandbox exec stream error status 404: sandbox is no longer running";
+	// bex-api's buffered readers key on the internal code (w7/m147).
+	if !strings.Contains(string(body), `"status":404,"message":"sandbox is no longer running"`) ||
+		!strings.Contains(string(body), `"code":"`+sandboxexec.ErrorCodeTargetTerminated+`"`) {
 		t.Fatalf("terminal SSE = %s", body)
 	}
 }
@@ -108,12 +112,14 @@ func TestSandboxExecStreamsSSE(t *testing.T) {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	got := string(body)
-	// Render CLI SSE contract: `event: output` + {stream,data}, `event: exit` + {exitCode}.
+	// Render CLI SSE contract (pkg/sandbox/sse.go at every pin): `event: output`
+	// + {stream,data}, `event: exit` + {exit_code}. The legacy `exitCode` rides
+	// along for one release (w7/m147).
 	if !strings.Contains(got, "event: output") || !strings.Contains(got, `"stream":"stdout"`) || !strings.Contains(got, `"data":"hello\n"`) {
 		t.Errorf("missing/incorrect output event in:\n%s", got)
 	}
-	if !strings.Contains(got, "event: exit") || !strings.Contains(got, `"exitCode":0`) {
-		t.Errorf("missing exit event in:\n%s", got)
+	if !strings.Contains(got, "event: exit\ndata: {\"exit_code\":0,\"exitCode\":0}\n\n") {
+		t.Errorf("exit event is not the pinned CLI shape in:\n%s", got)
 	}
 	// The gateway targeted the sandbox pod in the ticket's namespace.
 	if exec.gotTarget.PodName != "os-1-0" || exec.gotTarget.Namespace != "tea-a-sandbox" || exec.gotTarget.Container != sandboxexec.SandboxContainer {

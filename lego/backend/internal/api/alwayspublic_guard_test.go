@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 )
 
 // TestWebhookRateLimiterShedsBeforeHandler is w7/m60 t001: a flood against a
@@ -119,6 +120,7 @@ var alwaysPublicInventory = map[string]string{
 	"/v1/deploy-hooks":                          "unguessable URL token; IP-keyed pre-lookup limiter + per-hook token bucket",
 	"/v1/deploy-hooks/":                         "unguessable URL token; IP-keyed pre-lookup limiter + per-hook token bucket",
 	"GET /.well-known/oauth-protected-resource": "RFC 9728 discovery; public by spec; no credential, unmetered",
+	sandbox.ConnectStreamPattern:                "sandbox run connect token (HMAC, single-use, ≤60s, bound to workspace+sandbox+execution+command; minted by the gated runs/{operation}/token route); IP-keyed pre-lookup limiter shared with deploy hooks, sheds pre-verify (w7/m147)",
 }
 
 // gatedWildcards are the three surfaces behind the OAuth gate + identity-keyed
@@ -148,6 +150,9 @@ func fullyMountedRootMux(t *testing.T) *http.ServeMux {
 	t.Helper()
 	srv := NewServer(&core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}, Deps{
 		StripeWebhook: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
+		// The sandbox feature mounts the run connect-token redeem route outside
+		// the gate (w7/m147); the client URL is never dialed by the census.
+		SandboxClient: sandbox.NewClient("http://127.0.0.1:1"),
 	})
 	srv.HydraAdminURL = fakeHydraURL(t)
 	// Enables the RFC 9728 discovery mount (resourceMetadataURL != "").

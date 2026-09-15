@@ -75,6 +75,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/serve"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
@@ -1049,6 +1050,13 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 					GatewayURL: gwURL,
 					Client:     &http.Client{}, // no timeout: the exec stream is long-lived
 					TTL:        60 * time.Second,
+					// The pinned CLI's run connect-token handshake (w7/m147): the
+					// minted `uri` is on the public API origin, and the token is
+					// single-use across both replicas through the shared store (the
+					// same shell_ticket_nonces claim the gateway uses; st nil ⇒
+					// process-local, as for shells).
+					PublicURL: cfg.APIPublicURL,
+					Nonces:    &sshgateway.NonceGuard{Store: nonceStoreOrNil(st)},
 				}
 			}
 		}
@@ -1364,4 +1372,13 @@ func waitForDB(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 	return err
+}
+
+// nonceStoreOrNil keeps a nil *store.PGStore a nil NonceStore interface: a typed
+// nil boxed into the interface would be non-nil and every claim would panic.
+func nonceStoreOrNil(st *store.PGStore) sshgateway.NonceStore {
+	if st == nil {
+		return nil
+	}
+	return st
 }

@@ -1148,6 +1148,16 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 		mux.Handle("/v1/deploy-hooks", hook)
 		mux.Handle("/v1/deploy-hooks/", hook)
 	}
+	// The pinned Render CLI redeems a sandbox run connect token (minted by the
+	// gated `POST /v1/sandboxes/{id}/runs/{operation}/token`) at the `uri` bex
+	// returned, carrying that HMAC token — not an OAuth credential — as its
+	// Bearer, so the redeem route mounts outside the gate (w7/m147). The same
+	// IP-keyed pre-lookup limiter as deploy hooks sheds a flood before the
+	// token is verified; the token itself binds workspace, sandbox, execution,
+	// and command, is single-use, and expires within 60s.
+	if s.Sandbox != nil {
+		mux.Handle(sandbox.ConnectStreamPattern, s.deployHookLookupRateLimitMiddleware()(bodyLimit(s.Sandbox.ConnectStreamHandler())))
+	}
 	// All three adapters sit behind the same auth gate, with rate limiting inside
 	// the auth wrapper so the limiter keys on the resolved caller Identity. The
 	// gate itself recognizes github's one exact signed-state callback exception;

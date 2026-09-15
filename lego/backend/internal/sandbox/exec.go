@@ -24,11 +24,13 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
 
 // ExecConfig wires the sandbox-exec bridge (w3/m33, `render ea sandbox exec`).
@@ -50,6 +52,16 @@ type ExecConfig struct {
 	Client *http.Client
 	// TTL bounds the minted ticket's lifetime (default 60s).
 	TTL time.Duration
+	// PublicURL is the externally reachable API origin (BEX_API_PUBLIC_URL) the
+	// run connect-token `uri` is built on (w7/m147). Empty ⇒ the origin the
+	// mint request arrived on.
+	PublicURL string
+	// Nonces makes run connect tokens single-use across bex-api replicas when
+	// wired with the shared store (sshgateway.NonceGuard{Store}). nil ⇒ a
+	// process-local guard is used, so a token still never redeems twice on one
+	// pod (the cross-replica gap is the store-off deployment's, as for shells).
+	Nonces     *sshgateway.NonceGuard
+	noncesOnce sync.Once
 }
 
 // ExecRequest is the caller's exec input: OwnerID binds the workspace (Render's
@@ -82,27 +94,40 @@ func (s *Service) execEnabled() bool {
 // after losing can_create. Agent-session sandboxes keep the stronger
 // can_view_sensitive gate below.
 func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Response, error) {
-	ctx = core.WithWorkspace(ctx, req.OwnerID)
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	ws, raw, err := s.authorizeExecTarget(ctx, req)
+	if err != nil {
 		return nil, err
 	}
+	return s.mintAndDial(ctx, ws, req.SandboxID, raw.Metadata[metadataAgentSession], []string{"/bin/sh", "-c", req.Command})
+}
+
+// authorizeExecTarget is the exec gate shared by the direct exec verbs and the
+// run connect-token mint (ConnectRun): it resolves the workspace, authorizes
+// can_create, resolves the owned sandbox, and applies the agent-session rule
+// below. It returns the resolved workspace and the live sandbox object; it
+// opens no stream and mints nothing.
+func (s *Service) authorizeExecTarget(ctx context.Context, req ExecRequest) (string, osSandbox, error) {
+	ctx = core.WithWorkspace(ctx, req.OwnerID)
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return "", osSandbox{}, err
+	}
 	if !s.execEnabled() || !s.enabled() {
-		return nil, core.ErrSandboxesUnavailable
+		return "", osSandbox{}, core.ErrSandboxesUnavailable
 	}
 	if req.SandboxID == "" || req.Command == "" {
-		return nil, fmt.Errorf("%w: sandbox id and command are required", core.ErrBadRequest)
+		return "", osSandbox{}, fmt.Errorf("%w: sandbox id and command are required", core.ErrBadRequest)
 	}
 	ws, ok := s.Tenant(ctx)
 	if !ok {
-		return nil, fmt.Errorf("%w: no workspace resolved for exec", core.ErrForbidden)
+		return "", osSandbox{}, fmt.Errorf("%w: no workspace resolved for exec", core.ErrForbidden)
 	}
 	key, err := s.workspaceKey(ctx)
 	if err != nil {
-		return nil, err
+		return "", osSandbox{}, err
 	}
 	raw, err := s.ownedSandbox(ctx, key, ws, req.SandboxID)
 	if err != nil {
-		return nil, err
+		return "", osSandbox{}, err
 	}
 	// An agent-session sandbox is a credential-capable pod (the Git-write and
 	// model proxies live behind it), and model.fga deliberately gates a real
@@ -114,10 +139,10 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	// (ags-… SSH, agent attach) already enforce exactly this (round-13 #1).
 	if sessionID := raw.Metadata[metadataAgentSession]; sessionID != "" {
 		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, agentsession.SessionObject(sessionID)); err != nil {
-			return nil, err
+			return "", osSandbox{}, err
 		}
 	}
-	return s.mintAndDial(ctx, ws, req.SandboxID, raw.Metadata[metadataAgentSession], []string{"/bin/sh", "-c", req.Command})
+	return ws, raw, nil
 }
 
 // mintAndDial signs an exec ticket binding the exact pod/namespace/command and
@@ -188,7 +213,7 @@ func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID
 }
 
 // StreamExec authorizes, opens the gateway stream, and copies its SSE response
-// (stdout/stderr chunks + a terminal exitCode) into w. It writes the SSE headers
+// (stdout/stderr chunks + a terminal exit event) into w. It writes the SSE headers
 // only once the gateway accepts, so a pre-stream failure returns an error the
 // adapter renders as a normal HTTP status instead of a half-open event stream —
 // the Render CLI's single-POST-reads-SSE contract (docs/render-artifacts/ea-sandbox.md).
@@ -343,23 +368,43 @@ func bufferExecWithLimit(resp *http.Response, maxOutputBytes int) (ExecResult, e
 					}
 				}
 			case "exit":
+				// The gateway emits the pinned Render CLI's `exit_code` (w7/m147)
+				// and, for one release, the pre-m147 `exitCode` beside it; a reader
+				// may meet either while the gateway and bex-api roll out apart.
 				var ev struct {
-					ExitCode int `json:"exitCode"`
+					ExitCode       *int `json:"exit_code"`
+					LegacyExitCode *int `json:"exitCode"`
 				}
 				if json.Unmarshal([]byte(payload), &ev) == nil {
-					out.ExitCode = ev.ExitCode
-					exitSeen = true
+					switch {
+					case ev.ExitCode != nil:
+						out.ExitCode, exitSeen = *ev.ExitCode, true
+					case ev.LegacyExitCode != nil:
+						out.ExitCode, exitSeen = *ev.LegacyExitCode, true
+					}
 				}
 			case "error":
+				// Same transition: the pinned CLI's {status, message} beside the
+				// internal {error, code}. `code` (or a 404 status) names the
+				// terminated target either way.
 				var ev struct {
-					Error string `json:"error"`
-					Code  string `json:"code"`
+					Status  int    `json:"status"`
+					Message string `json:"message"`
+					Error   string `json:"error"`
+					Code    string `json:"code"`
 				}
-				if json.Unmarshal([]byte(payload), &ev) == nil && ev.Error != "" {
-					if ev.Code == sandboxexec.ErrorCodeTargetTerminated {
+				if json.Unmarshal([]byte(payload), &ev) == nil {
+					msg := ev.Message
+					if msg == "" {
+						msg = ev.Error
+					}
+					if msg == "" {
+						break
+					}
+					if ev.Code == sandboxexec.ErrorCodeTargetTerminated || ev.Status == http.StatusNotFound {
 						return finish(), fmt.Errorf("%w: sandbox terminated", core.ErrNotFound)
 					}
-					return finish(), fmt.Errorf("%w: %s", core.ErrSandboxesUnavailable, ev.Error)
+					return finish(), fmt.Errorf("%w: %s", core.ErrSandboxesUnavailable, msg)
 				}
 			}
 		}

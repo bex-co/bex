@@ -26,10 +26,12 @@ import (
 )
 
 // RegisterREST wires the Render-compatible `/v1/sandboxes*` surface so
-// `render ea sandbox create/list/stop` work unmodified (ADR042 D2,
+// `render ea sandbox create/list/stop/exec` work unmodified (ADR042 D2,
 // docs/render-artifacts/ea-sandbox.md, cli-compatibility-checklist rows
-// 238-241). Exec (`ea sandbox exec`, the two-step run-token + SSE stream) is a
-// follow-up. ownerId is Render's workspace binding (query param).
+// 238-241). Exec is two-step for the pinned CLI — the run connect-token mint
+// below plus the redeem route in connect.go, mounted outside the auth gate —
+// while the single-step `POST /exec` stays for pre-v2.24 clients and MCP.
+// ownerId is Render's workspace binding (query param).
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -115,6 +117,32 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			core.WriteErr(w, err)
 		}
+	})
+	// Pinned Render CLI `exec`, step one (w7/m147): mint a run connect token
+	// bound to this sandbox and command. The client then sends the command to
+	// the returned `uri` with the token as its Bearer (ConnectStreamHandler).
+	// ownerId is query-or-body, as for /exec.
+	mux.HandleFunc("POST /v1/sandboxes/{id}/runs/{operation}/token", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			OwnerID string `json:"ownerId"`
+			Command string `json:"command"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
+			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		owner := r.URL.Query().Get("ownerId")
+		if owner == "" {
+			owner = body.OwnerID
+		}
+		out, err := s.ConnectRun(r.Context(), ConnectRequest{
+			OwnerID: owner, SandboxID: r.PathValue("id"), Operation: r.PathValue("operation"), Command: body.Command,
+		}, s.connectBaseURL(r))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, out)
 	})
 	// Render CLI `stop` → terminate.
 	mux.HandleFunc("POST /v1/sandboxes/{id}/terminate", func(w http.ResponseWriter, r *http.Request) {

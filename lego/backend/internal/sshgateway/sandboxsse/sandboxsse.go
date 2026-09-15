@@ -21,7 +21,7 @@ limitations under the License.
 // command, and reverse-proxies to this endpoint. The gateway verifies the
 // ticket, runs the command in the sandbox pod via one pods/exec stream, and
 // emits the Render CLI's SSE event shape: `data: {"stdout"|"stderr":"…"}`
-// output chunks then a terminal `data: {"exitCode":N}`. pods/exec stays
+// output chunks then a terminal `data: {"exit_code":N}`. pods/exec stays
 // confined to the gateway process; the ticket's HMAC is the trust (only
 // bex-api holds the secret), and the signed argv means the gateway runs
 // exactly what bex-api authorized. (The name avoids colliding with
@@ -227,7 +227,7 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	case err != nil && errors.Is(err, sshgateway.ErrTargetTerminated):
 		log.Printf("sandbox exec target terminal (sandbox=%s)", claims.SandboxID)
 		result = "failed"
-		sse.emit("error", errorEvent{Error: "sandbox is no longer running", Code: sandboxexec.ErrorCodeTargetTerminated})
+		sse.emit("error", newErrorEvent(http.StatusNotFound, "sandbox is no longer running", sandboxexec.ErrorCodeTargetTerminated))
 	case err != nil && execCtx.Err() != nil && timedCtx.Err() == nil:
 		// The watchdog ended the stream (revocation), not the client or the cap.
 		// Reported through the session vocabulary (result="revoked"), like the
@@ -235,31 +235,53 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 		// already spent on "accepted" at admission (w1/m76/t005).
 		log.Printf("sandbox exec revoked mid-stream (sandbox=%s subject=%s): %v", claims.SandboxID, claims.Subject, err)
 		result = "revoked"
-		sse.emit("error", errorEvent{Error: "access was revoked during this exec"})
+		sse.emit("error", newErrorEvent(http.StatusForbidden, "access was revoked during this exec", ""))
 	case err != nil:
 		log.Printf("sandbox exec stream failed (sandbox=%s): %v", claims.SandboxID, err)
 		result = "failed"
-		sse.emit("error", errorEvent{Error: "exec failed to start in this sandbox"})
+		sse.emit("error", newErrorEvent(http.StatusServiceUnavailable, "exec failed to start in this sandbox", ""))
 	default:
 		result = "completed"
-		sse.emit("exit", exitEvent{ExitCode: sshgateway.ClampExit(code)})
+		sse.emit("exit", newExitEvent(sshgateway.ClampExit(code)))
 	}
 }
 
-// The Render CLI reads the SSE `event:` line to discriminate, then unmarshals the
-// `data:` JSON (render-oss/cli pkg/sandbox/sse.go): `event: output` carries
-// {stream, data}, `event: exit` carries {exitCode}, `event: error` carries a
-// message. bex mirrors that shape exactly so the unmodified CLI parses it.
+// The Render CLI reads the SSE `event:` line to discriminate, then unmarshals
+// the `data:` JSON (render-oss/cli pkg/sandbox/sse.go, identical from v2.21.0
+// through the v2.27.0 pin): `event: output` carries {stream, data},
+// `event: exit` carries {exit_code}, and `event: error` carries
+// {status, message}, which the CLI reports as
+// `sandbox exec stream error status N: message`. Before w7/m147 bex emitted
+// {exitCode} and {error, code} instead, so a failing command decoded as exit 0
+// and an error as `status 0: `. The pinned keys are now authoritative; the
+// old keys ride along for ONE release so a bex-api reader
+// (sandbox.bufferExecWithLimit) that rolls out apart from the gateway still
+// decodes either shape — drop LegacyExitCode and Error once every deployed
+// bex-api reads the pinned keys (they are additive, so the CLI ignores them).
 type outputEvent struct {
 	Stream string `json:"stream"` // "stdout" | "stderr"
 	Data   string `json:"data"`
 }
 type exitEvent struct {
-	ExitCode int `json:"exitCode"`
+	ExitCode       int `json:"exit_code"`
+	LegacyExitCode int `json:"exitCode"`
 }
 type errorEvent struct {
-	Error string `json:"error"`
-	Code  string `json:"code,omitempty"`
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+	Error   string `json:"error"`
+	Code    string `json:"code,omitempty"`
+}
+
+func newExitEvent(code int) exitEvent {
+	return exitEvent{ExitCode: code, LegacyExitCode: code}
+}
+
+// newErrorEvent carries one message under both keys and an HTTP-ish status
+// the CLI prints: 404 for a terminated target, 403 for revoked access, 503
+// when the exec could not start.
+func newErrorEvent(status int, msg, code string) errorEvent {
+	return errorEvent{Status: status, Message: msg, Error: msg, Code: code}
 }
 
 // sseWriter serializes SSE writes to one HTTP response (output chunks and the
