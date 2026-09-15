@@ -1,18 +1,18 @@
 # w1 · m151 — A free web service under steady traffic still hibernates every 15 minutes
 
-**Worker:** worker1 **Goal:** a free web service sleeps only after its idle window passes with **no inbound traffic**, as Render documents. Its idle clock advances on every request the service actually serves (and on WebSocket activity), not only when it first runs or is woken. A service that is being used never goes through a hibernate→wake cycle. **Status:** in progress — t005 and t006 done; t001–t004 implemented with tests green, and their live probes (the three DoD bullets, the WebSocket probe) wait for the deploy; then t007 closeout.
+**Worker:** worker1 **Goal:** a free web service sleeps only after its idle window passes with **no inbound traffic**, as Render documents. Its idle clock advances on every request the service actually serves (and on WebSocket activity), not only when it first runs or is woken. A service that is being used never goes through a hibernate→wake cycle. **Status:** done (2026-09-15). Every task is complete, and the definition of done passed live on production (images pinned to `c4212ec71`). The WebSocket-only isolation was confounded by outside traffic; see § Live verification.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Served requests advance a free web service's idle clock (a Prometheus activity reader, checked before any hibernate) | 60m | — |
-| t002 | WebSocket activity keeps a free web service awake too | 40m | t001 |
-| t003 | Blast radius and adjacent states: every path that stamps, reads or bypasses the idle clock | 40m | t001 |
-| t004 | Render parity | 20m | t002, t003 |
+| t001 | Served requests advance a free web service's idle clock (a Prometheus activity reader, checked before any hibernate) — **DONE** | 60m | — |
+| t002 | WebSocket activity keeps a free web service awake too — **DONE** | 40m | t001 |
+| t003 | Blast radius and adjacent states: every path that stamps, reads or bypasses the idle clock — **DONE** | 40m | t001 |
+| t004 | Render parity — **DONE** | 20m | t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t004 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -146,6 +146,46 @@ Declined:
 - Rewording the tests' filing-time comments; they follow the repo's convention.
 
 **Tests (t006).** `activity_test.go`: the decision table above; requeue timed from the traffic; a full reconcile that keeps the replica under traffic and scales to 0 once quiet; the reader against a fake Prometheus (one query carrying the exact service label and `app_id`, the lookback capped at the window for a three-day-old stamp, no status matcher, the latest sample wins, nothing newer than the stamp, and one failed read opening the breaker so the next read makes no request). **Shown failing without the fix:** in a scratch worktree with only the traffic read removed from `desiredReplicas` (and the slower recheck from `runningRequeue`), `TestIdleDecisionConsultsServedTraffic` (4 rows), `TestRequeueAfterTrafficIsTimedFromTheTraffic` and `TestSteadyTraffic…` failed ("auto-hibernating = true, want false"; "replicas under steady traffic = 0, want 1"). The reader tests cover a type that did not exist pre-fix.
+
+## Live verification (2026-09-15, production pinned to `c4212ec71`)
+
+- **Fixtures.**
+  - `qa-20260915-m151` (`srv-dakec1h5v75s738uf7vg`): a free web service from `examples/hello-go`, with `MESSAGE=m151-awake`.
+  - `qa-20260915-m151ws` (`srv-dakemufnonls738jbncg`): a free web service from `examples/hello-python`, with a Docker Command running a stdlib WebSocket server that sends a server-to-client tick every 10 s.
+  - `qa-20260915-m148` (`srv-dakec9h5v75s738uf830`) and `qa-20260915-m155` (`srv-dakempnnonls738jbnb0`), from the same run, as extra idle-clock witnesses.
+- **Outside traffic.** Vulnerability scanners reach new `*.onbex.co` hostnames within minutes: `/.env`, `/.git/HEAD`, `/.env.backup` and similar, with no User-Agent, and every client address reads `10.10.0.7` (w1/m150). Each request is served inbound traffic and correctly advances the idle clock. The request logs, not the per-minute metrics (which miss isolated requests), are the reliable record of it.
+
+**Pre-fix, reproduced again before the rollout** (production still on `137a5186e`):
+
+- `qa-20260915-m151` hibernated at 06:59:31Z, 15:10 after its first Running at 06:44:21Z, although it had traffic until 06:47Z.
+- `qa-20260915-m155` hibernated at 07:25:18Z while a 2-second traffic loop (06:55–08:10Z) was hitting it, then woke at 07:25:35Z. It never hibernated again under the same traffic after the rollout.
+
+**Bullet 1: steady traffic keeps it awake.** `qa-20260915-m151` woke at 07:18:01Z; the stamp-only rule would have slept it at 07:33:01Z. A request every 15 s from 07:29:56Z to 07:50:12Z returned 79 of 79 `200 m151-awake`, and no `service_hibernated` was recorded in that window.
+
+**Bullet 2: an idle service sleeps, timed from its last request.**
+
+```text
+qa-20260915-m151ws  last request in the 08:12Z minute (outside) → service_hibernated 08:27:10Z
+qa-20260915-m148    last request in the 08:14Z minute           → service_hibernated 08:29:09Z
+```
+
+Both slept about 15 minutes after their last request. `qa-20260915-m151` itself kept receiving scanner requests (08:17Z, 08:32Z), so it correctly stayed awake past 08:35Z. `qa-20260915-m155` did too (requests at 08:14Z, 08:23Z, 08:25Z, and a 44-request burst at 08:31Z).
+
+**Bullet 3: wake still works.**
+
+```text
+09:11:26Z  qa-20260915-m151ws service_hibernated
+09:11:50.115Z  GET / → 503 {"error":"service hibernated","retryAfter":5}
+09:12:02.600Z  GET / → 200 m151-ws   (9 requests, ~12.5 s)
+```
+
+An earlier wake at 07:30Z behaved the same way: `503`, `503`, then `200` at 07:30:12Z.
+
+**WebSocket (t002): confounded.**
+
+- One receive-only socket to `qa-20260915-m151ws` got `101` at 07:35:34Z, then 124 server ticks (07:35:34–07:56:04Z) with 0 errors. The HTTP-only rule would have slept the service by 07:50:28Z, and it stayed awake.
+- Outside HTTP requests reached it during that window, at 07:39, 07:42, 07:48, 07:57 and 08:01Z, and no HTTP-free gap was 15 minutes long. So this run cannot prove that server-to-client frames alone kept it awake.
+- That behaviour stays pinned by `TestIdleDecisionConsultsServedTraffic` and `activity_test.go`. The client-to-server divergence is `w1/102`.
 
 ## Dedupe
 
