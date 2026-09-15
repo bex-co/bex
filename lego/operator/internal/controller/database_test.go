@@ -431,6 +431,11 @@ func TestCnpgClusterSpecHA(t *testing.T) {
 	if _, has := noHA["affinity"]; has {
 		t.Error("HA off: affinity must not be set")
 	}
+	// A lone instance installs no PDB: CNPG's zero-disruption default would pin
+	// autoscaled nodes while protecting nothing (ADR060 D8, w7/m90).
+	if noHA["enablePDB"] != false {
+		t.Errorf("HA off: enablePDB = %v, want false", noHA["enablePDB"])
+	}
 
 	// HA on => instances raised to 2 and anti-affinity set.
 	ha := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", highAvailability: true})
@@ -440,6 +445,11 @@ func TestCnpgClusterSpecHA(t *testing.T) {
 	aff := ha["affinity"].(map[string]any)
 	if aff["enablePodAntiAffinity"] != true || aff["topologyKey"] != "kubernetes.io/hostname" {
 		t.Errorf("HA on: affinity = %v, want enablePodAntiAffinity=true topologyKey=kubernetes.io/hostname", aff)
+	}
+	// HA keeps CNPG's default disruption protection: the key is absent so the
+	// projection withdraws a prior single-instance `false` on growth.
+	if v, has := ha["enablePDB"]; has {
+		t.Errorf("HA on: enablePDB = %v, want key absent (CNPG default)", v)
 	}
 
 	// HA on a plan that already has >1 instances keeps the higher count.

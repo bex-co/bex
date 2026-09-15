@@ -376,6 +376,17 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 			"limits":   map[string]any{"cpu": p.plan.CPU, "memory": p.plan.Memory},
 		},
 	}
+	// A single-instance Cluster gets no PodDisruptionBudget. CNPG's default
+	// per-primary PDB allows zero disruptions, so it blocks every node drain
+	// while protecting nothing: the lone instance moves with the same brief
+	// downtime either way. After the 2026-08-09 rotation three such pods
+	// pinned an autoscaled node for six days (ADR060 D8; w7/m90). HA clusters
+	// (>=2 instances) keep CNPG's default so a standby survives a drain. The
+	// key is omitted rather than set to true for HA, so the projection deletes
+	// it when a Cluster grows from one instance and CNPG's default returns.
+	if instances == 1 {
+		spec["enablePDB"] = false
+	}
 	// Pod anti-affinity: spread primary and standbys across nodes so a single
 	// node failure doesn't take out all instances.
 	if p.highAvailability {

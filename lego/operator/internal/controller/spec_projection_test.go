@@ -178,3 +178,48 @@ func TestUpsertOwnedPreservesDefaultedSpecs(t *testing.T) {
 		})
 	}
 }
+
+// TestSpecProjectionSingleInstancePDBFlip pins the two enablePDB transitions a
+// live CNPG Cluster goes through (w7/m90): a Cluster projected before the fix
+// (no enablePDB recorded; CNPG defaulted it to true) is flipped to false by the
+// next single-instance projection, and growing to HA withdraws the key so
+// CNPG's default disruption protection returns for the standby.
+func TestSpecProjectionSingleInstancePDBFlip(t *testing.T) {
+	object := &unstructured.Unstructured{Object: map[string]any{}}
+	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
+	single := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user"})
+	if single["enablePDB"] != false {
+		t.Fatalf("single-instance projection enablePDB = %v, want false", single["enablePDB"])
+	}
+	preFix := runtime.DeepCopyJSONValue(single).(map[string]any)
+	delete(preFix, "enablePDB")
+	if err := projectUnstructuredSpec(object, preFix); err != nil {
+		t.Fatal(err)
+	}
+	live := object.Object["spec"].(map[string]any)
+	live["enablePDB"] = true // CNPG webhook default on the pre-fix estate
+	live["postgresql"] = map[string]any{"parameters": map[string]any{"wal_level": "logical"}}
+
+	if err := projectUnstructuredSpec(object, single); err != nil {
+		t.Fatal(err)
+	}
+	live = object.Object["spec"].(map[string]any)
+	if live["enablePDB"] != false {
+		t.Fatalf("existing single-instance Cluster kept enablePDB = %v, want false", live["enablePDB"])
+	}
+	if live["postgresql"].(map[string]any)["parameters"].(map[string]any)["wal_level"] != "logical" {
+		t.Fatal("flipping enablePDB wiped an unrelated admission default")
+	}
+
+	ha := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", highAvailability: true})
+	if err := projectUnstructuredSpec(object, ha); err != nil {
+		t.Fatal(err)
+	}
+	live = object.Object["spec"].(map[string]any)
+	if v, present := live["enablePDB"]; present {
+		t.Fatalf("growing to HA left enablePDB = %v, want key withdrawn so CNPG's default applies", v)
+	}
+	if live["instances"] != int64(2) {
+		t.Fatalf("HA instances = %v, want 2", live["instances"])
+	}
+}

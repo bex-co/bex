@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -398,13 +399,19 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 		cluster := &unstructured.Unstructured{}
 		cluster.SetGroupVersionKind(cnpgClusterGVK)
 		Expect(k8sClient.Get(ctx, nn, cluster)).To(Succeed())
+		// A single-instance Cluster is projected with enablePDB false (w7/m90),
+		// so the CNPG webhook has nothing to default there; only the other
+		// admission defaults are simulated below.
+		pdb, found, err := unstructured.NestedBool(cluster.Object, "spec", "enablePDB")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(found).To(BeTrue(), "single-instance Cluster must carry an explicit enablePDB")
+		Expect(pdb).To(BeFalse(), "single-instance Cluster must not install a zero-disruption PDB")
 		// Simulate the live CNPG webhook defaults absent from the stub CRD.
-		Expect(unstructured.SetNestedField(cluster.Object, true, "spec", "enablePDB")).To(Succeed())
 		Expect(unstructured.SetNestedField(cluster.Object, "logical", "spec", "postgresql", "parameters", "wal_level")).To(Succeed())
 		Expect(unstructured.SetNestedField(cluster.Object, "UTF8", "spec", "bootstrap", "initdb", "encoding")).To(Succeed())
 		Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
 		rec.reset()
-		_, err := run()
+		_, err = run()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(rec.sorted()).To(BeEmpty(), "webhook-defaulted Cluster must cause zero update requests")
 		Expect(unstructured.SetNestedField(cluster.Object, int64(1), "status", "readyInstances")).To(Succeed())
@@ -412,6 +419,66 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 		Expect(divergence(ctx, rec, run, db, "Cluster")).To(BeEmpty())
 		Expect(k8sClient.Get(ctx, nn, db)).To(Succeed())
 		Expect(db.Status.Phase).To(Equal(appv1alpha1.DBPhaseReady))
+
+		// A Cluster projected before w7/m90 carries no enablePDB in its recorded
+		// projection and CNPG defaulted it to true. One reconcile must write the
+		// false, then converge again — this is how the live single-instance
+		// estate reaches enablePDB false without a one-shot.
+		Expect(k8sClient.Get(ctx, nn, cluster)).To(Succeed())
+		annotations := cluster.GetAnnotations()
+		var previous map[string]any
+		Expect(json.Unmarshal([]byte(annotations[annotationProjectedSpec]), &previous)).To(Succeed())
+		delete(previous, "enablePDB")
+		encoded, err := json.Marshal(previous)
+		Expect(err).NotTo(HaveOccurred())
+		annotations[annotationProjectedSpec] = string(encoded)
+		cluster.SetAnnotations(annotations)
+		Expect(unstructured.SetNestedField(cluster.Object, true, "spec", "enablePDB")).To(Succeed())
+		Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+		rec.reset()
+		_, err = run()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(rec.sorted()).To(ContainElement(ContainSubstring("Cluster")), "a pre-m90 single-instance Cluster must be updated to enablePDB false")
+		Expect(k8sClient.Get(ctx, nn, cluster)).To(Succeed())
+		pdb, _, err = unstructured.NestedBool(cluster.Object, "spec", "enablePDB")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(pdb).To(BeFalse())
+		wal, _, _ := unstructured.NestedString(cluster.Object, "spec", "postgresql", "parameters", "wal_level")
+		Expect(wal).To(Equal("logical"), "flipping enablePDB must not wipe unrelated CNPG defaults")
+		Expect(divergence(ctx, rec, run, db, "Cluster")).To(BeEmpty())
+		deleteOwner(ctx, db, run)
+	})
+
+	It("keeps CNPG's default PDB on an HA Database", func() {
+		const name = "dpg-converge-ha"
+		rec := &writeRecorder{Client: k8sClient, recordStatus: true}
+		r := &DatabaseReconciler{Client: rec, Scheme: k8sClient.Scheme()}
+		nn := types.NamespacedName{Name: name, Namespace: namespace}
+		db := &appv1alpha1.Database{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec:       appv1alpha1.DatabaseSpec{Name: "converge-ha", Plan: "basic-1gb", HighAvailability: true},
+		}
+		Expect(k8sClient.Create(ctx, db)).To(Succeed())
+		run := func() (ctrl.Result, error) {
+			return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+		}
+		reconcileToFixedPoint(run)
+		cluster := &unstructured.Unstructured{}
+		cluster.SetGroupVersionKind(cnpgClusterGVK)
+		Expect(k8sClient.Get(ctx, nn, cluster)).To(Succeed())
+		instances, _, _ := unstructured.NestedInt64(cluster.Object, "spec", "instances")
+		Expect(instances).To(BeNumerically(">=", 2))
+		_, found, err := unstructured.NestedFieldNoCopy(cluster.Object, "spec", "enablePDB")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(found).To(BeFalse(), "an HA Cluster must leave enablePDB to CNPG's default so a standby survives a drain")
+		// The live webhook default (true) must be preserved, not fought.
+		Expect(unstructured.SetNestedField(cluster.Object, true, "spec", "enablePDB")).To(Succeed())
+		Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+		rec.reset()
+		_, err = run()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(rec.sorted()).To(BeEmpty(), "webhook-defaulted enablePDB on an HA Cluster must cause zero update requests")
+		Expect(k8sClient.Get(ctx, nn, db)).To(Succeed())
 		deleteOwner(ctx, db, run)
 	})
 
