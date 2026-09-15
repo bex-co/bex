@@ -2497,14 +2497,6 @@ func (r *AppReconciler) deleteStaleChildren(ctx context.Context, objs ...client.
 	return nil
 }
 
-func terminationGracePeriodSeconds(seconds *int32) *int64 {
-	if seconds == nil {
-		return nil
-	}
-	value := int64(*seconds)
-	return &value
-}
-
 // applyClusterIPService creates/updates one ClusterIP Service named name over
 // the App's pods (the stable labelApp selector) on the App's port. Shared by
 // the primary CR-named Service and the slug alias so the two cannot drift.

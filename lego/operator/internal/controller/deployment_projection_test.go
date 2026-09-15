@@ -430,28 +430,136 @@ func TestPodHardeningDefaults(t *testing.T) {
 }
 
 func TestTerminationGracePeriod(t *testing.T) {
-	t.Run("unset writes the kubernetes default explicitly", func(t *testing.T) {
+	workerParams := func() deploymentParams {
+		p := webParams()
+		p.worker = true
+		return p
+	}
+	withDelay := func(seconds int32) func(*appv1alpha1.App) {
+		return func(a *appv1alpha1.App) { a.Spec.MaxShutdownDelaySeconds = &seconds }
+	}
+	grace := func(dep *appsv1.Deployment) int64 {
+		t.Helper()
+		got := dep.Spec.Template.Spec.TerminationGracePeriodSeconds
+		if got == nil {
+			t.Fatal("grace period is nil after server defaults")
+		}
+		return *got
+	}
+
+	t.Run("an undrained pod with no delay writes the kubernetes default explicitly", func(t *testing.T) {
 		// 30 is what the API server already stored for every App that never set
 		// maxShutdownDelaySeconds, so writing it changes no pod template and
 		// rolls nothing — it only lets the projection equal the stored object,
 		// which is what keeps a converged reconcile from PUTting (w7/m84).
-		dep := project(projectionApp(), webParams())
-		got := dep.Spec.Template.Spec.TerminationGracePeriodSeconds
-		if got == nil || *got != defaultTerminationGracePeriodSeconds {
-			t.Errorf("grace = %v; want the Kubernetes default %d", got, defaultTerminationGracePeriodSeconds)
+		if got := grace(project(projectionApp(), workerParams())); got != defaultTerminationGracePeriodSeconds {
+			t.Errorf("worker grace = %d; want the Kubernetes default %d", got, defaultTerminationGracePeriodSeconds)
 		}
 	})
 
-	t.Run("propagated when set", func(t *testing.T) {
-		app := projectionApp(func(a *appv1alpha1.App) {
-			seconds := int32(45)
-			a.Spec.MaxShutdownDelaySeconds = &seconds
-		})
-		got := project(app, webParams()).Spec.Template.Spec.TerminationGracePeriodSeconds
-		if got == nil || *got != 45 {
-			t.Errorf("grace = %v; want 45", got)
+	t.Run("an undrained pod's delay is its whole grace period", func(t *testing.T) {
+		if got := grace(project(projectionApp(withDelay(45)), workerParams())); got != 45 {
+			t.Errorf("worker grace = %d; want 45", got)
 		}
 	})
+
+	// w1/m154: Kubernetes counts preStop inside the grace period, so a drained
+	// pod's is the drain plus the delay, and the delay still means "after SIGTERM".
+	t.Run("a drained pod adds the drain to the default delay", func(t *testing.T) {
+		if got := grace(project(projectionApp(), webParams())); got != drainSeconds+defaultTerminationGracePeriodSeconds {
+			t.Errorf("web grace = %d; want %d + %d", got, drainSeconds, defaultTerminationGracePeriodSeconds)
+		}
+	})
+
+	t.Run("a drained pod adds the drain to the user's delay", func(t *testing.T) {
+		if got := grace(project(projectionApp(withDelay(60)), webParams())); got != drainSeconds+60 {
+			t.Errorf("web grace = %d; want %d + 60", got, drainSeconds)
+		}
+	})
+}
+
+// TestTrafficServingPodsDrainBeforeSIGTERM pins w1/m154: a web or private pod
+// keeps serving for drainSeconds after it is marked for deletion, so requests
+// Traefik (or kube-proxy) still routes to it land before SIGTERM closes the
+// app's listener. At filing time a config-change roll dropped one request with
+// 502 on every roll.
+func TestTrafficServingPodsDrainBeforeSIGTERM(t *testing.T) {
+	for _, serviceType := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService} {
+		app := projectionApp(func(a *appv1alpha1.App) { a.Spec.Type = serviceType })
+		lifecycle := appContainerOf(t, project(app, webParams())).Lifecycle
+		if lifecycle == nil || lifecycle.PreStop == nil || lifecycle.PreStop.Sleep == nil {
+			t.Fatalf("%s: lifecycle = %+v; want a preStop sleep", serviceType, lifecycle)
+		}
+		if lifecycle.PreStop.Sleep.Seconds != drainSeconds {
+			t.Errorf("%s: drain = %ds; want %ds", serviceType, lifecycle.PreStop.Sleep.Seconds, drainSeconds)
+		}
+		// A native sleep, never exec: tenant images may have no shell or sleep binary.
+		if lifecycle.PreStop.Exec != nil || lifecycle.PreStop.HTTPGet != nil {
+			t.Errorf("%s: preStop = %+v; want only the native sleep", serviceType, lifecycle.PreStop)
+		}
+	}
+}
+
+// Workers take no traffic, and a disk-attached service's Recreate downtime is
+// documented; neither drains, and their grace period is unchanged.
+func TestWorkersAndDiskAttachedServicesDoNotDrain(t *testing.T) {
+	worker := webParams()
+	worker.worker = true
+	dep := project(projectionApp(), worker)
+	if lifecycle := appContainerOf(t, dep).Lifecycle; lifecycle != nil {
+		t.Errorf("worker lifecycle = %+v; want none", lifecycle)
+	}
+
+	disk := projectionApp(func(a *appv1alpha1.App) {
+		a.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
+	})
+	dep = project(disk, webParams())
+	if lifecycle := appContainerOf(t, dep).Lifecycle; lifecycle != nil {
+		t.Errorf("disk-attached lifecycle = %+v; want none", lifecycle)
+	}
+	if dep.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType {
+		t.Errorf("disk-attached strategy = %q; want Recreate unchanged", dep.Spec.Strategy.Type)
+	}
+	if got := dep.Spec.Template.Spec.TerminationGracePeriodSeconds; got == nil || *got != defaultTerminationGracePeriodSeconds {
+		t.Errorf("disk-attached grace = %v; want the Kubernetes default", got)
+	}
+}
+
+// TestDrainIsAdoptedOnTheNextRollNotOnUpgrade pins the adoption rule: a
+// Deployment stored without the drain keeps its template byte for byte until
+// the template changes for its own reason. Adding the drain eagerly would roll
+// every web and private service on the same operator upgrade.
+func TestDrainIsAdoptedOnTheNextRollNotOnUpgrade(t *testing.T) {
+	app := projectionApp()
+	p := webParams()
+	// What a pre-drain operator stored: today's projection without the drain.
+	stored := project(app, p)
+	stored.Spec.Template.Spec.Containers[0].Lifecycle = nil
+	stored.Spec.Template.Spec.TerminationGracePeriodSeconds = new(defaultTerminationGracePeriodSeconds)
+
+	upgraded := stored.DeepCopy()
+	applyDeploymentSpec(upgraded, app, p)
+	if !equalPodTemplate(upgraded.Spec.Template, stored.Spec.Template) {
+		t.Fatalf("an unchanged App's template changed on upgrade (lifecycle %+v); that would roll every service at once",
+			appContainerOf(t, upgraded).Lifecycle)
+	}
+
+	restarted := projectionApp(func(a *appv1alpha1.App) { a.Spec.RestartedAt = "2026-09-15T00:00:00Z" })
+	next := stored.DeepCopy()
+	applyDeploymentSpec(next, restarted, p)
+	lifecycle := appContainerOf(t, next).Lifecycle
+	if lifecycle == nil || lifecycle.PreStop == nil || lifecycle.PreStop.Sleep == nil {
+		t.Fatalf("the next roll must adopt the drain; lifecycle = %+v", lifecycle)
+	}
+	if got := next.Spec.Template.Spec.TerminationGracePeriodSeconds; got == nil || *got != drainSeconds+defaultTerminationGracePeriodSeconds {
+		t.Errorf("adopting roll grace = %v; want %d + %d", got, drainSeconds, defaultTerminationGracePeriodSeconds)
+	}
+
+	again := next.DeepCopy()
+	applyDeploymentSpec(again, restarted, p)
+	if !equalPodTemplate(again.Spec.Template, next.Spec.Template) {
+		t.Error("once adopted, the drained template must re-project unchanged")
+	}
 }
 
 func TestReplicasAndPullSecretsPassThrough(t *testing.T) {

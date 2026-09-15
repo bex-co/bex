@@ -44,7 +44,11 @@ import (
 // below to stay in step: a default added to applyPodSpecServerDefaults and
 // forgotten here would quietly weaken the no-rollout proof into a tautology.
 func stripServerPodDefaults(spec *corev1.PodSpec) {
-	spec.TerminationGracePeriodSeconds = nil
+	// Only the server's own default: a drained pod's grace period (drain plus
+	// the shutdown delay, w1/m154) is authored by bex, not defaulted.
+	if g := spec.TerminationGracePeriodSeconds; g != nil && *g == defaultTerminationGracePeriodSeconds {
+		spec.TerminationGracePeriodSeconds = nil
+	}
 	spec.DNSPolicy = ""
 	spec.SchedulerName = ""
 	for i := range spec.Containers {

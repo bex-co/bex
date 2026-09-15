@@ -21,6 +21,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -297,6 +298,66 @@ func healthCheckHandler(path string, port int) corev1.ProbeHandler {
 	}
 }
 
+// drainSeconds is how long a traffic-serving tenant pod keeps serving after it
+// is marked for deletion, before it gets SIGTERM (w1/m154). Deleting a pod
+// sends SIGTERM at once while its endpoint leaves Traefik (and kube-proxy) a
+// moment later, so an app that exits on SIGTERM would fail the requests still
+// routed to it. The length and the divergence from Render's 60 s:
+// docs/ADR004-app-deployment.md § Rollout headroom, ADR018.
+const drainSeconds int64 = 10
+
+// drainSecondsFor is the preStop drain this App's pods should carry, or 0. A
+// worker takes no inbound traffic, so it has nothing to drain. A disk-attached
+// service rolls with Recreate, whose documented downtime a drain would only
+// lengthen.
+func drainSecondsFor(app *appv1alpha1.App, p deploymentParams) int64 {
+	if p.worker || app.Spec.Disk != nil {
+		return 0
+	}
+	return drainSeconds
+}
+
+// podDrains reports whether a stored pod spec already carries the drain.
+func podDrains(spec corev1.PodSpec) bool {
+	if len(spec.Containers) == 0 {
+		return false
+	}
+	lifecycle := spec.Containers[0].Lifecycle
+	return lifecycle != nil && lifecycle.PreStop != nil && lifecycle.PreStop.Sleep != nil
+}
+
+// applyDrain sets the container's preStop drain and the pod's grace period
+// together, so they cannot drift apart. The drain is a native preStop.sleep,
+// which needs no shell or sleep binary in the tenant's image (scratch and
+// distroless images have neither).
+func applyDrain(spec *corev1.PodSpec, container *corev1.Container, shutdownDelay *int32, drain int64) {
+	container.Lifecycle = nil
+	if drain > 0 {
+		container.Lifecycle = &corev1.Lifecycle{
+			PreStop: &corev1.LifecycleHandler{Sleep: &corev1.SleepAction{Seconds: drain}},
+		}
+	}
+	spec.TerminationGracePeriodSeconds = terminationGracePeriodSeconds(shutdownDelay, drain)
+}
+
+// terminationGracePeriodSeconds maps Render's maxShutdownDelaySeconds — the time
+// after SIGTERM before SIGKILL — onto the pod grace period. Kubernetes counts
+// preStop inside that period, so a drained pod's is the drain plus the delay
+// (default 30). nil for an undrained pod with no delay set, so
+// applyPodSpecServerDefaults writes Kubernetes' own 30-second default — the
+// value its stored template already carries.
+func terminationGracePeriodSeconds(seconds *int32, drain int64) *int64 {
+	if seconds == nil && drain == 0 {
+		return nil
+	}
+	shutdown := defaultTerminationGracePeriodSeconds
+	if seconds != nil {
+		shutdown = int64(*seconds)
+	}
+	value := drain + shutdown
+	return &value
+}
+
 // applyDeploymentSpec projects the App onto dep's spec. It is the body of the
 // reconciler's CreateOrUpdate mutation, kept separate and free of client calls
 // so the whole pod shape is unit-testable.
@@ -304,7 +365,28 @@ func healthCheckHandler(path string, port int) corev1.ProbeHandler {
 // Every field it sets is rebuilt from the App on each pass, so removing a
 // source (a secret file, a start command) drops cleanly out of the pod template
 // rather than lingering from a previous revision.
+//
+// The preStop drain (w1/m154) is adopted lazily. A Deployment whose stored
+// template has no drain gets it on the pass that changes its template for any
+// other reason — a deploy, a config change, a restart — and not before. Adding
+// it eagerly would change every web and private service's template on the
+// same operator upgrade and roll them all at once, where the surge pods
+// outrun the tenant headroom and mint nodes (ADR004 § Rollout headroom). A new
+// Deployment, or one already drained, always gets it.
 func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams) {
+	drain := drainSecondsFor(app, p)
+	if stored := dep.Spec.Template; drain > 0 && len(stored.Spec.Containers) > 0 && !podDrains(stored.Spec) {
+		undrained := dep.DeepCopy()
+		projectDeployment(undrained, app, p, 0)
+		if apiequality.Semantic.DeepEqual(undrained.Spec.Template, stored) {
+			drain = 0
+		}
+	}
+	projectDeployment(dep, app, p, drain)
+}
+
+// projectDeployment is applyDeploymentSpec with the drain decided.
+func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams, drain int64) {
 	replicas := clampReplicas(app, p.replicas)
 	dep.Spec.Replicas = &replicas
 	dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}}
@@ -335,12 +417,8 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	// The persistent disk, when one is attached: its volume and mount, plus the
 	// Recreate strategy and eviction guard a shared volume forces (see disk.go).
 	applyDiskProjection(dep, &container, app)
+	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.MaxShutdownDelaySeconds, drain)
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
-	// Render's maxShutdownDelaySeconds is Kubernetes' native pod termination
-	// grace period. Left nil when unset, so applyPodSpecServerDefaults below
-	// writes Kubernetes' own 30-second default — which is the value every
-	// existing pod template already carries, so writing it rolls nothing.
-	dep.Spec.Template.Spec.TerminationGracePeriodSeconds = terminationGracePeriodSeconds(app.Spec.MaxShutdownDelaySeconds)
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets
 	dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
 	// Last, always: above is what bex chooses, this is what Kubernetes would have
