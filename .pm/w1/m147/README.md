@@ -1,19 +1,19 @@
 # w1 · m147 — A service's bulk environment save skips the secret-map quota every sibling write path enforces
 
-**Worker:** worker1 **Goal:** every write to a service's env-var or secret-file map (per-key, bulk replace, blueprint seed, and the bulk **patch** the dashboard's Environment editor uses) is bounded by the same aggregate quota. That quota is 500 entries and 512 KiB per map, and security review round 11 set it (ADR066 #6) so a map can always fit the Kubernetes Secret it is projected into. A guard stops the next write path from skipping it. **Status:** todo
+**Worker:** worker1 **Goal:** every write to a service's env-var or secret-file map (per-key, bulk replace, blueprint seed, and the bulk **patch** the dashboard's Environment editor uses) is bounded by the same aggregate quota. That quota is 500 entries and 512 KiB per map, and security review round 11 set it (ADR066 #6) so a map can always fit the Kubernetes Secret it is projected into. A guard stops the next write path from skipping it. **Status:** in progress. t002 and t004–t007 are done. t001 and t003 are implemented and green, and they close after the live DoD on the deployed build.
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                                  | est | depends_on             |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------------- |
-| t001 | Enforce `envMapWithinQuota`/`filesMapWithinQuota` inside every `PatchEnvironment` mutate, before any write                              | 45m | —                      |
-| t002 | Guard test: enumerate every service secret-map write path and fail when one reaches the store without the quota check                   | 40m | t001                   |
-| t003 | Dashboard: validate secret files against the server's aggregate contract (not 1 MiB per file) and show the server's refusal on save      | 40m | t001                   |
-| t004 | Read-only sweep: find service env/file maps already over quota because of this gap, and record the remediation decision                 | 30m | t001                   |
-| t005 | Render parity                                                                                                                          | 30m | t001, t002, t003, t004 |
-| t006 | Simplify                                                                                                                               | 20m | t005                   |
-| t007 | Test coverage                                                                                                                          | 40m | t005                   |
-| t008 | Closeout                                                                                                                               | 10m | t007                   |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Enforce `envMapWithinQuota`/`filesMapWithinQuota` inside every `PatchEnvironment` mutate, before any write | 45m | — |
+| t002 | Guard test: enumerate every service secret-map write path and fail when one reaches the store without the quota check — **DONE** | 40m | t001 |
+| t003 | Dashboard: validate secret files against the server's aggregate contract (not 1 MiB per file) and show the server's refusal on save | 40m | t001 |
+| t004 | Read-only sweep: find service env/file maps already over quota because of this gap, and record the remediation decision — **DONE** | 30m | t001 |
+| t005 | Render parity — **DONE** | 30m | t001, t002, t003, t004 |
+| t006 | Simplify — **DONE** | 20m | t005 |
+| t007 | Test coverage — **DONE** | 40m | t005 |
+| t008 | Closeout | 10m | t007 |
 
 ## Definition of done
 

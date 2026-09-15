@@ -3991,6 +3991,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "请为此新变量输入值。",
     description: "Draft validation for a new variable without a value",
   },
+  "services.environmentLimit": {
+    message: "每个服务或环境组最多 500 个环境变量，总大小不超过 512 KiB。",
+    description:
+      "Draft validation when the environment variables would exceed bex-api's per-service quota",
+  },
   "services.environmentStagedDelete": {
     message: "将被移除",
     description: "Badge on a staged environment deletion",
@@ -4173,6 +4178,11 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.secretFileContentRequired": {
     message: "请为此新文件添加内容。",
     description: "Draft validation for missing new-file content",
+  },
+  "services.secretFileLimit": {
+    message: "每个服务或环境组最多 500 个秘密文件，总大小不超过 512 KiB。",
+    description:
+      "Draft validation when the secret files would exceed bex-api's per-service quota",
   },
   "services.secretFileViewContent": {
     message: "查看内容",

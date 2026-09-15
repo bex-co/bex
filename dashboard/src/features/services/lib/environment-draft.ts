@@ -1,6 +1,20 @@
 export const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export const VALID_SECRET_FILE_NAME = /^[-._a-zA-Z0-9]+$/;
+/**
+ * The upload path's read guard: a file this large is never read into memory.
+ * It is not the storage limit — that is MAX_ENVIRONMENT_MAP_BYTES in total.
+ */
 export const MAX_SECRET_FILE_BYTES = 1024 * 1024;
+
+/**
+ * bex-api's per-service (and per-environment-group) quota on each map:
+ * `maxEnvKeys` / `maxSecretFiles` and `maxSecretMapBytes`, measured as every
+ * name plus value in UTF-8 bytes (`lego/backend/internal/secrets/service.go`,
+ * ADR066 #6). The draft checks what it can see; values the editor never
+ * revealed are opaque here, so the server remains the authority (w1/m147).
+ */
+export const MAX_ENVIRONMENT_ENTRIES = 500;
+export const MAX_ENVIRONMENT_MAP_BYTES = 512 * 1024;
 
 export interface EnvDraftRow {
   id: string;
@@ -52,8 +66,8 @@ export interface EnvironmentPatchInput {
 }
 
 export interface DraftValidation {
-  env: Record<string, "invalid" | "duplicate" | "value">;
-  files: Record<string, "invalid" | "duplicate" | "content">;
+  env: Record<string, "invalid" | "duplicate" | "value" | "limit">;
+  files: Record<string, "invalid" | "duplicate" | "content" | "limit">;
 }
 
 export function createEnvironmentDraft(
@@ -139,23 +153,56 @@ function validateRows<
   return errors;
 }
 
+const utf8 = new TextEncoder();
+
+// flagOverLimit marks the rows that push a map past the quota, without
+// replacing a more specific error. Only rows this draft adds or rewrites are
+// flagged: they are what the save would grow the map by. An already-saved
+// opaque row is never flagged, so a map that is over quota today can still be
+// shrunk (deleting frees room, ADR066 #6).
+function flagOverLimit<R extends { id: string; deleted: boolean }>(
+  rows: readonly R[],
+  lens: RowLens<R>,
+  errors: Record<string, string>,
+): void {
+  const live = rows.filter((row) => !row.deleted);
+  const knownBytes = live.reduce((total, row) => {
+    const value = lens.value(row);
+    return value == null
+      ? total
+      : total + utf8.encode(lens.name(row).trim() + value).length;
+  }, 0);
+  const tooMany = live.length > MAX_ENVIRONMENT_ENTRIES;
+  const tooLarge = knownBytes > MAX_ENVIRONMENT_MAP_BYTES;
+  if (!tooMany && !tooLarge) return;
+  for (const row of live) {
+    if (errors[row.id]) continue;
+    const added = lens.original(row) == null;
+    const rewritten = lens.value(row) != null && lens.changed(row);
+    if ((tooMany && added) || (tooLarge && rewritten)) {
+      errors[row.id] = "limit";
+    }
+  }
+}
+
 export function validateEnvironmentDraft(
   draft: EnvironmentDraft,
 ): DraftValidation {
-  return {
-    env: validateRows(
-      draft.envVars,
-      ENV_LENS,
-      (key) => VALID_ENV_KEY.test(key),
-      "value",
-    ),
-    files: validateRows(
-      draft.secretFiles,
-      FILE_LENS,
-      isValidSecretFileName,
-      "content",
-    ),
-  };
+  const env: DraftValidation["env"] = validateRows(
+    draft.envVars,
+    ENV_LENS,
+    (key) => VALID_ENV_KEY.test(key),
+    "value",
+  );
+  const files: DraftValidation["files"] = validateRows(
+    draft.secretFiles,
+    FILE_LENS,
+    isValidSecretFileName,
+    "content",
+  );
+  flagOverLimit(draft.envVars, ENV_LENS, env);
+  flagOverLimit(draft.secretFiles, FILE_LENS, files);
+  return { env, files };
 }
 
 export function isDraftValid(validation: DraftValidation): boolean {

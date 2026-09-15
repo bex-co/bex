@@ -66,6 +66,7 @@ import {
   createEnvironmentDraft,
   environmentDraftPatch,
   isDraftValid,
+  type DraftValidation,
   isEnvironmentDraftDirty,
   isNewDraftRow,
   isValidSecretFileName,
@@ -1118,7 +1119,7 @@ function EnvDraftItem({
   onChange,
 }: {
   row: EnvDraftRow;
-  error?: "invalid" | "duplicate" | "value";
+  error?: DraftValidation["env"][string];
   disabled: boolean;
   permissionDescriptionID?: string;
   onChange: (update: Partial<EnvDraftRow>) => void;
@@ -1155,7 +1156,9 @@ function EnvDraftItem({
               ? t("services.environmentDuplicateKey")
               : error === "value"
                 ? t("services.environmentValueRequired")
-                : t("services.envInvalidKey")}
+                : error === "limit"
+                  ? t("services.environmentLimit")
+                  : t("services.envInvalidKey")}
           </p>
         ) : null}
       </div>
@@ -1209,7 +1212,7 @@ function FileDraftItem({
   onContent,
 }: {
   row: SecretFileDraftRow;
-  error?: "invalid" | "duplicate" | "content";
+  error?: DraftValidation["files"][string];
   disabled: boolean;
   permissionDescriptionID?: string;
   onChange: (update: Partial<SecretFileDraftRow>) => void;
@@ -1252,7 +1255,9 @@ function FileDraftItem({
               ? t("services.secretFileDuplicateName")
               : error === "content"
                 ? t("services.secretFileContentRequired")
-                : t("services.secretFileInvalidName")}
+                : error === "limit"
+                  ? t("services.secretFileLimit")
+                  : t("services.secretFileInvalidName")}
           </p>
         ) : isNewDraftRow(row) ? (
           <p className="text-muted-foreground text-xs">
