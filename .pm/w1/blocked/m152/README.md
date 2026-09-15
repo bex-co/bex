@@ -1,6 +1,26 @@
 # w1 · m152 — Canceling a config-change deploy still ships the change
 
-**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** todo
+**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** blocked (2026-09-15). Needs your judgement; see § Blocked.
+
+## Blocked — needs your judgement (2026-09-15)
+
+Triaged on `main` at `5523f684e`: the bug is still real and nothing has fixed it.
+
+- A save rewrites the single mutable `<name>-env` Secret and bumps `restartedAt` (`secrets/service.go:713-726`).
+- Cancel only annotates (`deploys/service.go:720`), and `settleCanceledRelease` re-dispatches the old image against the current spec (`app_controller.go:634`).
+- Rollback sets only image and `restartedAt` (`deploys/service.go:843-845`).
+
+The fix is large (L) and high-risk: immutable per-release config snapshots (`<name>-rel-<gen>-*` Secrets plus the spec fields a release ran with), and cancel/rollback restoring from them. It was **not** started, because each of these is yours to decide.
+
+1. **What does a rollback do to saved environment values?** Rolling back to a deploy that ran with `MESSAGE=v1` while the saved value is `v2` could either:
+   - (a) restore the target's values into the saved state, so `GET …/env-vars/MESSAGE` shows `v1`, which is Render's documented "matches the target deploy";
+   - (b) run `v1` but keep `v2` saved and shown as "not deployed", which is the rule this milestone sets for cancel.
+
+   t009's `GET` acceptance depends on the choice, and the code and docs don't settle it.
+2. **May every running service restart once?** Switching the Deployment and CronJob pod templates to reference per-release snapshot Secrets changes every App's release identity, so every web, private, worker and cron pod across all workspaces rolls once on the operator upgrade. Should that fleet-wide roll happen, or must existing services keep their current template until their next deploy?
+3. **Snapshot retention.** Every release adds Secrets, and linked env groups add one per group. How many past releases' snapshots should be kept per App (the rollback window)? Anything older would be garbage-collected.
+
+Answer these and the milestone can move back to `w1/m152/` and proceed in task order. `w1/m148` (restart keeps the running commit and config) would reuse the same snapshot and should follow it.
 
 ## Tasks (in order)
 
