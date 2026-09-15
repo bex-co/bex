@@ -473,8 +473,8 @@ func TestSSEConnCapRejectsExcess(t *testing.T) {
 		}()
 		return pr, nil
 	}
-	// Need a pod so AppPods returns something and the stream goroutine is
-	// actually started (empty pod list → channel closed immediately → returns).
+	// Need a pod so a follow is actually opened and signals streamReady; with no
+	// pod the tail still holds its slot, but nothing would say so.
 	base := &core.Base{
 		Client:    fakeClient(sampleApp("myapp"), podFor("myapp", "myapp-pod1")),
 		Namespace: "default",
@@ -517,8 +517,14 @@ func TestSSEConnCapRejectsExcess(t *testing.T) {
 	<-firstDone
 
 	// After the first closes, a new connection should succeed (slot freed).
-	// Don't hold it open — just confirm the cap allows through.
-	w2 := do(t, h, "GET", "/v1/logs/subscribe?resource=myapp", testToken, "")
+	// A tail stays open until its client leaves (w1/m146), so this client
+	// leaves on a short deadline once the handler has answered.
+	ctx3, cancel3 := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel3()
+	r3 := httptest.NewRequest("GET", "/v1/logs/subscribe?resource=myapp", nil).WithContext(ctx3)
+	r3.Header.Set("Authorization", "Bearer "+testToken)
+	w2 := httptest.NewRecorder()
+	h.ServeHTTP(w2, r3)
 	if w2.Code == http.StatusTooManyRequests {
 		t.Errorf("new SSE after cap slot freed: want non-429, got 429")
 	}

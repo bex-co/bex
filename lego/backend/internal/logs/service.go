@@ -78,6 +78,16 @@ var ErrBuildNotRunning = errors.New("no running build is available to follow")
 // gateway's stream watchdog uses (sshgateway.DefaultRevalidateInterval).
 const DefaultRevalidateInterval = core.DefaultStreamRevalidateInterval
 
+// DefaultTailRelistInterval is how often an app tail looks for new pods: the
+// build tail's pod-wait cadence, so a new cron run's first line is at most ~2 s
+// behind.
+const DefaultTailRelistInterval = 2 * time.Second
+
+// DefaultTailHeartbeatInterval keeps a quiet tail well inside the shortest idle
+// cutoff between bex-api and a client: Cloudflare, in front of api.bex.co, ends
+// a proxied response that sends nothing for 100 seconds.
+const DefaultTailHeartbeatInterval = 25 * time.Second
+
 // The log labels Render's clients filter and discover by (`list_log_label_values`'s
 // enum). Each maps onto a stream label the shipper attaches — except LabelHost,
 // which is deliberately NOT a label (unbounded per request; it lives in the access
@@ -197,6 +207,14 @@ type Service struct {
 	// for a Pending build pod to start (scheduling + image pull take minutes on
 	// a cold node). 0 = the 2s default; tests shrink it.
 	BuildPodWaitInterval time.Duration
+	// TailRelistInterval is how often an app tail re-lists the App's pods to
+	// attach to new ones (w1/m146). 0 = DefaultTailRelistInterval; tests shrink
+	// it.
+	TailRelistInterval time.Duration
+	// TailHeartbeatInterval is how often an app tail writes a transport
+	// keepalive, so a quiet stream is not cut by a proxy on the way to the
+	// client (w1/m146). 0 = DefaultTailHeartbeatInterval; tests shrink it.
+	TailHeartbeatInterval time.Duration
 	// DeployProgress, when wired (the control-plane store is configured), backs
 	// platform progress-line synthesis (w1/m48) — Render-style `==>` narration
 	// derived from deploy rows, merged into explicit type=build reads and the
@@ -781,7 +799,22 @@ func (s *Service) keyValueLogLabelValues(ctx context.Context, label string, q Lo
 // active build pod in BuildNamespace, with the text/time/instance filters; it
 // refuses store-only filters. Requires a PodLogStream (nil =>
 // core.ErrLogsUnavailable).
+//
+// An app tail stays open for as long as it is authorized and the App exists:
+// it attaches to each app pod once that pod's container has started — the next
+// cron run, a wake from hibernation, a new deploy, a scale-up — and never ends
+// merely because every pod it was following has exited (w1/m146). Before, a
+// cron job between runs closed the stream ~300 ms after replaying its last run,
+// and the dashboard reconnected every ~3 s behind a "disconnected" banner.
 func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error) error {
+	return s.followLogs(ctx, q, emit, nil)
+}
+
+// followLogs is FollowLogs with a transport keepalive. A non-nil heartbeat is
+// called every TailHeartbeatInterval on an app tail, from the same goroutine
+// that calls emit, so a transport can write its keepalive without racing a log
+// frame.
+func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error, heartbeat func() error) error {
 	if isPostgresResource(q.App) {
 		if _, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, q.App); err != nil {
 			return err
@@ -812,6 +845,10 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if err != nil {
 		return err
 	}
+	// The caller's instance selectors, before translation: a pod that starts
+	// after subscribe is matched against these, not against the names that
+	// resolved from the pods present now.
+	selectors := slices.Clone(q.Instance)
 	s.translateInstanceFilter(ctx, resource, app.Namespace, &q, candidatesFromPods(podsLive))
 	// The tail's refusal is about the TRANSPORT, not the deployment: it reads pod
 	// logs even when Loki is wired, so a store-only filter is something this stream
@@ -843,36 +880,106 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		return fmt.Errorf("%w: the live tail streams only app and build logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
 	}
 
+	// app.Namespace: the pods stream from their `<ws>` namespace under ADR043,
+	// the same namespace translateInstanceFilter selected them in.
+	return s.followAppPods(ctx, q, selectors, resource, app.Namespace, podsLive, emit, heartbeat)
+}
+
+// podFollow is the app tail's record of one pod it has attached to.
+type podFollow struct {
+	active   bool  // a follow goroutine is still reading the pod's log
+	opened   bool  // the last follow opened a log (false: kubelet refused it)
+	restarts int32 // the app container's restart count when it was attached
+}
+
+type followEnd struct {
+	pod    string
+	opened bool
+}
+
+// followAppPods is the app tail's producer loop. It attaches a follow to every
+// admitted pod whose app container has started, re-lists the App's pods every
+// TailRelistInterval to attach to new ones, and ends only on ctx cancellation
+// or an emit/heartbeat error.
+//
+// A pod is attached once per container life: a Succeeded cron run replays once
+// per subscription, not on every re-list. A container that restarted after its
+// follow ended is attached again — kubelet follows the current container, so
+// the new follow reads only the new life's log — which is what a crash-looping
+// service's tail used to get from the client reconnecting when its stream ended.
+func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []string, resource, namespace string, pods []corev1.Pod, emit func(LogEntry) error, heartbeat func() error) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ch := make(chan LogEntry, 64)
-	var wg sync.WaitGroup
+	ended := make(chan followEnd, 8)
+	follows := make(map[string]*podFollow, len(pods))
 
-	pods := make([]string, 0, len(podsLive))
-	for i := range podsLive {
-		if q.keepPod(podsLive[i].Name) {
-			pods = append(pods, podsLive[i].Name)
+	attach := func(pods []corev1.Pod) {
+		for i := range pods {
+			pod := &pods[i]
+			if !q.keepPod(pod.Name) || !appContainerStarted(pod) {
+				continue
+			}
+			restarts := appContainerRestarts(pod)
+			if f := follows[pod.Name]; f != nil {
+				restarted := f.opened && restarts > f.restarts
+				// A follow kubelet refused is retried while the pod can still
+				// produce output; a finished pod's unreadable log is not retried
+				// every tick for the life of the subscription.
+				refused := !f.opened && !podFinished(pod)
+				if f.active || !(restarted || refused) {
+					continue
+				}
+			}
+			follows[pod.Name] = &podFollow{active: true, restarts: restarts}
+			go func(name string) {
+				var opened atomic.Bool
+				s.streamContainerLogs(ctx, namespace, q.App, name, core.AppContainer, LogTypeApp, q.Since, ch, &opened)
+				select {
+				case ended <- followEnd{pod: name, opened: opened.Load()}:
+				case <-ctx.Done():
+				}
+			}(pod.Name)
 		}
 	}
-	for i := range pods {
-		wg.Add(1)
-		go func(pod string) {
-			defer wg.Done()
-			// app.Namespace: the pods stream from their `<ws>` namespace under
-			// ADR043, the same namespace translateInstanceFilter selected them in.
-			s.streamPodLogs(ctx, app.Namespace, q.App, pod, q.Since, ch)
-		}(pods[i])
+	attach(pods)
+
+	relist := time.NewTicker(s.tailRelistInterval())
+	defer relist.Stop()
+	var beat <-chan time.Time
+	if heartbeat != nil {
+		ticker := time.NewTicker(s.tailHeartbeatInterval())
+		defer ticker.Stop()
+		beat = ticker.C
 	}
-	go func() { wg.Wait(); close(ch) }()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case e, ok := <-ch:
-			if !ok {
-				return nil
+		case <-relist.C:
+			current, err := s.AppPodsIn(ctx, namespace, q.App)
+			if err != nil {
+				continue // a failed list is retried next tick; the tail stays up
 			}
+			if len(selectors) > 0 {
+				resolved := ids.ResolveInstanceSelectors(selectors, resource, candidatesFromPods(current))
+				for _, name := range resolved {
+					if !slices.Contains(q.Instance, name) {
+						q.Instance = append(q.Instance, name)
+					}
+				}
+			}
+			attach(current)
+		case end := <-ended:
+			if f := follows[end.pod]; f != nil {
+				f.active, f.opened = false, end.opened
+			}
+		case <-beat:
+			if err := heartbeat(); err != nil {
+				return err
+			}
+		case e := <-ch:
 			if !q.keep(e) {
 				continue
 			}
@@ -882,6 +989,47 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 			}
 		}
 	}
+}
+
+// appContainerStarted reports whether a pod's app container has a log to
+// follow: it is running or has run. A container still waiting (scheduling, an
+// image pull) has none yet, and the pod is attached on a later re-list once it
+// starts. A pod with no reported app container status is attempted unless it
+// is Pending.
+func appContainerStarted(pod *corev1.Pod) bool {
+	for _, status := range pod.Status.ContainerStatuses {
+		if status.Name == core.AppContainer {
+			return status.State.Waiting == nil
+		}
+	}
+	return pod.Status.Phase != corev1.PodPending
+}
+
+func appContainerRestarts(pod *corev1.Pod) int32 {
+	for _, status := range pod.Status.ContainerStatuses {
+		if status.Name == core.AppContainer {
+			return status.RestartCount
+		}
+	}
+	return 0
+}
+
+func podFinished(pod *corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
+}
+
+func (s *Service) tailRelistInterval() time.Duration {
+	if s.TailRelistInterval > 0 {
+		return s.TailRelistInterval
+	}
+	return DefaultTailRelistInterval
+}
+
+func (s *Service) tailHeartbeatInterval() time.Duration {
+	if s.TailHeartbeatInterval > 0 {
+		return s.TailHeartbeatInterval
+	}
+	return DefaultTailHeartbeatInterval
 }
 
 // revalidateInterval resolves the watchdog cadence: 0 means "not configured"
@@ -1324,12 +1472,6 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, appNS string, q LogQ
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
 	return q.filterAndCap(out), nil
-}
-
-// streamPodLogs follows one pod's log into ch until ctx ends or the stream
-// closes. A replica going away ends its stream without failing the subscription.
-func (s *Service) streamPodLogs(ctx context.Context, namespace, service, pod string, since time.Time, ch chan<- LogEntry) {
-	s.streamContainerLogs(ctx, namespace, service, pod, core.AppContainer, LogTypeApp, since, ch, nil)
 }
 
 func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, pod, container, logType string, since time.Time, ch chan<- LogEntry, opened *atomic.Bool) {
