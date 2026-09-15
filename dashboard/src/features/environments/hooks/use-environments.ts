@@ -120,5 +120,12 @@ export function useEnvironments(
     [data],
   );
 
-  return { environments, loading: !resolved || loading, error, refetch };
+  // First-load only (w1/m153): a mount over a warm cache still reports loading
+  // with data present, and the project card must not swap to its skeleton then.
+  return {
+    environments,
+    loading: !resolved || (loading && data === undefined),
+    error,
+    refetch,
+  };
 }

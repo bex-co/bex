@@ -13,6 +13,9 @@ export interface UseValidateBlueprintResult {
 export function useValidateBlueprint(): UseValidateBlueprintResult {
   const [run, { loading }] = useLazyQuery(ValidateBlueprintDocument, {
     fetchPolicy: "no-cache",
+    // A lazy query's loading comes only from this emission, which the client
+    // default turns off (w1/m153); the Validate button disables on it.
+    notifyOnNetworkStatusChange: true,
   });
   const [result, setResult] = useState<BlueprintValidationResult | null>(null);
 

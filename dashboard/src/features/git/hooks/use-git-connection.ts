@@ -79,7 +79,9 @@ export function useGitConnection(): UseGitConnectionResult {
     };
   }, [data]);
 
-  return { connection, loading, error, refetch };
+  // First-load only (w1/m153): the source picker gates its GitHub tab on this,
+  // and must not unmount the repo search while the connection is known.
+  return { connection, loading: loading && data === undefined, error, refetch };
 }
 
 export interface UseGitConnectionsResult {
@@ -115,7 +117,7 @@ export function useGitConnections(): UseGitConnectionsResult {
   return {
     connections,
     connected: connections.length > 0,
-    loading,
+    loading: loading && data === undefined,
     error,
     refetch,
   };

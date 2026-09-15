@@ -191,9 +191,17 @@ export function EnvironmentsPanel({
         </div>
       </div>
 
+      {/* A failed refresh over data already shown (errorPolicy "all" keeps it)
+          reads inline: replacing the card would unmount its open dialogs and
+          drafts, the same loss a poll skeleton caused (w1/m153). */}
+      {error && environments.length > 0 && (
+        <p role="alert" className="text-sm text-muted-foreground">
+          {t("environments.refreshErrorBody")}
+        </p>
+      )}
       {loading ? (
         <ProjectEnvironmentCardSkeleton />
-      ) : error ? (
+      ) : error && environments.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {t("environments.errorBody")}
         </p>

@@ -78,6 +78,9 @@ export function GenerateBlueprintDialog({
   const [manifest, setManifest] = useState<string | null>(null);
   const [generate, { loading }] = useLazyQuery(GenerateBlueprintDocument, {
     fetchPolicy: "no-cache",
+    // A lazy query's loading comes only from this emission, which the client
+    // default turns off (w1/m153); the spinner and double-submit guard need it.
+    notifyOnNetworkStatusChange: true,
   });
 
   const serviceIds = useMemo(

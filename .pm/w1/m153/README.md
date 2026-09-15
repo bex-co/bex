@@ -1,6 +1,6 @@
 # w1 · m153 — Background polls close open dialogs and interrupt typing on the environment card, the source picker and the env-group editor
 
-**Worker:** worker1 **Goal:** once a polled dashboard query has data, a background poll or refetch never swaps the rendered content for its loading skeleton. Open dialogs stay open, unsaved drafts keep their values, and a focused input keeps focus across every 30 s tick. The skeleton renders only on the true first load, when there is no data yet. **Status:** todo
+**Worker:** worker1 **Goal:** once a polled dashboard query has data, a background poll or refetch never swaps the rendered content for its loading skeleton. Open dialogs stay open, unsaved drafts keep their values, and a focused input keeps focus across every 30 s tick. The skeleton renders only on the true first load, when there is no data yet. **Status:** in progress — t006 and t007 done; t001–t005 implemented with tests green, and their live probes (the DoD bullets, t003's pre-fix env-group probe, t002's menu checks) and t005's Render comparison wait for the deploy; then t008 closeout.
 
 ## Tasks (in order)
 
@@ -11,8 +11,8 @@
 | t003 | The env-group Environment editor keeps its rows mounted across `EnvGroup` polls (probe live first)                   | 25m | —                |
 | t004 | Blast radius: every polled hook that returns raw `loading`, the `refetchQueries` path, and one written convention    | 40m | t001, t002, t003 |
 | t005 | Render parity                                                                                                        | 10m | t004             |
-| t006 | Simplify                                                                                                             | 15m | t005             |
-| t007 | Test coverage                                                                                                        | 40m | t005             |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 40m | t005 |
 | t008 | Closeout                                                                                                             | 10m | t007             |
 
 ## Definition of done
@@ -153,6 +153,47 @@ Fixtures, all created and deleted inside the run:
   - the autoscaling `refetchQueries` unmount.
 - **Mobile widths** were not probed.
 - **The trace's line numbers need re-verifying in t004:** the 33-hook list, the per-site verdicts, the picker's consumer routes, and whether the Apollo client sets any `defaultOptions`.
+
+## Implementation (2026-09-14)
+
+**Decision (t004): option A, the client default.** Neither Apollo client set `defaultOptions` (`common/apollo/factory.client.ts`, `factory.server.ts`). Both now take `apolloDefaultOptions` (`common/apollo/default-options.ts`): `watchQuery.notifyOnNetworkStatusChange: false`. Read from `@apollo/client` 4.1.3 source:
+
+- `ObservableQuery` (`core/ObservableQuery.js` ~151) drops an emission whose only change is the network status when the option is `false`.
+- So a poll (`NetworkStatus.poll`) or `refetch()` over unchanged data emits nothing, and `loading` stays `false`.
+- A first load, a variables change with no cached result, or data that actually changed still emits, so a skeleton still shows on first load and a workspace switch still loads.
+
+Why A over B:
+
+- It removes the cause for all 33 raw hooks at once.
+- It also covers the `refetchQueries` unmount (autoscaling save and disable) and the two partial sites (`new-env-group-dialog`'s checkbox grid, `LinkedServicesCard busy`).
+- It covers every future hook without a per-hook rule to remember.
+
+What the default does **not** do, found in review (t006) and handled:
+
+- **Lazy queries.** `useLazyQuery` learns of its own request only through the network-status emission, so under the default its `loading` never turned true. `generate-blueprint-dialog.tsx` would have lost its spinner and double-submit guard, and `use-validate-blueprint.ts` its disabled Validate button. Both now set `notifyOnNetworkStatusChange: true`, and every lazy query must.
+- **A warm-cache mount.** A `cache-and-network` mount over a warm cache (or a switch to already-cached variables) still reports `loading` with data present. So the rule is "gate a skeleton on `loading && no data`", not "`loading` means no data", and hooks keep that guard.
+
+The explicit `notifyOnNetworkStatusChange: true` opt-ins keep reporting refreshing. The rule is written in `dashboard/CLAUDE.md` § "Polling and loading".
+
+**t001–t003.**
+
+- The default stops polls and refetches from re-announcing `loading`. On top of it, `useEnvironments` (`!resolved || (loading && data === undefined)`), `useGitConnection`/`useGitConnections` and `useEnvGroup` (`loading && data === undefined`) now report first-load-only `loading`, as the tasks prescribed. That keeps the environment card, the source picker's GitHub tab and the env-group editor rows (and the controls it disables) mounted on a warm-cache mount too. `use-env-groups.ts`'s list-hook comment was corrected to match.
+- t001 step 2: `environments-panel.tsx` renders the error body only when no environments are cached. A failed refresh over cached data shows "Couldn't refresh environments. Showing the last loaded data." inline (`role="alert"`, en + zh) above the still-mounted card.
+- t001 step 4, the settings form's ACL key: kept. A poll that brings a teammate's changed ACL remounts the form so a stale draft cannot silently overwrite it. The dialog stays open, because the card no longer unmounts.
+
+**Parity (t005).** The diff touches only `dashboard/` and `dashboard/CLAUDE.md`, with no schema, REST or MCP change. The Render dashboard comparison is not recorded yet: it needs a Render account session, which this run does not have.
+
+**Tests (t007).**
+
+- `common/apollo/__tests__/default-options.test.tsx` uses a real `ApolloClient`, `InMemoryCache` and `MockLink`. The default is measured on a raw `useQuery` shaped like the polled hooks (`cache-and-network`, `pollInterval`), so a hook's own guard cannot mask it:
+  - with the dashboard defaults, a `refetch()` over cached environments never reports `loading` and the data stays;
+  - the real `useEnvironments` keeps its environments and reports no `loading` across the same refetch;
+  - the first load still reports `loading`;
+  - **control:** the same refetch without the defaults does report `loading`, which is the filed bug, so the harness is shown to detect it;
+  - a lazy query reports `loading` when it opts in, and never without the opt-in (why every lazy query must opt in);
+  - a query that opts in still reports refreshing.
+- `environments-panel.test.tsx`: a failed refresh over cached environments keeps the card mounted with the error inline. It was shown failing on pre-fix `HEAD` in a scratch worktree ("Unable to find an element by: [data-testid=\"env-card\"]").
+- Live DoD probes (bullets 1–5, t002's `GitCredentialsMenu`/`/blueprints/new` checks, and t003's pre-fix env-group probe while production still runs the old dashboard) wait for the batched live session.
 
 ## Dedupe
 

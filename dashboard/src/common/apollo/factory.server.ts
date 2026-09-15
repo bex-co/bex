@@ -7,6 +7,7 @@ import {
 } from "@apollo/client";
 import { config } from "@/config/config";
 import { apolloCacheConfig } from "./cache";
+import { apolloDefaultOptions } from "./default-options";
 import { createRetryLink } from "./retry-link";
 import { logServerError } from "@/common/lib/server-log";
 
@@ -90,5 +91,6 @@ export function createApolloSsrClient() {
       import.meta.env.DEV ? [loggingLink, ...links] : links,
     ),
     cache: new InMemoryCache(apolloCacheConfig),
+    defaultOptions: apolloDefaultOptions,
   });
 }
