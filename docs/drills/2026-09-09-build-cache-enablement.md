@@ -144,8 +144,16 @@ The push p95 baseline for the trial's stop rule is therefore ~27 s; the rule's f
 
 **Go/no-go:** admission passes on the expected footprint, so t004 may start — with the observer and the independently verified 72-hour rollback the procedure requires, and with the understanding that the 3× worst case relies on the 70% stop rule rather than on the 65% reserve. The switch remains **off** at the time of writing.
 
-## Closeout state
+## Closeout state — 2026-09-15: held, gate off
 
-Global enablement remains **off**. Both live correctness drills and the full operator `make test` passed, and fixture retirement is verified. Pending: deployment of the already merged correctness fixes through passing CI and the representative cache-size measurement. The approved 48–72 hour observation clock has not started.
+Global enablement remains **off**, and `w7/m89` closes on the hold branch of its definition of done rather than on a completed trial.
+
+Both start conditions the milestone owned are met. The corrected image is live (the manager runs a digest built from `1cb1f2d27dda`, containing `1343b7f17070` and `3aea3310212f`), and the capacity re-check above passes the admission budget on the expected footprint: 41.49% used, 44.62% retained peak, 20.03 GiB of reserve above that peak to the 65% ceiling, against an expected 6–9 GiB of cache growth. The projection is analytic, not measured — `BEX_BUILD_CACHE` is a manager-wide flag, so there is no per-App switch with which to measure one production shape in isolation — and the label matters for the worst case: at 3× for every App (~17.9 GiB) the fit depends on the 70%-for-10-minutes stop rule rather than on the 65% reserve.
+
+**The one remaining start condition is human.** The procedure in this drill requires a named observer across the 48–72 hour window and an independently verified rollback armed at 72 hours; an unattended agent session can be neither, so the switch was not flipped. Nothing technical is outstanding.
+
+To start, when an observer is available: add `BEX_BUILD_CACHE=registry` to the `controller-manager` JSON patch in `lego/operator/config/prod/kustomization.yaml`, ship, wait for the manager rollout, trigger one build (a disposable QA App suffices) and confirm the Job carries the `cache-restore`/`cache-save` phases, then record the start, 48-hour and 72-hour times and the rollback owner here before observation begins. The stop rules and the emergency `set env` rollback are unchanged from the sections above; the push p95 baseline measured for them is ~27 s, so the rule's 60-second floor governs. Carried on the board as [`w7/047`](../../.pm/w7/047.md).
+
+Both live correctness drills and the full operator `make test` passed, and fixture retirement is verified.
 
 The repository-wide `make lint` gate is **not green**: its local Go 1.26-built tools cannot analyze the Go 1.27 CLI. Rebuilding the pinned tools with Go 1.27 still hits the pinned linter's unsupported export-data format, and whole-program deadcode reports the existing backend `Service.collectDatabasePodLogs` and `Service.collectKeyValuePodLogs` functions. Those failures are outside this test-harness change; no linter was disabled or unrelated backend code removed to mask them.
