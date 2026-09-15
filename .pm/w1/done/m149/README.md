@@ -1,18 +1,18 @@
 # w1 · m149 — A failed pre-deploy command marks a still-serving service Failed, and explains the failure wrongly
 
-**Worker:** worker1 **Goal:** when a pre-deploy command fails on a service that already has a healthy release, the service keeps reporting what is actually serving (Running) and only the deploy reads failed. That failed deploy says truthfully why it failed: the command's exit code and a pointer to its logs. It never says "did not finish within its window" about an immediate exit, and never shows raw Kubernetes Job text. **Status:** in progress — t005 and t006 done; t001–t004 implemented with tests green, and their live probes (the DoD bullets, t004's surface table) wait for the deploy; then t007 closeout.
+**Worker:** worker1 **Goal:** when a pre-deploy command fails on a service that already has a healthy release, the service keeps reporting what is actually serving (Running) and only the deploy reads failed. That failed deploy says truthfully why it failed: the command's exit code and a pointer to its logs. It never says "did not finish within its window" about an immediate exit, and never shows raw Kubernetes Job text. **Status:** done (2026-09-15). Every task is complete, and the definition of done passed live on production (images pinned to `c4212ec71`). The wake gap found during verification is filed as w1/m156.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | A pre-deploy failure over a healthy prior release keeps the service phase on what is serving (mirror `settleFailedBuildOverPriorRelease`) | 60m | — |
-| t002 | The failed deploy's reason is deterministic and human: the exit code plus the log pointer, never timeout text or `BackoffLimitExceeded` | 60m | — |
-| t003 | Pre-deploy log records carry a `predeploy` type label (a line returned for `type=predeploy` is labelled `app`) | 20m | — |
-| t004 | Render parity | 30m | t001, t002, t003 |
+| t001 | A pre-deploy failure over a healthy prior release keeps the service phase on what is serving (mirror `settleFailedBuildOverPriorRelease`) — **DONE** | 60m | — |
+| t002 | The failed deploy's reason is deterministic and human: the exit code plus the log pointer, never timeout text or `BackoffLimitExceeded` — **DONE** | 60m | — |
+| t003 | Pre-deploy log records carry a `predeploy` type label (a line returned for `type=predeploy` is labelled `app`) — **DONE** | 20m | — |
+| t004 | Render parity — **DONE** | 30m | t001, t002, t003 |
 | t005 | Simplify — **DONE** | 20m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t004 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -102,6 +102,33 @@ Declined:
 - Store: `failed_predeploy_reason_test.go` (the verdict wins with the phase held Running, the generation-bump case, a verdict from another release is ignored, service state Running/healthy, build/pre-deploy/rollout timeout lines unchanged).
 - Logs: `TestPreDeployLogsReadFromJobPod` pins `type: predeploy`.
 - **Shown failing on pre-fix `HEAD` (`0299e0e70`) in a scratch worktree:** the store tests (reason = the timeout line, or empty), the logs test (`labelled type="app"`), and the envtest spec (phase not Running). The controller unit tests and `FailureMessage` tests call the new signatures and cannot compile pre-fix.
+
+## Live verification (2026-09-15, production pinned to `c4212ec71`)
+
+- **Fixture.** `qa-20260915-m149` (`srv-dakeca15v75s738uf84g`), a free web service from `examples/hello-go` (docker) with `MESSAGE=m149-predeploy`. Its first deploy went live at 06:42:54Z.
+- **Before (still production `137a5186e`), 06:44:49Z.** `PATCH serviceDetails.preDeployCommand "echo qa-pd-marker; exit 3"` produced `dep-dakeio81e15c73bfgpv0`. At 06:44:56Z the phase read `Failed` while `pre_deploy_in_progress`. At 06:45:13Z the deploy was `pre_deploy_failed`, the phase `Failed`, and the reason "pre-deploy command failed: BackoffLimitExceeded: Job has reached the specified backoff limit". The URL answered 234 of 235 one-second samples with `200` between 06:44:42 and 06:51:06Z.
+- **After.**
+
+```text
+07:30:11Z PATCH "echo qa-pd-marker2; exit 3" (phase before: Running)
+07:30:12Z phase Deploying  dep-dakf80pvi8js739uild0 created (config_change)
+07:30:19Z phase Running
+07:30:26Z phase Running    pre_deploy_failed  reason "the pre-deploy command exited with code 3; check the pre-deploy logs"
+07:31:35Z PATCH "echo qa-pd-marker3; exit 3"
+07:31:36Z phase Deploying  dep-dakf8lpvi8js739uilfg created
+07:31:39Z phase Deploying  pre_deploy_in_progress
+07:31:42Z phase Running    pre_deploy_in_progress
+07:31:57Z phase Running    pre_deploy_failed  same reason (deterministic across runs)
+GET /v1/logs?type=predeploy&text=qa-pd-marker2 → "qa-pd-marker2" labelled type=predeploy, container=predeploy
+07:32Z dashboard header: "Service Running" · "Latest deploy: Pre-Deploy Failed"
+08:04Z GraphQL deploy(serviceId, deployId) and MCP get_deploy → status pre_deploy_failed, preDeployStatus failed, the same failureReason; MCP get_service → phase Running
+```
+
+- **Every DoD bullet passed.**
+  - The service stays Running, and is never Failed while the pre-deploy runs.
+  - The reason names exit code 3 and points at the logs, identically on two runs and on REST, GraphQL and MCP.
+  - The pre-deploy record is labelled `predeploy`.
+- **URL during the post-fix runs.** It answered the activator's `503 service hibernated`: the fixture had gone to sleep at 07:07:01Z, before the rollout, and the stored failed verdict kept the reconcile from ever waking it. The gate predates this milestone. m149 only changed the phase to Running, which makes that state misleading, so the gap is filed as w1/m156 with the evidence.
 
 ## Dedupe
 
