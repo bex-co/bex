@@ -426,8 +426,9 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	}
 	// aggregateBy carries Render's per-chart "Group by" breakdown: an entry
 	// naming the label to break the series out by (STATUS_CODE / METHOD, the
-	// captured filter-field vocabulary), mapped onto Core's GroupBy exactly
-	// like REST's `groupBy` param so the two surfaces stay parity-equal.
+	// captured filter-field vocabulary), mapped onto Core's GroupBy — the same
+	// status breakdown REST aggregateBy and MCP aggregateHttpRequestCountsBy
+	// reach through requestGroupBy.
 	// Instance-flavored values (Render also sends SERVICE_INSTANCE_ID) are
 	// silently ignored: bex's request PromQL already sums across instances at
 	// the Traefik service level, and per-instance request breakdowns would
@@ -436,7 +437,7 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	for _, v := range gqlutil.StringList(input["aggregateBy"]) {
 		switch strings.ToUpper(v) {
 		case filterFieldStatusCode:
-			q.GroupBy = "status"
+			q.GroupBy = groupByStatus
 		case filterFieldMethod:
 			q.GroupBy = "method"
 		}

@@ -1210,5 +1210,9 @@ func (s *Service) filterValuesOrEmpty(ctx context.Context, app *appv1alpha1.App,
 	}
 	// app.Namespace is the App's per-tenant `<ws>` namespace (ADR043), where
 	// its series live — never the shared s.Namespace.
-	return s.MetricsFilterValuesSource(ctx, app.Namespace, app.Name, app.Spec.EffectivePort(), label)
+	values, err := s.MetricsFilterValuesSource(ctx, app.Namespace, app.Name, app.Spec.EffectivePort(), label)
+	if err == nil && values == nil {
+		values = []string{} // an empty discovery serializes as [], never null
+	}
+	return values, err
 }

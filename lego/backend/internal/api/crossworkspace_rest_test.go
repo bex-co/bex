@@ -238,6 +238,16 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/metrics/kv-connections":  true,
 	"GET /v1/metrics/kv-memory":       true,
 	"GET /v1/metrics/replication-lag": true,
+	// Render's remaining /metrics paths (w1/m155): the same query-string
+	// resource, authorized by the same verbs.
+	"GET /v1/metrics/cpu-limit":           true,
+	"GET /v1/metrics/memory-limit":        true,
+	"GET /v1/metrics/disk-usage":          true,
+	"GET /v1/metrics/active-connections":  true,
+	"GET /v1/metrics/filters/application": true,
+	"GET /v1/metrics/filters/http":        true,
+	"GET /v1/metrics/filters/path":        true,
+	"GET /v1/metrics/bandwidth-sources":   true, // a coded 501, reads no resource
 }
 
 // restMatrixFixture builds the mux from the guarded canonical service inventory
