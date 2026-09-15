@@ -219,9 +219,24 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
   - a parking pass baked the unmigrated release into the template, so the next wake would have started it.
 - **Unchanged:**
   - a first release (nothing serves yet);
-  - a release still waiting for its image: a queued, running or failed build still halts the pass before the runtime (`w1/104`);
-  - background workers (`w1/103`);
+  - background workers (`w1/m158`);
   - a fresh step failure, which still returns its reconcile error.
+
+**A release without an image does not freeze the serving one either (w1/m157).** A build halts the pass before the runtime, so the same gap existed one stage earlier. While a newer release's build was queued, running, waiting on a registry credential or failed, the prior release could not wake, sleep, resume or scale. On production a resume over a failed build answered `503 service hibernated` for minutes while the service read Running.
+
+- **The hold.** `resolveDeployImage` hands a build halt to `holdPendingArtifact`. It runs `planReplicas` (the replica plan, then the disk lifecycle, so a restore still wins) and then `convergeServingRoute`: the same replicas-only patch and Ingress convergence as above.
+- **A recorded build failure** settles the phase from that scale (Running or Hibernated). The Build condition stays the verdict.
+- **A build in flight** keeps its Building phase and its own poll. A parked pass scales and routes, then returns the build's requeue, because nothing watches build Jobs. That phase pins the release to its build (ADR060 §D1a). A pass observing a build therefore returns a routing or disk error without recording Failed, which would release the pin and let a newer push start a second build.
+- **Polls stay cheap.**
+  - **Awake.** A held pass on a build's or pre-deploy step's few-second poll runs only the disk-restore gate. It rewrites the Ingress only when the scale changed or the route differs.
+  - **Asleep.** A service already asleep skips the replica plan entirely, including the traffic query, until a request stamps last-active.
+  - **Every other held pass** (a recorded failure, a suspended App, an event) converges the slug Service and the execution-policy removal, and rewrites the Ingress with its middlewares. Custom domains and IP allow-list edits made while a release is held therefore apply, including over a failed pre-deploy step.
+- **Suspended.** A suspended App reuses its serving image instead of building. That pass now parks through the hold, and no longer writes the unbuilt release's config onto the parked template.
+- **Unchanged:**
+  - a first release;
+  - background workers (`w1/m158`);
+  - cron jobs and static sites;
+  - a build failure recorded only in the legacy Ready marker (written before w6/m100). It stays on the halt, so no status write can erase the marker and dispatch the build again.
 
 ## Control-plane deploy lifecycle
 

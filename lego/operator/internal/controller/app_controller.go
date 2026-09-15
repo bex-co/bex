@@ -659,8 +659,9 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 // resolveDeployImage settles which image this pass deploys — prebuilt, a reused
 // artifact, or one built from git — and stamps the resolved artifact identity on
 // status. halted reports that the phase already produced this reconcile's
-// terminal outcome (a direct static publish, or a build that halted the pass),
-// so the caller must return (res, err) instead of dispatching.
+// terminal outcome (a direct static publish, a build that halted the pass, or a
+// prior release held while the new one has no image), so the caller must return
+// (res, err) instead of dispatching.
 func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1.App, decision appReleaseDecision, port int) (image string, res ctrl.Result, halted bool, err error) {
 	// A direct-static release has no image to reuse, and a never-deployed service
 	// has no active artifact yet. In both cases Update Source must simply wait;
@@ -689,9 +690,23 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 		res, err := r.reconcileKubernetes(ctx, app, "", port)
 		return "", res, true, err
 	}
+	// A release without an image yet leaves the prior release serving: a suspended
+	// App reuses that release's image instead of building, and a build that halts
+	// has nothing to roll. Hold the prior release's replicas and routing rather than
+	// writing the unbuilt release onto its template (w1/m157).
+	if app.Spec.Suspended && image != "" && !artifactResolved {
+		if held, res, err := r.holdPendingArtifact(ctx, app, ctrl.Result{}); held {
+			return "", res, true, err
+		}
+	}
 	if image == "" {
 		built, res, buildHalted, err := r.buildFromSource(ctx, app)
 		if buildHalted {
+			if err == nil {
+				if held, heldRes, heldErr := r.holdPendingArtifact(ctx, app, res); held {
+					return "", heldRes, true, heldErr
+				}
+			}
 			return "", res, true, err
 		}
 		image, artifactResolved = built, true
@@ -722,8 +737,9 @@ const buildObserveRequeue = 5 * time.Second
 // create-if-absent + one read per reconcile, requeuing while the build runs.
 // halted=true means this reconcile pass must stop and return (res, err): the
 // credential gate, the per-workspace cap, a still-running build (requeue), or a
-// build failure has already recorded its status. The image is the only output on
-// success.
+// build failure has already recorded its status. Over a serving prior release,
+// resolveDeployImage holds that release's runtime instead (holdPendingArtifact).
+// The image is the only output on success.
 //
 // Supersede semantics (ADR060 §D1a): this never cancels a running build. The
 // generation whose build is in flight is pinned by prepareAppReleaseDecision
@@ -917,9 +933,10 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		// until the Job's TTL reaps it. Metering on that gate counted one failure
 		// ~20 times and — since w7/m83 — re-observed the same queue wait into the
 		// histogram the p95 capacity alert pages on. Returning nil with no
-		// requeue quiesces the App: it stays Failed until a watch event (the
-		// tenant bumping generation) re-enters here, and the gate holds that pass
-		// terminal without re-failing or re-metering.
+		// requeue holds the pass terminal without re-failing or re-metering: a
+		// first release stays Failed until a watch event (the tenant bumping
+		// generation) re-enters here, and a serving prior release keeps
+		// converging on its own cadence (holdPendingArtifact).
 		if buildOutcomeAlreadyRecorded(app, view.reason) {
 			return halt(ctrl.Result{}, nil)
 		}
@@ -1070,6 +1087,15 @@ func buildOutcomeAlreadyRecorded(app *appv1alpha1.App, reason string) bool {
 func terminalBuildFailureRecorded(app *appv1alpha1.App) bool {
 	recorded, ok := recordedBuildVerdict(app)
 	return ok && appv1alpha1.IsBuildFailureReason(recorded)
+}
+
+// legacyReadyBuildVerdict reports that this release's terminal build failure is
+// recorded only in the Ready condition, the pre-w6/m100 marker
+// recordedBuildVerdict falls back to. A status write that replaces Ready erases
+// it and the failed build is dispatched again. Delete it with that fallback.
+func legacyReadyBuildVerdict(app *appv1alpha1.App) bool {
+	return terminalBuildFailureRecorded(app) &&
+		meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionBuild) == nil
 }
 
 // meterBuildSignals records the pod-derived build series (queue wait, push
@@ -1986,23 +2012,8 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return res, nil
 	}
 
-	// The slug-named Service converges bidirectionally for every type BEFORE the
-	// per-type dispatch: an addressable App (web/private) gets the alias, a
-	// non-addressable type (cron/static/worker — including one hand-edited away
-	// from web/private) gets it removed. One seam owns both halves, so no type
-	// path can forget the delete (docs/ADR041-service-addresses.md D2).
-	if err := r.reconcileSlugService(ctx, app, port); err != nil {
-		return r.fail(ctx, app, "ServiceFailed", err)
-	}
-	// A command can be removed while the App is suspended or while its type is
-	// changing, both of which bypass reconcilePreDeploy below. Converge the
-	// cross-namespace execution policy here as well so the old grant is removed
-	// on that first ordinary reconcile.
-	preDeployRequired := hasPreDeployStep(app)
-	if !preDeployRequired {
-		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
-			return r.fail(ctx, app, "NetworkPolicyFailed", err)
-		}
+	if err := r.convergeSharedChildren(ctx, app, port); err != nil {
+		return r.failStep(ctx, app, err)
 	}
 
 	// A cron_job diverges entirely: a batch/v1 CronJob, no Deployment/Service/Ingress.
@@ -2018,27 +2029,14 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Service, no Ingress, no URL, no auto-sleep (nothing routes traffic to wake it).
 	worker := app.Spec.Type == appv1alpha1.TypeBackgroundWorker
 
-	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, app)
-
-	// Hibernating drains the App's own Service. Let the public Ingress move to
-	// the activator FIRST and give Traefik a pass to ingest it, because the two
-	// are separate, non-atomic API writes: scaling to 0 in the same pass that
-	// swaps the route means Traefik can still be pointing at the App's Service
-	// when its last endpoint disappears, and the next request gets Traefik's own
-	// "no available server" rather than bex's interstitial (w6/m94).
-	//
-	// The cost is one extra reconcile on a service that has already been idle
-	// for its whole TTL, and a request landing inside the grace gets the wake
-	// interstitial from an App that is still up — a second early, and the same
-	// answer it would have got a second later anyway.
-	replicas, hibernateHold, err := r.holdHibernateForRouting(ctx, app, autoHibernating, replicas)
-	if err != nil {
-		return r.fail(ctx, app, "IngressFailed", err)
+	plan, res, halted, err := r.planReplicas(ctx, app, false)
+	if halted {
+		if err != nil {
+			return r.failStep(ctx, app, err)
+		}
+		return res, nil
 	}
-
-	if res, halt, err := r.reconcileDiskLifecycle(ctx, app); halt || err != nil {
-		return res, err
-	}
+	replicas, autoHibernating := plan.replicas, plan.autoHibernating
 
 	// Pre-deploy gate (w1/m33): run spec.preDeployCommand to completion against
 	// the new revision's image before rolling the Deployment to it; a non-zero
@@ -2046,7 +2044,6 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// the template on it until the step passes and keeps its replicas and routing
 	// converging (w1/m156). For a first release the gate below halts the pass, and
 	// it is skipped while suspended or auto-hibernating, where nothing rolls.
-	plan := replicaPlan{replicas: replicas, autoscaleRequeue: autoscaleRequeue, autoHibernating: autoHibernating, hibernateHold: hibernateHold}
 	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, worker, plan); held {
 		return res, err
 	}
@@ -2127,14 +2124,72 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}
 
 	if app.Spec.Suspended || autoHibernating {
-		return r.parkKubernetes(ctx, app, image, hosts, autoHibernating, hibernateHold)
+		return r.parkKubernetes(ctx, app, image, hosts, autoHibernating, plan.hibernateHold)
 	}
 
 	if res, halt, err := r.reportKubernetesRunning(ctx, app, dep, image, hosts, replicas, port); halt || err != nil {
 		return res, err
 	}
 
-	return r.runningRequeue(ctx, app, autoscaleRequeue)
+	return r.runningRequeue(ctx, app, plan.autoscaleRequeue)
+}
+
+// convergeSharedChildren converges what every type's pass owns before its
+// runtime. Its errors carry their failure reason (stepFailure).
+func (r *AppReconciler) convergeSharedChildren(ctx context.Context, app *appv1alpha1.App, port int) error {
+	// The slug-named Service converges bidirectionally for every type BEFORE the
+	// per-type dispatch: an addressable App (web/private) gets the alias, a
+	// non-addressable type (cron/static/worker — including one hand-edited away
+	// from web/private) gets it removed. One seam owns both halves, so no type
+	// path can forget the delete (docs/ADR041-service-addresses.md D2).
+	if err := r.reconcileSlugService(ctx, app, port); err != nil {
+		return &stepFailure{reason: "ServiceFailed", err: err}
+	}
+	// A command can be removed while the App is suspended or while its type is
+	// changing, both of which bypass reconcilePreDeploy. Converge the
+	// cross-namespace execution policy here as well so the old grant is removed
+	// on that first ordinary reconcile.
+	if !hasPreDeployStep(app) {
+		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
+			return &stepFailure{reason: "NetworkPolicyFailed", err: err}
+		}
+	}
+	return nil
+}
+
+// planReplicas resolves the replicas this pass rolls and runs the disk lifecycle
+// that must settle before anything scales. poll marks a held pass on a step's or
+// build's few-second poll: it runs only the disk restore gate, and the plan lets
+// the route skip writes that would not change. halted reports that the caller
+// must return (res, err): a restore that owns the volume, or a routing or disk
+// failure carrying its reason (stepFailure). The rollout and both held-release
+// paths (w1/m156, w1/m157) scale from the plan it returns.
+func (r *AppReconciler) planReplicas(ctx context.Context, app *appv1alpha1.App, poll bool) (replicaPlan, ctrl.Result, bool, error) {
+	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, app)
+
+	// Hibernating drains the App's own Service. Let the public Ingress move to
+	// the activator FIRST and give Traefik a pass to ingest it, because the two
+	// are separate, non-atomic API writes: scaling to 0 in the same pass that
+	// swaps the route means Traefik can still be pointing at the App's Service
+	// when its last endpoint disappears, and the next request gets Traefik's own
+	// "no available server" rather than bex's interstitial (w6/m94).
+	//
+	// The cost is one extra reconcile on a service that has already been idle
+	// for its whole TTL, and a request landing inside the grace gets the wake
+	// interstitial from an App that is still up — a second early, and the same
+	// answer it would have got a second later anyway.
+	replicas, hibernateHold, err := r.holdHibernateForRouting(ctx, app, autoHibernating, replicas)
+	if err != nil {
+		return replicaPlan{}, ctrl.Result{}, true, &stepFailure{reason: "IngressFailed", err: err}
+	}
+
+	if res, halt, err := r.reconcileDiskLifecycle(ctx, app, !poll); halt || err != nil {
+		return replicaPlan{}, res, true, err
+	}
+	return replicaPlan{
+		replicas: replicas, autoscaleRequeue: autoscaleRequeue, autoHibernating: autoHibernating,
+		hibernateHold: hibernateHold, poll: poll,
+	}, ctrl.Result{}, false, nil
 }
 
 // deployRegistryGate holds a rollout until zot accepts this App's pull
@@ -2194,30 +2249,33 @@ func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App
 // reconcileDiskLifecycle converges the App's persistent disk, its nightly
 // snapshot schedule, and any requested restore — everything that must settle
 // before the Deployment that mounts the volume is rolled. halt=true means the
-// caller must stop this reconcile and return (res, err).
-func (r *AppReconciler) reconcileDiskLifecycle(ctx context.Context, app *appv1alpha1.App) (ctrl.Result, bool, error) {
-	// The disk converges before the Deployment that mounts it, so a pod is never
-	// rolled at a claim that does not exist yet. Suspension deliberately does not
-	// skip this: a parked App keeps its volume (that is the whole point of
-	// suspend), and a grow requested while parked is applied to the free volume
-	// rather than waiting for a resume.
-	if err := r.reconcileDisk(ctx, app); err != nil {
-		res, err := r.fail(ctx, app, "DiskFailed", err)
-		return res, true, err
-	}
-	// The nightly snapshot rides beside the volume, not the rollout: a failure
-	// to converge the CronJob must not stop the service from deploying, so it
-	// is logged rather than failing the App.
-	if err := r.reconcileDiskBackup(ctx, app); err != nil {
-		logf.FromContext(ctx).Error(err, "disk snapshot schedule not converged", "app", app.Name)
+// caller must stop this reconcile; a failure carries its reason (stepFailure).
+// upkeep=false runs only
+// the restore gate: a held pass on a build's few-second poll leaves the volume
+// and its snapshot schedule to the next full pass (w1/m157).
+func (r *AppReconciler) reconcileDiskLifecycle(ctx context.Context, app *appv1alpha1.App, upkeep bool) (ctrl.Result, bool, error) {
+	if upkeep {
+		// The disk converges before the Deployment that mounts it, so a pod is
+		// never rolled at a claim that does not exist yet. Suspension deliberately
+		// does not skip this: a parked App keeps its volume (that is the whole
+		// point of suspend), and a grow requested while parked is applied to the
+		// free volume rather than waiting for a resume.
+		if err := r.reconcileDisk(ctx, app); err != nil {
+			return ctrl.Result{}, true, &stepFailure{reason: "DiskFailed", err: err}
+		}
+		// The nightly snapshot rides beside the volume, not the rollout: a failure
+		// to converge the CronJob must not stop the service from deploying, so it
+		// is logged rather than failing the App.
+		if err := r.reconcileDiskBackup(ctx, app); err != nil {
+			logf.FromContext(ctx).Error(err, "disk snapshot schedule not converged", "app", app.Name)
+		}
 	}
 	// A requested restore owns the volume until it finishes. While it does, the
 	// rest of the reconcile must not run: it would scale the service back up
 	// onto a filesystem the Job is still rewriting.
 	restoring, err := r.reconcileDiskRestore(ctx, app)
 	if err != nil {
-		res, err := r.fail(ctx, app, "DiskRestoreFailed", err)
-		return res, true, err
+		return ctrl.Result{}, true, &stepFailure{reason: "DiskRestoreFailed", err: err}
 	}
 	if !restoring {
 		return ctrl.Result{}, false, nil
@@ -4311,6 +4369,27 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 	return ctrl.Result{}, err
 }
 
+// stepFailure is a reconcile step's error with the reason r.fail records it
+// under. Returning it lets the caller choose: record the failure (failStep), or
+// return the error alone where a Failed phase would be wrong, as on a pass that
+// observes a build, whose Building phase pins the release to it (buildRunning).
+type stepFailure struct {
+	reason string
+	err    error
+}
+
+func (f *stepFailure) Error() string { return f.err.Error() }
+func (f *stepFailure) Unwrap() error { return f.err }
+
+// failStep records a stepFailure through r.fail and returns any other error as
+// it is.
+func (r *AppReconciler) failStep(ctx context.Context, app *appv1alpha1.App, err error) (ctrl.Result, error) {
+	if step, ok := errors.AsType[*stepFailure](err); ok {
+		return r.fail(ctx, app, step.reason, step.err)
+	}
+	return ctrl.Result{}, err
+}
+
 // settleFailureOverPriorRelease stamps the terminal status for a build,
 // pre-deploy or rollout failure while an earlier release is still the truthful
 // service state: a build or pre-deploy step runs before the rollout, and a
@@ -4559,12 +4638,21 @@ func preDeployPassed(app *appv1alpha1.App) bool {
 	return pd != nil && pd.Generation == releaseGeneration(app) && pd.Status == appv1alpha1.PreDeploySucceeded
 }
 
-// replicaPlan is what reconcileKubernetes resolved for this pass's replicas.
+// replicaPlan is what planReplicas resolved for this pass's replicas. poll marks
+// a held pass that comes back within seconds on a step's or build's own poll.
 type replicaPlan struct {
 	replicas         int32
 	autoscaleRequeue bool
 	autoHibernating  bool
 	hibernateHold    bool
+	poll             bool
+}
+
+// priorRelease is the Deployment a serving prior release runs from and the port
+// its Service exposes.
+type priorRelease struct {
+	dep  *appsv1.Deployment
+	port int
 }
 
 func (p replicaPlan) parked(app *appv1alpha1.App) bool {
@@ -4585,35 +4673,24 @@ const wakeReadyPoll = 5 * time.Second
 // release, no prior Deployment or Service, or a step that has passed, including
 // one that passes on this pass.
 func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha1.App, image string, port int, worker bool, plan replicaPlan) (bool, ctrl.Result, error) {
-	if worker || app.Status.ActiveRevision == "" || preDeployPassed(app) {
+	if worker || preDeployPassed(app) {
 		return false, ctrl.Result{}, nil
 	}
-	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
-	dep := &appsv1.Deployment{}
-	if err := r.Get(ctx, key, dep); err != nil {
-		if apierrors.IsNotFound(err) {
-			return false, ctrl.Result{}, nil
-		}
+	prior, err := r.servingPriorRelease(ctx, app)
+	if err != nil {
 		return true, ctrl.Result{}, err
 	}
-	var svc corev1.Service
-	if err := r.Get(ctx, key, &svc); err != nil {
-		if apierrors.IsNotFound(err) {
-			return false, ctrl.Result{}, nil
-		}
-		return true, ctrl.Result{}, err
-	}
-	if len(svc.Spec.Ports) == 0 {
+	if prior == nil {
 		return false, ctrl.Result{}, nil
 	}
-	// Route to the port the prior release's Service exposes: the held release may
-	// have changed spec.port, and its pods are not the ones serving.
-	servingPort := int(svc.Spec.Ports[0].Port)
 
 	pd := app.Status.PreDeploy
-	failed := pd != nil && pd.Generation == releaseGeneration(app) && pd.Status == appv1alpha1.PreDeployFailed
+	failed := ""
+	if pd != nil && pd.Generation == releaseGeneration(app) && pd.Status == appv1alpha1.PreDeployFailed {
+		failed = "the latest pre-deploy command failed"
+	}
 	var gate ctrl.Result
-	if !failed && !plan.parked(app) {
+	if failed == "" && !plan.parked(app) {
 		res, halt, err := r.reconcilePreDeploy(ctx, app, image, port)
 		if err != nil {
 			return true, res, err
@@ -4623,33 +4700,159 @@ func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha
 		}
 		gate = res
 	}
-	res, err := r.convergeServingRuntime(ctx, app, dep, servingPort, plan)
-	if err != nil || plan.parked(app) {
+	plan.poll = gate.RequeueAfter > 0
+	res, err := r.settleHeldRuntime(ctx, app, prior, plan, failed, gate.RequeueAfter)
+	if err != nil {
+		res, err = r.failStep(ctx, app, err)
+	}
+	return true, res, err
+}
+
+// holdPendingArtifact is holdUnpassedRelease one stage earlier (w1/m157). While a
+// newer release has no image yet (its build is queued, running, waiting on a
+// registry credential or failed), or a suspended App reuses its serving image
+// instead of building, the prior release's replicas and public routing keep
+// following the App and its pod template stays untouched.
+//
+// buildHalt is the result buildFromSource halted with, zero for a suspended
+// pass; its requeue is this pass's cadence. A pass that leaves the phase
+// Building keeps it: that phase pins the release to its build (buildRunning), so
+// the hold neither parks over it nor records a failure in its place.
+//
+// held=false keeps the pass on its halt: a worker (w1/m158), a cron job or
+// static site, the opensandbox runtime, no serving prior release, or a build
+// failure recorded only in the legacy Ready marker, which a held pass's status
+// write would erase.
+func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result) (bool, ctrl.Result, error) {
+	if r.Mode != ModeKubernetes || !app.Spec.InternallyAddressable() || legacyReadyBuildVerdict(app) {
+		return false, ctrl.Result{}, nil
+	}
+	prior, err := r.servingPriorRelease(ctx, app)
+	if err != nil {
+		return true, ctrl.Result{}, err
+	}
+	if prior == nil {
+		return false, ctrl.Result{}, nil
+	}
+	poll := buildHalt.RequeueAfter > 0
+	building := poll && app.Status.Phase == appv1alpha1.PhaseBuilding
+	held := func(res ctrl.Result, err error) (bool, ctrl.Result, error) {
+		if err != nil && !building {
+			res, err = r.failStep(ctx, app, err)
+		}
 		return true, res, err
 	}
-	if failed {
-		// Settle from the scale this pass wrote: on the wake pass the cached
-		// Deployment can still show the parked count.
-		r.settlePriorRelease(ctx, app, "the latest pre-deploy command failed", plan.replicas == 0)
-	} else {
-		r.updateStatusRetrying(ctx, app, "preDeployHeld")
+
+	// Asleep while a build is observed: nothing converges until a request stamps
+	// last-active, which ends shouldAutoHibernate. Skip the plan so the build's
+	// poll does not repeat traffic, autoscaling and disk reads for a service at 0.
+	if poll && prior.dep.Spec.Replicas != nil && *prior.dep.Spec.Replicas == 0 && shouldAutoHibernate(app) {
+		return true, buildHalt, nil
 	}
-	res.RequeueAfter = soonerRequeue(res.RequeueAfter, gate.RequeueAfter)
-	return true, res, nil
+	if !poll {
+		// Served on the prior release's port, as the route is: the held release
+		// may have changed spec.port.
+		if err := r.convergeSharedChildren(ctx, app, prior.port); err != nil {
+			return held(ctrl.Result{}, err)
+		}
+	}
+	plan, res, halted, err := r.planReplicas(ctx, app, poll)
+	if halted {
+		res.RequeueAfter = soonerRequeue(res.RequeueAfter, buildHalt.RequeueAfter)
+		return held(res, err)
+	}
+	if building && plan.parked(app) {
+		if _, _, err := r.convergeServingRoute(ctx, app, prior, plan); err != nil {
+			return held(ctrl.Result{}, err)
+		}
+		r.updateStatusRetrying(ctx, app, "releaseHeld")
+		if plan.hibernateHold {
+			buildHalt.RequeueAfter = soonerRequeue(buildHalt.RequeueAfter, hibernateRoutingGrace)
+		}
+		return true, buildHalt, nil
+	}
+	failed := ""
+	if terminalBuildFailureRecorded(app) {
+		failed = "the latest build failed"
+	}
+	return held(r.settleHeldRuntime(ctx, app, prior, plan, failed, buildHalt.RequeueAfter))
+}
+
+// servingPriorRelease returns the release a held pass keeps serving, or nil when
+// there is none to hold: nothing has served yet, or its Deployment or Service is
+// gone (a worker changed to a web service has no Service yet).
+func (r *AppReconciler) servingPriorRelease(ctx context.Context, app *appv1alpha1.App) (*priorRelease, error) {
+	if app.Status.ActiveRevision == "" {
+		return nil, nil
+	}
+	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
+	dep := &appsv1.Deployment{}
+	if err := r.Get(ctx, key, dep); err != nil {
+		return nil, client.IgnoreNotFound(err)
+	}
+	var svc corev1.Service
+	if err := r.Get(ctx, key, &svc); err != nil {
+		return nil, client.IgnoreNotFound(err)
+	}
+	if len(svc.Spec.Ports) == 0 {
+		return nil, nil
+	}
+	// Route to the port the prior release's Service exposes: the held release may
+	// have changed spec.port, and its pods are not the ones serving.
+	return &priorRelease{dep: dep, port: int(svc.Spec.Ports[0].Port)}, nil
+}
+
+// settleHeldRuntime converges a held release's serving runtime and, while it is
+// awake, settles the status that pass left: from the scale it wrote when failed
+// names the failed step (on a wake pass the cached Deployment can still show the
+// parked count), otherwise as the pass left it. extra folds the gate's own
+// requeue in. Errors come back unrecorded, with their reason where they have one.
+func (r *AppReconciler) settleHeldRuntime(ctx context.Context, app *appv1alpha1.App, prior *priorRelease, plan replicaPlan, failed string, extra time.Duration) (ctrl.Result, error) {
+	res, err := r.convergeServingRuntime(ctx, app, prior, plan)
+	if err != nil || plan.parked(app) {
+		return res, err
+	}
+	if failed != "" {
+		r.settlePriorRelease(ctx, app, failed, plan.replicas == 0)
+	} else {
+		r.updateStatusRetrying(ctx, app, "releaseHeld")
+	}
+	res.RequeueAfter = soonerRequeue(res.RequeueAfter, extra)
+	return res, nil
 }
 
 // convergeServingRuntime moves a serving prior release's replicas and public
-// routing to what the App wants without touching the Deployment's template. The
-// Ingress is rewritten only when the scale changed or the live route differs:
-// its middleware reconcile reads uncached, and a held pass can come back every
-// few seconds while a step runs.
-func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, servingPort int, plan replicaPlan) (ctrl.Result, error) {
+// routing to what the App wants, then parks it or keeps its running requeue.
+func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1alpha1.App, prior *priorRelease, plan replicaPlan) (ctrl.Result, error) {
+	hosts, serving, err := r.convergeServingRoute(ctx, app, prior, plan)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if plan.parked(app) {
+		return r.parkKubernetes(ctx, app, app.Status.Image, hosts, plan.autoHibernating, plan.hibernateHold)
+	}
+	completeAutoscalingTransition(app, prior.dep.Status.Replicas, prior.dep.Status.ReadyReplicas, time.Now())
+	res, err := r.runningRequeue(ctx, app, plan.autoscaleRequeue)
+	if err != nil {
+		return res, err
+	}
+	if plan.replicas > 0 && !serving && r.ActivatorService != "" && autoSleepEligible(app) {
+		res.RequeueAfter = soonerRequeue(res.RequeueAfter, wakeReadyPoll)
+	}
+	return res, nil
+}
+
+// convergeServingRoute scales the prior release's Deployment and routes its
+// public Ingress without touching the pod template, and reports the hosts routed
+// and whether a pod is ready. Errors carry their failure reason (stepFailure).
+func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alpha1.App, prior *priorRelease, plan replicaPlan) ([]string, bool, error) {
+	dep := prior.dep
 	scaled := dep.Spec.Replicas == nil || *dep.Spec.Replicas != plan.replicas
 	if scaled {
 		base := dep.DeepCopy()
 		dep.Spec.Replicas = &plan.replicas
 		if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
-			return ctrl.Result{}, err
+			return nil, false, err
 		}
 	}
 
@@ -4659,32 +4862,26 @@ func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1al
 	}
 	r.setPublicRoutingCondition(app, hosts)
 	serving := dep.Status.ReadyReplicas > 0
-	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, servingPort, plan.autoHibernating, serving)
+	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, prior.port, plan.autoHibernating, serving)
 	if err != nil {
-		return r.fail(ctx, app, "MaintenanceRoutingFailed", err)
+		return nil, false, &stepFailure{reason: "MaintenanceRoutingFailed", err: err}
 	}
-	routed, err := r.ingressRoutes(ctx, app, hosts, ingressSvc, ingressPort)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if scaled || !routed {
-		if reason, err := r.reconcileIngressWithMiddlewares(ctx, app, hosts, ingressSvc, ingressPort); err != nil {
-			return r.fail(ctx, app, reason, err)
+	// A poll skips the rewrite while the route already matches: the middleware
+	// reconcile reads uncached, and a poll comes back every few seconds. Domain,
+	// allow-list and middleware edits converge on the next pass that is not a poll.
+	if plan.poll && !scaled {
+		routed, err := r.ingressRoutes(ctx, app, hosts, ingressSvc, ingressPort)
+		if err != nil {
+			return nil, false, err
+		}
+		if routed {
+			return hosts, serving, nil
 		}
 	}
-
-	if plan.parked(app) {
-		return r.parkKubernetes(ctx, app, app.Status.Image, hosts, plan.autoHibernating, plan.hibernateHold)
+	if reason, err := r.reconcileIngressWithMiddlewares(ctx, app, hosts, ingressSvc, ingressPort); err != nil {
+		return nil, false, &stepFailure{reason: reason, err: err}
 	}
-	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
-	res, err := r.runningRequeue(ctx, app, plan.autoscaleRequeue)
-	if err != nil {
-		return res, err
-	}
-	if plan.replicas > 0 && !serving && r.ActivatorService != "" && autoSleepEligible(app) {
-		res.RequeueAfter = soonerRequeue(res.RequeueAfter, wakeReadyPoll)
-	}
-	return res, nil
+	return hosts, serving, nil
 }
 
 // ingressRoutes reports whether the App's Ingress already has exactly one rule
