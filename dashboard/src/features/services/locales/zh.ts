@@ -1068,7 +1068,8 @@ const zhServices: Record<string, TranslationEntry> = {
       "Settings tab: label for the free-tier auto-sleep window control",
   },
   "services.settingsIdleTimeoutHint": {
-    message: "免费服务在此空闲时长后休眠，下次请求时自动唤醒。",
+    message:
+      "免费服务在这段时间内没有收到请求或 WebSocket 消息时休眠，下次请求时自动唤醒。",
     description: "Settings tab: idle-timeout control help text (bex extension)",
   },
   "services.settingsIdleTimeoutPaid": {

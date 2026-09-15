@@ -4,7 +4,9 @@
 import { isWebServiceType } from "@/features/services/lib/service-type";
 
 /**
- * Preset windows offered in the Settings select, in seconds. 0 means the
+ * Preset windows offered in the Settings select, in seconds. A window counts
+ * time without inbound traffic — HTTP requests or WebSocket messages the service
+ * served — not time since it started or woke (w1/m151). 0 means the
  * platform default idle window, which the operator resolves to a real value
  * (15 min for free services, w6/m116) — distinct from the explicit "15 min"
  * preset in that it follows whatever the platform default is, rather than

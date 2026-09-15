@@ -218,9 +218,13 @@ const (
 )
 
 // annotLastActive records when the app last served (or received) traffic.
-// Set by the operator on first Running and reset on each wake; updated by the
-// activator on each inbound request. Free-tier apps auto-hibernate after
-// idleTTLSeconds past this timestamp.
+// Three writers: the operator stamps it on first Running; the activator stamps
+// it on the request that wakes a sleeping app; and, once the idle window has
+// elapsed by this stamp, the operator advances it to the latest traffic
+// ActivityReader observed while the app was awake (w1/m151) — an awake app's
+// requests go straight to its own Service and never pass the activator. A free
+// web app auto-hibernates once the window passes after this stamp with no
+// newer traffic.
 const annotLastActive = "app.bex.co/last-active"
 
 // annotTLSSecretHistory persists every cert-manager Secret name ever selected
@@ -266,21 +270,26 @@ type AppReconciler struct {
 	// default "default"). Together with each App's own workspace namespace it
 	// defines the canonical set the reconciler will act on — see canonicalNamespace
 	// and the codex #4 guard in Reconcile.
-	AppsNamespace        string
-	Mode                 string                  // ModeOpenSandbox | ModeKubernetes
-	Registry             string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
-	KpackRegistry        string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
-	CNBBuilder           string                  // e.g. paketobuildpacks/builder-jammy-base
-	BuildNamespace       string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
-	Runtime              *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
-	BaseDomain           string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
-	ClusterIssuer        string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
-	ActivatorService     string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
-	ActivatorNamespace   string                  // namespace of the wake activator Service (default bex-system)
-	ActivatorPort        int                     // activator listen port (default 8888)
-	MaintenanceService   string                  // shared public maintenance responder Service (default bex-activator)
-	MaintenanceNamespace string                  // namespace of the shared responder Service (default bex-system)
-	MaintenancePort      int                     // maintenance responder Service port (default 8888)
+	AppsNamespace      string
+	Mode               string                  // ModeOpenSandbox | ModeKubernetes
+	Registry           string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
+	KpackRegistry      string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
+	CNBBuilder         string                  // e.g. paketobuildpacks/builder-jammy-base
+	BuildNamespace     string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
+	Runtime            *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
+	BaseDomain         string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
+	ClusterIssuer      string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
+	ActivatorService   string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
+	ActivatorNamespace string                  // namespace of the wake activator Service (default bex-system)
+	ActivatorPort      int                     // activator listen port (default 8888)
+	// ActivityReader observes a free web service's served traffic (Traefik
+	// requests and WebSocket egress) so an awake service is not put to sleep
+	// while it is being used (w1/m151). nil (no BEX_PROM_URL) => the
+	// last-active stamp alone decides, as before.
+	ActivityReader       AppActivityReader
+	MaintenanceService   string // shared public maintenance responder Service (default bex-activator)
+	MaintenanceNamespace string // namespace of the shared responder Service (default bex-system)
+	MaintenancePort      int    // maintenance responder Service port (default 8888)
 	// DiskStorageClass is the StorageClass persistent service disks are
 	// provisioned from (BEX_DISK_STORAGE_CLASS; production sets the encrypted
 	// hcloud class). Empty leaves the claim's class unset, which selects the
@@ -2288,7 +2297,9 @@ func (r *AppReconciler) ingressRoutesToActivator(ctx context.Context, app *appv1
 // types never auto-hibernate: they have no public Ingress wake path (private,
 // worker, cron), or no per-App workload to scale (static).
 func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App) (replicas int32, autoscaleRequeue, autoHibernating bool) {
-	autoHibernating = r.ActivatorService != "" && shouldAutoHibernate(app)
+	// The stamp is the cheap gate; traffic is read only once it says the window
+	// has elapsed (w1/m151).
+	autoHibernating = r.ActivatorService != "" && shouldAutoHibernate(app) && !r.recentlyActive(ctx, app)
 
 	replicas = effectiveReplicas(app)
 	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
@@ -2407,13 +2418,18 @@ func (r *AppReconciler) runningRequeue(ctx context.Context, app *appv1alpha1.App
 	if r.ActivatorService != "" && autoSleepEligible(app) {
 		now := time.Now().UTC()
 		if lastActiveTime(app).IsZero() {
-			base := app.DeepCopy()
-			metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotLastActive, now.Format(time.RFC3339))
-			if err := r.Patch(ctx, app, client.MergeFrom(base)); err != nil {
+			if err := r.stampLastActive(ctx, app, now); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
-		return ctrl.Result{RequeueAfter: idleRequeueAfter(app, now)}, nil
+		requeue := idleRequeueAfter(app, now)
+		// Awake although the stamp says the window elapsed: recentlyActive could
+		// not read (or record) the traffic. Ask again on a slower beat than the
+		// 5s floor rather than hammering an unavailable metrics backend.
+		if shouldAutoHibernate(app) && requeue < activityRecheck {
+			requeue = activityRecheck
+		}
+		return ctrl.Result{RequeueAfter: requeue}, nil
 	}
 	// Autoscaling: always requeue at the poll interval so the loop keeps running.
 	if autoscaleRequeue {

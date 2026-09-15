@@ -60,6 +60,16 @@ var (
 const defaultCNBBuilder = "paketobuildpacks/builder-jammy-base@" +
 	"sha256:5799343cd316c1a03fa3ff7ab0915d9e6d134e95df4583016d70c6f5330d3898"
 
+// appActivityReader observes free web services' served traffic before they
+// auto-sleep (w1/m151), over the same Prometheus the database disk autoscaler
+// reads. nil without BEX_PROM_URL: the last-active stamp alone decides.
+func appActivityReader() controller.AppActivityReader {
+	if promURL := os.Getenv("BEX_PROM_URL"); promURL != "" {
+		return controller.NewPrometheusAppActivityReader(promURL, nil)
+	}
+	return nil
+}
+
 // envOr returns the env var k or a default.
 func envOr(k, def string) string {
 	if v := os.Getenv(k); v != "" {
@@ -351,6 +361,7 @@ func setupAppReconciler(
 		ActivatorService:     envOr("BEX_ACTIVATOR_SERVICE", ""),
 		ActivatorNamespace:   envOr("POD_NAMESPACE", "bex-system"),
 		ActivatorPort:        activatorPort,
+		ActivityReader:       appActivityReader(),
 		MaintenanceService:   envOr("BEX_ACTIVATOR_SERVICE", "bex-activator"),
 		MaintenanceNamespace: envOr("POD_NAMESPACE", "bex-system"),
 		MaintenancePort:      activatorPort,

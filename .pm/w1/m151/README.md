@@ -1,18 +1,18 @@
 # w1 · m151 — A free web service under steady traffic still hibernates every 15 minutes
 
-**Worker:** worker1 **Goal:** a free web service sleeps only after its idle window passes with **no inbound traffic**, as Render documents. Its idle clock advances on every request the service actually serves (and on WebSocket activity), not only when it first runs or is woken. A service that is being used never goes through a hibernate→wake cycle. **Status:** todo
+**Worker:** worker1 **Goal:** a free web service sleeps only after its idle window passes with **no inbound traffic**, as Render documents. Its idle clock advances on every request the service actually serves (and on WebSocket activity), not only when it first runs or is woken. A service that is being used never goes through a hibernate→wake cycle. **Status:** in progress — t005 and t006 done; t001–t004 implemented with tests green, and their live probes (the three DoD bullets, the WebSocket probe) wait for the deploy; then t007 closeout.
 
 ## Tasks (in order)
 
-| id   | title                                                                                                  | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Served requests advance a free web service's idle clock (a Prometheus activity reader, checked before any hibernate) | 60m | —          |
-| t002 | WebSocket activity keeps a free web service awake too                                                  | 40m | t001       |
-| t003 | Blast radius and adjacent states: every path that stamps, reads or bypasses the idle clock             | 40m | t001       |
-| t004 | Render parity                                                                                          | 20m | t002, t003 |
-| t005 | Simplify                                                                                               | 15m | t004       |
-| t006 | Test coverage                                                                                          | 45m | t004       |
-| t007 | Closeout                                                                                               | 10m | t006       |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Served requests advance a free web service's idle clock (a Prometheus activity reader, checked before any hibernate) | 60m | — |
+| t002 | WebSocket activity keeps a free web service awake too | 40m | t001 |
+| t003 | Blast radius and adjacent states: every path that stamps, reads or bypasses the idle clock | 40m | t001 |
+| t004 | Render parity | 20m | t002, t003 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 45m | t004 |
+| t007 | Closeout | 10m | t006 |
 
 ## Definition of done
 
@@ -25,6 +25,7 @@ Each bullet can be repeated on a throwaway free web service (`bex-co/bex` `examp
 ## Evidence (probes run 2026-09-14, production, workspace `bex` / `tea-d98210cbbpdc73dcrkvg`)
 
 Fixtures, all created and deleted inside the run:
+
 - `qa-20260914-stack`: free web service `srv-dajv38a6m8ac739r5tjg`, `examples/stack-demo`, docker, `idleTTLSeconds: 0`.
 - `qa-20260914-db`: free Postgres `dpg-dajv2r26m8ac739r5tg0`, later renamed `qa-20260914-db-renamed`.
 - `DATABASE_URL` on the service was set to the database's internal connection string.
@@ -96,6 +97,55 @@ No screenshots were taken; the transcripts above are the evidence.
 - **Cold-start cost.** The cold start for a heavier app, and what a browser sees mid-cycle, were not probed. The wake page's content negotiation is recorded as deliberate in `w4/done/068`.
 - **Wake ordering.** The ordering between the Deployment scale-down and the 13:41:32 `200` (before `service_woken` at 13:41:47Z) was not traced.
 - **Prometheus timing.** The scrape interval and counter-reset behavior across a hibernate (pods gone, series stale) are to be checked in t001.
+
+## Implementation (2026-09-14)
+
+**Served traffic advances the idle clock (t001).** `lego/operator/internal/controller/activity.go`:
+
+- `AppActivityReader` returns the latest time after `last-active` at which the App served traffic. `NewPrometheusAppActivityReader` runs one query, `max_over_time(timestamp((sum(increase(<requests>[1m])) > 0) or (sum(increase(<ws frames>[1m])) > 0))[<lookback>:15s])`: the latest 15 s step at which either counter rose over the preceding minute. The series are `traefik_service_requests_total{service="<namespace>-<app>-<port>@kubernetes"}` (every status — Render counts inbound traffic, not successes) and `bex_websocket_egress_bytes_total{app_id=…}`. The lookback is the time since the stamp, capped at the window plus one step: older traffic cannot keep the App awake, and an uncapped days-old stamp would ask for a subquery that times out. The answer trails a request by at most a minute plus a scrape, which only ever delays a sleep. `increase()` is reset-safe, and a series that went stale when the service was parked yields nothing.
+- `desiredReplicas` hibernates only when `shouldAutoHibernate(app)` (the stamp is past the window, the cheap gate, unchanged) **and** `!recentlyActive(ctx, app)`. `recentlyActive` advances `app.bex.co/last-active` to the observed traffic and reports whether that traffic is still inside the window, so the next check is timed from the last request (`idleRequeueAfter`).
+- **Fail awake:** a reader error, or a failed stamp patch, keeps the service awake and leaves the stamp alone; `runningRequeue` re-asks after one minute instead of the 5 s floor. After a failed read the reader answers "unavailable" for 30 s without querying, so a hung Prometheus cannot hold a reconcile worker for its full request timeout on every awake free service in turn. The stamp patch carries its resourceVersion, so a stale cached copy conflicts instead of moving a newer activator wake stamp backwards. **No reader** (no `BEX_PROM_URL`, local clusters) keeps the stamp-only rule, so the existing idle, wake and maintenance tests run unmodified. A **hibernated** App is not read: its route is the activator, and its own Service serves nothing.
+- Wiring: `cmd/manager/main.go` `appActivityReader()` from `BEX_PROM_URL`, the Prometheus the database disk autoscaler already reads (`config/manager/manager.yaml` sets it in production). The `last-active` annotation's doc now names its three writers.
+
+**WebSocket (t002).** Prometheus already scrapes the plugin's `:9101` counter (`deploy/gitops/base/prometheus.yaml` job `traefik-websocket-meter`, which keeps `bex_websocket_egress_bytes_total`), so no scrape change was needed. That counter measures **server→client** frames only: a connection on which only the client sends messages does not keep a service awake. Recorded as a divergence in ADR018 and filed as `w1/102`. The live 20-minute WebSocket probe waits for the deploy.
+
+**States (t003).**
+
+| State | Behavior | Test |
+| --- | --- | --- |
+| Awake, stamp past the window, traffic inside it | Stays awake; stamp advances to the traffic | `TestIdleDecisionConsultsServedTraffic` (row 1), `TestSteadyTrafficKeepsAFreeServiceAwakeThenItSleepsWhenQuiet` |
+| Awake, traffic after the stamp but older than the window | Sleeps; stamp still advances | `TestIdleDecisionConsultsServedTraffic` (row 2) |
+| Awake, no traffic since the stamp | Sleeps, a window after the last request | `TestIdleDecisionConsultsServedTraffic` (row 3), the quiet half of `TestSteadyTraffic…` |
+| Metrics unreadable | Awake, stamp untouched, re-asked after 1 min | `TestIdleDecisionConsultsServedTraffic` (row 4) |
+| Stamp inside the window | Traffic not read (unchanged) | `TestIdleDecisionConsultsServedTraffic` (row 5), `TestShouldAutoHibernate` |
+| Hibernated | Not read; wakes through the activator's stamp, as before | `TestIdleDecisionConsultsServedTraffic` (row 6), `TestWakeRestoresAppServiceAsIngressBackend` |
+| Waking, routing hold (`w6/m94`) | The wake stamp is fresh, so traffic is not read; the hold is unchanged | `TestWakeRestoresAppServiceAsIngressBackend` (unmodified) |
+| Maintenance mode | Precedence unchanged | `TestMaintenance*` (unmodified) |
+| Manually suspended; paid, private, worker, cron, static | Never eligible, never read | `TestShouldAutoHibernate` rows (unmodified) |
+| No `BEX_PROM_URL` | Stamp alone decides | `TestIdleDecisionWithoutAReaderUsesTheStamp` |
+
+- **Rollouts do not restamp.** A deploy is not inbound traffic (Render counts requests and messages); traffic served during and after a rollout is what keeps the service awake.
+- **Events.** `service_hibernated`/`service_woken` now follow real idleness. The push-notification exclusion (`lego/backend/internal/notifications/push_worker.go`, `w6/m47`) is untouched.
+
+**Parity and copy (t004).** The dashboard idle-timeout hint (en + zh) and the `IDLE_TIMEOUT_PRESETS` doc, the MCP `idleTTLSeconds` description, the CRD field doc (`lego/types/v1alpha1/app_types.go`, CRD regenerated), ADR003 § free web tier and ADR018's Suspend/Resume row now say the window counts time without traffic. The dashboard says "without inbound requests or WebSocket messages"; the CRD and MCP text are exact ("HTTP requests it served, or WebSocket frames it sent"), matching the server→client divergence above.
+
+**Simplify (t005).** Three review passes (reuse, quality, efficiency). Applied:
+
+- The lookback is capped at the window plus one step. A days-old stamp (a long outage, or an App that was paid for months) would have asked for a subquery past Prometheus's request timeout, erroring and keeping the service awake indefinitely.
+- A 30 s breaker after a failed read. Every awake free service asks during an outage, and each hung query held one of the operator's two reconcile workers for 5 s, which would have starved other Apps' deploys.
+- The two signals are one `or` query: half the round trips and the worst-case blocking.
+- One `stampLastActive` helper for the first-Running stamp and the traffic advance, with an optimistic lock (see Fail awake).
+- `recentlyActive` returns `!shouldAutoHibernate(app)` after stamping, so one rule decides.
+- The CRD and MCP wording says "WebSocket frames it sent", not "messages", and a doc comment misplaced in `main.go` is back on `envOr`.
+
+Declined:
+
+- A shared Prometheus base-URL-and-client type with the disk-usage reader; it would save three lines.
+- A shared Traefik service-label helper in `lego/types` for a one-line format also used by bex-api.
+- A health condition for a misconfigured `BEX_PROM_URL`; failures are logged and fail awake.
+- Rewording the tests' filing-time comments; they follow the repo's convention.
+
+**Tests (t006).** `activity_test.go`: the decision table above; requeue timed from the traffic; a full reconcile that keeps the replica under traffic and scales to 0 once quiet; the reader against a fake Prometheus (one query carrying the exact service label and `app_id`, the lookback capped at the window for a three-day-old stamp, no status matcher, the latest sample wins, nothing newer than the stamp, and one failed read opening the breaker so the next read makes no request). **Shown failing without the fix:** in a scratch worktree with only the traffic read removed from `desiredReplicas` (and the slower recheck from `runningRequeue`), `TestIdleDecisionConsultsServedTraffic` (4 rows), `TestRequeueAfterTrafficIsTimedFromTheTraffic` and `TestSteadyTraffic…` failed ("auto-hibernating = true, want false"; "replicas under steady traffic = 0, want 1"). The reader tests cover a type that did not exist pre-fix.
 
 ## Dedupe
 
