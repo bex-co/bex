@@ -1,6 +1,6 @@
 # w7 · m89 — Finish production build-cache enablement
 
-**Worker:** worker7 **Goal:** Land the corrected operator image, confirm Zot headroom, and complete the approved 48–72h production `BEX_BUILD_CACHE=registry` trial (or record an explicit hold). **Status:** BLOCKED on t002 — t001 DONE 2026-09-15 (deploy green since run 34444812690; live digest `sha256:1f3648adb9…` from `c4212ec71909` contains m87+m88). t002 step 1 satisfied from CI; the Zot PVC re-measure, the t003 projection, and the t004 trial start all need the production kubeconfig (`HCLOUD_TOKEN` + `~/.ssh/id_bex`), which this harness could not read from `.env`. Resume from t002 in a session with production access.
+**Worker:** worker7 **Goal:** Land the corrected operator image, confirm Zot headroom, and complete the approved 48–72h production `BEX_BUILD_CACHE=registry` trial (or record an explicit hold). **Status:** t001–t003 DONE 2026-09-15; ready for t004 — the trial start needs a named observer and an armed 72 h rollback (user decision), so the switch stays off. Numbers: Zot 41.49% used, peak 44.62%, 20.03 GiB reserve above peak to 65%; expected cache growth 6–9 GiB (analytic projection, no per-App switch to measure with).
 
 **Estimate:** ~4–6h including standing closing tasks.
 
@@ -9,8 +9,8 @@
 | id   | title                                                                                                                          | est  | depends_on      |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------ | ---- | --------------- |
 | t001 | Unblock `deploy.yml` so an image containing m87+m88 ships — **DONE** 2026-09-15                                                | 1.5h | —               |
-| t002 | Confirm production runs the post-m87/m88 digest; re-check Zot PVC vs 60%/65% budget                                            | 30m  | w7/m89/t001     |
-| t003 | Representative cache-size projection on largest actively rebuilt prod shape (≥2 GC intervals)                                  | 1h   | w7/m89/t002     |
+| t002 | Confirm production runs the post-m87/m88 digest; re-check Zot PVC vs 60%/65% budget — **DONE** 2026-09-15 | 30m  | w7/m89/t001     |
+| t003 | Representative cache-size projection on largest actively rebuilt prod shape (≥2 GC intervals) — **DONE** 2026-09-15 | 1h   | w7/m89/t002     |
 | t004 | Start bounded trial: `BEX_BUILD_CACHE=registry` in prod overlay; 48h observe / 72h hard stop + rollback armed                  | 45m  | w7/m89/t003     |
 | t005 | Record retain-or-rollback from trial metrics (PVC, push p95, stale/clear correctness)                                          | 30m  | w7/m89/t004     |
 | t006 | Simplify                                                                                                                       | 30m  | w7/m89/t005     |
