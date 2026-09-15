@@ -104,6 +104,12 @@ kubectl --kubeconfig "$KUBECONFIG" -n bex-system rollout status \
 
 Coordinate the desired-state removal with the emergency command: while Git still enables the cache, Argo can restore it. Verify newly created Jobs no longer have cache phases. Jobs already created retain their specs; do not cancel tenant builds solely to remove the cache flag. Disabling the switch does not delete cache tags or immediately release disk space.
 
+## 2026-09-15 follow-up: corrected image is live; capacity re-check still owed
+
+`deploy.yml` recovered on 2026-09-10 ([run 34444812690](https://github.com/bex-co/bex/actions/runs/34444812690), from `46e16ec38835`, which contains both `1343b7f17070` and `3aea3310212f`). Every green run since has built and deployed; the latest at the time of writing, [run 34936503315](https://github.com/bex-co/bex/actions/runs/34936503315) from `c4212ec71909`, rolled `bex-controller-manager` onto `ghcr.io/bex-co/bex-operator@sha256:1f3648adb9598bd2d73304b2ebc346bfffe04542d3db13a55e4d198168711a46`, the digest pinned in `deploy/gitops/base/bex.yaml`. The first start condition (corrected image live) is therefore met.
+
+The second condition is not: the Zot PVC and peak were not re-measured on 2026-09-15 because the session had no production kubeconfig, and the September 9 numbers above are not current after six days of deploys. `BEX_BUILD_CACHE` remains unset. The trial stays held on the PVC re-check and the representative cache-size projection (`w7/m89` t002–t003).
+
 ## Closeout state
 
 Global enablement remains **off**. Both live correctness drills and the full operator `make test` passed, and fixture retirement is verified. Pending: deployment of the already merged correctness fixes through passing CI and the representative cache-size measurement. The approved 48–72 hour observation clock has not started.
