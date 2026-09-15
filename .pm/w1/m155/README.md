@@ -5,7 +5,7 @@
 - REST serves Render's limit, filter, datastore and bandwidth-source paths, or each is an explicit divergence recorded in ADR018.
 - MCP `get_metrics` accepts Render's metric-type names.
 
-**Status:** todo
+**Status:** in progress — t006, t008, t009 done; t001–t005 and t007 wait on the live probes after deploy; t010 closeout
 
 ## Tasks (in order)
 
@@ -16,10 +16,10 @@
 | t003 | REST serves `/v1/metrics/filters/{application,http,path}` from the existing filter verbs                           | 40m | —                            |
 | t004 | Render's `active-connections`, `disk-usage` and `bandwidth-sources` paths: serve them or record the divergence     | 30m | —                            |
 | t005 | MCP `get_metrics` accepts Render's `metricTypes` names                                                             | 25m | —                            |
-| t006 | Blast radius: a composed-server test walking every Render `/metrics` path and parameter                            | 30m | t001, t002, t003, t004, t005 |
+| t006 | Blast radius: a composed-server test walking every Render `/metrics` path and parameter — **DONE**                            | 30m | t001, t002, t003, t004, t005 |
 | t007 | Render parity                                                                                                     | 20m | t006                         |
-| t008 | Simplify                                                                                                          | 15m | t007                         |
-| t009 | Test coverage                                                                                                     | 40m | t007                         |
+| t008 | Simplify — **DONE**                                                                                                          | 15m | t007                         |
+| t009 | Test coverage — **DONE**                                                                                                     | 40m | t007                         |
 | t010 | Closeout                                                                                                          | 10m | t009                         |
 
 ## Definition of done
@@ -108,6 +108,43 @@ Run every call from a signed-in dashboard page (`fetch(…, {credentials:'includ
 - **`disk-capacity` / `replication-lag`** called with Render's parameter shape (no `kind`).
 - **Real callers.** Whether the official Render CLI or common SDKs call these paths; the Render MCP server certainly uses the metric names above.
 - **Shell refusal wording (same run, not filed).** On the free fixture, `serviceDetails.sshAddress` was null and `POST /v1/services/<srv>/shell-ticket` returned `409 "service is not eligible and running"`. That is honest, but one message covers both "free plan" and "not running". It is recorded here only.
+
+## Implementation (2026-09-14)
+
+**`aggregateBy` (t001).** `requestGroupBy(param, value)` (`lego/backend/internal/metrics/mcp.go`) is the one mapping for REST `aggregateBy` and MCP `aggregateHttpRequestCountsBy`: `statusCode` → the status breakdown, `host` → a coded 400 naming the parameter. `parseMetricParams` now reads `aggregateBy`, and the unreachable non-Render `groupBy` read is gone.
+
+- **Label name.** The REST series carry `statusCode`, relabelled from the sources' `code`. Render's spec does not name the label, so this follows Render's own REST vocabulary for the breakdown (the `aggregateBy` value and the `filters/http` field). GraphQL keeps `code` as the control. Not confirmed against a Render capture.
+- **`aggregationMethod`.** The t006 walk found REST also accepted and ignored Render's `aggregationMethod` on `/metrics/cpu`. It now goes through the same AVG-only rule as MCP's `cpuUsageAggregationMethod` (`cpuAggregation`).
+- **`service`.** It is accepted as an alias of `resource` on every metrics path (`requestedResources`).
+
+**Limits (t002).** `cpu-limit` and `memory-limit` are in `metricPaths`, served by the same Metrics verb GraphQL `CPU_LIMIT`/`MEMORY_LIMIT` and MCP `cpu_limit` use.
+
+**Filters (t003).** Three routes over `MetricsFilters`, the verb behind GraphQL `metricsFilters`:
+
+- `filters/application` returns `[{filter: instance, values}]`.
+- `filters/http` returns `[{filter: statusCode, values}, {filter: host, values}]`. Host values stay empty, as in GraphQL, because they are discovered from the logs label read. Narrowing by `statusCode`/`host` is refused with a 400 rather than ignored.
+- `filters/path` returns `[]`: bex has no path suggestions (GraphQL `metricsPathFilterSuggestions` is the same).
+- Every one authorizes its resource, so an unknown resource is 404, never an empty list.
+- **Declined:** a 503 when the status-code source is unwired. The shared verb answers `[]` there for GraphQL too, and changing it would split the two surfaces.
+
+**Datastore and bandwidth paths (t004).**
+
+- `disk-usage` and `active-connections` are served, and `datastoreKindFor` infers the kind from the resource id prefix via `id.KindOf`: `red-` Key Value, `srv-` a service disk, otherwise Postgres. `active-connections` maps to `db_connections` or `kv_connections`, and a service is a coded 400.
+- `disk-capacity` and `replication-lag` get the same inference. Before m155 Render's parameter shape could not name a Key Value at all: `kind` is not a Render parameter, so the request validator refused it.
+- **Divergence, `bandwidth-sources`:** a coded 501 that names `/v1/metrics/bandwidth` and GraphQL `monthToDateBandwidth`. bex keeps per-source bandwidth as month-to-date totals, not time series.
+
+**MCP names (t005).** `renderMetricTypes` maps `cpu_usage`, `memory_usage`, `http_request_count` and `bandwidth_usage` onto bex ids; the other Render names already coincide, and bex's own ids keep working. `active_connections` is answered from the datastore verb for a `dpg-`/`red-` resource and refused for a service. Each series is labelled with the name the caller asked for. The `metricTypes` schema lists Render's names.
+
+**Blast radius (t006).** `api/render_metrics_contract_test.go` generates the matrix from the pinned spec: every `/metrics` path except the two workflow non-goals (`task-runs-*`), with each documented query parameter. Every parameter must have a verdict (served, refused, or ignored with a reason), no path may be a bare mux 404, and no documented parameter may be refused as unknown. Ignored with a reason: the time window on `filters/application` and `filters/http` (discovery lists what is queryable now), and every narrowing parameter on `filters/path` (always `[]`). The cross-workspace route inventory and the Render route-intersection pin (131 → 139 operations) list the eight new routes.
+
+**Parity (t007, docs).** ADR018's core and extended metrics rows and ADR010's REST parameter list describe what REST serves, including the `bandwidth-sources` divergence. The live cross-surface comparison waits for the deploy.
+
+**Simplify (t008).** Applied: MCP `get_datastore_metrics` infers the kind the way REST does (`datastoreKindFor`); `filterValuesOrEmpty` coalesces a nil answer to `[]` in one place, so `orEmpty` is gone; the `applyCPUAggregation` wrapper and the GraphQL `"status"` literal are replaced by `cpuAggregation` and `groupByStatus`; the matrix test asserts status per verdict instead of only "not a bare 404".
+
+- **Declined:** a non-member test per `filters/*` route. The verb-level authz sweeps (`TestAuthzGuardsEveryVerb`, the cross-workspace route inventory) already cover them.
+- **Kept on purpose:** MCP's `aggregateHttpRequestCountsBy=statusCode` series keep the `code` label. Each adapter mirrors its own Render counterpart, and Render's MCP server does not name a `statusCode` label, so only REST is relabelled.
+
+**Test coverage (t009).** `metrics/render_contract_test.go` covers `aggregateBy` (statusCode series labels, host refusal), `aggregationMethod`, the limit paths, the three filter shapes and their refusals, datastore kind inference, `active-connections` on a service (400), `bandwidth-sources` (501), and every Render MCP metric type, including the service refusal of `active_connections`. `mcp_alias_test.go` pins `requestGroupBy` and `cpuAggregation`. Pre-fix, the api matrix test failed with a bare 404 on all eight new paths. Backend `go test ./...` passes. `make lint` reports only two findings that predate m155 (`api/scope_matrix.go:163` unused `writeGraphQLErrors`, `operator/internal/publish/publish.go:611` modernize).
 
 ## Dedupe
 

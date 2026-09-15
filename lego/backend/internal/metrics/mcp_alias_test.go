@@ -70,28 +70,29 @@ func TestGetMetricsArgsAliasPolicy(t *testing.T) {
 	}
 }
 
-func TestApplyCPUAggregation(t *testing.T) {
-	if err := applyCPUAggregation(""); err != nil {
+func TestCPUAggregation(t *testing.T) {
+	if err := cpuAggregation("cpuUsageAggregationMethod", ""); err != nil {
 		t.Errorf("empty: %v", err)
 	}
-	if err := applyCPUAggregation("AVG"); err != nil {
+	if err := cpuAggregation("cpuUsageAggregationMethod", "AVG"); err != nil {
 		t.Errorf("AVG: %v", err)
 	}
 	for _, bad := range []string{"MAX", "MIN", "p99"} {
-		err := applyCPUAggregation(bad)
+		err := cpuAggregation("cpuUsageAggregationMethod", bad)
 		if !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("%s: %v, want ErrBadRequest", bad, err)
 		}
 	}
 }
 
-func TestApplyHTTPRequestAggregate(t *testing.T) {
-	got, err := applyHTTPRequestAggregate("statusCode")
+func TestRequestGroupBy(t *testing.T) {
+	got, err := requestGroupBy("aggregateHttpRequestCountsBy", "statusCode")
 	if err != nil || got != "status" {
 		t.Fatalf("statusCode = %q, %v; want status", got, err)
 	}
-	if _, err := applyHTTPRequestAggregate("host"); !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("host: %v, want ErrBadRequest", err)
+	if _, err := requestGroupBy("aggregateHttpRequestCountsBy", "host"); !errors.Is(err, core.ErrBadRequest) ||
+		!strings.Contains(err.Error(), "aggregateHttpRequestCountsBy=host is unsupported") {
+		t.Errorf("host: %v, want ErrBadRequest naming the parameter", err)
 	}
 }
 
@@ -159,11 +160,11 @@ func TestMCPGetMetricsRenderSpellings(t *testing.T) {
 	result, err = cs.CallTool(ctx, &mcp.CallToolParams{
 		Name: "get_metrics",
 		Arguments: map[string]any{
-			"resourceId":            "web",
-			"metricTypes":           []string{MetricHTTPLatency},
-			"httpLatencyQuantile":   0.9,
-			"quantile":              0.5,
-			"resolution":            float64(15),
+			"resourceId":          "web",
+			"metricTypes":         []string{MetricHTTPLatency},
+			"httpLatencyQuantile": 0.9,
+			"quantile":            0.5,
+			"resolution":          float64(15),
 		},
 	})
 	if err != nil || result.IsError {
