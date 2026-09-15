@@ -129,6 +129,28 @@ func staticLogStream(lines map[string][]string) PodLogStream {
 	}
 }
 
+// serveSubscribe serves one request through h into rec. An app tail no longer
+// ends on its own when its pods' logs run out (w1/m146), so the test is the
+// client that disconnects: after the canned lines have had time to be written,
+// the request context is cancelled and the handler's return is awaited before
+// rec is read. A request that ends by itself returns straight away.
+func serveSubscribe(h http.Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+	ctx, cancel := context.WithCancel(req.Context())
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		h.ServeHTTP(rec, req.WithContext(ctx))
+	}()
+	select {
+	case <-done:
+		return
+	case <-time.After(300 * time.Millisecond):
+	}
+	cancel()
+	<-done
+}
+
 func newService(logs map[string][]string, objs ...client.Object) *Service {
 	return &Service{
 		Base:          &core.Base{Client: fakeClientWith(objs...), Namespace: "default"},
@@ -377,7 +399,7 @@ func TestManagedPostgresLogsRejectAnotherWorkspaceOnEveryAdapter(t *testing.T) {
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/logs?resource="+postgresID, nil).WithContext(requestContext)
-	mux.ServeHTTP(rec, req)
+	serveSubscribe(mux, rec, req)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("REST cross-workspace Postgres logs => %d, want 403", rec.Code)
 	}
@@ -586,7 +608,7 @@ func TestRESTLogsSubscribeSSE(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
 	req.Header.Set("Accept", "text/event-stream")
-	mux.ServeHTTP(rec, req)
+	serveSubscribe(mux, rec, req)
 	if rec.Code != 200 || rec.Header().Get("Content-Type") != "text/event-stream" {
 		t.Fatalf("subscribe => 200 SSE, got %d %q", rec.Code, rec.Header().Get("Content-Type"))
 	}
@@ -677,7 +699,7 @@ func TestFollowBuildLogsNoActivePodIsNamedTerminalOutcome(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/v1/logs/subscribe?resource=web&type=build", nil)
 	req.Header.Set("Accept", "text/event-stream")
-	mux.ServeHTTP(rec, req)
+	serveSubscribe(mux, rec, req)
 	if body := rec.Body.String(); !strings.Contains(body, "event: error") || !strings.Contains(body, ErrBuildNotRunning.Error()) {
 		t.Fatalf("terminal SSE body = %q", body)
 	}
@@ -1575,7 +1597,7 @@ func TestSubscribeSSEEmitsResumableFrameIDs(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
 	req.Header.Set("Accept", "text/event-stream")
-	mux.ServeHTTP(rec, req)
+	serveSubscribe(mux, rec, req)
 
 	body := rec.Body.String()
 	if !strings.Contains(body, "id: 2026-07-05T00:00:01Z\ndata: ") ||
@@ -1596,7 +1618,7 @@ func TestSubscribeNDJSONHasNoFrameIDArtifact(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil))
+	serveSubscribe(mux, rec, httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil))
 
 	body := rec.Body.String()
 	if strings.Contains(body, "EXTRA") || strings.Contains(body, "id: ") {
@@ -1633,7 +1655,7 @@ func TestSubscribeResumesFromLastEventID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Last-Event-ID", "2026-07-05T00:00:02Z")
-	mux.ServeHTTP(rec, req)
+	serveSubscribe(mux, rec, req)
 
 	if len(since) != 1 || !since[0].Equal(time.Date(2026, 7, 5, 0, 0, 2, 0, time.UTC)) {
 		t.Fatalf("follow opened with since=%v, want the Last-Event-ID bound", since)
@@ -1664,7 +1686,7 @@ func TestSubscribeIgnoresUnparseableLastEventID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Last-Event-ID", "not-a-timestamp")
-	mux.ServeHTTP(rec, req)
+	serveSubscribe(mux, rec, req)
 
 	if rec.Code != 200 {
 		t.Fatalf("subscribe => %d, want 200 — a bad cursor is ignored, not refused", rec.Code)
@@ -1694,7 +1716,7 @@ func TestExplicitStartTimeWinsOverLastEventID(t *testing.T) {
 		"/v1/logs/subscribe?resource=web&startTime=2026-07-05T00:00:05Z", nil)
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Last-Event-ID", "2026-07-05T00:00:02Z")
-	mux.ServeHTTP(rec, req)
+	serveSubscribe(mux, rec, req)
 
 	want := time.Date(2026, 7, 5, 0, 0, 5, 0, time.UTC)
 	if len(since) != 1 || !since[0].Equal(want) {
@@ -1724,7 +1746,7 @@ func TestReconnectAdvancesPastStartTime(t *testing.T) {
 		"/v1/logs/subscribe?resource=web&startTime=2026-07-05T00:00:01Z", nil)
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Last-Event-ID", "2026-07-05T00:00:08Z")
-	mux.ServeHTTP(rec, req)
+	serveSubscribe(mux, rec, req)
 
 	want := time.Date(2026, 7, 5, 0, 0, 8, 0, time.UTC)
 	if len(since) != 1 || !since[0].Equal(want) {
@@ -1748,7 +1770,7 @@ func TestSubscribeSSEOmitsIDForStamplessLine(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
 	req.Header.Set("Accept", "text/event-stream")
-	mux.ServeHTTP(rec, req)
+	serveSubscribe(mux, rec, req)
 
 	body := rec.Body.String()
 	if strings.Contains(body, "id: \n") {

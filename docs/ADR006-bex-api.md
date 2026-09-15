@@ -619,6 +619,10 @@ Admission overload and the per-caller rate limiter both answer **HTTP 429 + `Ret
 | Non-GET body size | 2 MiB (2097152 bytes) → 413 | `BEX_MAX_BODY_BYTES` |
 | Log / metrics query window (`startTime`..`endTime`) | 720 h (30 days) → 400 | `BEX_MAX_QUERY_HOURS` |
 | Concurrent `GET /v1/logs/subscribe` SSE streams | 100 → 429 | `BEX_MAX_SSE_CONNS` |
+| … per subject (one user or API key) | 5 → 429 | `BEX_MAX_SSE_CONNS_PER_SUBJECT` |
+| … per workspace | 20 → 429 | `BEX_MAX_SSE_CONNS_PER_WORKSPACE` |
+
+**An idle tail holds its slot (w1/m146).** A live tail now stays open for as long as it is authorized and its service exists, including a cron job between runs or a hibernated service. Every open Logs tab therefore holds one subscription slot for as long as it is open, idle or not. That was already true of a running service's tab. Before w1/m146 an idle service's tab only looked cheaper, because it was reconnecting every ~3 s. The caps are unchanged: a sixth concurrent tail for one subject is refused with `429 too many active log subscriptions`, whether the other five are busy or idle. Counting idle tails separately would give a reconnect loop's apparent cost back to exactly the streams that cost nothing while idle (one keepalive every 25 s), so they are not treated differently.
 
 All limits are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely (per-plan differentiated budgets are a follow-up once real traffic data exists).
 
