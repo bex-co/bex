@@ -1,18 +1,18 @@
 # w1 · m145 — A refused edit tells the user why: the cron schedule contract, and server refusals behind generic toasts
 
-**Worker:** worker1 **Goal:** the dashboard's cron-schedule check accepts exactly what bex-api accepts, and when bex-api refuses a mutation the user reads bex-api's reason. Today both are broken on one journey: the form previews an unusable schedule as valid, then shows "Please try again" for a refusal that retrying can never fix. **Status:** in progress. t004–t006 are done. t001–t003 are implemented and green in CI suites, and they close after the live DoD re-probe on the deployed build.
+**Worker:** worker1 **Goal:** the dashboard's cron-schedule check accepts exactly what bex-api accepts, and when bex-api refuses a mutation the user reads bex-api's reason. Today both are broken on one journey: the form previews an unusable schedule as valid, then shows "Please try again" for a refusal that retrying can never fix. **Status:** done (2026-09-15). Every DoD bullet was re-probed live on the deployed build and passed; see § Live re-probe.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                   | est | depends_on       |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Make the dashboard cron validator match `validCronSchedule` (robfig `ParseStandard`): day-of-week 0–6, `?`, and one shared vector table | 45m | —                |
-| t002 | `useCreateService` and `useCronJob` show the server's refusal (w6/037's contract) instead of their generic toast                        | 30m | —                |
-| t003 | Blast radius: classify and migrate the remaining fixed-generic `toast.error` catch sites, and add a source-sweep guard                  | 90m | t002             |
+| t001 | Make the dashboard cron validator match `validCronSchedule` (robfig `ParseStandard`): day-of-week 0–6, `?`, and one shared vector table — **DONE** | 45m | —                |
+| t002 | `useCreateService` and `useCronJob` show the server's refusal (w6/037's contract) instead of their generic toast — **DONE**                        | 30m | —                |
+| t003 | Blast radius: classify and migrate the remaining fixed-generic `toast.error` catch sites, and add a source-sweep guard — **DONE**                  | 90m | t002             |
 | t004 | Render parity — **DONE**                                                                                                                | 30m | t001, t002, t003 |
 | t005 | Simplify — **DONE**                                                                                                                     | 20m | t004             |
 | t006 | Test coverage — **DONE**                                                                                                                | 40m | t004             |
-| t007 | Closeout                                                                                                                                | 10m | t006             |
+| t007 | Closeout — **DONE**                                                                                                                     | 10m | t006             |
 
 ## Definition of done
 
@@ -22,9 +22,70 @@ Each bullet is a click or request the next person can repeat on production (or `
 - **Settings refuses `7` up front.** On an existing cron job, Settings → Edit schedule → `0 0 * * 7`: the row shows the error and **Save changes stays disabled**. At filing time Save was enabled and the server refused.
 - **A server refusal on create shows the server's sentence.** In Playwright, use `page.route('**/graphql')` to rewrite the outgoing `CreateService` `schedule` variable to `0 0 * * 7` (the client check no longer lets it through, so the probe has to force it). The toast then reads **`Schedule must be a valid 5-field cron expression (e.g. '0 * * * *')`**. With `route.abort('failed')` for the same operation, the toast is the generic `Couldn't create <name>. Please try again.` At filing time, the forced-refusal case showed the generic copy too.
 - **The same holds for `UpdateCronJob`.** Rewriting its `schedule` to `0 0 * * 7` shows the server's sentence; aborting the request shows `Couldn't save cron job settings. Please try again.`
-- **The target of the whole sweep, stated:** a mutation the server _answered_ with a refusal shows `serverRefusalReason(err)` (`dashboard/src/common/lib/graphql-error.ts:40-42`, w6/037). The hook's generic copy is only for a transport failure. Name-conflict, plan-limit (`PLAN_LIMIT`), payment (`PAYMENT_REQUIRED`) and throttling (`isThrottledError`) keep their dedicated UI.
+- **The target of the whole sweep, stated:** a mutation the server _answered_ with a refusal shows the server's reason, via `mutationErrorMessage(err, generic)` (`dashboard/src/common/lib/graphql-error.ts`; w6/037's `serverRefusalReason` folded into it). The hook's generic copy is only for a transport failure. Name-conflict, plan-limit (`PLAN_LIMIT`), payment (`PAYMENT_REQUIRED`) and throttling (`isThrottledError`) keep their dedicated UI.
 - The t003 source-sweep test exists and **fails** when a bare `catch { toast.error(t("…")) }` is reintroduced in a mutation hook outside its reasoned allowlist.
 - Form input survives a refusal. This is already true and must stay true: after the 400 the create form still held Name, Root Directory, Schedule and Start Command, and the Settings row stayed in edit mode with the draft kept.
+
+## Live re-probe on the deployed build (2026-09-15, production)
+
+The build was `8d35cff1d`, deployed by run `34908205546` at `137a5186e` (Argo pin `aaba51cba`, dashboard `bex-dashboard@sha256:38514578…`), in the same workspace `bex` / `tea-d98210cbbpdc73dcrkvg`. Apollo batches operations, so every `page.route` probe matched on `https://api.bex.co/graphql` and walked the JSON array. Any mutation it did not target was aborted, never sent.
+
+1. **Create form refuses `7` up front: PASS.** New Cron Job, with Public Git URL `github.com/bex-co/bex`, root `examples/hello-go` and command `echo qa-m145`:
+
+   | Schedule            | Field                                                                         | Deploy Service |
+   | ------------------- | ----------------------------------------------------------------------------- | -------------- |
+   | `0 0 * * 0` control | "Every Sunday at 00:00 · runs in UTC"                                         | enabled        |
+   | `0 0 * * 7`         | `aria-invalid="true"`, "Enter a valid 5-field cron expression, e.g. 0 0 * * *." | **disabled**   |
+   | `0 0 ? * *`         | "Every day at 00:00 · runs in UTC"                                            | enabled        |
+
+2. **Settings refuses `7` up front: PASS.** Cron job `qa-m145-cron` (`srv-dak8pn3d5gbs73du30ag`) → Edit schedule. `0 6 * * 1` read "Every Monday at 06:00 · runs in UTC" with Save changes enabled. `0 0 * * 7` set `aria-invalid="true"`, read "Enter a valid 5-field cron expression, e.g. 0 \* \* \* \*.", and Save changes stayed **disabled**.
+3. **A server refusal on create shows the server's sentence: PASS.**
+
+   ```text
+   rewrite  CreateService schedule → "0 0 * * 7"
+   response [{"data":{"createService":null},"errors":[{"message":"bad request: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",…}]}]
+   toast    "Schedule must be a valid 5-field cron expression (e.g. '0 * * * *')"
+   abort    CreateService → toast "Couldn't create qa-m145-refused. Please try again."
+   ```
+
+   After the refusal the form still held Name `qa-m145-refused`, Root Directory, Schedule and Start Command.
+
+4. **The same holds for `UpdateCronJob`: PASS.**
+
+   ```text
+   rewrite  UpdateCronJob schedule → "0 0 * * 7"
+   response [{"data":{"updateCronJob":null},"errors":[{"message":"bad request: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",…}]}]
+   toast    "Schedule must be a valid 5-field cron expression (e.g. '0 * * * *')"
+   abort    UpdateCronJob → toast "Couldn't save cron job settings. Please try again." (the only toast visible)
+   ```
+
+   In both cases the row stayed in edit mode with the draft `0 6 * * 1` kept.
+
+5. **A non-cron migrated site (t003 step 5), `useTriggerDeploy`: PASS.** Manual Deploy → Deploy latest commit, with `TriggerDeploy` rewritten to carry `commitId: "abc123"`:
+
+   ```text
+   response [{"data":{"triggerDeploy":null},"errors":[{"message":"bad request: commitId is not supported for cron_job services",…}]}]
+   toast    "CommitId is not supported for cron_job services"
+   abort    TriggerDeploy → toast "Couldn't trigger deploy."
+   ```
+
+   The toast is the server's sentence. `refusalReason` capitalizes its first letter, which turns a leading camelCase identifier into "CommitId". That behavior predates m145 and is cosmetic.
+
+6. **A second non-cron migrated site, `EnvironmentEditor.commit`: PASS.** This is `service-environment-editor.tsx`, the site from Evidence 4. The probe went Environment → Edit → Add variable `QA_M145`, then Save and deploy, with `PatchServiceEnvironment` rewritten to the key `QA M145`:
+
+   ```text
+   response [{"data":null,"errors":[{"message":"bad request: invalid environment variable name \"QA M145\"",…}]}]
+   toast    "Invalid environment variable name \"QA M145\""
+   abort    PatchServiceEnvironment → toast "Couldn't save the environment. Your draft is still here."
+   ```
+
+   Both times the draft row kept `QA_M145` and Save and deploy stayed available.
+
+7. **Source-sweep guard:** `mutation-error-toast-invariant.test.ts` is on `main`. Its planted bare catch is red (t006).
+
+**Fixture and cleanup.** The first create probe matched nothing, because it treated the batched body as a single object. It created a real free cron job, `qa-m145-cron` (`srv-dak8pn3d5gbs73du30ag`, schedule `0 0 * * 0`), which then served as the Settings and non-cron fixture. It was deleted through Settings → Delete Service at the end of the run (toast "Deleted qa-m145-cron"), and it no longer appears in the service list. `qa-m145-refused` was never created, because its create was refused or aborted every time. No schedule update ever reached it: the only `UpdateCronJob` sent was the rewritten one the server refused.
+
+**Deploy note.** `8d35cff1d` alone did not deploy. Every deploy since 2026-09-14 08:04 had failed at "CVE scan — OpenSandbox server CRITICAL (gate)", because perl-base 5.40.1-6 in the python base carried three CRITICAL CVEs. `137a5186e` took the fixed perl-base, and run `34908205546` then deployed both commits.
 
 ## Evidence (probes run 2026-09-14, production, workspace `bex` / `tea-d98210cbbpdc73dcrkvg`)
 
