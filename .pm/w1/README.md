@@ -15,7 +15,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m155** — [Render's metrics contract is partly unserved on REST and MCP: `aggregateBy` is silently ignored, eight Render paths return 404, and MCP rejects Render's metric names](m155/README.md) (10 tasks; ~2h50m implementation, ~4h15m total) ← live `/qa-find-bugs` 2026-09-14 pass 29.
+- [x] **m155** — [Render's metrics contract is partly unserved on REST and MCP: `aggregateBy` is silently ignored, eight Render paths return 404, and MCP rejects Render's metric names](m155/README.md) (10 tasks; ~2h50m implementation, ~4h15m total) ← live `/qa-find-bugs` 2026-09-14 pass 29.
   - **Silently ignored `aggregateBy`.** REST `http-requests?aggregateBy=statusCode` returned one ungrouped series, while GraphQL `aggregateBy:["STATUS_CODE"]` over the same window split it into `code=200/404/501`. `parseMetricParams` reads bex's `groupBy` (`metrics/rest.go:185`), which the strict Render validator now refuses (`api/render_openapi.go:386-388`). Render's `aggregateBy` passes validation and is dropped.
   - **Bare 404s.** `/v1/metrics/{cpu-limit, memory-limit, filters/http, filters/application, filters/path, active-connections, disk-usage, bandwidth-sources}` all returned `404 page not found`, though the limit metrics exist (`service.go:46,48`) and ADR018:198 marks them ✅ on REST.
   - **MCP names.** MCP `get_metrics(metricTypes:["cpu_usage"])` returned "unknown metric", a name from Render's MCP enum.

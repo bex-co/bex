@@ -5,22 +5,22 @@
 - REST serves Render's limit, filter, datastore and bandwidth-source paths, or each is an explicit divergence recorded in ADR018.
 - MCP `get_metrics` accepts Render's metric-type names.
 
-**Status:** in progress — t006, t008, t009 done; t001–t005 and t007 wait on the live probes after deploy; t010 closeout
+**Status:** done (2026-09-15). Every task is complete, and the definition of done passed live on production (images pinned to `c4212ec71`).
 
 ## Tasks (in order)
 
 | id   | title                                                                                                             | est | depends_on                   |
 | ---- | ----------------------------------------------------------------------------------------------------------------- | --- | ---------------------------- |
-| t001 | REST honors Render's `aggregateBy` (per-status-code series; `host` refused with a code) and retires the dead `groupBy` | 30m | —                            |
-| t002 | REST serves `/v1/metrics/cpu-limit` and `/v1/metrics/memory-limit`                                                 | 15m | —                            |
-| t003 | REST serves `/v1/metrics/filters/{application,http,path}` from the existing filter verbs                           | 40m | —                            |
-| t004 | Render's `active-connections`, `disk-usage` and `bandwidth-sources` paths: serve them or record the divergence     | 30m | —                            |
-| t005 | MCP `get_metrics` accepts Render's `metricTypes` names                                                             | 25m | —                            |
+| t001 | REST honors Render's `aggregateBy` (per-status-code series; `host` refused with a code) and retires the dead `groupBy` — **DONE** | 30m | —                            |
+| t002 | REST serves `/v1/metrics/cpu-limit` and `/v1/metrics/memory-limit` — **DONE**                                                 | 15m | —                            |
+| t003 | REST serves `/v1/metrics/filters/{application,http,path}` from the existing filter verbs — **DONE**                           | 40m | —                            |
+| t004 | Render's `active-connections`, `disk-usage` and `bandwidth-sources` paths: serve them or record the divergence — **DONE**     | 30m | —                            |
+| t005 | MCP `get_metrics` accepts Render's `metricTypes` names — **DONE**                                                             | 25m | —                            |
 | t006 | Blast radius: a composed-server test walking every Render `/metrics` path and parameter — **DONE**                            | 30m | t001, t002, t003, t004, t005 |
-| t007 | Render parity                                                                                                     | 20m | t006                         |
+| t007 | Render parity — **DONE**                                                                                                     | 20m | t006                         |
 | t008 | Simplify — **DONE**                                                                                                          | 15m | t007                         |
 | t009 | Test coverage — **DONE**                                                                                                     | 40m | t007                         |
-| t010 | Closeout                                                                                                          | 10m | t009                         |
+| t010 | Closeout — **DONE**                                                                                                          | 10m | t009                         |
 
 ## Definition of done
 
@@ -137,7 +137,7 @@ Run every call from a signed-in dashboard page (`fetch(…, {credentials:'includ
 
 **Blast radius (t006).** `api/render_metrics_contract_test.go` generates the matrix from the pinned spec: every `/metrics` path except the two workflow non-goals (`task-runs-*`), with each documented query parameter. Every parameter must have a verdict (served, refused, or ignored with a reason), no path may be a bare mux 404, and no documented parameter may be refused as unknown. Ignored with a reason: the time window on `filters/application` and `filters/http` (discovery lists what is queryable now), and every narrowing parameter on `filters/path` (always `[]`). The cross-workspace route inventory and the Render route-intersection pin (131 → 139 operations) list the eight new routes.
 
-**Parity (t007, docs).** ADR018's core and extended metrics rows and ADR010's REST parameter list describe what REST serves, including the `bandwidth-sources` divergence. The live cross-surface comparison waits for the deploy.
+**Parity (t007, docs).** ADR018's core and extended metrics rows and ADR010's REST parameter list describe what REST serves, including the `bandwidth-sources` divergence. The live cross-surface comparison is in § Live verification.
 
 **Simplify (t008).** Applied: MCP `get_datastore_metrics` infers the kind the way REST does (`datastoreKindFor`); `filterValuesOrEmpty` coalesces a nil answer to `[]` in one place, so `orEmpty` is gone; the `applyCPUAggregation` wrapper and the GraphQL `"status"` literal are replaced by `cpuAggregation` and `groupByStatus`; the matrix test asserts status per verdict instead of only "not a bare 404".
 
@@ -145,6 +145,43 @@ Run every call from a signed-in dashboard page (`fetch(…, {credentials:'includ
 - **Kept on purpose:** MCP's `aggregateHttpRequestCountsBy=statusCode` series keep the `code` label. Each adapter mirrors its own Render counterpart, and Render's MCP server does not name a `statusCode` label, so only REST is relabelled.
 
 **Test coverage (t009).** `metrics/render_contract_test.go` covers `aggregateBy` (statusCode series labels, host refusal), `aggregationMethod`, the limit paths, the three filter shapes and their refusals, datastore kind inference, `active-connections` on a service (400), `bandwidth-sources` (501), and every Render MCP metric type, including the service refusal of `active_connections`. `mcp_alias_test.go` pins `requestGroupBy` and `cpuAggregation`. Pre-fix, the api matrix test failed with a bare 404 on all eight new paths. Backend `go test ./...` passes. `make lint` reports only two findings that predate m155 (`api/scope_matrix.go:163` unused `writeGraphQLErrors`, `operator/internal/publish/publish.go:611` modernize).
+
+## Live verification (2026-09-15, production pinned to `c4212ec71`)
+
+- **Fixture.** `qa-20260915-m155` (`srv-dakempnnonls738jbnb0`), a free web service built from `examples/hello-python`, docker, with Docker Command `python -u -m http.server $PORT`. From 06:55Z it received `GET /` (200) and `GET /qa-missing-N` (404) every ~2 s.
+- **Serving check.** At 07:29:25Z, `GET /v1/metrics/cpu-limit` answered 200 with a series; before this milestone it was a bare 404.
+- **Probes** run at 07:47:04Z from a signed-in dashboard page over the last hour. MCP went over streamable HTTP at `https://api.bex.co/mcp`.
+
+```text
+GET http-requests?aggregateBy=statusCode&resolutionSeconds=60 → 200, 3 series:
+    statusCode=200 (last 0.311) · statusCode=404 (last 0.333) · statusCode=501 (last 0)
+GET http-requests?aggregateBy=host  → 400 "aggregateBy=host is unsupported — neither Traefik Prometheus counters nor the Loki request-log path expose a host group-by axis (filter by host instead)"
+GET http-requests?aggregateBy=bogus → 400 invalid query parameter "aggregateBy"            (control)
+GET http-requests (no aggregateBy)  → 200, 1 series resource=srv-…                        (control)
+GET cpu-limit    → 200, 1 series, value 0.1
+GET memory-limit → 200, 1 series, value 536870912
+GET filters/http        → 200 [{"filter":"statusCode","values":["200","404","501"]},{"filter":"host","values":[]}]
+GET filters/application → 200 [{"filter":"instance","values":["srv-dakempnnonls738jbnb0-a2ub95kcj33q9ahv8blm"]}]
+GET filters/path        → 200 []
+GET filters/http&statusCode=200 → 400 "narrowing filter values by statusCode or host is unsupported: omit them to list every queryable value"
+GET active-connections?resource=srv-… → 400 "active connections need a Postgres (dpg-) or Key Value (red-) resource, not "srv-…""
+GET disk-usage?resource=srv-…         → 200 []   (a service with no disk)
+GET bandwidth-sources → 501 "bandwidth-sources is not served: bex keeps its per-source bandwidth (http, nat, websocket) as month-to-date totals, not time series — read /v1/metrics/bandwidth …"
+GET cpu → 200 (3 instance series) · cpu&aggregationMethod=MAX → 400 (only AVG) · instance-count → 200, 1 series   (controls)
+MCP tools/call get_metrics {metricTypes:["cpu_usage"]} → series labelled metric=cpu_usage
+MCP get_metrics {metricTypes:["memory_usage","http_request_count","bandwidth_usage","instance_count"]} → series
+MCP get_metrics {metricTypes:["active_connections"]} on srv-… → isError "bad request: active connections need a Postgres (dpg-) or Key Value (red-) resource …"
+MCP get_metrics {metricTypes:["cpu"]} → series                                                (bex id control)
+```
+
+- **Every DoD bullet passed.**
+  - REST `aggregateBy=statusCode` splits by status with Render's `statusCode` label.
+  - `aggregateBy=host` is a coded 400.
+  - The limit paths answer, and the filter paths return Render's filter arrays.
+  - `active-connections` on a service is a coded refusal, and `bandwidth-sources` is the recorded 501 divergence.
+  - MCP accepts Render's metric names.
+  - The controls did not change.
+- **Not probed live.** A Postgres or Key Value resource for `active-connections` and `disk-usage`: no datastore fixture was created. The composed-server and unit tests cover the kind inference.
 
 ## Dedupe
 
