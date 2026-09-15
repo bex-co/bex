@@ -15,7 +15,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m156** — [A hibernated free service whose latest deploy failed never wakes: the failed-release gate halts the reconcile before replicas and routing](m156/README.md) (7 tasks; ~2h25m implementation, ~3h50m total) ← live verification of w1/m146–m155, 2026-09-15.
+- [x] **m156** — [A hibernated free service whose latest deploy failed never wakes: the failed-release gate halts the reconcile before replicas and routing](m156/README.md) (7 tasks; ~2h25m implementation, ~3h50m total) ← live verification of w1/m146–m155, 2026-09-15.
   - **Symptom.** On a free web service whose latest deploy read `pre_deploy_failed`, every request for more than 15 minutes after `service_woken` got the activator's `503 service hibernated`: 188 of 188 samples over 07:30–07:35Z, and three more at 07:41Z. Meanwhile the API read `phase: Running` and the dashboard header "Service Running". A sibling free service with a live latest deploy woke in 12 s.
   - **Cause.** `Reconcile` runs the pre-deploy gate once an App stops auto-hibernating, and a stored failed verdict halts the pass before the Deployment write and `ingressBackend` (`app_controller.go:2051-2055`, `:4395-4400`). Replicas stay 0 and the route stays on the activator until a new release. The gate predates w1/m149; the build gate (`:755-756`) is the traced analogue.
   - **Fix.** Converge replicas, wake routing and the Ingress for the serving prior release while the failed verdict stands, without rolling the failed release.
