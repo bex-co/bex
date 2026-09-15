@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   SuspendServiceDocument,
   ResumeServiceDocument,
-  TriggerDeployDocument,
+  RestartServerDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
@@ -61,15 +61,14 @@ const SUCCESS_KEY: Record<LifecycleAction, string> = {
 
 /**
  * Wires the services list's row actions to bex-api's Render-named mutations
- * (`suspendService`/`resumeService`/`triggerDeploy` for restart). The patch is
- * accepted synchronously but the operator reconciles asynchronously, so after
- * each verb this polls the list until the row's observed state converges —
- * the badge reflects the operator, not an optimistic guess.
+ * (`suspendService`/`resumeService`/`restartServer`). The patch is accepted
+ * synchronously but the operator reconciles asynchronously, so after each verb
+ * this polls the list until the row's observed state converges — the badge
+ * reflects the operator, not an optimistic guess.
  *
- * Restart is routed through `triggerDeploy` (w2/m30 consolidation) so it
- * always opens a deploy-history row in the Events tab, same as every other
- * rollout. For repo-backed services this triggers a rebuild from Branch HEAD;
- * for image-backed services it re-pulls and restarts the containers.
+ * `restartServer` opens a deploy-history row like every other rollout (w2/m30)
+ * and restarts on the commit or image that is live, never the branch head
+ * (w1/m148).
  */
 export function useServiceLifecycle(
   opts: UseServiceLifecycleOptions,
@@ -80,7 +79,7 @@ export function useServiceLifecycle(
 
   const [suspend] = useMutation(SuspendServiceDocument);
   const [resume] = useMutation(ResumeServiceDocument);
-  const [triggerDeploy] = useMutation(TriggerDeployDocument, {
+  const [restartServer] = useMutation(RestartServerDocument, {
     // Restart opens a deploy-history row, so refresh the active Events feed
     // and Deploys queries (history tab + the detail header's latest-deploy
     // chrome) wherever they're mounted.
@@ -93,7 +92,7 @@ export function useServiceLifecycle(
     suspend: (id, confirmation) =>
       suspend({ variables: { id, confirm: confirmation } }),
     resume: (id) => resume({ variables: { id } }),
-    restart: (id) => triggerDeploy({ variables: { serviceId: id } }),
+    restart: (id) => restartServer({ variables: { serviceId: id } }),
   };
 
   const pollUntilConverged = useCallback(

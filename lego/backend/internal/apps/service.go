@@ -146,6 +146,12 @@ type Service struct {
 	// milliseconds instead of on the next resync period. nil => no nudge (store off
 	// or tests).
 	Kick func()
+	// RestartDeploy, when set (the composition root wires deploys.Service.Restart),
+	// is what REST POST .../restart and MCP restart_service run: a deploy pinned
+	// to the live deploy's commit, the same verb as GraphQL restartServer, so no
+	// restart surface picks up the branch head (w1/m148). nil (tests, store off)
+	// => Restart only re-rolls the pods on the current spec.
+	RestartDeploy func(ctx context.Context, name string) error
 	// Blueprints, when set (the control-plane store is wired), persists blueprint
 	// rows (w2/m15): auto-upserted on every repo-backed deploy, and queried by the
 	// list/sync verbs. nil => list/sync return ErrBlueprintsUnavailable; validate
@@ -2932,12 +2938,21 @@ func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, n
 	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, name, a.Spec.NotificationsToSend)
 }
 
-// Restart requests a rolling restart (spec.restartedAt = now). The operator
-// stamps the pod template and Kubernetes rolls the pods with no downtime.
+// Restart restarts a service on the release it is running — Render's "the exact
+// same Git commit and configuration as the running instance". With RestartDeploy
+// wired it opens a deploy pinned to the live commit through the same verb as
+// GraphQL restartServer, so REST, MCP and GraphQL cannot drift (w1/m148).
+// Unwired (no deploy store), it stamps spec.restartedAt and leaves any
+// spec.buildCommit pin in place, so the pods roll on the same commit.
 func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
+	if s.RestartDeploy != nil {
+		if err := s.RestartDeploy(ctx, name); err != nil {
+			return AppView{}, err
+		}
+		return s.Get(ctx, name)
+	}
 	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
-		a.Spec.BuildCommit = "" // clear any commitId pin so the restart uses Branch HEAD
 	})
 }
 

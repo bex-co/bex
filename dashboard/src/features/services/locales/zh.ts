@@ -304,8 +304,10 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Restart confirmation dialog title",
   },
   "services.confirmRestartBody": {
-    message: "服务的 Pod 将无停机滚动更新，进行中的请求会先完成再替换旧实例。",
-    description: "Restart confirmation dialog body",
+    message:
+      "{name} 将以当前正在运行的提交或镜像重启，之后推送的提交不会被部署。新实例健康后才会替换旧实例。",
+    description:
+      "Restart confirmation dialog body (service header and services list). A restart keeps the running release, as on Render; it never picks up newer commits",
   },
   "services.confirmCancel": {
     message: "取消",
@@ -3767,7 +3769,44 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.deployMenuRestart": {
     message: "重启服务",
     description:
-      "Manual Deploy dropdown item: roll the service's pods without rebuilding",
+      "Manual Deploy dropdown item: restart on the commit or image that is running; never deploys newer commits",
+  },
+  "services.deployMenuSpecificCommit": {
+    message: "部署指定提交",
+    description:
+      "Manual Deploy dropdown item, repo-backed service (Render parity): deploy a commit by SHA and turn auto-deploy off",
+  },
+  "services.deployCommitTitle": {
+    message: "部署指定提交",
+    description: "Title of the dialog that deploys a commit by SHA",
+  },
+  "services.deployCommitBody": {
+    message:
+      "部署你输入的提交并关闭自动部署，之后的推送不会覆盖它。你可以在设置中重新开启自动部署。",
+    description:
+      "Body of the deploy-a-specific-commit dialog. Render's dashboard disables automatic deploys when a specific commit is deployed",
+  },
+  "services.deployCommitLabel": {
+    message: "提交 SHA",
+    description:
+      "Label of the commit SHA input in the deploy-a-specific-commit dialog",
+  },
+  "services.deployCommitInvalid": {
+    message: "请输入提交 SHA：7 到 40 位十六进制字符。",
+    description: "Inline error when the entered commit SHA is malformed",
+  },
+  "services.deployCommitConfirm": {
+    message: "部署提交",
+    description: "Confirm button of the deploy-a-specific-commit dialog",
+  },
+  "services.restartServiceSuccess": {
+    message: "已在当前运行的版本上开始重启。",
+    description: "Toast after the header's Restart service is accepted",
+  },
+  "services.restartServiceError": {
+    message: "无法重启服务。",
+    description:
+      "Toast when the header's Restart service fails and the server gave no reason",
   },
   "services.eventsCancelDeploy": {
     message: "取消",
@@ -3934,7 +3973,7 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "IP 允许列表已更新",
     description: "Toast on successful setServiceIpAllowList mutation (w7/m32)",
   },
-	"services.networkingError": {
+  "services.networkingError": {
     message: "更新 IP 允许列表失败：{error}",
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
   },
@@ -3945,7 +3984,8 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.outboundIpsDescription": {
     message:
       "此服务的共享出站地址。它们是租户节点池当前的公网 IP，会随自动扩缩容增减节点而变化。",
-    description: "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
+    description:
+      "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
   },
   "services.outboundIpsEmpty": {
     message: "尚未报告出站 IP（本地集群没有节点 ExternalIP 时很常见）。",
@@ -3953,7 +3993,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.outboundIpsCopy": {
     message: "复制 {ip}",
-    description: "Accessible label on the copy button for one outbound IP (w8/010)",
+    description:
+      "Accessible label on the copy button for one outbound IP (w8/010)",
   },
   "services.outboundIpsCopied": {
     message: "已复制",

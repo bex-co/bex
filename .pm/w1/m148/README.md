@@ -1,18 +1,18 @@
 # w1 · m148 — "Restart service" silently deploys the branch head instead of the running commit, and a specific-commit deploy is not honored
 
-**Worker:** worker1 **Goal:** a restart keeps the commit and configuration that are already running, on every restart surface. A deploy pinned to a specific commit stays pinned and cannot be undone by a later restart or push. The dashboard can make that pin, which today only the API can. **Status:** todo
+**Worker:** worker1 **Goal:** a restart keeps the commit and configuration that are already running, on every restart surface. A deploy pinned to a specific commit stays pinned and cannot be undone by a later restart or push. The dashboard can make that pin, which today only the API can. **Status:** in progress — t005 and t006 done; t001–t004 implemented with tests green, and their live probes (the DoD bullets, t004's per-surface tables) wait for the deploy; then t007 closeout.
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                                     | est | depends_on       |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Restart keeps the running release on every surface (REST `…/restart`, GraphQL `restartServer`, MCP `restart_service`, dashboard header + row) | 60m | —                |
-| t002 | Honor specific-commit deploys: dashboard "Deploy a specific commit", and pinning turns auto-deploy off (Render's contract)                  | 60m | —                |
-| t003 | Restart copy and confirmation tell the truth, and the stale `BuildCommit` comment is corrected                                              | 20m | t001             |
-| t004 | Render parity                                                                                                                             | 30m | t001, t002, t003 |
-| t005 | Simplify                                                                                                                                  | 20m | t004             |
-| t006 | Test coverage                                                                                                                             | 45m | t004             |
-| t007 | Closeout                                                                                                                                  | 10m | t006             |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Restart keeps the running release on every surface (REST `…/restart`, GraphQL `restartServer`, MCP `restart_service`, dashboard header + row) | 60m | — |
+| t002 | Honor specific-commit deploys: dashboard "Deploy a specific commit", and pinning turns auto-deploy off (Render's contract) | 60m | — |
+| t003 | Restart copy and confirmation tell the truth, and the stale `BuildCommit` comment is corrected | 20m | t001 |
+| t004 | Render parity | 30m | t001, t002, t003 |
+| t005 | Simplify — **DONE** | 20m | t004 |
+| t006 | Test coverage — **DONE** | 45m | t004 |
+| t007 | Closeout | 10m | t006 |
 
 ## Definition of done
 
@@ -20,7 +20,7 @@ Each bullet can be repeated on a throwaway free web service built from `bex-co/b
 
 - **Restart keeps the running commit.** Pin with `triggerDeploy(serviceId, commitId: <older SHA C>)` and wait for `live` on C. Then choose **Manual Deploy → Restart service** in the service header. The resulting deploy's `commitId` must equal **C**. At filing time it resolved to the branch head **H** (`dd5082002`) while C (`f3284af44`) was running.
 - **A specific-commit deploy lands on that commit (control).** `triggerDeploy(commitId: C)` produces a deploy whose `commitId` is C and which reaches `live`. This held at filing time.
-- **Pinning turns auto-deploy off.** After that deploy, `service { autoDeploy }` reads `false`, matching Render ("This disables automatic deploys for the service"). At filing time it read **`true`**, so the next push would silently replace the pin.
+- **Pinning from the dashboard turns auto-deploy off.** After **Manual Deploy → Deploy a specific commit** with C, `service { autoDeploy }` reads `false`, matching Render's dashboard ("This disables automatic deploys for the service"). At filing time no such control existed, and the API pin left it **`true`**. _Corrected 2026-09-14 (t002):_ this bullet originally required every `commitId` trigger to turn auto-deploy off. Render's API says the opposite — `POST /services/{serviceId}/deploys` `commitId`: "Note that deploying a specific commit with this endpoint does not disable autodeploys for the service" (pinned `lego/backend/internal/api/openapi/render-public-api-1.json`) — so the API trigger keeps auto-deploy unchanged and the dashboard dialog turns it off.
 - **The dashboard can make the pin.** **Manual Deploy** offers **Deploy a specific commit** (a SHA input and/or recent commits). At filing time the menu offered only `Deploy latest commit · Clear build cache & deploy · Restart service`.
 
 ## Evidence (probes run 2026-09-14, production, workspace `bex` / `tea-d98210cbbpdc73dcrkvg`)
@@ -76,6 +76,29 @@ No screenshots were taken; the transcripts above are the evidence.
 - The Overview/list row **Restart**, REST `POST …/restart`, GraphQL `restartServer` and MCP `restart_service` were not driven live. Their branch-head behavior is read from code: the row goes through `triggerDeploy`, and `restartServer` calls `Trigger` with empty params.
 - Whether a pushed commit really overrides a manual pin while `autoDeploy` is `true` (no push was made to the fixture's branch).
 - Whether a restart applies staged (`save_only`) env changes today.
+
+## Implementation (2026-09-14)
+
+**Mechanism (t001): option (a), rebuild the live commit.** `deploys.Service.Restart` (`lego/backend/internal/deploys/service.go`) authorizes like a parameter-free trigger (`can_operate`), checks billing, and for a repo-backed service reads the newest `live` deploy and triggers with its commit (falling back to `spec.buildCommit` when the live row's commit was never resolved). An image-backed service redeploys its configured image. No live deploy → **409** `service "…" has no live deploy to restart; deploy it first`. Option (b), reusing the live image without a build, was not contained: `restartedAt` is release identity (ADR004), and a restart annotation outside it would be a new operator contract. Every surface runs the one verb:
+
+- GraphQL `restartServer` → `Restart`;
+- REST `POST /v1/services/{id}/restart` and MCP `restart_service` → `apps.Service.Restart` → the `RestartDeploy` hook wired in `internal/api/server.go` (only when a deploy store exists; a store-less bex-api keeps the CR-only restart, and `restartServer` is unavailable there as before). `apps.Service.Restart` no longer clears `spec.buildCommit`;
+- dashboard header **Restart service** (`useTriggerDeploy().restart`) and services-list row **Restart** (`useServiceLifecycle`) → `RestartServer`.
+
+A repo-backed **cron job** also restarts on its live commit: the `commitId` refusal for cron jobs guards caller input, and the restart's commit is exempt through an unexported `TriggerParams` field no surface can set.
+
+**Specific commit (t002).** Backend unchanged, per Render's API (see the corrected DoD bullet). Dashboard **Manual Deploy → Deploy a specific commit** (repo-backed, non-cron — Render: "Not supported for cron jobs") opens a dialog with a SHA input (7–40 hex characters, validated inline), says it turns auto-deploy off, triggers with `commitId`, then calls `setAutoDeploy(false)` when auto-deploy is not already off. A server refusal is relayed through `mutationErrorMessage` in the toast. Declined: a recent-commits picker (no cheap commit-list read exists; SHA-only), and a "turned off because of a pin" marker in Settings (Render shows none; the auto-deploy toggle already reads off).
+
+**Copy (t003).** Both restart entry points share `services.confirmRestartTitle/Body`: "{name} restarts on the commit or image it is running now. Commits pushed since are not deployed. New instances replace the old ones once they are healthy." The header Restart gained the confirmation. The `Trigger` doc comment now describes the real pinning, and MCP `restart_service`'s description no longer promises a pods-only roll.
+
+**Adjacent rules (t004 step 3).**
+
+- **Auto-deploy after a pin** stays off until the user turns it back on (Render). A later **Deploy latest commit** does not re-enable it.
+- **Staged configuration — divergence kept.** Render's restart does not apply environment changes saved but not deployed. A bex restart is a new release built from the running commit, and it starts with the service's current saved environment, the same as any deploy. Matching Render would require snapshotting environment per release, which bex does not do; recorded in ADR018's Restart row.
+
+**Simplify (t005).** Three review passes (reuse, quality, efficiency). Applied: the SHA input uses the shared `TextField`; the typed SHA is cleared whenever the dialog closes (it used to survive a cancel or refusal); redundant `setDialog(null)` calls removed (`ConfirmDialog` closes on confirm); one `REFETCH_DEPLOYS` options constant for both mutations; history-narrating comments trimmed; `*deploys.Service.Restart` pinned to `can_operate` in the role ladder; `deploys.Restart` excused in the events vocabulary like `Trigger` (its deploy row is the event). Declined: moving the cron `commitId` refusal from `validateTrigger` into `Trigger` to drop the unexported `restart` field — the deploy hook forwards `?ref=` as `CommitID` through the same validator, so the refusal must stay shared; returning the patched App from the hook to save `apps.Restart`'s second fetch (one extra read on a user-initiated verb); a shared helper for `trigger`/`restart`'s try-toast shape (two call sites); reusing `LatestDeployCommit` (it returns the newest commit of any deploy, including building or failed ones).
+
+**Tests (t006).** Backend: `deploys/restart_test.go` (live commit not branch head with a resolver returning H, live release not a newer building/failed deploy, 409 with no live deploy and no row opened, `buildCommit` fallback, image-backed keeps its image, cron job, GraphQL `restartServer`) and `apps/restart_test.go` (REST restart runs the wired deploy verb and relays its refusal; unwired restart keeps the pin). `TestGraphQLRestartServerKeepsTheLiveCommit` and `TestRestartKeepsTheBuildCommitPin` were run against pre-fix `HEAD` (`a2fb27559`) in a scratch worktree and failed with exactly the bug (`restartServer commitId = dd5082002…, want f3284af44…`; `spec.buildCommit = "", want the pin kept`); the other deploys tests call the new verb and cannot compile pre-fix. Dashboard: `manual-deploy-button.test.tsx` (confirmation then `restart`, cancel restarts nothing, specific-commit item hidden for image-backed and cron, SHA trimmed and sent, auto-deploy turned off only after a successful deploy and only when on, malformed SHA keeps confirm disabled), `use-trigger-deploy.test.ts` (restart uses `RestartServer`, refusal resolves null), `use-service-lifecycle.test.ts` (row restart fires `RestartServer`).
 
 ## Dedupe
 

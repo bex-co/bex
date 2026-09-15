@@ -286,7 +286,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.actionRestart": {
     message: "Restart",
-    description: "Row action: roll the service's pods",
+    description:
+      "Row action: restart the service on the commit or image it is running",
   },
   "services.confirmSuspendTitle": {
     message: "Suspend {name}?",
@@ -310,8 +311,9 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.confirmRestartBody": {
     message:
-      "The service's pods roll with no downtime. In-flight requests finish before old instances are replaced.",
-    description: "Restart confirmation dialog body",
+      "{name} restarts on the commit or image it is running now. Commits pushed since are not deployed. New instances replace the old ones once they are healthy.",
+    description:
+      "Restart confirmation dialog body (service header and services list). A restart keeps the running release, as on Render; it never picks up newer commits",
   },
   "services.confirmCancel": {
     message: "Cancel",
@@ -471,8 +473,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Autoscaling form validation when min exceeds max",
   },
   "services.scalingValidationTargets": {
-    message:
-      "At least one utilization target (CPU or memory) must be enabled.",
+    message: "At least one utilization target (CPU or memory) must be enabled.",
     description:
       "Autoscaling form validation when both CPU and memory targets are off",
   },
@@ -3837,7 +3838,44 @@ const enServices: Record<string, TranslationEntry> = {
   "services.deployMenuRestart": {
     message: "Restart service",
     description:
-      "Manual Deploy dropdown item: roll the service's pods without rebuilding",
+      "Manual Deploy dropdown item: restart on the commit or image that is running; never deploys newer commits",
+  },
+  "services.deployMenuSpecificCommit": {
+    message: "Deploy a specific commit",
+    description:
+      "Manual Deploy dropdown item, repo-backed service (Render parity): deploy a commit by SHA and turn auto-deploy off",
+  },
+  "services.deployCommitTitle": {
+    message: "Deploy a specific commit",
+    description: "Title of the dialog that deploys a commit by SHA",
+  },
+  "services.deployCommitBody": {
+    message:
+      "Deploys the commit you enter and turns off auto-deploy, so later pushes don't replace it. You can turn auto-deploy back on in Settings.",
+    description:
+      "Body of the deploy-a-specific-commit dialog. Render's dashboard disables automatic deploys when a specific commit is deployed",
+  },
+  "services.deployCommitLabel": {
+    message: "Commit SHA",
+    description:
+      "Label of the commit SHA input in the deploy-a-specific-commit dialog",
+  },
+  "services.deployCommitInvalid": {
+    message: "Enter a commit SHA: 7 to 40 hexadecimal characters.",
+    description: "Inline error when the entered commit SHA is malformed",
+  },
+  "services.deployCommitConfirm": {
+    message: "Deploy commit",
+    description: "Confirm button of the deploy-a-specific-commit dialog",
+  },
+  "services.restartServiceSuccess": {
+    message: "Restart started on the running release.",
+    description: "Toast after the header's Restart service is accepted",
+  },
+  "services.restartServiceError": {
+    message: "Couldn't restart the service.",
+    description:
+      "Toast when the header's Restart service fails and the server gave no reason",
   },
   "services.eventsCancelDeploy": {
     message: "Cancel",
@@ -4005,7 +4043,7 @@ const enServices: Record<string, TranslationEntry> = {
     message: "IP allowlist updated",
     description: "Toast on successful setServiceIpAllowList mutation (w7/m32)",
   },
-	"services.networkingError": {
+  "services.networkingError": {
     message: "Failed to update IP allowlist: {error}",
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
   },
@@ -4016,15 +4054,18 @@ const enServices: Record<string, TranslationEntry> = {
   "services.outboundIpsDescription": {
     message:
       "Shared egress addresses for this service. They are the tenant pool's current node public IPs and can change as the autoscaler adds or removes nodes.",
-    description: "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
+    description:
+      "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
   },
   "services.outboundIpsEmpty": {
-    message: "No outbound IPs reported yet (common on local clusters without node ExternalIPs).",
+    message:
+      "No outbound IPs reported yet (common on local clusters without node ExternalIPs).",
     description: "Honest empty state when outboundIps.ips is empty (w8/010)",
   },
   "services.outboundIpsCopy": {
     message: "Copy {ip}",
-    description: "Accessible label on the copy button for one outbound IP (w8/010)",
+    description:
+      "Accessible label on the copy button for one outbound IP (w8/010)",
   },
   "services.outboundIpsCopied": {
     message: "Copied",

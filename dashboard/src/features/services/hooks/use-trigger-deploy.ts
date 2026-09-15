@@ -1,9 +1,17 @@
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { TriggerDeployDocument } from "@/graphql/definitions";
+import {
+  RestartServerDocument,
+  TriggerDeployDocument,
+} from "@/graphql/definitions";
 import { DEPLOY_REFETCH_QUERIES } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+
+const REFETCH_DEPLOYS = {
+  refetchQueries: DEPLOY_REFETCH_QUERIES,
+  awaitRefetchQueries: true,
+};
 
 export interface TriggerOptions {
   /** Pin the build to a specific Git ref instead of Branch HEAD. Repo-backed only. */
@@ -34,6 +42,12 @@ export interface UseTriggerDeployResult {
    * navigate).
    */
   trigger: (serviceId: string, opts?: TriggerOptions) => Promise<string | null>;
+  /**
+   * Restart `serviceId` on the commit or image it is running (`restartServer`,
+   * w1/m148), toasting the outcome. Resolves the deploy id it opens, or null
+   * on failure — the same contract as `trigger`.
+   */
+  restart: (serviceId: string) => Promise<string | null>;
 }
 
 /**
@@ -43,16 +57,31 @@ export interface UseTriggerDeployResult {
  * after success rather than every active query (which refetched 6-10 queries
  * per trigger, including unrelated polling lists).
  *
- * Also used for "Restart service" (w2/m30 consolidation): passing no opts
- * triggers a rebuild for repo-backed services and a pure restart for
- * image-backed ones — both paths open a deploy-history row.
+ * "Restart service" is a separate mutation, not a parameter-free trigger: a
+ * trigger builds the branch head, while a restart keeps the running commit
+ * (w1/m148). Both open a deploy-history row.
  */
 export function useTriggerDeploy(): UseTriggerDeployResult {
   const { t } = useTranslations();
-  const [triggerDeploy, { loading }] = useMutation(TriggerDeployDocument, {
-    refetchQueries: DEPLOY_REFETCH_QUERIES,
-    awaitRefetchQueries: true,
-  });
+  const [triggerDeploy, { loading }] = useMutation(
+    TriggerDeployDocument,
+    REFETCH_DEPLOYS,
+  );
+  const [restartServer, { loading: restarting }] = useMutation(
+    RestartServerDocument,
+    REFETCH_DEPLOYS,
+  );
+
+  async function restart(serviceId: string): Promise<string | null> {
+    try {
+      const { data } = await restartServer({ variables: { serviceId } });
+      toast.success(t("services.restartServiceSuccess"));
+      return data?.restartServer?.id ?? null;
+    } catch (err) {
+      toast.error(mutationErrorMessage(err, t("services.restartServiceError")));
+      return null;
+    }
+  }
 
   async function trigger(
     serviceId: string,
@@ -75,5 +104,5 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
     }
   }
 
-  return { deploying: loading, trigger };
+  return { deploying: loading || restarting, trigger, restart };
 }

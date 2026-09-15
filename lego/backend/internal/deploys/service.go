@@ -391,6 +391,9 @@ type TriggerParams struct {
 	// the gate off, both values remain behavioral no-ops (ephemeral BuildKit
 	// Jobs already start empty). Empty = omitted = do_not_clear.
 	ClearCache string
+	// restart marks a Restart's trigger: CommitID is the live deploy's commit,
+	// not a caller-chosen ref. Unexported, so no surface can set it.
+	restart bool
 }
 
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
@@ -399,8 +402,12 @@ type TriggerParams struct {
 // with that generation so Cancel can later find the right build Job.
 //
 // p.CommitID, if non-empty, sets spec.BuildCommit so the operator checks out
-// that ref instead of Branch HEAD; the field is explicitly reset to "" on
-// every trigger without a commitId so Branch HEAD is always the default.
+// that ref instead of Branch HEAD. A trigger without a commitId resolves the
+// branch head and pins that SHA (or "" when it cannot be resolved), so each
+// trigger builds exactly one commit. Pinning does not turn autoDeploy off:
+// Render's API says commitId "does not disable autodeploys"; its dashboard's
+// "Deploy a specific commit" does that as a separate step. Restart pins the
+// live commit instead of the branch head.
 //
 // p.DeployMode "deploy_only" is an explicit request NOT to rebuild:
 //   - repo-backed service: rejected with ErrBadRequest (this public trigger does
@@ -422,6 +429,62 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 		return DeployView{}, err
 	}
 	return s.triggerFetched(ctx, service, a, p, store.TriggerAPI)
+}
+
+// Restart restarts a service on the release it is running. Render's restart
+// "always uses the exact same Git commit and configuration as the running
+// instance", so for a repo-backed service this opens a deploy pinned to the
+// live deploy's commit: a restart never picks up commits pushed since
+// (w1/m148). An image-backed service redeploys its configured image, as a
+// parameter-free Trigger does.
+//
+// Authorization is lifecycle, like a parameter-free trigger: the commit is the
+// one already running, not content the caller selects, so a contributor can
+// restart without create rights. REST, GraphQL (restartServer), MCP and the
+// dashboard all restart through this verb.
+func (s *Service) Restart(ctx context.Context, service string) (DeployView, error) {
+	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(false), service)
+	if err != nil {
+		return DeployView{}, err
+	}
+	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+		return DeployView{}, err
+	}
+	p := TriggerParams{restart: true}
+	if a.Spec.Repo != "" {
+		if p.CommitID, err = s.liveCommit(ctx, service, a); err != nil {
+			return DeployView{}, err
+		}
+	}
+	return s.triggerFetched(ctx, service, a, p, store.TriggerAPI)
+}
+
+// liveCommit is the commit a repo-backed service's live release was built
+// from. A service with no live deploy — its first deploy is still building, or
+// every deploy failed — has no running release to restart, so it is refused
+// rather than silently deploying the branch head. A live deploy whose commit
+// was never resolved (no GitHub connection) falls back to spec.buildCommit,
+// the ref the last build was pinned to; empty means that build used the
+// branch head, which is then all a restart can rebuild.
+func (s *Service) liveCommit(ctx context.Context, service string, a *appv1alpha1.App) (string, error) {
+	if s.Store == nil {
+		return "", core.ErrDeploysUnavailable
+	}
+	appID := appStoreID(a)
+	if appID == "" {
+		return "", fmt.Errorf("%w: service %q is not store-managed", core.ErrBadRequest, service)
+	}
+	live, err := s.Store.ListDeploys(ctx, appID, store.DeployFilter{Statuses: []string{store.DeployLive}, Limit: 1})
+	if err != nil {
+		return "", err
+	}
+	if len(live) == 0 {
+		return "", fmt.Errorf("%w: service %q has no live deploy to restart; deploy it first", core.ErrConflict, service)
+	}
+	if live[0].Commit != "" {
+		return live[0].Commit, nil
+	}
+	return a.Spec.BuildCommit, nil
 }
 
 // validateTrigger holds every reason a trigger is refused before anything is
@@ -475,8 +538,9 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 		return fmt.Errorf("%w: commitId must be a git ref (no whitespace, shell metacharacters, or leading dash)", core.ErrBadRequest)
 	}
 	// commitId is meaningless for a cron_job: a cron runs on a schedule, not
-	// per-commit. Reject early rather than silently ignoring the field.
-	if p.CommitID != "" && a.Spec.Type == appv1alpha1.TypeCronJob {
+	// per-commit. Reject early rather than silently ignoring the field. A
+	// restart's commit is the running one, not caller input, so it is exempt.
+	if p.CommitID != "" && !p.restart && a.Spec.Type == appv1alpha1.TypeCronJob {
 		return fmt.Errorf("%w: commitId is not supported for cron_job services", core.ErrBadRequest)
 	}
 	// clearCache is enum-validated here — shared by REST/GraphQL/MCP — so a typo

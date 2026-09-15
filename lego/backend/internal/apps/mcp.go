@@ -702,7 +702,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "restart_service",
-		Description: "Restart a service (rolling restart, no downtime). bex extension over Render's MCP.",
+		Description: "Restart a service on the commit or image it is running now; commits pushed since are not deployed. Opens a deploy, like Render's restart. bex extension over Render's MCP.",
 	}, s.serviceTool(s.Restart))
 
 	mcputil.AddTool(srv, &mcp.Tool{
