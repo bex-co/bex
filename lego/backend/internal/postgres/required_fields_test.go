@@ -204,6 +204,9 @@ func TestPostgresReadReplicasNonEmptySerializes(t *testing.T) {
 	if replica["name"] != "reader-1" {
 		t.Errorf("replica = %#v, want name reader-1", replica)
 	}
+	if replica["id"] != "rr-req-pg-ro-reader-1" {
+		t.Errorf("replica id = %#v, want rr-req-pg-ro-reader-1 (OpenAPI-required; w5/066)", replica["id"])
+	}
 }
 
 // TestPostgresConnectionInfoExternalStringAlwaysPresent is w6/m109/t008: Render
