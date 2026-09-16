@@ -731,6 +731,7 @@ func TestQueryLogsSynthesizesProgressLinesForExplicitBuildType(t *testing.T) {
 	}
 	failed := inFlightDeploy()
 	failed.Status = "build_failed"
+	failed.FailureReason = `clone: the publish directory "public" does not exist`
 	failed.FinishedAt = time.Date(2026, 7, 17, 20, 18, 46, 0, time.UTC)
 	svc.DeployProgress = func(_ context.Context, resource string, _ time.Time) ([]DeployProgress, error) {
 		if resource != "web" {
@@ -750,7 +751,7 @@ func TestQueryLogsSynthesizesProgressLinesForExplicitBuildType(t *testing.T) {
 		"==> Build queued",
 		"==> Building from https://github.com/x/y.git@abc1234",
 		"#1 real build line",
-		"==> Build failed",
+		`==> Build failed: clone: the publish directory "public" does not exist`,
 	}
 	if len(entries) != len(want) {
 		t.Fatalf("entries = %+v, want %d lines", entries, len(want))
@@ -939,6 +940,24 @@ func TestFollowBuildLogsEmitsTerminalLineOnce(t *testing.T) {
 	}
 	if !slices.Contains(msgs, "real build line") {
 		t.Fatalf("real stdout missing from %v", msgs)
+	}
+}
+
+func TestTerminalLinesAppendFailureReason(t *testing.T) {
+	if got := terminalLines("update_failed", "web_service", ""); !slices.Equal(got, []string{"==> Deploy failed"}) {
+		t.Fatalf("empty reason = %v", got)
+	}
+	if got := terminalLines("update_failed", "web_service", `clone: missing "public"`); !slices.Equal(got, []string{`==> Deploy failed: clone: missing "public"`}) {
+		t.Fatalf("single-line reason = %v", got)
+	}
+	if got := terminalLines("pre_deploy_failed", "web_service", "exit 128\nfatal detail"); !slices.Equal(got, []string{
+		"==> Pre-deploy failed: exit 128",
+		"==> fatal detail",
+	}) {
+		t.Fatalf("multi-line reason = %v", got)
+	}
+	if got := terminalLines("live", "web_service", "should-not-appear"); !slices.Equal(got, []string{"==> Your service is live 🎉"}) {
+		t.Fatalf("success must ignore a stray reason: %v", got)
 	}
 }
 
