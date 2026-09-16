@@ -1,6 +1,6 @@
 # w1 · m150 — A service's inbound IP allowlist matches the load balancer's private address, not the client
 
-**Worker:** worker1 **Goal:** an inbound IP allowlist on a web service or static site admits exactly the public clients whose address falls in a listed CIDR, and nobody else. The address Traefik matches is the client's, carried through the Hetzner load balancer by PROXY protocol and trusted only from that load balancer, the way `w2/done/m57` t010 already does for Postgres and Key Value. No header a client sends can influence the match. **Status:** todo (unblocked 2026-09-15; t003 blast radius done 2026-09-16; t001 prepared but **not applied** — see § Open question).
+**Worker:** worker1 **Goal:** an inbound IP allowlist on a web service or static site admits exactly the public clients whose address falls in a listed CIDR, and nobody else. The address Traefik matches is the client's, carried through the Hetzner load balancer by PROXY protocol and trusted only from that load balancer, the way `w2/done/m57` t010 already does for Postgres and Key Value. No header a client sends can influence the match. **Status:** todo (unblocked 2026-09-15; t003 blast radius done 2026-09-16; t001's safety gate cleared locally — see § The gate on t001).
 
 ## Triage (2026-09-15)
 
@@ -37,14 +37,24 @@ Every consumer of the client address on `:80`/`:443`, and what changes when it b
 
 **The precedent for the parser**, if it is ever needed on this path: `lego/types/proxyproto` is the shared v1/v2 reader (`ReadProxySource` honors a header only from a trusted immediate peer and passes a headerless connection through unchanged), re-exported by `backend/internal/proxyproto` and `operator/internal/sniproxy`. t001 needs none of it — Traefik's entrypoints take a Helm value, not Go code.
 
-## Open question that gates t001 (2026-09-16)
+## The gate on t001, and how it was cleared (2026-09-16)
 
 The Hetzner load balancer health-checks the entrypoints with **plain TCP and no PROXY header** (`infra/terraform/main.tf`, `health_check { protocol = "tcp" }`), and `traefik.values.yaml` has no `proxyProtocol` key today. So enabling `proxyProtocol.trustedIPs: ["10.10.0.7/32"]` is only the safe first step **if that Traefik version accepts a headerless connection from a trusted peer**. If it instead requires the header, the health checks fail the moment Argo rolls Traefik and the edge goes down before the listener flip ever happens — the exact outage the two-step order exists to prevent.
 
-That behavior is not verified anywhere in this repo, and this worker has no cluster access to probe it. **t001 is therefore prepared but not applied.** It needs one of:
+**Answered locally, 2026-09-16 (user decision: verify first, then ship).** Run against **Traefik v3.7.5** — the exact build the pinned chart 41.0.0 ships — in a container configured with nothing but the entrypoint this milestone changes (`proxyProtocol.trustedIPs`, set to `0.0.0.0/0` so every peer counts as trusted, since the question is not _which_ peer is trusted but whether a trusted peer's headerless connection is served):
 
-1. a local verification on the kind/CAPD harness (deploy Traefik with the trust set, open a headerless TCP connection, confirm it is served), or
-2. an explicit decision to roll it and probe the public edge immediately afterwards, accepting a short outage window if the assumption is wrong.
+```text
+A  plain HTTP, no PROXY header   → HTTP/1.1 503, served; access log client 192.168.215.1 (the real TCP peer)
+B  PROXY v1 header, then HTTP    → HTTP/1.1 503, served; access log client 203.0.113.7 (the asserted address)
+```
+
+`503` is the configured no-backend service answering — what matters is that both connections were accepted and routed, and that B's client address came from the PROXY header.
+
+- **`trustedIPs` is trust, not a requirement.** A trusted peer that sends no header is served exactly as before, so enabling the trust cannot break the load balancer's headerless TCP health checks.
+- **The asserted address is honored**, which is the half the allow-list fix depends on.
+- **The gate is therefore cleared** and t001 is safe to roll on its own, before any listener change — which is what makes the two-step order work.
+
+The whole-cluster kind/CAPD harness was deliberately not used: the behavior in question belongs to Traefik's entrypoint, not to bex, and that harness has OOM-ed this machine in past sessions.
 
 ## Tasks (in order)
 
