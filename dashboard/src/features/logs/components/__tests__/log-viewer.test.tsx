@@ -13,6 +13,9 @@ const historyState: UseLogHistoryResult = {
   loading: false,
   error: undefined,
   storeUnavailable: false,
+  hasMore: false,
+  loadingOlder: false,
+  loadOlder: () => undefined,
 };
 const useHistorySpy = vi.fn();
 vi.mock("../../hooks/use-log-history", () => ({
@@ -42,6 +45,9 @@ beforeEach(() => {
   historyState.loading = false;
   historyState.error = undefined;
   historyState.storeUnavailable = false;
+  historyState.hasMore = false;
+  historyState.loadingOlder = false;
+  historyState.loadOlder = () => undefined;
   useHistorySpy.mockReset();
   useLiveLogsSpy.mockReset();
 });
@@ -126,6 +132,64 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     expect(
       screen.queryByText("This service hasn't produced any logs yet."),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows a truncation notice only when hasMore is true (w4/m107)", () => {
+    historyState.lines = [
+      {
+        key: "k1",
+        timestamp: "t",
+        time: "10:36:01",
+        instance: "bv612",
+        message: "hello from the app",
+        type: "app",
+        level: "",
+        method: "",
+        statusCode: "",
+        spans: null,
+      },
+    ];
+    historyState.hasMore = false;
+    const { rerender } = render(<LogViewer resource="web" />);
+    expect(
+      screen.queryByText(/Showing the newest 100 matching lines/),
+    ).not.toBeInTheDocument();
+
+    historyState.hasMore = true;
+    rerender(<LogViewer resource="web" />);
+    expect(
+      screen.getByText(/Showing the newest 100 matching lines/),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the truncation notice while live tail remains available (w4/m107)", () => {
+    historyState.lines = [
+      {
+        key: "k1",
+        timestamp: "t",
+        time: "10:36:01",
+        instance: "bv612",
+        message: "historical",
+        type: "app",
+        level: "",
+        method: "",
+        statusCode: "",
+        spans: null,
+      },
+    ];
+    historyState.hasMore = true;
+    historyState.loadOlder = vi.fn();
+    render(<LogViewer resource="web" />);
+    expect(screen.getByText("historical")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Showing the newest 100 matching lines/),
+    ).toBeInTheDocument();
+    // Live tail is still offered (default live=true) alongside page-back.
+    expect(useLiveLogsSpy).toHaveBeenCalled();
+    const liveOpts = useLiveLogsSpy.mock.calls.at(-1)?.[0] as {
+      enabled: boolean;
+    };
+    expect(liveOpts.enabled).toBe(true);
   });
 
   it("follows the live tail from the selected window's start, not offset 0 (w6/m111)", () => {

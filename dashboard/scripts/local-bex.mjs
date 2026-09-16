@@ -1191,6 +1191,43 @@ function history(count, resource) {
   return out;
 }
 
+// Render's logs envelope (w4/m107) — same shape bex-api's GraphQL `logs` field
+// returns so the dashboard can page and show a truncation notice.
+function logEnvelope(page, limit, variables = {}) {
+  const hasMore = page.length >= limit;
+  const oldest = page[0]?.timestamp;
+  const newest = page[page.length - 1]?.timestamp;
+  const start =
+    variables.startTime ??
+    new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const end = variables.endTime ?? new Date().toISOString();
+  let nextEndTime = end;
+  if (oldest) {
+    const t = Date.parse(oldest);
+    nextEndTime = Number.isNaN(t)
+      ? oldest
+      : new Date(t - 1).toISOString();
+  }
+  let nextStartTime = start;
+  if (newest && variables.direction === "forward") {
+    const t = Date.parse(newest);
+    nextStartTime = Number.isNaN(t)
+      ? newest
+      : new Date(t + 1).toISOString();
+  } else if (!oldest) {
+    nextStartTime = start;
+  } else {
+    nextStartTime = start;
+  }
+  return {
+    __typename: "LogList",
+    hasMore,
+    nextStartTime,
+    nextEndTime: oldest ? nextEndTime : end,
+    logs: page,
+  };
+}
+
 // Render-shaped SSE frame (internal/logs/render.go): id + message + timestamp +
 // a [{name,value}] labels array. Labelled with the requested resource. `level`
 // is parsed from the synthetic message's own `level=X` logfmt field (the real
@@ -1525,11 +1562,12 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (type === "build" || type === "predeploy") {
         const deploy = deployForWindow(resource, variables.startTime);
         const lines = deploy ? deploySyntheticLogs(deploy)[type] : [];
-        return {
-          logs: lines.filter((l) => inWindow(l.timestamp)).slice(-limit),
-        };
+        const page = lines.filter((l) => inWindow(l.timestamp)).slice(-limit);
+        return { logs: logEnvelope(page, limit, variables) };
       }
-      if (type && type !== "app" && type !== "application") return { logs: [] };
+      if (type && type !== "app" && type !== "application") {
+        return { logs: logEnvelope([], limit, variables) };
+      }
       const isDatabase = DATABASES.some((database) => database.id === resource);
       let logs = history(60, resource)
         .map((entry, index) =>
@@ -1552,7 +1590,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         const q = String(variables.text).toLowerCase();
         logs = logs.filter((l) => l.message.toLowerCase().includes(q));
       }
-      return { logs: logs.slice(-limit) };
+      return { logs: logEnvelope(logs.slice(-limit), limit, variables) };
     }
     // Single-deploy read (w9/m1/t001 GraphQL parity): the deploy detail page's
     // header data. Unknown deployId, or one belonging to a different service,

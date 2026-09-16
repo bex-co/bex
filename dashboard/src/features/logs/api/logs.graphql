@@ -1,10 +1,12 @@
 # bex-api's logs read (internal/logs/graphql.go), Render-shaped: a historical
 # query across an App's replicas. Serves BOTH types (w3/m8) — `type=app` is the
 # service's own output, `type=request` its Traefik access lines; only `type=build`
-# is empty (bex builds run in a separate plane). The flat `LogEntry` row is the
-# GraphQL projection of Core's LogEntry; the REST adapter renders the same data as
-# Render's labels array instead. Live tail is a separate stream (SSE), not a
-# GraphQL field.
+# is empty (bex builds run in a separate plane). Returns Render's paging envelope
+# `{hasMore, nextStartTime, nextEndTime, logs}` (w4/m107) so the viewer can page
+# past the 100-line cap and tell a truncated view from a complete one. The flat
+# `LogEntry` row is the GraphQL projection of Core's LogEntry; the REST adapter
+# renders the same data as Render's labels array instead. Live tail is a separate
+# stream (SSE), not a GraphQL field.
 #
 # The structured request filters (level/instance/statusCode/method/path) are
 # `[String]` lists — Render's filter vocabulary, wired to the Logs-tab filter bar
@@ -38,13 +40,18 @@ query Logs(
     endTime: $endTime
     limit: $limit
   ) {
-    timestamp
-    message
-    type
-    instance
-    level
-    method
-    statusCode
+    hasMore
+    nextStartTime
+    nextEndTime
+    logs {
+      timestamp
+      message
+      type
+      instance
+      level
+      method
+      statusCode
+    }
   }
 }
 
