@@ -72,6 +72,12 @@ query Server($id: String!) {
     }
     # Auto-Deploy toggle (w2/m9) — whether a signed git push redeploys the App.
     autoDeploy
+    # linkedEnvGroupIds is the linked environment groups in PRECEDENCE order
+    # (w2/m94/t003): spec.envFromSecrets order, where the LAST entry wins a key
+    # or secret-file collision. The workspace group list carries links as an
+    # unordered set, so this is the only thing that can tell the Environment
+    # page which of two colliding groups the service actually runs.
+    linkedEnvGroupIds
     # pushDeliveryMethod (w6/m99) is whether a push can REACH bex for THIS repo:
     # github_app | manual_webhook | none | unknown. autoDeploy above is only the
     # on/off setting, so it cannot tell a granted repo from an ungranted one; the

@@ -197,6 +197,12 @@ type EnvGroupView struct {
 	// (often empty keys) so a stranded group cannot poison the workspace list
 	// (w4/m98).
 	Availability string `json:"availability,omitempty"`
+	// PendingServiceIDs is set ONLY on the create-with-services result, naming
+	// the services that were linked without a deploy because their Auto-Deploy
+	// is off. It is a write-result field, never part of a group read, so a list
+	// or get always omits it. Same meaning as
+	// EnvironmentPatchResult.PendingServiceIDs.
+	PendingServiceIDs []string `json:"pendingServiceIds,omitempty"`
 }
 
 // --- store paths + materialized Secret names ----------------------------------
@@ -489,10 +495,16 @@ func (s *Service) createEnvGroupAuthorized(ctx context.Context, req CreateEnvGro
 		name: name, links: links, workspace: workspace, environment: req.EnvironmentID,
 		createdAt: now, updatedAt: now,
 	}
-	if err := s.persistCreate(ctx, gid, m, env, files, services); err != nil {
+	pending, err := s.persistCreate(ctx, gid, m, env, files, services)
+	if err != nil {
 		return EnvGroupView{}, errors.Join(err, s.releaseGroupName(context.WithoutCancel(ctx), workspace, name, gid))
 	}
-	return s.viewFromMeta(ctx, gid, m)
+	view, err := s.viewFromMeta(ctx, gid, m)
+	if err != nil {
+		return EnvGroupView{}, err
+	}
+	view.PendingServiceIDs = pending
+	return view, nil
 }
 
 // prepareCreateEnv validates and resolves Render's literal-or-generated input
@@ -594,18 +606,22 @@ func (s *Service) createWorkspaceMatches(labels map[string]string, workspace str
 // persistCreate applies the already-validated create plan. The metadata write
 // is last, so the group becomes discoverable only after its contents,
 // projection Secrets, and service refs exist. Any error triggers compensation.
+//
+// It returns the ids of services that were linked without a deploy because
+// their Auto-Deploy is off (autoDeployGated), so the caller can name them on
+// the create result.
 func (s *Service) persistCreate(
 	ctx context.Context,
 	gid string,
 	m meta,
 	env, files map[string]string,
 	services []*appv1alpha1.App,
-) error {
+) (pending []string, err error) {
 	if err := secrets.ValidateEnvMapQuota(env); err != nil {
-		return err
+		return nil, err
 	}
 	if err := secrets.ValidateFilesMapQuota(files); err != nil {
-		return err
+		return nil, err
 	}
 	patched := make([]*appv1alpha1.App, 0, len(services))
 	rollback := func(cause error) error {
@@ -640,37 +656,40 @@ func (s *Service) persistCreate(
 	}
 
 	if err := s.storeMap(ctx, m.workspace, envPath(gid), env); err != nil {
-		return rollback(err)
+		return nil, rollback(err)
 	}
 	if err := s.storeMap(ctx, m.workspace, filesPath(gid), files); err != nil {
-		return rollback(err)
+		return nil, rollback(err)
 	}
 	if versioned, ok := s.Store.(core.VersionedSecretKV); ok {
 		if _, err := versioned.PutCAS(groupCtx(ctx, m.workspace), revisionPath(gid), map[string]string{"state": "idle", "generation": "1"}, 0); err != nil {
-			return rollback(err)
+			return nil, rollback(err)
 		}
 	}
 	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
-		return rollback(err)
+		return nil, rollback(err)
 	}
 	if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), files); err != nil {
-		return rollback(err)
+		return nil, rollback(err)
 	}
 	for _, a := range services {
 		before := a.DeepCopy()
-		if err := s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+		skipped, err := s.rollLinked(ctx, a, m.updatedAt, func(a *appv1alpha1.App) {
 			a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
 			a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
-			a.Spec.RestartedAt = m.updatedAt
-		}); err != nil {
-			return rollback(err)
+		})
+		if err != nil {
+			return nil, rollback(err)
+		}
+		if skipped {
+			pending = append(pending, a.Name)
 		}
 		patched = append(patched, before)
 	}
 	if err := s.writeMeta(ctx, gid, m); err != nil {
-		return rollback(err)
+		return nil, rollback(err)
 	}
-	return nil
+	return pending, nil
 }
 
 // SetEnvironmentID assigns or unassigns one group from an Environment. A
@@ -1079,10 +1098,9 @@ func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1
 	if err := validateGroupServiceEnvironment(m.environment, service, a.Labels); err != nil {
 		return err
 	}
-	if err := s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+	if _, err := s.rollLinked(ctx, a, s.now(), func(a *appv1alpha1.App) {
 		a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
 		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
-		a.Spec.RestartedAt = s.now()
 	}); err != nil {
 		return err
 	}
@@ -1115,6 +1133,48 @@ func (s *Service) rollLinkedService(ctx context.Context, a *appv1alpha1.App, mut
 	return s.Rollout.Patch(ctx, s.Client, a, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
 		mutate(a)
 		return nil
+	})
+}
+
+// autoDeployGated reports whether a group write must leave this linked
+// service's running release alone.
+//
+// Render: "If you make changes to an environment group (including deleting
+// it), Render kicks off a new deploy for every linked service that has
+// autodeploys enabled" (render.com/docs/configure-environment-variables,
+// fetched 2026-09-14). Turning Auto-Deploy off is an owner opting out of
+// releases they did not ask for, and w1/092 found bex shipping one anyway.
+//
+// The Repo guard is the part Render's sentence does not cover. bex defaults
+// spec.autoDeploy to false for an image-backed service purely because there is
+// no branch to watch (apps/service.go "off for an image-backed one (no repo to
+// rebuild from)"), not because its owner declined anything. Reading that
+// default as an opt-out would silently strand every image-backed service on
+// stale group values forever — a far worse bug than the one this gate fixes.
+// So the gate applies only where Auto-Deploy is a real user-facing toggle with
+// Render's on-by-default: a repo-backed service. See the m94 README Decisions.
+func autoDeployGated(a *appv1alpha1.App) bool {
+	if a == nil {
+		return false
+	}
+	return a.Spec.Repo != "" && !a.Spec.AutoDeploy
+}
+
+// rollLinked is rollLinkedService behind the auto-deploy gate. For a gated
+// service the group's Secret refs still land — a link the caller asked for is
+// not silently dropped — but spec.restartedAt is left untouched and no deploy
+// row opens, so the pod keeps serving its current release and picks the values
+// up on the owner's next deploy. It reports whether it skipped, so callers can
+// name the untouched services back to the API client.
+func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp string, mutate func(*appv1alpha1.App)) (bool, error) {
+	if autoDeployGated(a) {
+		base := client.MergeFrom(a.DeepCopy())
+		mutate(a)
+		return true, s.Client.Patch(ctx, a, base)
+	}
+	return false, s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+		mutate(a)
+		a.Spec.RestartedAt = stamp
 	})
 }
 
@@ -1173,23 +1233,31 @@ func (s *Service) detach(ctx context.Context, gid, service string) error {
 // already holds the App it authorized — reusing it rather than fetching (and
 // authorizing, and auditing) a second time.
 func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.App) error {
-	return s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+	_, err := s.rollLinked(ctx, a, s.now(), func(a *appv1alpha1.App) {
 		a.Spec.EnvFromSecrets = removeString(a.Spec.EnvFromSecrets, envSecretName(gid))
 		a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, filesSecretName(gid))
-		a.Spec.RestartedAt = s.now()
 	})
+	return err
 }
 
 // rollOne bumps spec.restartedAt on one linked service so it picks up the
 // group's changed Secret data (the Secret refs are already on the spec from the
 // link). It returns core.ErrNotFound for a since-deleted service, which
 // PatchEnvironment's rollout loop tolerates and self-heals.
-func (s *Service) rollOne(ctx context.Context, service, stamp string) error {
+//
+// A service with Auto-Deploy off is left entirely alone: the group's Secret
+// already holds the new values, and not touching spec.restartedAt is exactly
+// what keeps the running pod on its current release until the owner deploys.
+// It reports whether it skipped for that reason.
+func (s *Service) rollOne(ctx context.Context, service, stamp string) (bool, error) {
 	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if err != nil {
-		return err
+		return false, err
 	}
-	return s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+	if autoDeployGated(a) {
+		return true, nil
+	}
+	return false, s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = stamp
 	})
 }
@@ -1339,7 +1407,9 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 			_ = s.releaseGroupName(context.WithoutCancel(ctx), workspace, name, gid)
 			return prepareErr
 		}
-		if err := s.persistCreate(ctx, gid, m, env, map[string]string{}, nil); err != nil {
+		// No services to link on a Blueprint-minted group, so nothing can be
+		// auto-deploy-gated here.
+		if _, err := s.persistCreate(ctx, gid, m, env, map[string]string{}, nil); err != nil {
 			return errors.Join(err, s.releaseGroupName(context.WithoutCancel(ctx), workspace, name, gid))
 		}
 		return nil

@@ -13,10 +13,16 @@ const mockUnlinkGroup = vi.fn();
 // The service's own env-var keys, used to mark linked-group keys the service
 // overrides (w6/067). Empty by default = no overrides.
 const mockUseEnvVarKeys = vi.fn();
+// The service's own secret-file names, used to mark a linked group's file of the
+// same name (w2/m94/t002). Empty by default = no overrides.
+const mockUseSecretFileNames = vi.fn();
+// Link order (precedence) as the service read reports it; undefined = an older
+// API that does not report it, which must claim no precedence at all.
+let mockLinkedEnvGroupIds: string[] | undefined;
 
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: (id: string) => ({
-    service: { id, name: id },
+    service: { id, name: id, linkedEnvGroupIds: mockLinkedEnvGroupIds },
     loading: false,
     error: undefined,
     refetch: vi.fn(),
@@ -25,6 +31,10 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 
 vi.mock("@/features/services/hooks/use-env-vars", () => ({
   useEnvVarKeys: (...a: unknown[]) => mockUseEnvVarKeys(...a),
+}));
+
+vi.mock("@/features/services/hooks/use-secret-files", () => ({
+  useSecretFileNames: (...a: unknown[]) => mockUseSecretFileNames(...a),
 }));
 
 vi.mock(
@@ -75,6 +85,13 @@ beforeEach(() => {
     error: undefined,
     refetch: vi.fn(),
   });
+  mockUseSecretFileNames.mockReset().mockReturnValue({
+    names: [],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  });
+  mockLinkedEnvGroupIds = undefined;
 });
 
 describe("EnvGroupsPanel", () => {
@@ -291,5 +308,96 @@ describe("EnvGroupsPanel", () => {
       screen.queryByRole("button", { name: "Delete" }),
     ).not.toBeInTheDocument();
     expect(mockDeleteGroup).not.toHaveBeenCalled();
+  });
+});
+
+// Group-vs-group precedence (w2/m94/t003, from w1/091). Linking B then A means
+// A wins: the operator emits each linked group's Secret as an envFrom source in
+// spec.envFromSecrets order and Kubernetes lets the LAST source win, so the
+// most recently linked group is what the service actually runs. At filing time
+// the page listed A above B by accident, not by rule, and marked neither key.
+describe("EnvGroupsPanel group-vs-group precedence", () => {
+  function twoLinkedGroups() {
+    return groupsResult([
+      {
+        id: "egB",
+        name: "beta",
+        ownerId: "tea-1",
+        environmentId: null,
+        createdAt: null,
+        updatedAt: null,
+        revision: null,
+        availability: null,
+        serviceLinks: ["web"],
+        envVarKeys: ["MESSAGE"],
+        secretFileNames: ["qa.txt"],
+      },
+      {
+        id: "egA",
+        name: "alpha",
+        ownerId: "tea-1",
+        environmentId: null,
+        createdAt: null,
+        updatedAt: null,
+        revision: null,
+        availability: null,
+        serviceLinks: ["web"],
+        envVarKeys: ["MESSAGE"],
+        secretFileNames: ["qa.txt"],
+      },
+    ]);
+  }
+
+  it("orders linked groups by precedence and marks the loser's key and file", () => {
+    // B linked first, then A => A wins and is shown first.
+    mockLinkedEnvGroupIds = ["egB", "egA"];
+    mockUseEnvGroups.mockReturnValue(twoLinkedGroups());
+    render(<EnvGroupsPanel serviceId="web" />);
+
+    const names = screen
+      .getAllByRole("link")
+      .map((node) => node.textContent?.trim());
+    expect(names.indexOf("alpha")).toBeLessThan(names.indexOf("beta"));
+
+    // Exactly one MESSAGE badge is struck through — beta's — and its tooltip
+    // names alpha as the winner.
+    const struck = document.querySelectorAll("s");
+    const strikeText = Array.from(struck).map((node) => node.textContent);
+    expect(strikeText).toContain("MESSAGE");
+    expect(strikeText).toContain("qa.txt");
+    expect(
+      document.querySelectorAll('[title="Overridden by alpha, which is linked later"]'),
+    ).toHaveLength(2);
+    // The winner is not marked.
+    expect(strikeText).toHaveLength(2);
+  });
+
+  it("claims no precedence when the API does not report link order", () => {
+    mockLinkedEnvGroupIds = undefined;
+    mockUseEnvGroups.mockReturnValue(twoLinkedGroups());
+    render(<EnvGroupsPanel serviceId="web" />);
+    // Marking one at random would be worse than marking neither: before m94 the
+    // page implied a winner it had not computed.
+    expect(document.querySelectorAll("s")).toHaveLength(0);
+  });
+
+  it("lets the service's own secret file beat every linked group's", () => {
+    mockLinkedEnvGroupIds = ["egB", "egA"];
+    mockUseEnvGroups.mockReturnValue(twoLinkedGroups());
+    mockUseSecretFileNames.mockReturnValue({
+      names: [{ id: "qa.txt", name: "qa.txt" }],
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    render(<EnvGroupsPanel serviceId="web" />);
+
+    // Both groups' qa.txt lose to the service's own file, so the service-wins
+    // tooltip replaces the group-vs-group one on the winning group too.
+    expect(
+      document.querySelectorAll(
+        '[title="Overridden by this service\'s own qa.txt secret file"]',
+      ),
+    ).toHaveLength(2);
   });
 });

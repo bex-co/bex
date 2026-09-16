@@ -60,7 +60,14 @@ type EnvironmentPatchResult struct {
 	Revision           string   `json:"revision"`
 	AffectedServiceIDs []string `json:"affectedServiceIds"`
 	FailedServiceIDs   []string `json:"failedServiceIds"`
-	RolledOut          bool     `json:"rolledOut"`
+	// PendingServiceIDs are linked services the write deliberately did NOT
+	// deploy because their Auto-Deploy is off (Render's documented gate). Their
+	// copy of the group is current — the group's Secret is shared — but they
+	// keep serving their existing release until their owner deploys them. This
+	// is a subset of AffectedServiceIDs, and NOT a failure: unlike
+	// FailedServiceIDs it must not be retried, so RolledOut stays true.
+	PendingServiceIDs []string `json:"pendingServiceIds,omitempty"`
+	RolledOut         bool     `json:"rolledOut"`
 }
 
 func revisionPath(gid string) string { return "env-groups/" + gid + "/revision" }
@@ -183,10 +190,13 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	if err := core.ApplySecretFilePatch(files, patch.SecretFiles); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	if err := secrets.ValidateEnvMapQuota(env); err != nil {
+	// Same rule the service batch patch got in w1/m147: a group already over the
+	// cap can shrink but not grow. Checking the patched map alone refused the
+	// delete-only patch that is the only way back under the cap.
+	if err := secrets.ValidatePatchEnvMapQuota(oldEnv, env); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	if err := secrets.ValidateFilesMapQuota(files); err != nil {
+	if err := secrets.ValidatePatchFilesMapQuota(oldFiles, files); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
 	changedEnv := !maps.Equal(oldEnv, env)
@@ -295,20 +305,26 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	var stale []string
 	for _, serviceID := range m.links {
 		var actionErr error
+		var skipped bool
 		if patch.SaveMode == SaveModeRebuild {
+			// An explicit rebuild is the caller's deliberate choice, not the
+			// implicit fan-out Render gates on Auto-Deploy, so it is ungated.
 			if s.RebuildService == nil {
 				actionErr = core.ErrDeploysUnavailable
 			} else {
 				actionErr = s.RebuildService(ctx, serviceID)
 			}
 		} else {
-			actionErr = s.rollOne(ctx, serviceID, s.now())
+			skipped, actionErr = s.rollOne(ctx, serviceID, s.now())
 		}
 		if errors.Is(actionErr, core.ErrNotFound) {
 			stale = append(stale, serviceID)
 			continue
 		}
 		affected = append(affected, serviceID)
+		if skipped {
+			result.PendingServiceIDs = append(result.PendingServiceIDs, serviceID)
+		}
 		if actionErr != nil {
 			result.FailedServiceIDs = append(result.FailedServiceIDs, serviceID)
 		}
