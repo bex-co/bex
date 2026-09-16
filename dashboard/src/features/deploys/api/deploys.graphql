@@ -42,5 +42,6 @@ query Deploys(
     finishedAt
     preDeployStatus
     failureReason
+    cancelReason
   }
 }

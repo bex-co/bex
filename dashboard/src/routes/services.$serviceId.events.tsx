@@ -419,6 +419,11 @@ function EventSummary({
           reason={details?.failureReason}
           className="mt-1"
         />
+        <DeployFailureReason
+          reason={details?.cancelReason}
+          tone="neutral"
+          className="mt-1"
+        />
         <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           {trigger ? (
             <span>{t(trigger as Parameters<typeof t>[0])}</span>

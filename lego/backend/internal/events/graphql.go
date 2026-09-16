@@ -65,6 +65,9 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// failureReason is the human-actionable cause of a failed deploy,
 		// present only on failures (w1/m138). bex extra.
 		"failureReason": gqlutil.StrField(func(d Details) any { return d.FailureReason }),
+		// cancelReason is the neutral cause of a non-user cancel (w4/089) —
+		// "Superseded by dep-…". Empty for user cancels. bex extra.
+		"cancelReason": gqlutil.StrField(func(d Details) any { return d.CancelReason }),
 		// status is a lifecycle-step event's terminal outcome (w7/m66):
 		// build_ended / pre_deploy_ended / job_run_ended → succeeded|failed|canceled.
 		"status": gqlutil.StrField(func(d Details) any { return d.Status }),
