@@ -101,6 +101,10 @@ The create form's hint was the other half of the contradiction: it read "A resou
 
 - **The filed symptom, reproduced** — `w1/098`'s exact string, still live.
 
+**Post-fix live verification: still outstanding (2026-09-16 04:48Z).** The fix is on `main` and green; what is missing is the production re-check, and it is blocked on an image pin that never landed. Production still runs the `w1/m158` build (`eb035151a`): every deploy run tonight either was superseded before its write-back or failed on an unrelated gate, because 13 commits landed on `main` in the final hour against a pipeline that takes ~50 minutes. Nothing about this milestone's code is implicated.
+
+The pre-fix evidence above was captured deliberately while that was still true, so the "before" half is real. To finish: once any pin newer than `eb035151a` lands, re-create a fixture and re-run the same probe for the datastore card, the move-to-project landing and the count string — the tooling is in the session scratchpad (`m159-verify.mjs`, `m160-postfix.py`, `m161-idle-probe.py` with `m161-ws-client.py`).
+
 ## Render parity (t004)
 
 **The three API surfaces agree, and they keep Render's shape.** Read live at 01:47Z against the suspended fixture `red-dakv3hqsh60c73ao4li0`:
