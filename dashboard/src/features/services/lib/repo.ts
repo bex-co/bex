@@ -61,3 +61,16 @@ function httpRepo(repo: string): URL | null {
     return null;
   }
 }
+
+/**
+ * The web page for one commit of `repo` — "https://host/org/repo/commit/<sha>",
+ * where the diff lives — or null when the repo isn't a browsable URL or `sha`
+ * isn't a hex commit id (nothing else is ever spliced into the path). GitHub
+ * and Gitea serve it at that path and GitLab redirects it to `/-/commit/`, so
+ * one layout covers the forges `repoBrowseUrl` already assumes.
+ */
+export function repoCommitUrl(repo: string, sha: string): string | null {
+  if (!/^[0-9a-f]{7,64}$/i.test(sha)) return null;
+  const base = repoBrowseUrl(repo, null);
+  return base ? `${base}/commit/${sha}` : null;
+}

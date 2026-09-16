@@ -1,10 +1,11 @@
-import { formatDateTime } from "@/common/lib/format";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
+import { useNow } from "@/common/hooks/use-now";
+import { formatTimeAgo } from "@/common/lib/format";
 import { EmptyState } from "@/common/components/empty-state";
+import { InstantTooltip } from "@/common/components/instant-tooltip";
 import {
   Card,
   CardContent,
@@ -30,6 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/common/components/ui/table";
+import { useServer } from "@/features/services/hooks/use-server";
+import { repoCommitUrl } from "@/features/services/lib/repo";
 import { useDeploys, type DeployRow } from "../hooks/use-deploys";
 import {
   deployStatusVariant,
@@ -101,12 +104,18 @@ function durationLabel(d: DeployRow, t: Translate): string {
  * shared deploy-status mapping so the three surfaces can't drift.
  */
 export function DeploysListPage({ serviceId }: DeploysListPageProps) {
-  const { t } = useTranslations();
-  // Absolute deploy times are the viewer's local timezone, which the UTC SSR
-  // pod can't know — defer them to a post-hydration render (w6/m107) rather
-  // than freeze the pod's UTC clock on screen. One flag for the whole list;
-  // hooks can't be called inside the per-row map.
-  const hydrated = useIsHydrated();
+  const { t, i18n } = useTranslations();
+  // Row times are elapsed ("Deployed 2 hours ago", Render's deploy list)
+  // rather than absolute: timezone-neutral, so they render on the SSR pass
+  // too, and one page-level minute ticker keeps every row's text moving. The
+  // exact instant lives in each row's hover tooltip (InstantTooltip), which is
+  // where the viewer-local reading is deferred to (w6/m107).
+  const now = useNow();
+  const justNow = t("common.justNow");
+  // The service's repo turns each row's commit SHA into a link to its diff —
+  // a secondary, non-polling read of the document the layout already owns.
+  const { service } = useServer(serviceId, { poll: false });
+  const repo = service?.repo ?? null;
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const { deploys, loading, loadingMore, error, hasMore, loadMore } =
@@ -173,16 +182,25 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
             // canceled or failed row must not read "Deployed", and a shipped
             // row shows when it went live, not when its row was opened.
             const rowStamp = deployRowTimestamp(d);
-            const timestamp = hydrated ? formatDateTime(rowStamp.iso) : null;
+            const ago = formatTimeAgo(rowStamp.iso, {
+              now,
+              language: i18n.language,
+              justNow,
+            });
+            const commitUrl =
+              repo && d.commitId ? repoCommitUrl(repo, d.commitId) : null;
             const hasListAction =
               isCancelableDeployStatus(d.status) || d.status === "deactivated";
             return (
               <TableRow key={d.id}>
                 <TableCell className="min-w-0 align-top">
+                  {/* The detail link wraps only the identity line: the commit
+                      SHA below is its own link (to the diff) and the timestamp
+                      is a tooltip trigger, and neither may nest in an anchor. */}
                   <Link
                     to="/services/$serviceId/deploys/$deployId"
                     params={{ serviceId, deployId: d.id }}
-                    className="group block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="inline-block max-w-full rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <Badge variant={deployStatusVariant(d.status)}>
@@ -197,53 +215,68 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                         {d.id}
                       </span>
                     </div>
-                    {/* Absent on non-failed / non-superseded rows, so their
-                        height is unchanged. */}
-                    <DeployFailureReason
-                      reason={d.failureReason}
-                      truncate
-                      className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
-                    />
-                    <DeployFailureReason
-                      reason={d.cancelReason}
-                      tone="neutral"
-                      truncate
-                      className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
-                    />
-                    {d.commitId ? (
-                      <p className="mt-1 max-w-[16rem] truncate text-sm text-foreground sm:max-w-md lg:max-w-lg">
+                  </Link>
+                  {/* Absent on non-failed / non-superseded rows, so their
+                      height is unchanged. */}
+                  <DeployFailureReason
+                    reason={d.failureReason}
+                    truncate
+                    className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
+                  />
+                  <DeployFailureReason
+                    reason={d.cancelReason}
+                    tone="neutral"
+                    truncate
+                    className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
+                  />
+                  {d.commitId ? (
+                    <p className="mt-1 max-w-[16rem] truncate text-sm text-foreground sm:max-w-md lg:max-w-lg">
+                      {/* Render's list links the short SHA to the commit's
+                          diff on the forge; with no browsable repo (an
+                          image-backed service) it stays plain text. */}
+                      {commitUrl ? (
+                        <a
+                          href={commitUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                          title={d.commitId}
+                        >
+                          {d.commitId.slice(0, 7)}
+                        </a>
+                      ) : (
                         <span
                           className="font-mono text-xs text-muted-foreground"
                           title={d.commitId}
                         >
                           {d.commitId.slice(0, 7)}
                         </span>
-                        {d.commitMessage ? (
-                          <> {d.commitMessage.split("\n")[0]}</>
-                        ) : null}
-                      </p>
+                      )}
+                      {d.commitMessage ? (
+                        <> {d.commitMessage.split("\n")[0]}</>
+                      ) : null}
+                    </p>
+                  ) : null}
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {rowStamp.iso && ago ? (
+                      <InstantTooltip value={rowStamp.iso}>
+                        {t(rowStamp.key as Parameters<typeof t>[0], {
+                          timestamp: ago,
+                        })}
+                      </InstantTooltip>
                     ) : null}
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      {timestamp ? (
-                        <span>
-                          {t(rowStamp.key as Parameters<typeof t>[0], {
-                            timestamp,
-                          })}
-                        </span>
-                      ) : null}
-                      {preDeploy ? (
-                        <span
-                          className={
-                            d.preDeployStatus === "failed"
-                              ? "text-destructive"
-                              : undefined
-                          }
-                        >
-                          {t(preDeploy as Parameters<typeof t>[0])}
-                        </span>
-                      ) : null}
-                    </div>
-                  </Link>
+                    {preDeploy ? (
+                      <span
+                        className={
+                          d.preDeployStatus === "failed"
+                            ? "text-destructive"
+                            : undefined
+                        }
+                      >
+                        {t(preDeploy as Parameters<typeof t>[0])}
+                      </span>
+                    ) : null}
+                  </div>
                   {/* Until the card is wide enough for the full table, fold
                       Trigger/Duration under the deploy identity instead. */}
                   <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground @3xl/deploys:hidden">

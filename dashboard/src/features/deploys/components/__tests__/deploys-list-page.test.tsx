@@ -1,5 +1,5 @@
-import { formatDateTime } from "@/common/lib/format";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { formatInstantDetails } from "@/common/lib/format";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -27,6 +27,17 @@ vi.mock("../../hooks/use-deploys", () => ({
     statusCalls.push(statuses);
     return state;
   },
+}));
+// The service read that turns each row's SHA into a commit link; the repo is
+// per-test state so both the linked and the plain-text shapes are covered.
+const serverState: { repo: string | null } = { repo: null };
+vi.mock("@/features/services/hooks/use-server", () => ({
+  useServer: () => ({
+    service: { repo: serverState.repo },
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("../deploy-actions", () => ({
   DeployActions: ({
@@ -84,7 +95,13 @@ function renderPage() {
   return render(<RouterProvider router={router} />);
 }
 
+// Row times are elapsed ("Deployed 3 hours ago"), so every test pins the
+// clock: the row() defaults finish at 00:01:30, three hours before NOW.
+const NOW = Date.parse("2026-07-16T03:00:00Z");
+
 beforeEach(() => {
+  vi.spyOn(Date, "now").mockReturnValue(NOW);
+  serverState.repo = "https://github.com/acme/web.git";
   state.deploys = [];
   state.loading = false;
   state.loadingMore = false;
@@ -92,6 +109,10 @@ beforeEach(() => {
   state.hasMore = false;
   state.loadMore = vi.fn();
   statusCalls.length = 0;
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("DeploysListPage", () => {
@@ -209,25 +230,26 @@ describe("DeploysListPage", () => {
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 
-  it("labels rows by terminal state — Canceled/Failed rows never read 'Deployed' (w6/051)", async () => {
+  it("labels rows by terminal state with elapsed time — Canceled/Failed rows never read 'Deployed' (w6/051)", async () => {
     state.deploys = [
       // createdAt 00:00, finishedAt 00:01:30 from the row() defaults.
       row({ id: "dep-shipped", status: "live" }),
       row({
         id: "dep-canceled",
         status: "canceled",
-        finishedAt: "2026-07-16T00:00:45Z",
+        finishedAt: "2026-07-16T02:30:00Z",
         preDeployStatus: "",
       }),
       row({
         id: "dep-broken",
         status: "build_failed",
-        finishedAt: "2026-07-16T00:02:09Z",
+        finishedAt: "2026-07-15T00:00:00Z",
         preDeployStatus: "",
       }),
       row({
         id: "dep-waiting",
         status: "queued",
+        createdAt: "2026-07-16T02:59:50Z",
         startedAt: null,
         finishedAt: null,
         preDeployStatus: "",
@@ -236,23 +258,64 @@ describe("DeploysListPage", () => {
 
     renderPage();
 
-    // The live deploy is stamped with its finish time, not createdAt.
-    const deployedAt = formatDateTime("2026-07-16T00:01:30Z")!;
-    expect(
-      await screen.findByText(`Deployed ${deployedAt}`),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(`Canceled ${formatDateTime("2026-07-16T00:00:45Z")!}`),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(`Failed ${formatDateTime("2026-07-16T00:02:09Z")!}`),
-    ).toBeInTheDocument();
-    // The queued deploy hasn't finished — it shows when it was created.
-    expect(
-      screen.getByText(`Created ${formatDateTime("2026-07-16T00:00:00Z")!}`),
-    ).toBeInTheDocument();
+    // The live deploy is stamped with its finish time (3h before NOW), not
+    // createdAt — and as elapsed text, Render's "Deployed 3 hours ago".
+    const deployed = await screen.findByText("Deployed 3 hours ago");
+    expect(deployed.tagName).toBe("TIME");
+    expect(deployed).toHaveAttribute("dateTime", "2026-07-16T00:01:30Z");
+    expect(screen.getByText("Canceled 30 minutes ago")).toBeInTheDocument();
+    expect(screen.getByText("Failed 1 day ago")).toBeInTheDocument();
+    // The queued deploy hasn't finished — it shows when it was created, and
+    // under a minute reads "just now" rather than "10 seconds ago".
+    expect(screen.getByText("Created just now")).toBeInTheDocument();
     // Exactly one row earned the "Deployed" verb.
     expect(screen.getAllByText(/^Deployed /)).toHaveLength(1);
+  });
+
+  it("reveals the exact instant — local, UTC, Unix — on hover, selectable for copying", async () => {
+    state.deploys = [row({ id: "dep-shipped", status: "live" })];
+    const user = userEvent.setup();
+
+    renderPage();
+    await user.hover(await screen.findByText("Deployed 3 hours ago"));
+
+    const tooltip = await screen.findByRole("tooltip");
+    const details = formatInstantDetails("2026-07-16T00:01:30Z")!;
+    expect(tooltip).toHaveTextContent(`Local${details.local}`);
+    expect(tooltip).toHaveTextContent("UTCJuly 16, 2026 at 12:01:30 AM UTC");
+    expect(tooltip).toHaveTextContent("Timestamp1784160090");
+  });
+
+  it("links each commit SHA to its diff on the repo, outside the deploy link", async () => {
+    state.deploys = [row()];
+
+    renderPage();
+
+    const commit = await screen.findByRole("link", { name: "abc1234" });
+    expect(commit).toHaveAttribute(
+      "href",
+      "https://github.com/acme/web/commit/abc1234def5678",
+    );
+    expect(commit).toHaveAttribute("target", "_blank");
+    expect(commit).toHaveAttribute("title", "abc1234def5678");
+    // The deploy-detail link and the commit link are separate targets: an
+    // anchor can't nest in an anchor, so the SHA sits beside the detail link.
+    const detail = screen.getByRole("link", { name: /dep-live/ });
+    expect(detail).toHaveAttribute("href", "/services/web/deploys/dep-live");
+    expect(detail).not.toContainElement(commit);
+    expect(commit).not.toContainElement(detail);
+  });
+
+  it("renders the SHA as plain text when the service has no browsable repo", async () => {
+    serverState.repo = null;
+    state.deploys = [row()];
+
+    renderPage();
+
+    expect(await screen.findByText("abc1234")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "abc1234" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a failed deploy's reason on its row and nothing extra on live rows (w1/m138)", async () => {
@@ -275,9 +338,7 @@ describe("DeploysListPage", () => {
     ).toBeInTheDocument();
     // Exactly one reason line: the live row renders nothing extra, so its
     // height is unchanged.
-    expect(screen.getAllByText("image pull failed: not found")).toHaveLength(
-      1,
-    );
+    expect(screen.getAllByText("image pull failed: not found")).toHaveLength(1);
   });
 
   it("falls back to createdAt for a live deploy without a stored finish time", async () => {
@@ -287,11 +348,11 @@ describe("DeploysListPage", () => {
 
     renderPage();
 
-    expect(
-      await screen.findByText(
-        `Deployed ${formatDateTime("2026-07-16T00:00:00Z")!}`,
-      ),
-    ).toBeInTheDocument();
+    // createdAt 00:00 is three hours before NOW.
+    expect(await screen.findByText("Deployed 3 hours ago")).toHaveAttribute(
+      "dateTime",
+      "2026-07-16T00:00:00Z",
+    );
   });
 
   it("keeps the row action button outside the deploy-detail link (action-click isolation)", async () => {
@@ -299,7 +360,7 @@ describe("DeploysListPage", () => {
 
     renderPage();
 
-    const link = await screen.findByRole("link");
+    const link = await screen.findByRole("link", { name: /dep-live/ });
     expect(link).toHaveAttribute("href", "/services/web/deploys/dep-live");
     const rollback = screen.getByRole("button", { name: "Rollback dep-live" });
     // Navigation and the sibling action are separate targets: clicking Rollback

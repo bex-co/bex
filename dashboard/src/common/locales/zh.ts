@@ -310,6 +310,26 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Screen-reader-only header for a table's trailing row-actions column",
   },
+  "common.justNow": {
+    message: "刚刚",
+    description:
+      'Elapsed-time text for an instant under a minute old ("Deployed just now")',
+  },
+  "common.timeLocal": {
+    message: "本地时间",
+    description:
+      "Timestamp tooltip: label of the row showing the instant in the viewer's local timezone",
+  },
+  "common.timeUtc": {
+    message: "UTC",
+    description:
+      "Timestamp tooltip: label of the row showing the instant in UTC",
+  },
+  "common.timeUnix": {
+    message: "时间戳",
+    description:
+      "Timestamp tooltip: label of the row showing the instant as Unix seconds",
+  },
 };
 
 export default zhCommon;
