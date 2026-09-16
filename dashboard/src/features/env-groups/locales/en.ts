@@ -38,6 +38,12 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Key",
     description: "Initial environment variable key label",
   },
+  "envGroups.reservedKey": {
+    message:
+      "{key} is set by bex from the service port. Change the service port instead.",
+    description:
+      "Initial environment variable validation message for a key bex reserves (PORT)",
+  },
   "envGroups.varKeyPlaceholder": {
     message: "API_TOKEN",
     description: "Initial environment variable key placeholder",

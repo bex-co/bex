@@ -28,6 +28,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Input } from "@/common/components/ui/input";
+import { AutoTextarea } from "@/common/components/ui/auto-textarea";
 import { Badge } from "@/common/components/ui/badge";
 import {
   Alert,
@@ -1158,11 +1159,13 @@ function EnvDraftItem({
                 ? t("services.environmentValueRequired")
                 : error === "limit"
                   ? t("services.environmentLimit")
-                  : t("services.envInvalidKey")}
+                  : error === "reserved"
+                    ? t("services.envReservedKey", { key: row.key.trim() })
+                    : t("services.envInvalidKey")}
           </p>
         ) : null}
       </div>
-      <Input
+      <AutoTextarea
         value={row.value ?? ""}
         disabled={disabled}
         aria-describedby={disabled ? permissionDescriptionID : undefined}

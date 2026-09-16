@@ -1,4 +1,19 @@
 export const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * Names bex owns, mirroring `core.ReservedEnvKeys` in the backend. The operator
+ * injects its own PORT and would silently drop a user's, so every write path
+ * refuses the key (w2/m95 t003). Matching is exact and case-sensitive — `port`
+ * and `APP_PORT` are ordinary application variables.
+ *
+ * The editor flags it inline so the refusal arrives as you type rather than on
+ * Save; the server stays the authority.
+ */
+export const RESERVED_ENV_KEYS: readonly string[] = ["PORT"];
+
+export function isReservedEnvKey(key: string): boolean {
+  return RESERVED_ENV_KEYS.includes(key);
+}
 export const VALID_SECRET_FILE_NAME = /^[-._a-zA-Z0-9]+$/;
 /**
  * The upload path's read guard: a file this large is never read into memory.
@@ -66,7 +81,7 @@ export interface EnvironmentPatchInput {
 }
 
 export interface DraftValidation {
-  env: Record<string, "invalid" | "duplicate" | "value" | "limit">;
+  env: Record<string, "invalid" | "duplicate" | "value" | "limit" | "reserved">;
   files: Record<string, "invalid" | "duplicate" | "content" | "limit">;
 }
 
@@ -185,6 +200,26 @@ function flagOverLimit<R extends { id: string; deleted: boolean }>(
   }
 }
 
+/**
+ * Flag the rows that would *write* a reserved key. A row already stored under
+ * that name and left alone is not flagged: the draft would send no operation
+ * for it, so refusing would strand every unrelated edit on a service that
+ * happens to hold a pre-rule PORT. Deleting one is always allowed.
+ */
+function flagReservedKeys(
+  rows: readonly EnvDraftRow[],
+  errors: DraftValidation["env"],
+): void {
+  for (const row of rows) {
+    if (row.deleted) continue;
+    const key = row.key.trim();
+    if (!isReservedEnvKey(key)) continue;
+    const writes =
+      row.originalKey !== key || row.valueChanged || row.generateValue === true;
+    if (writes) errors[row.id] = "reserved";
+  }
+}
+
 export function validateEnvironmentDraft(
   draft: EnvironmentDraft,
 ): DraftValidation {
@@ -200,6 +235,7 @@ export function validateEnvironmentDraft(
     isValidSecretFileName,
     "content",
   );
+  flagReservedKeys(draft.envVars, env);
   flagOverLimit(draft.envVars, ENV_LENS, env);
   flagOverLimit(draft.secretFiles, FILE_LENS, files);
   return { env, files };

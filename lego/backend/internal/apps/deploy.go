@@ -2042,6 +2042,10 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 		if e.Key == "" {
 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
 		}
+		if core.IsReservedEnvKey(e.Key) {
+			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
+				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key))
+		}
 		switch {
 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q var %q: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key)
@@ -2271,6 +2275,14 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		}
 		if err := validateKeyedEnv(e); err != nil {
 			return nil, serviceEnv{}, fmt.Errorf("%w: %s env %q: %v", core.ErrBadRequest, a.Name, e.Key, err)
+		}
+		// A reserved key is refused here, before any seed or CR write. The
+		// message carries the location the way every neighbouring Blueprint
+		// parse error does — the validation surface renders the error string,
+		// not a code (w2/m95 t003).
+		if core.IsReservedEnvKey(e.Key) {
+			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
+				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key))
 		}
 		switch {
 		case e.FromDatabase != nil, e.FromService != nil:
