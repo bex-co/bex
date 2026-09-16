@@ -1,29 +1,20 @@
 # w1 · m150 — A service's inbound IP allowlist matches the load balancer's private address, not the client
 
-**Worker:** worker1 **Goal:** an inbound IP allowlist on a web service or static site admits exactly the public clients whose address falls in a listed CIDR, and nobody else. The address Traefik matches is the client's, carried through the Hetzner load balancer by PROXY protocol and trusted only from that load balancer, the way `w2/done/m57` t010 already does for Postgres and Key Value. No header a client sends can influence the match. **Status:** blocked (2026-09-15). Needs your judgement; see § Blocked.
+**Worker:** worker1 **Goal:** an inbound IP allowlist on a web service or static site admits exactly the public clients whose address falls in a listed CIDR, and nobody else. The address Traefik matches is the client's, carried through the Hetzner load balancer by PROXY protocol and trusted only from that load balancer, the way `w2/done/m57` t010 already does for Postgres and Key Value. No header a client sends can influence the match. **Status:** todo (unblocked 2026-09-15; see § Decisions).
 
-## Blocked — needs your judgement (2026-09-15)
+## Triage (2026-09-15)
 
 Triaged on `main` at `5523f684e`: the bug is still real and nothing has fixed it.
-
 - `database_controller.go:515` emits `ipAllowList.sourceRange` with no `ipStrategy`.
 - `infra/terraform/main.tf:208,226` keep `proxyprotocol = false` on `http` and `https`.
 - `traefik.values.yaml` has no `proxyProtocol`.
 
-The engineering is clear:
+## Decisions (2026-09-15)
 
-1. Traefik trusts PROXY protocol from `10.10.0.7/32` only.
-2. After a probe shows (1) is live, flip the load balancer's `http`/`https` listeners.
+Both questions were answered by the user ("act as you recommended"), so this milestone is unblocked and proceeds in task order.
 
-It was **not** started, because each of these is yours to decide.
-
-1. **May we change the production edge?** Enabling PROXY protocol on the Hetzner load balancer's :80/:443 listeners changes every HTTP(S) request to every tenant. If the listeners flip before Traefik expects PROXY headers, or Traefik rolls back after, the result is a full HTTP(S) outage. Nothing can confirm the ordering today: Traefik rolls through Argo, the production runner has no kubectl, and `infra.yml` waits only on the datastore proxies' deploy. Do you approve the two-step rollout (Traefik first, verified by a live probe, then the Terraform listener flip, each a separate ship), and who applies the Terraform change?
-2. **What should an allowlist mean behind Cloudflare?** `api.bex.co`, `dashboard.bex.co` and any Cloudflare-proxied tenant custom domain reach Traefik from a Cloudflare edge address. PROXY protocol fixes the Hetzner hop, but an allowlist on those hosts would still match Cloudflare, not the client. Choose one:
-   - (a) accept it and document that allowlists only work on DNS-only (grey-cloud) hosts;
-   - (b) additionally trust `CF-Connecting-IP`, but only when the peer is in Cloudflare's published ranges (a second trusted-proxy list to keep current);
-   - (c) refuse or warn when an allowlist is set on a Cloudflare-proxied host.
-
-Answer both and the milestone can move back to `w1/m150/` and proceed in task order.
+1. **The production edge changes in two ships, and the Terraform apply is yours.** Traefik first (t001): `web`/`websecure` accept PROXY protocol only from `10.10.0.7/32`, rolled out and confirmed by a live probe before anything else moves. Only then the listener flip (t002). This worker has no Terraform credentials and no cluster access, so **t002 ends with a prepared and reviewed change plus the exact apply command and the probe that must pass first — not an applied one.** Flipping the listeners before Traefik expects PROXY headers is a full HTTP(S) outage, so the order is not negotiable.
+2. **Allowlists behind Cloudflare: (c) with (a) documented.** An allowlist set on a Cloudflare-proxied host is refused, or warned about where refusing would break a config that already exists, and the documented rule is that an allowlist matches the real client only on DNS-only (grey-cloud) hosts. Trusting `CF-Connecting-IP` inside Cloudflare's published ranges (option b) is **not** taken now: it adds a second trusted-proxy list somebody has to keep current. It can be a follow-up milestone if it is ever wanted.
 
 ## Tasks (in order)
 
