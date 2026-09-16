@@ -64,7 +64,9 @@ type Config struct {
 	// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>`
 	// (docs/ADR005-custom-domain.md); unset falls back to deriving the platform
 	// host from an App's status URLs.
-	BaseDomain string
+	BaseDomain   string
+	RouterURL    string
+	RouterSecret string
 	// BEX_REGION is the explicit platform placement surfaced in Render resource
 	// metadata. Empty is honestly omitted.
 	Region       string
@@ -267,6 +269,17 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.DashboardURL = getenv("BEX_DASHBOARD_URL")
 	cfg.CORSOrigin = getenv("BEX_API_CORS_ORIGIN")
 	cfg.BaseDomain = getenv("BEX_BASE_DOMAIN")
+	cfg.RouterURL = getenv("BEX_ROUTER_URL")
+	cfg.RouterSecret = getenv("BEX_ROUTER_ASSERTION_SECRET")
+	if cfg.RouterURL != "" {
+		u, err := url.Parse(cfg.RouterURL)
+		if err != nil || u.Host == "" || u.User != nil || u.Fragment != "" || (u.Scheme != "https" && u.Scheme != "http") {
+			p.errorf("invalid BEX_ROUTER_URL")
+		}
+		if len(cfg.RouterSecret) < 32 {
+			p.errorf("BEX_ROUTER_ASSERTION_SECRET must have at least 32 bytes when Router is configured")
+		}
+	}
 	cfg.Region = getenv("BEX_REGION")
 	cfg.APIPublicURL = getenv("BEX_API_PUBLIC_URL")
 	cfg.SSHHost = getenv("BEX_SSH_HOST")

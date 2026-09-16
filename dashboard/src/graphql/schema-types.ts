@@ -1045,6 +1045,7 @@ export type Mutation = {
   createKeyValue: Maybe<KeyValue>;
   createProject: Maybe<Project>;
   createRegistryCredential: Maybe<RegistryCredential>;
+  createRouterKey: Maybe<Scalars['Boolean']['output']>;
   createSSHKey: Maybe<SshKey>;
   createService: Maybe<Service>;
   createShellSession: Maybe<ShellSession>;
@@ -1064,6 +1065,7 @@ export type Mutation = {
   deleteKeyValue: Maybe<Scalars['Boolean']['output']>;
   deleteProject: Maybe<Scalars['String']['output']>;
   deleteRegistryCredential: Maybe<Scalars['Boolean']['output']>;
+  deleteRouterKey: Maybe<Scalars['Boolean']['output']>;
   deleteSSHKey: Scalars['Boolean']['output'];
   deleteSecretFile: Maybe<Scalars['Boolean']['output']>;
   deleteService: Maybe<Scalars['Boolean']['output']>;
@@ -1175,6 +1177,7 @@ export type Mutation = {
   updateNotificationSettings: Maybe<NotificationSettings>;
   updatePushNotificationSettings: Maybe<PushNotificationSettings>;
   updateRegistryCredential: Maybe<RegistryCredential>;
+  updateRouterKey: Maybe<Scalars['Boolean']['output']>;
   updateServicePlan: Maybe<Service>;
   updateWebhookEndpoint: Maybe<WebhookEndpoint>;
   verifyCustomDomain: Maybe<CustomDomain>;
@@ -1396,6 +1399,12 @@ export type MutationCreateRegistryCredentialArgs = {
 };
 
 
+export type MutationCreateRouterKeyArgs = {
+  name: Scalars['String']['input'];
+  ownerId: Scalars['String']['input'];
+};
+
+
 export type MutationCreateSshKeyArgs = {
   name: Scalars['String']['input'];
   publicKey: Scalars['String']['input'];
@@ -1535,6 +1544,12 @@ export type MutationDeleteProjectArgs = {
 
 export type MutationDeleteRegistryCredentialArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteRouterKeyArgs = {
+  id: Scalars['String']['input'];
+  ownerId: Scalars['String']['input'];
 };
 
 
@@ -2255,6 +2270,17 @@ export type MutationUpdateRegistryCredentialArgs = {
 };
 
 
+export type MutationUpdateRouterKeyArgs = {
+  allowCredentials: Scalars['Boolean']['input'];
+  allowHeaders: Scalars['String']['input'];
+  allowMethods: Scalars['String']['input'];
+  allowOrigin: Scalars['String']['input'];
+  id: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+  ownerId: Scalars['String']['input'];
+};
+
+
 export type MutationUpdateServicePlanArgs = {
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
@@ -2529,6 +2555,8 @@ export type Query = {
   repoBranches: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   repoRuntimeDetection: Maybe<RepoRuntimeDetection>;
   repos: Maybe<Array<Maybe<Repo>>>;
+  routerAvailable: Maybe<Scalars['Boolean']['output']>;
+  routerOverview: Maybe<RouterOverview>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
   serverActions: Array<ActionDecision>;
@@ -3025,6 +3053,16 @@ export type QueryReposArgs = {
 };
 
 
+export type QueryRouterAvailableArgs = {
+  ownerId: Scalars['String']['input'];
+};
+
+
+export type QueryRouterOverviewArgs = {
+  ownerId: Scalars['String']['input'];
+};
+
+
 export type QuerySecretFilesArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -3251,6 +3289,42 @@ export type ResourceLimits = {
   keyValues: Maybe<ResourceCap>;
   postgres: Maybe<ResourceCap>;
   services: Maybe<ResourceCap>;
+};
+
+export type RouterKey = {
+  __typename: 'RouterKey';
+  accessKey: Scalars['String']['output'];
+  createdAt: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  options: Maybe<RouterOptions>;
+};
+
+export type RouterOptions = {
+  __typename: 'RouterOptions';
+  allowCredentials: Scalars['Boolean']['output'];
+  allowHeaders: Scalars['String']['output'];
+  allowMethods: Scalars['String']['output'];
+  allowOrigin: Scalars['String']['output'];
+};
+
+export type RouterOverview = {
+  __typename: 'RouterOverview';
+  keys: Array<RouterKey>;
+  quota: Maybe<RouterQuota>;
+};
+
+export type RouterQuota = {
+  __typename: 'RouterQuota';
+  observedAt: Scalars['String']['output'];
+  windows: Array<RouterWindow>;
+};
+
+export type RouterWindow = {
+  __typename: 'RouterWindow';
+  kind: Scalars['String']['output'];
+  resetsAt: Scalars['String']['output'];
+  utilizationBps: Scalars['Float']['output'];
 };
 
 export type SshKey = {

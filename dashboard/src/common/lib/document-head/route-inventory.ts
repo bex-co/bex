@@ -19,6 +19,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
 > = {
   content: [
     "agents.tsx",
+    "router.tsx",
     // MUST keep the trailing-underscore (`agents_`) flat form: `agents.tsx` is a
     // content page with no <Outlet/>, so a nested `agents.$agentSessionId` child
     // would render the list at /agents/{id} instead of the detail page. The

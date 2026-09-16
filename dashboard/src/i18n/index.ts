@@ -1,3 +1,4 @@
+import routerMessages from "@/features/router/locales/en";
 import enCommon from "@/common/locales/en";
 import enAuth from "@/features/auth/locales/en";
 import enLogs from "@/features/logs/locales/en";
@@ -57,6 +58,7 @@ export function extractMessages(
  */
 export const en: Record<string, string> = {
   ...extractMessages(enCommon),
+  ...extractMessages(routerMessages),
   ...extractMessages(enAuth),
   ...extractMessages(enLogs),
   ...extractMessages(enMetrics),

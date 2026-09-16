@@ -1,3 +1,4 @@
+import routerMessages from "@/features/router/locales/zh";
 import zhCommon from "@/common/locales/zh";
 import zhAuth from "@/features/auth/locales/zh";
 import zhLogs from "@/features/logs/locales/zh";
@@ -39,6 +40,7 @@ import { extractMessages } from "./index";
  */
 const zh: Record<string, string> = {
   ...extractMessages(zhCommon),
+  ...extractMessages(routerMessages),
   ...extractMessages(zhAuth),
   ...extractMessages(zhLogs),
   ...extractMessages(zhMetrics),

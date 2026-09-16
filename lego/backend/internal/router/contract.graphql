@@ -1,0 +1,27 @@
+# Public subset of the headless Router companion's GraphQL interface.
+# Each request carries X-Bex-Identity-Assertion: HS256, iss=bexbe,
+# aud=backend-v2, sub=Kratos identity, workspace=workspace:tea-..., verified
+# email, workspace_role, iat, exp=iat+60, and a unique single-use jti.
+# myWorkspaces MUST return only the workspace bound to that assertion.
+# Every read/write MUST enforce the assertion's mapped workspace membership.
+# Bex's dashboard calls the bex API; it never calls this interface directly.
+scalar DateTime
+
+type Query {
+  myWorkspaces: [Workspace!]!
+  workspaceQuotaStatus(workspaceId: String!): WorkspaceQuotaStatus
+  accessKeys(workspaceId: String!): AccessKeyConnection!
+}
+type Mutation {
+  createAccessKey(workspaceId: String!, name: String!): Boolean!
+  updateAccessKey(accessKeyId: String!, name: String, allowOrigin: String, allowMethods: String, allowHeaders: String, allowCredentials: Boolean): Boolean!
+  deleteAccessKey(accessKey: String!): Boolean!
+}
+type Workspace { id: String! }
+type WorkspaceQuotaStatus { observedAt: DateTime!, windows: [UsageWindowStatus!]! }
+enum UsageWindowKind { FIVE_HOUR WEEKLY MONTHLY }
+type UsageWindowStatus { kind: UsageWindowKind!, utilizationBps: Int!, resetsAt: DateTime! }
+type AccessKeyConnection { edges: [AccessKeyEdge!]! }
+type AccessKeyEdge { node: AccessKey! }
+type AccessKey { id: String!, name: String!, accessKey: String!, createdAt: DateTime!, options: AccessKeyOptions }
+type AccessKeyOptions { allowOrigin: String, allowMethods: String, allowHeaders: String, allowCredentials: Boolean }
