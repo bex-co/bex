@@ -48,11 +48,13 @@ Parse `$ARGUMENTS`:
 
    `browser_run_code_unsafe` **echoes its own code back in the tool result**, so nothing secret may appear in the snippet — that is exactly why the cookies arrive over a URL instead of as a literal. Its code also runs in a bare `vm` context whose only globals are `page` and `__end__`: there is no `require`, no `process`, no `import`, so a snippet cannot read `.env` itself. Do not try.
 
-3. Alternative when the MCP server was started with `--caps=storage` (adds `browser_storage_state` / `browser_set_storage_state`): run `bash scripts/qa-login.sh` with no flag to write a 0600 state file under `.playwright-mcp/`, then `browser_set_storage_state` with its absolute path, and delete the file when the hunt ends — it holds a live session cookie. Check whether those tools exist before planning around them; they are opt-in and a `.mcp.json` change only takes effect in a new session.
+3. Alternative when the MCP server was started with `--caps=storage` (adds `browser_storage_state` / `browser_set_storage_state`): run `bash scripts/qa-login.sh` with no flag to write a 0600 state file under `.playwright-mcp/`, then `browser_set_storage_state` with its absolute path. Check whether those tools exist before planning around them; they are opt-in and a `.mcp.json` change only takes effect in a new session.
 
 4. Verify the session: the URL is no longer `/auth/login` and the workspace switcher renders. Script exit 2 (`QA_EMAIL/QA_PASSWORD` missing or empty) is the one case to hand back to the user — tell them to fill `.env`; never ask them for the password in chat.
 
 5. Note which workspace and plan you landed in, and its pre-existing resources. Everything you create in Phase 2 lives in **this** workspace only.
+
+Both login modes also install a 0600 Netscape cookie jar at `.playwright-mcp/qa-session.jar` (gitignored). That jar is the Phase 8 logout handle — do not put its contents in the transcript. The login script's EXIT trap only removes its temp dir; it does **not** revoke the Kratos session (the browser still needs it).
 
 ## Phase 2 — Sweep the hosting features like a real user
 
@@ -183,10 +185,21 @@ Invoke `/ship` so the newly scheduled work lands on `main` and is visible to who
 
 ## Phase 8 — Report
 
+Before writing the report, **revoke this run's Kratos session** (and only this run's). The Active Sessions card is useless when hunts leave dozens of `curl/…` rows behind (`w4/085`).
+
+```bash
+bash scripts/qa-login.sh --logout   # uses .playwright-mcp/qa-storage-state.json or qa-session.jar
+rm -f .playwright-mcp/qa-storage-state.json .playwright-mcp/qa-session.jar
+```
+
+`--logout` completes Kratos's self-service browser logout against the same `$KRATOS_PUB` the login used. Do **not** use the dashboard's bulk "Sign out other sessions" control — that would also drop the operator's real browser sessions. Do not bulk-revoke historical `curl/…` rows from prior hunts; that is the operator's call. If `--logout` fails, say so loudly in the cleanup section (the session stays a live credential until Kratos's 168h idle window expires).
+
+Then report:
+
 - Journeys exercised, and which were skipped and why (plan-gated, unsafe on prod, out of scope).
 - Findings by severity, each with root cause `file:line` and the proposed fix.
 - What was filed and where (`w6/mNN` or `w6/NNN.md`), what was deduped away and against what, and what was rejected as an anti-goal / non-goal / deploy lag.
-- Cleanup status: every `qa-` resource deleted, or exactly what is still live.
+- Cleanup status: every `qa-` resource deleted (or exactly what is still live), **and** whether this run's Kratos session was revoked.
 - The shipped HEAD.
 
 ## Non-negotiables
