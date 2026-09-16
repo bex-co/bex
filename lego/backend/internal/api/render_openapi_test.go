@@ -709,3 +709,81 @@ func TestRenderRequestValidatorAdmitsRefreshedPlanSpellings(t *testing.T) {
 		}
 	}
 }
+
+// TestRenderRequestValidatorNamesParameterConstraints (w5/063): schema
+// violations for query parameters must name the bound or enum from the pin,
+// not the bare `invalid query parameter "x"` that hid ParseEnum's vocabulary.
+func TestRenderRequestValidatorNamesParameterConstraints(t *testing.T) {
+	mux := http.NewServeMux()
+	for _, pattern := range []string{
+		"GET /v1/logs",
+		"GET /v1/services",
+		"GET /v1/postgres",
+	} {
+		mux.HandleFunc(pattern, func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
+	}
+	h, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		path string
+		want []string // every substring must appear; none of the "bare" message
+	}{
+		{
+			path: "/v1/logs?resource=srv-x&limit=0",
+			want: []string{"limit", "1", "100"},
+		},
+		{
+			path: "/v1/logs?resource=srv-x&limit=150",
+			want: []string{"limit", "1", "100"},
+		},
+		{
+			path: "/v1/logs?resource=srv-x&direction=sideways",
+			want: []string{"direction", "forward", "backward"},
+		},
+		{
+			path: "/v1/services?limit=500",
+			want: []string{"limit", "1", "100"},
+		},
+		{
+			path: "/v1/postgres?suspended=bogus",
+			want: []string{"suspended", "not_suspended"},
+		},
+	}
+	for _, tc := range cases {
+		w := requestOpenAPITest(t, h, http.MethodGet, tc.path, "", "")
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("%s = %d, want 400: %s", tc.path, w.Code, w.Body.String())
+		}
+		body := w.Body.String()
+		if strings.Contains(body, `invalid query parameter`) {
+			t.Fatalf("%s still uses the bare invalid-query message: %s", tc.path, body)
+		}
+		for _, s := range tc.want {
+			if !strings.Contains(body, s) {
+				t.Fatalf("%s body %q missing %q", tc.path, body, s)
+			}
+		}
+	}
+
+	// Distinct violations of opposite bounds must not collapse to one opaque string.
+	lo := requestOpenAPITest(t, h, http.MethodGet, "/v1/logs?resource=srv-x&limit=0", "", "")
+	hi := requestOpenAPITest(t, h, http.MethodGet, "/v1/logs?resource=srv-x&limit=150", "", "")
+	if lo.Body.String() == hi.Body.String() {
+		// Both may still say "between 1 and 100" — that's fine and distinct from
+		// the old bare message. Require at least that they name the constraint.
+		if !strings.Contains(lo.Body.String(), "between") {
+			t.Fatalf("limit=0 and limit=150 both opaque: %s", lo.Body.String())
+		}
+	}
+
+	// Unsupported (undeclared) params keep their own wording (w5/060).
+	w := requestOpenAPITest(t, h, http.MethodGet, "/v1/logs?resource=srv-x&notARealParam=1", "", "")
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "unsupported query parameter") {
+		t.Fatalf("undeclared param = %d %s, want unsupported query parameter", w.Code, w.Body.String())
+	}
+}
