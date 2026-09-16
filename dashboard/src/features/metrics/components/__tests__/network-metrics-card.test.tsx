@@ -428,6 +428,55 @@ describe("NetworkMetricsCard", () => {
     expect(screen.getByText(/used this month/)).toBeInTheDocument();
   });
 
+  // w4/090: unknown (query failed) must not look like none (absent figure).
+  it("renders an error for a failed month-to-date bandwidth query — never silently omits the figure", () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+    mockUseMonthToDateBandwidth.mockReturnValue({
+      egressBandwidthMB: null,
+      degradedSources: [],
+      loading: false,
+      error: new Error("RATE_LIMITED"),
+    });
+
+    renderCard();
+
+    // role="alert" has no accessible name from its text (ARIA); match content.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /Couldn't load this month's bandwidth/,
+    );
+    expect(screen.queryByText(/used this month/)).not.toBeInTheDocument();
+  });
+
+  it("still renders a known-zero month-to-date figure, never the error state", () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+    mockUseMonthToDateBandwidth.mockReturnValue({
+      egressBandwidthMB: 0,
+      degradedSources: [],
+      loading: false,
+      error: undefined,
+    });
+
+    renderCard();
+
+    expect(screen.getByText(/used this month/)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("does not flash the month-to-date error while the first result is still settling", () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+    mockUseMonthToDateBandwidth.mockReturnValue({
+      egressBandwidthMB: null,
+      degradedSources: [],
+      loading: true,
+      error: undefined,
+    });
+
+    renderCard();
+
+    expect(screen.queryByText(/used this month/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   // The w1/m50 three-state contract: data with a degradation annotation,
   // a real query error, and (elsewhere above) the healthy empty window —
   // never a gate failure masquerading as "No data in range".

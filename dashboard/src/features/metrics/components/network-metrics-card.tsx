@@ -372,7 +372,14 @@ export function NetworkMetricsCard({
             markersServiceId={resource}
           />
         </MetricSection>
-        {monthToDate.egressBandwidthMB != null && (
+        {/*
+          Month-to-date figure (w4/090): three states, never conflated —
+          known value (incl. 0), explicit error when the query failed with no
+          value, silence while the first result is still settling. The chart
+          half above already uses MetricSection's shared error branch (w9/m86);
+          this text figure was the one remaining nullity-only gate.
+        */}
+        {monthToDate.egressBandwidthMB != null ? (
           <p
             className="text-sm text-muted-foreground"
             title={
@@ -388,7 +395,11 @@ export function NetworkMetricsCard({
             })}
             {monthToDate.degradedSources.length > 0 ? " *" : null}
           </p>
-        )}
+        ) : monthToDate.error && !monthToDate.loading ? (
+          <p className="text-destructive text-sm" role="alert">
+            {t("metrics.monthToDateBandwidthError")}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
