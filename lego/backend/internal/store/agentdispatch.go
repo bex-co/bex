@@ -97,7 +97,14 @@ func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now
 			bound = true
 			var previous string
 			if err := tx.QueryRow(ctx, `SELECT previous_sandbox_id FROM agent_session_dispatches WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn).Scan(&previous); err != nil {
-				return err
+				// No dispatch row: the binding replica won the race and already
+				// removed the intent, so there is no predecessor to tombstone.
+				// That is the bound contract below (ErrNotFound for the loser),
+				// not a query failure — returning pgx.ErrNoRows raw skipped it.
+				if !errors.Is(err, pgx.ErrNoRows) {
+					return err
+				}
+				return nil
 			}
 			if previous != "" {
 				_, err := tx.Exec(ctx, `UPDATE agent_session_dispatches SET abandoned=true, next_check_at=$3 WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn, now)
