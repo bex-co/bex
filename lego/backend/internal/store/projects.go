@@ -33,6 +33,7 @@ type Project struct {
 	TenantID  string    `json:"tenantId"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (s *PGStore) CreateProject(ctx context.Context, tenantID, name string) (Project, error) {
@@ -42,8 +43,8 @@ func (s *PGStore) CreateProject(ctx context.Context, tenantID, name string) (Pro
 func (s *PGStore) GetProject(ctx context.Context, id string) (Project, error) {
 	var p Project
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, name, created_at FROM projects WHERE id = $1`, id,
-	).Scan(&p.ID, &p.TenantID, &p.Name, &p.CreatedAt)
+		`SELECT id, tenant_id, name, created_at, updated_at FROM projects WHERE id = $1`, id,
+	).Scan(&p.ID, &p.TenantID, &p.Name, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return Project{}, classify("project", err)
 	}
@@ -196,18 +197,42 @@ func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID st
 				projectID, tenantID); err != nil {
 				return err
 			}
-			if len(serviceIDs) == 0 {
-				return nil
+			if len(serviceIDs) > 0 {
+				if _, err := tx.Exec(ctx,
+					`UPDATE apps SET project_id = $1, updated_at = now()
+					 WHERE (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3`,
+					projectID, serviceIDs, tenantID); err != nil {
+					return err
+				}
 			}
-			_, err := tx.Exec(ctx,
-				`UPDATE apps SET project_id = $1, updated_at = now()
-				 WHERE (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3`,
-				projectID, serviceIDs, tenantID)
-			return err
+			// Membership changes are project modifications: advance the project
+			// row's updated_at (apps.updated_at alone is not project.updatedAt).
+			tag, err := tx.Exec(ctx, `UPDATE projects SET updated_at = now() WHERE id = $1`, projectID)
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() == 0 {
+				return fmt.Errorf("project: %w", ErrNotFound)
+			}
+			return nil
 		})
 		return err
 	})
 	return changes, err
+}
+
+// TouchProject advances projects.updated_at. Link verbs that only re-label
+// Database/KeyValue CRs still count as a project modification for Render's
+// project.updatedAt (w4/m109).
+func (s *PGStore) TouchProject(ctx context.Context, id string) error {
+	tag, err := s.Pool.Exec(ctx, `UPDATE projects SET updated_at = now() WHERE id = $1`, id)
+	if err != nil {
+		return classify("project", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("project: %w", ErrNotFound)
+	}
+	return nil
 }
 
 // ListProjectServices returns the public ids of all services in the project.

@@ -30,6 +30,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -98,6 +99,9 @@ func TestProjectWritePathsEmitRenderShape(t *testing.T) {
 		Store:     st,
 		Databases: newFakeResourceIndex("tea-1"),
 		KeyValues: newFakeResourceIndex("tea-1"),
+		Owners: fixedOwnerResolver{"tea-1": resourcemeta.Owner{
+			ID: "tea-1", Name: "Acme", Email: "a@acme.test", Type: "team",
+		}},
 	}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
@@ -139,7 +143,13 @@ func TestWritePathsResolveEnvironmentMembership(t *testing.T) {
 	st := envListerStore{fakeProjectStore: fake, envs: map[string][]store.Environment{
 		"prj-1": {{ID: "env-1", ProjectID: "prj-1", TenantID: "tea-1", Name: "production"}},
 	}}
-	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
+	svc := &Service{
+		Base:  &core.Base{Authz: allowChecker{}},
+		Store: st,
+		Owners: fixedOwnerResolver{"tea-1": resourcemeta.Owner{
+			ID: "tea-1", Name: "Acme", Email: "a@acme.test", Type: "team",
+		}},
+	}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
@@ -156,8 +166,8 @@ func TestWritePathsResolveEnvironmentMembership(t *testing.T) {
 	if !slices.Equal(got.EnvironmentIDs, []string{"env-1"}) {
 		t.Fatalf("rename environmentIds = %v, want [env-1] — the write path must resolve environment membership like a read", got.EnvironmentIDs)
 	}
-	if got.Owner.ID != "tea-1" || got.Owner.Type != "team" || got.Name != "renamed" {
-		t.Fatalf("rename response = %+v, want Render shape with owner tea-1 and new name", got)
+	if got.Owner == nil || got.Owner.ID != "tea-1" || got.Owner.Name != "Acme" || got.Owner.Type != "team" || got.Name != "renamed" {
+		t.Fatalf("rename response = %+v, want Render shape with populated owner tea-1 and new name", got)
 	}
 }
 

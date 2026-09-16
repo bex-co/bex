@@ -1,18 +1,18 @@
 # w4 · m109 — Projects are the one resource family the Render-metadata adoption skipped: `updatedAt` is frozen and `owner` is born blank
 
-**Worker:** worker4 **Goal:** a project's REST object reports when it was actually last modified and who actually owns it, the way every other bex resource already does. **Status:** todo
+**Worker:** worker4 **Goal:** a project's REST object reports when it was actually last modified and who actually owns it, the way every other bex resource already does. **Status:** done — code+tests green (`go test ./internal/projects/ ./internal/api/ ./internal/resourcemeta/`); live production probe awaits deploy (no-ship constraint)
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on                 |
 | ---- | ------------------------------------------------------------------------------ | --- | -------------------------- |
-| t001 | `updatedAt` reports the project's real last-modified time                       | 50m | —                          |
-| t002 | The project's embedded `owner` carries the owner's name and email               | 50m | —                          |
-| t003 | Project conformance asserts field _values_, not just key sets                   | 40m | w4/m109/t001, w4/m109/t002 |
-| t004 | Render parity: projects across REST, GraphQL, MCP and the dashboard             | 25m | w4/m109/t003               |
-| t005 | Simplify the code this milestone touched                                        | 20m | w4/m109/t004               |
-| t006 | Test coverage for the shipped behavior                                          | 40m | w4/m109/t004               |
-| t007 | Closeout                                                                        | 15m | w4/m109/t005, w4/m109/t006 |
+| t001 | `updatedAt` reports the project's real last-modified time — **DONE**            | 50m | —                          |
+| t002 | The project's embedded `owner` carries the owner's name and email — **DONE**    | 50m | —                          |
+| t003 | Project conformance asserts field _values_, not just key sets — **DONE**        | 40m | w4/m109/t001, w4/m109/t002 |
+| t004 | Render parity: projects across REST, GraphQL, MCP and the dashboard — **DONE**  | 25m | w4/m109/t003               |
+| t005 | Simplify the code this milestone touched — **DONE**                             | 20m | w4/m109/t004               |
+| t006 | Test coverage for the shipped behavior — **DONE**                               | 40m | w4/m109/t004               |
+| t007 | Closeout — **DONE**                                                             | 15m | w4/m109/t005, w4/m109/t006 |
 
 ## Definition of done
 
