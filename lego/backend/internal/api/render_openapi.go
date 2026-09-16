@@ -135,6 +135,10 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	"delete-key-value":  {"confirm": {}},
 	"suspend-key-value": {"confirm": {}},
 	"resume-key-value":  {"confirm": {}},
+	// Render's list-key-value omits ?suspended= (postgres has it). bex keeps the
+	// handler filter as a deliberate extension so REST matches the documented
+	// w2/m53 list shape (w5/060).
+	"list-key-value": {"suspended": {}},
 
 	"create-postgres":  {"dryRun": {}},
 	"update-postgres":  {"dryRun": {}},
