@@ -26,6 +26,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"sort"
 	"strconv"
 	"strings"
@@ -347,6 +348,50 @@ func TestAgentAttachReplaysThenSplicesLiveAndTees(t *testing.T) {
 	}
 }
 
+// The audit row must name whoever actually connected. This endpoint is HTTP
+// behind the same Traefik pod network as the web shell, so a raw RemoteAddr
+// records Traefik's pod IP for every session — the field then answers the only
+// question it exists to answer with the same value every time (w1/107). An
+// untrusted peer keeps its own address, so a client cannot forge the row by
+// sending the header itself.
+func TestAgentAttachAuditRecordsTheRealClientOnlyFromATrustedPeer(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		trusted bool
+		want    string
+	}{
+		{name: "trusted peer", trusted: true, want: "203.0.113.9"},
+		{name: "untrusted peer", trusted: false, want: "127.0.0.1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			secret := []byte("shell-ticket-secret")
+			session := "ags-0000000000000000000a9"
+			st := newFakeAttachStore()
+			gw := newAttachGateway(st, fixedPodIP{err: fmt.Errorf("terminal")}, secret, 8787)
+			if tc.trusted {
+				gw.TrustedProxies = []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}
+			}
+			srv := httptest.NewServer(gw.Handler())
+			defer srv.Close()
+
+			req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+			req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+			req.Header.Set("X-Forwarded-For", "198.51.100.7, 203.0.113.9")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, _ = io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+
+			started := st.StartedSessions()
+			if len(started) != 1 || !strings.HasPrefix(started[0].RemoteAddress, tc.want) {
+				t.Fatalf("audit remote address = %+v, want prefix %q", started, tc.want)
+			}
+		})
+	}
+}
+
 func TestAgentAttachRedeemRecordsContentFreeSessionAudit(t *testing.T) {
 	secret := []byte("shell-ticket-secret")
 	session := "ags-0000000000000000000a9"
@@ -370,7 +415,7 @@ func TestAgentAttachRedeemRecordsContentFreeSessionAudit(t *testing.T) {
 	}
 	audit := started[0]
 	if audit.Subject != "alice" || audit.WorkspaceID != "tea-a" || audit.ServiceID != session ||
-		audit.InstanceID != "sandbox-1-0" || audit.RemoteAddress == "" {
+		audit.InstanceID != "sandbox-1-0" || !strings.HasPrefix(audit.RemoteAddress, "127.0.0.1") {
 		t.Fatalf("audit = %+v, want subject/workspace/session/pod/remote metadata only", audit)
 	}
 	st.mu.Lock()
