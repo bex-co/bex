@@ -182,6 +182,11 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
   },
+  "metrics.monthToDateBandwidthError": {
+    message: "Couldn't load this month's bandwidth — try refreshing",
+    description:
+      "Month-to-date bandwidth footer when the query failed with no value — distinct from a known zero and from the chart's bandwidthError (w4/090)",
+  },
   "metrics.bandwidthDegraded": {
     message: "Partial data",
     description:
