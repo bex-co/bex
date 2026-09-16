@@ -178,7 +178,7 @@ Invoke `/ship` so the newly scheduled work lands on `main` and is visible to who
 - Scope the commit to the `.pm/` files this run created. Anything that was already dirty in Phase 0 stays out — surface it to the user instead of sweeping it in.
 - `.playwright-mcp/` is gitignored: evidence stays local and is referenced by path from the milestone, exactly as `w9/m89` does.
 - Never commit `.env` or `*.kubeconfig`.
-- This ships the **filing**, not the fixes. Implementing the tasks is `/loop-worker w6` or ordinary work afterwards — say so in the report.
+- This ships the **filing**, not the fixes. Implementing the tasks is `/loopx w6` or ordinary work afterwards — say so in the report.
 - `DRY_RUN=1` skips this phase entirely.
 
 ## Phase 8 — Report
