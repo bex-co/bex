@@ -15,6 +15,56 @@ This runbook enables Expo Push Service delivery for the bex mobile companion. Pu
 
 Follow Expo's [push setup](https://docs.expo.dev/push-notifications/push-notifications-setup/) for the platform credentials. Do not put the Expo access token in `EXPO_PUBLIC_*`, `app.json`, Git, an issue, shell history, or a mobile binary. The EAS project ID is public configuration; the access token is a server credential.
 
+### Credential inventory (audited 2026-09-11)
+
+Public identifiers only; every secret lives in EAS or the cluster Secret.
+
+| Credential | Where it lives | State |
+| --- | --- | --- |
+| EAS project `@puncsky/bex-mobile` | `app.json` `extra.eas.projectId` + all three `eas.json` profiles | `dba70c4b-4aae-4bf9-a461-a19bcae69b3a` |
+| Apple Team | provisioning profile in the shipped `.ipa` | `PTLM7BZQMM` (Stargately, Inc.) |
+| iOS push entitlement | App ID capability → `aps-environment` in the profile | `production` — present |
+| APNs auth key (`.p8`) | EAS iOS credentials | key `K988RCCWG7` — present |
+| FCM v1 service account | EAS Android credentials | `firebase-adminsdk-fbsvc@mobile-bex.iam.gserviceaccount.com` — present |
+| Android upload keystore | EAS Android build credentials | SHA-256 `38:3B:…:DC:71` |
+| Expo access token | `bex-system/bex-push` (prod) | installed, valid |
+| Expo **enhanced push security** | Expo account/project setting | **off** — token is not yet enforced |
+| Play App Signing key | Play Console → Setup → App integrity | **not yet recorded** (see below) |
+| Association repo vars | GitHub repo **Variables** (not secrets) | **both set 2026-09-16** — associations ship configured from the next dashboard build (see below) |
+
+Read back the EAS-side rows at any time with `eas credentials -p ios` / `-p android` (interactive).
+
+### App association files
+
+`dashboard/public/.well-known/apple-app-site-association` and `assetlinks.json` are **generated build artifacts, not hand-maintained files.** `dashboard/package.json`'s `build` script runs `node scripts/generate-mobile-associations.mjs` before every `vite build`, so anything edited into them by hand is overwritten on the next build and never reaches production. Editing them is always the wrong move.
+
+They are produced from two GitHub Actions **repository variables**, already wired through `.github/workflows/deploy.yml` → `dashboard/Dockerfile` build args:
+
+| Variable | Value to set |
+| --- | --- |
+| `BEX_MOBILE_APPLE_TEAM_ID` | `PTLM7BZQMM` |
+| `BEX_MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS` | comma-separated SHA-256 fingerprints |
+
+The generator refuses a one-platform association: set both or neither. Unset emits valid, empty, honestly-disabled documents. Both were set on 2026-09-16, so the next dashboard build publishes configured associations. To change them:
+
+```sh
+gh variable set BEX_MOBILE_APPLE_TEAM_ID --body PTLM7BZQMM
+gh variable set BEX_MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS --body '<upload-sha256>,<play-sha256>'
+```
+
+Preview the exact artifacts without a deploy:
+
+```sh
+cd dashboard && BEX_MOBILE_APPLE_TEAM_ID=… BEX_MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS=… \
+  BEX_MOBILE_ASSOCIATION_OUTPUT_DIR=/tmp/assoc node scripts/generate-mobile-associations.mjs
+```
+
+The documents claim exactly one path, `/invite`, matching `app.json`'s Android intent filter. The OAuth callback is deliberately **not** claimed — see [ADR012](../ADR012-auth.md): the mobile redirect is a private-use custom scheme, and claiming `/oauth2redirect` points iOS at a route the dashboard does not serve. A regression test enforces this.
+
+The fingerprints variable takes a **list**, which is what the Play re-signing problem needs. The EAS upload keystore fingerprint alone only covers internal-distribution APKs; Google re-signs Play uploads, so a Play-delivered build will not verify against it. **Before any Play-track install is used for qualification**, add the Play App Signing SHA-256 from Play Console → Setup → App integrity → App signing key certificate alongside it.
+
+Nitro serves both documents as `application/json` — `dashboard/server/plugins/mobile-association-content-type.ts` overrides the `text/plain` that Nitro's static handler otherwise assigns to Apple's intentionally extensionless filename. After deploying, verify with Apple's CDN (`https://app-site-association.cdn-apple.com/a/v1/dashboard.bex.co`) and Google's [Statement List Generator and Tester](https://developers.google.com/digital-asset-links/tools/generator), then reinstall the app — both platforms fetch the statement at install time.
+
 ## 2. Install or rotate the server credential
 
 Put the dedicated token in the repo-local, gitignored `.env`, or export it from a secret manager into a history-disabled shell:

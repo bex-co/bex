@@ -12,7 +12,6 @@ import {
   APPLE_TEAM_ID_ENV,
   INVITE_PATH,
   IOS_BUNDLE_ID,
-  OAUTH_REDIRECT_PATH,
   OUTPUT_DIR_ENV,
   buildAssociations,
 } from "../generate-mobile-associations.mjs";
@@ -62,10 +61,6 @@ describe("generate-mobile-associations", () => {
             "/": INVITE_PATH,
             comment: "Open only bex workspace invitation links.",
           },
-          {
-            "/": OAUTH_REDIRECT_PATH,
-            comment: "Open only the OAuth authorization callback.",
-          },
         ],
       },
     ]);
@@ -81,6 +76,22 @@ describe("generate-mobile-associations", () => {
     ]);
     expect(JSON.stringify(result)).not.toContain("pathPrefix");
     expect(JSON.stringify(result)).not.toContain('"/":"/*"');
+  });
+
+  // ADR012: the mobile OAuth callback is a private-use custom scheme. Claiming
+  // /oauth2redirect as a universal link points iOS at a route the dashboard
+  // does not serve, which is how 9081fbdb broke every fresh login.
+  it("never claims the OAuth callback path as a universal link", () => {
+    const result = buildAssociations({
+      appleTeamId: "A1B2C3D4E5",
+      androidFingerprints: FINGERPRINT,
+    });
+
+    const claimedPaths = result.apple.applinks.details.flatMap((detail) =>
+      detail.components.map((component) => component["/"]),
+    );
+    expect(claimedPaths).toEqual([INVITE_PATH]);
+    expect(JSON.stringify(result)).not.toContain("oauth2redirect");
   });
 
   it("rejects partial or malformed signing configuration", () => {
@@ -127,7 +138,6 @@ describe("generate-mobile-associations", () => {
     expect(apple.applinks.details[0].appID).toBe(`A1B2C3D4E5.${IOS_BUNDLE_ID}`);
     expect(apple.applinks.details[0].components).toEqual([
       { "/": INVITE_PATH, comment: expect.any(String) },
-      { "/": OAUTH_REDIRECT_PATH, comment: expect.any(String) },
     ]);
     expect(android[0].target).toEqual({
       namespace: "android_app",
