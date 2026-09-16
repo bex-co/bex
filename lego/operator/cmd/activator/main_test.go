@@ -651,3 +651,161 @@ func TestCustomPageCacheBoundsConcurrentOriginFetches(t *testing.T) {
 		t.Fatalf("max concurrent origin fetches = %d; the flood never overlapped, test proves nothing", got)
 	}
 }
+
+// suspendedApp is a manually suspended web App parked at zero replicas, keeping
+// its public host and certificate — the w2/m98 shape.
+func suspendedApp() (*appv1alpha1.App, *appsv1.Deployment) {
+	zero := int32(0)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "suspended", Namespace: "bex-system"},
+		Spec:       appv1alpha1.AppSpec{Suspended: true},
+		Status:     appv1alpha1.AppStatus{URL: "https://suspended.onbex.co"},
+	}
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "suspended", Namespace: "bex-system"},
+		Spec:       appsv1.DeploymentSpec{Replicas: &zero},
+	}
+	return app, dep
+}
+
+// countingClient records every Patch without blocking, so a test can assert an
+// exact count of zero.
+type countingClient struct {
+	client.Client
+	patches atomic.Int64
+}
+
+func (c *countingClient) Patch(
+	ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption,
+) error {
+	c.patches.Add(1)
+	return c.Client.Patch(ctx, obj, patch, opts...)
+}
+
+// TestSuspendedHandlerNegotiatesContentAndNeverWakes is the w2/m98 contract: a
+// suspended service's public host answers 503 with a bex body in the format the
+// client asked for and a Retry-After — and the request issues no patch at all,
+// so the App stays at zero replicas and last-active never advances. Pre-fix the
+// handler fell straight through to wakeApp, which would have un-suspended the
+// service on the next reconcile.
+func TestSuspendedHandlerNegotiatesContentAndNeverWakes(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		accept   string
+		wantType string
+		wantBody string
+	}{
+		{
+			name:     "browser gets the suspended page",
+			accept:   "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+			wantType: "text/html; charset=utf-8",
+			wantBody: "This service is suspended.",
+		},
+		{
+			name:     "API client gets machine-readable JSON",
+			accept:   "application/json",
+			wantType: "application/json",
+			wantBody: `{"error":"service suspended"}`,
+		},
+		{
+			name:     "no Accept gets bex plain text, not Traefik's",
+			accept:   "",
+			wantType: "text/plain; charset=utf-8",
+			wantBody: "This service is suspended.",
+		},
+		{
+			name:     "wildcard gets bex plain text",
+			accept:   "*/*",
+			wantType: "text/plain; charset=utf-8",
+			wantBody: "This service is suspended.",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, dep := suspendedApp()
+			cache, base := primedHostCache(t, app, dep)
+			cl := &countingClient{Client: base}
+
+			req := httptest.NewRequest(http.MethodGet, "https://suspended.onbex.co/anything", nil)
+			if tc.accept != "" {
+				req.Header.Set("Accept", tc.accept)
+			}
+			rr := httptest.NewRecorder()
+			newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusServiceUnavailable {
+				t.Fatalf("status = %d, want 503", rr.Code)
+			}
+			if got := rr.Header().Get("Retry-After"); got != suspendedRetryAfter {
+				t.Fatalf("Retry-After = %q, want %q", got, suspendedRetryAfter)
+			}
+			if got := rr.Header().Get("Content-Type"); got != tc.wantType {
+				t.Fatalf("Content-Type = %q, want %q", got, tc.wantType)
+			}
+			if got := rr.Header().Get("Cache-Control"); got != "no-store" {
+				t.Fatalf("Cache-Control = %q, want no-store", got)
+			}
+			if !strings.Contains(rr.Body.String(), tc.wantBody) {
+				t.Fatalf("body = %q, want substring %q", rr.Body.String(), tc.wantBody)
+			}
+			if strings.Contains(rr.Body.String(), "no available server") {
+				t.Fatalf("body still carries Traefik's text: %q", rr.Body.String())
+			}
+
+			if n := cl.patches.Load(); n != 0 {
+				t.Fatalf("suspended request issued %d patches, want 0", n)
+			}
+			var gotDep appsv1.Deployment
+			if err := base.Get(context.Background(), clientKey("suspended"), &gotDep); err != nil {
+				t.Fatal(err)
+			}
+			if gotDep.Spec.Replicas == nil || *gotDep.Spec.Replicas != 0 {
+				t.Fatalf("suspended request scaled the Deployment: replicas=%v", gotDep.Spec.Replicas)
+			}
+			var gotApp appv1alpha1.App
+			if err := base.Get(context.Background(), clientKey("suspended"), &gotApp); err != nil {
+				t.Fatal(err)
+			}
+			if gotApp.Annotations[annotLastActive] != "" {
+				t.Fatalf("suspended request touched %s: %#v", annotLastActive, gotApp.Annotations)
+			}
+		})
+	}
+}
+
+// TestSuspendedHTMLHeadHasNoBody mirrors the wake path's HEAD contract: the
+// suspended page's own reload probe uses HEAD, so it must carry headers only.
+func TestSuspendedHTMLHeadHasNoBody(t *testing.T) {
+	for _, accept := range []string{"text/html", "application/json", ""} {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodHead, "https://suspended.onbex.co/", nil)
+		if accept != "" {
+			req.Header.Set("Accept", accept)
+		}
+		writeSuspendedResponse(rr, req)
+		if rr.Code != http.StatusServiceUnavailable || rr.Body.Len() != 0 {
+			t.Fatalf("HEAD (Accept %q) = %d %q", accept, rr.Code, rr.Body.String())
+		}
+	}
+}
+
+// TestMaintenanceWinsOverSuspended pins the ordering the operator's
+// ingressBackend also uses: an owner who set a maintenance page gets that page
+// even while the service is suspended, and still nothing is woken.
+func TestMaintenanceWinsOverSuspended(t *testing.T) {
+	app, dep := suspendedApp()
+	app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+	cache, base := primedHostCache(t, app, dep)
+	cl := &countingClient{Client: base}
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "https://suspended.onbex.co/", nil)
+	req.Header.Set("Accept", "text/html")
+	newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
+
+	if !strings.Contains(rr.Body.String(), "currently under maintenance") {
+		t.Fatalf("suspended+maintenance served %q, want the maintenance page", rr.Body.String())
+	}
+	if n := cl.patches.Load(); n != 0 {
+		t.Fatalf("maintenance request issued %d patches, want 0", n)
+	}
+}

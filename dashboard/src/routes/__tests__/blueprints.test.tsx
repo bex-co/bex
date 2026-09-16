@@ -126,6 +126,8 @@ function validPreview(
     found: true,
     commitId,
     error: null,
+    reason: null,
+    retryable: false,
     validation: {
       valid: true,
       errors: [],

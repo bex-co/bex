@@ -954,6 +954,10 @@ var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"commitId": gqlutil.StrField(func(p BlueprintPreview) any { return p.CommitID }),
 		"warning":  gqlutil.StrField(func(p BlueprintPreview) any { return p.Warning }),
 		"error":    gqlutil.StrField(func(p BlueprintPreview) any { return p.Error }),
+		// reason is the machine-readable cause the dashboard keys its copy off
+		// (w2/m97); `error` stays a human sentence for API clients.
+		"reason":    gqlutil.StrField(func(p BlueprintPreview) any { return string(p.Reason) }),
+		"retryable": gqlutil.BoolField(func(p BlueprintPreview) any { return RetryableBlueprintFetch(p.Reason) }),
 		"validation": &graphql.Field{Type: blueprintValidationGQLType, Resolve: gqlutil.Field(func(p BlueprintPreview) any {
 			if p.Validation == nil {
 				return nil

@@ -79,6 +79,10 @@ query BlueprintPreview(
     found
     commitId
     error
+    # reason/retryable (w2/m97): the machine-readable cause, so the page picks
+    # its own copy per failure instead of rendering raw backend text.
+    reason
+    retryable
     validation {
       valid
       errors

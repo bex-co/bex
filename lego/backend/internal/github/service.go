@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -1050,6 +1051,23 @@ func (s *Service) blueprintRepoToken(ctx context.Context, workspaceID, repoURL s
 	return owner, repo, token, nil
 }
 
+// ErrBranchNotFound and ErrRepoNotFoundOrNoAccess name which half of a
+// blueprint commit lookup failed. GitHub answers 404 for a missing branch and
+// for a repository the installation cannot see, and the status alone cannot
+// tell them apart — so callers that want to say "check the branch name" rather
+// than "check the repository" need this, and guessing from message text is not
+// a contract (w2/m97 t001).
+//
+// The two are distinguished by the upstream response BODY, which stays
+// internal: it is read here to pick a sentinel and is never interpolated into
+// any error that reaches a client (w6/005). A private repository and a missing
+// repository are deliberately one sentinel — GitHub makes them
+// indistinguishable on purpose, and so must bex.
+var (
+	ErrBranchNotFound         = errors.New("blueprint branch not found")
+	ErrRepoNotFoundOrNoAccess = errors.New("blueprint repository not found or not accessible")
+)
+
 func (s *Service) resolveBlueprintCommit(ctx context.Context, workspaceID, repoURL, branch string) (string, error) {
 	owner, repo, token, err := s.blueprintRepoToken(ctx, workspaceID, repoURL)
 	if err != nil {
@@ -1057,7 +1075,7 @@ func (s *Service) resolveBlueprintCommit(ctx context.Context, workspaceID, repoU
 	}
 	sha, err := s.GitHub.GetRepoCommitSHA(ctx, token, owner, repo, branch)
 	if err != nil {
-		return "", err
+		return "", classifyBlueprintCommitLookup(err)
 	}
 	if !validCommitSHA(sha) {
 		return "", fmt.Errorf("github: branch %q returned an empty or malformed commit id", branch)
@@ -1098,4 +1116,19 @@ func mapGitHubErr(err error) error {
 		return core.ErrBadRequest
 	}
 	return err
+}
+
+// classifyBlueprintCommitLookup labels a branch-info 404 as branch-missing or
+// repo-missing, leaving every other failure exactly as it was. GitHub answers
+// `{"message":"Branch not found"}` when the repository resolved but the ref did
+// not, and a bare `Not Found` when it did not resolve the repository at all.
+func classifyBlueprintCommitLookup(err error) error {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusNotFound {
+		return err
+	}
+	if strings.Contains(strings.ToLower(apiErr.Body), "branch not found") {
+		return fmt.Errorf("%w: %w", ErrBranchNotFound, err)
+	}
+	return fmt.Errorf("%w: %w", ErrRepoNotFoundOrNoAccess, err)
 }

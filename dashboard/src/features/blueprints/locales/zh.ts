@@ -125,6 +125,72 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section fallback error body when the backend returns no message",
   },
+  "blueprints.previewFileNotFoundTitle": {
+    message: "未找到 Blueprint 文件",
+    description: "Preview failure title: the repo and branch resolved, the file did not",
+  },
+  "blueprints.previewFileNotFoundBody": {
+    message: "分支 {branch} 上不存在 {path}。请检查路径，或将该文件提交到该分支。",
+    description: "Preview failure body for file_not_found",
+  },
+  "blueprints.previewBranchNotFoundTitle": {
+    message: "未找到分支",
+    description: "Preview failure title for branch_not_found",
+  },
+  "blueprints.previewBranchNotFoundBody": {
+    message: "该仓库中不存在分支 {branch}。",
+    description: "Preview failure body for branch_not_found",
+  },
+  "blueprints.previewRepoNotFoundTitle": {
+    message: "未找到仓库",
+    description: "Preview failure title for repo_not_found_or_no_access",
+  },
+  "blueprints.previewRepoNotFoundBody": {
+    message:
+      "该仓库不存在，或 bex 的 GitHub 应用无权访问。请检查仓库以及该应用被授予的仓库范围。",
+    description: "Preview failure body for repo_not_found_or_no_access",
+  },
+  "blueprints.previewAccessDeniedTitle": {
+    message: "访问被拒绝",
+    description: "Preview failure title for access_denied",
+  },
+  "blueprints.previewAccessDeniedBody": {
+    message: "bex 的 GitHub 应用无权读取该仓库。请重新检查安装及其授权的仓库。",
+    description: "Preview failure body for access_denied",
+  },
+  "blueprints.previewRateLimitedTitle": {
+    message: "GitHub 正在限流 bex",
+    description: "Preview failure title for rate_limited",
+  },
+  "blueprints.previewRateLimitedBody": {
+    message: "当前对 GitHub 的请求过多，请几分钟后重试。",
+    description: "Preview failure body for rate_limited",
+  },
+  "blueprints.previewAmbiguousTitle": {
+    message: "存在两个 Blueprint 文件",
+    description: "Preview failure title for ambiguous_filename",
+  },
+  "blueprints.previewAmbiguousBody": {
+    message:
+      "该仓库在分支 {branch} 上同时存在 render.yaml 和 bex.yml。请删除其中一个，或在上方显式指定文件。",
+    description: "Preview failure body for ambiguous_filename",
+  },
+  "blueprints.previewUnavailableTitle": {
+    message: "无法连接 GitHub",
+    description: "Preview failure title for unavailable",
+  },
+  "blueprints.previewUnavailableBody": {
+    message: "bex 无法从 GitHub 读取 Blueprint 文件，请几分钟后重试。",
+    description: "Preview failure body for unavailable",
+  },
+  "blueprints.previewInvalidPathExtension": {
+    message: "Blueprint 路径必须是 .yaml 或 .yml 文件。",
+    description: "Inline path-field error for invalid_path, wrong extension",
+  },
+  "blueprints.previewInvalidPathShape": {
+    message: "Blueprint 路径必须是干净的仓库相对路径（不能以斜杠开头，不能包含 ..）。",
+    description: "Inline path-field error for invalid_path, bad shape",
+  },
   "blueprints.previewRetry": {
     message: "重试",
     description: "Review section retry button after a failed manifest fetch",

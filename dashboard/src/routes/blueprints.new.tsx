@@ -143,6 +143,73 @@ export function NewBlueprintPage() {
   );
   const promptKeys = (plan?.syncFalseVars ?? []).filter(Boolean);
 
+  // w2/m97 t002: every fetch failure used to render as "Blueprint file not
+  // found" with the backend's raw text underneath. The backend now classifies,
+  // so the page picks its own title and body per reason and never renders
+  // preview.error verbatim.
+  const failed = preview != null && !preview.found;
+  const invalidPathMessage =
+    failed && preview.reason === "invalid_path"
+      ? // The two approvedBlueprintPath refusals, told apart by which rule the
+        // path breaks — checked here rather than by matching the server's prose.
+        /\.ya?ml$/.test(path.trim())
+        ? t("blueprints.previewInvalidPathShape")
+        : t("blueprints.previewInvalidPathExtension")
+      : null;
+  const failureCopy = (() => {
+    const displayPath = path.trim() || "render.yaml";
+    switch (preview?.reason) {
+      case "branch_not_found":
+        return {
+          title: t("blueprints.previewBranchNotFoundTitle"),
+          body: t("blueprints.previewBranchNotFoundBody", { branch }),
+        };
+      case "repo_not_found_or_no_access":
+        return {
+          title: t("blueprints.previewRepoNotFoundTitle"),
+          body: t("blueprints.previewRepoNotFoundBody"),
+        };
+      case "access_denied":
+        return {
+          title: t("blueprints.previewAccessDeniedTitle"),
+          body: t("blueprints.previewAccessDeniedBody"),
+        };
+      case "rate_limited":
+        return {
+          title: t("blueprints.previewRateLimitedTitle"),
+          body: t("blueprints.previewRateLimitedBody"),
+        };
+      case "ambiguous_filename":
+        return {
+          title: t("blueprints.previewAmbiguousTitle"),
+          body: t("blueprints.previewAmbiguousBody", { branch }),
+        };
+      case "unavailable":
+        return {
+          title: t("blueprints.previewUnavailableTitle"),
+          body: t("blueprints.previewUnavailableBody"),
+        };
+      case "file_not_found":
+        return {
+          title: t("blueprints.previewFileNotFoundTitle"),
+          body: t("blueprints.previewFileNotFoundBody", {
+            path: displayPath,
+            branch,
+          }),
+        };
+      default:
+        // No reason: an older bex-api during a rolling deploy. Keep the
+        // pre-m97 generic panel rather than inventing a cause.
+        return {
+          title: t("blueprints.previewNotFoundTitle"),
+          body: t("blueprints.previewNotFoundBody", {
+            path: displayPath,
+            branch,
+          }),
+        };
+    }
+  })();
+
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -217,7 +284,22 @@ export function NewBlueprintPage() {
                     onChange={(e) => setPath(e.target.value)}
                     placeholder={t("blueprints.createPathPlaceholder")}
                     autoComplete="off"
+                    aria-invalid={invalidPathMessage !== null}
+                    aria-describedby={
+                      invalidPathMessage !== null ? "bp-path-error" : undefined
+                    }
                   />
+                  {invalidPathMessage !== null ? (
+                    // w2/m97 t002: an invalid path is this field's problem, not
+                    // a "Blueprint file not found" panel down the page.
+                    <p
+                      id="bp-path-error"
+                      className="text-destructive text-sm"
+                      role="alert"
+                    >
+                      {invalidPathMessage}
+                    </p>
+                  ) : null}
                   <p className="text-sm text-muted-foreground">
                     {t("blueprints.createPathHint")}
                   </p>
@@ -240,31 +322,26 @@ export function NewBlueprintPage() {
                       path: path || "render.yaml",
                     })}
                   </div>
-                ) : preview && !preview.found ? (
+                ) : preview && !preview.found && invalidPathMessage === null ? (
                   <Alert variant="destructive">
-                    <AlertTitle>
-                      {t("blueprints.previewNotFoundTitle")}
-                    </AlertTitle>
+                    <AlertTitle>{failureCopy.title}</AlertTitle>
                     <AlertDescription className="flex flex-col gap-2">
-                      <span>
-                        {preview.error ||
-                          t("blueprints.previewNotFoundBody", {
-                            path: path || "render.yaml",
-                            branch,
-                          })}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="self-start"
-                        onClick={() => void refetchPreview()}
-                      >
-                        <RefreshCw className="size-3.5" />
-                        {t("blueprints.previewRetry")}
-                      </Button>
+                      <span>{failureCopy.body}</span>
+                      {preview.retryable ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="self-start"
+                          onClick={() => void refetchPreview()}
+                        >
+                          <RefreshCw className="size-3.5" />
+                          {t("blueprints.previewRetry")}
+                        </Button>
+                      ) : null}
                     </AlertDescription>
                   </Alert>
-                ) : preview && preview.validation?.valid !== true ? (
+                ) : preview && !preview.found ? null : preview &&
+                  preview.validation?.valid !== true ? (
                   <Alert variant="destructive">
                     <AlertTitle>{t("blueprints.previewInvalid")}</AlertTitle>
                     <AlertDescription>

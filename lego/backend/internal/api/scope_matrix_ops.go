@@ -573,6 +573,7 @@ var classifiedOps = map[string]string{
 	"REST GET /v1/metrics/replication-lag":                             core.OpClassRead,
 	"REST GET /v1/notification-device-subscriptions":                   core.OpClassRead,
 	"REST GET /v1/notification-settings":                               core.OpClassRead,
+	"REST GET /v1/notification-settings/overrides":                     core.OpClassRead,
 	"REST GET /v1/notification-settings/overrides/services/{id}":       core.OpClassRead,
 	"REST GET /v1/notification-settings/push":                          core.OpClassRead,
 	"REST GET /v1/notification-settings/push/availability":             core.OpClassRead,

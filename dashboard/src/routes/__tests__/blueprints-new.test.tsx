@@ -117,6 +117,8 @@ function validPreview(): BlueprintPreviewResult {
   return {
     found: true,
     commitId: "abc1234",
+    reason: null,
+    retryable: false,
     error: null,
     validation: {
       valid: true,
@@ -214,23 +216,136 @@ describe("NewBlueprintPage", () => {
     );
   });
 
-  it("shows the fetch error with Retry and disables Deploy when the file is missing", async () => {
+  // w2/m97 t002: every fetch failure used to render as "Blueprint file not
+  // found" with the backend's raw sentence underneath, so a wrong branch, a
+  // revoked GitHub app and a rate limit were indistinguishable. The page now
+  // picks its own copy from `reason` and never renders `error` verbatim.
+  it.each([
+    {
+      reason: "branch_not_found" as const,
+      retryable: false,
+      title: "Branch not found",
+      bodyMatch: /Branch main does not exist/,
+    },
+    {
+      reason: "repo_not_found_or_no_access" as const,
+      retryable: false,
+      title: "Repository not found",
+      bodyMatch: /GitHub app cannot access it/,
+    },
+    {
+      reason: "access_denied" as const,
+      retryable: false,
+      title: "Access denied",
+      bodyMatch: /not authorized to read this repository/,
+    },
+    {
+      reason: "rate_limited" as const,
+      retryable: true,
+      title: "GitHub is rate-limiting bex",
+      bodyMatch: /Try again in a few minutes/,
+    },
+    {
+      reason: "ambiguous_filename" as const,
+      retryable: false,
+      title: "Two Blueprint files",
+      bodyMatch: /both render\.yaml and bex\.yml/,
+    },
+    {
+      reason: "unavailable" as const,
+      retryable: true,
+      title: "Could not reach GitHub",
+      bodyMatch: /could not read the Blueprint file/,
+    },
+    {
+      reason: "file_not_found" as const,
+      retryable: false,
+      title: "Blueprint file not found",
+      bodyMatch: /does not exist on branch main/,
+    },
+  ])(
+    "renders its own title and body for $reason, with Retry only when retryable",
+    async ({ reason, retryable, title, bodyMatch }) => {
+      reposState.repos = [repo()];
+      previewState.preview = {
+        found: false,
+        commitId: null,
+        reason,
+        retryable,
+        error: "github: unexpected status 404",
+        validation: null,
+      };
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByText("acme/hello-go"));
+
+      expect(await screen.findByText(title)).toBeInTheDocument();
+      expect(screen.getByText(bodyMatch)).toBeInTheDocument();
+      // The backend sentence is for API clients, never for the page.
+      expect(
+        screen.queryByText(/github: unexpected status/),
+      ).not.toBeInTheDocument();
+
+      const retry = screen.queryByRole("button", { name: /retry/i });
+      if (retryable) {
+        expect(retry).toBeInTheDocument();
+      } else {
+        expect(retry).not.toBeInTheDocument();
+      }
+      expect(
+        screen.getByRole("button", { name: /deploy blueprint/i }),
+      ).toBeDisabled();
+    },
+  );
+
+  // An invalid path is the path field's problem, not a "not found" panel.
+  it("reports invalid_path beside the path field and shows no failure panel", async () => {
     reposState.repos = [repo()];
     previewState.preview = {
       found: false,
       commitId: null,
-      error: "bex.yml not found on main",
+      reason: "invalid_path",
+      retryable: false,
+      error: "Blueprint path must be a .yaml or .yml file",
       validation: null,
     };
     const user = userEvent.setup();
     renderPage();
+    await user.click(await screen.findByText("acme/hello-go"));
 
+    const path = await screen.findByLabelText(/path/i);
+    await user.clear(path);
+    await user.type(path, "notes.txt");
+
+    expect(
+      await screen.findByText(/must be a \.yaml or \.yml file/),
+    ).toBeInTheDocument();
+    expect(path).toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText("Blueprint file not found")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /deploy blueprint/i }),
+    ).toBeDisabled();
+  });
+
+  // A rolling deploy can serve an older bex-api with no reason field.
+  it("falls back to the generic panel when the backend sends no reason", async () => {
+    reposState.repos = [repo()];
+    previewState.preview = {
+      found: false,
+      commitId: null,
+      reason: null,
+      retryable: false,
+      error: "anything",
+      validation: null,
+    };
+    const user = userEvent.setup();
+    renderPage();
     await user.click(await screen.findByText("acme/hello-go"));
 
     expect(
-      await screen.findByText("bex.yml not found on main"),
+      await screen.findByText("Blueprint file not found"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /deploy blueprint/i }),
     ).toBeDisabled();

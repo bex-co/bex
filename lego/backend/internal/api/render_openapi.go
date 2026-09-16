@@ -357,6 +357,86 @@ func newRenderRequestValidator(next *http.ServeMux) (http.Handler, error) {
 	return &renderRequestValidator{next: next, contract: contract}, nil
 }
 
+// bexPatternPath splits a Go 1.22 ServeMux pattern
+// ("GET /v1/webhooks/event-types") into its method and its Render-relative path
+// ("GET", "/webhooks/event-types"), reporting whether one was present. A
+// host-qualified or non-/v1 pattern yields false rather than a guess; a pattern
+// with no method yields an empty method, which matches any operation.
+func bexPatternPath(pattern string) (method, path string, ok bool) {
+	path = pattern
+	if space := strings.LastIndex(pattern, " "); space >= 0 {
+		method = strings.TrimSpace(pattern[:space])
+		path = pattern[space+1:]
+	}
+	if !strings.HasPrefix(path, renderAPIPrefix+"/") {
+		return "", "", false
+	}
+	return method, strings.TrimPrefix(path, renderAPIPrefix), true
+}
+
+// shadowsBexLiteral reports whether renderTemplate would capture bexPath only
+// because bexPath has a literal segment where the template has a {parameter}.
+// Same-arity paths only; a wildcard-suffixed bex pattern is not a literal
+// route and is left to the ordinary matcher.
+func shadowsBexLiteral(renderTemplate, bexPath string) bool {
+	renderSegments := strings.Split(strings.Trim(renderTemplate, "/"), "/")
+	bexSegments := strings.Split(strings.Trim(bexPath, "/"), "/")
+	if len(renderSegments) != len(bexSegments) {
+		return false
+	}
+	shadowed := false
+	for i, renderSegment := range renderSegments {
+		bexSegment := bexSegments[i]
+		renderIsParam := strings.HasPrefix(renderSegment, "{") && strings.HasSuffix(renderSegment, "}")
+		bexIsParam := strings.HasPrefix(bexSegment, "{") && strings.HasSuffix(bexSegment, "}")
+		switch {
+		case renderIsParam && bexIsParam:
+			// Both variable: the real intersection this validator exists for.
+		case renderIsParam:
+			shadowed = true
+		case bexIsParam:
+			// bex is more general than Render here; not a literal shadow.
+			return false
+		case renderSegment != bexSegment:
+			return false
+		}
+	}
+	return shadowed
+}
+
+// isBexNativeLiteralRoute decides whether a request that bex's mux routed to
+// `pattern`, and that kin-openapi matched to a Render template, is really a
+// bex-native route wearing a Render-shaped path.
+//
+// It is one only when the bex pattern is literal where Render's template is
+// parameterised AND the pinned spec has no exact path of its own for that
+// literal. The second half is what keeps every genuine intersection validated:
+// if Render itself documents the literal path, that operation wins.
+func isBexNativeLiteralRoute(contract *renderOpenAPIContract, pattern string) bool {
+	method, bexPath, ok := bexPatternPath(pattern)
+	if !ok {
+		return false
+	}
+	if contract.document.Paths.Find(bexPath) != nil {
+		return false
+	}
+	for path, item := range contract.document.Paths.Map() {
+		if !shadowsBexLiteral(path, bexPath) {
+			continue
+		}
+		// Only a template that Render serves for THIS method can shadow the
+		// route. `POST /v1/blueprints/deploy` sits under a path Render
+		// parameterises, but Render publishes no POST there, so nothing
+		// shadows it and it is not this rule's business.
+		for candidate := range item.Operations() {
+			if method == "" || strings.EqualFold(candidate, method) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if retiredPublicRESTAlias(r) {
 		http.NotFound(w, r)
@@ -365,7 +445,8 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	// A route that exists only in Render's much larger spec must retain bex's
 	// existing 404/405. Conversely, bex-native routes are outside
 	// this contract and pass through byte-for-byte.
-	if _, pattern := v.next.Handler(r); pattern == "" {
+	_, pattern := v.next.Handler(r)
+	if pattern == "" {
 		v.next.ServeHTTP(w, r)
 		return
 	}
@@ -380,6 +461,16 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	route, pathParams, err := v.contract.router.FindRoute(validationRequest)
 	if err != nil {
+		v.next.ServeHTTP(w, r)
+		return
+	}
+	// A bex-native route whose literal segment merely *looks* like a value for
+	// one of Render's path parameters is not that Render operation, and must
+	// not be validated as one (w2/m100). `GET /v1/webhooks/event-types` matched
+	// Render's `GET /webhooks/{webhookId}`, failed the id pattern, and died
+	// with 400 before its handler ever ran — the route was registered,
+	// authz-classified and documented, and unreachable.
+	if isBexNativeLiteralRoute(v.contract, pattern) {
 		v.next.ServeHTTP(w, r)
 		return
 	}

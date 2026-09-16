@@ -29,12 +29,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1340,17 +1342,142 @@ func TestPreviewBlueprintInvalidManifest(t *testing.T) {
 	}
 }
 
-func TestPreviewBlueprintFetchErrorIsNotFound(t *testing.T) {
-	svc := &Service{
-		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
-		GitFetcher: fakeBlueprintFetcher{err: fmt.Errorf("bad request: bex.yml not found on main")},
+// w2/m97 t001: a fetch failure is a soft result carrying a coded reason and a
+// sentence the author can act on. It used to pass the internal error straight
+// through, so every failure read as `github: unexpected status 404` or quoted
+// the pinned commit SHA at the user.
+func TestPreviewBlueprintClassifiesEveryFetchFailure(t *testing.T) {
+	sha := strings.Repeat("a", 40)
+	for _, tc := range []struct {
+		name       string
+		path       string
+		err        error
+		wantReason BlueprintPreviewReason
+		wantIn     string
+		retryable  bool
+	}{
+		{
+			name:       "a missing branch names the branch",
+			err:        fmt.Errorf("%w: %w", github.ErrBranchNotFound, &github.APIError{Status: 404, Body: `{"message":"Branch not found"}`}),
+			wantReason: BlueprintFetchBranchNotFound,
+			wantIn:     `"main"`,
+		},
+		{
+			name:       "a missing or invisible repo is one reason",
+			err:        fmt.Errorf("%w: %w", github.ErrRepoNotFoundOrNoAccess, &github.APIError{Status: 404, Body: `{"message":"Not Found"}`}),
+			wantReason: BlueprintFetchRepoNotFound,
+			wantIn:     "GitHub app",
+		},
+		{
+			name:       "a missing file names the file and branch",
+			err:        fmt.Errorf("github: file %q not found at ref %q: %w", "render.yaml", sha, &github.APIError{Status: 404}),
+			wantReason: BlueprintFetchFileNotFound,
+			wantIn:     `"render.yaml"`,
+		},
+		{
+			name:       "an explicit path is named in the file-not-found message",
+			path:       "deploy/render.yaml",
+			err:        fmt.Errorf("github: file not found: %w", &github.APIError{Status: 404}),
+			wantReason: BlueprintFetchFileNotFound,
+			wantIn:     `"deploy/render.yaml"`,
+		},
+		{
+			name:       "401 is access denied",
+			err:        fmt.Errorf("github: denied: %w", &github.APIError{Status: 401}),
+			wantReason: BlueprintFetchAccessDenied,
+			wantIn:     "not authorized",
+		},
+		{
+			name:       "403 is access denied",
+			err:        fmt.Errorf("github: denied: %w", &github.APIError{Status: 403}),
+			wantReason: BlueprintFetchAccessDenied,
+			wantIn:     "not authorized",
+		},
+		{
+			name:       "429 is retryable",
+			err:        fmt.Errorf("github: limited: %w", &github.APIError{Status: 429}),
+			wantReason: BlueprintFetchRateLimited,
+			wantIn:     "rate-limiting",
+			retryable:  true,
+		},
+		{
+			name:       "an ambiguous filename names both files",
+			err:        ErrBlueprintFilenameAmbiguous,
+			wantReason: BlueprintFetchAmbiguousFilename,
+			wantIn:     LegacyBlueprintFilename,
+		},
+		{
+			name:       "a 500 is unavailable and retryable",
+			err:        fmt.Errorf("github: boom: %w", &github.APIError{Status: 500}),
+			wantReason: BlueprintFetchUnavailable,
+			wantIn:     "Could not reach GitHub",
+			retryable:  true,
+		},
+		{
+			name:       "a transport failure is unavailable and retryable",
+			err:        errors.New("dial tcp: connection refused"),
+			wantReason: BlueprintFetchUnavailable,
+			wantIn:     "Could not reach GitHub",
+			retryable:  true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &Service{
+				Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
+				GitFetcher: fakeBlueprintFetcher{err: tc.err},
+			}
+			p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", tc.path)
+			if err != nil {
+				t.Fatalf("PreviewBlueprint: want a soft result, got %v", err)
+			}
+			if p.Found || p.Validation != nil {
+				t.Fatalf("want an unfound preview, got %+v", p)
+			}
+			if p.Reason != tc.wantReason {
+				t.Errorf("reason = %q, want %q", p.Reason, tc.wantReason)
+			}
+			if !strings.Contains(p.Error, tc.wantIn) {
+				t.Errorf("message %q does not contain %q", p.Error, tc.wantIn)
+			}
+			if got := RetryableBlueprintFetch(p.Reason); got != tc.retryable {
+				t.Errorf("retryable = %v, want %v", got, tc.retryable)
+			}
+			assertNoUpstreamLeak(t, p.Error, sha)
+		})
 	}
-	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "")
-	if err != nil {
-		t.Fatalf("PreviewBlueprint(fetch error): want soft error, got %v", err)
+}
+
+// An invalid path is the caller's mistake, not the repository's, and keeps its
+// own specific sentence.
+func TestPreviewBlueprintClassifiesAnInvalidPath(t *testing.T) {
+	for _, badPath := range []string{"../escape.yaml", "/abs.yaml", "notes.txt", "./x.yaml"} {
+		svc := &Service{
+			Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
+			GitFetcher: fakeBlueprintFetcher{},
+		}
+		p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", badPath)
+		if err != nil {
+			t.Fatalf("PreviewBlueprint(%q): %v", badPath, err)
+		}
+		if p.Reason != BlueprintFetchInvalidPath {
+			t.Errorf("%q reason = %q, want %q", badPath, p.Reason, BlueprintFetchInvalidPath)
+		}
+		if RetryableBlueprintFetch(p.Reason) {
+			t.Errorf("%q must not be offered a retry", badPath)
+		}
 	}
-	if p.Found || p.Error != "bex.yml not found on main" || p.Validation != nil {
-		t.Errorf("fetch error: want Found=false with message, got %+v", p)
+}
+
+// The leak guard w2/m97 exists to enforce: no upstream vocabulary, no SHA.
+func assertNoUpstreamLeak(t *testing.T, message, sha string) {
+	t.Helper()
+	for _, banned := range []string{"github:", "unexpected status", sha} {
+		if strings.Contains(message, banned) {
+			t.Errorf("message %q leaks %q", message, banned)
+		}
+	}
+	if regexp.MustCompile(`\b[0-9a-f]{40}\b`).MatchString(message) {
+		t.Errorf("message %q contains a commit SHA", message)
 	}
 }
 
@@ -1698,7 +1825,8 @@ func TestSyncBlueprintFetchFailureRecordsErrorRun(t *testing.T) {
 	svc := &Service{
 		Base:       &core.Base{Client: client, Namespace: "default", Workspace: ws},
 		Blueprints: fs,
-		GitFetcher: fakeBlueprintFetcher{err: fmt.Errorf("bad request: render.yaml not found on main")},
+		GitFetcher: fakeBlueprintFetcher{err: fmt.Errorf("github: file %q not found at ref %q: %w",
+			"render.yaml", strings.Repeat("a", 40), &github.APIError{Status: 404})},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
@@ -1723,9 +1851,21 @@ func TestSyncBlueprintFetchFailureRecordsErrorRun(t *testing.T) {
 	if failed.State != store.BlueprintSyncStateError {
 		t.Fatalf("failed sync run state = %q, want error", failed.State)
 	}
-	if msg := failed.ErrorMessage; msg == nil || !strings.Contains(*msg, "not found") {
-		t.Fatalf("failed sync run reason = %v, want the actionable fetch failure", msg)
+	// w2/m97 t003: the recorded message is "<reason>: <sentence>" — a stable
+	// machine-keyable token plus prose — and carries neither the upstream
+	// vocabulary nor the pinned commit SHA, both of which used to land here.
+	msg := failed.ErrorMessage
+	if msg == nil {
+		t.Fatal("failed sync run recorded no error message")
 	}
+	code, sentence, ok := strings.Cut(*msg, ": ")
+	if !ok || BlueprintPreviewReason(code) != BlueprintFetchFileNotFound {
+		t.Fatalf("recorded message = %q, want a leading %q token", *msg, BlueprintFetchFileNotFound)
+	}
+	if !strings.Contains(sentence, `"render.yaml"`) || !strings.Contains(sentence, `"main"`) {
+		t.Errorf("sentence %q should name the file and the branch", sentence)
+	}
+	assertNoUpstreamLeak(t, *msg, strings.Repeat("a", 40))
 }
 
 // A Git-backed sync with no fetcher configured fails rather than silently

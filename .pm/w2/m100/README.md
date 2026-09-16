@@ -1,17 +1,49 @@
 # w2 · m100 — REST routes a Render client cannot reach: the shadowed `event-types` route and the missing overrides list
 
-**Worker:** worker2 **Goal:** every REST route bex registers is reachable through the strict Render validator, and every Render list operation a client would use to audit notification overrides is served. `GET /v1/webhooks/event-types` answers with the vocabulary instead of a `400` minted by Render's `{webhookId}` template, and `GET /v1/notification-settings/overrides` returns the caller's workspace overrides in Render's envelope instead of bex's bare `404`. A reverse inventory test keeps the next bex-native literal route from being shadowed. **Status:** todo
+**Worker:** worker2 **Goal:** every REST route bex registers is reachable through the strict Render validator, and every Render list operation a client would use to audit notification overrides is served. `GET /v1/webhooks/event-types` answers with the vocabulary instead of a `400` minted by Render's `{webhookId}` template, and `GET /v1/notification-settings/overrides` returns the caller's workspace overrides in Render's envelope instead of bex's bare `404`. A reverse inventory test keeps the next bex-native literal route from being shadowed. **Status:** t001–t005 done; **t006 closeout BLOCKED** on live production verification (same credential gate as m95/m96 — see the workstream README)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                                  | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | The Render validator passes a bex-native literal route through when it only matches a Render template parameter; a reverse inventory guard fails on any new shadowing | 45m | —          |
-| t002 | Serve `GET /v1/notification-settings/overrides` scoped to the caller's workspace with `serviceId` filter and Render's cursor envelope                   | 30m | —          |
-| t003 | Render parity                                                                                                                                          | 15m | t001, t002 |
-| t004 | Simplify                                                                                                                                               | 15m | t003       |
-| t005 | Test coverage                                                                                                                                          | 35m | t003       |
+| t001 | The Render validator passes a bex-native literal route through when it only matches a Render template parameter; a reverse inventory guard fails on any new shadowing — **DONE** | 45m | —          |
+| t002 | Serve `GET /v1/notification-settings/overrides` scoped to the caller's workspace with `serviceId` filter and Render's cursor envelope — **DONE** | 30m | —          |
+| t003 | Render parity — **DONE**                                                                                                                               | 15m | t001, t002 |
+| t004 | Simplify — **DONE**                                                                                                                                    | 15m | t003       |
+| t005 | Test coverage — **DONE**                                                                                                                               | 35m | t003       |
 | t006 | Closeout                                                                                                                                               | 10m | t005       |
+
+## Render semantics (t002 step 1)
+
+Read from the **pinned spec** (`lego/backend/internal/api/openapi/render-public-api-1.json`, operation `list-notification-overrides`) on 2026-09-15. Render's live docs and a live response could not be fetched — no working production or Render credential this run — so anything not in the pinned spec is marked unverified rather than guessed at silently.
+
+Three corrections to what t002's own Context assumed:
+
+| t002 said | The pinned spec actually says |
+| --- | --- |
+| items are `notificationOverrideWithCursor` = `{notificationOverride, cursor}` | the envelope key is **`override`**, not `notificationOverride` |
+| a `serviceId` query parameter | `serviceIdsParam` — named `serviceId` but **`type: array`, `style: form`**, so it repeats (`?serviceId=a&serviceId=b`) |
+| — | the override object **requires a `type` field** that the schema then gives no type, enum or description |
+
+Decisions made against that:
+
+- **`type` is emitted as `"service"`.** It is required-but-unconstrained, so any string validates. `"service"` names what the override is attached to, which is the only reading the surrounding fields support. Flagged unverified in ADR018 — a live capture that contradicts it is a one-line change.
+- **A `default` service IS listed.** Render's description ("List notification overrides matching the provided filters") does not say, and no capture was available. bex lists every in-scope service, because the per-service `GET` also always returns a value (`default`/`default`) rather than 404-ing, and because omitting defaults makes an empty list ambiguous between "this workspace has no services" and "no service has been customised". A superset is the house rule for unresolved Render detail (`internal/api/CLAUDE.md`).
+- **Scope is one workspace, not all of them** — a deliberate divergence. Render says an unfiltered call "returns all notification overrides for all workspaces the user belongs to"; bex routes through the same `s.List(ctx, ownerId)` every other collection uses, so it returns the named workspace (when the caller belongs to it) or the caller's own, and a foreign `ownerId` returns nothing. Matching Render's multi-workspace default would make this the only bex list that crosses a workspace boundary. Recorded in ADR018 row 230.
+
+## Decisions
+
+- **The validator's pass-through is method-aware.** The first cut compared paths only, and the reverse inventory immediately caught it: `POST /v1/blueprints/{deploy,generate,preview}` and `POST /v1/webhooks/{git,stripe}` all sit under paths Render parameterises, so a path-only rule called five extra routes "shadowed" when Render publishes no `POST` at those templates and nothing was shadowing them at all. The rule now requires the Render path item to actually serve the request's method. The false positives were a bug the guard found in its own subject — worth recording, because the same five routes would have been silently exempted from validation.
+- **The pass-through requires the spec to have no exact literal path of its own.** If Render itself documents the literal, that operation wins and validation stays on. This is what keeps every genuine intersection validated while the bex-native literal gets through.
+- **The reverse inventory scans registration sites, not the mux.** `http.ServeMux` exposes no pattern list, so the guard walks non-test `internal/**/*.go` for `.Handle`/`.HandleFunc("<METHOD> /v1/…")` literals — the same method `w1/089`'s audit used. A pattern assembled from constants or `fmt.Sprintf` is invisible to it; that limit is written on the regex, and the test fails loudly if the scan ever finds implausibly few routes, so it cannot pass vacuously.
+- **The guard asserts a known set, not emptiness.** `GET /v1/webhooks/event-types` is a legitimate bex extension wearing a Render-shaped path; the test's job is that no NEW one appears unnoticed.
+- **`TestRenderRouteIntersectionInventory` gained exactly one entry**, `list-notification-overrides`, from t002 — bex now genuinely serves that Render operation. t001's own change deliberately leaves the set untouched, which is the check t001's acceptance criteria asked for.
+
+## Simplify pass (t004)
+
+- **Applied:** `bexPatternPath` returns the method alongside the path instead of each caller re-splitting the ServeMux pattern; `shadowsBexLiteral` is a pure function over two path strings, so the rule is unit-testable without a contract, a mux or a request (`TestLiteralPassThroughRuleIsNarrow` covers seven cases including the three ways it must say no).
+- **Applied:** the overrides list reuses `toNotificationOverride` — the per-service GET's own projection — rather than reading `app.NotificationsToSend` again, so the list and the per-service read cannot disagree.
+- **Declined:** extracting a shared "list + ownerId + filter + StablePage" helper across the sibling list routes. Each filters on a different field with a different named 400, and the shared part is already `s.List` + `core.StablePage`.
 
 ## Definition of done
 

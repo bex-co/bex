@@ -155,6 +155,20 @@ func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler
 			return
 		}
 
+		// A manually suspended service is a deliberate owner action, not an
+		// outage and not a sleep. It answers here — with the same URL and the
+		// same certificate — so a browser, an uptime monitor or a webhook
+		// sender reads "suspended" instead of Traefik's raw "no available
+		// server" (w1/094 pass 13, w2/m98). Like the maintenance branch above
+		// it returns BEFORE the wake path: no replica patch and no last-active
+		// write, because waking a service its owner suspended would undo the
+		// suspension. Checked after maintenance so an owner who set a
+		// maintenance page still gets that page.
+		if app.Spec.Suspended {
+			writeSuspendedResponse(w, r)
+			return
+		}
+
 		// Coalesce concurrent wake requests per App so a retry flood issues one
 		// last-active patch + scale-up instead of N.
 		key := app.Namespace + "/" + app.Name
@@ -202,10 +216,46 @@ func writeWakeResponse(w http.ResponseWriter, r *http.Request) {
 		writeHTMLPage(w, r, http.StatusServiceUnavailable, wakePage)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	writeBody(w, r, http.StatusServiceUnavailable, "application/json",
+		`{"error":"service hibernated","retryAfter":5}`)
+}
+
+// writeSuspendedResponse answers a suspended service's public host: 503 plus
+// Retry-After, negotiated three ways — a document for browsers, a machine-
+// readable object for API clients, plain text for everything else (a bare curl,
+// an uptime monitor). It touches nothing: the caller has already decided not to
+// wake the App, and this function holds no client.
+//
+// Retry-After is an hour, not the wake path's 5 seconds: a suspended service
+// comes back when a human resumes it, so telling a monitor to retry every five
+// seconds would turn a deliberate suspension into a self-inflicted flood.
+func writeSuspendedResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Retry-After", suspendedRetryAfter)
+	w.Header().Set("Cache-Control", "no-store")
+	switch {
+	case acceptsMedia(r.Header.Values("Accept"), "text/html"):
+		writeHTMLPage(w, r, http.StatusServiceUnavailable, suspendedPage)
+	case acceptsMedia(r.Header.Values("Accept"), "application/json"):
+		writeBody(w, r, http.StatusServiceUnavailable, "application/json", suspendedJSON)
+	default:
+		writeBody(w, r, http.StatusServiceUnavailable, "text/plain; charset=utf-8", suspendedText)
+	}
+}
+
+const (
+	suspendedRetryAfter = "3600"
+	suspendedJSON       = `{"error":"service suspended"}`
+	suspendedText       = "This service is suspended.\n"
+)
+
+// writeBody is writeHTMLPage's non-document sibling: the same no-store,
+// HEAD-aware shape for a body whose content type the caller names.
+func writeBody(w http.ResponseWriter, r *http.Request, status int, contentType, body string) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(status)
 	if r.Method != http.MethodHead {
-		_, _ = io.WriteString(w, `{"error":"service hibernated","retryAfter":5}`)
+		_, _ = io.WriteString(w, body)
 	}
 }
 
@@ -213,10 +263,18 @@ func writeWakeResponse(w http.ResponseWriter, r *http.Request) {
 // send one; API clients that omit Accept or send only */* keep the historical
 // JSON response instead of unexpectedly receiving a document.
 func acceptsHTML(values []string) bool {
+	return acceptsMedia(values, "text/html")
+}
+
+// acceptsMedia reports whether the Accept header values name want explicitly
+// with a non-zero q. Deliberately exact: a wildcard `*/*` (or no Accept at all)
+// is NOT a request for any particular representation, so callers fall through
+// to their own default rather than guessing a document for a curl.
+func acceptsMedia(values []string, want string) bool {
 	for _, value := range values {
 		for item := range strings.SplitSeq(value, ",") {
 			mediaType, params, err := mime.ParseMediaType(strings.TrimSpace(item))
-			if err != nil || !strings.EqualFold(mediaType, "text/html") {
+			if err != nil || !strings.EqualFold(mediaType, want) {
 				continue
 			}
 			if rawQ, ok := params["q"]; ok {
@@ -634,6 +692,24 @@ const maintenancePage = `<!DOCTYPE html>
 </head>
 <body><main><h1>This site is currently under maintenance.</h1>
 <p>The owner will restore service as soon as possible. Please try again later.</p></main></body>
+</html>`
+
+const suspendedPage = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bex &mdash; Service suspended</title>
+  <style>
+    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;
+      background:#111827;color:#f9fafb}
+    main{max-width:36rem;padding:2rem;text-align:center}h1{font-size:1.75rem;margin-bottom:.75rem}
+    p{color:#d1d5db;line-height:1.6}
+  </style>
+</head>
+<body><main><h1>This service is suspended.</h1>
+<p>Its owner suspended this service, so it is not currently serving traffic.
+It will be available again once the owner resumes it.</p></main></body>
 </html>`
 
 const wakePage = `<!DOCTYPE html>

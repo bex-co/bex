@@ -161,14 +161,18 @@ var callerScopedRoutes = map[string]bool{
 	// The caller's OWN effective permissions (w9/m84): scoped by the ownerId
 	// query param, addresses no resource by path; its own can_view gate denies
 	// an ownerId naming a workspace the caller isn't in.
-	"GET /v1/viewer/capabilities":                     true,
-	"GET /v1/owners":                                  true,
-	"GET /v1/blueprints":                              true,
-	"GET /v1/usage":                                   true,
-	"GET /v1/users":                                   true,
-	"GET /v1/users/deletion-preview":                  true, // caller's own identity and memberships only
-	"GET /v1/repos":                                   true,
-	"GET /v1/notification-settings":                   true,
+	"GET /v1/viewer/capabilities":    true,
+	"GET /v1/owners":                 true,
+	"GET /v1/blueprints":             true,
+	"GET /v1/usage":                  true,
+	"GET /v1/users":                  true,
+	"GET /v1/users/deletion-preview": true, // caller's own identity and memberships only
+	"GET /v1/repos":                  true,
+	"GET /v1/notification-settings":  true,
+	// The workspace-wide notification-override list (w2/m100 t002): a
+	// collection scoped by the same s.List call as GET /v1/services, so a
+	// foreign ownerId resolves to nothing rather than another workspace.
+	"GET /v1/notification-settings/overrides":         true,
 	"GET /v1/notification-settings/push":              true,
 	"GET /v1/notification-settings/push/availability": true, // caller-scoped feature capability; no resource id
 	"GET /v1/notifications":                           true, // caller's own tenant + subject are derived from auth context
