@@ -130,7 +130,10 @@ func TestScopeMatrixCoversLiveOperations(t *testing.T) {
 		}
 	}
 	if len(missing) > 0 || len(extra) > 0 {
-		t.Fatalf("classification table drifted from live operations\nmissing (%d): %s\nstale (%d): %s\nregenerate with GENERATE_SCOPE_MATRIX=1 go test ./internal/api -run TestGenerateScopeMatrix",
+		t.Fatalf("classification table drifted from live operations\nmissing (%d): %s\nstale (%d): %s\n"+
+			"For a NEW op: pick its class deliberately in scopeClassOverrides (or accept the default), then regenerate.\n"+
+			"Do not regenerate alone — that bakes defaultScopeClass and can silently downgrade Sensitive/Mint (w4/082).\n"+
+			"GENERATE_SCOPE_MATRIX=1 go test ./internal/api -run TestGenerateScopeMatrix",
 			len(missing), strings.Join(missing, ", "), len(extra), strings.Join(extra, ", "))
 	}
 	for _, op := range live {
@@ -155,59 +158,97 @@ func TestScopeClassOverridesAreLive(t *testing.T) {
 	}
 }
 
+// heuristicRequiredClass returns the Sensitive/Mint class a live op must hold
+// when its name matches a known credential-family pattern across REST, GraphQL,
+// and MCP spellings. ok=false means no family matched (ordinary read/write).
+// Keep every scopeClassOverrides Sensitive/Mint entry reachable from here —
+// TestSensitiveMintOverridesAreHeuristicallyPinned fails closed otherwise (w4/082).
+func heuristicRequiredClass(op string) (want string, ok bool) {
+	switch {
+	case (strings.Contains(op, "deploy-hook") && !strings.Contains(op, "deploy-hooks")) ||
+		strings.Contains(op, "deployHook") || strings.Contains(op, "DeployHook") ||
+		strings.Contains(op, "deploy_hook"):
+		return core.OpClassMint, true
+	case strings.Contains(op, "createApiKey") || strings.Contains(op, "create_api_key") || op == "REST POST /v1/api-keys":
+		return core.OpClassMint, true
+	case strings.Contains(op, "createRouterKey") || strings.Contains(op, "create_router_key"):
+		return core.OpClassMint, true
+	case strings.Contains(op, "createSSHKey") || op == "MCP add_ssh_key" || op == "REST POST /v1/ssh-keys":
+		return core.OpClassMint, true
+	case strings.Contains(op, "createDatabaseUser") || strings.Contains(op, "create_postgres_user") ||
+		op == "REST POST /v1/postgres/{id}/users":
+		return core.OpClassMint, true
+	case strings.Contains(op, "createWebhookEndpoint") || op == "MCP create_webhook_endpoint" || op == "REST POST /v1/webhooks":
+		return core.OpClassMint, true
+	case strings.Contains(op, "connection-info") || strings.Contains(op, "connection_info") ||
+		strings.Contains(op, "ConnectionInfo"):
+		return core.OpClassSensitive, true
+	case strings.Contains(op, "routerOverview") || strings.Contains(op, "router_overview"):
+		return core.OpClassSensitive, true
+	case (strings.Contains(op, "/env-vars") && strings.HasPrefix(op, "REST GET ")) ||
+		op == "GQL Query.envVars" || op == "MCP list_env_vars" || op == "MCP get_env_var":
+		return core.OpClassSensitive, true
+	case (strings.Contains(op, "/secret-files") && strings.HasPrefix(op, "REST GET ")) ||
+		op == "GQL Query.secretFiles" || op == "MCP list_secret_files" || op == "MCP get_secret_file":
+		return core.OpClassSensitive, true
+	case strings.Contains(op, "list_postgres_processes") || strings.Contains(op, "list_postgres_top_queries") ||
+		strings.Contains(op, "/processes") || strings.Contains(op, "/top-queries") ||
+		strings.Contains(op, "databaseProcesses") || strings.Contains(op, "databaseTopQueries"):
+		return core.OpClassSensitive, true
+	case strings.Contains(op, "get_env_group_var") || strings.Contains(op, "get_env_group_secret_file") ||
+		strings.Contains(op, "envGroupVar") || strings.Contains(op, "envGroupSecretFile"):
+		return core.OpClassSensitive, true
+	case op == "REST POST /v1/env-groups/{id}/services/{serviceId}" || op == "GQL Mutation.linkEnvGroup" || op == "MCP link_env_group":
+		return core.OpClassSensitive, true
+	case strings.Contains(op, "blueprintPreview") || strings.Contains(op, "generateBlueprint") ||
+		strings.Contains(op, "preview_blueprint") || strings.Contains(op, "generate_blueprint") ||
+		op == "REST POST /v1/blueprints/preview" || op == "REST POST /v1/blueprints/generate":
+		return core.OpClassSensitive, true
+	case strings.Contains(op, "query_render_postgres") || op == "REST POST /v1/postgres/{id}/query":
+		return core.OpClassSensitive, true
+	case op == "REST GET /v1/postgres/{id}/export" ||
+		strings.Contains(op, "databaseExports") || strings.Contains(op, "list_postgres_exports"):
+		return core.OpClassSensitive, true
+	case strings.Contains(op, "shell-ticket") || strings.Contains(op, "createShellSession") ||
+		strings.Contains(op, "create_shell_session"):
+		return core.OpClassSensitive, true
+	default:
+		return "", false
+	}
+}
+
 func TestMintAndSensitiveHeuristics(t *testing.T) {
 	for op, class := range classifiedOps {
-		switch {
-		case strings.Contains(op, "deploy-hook") && !strings.Contains(op, "deploy-hooks"):
-			if class != core.OpClassMint {
-				t.Errorf("%s: deploy-hook must be mint, got %s", op, class)
-			}
-		case strings.Contains(op, "createApiKey") || strings.Contains(op, "create_api_key") || op == "REST POST /v1/api-keys":
-			if class != core.OpClassMint {
-				t.Errorf("%s: API-key create must be mint, got %s", op, class)
-			}
-		case strings.Contains(op, "createSSHKey") || op == "MCP add_ssh_key" || op == "REST POST /v1/ssh-keys":
-			if class != core.OpClassMint {
-				t.Errorf("%s: SSH-key enroll must be mint, got %s", op, class)
-			}
-		case strings.Contains(op, "createWebhookEndpoint") || op == "MCP create_webhook_endpoint" || op == "REST POST /v1/webhooks":
-			// Show-once signing secret (HMAC key for outbound deliveries) —
-			// same durable-credential class as API keys (w4/079).
-			if class != core.OpClassMint {
-				t.Errorf("%s: webhook-endpoint create must be mint, got %s", op, class)
-			}
-		case strings.Contains(op, "connection-info") || strings.Contains(op, "ConnectionInfo"):
-			if class != core.OpClassSensitive {
-				t.Errorf("%s: connection-info must be sensitive, got %s", op, class)
-			}
-		case strings.Contains(op, "/env-vars") && strings.HasPrefix(op, "REST GET "):
-			if class != core.OpClassSensitive {
-				t.Errorf("%s: env-var value read must be sensitive, got %s", op, class)
-			}
-		case strings.Contains(op, "/secret-files") && strings.HasPrefix(op, "REST GET "):
-			if class != core.OpClassSensitive {
-				t.Errorf("%s: secret-file value read must be sensitive, got %s", op, class)
-			}
-		case strings.Contains(op, "list_postgres_processes") || strings.Contains(op, "list_postgres_top_queries") ||
-			strings.Contains(op, "/processes") || strings.Contains(op, "/top-queries") ||
-			strings.Contains(op, "databaseProcesses") || strings.Contains(op, "databaseTopQueries"):
-			// All three surfaces of the SQL-process/top-queries row, pinned
-			// together (ADR087, w6/m136/t001): the mobile matrix hides this row
-			// for EVERY role because the native token lacks the sensitive
-			// scope — a reclassification changes the product contract, and
-			// omitting SQL fields from a selection does not lower the gate.
-			if class != core.OpClassSensitive {
-				t.Errorf("%s: live SQL text must be sensitive, got %s", op, class)
-			}
-		case strings.Contains(op, "get_env_group_var") || strings.Contains(op, "get_env_group_secret_file") || strings.Contains(op, "envGroupVar") || strings.Contains(op, "envGroupSecretFile"):
-			if class != core.OpClassSensitive {
-				t.Errorf("%s: env-group value read must be sensitive, got %s", op, class)
-			}
-		case op == "REST POST /v1/env-groups/{id}/services/{serviceId}" || op == "GQL Mutation.linkEnvGroup" || op == "MCP link_env_group":
-			if class != core.OpClassSensitive {
-				t.Errorf("%s: env-group workload materialization must be sensitive, got %s", op, class)
-			}
+		want, matched := heuristicRequiredClass(op)
+		if !matched {
+			continue
 		}
+		if class != want {
+			t.Errorf("%s: must be %s, got %s", op, want, class)
+		}
+	}
+}
+
+// TestSensitiveMintOverridesAreHeuristicallyPinned is the w4/082 net: every
+// Sensitive/Mint override must match heuristicRequiredClass so deleting the
+// override + regenerating the matrix fails the suite instead of silently
+// downgrading to defaultScopeClass (Read/Write). Invite-preview Read overrides
+// are intentionally omitted — Write→Read is the safe direction.
+func TestSensitiveMintOverridesAreHeuristicallyPinned(t *testing.T) {
+	var unprotected []string
+	for op, want := range scopeClassOverrides {
+		if want != core.OpClassSensitive && want != core.OpClassMint {
+			continue
+		}
+		got, matched := heuristicRequiredClass(op)
+		if !matched || got != want {
+			unprotected = append(unprotected, fmt.Sprintf("%s (override %s, heuristic %q)", op, want, got))
+		}
+	}
+	slices.Sort(unprotected)
+	if len(unprotected) != 0 {
+		t.Fatalf("Sensitive/Mint overrides without a fail-closed heuristic (%d):\n  %s",
+			len(unprotected), strings.Join(unprotected, "\n  "))
 	}
 }
 

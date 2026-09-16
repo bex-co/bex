@@ -338,6 +338,11 @@ func graphQLSelectsSensitiveNested(fragments map[string]*ast.FragmentDefinition,
 	return false
 }
 
+// maxGraphQLSensitiveWalkDepth is defense-in-depth headroom under
+// graphql_cost.go's gqlMaxDepth (15). Returning false past this depth is
+// fail-open in isolation, but any document deep enough to hide a nested
+// sensitive field is rejected by the cost limiter first. Do not raise
+// gqlMaxDepth above this constant without revisiting the coupling (w4/081).
 const maxGraphQLSensitiveWalkDepth = 64
 
 func walkGraphQLSensitiveNested(sel *ast.SelectionSet, fragments map[string]*ast.FragmentDefinition, visiting map[string]bool, depth int) bool {
