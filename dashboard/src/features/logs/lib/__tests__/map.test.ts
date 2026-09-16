@@ -95,9 +95,8 @@ describe("toLogLine / toLogLines", () => {
     expect(line.statusCode).toBe("200");
   });
 
-  it("drops null holes and undefined/null results", () => {
+  it("drops null holes and undefined results", () => {
     expect(toLogLines(undefined)).toEqual([]);
-    expect(toLogLines(null)).toEqual([]);
     expect(
       toLogLines([gqlEntry(), null, gqlEntry({ message: "b" })]),
     ).toHaveLength(2);

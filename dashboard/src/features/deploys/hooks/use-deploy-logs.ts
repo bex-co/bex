@@ -167,7 +167,7 @@ export function useDeployLogs(
   // streamed live line never re-maps or re-sorts it.
   const history = useMemo(() => {
     const merged = [build.data, predeploy.data, app.data].flatMap((d) =>
-      toLogLines(d?.logs),
+      toLogLines(d?.logs?.logs),
     );
     merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return dedupeLogLines(merged);

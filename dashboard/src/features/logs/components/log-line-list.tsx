@@ -1,4 +1,4 @@
-import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/common/components/ui/button.tsx";
@@ -31,6 +31,11 @@ function statusChipClass(status: string): string {
 // sub-pixel scroll position or a wrapped final line doesn't unpin autoscroll.
 const PIN_THRESHOLD = 24;
 
+// How close to the top (px) counts as "load older" — large enough that a fast
+// flick to the top still fires before the user stares at empty overscan.
+const LOAD_OLDER_THRESHOLD = 64;
+
+
 // Height of the scroll viewport; the list fills it and scrolls internally.
 const VIEWPORT_HEIGHT = 520;
 
@@ -60,6 +65,11 @@ interface LogLineListProps {
   /** Fill the parent's height instead of the fixed viewport (the deploy
    *  page's maximized mode, w9/003). The parent owns the height. */
   fill?: boolean;
+  /** More history exists older than the loaded pages (w4/m107). */
+  hasMore?: boolean;
+  loadingOlder?: boolean;
+  /** Fired when the user scrolls near the top of the pane. */
+  onLoadOlder?: () => void;
 }
 
 /**
@@ -90,10 +100,23 @@ export function LogLineList({
   wrap = true,
   showTimestamps = true,
   fill = false,
+  hasMore = false,
+  loadingOlder = false,
+  onLoadOlder,
 }: LogLineListProps) {
   const { t } = useTranslations();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
+  const prevScrollHeightRef = useRef(0);
+  const prevLineCountRef = useRef(lines.length);
+  const loadOlderRef = useRef(onLoadOlder);
+  const loadingOlderRef = useRef(loadingOlder);
+  const hasMoreRef = useRef(hasMore);
+  useEffect(() => {
+    loadOlderRef.current = onLoadOlder;
+    loadingOlderRef.current = loadingOlder;
+    hasMoreRef.current = hasMore;
+  });
 
   // Keyed by the line's dedupe key so a row's measured height survives appends
   // and reorders (a wrapped line keeps its true height when new lines arrive).
@@ -119,13 +142,36 @@ export function LogLineList({
   }, [lines.length, virtualizer]);
 
   // Recompute the pin from the scroll position; releasing it while the user
-  // reads up, restoring it the moment they return to the bottom.
+  // reads up, restoring it the moment they return to the bottom. Near the top,
+  // request the next older page (w4/m107).
   const onScroll = () => {
     const el = viewportRef.current;
     if (!el) return;
     const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
     setPinned(distance <= PIN_THRESHOLD);
+    if (
+      el.scrollTop <= LOAD_OLDER_THRESHOLD &&
+      hasMoreRef.current &&
+      !loadingOlderRef.current
+    ) {
+      loadOlderRef.current?.();
+    }
   };
+
+  // Preserve the viewport when older lines are prepended — without this the
+  // virtualizer's growing content pushes the user away from what they were
+  // reading. Live appends (pinned) still scroll to bottom below.
+  useLayoutEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const prepended = lines.length > prevLineCountRef.current && !pinned;
+    if (prepended) {
+      const delta = el.scrollHeight - prevScrollHeightRef.current;
+      if (delta > 0) el.scrollTop += delta;
+    }
+    prevLineCountRef.current = lines.length;
+    prevScrollHeightRef.current = el.scrollHeight;
+  }, [lines, pinned]);
 
   // useLayoutEffect so the scroll lands before paint — no visible jump as new
   // lines append.
@@ -157,6 +203,11 @@ export function LogLineList({
           fill && "h-full",
         )}
       >
+        {loadingOlder ? (
+          <p className="px-3 py-2 text-center text-muted-foreground">
+            {t("logs.loadingOlder")}
+          </p>
+        ) : null}
         <div className={cn("px-3", wrap ? "min-w-full" : "w-max min-w-full")}>
           <div aria-hidden style={{ height: paddingTop }} />
           {virtualRows.map((virtualRow) => (

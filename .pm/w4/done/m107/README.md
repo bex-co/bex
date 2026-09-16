@@ -1,19 +1,19 @@
 # w4 · m107 — Log history past the newest 100 lines is unreachable on GraphQL and MCP
 
-**Worker:** worker4 **Goal:** a user who selects "Last 7 days" on a busy service can actually reach seven days of logs, and is told when a view is truncated **Status:** todo
+**Worker:** worker4 **Goal:** a user who selects "Last 7 days" on a busy service can actually reach seven days of logs, and is told when a view is truncated **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                | est | depends_on         |
 | ---- | -------------------------------------------------------------------- | --- | ------------------ |
-| t008 | REST's next-page cursors follow Render's contract: feeding `nextStartTime`/`nextEndTime` back fetches the next page | 30m | — |
-| t001 | Return the Render paging envelope from the GraphQL `logs` field       | 40m | t008               |
-| t002 | Return the same envelope from MCP `list_logs`                          | 25m | t001               |
-| t003 | Page backward in the log viewer, and say when a view is truncated      | 50m | t001               |
-| t004 | Render parity across REST / GraphQL / MCP / UI                          | 30m | t002, t003, t008   |
-| t005 | Simplify                                                               | 20m | t004               |
-| t006 | Test coverage                                                          | 40m | t004               |
-| t007 | Closeout                                                               | 10m | t006               |
+| t008 | REST's next-page cursors follow Render's contract: feeding `nextStartTime`/`nextEndTime` back fetches the next page — **DONE** | 30m | — |
+| t001 | Return the Render paging envelope from the GraphQL `logs` field — **DONE** | 40m | t008               |
+| t002 | Return the same envelope from MCP `list_logs` — **DONE** | 25m | t001               |
+| t003 | Page backward in the log viewer, and say when a view is truncated — **DONE** | 50m | t001               |
+| t004 | Render parity across REST / GraphQL / MCP / UI — **DONE** | 30m | t002, t003, t008   |
+| t005 | Simplify — **DONE** | 20m | t004               |
+| t006 | Test coverage — **DONE** | 40m | t004               |
+| t007 | Closeout — **DONE** | 10m | t006               |
 
 ## Definition of done
 

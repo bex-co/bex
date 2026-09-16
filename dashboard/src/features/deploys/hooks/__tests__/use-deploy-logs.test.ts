@@ -46,6 +46,7 @@ const entry = (timestamp: string, message: string, type: string) => ({
 // Route each of the three useQuery calls (build/predeploy/app) to its own
 // canned response, keyed by the `type` variable — mirrors the hook firing
 // three separate windowed queries (GraphQL's `type` arg is single-valued).
+// Responses use Render's LogList envelope (w4/m107).
 function stubByType(
   responses: Record<string, { logs: unknown[] } | undefined>,
   calls: Call[],
@@ -57,15 +58,34 @@ function stubByType(
         type: variables.type,
         skip: opts.skip as boolean | undefined,
       });
+      const page = responses[variables.type]?.logs;
       return {
-        data: responses[variables.type]
-          ? { logs: responses[variables.type]!.logs }
+        data: page
+          ? {
+              logs: {
+                __typename: "LogList",
+                hasMore: false,
+                nextStartTime: "2026-07-14T00:00:00Z",
+                nextEndTime: "2026-07-14T00:05:00Z",
+                logs: page,
+              },
+            }
           : undefined,
         loading: false,
         error: undefined,
       };
     },
   );
+}
+
+function logList(entries: unknown[]) {
+  return {
+    __typename: "LogList" as const,
+    hasMore: false,
+    nextStartTime: "2026-07-14T00:00:00Z",
+    nextEndTime: "2026-07-14T00:05:00Z",
+    logs: entries,
+  };
 }
 
 beforeEach(() => {
@@ -164,7 +184,7 @@ describe("useDeployLogs", () => {
             error: new Error("logs: the durable log store is not configured"),
           };
         }
-        return { data: { logs: [] }, loading: false, error: undefined };
+        return { data: { logs: logList([]) }, loading: false, error: undefined };
       },
     );
 
@@ -183,7 +203,7 @@ describe("useDeployLogs", () => {
         (_doc: unknown, opts: Record<string, unknown>) => {
           const variables = opts.variables as { type: string };
           return {
-            data: variables.type === failedType ? undefined : { logs: [] },
+            data: variables.type === failedType ? undefined : { logs: logList([]) },
             loading: false,
             error:
               variables.type === failedType

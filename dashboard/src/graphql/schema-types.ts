@@ -908,6 +908,14 @@ export type LogEntry = {
   type: Maybe<Scalars['String']['output']>;
 };
 
+export type LogList = {
+  __typename: 'LogList';
+  hasMore: Scalars['Boolean']['output'];
+  logs: Array<Maybe<LogEntry>>;
+  nextEndTime: Scalars['String']['output'];
+  nextStartTime: Scalars['String']['output'];
+};
+
 export type MaintenanceMode = {
   __typename: 'MaintenanceMode';
   enabled: Scalars['Boolean']['output'];
@@ -2537,7 +2545,7 @@ export type Query = {
   keyValueLogs: Maybe<Array<Maybe<KeyValueLogEntry>>>;
   keyValues: Maybe<Array<Maybe<KeyValue>>>;
   logLabelValues: Maybe<Array<Scalars['String']['output']>>;
-  logs: Maybe<Array<Maybe<LogEntry>>>;
+  logs: Maybe<LogList>;
   metrics: Maybe<Array<Maybe<MetricSeries>>>;
   metricsFilters: Maybe<MetricsFiltersResult>;
   metricsPathFilterSuggestions: Maybe<MetricsPathFilterSuggestions>;
@@ -3227,6 +3235,7 @@ export type ReadReplicaConnectionInfo = {
 export type ReadReplicaView = {
   __typename: 'ReadReplicaView';
   connectionInfo: Maybe<ReadReplicaConnectionInfo>;
+  id: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
 };
 

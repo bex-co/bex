@@ -56,9 +56,11 @@ type renderLog struct {
 	Labels    []renderLabel `json:"labels"`
 }
 
-// renderLogList is the logs envelope; Render marks all four fields required. The
-// cursors bound the returned batch: nextStartTime = newest line, nextEndTime =
-// oldest (the backward-page cursor).
+// renderLogList is the logs envelope; Render marks all four fields required.
+// nextStartTime/nextEndTime name the *next page's* window for the query's
+// direction — feed them straight back as startTime/endTime (Render's contract,
+// the official CLI's scroll-to-load path). They are not the current page's
+// newest/oldest bounds.
 type renderLogList struct {
 	HasMore       bool        `json:"hasMore"`
 	NextStartTime string      `json:"nextStartTime"`
@@ -91,31 +93,83 @@ func toRenderLog(e LogEntry) renderLog {
 }
 
 // toRenderLogList builds the logs envelope. since/end are the query's own
-// resolved time bounds — Render marks nextStartTime/nextEndTime as REQUIRED
-// timestamps (never omitted or empty, verified against the render-oss/cli
-// generated client's Logs200Response: both are plain time.Time, not
-// pointers), so an empty-result query still needs valid cursors; the query's
-// own window is the only bound available when there are no entries to derive
-// one from.
-func toRenderLogList(entries []LogEntry, limit int64, since, end time.Time) renderLogList {
+// resolved time bounds and direction picks which end of the window limit kept.
+// Render marks nextStartTime/nextEndTime as REQUIRED timestamps (never omitted
+// or empty, verified against the render-oss/cli generated client's
+// Logs200Response: both are plain time.Time, not pointers), so an empty-result
+// query still needs valid cursors; the query's own window is the only bound
+// available when there are no entries to derive one from.
+func toRenderLogList(entries []LogEntry, limit int64, since, end time.Time, direction string) renderLogList {
 	out := renderLogList{Logs: make([]renderLog, 0, len(entries))}
 	for _, e := range entries {
 		out.Logs = append(out.Logs, toRenderLog(e))
 	}
-	// entries are timestamp-sorted (oldest-first); cursors bound the batch.
-	if n := len(entries); n > 0 {
-		out.NextStartTime = entries[n-1].Timestamp // newest
-		out.NextEndTime = entries[0].Timestamp     // oldest
-	} else {
-		if since.IsZero() {
-			since = time.Now().Add(-time.Hour) // Render's documented startTime default
-		}
-		if end.IsZero() {
-			end = time.Now() // Render's documented endTime default
-		}
-		out.NextStartTime = since.UTC().Format(time.RFC3339)
-		out.NextEndTime = end.UTC().Format(time.RFC3339)
-	}
-	out.HasMore = limit > 0 && int64(len(entries)) >= limit
+	out.HasMore, out.NextStartTime, out.NextEndTime = pageCursors(entries, limit, since, end, direction)
 	return out
+}
+
+// pageCursors computes the Render paging envelope fields shared by REST,
+// GraphQL, and MCP. Callers feed nextStartTime/nextEndTime back as
+// startTime/endTime to fetch the next page.
+//
+// Boundary rule (start and end are inclusive on the pod-log path; Loki's
+// query_range end is exclusive — both stay correct with the adjustments
+// below):
+//
+//   - backward (default): nextStartTime = query start, nextEndTime = one
+//     nanosecond before the page's oldest timestamp — so an inclusive end
+//     does not re-include the boundary group. capToLimit keeps a shared-
+//     timestamp group whole first, so every sibling at that instant is
+//     already on this page.
+//   - forward: nextStartTime = one nanosecond past the page's newest
+//     timestamp, nextEndTime = query end — so an inclusive start does not
+//     repeat the newest line (same whole-group guarantee from capToLimit).
+func pageCursors(entries []LogEntry, limit int64, since, end time.Time, direction string) (hasMore bool, nextStart, nextEnd string) {
+	since, end = resolveCursorWindow(since, end)
+	hasMore = limit > 0 && int64(len(entries)) >= limit
+	if len(entries) == 0 {
+		// Second precision matches Render's empty-page cursors and keeps two
+		// identical empty reads byte-identical within the same second.
+		return hasMore, since.UTC().Format(time.RFC3339), end.UTC().Format(time.RFC3339)
+	}
+	oldest, newest := entries[0].Timestamp, entries[len(entries)-1].Timestamp
+	if direction == DirectionForward {
+		return hasMore, advancePast(newest), end.UTC().Format(time.RFC3339Nano)
+	}
+	return hasMore, since.UTC().Format(time.RFC3339Nano), retreatBefore(oldest)
+}
+
+// resolveCursorWindow fills Render's documented defaults so REQUIRED cursors
+// are never empty when the caller omitted a bound.
+func resolveCursorWindow(since, end time.Time) (time.Time, time.Time) {
+	if end.IsZero() {
+		end = time.Now().UTC()
+	}
+	if since.IsZero() {
+		since = end.Add(-time.Hour)
+	}
+	return since, end
+}
+
+// advancePast returns an RFC3339Nano instant one nanosecond after stamp, so a
+// forward page's inclusive startTime does not re-include the previous page's
+// newest line. An unparseable stamp is returned unchanged (the next query's
+// own validation will surface it).
+func advancePast(stamp string) string {
+	t, err := time.Parse(time.RFC3339Nano, stamp)
+	if err != nil {
+		return stamp
+	}
+	return t.Add(time.Nanosecond).UTC().Format(time.RFC3339Nano)
+}
+
+// retreatBefore returns an RFC3339Nano instant one nanosecond before stamp, so
+// a backward page's inclusive endTime does not re-include the previous page's
+// oldest line (and its shared-timestamp siblings, already delivered).
+func retreatBefore(stamp string) string {
+	t, err := time.Parse(time.RFC3339Nano, stamp)
+	if err != nil {
+		return stamp
+	}
+	return t.Add(-time.Nanosecond).UTC().Format(time.RFC3339Nano)
 }

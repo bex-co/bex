@@ -311,6 +311,111 @@ func TestRESTLogsEnvelopeAndFilters(t *testing.T) {
 	}
 }
 
+// TestRESTLogsPageCursorsChain walks pages in both directions until
+// hasMore=false and asserts the union equals one unpaged query — including a
+// boundary timestamp shared by two instances (w4/m107 t008).
+func TestRESTLogsPageCursorsChain(t *testing.T) {
+	const (
+		start = "2026-07-05T00:00:00Z"
+		end   = "2026-07-05T00:01:00Z"
+	)
+	svc := newService(map[string][]string{
+		"web-1": {
+			"2026-07-05T00:00:01Z a1",
+			"2026-07-05T00:00:02Z a2",
+			"2026-07-05T00:00:03Z a3",
+			"2026-07-05T00:00:04Z a4",
+			"2026-07-05T00:00:05Z a5",
+			"2026-07-05T00:00:06.000000000Z twin-a", // shared boundary with web-2
+			"2026-07-05T00:00:07Z a7",
+			"2026-07-05T00:00:08Z a8",
+			"2026-07-05T00:00:09Z a9",
+			"2026-07-05T00:00:10Z a10",
+			"2026-07-05T00:00:11Z a11",
+		},
+		"web-2": {
+			"2026-07-05T00:00:06.000000000Z twin-b",
+		},
+	}, sampleApp("web"), podFor("web", "web-1"), podFor("web", "web-2"))
+
+	unpaged := decodeLogList(t, serveREST(svc, "GET",
+		"/v1/logs?resource=web&startTime="+start+"&endTime="+end+"&limit=100"))
+	if len(unpaged.Logs) != 12 {
+		t.Fatalf("unpaged = %d lines, want 12", len(unpaged.Logs))
+	}
+	wantIDs := map[string]struct{}{}
+	for _, line := range unpaged.Logs {
+		wantIDs[line.ID] = struct{}{}
+	}
+
+	collect := func(direction string) map[string]struct{} {
+		t.Helper()
+		seen := map[string]struct{}{}
+		path := "/v1/logs?resource=web&startTime=" + start + "&endTime=" + end + "&limit=5"
+		if direction != "" {
+			path += "&direction=" + direction
+		}
+		for page := 0; page < 10; page++ {
+			env := decodeLogList(t, serveREST(svc, "GET", path))
+			for _, line := range env.Logs {
+				if _, dup := seen[line.ID]; dup {
+					t.Fatalf("%s page %d duplicated id %s (%s)", direction, page, line.ID, line.Message)
+				}
+				seen[line.ID] = struct{}{}
+			}
+			if !env.HasMore {
+				return seen
+			}
+			if env.NextStartTime == "" || env.NextEndTime == "" {
+				t.Fatalf("%s page %d missing cursors: %+v", direction, page, env)
+			}
+			path = "/v1/logs?resource=web&startTime=" + env.NextStartTime +
+				"&endTime=" + env.NextEndTime + "&limit=5"
+			if direction != "" {
+				path += "&direction=" + direction
+			}
+		}
+		t.Fatalf("%s paging did not reach hasMore=false", direction)
+		return nil
+	}
+
+	for _, direction := range []string{"", DirectionForward} {
+		got := collect(direction)
+		if len(got) != len(wantIDs) {
+			t.Errorf("direction=%q collected %d unique lines, want %d", direction, len(got), len(wantIDs))
+		}
+		for id := range wantIDs {
+			if _, ok := got[id]; !ok {
+				t.Errorf("direction=%q missing id %s from the unpaged set", direction, id)
+			}
+		}
+	}
+
+	// The shared-timestamp twins must both appear in the backward first page
+	// when limit covers them, and following the cursor must not drop either.
+	first := decodeLogList(t, serveREST(svc, "GET",
+		"/v1/logs?resource=web&startTime="+start+"&endTime="+end+"&limit=7"))
+	msgs := map[string]bool{}
+	for _, line := range first.Logs {
+		msgs[line.Message] = true
+	}
+	if !msgs["twin-a"] || !msgs["twin-b"] {
+		t.Fatalf("first backward page must keep both shared-timestamp siblings: %+v", msgs)
+	}
+}
+
+func decodeLogList(t *testing.T, rec *httptest.ResponseRecorder) renderLogList {
+	t.Helper()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("logs => %d %s", rec.Code, rec.Body.String())
+	}
+	var env renderLogList
+	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+		t.Fatalf("decode: %v (%s)", err, rec.Body.String())
+	}
+	return env
+}
+
 func TestLogResourceFanoutIsBoundedAndDeduplicated(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/v1/logs?resource=web&resource=web&resource=worker", nil)
 	resources, _, err := parseLogParams(request)
@@ -357,8 +462,8 @@ func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}
-	data := runQuery(t, schema, `{ logs(resource:"`+postgresID+`", text:"checkpoint", instance:["`+pod+`"]) { message type instance } }`)
-	rows := data["logs"].([]any)
+	data := runQuery(t, schema, `{ logs(resource:"`+postgresID+`", text:"checkpoint", instance:["`+pod+`"]) { logs { message type instance } } }`)
+	rows := data["logs"].(map[string]any)["logs"].([]any)
 	if len(rows) != 1 || rows[0].(map[string]any)["type"] != "postgres" {
 		t.Fatalf("GraphQL Postgres logs = %+v", rows)
 	}
@@ -408,7 +513,7 @@ func TestManagedPostgresLogsRejectAnotherWorkspaceOnEveryAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}
-	result := graphql.Do(graphql.Params{Schema: schema, RequestString: `{ logs(resource:"` + postgresID + `") { message } }`, Context: requestContext})
+	result := graphql.Do(graphql.Params{Schema: schema, RequestString: `{ logs(resource:"` + postgresID + `") { logs { message } } }`, Context: requestContext})
 	if len(result.Errors) == 0 || !strings.Contains(strings.ToLower(result.Errors[0].Message), "forbidden") {
 		t.Fatalf("GraphQL cross-workspace Postgres logs = %+v", result.Errors)
 	}
@@ -971,10 +1076,14 @@ func TestGraphQLLogs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}
-	data := runQuery(t, schema, `{ logs(resource:"web") { message type instance } }`)
-	list := data["logs"].([]any)
+	data := runQuery(t, schema, `{ logs(resource:"web") { hasMore logs { message type instance } } }`)
+	env := data["logs"].(map[string]any)
+	list := env["logs"].([]any)
 	if len(list) != 1 {
 		t.Fatalf("want 1 log, got %d", len(list))
+	}
+	if env["hasMore"] != false {
+		t.Errorf("hasMore = %v, want false for a complete page", env["hasMore"])
 	}
 	first := list[0].(map[string]any)
 	if first["message"] != "hello" || first["type"] != LogTypeApp || first["instance"] != ids.ServiceInstanceID("web", "web-1") {
@@ -1000,8 +1109,8 @@ func TestGraphQLLogsTimeWindow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}
-	data := runQuery(t, schema, `{ logs(resource:"web", startTime:"2026-07-05T00:00:03Z", endTime:"2026-07-05T00:00:07Z") { message } }`)
-	list := data["logs"].([]any)
+	data := runQuery(t, schema, `{ logs(resource:"web", startTime:"2026-07-05T00:00:03Z", endTime:"2026-07-05T00:00:07Z") { logs { message } } }`)
+	list := data["logs"].(map[string]any)["logs"].([]any)
 	if len(list) != 1 || list[0].(map[string]any)["message"] != "inside the window" {
 		t.Fatalf("windowed logs = %+v, want exactly [inside the window]", list)
 	}
@@ -1019,8 +1128,8 @@ func TestGraphQLLogsMalformedTimeErrors(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	for _, tc := range []struct{ field, query string }{
-		{"startTime", `{ logs(resource:"web", startTime:"not-a-time") { message } }`},
-		{"endTime", `{ logs(resource:"web", endTime:"not-a-time") { message } }`},
+		{"startTime", `{ logs(resource:"web", startTime:"not-a-time") { logs { message } } }`},
+		{"endTime", `{ logs(resource:"web", endTime:"not-a-time") { logs { message } } }`},
 	} {
 		res := graphql.Do(graphql.Params{Schema: schema, RequestString: tc.query, Context: context.Background()})
 		if len(res.Errors) == 0 {
@@ -1047,7 +1156,7 @@ func TestGraphQLLogsMaxQueryHoursBounds(t *testing.T) {
 	}
 	wide := `startTime:"2020-01-01T00:00:00Z", endTime:"2026-01-01T00:00:00Z"`
 	for _, q := range []string{
-		`{ logs(resource:"web", ` + wide + `) { message } }`,
+		`{ logs(resource:"web", ` + wide + `) { logs { message } } }`,
 		`{ logLabelValues(resource:"web", label:"level", ` + wide + `) }`,
 	} {
 		res := graphql.Do(graphql.Params{Schema: schema, RequestString: q, Context: context.Background()})
@@ -1882,7 +1991,7 @@ func TestRequestStreamStatesAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
 			}
 			res := graphql.Do(graphql.Params{
 				Schema:        schema,
-				RequestString: `{ logs(resource:"web", type:"request") { message } }`,
+				RequestString: `{ logs(resource:"web", type:"request") { logs { message } } }`,
 				Context:       context.Background(),
 			})
 			if c.wantError {
@@ -1893,7 +2002,7 @@ func TestRequestStreamStatesAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
 				if len(res.Errors) > 0 {
 					t.Fatalf("GraphQL errors: %v", res.Errors)
 				}
-				rows, _ := res.Data.(map[string]any)["logs"].([]any)
+				rows, _ := res.Data.(map[string]any)["logs"].(map[string]any)["logs"].([]any)
 				if len(rows) != c.wantRows {
 					t.Errorf("GraphQL rows = %d, want %d", len(rows), c.wantRows)
 				}

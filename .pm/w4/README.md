@@ -98,7 +98,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need the courier) and closes a live lockout risk; m10's one-interception-point argument strengthens as w2/m4–m5 add write verbs; m11 before real tenants means no forced-enrollment migration; m12 stays gated on w1/m9 + m7.
 
-- [ ] **m107** — Log history past the newest 100 lines is unreachable on GraphQL and MCP (8 tasks; **t008 added by w1 `/qa-find-bugs` pass 27:** REST's own `nextStartTime`/`nextEndTime` are the page's bounds, not the next window (`logs/render.go:105-108`). Following them, as Render's docs and the official Render CLI do, gives `400 startTime must be before endTime` on page 2 in both directions.) ← from live `/qa-find-bugs` 2026-09-14 pass 37; a 1-hour and a 7-day window return identical 100-entry results spanning ~14s, so "Last 7 days" shows fifteen seconds with no truncation notice and no way to page back. REST carries `{hasMore,nextStartTime,nextEndTime}` (`logs/render.go:63-66`); GraphQL and MCP drop it, and the dashboard is a GraphQL client — the first concrete instance of the cross-surface response-shape hole `w4/086`/`w4/087` named
+- [x] **m107** — [Log history past the newest 100 lines is unreachable on GraphQL and MCP](done/m107/README.md) (8 tasks) ← from live `/qa-find-bugs` 2026-09-14 pass 37; done 2026-09-16 (REST next-page cursors followable; GraphQL/MCP return the Render envelope; dashboard pages on scroll-up + truncation notice; `get_postgres_logs`/`get_key_value_logs` stay bare by design — use `list_logs`)
 
 ## Inbox
 
