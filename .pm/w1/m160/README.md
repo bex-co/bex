@@ -89,6 +89,10 @@ Traced, not yet observed. t004 probes each bullet on production with a throwaway
 - **The filed symptom, reproduced.** A failed build over a release that **never served** reports the service **Running**. `fail` read `status.image` — which the crash-looped first release had already stamped — and settled "the previous release keeps serving" over a release that never served a single request.
 - **The deploy row is unaffected either way**, as `w1/101` predicted: it reads `build_failed` from the Build condition, not from the phase.
 
+**Post-fix live verification: still outstanding (2026-09-16 04:48Z).** The fix is on `main` and green; what is missing is the production re-check, and it is blocked on an image pin that never landed. Production still runs the `w1/m158` build (`eb035151a`): every deploy run tonight either was superseded before its write-back or failed on an unrelated gate, because 13 commits landed on `main` in the final hour against a pipeline that takes ~50 minutes. Nothing about this milestone's code is implicated.
+
+The pre-fix evidence above was captured deliberately while that was still true, so the "before" half is real. To finish: once any pin newer than `eb035151a` lands, re-create a fixture and re-run the same probe for a failed build over a never-served release — the tooling is in the session scratchpad (`m159-verify.mjs`, `m160-postfix.py`, `m161-idle-probe.py` with `m161-ws-client.py`).
+
 ## Root cause
 
 - **The phase half (`w1/101`).** `fail` decides "a prior release exists" with `app.Status.Image != ""` (`app_controller.go`, around `:4294` at filing), and the canceled-release path does the same (around `:633`). `status.image` is set by a first release that never served. `settleFailedRollout` and, since `w1/m149`, `failPreDeploy` already key on `status.activeRevision`, which `markRunning` sets only once a release has served.

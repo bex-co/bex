@@ -85,6 +85,10 @@
 
 **After the fix.** Pending the roll that pins the plugin and the operator; the same probe re-runs unchanged.
 
+**Post-fix live verification: still outstanding (2026-09-16 04:48Z).** The fix is on `main` and green; what is missing is the production re-check, and it is blocked on an image pin that never landed. Production still runs the `w1/m158` build (`eb035151a`): every deploy run tonight either was superseded before its write-back or failed on an unrelated gate, because 13 commits landed on `main` in the final hour against a pipeline that takes ~50 minutes. Nothing about this milestone's code is implicated.
+
+The pre-fix evidence above was captured deliberately while that was still true, so the "before" half is real. To finish: once any pin newer than `eb035151a` lands, re-create a fixture and re-run the same probe for a client-only WebSocket keeping a free service awake — the tooling is in the session scratchpad (`m159-verify.mjs`, `m160-postfix.py`, `m161-idle-probe.py` with `m161-ws-client.py`).
+
 ## Blast radius
 
 - **Who is hit.** Free web services whose WebSocket clients push without server replies — telemetry, log shippers, collaborative editors between server pushes.
