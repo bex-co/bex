@@ -138,6 +138,34 @@ var (
 		Name: "bex_build_retries_total",
 		Help: "Build attempts that were superseded by a retry, by classified reason.",
 	}, []string{"reason"})
+
+	// The build-cache trial's gate, as the fleet sees it (docs/ADR060 D3,
+	// .pm/w7/047). BEX_BUILD_CACHE in the production overlay says what was
+	// REQUESTED; this gauge says what builds are actually getting, and the two
+	// diverge exactly when the trial's breaker has withdrawn the cache. Without
+	// it a tripped trial is invisible — builds quietly stop being cached and the
+	// overlay still reads `registry`, which is the most confusing possible state
+	// to debug from Git alone.
+	buildCacheEnabled = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "bex_build_cache_enabled",
+		Help: "1 when builds dispatched now carry registry cache phases, 0 when the gate is off or the trial breaker has withdrawn it.",
+	})
+	// Labelled by a CLOSED reason set (deadline, push_latency, push_errors) so
+	// cardinality is fixed. A counter rather than a gauge because the reason a
+	// trial ended is a fact worth keeping after a manager restart clears the
+	// in-process breaker.
+	buildCacheWithdrawalsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "bex_build_cache_withdrawals_total",
+		Help: "Times the build-cache trial breaker withdrew the cache, by stop rule.",
+	}, []string{"reason"})
+)
+
+// The closed reason set for buildCacheWithdrawalsTotal, and for the log line
+// that accompanies a withdrawal.
+const (
+	trialStopDeadline    = "deadline"
+	trialStopPushLatency = "push_latency"
+	trialStopPushErrors  = "push_errors"
 )
 
 func init() {
@@ -145,6 +173,7 @@ func init() {
 		buildOutcomesTotal, buildInfraFailuresTotal, buildRunSeconds,
 		buildQueueSeconds, buildsActive, buildsQueued, buildQueueOldestSeconds,
 		buildPushSeconds, buildPushErrorsTotal, buildRetriesTotal,
+		buildCacheEnabled, buildCacheWithdrawalsTotal,
 	)
 }
 
@@ -203,6 +232,26 @@ func recordBuildSignals(sig build.Signals) {
 	for _, reason := range sig.Retries {
 		buildRetriesTotal.WithLabelValues(reason).Inc()
 	}
+}
+
+// recordBuildCacheWithdrawn counts one trial stop and drops the gauge. The
+// gauge is set here rather than polled because the breaker trips between
+// reconciles: a poll would leave the fleet reading 1 for however long the next
+// scrape took to notice.
+func recordBuildCacheWithdrawn(reason string) {
+	buildCacheWithdrawalsTotal.WithLabelValues(reason).Inc()
+	buildCacheEnabled.Set(0)
+}
+
+// publishBuildCacheEnabled republishes the gate gauge. Called once at manager
+// start so the series exists from the first scrape — an absent series and a
+// disabled cache are different things, and only one of them is a broken rule.
+func publishBuildCacheEnabled(on bool) {
+	if on {
+		buildCacheEnabled.Set(1)
+		return
+	}
+	buildCacheEnabled.Set(0)
 }
 
 // publishBuildCensus republishes the live admission gauges from a full recount.

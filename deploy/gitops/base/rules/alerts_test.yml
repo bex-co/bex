@@ -1553,3 +1553,99 @@ tests:
       - eval_time: 40m
         alertname: BexApiOriginLatencyHigh
         exp_alerts: []
+
+  # ── Build-cache trial stop rules (docs/ADR060 D3, .pm/w7/047) ──────────────
+  # These two alerts are the fleet-visible half of the trial's guardrail; the
+  # operator's own breaker is the acting half. Both are pinned here because a
+  # stop rule nobody can prove fires is indistinguishable from no stop rule.
+
+  # BuildPushTimeHigh: the 60s ceiling sits far above the measured ~27s
+  # production p95, so the baseline must stay silent and a real regression must
+  # not. Both directions are asserted in one test.
+  - name: BuildPushTimeHigh fires on a push regression and ignores the baseline
+    interval: 1m
+    input_series:
+      # A regressed fleet: every push lands in the 120s bucket, so the p95 is
+      # ~120s — well past the 60s ceiling.
+      - series: 'bex_build_push_seconds_bucket{le="60"}'
+        values: "0x60"
+      - series: 'bex_build_push_seconds_bucket{le="120"}'
+        values: "0+3x60"
+      - series: 'bex_build_push_seconds_bucket{le="300"}'
+        values: "0+3x60"
+      - series: 'bex_build_push_seconds_bucket{le="600"}'
+        values: "0+3x60"
+      - series: 'bex_build_push_seconds_bucket{le="+Inf"}'
+        values: "0+3x60"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: BuildPushTimeHigh
+        exp_alerts: [] # regression present but the 15m for-duration has not elapsed
+      - eval_time: 40m
+        alertname: BuildPushTimeHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Build push p95 is 1m 57s (platform-owned, not tenant code)"
+              description: "The skopeo push phase is chronically slow. Every part of it is ours: check Zot's PVC headroom (kubelet_volume_stats_used_bytes in bex-registry) first, since a filling volume slows pushes before it fails them, then bex_build_push_errors_total and Zot's own logs. If a registry build-cache trial is running, bex_build_cache_enabled shows whether the operator has already withdrawn the cache in response. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3/D4."
+
+  # The measured production distribution (p50 ~9s, p95 ~27s) must never page.
+  # A trial that alerted on its own baseline would be abandoned on day one.
+  - name: the measured production push baseline stays silent
+    interval: 1m
+    input_series:
+      # Every push inside 30s: p95 resolves below the 60s ceiling.
+      - series: 'bex_build_push_seconds_bucket{le="15"}'
+        values: "0+2x60"
+      - series: 'bex_build_push_seconds_bucket{le="30"}'
+        values: "0+3x60"
+      - series: 'bex_build_push_seconds_bucket{le="60"}'
+        values: "0+3x60"
+      - series: 'bex_build_push_seconds_bucket{le="120"}'
+        values: "0+3x60"
+      - series: 'bex_build_push_seconds_bucket{le="300"}'
+        values: "0+3x60"
+      - series: 'bex_build_push_seconds_bucket{le="600"}'
+        values: "0+3x60"
+      - series: 'bex_build_push_seconds_bucket{le="+Inf"}'
+        values: "0+3x60"
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: BuildPushTimeHigh
+        exp_alerts: []
+
+  # An idle fleet has no push samples at all. `or vector(0)` must keep the rule
+  # evaluable and silent rather than leaving a gap that reads as healthy for the
+  # wrong reason.
+  - name: an idle fleet does not alert on an absent push series
+    interval: 1m
+    input_series:
+      - series: 'bex_build_push_seconds_bucket{le="+Inf"}'
+        values: "0x60"
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: BuildPushTimeHigh
+        exp_alerts: []
+
+  # BuildCacheTrialWithdrawn: the breaker tripping must reach the fleet, and the
+  # reason label must survive so the alert distinguishes the 72h hard stop
+  # (expected, go record the decision) from a stop rule firing (investigate).
+  - name: BuildCacheTrialWithdrawn carries the stop reason
+    interval: 1m
+    input_series:
+      - series: 'bex_build_cache_withdrawals_total{reason="deadline"}'
+        values: "0x10 1x30"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BuildCacheTrialWithdrawn
+        exp_alerts: [] # nothing has tripped yet
+      - eval_time: 20m
+        alertname: BuildCacheTrialWithdrawn
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              reason: deadline
+            exp_annotations:
+              summary: "The build-cache trial withdrew itself (deadline)"
+              description: "The operator's trial breaker stopped dispatching registry cache phases. reason=deadline is the 72h hard stop firing as designed — record the retain-or-rollback decision and remove BEX_BUILD_CACHE_TRIAL_DEADLINE or the gate itself. reason=push_latency or push_errors means a stop rule tripped: the cache is already off, so investigate rather than scramble. The gate stays withdrawn until the manager is redeployed, which is deliberate — re-enabling is a decision a person makes. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
