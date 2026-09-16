@@ -5,6 +5,7 @@
 ## Triage (2026-09-15)
 
 Triaged on `main` at `5523f684e`: the bug is still real and nothing has fixed it.
+
 - A save rewrites the single mutable `<name>-env` Secret and bumps `restartedAt` (`secrets/service.go:713-726`).
 - Cancel only annotates (`deploys/service.go:720`), and `settleCanceledRelease` re-dispatches the old image against the current spec (`app_controller.go:634`).
 - Rollback sets only image and `restartedAt` (`deploys/service.go:843-845`).
@@ -17,19 +18,52 @@ All three questions were answered by the user ("act as you recommended"), so thi
 2. **No fleet-wide roll: migrate lazily.** Existing services keep their current pod template until their next deploy, which is when they pick up their release snapshot. Nothing rolls on the operator upgrade itself. The cancel and rollback paths must therefore handle a release that predates snapshots by falling back to today's behavior, and t004's blast radius covers that mixed state.
 3. **Retention: the live release always, plus the last 10 releases per App** (including one snapshot per linked env group), older ones garbage-collected. t001 first checks how deep a rollback the deploy list actually offers; if it is deeper than 10, retention matches that window instead.
 
+## Design input (t001 groundwork, 2026-09-16)
+
+A full sweep of what a release's configuration actually consists of, so the snapshot design is complete before any code moves.
+
+**Nothing is per-release today.** The App CR's `Spec` is the shared mutable object every writer patches, and the closest thing to a release record — `store.Deploy` — carries only image, resolved image, generation and commit. `status.releaseFingerprint` is a one-way SHA-256: proof of identity, never a restorable value.
+
+**The config a pod actually gets, and where it lives:**
+
+| Source | Object | Scope |
+| --- | --- | --- |
+| Service env vars (bulk) | Secret `<name>-env` (`secrets/service.go:688`), backed by OpenBao | per-App, rewritten whole on every save |
+| Service secret files | Secret `<name>-files` (`secrets/files.go:56`), one `/etc/secrets` projection | per-App, rewritten in place |
+| Linked group vars / files | Secrets `<evg-id>-env` / `<evg-id>-files` (`envgroups/service.go:210-211`) | **shared across every linked App**, no owner ref |
+| Native build env | Secret `<name>-native-env` (`app_controller.go:1296`) | per-App, and part of **artifact** identity |
+| Literal env, start/build/pre-deploy commands, health-check path, tier, disk intent, `maxShutdownDelaySeconds` | inline in `AppSpec` | per-App, mutable in place |
+| Two-phase "saved, not deployed" staging | `PendingEnvSecretAnnotation` / `PendingFilesSecretAnnotation` | consumed by _whichever_ later reconcile rebuilds the template |
+
+**Why the canceled change still ships.** `Cancel` writes exactly one App-adjacent thing — the canceled-generation annotation (`deploys/service.go:781-787`); it never touches env, files, commands, tier or `restartedAt`. The operator then dispatches the prior **image** against the **live spec** (`settleCanceledRelease` → `dispatchRuntime`, `app_controller.go:645`), and the pod template is rebuilt from `app.Spec` on every pass — so the config the canceled deploy already wrote is what runs. `Rollback` is the same shape: image + `restartedAt` only, with the doc comment saying so outright (`deploys/service.go:848-849`).
+
+**Env groups are a live reference, not a copy.** A service stores only the group's Secret _name_; kubelet resolves contents at pod creation. A later group edit fans out synchronously to every linked service (`envgroups/patch.go:294-318`). A snapshot must therefore capture each linked group's **resolved contents and their precedence order** (groups first, then the service's own — `app_controller.go:3904-3934`), not just the names release identity records today.
+
+**The hard constraints the design must answer:**
+
+1. **Name stability.** `<name>-env` / `<name>-files` / `<name>-native-env` are pure functions of the App name and are read by other subsystems (`rejectProtectedSecretRefs`, the native build cache, the CRD's own `EnvFromSecret`). A versioned replacement must keep those names resolvable or dual-write.
+2. **Native builders bake env into the image.** For native/buildpack runtimes the build env is part of artifact identity, so "restore the old image" and "restore the old config" are not cleanly separable — the decision that rollback restores the target's values (§ Decisions 1) needs an explicit answer for that runtime.
+3. **Two independent choke points.** Every App-spec write funnels through either `rollout.Tracker.Patch` or `deploys.Service.patchApp`. A snapshot mechanism honored by only one is silently bypassed by the other.
+4. **Group Secrets carry no owner ref** (one group serves N Apps), so per-release copies of group-derived content cannot reuse the App-ownerRef GC pattern.
+5. **Quota and duplication.** Env maps are already bounded (500 keys, 512 KiB) and OpenBao already versions every write — a per-release copy multiplies stored bytes against those ceilings and re-implements versioning that exists. Retention (§ Decisions 3) interacts directly with this.
+6. **Disk is a singleton.** One PVC per App ever, with grow-only `sizeGB` deliberately outside the release fingerprint — only attach/detach/mount-path intent is release-scoped, never the volume's data.
+7. **`restartedAt` is dual-classed** (both artifact and release identity) and is the only thing that actually rolls pods; a snapshot must not turn a restore into an unintended roll, nor skip one that is needed.
+
+**Controls to re-run as regression evidence:** the `w6/m52` cancel-phase tests (`canceled_release_phase_test.go:40,83,113`), the `w6/m104` image-backed cancel pair (`:142,174`), the cancel/rollback suite (`deploys/cancel_rollback_test.go`, notably `TestRollbackRestoresPreviousLiveImage:332`, which currently asserts the image-only behavior this milestone changes), and the config-rollout suites in `secrets/`, `envgroups/` and `apps/`.
+
 ## Tasks (in order)
 
-| id   | title                                                                                                           | est | depends_on |
-| ---- | --------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Snapshot each release's runtime configuration so a release can be restored exactly                              | 75m | —          |
-| t002 | Cancel settles to the last successful release's full runtime identity (image and config), never the current spec | 60m | t001       |
-| t003 | Truth surfaces: the canceled change stays saved and reads "not deployed"; the Live row is what actually runs     | 45m | t002       |
-| t004 | Blast radius: every config source a `config_change` deploy carries, plus the m52/m104 controls                  | 45m | t002       |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Snapshot each release's runtime configuration so a release can be restored exactly | 75m | — |
+| t002 | Cancel settles to the last successful release's full runtime identity (image and config), never the current spec | 60m | t001 |
+| t003 | Truth surfaces: the canceled change stays saved and reads "not deployed"; the Live row is what actually runs | 45m | t002 |
+| t004 | Blast radius: every config source a `config_change` deploy carries, plus the m52/m104 controls | 45m | t002 |
 | t009 | Rollback restores the target deploy's configuration (env vars, start command), and a dashboard rollback turns auto-deploy off | 60m | t001 |
-| t005 | Render parity                                                                                                   | 30m | t003, t004, t009 |
-| t006 | Simplify                                                                                                        | 20m | t005       |
-| t007 | Test coverage                                                                                                   | 45m | t005       |
-| t008 | Closeout                                                                                                        | 10m | t007       |
+| t005 | Render parity | 30m | t003, t004, t009 |
+| t006 | Simplify | 20m | t005 |
+| t007 | Test coverage | 45m | t005 |
+| t008 | Closeout | 10m | t007 |
 
 ## Definition of done
 
@@ -89,6 +123,7 @@ No screenshots were taken; the transcripts above are the evidence.
   ```
 
   The superseded deploy settled through the same canceled branch and rolled pods from the current spec and Secret. The newest value therefore went out before its own deploy built, while the list still named an older deploy Live. t002 and t003 must cover supersede as well as a user's Cancel.
+
 - **Must stay correct:**
   - cancel of a first deploy with no prior release (`Canceled`, `w6/m52`);
   - cancel of an image-backed deploy with a prior release (image restored, `w6/m104`);

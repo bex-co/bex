@@ -1,10 +1,11 @@
 # w1 · m150 — A service's inbound IP allowlist matches the load balancer's private address, not the client
 
-**Worker:** worker1 **Goal:** an inbound IP allowlist on a web service or static site admits exactly the public clients whose address falls in a listed CIDR, and nobody else. The address Traefik matches is the client's, carried through the Hetzner load balancer by PROXY protocol and trusted only from that load balancer, the way `w2/done/m57` t010 already does for Postgres and Key Value. No header a client sends can influence the match. **Status:** todo (unblocked 2026-09-15; see § Decisions).
+**Worker:** worker1 **Goal:** an inbound IP allowlist on a web service or static site admits exactly the public clients whose address falls in a listed CIDR, and nobody else. The address Traefik matches is the client's, carried through the Hetzner load balancer by PROXY protocol and trusted only from that load balancer, the way `w2/done/m57` t010 already does for Postgres and Key Value. No header a client sends can influence the match. **Status:** todo (unblocked 2026-09-15; t003 blast radius done 2026-09-16; t001 prepared but **not applied** — see § Open question).
 
 ## Triage (2026-09-15)
 
 Triaged on `main` at `5523f684e`: the bug is still real and nothing has fixed it.
+
 - `database_controller.go:515` emits `ipAllowList.sourceRange` with no `ipStrategy`.
 - `infra/terraform/main.tf:208,226` keep `proxyprotocol = false` on `http` and `https`.
 - `traefik.values.yaml` has no `proxyProtocol`.
@@ -16,17 +17,46 @@ Both questions were answered by the user ("act as you recommended"), so this mil
 1. **The production edge changes in two ships, and the Terraform apply is yours.** Traefik first (t001): `web`/`websecure` accept PROXY protocol only from `10.10.0.7/32`, rolled out and confirmed by a live probe before anything else moves. Only then the listener flip (t002). This worker has no Terraform credentials and no cluster access, so **t002 ends with a prepared and reviewed change plus the exact apply command and the probe that must pass first — not an applied one.** Flipping the listeners before Traefik expects PROXY headers is a full HTTP(S) outage, so the order is not negotiable.
 2. **Allowlists behind Cloudflare: (c) with (a) documented.** An allowlist set on a Cloudflare-proxied host is refused, or warned about where refusing would break a config that already exists, and the documented rule is that an allowlist matches the real client only on DNS-only (grey-cloud) hosts. Trusting `CF-Connecting-IP` inside Cloudflare's published ranges (option b) is **not** taken now: it adds a second trusted-proxy list somebody has to keep current. It can be a follow-up milestone if it is ever wanted.
 
+## Blast radius (t003, 2026-09-16)
+
+Every consumer of the client address on `:80`/`:443`, and what changes when it becomes the real client.
+
+| Consumer | Today | After PROXY protocol |
+| --- | --- | --- |
+| **App IP allow-list** — `cidrMiddlewareSpec` (`database_controller.go:521-526`) emits `ipAllowList.sourceRange` with **no `ipStrategy`**; wired for the service list and the environment list by `reconcileIPAllowListMiddleware` (`app_controller.go:2862-2884`) | Matches the TCP peer, i.e. the load balancer: a real client CIDR blocks everyone, and `10.10.0.7/32` admits the whole internet | Matches the real client on DNS-only hosts. **This is the fix.** |
+| **Request logs** — Traefik `accessLog` JSON (`traefik.values.yaml:92-103`) → log-shipper (`log-shipper.yaml:545-691`) → `LogEntry.Message` → dashboard `map.ts` | `ClientHost` is `10.10.0.7` in all 50 sampled records; the shipper never extracts it as a label, the dashboard renders the line as opaque text | Shows the real client automatically. **No code change anywhere in the pipeline.** |
+| **Rate limiting / auth admission** — `core.TrustedProxies.ClientIP` (`clientip.go:89-115`) used by `api/ratelimit.go:137`, `cliauth/ratelimit.go:73`, `api/authadmission.go:138,170,204` | Every anonymous caller collapses into one `ip:10.10.0.7` bucket, so per-IP limiting is effectively a no-op | Buckets by the address Traefik reports. On Cloudflare-fronted hosts (`api.bex.co`) that is the CF edge, so callers behind one PoP still share a bucket — improved, not solved, which is the accepted consequence of Decision 2 |
+| **Web-shell audit** — `webshell/websocket.go:208-212,252` → `ssh_sessions.remote_address` | Records `10.10.0.7` for every session | Records the real browser IP (`ssh.bex.co` is DNS-only). **A fix.** |
+| **Metrics** — Traefik Prometheus labels (`traefik.values.yaml:111-116`), the `bexWebsocketEgress` plugin | Service/router/app-id labels only; no client-IP label exists | Unchanged |
+| **Activator, static server** | Never read the client address (`cmd/activator`, `internal/staticserver`: no `RemoteAddr`/`X-Forwarded-For`/`ClientIP` references) | Unchanged |
+| **Datastore allow-lists** — enforced in the SNI proxies at L4 (`cmd/pg-sni-proxy/main.go:152,229,248`, `internal/sniproxy/allowlist.go:34-65`) with `BEX_PROXY_PROTOCOL_TRUSTED_CIDRS=10.10.0.7/32` | Already correct (`w2/done/m57` t010); these daemonsets bind hostPorts and bypass Traefik | Unchanged — out of scope |
+
+**Nothing in the sweep breaks.** Every consumer either improves or is untouched; no component gates admission on "the connection came _from_ `10.10.0.7`", only on "do I trust `10.10.0.7`'s assertion", which is the correct shape.
+
+**Filed, not fixed here:** `w1/107` — `agentattach.go:413` writes `RemoteAddress: r.RemoteAddr` directly instead of going through `TrustedProxies.ClientIP` like its sibling handler, so that audit field records Traefik's pod IP. It is wrong today for an unrelated reason and stays wrong after this milestone.
+
+**The precedent for the parser**, if it is ever needed on this path: `lego/types/proxyproto` is the shared v1/v2 reader (`ReadProxySource` honors a header only from a trusted immediate peer and passes a headerless connection through unchanged), re-exported by `backend/internal/proxyproto` and `operator/internal/sniproxy`. t001 needs none of it — Traefik's entrypoints take a Helm value, not Go code.
+
+## Open question that gates t001 (2026-09-16)
+
+The Hetzner load balancer health-checks the entrypoints with **plain TCP and no PROXY header** (`infra/terraform/main.tf`, `health_check { protocol = "tcp" }`), and `traefik.values.yaml` has no `proxyProtocol` key today. So enabling `proxyProtocol.trustedIPs: ["10.10.0.7/32"]` is only the safe first step **if that Traefik version accepts a headerless connection from a trusted peer**. If it instead requires the header, the health checks fail the moment Argo rolls Traefik and the edge goes down before the listener flip ever happens — the exact outage the two-step order exists to prevent.
+
+That behavior is not verified anywhere in this repo, and this worker has no cluster access to probe it. **t001 is therefore prepared but not applied.** It needs one of:
+
+1. a local verification on the kind/CAPD harness (deploy Traefik with the trust set, open a headerless TCP connection, confirm it is served), or
+2. an explicit decision to roll it and probe the public edge immediately afterwards, accepting a short outage window if the assumption is wrong.
+
 ## Tasks (in order)
 
-| id   | title                                                                                                                  | est | depends_on |
-| ---- | ---------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Traefik `web`/`websecure` accept PROXY protocol only from the load balancer (`10.10.0.7/32`), rolled out before the listener change | 45m | —          |
-| t002 | Enable PROXY protocol on the Terraform `http`/`https` listeners and prove the allowlist sees the client               | 45m | t001       |
-| t003 | Blast radius: every consumer of Traefik's client address on :80/:443                                                   | 45m | t001       |
-| t004 | Render parity                                                                                                          | 20m | t002, t003 |
-| t005 | Simplify                                                                                                               | 15m | t004       |
-| t006 | Test coverage                                                                                                          | 40m | t004       |
-| t007 | Closeout                                                                                                               | 10m | t006       |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Traefik `web`/`websecure` accept PROXY protocol only from the load balancer (`10.10.0.7/32`), rolled out before the listener change | 45m | — |
+| t002 | Enable PROXY protocol on the Terraform `http`/`https` listeners and prove the allowlist sees the client | 45m | t001 |
+| t003 | Blast radius: every consumer of Traefik's client address on :80/:443 — **DONE** | 45m | t001 |
+| t004 | Render parity | 20m | t002, t003 |
+| t005 | Simplify | 15m | t004 |
+| t006 | Test coverage | 40m | t004 |
+| t007 | Closeout | 10m | t006 |
 
 ## Definition of done
 
@@ -64,12 +94,14 @@ No screenshots were taken; the transcripts above are the evidence.
 
 - **The middleware matches the TCP peer.** `cidrMiddlewareSpec` (`lego/operator/internal/controller/database_controller.go:510-516`) emits `{"ipAllowList": {"sourceRange": …}}` with no `ipStrategy`, so Traefik matches the request's remote address (Evidence 4).
 - **That peer is the load balancer.**
+
   - The Hetzner `http` and `https` listeners set `proxyprotocol = false` (`infra/terraform/main.tf:201-235`).
   - The Traefik Service's `externalTrafficPolicy: Local` (`deploy/gitops/overlays/prod/values/traefik.values.yaml:66`) preserves only the load balancer→node source.
   - The `web` and `websecure` ports (`:43-48`) configure no `proxyProtocol`.
   - `scripts/gitops-validate.sh:168-173` pins `proxyprotocol=false` on every edge listener except `postgres` and `valkey`.
 
   Traefik therefore sees every Internet client as `10.10.0.7` (Evidence 1). A real client CIDR never matches, and an entry covering `10.10.0.7` matches everyone (Evidence 3).
+
 - **Why it shipped green.**
   - `w2/done/m57/done/t010.md` recorded this mechanism: "Hetzner TCP load balancers do not preserve an application-visible client address unless PROXY protocol is enabled". It fixed it for the two datastore listeners and put "enabling PROXY protocol on SSH or HTTP listeners" out of scope.
   - `w7/done/m32`'s DoD was "Verified live against the mock cluster from two source IPs". The kind/CAPD mock has no Hetzner load balancer in the path.
@@ -120,8 +152,10 @@ No screenshots were taken; the transcripts above are the evidence.
 - **Goal linkage:** pillar 1, Render-compatible hosting (`docs/ADR018-render-parity.md` row 125 marks it ✅ on every surface), and network access control that does what it says.
 - **Expected outcome:** the Networking card's "Restrict inbound HTTP traffic to these source CIDRs" becomes true. Listing your office IP admits your office and nobody else, and request logs show real client addresses.
 - **Why now:** the feature fails silently in both directions:
+
   - A tenant who restricts a staging service to their own IP locks themselves out with a bare `403` and no hint why.
   - A tenant who lists a private range, or the one entry that "works", believes the service is restricted while it is open to the Internet.
 
   Fixing it changes the edge for all HTTP traffic, so it needs a planned, ordered rollout rather than an incidental change.
+
 - **Render parity:** included. No REST, GraphQL, MCP or dashboard shape changes, but the user-visible behavior of a ✅ Render-parity row changes. t004 records the address semantics and the Cloudflare caveat on row 125.
