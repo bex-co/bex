@@ -873,6 +873,13 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	if w.Code != 200 {
 		t.Fatalf("HA-only PATCH => 200, got %d: %s", w.Code, w.Body.String())
 	}
+	var patched PostgresView
+	if err := json.Unmarshal(w.Body.Bytes(), &patched); err != nil {
+		t.Fatal(err)
+	}
+	if !patched.HighAvailabilityEnabled {
+		t.Error("PATCH response must echo requested highAvailabilityEnabled=true (w5/065)")
+	}
 	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
 	if !got.Spec.HighAvailability {
 		t.Error("spec.highAvailability should be true after an HA-only update")

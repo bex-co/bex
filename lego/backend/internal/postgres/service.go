@@ -101,7 +101,9 @@ type PostgresView struct {
 	DiskAutoscalingEnabled bool `json:"diskAutoscalingEnabled"`
 
 	// HighAvailabilityEnabled reflects the operator's observed state (≥2 ready
-	// instances). Render's highAvailabilityEnabled read field.
+	// instances) on GET. A PATCH/update that sets enableHighAvailability echoes
+	// the requested value on that response so CLI diffs are meaningful (w5/065);
+	// a subsequent GET still reports observed readiness.
 	HighAvailabilityEnabled bool `json:"highAvailabilityEnabled"`
 	// ReadReplicas is the named replica array — each with its host info.
 	// Password is not included here; use PostgresConnectionInfo for credentials.
@@ -1270,6 +1272,13 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 		return PostgresView{}, err
 	}
 	s.recordUpdateEffects(ctx, d, before)
+	// PATCH responses echo desired highAvailabilityEnabled when the caller just
+	// set it (w5/065): GET stays observed (≥2 ready instances), but the update
+	// response must match sibling fields (diskSizeGB, connectionPool) so the
+	// CLI's before/after diff is not always {}.
+	if patch.EnableHighAvailability != nil {
+		view.HighAvailabilityEnabled = *patch.EnableHighAvailability
+	}
 	return view, nil
 }
 
@@ -1334,7 +1343,11 @@ func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch 
 	}
 	preview := d.DeepCopy()
 	patch.apply(preview)
-	return s.view(preview), nil
+	view := s.view(preview)
+	if patch.EnableHighAvailability != nil {
+		view.HighAvailabilityEnabled = *patch.EnableHighAvailability
+	}
+	return view, nil
 }
 
 func unknownPostgresVersionError(version string) error {
