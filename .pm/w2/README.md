@@ -15,6 +15,14 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m94** — [Linked environment groups: precedence, auto-deploy, and quota parity](m94/README.md) (9 tasks; ~3h implementation, ~4h30m total) ← `/pm-brainstorm for w1` 2026-09-15 #1, absorbing w1/091, w1/092, w1/095, w1/100.
+- [ ] **m95** — [Environment values mean what the user typed: round-trip escapes, multi-line values, and `PORT`](m95/README.md) (7 tasks; ~1h35m implementation, ~2h45m total) ← `/pm-brainstorm for w1` 2026-09-15 #2, absorbing w1/099, w1/096; `PORT` decided as option (a).
+- [ ] **m96** — [Charges and webhook deliveries name their resource, even after deletion](m96/README.md) (8 tasks; ~2h10m implementation, ~3h20m total) ← `/pm-brainstorm for w1` 2026-09-15 #3, absorbing w1/088, w1/090.
+- [ ] **m97** — [Blueprint preview names the reason a fetch failed](m97/README.md) (7 tasks; ~1h30m implementation, ~2h40m total) ← `/pm-brainstorm for w1` 2026-09-15 #4, absorbing w1/097.
+- [ ] **m98** — [A suspended web service answers with a bex response](m98/README.md) (7 tasks; ~1h15m implementation, ~2h25m total) ← `/pm-brainstorm for w1` 2026-09-15 #5, absorbing w1/094.
+- [ ] **m99** — [A queued deploy says why it waits](m99/README.md) (7 tasks; ~1h15m implementation, ~2h25m total) ← `/pm-brainstorm for w1` 2026-09-15 #6, absorbing w1/087.
+- [ ] **m100** — [REST routes a Render client cannot reach: the shadowed `event-types` route and the missing overrides list](m100/README.md) (6 tasks; ~1h15m implementation, ~2h20m total) ← `/pm-brainstorm for w1` 2026-09-15 #7, absorbing w1/089, w1/093.
+
 - [x] **m93** — Migration clean-window evidence (7 tasks) ← revalidated brainstorm 2026-09-08; retained legacy-read coverage + fail-closed readiness report before w2/035 Phase 4; Render parity omitted (internal operations).
 
 - [x] **m92** — ADR055 F2/F3: execute the production identity migration (phases 1–3, arm phase 4) (8 tasks) ← from `/pm-brainstorm for w2` 2026-09-07 #2 (approved same day): w2/m75 shipped the workspace-scoped identity code, dual-read, `registry-migrate`, and the STOP-gated runbook on 2026-08-18, but prod phases 2–4 never ran, so the security register's two HIGH findings (registry repos/users and static prefixes keyed by App name alone) stay open and the legacy artifact set grows with every deploy; inventory → scratch-App rehearsal → STOP-gated copy/verify/tombstone → STOP-gated redeploy → arm the 14-day phase-4 window with a filed follow-up; every mutating phase waits for explicit user authorization; Render parity omitted (platform storage identity, no wire change)
