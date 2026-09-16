@@ -40,9 +40,9 @@ const (
 
 // Apply mutates root in place: Use/examples/Short/Long read as Bex, help
 // chrome uses bexVersion, and `docs` opens DocsURL. Upstream setupCommands
-// adds more children during Execute (after this returns), so HelpFunc
-// re-walks the tree before any help output. It does not replace upstream
-// RunE bodies except for `docs`.
+// adds more children during Execute (after this returns), so HelpFunc and
+// UsageFunc re-walk the tree before help or usage output. It does not replace
+// upstream RunE bodies except for `docs`.
 func Apply(root *cobra.Command, bexVersion string) {
 	if root == nil {
 		return
@@ -67,6 +67,14 @@ func Apply(root *cobra.Command, bexVersion string) {
 		brandTree(root)
 		overrideDocs(root)
 		prevHelp(c, args)
+	})
+	// Flag/arg errors call UsageFunc (UsageString), not HelpFunc — without this
+	// wrapper late-added setupCommands children still print `render …` examples.
+	prevUsage := root.UsageFunc()
+	root.SetUsageFunc(func(c *cobra.Command) error {
+		brandTree(root)
+		overrideDocs(root)
+		return prevUsage(c)
 	})
 }
 
