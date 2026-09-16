@@ -420,6 +420,35 @@ func setupAppReconciler(
 	if appReconciler.RegistryBuildPullSecret == "" && appReconciler.RegistryPushSecret != "" {
 		appReconciler.RegistryBuildPullSecret = "bex-registry-pull"
 	}
+	// Bound the cache trial (docs/ADR060 D3, .pm/w7/047). The deadline is an
+	// absolute RFC3339 instant rather than a duration so a manager rollout
+	// cannot restart the 72-hour clock — three restarts under a duration would
+	// silently run the trial for nine days. Unset leaves only the push-latency
+	// and push-failure stop rules armed, which is the correct shape after a
+	// retain decision has made the cache permanent.
+	if appReconciler.BuildCache {
+		var deadline time.Time
+		if raw := os.Getenv("BEX_BUILD_CACHE_TRIAL_DEADLINE"); raw != "" {
+			parsed, err := time.Parse(time.RFC3339, raw)
+			if err != nil {
+				// Fatal rather than ignored: a typo here is the difference
+				// between a bounded trial and an unbounded one, and silently
+				// dropping the bound is the single worst outcome available.
+				setupLog.Error(err, "BEX_BUILD_CACHE_TRIAL_DEADLINE is not RFC3339; "+
+					"refusing to start an unbounded cache trial", "value", raw)
+				os.Exit(1)
+			}
+			deadline = parsed
+		}
+		appReconciler.EnableBuildCacheTrial(deadline)
+		bound := "none (push-latency and push-failure rules only)"
+		if !deadline.IsZero() {
+			bound = deadline.Format(time.RFC3339)
+		}
+		setupLog.Info("registry build cache enabled",
+			"trialDeadline", bound,
+			"stopRules", "push p95 > 60s over 5+ samples in 15m; 3+ push failures in 15m")
+	}
 	// Per-App registry pull credentials (w7/m36). Active when BEX_REGISTRY_NS is
 	// set (typically "bex-registry"). Supersedes the shared bex-puller path.
 	if zotNS := os.Getenv("BEX_REGISTRY_NS"); zotNS != "" {

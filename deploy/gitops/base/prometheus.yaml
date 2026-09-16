@@ -989,6 +989,50 @@ spec:
                       summary: "Build queue p95 is {{ $value | humanizeDuration }} (capacity, not tenant code)"
                       description: "Builds are chronically waiting for a node before they start. This is the platform's SLI, not the tenant's: compare bex_build_run_seconds, which should be unaffected. Consider the build pools' max-size, BEX_MAX_ACTIVE_BUILDS, and whether cold scale-from-zero (bex_builds_queued > 0 with bex-tenant-burst at 0 replicas) dominates. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5."
 
+                  # The build cache trial's push-latency stop rule
+                  # (docs/ADR060 D3, .pm/w7/047). The registry cache adds a
+                  # cache-save push to every build, so the push phase is where a
+                  # cache regression shows up first — and push is platform-owned
+                  # end to end (skopeo, our credential, our registry), so a
+                  # regression here is never a tenant's bad Dockerfile.
+                  #
+                  # 60s is a floor deliberately far above the measured ~27s
+                  # production p95 (2026-09-15), not a tight bound: it fires on a
+                  # regression, not on normal variance. The operator enforces the
+                  # same rule itself and withdraws the cache without waiting for
+                  # anyone — see BuildCacheTrialWithdrawn below. This alert exists
+                  # because the fleet should still learn that it happened.
+                  # `or vector(0)` keeps the series present on an idle fleet.
+                  - alert: BuildPushTimeHigh
+                    expr: |
+                      (
+                        histogram_quantile(0.95,
+                          sum by (le) (rate(bex_build_push_seconds_bucket[15m]))
+                        ) or vector(0)
+                      ) > 60
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Build push p95 is {{ $value | humanizeDuration }} (platform-owned, not tenant code)"
+                      description: "The skopeo push phase is chronically slow. Every part of it is ours: check Zot's PVC headroom (kubelet_volume_stats_used_bytes in bex-registry) first, since a filling volume slows pushes before it fails them, then bex_build_push_errors_total and Zot's own logs. If a registry build-cache trial is running, bex_build_cache_enabled shows whether the operator has already withdrawn the cache in response. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3/D4."
+
+                  # The trial breaker reporting that it ended the experiment by
+                  # itself (.pm/w7/047). This is not a page — withdrawing the
+                  # cache is the SAFE direction, and by the time this fires the
+                  # dangerous state is already over. It exists because the
+                  # alternative is silence: BEX_BUILD_CACHE still reads
+                  # "registry" in the production overlay after a trip, so
+                  # without this the only evidence that the trial ended is
+                  # builds quietly getting slower.
+                  - alert: BuildCacheTrialWithdrawn
+                    expr: increase(bex_build_cache_withdrawals_total[1h]) > 0
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "The build-cache trial withdrew itself ({{ $labels.reason }})"
+                      description: "The operator's trial breaker stopped dispatching registry cache phases. reason=deadline is the 72h hard stop firing as designed — record the retain-or-rollback decision and remove BEX_BUILD_CACHE_TRIAL_DEADLINE or the gate itself. reason=push_latency or push_errors means a stop rule tripped: the cache is already off, so investigate rather than scramble. The gate stays withdrawn until the manager is redeployed, which is deliberate — re-enabling is a decision a person makes. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
+
                   # Build-toolchain freshness (docs/ADR060 D7, w4/m86). Readiness
                   # and age are distinct: a Ready builder can still be a stale
                   # pin, and a recently reviewed pin can still be unready.
