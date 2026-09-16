@@ -61,6 +61,11 @@ import {
   pairedSibling,
   type CustomDomainView,
 } from "@/features/services/types";
+import {
+  dnsInstructionZone,
+  ownershipDnsHostForDisplay,
+  ownershipHostKey,
+} from "@/features/services/lib/dns-instruction-host";
 
 // A hostname bex-api (and the operator's Ingress) will accept: optional wildcard
 // label, then dot-separated labels, ending in a 2+ char TLD. Reject bad input
@@ -79,22 +84,24 @@ interface OwnershipSibling {
 
 /**
  * The OTHER claims that share this domain's ownership TXT host. Every domain
- * under one registrable domain proves ownership at the same `_bex-challenge.*`
- * host, one TXT record per claim (docs/ADR005-custom-domain.md) — so each
- * panel lists the sibling values that must stay in place while this one is
- * added (w6/055: following "create this record" literally in a single-value
- * DNS edit box used to destroy the sibling's proof).
+ * under one registrable domain proves ownership at the same `_bex-challenge`
+ * host (relative to that zone), one TXT record per claim
+ * (docs/ADR005-custom-domain.md) — so each panel lists the sibling values that
+ * must stay in place while this one is added (w6/055: following "create this
+ * record" literally in a single-value DNS edit box used to destroy the
+ * sibling's proof). Matching is by relative host + zone (w4/092), not the
+ * legacy FQDN string alone.
  */
 function ownershipSiblings(
   domain: CustomDomainView,
   domains: CustomDomainView[],
 ): OwnershipSibling[] {
-  const host = domain.ownershipDnsRecord?.name;
-  if (!host) return [];
+  const key = ownershipHostKey(domain);
+  if (!key) return [];
   return domains
     .filter(
       (other) =>
-        other.name !== domain.name && other.ownershipDnsRecord?.name === host,
+        other.name !== domain.name && ownershipHostKey(other) === key,
     )
     .map((other) => ({
       domain: other.name,
@@ -369,14 +376,21 @@ function DnsRecordFields({
 }) {
   const { t } = useTranslations();
   const record = domain.dnsRecord;
+  const zone = dnsInstructionZone(domain);
+  const ownershipRecord = domain.ownershipDnsRecord
+    ? {
+        ...domain.ownershipDnsRecord,
+        name: ownershipDnsHostForDisplay(domain.ownershipDnsRecord.name),
+      }
+    : null;
   return (
     <div className="space-y-3">
-      {!domain.ownershipVerified && domain.ownershipDnsRecord ? (
+      {!domain.ownershipVerified && ownershipRecord ? (
         <>
           <p className="text-muted-foreground text-sm">
-            {t("services.domainOwnershipGuidance")}
+            {t("services.domainOwnershipGuidance", { zone })}
           </p>
-          <DnsRecordFieldsRow record={domain.ownershipDnsRecord} />
+          <DnsRecordFieldsRow record={ownershipRecord} />
           {txtSiblings.length > 0 ? (
             <div className="space-y-1">
               <p className="text-muted-foreground text-xs">
@@ -405,8 +419,8 @@ function DnsRecordFields({
       ) : null}
       <p className="text-muted-foreground text-sm">
         {domain.domainType === "apex"
-          ? t("services.domainDnsApexGuidance")
-          : t("services.domainDnsSubdomainGuidance")}
+          ? t("services.domainDnsApexGuidance", { zone })
+          : t("services.domainDnsSubdomainGuidance", { zone })}
       </p>
       {record ? (
         <DnsRecordFieldsRow record={record} />

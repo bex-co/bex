@@ -71,7 +71,7 @@ const pendingDomain: CustomDomainView = {
   dnsRecord: { type: "CNAME", name: "api", value: "web.onbex.co" },
   ownershipDnsRecord: {
     type: "TXT",
-    name: "_bex-challenge.example.com",
+    name: "_bex-challenge",
     value: "bex-domain-verification=test-api",
   },
 };
@@ -88,7 +88,7 @@ const apexDomain: CustomDomainView = {
   dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
   ownershipDnsRecord: {
     type: "TXT",
-    name: "_bex-challenge.foo.com",
+    name: "_bex-challenge",
     value: "bex-domain-verification=test-apex",
   },
 };
@@ -103,7 +103,7 @@ const wwwSiblingDomain: CustomDomainView = {
   dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
   ownershipDnsRecord: {
     type: "TXT",
-    name: "_bex-challenge.foo.com",
+    name: "_bex-challenge",
     value: "bex-domain-verification=test-www",
   },
 };
@@ -267,7 +267,14 @@ describe("CustomDomainsSection", () => {
     expect(screen.getByText("DNS setup")).toBeInTheDocument();
     expect(screen.getByText("TXT")).toBeInTheDocument();
     expect(screen.getByText("CNAME")).toBeInTheDocument();
-    expect(screen.getByText("_bex-challenge.example.com")).toBeInTheDocument();
+    // Both Hosts are zone-relative (w4/092) — never an FQDN beside a label.
+    expect(screen.getByText("_bex-challenge")).toBeInTheDocument();
+    expect(
+      screen.queryByText("_bex-challenge.example.com"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText(/in the example\.com zone/).length,
+    ).toBeGreaterThanOrEqual(1);
     expect(
       screen.getByText("bex-domain-verification=test-api"),
     ).toBeInTheDocument();
@@ -290,6 +297,26 @@ describe("CustomDomainsSection", () => {
     expect(screen.queryByRole("button", { name: "Target" })).not.toBeInTheDocument();
   });
 
+  it("strips a legacy FQDN ownership Host so paste stays relative (w4/092)", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([
+        {
+          ...pendingDomain,
+          ownershipDnsRecord: {
+            type: "TXT",
+            name: "_bex-challenge.example.com",
+            value: "bex-domain-verification=legacy",
+          },
+        },
+      ]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+    expect(screen.getByText("_bex-challenge")).toBeInTheDocument();
+    expect(
+      screen.queryByText("_bex-challenge.example.com"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows apex guidance for an apex domain", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([
@@ -303,7 +330,7 @@ describe("CustomDomainsSection", () => {
           dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
           ownershipDnsRecord: {
             type: "TXT",
-            name: "_bex-challenge.example.com",
+            name: "_bex-challenge",
             value: "bex-domain-verification=apex",
           },
         },
@@ -314,6 +341,9 @@ describe("CustomDomainsSection", () => {
     expect(
       screen.getByText(/Apex domains can't use a plain CNAME/),
     ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/in the example\.com zone/).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("lists sibling TXT values sharing the ownership host so none get overwritten (w6/055)", () => {
@@ -373,9 +403,7 @@ describe("CustomDomainsSection", () => {
     expect(
       await within(dialog).findByText("Domain claim created — set up DNS"),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText("_bex-challenge.example.com"),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText("_bex-challenge")).toBeInTheDocument();
     expect(within(dialog).getByText("web.onbex.co")).toBeInTheDocument();
   });
 
