@@ -64,6 +64,57 @@ The create form's hint was the other half of the contradiction: it read "A resou
 - **`dashboard/yarn test`**: 3219 tests pass. Four route-tree files fail to _collect_ in the scratch worktree only — Vite denies an absolute path outside the project root because `node_modules` is symlinked there; all four pass (76 tests) in a checkout with real dependencies, at `origin/main` as well as with this diff.
 - **`yarn typecheck`**, **`yarn eslint .`** and **`yarn lint:unused`** (knip) are clean.
 
+## Live verification (2026-09-15, production)
+
+**Fixture.** `qa-20260915-m159kv` (`red-dakv3hqsh60c73ao4li0`), a free Key Value store in the QA workspace, created 01:32:55Z and suspended at 01:34:32Z (0.8 s). Deleted at the end of the check.
+
+**Before the fix** — read on the dashboard still running the pre-m159 build, through headless Chrome with the QA session (Playwright MCP was disconnected this session):
+
+```text
+01:36:44Z  GET https://dashboard.bex.co/keyvalue/red-dakv3hqsh60c73ao4li0
+           h1            : qa-20260915-m159kv
+           header badge  : Suspended
+           Details card  : Status = available
+                           Instance type = free
+```
+
+- **The filed contradiction, reproduced.** The header badge and the Status row of the same card disagree about the same store, and both the status and the plan render as raw wire values.
+
+**Move to project, before the fix.** A second fixture on the same pre-m159 dashboard: project `qa-20260916-m159p` (`prj-dakvcc0dp28s73ek2h4g`) created 01:51:44Z with one environment, `qa-e1` (`env-dakvcc0dp28s73ek2h50`). The suspended store was then moved in through `setProjectKeyValues` — the same mutation the resource row's "Move to project" action sends — which returned the store in the project's `keyValueIds`.
+
+```text
+01:52:54Z  GET https://dashboard.bex.co/project/prj-dakvcc0dp28s73ek2h4g
+           h1                   : qa-20260916-m159p
+           environment selector : qa-e1
+           that environment     : "0 resources"
+           moved store visible  : no
+           Unassigned offered   : no
+```
+
+- **The filed symptom, reproduced.** Immediately after a successful move the project page opens on an empty Environment, and the resource that was just moved is nowhere on screen.
+
+**The count string, before the fix.** On the same pre-m159 dashboard, `/blueprints/new` with `bex-co/bex` and the Blueprint path `examples/hello-go/render.yaml` (a one-resource file):
+
+```text
+01:55Z  Blueprint file parsed successfully — 1 resources to sync.
+```
+
+- **The filed symptom, reproduced** — `w1/098`'s exact string, still live.
+
+## Render parity (t004)
+
+**The three API surfaces agree, and they keep Render's shape.** Read live at 01:47Z against the suspended fixture `red-dakv3hqsh60c73ao4li0`:
+
+| Surface                       | status      | suspended   | plan   |
+| ----------------------------- | ----------- | ----------- | ------ |
+| REST `GET /v1/key-value/{id}` | `available` | `suspended` | `free` |
+| GraphQL `keyValue(id:)`       | `available` | `suspended` | `free` |
+| MCP `get_key_value`           | `available` | `suspended` | `free` |
+
+- **This is the contract, not a bug.** Render keeps `status` and `suspended` as separate fields, and bex mirrors that on all three surfaces — a suspended store legitimately reports `status: "available"`. Nothing on the wire should change, and **no divergence is recorded in ADR018**.
+- **Which is exactly why the dashboard must derive what it shows.** The presentation layer is the only place these two facts are combined into the one word a user reads; printing `status` raw is what made the Details card contradict the badge beside it. `deriveStatus` (suspension wins over the enum) is that combination, and after m159 both the badge and the Details row call it through one `statusLabel()`.
+- **Plan.** All three surfaces return the plan _id_ (`free`), which is also correct — the human-readable name lives in the instance-type catalog the dashboard already queries for its plan picker, and the Details row now resolves it there.
+
 ## Blast radius
 
 - **Who is hit.** Every datastore detail page, every "Move to project" from a resource row, and seven strings across Blueprints, env groups and services.
