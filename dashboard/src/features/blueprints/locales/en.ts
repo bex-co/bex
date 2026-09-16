@@ -127,6 +127,76 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section fallback error body when the backend returns no message",
   },
+  "blueprints.previewFileNotFoundTitle": {
+    message: "Blueprint file not found",
+    description: "Preview failure title: the repo and branch resolved, the file did not",
+  },
+  "blueprints.previewFileNotFoundBody": {
+    message:
+      "{path} does not exist on branch {branch}. Check the path, or commit the file to that branch.",
+    description: "Preview failure body for file_not_found",
+  },
+  "blueprints.previewBranchNotFoundTitle": {
+    message: "Branch not found",
+    description: "Preview failure title for branch_not_found",
+  },
+  "blueprints.previewBranchNotFoundBody": {
+    message: "Branch {branch} does not exist in this repository.",
+    description: "Preview failure body for branch_not_found",
+  },
+  "blueprints.previewRepoNotFoundTitle": {
+    message: "Repository not found",
+    description: "Preview failure title for repo_not_found_or_no_access",
+  },
+  "blueprints.previewRepoNotFoundBody": {
+    message:
+      "This repository does not exist, or bex's GitHub app cannot access it. Check the repository and the app's repository access.",
+    description: "Preview failure body for repo_not_found_or_no_access",
+  },
+  "blueprints.previewAccessDeniedTitle": {
+    message: "Access denied",
+    description: "Preview failure title for access_denied",
+  },
+  "blueprints.previewAccessDeniedBody": {
+    message:
+      "bex's GitHub app is not authorized to read this repository. Re-check the installation and the repositories it is granted.",
+    description: "Preview failure body for access_denied",
+  },
+  "blueprints.previewRateLimitedTitle": {
+    message: "GitHub is rate-limiting bex",
+    description: "Preview failure title for rate_limited",
+  },
+  "blueprints.previewRateLimitedBody": {
+    message: "Too many requests to GitHub right now. Try again in a few minutes.",
+    description: "Preview failure body for rate_limited",
+  },
+  "blueprints.previewAmbiguousTitle": {
+    message: "Two Blueprint files",
+    description: "Preview failure title for ambiguous_filename",
+  },
+  "blueprints.previewAmbiguousBody": {
+    message:
+      "This repository has both render.yaml and bex.yml on branch {branch}. Remove one, or name the file explicitly above.",
+    description: "Preview failure body for ambiguous_filename",
+  },
+  "blueprints.previewUnavailableTitle": {
+    message: "Could not reach GitHub",
+    description: "Preview failure title for unavailable",
+  },
+  "blueprints.previewUnavailableBody": {
+    message:
+      "bex could not read the Blueprint file from GitHub. Try again in a few minutes.",
+    description: "Preview failure body for unavailable",
+  },
+  "blueprints.previewInvalidPathExtension": {
+    message: "The Blueprint path must be a .yaml or .yml file.",
+    description: "Inline path-field error for invalid_path, wrong extension",
+  },
+  "blueprints.previewInvalidPathShape": {
+    message:
+      "The Blueprint path must be a clean, repository-relative path (no leading slash, no ..).",
+    description: "Inline path-field error for invalid_path, bad shape",
+  },
   "blueprints.previewRetry": {
     message: "Retry",
     description: "Review section retry button after a failed manifest fetch",

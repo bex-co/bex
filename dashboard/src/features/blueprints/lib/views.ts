@@ -5,6 +5,7 @@ import type {
   ValidateBlueprintQuery,
 } from "@/graphql/definitions";
 import type {
+  BlueprintPreviewReason,
   BlueprintPreviewResult,
   BlueprintPreviewValidation,
   BlueprintSyncView,
@@ -165,6 +166,8 @@ export function toBlueprintPreviewResult(
     found: preview.found,
     commitId: preview.commitId,
     error: preview.error,
+    reason: (preview.reason || null) as BlueprintPreviewReason | null,
+    retryable: preview.retryable ?? false,
     validation: preview.validation
       ? toPreviewValidation(preview.validation)
       : null,

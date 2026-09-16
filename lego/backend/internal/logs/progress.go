@@ -23,6 +23,10 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Platform progress lines (w1/m48): Render's deploy feed is never silent — the
@@ -64,12 +68,154 @@ type DeployProgress struct {
 // label-less Apps simply resolve to no rows.
 type DeployProgressSource func(ctx context.Context, resource string, end time.Time) ([]DeployProgress, error)
 
+// deployStatusQueued is store.DeployQueued. The logs domain stays store-free
+// (DeployProgress carries the status as a plain string), so the one value the
+// narration branches on is restated here rather than imported.
+const deployStatusQueued = "queued"
+
+// buildWait is the App's CURRENT reason for a not-yet-running build, read from
+// the `Ready` condition the operator writes (`BuildQueued` for every
+// dispatched-but-not-running wait, `RegistryCredsPending` for the pre-dispatch
+// registry window). Zero value = nothing to narrate.
+type buildWait struct {
+	Reason  string
+	Message string
+}
+
+// progressContext is the App-derived input to line synthesis: the fields that
+// shape the lines (repo/branch/type), the App's current queued-wait reason, and
+// the object key a live tail re-reads that reason from each tick. Bundled into
+// one value so the read path and the tail path cannot drift apart, and so
+// neither verb grows a sixth positional string.
+type progressContext struct {
+	repo        string
+	branch      string
+	serviceType string
+	wait        buildWait
+	namespace   string
+	name        string
+}
+
+// newProgressContext snapshots an App CR for narration.
+func newProgressContext(app *appv1alpha1.App) progressContext {
+	if app == nil {
+		return progressContext{}
+	}
+	return progressContext{
+		repo:        app.Spec.Repo,
+		branch:      app.Spec.Branch,
+		serviceType: app.Spec.Type,
+		wait:        appBuildWait(app),
+		namespace:   app.Namespace,
+		name:        app.Name,
+	}
+}
+
+// appBuildWait extracts the queued-wait reason from an App's `Ready` condition,
+// matching the same currency rule the deploy projector uses
+// (store.failureReasonFor): only the condition observed for THIS generation
+// counts, so a stale reason from a superseded spec is never narrated. Any
+// reason other than the two wait reasons means the App is not waiting to build,
+// which is the empty (silent) answer.
+func appBuildWait(app *appv1alpha1.App) buildWait {
+	if app == nil {
+		return buildWait{}
+	}
+	for i := range app.Status.Conditions {
+		c := &app.Status.Conditions[i]
+		if c.Type != appv1alpha1.ConditionReady || c.ObservedGeneration != app.Generation {
+			continue
+		}
+		switch c.Reason {
+		case appv1alpha1.ReasonBuildQueued, appv1alpha1.ReasonRegistryCredsPending:
+			return buildWait{Reason: c.Reason, Message: c.Message}
+		}
+		return buildWait{}
+	}
+	return buildWait{}
+}
+
+// The queued-wait narration vocabulary. Exactly two shapes reach a tenant:
+// its OWN workspace's slot usage, and a countless, tenant-neutral line for
+// every wait whose cause lives outside this workspace.
+//
+// SECURITY (m99 t002): the operator's `Ready` message is platform-internal
+// text. The cluster-wide cap message ("cluster has 4/4 concurrent builds
+// active…") counts OTHER tenants' builds, and the scheduler wait ("waiting for
+// build capacity: <kube scheduler message>") names nodes, taints and quotas.
+// Neither may be echoed. waitLine is therefore an allow-list that renders
+// operator text only for the one message shape that is provably this
+// workspace's own, and falls back to the neutral line for everything else —
+// including any wait message a newer operator invents.
+const (
+	waitLineNeutral          = "==> Waiting for platform build capacity"
+	waitLineRegistryCreds    = "==> Preparing registry credentials"
+	workspaceCapMessageStart = "workspace has "
+	workspaceCapMessageEnd   = " concurrent builds active; waiting for a slot"
+)
+
+// waitLine renders the tenant-visible line for a queued wait; "" when there is
+// nothing to say.
+func waitLine(w buildWait) string {
+	switch w.Reason {
+	case appv1alpha1.ReasonRegistryCredsPending:
+		return waitLineRegistryCreds
+	case appv1alpha1.ReasonBuildQueued:
+		if counts, ok := workspaceCapCounts(w.Message); ok {
+			return "==> Waiting for a build slot: this workspace has " + counts + " builds running"
+		}
+		return waitLineNeutral
+	}
+	return ""
+}
+
+// workspaceCapCounts recognizes the per-workspace concurrency-cap message and
+// returns its `<active>/<limit>` fragment. The match is exact on both ends and
+// the fragment must be two digit runs around a single slash, so the only
+// operator-authored bytes that can ever reach a tenant are that workspace's own
+// two numbers — never free-form text, and never the `cluster` noun's counts.
+func workspaceCapCounts(message string) (string, bool) {
+	rest, ok := strings.CutPrefix(message, workspaceCapMessageStart)
+	if !ok {
+		return "", false
+	}
+	counts, ok := strings.CutSuffix(rest, workspaceCapMessageEnd)
+	if !ok {
+		return "", false
+	}
+	active, limit, ok := strings.Cut(counts, "/")
+	if !ok || !digitsOnly(active) || !digitsOnly(limit) {
+		return "", false
+	}
+	return counts, true
+}
+
+func digitsOnly(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // progressLines renders the platform lines a deploy row has earned so far.
 // Only observed moments produce lines — no invented clone/checkout stages
 // (those arrive as real BuildKit stdout once the pod runs). `deactivated`
 // keeps its live line: finished_at records when this deploy went live; its
 // later replacement is outside this deploy's own story.
-func progressLines(d DeployProgress, repo, branch, serviceType string) []LogEntry {
+//
+// A row still `queued` also earns the wait line for pc.wait: the whole point of
+// m99 is that a capacity wait reads differently from a stuck deploy. It is
+// timestamped at CreatedAt (the moment the wait began) so the line is
+// deterministic across reads — identical reasons collapse to one id, and a
+// CHANGED reason is a new id — which is what makes the tail's dedupe "re-emit
+// on change, never per tick" for free.
+func progressLines(d DeployProgress, pc progressContext) []LogEntry {
+	repo := pc.repo
 	repoBacked := repo != ""
 	var out []LogEntry
 	add := func(t time.Time, msg string) {
@@ -89,6 +235,11 @@ func progressLines(d DeployProgress, repo, branch, serviceType string) []LogEntr
 		} else {
 			add(d.CreatedAt, "==> Deploy queued")
 		}
+		if d.Status == deployStatusQueued && d.StartedAt.IsZero() && d.FinishedAt.IsZero() {
+			if line := waitLine(pc.wait); line != "" {
+				add(d.CreatedAt, line)
+			}
+		}
 	}
 	if !d.StartedAt.IsZero() {
 		if repoBacked {
@@ -97,7 +248,7 @@ func progressLines(d DeployProgress, repo, branch, serviceType string) []LogEntr
 				ref = ref[:7]
 			}
 			if ref == "" {
-				ref = branch
+				ref = pc.branch
 			}
 			if ref != "" {
 				add(d.StartedAt, fmt.Sprintf("==> Building from %s@%s", repo, ref))
@@ -109,7 +260,7 @@ func progressLines(d DeployProgress, repo, branch, serviceType string) []LogEntr
 		}
 	}
 	if !d.FinishedAt.IsZero() {
-		for _, msg := range terminalLines(d.Status, serviceType, d.FailureReason) {
+		for _, msg := range terminalLines(d.Status, pc.serviceType, d.FailureReason) {
 			add(d.FinishedAt, msg)
 		}
 	}
@@ -181,7 +332,7 @@ func terminalLine(status, serviceType string) string {
 // read (narration must never break a log query), and it runs only on the
 // store-backed path — a missing Loki still reports buildStoreUnavailable, so
 // platform lines never masquerade as a successful empty build history.
-func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource, repo, branch, serviceType string, entries []LogEntry) []LogEntry {
+func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource string, pc progressContext, entries []LogEntry) []LogEntry {
 	if s.DeployProgress == nil || !slices.Contains(q.Types, LogTypeBuild) {
 		return entries
 	}
@@ -190,7 +341,7 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource, 
 		return entries
 	}
 	merged := entries
-	for _, d := range rows {
+	for i, d := range rows {
 		// Skip rows that ended before the window opened; per-line keep()
 		// applies the exact bounds below.
 		if !q.Since.IsZero() && !d.FinishedAt.IsZero() && d.FinishedAt.Before(q.Since) {
@@ -199,7 +350,13 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource, 
 		if !q.keepPod(d.ID) {
 			continue
 		}
-		for _, e := range progressLines(d, repo, branch, serviceType) {
+		rowPC := pc
+		if i > 0 {
+			// The App's `Ready` condition describes the CURRENT wait, which can
+			// only belong to the newest row; an older row must never borrow it.
+			rowPC.wait = buildWait{}
+		}
+		for _, e := range progressLines(d, rowPC) {
 			if q.keep(e) {
 				merged = append(merged, e)
 			}
@@ -216,22 +373,37 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource, 
 // emitted, so subscribe-time catch-up, wait-loop transitions, and the
 // post-stream terminal check each emit a line exactly once.
 type progressFollower struct {
-	s           *Service
-	q           LogQuery
-	resource    string
-	repo        string
-	branch      string
-	serviceType string
-	emitted     map[string]bool
+	s        *Service
+	q        LogQuery
+	resource string
+	pc       progressContext
+	emitted  map[string]bool
 }
 
 // newProgressFollower returns nil when no source is wired — every method is
 // nil-safe, so the tail path stays a straight line.
-func (s *Service) newProgressFollower(q LogQuery, resource, repo, branch, serviceType string) *progressFollower {
+func (s *Service) newProgressFollower(q LogQuery, resource string, pc progressContext) *progressFollower {
 	if s.DeployProgress == nil {
 		return nil
 	}
-	return &progressFollower{s: s, q: q, resource: resource, repo: repo, branch: branch, serviceType: serviceType, emitted: map[string]bool{}}
+	return &progressFollower{s: s, q: q, resource: resource, pc: pc, emitted: map[string]bool{}}
+}
+
+// refreshWait re-reads the App's `Ready` condition so a tail narrates the
+// CURRENT reason rather than the one that held at subscribe. It runs only while
+// the row is still queued — the one window in which the reason can change and
+// matter — so a normal build tail costs no extra read. A failed read keeps the
+// last known reason: narration must never tear down (or stall) a tail, and the
+// dedupe below makes a repeated reason a no-op anyway.
+func (f *progressFollower) refreshWait(ctx context.Context, d DeployProgress) {
+	if d.Status != deployStatusQueued || f.pc.name == "" || f.s.Client == nil {
+		return
+	}
+	var fresh appv1alpha1.App
+	if err := f.s.Client.Get(ctx, client.ObjectKey{Namespace: f.pc.namespace, Name: f.pc.name}, &fresh); err != nil {
+		return
+	}
+	f.pc.wait = appBuildWait(&fresh)
 }
 
 // emitReached sends every not-yet-emitted line the newest deploy row has
@@ -249,7 +421,8 @@ func (f *progressFollower) emitReached(ctx context.Context, emit func(LogEntry) 
 	if !f.q.keepPod(d.ID) {
 		return nil
 	}
-	for _, e := range progressLines(d, f.repo, f.branch, f.serviceType) {
+	f.refreshWait(ctx, d)
+	for _, e := range progressLines(d, f.pc) {
 		// logID is the adapters' stable line identity — reusing it here keeps
 		// the follower's dedupe in lockstep with what clients see.
 		key := logID(e)

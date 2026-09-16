@@ -93,10 +93,30 @@ export interface BlueprintPreviewValidation {
   estimatedPricing: BlueprintEstimatedPricing | null;
 }
 
+/**
+ * The closed set of reasons a Blueprint fetch failed (w2/m97), mirroring
+ * `apps.BlueprintPreviewReason`. An unknown or absent value is possible during
+ * a rolling deploy against an older bex-api, and falls back to the generic
+ * "not found" panel.
+ */
+export type BlueprintPreviewReason =
+  | "file_not_found"
+  | "branch_not_found"
+  | "repo_not_found_or_no_access"
+  | "access_denied"
+  | "rate_limited"
+  | "invalid_path"
+  | "ambiguous_filename"
+  | "unavailable";
+
 export interface BlueprintPreviewResult {
   found: boolean | null;
   commitId: string | null;
+  /** Human sentence for API clients; the dashboard renders its own copy instead. */
   error: string | null;
+  reason: BlueprintPreviewReason | null;
+  /** Whether retrying the same request could plausibly succeed unchanged. */
+  retryable: boolean;
   validation: BlueprintPreviewValidation | null;
 }
 

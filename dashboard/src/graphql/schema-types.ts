@@ -314,6 +314,8 @@ export type BlueprintPreview = {
   error: Maybe<Scalars['String']['output']>;
   found: Maybe<Scalars['Boolean']['output']>;
   manifest: Maybe<Scalars['String']['output']>;
+  reason: Maybe<Scalars['String']['output']>;
+  retryable: Maybe<Scalars['Boolean']['output']>;
   validation: Maybe<BlueprintValidation>;
   warning: Maybe<Scalars['String']['output']>;
 };

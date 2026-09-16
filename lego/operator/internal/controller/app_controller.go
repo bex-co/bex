@@ -2008,8 +2008,26 @@ func autoSleepWindow(app *appv1alpha1.App) time.Duration {
 // yet?") have different answers while an App is waking: replicas are back but no
 // pod is ready, so the activator must still hold the route (w6/m94).
 func autoSleepEligible(app *appv1alpha1.App) bool {
-	web := app.Spec.Type == "" || app.Spec.Type == appv1alpha1.TypeWebService
-	return web && !app.Spec.Suspended && autoSleepWindow(app) > 0
+	return isWebService(app) && !app.Spec.Suspended && autoSleepWindow(app) > 0
+}
+
+// isWebService reports whether the App is a web service — the empty type is the
+// historical web_service default. The ONE place that equality lives, so the
+// sleep-eligibility and suspended-routing branches cannot disagree about
+// whether an untyped App is a web service.
+func isWebService(app *appv1alpha1.App) bool {
+	return app.Spec.Type == "" || app.Spec.Type == appv1alpha1.TypeWebService
+}
+
+// suspendedRoutable reports whether a manually suspended App's public Ingress
+// should be handed to the activator's suspended responder instead of its own
+// endpoint-less Service (w2/m98). Web services only: a static_site already has
+// its own suspended path through the static-server (w3/m46), and a
+// private_service, background_worker or cron_job has no public host to answer
+// at. With no activator configured there is nothing to route to, so the App
+// keeps its own Service and Traefik's raw 503 — exactly the pre-m98 behavior.
+func (r *AppReconciler) suspendedRoutable(app *appv1alpha1.App) bool {
+	return app.Spec.Suspended && isWebService(app) && r.ActivatorService != ""
 }
 
 // shouldAutoHibernate reports whether an auto-sleep-eligible app should scale
@@ -2430,10 +2448,13 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 	return clampReplicas(app, replicas), autoscaleRequeue, autoHibernating
 }
 
-// ingressBackend picks the Service/port the public Ingress routes to.
-// Maintenance has public-routing precedence over both auto-hibernation and
-// manual suspension. It changes only the public Ingress backend; the workload
-// follows its independent replica/suspension policy.
+// ingressBackend picks the Service/port the public Ingress routes to, in a
+// fixed precedence: maintenance → suspended → sleep → the App's own Service.
+// Maintenance has public-routing precedence over both manual suspension and
+// auto-hibernation — an owner who put a service into maintenance mode gets the
+// page they chose even if the service is also suspended. It changes only the
+// public Ingress backend; the workload follows its independent
+// replica/suspension policy.
 func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App, port int, autoHibernating, serving bool) (string, int32, error) {
 	if maintenanceEnabled(app) {
 		maintenanceSvc, err := r.reconcileMaintenanceAlias(ctx, app)
@@ -2441,6 +2462,23 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 			return "", 0, err
 		}
 		return maintenanceSvc, int32(r.maintenancePort()), nil
+	}
+	// A manually suspended web service keeps its Ingress and certificate but
+	// scales to zero (parkKubernetes), so its own Service has no endpoint and
+	// Traefik answers the public host with its raw "503 no available server" —
+	// indistinguishable from a platform outage to a browser, an uptime monitor
+	// or a webhook sender (w1/094 pass 13, w2/m98). Route to the activator,
+	// which reads spec.suspended off the App and answers with a
+	// content-negotiated bex 503 WITHOUT waking anything. Clearing
+	// spec.suspended drops straight back through to the App's own Service on the
+	// very next reconcile — no extra step, because this is a pure function of
+	// the current spec.
+	if r.suspendedRoutable(app) {
+		activatorSvc, err := r.reconcileActivatorAlias(ctx, app)
+		if err != nil {
+			return "", 0, err
+		}
+		return activatorSvc, int32(r.ActivatorPort), nil
 	}
 	// Route through the activator whenever the App's own Service has no ready
 	// endpoint AND the activator is this App's wake path — not only once the

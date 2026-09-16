@@ -544,7 +544,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		if err != nil {
 			return nil, err
 		}
-		entries = s.synthesizeProgress(ctx, q, resource, app.Spec.Repo, app.Spec.Branch, app.Spec.Type, entries)
+		entries = s.synthesizeProgress(ctx, q, resource, newProgressContext(app), entries)
 		return setLogResource(entries, resource), nil
 	}
 	if q.needsStore() {
@@ -884,7 +884,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	})
 	defer stopWatchdog()
 	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
-		return s.followBuildLogs(ctx, q, resource, app.Spec.Repo, app.Spec.Branch, app.Spec.Type, emit)
+		return s.followBuildLogs(ctx, q, resource, newProgressContext(app), emit)
 	}
 	if !q.wants(LogTypeApp) {
 		// SECURITY (codex #3): the live tail has exactly two producers — app pod
@@ -1090,8 +1090,8 @@ func withRevalidation(parent context.Context, interval time.Duration, check func
 // a silent stream while the build image pulls. After the pod's stream ends,
 // one final check emits the closing line if the deploy row already turned
 // terminal; otherwise it rides the history read's post-deploy grace poll.
-func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource, repo, branch, serviceType string, emit func(LogEntry) error) error {
-	prog := s.newProgressFollower(q, resource, repo, branch, serviceType)
+func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource string, pc progressContext, emit func(LogEntry) error) error {
+	prog := s.newProgressFollower(q, resource, pc)
 	if err := prog.emitReached(ctx, emit); err != nil {
 		return err
 	}

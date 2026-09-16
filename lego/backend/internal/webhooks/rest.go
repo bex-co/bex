@@ -253,8 +253,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// is a labeled bex extension over the same core attempt semantics.
 	mux.HandleFunc("POST /v1/webhooks/{id}/events/{attemptId}/resend", resendHandler)
 
-	// The subscribable vocabulary — what the dashboard's event-type picker
-	// lists, served rather than duplicated client-side.
+	// The subscribable vocabulary, served rather than duplicated client-side.
+	// The dashboard's own picker reads GraphQL `webhookEventTypes`; this is the
+	// REST surface for API clients. It is a bex extension with no Render
+	// counterpart, which is why its literal path sits where Render templates
+	// `{webhookId}` — see the validator's literal pass-through (w2/m100).
 	mux.HandleFunc("GET /v1/webhooks/event-types", func(w http.ResponseWriter, r *http.Request) {
 		core.WriteJSON(w, http.StatusOK, EventTypes)
 	})
