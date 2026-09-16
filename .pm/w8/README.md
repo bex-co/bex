@@ -62,7 +62,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-_(empty — `013`/`014`/`015` implemented 2026-09-15 and moved to `done/`)_
+_(empty — `013`/`014`/`015`/`016` implemented 2026-09-15 and moved to `done/`)_
+
+> `016.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`, sweep 2) — moved to `done/`. Four checklist rows named `ea sandbox <verb>`; the pinned CLI's group is plural (`sandboxes`, no alias). Ledger strings + pin-bump name re-diff + `ErrNoWorkspace` residual recorded; capability grades unchanged.
 
 > `015.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`) — moved to `done/`. `bex logs` panics (exit 2, raw Go stack trace) with no usable credential in every non-interactive output mode: upstream `cmd/logs.go` calls `deps.LogLoader()` in `RunE` before auth, and `(*Dependencies).APIConfig` (`pkg/dependencies/dependencies.go:281`) does `panic(err)` on `DefaultAPIConfig`'s `ErrLogin`. Upstream defect, not bex (no request is ever sent); reproduced live against the v2.27.0 pin (`panic: run \`render login\` to authenticate`, exit 2; `services` control is a clean `Error:`, exit 1). Graded in `docs/cli-compatibility-checklist.md`: new Real-gaps bullet beside the `skills` panic, `logs` header row re-graded `[x]`→`[~]`, both bullets pin-conditional (re-check on every pin move). The note's item 3 — a launcher-owned `recover()` around `cmd.Execute()` — was explicitly **not** implemented (needs a user decision: it would mask genuine panics).
 
