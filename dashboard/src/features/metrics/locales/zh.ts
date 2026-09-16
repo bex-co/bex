@@ -172,6 +172,11 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
   },
+  "metrics.monthToDateBandwidthError": {
+    message: "无法加载本月带宽数据——请尝试刷新",
+    description:
+      "Month-to-date bandwidth footer when the query failed with no value — distinct from a known zero and from the chart's bandwidthError (w4/090)",
+  },
   "metrics.bandwidthDegraded": {
     message: "部分数据",
     description:
