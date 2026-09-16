@@ -407,12 +407,20 @@ type CreateRequest struct {
 
 // Create registers a new endpoint and returns it WITH its freshly minted
 // signing secret — the only response that ever carries it (store it; it is
-// not retrievable). Admin-only (RelCanManage): an endpoint exports the
-// workspace's whole activity stream to an external URL, the same bar
-// registrycreds/github hold for workspace integrations.
+// not retrievable). Admin-only (RelCanManage) plus AuthorizeMintClass: an
+// endpoint exports the workspace's whole activity stream to an external URL
+// and the signing secret is a durable show-once credential, so a delegated
+// OAuth bex.write token cannot create one (w4/079). Sessions and platform
+// clients still pass.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+		return EndpointView{}, err
+	}
+	// Show-once signing secret — same durable-credential gate as API-key
+	// mint so a delegated (OAuth) bex.write token cannot create webhook
+	// endpoints (w4/079). Sessions and platform clients still pass.
+	if err := s.AuthorizeMintClass(ctx); err != nil {
 		return EndpointView{}, err
 	}
 	if s.Store == nil {
