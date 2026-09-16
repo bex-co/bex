@@ -5577,7 +5577,6 @@ func (r *AppReconciler) deleteRegistryRepoNamed(ctx context.Context, app *appv1a
 	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
 	defer cancel()
 	ctx = requestCtx
-	base := registry.NormalizeBase(r.Registry)
 	if repo == "" {
 		repo = app.Name
 	}
@@ -5588,6 +5587,16 @@ func (r *AppReconciler) deleteRegistryRepoNamed(ctx context.Context, app *appv1a
 	}
 	if !ready {
 		return false, nil
+	}
+
+	// Resolved after the credential is known: a teardown that carries an
+	// Authorization header must not fall back to plaintext for an off-cluster
+	// registry (w8/013).
+	base := registry.NormalizeBase(r.Registry)
+	if authHdr != "" {
+		if base, err = registry.CredentialedBase(r.Registry); err != nil {
+			return false, err
+		}
 	}
 
 	do := func(method, url string) (*http.Response, error) {
