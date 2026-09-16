@@ -42,18 +42,18 @@ bex services -o json
 bex logout
 ```
 
-`bex login` starts the existing Bex-compatible device flow and opens the dashboard verification page. By default, the imported CLI writes its upstream YAML schema to `~/.bex/cli.yaml`, with the upstream CLI's restrictive `0600` file mode. It does not read or write `~/.render/cli.yaml` unless you explicitly override it with a `RENDER_*` environment variable.
+`bex login` starts the existing Bex-compatible device flow and opens the dashboard verification page. By default, the imported CLI writes its upstream YAML schema to `~/.bex/cli.yaml`, with the upstream CLI's restrictive `0600` file mode, and keeps persistent state (telemetry `installation_id`, the one-time analytics notice marker) under `~/.bex/state`. It does not read or write `~/.render/` unless you explicitly override it with a `RENDER_*` environment variable. Existing machines that previously shared `~/.render/state/installation-id.txt` with a `render` binary mint a **new** bex `installation_id` on first run after this change — that id was never bex's, so it is not copied.
 
 The browser login stores a short-lived access token and a refresh token. The CLI refreshes automatically and `bex logout` revokes the stored OAuth credential then removes the local Bex config. Do not copy either token into source code, shell history, or logs.
 
 ## Configuration
 
-These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable wins, as an intentional escape hatch for upstream CLI developers; do not set `RENDER_*` in normal Bex use. In particular, a non-empty `RENDER_CLI_CONFIG_DIR` is honored (the launcher does not pin `RENDER_CLI_CONFIG_PATH` over it), so isolation that follows upstream's recommended directory override writes inside that directory rather than `~/.bex/cli.yaml`.
+These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable wins, as an intentional escape hatch for upstream CLI developers; do not set `RENDER_*` in normal Bex use. A non-empty `RENDER_CLI_CONFIG_DIR` relocates both `cli.yaml` and `state/`. A non-empty `RENDER_CLI_CONFIG_PATH` selects an exact config file without writing siblings next to it; state still follows the Bex directory default unless a directory override is also set.
 
 | Bex variable | Effect |
 | --- | --- |
-| `BEX_CLI_CONFIG_DIR` | Directory containing `cli.yaml`; default is `~/.bex`. |
-| `BEX_CLI_CONFIG_PATH` | Exact local YAML path; takes precedence over the directory. |
+| `BEX_CLI_CONFIG_DIR` | Directory containing `cli.yaml` **and** `state/` (installation id, notice marker); default is `~/.bex`. |
+| `BEX_CLI_CONFIG_PATH` | Exact local YAML path; takes precedence over the directory for the config file. Does not write siblings next to that file; state stays under `BEX_CLI_CONFIG_DIR` or `~/.bex/state`. |
 | `BEX_HOST` | REST base URL; default `https://api.bex.co/v1/`. Use e.g. `http://localhost:8090/v1/` for a local API. |
 | `BEX_WORKSPACE` | Active workspace id or name. |
 | `BEX_OUTPUT` | Default output mode accepted by the upstream CLI. |
