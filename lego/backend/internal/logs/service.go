@@ -53,8 +53,10 @@ const (
 	LogTypeBuild   = "build"
 	// LogTypePreDeploy selects the pre-deploy step's Job-pod logs (w1/m33) — a
 	// distinct LIVE source (the migration's own container), read directly rather
-	// than from the durable store, so it is requested alone (validate() rejects
-	// mixing it with app/request/build).
+	// than from a Loki `predeploy` stream, so it is requested alone (validate()
+	// rejects mixing it with app/request/build). The same Job's stdout is also
+	// shipped into Loki as LogTypeBuild by the Alloy build_pods pipeline
+	// (w5/m100) for Render-compatible clients.
 	LogTypePreDeploy = "predeploy"
 
 	// logTypeApplicationAlias is the long spelling of LogTypeApp that bex's own
