@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -46,13 +47,14 @@ const progressContainer = "platform"
 // composition root adapts store.Deploy, the way PodLogSource keeps the
 // clientset out).
 type DeployProgress struct {
-	ID         string
-	Status     string
-	Image      string // image-backed deploys; "" for repo builds
-	Commit     string // resolved commit sha; "" when unresolved
-	CreatedAt  time.Time
-	StartedAt  time.Time // zero until the deploy starts
-	FinishedAt time.Time // zero until terminal
+	ID            string
+	Status        string
+	Image         string // image-backed deploys; "" for repo builds
+	Commit        string // resolved commit sha; "" when unresolved
+	FailureReason string // human-actionable cause on a failed deploy (w5/064); "" when none
+	CreatedAt     time.Time
+	StartedAt     time.Time // zero until the deploy starts
+	FinishedAt    time.Time // zero until terminal
 }
 
 // DeployProgressSource lists an App's deploy rows, newest-first, created
@@ -107,9 +109,43 @@ func progressLines(d DeployProgress, repo, branch, serviceType string) []LogEntr
 		}
 	}
 	if !d.FinishedAt.IsZero() {
-		if msg := terminalLine(d.Status, serviceType); msg != "" {
+		for _, msg := range terminalLines(d.Status, serviceType, d.FailureReason) {
 			add(d.FinishedAt, msg)
 		}
+	}
+	return out
+}
+
+// terminalLines maps a terminal deploy status to its closing line(s). An empty
+// reason keeps the historical bare line (w1/m48); a non-empty reason is
+// appended so the CLI's type=build narration carries the same cause the events
+// feed already exposes as failureReason (w5/064). Multi-line reasons become
+// one stream line per segment (the feed is line-oriented).
+func terminalLines(status, serviceType, reason string) []string {
+	base := terminalLine(status, serviceType)
+	if base == "" {
+		return nil
+	}
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return []string{base}
+	}
+	switch status {
+	case "build_failed", "pre_deploy_failed", "update_failed":
+		// only failure statuses carry a failureReason into the narration
+	default:
+		return []string{base}
+	}
+	parts := strings.Split(reason, "\n")
+	out := make([]string, 0, len(parts))
+	first := strings.TrimSpace(parts[0])
+	out = append(out, base+": "+first)
+	for _, part := range parts[1:] {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		out = append(out, "==> "+part)
 	}
 	return out
 }

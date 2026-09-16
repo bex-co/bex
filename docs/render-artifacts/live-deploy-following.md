@@ -68,10 +68,12 @@ bex synthesizes from what its control plane actually observes — the deploy row
 | row created | `created_at` | `==> Build queued` | `==> Deploy queued` |
 | `started_at` set | `started_at` | `==> Building from <repo>@<commit\|branch>` | `==> Deploying image <image>` |
 | terminal `live` / `deactivated` | `finished_at` | `==> Your service is live 🎉` | same |
-| terminal `build_failed` | `finished_at` | `==> Build failed` | same |
-| terminal `pre_deploy_failed` | `finished_at` | `==> Pre-deploy failed` | same |
-| terminal `update_failed` | `finished_at` | `==> Deploy failed` | same |
+| terminal `build_failed` | `finished_at` | `==> Build failed` (+ `: <failureReason>` when set, w5/064) | same |
+| terminal `pre_deploy_failed` | `finished_at` | `==> Pre-deploy failed` (+ `: <failureReason>` when set, w5/064) | same |
+| terminal `update_failed` | `finished_at` | `==> Deploy failed` (+ `: <failureReason>` when set, w5/064) | same |
 | terminal `canceled` | `finished_at` | `==> Deploy canceled` | same |
+
+Failure statuses append the deploy row's `failureReason` when present (`==> Deploy failed: …`, w5/064) so the CLI's `type=build` narration carries the same cause as `deploy_ended.details.failureReason`; multi-line reasons become one stream line per segment. Empty reasons keep the bare historical line.
 
 Labels: `type=build`, `instance=<dep-… id>`, `container=platform`. Ids come from the existing `logID` derivation (instance + timestamp + message hash, `internal/logs/render.go`), so identical lines are deterministic across reads and dedupe against the SSE tail for free. Synthesis applies only when a query explicitly asks for `type=build` (matching which streams the store selector includes), is additive (a missing Loki still reports `buildStoreUnavailable`; platform lines never masquerade as a successful empty build history), and `deactivated` deploys keep their `live` closing line — deactivation is a later replacement event outside the deploy's own window.
 
