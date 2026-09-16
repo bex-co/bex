@@ -73,6 +73,22 @@ Traced, not yet observed. t004 probes each bullet on production with a throwaway
 - **Control (must not regress).** A failed build over a release that did serve still reads Running with the prior release serving — the `w6/m124` behavior `w1/m157` verified live.
 - **An autoscaled worker scales more than once.** Its scaling transition reaches Ended, and a later metric change moves replicas again. Autoscaling is a paid-only feature, so this bullet closes on the envtest evidence unless a paid worker is approved; the milestone records which.
 
+## Live verification (2026-09-16, production)
+
+**Fixture.** `qa-20260915-m160` (`srv-dakvffish60c73ao4m5g`), a free web service from `examples/hello-go` whose start command exits immediately, so its first release crash-loops: the operator stamps `status.image` and no revision ever becomes active. Its first deploy ended `update_failed` after 17 minutes at the progress deadline, with the phase correctly reading Failed — `settleFailedRollout` already keys on `activeRevision`, which is the precedent this milestone generalizes.
+
+**Before the fix**, on the operator production is still running (images pinned at `eb035151a`, the `w1/m158` build — every later pin was superseded, so nothing since has rolled):
+
+```text
+02:16:55Z  before: phase Failed / not_suspended, latest deploy update_failed
+02:16:56Z  PATCH serviceDetails.envSpecificDetails.dockerfilePath = ./Dockerfile.qa-missing → 200
+02:17:38Z  dep-dakvo5r3hm6c73bir7rg build_failed (42.5 s)
+02:17:59Z  phase over the failed build: Running / not_suspended
+```
+
+- **The filed symptom, reproduced.** A failed build over a release that **never served** reports the service **Running**. `fail` read `status.image` — which the crash-looped first release had already stamped — and settled "the previous release keeps serving" over a release that never served a single request.
+- **The deploy row is unaffected either way**, as `w1/101` predicted: it reads `build_failed` from the Build condition, not from the phase.
+
 ## Root cause
 
 - **The phase half (`w1/101`).** `fail` decides "a prior release exists" with `app.Status.Image != ""` (`app_controller.go`, around `:4294` at filing), and the canceled-release path does the same (around `:633`). `status.image` is set by a first release that never served. `settleFailedRollout` and, since `w1/m149`, `failPreDeploy` already key on `status.activeRevision`, which `markRunning` sets only once a release has served.
