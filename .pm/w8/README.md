@@ -62,7 +62,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-_(empty — `013`/`014`/`015`/`016`/`017` implemented 2026-09-15 and moved to `done/`)_
+_(empty — `013`–`018` implemented 2026-09-15 and moved to `done/`)_
+
+> `018.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`, sweep 4) — moved to `done/`. Persistent state (`installation_id`, notice marker) lived in `~/.render/state` because `BEX_CLI_CONFIG_DIR` was mapped to `RENDER_CLI_CONFIG_PATH`. Now DIR maps to `RENDER_CLI_CONFIG_DIR` (default `$HOME/.bex`); new installs mint a bex-owned id rather than copying Render's.
 
 > `017.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`, sweep 3) — moved to `done/`. `RENDER_CLI_CONFIG_DIR` was silently ignored because the launcher always pinned `RENDER_CLI_CONFIG_PATH` to `~/.bex/cli.yaml`. Option A: honor DIR (explicit `RENDER_*` wins); never rewrite the real credential file.
 

@@ -1,6 +1,6 @@
 # bex CLI
 
-`bex` uses the pinned upstream [Render CLI](https://github.com/render-oss/cli) command implementation, but defaults to Bex's API, stores interactive credentials separately at `~/.bex/cli.yaml`, and overlays Bex help chrome via `internal/branding` (no fork).
+`bex` uses the pinned upstream [Render CLI](https://github.com/render-oss/cli) command implementation, but defaults to Bex's API, stores interactive credentials at `~/.bex/cli.yaml` and persistent CLI state at `~/.bex/state`, and overlays Bex help chrome via `internal/branding` (no fork).
 
 ## Install
 
