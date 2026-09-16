@@ -1038,8 +1038,8 @@ func requestUnit(metric string) string {
 	case MetricHTTPLatency:
 		return unitSeconds
 	case MetricBandwidth:
-		return unitBytes
-	default: // http_requests
+		return unitBytes // per-bucket bytes after w4/m108 (Increase), not B/s
+	default: // http_requests — per-bucket count (Increase / count_over_time)
 		return unitCount
 	}
 }

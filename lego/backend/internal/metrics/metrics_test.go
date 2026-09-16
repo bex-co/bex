@@ -935,8 +935,13 @@ func TestParsePodMetrics(t *testing.T) {
 
 func TestPromQueryFor(t *testing.T) {
 	q := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPRequests, Resolution: 60 * time.Second, StatusCode: "5xx", GroupBy: "status"})
-	if want := `sum(rate(traefik_service_requests_total{service="default-web-80@kubernetes",code=~"5.."}[60s])) by (code)`; q != want {
+	if want := `sum(increase(traefik_service_requests_total{service="default-web-80@kubernetes",code=~"5.."}[60s])) by (code)`; q != want {
 		t.Errorf("http_requests:\n got %q\nwant %q", q, want)
+	}
+	// Ungrouped http_requests: increase over the step (same step as query_range).
+	ungrouped := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPRequests, Resolution: 45 * time.Second})
+	if want := `sum(increase(traefik_service_requests_total{service="default-web-80@kubernetes"}[45s]))`; ungrouped != want {
+		t.Errorf("http_requests ungrouped:\n got %q\nwant %q", ungrouped, want)
 	}
 	lat := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPLatency, Resolution: 60 * time.Second, Quantile: 0.9})
 	if want := `histogram_quantile(0.9, sum(rate(traefik_service_request_duration_seconds_bucket{service="default-web-80@kubernetes"}[60s])) by (le))`; lat != want {
@@ -952,9 +957,12 @@ func TestPromQueryFor(t *testing.T) {
 		Metric: MetricBandwidth, Resolution: 60 * time.Second, AppID: "srv-web", Direct: true,
 		Routers: []string{"default-web-web.onbex.co@kubernetes", "default-web-api-web.onbex.co@kubernetes"},
 	})
+	if strings.Contains(bandwidth, "rate(") {
+		t.Errorf("bandwidth chart must use increase, not rate: %q", bandwidth)
+	}
 	for _, metric := range []string{"traefik_router_responses_bytes_total", "bex_websocket_egress_bytes_total", "bex_app_direct_egress_bytes_total"} {
-		if strings.Count(bandwidth, metric) != 1 {
-			t.Errorf("bandwidth query should contain %s exactly once: %q", metric, bandwidth)
+		if strings.Count(bandwidth, "increase("+metric) != 1 {
+			t.Errorf("bandwidth query should contain increase(%s) exactly once: %q", metric, bandwidth)
 		}
 	}
 }
@@ -1119,9 +1127,10 @@ func TestPromQueryForAndFilterValuesAreNamespaceScoped(t *testing.T) {
 }
 
 // TestLokiRequestQueryFor pins the pure LogQL builder for host/path-filtered
-// request metrics (w5/m58): rate for the count, quantile_over_time over the
-// unwrapped ns Duration for latency, the json stage extracting exactly the
-// filtered fields, and "" for a metric with no per-request host/path axis.
+// request metrics (w5/m58, w4/m108): count_over_time for the per-bucket count,
+// quantile_over_time over the unwrapped ns Duration for latency, the json stage
+// extracting exactly the filtered fields, and "" for a metric with no
+// per-request host/path axis.
 func TestLokiRequestQueryFor(t *testing.T) {
 	base := RequestMetricsRequest{Namespace: "default", App: "web", Resolution: time.Minute}
 	with := func(mut func(*RequestMetricsRequest)) RequestMetricsRequest {
@@ -1137,14 +1146,14 @@ func TestLokiRequestQueryFor(t *testing.T) {
 		{
 			name: "requests host filter",
 			req:  with(func(r *RequestMetricsRequest) { r.Metric = MetricHTTPRequests; r.Host = "web.example.com" }),
-			want: `sum(rate({namespace="default", app="web", type="request"} | json request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" [60s]))`,
+			want: `sum(count_over_time({namespace="default", app="web", type="request"} | json request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" [60s]))`,
 		},
 		{
 			name: "requests path filter, group by status, 5xx",
 			req: with(func(r *RequestMetricsRequest) {
 				r.Metric, r.Path, r.GroupBy, r.StatusCode = MetricHTTPRequests, "/api", "status", "5xx"
 			}),
-			want: `sum by (status) (rate({namespace="default", app="web", type="request", status=~"5.."} | json request_host="RequestHost", request_path="RequestPath" | request_path="/api" [60s]))`,
+			want: `sum by (status) (count_over_time({namespace="default", app="web", type="request", status=~"5.."} | json request_host="RequestHost", request_path="RequestPath" | request_path="/api" [60s]))`,
 		},
 		{
 			name: "latency host+path, p90",

@@ -189,18 +189,25 @@ describe("DeploysListPage", () => {
       row({ id: "dep-d", trigger: "blueprint" }),
       row({ id: "dep-e", trigger: "rollback", rollbackOf: "dep-a" }),
       row({ id: "dep-f", trigger: "new_commit" }),
+      row({ id: "dep-g", trigger: "config_change" }),
     ];
 
     renderPage();
 
-    expect((await screen.findAllByText("first deploy")).length).toBeGreaterThan(
+    expect((await screen.findAllByText("First Deploy")).length).toBeGreaterThan(
       0,
     );
-    expect(screen.getAllByText("manual deploy").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("deploy hook").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("blueprint sync").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("rollback to dep-a").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("new commit").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Manual Deploy").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Deploy Hook").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Blueprint Sync").length).toBeGreaterThan(0);
+    const rollbackLabels = screen.getAllByText("Rollback to dep-a");
+    expect(rollbackLabels.length).toBeGreaterThan(0);
+    for (const el of rollbackLabels) {
+      expect(el).not.toHaveClass("capitalize");
+      expect(el.closest(".capitalize")).toBeNull();
+    }
+    expect(screen.getAllByText("New Commit").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Config Change").length).toBeGreaterThan(0);
     expect(screen.queryByText("new_commit")).not.toBeInTheDocument();
   });
 

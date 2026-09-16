@@ -147,7 +147,10 @@ export function NetworkMetricsCard({
       })),
     [requests.series, groupBy],
   );
-  // Render titles the section with the window's aggregate ("7,266 requests").
+  // Window aggregate for the section title ("7,266 requests"). Points are
+  // per-bucket request counts (w4/m108 t001: increase / count_over_time), so
+  // summing them is the correct total — not a rate scaled by step. Math.round
+  // absorbs Prometheus increase()'s fractional extrapolation on partial buckets.
   const requestCount = useMemo(
     () =>
       Math.round(
@@ -366,6 +369,8 @@ export function NetworkMetricsCard({
           }
         >
           <SvgLineChart
+            // unit remains "bytes": each point is bytes in that step bucket
+            // (increase), not B/s — same unit as "used this month" (w4/m108).
             unit={bandwidth.series[0]?.unit ?? "bytes"}
             series={bandwidthSeries}
             markers={markers}

@@ -56,10 +56,9 @@ function formatCount(value: number): string {
   if (Math.abs(value) >= 1000) {
     return `${(value / 1000).toFixed(1)}K`;
   }
-  // req/s-style values are frequently fractional (a rate); whole counts (e.g.
-  // instance count) still read fine with fixed(1) since it collapses trailing
-  // zeros are kept as ".0" — acceptable in a request-rate context, and the one
-  // whole-number case (instance count) formats its own value separately.
+  // Integer request counts (http_requests after w4/m108) and whole instance
+  // counts render without a decimal; rare fractional leftovers from
+  // increase() extrapolation keep one digit.
   return value.toFixed(value % 1 === 0 ? 0 : 1);
 }
 

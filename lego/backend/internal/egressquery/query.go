@@ -144,17 +144,24 @@ func Increase(spec Spec, seconds int64) string {
 	return fmt.Sprintf(`sum(increase(%s{%s}[%ds]))`, spec.Counter, spec.Matchers, seconds)
 }
 
-func Rate(spec Spec, seconds int64) string {
-	return fmt.Sprintf(`(sum(rate(%s{%s}[%ds])) or vector(0))`, spec.Counter, spec.Matchers, seconds)
+// IncreaseOrZero is the chart-grade sibling of Increase: a missing source
+// contributes 0 instead of nulling the composed sum.
+func IncreaseOrZero(spec Spec, seconds int64) string {
+	return fmt.Sprintf(`(%s or vector(0))`, Increase(spec, seconds))
 }
 
-func SumRates(specs []Spec, seconds int64) string {
+// SumIncreases composes per-bucket byte counts (increase over the step) across
+// App egress sources. Used by the Outbound Bandwidth chart so summing series
+// points over a day reconciles with the month-to-date Increase read. Billing
+// metering still calls Increase directly (usage/service.go) — do not route
+// money through this helper.
+func SumIncreases(specs []Spec, seconds int64) string {
 	if len(specs) == 0 {
 		return ""
 	}
 	parts := make([]string, 0, len(specs))
 	for _, spec := range specs {
-		parts = append(parts, Rate(spec, seconds))
+		parts = append(parts, IncreaseOrZero(spec, seconds))
 	}
 	return strings.Join(parts, " + ")
 }

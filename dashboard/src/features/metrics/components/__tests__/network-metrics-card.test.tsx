@@ -343,6 +343,67 @@ describe("NetworkMetricsCard", () => {
     expect(screen.getByText("7,266 requests")).toBeInTheDocument();
   });
 
+  it("uses the singular request key for a window with exactly one request (w6/028, w4/m108)", () => {
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "http_requests") {
+        return {
+          series: [
+            {
+              unit: "count",
+              labels: {},
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1 }],
+            },
+          ],
+          loading: false,
+          unavailable: false,
+          storeUnavailable: false,
+          throttled: false,
+          degradedSources: [],
+          error: undefined,
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+
+    expect(screen.getByText("1 request")).toBeInTheDocument();
+    expect(screen.queryByText("1 requests")).not.toBeInTheDocument();
+  });
+
+  it("shows a non-zero Total Requests summary for sparse traffic that formerly rounded to zero under rates (w4/m108)", () => {
+    // Live bug: 12 requests → rate 0.177… → Math.round → 0 → gate hid the summary.
+    // With per-bucket counts the same traffic yields "12 requests".
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "http_requests") {
+        return {
+          series: [
+            {
+              unit: "count",
+              labels: {},
+              points: [
+                { timestamp: "2026-09-16T06:37:36Z", value: 0 },
+                { timestamp: "2026-09-16T06:38:36Z", value: 12 },
+                { timestamp: "2026-09-16T06:39:36Z", value: 0 },
+              ],
+            },
+          ],
+          loading: false,
+          unavailable: false,
+          storeUnavailable: false,
+          throttled: false,
+          degradedSources: [],
+          error: undefined,
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+
+    expect(screen.getByText("12 requests")).toBeInTheDocument();
+  });
+
   it("omits the aggregate count when the window has no request data", () => {
     mockUseMetrics.mockReturnValue(emptyResult());
 
@@ -352,6 +413,35 @@ describe("NetworkMetricsCard", () => {
     expect(screen.queryByText(/\d requests/)).not.toBeInTheDocument();
   });
 
+  it("omits the aggregate when every point is zero — idle service empty gate (w6/028)", () => {
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "http_requests") {
+        return {
+          series: [
+            {
+              unit: "count",
+              labels: {},
+              points: [
+                { timestamp: "2026-07-06T09:00:00Z", value: 0 },
+                { timestamp: "2026-07-06T09:30:00Z", value: 0 },
+              ],
+            },
+          ],
+          loading: false,
+          unavailable: false,
+          storeUnavailable: false,
+          throttled: false,
+          degradedSources: [],
+          error: undefined,
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+
+    expect(screen.queryByText(/\d+ requests?/)).not.toBeInTheDocument();
+  });
   it("stacks grouped request series into shared time buckets", () => {
     mockUseMetrics.mockImplementation((_resource, metric, opts) => {
       if (metric === "http_requests" && opts && "groupBy" in opts) {

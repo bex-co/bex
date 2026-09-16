@@ -56,16 +56,18 @@ describe("DeployHeader", () => {
     render(
       <DeployHeader deploy={deploy({ trigger: "api", rollbackOf: "" })} />,
     );
-    expect(screen.getByText("manual deploy")).toBeInTheDocument();
+    expect(screen.getByText("Manual Deploy")).toBeInTheDocument();
   });
 
-  it("labels a rollback deploy with the restored deploy's id, not the generic trigger label", () => {
+  it("labels a rollback deploy with the restored deploy's id intact (no CSS capitalize)", () => {
     render(
       <DeployHeader
         deploy={deploy({ trigger: "rollback", rollbackOf: "dep-live-001" })}
       />,
     );
-    expect(screen.getByText("rollback to dep-live-001")).toBeInTheDocument();
+    const label = screen.getByText("Rollback to dep-live-001");
+    expect(label).toBeInTheDocument();
+    expect(label).not.toHaveClass("capitalize");
   });
 
   it("renders the resolved commit as short SHA + the message's first line (w9/001)", () => {
@@ -80,6 +82,21 @@ describe("DeployHeader", () => {
     expect(screen.getByText("abc1234")).toBeInTheDocument();
     expect(screen.getByText(/fix: header/)).toBeInTheDocument();
     expect(screen.queryByText(/longer body/)).not.toBeInTheDocument();
+  });
+
+  // Hash-only commits (message unavailable) must still render cleanly — the
+  // public-repo resolve path can yield SHA before a subject is known.
+  it("renders a hash-only commit without a dangling message spacer", () => {
+    render(
+      <DeployHeader
+        deploy={deploy({
+          commitId: "abc1234def5678",
+          commitMessage: "",
+        })}
+      />,
+    );
+    const line = screen.getByText("abc1234").closest("p");
+    expect(line?.textContent?.trim()).toBe("abc1234");
   });
 
   // w6/m45 t004: the date used to be separated from the commit message by a
