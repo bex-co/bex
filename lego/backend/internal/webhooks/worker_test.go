@@ -726,7 +726,10 @@ func TestSendDeliversWithAVerifiableSignature(t *testing.T) {
 	if r.id != "evt-abc" {
 		t.Errorf("webhook-id = %q, want evt-abc", r.id)
 	}
-	if !Verify(secret, r.id, r.timestamp, r.body, r.signature) {
+	// The worker stamps deliveries from its injected clock, so the receiver's
+	// clock is that same instant — verifying against wall-clock now would fail
+	// the tolerance window on the simulated date, not on the signature.
+	if !verifyAt(now, secret, r.id, r.timestamp, r.body, r.signature) {
 		t.Errorf("delivered signature does not verify: id=%q ts=%q sig=%q body=%s", r.id, r.timestamp, r.signature, r.body)
 	}
 	d := st.queue["whd-1"]

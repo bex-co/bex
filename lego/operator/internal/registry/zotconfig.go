@@ -48,18 +48,22 @@ const (
 	// BEX_ZOT_RETENTION_COUNT is unset.
 	defaultRetentionCount = 5
 
-	// zotGCDelay is how long an untagged/dangling blob survives before garbage
+	// ZotGCDelay is how long an untagged/dangling blob survives before garbage
 	// collection may remove it. It MUST stay above the worst-case push duration
 	// or GC can delete blobs belonging to a push that is still in flight
 	// (docs/ADR060 D4). The bound that matters is the build Job's own deadline,
 	// since a push cannot outlive the build that produces it — the invariant
-	// zotGCDelay >= build.BuildTimeout is asserted by gc_invariant_test.go, so
+	// ZotGCDelay >= build.BuildTimeout is asserted by gc_invariant_test.go, so
 	// neither value can drift away from the other unnoticed.
 	// Pinned explicitly rather than left to Zot, whose GC defaults change.
-	zotGCDelay = "1h"
+	// Exported only so that invariant test can live in the external
+	// registry_test package: build now imports registry for the shared
+	// cluster-local host predicate, so an in-package test importing build
+	// would close an import cycle.
+	ZotGCDelay = "1h"
 	// gcInterval is how often GC runs; equal to the delay by design, so a blob
 	// is examined at most one interval after it becomes eligible.
-	zotGCInterval = zotGCDelay
+	zotGCInterval = ZotGCDelay
 )
 
 var (
@@ -410,7 +414,7 @@ func (c *Creds) buildBaseZotConfig() {
 			RootDirectory: "/var/lib/registry",
 			Dedupe:        true,
 			GC:            true,
-			GCDelay:       zotGCDelay,
+			GCDelay:       ZotGCDelay,
 			GCInterval:    zotGCInterval,
 			Retention: zotRetention{
 				Policies: []zotRetentionPolicy{{

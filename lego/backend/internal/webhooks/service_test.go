@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -253,7 +254,8 @@ func TestCreateReturnsTheSecretOnceAndReadsNeverDo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if created.Secret == "" || !Verify(created.Secret, "m", "1614265330", []byte("b"), Sign(created.Secret, "m", time.Unix(1614265330, 0), []byte("b"))) {
+	at := time.Now()
+	if created.Secret == "" || !Verify(created.Secret, "m", strconv.FormatInt(at.Unix(), 10), []byte("b"), Sign(created.Secret, "m", at, []byte("b"))) {
 		t.Errorf("Create must return a usable signing secret, got %q", created.Secret)
 	}
 	if created.Name != "primary" {

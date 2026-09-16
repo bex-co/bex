@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 
@@ -44,15 +45,76 @@ const manifestAccept = "application/vnd.oci.image.manifest.v1+json, " +
 	"application/vnd.docker.distribution.manifest.v2+json, " +
 	"application/vnd.docker.distribution.manifest.list.v2+json"
 
-// NormalizeBase turns a configured registry host into a request base URL,
-// defaulting to plain HTTP when no scheme is given (the in-cluster Zot default).
-// Shared so the digest read and the repo teardown cannot disagree on what a
-// bare host means.
+// ClusterLocal reports whether a registry host is the in-cluster or local-dev
+// endpoint that legitimately speaks plain HTTP. Everything else is treated as a
+// real registry whose traffic must be encrypted.
+//
+// The signal is the hostname rather than a scheme because BEX_REGISTRY carries
+// no scheme (it is a host:port such as "zot.bex-registry.svc:5000"). This is the
+// operator's single answer to "may this host be reached in the clear" — the
+// build plane's skopeo TLS flags and the digest client's base URL below both
+// read it, so the two halves cannot disagree about the same BEX_REGISTRY value.
+func ClusterLocal(registryHost string) bool {
+	host := strings.TrimPrefix(strings.TrimPrefix(registryHost, "http://"), "https://")
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.ToLower(strings.Trim(host, "[]"))
+	switch host {
+	case "", "localhost", "127.0.0.1", "::1":
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	for _, suffix := range []string{".svc", ".svc.cluster.local", ".cluster.local", ".local", ".internal"} {
+		if strings.HasSuffix(host, suffix) {
+			return true
+		}
+	}
+	// A single-label host (no dot) cannot be a public DNS name; it is a
+	// cluster-local Service short name or a dev alias.
+	return !strings.Contains(host, ".")
+}
+
+// NormalizeBase turns a configured registry host into a request base URL. An
+// explicit scheme is honored as given; a bare host defaults to http:// only
+// when it is cluster-local (the in-cluster Zot default) and to https://
+// otherwise. Shared so the digest read and the repo teardown cannot disagree on
+// what a bare host means.
 func NormalizeBase(registryHost string) string {
 	if strings.HasPrefix(registryHost, "http://") || strings.HasPrefix(registryHost, "https://") {
 		return registryHost
 	}
-	return "http://" + registryHost
+	if ClusterLocal(registryHost) {
+		return "http://" + registryHost
+	}
+	return "https://" + registryHost
+}
+
+// CredentialedBase is NormalizeBase for a request that will carry registry
+// credentials. It fails closed rather than silently putting an Authorization
+// header on the wire in the clear: a plaintext base is allowed only for a
+// cluster-local host, which is reached over cluster networking. The only way to
+// reach this error is an explicit `http://` BEX_REGISTRY naming an off-cluster
+// registry, which is a configuration mistake with no safe interpretation.
+func CredentialedBase(registryHost string) (string, error) {
+	base := NormalizeBase(registryHost)
+	if strings.HasPrefix(base, "http://") && !ClusterLocal(registryHost) {
+		return "", fmt.Errorf("registry %q is not cluster-local: refusing to send credentials over plaintext HTTP "+
+			"(set BEX_REGISTRY to an https:// URL)", registryHost)
+	}
+	return base, nil
+}
+
+// baseFor picks the request base URL for a call that carries credentials only
+// when username is set — an anonymous read (the dev default) discloses nothing,
+// so it keeps NormalizeBase's plain answer.
+func baseFor(registryHost, username string) (string, error) {
+	if username == "" {
+		return NormalizeBase(registryHost), nil
+	}
+	return CredentialedBase(registryHost)
 }
 
 // ResolveDigest asks the registry which immutable manifest digest it currently
@@ -67,7 +129,10 @@ func ResolveDigest(ctx context.Context, httpClient *http.Client, registryHost, r
 	if httpClient == nil {
 		httpClient = defaultHTTPClient
 	}
-	base := NormalizeBase(registryHost)
+	base, err := baseFor(registryHost, username)
+	if err != nil {
+		return "", err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead,
 		fmt.Sprintf("%s/v2/%s/manifests/%s", base, repo, tag), nil)
 	if err != nil {
@@ -102,7 +167,10 @@ func ListTags(ctx context.Context, httpClient *http.Client, registryHost, repo, 
 	if httpClient == nil {
 		httpClient = defaultHTTPClient
 	}
-	base := NormalizeBase(registryHost)
+	base, err := baseFor(registryHost, username)
+	if err != nil {
+		return nil, err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		fmt.Sprintf("%s/v2/%s/tags/list", base, repo), nil)
 	if err != nil {

@@ -79,14 +79,31 @@ func Sign(secret, msgID string, at time.Time, body []byte) string {
 	return "v1," + base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
+// VerifyTolerance is the clock-skew window a delivery's webhook-timestamp must
+// fall within. Standard Webhooks mandates a tolerance check — a signature alone
+// proves authenticity, not freshness, so without one a single captured delivery
+// replays forever. 5 minutes is the spec's reference value, applied in both
+// directions (a far-future timestamp is as wrong as a stale one).
+const VerifyTolerance = 5 * time.Minute
+
 // Verify reports whether signatureHeader (a space-delimited list of
 // "v1,<base64>" entries, per Standard Webhooks) contains a valid signature
-// for the message. It is what a receiver does — exported so bex's own tests
-// and the verification harness (scripts/webhooks-verify.sh) check deliveries
-// with the same code a real consumer would write.
+// for the message AND that its timestamp is within VerifyTolerance of now.
+// It is what a receiver does — exported so bex's own tests and the
+// verification harness (scripts/webhooks-verify.sh) check deliveries with the
+// same code a real consumer would write.
 func Verify(secret, msgID, timestamp string, body []byte, signatureHeader string) bool {
+	return verifyAt(time.Now(), secret, msgID, timestamp, body, signatureHeader)
+}
+
+// verifyAt is Verify with the receiver's clock injected, so the tolerance
+// window itself is testable without sleeping.
+func verifyAt(now time.Time, secret, msgID, timestamp string, body []byte, signatureHeader string) bool {
 	ts, err := strconv.ParseInt(timestamp, 10, 64)
 	if err != nil {
+		return false
+	}
+	if skew := now.Sub(time.Unix(ts, 0)); skew > VerifyTolerance || skew < -VerifyTolerance {
 		return false
 	}
 	want := Sign(secret, msgID, time.Unix(ts, 0), body)

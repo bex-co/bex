@@ -607,10 +607,7 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 	jobName := fmt.Sprintf("%s%s-%x", prefix, appName, sum[:4])
 	if len(jobName) > 63 {
 		suffix := fmt.Sprintf("-%x", sum[:6])
-		maxParent := 63 - len(prefix) - len(suffix)
-		if maxParent < 1 {
-			maxParent = 1
-		}
+		maxParent := max(63-len(prefix)-len(suffix), 1)
 		parent := appName
 		if len(parent) > maxParent {
 			parent = parent[:maxParent]

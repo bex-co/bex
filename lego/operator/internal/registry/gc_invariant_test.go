@@ -13,13 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package registry
+package registry_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	"github.com/bex-co/bex/lego/operator/internal/registry"
 )
 
 // TestGCDelayOutlivesTheLongestPossiblePush asserts the ADR060 D4 invariant:
@@ -28,9 +29,9 @@ import (
 // deadline, GC can collect blobs from an in-flight push and the failure
 // presents as a corrupt image rather than as a configuration mistake.
 func TestGCDelayOutlivesTheLongestPossiblePush(t *testing.T) {
-	delay, err := time.ParseDuration(zotGCDelay)
+	delay, err := time.ParseDuration(registry.ZotGCDelay)
 	if err != nil {
-		t.Fatalf("zotGCDelay %q is not a duration: %v", zotGCDelay, err)
+		t.Fatalf("ZotGCDelay %q is not a duration: %v", registry.ZotGCDelay, err)
 	}
 	if delay < build.BuildTimeout {
 		t.Errorf("zot gcDelay %s < build deadline %s: GC can collect blobs from an in-flight push",
