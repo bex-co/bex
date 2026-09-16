@@ -1438,9 +1438,9 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainOwnershipGuidance": {
     message:
-      "请先添加这条 TXT 记录以证明所有权；验证成功前，平台不会路由此域名。此主机名下每个域名各有一条 TXT 记录——请将此值作为新增记录添加，并保留已有的 bex-domain-verification 值。",
+      "请先在 {zone} 区域添加这条 TXT 记录以证明所有权；验证成功前，平台不会路由此域名。主机名相对于该区域（粘贴 _bex-challenge，不要粘贴完整域名）。此主机名下每个域名各有一条 TXT 记录——请将此值作为新增记录添加，并保留已有的 bex-domain-verification 值。",
     description:
-      "持久自定义域名所有权 TXT 挑战上方的说明——必须说明主机名是共享的（每个域名一条记录），以免用户在单值 DNS 编辑框里覆盖其他域名的验证记录",
+      "持久自定义域名所有权 TXT 挑战上方的说明——必须点名 Host 相对的 DNS 区域（w4/092），并说明主机名是共享的（每个域名一条记录），以免用户在单值 DNS 编辑框里覆盖其他域名的验证记录",
   },
   "services.domainOwnershipSiblingsNote": {
     message: "此服务的其他域名共用此 TXT 主机名——请保留它们的记录：",
@@ -1453,13 +1453,15 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsSubdomainGuidance": {
     message:
-      "请在你的 DNS 服务商处创建以下记录，然后重新检查。记录生效后，bex 会自动签发 TLS 证书。",
-    description: "Guidance line above the DNS record for a subdomain",
+      "请在 {zone} 区域于你的 DNS 服务商处创建以下记录，然后重新检查。主机名相对于该区域。记录生效后，bex 会自动签发 TLS 证书。",
+    description:
+      "子域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
   },
   "services.domainDnsApexGuidance": {
     message:
-      "顶级域名无法使用普通 CNAME —— 若你的服务商支持 ALIAS/ANAME（或 CNAME flattening），请创建此记录后重新检查。解析生效后 bex 会自动签发 TLS 证书，并为你自动配置 www ↔ 顶级域名之间的重定向。",
-    description: "Guidance line above the DNS record for an apex domain",
+      "顶级域名无法使用普通 CNAME —— 请在 {zone} 区域创建此记录（若你的服务商支持 ALIAS/ANAME 或 CNAME flattening），然后重新检查。主机名相对于该区域（@ 表示区域 apex）。解析生效后 bex 会自动签发 TLS 证书，并为你自动配置 www ↔ 顶级域名之间的重定向。",
+    description:
+      "顶级域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
   },
   "services.domainRecordType": {
     message: "类型",

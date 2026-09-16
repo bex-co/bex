@@ -81,9 +81,18 @@ func ownershipDomain(host string) string {
 	return root
 }
 
+// ownershipDNSRecordName is the FQDN LookupTXT resolves for ownership proof.
+// Providers' Host/Name fields are relative to the zone — never present this
+// string as the Host to create (w4/092); use ownershipDNSRecordRelativeName.
 func ownershipDNSRecordName(host string) string {
-	return "_bex-challenge." + ownershipDomain(host)
+	return ownershipDNSRecordRelativeName + "." + ownershipDomain(host)
 }
+
+// ownershipDNSRecordRelativeName is the Host value shown in DNS instructions:
+// relative to the registrable-domain zone (same contract as DNSRecordView.Name
+// for traffic records). Pasting the FQDN into a provider that appends the zone
+// creates `_bex-challenge.<zone>.<zone>` and verification never succeeds.
+const ownershipDNSRecordRelativeName = "_bex-challenge"
 
 func domainOwnershipChallenge(app *appv1alpha1.App, host string) (name, value string) {
 	name = ownershipDNSRecordName(host)
@@ -140,9 +149,9 @@ type DomainView struct {
 // (bex points apex at the platform host via ALIAS/ANAME/CNAME-flattening rather
 // than a bare A-record IP — the edge is Cloudflare-proxied, docs/ADR005-custom-domain.md.)
 type DNSRecordView struct {
-	Type  string // "CNAME" (subdomain) or "ALIAS" (apex)
-	Name  string // the record host to create: the subdomain label(s), or "@" for apex
-	Value string // the target the record points to: the platform host <app>.<base-domain>
+	Type  string // "CNAME" (subdomain), "ALIAS" (apex), or "TXT" (ownership)
+	Name  string // Host relative to the DNS zone: subdomain label(s), "@" for apex, or "_bex-challenge" for ownership TXT (never an FQDN — w4/092)
+	Value string // the target/value: platform host <app>.<base-domain>, or the ownership challenge string
 }
 
 // registrableDomain returns the eTLD+1 (registrable domain) of host — e.g.
@@ -283,7 +292,15 @@ func ownershipDNSRecordFor(host, challenge string) *DNSRecordView {
 	if challenge == "" {
 		return nil
 	}
-	return &DNSRecordView{Type: "TXT", Name: ownershipDNSRecordName(host), Value: challenge}
+	// Relative Host for DNS providers (zone = ownershipDomain(host)); LookupTXT
+	// still uses ownershipDNSRecordName (FQDN). See w4/092.
+	name := ownershipDNSRecordRelativeName
+	if zone := ownershipDomain(host); zone != "" {
+		if rel, ok := strings.CutSuffix(ownershipDNSRecordName(host), "."+zone); ok && rel != "" {
+			name = rel
+		}
+	}
+	return &DNSRecordView{Type: "TXT", Name: name, Value: challenge}
 }
 
 // tlsSecretForHost returns the TLS Secret name the operator creates for a host
@@ -558,7 +575,8 @@ func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (D
 	if claim.ClaimState == "verified" {
 		return s.domainClaimView(ctx, app, claim, s.platformHost(app)), nil
 	}
-	name := ownershipDNSRecordFor(claim.Host, claim.Challenge).Name
+	// Resolve the FQDN — not the relative Host shown in DNS instructions.
+	name := ownershipDNSRecordName(claim.Host)
 	verifier := s.DomainOwnership
 	if verifier == nil {
 		verifier = systemDomainOwnershipVerifier{}
@@ -568,7 +586,12 @@ func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (D
 		return DomainView{}, core.NewConflictError(
 			"DOMAIN_OWNERSHIP_PENDING",
 			"domain ownership TXT record is not verified",
-			map[string]any{"recordName": name},
+			map[string]any{
+				"recordName": name,
+				// Relative Host to paste at the registrable-domain zone (w4/092).
+				"recordHost": ownershipDNSRecordRelativeName,
+				"recordZone": ownershipDomain(claim.Host),
+			},
 		)
 	}
 	claim, err = claims.PromoteDomainClaim(ctx, appID, claim.ID, claim.Challenge, s.Now())

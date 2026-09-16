@@ -280,6 +280,10 @@ func TestManagedDomainClaimLifecycleNeverServesPending(t *testing.T) {
 	if created.OwnershipStatus != "pending" || created.OwnershipDNSRecord == nil || created.OwnershipDNSRecord.Type != "TXT" {
 		t.Fatalf("pending view = %+v", created)
 	}
+	// Host must be zone-relative (_bex-challenge), not the LookupTXT FQDN (w4/092).
+	if created.OwnershipDNSRecord.Name != ownershipDNSRecordRelativeName {
+		t.Fatalf("ownership Host = %q, want relative %q", created.OwnershipDNSRecord.Name, ownershipDNSRecordRelativeName)
+	}
 	challenge := created.OwnershipDNSRecord.Value
 	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
 		t.Fatalf("pending claim reached serving spec: %v", got)
@@ -293,6 +297,15 @@ func TestManagedDomainClaimLifecycleNeverServesPending(t *testing.T) {
 	var coded *core.CodedError
 	if !errors.As(err, &coded) || coded.Code != "DOMAIN_OWNERSHIP_PENDING" {
 		t.Fatalf("wrong TXT = %v, want DOMAIN_OWNERSHIP_PENDING", err)
+	}
+	// Verifier still looks up the FQDN; conflict params name both forms.
+	if resolver.name != "_bex-challenge.example.com" {
+		t.Fatalf("VerifyTXT looked up %q, want FQDN", resolver.name)
+	}
+	if coded.Params["recordName"] != "_bex-challenge.example.com" ||
+		coded.Params["recordHost"] != ownershipDNSRecordRelativeName ||
+		coded.Params["recordZone"] != "example.com" {
+		t.Fatalf("pending params = %#v", coded.Params)
 	}
 	if strings.Contains(err.Error(), challenge) || len(getApp(t, cl, "web").Spec.Hosts) != 0 {
 		t.Fatal("failed verification leaked its challenge or served the pending host")
@@ -1310,6 +1323,9 @@ func TestManagedPendingDomainSurfaceParity(t *testing.T) {
 	if rest.OwnershipStatus != "pending" || rest.OwnershipDNSRecord == nil || rest.OwnershipDNSRecord.Type != "TXT" {
 		t.Fatalf("REST pending shape = %+v", rest)
 	}
+	if rest.OwnershipDNSRecord.Name != ownershipDNSRecordRelativeName {
+		t.Fatalf("REST ownership Host = %q, want relative %q", rest.OwnershipDNSRecord.Name, ownershipDNSRecordRelativeName)
+	}
 
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
@@ -1327,7 +1343,8 @@ func TestManagedPendingDomainSurfaceParity(t *testing.T) {
 		t.Fatalf("GraphQL get: %v", gql.Errors)
 	}
 	gqlDomain := gql.Data.(map[string]any)["customDomain"].(map[string]any)
-	if gqlDomain["ownershipStatus"] != "pending" || gqlDomain["ownershipDnsRecord"].(map[string]any)["value"] != rest.OwnershipDNSRecord.Value {
+	gqlProof := gqlDomain["ownershipDnsRecord"].(map[string]any)
+	if gqlDomain["ownershipStatus"] != "pending" || gqlProof["value"] != rest.OwnershipDNSRecord.Value || gqlProof["name"] != ownershipDNSRecordRelativeName {
 		t.Fatalf("GraphQL pending shape = %v", gqlDomain)
 	}
 
@@ -1335,7 +1352,7 @@ func TestManagedPendingDomainSurfaceParity(t *testing.T) {
 	defer cleanup()
 	mcpDomain := call("get_custom_domain", map[string]any{"serviceId": "web", "name": "app.example.com"})
 	proof, _ := mcpDomain["ownershipDnsRecord"].(map[string]any)
-	if mcpDomain["ownershipStatus"] != "pending" || proof["value"] != rest.OwnershipDNSRecord.Value {
+	if mcpDomain["ownershipStatus"] != "pending" || proof["value"] != rest.OwnershipDNSRecord.Value || proof["name"] != ownershipDNSRecordRelativeName {
 		t.Fatalf("MCP pending shape = %v", mcpDomain)
 	}
 }

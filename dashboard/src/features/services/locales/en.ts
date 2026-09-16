@@ -1465,9 +1465,9 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.domainOwnershipGuidance": {
     message:
-      "First, add this TXT record to prove ownership; the domain is not routed until verification succeeds. This host holds one TXT record per domain — add this value as an additional record and keep any bex-domain-verification values already there.",
+      "First, add this TXT record in the {zone} zone to prove ownership; the domain is not routed until verification succeeds. Host is relative to that zone (paste _bex-challenge, not the full name). This host holds one TXT record per domain — add this value as an additional record and keep any bex-domain-verification values already there.",
     description:
-      "Guidance above the durable custom-domain ownership TXT challenge — must say the host is shared (one record per domain) so users don't overwrite a sibling domain's proof in a single-value DNS edit box",
+      "Guidance above the durable custom-domain ownership TXT challenge — must name the DNS zone Host is relative to (w4/092) and say the host is shared (one record per domain) so users don't overwrite a sibling domain's proof in a single-value DNS edit box",
   },
   "services.domainOwnershipSiblingsNote": {
     message:
@@ -1482,13 +1482,15 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsSubdomainGuidance": {
     message:
-      "Create the following record at your DNS provider, then re-check. bex issues the TLS certificate automatically once it resolves.",
-    description: "Guidance line above the DNS record for a subdomain",
+      "Create the following record in the {zone} zone at your DNS provider, then re-check. Host is relative to that zone. bex issues the TLS certificate automatically once it resolves.",
+    description:
+      "Guidance line above the DNS record for a subdomain — names the zone Host is relative to (w4/092)",
   },
   "services.domainDnsApexGuidance": {
     message:
-      "Apex domains can't use a plain CNAME — create this record if your provider supports ALIAS/ANAME (or CNAME flattening), then re-check. bex issues the TLS certificate automatically once it resolves, and sets up the www ↔ apex redirect for you.",
-    description: "Guidance line above the DNS record for an apex domain",
+      "Apex domains can't use a plain CNAME — create this record in the {zone} zone if your provider supports ALIAS/ANAME (or CNAME flattening), then re-check. Host is relative to that zone (@ means the zone apex). bex issues the TLS certificate automatically once it resolves, and sets up the www ↔ apex redirect for you.",
+    description:
+      "Guidance line above the DNS record for an apex domain — names the zone Host is relative to (w4/092)",
   },
   "services.domainRecordType": {
     message: "Type",
