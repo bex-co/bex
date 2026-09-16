@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"path"
 	"regexp"
 	"strconv"
@@ -34,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -295,6 +297,75 @@ func discoverBlueprintFile(ctx context.Context, fetcher BlueprintFetcher, worksp
 	}
 }
 
+// classifyBlueprintFetchError turns a Blueprint fetch failure into a coded
+// reason plus a sentence an author can act on.
+//
+// This is the whole point of w2/m97: every failure used to arrive as the raw
+// internal error, so "you pushed to a branch that does not exist" and "your
+// GitHub app was uninstalled" both read as `github: unexpected status 404`, and
+// a missing file quoted the pinned commit SHA at the user. Nothing this
+// function returns contains upstream vocabulary or a SHA — the message is built
+// here from the caller's own inputs, never from err.Error().
+func classifyBlueprintFetchError(err error, requestedPath, branch string) (BlueprintPreviewReason, string) {
+	displayPath := requestedPath
+	if displayPath == "" {
+		displayPath = CanonicalBlueprintFilename
+	}
+	switch {
+	case errors.Is(err, ErrBlueprintFilenameAmbiguous):
+		return BlueprintFetchAmbiguousFilename, fmt.Sprintf(
+			"This repository has both %s and %s on branch %q. Remove one, or name the file explicitly.",
+			CanonicalBlueprintFilename, LegacyBlueprintFilename, branch)
+	case errors.Is(err, github.ErrBranchNotFound):
+		return BlueprintFetchBranchNotFound, fmt.Sprintf("Branch %q does not exist in this repository.", branch)
+	case errors.Is(err, github.ErrRepoNotFoundOrNoAccess):
+		return BlueprintFetchRepoNotFound,
+			"Repository not found, or bex's GitHub app cannot access it."
+	}
+	// approvedBlueprintPath's refusals are the only ErrBadRequest that reaches
+	// here, and they are about the caller's path, not the repository.
+	if errors.Is(err, core.ErrBadRequest) {
+		message := err.Error()
+		if after, ok := strings.CutPrefix(message, "bad request: "); ok {
+			message = after
+		}
+		return BlueprintFetchInvalidPath, message
+	}
+	var apiErr *github.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.Status {
+		case http.StatusNotFound:
+			// The commit resolved (a branch/repo 404 is caught above), so the
+			// only remaining 404 is the file itself.
+			return BlueprintFetchFileNotFound, fmt.Sprintf(
+				"Blueprint file %q not found on branch %q.", displayPath, branch)
+		case http.StatusUnauthorized, http.StatusForbidden:
+			return BlueprintFetchAccessDenied,
+				"bex's GitHub app is not authorized to read this repository. Re-check the installation and its repository access."
+		case http.StatusTooManyRequests:
+			return BlueprintFetchRateLimited,
+				"GitHub is rate-limiting bex right now. Try again in a few minutes."
+		}
+	}
+	return BlueprintFetchUnavailable,
+		"Could not reach GitHub to read the Blueprint file. Try again in a few minutes."
+}
+
+// blueprintFetchFailure is classifyBlueprintFetchError for the sync paths
+// (w2/m97 t003). A sync run records its failure in `blueprint_syncs.error_message`,
+// which REST, GraphQL, MCP and the Blueprint detail page all surface — so the
+// raw `github:` text and the pinned SHA were leaking there too, not just into
+// the preview.
+//
+// The message is `"<reason>: <sentence>"`. The leading token is a stable,
+// machine-keyable code so a client does not parse prose, and it needs no new
+// column or migration: the existing error_message carries it. Split on the
+// first ": " to read the code.
+func blueprintFetchFailure(err error, requestedPath, branch string) error {
+	reason, message := classifyBlueprintFetchError(err, requestedPath, branch)
+	return fmt.Errorf("%s: %s", reason, message)
+}
+
 // approvedBlueprintPath keeps Blueprint discovery from becoming an arbitrary
 // private-repository file reader. Since Render's 2026-02-09 custom Blueprint
 // paths (w8/m19 t006), an explicit path may use any YAML filename in any
@@ -396,12 +467,55 @@ type SyncBlueprintResult struct {
 // dashboard can render Render's "Blueprint file not found on branch" + Retry
 // state instead of a toast.
 type BlueprintPreview struct {
-	Found      bool                 `json:"found"`
-	Manifest   string               `json:"manifest,omitempty"`
-	CommitID   string               `json:"commitId,omitempty"`
-	Warning    string               `json:"warning,omitempty"`
-	Error      string               `json:"error,omitempty"`
-	Validation *BlueprintValidation `json:"validation,omitempty"`
+	Found    bool   `json:"found"`
+	Manifest string `json:"manifest,omitempty"`
+	CommitID string `json:"commitId,omitempty"`
+	Warning  string `json:"warning,omitempty"`
+	// Error is a human-readable sentence for API clients. It never carries
+	// upstream error text (`github:`, `unexpected status NNN`) or the pinned
+	// commit SHA — see classifyBlueprintFetchError.
+	Error string `json:"error,omitempty"`
+	// Reason is the machine-readable cause, so a client (and the dashboard)
+	// picks its own copy instead of parsing prose. Empty on success.
+	Reason     BlueprintPreviewReason `json:"reason,omitempty"`
+	Validation *BlueprintValidation   `json:"validation,omitempty"`
+}
+
+// BlueprintPreviewReason is the closed set of reasons a Blueprint fetch failed.
+// It exists because the preview used to pass internal error text straight to
+// the client — `github: file "render.yaml" not found at ref "<40-hex>"` — which
+// told an author nothing actionable, leaked the upstream vocabulary, and left
+// the dashboard rendering every failure as "Blueprint file not found" (w2/m97).
+type BlueprintPreviewReason string
+
+const (
+	// BlueprintFetchFileNotFound: the repo and branch resolved; the file did not.
+	BlueprintFetchFileNotFound BlueprintPreviewReason = "file_not_found"
+	// BlueprintFetchBranchNotFound: the repo resolved; the branch did not.
+	BlueprintFetchBranchNotFound BlueprintPreviewReason = "branch_not_found"
+	// BlueprintFetchRepoNotFound: missing repo and invisible-private repo are
+	// one reason on purpose — GitHub answers 404 for both, and distinguishing
+	// them would be an existence oracle for private repositories.
+	BlueprintFetchRepoNotFound BlueprintPreviewReason = "repo_not_found_or_no_access"
+	// BlueprintFetchAccessDenied: 401/403 — the installation exists but is not
+	// permitted.
+	BlueprintFetchAccessDenied BlueprintPreviewReason = "access_denied"
+	// BlueprintFetchRateLimited: 429. Retryable.
+	BlueprintFetchRateLimited BlueprintPreviewReason = "rate_limited"
+	// BlueprintFetchInvalidPath: the caller's path failed approvedBlueprintPath.
+	BlueprintFetchInvalidPath BlueprintPreviewReason = "invalid_path"
+	// BlueprintFetchAmbiguousFilename: both render.yaml and the legacy alias exist.
+	BlueprintFetchAmbiguousFilename BlueprintPreviewReason = "ambiguous_filename"
+	// BlueprintFetchUnavailable: any other upstream status or transport
+	// failure. Retryable.
+	BlueprintFetchUnavailable BlueprintPreviewReason = "unavailable"
+)
+
+// RetryableBlueprintFetch reports whether retrying the same request could
+// plausibly succeed without the author changing anything. It is what decides
+// whether the dashboard offers a Retry button.
+func RetryableBlueprintFetch(reason BlueprintPreviewReason) bool {
+	return reason == BlueprintFetchRateLimited || reason == BlueprintFetchUnavailable
 }
 
 // CreateBlueprintRequest is the input to CreateBlueprint.
@@ -555,11 +669,8 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 	tenantID := s.resolveTenantID(ctx)
 	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, repo, branch, filePath)
 	if err != nil {
-		msg := err.Error()
-		if after, ok := strings.CutPrefix(msg, "bad request: "); ok {
-			msg = after
-		}
-		return BlueprintPreview{Error: msg}, nil
+		reason, message := classifyBlueprintFetchError(err, filePath, branch)
+		return BlueprintPreview{Reason: reason, Error: message}, nil
 	}
 	validation, err := s.blueprintValidationFor(ctx, repo, branch, contents)
 	if err != nil {
@@ -598,7 +709,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	}
 	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, req.Repo, req.Branch, req.Path)
 	if err != nil {
-		return BlueprintView{}, fmt.Errorf("blueprint fetch: %w", err)
+		return BlueprintView{}, blueprintFetchFailure(err, req.Path, req.Branch)
 	}
 	req.Path = discoveredPath
 
@@ -880,7 +991,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 			}
 			contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, b.Repo, reviewed.CommitID, b.Path)
 			if fetchErr != nil {
-				return s.failSync(ctx, b, reviewed.CommitID, now, fetchErr)
+				return s.failSync(ctx, b, reviewed.CommitID, now, blueprintFetchFailure(fetchErr, b.Path, b.Branch))
 			}
 			commitSHA, manifest = reviewed.CommitID, contents
 		} else {
@@ -890,11 +1001,11 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 			// callers that omit the reviewed pin keep this HEAD-resolve path.
 			sha, resolveErr := s.GitFetcher.ResolveBlueprintCommit(ctx, tenantID, b.Repo, b.Branch)
 			if resolveErr != nil {
-				return s.failSync(ctx, b, "", now, resolveErr)
+				return s.failSync(ctx, b, "", now, blueprintFetchFailure(resolveErr, b.Path, b.Branch))
 			}
 			contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, b.Repo, sha, b.Path)
 			if fetchErr != nil {
-				return s.failSync(ctx, b, sha, now, fetchErr)
+				return s.failSync(ctx, b, sha, now, blueprintFetchFailure(fetchErr, b.Path, b.Branch))
 			}
 			commitSHA, manifest = sha, contents
 		}

@@ -18,6 +18,7 @@ It is a **top-level** field on the service object (sibling of `autoDeploy`, `sus
 
 Neither `POST /v1/services` (create) nor `PATCH /v1/services/{id}` (update) accepts `notifyOnFail` in their request bodies — confirmed by grepping the spec's `requestBody` schemas for both operations (`toCreateRequest`/PATCH `patchServiceRequest` in bex's own `rest.go` are structured the same way for the fields they DO own). Render's actual write path is a **separate** endpoint pair:
 
+- `GET /notification-settings/overrides` — list a workspace's overrides (`list-notification-overrides`); optional `ownerId`, repeatable `serviceId`, `cursor`, `limit`; returns `[{override, cursor}]`. Served by bex since w2/m100 (see ADR018 for the scope and projection divergences).
 - `GET /notification-settings/overrides/services/{serviceId}` — retrieve a service's override
 - `PATCH /notification-settings/overrides/services/{serviceId}` — body `{ previewNotificationsEnabled, notificationsToSend }`
 

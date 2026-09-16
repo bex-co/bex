@@ -1328,9 +1328,77 @@ func toNotificationOverride(app AppView) notificationOverrideResponse {
 	}
 }
 
+// notificationOverrideEntry is Render's `notificationOverrideWithCursor`: the
+// override object plus its opaque page cursor. The envelope key is `override`
+// (the pinned spec's own spelling), not `notificationOverride`.
+type notificationOverrideEntry struct {
+	Override notificationOverrideItem `json:"override"`
+	Cursor   string                   `json:"cursor"`
+}
+
+// notificationOverrideItem is the list's per-row object. `type` is required by
+// the pinned schema but carries no schema of its own there (no enum, no
+// description), so bex emits the kind of thing the override is attached to.
+// See the m100 README's Render-semantics note.
+type notificationOverrideItem struct {
+	Type                        string `json:"type"`
+	ServiceID                   string `json:"serviceId"`
+	PreviewNotificationsEnabled string `json:"previewNotificationsEnabled"`
+	NotificationsToSend         string `json:"notificationsToSend"`
+}
+
+const notificationOverrideTypeService = "service"
+
 // registerNotificationOverrideRoutes mounts the per-service notification
-// override pair: read the effective override, and PATCH notificationsToSend.
+// override pair — read the effective override, and PATCH notificationsToSend —
+// plus Render's workspace-wide list (w2/m100 t002), which bex answered with a
+// bare 404 while ADR018 claimed notifications parity on every surface.
+//
+// The list is a read-only projection of the same `App.spec.notificationsToSend`
+// the per-service GET reads; there is no second source of truth.
 func (s *Service) registerNotificationOverrideRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /v1/notification-settings/overrides", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		q := r.URL.Query()
+		// Workspace scoping is s.List's, so this route cannot see further than
+		// any other list: the named workspace when the caller belongs to it,
+		// the caller's own when unnamed, and nothing at all for a foreign one.
+		apps, err := s.List(r.Context(), q.Get("ownerId"))
+		if err != nil {
+			return nil, err
+		}
+		// Render's serviceId filter is an ARRAY parameter (style: form), so it
+		// repeats rather than taking a comma list.
+		if wanted := q["serviceId"]; len(wanted) > 0 {
+			keep := make(map[string]struct{}, len(wanted))
+			for _, id := range wanted {
+				keep[id] = struct{}{}
+			}
+			filtered := apps[:0:0]
+			for _, app := range apps {
+				if _, ok := keep[app.ID]; ok {
+					filtered = append(filtered, app)
+				}
+			}
+			apps = filtered
+		}
+		after, limit := core.PageParams(q)
+		apps = core.StablePage(apps, after, limit, q.Has("cursor") || q.Has("limit"),
+			func(a AppView) string { return a.ID })
+		out := make([]notificationOverrideEntry, 0, len(apps))
+		for _, app := range apps {
+			override := toNotificationOverride(app)
+			out = append(out, notificationOverrideEntry{
+				Override: notificationOverrideItem{
+					Type:                        notificationOverrideTypeService,
+					ServiceID:                   app.ID,
+					PreviewNotificationsEnabled: override.PreviewNotificationsEnabled,
+					NotificationsToSend:         override.NotificationsToSend,
+				},
+				Cursor: app.ID,
+			})
+		}
+		return out, nil
+	}))
 	mux.HandleFunc("GET /v1/notification-settings/overrides/services/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		app, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
