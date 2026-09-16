@@ -1,0 +1,37 @@
+# w4 · m108 — Make deploy provenance and request metrics honest: public-repo commits, rate-vs-count charts, rollback label
+
+**Worker:** worker4 **Goal:** A service deployed from a Public Git URL knows which commit it is running, the Metrics page's Total Requests reports the number of requests that actually happened, and the rollback trigger label stops mangling the deploy id it names. **Status:** todo
+
+## Tasks (in order)
+
+| id   | title                                                                                | est   | depends_on                                       |
+| ---- | ------------------------------------------------------------------------------------ | ----- | ------------------------------------------------ |
+| t001 | `http_requests` returns a per-bucket request count, not a per-second rate              | 1h    | —                                                |
+| t002 | Total Requests chart and aggregate read the corrected counts                           | 40m   | w4/m108/t001                                     |
+| t003 | Settle the Outbound Bandwidth chart's rate-vs-count shape against the metering control | 40m   | w4/m108/t001                                     |
+| t004 | Record a commit for deploys of a service created from a Public Git URL                 | 1h30m | —                                                |
+| t005 | The rollback trigger label stops title-casing the deploy id it names                   | 30m   | —                                                |
+| t006 | Render parity: cross-surface check for the metrics and deploy-commit changes           | 30m   | w4/m108/t002, w4/m108/t003, w4/m108/t004, w4/m108/t005 |
+| t007 | Simplify the code this milestone touched                                               | 20m   | w4/m108/t006                                     |
+| t008 | Test coverage for the shipped behavior                                                 | 40m   | w4/m108/t006                                     |
+| t009 | Closeout                                                                               | 15m   | w4/m108/t007, w4/m108/t008                       |
+
+## Definition of done
+
+Each bullet is a command or a click the next person can repeat on production and watch succeed.
+
+- **Request counts are counts.** Create a free web service, send exactly 20 requests to its `.onbex.co` URL with `curl`, wait for one scrape, then run the `Metrics` GraphQL read for `HTTP_REQUESTS` over a window containing them: the sum of the returned `values` equals 20 (±1 bucket-boundary request), not `20 / step`. The dashboard's Metrics page for that service shows "20 requests" beside **Total Requests** and a bar chart whose bars are request counts. The same read through REST (`GET /v1/metrics/http-requests`) and MCP (`http_request_count`) returns the same numbers as GraphQL for the same window.
+- **Busy services stop under-reporting.** For a service with steady traffic, the Total Requests aggregate over a 12h window is within a bucket of the count obtained independently by summing the request access-log lines for the same window — today it is low by a factor of the resolution (the 2026-09-15 capture: a 12h window read "727 requests" while the service was sustaining ≈7 req/s ≈ 300k requests).
+- **Low-traffic services stop reading zero.** A service that served 12 requests in the last hour shows a non-zero Total Requests summary and non-zero bars — not the empty summary `w6/028` documented as the deliberate `requestCount > 0` gate.
+- **Bandwidth is settled, either way.** `t003` ends with either the Outbound Bandwidth chart converted to the same per-bucket shape the month-to-date figure already uses (`egressquery.Increase`), or a written, evidenced decision in `docs/render-artifacts/metrics-page.md` that the chart is deliberately a rate — with the axis/unit labelled so a reader cannot mistake it for bytes-per-bucket. A silent "leave it as is" does not satisfy this bullet.
+- **Public-repo deploys carry provenance.** Create a web service from **Public Git URL** against a repo whose owner has no GitHub App connection (e.g. `https://github.com/render-examples/express-hello-world`): the first deploy, a config-change redeploy, and a rollback each expose a `commit` on `GET /v1/services/{id}/deploys`, and the Deploys tab renders `<short-sha> <subject>` on each row exactly as it does for a GitHub-App-connected service. The "Roll back to this deploy?" dialog names the commit it restores.
+- **Unresolvable stays honest.** A service whose repo genuinely cannot be resolved (private repo, no connection; a deleted ref) still deploys, and its deploy row omits `commit` rather than carrying a fabricated or placeholder value — the `w9/001` contract.
+- **The rollback label is readable.** On a rollback deploy, both the Deploys list row and the deploy detail header read `Rollback to dep-…` with the id in its literal lower-case form; `getComputedStyle` on that element no longer reports `text-transform: capitalize` over the interpolated id. The sibling labels ("Manual Deploy", "First Deploy", "Config Change", "New Commit") are unchanged — re-check them in the same screenshot, since `w4/036` fixed the previous member of this class.
+
+## Source + Goal linkage
+
+- **Source:** live `/qa-find-bugs` pass on `https://dashboard.bex.co`, 2026-09-15/16 (w4-targeted run). Journeys exercised: project/overview, create web service from a Public Git URL (`qa-20260915-1a-web`, `srv-dal3f2rkmutc73d7q9l0`, free plan, deleted at the end of the run), env-var edit → config-change redeploy, manual deploy → cancel, rollback, logs, metrics, scaling, shell, delete. Evidence: `.playwright-mcp/qa-metrics-total-requests.png`, `.playwright-mcp/qa-deploys-rollback-capitalize.png` (gitignored, local to that session); the durable evidence is the probes quoted in each task.
+- **Goal linkage:** Render parity and product truthfulness ([docs/ADR018-render-parity.md](../../../docs/ADR018-render-parity.md), [docs/ADR006-bex-api.md](../../../docs/ADR006-bex-api.md), [docs/ADR010](../../../docs/ADR010-observability.md) for metrics semantics, [docs/ADR004-app-deployment.md](../../../docs/ADR004-app-deployment.md) for deploy provenance). A hosting product whose traffic chart reads zero while the service is serving, and whose deploy history cannot name the code it ran, fails the two things a user checks first after a deploy.
+- **Expected outcome:** the Metrics page's request and bandwidth numbers can be reconciled against the access log; deploy history for public-repo services is as informative as for GitHub-connected ones; the rollback provenance line is copy-pasteable.
+- **Why now:** the metrics defect is a correctness bug in numbers users read to make scaling and debugging decisions, and it is invisible precisely because it degrades gracefully (a plausible small number instead of an error). It sits in a file that already contains the correct primitive (`egressquery.Increase`, used by usage metering), so the fix is a change of call, not of architecture. The deploy-commit gap makes the whole **Public Git URL** source — one of the three first-class options in the create form — a second-class citizen, and it blocks nothing, so it will keep being deferred unless it is scheduled.
+- **Render parity task included** because every finding changes a user-facing surface with REST + GraphQL + MCP + UI representations.
