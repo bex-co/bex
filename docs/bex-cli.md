@@ -146,6 +146,7 @@ Safe rewrites preserve **`render.yaml`** (and the `bex.yml` filename alias). The
 
 - login TUI / non-interactive copy saying “Render Dashboard”
 - `run \`render login\` to authenticate` (`config.ErrLogin`) and logout success strings
+- `no workspace set. Use \`render workspace set\` to set a workspace` (`config.ErrNoWorkspace`) on every list command with no active workspace — same residual class as `ErrLogin`; branding does not rewrite `RunE` bodies (`w8/016`)
 - User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
 - hard-coded OAuth public client id (Hydra bootstrap contract)
 - `~/.render/skills.yaml` + `render-oss/skills` for `bex skills`
