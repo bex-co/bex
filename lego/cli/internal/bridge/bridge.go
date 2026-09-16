@@ -26,6 +26,7 @@ const (
 	bexDisableAnalytics = "BEX_CLI_DISABLE_ANALYTICS"
 
 	renderConfigPath = "RENDER_CLI_CONFIG_PATH"
+	renderConfigDir  = "RENDER_CLI_CONFIG_DIR"
 	renderHost       = "RENDER_HOST"
 	renderWorkspace  = "RENDER_WORKSPACE"
 	renderOutput     = "RENDER_OUTPUT"
@@ -41,10 +42,12 @@ const (
 )
 
 // Apply installs Bex defaults only when their upstream equivalents are absent.
-// The upstream CLI exposes a config *path*, not a config-directory variable,
-// so directory inputs are resolved to cli.yaml before delegation. That
-// preserves an explicit RENDER_* configuration for developers who
-// intentionally use the imported upstream CLI against another target.
+// Bex directory inputs are resolved to cli.yaml and written as
+// RENDER_CLI_CONFIG_PATH so the imported CLI uses ~/.bex by default. An
+// explicit RENDER_CLI_CONFIG_PATH is left untouched. An explicit
+// RENDER_CLI_CONFIG_DIR is also left untouched (PATH stays unset) so
+// upstream's own PATH > DIR > default resolution runs — stuffing PATH would
+// make DIR unreachable and silently write ~/.bex/cli.yaml (w8/017).
 func Apply() error {
 	return apply(os.LookupEnv, os.Setenv, os.UserHomeDir)
 }
@@ -54,7 +57,7 @@ type setEnv func(string, string) error
 type userHomeDir func() (string, error)
 
 func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
-	if !isSet(lookup, renderConfigPath) {
+	if !isSet(lookup, renderConfigPath) && !isSet(lookup, renderConfigDir) {
 		path := ""
 		if value, exists := lookup(bexConfigPath); exists && value != "" {
 			path = value

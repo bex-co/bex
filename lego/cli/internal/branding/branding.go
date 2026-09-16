@@ -96,7 +96,8 @@ The active workspace is saved in $HOME/.bex/cli.yaml by default. Set
 BEX_CLI_CONFIG_DIR to use cli.yaml in another directory, or BEX_CLI_CONFIG_PATH
 to use an exact file path (takes precedence over BEX_CLI_CONFIG_DIR).
 An explicit, non-empty RENDER_CLI_CONFIG_PATH overrides both Bex inputs and
-the default. Empty values are treated as unset.`
+the default. An explicit, non-empty RENDER_CLI_CONFIG_DIR is honored the same
+way (upstream PATH > DIR > Bex default). Empty values are treated as unset.`
 		}
 		// `jobs create` cites render.com's one-off-job plan list; Bex has no
 		// such page and hostnames are deliberately never rewritten globally, so
