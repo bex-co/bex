@@ -326,6 +326,11 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "已包含",
     description: "Rate column value for a charge line that is priced at zero",
   },
+  "usage.resourceDeleted": {
+    message: "（已删除）",
+    description:
+      "Marker beside a charged resource that no longer exists; the name shown is the one bex retained",
+  },
   "usage.categoryServices": {
     message: "服务",
     description: "Charge-tree category for App services",

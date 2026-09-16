@@ -333,6 +333,11 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Included",
     description: "Rate column value for a charge line that is priced at zero",
   },
+  "usage.resourceDeleted": {
+    message: "(deleted)",
+    description:
+      "Marker beside a charged resource that no longer exists; the name shown is the one bex retained",
+  },
   "usage.categoryServices": {
     message: "Services",
     description: "Charge-tree category for App services",

@@ -33,6 +33,7 @@ function resource(over: Partial<ResourceEstimate> = {}): ResourceEstimate {
   return {
     serviceId: "srv-a",
     serviceName: "api",
+    deleted: false,
     resourceKind: "service",
     costUsd: "4.90",
     charges: [
@@ -232,6 +233,39 @@ describe("ChargesCard", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Services/ }));
     expect(screen.getByText("srv-a")).toBeInTheDocument();
+  });
+
+  // w2/m96 t003: a charge outlives its resource. A deleted resource keeps the
+  // name its charges accrued under, marked so nobody mistakes it for a live
+  // one; the bare id survives only for pre-retention rows that have no name.
+  it("names a deleted resource and marks it, without touching a live one", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([
+          resource({
+            serviceId: "srv-gone",
+            serviceName: "checkout-api",
+            deleted: true,
+          }),
+          resource({ serviceId: "srv-live", serviceName: "api" }),
+        ])}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Services/ }));
+
+    const deleted = screen.getByText("checkout-api");
+    expect(deleted).toBeInTheDocument();
+    expect(deleted).toHaveTextContent("(deleted)");
+    // The id stays reachable on the row so it is still readable and copyable.
+    expect(deleted).toHaveAttribute("title", "checkout-api (srv-gone)");
+
+    const live = screen.getByText("api");
+    expect(live).not.toHaveTextContent("(deleted)");
+    expect(live).toHaveAttribute("title", "api (srv-live)");
   });
 
   it("labels a zero rate as included rather than as $0/hr", () => {

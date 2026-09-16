@@ -97,8 +97,14 @@ function ChargeRow({ charge }: { charge: ChargeLine }) {
 }
 
 function ResourceRow({ resource }: { resource: ResourceEstimate }) {
+  const { t } = useTranslations();
   const [open, setOpen] = useState(false);
-  const label = resource.serviceName || resource.serviceId;
+  // A charge outlives its resource. Show the name bex retained, marked as
+  // deleted; fall back to the bare id only when no name was ever recorded
+  // (a pre-w2/m96 row). The id stays on the row's title either way, so it is
+  // still readable and copyable.
+  const named = resource.serviceName !== "";
+  const label = named ? resource.serviceName : resource.serviceId;
   return (
     <div className="border-t first:border-t-0">
       <button
@@ -114,8 +120,16 @@ function ResourceRow({ resource }: { resource: ResourceEstimate }) {
             open && "rotate-90",
           )}
         />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+        <span
+          className="min-w-0 flex-1 truncate text-sm font-medium"
+          title={named ? `${label} (${resource.serviceId})` : resource.serviceId}
+        >
           {label}
+          {resource.deleted ? (
+            <span className="text-muted-foreground ml-1.5 font-normal">
+              {t("usage.resourceDeleted")}
+            </span>
+          ) : null}
         </span>
         <span className="font-mono text-sm tabular-nums">
           {money(usd(resource.costUsd))}

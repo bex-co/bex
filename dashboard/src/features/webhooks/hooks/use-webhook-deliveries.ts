@@ -34,6 +34,7 @@ function toViews(
       eventId: d.eventId ?? "",
       eventType: d.eventType ?? "",
       serviceId: d.serviceId ?? "",
+      serviceName: d.serviceName ?? "",
       status: (d.status ?? "pending") as WebhookDeliveryStatus,
       attemptNumber: d.attemptNumber ?? 0,
       statusCode: d.statusCode ?? 0,
@@ -78,6 +79,7 @@ function sameAttempt(
     left.eventId === right.eventId &&
     left.eventType === right.eventType &&
     left.serviceId === right.serviceId &&
+    left.serviceName === right.serviceName &&
     left.status === right.status &&
     left.attemptNumber === right.attemptNumber &&
     left.statusCode === right.statusCode &&

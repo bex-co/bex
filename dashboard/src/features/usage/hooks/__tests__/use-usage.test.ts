@@ -95,6 +95,7 @@ describe("useUsage", () => {
           {
             serviceId: "srv-cms",
             serviceName: "eden-cms-v2",
+            deleted: false,
             resourceKind: "service",
             costUsd: "4.90",
             charges: [
@@ -117,9 +118,12 @@ describe("useUsage", () => {
             ],
           },
           {
-            // serviceName absent from the response maps to "" (id fallback).
+            // serviceName absent from the response maps to "" (id fallback),
+            // and an absent `deleted` to false (w2/m96): a nameless row is a
+            // pre-retention one, not a deleted resource.
             serviceId: "nightly-report",
             serviceName: "",
+            deleted: false,
             resourceKind: "service",
             costUsd: "0.00",
             charges: [],

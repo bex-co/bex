@@ -64,6 +64,7 @@ package webhooks
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -144,16 +145,16 @@ const (
 	// Persistent-disk lifecycle (ADR082; w8/m34). Render's webhook enum spells
 	// these disk_created/disk_updated/disk_deleted — the earlier bex-only
 	// disk_attached/disk_detached filters are rewritten by migration 0106.
-	TypeDiskCreated                = "disk_created"
-	TypeDiskUpdated                = "disk_updated"
-	TypeDiskDeleted                = "disk_deleted"
-	TypeImagePullFailed            = "image_pull_failed"
-	TypeServerFailed               = "server_failed"
-	TypeServerAvailable            = "server_available"
-	TypeBranchChanged              = "branch_changed"
-	TypeCommitIgnored              = "commit_ignored"
-	TypeAutoscalingStarted         = "autoscaling_started"
-	TypeAutoscalingEnded           = "autoscaling_ended"
+	TypeDiskCreated        = "disk_created"
+	TypeDiskUpdated        = "disk_updated"
+	TypeDiskDeleted        = "disk_deleted"
+	TypeImagePullFailed    = "image_pull_failed"
+	TypeServerFailed       = "server_failed"
+	TypeServerAvailable    = "server_available"
+	TypeBranchChanged      = "branch_changed"
+	TypeCommitIgnored      = "commit_ignored"
+	TypeAutoscalingStarted = "autoscaling_started"
+	TypeAutoscalingEnded   = "autoscaling_ended"
 )
 
 // verbEvents maps an audited verb ("<package>.<Method>", the same key
@@ -312,10 +313,16 @@ const (
 // (sentAt,id); a pending Resend response has no cursor until the worker sends
 // it, and history omits it until then.
 type DeliveryView struct {
-	ID             string `json:"id"`
-	EventID        string `json:"eventId"`
-	EventType      string `json:"eventType"`
-	ServiceID      string `json:"serviceId"`
+	ID        string `json:"id"`
+	EventID   string `json:"eventId"`
+	EventType string `json:"eventType"`
+	ServiceID string `json:"serviceId"`
+	// ServiceName is the subject's display name as it was RECORDED in this
+	// attempt's own delivered payload (worker.go's payloadData.ServiceName) —
+	// never a live lookup. That is what makes it survive a rename or a delete:
+	// the row states what bex told the receiver at send time. "" whenever the
+	// stored body is absent, unparseable, or predates the field.
+	ServiceName    string `json:"serviceName"`
 	Status         string `json:"status"`
 	AttemptNumber  int    `json:"attemptNumber"`
 	StatusCode     int    `json:"statusCode"`
@@ -375,6 +382,7 @@ func toDeliveryView(d store.WebhookAttempt, destURL string) DeliveryView {
 		EventID:        d.EventID,
 		EventType:      d.EventType,
 		ServiceID:      d.ServiceID,
+		ServiceName:    recordedServiceName(d.Payload),
 		Status:         d.Status,
 		AttemptNumber:  d.AttemptNumber,
 		StatusCode:     d.StatusCode,
@@ -391,6 +399,31 @@ func toDeliveryView(d store.WebhookAttempt, destURL string) DeliveryView {
 		v.NextAttemptAt = d.NextAttemptAt.UTC().Format(time.RFC3339)
 	}
 	return v
+}
+
+// recordedServiceName reads data.serviceName back out of one attempt's stored
+// request body, so every surface (REST history, GraphQL, the Resend response)
+// reports the same recorded name instead of each client re-parsing the blob.
+//
+// It is deliberately total: a delivery read must never fail because of what is
+// in — or missing from — an old, truncated, or hand-written payload. An absent
+// body, a non-JSON body, a JSON body that is not an object, a payload from
+// before the field existed, and a wrongly typed data/serviceName all resolve to
+// "" rather than an error. Whitespace is trimmed so a blank recorded name is
+// indistinguishable from none.
+func recordedServiceName(body string) string {
+	if body == "" {
+		return ""
+	}
+	var recorded struct {
+		Data struct {
+			ServiceName string `json:"serviceName"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(body), &recorded); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(recorded.Data.ServiceName)
 }
 
 // CreateRequest is Create's input. Name and URL are required. An empty

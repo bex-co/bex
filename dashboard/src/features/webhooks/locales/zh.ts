@@ -298,6 +298,11 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "服务",
     description: "Delivery-history table column header",
   },
+  "webhooks.serviceDeleted": {
+    message: "(已删除)",
+    description:
+      "Marker beside a delivery's recorded service name when that service no longer exists, so the name cannot be linked",
+  },
   "webhooks.colStatus": {
     message: "状态",
     description: "Delivery-history table column header",
