@@ -71,6 +71,12 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
       "registryCredentialId" in s ? (s.registryCredentialId ?? null) : null,
     buildFilter: "buildFilter" in s ? toBuildFilter(s.buildFilter) : null,
     autoDeploy: "autoDeploy" in s ? (s.autoDeploy ?? null) : null,
+    linkedEnvGroupIds:
+      "linkedEnvGroupIds" in s
+        ? ((s.linkedEnvGroupIds ?? []).filter(
+            (id): id is string => typeof id === "string" && id !== "",
+          ) satisfies string[])
+        : null,
     pushDeliveryMethod:
       "pushDeliveryMethod" in s ? (s.pushDeliveryMethod ?? null) : null,
     notifyOnFail: "notifyOnFail" in s ? (s.notifyOnFail ?? null) : null,

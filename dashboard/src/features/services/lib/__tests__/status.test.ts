@@ -116,6 +116,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     dockerfilePath: null,
     registryCredentialId: null,
     autoDeploy: null,
+    linkedEnvGroupIds: null,
     pushDeliveryMethod: null,
     notifyOnFail: null,
     notificationsToSend: null,
@@ -189,6 +190,7 @@ describe("toServiceView", () => {
       registryCredentialId: null,
       buildFilter: null,
       autoDeploy: null,
+      linkedEnvGroupIds: null,
       // The list node doesn't select push deliverability, so the mapper reports
       // null rather than guessing a delivery mechanism (w6/m99).
       pushDeliveryMethod: null,

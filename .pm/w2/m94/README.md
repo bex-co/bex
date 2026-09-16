@@ -1,20 +1,39 @@
 # w2 · m94 — Linked environment groups: precedence, auto-deploy, and quota parity
 
-**Worker:** worker2 **Goal:** a linked environment group behaves the way Render documents and the way bex's own Environment page claims. A Render-shaped group write opens a deploy only on linked services with auto-deploy on. A service's own secret file always beats a linked group's file of the same name, the rule env vars already follow. When two linked groups define the same key or file, the page shows which one the service runs. A group already over the secret-map quota can shrink through a batch patch. Every rule is written down. **Status:** todo
+**Worker:** worker2 **Goal:** a linked environment group behaves the way Render documents and the way bex's own Environment page claims. A Render-shaped group write opens a deploy only on linked services with auto-deploy on. A service's own secret file always beats a linked group's file of the same name, the rule env vars already follow. When two linked groups define the same key or file, the page shows which one the service runs. A group already over the secret-map quota can shrink through a batch patch. Every rule is written down. **Status:** t001–t008 done; **t009 closeout BLOCKED** on live production verification (see Decisions)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                                       | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Env-group writes, link, unlink and create-with-services open a deploy only on linked services with auto-deploy on                                          | 60m | —          |
-| t002 | A service's own secret file always wins over a linked group's file of the same name; the operator mounts the service files Secret last                     | 45m | —          |
-| t003 | Expose link order on the service read; the Environment page orders linked groups by precedence and marks shadowed keys and files                           | 50m | t002       |
-| t004 | The env-group batch patch reuses the service rule: a map already over quota can shrink but not grow                                                        | 20m | —          |
-| t005 | Record the rules in ADR013 and the ADR018 environment-groups row: service wins, then last linked wins, auto-deploy gating                                   | 15m | t001, t003 |
-| t006 | Render parity                                                                                                                                               | 20m | t004, t005 |
-| t007 | Simplify                                                                                                                                                    | 20m | t006       |
-| t008 | Test coverage                                                                                                                                               | 45m | t006       |
+| t001 | Env-group writes, link, unlink and create-with-services open a deploy only on linked services with auto-deploy on — **DONE**                                          | 60m | —          |
+| t002 | A service's own secret file always wins over a linked group's file of the same name; the operator mounts the service files Secret last — **DONE**                     | 45m | —          |
+| t003 | Expose link order on the service read; the Environment page orders linked groups by precedence and marks shadowed keys and files — **DONE**                           | 50m | t002       |
+| t004 | The env-group batch patch reuses the service rule: a map already over quota can shrink but not grow — **DONE**                                                        | 20m | —          |
+| t005 | Record the rules in ADR013 and the ADR018 environment-groups row: service wins, then last linked wins, auto-deploy gating — **DONE**                                   | 15m | t001, t003 |
+| t006 | Render parity — **DONE**                                                                                                                                               | 20m | t004, t005 |
+| t007 | Simplify — **DONE**                                                                                                                                                    | 20m | t006       |
+| t008 | Test coverage — **DONE**                                                                                                                                               | 45m | t006       |
 | t009 | Closeout                                                                                                                                                    | 10m | t008       |
+
+
+## Decisions
+
+Recorded per t001 step 3, plus two the tasks did not anticipate.
+
+- **The Auto-Deploy gate applies to repo-backed services only.** Render's sentence ("every linked service that has autodeploys enabled") reads unconditional, but bex defaults `spec.autoDeploy` to **false** for an image-backed service purely because there is no branch to watch (`apps/service.go`: "off for an image-backed one (no repo to rebuild from)"), not because its owner declined anything. Gating on the raw boolean would have silently stranded every image-backed service on stale group values forever — a worse bug than the one m94 fixes, and one no DoD bullet would have caught. `autoDeployGated` therefore requires `spec.repo != ""`. Guarded by `TestGroupWriteStillDeploysAnImageBackedService`.
+- **`ApplyEnvGroup` (Blueprint sync) inherits the gate.** It already routes through `patchEnvironmentAuthorized` with `SaveModeDeploy`, so it is gated by construction. Keeping it that way is also the right answer: Render's rule is stated about the *linked service's* setting, with no exception for what triggered the group write, and an owner who turned Auto-Deploy off has opted out of releases they did not ask for whichever surface caused one. Source: `render.com/docs/configure-environment-variables` (fetched 2026-09-14).
+- **`pendingServiceIds` is NOT added to Render's per-key response objects.** t001 step 4 asked for the skipped ids on "the write result" of every Render-shaped verb. `PUT /v1/env-groups/{id}/env-vars/{key}`, its DELETE, and the secret-file pair return Render's own env-var / secret-file objects (`EnvVarView` even has a custom `MarshalJSON` to match Render byte-for-byte), so adding a bex field there would break the parity those shapes exist to hold. The skip is reported on the two results that are already bex-native supersets — `EnvironmentPatchResult` (`PATCH /contents`, and the shared tail every Render-shaped verb funnels through) and the create-with-services `EnvGroupView` — and is observable everywhere else as the absence of a deploy row. The per-key verbs are still gated; only their *reporting* is unchanged.
+- **Link and unlink still patch the spec for a gated service.** The refs must land or the link would not exist. The deploy row and `spec.restartedAt` are what the gate withholds. A link therefore still changes the Deployment's `envFrom` list, which the operator converges on its own schedule; what m94 guarantees is that bex opens no deploy and forces no restart.
+
+## Simplify pass (t007)
+
+- **Applied:** the four Render-shaped roll call sites (create-with-services, link, unlink, value-change) no longer each set `spec.restartedAt` in their own mutate closure — `rollLinked` owns the stamp, which is what makes "gated ⇒ do not stamp" impossible to forget at a call site. `patchWithinQuota` gained two exported wrappers instead of being duplicated in `envgroups`.
+- **Declined:** collapsing the six hard-coded `SaveModeDeploy` call sites onto one helper, as t007 suggested. They are not identical once you look — each builds a different `EnvironmentPatch` (bulk vars, one var, one var delete, one file, one file delete, Blueprint apply) and differs in return shape (`EnvVarView`, `SecretFileView`, bare `error`). The shared part is already one function, `patchEnvironmentAuthorized`; a further wrapper would add a layer without removing a branch.
+
+## Render comparison (t006)
+
+Re-read `render.com/docs/configure-environment-variables` on **2026-09-15**; the three sentences m94 depends on (service value always wins, group-vs-group precedence not guaranteed / most recently created, group changes redeploy only autodeploy-enabled linked services) are unchanged from the 2026-09-14 fetch the tasks quote. No new drift to file. The one deliberate divergence (last **linked** wins, not last created) is recorded in `docs/ADR018-render-parity.md` row 116 and `docs/ADR013-secrets.md` § Precedence and redeploy.
 
 ## Definition of done
 

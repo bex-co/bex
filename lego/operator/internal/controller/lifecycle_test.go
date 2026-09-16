@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"slices"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -176,6 +177,56 @@ func TestSecretFileMounts(t *testing.T) {
 	}}})
 	if vol == nil || mount == nil || len(vol.Projected.Sources) != 1 || vol.Projected.Sources[0].Secret.Name != "web-pending-files" {
 		t.Fatalf("pending file projection = volume %+v, mount %+v", vol, mount)
+	}
+}
+
+// The kubelet projects these sources into one /etc/secrets volume in order and
+// the LAST source wins a duplicate path, so this ordering IS the precedence
+// rule: a service's own secret file beats a linked group's file of the same
+// name (w2/m94/t002, docs/ADR013-secrets.md). spec.filesFromSecrets records the
+// order refs were added, not precedence, so the result must not depend on
+// whether the file or the link came first — which is the w1/095 bug.
+func TestSecretFileMountsProjectsTheServicesOwnSecretLast(t *testing.T) {
+	names := func(app *appv1alpha1.App) []string {
+		vol, _ := secretFileMounts(app)
+		if vol == nil || vol.Projected == nil {
+			return nil
+		}
+		var out []string
+		for _, src := range vol.Projected.Sources {
+			out = append(out, src.Secret.Name)
+		}
+		return out
+	}
+	mk := func(refs ...string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web"},
+			Spec:       appv1alpha1.AppSpec{FilesFromSecrets: refs},
+		}
+	}
+
+	// Created WITH files, then linked: own Secret is first in the spec and must
+	// be moved last. This is the case that served the group's file before m94.
+	if got := names(mk("web-files", "evg-1-files")); !slices.Equal(got, []string{"evg-1-files", "web-files"}) {
+		t.Fatalf("own-first projection = %v, want [evg-1-files web-files]", got)
+	}
+	// Linked first, file added later: already last, projection unchanged.
+	if got := names(mk("evg-1-files", "web-files")); !slices.Equal(got, []string{"evg-1-files", "web-files"}) {
+		t.Fatalf("own-last projection = %v, want [evg-1-files web-files]", got)
+	}
+	// Groups keep their relative order between themselves, so last linked still
+	// wins a group-vs-group collision; only the service's own Secret moves.
+	if got := names(mk("web-files", "evg-1-files", "evg-2-files")); !slices.Equal(got, []string{"evg-1-files", "evg-2-files", "web-files"}) {
+		t.Fatalf("group order = %v, want [evg-1-files evg-2-files web-files]", got)
+	}
+	// Control: no service file at all, so the group's file is what runs.
+	if got := names(mk("evg-1-files", "evg-2-files")); !slices.Equal(got, []string{"evg-1-files", "evg-2-files"}) {
+		t.Fatalf("groups-only projection = %v", got)
+	}
+	// A group whose id happens to end in the service name is not the service's
+	// own Secret; only the exact "<name>-files" is.
+	if got := names(mk("evg-web-files", "web-files")); !slices.Equal(got, []string{"evg-web-files", "web-files"}) {
+		t.Fatalf("lookalike group projection = %v", got)
 	}
 }
 

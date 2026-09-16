@@ -926,6 +926,21 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a linked group's key badge when a service variable of the same name shadows it at runtime (service wins)",
   },
+  "services.envGroupFileOverridden": {
+    message: "已被此服务自身的 {name} 密文文件覆盖",
+    description:
+      "Tooltip on a linked group's secret-file badge when a service secret file of the same name shadows it at runtime (service wins)",
+  },
+  "services.envGroupKeyShadowedByGroup": {
+    message: "已被后链接的 {group} 覆盖",
+    description:
+      "Tooltip on a linked group's key badge when a MORE recently linked group defines the same key and wins it",
+  },
+  "services.envGroupFileShadowedByGroup": {
+    message: "已被后链接的 {group} 覆盖",
+    description:
+      "Tooltip on a linked group's secret-file badge when a MORE recently linked group defines the same file name and wins it",
+  },
   "services.envGroupOverriddenNote": {
     message: "带删除线的键已被此服务自身的环境变量覆盖。",
     description:

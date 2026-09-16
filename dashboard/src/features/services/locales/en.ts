@@ -942,6 +942,21 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a linked group's key badge when a service variable of the same name shadows it at runtime (service wins)",
   },
+  "services.envGroupFileOverridden": {
+    message: "Overridden by this service's own {name} secret file",
+    description:
+      "Tooltip on a linked group's secret-file badge when a service secret file of the same name shadows it at runtime (service wins)",
+  },
+  "services.envGroupKeyShadowedByGroup": {
+    message: "Overridden by {group}, which is linked later",
+    description:
+      "Tooltip on a linked group's key badge when a MORE recently linked group defines the same key and wins it",
+  },
+  "services.envGroupFileShadowedByGroup": {
+    message: "Overridden by {group}, which is linked later",
+    description:
+      "Tooltip on a linked group's secret-file badge when a MORE recently linked group defines the same file name and wins it",
+  },
   "services.envGroupOverriddenNote": {
     message:
       "Struck-through keys are overridden by this service's own environment variables.",

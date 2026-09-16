@@ -553,6 +553,19 @@ func ValidateEnvMapQuota(env map[string]string) error { return envMapWithinQuota
 
 func ValidateFilesMapQuota(files map[string]string) error { return filesMapWithinQuota(files) }
 
+// ValidatePatchEnvMapQuota and ValidatePatchFilesMapQuota are patchWithinQuota
+// for callers outside this package (the env-group batch patch, w2/m94/t004).
+// A map that is already over quota can still shrink — a group filled before the
+// round-11 cap existed would otherwise be permanently unfixable, since the only
+// way down is a write and every write was refused.
+func ValidatePatchEnvMapQuota(before, after map[string]string) error {
+	return patchWithinQuota(before, after, envMapWithinQuota)
+}
+
+func ValidatePatchFilesMapQuota(before, after map[string]string) error {
+	return patchWithinQuota(before, after, filesMapWithinQuota)
+}
+
 // mapBytes measures a map's aggregate stored size: every key and value length
 // summed, the shape the KV engine and the Kubernetes projection both carry.
 func mapBytes(m map[string]string) int {

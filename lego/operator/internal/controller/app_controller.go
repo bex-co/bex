@@ -3989,10 +3989,7 @@ const (
 func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount) {
 	var sources []corev1.VolumeProjection
 	optional := true
-	for _, name := range app.Spec.FilesFromSecrets {
-		if name == "" {
-			continue
-		}
+	project := func(name string) {
 		sources = append(sources, corev1.VolumeProjection{
 			Secret: &corev1.SecretProjection{
 				LocalObjectReference: corev1.LocalObjectReference{Name: name},
@@ -4000,13 +3997,39 @@ func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount
 			},
 		})
 	}
+	// The service's own files Secret goes LAST, whatever its position in
+	// spec.filesFromSecrets, so a service's own secret file always beats a
+	// linked group's file of the same name — the rule env vars already follow
+	// in envFromSources (docs/ADR013-secrets.md). Ordering matters because the
+	// kubelet projects these sources into one /etc/secrets volume in order and
+	// the LAST source wins a duplicate path; there is no duplicate-path error.
+	//
+	// It has to be positional rather than "append if missing", because
+	// spec.filesFromSecrets records the order the refs were ADDED, not
+	// precedence: a service created WITH files has its own Secret first (the
+	// backend's addString at create time) and every later link appends after
+	// it, while a service that links first and adds a file later is already
+	// last. Before w2/m94 the projection took that list verbatim, so the same
+	// two services resolved the same collision differently — and a service
+	// created with a file had its own credential silently replaced by the
+	// group's on link (w1/095).
+	own := app.Name + "-files"
+	deferred := false
+	for _, name := range app.Spec.FilesFromSecrets {
+		if name == "" {
+			continue
+		}
+		if name == own {
+			deferred = true
+			continue
+		}
+		project(name)
+	}
+	if deferred {
+		project(own)
+	}
 	if name := app.Annotations[appv1alpha1.PendingFilesSecretAnnotation]; name != "" && !containsSecretProjection(sources, name) {
-		sources = append(sources, corev1.VolumeProjection{
-			Secret: &corev1.SecretProjection{
-				LocalObjectReference: corev1.LocalObjectReference{Name: name},
-				Optional:             &optional,
-			},
-		})
+		project(name)
 	}
 	if len(sources) == 0 {
 		return nil, nil
