@@ -334,6 +334,57 @@ func TestBexBinaryHonorsRenderConfigDirWithoutTouchingHomeBex(t *testing.T) {
 	}
 }
 
+func TestBexBinaryRelocatesStateWithConfigDirNotBesideExactPath(t *testing.T) {
+	stub := &telemetryStub{}
+	api := httptest.NewServer(stub.handler())
+	t.Cleanup(api.Close)
+
+	home := t.TempDir()
+	configDir := t.TempDir()
+	seedNoticeMarkerIn(t, filepath.Join(configDir, "state", "analytics"))
+
+	command := exec.Command(buildBex(), "workspaces", "-o", "json")
+	command.Env = telemetryEnv(t, home, api.URL, "BEX_CLI_CONFIG_DIR="+configDir)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("bex workspaces: %v\n%s", err, output)
+	}
+	if _, err := os.Stat(filepath.Join(configDir, "state", "installation-id.txt")); err != nil {
+		t.Fatalf("state missing under BEX_CLI_CONFIG_DIR: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".render", "state")); !os.IsNotExist(err) {
+		t.Errorf("~/.render/state was created: %v", err)
+	}
+
+	exact := filepath.Join(t.TempDir(), "only.yaml")
+	pathCmd := exec.Command(buildBex(), "workspaces", "-o", "json")
+	pathCmd.Env = telemetryEnv(t, home, api.URL, "BEX_CLI_CONFIG_PATH="+exact)
+	if output, err := pathCmd.CombinedOutput(); err != nil {
+		t.Fatalf("bex workspaces with PATH: %v\n%s", err, output)
+	}
+	if _, err := os.Stat(exact); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(filepath.Dir(exact))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Name() != "only.yaml" {
+			t.Errorf("unexpected sibling next to exact config path: %s", e.Name())
+		}
+	}
+}
+
+func seedNoticeMarkerIn(t *testing.T, dir string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "notice-shown"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func withoutRenderEnv(environment []string) []string {
 	filtered := make([]string, 0, len(environment))
 	for _, item := range environment {
@@ -569,13 +620,7 @@ func (s *telemetryStub) count() int {
 // sender skips delivery until a marker proves the notice was shown once.
 func seedNoticeMarker(t *testing.T, home string) {
 	t.Helper()
-	dir := filepath.Join(home, ".render", "state", "analytics")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "notice-shown"), nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	seedNoticeMarkerIn(t, filepath.Join(home, ".bex", "state", "analytics"))
 }
 
 func TestBexEmitsTelemetryToBexAPI(t *testing.T) {
@@ -603,6 +648,16 @@ func TestBexEmitsTelemetryToBexAPI(t *testing.T) {
 	}
 	if event["installation_id"] == "" {
 		t.Errorf("installation_id missing: %v", event)
+	}
+	bexID, err := os.ReadFile(filepath.Join(home, ".bex", "state", "installation-id.txt"))
+	if err != nil {
+		t.Fatalf("expected installation id under $HOME/.bex/state: %v", err)
+	}
+	if event["installation_id"] != strings.TrimSpace(string(bexID)) {
+		t.Errorf("installation_id = %v, want %s from $HOME/.bex/state", event["installation_id"], bexID)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".render", "state")); !os.IsNotExist(err) {
+		t.Errorf("~/.render/state was created: %v", err)
 	}
 	if event["exit_code"] != float64(0) {
 		t.Errorf("exit_code = %v, want 0", event["exit_code"])
@@ -856,7 +911,7 @@ func TestBexNestedHelp(t *testing.T) {
 		want    []string
 		absent  []string
 	}{
-		{"workspace set", []string{"$HOME/.bex/cli.yaml", "BEX_CLI_CONFIG_DIR", "BEX_CLI_CONFIG_PATH", "takes precedence over BEX_CLI_CONFIG_DIR", "RENDER_CLI_CONFIG_PATH overrides both Bex inputs", "RENDER_CLI_CONFIG_DIR"}, []string{"$HOME/.render"}},
+		{"workspace set", []string{"$HOME/.bex/cli.yaml", "$HOME/.bex/state", "BEX_CLI_CONFIG_DIR", "BEX_CLI_CONFIG_PATH", "RENDER_CLI_CONFIG_PATH", "RENDER_CLI_CONFIG_DIR"}, []string{"$HOME/.render"}},
 		{"blueprints validate", []string{"render.yaml", "bex blueprints validate"}, []string{"bex.yaml"}},
 		// w7/045: double-quoted command references and "your Render workspace"
 		// in the ea sandbox family, and the render.com job-plan link.

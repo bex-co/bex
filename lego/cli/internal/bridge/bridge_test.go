@@ -15,8 +15,11 @@ func TestApplyUsesBexDefaults(t *testing.T) {
 	if got, want := env[renderHost], DefaultHost; got != want {
 		t.Errorf("host = %q, want %q", got, want)
 	}
-	if got, want := env[renderConfigPath], filepath.Join("/home/alice", ".bex", "cli.yaml"); got != want {
-		t.Errorf("config path = %q, want %q", got, want)
+	if got, want := env[renderConfigDir], filepath.Join("/home/alice", ".bex"); got != want {
+		t.Errorf("config dir = %q, want %q", got, want)
+	}
+	if got, exists := env[renderConfigPath]; exists {
+		t.Errorf("%s = %q, want unset (DIR supplies cli.yaml)", renderConfigPath, got)
 	}
 }
 
@@ -33,6 +36,7 @@ func TestApplyMapsBexOverrides(t *testing.T) {
 	}
 	for upstream, want := range map[string]string{
 		renderConfigPath: "/tmp/bex.yaml",
+		renderConfigDir:  "/home/alice/.bex",
 		renderHost:       "http://127.0.0.1:8090/v1/",
 		renderWorkspace:  "tea-demo",
 		renderOutput:     "json",
@@ -44,7 +48,7 @@ func TestApplyMapsBexOverrides(t *testing.T) {
 	}
 }
 
-func TestApplyMapsBexConfigDirectoryToUpstreamPath(t *testing.T) {
+func TestApplyMapsBexConfigDirectoryToUpstreamDir(t *testing.T) {
 	env := map[string]string{bexConfigDir: "/tmp/bex-config"}
 	if err := apply(lookupFrom(env), setInto(env), func() (string, error) {
 		t.Fatal("home lookup must not happen for BEX_CLI_CONFIG_DIR")
@@ -52,8 +56,11 @@ func TestApplyMapsBexConfigDirectoryToUpstreamPath(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	if got, want := env[renderConfigPath], "/tmp/bex-config/cli.yaml"; got != want {
-		t.Errorf("config path = %q, want %q", got, want)
+	if got, want := env[renderConfigDir], "/tmp/bex-config"; got != want {
+		t.Errorf("config dir = %q, want %q", got, want)
+	}
+	if got, exists := env[renderConfigPath]; exists {
+		t.Errorf("%s = %q, want unset so state lives under the Bex directory", renderConfigPath, got)
 	}
 }
 
@@ -129,8 +136,11 @@ func TestApplyBlankRenderConfigDirIsUnset(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	if got, want := env[renderConfigPath], "/tmp/bex-config/cli.yaml"; got != want {
-		t.Errorf("config path = %q, want %q", got, want)
+	if got, want := env[renderConfigDir], "/tmp/bex-config"; got != want {
+		t.Errorf("config dir = %q, want %q", got, want)
+	}
+	if got, exists := env[renderConfigPath]; exists {
+		t.Errorf("%s = %q, want unset", renderConfigPath, got)
 	}
 }
 
@@ -143,8 +153,11 @@ func TestApplyTreatsBlankRenderVariablesAsUnset(t *testing.T) {
 	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	if got, want := env[renderConfigPath], "/home/alice/.bex/cli.yaml"; got != want {
-		t.Errorf("config path = %q, want %q", got, want)
+	if got, want := env[renderConfigDir], "/home/alice/.bex"; got != want {
+		t.Errorf("config dir = %q, want %q", got, want)
+	}
+	if got := env[renderConfigPath]; got != "" {
+		t.Errorf("%s = %q, want blank/unset", renderConfigPath, got)
 	}
 	if got, want := env[renderHost], env[bexHost]; got != want {
 		t.Errorf("host = %q, want %q", got, want)
@@ -223,7 +236,7 @@ func TestApplyReportsEnvironmentFailure(t *testing.T) {
 	err := apply(lookupFrom(map[string]string{}), func(string, string) error { return errors.New("read-only") }, func() (string, error) {
 		return "/home/alice", nil
 	})
-	if err == nil || err.Error() != "set RENDER_CLI_CONFIG_PATH: read-only" {
+	if err == nil || err.Error() != "set RENDER_CLI_CONFIG_DIR: read-only" {
 		t.Fatalf("error = %v", err)
 	}
 }

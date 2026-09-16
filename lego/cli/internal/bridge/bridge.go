@@ -42,12 +42,13 @@ const (
 )
 
 // Apply installs Bex defaults only when their upstream equivalents are absent.
-// Bex directory inputs are resolved to cli.yaml and written as
-// RENDER_CLI_CONFIG_PATH so the imported CLI uses ~/.bex by default. An
-// explicit RENDER_CLI_CONFIG_PATH is left untouched. An explicit
-// RENDER_CLI_CONFIG_DIR is also left untouched (PATH stays unset) so
-// upstream's own PATH > DIR > default resolution runs — stuffing PATH would
-// make DIR unreachable and silently write ~/.bex/cli.yaml (w8/017).
+//
+// Config and persistent state (installation id, analytics notice marker) both
+// live under ConfigDir. Mapping a Bex directory onto RENDER_CLI_CONFIG_PATH
+// left StateDir() at ~/.render (w8/018). The launcher therefore sets
+// RENDER_CLI_CONFIG_DIR to the Bex directory (default $HOME/.bex) and only
+// sets RENDER_CLI_CONFIG_PATH for an exact-file override. An explicit
+// RENDER_CLI_CONFIG_{PATH,DIR} is left untouched (w8/017).
 func Apply() error {
 	return apply(os.LookupEnv, os.Setenv, os.UserHomeDir)
 }
@@ -57,22 +58,8 @@ type setEnv func(string, string) error
 type userHomeDir func() (string, error)
 
 func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
-	if !isSet(lookup, renderConfigPath) && !isSet(lookup, renderConfigDir) {
-		path := ""
-		if value, exists := lookup(bexConfigPath); exists && value != "" {
-			path = value
-		} else if dir, exists := lookup(bexConfigDir); exists && dir != "" {
-			path = filepath.Join(dir, "cli.yaml")
-		} else {
-			dir, err := home()
-			if err != nil {
-				return fmt.Errorf("resolve home directory: %w", err)
-			}
-			path = filepath.Join(dir, ".bex", "cli.yaml")
-		}
-		if err := set(renderConfigPath, path); err != nil {
-			return fmt.Errorf("set %s: %w", renderConfigPath, err)
-		}
+	if err := applyConfigLocation(lookup, set, home); err != nil {
+		return err
 	}
 
 	for _, mapping := range []struct{ upstream, bex string }{
@@ -105,6 +92,34 @@ func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
 		if value, exists := lookup(bexDisableAnalytics); exists && value != "" {
 			if err := set(renderDisableAnalytics, "1"); err != nil {
 				return fmt.Errorf("set %s: %w", renderDisableAnalytics, err)
+			}
+		}
+	}
+	return nil
+}
+
+func applyConfigLocation(lookup lookupEnv, set setEnv, home userHomeDir) error {
+	if !isSet(lookup, renderConfigDir) {
+		dir := ""
+		if value, exists := lookup(bexConfigDir); exists && value != "" {
+			dir = value
+		} else if !isSet(lookup, renderConfigPath) {
+			resolved, err := home()
+			if err != nil {
+				return fmt.Errorf("resolve home directory: %w", err)
+			}
+			dir = filepath.Join(resolved, ".bex")
+		}
+		if dir != "" {
+			if err := set(renderConfigDir, dir); err != nil {
+				return fmt.Errorf("set %s: %w", renderConfigDir, err)
+			}
+		}
+	}
+	if !isSet(lookup, renderConfigPath) {
+		if value, exists := lookup(bexConfigPath); exists && value != "" {
+			if err := set(renderConfigPath, value); err != nil {
+				return fmt.Errorf("set %s: %w", renderConfigPath, err)
 			}
 		}
 	}
