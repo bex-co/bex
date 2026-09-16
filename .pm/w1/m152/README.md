@@ -1,26 +1,21 @@
 # w1 · m152 — Canceling a config-change deploy still ships the change
 
-**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** blocked (2026-09-15). Needs your judgement; see § Blocked.
+**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** todo (unblocked 2026-09-15; see § Decisions).
 
-## Blocked — needs your judgement (2026-09-15)
+## Triage (2026-09-15)
 
 Triaged on `main` at `5523f684e`: the bug is still real and nothing has fixed it.
-
 - A save rewrites the single mutable `<name>-env` Secret and bumps `restartedAt` (`secrets/service.go:713-726`).
 - Cancel only annotates (`deploys/service.go:720`), and `settleCanceledRelease` re-dispatches the old image against the current spec (`app_controller.go:634`).
 - Rollback sets only image and `restartedAt` (`deploys/service.go:843-845`).
 
-The fix is large (L) and high-risk: immutable per-release config snapshots (`<name>-rel-<gen>-*` Secrets plus the spec fields a release ran with), and cancel/rollback restoring from them. It was **not** started, because each of these is yours to decide.
+## Decisions (2026-09-15)
 
-1. **What does a rollback do to saved environment values?** Rolling back to a deploy that ran with `MESSAGE=v1` while the saved value is `v2` could either:
-   - (a) restore the target's values into the saved state, so `GET …/env-vars/MESSAGE` shows `v1`, which is Render's documented "matches the target deploy";
-   - (b) run `v1` but keep `v2` saved and shown as "not deployed", which is the rule this milestone sets for cancel.
+All three questions were answered by the user ("act as you recommended"), so this milestone is unblocked and proceeds in task order.
 
-   t009's `GET` acceptance depends on the choice, and the code and docs don't settle it.
-2. **May every running service restart once?** Switching the Deployment and CronJob pod templates to reference per-release snapshot Secrets changes every App's release identity, so every web, private, worker and cron pod across all workspaces rolls once on the operator upgrade. Should that fleet-wide roll happen, or must existing services keep their current template until their next deploy?
-3. **Snapshot retention.** Every release adds Secrets, and linked env groups add one per group. How many past releases' snapshots should be kept per App (the rollback window)? Anything older would be garbage-collected.
-
-Answer these and the milestone can move back to `w1/m152/` and proceed in task order. `w1/m148` (restart keeps the running commit and config) would reuse the same snapshot and should follow it.
+1. **Rollback restores the target deploy's values; cancel does not.** A rollback restores the target release's environment values and start command into the saved state, which is Render's documented "matches the target deploy" (option a) — so t009's `GET …/env-vars/MESSAGE` reads the target's value after a rollback. A **cancel** keeps the newer saved value and shows it as not deployed (option b), because a canceled deploy shipped nothing and must not overwrite what the user saved.
+2. **No fleet-wide roll: migrate lazily.** Existing services keep their current pod template until their next deploy, which is when they pick up their release snapshot. Nothing rolls on the operator upgrade itself. The cancel and rollback paths must therefore handle a release that predates snapshots by falling back to today's behavior, and t004's blast radius covers that mixed state.
+3. **Retention: the live release always, plus the last 10 releases per App** (including one snapshot per linked env group), older ones garbage-collected. t001 first checks how deep a rollback the deploy list actually offers; if it is deeper than 10, retention matches that window instead.
 
 ## Tasks (in order)
 
