@@ -45,21 +45,30 @@ const (
 )
 
 // Metrics reports sandbox lifecycle outcomes for the first-party
-// `/v1/sandboxes` surface (w5/m95).
+// `/v1/sandboxes` surface (w5/m95) plus the inventory/orphan gauges that keep
+// a sandbox from outliving every session that owned it (w5/m99).
 //
-// Scope is deliberately that surface alone. Agent-session sandboxes share this
-// runtime but reach it through their own dispatch path, and they already have
-// `bex_agent_session_provision_seconds` plus AgentSessionProvisionFailing. Were
-// both counted here, one substrate incident would fire two alerts and neither
-// series would answer "is the sandbox API itself healthy" — the question
-// ADR088's coverage table had no signal for.
+// Scope for create/terminate counters is deliberately the public surface alone.
+// Agent-session sandboxes share this runtime but reach it through their own
+// dispatch path, and they already have `bex_agent_session_provision_seconds`
+// plus AgentSessionProvisionFailing. Were both counted here, one substrate
+// incident would fire two alerts and neither series would answer "is the
+// sandbox API itself healthy" — the question ADR088's coverage table had no
+// signal for.
+//
+// Inventory gauges and teardown-failure counters span every live OpenSandbox
+// the reconcile sees (including agent-session sandboxes), because the cost of
+// an orphan is independent of which API created it.
 //
 // A nil *Metrics is a working no-op, so a Service built without a registry
 // (every test that does not care) needs no special casing.
 type Metrics struct {
-	creates    *prometheus.CounterVec
-	createTime *prometheus.HistogramVec
-	terminates *prometheus.CounterVec
+	creates          *prometheus.CounterVec
+	createTime       *prometheus.HistogramVec
+	terminates       *prometheus.CounterVec
+	live             *prometheus.GaugeVec
+	oldestAge        *prometheus.GaugeVec
+	teardownFailures *prometheus.CounterVec
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -80,8 +89,20 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			Name: "bex_sandbox_terminate_total",
 			Help: "Sandbox terminations through /v1/sandboxes by bounded outcome.",
 		}, []string{"outcome"}),
+		live: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bex_sandbox_live",
+			Help: "Live sandboxes by inventory class after one reconcile pass (claimed, terminal_orphan, no_row_orphan, timed, inconclusive).",
+		}, []string{"class"}),
+		oldestAge: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bex_sandbox_oldest_age_seconds",
+			Help: "Age in seconds of the oldest live sandbox in each inventory class.",
+		}, []string{"class"}),
+		teardownFailures: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "bex_sandbox_teardown_failures_total",
+			Help: "Durable sandbox teardown failures by bounded reason (previous_sandbox, idle_reap, inventory).",
+		}, []string{"reason"}),
 	}
-	reg.MustRegister(m.creates, m.createTime, m.terminates)
+	reg.MustRegister(m.creates, m.createTime, m.terminates, m.live, m.oldestAge, m.teardownFailures)
 	return m
 }
 
@@ -105,6 +126,42 @@ func (m *Metrics) observeTerminate(err error) {
 		return
 	}
 	m.terminates.WithLabelValues(createOutcome(err)).Inc()
+}
+
+// SetInventory replaces the live/oldest gauges with one reconcile pass's
+// classification. Full recount each tick keeps the gauges truthful when a
+// class drops to zero.
+func (m *Metrics) SetInventory(counts InventoryCounts) {
+	if m == nil {
+		return
+	}
+	classes := []struct {
+		name  string
+		count int
+	}{
+		{InventoryClassClaimed, counts.Claimed},
+		{InventoryClassTerminalOrphan, counts.TerminalOrphan},
+		{InventoryClassNoRowOrphan, counts.NoRowOrphan},
+		{InventoryClassTimed, counts.Timed},
+		{InventoryClassInconclusive, counts.Inconclusive},
+	}
+	for _, c := range classes {
+		m.live.WithLabelValues(c.name).Set(float64(c.count))
+		m.oldestAge.WithLabelValues(c.name).Set(counts.OldestAge[c.name])
+	}
+}
+
+// ObserveTeardownFailure counts a durable teardown that did not confirm.
+func (m *Metrics) ObserveTeardownFailure(reason string) {
+	if m == nil {
+		return
+	}
+	switch reason {
+	case TeardownReasonPreviousSandbox, TeardownReasonIdleReap, TeardownReasonInventory:
+	default:
+		reason = "failed"
+	}
+	m.teardownFailures.WithLabelValues(reason).Inc()
 }
 
 // createOutcome maps an error onto the closed label set. Order matters: the

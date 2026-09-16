@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -121,8 +122,16 @@ type Completer struct {
 	// the streak, so a one-off gateway rollout remains transient.
 	StatusReadFailureTTL time.Duration
 	Metrics              *CompletionMetrics
-	statusFailuresMu     sync.Mutex
-	statusFailures       map[string]time.Time
+	// SandboxMetrics reports inventory gauges and durable teardown failures.
+	// nil is a working no-op.
+	SandboxMetrics *sandbox.Metrics
+	// InventoryInterval bounds how often reconcileSandboxInventory walks every
+	// tenant's OpenSandbox list. 0 ⇒ every Completer tick (tests); production
+	// sets ~1m so the 15s finalize/reap loop stays cheap.
+	InventoryInterval time.Duration
+	lastInventory     time.Time
+	statusFailuresMu  sync.Mutex
+	statusFailures    map[string]time.Time
 }
 
 const defaultStatusReadFailureTTL = 2 * time.Minute
@@ -276,6 +285,8 @@ func (c *Completer) Reconcile(ctx context.Context) {
 		c.finalize(ctx, row)
 	}
 	c.reapIdleSandboxes(ctx)
+	c.reapPreviousSandboxes(ctx)
+	c.reconcileSandboxInventory(ctx)
 	c.sweepExpiredHibernations(ctx)
 	c.recoverDispatches(ctx)
 }
@@ -311,20 +322,92 @@ func (c *Completer) sweepExpiredHibernations(ctx context.Context) {
 // reapIdleSandboxes tears down the sandboxes of already-finished sessions once
 // they pass the Active-tier idle grace (ADR059 D2 / ADR054 D6). A terminal
 // session drops out of activePhases, so its sandbox would otherwise linger
-// forever; each tick this re-evaluates the small set of terminal sessions still
-// holding a sandbox id — reading each row's FRESH updated_at (the turn-end time
-// FinalizeAgentSession stamped) so the idle clock is measured from completion,
-// not the stale record the completion path held.
+// forever; each tick this re-evaluates terminal sessions still holding a
+// sandbox id whose sandbox_reap_after is due — no now-relative updated_at
+// window, so a failing teardown is retried indefinitely with backoff (w5/m99).
 func (c *Completer) reapIdleSandboxes(ctx context.Context) {
-	// Widen the scan to cover the idle grace on top of the leaked-open window.
-	since := c.now().Add(-(2*c.sshGraceTTL() + c.idleTTL()))
-	rows, err := c.Store.ListTerminalAgentSessionsWithSandbox(ctx, since)
+	rows, err := c.Store.ListTerminalAgentSessionsWithSandbox(ctx, c.now())
 	if err != nil {
 		return
 	}
 	for _, row := range rows {
 		c.teardown(ctx, row)
 	}
+}
+
+// reapPreviousSandboxes retries durable previous-sandbox teardown intents left
+// by steer/redispatch (w5/m99 t004). Success clears the intent; failure defers
+// with backoff and is counted.
+func (c *Completer) reapPreviousSandboxes(ctx context.Context) {
+	due, err := c.Store.ListPreviousSandboxTeardownsDue(ctx, c.now())
+	if err != nil {
+		log.Printf("agent-session completer: list previous-sandbox teardowns failed: %v", err)
+		return
+	}
+	groups := make(map[string][]store.AgentDispatch)
+	for _, d := range due {
+		groups[d.WorkspaceID] = append(groups[d.WorkspaceID], d)
+	}
+	for workspace, dispatches := range groups {
+		if err := ctx.Err(); err != nil {
+			return
+		}
+		if err := c.Sandbox.CleanupAgentDispatches(ctx, dispatches); err != nil {
+			log.Printf("agent-session completer: previous-sandbox teardown failed (workspace=%s): %v", workspace, err)
+			c.SandboxMetrics.ObserveTeardownFailure(sandbox.TeardownReasonPreviousSandbox)
+			for _, d := range dispatches {
+				_ = c.Store.DeferPreviousSandboxTeardown(ctx, d.SessionID, d.Turn, c.now().Add(time.Minute))
+			}
+			continue
+		}
+		for _, d := range dispatches {
+			if err := c.Store.ClearPreviousSandboxTeardown(ctx, d.SessionID, d.Turn); err != nil {
+				log.Printf("agent-session completer: clear previous-sandbox intent failed (session=%s): %v", d.SessionID, err)
+			}
+		}
+	}
+}
+
+// reconcileSandboxInventory walks every workspace with a sandbox tenant key and
+// terminates sandboxes whose session is terminal/absent or past the lifetime
+// bound — including the production shape where steer blanked sandbox_id.
+func (c *Completer) reconcileSandboxInventory(ctx context.Context) {
+	if c.InventoryInterval > 0 {
+		now := c.now()
+		if !c.lastInventory.IsZero() && now.Sub(c.lastInventory) < c.InventoryInterval {
+			return
+		}
+		c.lastInventory = now
+	}
+	keys, err := c.Store.ListSandboxTenantKeys(ctx)
+	if err != nil {
+		log.Printf("agent-session completer: list sandbox tenant keys failed: %v", err)
+		return
+	}
+	total := sandbox.InventoryCounts{OldestAge: map[string]float64{}}
+	lookup := func(ctx context.Context, sessionID string) (sandbox.SessionClaim, error) {
+		row, err := c.Store.GetAgentSession(ctx, sessionID)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				return sandbox.SessionClaim{}, nil
+			}
+			return sandbox.SessionClaim{}, err
+		}
+		return sandbox.SessionClaim{Phase: row.Phase, SandboxID: row.SandboxID, Found: true}, nil
+	}
+	for _, key := range keys {
+		if err := ctx.Err(); err != nil {
+			return
+		}
+		counts, err := c.Sandbox.ReconcileWorkspaceInventory(ctx, key.WorkspaceID, key.APIKey, c.now(), lookup)
+		if err != nil {
+			log.Printf("agent-session completer: sandbox inventory reconcile failed (workspace=%s): %v", key.WorkspaceID, err)
+			c.SandboxMetrics.ObserveTeardownFailure(sandbox.TeardownReasonInventory)
+			continue
+		}
+		total.Merge(counts)
+	}
+	c.SandboxMetrics.SetInventory(total)
 }
 
 func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
@@ -551,8 +634,17 @@ func (c *Completer) reclaim(ctx context.Context, record store.AgentSession) {
 }
 
 // terminate is the w2/m67 reap: tear the pod down and drop the sandbox id.
+// The id is cleared only after a confirmed terminate (or already-absent);
+// a failure schedules backoff so the next tick retries (w5/m99 t002).
 func (c *Completer) terminate(ctx context.Context, record store.AgentSession) {
-	_ = c.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID)
+	if err := c.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
+		log.Printf("agent-session completer: terminate sandbox failed (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
+		c.SandboxMetrics.ObserveTeardownFailure(sandbox.TeardownReasonIdleReap)
+		if err := c.Store.ScheduleAgentSessionSandboxReap(ctx, record.ID, c.now()); err != nil {
+			log.Printf("agent-session completer: schedule sandbox reap failed (session=%s): %v", record.ID, err)
+		}
+		return
+	}
 	if err := c.Store.ClearAgentSessionSandbox(ctx, record.ID); err != nil {
 		log.Printf("agent-session completer: clear sandbox id failed (session=%s): %v", record.ID, err)
 	}

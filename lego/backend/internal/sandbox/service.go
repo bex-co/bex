@@ -165,8 +165,8 @@ func validateCreateMetadata(region string, timeout int) error {
 	if timeout < 0 || (timeout > 0 && timeout < minSandboxTimeout) || timeout > maxSandboxTimeout {
 		return core.NewBadRequestError(
 			"SANDBOX_TIMEOUT_INVALID",
-			fmt.Sprintf("sandbox timeoutSeconds must be 0 (no expiry) or between %d and %d", minSandboxTimeout, maxSandboxTimeout),
-			map[string]any{"field": "timeoutSeconds", "minimumNonZero": minSandboxTimeout, "max": maxSandboxTimeout},
+			fmt.Sprintf("sandbox timeoutSeconds must be 0 (default %d) or between %d and %d", maxSandboxTimeout, minSandboxTimeout, maxSandboxTimeout),
+			map[string]any{"field": "timeoutSeconds", "default": maxSandboxTimeout, "minimumNonZero": minSandboxTimeout, "max": maxSandboxTimeout},
 		)
 	}
 	return nil
@@ -324,7 +324,7 @@ func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 		Plan:           Plan(raw.Metadata[metadataPlan]),
 		Status:         mapOpenSandboxStatus(raw.Status.State),
 		Region:         raw.Metadata[metadataRegion],
-		TimeoutSeconds: timeout,
+		TimeoutSeconds: EffectiveTimeoutSeconds(timeout),
 		NetworkPolicy:  policy,
 		Owner:          raw.Metadata[metadataOwner],
 		Workspace:      raw.Metadata[metadataWorkspace],
@@ -410,6 +410,9 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	if len(entry) == 0 {
 		entry = []string{"sleep", "infinity"}
 	}
+	// Normalize 0 → 86400 so EA creates, agent-session creates, and legacy
+	// metadata all share one enforced bound (w5/m99 t001).
+	timeout = EffectiveTimeoutSeconds(timeout)
 	metadata := sandboxMetadata(ctx, workspace, template, plan, region, timeout, policy, weight)
 	for k, v := range extraMetadata {
 		metadata[k] = v
@@ -604,17 +607,27 @@ func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, w
 		}
 		return err
 	}
-	s.Meter.Observe(ctx, raw)
-	if err := s.Client.Terminate(ctx, key, sandboxID); err != nil {
+	if err := s.terminateObserved(ctx, key, &raw); err != nil {
 		return err
 	}
-	raw.Status.State = string(StatusTerminated)
-	s.Meter.Observe(ctx, raw)
 	if s.SessionEgress != nil {
 		if err := s.SessionEgress.Delete(ctx, store.SandboxNamespace(workspaceID), sessionID); err != nil {
 			return fmt.Errorf("delete terminated session egress policy: %w", err)
 		}
 	}
+	return nil
+}
+
+// terminateObserved meters the live sandbox, terminates it, then meters the
+// terminal state so usage closes the compute window. Shared by cancel, dispatch
+// cleanup, and inventory reconcile.
+func (s *Service) terminateObserved(ctx context.Context, key string, raw *osSandbox) error {
+	s.Meter.Observe(ctx, *raw)
+	if err := s.Client.Terminate(ctx, key, raw.ID); err != nil {
+		return err
+	}
+	raw.Status.State = string(StatusTerminated)
+	s.Meter.Observe(ctx, *raw)
 	return nil
 }
 

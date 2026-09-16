@@ -91,8 +91,18 @@ func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now
 		}
 		// An old API replica can finish a pre-migration dispatch without removing
 		// its backfilled intent. Its durable binding wins; never sweep that pod.
+		// A non-empty previous_sandbox_id stays as an abandoned cleanup tombstone
+		// so the predecessor is still retried (w5/m99 t004).
 		if turn == d.Turn && sandboxID != "" {
 			bound = true
+			var previous string
+			if err := tx.QueryRow(ctx, `SELECT previous_sandbox_id FROM agent_session_dispatches WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn).Scan(&previous); err != nil {
+				return err
+			}
+			if previous != "" {
+				_, err := tx.Exec(ctx, `UPDATE agent_session_dispatches SET abandoned=true, next_check_at=$3 WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn, now)
+				return err
+			}
 			_, err := tx.Exec(ctx, `DELETE FROM agent_session_dispatches WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn)
 			return err
 		}

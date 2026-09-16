@@ -472,18 +472,19 @@ func (s *PGStore) ListTerminalAgentSessionsForPush(ctx context.Context, since ti
 }
 
 // ListTerminalAgentSessionsWithSandbox returns terminal sessions (completed/
-// failed/canceled) that still carry a sandbox id and were updated at or after
-// `since`, oldest first (ADR054 D6). It drives the Completer's deferred-teardown
-// reaper: a terminal session keeps its sandbox_id only while its editor SSH is
-// held open, so this is the small working set of sandboxes awaiting reclamation.
-// The recency bound keeps the scan cheap and skips pre-feature history (whose
-// sandboxes are long gone). Trusted background read — no authorization.
-func (s *PGStore) ListTerminalAgentSessionsWithSandbox(ctx context.Context, since time.Time) ([]AgentSession, error) {
+// failed/canceled) that still carry a sandbox id and are due for a reap attempt
+// (sandbox_reap_after IS NULL or <= now), oldest first (ADR054 D6 / w5/m99).
+// Eligibility is per-row — there is no now-relative updated_at window, so a
+// teardown that fails for days is still retried once its backoff elapses.
+// Trusted background read — no authorization. `now` drives the backoff gate.
+func (s *PGStore) ListTerminalAgentSessionsWithSandbox(ctx context.Context, now time.Time) ([]AgentSession, error) {
 	rows, err := s.Pool.Query(ctx, `SELECT `+agentSessionColumns+`
 		FROM agent_sessions
-		WHERE phase = ANY($1) AND sandbox_id <> '' AND updated_at >= $2
-		ORDER BY updated_at ASC, id ASC`,
-		[]string{"completed", "failed", "canceled"}, since)
+		WHERE phase = ANY($1) AND sandbox_id <> ''
+		  AND (sandbox_reap_after IS NULL OR sandbox_reap_after <= $2)
+		ORDER BY COALESCE(sandbox_reap_after, updated_at) ASC, id ASC
+		LIMIT 200`,
+		[]string{"completed", "failed", "canceled"}, now)
 	if err != nil {
 		return nil, err
 	}
@@ -497,6 +498,79 @@ func (s *PGStore) ListTerminalAgentSessionsWithSandbox(ctx context.Context, sinc
 		out = append(out, v)
 	}
 	return out, rows.Err()
+}
+
+// ScheduleAgentSessionSandboxReap pushes the next deferred-teardown attempt for
+// a terminal session whose terminate just failed. Attempts grow the backoff
+// (1m, 2m, 4m, … capped at 1h) so a flapping substrate does not hammer the
+// API, but the row never ages out of the scan (w5/m99 t002).
+func (s *PGStore) ScheduleAgentSessionSandboxReap(ctx context.Context, id string, now time.Time) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE agent_sessions
+		SET sandbox_reap_attempts = sandbox_reap_attempts + 1,
+		    sandbox_reap_after = $2 + make_interval(mins => LEAST(60, (1 << LEAST(sandbox_reap_attempts, 6))::int)),
+		    updated_at = updated_at
+		WHERE id = $1 AND sandbox_id <> ''`, id, now)
+	return err
+}
+
+// ClearPreviousSandboxTeardown blanks previous_sandbox_id on a dispatch intent
+// after the predecessor sandbox is confirmed gone (w5/m99 t004). When the
+// intent is an abandoned cleanup-only tombstone with no other work, the row is
+// deleted so the table does not grow without bound.
+func (s *PGStore) ClearPreviousSandboxTeardown(ctx context.Context, sessionID string, turn int) error {
+	return s.withTx(ctx, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `
+			UPDATE agent_session_dispatches
+			SET previous_sandbox_id = ''
+			WHERE session_id = $1 AND turn = $2 AND previous_sandbox_id <> ''`, sessionID, turn)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return nil
+		}
+		_, err = tx.Exec(ctx, `
+			DELETE FROM agent_session_dispatches
+			WHERE session_id = $1 AND turn = $2 AND abandoned AND previous_sandbox_id = ''`, sessionID, turn)
+		return err
+	})
+}
+
+// ListPreviousSandboxTeardownsDue returns dispatch intents that still name a
+// previous sandbox to tear down, due for a retry. Bound turns keep the intent
+// as an abandoned tombstone until this cleanup succeeds (w5/m99 t004).
+func (s *PGStore) ListPreviousSandboxTeardownsDue(ctx context.Context, now time.Time) ([]AgentDispatch, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT session_id, turn, workspace_id, legacy, previous_sandbox_id,
+		       NOT EXISTS (SELECT 1 FROM agent_sessions WHERE id = session_id)
+		FROM agent_session_dispatches
+		WHERE previous_sandbox_id <> '' AND next_check_at <= $1
+		ORDER BY next_check_at, session_id, turn
+		LIMIT 100`, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AgentDispatch
+	for rows.Next() {
+		var d AgentDispatch
+		if err := rows.Scan(&d.SessionID, &d.Turn, &d.WorkspaceID, &d.Legacy, &d.PreviousSandboxID, &d.SessionDeleted); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// DeferPreviousSandboxTeardown pushes next_check_at on a previous-sandbox
+// teardown intent after a failed terminate, without requiring abandoned=true
+// (active steers keep the intent live while the new turn provisions).
+func (s *PGStore) DeferPreviousSandboxTeardown(ctx context.Context, sessionID string, turn int, next time.Time) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE agent_session_dispatches SET next_check_at = $3
+		WHERE session_id = $1 AND turn = $2 AND previous_sandbox_id <> ''`, sessionID, turn, next)
+	return err
 }
 
 // CountLiveAgentSessionSandboxes counts the workspace's sessions currently in a
@@ -766,6 +840,19 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 			SET started_at = COALESCE(started_at, now())
 			WHERE session_id=$1 AND turn=$2`, id, turn); err != nil {
 			return err
+		}
+		// Keep a cleanup-only tombstone while previous_sandbox_id is still set so
+		// a steer that blanked the session row never loses the only handle to the
+		// predecessor sandbox (w5/m99 t004). Empty previous → delete as before.
+		tag, err := tx.Exec(ctx, `
+			UPDATE agent_session_dispatches
+			SET abandoned = true, next_check_at = now()
+			WHERE session_id = $1 AND turn = $2 AND previous_sandbox_id <> ''`, id, turn)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() > 0 {
+			return nil
 		}
 		_, err = tx.Exec(ctx, `DELETE FROM agent_session_dispatches WHERE session_id=$1 AND turn=$2`, id, turn)
 		return err

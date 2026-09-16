@@ -711,3 +711,120 @@ func TestCompleterOpenSSHPinsIdleRegardlessOfGrace(t *testing.T) {
 		t.Fatal("sandbox id cleared while an editor is connected; the reaper would lose it")
 	}
 }
+
+// w5/m99 t002: a terminal session aged far past the old 8h30m now-window is
+// still eligible — eligibility is per-row, not a recency floor.
+func TestCompleterReapsTerminalSessionAgedThirtyDays(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c.Reconcile(context.Background()) // finalize
+	row := st.rows[id]
+	row.UpdatedAt = st.now.Add(-30 * 24 * time.Hour)
+	row.SandboxID = "sandbox-aged"
+	row.Phase, row.Status = PhaseCompleted, PhaseCompleted
+	st.rows[id] = row
+	lc.canceled = 0
+
+	c.Reconcile(context.Background())
+	if lc.canceled != 1 {
+		t.Fatalf("30-day-old terminal sandbox not reaped (canceled=%d)", lc.canceled)
+	}
+	if st.rows[id].SandboxID != "" {
+		t.Fatalf("sandbox id still set: %q", st.rows[id].SandboxID)
+	}
+}
+
+// w5/m99 t002: repeated terminate failures schedule backoff and keep retrying.
+func TestCompleterRetriesFailedTerminateWithBackoff(t *testing.T) {
+	c, st, lc, _, id := completerFixture("", nil)
+	row := st.rows[id]
+	row.Phase, row.Status, row.SandboxID = PhaseCompleted, PhaseCompleted, "sandbox-retry"
+	row.UpdatedAt = st.now
+	st.rows[id] = row
+	lc.cancelErr = errors.New("upstream down")
+
+	base := st.now
+	c.Now = func() time.Time { return base }
+	c.Reconcile(context.Background())
+	if st.rows[id].SandboxID == "" {
+		t.Fatal("sandbox id must stay until terminate succeeds")
+	}
+	if _, ok := st.reapAfter[id]; !ok {
+		t.Fatal("expected sandbox_reap_after to be scheduled")
+	}
+
+	// Still inside backoff — no second attempt advances the counter past 1.
+	c.Now = func() time.Time { return base.Add(30 * time.Second) }
+	c.Reconcile(context.Background())
+	if st.reapAttempts[id] != 1 {
+		t.Fatalf("reap attempts advanced inside backoff: %d", st.reapAttempts[id])
+	}
+
+	// Past backoff, still failing — attempt 2.
+	c.Now = func() time.Time { return st.reapAfter[id].Add(time.Second) }
+	c.Reconcile(context.Background())
+	if st.reapAttempts[id] != 2 {
+		t.Fatalf("reap attempts = %d, want 2", st.reapAttempts[id])
+	}
+
+	// N+1 succeeds.
+	lc.cancelErr = nil
+	c.Now = func() time.Time { return st.reapAfter[id].Add(time.Second) }
+	c.Reconcile(context.Background())
+	if lc.canceled != 1 {
+		t.Fatalf("successful retry canceled=%d", lc.canceled)
+	}
+	if st.rows[id].SandboxID != "" {
+		t.Fatal("sandbox id not cleared after successful retry")
+	}
+}
+
+// w5/m99 t003: Completer inventory tick walks tenant keys and classifies.
+func TestCompleterInventoryReclaimsBlankedTerminalSandbox(t *testing.T) {
+	c, st, lc, _, id := completerFixture("", nil)
+	row := st.rows[id]
+	row.Phase, row.Status, row.SandboxID = PhaseCanceled, PhaseCanceled, ""
+	st.rows[id] = row
+
+	var calls int
+	lc.inventory = func(context.Context) (sandbox.InventoryCounts, error) {
+		calls++
+		return sandbox.InventoryCounts{
+			TerminalOrphan: 1,
+			Terminated:     1,
+			OldestAge:      map[string]float64{sandbox.InventoryClassTerminalOrphan: 100},
+		}, nil
+	}
+	c.Reconcile(context.Background())
+	if calls != 1 {
+		t.Fatalf("inventory reconcile calls = %d, want 1", calls)
+	}
+}
+
+// w5/m99 t004: a failed previous-sandbox teardown leaves a durable intent that
+// a later tick retries successfully.
+func TestCompleterRetriesPreviousSandboxTeardown(t *testing.T) {
+	c, st, lc, _, id := completerFixture("", nil)
+	d := store.AgentDispatch{
+		SessionID: id, Turn: 2, WorkspaceID: "tea-a",
+		PreviousSandboxID: "sandbox-prev",
+	}
+	st.dispatches[dispatchKey(id, 2)] = fakeDispatch{intent: d, abandoned: true, next: st.now}
+	lc.cleanupErr = errors.New("terminate failed")
+	c.Now = func() time.Time { return st.now }
+
+	c.reapPreviousSandboxes(context.Background())
+	intent := st.dispatches[dispatchKey(id, 2)]
+	if intent.intent.PreviousSandboxID != "sandbox-prev" {
+		t.Fatal("failed teardown must keep previous_sandbox_id")
+	}
+	if !intent.next.After(st.now) {
+		t.Fatal("failed teardown must defer next_check_at")
+	}
+
+	lc.cleanupErr = nil
+	c.Now = func() time.Time { return intent.next.Add(time.Second) }
+	c.reapPreviousSandboxes(context.Background())
+	if _, ok := st.dispatches[dispatchKey(id, 2)]; ok {
+		t.Fatal("successful teardown must clear the intent")
+	}
+}

@@ -69,8 +69,18 @@ type Store interface {
 	// still-open editor session pins the sandbox, and the last SSH disconnect time
 	// (feeding the idle clock alongside the session's turn-end).
 	AgentSessionSSHActivity(ctx context.Context, resourceID string, freshSince time.Time) (hasFreshOpen bool, lastEnded *time.Time, err error)
-	ListTerminalAgentSessionsWithSandbox(ctx context.Context, since time.Time) ([]store.AgentSession, error)
+	// ListTerminalAgentSessionsWithSandbox returns terminal rows still holding a
+	// sandbox whose sandbox_reap_after is due (nil or <= now). `now` drives the
+	// backoff gate — there is no updated_at recency window (w5/m99 t002).
+	ListTerminalAgentSessionsWithSandbox(ctx context.Context, now time.Time) ([]store.AgentSession, error)
+	ScheduleAgentSessionSandboxReap(ctx context.Context, id string, now time.Time) error
 	ClearAgentSessionSandbox(ctx context.Context, id string) error
+	ListPreviousSandboxTeardownsDue(ctx context.Context, now time.Time) ([]store.AgentDispatch, error)
+	ClearPreviousSandboxTeardown(ctx context.Context, sessionID string, turn int) error
+	DeferPreviousSandboxTeardown(ctx context.Context, sessionID string, turn int, next time.Time) error
+	// ListSandboxTenantKeys enumerates workspaces that have an OpenSandbox
+	// tenant key so inventory reconcile can list every live sandbox (w5/m99).
+	ListSandboxTenantKeys(ctx context.Context) ([]store.SandboxTenantKey, error)
 	// CountLiveAgentSessionSandboxes bounds the ADR059 D6 per-workspace live-
 	// sandbox cap: sessions in a live phase holding a sandbox id for the workspace.
 	CountLiveAgentSessionSandboxes(ctx context.Context, workspaceID string, phases []string) (int, error)
@@ -106,6 +116,7 @@ type TupleWriter interface {
 
 type SandboxLifecycle interface {
 	CleanupAgentDispatches(context.Context, []store.AgentDispatch) error
+	ReconcileWorkspaceInventory(ctx context.Context, workspaceID, apiKey string, now time.Time, lookup sandbox.SessionClaimLookup) (sandbox.InventoryCounts, error)
 	CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error)
 	EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egressAllowlist []string) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
@@ -215,6 +226,9 @@ type Service struct {
 	// *CompletionMetrics the Completer holds, so lifecycle timing shares one
 	// registration; nil ⇒ no observation (byte-identical to before).
 	Metrics *CompletionMetrics
+	// SandboxMetrics counts durable teardown failures from the accept path
+	// (steer). nil ⇒ no observation.
+	SandboxMetrics *sandbox.Metrics
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
@@ -1474,11 +1488,16 @@ func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSessio
 	// Off the accept path by design — see runRehydrate.
 	s.continuityEnv(ctx, spec.env, record, spec.task)
 	if spec.previousSandboxID != "" {
-		if err := s.Sandbox.CleanupAgentDispatches(ctx, []store.AgentDispatch{{SessionID: record.ID, WorkspaceID: record.WorkspaceID, Turn: spec.turn, PreviousSandboxID: spec.previousSandboxID}}); err != nil {
+		d := store.AgentDispatch{SessionID: record.ID, WorkspaceID: record.WorkspaceID, Turn: spec.turn, PreviousSandboxID: spec.previousSandboxID}
+		if err := s.Sandbox.CleanupAgentDispatches(ctx, []store.AgentDispatch{d}); err != nil {
 			log.Printf("agent-session steer: teardown of previous sandbox failed (session=%s sandbox=%s): %v", record.ID, spec.previousSandboxID, err)
-			s.abandonDispatch(ctx, record, spec.turn, "steer teardown failed")
-			s.settleDispatchTurn(ctx, record.ID, spec.turn, "previous sandbox teardown failed")
-			return
+			s.SandboxMetrics.ObserveTeardownFailure(sandbox.TeardownReasonPreviousSandbox)
+			_ = s.Store.DeferPreviousSandboxTeardown(ctx, record.ID, spec.turn, time.Now().Add(time.Minute))
+			// Continue provisioning the new turn — the durable intent + inventory
+			// reconcile retry the predecessor. Never abandon the steer because the
+			// old sandbox resisted one terminate attempt.
+		} else {
+			_ = s.Store.ClearPreviousSandboxTeardown(ctx, record.ID, spec.turn)
 		}
 	}
 	s.runDispatch(ctx, record, spec)

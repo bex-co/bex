@@ -1395,6 +1395,61 @@ tests:
         alertname: SandboxProvisionFailing
         exp_alerts: []
 
+  # w5/m99 — orphan inventory and over-age lifetime backstop.
+  - name: an orphan class present for two minutes pages
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_live{class="terminal_orphan",job="bex-api"}'
+        values: "1x5"
+      - series: 'bex_sandbox_live{class="no_row_orphan",job="bex-api"}'
+        values: "0x5"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: SandboxOrphansPresent
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "1 orphaned live sandbox(es) still running"
+              description: "Inventory reconcile found sandboxes whose agent session is terminal or absent. Check bex_sandbox_live{class} and Completer logs for terminate failures (bex_sandbox_teardown_failures_total). Prefer the reconcile reclaiming them; a stuck substrate may need kubectl -n <ws>-sandbox. Runbook: docs/ADR014-sandboxes.md"
+
+  - name: zero orphans stay silent
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_live{class="terminal_orphan",job="bex-api"}'
+        values: "0x5"
+      - series: 'bex_sandbox_live{class="no_row_orphan",job="bex-api"}'
+        values: "0x5"
+      - series: 'bex_sandbox_live{class="claimed",job="bex-api"}'
+        values: "3x5"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: SandboxOrphansPresent
+        exp_alerts: []
+
+  - name: a sandbox older than the 24h bound pages
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_oldest_age_seconds{class="claimed",job="bex-api"}'
+        values: "90000x20"
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: SandboxOldestOverBound
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "Oldest live sandbox is 1d 1h 0m 0s old (past the 24h lifetime bound)"
+              description: "A sandbox has outlived the enforced timeoutSeconds maximum (86400). Lifetime enforcement and inventory reconcile should have stopped it; check OpenSandbox terminate health and bex_sandbox_teardown_failures_total. Runbook: docs/ADR014-sandboxes.md"
+
+  - name: sandboxes inside the lifetime bound stay silent
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_oldest_age_seconds{class="claimed",job="bex-api"}'
+        values: "3600x20"
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: SandboxOldestOverBound
+        exp_alerts: []
+
   # w3/m84 — bex-api's own origin SLIs. Both rules are per-surface with a traffic
   # floor, so the interesting cases are "a busy surface really is broken" and
   # "a quiet surface's handful of errors must stay silent".
