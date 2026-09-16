@@ -57,6 +57,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
@@ -196,6 +197,13 @@ type Server struct {
 	// Reuse bex-api's BEX_API_CORS_ORIGIN value. Empty => no CORS headers
 	// (same-origin / curl only).
 	AllowedOrigins []string
+
+	// TrustedProxies contains the immediate HTTP peers allowed to assert the
+	// client address through X-Forwarded-For/X-Real-IP — the same Traefik pod
+	// network the web shell trusts. Empty (the default) leaves RemoteAddr as
+	// the immediate peer, which is what made ssh_sessions.remote_address record
+	// Traefik's own pod IP for every attach session (w1/107).
+	TrustedProxies core.TrustedProxies
 
 	Metrics *sshgateway.Metrics
 	Limits  *sshgateway.SessionLimiter
@@ -410,7 +418,7 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		WorkspaceID:   claims.Workspace,
 		ServiceID:     claims.SessionID,
 		InstanceID:    claims.Pod,
-		RemoteAddress: r.RemoteAddr,
+		RemoteAddress: s.remoteAddress(r),
 		StartedAt:     started.UTC(),
 	})
 	cancelAudit()
@@ -492,6 +500,18 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 // streamAgentAttach replays the durable transcript to the client, then — if the
 // driver is reachable — splices the live driver stream and tees new parts into
 // the store. A terminal/gone session (ipErr) replays and closes with `[DONE]`.
+// remoteAddress resolves who actually connected, for the session audit row.
+// Behind Traefik the immediate peer is a pod IP, so a raw RemoteAddr makes every
+// row say the same thing; the web shell's handler derives it the same way
+// (webshell/websocket.go). An untrusted peer keeps its own address, so a client
+// cannot forge the field by sending the header itself.
+func (s *Server) remoteAddress(r *http.Request) string {
+	if clientIP := s.TrustedProxies.ClientIP(r); clientIP != core.PeerIP(r.RemoteAddr) {
+		return clientIP
+	}
+	return r.RemoteAddr
+}
+
 func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP string, ipErr error, sessionID string, turn int) {
 	turns, err := s.Store.AgentSessionTurns(ctx, sessionID)
 	if err != nil {
