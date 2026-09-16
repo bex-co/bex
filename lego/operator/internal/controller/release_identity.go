@@ -281,6 +281,16 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 	}
 }
 
+// releaseHasServed reports whether any release has actually served. markRunning
+// is the only writer of ActiveRevision and writes it only once a release serves,
+// so status.image alone is not proof: a first release that crash-loops stamps
+// the image before the readiness gate and never serves. The failure, cancel,
+// rollout and pre-deploy paths all decide "there is a prior release to keep"
+// from this (w1/m160, from w1/101).
+func releaseHasServed(app *appv1alpha1.App) bool {
+	return app.Status.ActiveRevision != ""
+}
+
 func canceledReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
 	raw := app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]
 	generation, err := strconv.ParseInt(raw, 10, 64)
