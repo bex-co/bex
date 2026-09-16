@@ -145,6 +145,19 @@ export interface ServiceView {
    */
   autoDeploy: boolean | null;
   /**
+   * The linked environment groups in PRECEDENCE order (w2/m94/t003): the order
+   * the links were added, which is `spec.envFromSecrets` order. The operator
+   * emits those Secrets as `envFrom` sources in this order and Kubernetes lets
+   * the LAST source win a key collision, so the LAST id here is the group whose
+   * value the service actually runs. Secret files follow the same rule.
+   *
+   * The workspace group list records links as an unordered set, so this is the
+   * only thing that can order the Linked Environment Groups panel or say which
+   * of two colliding groups wins. null on the list query, which does not
+   * select it, and on an older API — both mean "unknown", never "none".
+   */
+  linkedEnvGroupIds?: string[] | null;
+  /**
    * How a push to the tracked branch can actually REACH bex for this specific
    * repo (w6/m99): "github_app" | "manual_webhook" | "none" | "unknown" —
    * what the autoDeploy on/off setting above cannot express. null on the list

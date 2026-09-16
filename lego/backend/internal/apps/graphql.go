@@ -422,6 +422,13 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return *a.BuildFilter
 			}),
 		},
+		// linkedEnvGroupIds is the linked groups in PRECEDENCE order (last wins
+		// a key or secret-file collision). The Environment page's Linked
+		// Environment Groups panel orders and shadow-marks from it (w2/m94/t003).
+		"linkedEnvGroupIds": &graphql.Field{
+			Type:    graphql.NewList(graphql.String),
+			Resolve: gqlutil.Field(func(a AppView) any { return a.LinkedEnvGroupIDs }),
+		},
 		"autoDeploy": gqlutil.BoolField(func(a AppView) any { return a.AutoDeploy }),
 		// autoDeployTrigger is Render's newer enum for the same toggle
 		// ("commit"|"off", w5/m53) mapped from bex's boolean spec.autoDeploy —

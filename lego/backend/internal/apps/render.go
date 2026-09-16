@@ -141,6 +141,12 @@ type renderService struct {
 	// JSON boolean — a client generated from Render's OpenAPI spec (e.g. the
 	// official CLI) fails to unmarshal a bool here.
 	AutoDeploy string `json:"autoDeploy"`
+	// LinkedEnvGroupIDs is a bex extension: the linked environment groups in
+	// PRECEDENCE order (last wins a key or secret-file collision). Render's
+	// service object carries no link order, and documents that its own
+	// group-vs-group precedence is not guaranteed — see
+	// AppView.LinkedEnvGroupIDs and docs/ADR018-render-parity.md.
+	LinkedEnvGroupIDs []string `json:"linkedEnvGroupIds,omitempty"`
 	// AutoDeployTrigger is Render's newer representation of the same Auto-Deploy
 	// toggle (components.schemas.autoDeployTrigger): "off"|"commit"|"checksPass".
 	// bex maps its boolean spec.autoDeploy onto "commit"/"off" and never emits
@@ -196,10 +202,10 @@ type renderAutoscaling struct {
 // renderAutoscalingConfig is Render's PUT /services/{id}/autoscaling request
 // and response body (pinned OpenAPI: required enabled/min/max/criteria).
 type renderAutoscalingConfig struct {
-	Enabled  bool                        `json:"enabled"`
-	Min      int32                       `json:"min"`
-	Max      int32                       `json:"max"`
-	Criteria renderAutoscalingCriteria   `json:"criteria"`
+	Enabled  bool                      `json:"enabled"`
+	Min      int32                     `json:"min"`
+	Max      int32                     `json:"max"`
+	Criteria renderAutoscalingCriteria `json:"criteria"`
 }
 
 type renderAutoscalingCriteria struct {
@@ -359,6 +365,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		Branch:               a.Branch,
 		Autoscaling:          toRenderAutoscaling(a.Autoscaling),
 		AutoDeploy:           yesNoEnum(a.AutoDeploy),
+		LinkedEnvGroupIDs:    a.LinkedEnvGroupIDs,
 		AutoDeployTrigger:    triggerEnum(a.AutoDeploy),
 		PushDeliveryMethod:   a.PushDeliveryMethod,
 		NotifyOnFail:         a.NotifyOnFail,

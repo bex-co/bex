@@ -3315,6 +3315,7 @@ export type Service = {
   ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
   lastSuccessfulRunAt: Maybe<Scalars['String']['output']>;
   latestDeployId: Maybe<Scalars['String']['output']>;
+  linkedEnvGroupIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   maintenanceMode: MaintenanceMode;
   maxShutdownDelaySeconds: Maybe<Scalars['Int']['output']>;
   name: Maybe<Scalars['String']['output']>;

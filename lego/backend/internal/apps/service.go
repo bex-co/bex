@@ -490,6 +490,17 @@ type AppView struct {
 	// what the operator is actually running, not only what was requested; the
 	// disk's own id comes from the control-plane row via the /v1/disks surface.
 	Disk *ServiceDiskView `json:"disk,omitempty"`
+	// LinkedEnvGroupIDs are the environment groups linked to this service, in
+	// PRECEDENCE order: spec.envFromSecrets order, which is the order links were
+	// added. The operator emits those Secrets as envFrom sources in this order
+	// and Kubernetes lets the LAST source win a key collision, so the last entry
+	// here is the group whose value the service actually runs. Secret files
+	// follow the same rule (w2/m94/t002).
+	//
+	// bex keeps last-linked-wins deliberately; Render documents that its own
+	// group-vs-group precedence is not guaranteed and currently uses the most
+	// recently CREATED group (docs/ADR018-render-parity.md).
+	LinkedEnvGroupIDs []string `json:"linkedEnvGroupIds,omitempty"`
 	// AutoDeploy is whether a signed git push to Branch redeploys this App
 	// (spec.autoDeploy, Render's Auto-Deploy toggle). The Settings → Build &
 	// Deploy section reads it to render the toggle and writes it via SetAutoDeploy.
@@ -964,6 +975,7 @@ func view(a *appv1alpha1.App) AppView {
 		BuildFilter:           buildFilterView(a.Spec.BuildFilter),
 		Autoscaling:           asView,
 		Disk:                  serviceDiskView(a.Spec.Disk),
+		LinkedEnvGroupIDs:     linkedEnvGroupIDs(a),
 		AutoDeploy:            a.Spec.AutoDeploy,
 		NotifyOnFail:          notifyOnFail,
 		NotificationsToSend:   policy,
@@ -4531,4 +4543,24 @@ func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
 	}
 	s.RecordAutoscalingChanged(ctx, a, &fromMin, &fromMax, nil, nil)
 	return nil
+}
+
+// linkedEnvGroupIDs projects spec.envFromSecrets back to the group ids that
+// produced it, preserving order — which IS the precedence order (see
+// AppView.LinkedEnvGroupIDs). Each linked group contributes a "<evg-id>-env"
+// Secret; the service's own "<name>-env" Secret is spec.envFromSecret, a
+// different field, so it can never appear here.
+//
+// The suffix is stripped rather than matched against the group list because
+// this projection must not depend on the env-group service being reachable: a
+// service read stays correct when the group store is down, and the ids are
+// exactly what the caller needs to join against a group list it already has.
+func linkedEnvGroupIDs(a *appv1alpha1.App) []string {
+	var out []string
+	for _, name := range a.Spec.EnvFromSecrets {
+		if gid, ok := strings.CutSuffix(name, "-env"); ok && gid != "" {
+			out = append(out, gid)
+		}
+	}
+	return out
 }

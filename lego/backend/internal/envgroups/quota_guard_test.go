@@ -22,6 +22,7 @@ import (
 	"errors"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -207,4 +208,62 @@ func TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 		}
 	}
 	_ = secrets.ValidateEnvMapQuota // the quota these writers share
+}
+
+// w2/m94/t004: a group whose maps were filled before the round-11 cap existed
+// (cacde0622, 2026-08-17) can still be brought back under it. Checking only the
+// patched map refused the delete-only patch that is the sole way down, so an
+// over-quota group was permanently unfixable through the batch patch.
+func TestEnvGroupPatchLetsAnOverQuotaMapShrinkButNotGrow(t *testing.T) {
+	ctx := context.Background()
+	// Three of these total ~900 KiB. Deleting one still leaves ~600 KiB, over
+	// the 512 KiB cap — so only the before/after comparison can admit it. A
+	// seed that fell UNDER the cap after the delete would pass either way and
+	// prove nothing.
+	big := strings.Repeat("x", 300_000)
+
+	// Seed past the 512 KiB files cap through the store directly: every public
+	// write path already refuses it, which is exactly the trap being fixed.
+	seed := func(t *testing.T) (*Service, string) {
+		t.Helper()
+		svc := newService(newFakeStore(), sampleApp("web"))
+		group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+		if err != nil {
+			t.Fatalf("fixture group: %v", err)
+		}
+		over := map[string]string{"a.bin": big, "b.bin": big, "c.bin": big}
+		if err := svc.storeMap(ctx, "", filesPath(group.ID), over); err != nil {
+			t.Fatalf("seed over-quota files: %v", err)
+		}
+		if err := svc.upsertSecret(ctx, "", filesSecretName(group.ID), over); err != nil {
+			t.Fatalf("seed projection: %v", err)
+		}
+		return svc, group.ID
+	}
+
+	t.Run("delete-only patch succeeds", func(t *testing.T) {
+		svc, gid := seed(t)
+		result, err := svc.PatchEnvironment(ctx, gid, EnvironmentPatch{
+			SecretFiles: []SecretFilePatch{{Name: "c.bin", Delete: true}}, SaveMode: SaveModeOnly,
+		})
+		if err != nil {
+			t.Fatalf("an over-quota group must still be able to shrink: %v", err)
+		}
+		if slices.Contains(result.SecretFileNames, "c.bin") {
+			t.Fatalf("delete did not take effect: %v", result.SecretFileNames)
+		}
+	})
+
+	t.Run("growing patch is refused with the unchanged sentence", func(t *testing.T) {
+		svc, gid := seed(t)
+		_, err := svc.PatchEnvironment(ctx, gid, EnvironmentPatch{
+			SecretFiles: []SecretFilePatch{{Name: "d.bin", Content: "more"}}, SaveMode: SaveModeOnly,
+		})
+		if err == nil {
+			t.Fatal("adding to an over-quota group must still be refused")
+		}
+		if !strings.Contains(err.Error(), "total secret file size limit of 524288 bytes exceeded") {
+			t.Fatalf("refusal sentence changed, breaking the w1/m147 adapter table: %v", err)
+		}
+	})
 }
