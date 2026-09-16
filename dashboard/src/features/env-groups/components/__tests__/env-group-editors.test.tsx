@@ -97,4 +97,19 @@ describe("EnvGroupEditors — role-gated writes", () => {
     expect(screen.getByRole("button", { name: "Add variable" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Delete FOO" })).toBeEnabled();
   });
+
+  // w2/m95 t002: the group editor shares `EnvDraftItem` with the service
+  // Environment page, so the multi-line fix must reach it through that seam —
+  // this pins the sharing rather than trusting it.
+  it("keeps the line breaks of a pasted multi-line value", async () => {
+    const user = userEvent.setup();
+    renderEditors();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const value = screen.getByRole("textbox", { name: "Value for FOO" });
+    expect(value.tagName).toBe("TEXTAREA");
+
+    await user.click(value);
+    await user.paste("first\nsecond\nthird");
+    expect((value as HTMLTextAreaElement).value).toBe("first\nsecond\nthird");
+  });
 });

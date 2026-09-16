@@ -514,8 +514,8 @@ func prepareCreateEnv(vars []CreateEnvVarInput) (map[string]string, error) {
 	env := make(map[string]string, len(vars))
 	for _, input := range vars {
 		key := strings.TrimSpace(input.Key)
-		if !core.ValidEnvKey(key) {
-			return nil, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		if err := core.CheckEnvKey(key); err != nil {
+			return nil, err
 		}
 		hasValue := input.ValueSet || input.Value != ""
 		if input.GenerateValue == hasValue {
@@ -884,8 +884,8 @@ func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVar
 	desired := make(map[string]EnvVarView, len(vars))
 	for _, v := range vars {
 		key := strings.TrimSpace(v.Key)
-		if !core.ValidEnvKey(key) {
-			return nil, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		if err := core.CheckEnvKey(key); err != nil {
+			return nil, err
 		}
 		v.Key = key
 		desired[key] = v // retain replace-all's historical last-declaration-wins rule
@@ -949,8 +949,8 @@ func (s *Service) SetEnvGroupVarInput(ctx context.Context, gid string, input Env
 		return EnvVarView{}, err
 	}
 	key := strings.TrimSpace(input.Key)
-	if !core.ValidEnvKey(key) {
-		return EnvVarView{}, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+	if err := core.CheckEnvKey(key); err != nil {
+		return EnvVarView{}, err
 	}
 	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{
 		EnvVars:  []EnvVarPatch{{Key: key, Value: input.Value, ValueSet: input.ValueSet, GenerateValue: input.GenerateValue}},
@@ -1420,16 +1420,16 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 	}
 	writes := make([]EnvVarPatch, 0, len(literals)+len(generates))
 	for _, key := range core.SortedKeys(literals) {
-		if !core.ValidEnvKey(key) {
-			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		if err := core.CheckEnvKey(key); err != nil {
+			return err
 		}
 		if env[key] != literals[key] {
 			writes = append(writes, EnvVarPatch{Key: key, Value: literals[key], ValueSet: true})
 		}
 	}
 	for _, key := range generates {
-		if !core.ValidEnvKey(key) {
-			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		if err := core.CheckEnvKey(key); err != nil {
+			return err
 		}
 		if _, ok := env[key]; ok {
 			continue // generate-once: an existing value persists across syncs

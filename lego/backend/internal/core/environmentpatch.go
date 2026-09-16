@@ -93,7 +93,7 @@ func ApplyEnvVarPatch(env map[string]string, writes []EnvVarPatch) error {
 			},
 		}
 	}
-	return applyMapPatch(env, ops, ValidEnvKey, mapPatchWording{
+	return applyMapPatch(env, ops, ValidEnvKey, IsReservedEnvKey, mapPatchWording{
 		noun:            "environment variable",
 		renameConflicts: "delete, value, or generateValue",
 		deleteConflicts: "a value or generateValue",
@@ -115,7 +115,9 @@ func ApplySecretFilePatch(files map[string]string, writes []SecretFilePatch) err
 			},
 		}
 	}
-	return applyMapPatch(files, ops, ValidSecretFileName, mapPatchWording{
+	// Secret files have no reserved names — a file called PORT is not an
+	// environment variable and the operator never injects one.
+	return applyMapPatch(files, ops, ValidSecretFileName, nil, mapPatchWording{
 		noun:            "secret file",
 		renameConflicts: "delete or content",
 		deleteConflicts: "content",
@@ -159,12 +161,18 @@ func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp,
 	return nil
 }
 
-func applyMapPatch(m map[string]string, ops []mapPatchOp, valid func(string) bool, wording mapPatchWording) error {
+// reserved reports names the platform owns; it may be nil when the map has
+// none. Only a write is refused — a delete or a rename *away from* a reserved
+// name stays legal so an already-stored one can be removed.
+func applyMapPatch(m map[string]string, ops []mapPatchOp, valid func(string) bool, reserved func(string) bool, wording mapPatchWording) error {
 	seen := make(map[string]struct{}, len(ops))
 	for _, op := range ops {
 		key := strings.TrimSpace(op.key)
 		if !valid(key) {
 			return fmt.Errorf("%w: invalid %s name %q", ErrBadRequest, wording.noun, key)
+		}
+		if reserved != nil && reserved(key) && !op.remove {
+			return ReservedEnvKeyError(key)
 		}
 		fromKey := strings.TrimSpace(op.fromKey)
 		if _, duplicate := seen[key]; duplicate {

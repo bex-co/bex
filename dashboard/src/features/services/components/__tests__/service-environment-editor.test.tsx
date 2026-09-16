@@ -250,6 +250,80 @@ describe("ServiceEnvironmentEditor", () => {
     expect(trigger).not.toHaveBeenCalled();
   });
 
+  // w2/m95 t003: bex owns PORT — the operator injects its own and would drop a
+  // user's — so the editor says so as the key is typed and refuses to save it.
+  it("flags a reserved key inline and blocks the save", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Add variable" }),
+    );
+    const keys = screen.getAllByRole("textbox", { name: "Key" });
+    await user.type(keys[keys.length - 1], "PORT");
+
+    expect(
+      await screen.findByText(
+        "PORT is set by bex from the service port. Change the service port instead.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save and deploy" }),
+    ).toBeDisabled();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  // w2/m95 t002: the value field used to be a single-line <input>, which the
+  // browser flattens a pasted line break out of before React ever sees it — a
+  // pasted PEM key was saved changed, silently.
+  it("keeps the line breaks of a pasted multi-line value all the way to the patch", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const value = screen.getAllByRole("textbox", { name: /Value for / })[0];
+    await user.click(value);
+    await user.paste("first\nsecond\nthird");
+
+    expect((value as HTMLTextAreaElement).value).toBe("first\nsecond\nthird");
+
+    await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith(
+        "web",
+        {
+          envVars: [{ key: "ALPHA", value: "first\nsecond\nthird" }],
+          secretFiles: [],
+        },
+        "deploy",
+      ),
+    );
+  });
+
+  // The other half of w1/099: an imported multi-line draft rendered run
+  // together even though state held the newlines, because an <input> cannot
+  // display them.
+  it("displays an imported multi-line draft on its own lines", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Import from .env" }),
+    );
+    await user.click(screen.getByRole("textbox", { name: "Dotenv contents" }));
+    await user.paste(
+      'PEM="-----BEGIN KEY-----\\nline-one\\nline-two\\n-----END KEY-----"',
+    );
+    await user.click(screen.getByRole("button", { name: "Add variables" }));
+
+    const imported = screen.getByRole("textbox", { name: "Value for PEM" });
+    expect(imported.tagName).toBe("TEXTAREA");
+    expect((imported as HTMLTextAreaElement).value).toBe(
+      "-----BEGIN KEY-----\nline-one\nline-two\n-----END KEY-----",
+    );
+  });
+
   it("stages dotenv import, generated secrets, and file upload without writing", async () => {
     const user = userEvent.setup();
     const { container } = renderEditor();

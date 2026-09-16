@@ -19,6 +19,8 @@ package core
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -71,6 +73,59 @@ func ValidEnvKey(k string) bool {
 		}
 	}
 	return true
+}
+
+// ReservedEnvKeys are environment variable names bex owns, so a user write of
+// one is refused instead of stored-and-ignored.
+//
+// Today that is exactly PORT. The operator strips a user PORT out of spec.env
+// and appends its own container-level PORT entry, which wins over every envFrom
+// key (lego/operator/internal/controller/app_controller.go appEnv,
+// docs/ADR004-app-deployment.md). That injection happens for **every** App type,
+// not just web services, so the rule is reserved-everywhere: one rule, no
+// per-type exception to remember. Render diverges here — it lets you override
+// PORT — and docs/ADR018-render-parity.md records that.
+//
+// A reserved key is refused only on a **write**. Deleting one still works, so a
+// service or group that already stored a PORT before this rule can be cleaned
+// up through the ordinary delete verbs.
+var ReservedEnvKeys = []string{"PORT"}
+
+// IsReservedEnvKey reports whether k is a name bex owns. The match is exact and
+// case-sensitive: environment variables are case-sensitive, and a lowercase
+// "port" is an ordinary application variable the operator never touches.
+func IsReservedEnvKey(k string) bool {
+	return slices.Contains(ReservedEnvKeys, k)
+}
+
+// ReservedEnvKeySentence is the one wording for the refusal. Every surface —
+// REST, GraphQL, MCP, Blueprint validation, and the dashboard's inline hint —
+// renders this exact string, so a caller who learns it on one surface
+// recognizes it on the next.
+func ReservedEnvKeySentence(k string) string {
+	return fmt.Sprintf("environment variable %q is reserved: bex sets it from the service port; change the service port instead", k)
+}
+
+// ReservedEnvKeyError is the coded refusal every environment write path
+// returns. The Blueprint parser is the one exception: it wraps the sentence
+// with the manifest location instead, because its validation surface renders
+// error strings rather than codes — see parseServiceEnv and parseEnvGroup.
+func ReservedEnvKeyError(k string) error {
+	return NewBadRequestError("ENVIRONMENT_VARIABLE_RESERVED", ReservedEnvKeySentence(k), nil)
+}
+
+// CheckEnvKey is the single gate for an environment variable name a caller
+// wants to set: it must be well-formed and must not be one bex owns. Every
+// write path funnels through it so the two refusals cannot drift apart.
+func CheckEnvKey(k string) error {
+	if !ValidEnvKey(k) {
+		// Names only in the error — never the value (docs/ADR013-secrets.md).
+		return fmt.Errorf("%w: invalid environment variable name %q", ErrBadRequest, k)
+	}
+	if IsReservedEnvKey(k) {
+		return ReservedEnvKeyError(k)
+	}
+	return nil
 }
 
 // ValidSecretFileName reports whether name is a legal Kubernetes Secret key

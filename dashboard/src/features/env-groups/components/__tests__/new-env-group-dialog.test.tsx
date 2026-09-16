@@ -80,6 +80,70 @@ describe("NewEnvGroupDialog", () => {
     });
   });
 
+  // w2/m95 t003: bex owns PORT — in a group it would be dropped for every
+  // linked service at once — so the dialog says so as the key is typed.
+  it("flags a reserved key inline and refuses to create", async () => {
+    const user = userEvent.setup();
+    render(<NewEnvGroupDialog open onCreated={vi.fn()} services={[]} />);
+
+    await user.type(screen.getByLabelText("Group name"), "Shared production");
+    await user.click(
+      screen.getByRole("button", { name: "Add Environment Variable" }),
+    );
+    await user.type(screen.getByLabelText("Key"), "PORT");
+
+    expect(
+      await screen.findByText(
+        "PORT is set by bex from the service port. Change the service port instead.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Key")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+    expect(createGroup).not.toHaveBeenCalled();
+  });
+
+  // w2/m95 t002: the value field was a single-line `type="password"` input, so
+  // a pasted PEM key lost its newlines on the way into state. It is now a
+  // masked auto-growing textarea — still dots, but it keeps what was pasted.
+  it("keeps a pasted multi-line value and stays masked", async () => {
+    const user = userEvent.setup();
+    render(<NewEnvGroupDialog open onCreated={vi.fn()} services={[]} />);
+
+    await user.type(screen.getByLabelText("Group name"), "Shared production");
+    await user.click(
+      screen.getByRole("button", { name: "Add Environment Variable" }),
+    );
+    await user.type(screen.getByLabelText("Key"), "PEM");
+    const value = screen.getByLabelText("Value");
+    expect(value.tagName).toBe("TEXTAREA");
+    expect(value).toHaveStyle({ WebkitTextSecurity: "disc" });
+
+    await user.click(value);
+    await user.paste("-----BEGIN KEY-----\nline-one\n-----END KEY-----");
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+
+    expect(createGroup).toHaveBeenCalledWith({
+      name: "Shared production",
+      envVars: [
+        {
+          key: "PEM",
+          value: "-----BEGIN KEY-----\nline-one\n-----END KEY-----",
+          generateValue: undefined,
+        },
+      ],
+      secretFiles: [],
+      serviceIds: [],
+    });
+  });
+
   it("sends generateValue without a conflicting literal", async () => {
     const user = userEvent.setup();
     render(<NewEnvGroupDialog open onCreated={vi.fn()} />);
