@@ -170,6 +170,12 @@ func TestMintAndSensitiveHeuristics(t *testing.T) {
 			if class != core.OpClassMint {
 				t.Errorf("%s: SSH-key enroll must be mint, got %s", op, class)
 			}
+		case strings.Contains(op, "createWebhookEndpoint") || op == "MCP create_webhook_endpoint" || op == "REST POST /v1/webhooks":
+			// Show-once signing secret (HMAC key for outbound deliveries) —
+			// same durable-credential class as API keys (w4/079).
+			if class != core.OpClassMint {
+				t.Errorf("%s: webhook-endpoint create must be mint, got %s", op, class)
+			}
 		case strings.Contains(op, "connection-info") || strings.Contains(op, "ConnectionInfo"):
 			if class != core.OpClassSensitive {
 				t.Errorf("%s: connection-info must be sensitive, got %s", op, class)

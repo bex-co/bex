@@ -374,7 +374,12 @@ func TestDestinationURLRedactedForReadOnlyOAuthAdmin(t *testing.T) {
 		})
 	}
 
-	created, err := s.Create(oauthAdmin(core.ScopeWrite), CreateRequest{
+	// Create is mint-class (AuthorizeMintClass): a delegated write token cannot
+	// mint the signing secret. Seed with a session, then assert list/get redaction.
+	sessionAdmin := core.WithIdentity(context.Background(), core.Identity{
+		Subject: "id-admin", Method: "session",
+	})
+	created, err := s.Create(sessionAdmin, CreateRequest{
 		Name: "slack", URL: exact, EventTypes: []string{TypeDeployEnded}, Enabled: true,
 	})
 	if err != nil {

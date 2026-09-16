@@ -40,13 +40,16 @@ var scopeClassOverrides = map[string]string{
 	"GQL Query.routerOverview":                           core.OpClassSensitive,
 	"GQL Mutation.createSSHKey":                          core.OpClassMint,
 	"GQL Mutation.createDatabaseUser":                    core.OpClassMint,
+	"GQL Mutation.createWebhookEndpoint":                 core.OpClassMint,
 	"GQL Query.deployHook":                               core.OpClassMint,
 	"GQL Mutation.regenerateDeployHook":                  core.OpClassMint,
 	"MCP create_api_key":                                 core.OpClassMint,
 	"MCP add_ssh_key":                                    core.OpClassMint,
 	"MCP create_postgres_user":                           core.OpClassMint,
+	"MCP create_webhook_endpoint":                        core.OpClassMint,
 	"MCP get_deploy_hook":                                core.OpClassMint,
 	"MCP regenerate_deploy_hook":                         core.OpClassMint,
+	"REST POST /v1/webhooks":                             core.OpClassMint,
 
 	// Env-var / secret-file value reveals (list responses include values).
 	"REST GET /v1/services/{id}/env-vars":              core.OpClassSensitive,
