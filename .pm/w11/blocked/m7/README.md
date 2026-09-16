@@ -1,6 +1,6 @@
 # w11 · m7 — Live agent attach and needs-decision steering
 
-**Worker:** worker11 **Goal:** attach and reattach from mobile to a live agent session, replay then follow the transcript without duplication, answer an explicit needs-decision pause, and survive app backgrounding. **Status:** blocked on ADR047 phase-2 gateway
+**Worker:** worker11 **Goal:** attach and reattach from mobile to a live agent session, replay then follow the transcript without duplication, answer an explicit needs-decision pause, and survive app backgrounding. **Status:** blocked — but no longer on what this line used to say. The ADR047 phase-2 gateway **shipped in `w3/m43`** (attach listener with verbatim SSE replay + live splice, durable transcript store, driver `POST /turn`, `attach-ticket`), so the protocol/storage contract this milestone was waiting to consume now exists. The remaining hard gate is `w11/m6/t009`, which is blocked on physical-device verification. All 9 tasks are unimplemented.
 
 ## Gating
 

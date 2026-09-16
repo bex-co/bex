@@ -38,8 +38,12 @@ pem = sys.argv[1]
 text = subprocess.check_output(
     ["openssl", "ec", "-in", pem, "-noout", "-text", "-conv_form", "uncompressed"],
     stderr=subprocess.DEVNULL, text=True)
-priv_m = re.search(r"priv:\s*((?:[0-9a-fA-F:]+\s*)+)", text)
-pub_m = re.search(r"pub:\s*((?:[0-9a-fA-F:]+\s*)+)", text)
+# Only the indented continuation lines belong to the field: the unindented
+# "ASN1 OID: prime256v1" that follows `pub:` starts with a hex-digit letter,
+# so a looser character-class match swallows its "A" and yields an odd nibble
+# count.
+priv_m = re.search(r"^\s*priv:\s*\n((?:[ \t]+[0-9a-fA-F:]+\n)+)", text, re.M)
+pub_m = re.search(r"^\s*pub:\s*\n((?:[ \t]+[0-9a-fA-F:]+\n)+)", text, re.M)
 if not priv_m or not pub_m:
     sys.exit("openssl did not emit a P-256 key")
 def hx(s):
