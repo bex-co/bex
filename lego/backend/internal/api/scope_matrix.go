@@ -18,8 +18,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -157,20 +155,6 @@ func (s *Server) withScopeClassREST(mux *http.ServeMux, next http.Handler) http.
 			}
 		}
 		next.ServeHTTP(w, r)
-	})
-}
-
-func writeGraphQLErrors(w http.ResponseWriter, err error) {
-	entry := map[string]any{"message": err.Error()}
-	var coded *core.CodedError
-	if errors.As(err, &coded) {
-		if ext := coded.Extensions(); len(ext) > 0 {
-			entry["extensions"] = ext
-		}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"errors": []map[string]any{entry},
 	})
 }
 

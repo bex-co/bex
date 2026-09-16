@@ -28,7 +28,6 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"net"
 	"path"
 	"strings"
 	"time"
@@ -42,6 +41,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/identity"
+	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -543,15 +543,15 @@ func (o Options) CacheRef() string {
 // equals ImageRef; the separate registry alias exists for the in-cluster HTTP
 // Zot endpoint described on Options.KpackRegistry.
 func (o Options) KpackImageRef() string {
-	registry := o.KpackRegistry
-	if registry == "" {
-		registry = o.Registry
+	host := o.KpackRegistry
+	if host == "" {
+		host = o.Registry
 	}
 	rev := o.Revision
 	if rev == "" {
 		rev = defaultRevision
 	}
-	return fmt.Sprintf("%s/%s:%s", registry, o.RepoPath(), rev)
+	return fmt.Sprintf("%s/%s:%s", host, o.RepoPath(), rev)
 }
 
 // EnsureBuild dispatches the selected in-cluster builder if it is not already
@@ -1171,7 +1171,7 @@ const cachePurgeBestEffort = `skopeo "$@" || echo "bex: build cache purge skippe
 // (.pm/w1/046.md F11).
 func skopeoCopyArgs(o Options, src, dst string, flags ...string) []string {
 	args := append([]string{"copy"}, flags...)
-	if registryIsClusterLocal(o.Registry) {
+	if registry.ClusterLocal(o.Registry) {
 		if strings.HasPrefix(dst, "docker://") {
 			args = append(args, "--dest-tls-verify=false")
 		} else {
@@ -1189,7 +1189,7 @@ func skopeoCopyArgs(o Options, src, dst string, flags ...string) []string {
 // same way copies do.
 func skopeoDeleteArgs(o Options, ref string) []string {
 	args := []string{"delete"}
-	if registryIsClusterLocal(o.Registry) {
+	if registry.ClusterLocal(o.Registry) {
 		args = append(args, "--tls-verify=false")
 	}
 	if o.PushSecret != "" {
@@ -1345,35 +1345,6 @@ rm -rf .git`},
 			},
 		},
 	}
-}
-
-// registryIsClusterLocal reports whether a registry host is the in-cluster or
-// local-dev endpoint that legitimately speaks plain HTTP. Everything else is
-// treated as a real registry whose TLS must be verified.
-//
-// The signal is the hostname rather than a scheme because BEX_REGISTRY carries
-// no scheme (it is a host:port such as "zot.bex-registry.svc:5000").
-func registryIsClusterLocal(registry string) bool {
-	host := registry
-	if h, _, err := net.SplitHostPort(registry); err == nil {
-		host = h
-	}
-	host = strings.ToLower(strings.Trim(host, "[]"))
-	switch host {
-	case "", "localhost", "127.0.0.1", "::1":
-		return true
-	}
-	if ip := net.ParseIP(host); ip != nil {
-		return ip.IsLoopback()
-	}
-	for _, suffix := range []string{".svc", ".svc.cluster.local", ".cluster.local", ".local", ".internal"} {
-		if strings.HasSuffix(host, suffix) {
-			return true
-		}
-	}
-	// A single-label host (no dot) cannot be a public DNS name; it is a
-	// cluster-local Service short name or a dev alias.
-	return !strings.Contains(host, ".")
 }
 
 // buildPodFailurePolicy encodes ADR060 D2: retry only what retrying can fix.
