@@ -237,14 +237,22 @@ func TestScopeClassEnforcementWriteToken(t *testing.T) {
 	}
 	// Mint class is write at dispatch; AuthorizeMintClass still refuses a
 	// third-party client (plain 403, not INSUFFICIENT_SCOPE).
-	w := do(t, h, http.MethodPost, "/v1/api-keys", testToken, `{"name":"x"}`)
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("third-party write token mint = %d, want 403", w.Code)
-	}
-	var body map[string]any
-	_ = json.Unmarshal(w.Body.Bytes(), &body)
-	if body["code"] == core.InsufficientScopeCode {
-		t.Errorf("AuthorizeMintClass must stay a plain forbidden, got INSUFFICIENT_SCOPE: %v", body)
+	for _, tc := range []struct {
+		path string
+		body string
+	}{
+		{"/v1/api-keys", `{"name":"x"}`},
+		{"/v1/webhooks", `{"ownerId":"tea-default","name":"x","url":"https://example.com/h","eventFilter":["deploy_ended"],"enabled":true}`},
+	} {
+		w := do(t, h, http.MethodPost, tc.path, testToken, tc.body)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("third-party write token mint %s = %d (%s), want 403", tc.path, w.Code, w.Body.String())
+		}
+		var resp map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp["code"] == core.InsufficientScopeCode {
+			t.Errorf("%s: AuthorizeMintClass must stay a plain forbidden, got INSUFFICIENT_SCOPE: %v", tc.path, resp)
+		}
 	}
 }
 
