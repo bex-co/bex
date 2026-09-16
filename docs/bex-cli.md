@@ -48,7 +48,7 @@ The browser login stores a short-lived access token and a refresh token. The CLI
 
 ## Configuration
 
-These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable wins, as an intentional escape hatch for upstream CLI developers; do not set `RENDER_*` in normal Bex use.
+These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable wins, as an intentional escape hatch for upstream CLI developers; do not set `RENDER_*` in normal Bex use. In particular, a non-empty `RENDER_CLI_CONFIG_DIR` is honored (the launcher does not pin `RENDER_CLI_CONFIG_PATH` over it), so isolation that follows upstream's recommended directory override writes inside that directory rather than `~/.bex/cli.yaml`.
 
 | Bex variable | Effect |
 | --- | --- |
