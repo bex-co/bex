@@ -80,6 +80,10 @@ const enSSHKeys: Record<string, TranslationEntry> = {
     description: "Duplicate SSH key toast",
   },
   "sshKeys.delete": { message: "Delete", description: "Delete SSH key action" },
+  "sshKeys.deleteNamed": {
+    message: "Delete SSH key {name}",
+    description: "Row delete button aria-label identifying the SSH key",
+  },
   "sshKeys.deleteTitle": {
     message: "Delete {name}?",
     description: "Delete SSH key confirmation title",

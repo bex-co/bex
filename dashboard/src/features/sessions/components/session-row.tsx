@@ -3,6 +3,7 @@ import { Badge } from "@/common/components/ui/badge";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
+import { formatRelativeAge } from "@/features/services/lib/format";
 import type { SessionView } from "@/features/sessions/types";
 
 export interface SessionRowProps {
@@ -15,6 +16,9 @@ export interface SessionRowProps {
 /** One Active Sessions row: device/location, last active, and revoke (never for the current session). */
 export function SessionRow({ session, onRevoke, revoking }: SessionRowProps) {
   const { t } = useTranslations();
+  const device = session.userAgent ?? t("activeSessions.unknownDevice");
+  const location = session.location ?? session.ipAddress ?? "—";
+  const lastActive = formatRelativeAge(session.authenticatedAt);
 
   return (
     <TableRow>
@@ -35,7 +39,11 @@ export function SessionRow({ session, onRevoke, revoking }: SessionRowProps) {
       <TableCell className="text-right whitespace-nowrap">
         {session.current ? null : (
           <RevokeIconButton
-            label={t("activeSessions.revoke")}
+            label={t("activeSessions.revokeNamed", {
+              device,
+              location,
+              lastActive,
+            })}
             confirmTitle={t("activeSessions.revokeConfirmTitle")}
             confirmBody={t("activeSessions.revokeConfirmBody")}
             cancelLabel={t("activeSessions.revokeCancel")}

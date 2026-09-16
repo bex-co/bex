@@ -50,7 +50,7 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
         <RevokeIconButton
-          label={t("apiKeys.revoke")}
+          label={t("apiKeys.revokeNamed", { name: entry.name })}
           confirmTitle={t("apiKeys.revokeConfirmTitle", { name: entry.name })}
           confirmBody={t("apiKeys.revokeConfirmBody")}
           cancelLabel={t("apiKeys.revokeCancel")}

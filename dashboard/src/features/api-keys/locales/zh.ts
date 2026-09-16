@@ -150,6 +150,10 @@ const zhApiKeys: Record<string, TranslationEntry> = {
     message: "撤销",
     description: "Row action / confirmation button to revoke a key",
   },
+  "apiKeys.revokeNamed": {
+    message: "撤销 API 密钥 {name}",
+    description: "Row revoke button aria-label identifying the API key",
+  },
   "apiKeys.revokeConfirmTitle": {
     message: "撤销 {name}？",
     description: "Revoke-confirmation dialog title",

@@ -116,7 +116,11 @@ describe("RegistryCredentialsPanel", () => {
     const user = userEvent.setup();
     render(<RegistryCredentialsPanel />);
 
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Delete registry credential GHCR prod",
+      }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(
       within(dialog).getAllByRole("button", { name: "Delete" })[0],
@@ -133,7 +137,11 @@ describe("RegistryCredentialsPanel", () => {
     const user = userEvent.setup();
     render(<RegistryCredentialsPanel />);
 
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Delete registry credential GHCR prod",
+      }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(
       within(dialog).getAllByRole("button", { name: "Delete" })[0],

@@ -64,7 +64,7 @@ export function ConnectedAgentRow({
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
         <RevokeIconButton
-          label={t("connectedAgents.revoke")}
+          label={t("connectedAgents.revokeNamed", { name: agent.clientName })}
           confirmTitle={t("connectedAgents.revokeConfirmTitle", {
             name: agent.clientName,
           })}

@@ -90,7 +90,9 @@ describe("ConnectedAgentsPanel", () => {
     const user = userEvent.setup();
     render(<ConnectedAgentsPanel />);
 
-    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    await user.click(
+      screen.getByRole("button", { name: "Revoke connected agent Claude Code" }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(
       within(dialog).getAllByRole("button", { name: "Revoke" })[0],

@@ -111,6 +111,11 @@ const enRegistryCredentials: Record<string, TranslationEntry> = {
     message: "Delete",
     description: "Row action / confirmation button to delete a credential",
   },
+  "registryCredentials.deleteNamed": {
+    message: "Delete registry credential {name}",
+    description:
+      "Row delete button aria-label identifying the registry credential",
+  },
   "registryCredentials.edit": {
     message: "Edit",
     description: "Row action to open the edit-credential dialog",
