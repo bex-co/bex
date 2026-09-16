@@ -21,10 +21,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"reflect"
+	goruntime "runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -1029,22 +1035,95 @@ func TestSweepCoversEveryWiredService(t *testing.T) {
 	}
 }
 
-// baseMethodNames returns the promoted core.Base helpers (Authorize/GetApp/
-// AppPods/Now) — kernel primitives, not verbs, excluded from every sweep by
-// name.
-func baseMethodNames() map[string]bool {
-	names := map[string]bool{}
-	bt := reflect.TypeOf(&core.Base{})
-	for i := 0; i < bt.NumMethod(); i++ {
-		names[bt.Method(i).Name] = true
-	}
-	return names
+// backendModulePath is the Go module path of lego/backend — used to map a
+// reflect type's PkgPath onto a source directory under this checkout.
+const backendModulePath = "github.com/bex-co/bex/lego/backend"
+
+// serverTestFile is this source file's path, captured in init so AST scans can
+// resolve lego/backend/ without depending on the test process cwd.
+var serverTestFile string
+
+func init() {
+	_, serverTestFile, _, _ = goruntime.Caller(0)
 }
 
-// isVerbMethod reports whether m is a verb the sweeps below walk: exported,
-// (ctx, ...) -> (..., error), and not one of the promoted core.Base helpers.
-func isVerbMethod(baseMethods map[string]bool, m reflect.Method) bool {
-	if baseMethods[m.Name] {
+// backendRoot is lego/backend on disk (parent of internal/).
+var backendRoot = sync.OnceValue(func() string {
+	// server_test.go lives in internal/api/ → two levels up is lego/backend/.
+	return filepath.Clean(filepath.Join(filepath.Dir(serverTestFile), "..", ".."))
+})
+
+// declaredMethodsCache keys "PkgPath.TypeName" → method names declared on that
+// named type in non-test source (promoted embedded methods are absent).
+var declaredMethodsCache sync.Map
+
+// declaredMethodsOn returns the set of method names declared in source on
+// recv's named type (pointer or value). Promoted *core.Base helpers do not
+// appear — that is how isVerbMethod skips them by declaring type rather than
+// by name (w4/087), so a service that legally shadows a Base name still joins
+// the sweeps.
+func declaredMethodsOn(recv reflect.Type) map[string]bool {
+	if recv.Kind() == reflect.Pointer {
+		recv = recv.Elem()
+	}
+	key := recv.PkgPath() + "." + recv.Name()
+	if v, ok := declaredMethodsCache.Load(key); ok {
+		return v.(map[string]bool)
+	}
+	methods := parseDeclaredMethods(recv.PkgPath(), recv.Name())
+	actual, _ := declaredMethodsCache.LoadOrStore(key, methods)
+	return actual.(map[string]bool)
+}
+
+// parseDeclaredMethods walks non-test .go files in pkgPath and returns every
+// method name whose receiver is *typeName or typeName.
+func parseDeclaredMethods(pkgPath, typeName string) map[string]bool {
+	rel := strings.TrimPrefix(pkgPath, backendModulePath+"/")
+	if rel == pkgPath {
+		return map[string]bool{}
+	}
+	dir := filepath.Join(backendRoot(), rel)
+	fset := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fset, dir, func(fi fs.FileInfo) bool {
+		return !strings.HasSuffix(fi.Name(), "_test.go")
+	}, 0)
+	if err != nil {
+		panic(fmt.Sprintf("parseDeclaredMethods %s: %v", dir, err))
+	}
+	out := map[string]bool{}
+	for _, p := range pkgs {
+		for _, file := range p.Files {
+			for _, decl := range file.Decls {
+				fd, ok := decl.(*ast.FuncDecl)
+				if !ok || fd.Recv == nil || len(fd.Recv.List) != 1 || fd.Name == nil {
+					continue
+				}
+				if receiverTypeName(fd.Recv.List[0].Type) == typeName {
+					out[fd.Name.Name] = true
+				}
+			}
+		}
+	}
+	return out
+}
+
+func receiverTypeName(expr ast.Expr) string {
+	switch r := expr.(type) {
+	case *ast.StarExpr:
+		if id, ok := r.X.(*ast.Ident); ok {
+			return id.Name
+		}
+	case *ast.Ident:
+		return r.Name
+	}
+	return ""
+}
+
+// isVerbMethod reports whether m on recv is a verb the sweeps below walk:
+// declared on recv's named type (not a promoted *core.Base helper), exported,
+// (ctx, ...) -> (..., error).
+func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
+	if !declaredMethodsOn(recv)[m.Name] {
 		return false
 	}
 	mt := m.Func.Type()
@@ -1082,14 +1161,13 @@ func callVerb(cv reflect.Value, m reflect.Method, ctx context.Context) error {
 // fn once per verb with the zero-valued call's error result.
 func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(serviceName, method string, err error)) int {
 	t.Helper()
-	baseMethods := baseMethodNames()
 	swept := 0
 	for _, svc := range services {
 		cv := reflect.ValueOf(svc)
 		ct := cv.Type()
 		for i := 0; i < ct.NumMethod(); i++ {
 			m := ct.Method(i)
-			if !isVerbMethod(baseMethods, m) {
+			if !isVerbMethod(ct, m) {
 				continue
 			}
 			swept++
@@ -1099,9 +1177,19 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 	return swept
 }
 
-// wantMinSweptVerbs is the sanity floor every reflection sweep below checks
-// its walk against — shared so the two sweeps' thresholds can't drift apart.
-const wantMinSweptVerbs = 19
+// wantSweptVerbs is the pinned exact verb count every reflection sweep below
+// checks its walk against — shared so the sweeps' thresholds can't drift
+// apart (w4/087). Bump deliberately in the same commit that adds or removes a
+// verb; a loose floor would absorb silent filter regressions.
+const wantSweptVerbs = 332
+
+func assertSweptVerbCount(t *testing.T, swept int) {
+	t.Helper()
+	if swept != wantSweptVerbs {
+		t.Fatalf("swept %d verbs, want exactly %d — a verb was added or removed; update wantSweptVerbs",
+			swept, wantSweptVerbs)
+	}
+}
 
 // sweepVerbPairs walks two parallel service inventories (same types, same
 // method order — sweepableServices called twice, once per core.Base) verb by
@@ -1118,14 +1206,13 @@ const wantMinSweptVerbs = 19
 // a style choice, so the interleaving here is load-bearing.
 func sweepVerbPairs(t *testing.T, ctx context.Context, allowServices, denyServices []any, fn func(serviceName, method string, allowErr, denyErr error)) int {
 	t.Helper()
-	baseMethods := baseMethodNames()
 	swept := 0
 	for i := range allowServices {
 		av, dv := reflect.ValueOf(allowServices[i]), reflect.ValueOf(denyServices[i])
 		ct := av.Type()
 		for j := 0; j < ct.NumMethod(); j++ {
 			m := ct.Method(j)
-			if !isVerbMethod(baseMethods, m) {
+			if !isVerbMethod(ct, m) {
 				continue
 			}
 			swept++
@@ -1150,9 +1237,7 @@ func TestAuthzGuardsEveryVerb(t *testing.T) {
 			t.Errorf("%s.%s: unguarded — returned %v, want ErrForbidden", serviceName, method, err)
 		}
 	})
-	if swept < wantMinSweptVerbs {
-		t.Fatalf("sweep found only %d verbs — reflection filter broke?", swept)
-	}
+	assertSweptVerbCount(t, swept)
 }
 
 // fakeAuditSink records every event handed to it (w4/m10, t004's acceptance
@@ -1231,9 +1316,7 @@ func TestAuditCoversEveryWriteVerbExactlyOnce(t *testing.T) {
 				t.Errorf("%s.%s: event Caller = %q, want the calling identity", serviceName, method, allowEv.Caller)
 			}
 		})
-	if swept < wantMinSweptVerbs {
-		t.Fatalf("sweep found only %d verbs — reflection filter broke?", swept)
-	}
+	assertSweptVerbCount(t, swept)
 	if writeVerbs == 0 {
 		t.Fatal("no write verbs recorded an audit event — the hook or the sweep is broken")
 	}

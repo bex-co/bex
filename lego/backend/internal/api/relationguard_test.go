@@ -148,14 +148,13 @@ func TestFetchByNameUsesTheVerbsOwnRelation(t *testing.T) {
 		})
 	}
 
-	baseMethods := baseMethodNames()
 	crossed := 0 // verbs that actually reached a resource in the other workspace
 	inventory := fixture(&relationRecorder{})
 	for si := range inventory {
 		ct := reflect.TypeOf(inventory[si])
 		for i := 0; i < ct.NumMethod(); i++ {
 			m := ct.Method(i)
-			if !isVerbMethod(baseMethods, m) {
+			if !isVerbMethod(ct, m) {
 				continue
 			}
 			rec := &relationRecorder{}
