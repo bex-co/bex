@@ -454,14 +454,23 @@ spec:
                 forward_to = [loki.write.default.receiver]
               }
 
-              // --- type=build: build Job pod logs ---
+              // --- type=build: build Job pod logs (+ pre-deploy stdout) ---
               //
               // Build pods carry app.bex.co/component=build (set by the operator
-              // on every build Job's pod template, w7/m28). The `app` label is
-              // derived from app.bex.co/build (the service name), and `namespace`
-              // from the pod's own namespace — overridden by app.bex.co/app-namespace
-              // when the build Job runs in a separate BEX_BUILD_NAMESPACE so the
-              // stream lands under the App's namespace, not the build namespace.
+              // on every build Job's pod template, w7/m28). Pre-deploy Jobs carry
+              // component=predeploy (w1/m33); their stdout also ships here as
+              // type=build so Render-compatible clients (closed --type enum:
+              // app|request|build) can diagnose pre_deploy_failed without the
+              // bex-only type=predeploy live read (w5/m100 / inbox 062). Live
+              // type=predeploy remains the precise Job-pod extension.
+              //
+              // The `app` label is derived from app.bex.co/build when set, else
+              // app.bex.co/predeploy (service name). Do not stamp build= on
+              // predeploy pods — BuildPods / live type=build SSE select on that
+              // label alone. `namespace` comes from the pod's own namespace —
+              // overridden by app.bex.co/app-namespace when the build Job runs
+              // in a separate BEX_BUILD_NAMESPACE so the stream lands under the
+              // App's namespace, not the build namespace.
               //
               // FILE-BASED tailing, deliberately not loki.source.kubernetes —
               // sequential init containers defeat the API tailer; see the
@@ -471,10 +480,10 @@ spec:
               discovery.relabel "build_pods" {
                 targets = discovery.kubernetes.pods.targets
 
-                // Keep only build Job pods.
+                // Keep build Job pods and pre-deploy Job pods (both → type=build).
                 rule {
                   source_labels = ["__meta_kubernetes_pod_label_app_bex_co_component"]
-                  regex         = "build"
+                  regex         = "build|predeploy"
                   action        = "keep"
                 }
                 // Default: use the pod's actual namespace.
@@ -491,9 +500,20 @@ spec:
                   target_label  = "namespace"
                   replacement   = "$1"
                 }
+                // Prefer build's service label; fall back to predeploy's.
+                // (.+) skips empty so a missing build label does not clobber
+                // the subsequent predeploy rule (and vice versa for build pods).
                 rule {
                   source_labels = ["__meta_kubernetes_pod_label_app_bex_co_build"]
+                  regex         = "(.+)"
                   target_label  = "app"
+                  replacement   = "$1"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_bex_co_predeploy"]
+                  regex         = "(.+)"
+                  target_label  = "app"
+                  replacement   = "$1"
                 }
                 rule {
                   source_labels = ["__meta_kubernetes_pod_name"]
@@ -530,7 +550,8 @@ spec:
                 // timestamp, which is what keeps a late-attached tail
                 // time-accurate instead of stamping lines at read time.
                 stage.cri { }
-                // Drop pods that somehow lack a build label (defensive guard).
+                // Drop pods that somehow lack a service attribution label
+                // (defensive guard — both build and predeploy sources set `app`).
                 stage.drop {
                   source              = "app"
                   expression          = "^$"
