@@ -1,20 +1,20 @@
 # w4 · m108 — Make deploy provenance and request metrics honest: public-repo commits, rate-vs-count charts, rollback label
 
-**Worker:** worker4 **Goal:** A service deployed from a Public Git URL knows which commit it is running, the Metrics page's Total Requests reports the number of requests that actually happened, and the rollback trigger label stops mangling the deploy id it names. **Status:** todo
+**Worker:** worker4 **Goal:** A service deployed from a Public Git URL knows which commit it is running, the Metrics page's Total Requests reports the number of requests that actually happened, and the rollback trigger label stops mangling the deploy id it names. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                | est   | depends_on                                       |
 | ---- | ------------------------------------------------------------------------------------ | ----- | ------------------------------------------------ |
-| t001 | `http_requests` returns a per-bucket request count, not a per-second rate              | 1h    | —                                                |
-| t002 | Total Requests chart and aggregate read the corrected counts                           | 40m   | w4/m108/t001                                     |
-| t003 | Settle the Outbound Bandwidth chart's rate-vs-count shape against the metering control | 40m   | w4/m108/t001                                     |
-| t004 | Record a commit for deploys of a service created from a Public Git URL                 | 1h30m | —                                                |
-| t005 | The rollback trigger label stops title-casing the deploy id it names                   | 30m   | —                                                |
-| t006 | Render parity: cross-surface check for the metrics and deploy-commit changes           | 30m   | w4/m108/t002, w4/m108/t003, w4/m108/t004, w4/m108/t005 |
-| t007 | Simplify the code this milestone touched                                               | 20m   | w4/m108/t006                                     |
-| t008 | Test coverage for the shipped behavior                                                 | 40m   | w4/m108/t006                                     |
-| t009 | Closeout                                                                               | 15m   | w4/m108/t007, w4/m108/t008                       |
+| t001 | `http_requests` returns a per-bucket request count, not a per-second rate — **DONE** | 1h    | —                                                |
+| t002 | Total Requests chart and aggregate read the corrected counts — **DONE**              | 40m   | w4/m108/t001                                     |
+| t003 | Settle the Outbound Bandwidth chart's rate-vs-count shape against the metering control — **DONE** | 40m   | w4/m108/t001                                     |
+| t004 | Record a commit for deploys of a service created from a Public Git URL — **DONE**      | 1h30m | —                                                |
+| t005 | The rollback trigger label stops title-casing the deploy id it names — **DONE**    | 30m   | —                                                |
+| t006 | Render parity: cross-surface check for the metrics and deploy-commit changes           | — **DONE** 30m   | w4/m108/t002, w4/m108/t003, w4/m108/t004, w4/m108/t005 |
+| t007 | Simplify the code this milestone touched                                               | — **DONE** 20m   | w4/m108/t006                                     |
+| t008 | Test coverage for the shipped behavior                                                 | — **DONE** 40m   | w4/m108/t006                                     |
+| t009 | Closeout                                                                               | — **DONE** 15m   | w4/m108/t007, w4/m108/t008                       |
 
 ## Definition of done
 

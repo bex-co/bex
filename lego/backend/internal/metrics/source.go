@@ -381,10 +381,17 @@ func traefikServiceLabel(namespace, app string, port int32) string {
 // not a matched Host()/PathPrefix() value), so a host/path-filtered read is never
 // routed here — it goes to the Loki request-metrics source instead (w5/m58); this
 // builder ignores RequestMetricsRequest.Host/Path.
+//
+// The [Ns] lookback on increase/rate/count_over_time is always stepSeconds
+// (req.Resolution) — the same value passed as query_range's step — so each
+// sample covers exactly one bucket. Widening or narrowing that window relative
+// to the step would double-count or drop traffic at the seams.
 func promQueryFor(req RequestMetricsRequest) string {
 	selector := fmt.Sprintf(`service=%q`, traefikServiceLabel(req.Namespace, req.App, req.Port))
 	if req.Metric == MetricBandwidth {
-		return egressquery.SumRates(egressquery.App(req.AppID, req.Routers, req.Direct), stepSeconds(req.Resolution))
+		// Per-bucket bytes (increase over the step), matching month-to-date and
+		// usage metering — see docs/render-artifacts/metrics-page.md (w4/m108).
+		return egressquery.SumIncreases(egressquery.App(req.AppID, req.Routers, req.Direct), stepSeconds(req.Resolution))
 	}
 	sel := []string{selector}
 	if c := codeMatcher(req.StatusCode); c != "" {
@@ -399,13 +406,29 @@ func promQueryFor(req RequestMetricsRequest) string {
 		if g := groupLabel(req.GroupBy); g != "" {
 			by += "," + g
 		}
-		return fmt.Sprintf(`histogram_quantile(%s, sum(rate(traefik_service_request_duration_seconds_bucket{%s}[%s])) by (%s))`,
-			strconv.FormatFloat(req.Quantile, 'g', -1, 64), matchers, window, by)
-	default: // http_requests
-		return sumRate("traefik_service_requests_total", matchers, window, groupLabel(req.GroupBy))
+		return fmt.Sprintf(`histogram_quantile(%s, %s)`,
+			strconv.FormatFloat(req.Quantile, 'g', -1, 64),
+			sumRate("traefik_service_request_duration_seconds_bucket", matchers, window, by))
+	default: // http_requests — per-bucket request count (unit: count), not req/s
+		return sumIncrease("traefik_service_requests_total", matchers, window, groupLabel(req.GroupBy))
 	}
 }
 
+// sumIncrease builds sum(increase(counter[window])) — the per-bucket count for
+// http_requests. Prometheus increase() extrapolates over a partial leading
+// bucket (a window that starts mid-scrape); we accept that fractional count
+// rather than clamping, so Σ values over a full window stay within ±1 bucket of
+// the true total. Do not "fix" a fractional sample back into a rate.
+func sumIncrease(metric, matchers, window, by string) string {
+	if by != "" {
+		return fmt.Sprintf(`sum(increase(%s{%s}[%s])) by (%s)`, metric, matchers, window, by)
+	}
+	return fmt.Sprintf(`sum(increase(%s{%s}[%s]))`, metric, matchers, window)
+}
+
+// sumRate builds sum(rate(...)). Remaining caller: http_latency's
+// histogram_quantile path (still a per-second density over buckets). Do not
+// copy-paste this for a count-unit metric — use sumIncrease / egressquery.Increase.
 func sumRate(metric, matchers, window, by string) string {
 	if by != "" {
 		return fmt.Sprintf(`sum(rate(%s{%s}[%s])) by (%s)`, metric, matchers, window, by)

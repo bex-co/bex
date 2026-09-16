@@ -123,7 +123,7 @@ const zhDeploys: Record<string, TranslationEntry> = {
   "deploys.triggerRollback": {
     message: "回滚至 {deployId}",
     description:
-      "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
+      "Deploy header: trigger label for a rollback deploy, naming the restored deploy (id must stay literal — never wrap in CSS capitalize)",
   },
   "deploys.triggerDeployHook": {
     message: "部署钩子",

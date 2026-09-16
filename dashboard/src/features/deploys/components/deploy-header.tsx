@@ -5,26 +5,15 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import type { ReactNode } from "react";
-type Translate = ReturnType<typeof useTranslations>["t"];
 import {
   deployStatusVariant,
   deployStatusKey,
-  deployTriggerKey,
+  deployTriggerLabel,
   preDeployStatusKey,
 } from "@/features/deploys/lib/deploy-status";
 import { formatDeployDuration } from "@/features/deploys/lib/deploy-presentation";
 import { DeployFailureReason } from "./deploy-failure-reason";
 import type { DeployView } from "../hooks/use-deploy";
-
-function triggerLabel(
-  trigger: string,
-  rollbackOf: string,
-  t: Translate,
-): string {
-  if (rollbackOf) return t("deploys.triggerRollback", { deployId: rollbackOf });
-  const key = deployTriggerKey(trigger);
-  return key ? t(key as Parameters<Translate>[0]) : trigger;
-}
 
 export interface DeployHeaderProps {
   /** Nullish while the header `deploy` query is still in flight (w9/m62 t002). */
@@ -102,8 +91,8 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
             <Badge variant={deployStatusVariant(deploy.status)}>
               {t(deployStatusKey(deploy.status) as Parameters<typeof t>[0])}
             </Badge>
-            <span className="text-xs capitalize text-muted-foreground">
-              {triggerLabel(deploy.trigger, deploy.rollbackOf, t)}
+            <span className="text-xs text-muted-foreground">
+              {deployTriggerLabel(deploy.trigger, deploy.rollbackOf, t)}
             </span>
             <span className="font-mono text-xs text-muted-foreground">
               {deploy.id}
@@ -134,11 +123,12 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
           </p>
         )}
 
-        {/* The resolved commit this deploy ran (w9/001 + w2/m42) — Render's
-            deploy-page header leads with it for repo-backed deploys: short
-            SHA + the message's first line + author date when available. Absent
-            (image-backed, or no GitHub connection to resolve through) =>
-            omitted, not faked. */}
+        {/* The resolved commit this deploy ran (w9/001 + w2/m42 + w4/m108
+            t004) — Render's deploy-page header leads with it for
+            repo-backed deploys: short SHA + the message's first line +
+            author date when available. Absent (image-backed, or
+            unresolvable public/private ref) => omitted, not faked. Hash
+            alone still renders cleanly when the message is empty. */}
         {deploy.commitId && (
           <p className="truncate text-xs text-foreground">
             <span className="font-mono text-muted-foreground">

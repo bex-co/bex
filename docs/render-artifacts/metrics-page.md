@@ -53,7 +53,7 @@ The last recorded Network-card drift — Host / Path filters — is closed. The 
 
 | Was drift | Now |
 | --- | --- |
-| Host network filter | ✅ Card-header **Host dropdown**, discovered via the logs `logLabelValues(label:"host")` read (host resolves from the App's own URLs, so the dropdown populates even with no store). A host-filtered `http_requests`/`http_latency` read is served from Loki (`sum(rate(... \| json \| request_host=… [step]))` / `quantile_over_time(… \| unwrap latency_ns …)/1e9`), so the requests + response-time series change to the filtered subset. |
+| Host network filter | ✅ Card-header **Host dropdown**, discovered via the logs `logLabelValues(label:"host")` read (host resolves from the App's own URLs, so the dropdown populates even with no store). A host-filtered `http_requests`/`http_latency` read is served from Loki (`sum(count_over_time(... \| json \| request_host=… [step]))` / `quantile_over_time(… \| unwrap latency_ns …)/1e9`), so the requests + response-time series change to the filtered subset. |
 | Path network filter | ✅ Card-header **free-text Path input** (committed on Enter/blur, clearable). `path` is a high-cardinality line field, not a discoverable Loki label — so, exactly like the Logs tab, it is a text filter, not a fabricated dropdown; its value becomes the Loki `request_path` line filter. |
 | Store-gated honest state | ✅ Host/Path apply only to `http_requests`/`http_latency` (bandwidth + host/path → named 400). With no `BEX_LOKI_URL`, a host/path-filtered read returns `ErrLogStoreUnavailable` (503) and the two sections render an explicit "Host and Path filters need the log store" state — **never** a silently-unfiltered chart (the Logs-tab 503 pattern). |
 
@@ -89,3 +89,19 @@ m89 checked no-silent-broadening as complete, but its prune effect removed unava
 ## Cross-surface note
 
 w5/m42 changed only `dashboard/`; **w5/m56 extended the metrics _read_ itself** — REST (`GET /v1/metrics/*` repeated `quantile`), GraphQL (`metrics` `parameters[]`), and MCP (`get_metrics` `quantiles[]`) now all serve multiple quantiles in one call through one `MetricsWithQuantiles` core, so the three API surfaces stay in lock-step. The p90 default and 12 h window remain client-side choices (bex-api's own defaults — quantile 0.95, 1 h span — still apply to direct API callers, matching Render's API/UI split: Render's UI defaults also differ from its API defaults). The percentile "All" and the "Last 30 days"/"Custom" ranges are ungated (Render plan-gates the latter two).
+
+## Corrected by w4/m108 (2026-09-16) — rate vs per-bucket count
+
+Live QA on production (`srv-dal3f2rkmutc73d7q9l0`, `srv-d9bj8s3eg85c7390eb9g`) showed Total Requests under-reporting by roughly the resolution step: 12 curls in one minute produced GraphQL value `0.177…` (= 8/45, a **rate**), and a busy service reading ≈7 on every bucket was summed by the UI into "727 requests" for a 12 h window that actually served ~300k. Both Prometheus (`sum(rate(traefik_service_requests_total[Ns]))`) and Loki (`sum(rate(<selector>[Ns]))`) builders returned req/s while `unit: "count"` and MCP `http_request_count` claimed a count.
+
+| Metric | Before | After (w4/m108) |
+| --- | --- | --- |
+| `http_requests` (Prometheus) | `sum(rate(...[step]))` → req/s | `sum(increase(...[step]))` → requests in the bucket |
+| `http_requests` (Loki, host/path) | `sum(rate(...[step]))` → lines/s | `sum(count_over_time(...[step]))` → lines in the bucket |
+| `bandwidth` chart | `egressquery.SumRates` → B/s | `egressquery.SumIncreases` → bytes in the bucket |
+| `bandwidth` month-to-date / usage metering | already `Increase` | **unchanged** (billing path untouched) |
+| `http_latency` | `histogram_quantile` / `quantile_over_time` | **unchanged** |
+
+**Bandwidth decision (evidenced).** The chart used `rate` while the "N used this month" footer and `usage/service.go` metering used `increase`. A 30-minute capture on `srv-d9bj8s3eg85c7390eb9g` returned ~1e6-scale points with `unit: "bytes"`; if those were B/s, sustained ≈1 MB/s implies ~1.3 TB over ~16 days of the month, against a footer of 164 GiB (~8.5× higher than the month's average rate — consistent with either a peak burst **or** a mislabelled rate). Mechanism check: for a counter sampled at step `S`, `rate(...[S]) * S ≈ increase(...[S])`. Converting the chart to `SumIncreases` over the same step makes Σ(chart points over a day) reconcile with that day's metered bytes and with the month-to-date `Increase` figure; the wire `unit` stays `"bytes"` (per-bucket bytes, not B/s). Render.com's Outbound Bandwidth chart is also a throughput-shaped series with a separate month-to-date total — bex deliberately aligns chart and footer on the **count** primitive so a reader can sum the chart without multiplying by step.
+
+Partial leading buckets: Prometheus `increase()` may return a fractional count when the window starts mid-scrape; bex accepts that (dashboard `Math.round` on the aggregate) rather than clamping — documented on `sumIncrease` in `lego/backend/internal/metrics/source.go`.

@@ -37,7 +37,7 @@ import { useDeploys, type DeployRow } from "../hooks/use-deploys";
 import {
   deployStatusVariant,
   deployStatusKey,
-  deployTriggerKey,
+  deployTriggerLabel,
   isCancelableDeployStatus,
   isTerminalDeployStatus,
   preDeployStatusKey,
@@ -74,13 +74,6 @@ export interface DeploysListPageProps {
 }
 
 type Translate = ReturnType<typeof useTranslations>["t"];
-
-function triggerLabel(d: DeployRow, t: Translate): string {
-  if (d.rollbackOf)
-    return t("deploys.triggerRollback", { deployId: d.rollbackOf });
-  const key = deployTriggerKey(d.trigger);
-  return key ? t(key as Parameters<Translate>[0]) : d.trigger;
-}
 
 // The Duration column value: the settled elapsed time once a deploy finishes,
 // a running-elapsed marker while an active deploy is still building/deploying,
@@ -280,13 +273,13 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                   {/* Until the card is wide enough for the full table, fold
                       Trigger/Duration under the deploy identity instead. */}
                   <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground @3xl/deploys:hidden">
-                    <span className="capitalize">{triggerLabel(d, t)}</span>
+                    <span>{deployTriggerLabel(d.trigger, d.rollbackOf, t)}</span>
                     <span aria-hidden="true">·</span>
                     <span className="tabular-nums">{durationLabel(d, t)}</span>
                   </div>
                 </TableCell>
-                <TableCell className="hidden whitespace-nowrap align-top text-sm capitalize text-muted-foreground @3xl/deploys:table-cell">
-                  {triggerLabel(d, t)}
+                <TableCell className="hidden whitespace-nowrap align-top text-sm text-muted-foreground @3xl/deploys:table-cell">
+                  {deployTriggerLabel(d.trigger, d.rollbackOf, t)}
                 </TableCell>
                 <TableCell className="hidden whitespace-nowrap align-top tabular-nums text-sm text-muted-foreground @3xl/deploys:table-cell">
                   {durationLabel(d, t)}

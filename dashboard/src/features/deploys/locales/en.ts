@@ -113,32 +113,32 @@ const enDeploys: Record<string, TranslationEntry> = {
       "Deploy header: placeholder for a timestamp that hasn't happened yet",
   },
   "deploys.triggerCreate": {
-    message: "first deploy",
+    message: "First Deploy",
     description: "Deploy header: trigger=create label",
   },
   "deploys.triggerApi": {
-    message: "manual deploy",
+    message: "Manual Deploy",
     description: "Deploy header: trigger=api label",
   },
   "deploys.triggerRollback": {
-    message: "rollback to {deployId}",
+    message: "Rollback to {deployId}",
     description:
-      "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
+      "Deploy header: trigger label for a rollback deploy, naming the restored deploy (id must stay literal — never wrap in CSS capitalize)",
   },
   "deploys.triggerDeployHook": {
-    message: "deploy hook",
+    message: "Deploy Hook",
     description: "Deploy row: trigger=deploy_hook label (secret-URL trigger)",
   },
   "deploys.triggerBlueprint": {
-    message: "blueprint sync",
+    message: "Blueprint Sync",
     description: "Deploy row: trigger=blueprint label (Blueprint sync deploy)",
   },
   "deploys.triggerNewCommit": {
-    message: "new commit",
+    message: "New Commit",
     description: "Deploy row: trigger=new_commit label (git push redeploy)",
   },
   "deploys.triggerConfigChange": {
-    message: "config change",
+    message: "Config Change",
     description:
       "Deploy row: trigger=config_change label (a Settings, env var, or env-group edit that forced a rebuild)",
   },

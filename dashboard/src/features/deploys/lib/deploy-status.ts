@@ -128,9 +128,8 @@ export function preDeployStatusKey(status: string): string | null {
 
 // Deploy.trigger's plain-string values (store.Trigger* — "create"|"api"|
 // "deploy_hook"|"blueprint"|"rollback"). "rollback" is deliberately absent
-// here: the deploy header/list render it via `deploys.triggerRollback`,
-// interpolating the restored deploy's id (rollbackOf) — a param this pure
-// enum→key lookup has no way to carry — so that case stays in the caller. An
+// here: deployTriggerLabel interpolates rollbackOf so the restored deploy id
+// stays literal (w4/m108/t005 — no CSS capitalize over the id). An
 // unrecognized value returns null so the caller can fall back to rendering it
 // verbatim.
 export function deployTriggerKey(trigger: string): string | null {
@@ -150,4 +149,15 @@ export function deployTriggerKey(trigger: string): string | null {
     default:
       return null;
   }
+}
+
+/** Locale-backed trigger line shared by list + header (w4/m108/t007). */
+export function deployTriggerLabel(
+  trigger: string,
+  rollbackOf: string | undefined,
+  t: (key: string, values?: Record<string, string>) => string,
+): string {
+  if (rollbackOf) return t("deploys.triggerRollback", { deployId: rollbackOf });
+  const key = deployTriggerKey(trigger);
+  return key ? t(key) : trigger;
 }
