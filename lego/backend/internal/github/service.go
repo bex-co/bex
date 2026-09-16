@@ -117,6 +117,20 @@ type Service struct {
 	runtimeDetectionOnce   sync.Once
 	runtimeDetectionCache  *core.TTLCache[RuntimeDetection]
 	runtimeDetectionFlight singleflight.Group
+	// Public-repo commit resolve (w4/m108 t004): unauthenticated GitHub
+	// GET /commits/{ref} when no App installation exists for the owner.
+	// Cached aggressively — GitHub's anonymous limit is 60 req/h/IP.
+	publicCommitOnce   sync.Once
+	publicCommitCache  *core.TTLCache[cachedPublicCommit]
+	publicCommitFlight singleflight.Group
+}
+
+// cachedPublicCommit is one (repo, ref) resolve outcome. ok=false is a
+// negative cache entry (404/403/422/outage) so private and missing look
+// identical and do not burn the anonymous quota on every deploy open.
+type cachedPublicCommit struct {
+	info store.CommitInfo
+	ok   bool
 }
 
 const (
@@ -124,6 +138,11 @@ const (
 	runtimeDetectionCacheTTL   = 30 * time.Second
 	runtimeDetectionUnknownTTL = 5 * time.Second
 	repoTreeProbeTimeout       = 5 * time.Second
+	// Public commit resolve (w4/m108 t004): short TTLs under GitHub's
+	// unauthenticated 60 req/h/IP budget; a hung call must not delay deploy open.
+	publicCommitCacheTTL       = 5 * time.Minute
+	publicCommitMissTTL        = 2 * time.Minute
+	publicCommitResolveTimeout = 5 * time.Second
 )
 
 // Connection is the neutral connection view every adapter renders. InstallURL is
@@ -923,16 +942,27 @@ func (t commitSource) ResolveCommit(ctx context.Context, workspaceID, repoURL, r
 func (s *Service) DeployCommitSource() commitSource { return commitSource{s} }
 
 // resolveCommit resolves ref (a branch, tag, or SHA) to the exact commit it
-// points at, via workspaceID's GitHub connection — the provenance a deploy
-// row is stamped with (w9/001). NOT authz-gated: the caller (a deploy
+// points at — the provenance a deploy row is stamped with at open time
+// (w9/001, extended w4/m108 t004). NOT authz-gated: the caller (a deploy
 // trigger) has already authorized its own verb.
 //
-//   - ok=false, nil err: GitHub off, no connection, the repo isn't an
-//     owner/repo URL or isn't in the grant, or the ref doesn't exist — the
-//     deploy proceeds with no commit metadata (omitted, not faked).
-//   - non-nil err: a GitHub failure. Unlike cloneToken, callers may treat
+// Decision (w4/m108 t004, also docs/ADR004): when the workspace has no GitHub
+// App installation for the repo owner, fall back to an unauthenticated
+// GET /repos/{owner}/{repo}/commits/{ref} for github.com public repos —
+// reuses this seam so create / Trigger / blueprint all get hash+message+
+// authorAt at deploy-open, cheaper than an operator→backend write-back.
+// Limits: GitHub-only public repos; 60 req/h/IP so results are cached per
+// (repo, ref); every failure stays ok=false and never blocks a deploy.
+// Non-GitHub URLs, private-without-connection, and unknown refs remain
+// commit-less (404/403 collapse so this path is not an existence oracle).
+//
+//   - ok=false, nil err: GitHub off, unparseable URL, out-of-grant /
+//     private / unknown ref, non-github.com without a connection, or any
+//     public-fallback failure — the deploy proceeds with no commit metadata
+//     (omitted, not faked).
+//   - non-nil err: an installation-path GitHub failure. Callers may treat
 //     this the same as ok=false — commit metadata is provenance, never worth
-//     failing a deploy over.
+//     failing a deploy over. The public fallback never returns a non-nil err.
 func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error) {
 	if !s.configured() || ref == "" {
 		return store.CommitInfo{}, false, nil
@@ -942,11 +972,11 @@ func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref s
 		return store.CommitInfo{}, false, nil
 	}
 	row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)
-	if errors.Is(err, store.ErrNotFound) {
-		return store.CommitInfo{}, false, nil
-	}
-	if err != nil {
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return store.CommitInfo{}, false, err
+	}
+	if errors.Is(err, store.ErrNotFound) {
+		return s.resolvePublicCommit(ctx, repoURL, ref)
 	}
 	tok, err := s.GitHub.MintInstallationToken(ctx, row.InstallationID)
 	if err != nil {
@@ -963,6 +993,51 @@ func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref s
 		return store.CommitInfo{}, false, err
 	}
 	return store.CommitInfo{Hash: c.SHA, Message: c.Message, AuthorAt: c.AuthorAt}, true, nil
+}
+
+func (s *Service) publicCommitMemo() *core.TTLCache[cachedPublicCommit] {
+	s.publicCommitOnce.Do(func() {
+		s.publicCommitCache = core.NewTTLCache[cachedPublicCommit]()
+	})
+	return s.publicCommitCache
+}
+
+// resolvePublicCommit is the no-installation path for Public Git URL services:
+// unauthenticated GitHub commit lookup, cached per (owner/repo, ref), bounded
+// by a short timeout. Every failure is ok=false — never an error a deploy
+// opener could treat as fatal, and never a fabricated partial commit.
+func (s *Service) resolvePublicCommit(ctx context.Context, repoURL, ref string) (store.CommitInfo, bool, error) {
+	owner, repo, ok := githubOwnerRepo(repoURL)
+	if !ok {
+		return store.CommitInfo{}, false, nil
+	}
+	key := strings.ToLower(owner) + "/" + strings.ToLower(repo) + "@" + ref
+	if cached, hit := s.publicCommitMemo().Get(key); hit {
+		return cached.info, cached.ok, nil
+	}
+	v, _, _ := s.publicCommitFlight.Do(key, func() (any, error) {
+		if cached, hit := s.publicCommitMemo().Get(key); hit {
+			return cached, nil
+		}
+		rctx, cancel := context.WithTimeout(ctx, publicCommitResolveTimeout)
+		defer cancel()
+		c, err := s.GitHub.GetCommit(rctx, "", owner, repo, ref)
+		entry := cachedPublicCommit{}
+		ttl := publicCommitMissTTL
+		// Collapse every failure — including 404 vs 403 — into a miss so this
+		// path cannot distinguish private from missing (no existence oracle).
+		if err == nil && c.SHA != "" {
+			entry = cachedPublicCommit{
+				info: store.CommitInfo{Hash: c.SHA, Message: c.Message, AuthorAt: c.AuthorAt},
+				ok:   true,
+			}
+			ttl = publicCommitCacheTTL
+		}
+		s.publicCommitMemo().Put(key, entry, time.Now().Add(ttl))
+		return entry, nil
+	})
+	entry, _ := v.(cachedPublicCommit)
+	return entry.info, entry.ok, nil
 }
 
 // ownerRepo extracts the "owner"/"repo" pair from a git URL of any form

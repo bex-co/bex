@@ -241,6 +241,17 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
   - cron jobs and static sites;
   - a build failure recorded only in the legacy Ready marker (written before w6/m100). It stays on the halt, so no status write can erase the marker and dispatch the build again.
 
+## Deploy commit provenance (w9/001, public-repo fallback w4/m108 t004)
+
+Repo-backed deploy rows are stamped with commit provenance **at deploy-open time** — before the build runs — so REST/GraphQL/MCP and the dashboard Deploys tab can name the code being shipped (`commit.id` / `commit.message` / `commit.createdAt`). Resolution goes through one seam (`github.Service.resolveCommit` → `deploys` Trigger, `apps` create-path first deploy, and blueprint redeploy):
+
+1. **GitHub App installation for the repo owner** — mint an installation token and `GET /repos/{owner}/{repo}/commits/{ref}`. This is the connected-repo path (w9/001).
+2. **No installation (Public Git URL)** — unauthenticated `GET /repos/{owner}/{repo}/commits/{ref}` for **github.com public repos only**, with a short per-`(owner/repo, ref)` TTL cache (positive ~5m, miss ~2m) and a 5s timeout so GitHub's anonymous 60 req/h/IP budget is not burned and a hung provider cannot delay deploy open (w4/m108 t004).
+
+**Why not report the SHA back from the build?** That would cover any git host and close the resolution-vs-clone window, but it needs a new operator→backend write path and leaves the row briefly commit-less. The unauthenticated fallback reuses the existing seam, reaches every deploy-opening caller, and stamps hash+message+authorAt immediately — enough for the Public Git URL create-form path.
+
+**Honest omission, never fabrication.** Non-github.com URLs, private repos without a connection, unknown refs, and provider failures all leave `commit` omitted (`ok=false`). 404 and 403 collapse to the same miss so the public path is not an existence oracle. Callers treat any resolution failure as "no metadata" and still open the deploy.
+
 ## Control-plane deploy lifecycle
 
 For store-managed Apps, bex-api projects the operator's current-release facts into Render's deploy vocabulary without adding an operator-to-database dependency. A deploy row begins `created`; `BuildQueued` and `Building` evidence yield `queued` and `build_in_progress`; a release-generation-scoped pre-deploy Job yields `pre_deploy_in_progress`; rollout reconciliation yields `update_in_progress`; and the corresponding failure or convergence facts yield `build_failed`, `pre_deploy_failed`, `update_failed`, or `live`. A later operational metadata generation does not detach the open row: the projector matches it to `status.releaseGeneration` and the active `rev-<release-generation>`. A row whose own release generation carries a terminal `status.conditions[Build]` verdict closes `build_failed` with that verdict's message even once the release has advanced past it — otherwise the deploy that actually failed would report the `canceled` a bare generation comparison infers (w6/m100). Fast phases may be skipped when the polling control plane never observes them. Invalid regressions are rejected.

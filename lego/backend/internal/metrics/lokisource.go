@@ -82,13 +82,15 @@ func NewLokiRequestMetricsSource(base string, hc *http.Client) RequestMetricsSou
 }
 
 // lokiRequestQueryFor builds the LogQL metric query for a host/path-filtered
-// request read. http_requests uses rate (matched lines/second, matching the
-// Prometheus path's sum(rate(...)) req/s so a filter never rescales the chart);
-// http_latency uses quantile_over_time over the unwrapped Duration field,
-// nanoseconds converted to seconds. Every interpolated value is %q-escaped, so a
-// service name or filter value can never break out of a matcher (the same
-// label-injection guard as logs/loki.go). Returns "" for any metric that has no
-// per-request host/path axis (bandwidth) — those are rejected upstream anyway.
+// request read. http_requests uses count_over_time (matched lines per step
+// bucket, matching the Prometheus path's sum(increase(...)) so a filter never
+// rescales the chart); http_latency uses quantile_over_time over the unwrapped
+// Duration field, nanoseconds converted to seconds. The [Ns] window is always
+// stepSeconds(req.Resolution) — the same step the matrix is sampled at. Every
+// interpolated value is %q-escaped, so a service name or filter value can never
+// break out of a matcher (the same label-injection guard as logs/loki.go).
+// Returns "" for any metric that has no per-request host/path axis (bandwidth)
+// — those are rejected upstream anyway.
 func lokiRequestQueryFor(req RequestMetricsRequest) string {
 	matchers := []string{
 		fmt.Sprintf("namespace=%q", req.Namespace),
@@ -112,7 +114,8 @@ func lokiRequestQueryFor(req RequestMetricsRequest) string {
 		return fmt.Sprintf("quantile_over_time(%s, %s%s | unwrap latency_ns [%ds]) by (%s) / %s",
 			strconv.FormatFloat(lokiQuantile(req.Quantile), 'g', -1, 64), selector, pipeline, window, lokiGroupLabel(req.GroupBy), lokiLatencyNanoDivisor)
 	case MetricHTTPRequests:
-		inner := fmt.Sprintf("rate(%s%s [%ds])", selector, lokiRequestPipeline(req, false), window)
+		// count_over_time: request lines in the step bucket (unit: count).
+		inner := fmt.Sprintf("count_over_time(%s%s [%ds])", selector, lokiRequestPipeline(req, false), window)
 		if g := lokiGroupLabel(req.GroupBy); g != "" {
 			return fmt.Sprintf("sum by (%s) (%s)", g, inner)
 		}

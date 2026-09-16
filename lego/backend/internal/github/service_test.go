@@ -190,24 +190,25 @@ func (f *fakeStore) DeleteGitConnection(_ context.Context, workspaceID string, i
 }
 
 type fakeClient struct {
-	installErr    error
-	login         string
-	repos         []Repo
-	reposErr      error
-	branches      []string
-	branchesErr   error
-	gotBranchRepo []string // (owner, repo) ListBranches was called with
-	tree          []RepoTreeEntry
-	treeErr       error
-	gotTree       []string // (token, owner, repo, path, ref)
-	token         string
-	tokenErr      error
-	repoOK        bool // RepoAccessible result
-	repoErr       error
-	publicRepoOK  bool
-	repoTokens    []string
-	commit        Commit // GetCommit result (w9/001)
-	commitErr     error
+	installErr     error
+	login          string
+	repos          []Repo
+	reposErr       error
+	branches       []string
+	branchesErr    error
+	gotBranchRepo  []string // (owner, repo) ListBranches was called with
+	tree           []RepoTreeEntry
+	treeErr        error
+	gotTree        []string // (token, owner, repo, path, ref)
+	token          string
+	tokenErr       error
+	repoOK         bool // RepoAccessible result
+	repoErr        error
+	publicRepoOK   bool
+	repoTokens     []string
+	commit         Commit // GetCommit result (w9/001)
+	commitErr      error
+	getCommitCalls int // how many times GetCommit ran (cache assertions)
 	// gotCommitRef records the (token, owner, repo, ref) GetCommit was called
 	// with, for assertions.
 	gotCommitRef []string
@@ -283,6 +284,7 @@ func (c *fakeClient) RepoAccessible(_ context.Context, token, _, _ string) (bool
 }
 
 func (c *fakeClient) GetCommit(_ context.Context, token, owner, repo, ref string) (Commit, error) {
+	c.getCommitCalls++
 	c.gotCommitRef = []string{token, owner, repo, ref}
 	if c.commitErr != nil {
 		return Commit{}, c.commitErr
@@ -835,11 +837,12 @@ func TestConnectFromCallbackEnforcesInstallationAdmin(t *testing.T) {
 	}
 }
 
-// TestResolveCommit covers w9/001: the deploy path's commit resolution —
-// connected repo => the ref's resolved SHA+message; every "nothing to
-// resolve" shape (github off, no connection, unparseable repo URL, unknown
-// ref/out-of-grant repo per 404/422) => (false, nil), never an error a
-// caller might mistake for a deploy-blocking failure.
+// TestResolveCommit covers w9/001 + w4/m108 t004: the deploy path's commit
+// resolution — connected repo => the ref's resolved SHA+message; public
+// github.com with no installation => unauthenticated lookup; every "nothing
+// to resolve" shape (github off, private/unknown/non-github, unparseable URL)
+// => (false, nil), never an error a caller might mistake for a deploy-
+// blocking failure on the public path.
 func TestResolveCommit(t *testing.T) {
 	st := newFakeStore()
 	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
@@ -864,21 +867,17 @@ func TestResolveCommit(t *testing.T) {
 		}
 	}
 
-	// A real GitHub failure surfaces as an error (the caller decides it's
-	// best-effort, not this seam).
+	// A real GitHub failure on the installation path surfaces as an error (the
+	// caller decides it's best-effort, not this seam).
 	down := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", commitErr: &APIError{Status: 500}}, Store: st}
 	if _, _, err := down.resolveCommit(ctx, "default", "https://github.com/octo/app", "main"); err == nil {
 		t.Error("a 500 from GitHub must surface an error")
 	}
 
-	// Nothing to resolve: github off, no connection, unparseable URL, empty ref.
+	// Nothing to resolve: github off, unparseable URL, empty ref.
 	off := &Service{Base: &core.Base{Namespace: "default"}}
 	if _, ok, err := off.resolveCommit(ctx, "default", "https://github.com/octo/app", "main"); ok || err != nil {
 		t.Errorf("github off = ok=%v err=%v, want (false, nil)", ok, err)
-	}
-	noConn := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
-	if _, ok, err := noConn.resolveCommit(ctx, "default", "https://github.com/octo/app", "main"); ok || err != nil {
-		t.Errorf("no connection = ok=%v err=%v, want (false, nil)", ok, err)
 	}
 	if _, ok, err := svc.resolveCommit(ctx, "default", "not-a-url", "main"); ok || err != nil {
 		t.Errorf("unparseable repo = ok=%v err=%v, want (false, nil)", ok, err)
@@ -886,6 +885,83 @@ func TestResolveCommit(t *testing.T) {
 	if _, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/octo/app", ""); ok || err != nil {
 		t.Errorf("empty ref = ok=%v err=%v, want (false, nil)", ok, err)
 	}
+}
+
+// TestResolveCommitPublicFallback covers w4/m108 t004: no App installation for
+// the owner falls back to unauthenticated github.com commit resolve. Public
+// success stamps hash+message; private/unknown/non-github/provider-failure
+// each stay ok=false with no fabricated commit; results are cached per
+// (repo, ref).
+func TestResolveCommitPublicFallback(t *testing.T) {
+	ctx := context.Background()
+	pub := Commit{SHA: "pubsha012345", Message: "chore: public tip"}
+
+	t.Run("public success", func(t *testing.T) {
+		cl := &fakeClient{commit: pub}
+		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+		c, ok, err := svc.DeployCommitSource().ResolveCommit(ctx, "default", "https://github.com/render-examples/express-hello-world", "main")
+		if err != nil || !ok || c.Hash != pub.SHA || c.Message != pub.Message {
+			t.Fatalf("public resolve = %+v,%v,%v, want %+v", c, ok, err, pub)
+		}
+		if len(cl.gotCommitRef) != 4 || cl.gotCommitRef[0] != "" {
+			t.Errorf("GetCommit auth = %v, want empty token (unauthenticated)", cl.gotCommitRef)
+		}
+	})
+
+	t.Run("caches per repo ref", func(t *testing.T) {
+		cl := &fakeClient{commit: pub}
+		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+		url := "https://github.com/render-examples/express-hello-world"
+		for i := 0; i < 3; i++ {
+			if _, ok, err := svc.resolveCommit(ctx, "default", url, "main"); !ok || err != nil {
+				t.Fatalf("call %d: ok=%v err=%v", i, ok, err)
+			}
+		}
+		if cl.getCommitCalls != 1 {
+			t.Errorf("GetCommit calls = %d, want 1 (cached)", cl.getCommitCalls)
+		}
+	})
+
+	t.Run("private or missing is not an oracle", func(t *testing.T) {
+		for _, status := range []int{404, 403} {
+			cl := &fakeClient{commitErr: &APIError{Status: status}}
+			svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+			c, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/someone/private-app", "main")
+			if ok || err != nil || c.Hash != "" {
+				t.Errorf("status %d: want (zero,false,nil), got %+v,%v,%v", status, c, ok, err)
+			}
+		}
+	})
+
+	t.Run("unknown ref", func(t *testing.T) {
+		cl := &fakeClient{commitErr: &APIError{Status: 422}}
+		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+		c, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/render-examples/express-hello-world", "no-such-branch")
+		if ok || err != nil || c.Hash != "" {
+			t.Fatalf("unknown ref = %+v,%v,%v, want (zero,false,nil)", c, ok, err)
+		}
+	})
+
+	t.Run("non-github url", func(t *testing.T) {
+		cl := &fakeClient{commit: pub}
+		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+		c, ok, err := svc.resolveCommit(ctx, "default", "https://gitlab.com/acme/app", "main")
+		if ok || err != nil || c.Hash != "" {
+			t.Fatalf("non-github = %+v,%v,%v, want (zero,false,nil)", c, ok, err)
+		}
+		if cl.getCommitCalls != 0 {
+			t.Errorf("GetCommit calls = %d, want 0 for non-github.com", cl.getCommitCalls)
+		}
+	})
+
+	t.Run("provider failure stays ok false", func(t *testing.T) {
+		cl := &fakeClient{commitErr: &APIError{Status: 500}}
+		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+		c, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/render-examples/express-hello-world", "main")
+		if ok || err != nil || c.Hash != "" {
+			t.Fatalf("provider failure = %+v,%v,%v, want (zero,false,nil)", c, ok, err)
+		}
+	})
 }
 
 // --- w8/m36 t002/t007: resolve-then-read at one immutable commit ---

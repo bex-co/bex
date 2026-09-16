@@ -26,10 +26,13 @@ func TestAppSourceComposition(t *testing.T) {
 	if len(specs) != 3 || specs[0].Source != HTTP || specs[1].Source != WebSocket || specs[2].Source != Direct {
 		t.Fatalf("unexpected sources: %+v", specs)
 	}
-	query := SumRates(specs, 60)
+	query := SumIncreases(specs, 60)
+	if strings.Contains(query, "rate(") {
+		t.Errorf("SumIncreases must not emit rate: %q", query)
+	}
 	for _, metric := range []string{"traefik_router_responses_bytes_total", "bex_websocket_egress_bytes_total", "bex_app_direct_egress_bytes_total"} {
-		if strings.Count(query, metric) != 1 {
-			t.Errorf("%s occurs %d times in %q", metric, strings.Count(query, metric), query)
+		if strings.Count(query, "increase("+metric) != 1 {
+			t.Errorf("%s occurs %d times in %q", metric, strings.Count(query, "increase("+metric), query)
 		}
 	}
 }
