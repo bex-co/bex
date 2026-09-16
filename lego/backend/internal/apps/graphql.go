@@ -658,6 +658,14 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return d.RedirectForName
 		})},
+		// certificateReason is a bex extension (no Render field): cert-manager's own
+		// explanation of a stalled TLS issuance, null once the certificate is issued.
+		"certificateReason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any {
+			if d.CertificateReason == "" {
+				return nil
+			}
+			return d.CertificateReason
+		})},
 		// dnsRecord is the record the tenant must create (bex extension; the target is
 		// the app's platform host <app>.<base-domain>).
 		"dnsRecord": gqlutil.Typed(dnsRecordGQLType, func(d DomainView) any { return d.DNSRecord }),

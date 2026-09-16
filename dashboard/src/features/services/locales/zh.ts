@@ -1330,6 +1330,17 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Custom-domains status badge: certificate issued and serving traffic",
   },
+  "services.domainCertBlockedLabel": {
+    message: "证书签发受阻：",
+    description:
+      "Label before cert-manager's verbatim reason a custom domain's TLS certificate has not been issued",
+  },
+  "services.domainCertBlockedHint": {
+    message:
+      "该 DNS 记录必须为仅 DNS 解析（不能开启代理），并指向此服务的 bex 主机名，否则证书校验无法访问到它。",
+    description:
+      "Fix-it guidance shown with a blocked-certificate reason: proxied records (e.g. Cloudflare's orange cloud) break the ACME HTTP-01 challenge",
+  },
   "services.domainPending": {
     message: "待处理",
     description:

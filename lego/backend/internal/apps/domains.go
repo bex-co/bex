@@ -30,6 +30,8 @@ import (
 	"golang.org/x/net/publicsuffix"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -131,6 +133,12 @@ type DomainView struct {
 	VerificationStatus string // "pending" or "verified" (TLS cert issued?)
 	ServerStatus       string // "active" or "pending"
 	RedirectForName    string // canonical host for an auto-paired sibling; empty when served directly
+	// CertificateReason explains why TLS issuance has not completed, in
+	// cert-manager's own words (e.g. `Waiting for HTTP-01 challenge propagation:
+	// wrong status code '404'`). Populated ONLY while VerificationStatus is
+	// "pending" — an issued certificate has nothing to explain — and empty
+	// whenever the ACME objects are unreadable, so it is a hint, never a status.
+	CertificateReason string
 	// OwnershipDNSRecord is the TXT proof for a pending managed claim. It is
 	// omitted after promotion and for storeless domains already admitted by the
 	// legacy synchronous proof gate.
@@ -340,6 +348,121 @@ func domainCertificateReady(ctx context.Context, cl client.Client, app *appv1alp
 	return err == nil && len(sec.Data["tls.crt"]) > 0, err
 }
 
+// cert-manager's ACME objects, read unstructured: the backend's scheme carries
+// only bex's own CRD types, so these follow the CNPG precedent in
+// internal/postgres/recovery.go rather than vendoring cert-manager's Go module
+// for three status strings.
+// All three are the SINGULAR kinds; listUnstructured appends "List" itself.
+var (
+	certManagerCertificateGVK = schema.GroupVersionKind{Group: "cert-manager.io", Version: "v1", Kind: "Certificate"}
+	acmeChallengeGVK          = schema.GroupVersionKind{Group: "acme.cert-manager.io", Version: "v1", Kind: "Challenge"}
+	acmeOrderGVK              = schema.GroupVersionKind{Group: "acme.cert-manager.io", Version: "v1", Kind: "Order"}
+)
+
+// domainCertificateReason explains, in cert-manager's own words, why the host
+// has no certificate yet — the diagnosis a tenant otherwise cannot reach. A
+// Cloudflare-proxied apex is the motivating case: the HTTP-01 solver answers
+// 404, cert-manager records `wrong status code '404'` on the Challenge, and the
+// tenant sees a bare clock icon for weeks (w3/037).
+//
+// Precedence runs most-specific first: the Challenge names the actual failing
+// exchange, the Order names a failed authorization once the challenge is gone,
+// and the Certificate's Ready condition is the generic fallback.
+//
+// EVERY failure — cert-manager not installed, no RBAC, a read error — yields an
+// empty string, never an error. The reason is a hint layered on top of the
+// authoritative Secret-based status (domainCertificateReady); a cluster without
+// it must degrade to exactly today's behavior rather than fail the domain read.
+func domainCertificateReason(ctx context.Context, cl client.Client, app *appv1alpha1.App, host string) string {
+	if reason := acmeChallengeReason(ctx, cl, app.Namespace, host); reason != "" {
+		return reason
+	}
+	if reason := acmeOrderReason(ctx, cl, app.Namespace, host); reason != "" {
+		return reason
+	}
+	return certificateReadyReason(ctx, cl, app.Namespace, tlsSecretForHost(app, host))
+}
+
+// listUnstructured is the shared read for all three ACME kinds. A nil result
+// means "nothing to say" for any reason at all — see domainCertificateReason.
+func listUnstructured(ctx context.Context, cl client.Client, gvk schema.GroupVersionKind, namespace string) []unstructured.Unstructured {
+	list := &unstructured.UnstructuredList{}
+	list.SetGroupVersionKind(schema.GroupVersionKind{Group: gvk.Group, Version: gvk.Version, Kind: gvk.Kind + "List"})
+	if err := cl.List(ctx, list, client.InNamespace(namespace)); err != nil {
+		return nil
+	}
+	return list.Items
+}
+
+// acmeChallengeReason returns the reason on the Challenge solving exactly host.
+// Challenges carry generated names but name their host in spec.dnsName, so the
+// match is on that field rather than on a derived object name.
+func acmeChallengeReason(ctx context.Context, cl client.Client, namespace, host string) string {
+	for _, item := range listUnstructured(ctx, cl, acmeChallengeGVK, namespace) {
+		if dnsName, _, _ := unstructured.NestedString(item.Object, "spec", "dnsName"); !strings.EqualFold(dnsName, host) {
+			continue
+		}
+		if reason, _, _ := unstructured.NestedString(item.Object, "status", "reason"); reason != "" {
+			return reason
+		}
+	}
+	return ""
+}
+
+// acmeOrderReason returns the reason on a FAILED Order covering host. A valid
+// or still-pending Order is not a diagnosis — only a terminal failure explains
+// an absent certificate — and cert-manager garbage-collects the Challenge once
+// an Order fails, which is exactly when this fallback matters.
+func acmeOrderReason(ctx context.Context, cl client.Client, namespace, host string) string {
+	for _, item := range listUnstructured(ctx, cl, acmeOrderGVK, namespace) {
+		dnsNames, _, _ := unstructured.NestedStringSlice(item.Object, "spec", "dnsNames")
+		if !slices.ContainsFunc(dnsNames, func(n string) bool { return strings.EqualFold(n, host) }) {
+			continue
+		}
+		state, _, _ := unstructured.NestedString(item.Object, "status", "state")
+		if state != "invalid" && state != "errored" && state != "expired" {
+			continue
+		}
+		if reason, _, _ := unstructured.NestedString(item.Object, "status", "reason"); reason != "" {
+			return reason
+		}
+		return "ACME order " + state
+	}
+	return ""
+}
+
+// certificateReadyReason returns the message on the Certificate's Ready
+// condition while it is not True — the generic fallback when neither a
+// Challenge nor a failed Order is present (issuer misconfiguration, rate
+// limiting, a CertificateRequest that never became an Order).
+func certificateReadyReason(ctx context.Context, cl client.Client, namespace, name string) string {
+	// The Certificate's name is known exactly — cert-manager's ingress-shim names
+	// it after the Ingress tls[].secretName, which is tlsSecretForHost — so this
+	// is a Get, not a filtered List like the two ACME kinds above (whose objects
+	// carry generated names and must be matched on their dnsName).
+	cert := &unstructured.Unstructured{}
+	cert.SetGroupVersionKind(certManagerCertificateGVK)
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cert); err != nil {
+		return ""
+	}
+	conditions, _, _ := unstructured.NestedSlice(cert.Object, "status", "conditions")
+	for _, raw := range conditions {
+		condition, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		condType, _, _ := unstructured.NestedString(condition, "type")
+		condStatus, _, _ := unstructured.NestedString(condition, "status")
+		if condType != "Ready" || condStatus == "True" {
+			continue
+		}
+		if message, _, _ := unstructured.NestedString(condition, "message"); message != "" {
+			return message
+		}
+	}
+	return ""
+}
+
 // domainView builds a DomainView for one host on the given App. platformHost is
 // passed in (host-independent, so callers compute it once per app rather than per
 // host). The TLS Secret lookup makes the verification status truthful at query time.
@@ -355,7 +478,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 		sStatus = "active"
 	}
 	dtype := domainType(host)
-	return DomainView{
+	view := DomainView{
 		Name:               host,
 		DomainType:         dtype,
 		OwnershipStatus:    "verified",
@@ -364,6 +487,10 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 		RedirectForName:    app.Spec.HostRedirects[host],
 		DNSRecord:          dnsRecordFor(host, dtype, platformHost),
 	}
+	if !verified {
+		view.CertificateReason = domainCertificateReason(ctx, s.Client, app, host)
+	}
+	return view
 }
 
 func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, claim store.Domain, platformHost string) DomainView {
@@ -385,7 +512,13 @@ func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, cla
 		if !app.Spec.Suspended {
 			view.ServerStatus = "active"
 		}
+		return view
 	}
+	// Ownership is verified but the certificate is not issued — the one state
+	// that can stall for weeks, and the only one with a reason worth reading.
+	// An ownership-pending claim is never projected into spec.hosts, so no
+	// Ingress and no ACME exchange exist for it to explain (it returned above).
+	view.CertificateReason = domainCertificateReason(ctx, s.Client, app, claim.Host)
 	return view
 }
 
@@ -1133,6 +1266,10 @@ type renderCustomDomain struct {
 	VerificationStatus string `json:"verificationStatus"`
 	ServerStatus       string `json:"serverStatus"`
 	RedirectForName    string `json:"redirectForName,omitempty"`
+	// CertificateReason is a bex extension (no Render equivalent): cert-manager's
+	// own explanation of why TLS issuance has not completed. omitempty keeps an
+	// issued domain's response byte-identical to the pre-w3/m85 shape.
+	CertificateReason string `json:"certificateReason,omitempty"`
 	// DNSRecord is a bex extension (no Render REST equivalent — Render surfaces the
 	// record in the dashboard, not the API): the record the tenant must create to
 	// point this domain at the service. A safe superset, w5/m10.
@@ -1164,6 +1301,7 @@ func toRenderCustomDomain(d DomainView) renderCustomDomain {
 		VerificationStatus: d.VerificationStatus,
 		ServerStatus:       d.ServerStatus,
 		RedirectForName:    d.RedirectForName,
+		CertificateReason:  d.CertificateReason,
 		DNSRecord: renderDNSRecord{
 			Type:  d.DNSRecord.Type,
 			Name:  d.DNSRecord.Name,

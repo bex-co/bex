@@ -10,6 +10,7 @@ import {
   ExternalLink,
   ChevronDown,
   RefreshCw,
+  TriangleAlert,
 } from "lucide-react";
 import {
   Card,
@@ -347,6 +348,13 @@ function CustomDomainRow({
           />
         </TableCell>
       </TableRow>
+      {domain.certificateReason && (
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={COLUMN_COUNT} className="pt-0">
+            <CertificateReasonHint reason={domain.certificateReason} />
+          </TableCell>
+        </TableRow>
+      )}
       {open && (
         <TableRow className="hover:bg-transparent">
           <TableCell colSpan={COLUMN_COUNT} className="bg-muted/30">
@@ -552,6 +560,29 @@ function StatusBadge({
     <Badge variant="outline" className="text-muted-foreground">
       <Clock /> {pendingLabel}
     </Badge>
+  );
+}
+
+/** Why a certificate is still pending, in cert-manager's words, plus the ADR005
+ *  fix-it text. Rendered only when the backend supplies a reason — a pending row
+ *  without one looks exactly as it did before w3/m85. `reason` is operational
+ *  text about the tenant's OWN DNS; it is interpolated as a plain string (React
+ *  escapes it), never as HTML. */
+function CertificateReasonHint({ reason }: { reason: string }) {
+  const { t } = useTranslations();
+  return (
+    <div className="text-muted-foreground flex items-start gap-2 text-xs">
+      <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+      <div className="space-y-1">
+        <p>
+          <span className="font-medium">
+            {t("services.domainCertBlockedLabel")}
+          </span>{" "}
+          {reason}
+        </p>
+        <p>{t("services.domainCertBlockedHint")}</p>
+      </div>
+    </div>
   );
 }
 

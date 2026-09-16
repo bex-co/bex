@@ -424,6 +424,7 @@ export type CronRun = {
 
 export type CustomDomain = {
   __typename: 'CustomDomain';
+  certificateReason: Maybe<Scalars['String']['output']>;
   dnsRecord: Maybe<DnsRecord>;
   domainType: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;

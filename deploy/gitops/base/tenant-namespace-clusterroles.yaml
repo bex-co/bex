@@ -54,6 +54,19 @@ rules:
     resources: ["objectstores"]
     resourceNames: ["bex-tenant-postgres"]
     verbs: ["get"]
+  # Read-only ACME state for the custom-domain certificateReason hint (w3/m85).
+  # A tenant App's Ingress, TLS Secret, and therefore its cert-manager objects
+  # live in this per-tenant `<ws>` namespace under ADR043, so the grant belongs
+  # here — bound per-namespace by the NamespaceReconciler — not on any
+  # cluster-wide bex-api role. Same read-only shape and rationale as the CNPG
+  # rules above: cert-manager owns the lifecycle, bex-api only reads status to
+  # tell the tenant why issuance is stuck.
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates"]
+    verbs: ["list"]
+  - apiGroups: ["acme.cert-manager.io"]
+    resources: ["challenges", "orders"]
+    verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

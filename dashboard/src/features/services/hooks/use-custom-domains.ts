@@ -52,6 +52,7 @@ function mapDomain(
     verified: d.verificationStatus === "verified",
     active: d.serverStatus === "active",
     redirectForName: d.redirectForName,
+    certificateReason: d.certificateReason ?? null,
     dnsRecord: mapDNSRecord(d.dnsRecord),
     ownershipDnsRecord: mapDNSRecord(d.ownershipDnsRecord),
   };
