@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatRepoLabel, repoBrowseUrl } from "../repo";
+import { formatRepoLabel, repoBrowseUrl, repoCommitUrl } from "../repo";
 
 describe("repository display helpers", () => {
   it("keeps an arbitrary self-hosted forge visible in linked text", () => {
@@ -25,5 +25,37 @@ describe("repository display helpers", () => {
     expect(formatRepoLabel("git@git.example:owner/repo.git")).toBe(
       "git.example · owner / repo",
     );
+  });
+});
+
+describe("repoCommitUrl", () => {
+  const sha = "abc1234def5678";
+
+  it("points a repo-backed deploy's SHA at the commit page (the diff)", () => {
+    expect(repoCommitUrl("https://github.com/acme/web.git", sha)).toBe(
+      "https://github.com/acme/web/commit/abc1234def5678",
+    );
+    expect(repoCommitUrl("git@github.com:acme/web.git", sha)).toBe(
+      "https://github.com/acme/web/commit/abc1234def5678",
+    );
+  });
+
+  it("keeps a self-hosted forge's real host in the link", () => {
+    expect(repoCommitUrl("https://git.example/acme/web", sha)).toBe(
+      "https://git.example/acme/web/commit/abc1234def5678",
+    );
+  });
+
+  it("refuses anything that isn't a hex commit id in the path", () => {
+    expect(repoCommitUrl("https://github.com/acme/web.git", "")).toBeNull();
+    expect(
+      repoCommitUrl("https://github.com/acme/web.git", "../../settings"),
+    ).toBeNull();
+    expect(repoCommitUrl("https://github.com/acme/web.git", "abc")).toBeNull();
+  });
+
+  it("yields no link for a repo that can't be browsed", () => {
+    expect(repoCommitUrl("acme/web", sha)).toBeNull();
+    expect(repoCommitUrl("", sha)).toBeNull();
   });
 });
