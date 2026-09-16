@@ -233,6 +233,12 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		created = kv.CreationTimestamp.UTC().Format(time.RFC3339)
 	}
 	status := kvStatus(kv.Status.Phase)
+	// Suspension outranks readiness so status matches Render's databaseStatus
+	// enum (which Key Value reuses): the pinned CLI projects Status but drops
+	// the separate Suspended field (w5/061). Deleting still wins.
+	if kv.Spec.Suspended {
+		status = "suspended"
+	}
 	if !kv.DeletionTimestamp.IsZero() {
 		status = "deleting"
 	}

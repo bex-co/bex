@@ -95,7 +95,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [~] `--project <id|name>` — flag parsed; needs an existing project (none creatable via CLI)
     - [~] `--environment <id|name>` — flag parsed; needs an existing project/environment
   - [x] `keyvalues list`
-  - [x] `keyvalues get <id|name>`
+  - [x] `keyvalues get <id|name>` — after suspend, `status` is `suspended` (Render `databaseStatus`; w5/061) so text/JSON Status matches hibernation even though the pinned client drops the separate `suspended` field
   - [x] `keyvalues update <id|name>` — resolves by opaque id; core fields apply
     - [x] `--name` — rename; opaque `red-` id stays stable
     - [x] `--plan`
@@ -143,7 +143,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [~] `--project <id|name>` — flag parsed; needs an existing project
     - [~] `--environment <id|name>` — flag parsed; needs an existing project/environment
   - [x] `postgres list` — resolves through the RC3 cursor envelope
-  - [x] `postgres get <id|name>` — resolves by name; every field intact; `-o text` renders Workspace/Region; v2.26.0's detail output also shows the connection-pool mode, which bex returns as the `connectionPool` enum (`pgbouncer`/`none`)
+  - [x] `postgres get <id|name>` — resolves by name; every field intact; `-o text` renders Workspace/Region; v2.26.0's detail output also shows the connection-pool mode, which bex returns as the `connectionPool` enum (`pgbouncer`/`none`); after suspend, `status` is `suspended` (w5/061) so text Status stays truthful when the renderer omits the `suspended` field
   - [x] `postgres update <id|name>`
     - [x] `--name` — rename; opaque `dpg-` id stays stable
     - [x] `--plan` — compute changes independently; an operator regression proves downgrade cannot reduce the accepted disk high-water mark
