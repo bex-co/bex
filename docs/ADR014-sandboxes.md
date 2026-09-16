@@ -105,6 +105,10 @@ Because bex-api is the single funnel (D1), it is the natural **admission-control
 - **Warm-pool bounds.** `min_ready`/`max_ready`; keep the pool as _paused_ snapshots so it doesn't burn RAM while idle-warm (opensandbox `pools`).
 - **Node-level elasticity (deferred).** Unschedulable sandboxes → pressure → autoscaler adds a machine; empty nodes → scale down — the same bin-pack + idle-evict loop Apps use ([ADR002-architecture.md](ADR002-architecture.md), "node-aware but provision-unaware"). **This does not hold yet:** the Docker-runtime opensandbox is **single-host** (:8077), so today's capacity control is the single-host subset (concurrent cap + evict + quota); cross-node scheduling waits on the k8s-runtime snapshot path (containerd-CRI cluster).
 
+### Lifetime bound (w5/m99)
+
+Every sandbox has an enforced maximum lifetime of **86400 seconds (24 hours)**. `timeoutSeconds: 0` (or omitted) means that default/maximum — matching the pinned Render CLI — never "no expiry". bex-api stamps the effective bound into `bex.co/timeout-seconds` metadata, returns it on REST/GraphQL/MCP reads, and the Completer inventory reconcile terminates sandboxes past `createdAt + bound`. Agent-session sandboxes share the same bound; session-side teardown (cancel, idle grace, previous-sandbox intents) is the fast path, and inventory reconcile is the backstop when a row forgot its `sandbox_id`.
+
 ### D7 — State model & durability (a ladder, mostly deferred above pause/resume)
 
 "User state" is not one thing — it is a ladder of state with different survival boundaries. bex is honest about which rung is strong today and which are promissory:

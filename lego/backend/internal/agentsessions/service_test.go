@@ -45,18 +45,22 @@ type fakeStore struct {
 	// lastSSHEnd models the most recent editor SSH disconnect for the idle-grace
 	// tests (ADR059 D2 / w2/m67): resource id -> ended_at of the last closed
 	// session. Absent ⇒ no prior SSH disconnect for that resource.
-	lastSSHEnd map[string]time.Time
+	lastSSHEnd   map[string]time.Time
+	reapAfter    map[string]time.Time
+	reapAttempts map[string]int
 }
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
-		rows:       map[string]store.AgentSession{},
-		dispatches: map[string]fakeDispatch{},
-		now:        time.Unix(1_800_000_000, 0).UTC(),
-		transcript: map[string]map[int64]store.AgentSessionTranscriptPart{},
-		turns:      map[string]map[int]store.AgentSessionTurn{},
-		openSSH:    map[string]time.Time{},
-		lastSSHEnd: map[string]time.Time{},
+		rows:         map[string]store.AgentSession{},
+		dispatches:   map[string]fakeDispatch{},
+		now:          time.Unix(1_800_000_000, 0).UTC(),
+		transcript:   map[string]map[int64]store.AgentSessionTranscriptPart{},
+		turns:        map[string]map[int]store.AgentSessionTurn{},
+		openSSH:      map[string]time.Time{},
+		lastSSHEnd:   map[string]time.Time{},
+		reapAfter:    map[string]time.Time{},
+		reapAttempts: map[string]int{},
 	}
 }
 
@@ -254,21 +258,91 @@ func (f *fakeStore) CountPinnedAgentSessions(_ context.Context, workspaceID stri
 	return n, nil
 }
 
-func (f *fakeStore) ListTerminalAgentSessionsWithSandbox(_ context.Context, since time.Time) ([]store.AgentSession, error) {
+func (f *fakeStore) ListTerminalAgentSessionsWithSandbox(_ context.Context, now time.Time) ([]store.AgentSession, error) {
 	terminal := map[string]bool{PhaseCompleted: true, PhaseFailed: true, PhaseCanceled: true}
 	out := []store.AgentSession{}
 	for _, row := range f.rows {
-		if terminal[row.Phase] && row.SandboxID != "" && !row.UpdatedAt.Before(since) {
-			out = append(out, row)
+		if !terminal[row.Phase] || row.SandboxID == "" {
+			continue
 		}
+		if after, ok := f.reapAfter[row.ID]; ok && after.After(now) {
+			continue
+		}
+		out = append(out, row)
 	}
 	return out, nil
+}
+
+func (f *fakeStore) ScheduleAgentSessionSandboxReap(_ context.Context, id string, now time.Time) error {
+	if f.reapAfter == nil {
+		f.reapAfter = map[string]time.Time{}
+	}
+	f.reapAttempts[id]++
+	mins := 1 << min(f.reapAttempts[id]-1, 6)
+	if mins > 60 {
+		mins = 60
+	}
+	f.reapAfter[id] = now.Add(time.Duration(mins) * time.Minute)
+	return nil
+}
+
+func (f *fakeStore) ListSandboxTenantKeys(context.Context) ([]store.SandboxTenantKey, error) {
+	seen := map[string]struct{}{}
+	var out []store.SandboxTenantKey
+	for _, row := range f.rows {
+		if _, ok := seen[row.WorkspaceID]; ok {
+			continue
+		}
+		seen[row.WorkspaceID] = struct{}{}
+		out = append(out, store.SandboxTenantKey{WorkspaceID: row.WorkspaceID, APIKey: "test-key"})
+	}
+	return out, nil
+}
+
+func (f *fakeStore) ListPreviousSandboxTeardownsDue(_ context.Context, now time.Time) ([]store.AgentDispatch, error) {
+	var out []store.AgentDispatch
+	for _, intent := range f.dispatches {
+		if intent.intent.PreviousSandboxID == "" {
+			continue
+		}
+		if !intent.next.IsZero() && intent.next.After(now) {
+			continue
+		}
+		out = append(out, intent.intent)
+	}
+	return out, nil
+}
+
+func (f *fakeStore) ClearPreviousSandboxTeardown(_ context.Context, sessionID string, turn int) error {
+	key := dispatchKey(sessionID, turn)
+	intent, ok := f.dispatches[key]
+	if !ok {
+		return nil
+	}
+	intent.intent.PreviousSandboxID = ""
+	if intent.abandoned {
+		delete(f.dispatches, key)
+		return nil
+	}
+	f.dispatches[key] = intent
+	return nil
+}
+
+func (f *fakeStore) DeferPreviousSandboxTeardown(_ context.Context, sessionID string, turn int, next time.Time) error {
+	key := dispatchKey(sessionID, turn)
+	intent := f.dispatches[key]
+	intent.intent.SessionID = sessionID
+	intent.intent.Turn = turn
+	intent.next = next
+	f.dispatches[key] = intent
+	return nil
 }
 
 func (f *fakeStore) ClearAgentSessionSandbox(_ context.Context, id string) error {
 	if row, ok := f.rows[id]; ok && row.SandboxID != "" {
 		row.SandboxID = ""
 		f.rows[id] = row
+		delete(f.reapAfter, id)
 	}
 	return nil
 }
@@ -577,7 +651,13 @@ func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID,
 	if !ok || intent.abandoned {
 		return store.AgentSession{}, store.ErrNotFound
 	}
-	delete(f.dispatches, dispatchKey(id, turn))
+	if intent.intent.PreviousSandboxID != "" {
+		intent.abandoned = true
+		intent.next = f.now
+		f.dispatches[dispatchKey(id, turn)] = intent
+	} else {
+		delete(f.dispatches, dispatchKey(id, turn))
+	}
 	if sandboxID != "" {
 		row.SandboxID = sandboxID
 	}
@@ -701,7 +781,9 @@ type fakeLifecycle struct {
 	readTranscriptBeforeCancel          bool
 	// Injected background-provisioning failures (w2/m64). createErr aborts the
 	// sandbox create (nothing is counted); resumeErr aborts a resume.
-	createErr, resumeErr error
+	createErr, resumeErr, cancelErr error
+	inventory                       func(context.Context) (sandbox.InventoryCounts, error)
+	cleanupErr                      error
 	// Hibernation (ADR059 D3, w2/m68). hibernated counts snapshot calls;
 	// lastPutURL captures the presigned upload URL threaded through;
 	// snapshot is the returned result; hibernateErr injects a snapshot failure.
@@ -788,8 +870,17 @@ func (f *fakeLifecycle) ResumeAgentSessionSandbox(context.Context, string, strin
 	return nil
 }
 func (f *fakeLifecycle) CancelAgentSessionSandbox(context.Context, string, string, string) error {
+	if f.cancelErr != nil {
+		return f.cancelErr
+	}
 	f.canceled++
 	return nil
+}
+func (f *fakeLifecycle) ReconcileWorkspaceInventory(context.Context, string, string, time.Time, sandbox.SessionClaimLookup) (sandbox.InventoryCounts, error) {
+	if f.inventory != nil {
+		return f.inventory(context.Background())
+	}
+	return sandbox.InventoryCounts{OldestAge: map[string]float64{}}, nil
 }
 func (f *fakeLifecycle) ReadSessionStatus(context.Context, string, string, string) (string, error) {
 	return f.status, f.statusErr
@@ -2119,6 +2210,9 @@ func (f *fakeStore) DeferAgentDispatchCleanup(_ context.Context, d store.AgentDi
 	return nil
 }
 func (f *fakeLifecycle) CleanupAgentDispatches(context.Context, []store.AgentDispatch) error {
+	if f.cleanupErr != nil {
+		return f.cleanupErr
+	}
 	if f.created > 0 {
 		f.canceled++
 	}

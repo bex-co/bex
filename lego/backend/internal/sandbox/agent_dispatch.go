@@ -60,13 +60,10 @@ func (l *AgentSessionLifecycle) CleanupAgentDispatches(ctx context.Context, disp
 			if raw.ID != d.PreviousSandboxID && turn != strconv.Itoa(d.Turn) && !(d.Legacy && turn == "") {
 				continue
 			}
-			s.Meter.Observe(ctx, raw)
-			if err := s.Client.Terminate(ctx, key, raw.ID); err != nil {
+			if err := s.terminateObserved(ctx, key, &raw); err != nil {
 				cleanupErr = errors.Join(cleanupErr, err)
 				break
 			}
-			raw.Status.State = string(StatusTerminated)
-			s.Meter.Observe(ctx, raw)
 			break
 		}
 	}
