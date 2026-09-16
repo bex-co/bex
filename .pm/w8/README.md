@@ -62,7 +62,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-_(empty — `013`/`014` implemented 2026-09-15 and moved to `done/`)_
+_(empty — `013`/`014`/`015` implemented 2026-09-15 and moved to `done/`)_
+
+> `015.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`) — moved to `done/`. `bex logs` panics (exit 2, raw Go stack trace) with no usable credential in every non-interactive output mode: upstream `cmd/logs.go` calls `deps.LogLoader()` in `RunE` before auth, and `(*Dependencies).APIConfig` (`pkg/dependencies/dependencies.go:281`) does `panic(err)` on `DefaultAPIConfig`'s `ErrLogin`. Upstream defect, not bex (no request is ever sent); reproduced live against the v2.27.0 pin (`panic: run \`render login\` to authenticate`, exit 2; `services` control is a clean `Error:`, exit 1). Graded in `docs/cli-compatibility-checklist.md`: new Real-gaps bullet beside the `skills` panic, `logs` header row re-graded `[x]`→`[~]`, both bullets pin-conditional (re-check on every pin move). The note's item 3 — a launcher-owned `recover()` around `cmd.Execute()` — was explicitly **not** implemented (needs a user decision: it would mask genuine panics).
 
 > `013.md`/`014.md` filed and implemented 2026-09-15 from the triage of the security scan at `~/.local/state/bex-security-integration/20260915T200437Z` — moved to `done/`. `013` collapsed the operator's two disagreeing answers about `BEX_REGISTRY` transport into one exported `registry.ClusterLocal` (the build plane's predicate, moved next to `NormalizeBase`): a bare host now defaults to `https://` unless it is cluster-local, and `registry.CredentialedBase` fails closed rather than putting an Authorization header on a cleartext off-cluster wire (`ResolveDigest`, `ListTags`, and the `app_controller` repo teardown). `014` added the Standard Webhooks timestamp tolerance (`VerifyTolerance`, 5m, both directions) that `Verify` advertised but never applied, with the clock injected so the window itself is testable.
 
