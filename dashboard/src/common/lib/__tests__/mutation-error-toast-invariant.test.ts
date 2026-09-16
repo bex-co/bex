@@ -49,8 +49,6 @@ const ALLOWED: Record<string, string> = {
     DEDICATED,
   'features/keyvalue/hooks/use-rename-key-value.ts: toast.error(t("keyvalue.nameInvalid"))':
     DEDICATED,
-  'features/services/components/env-vars-panel.tsx: toast.error(t("services.envExportError"))':
-    READ,
   'features/services/components/service-environment-editor.tsx: toast.error(t("services.envExportError"))':
     READ,
   'features/services/components/service-environment-editor.tsx: toast.error(t(kind==="env"?"services.envRevealError":"services.secretFileRevealError"))':
