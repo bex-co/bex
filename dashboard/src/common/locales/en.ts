@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enCommon: Record<string, TranslationEntry> = {
+  "common.navRouter": {
+    message: "Router",
+    description: "Router navigation item",
+  },
   "common.protectedConfirmationTitle": {
     message: "Protected environment confirmation required",
     description:
@@ -19,11 +23,13 @@ const enCommon: Record<string, TranslationEntry> = {
   },
   "common.confirmPhrasePrompt": {
     message: "To continue, type {phrase}",
-    description: "Label above the typed-confirmation input in a phrase-gated confirm dialog.",
+    description:
+      "Label above the typed-confirmation input in a phrase-gated confirm dialog.",
   },
   "common.cancel": {
     message: "Cancel",
-    description: "Generic Cancel button — dismisses a dialog or an inline form without saving.",
+    description:
+      "Generic Cancel button — dismisses a dialog or an inline form without saving.",
   },
   "common.pricePerMonth": {
     message: "${price}/month",
@@ -291,13 +297,15 @@ const enCommon: Record<string, TranslationEntry> = {
       "Heading of the inline state shown when a resource query fails with a 401 (expired session)",
   },
   "common.sessionExpiredBody": {
-    message: "Sign in again to keep going — you'll come right back to this page.",
+    message:
+      "Sign in again to keep going — you'll come right back to this page.",
     description:
       "Body text of the expired-session inline state, reassuring the user their place is preserved",
   },
   "common.signIn": {
     message: "Sign in",
-    description: "Button label that sends an expired session back to the login page",
+    description:
+      "Button label that sends an expired session back to the login page",
   },
   "common.colActions": {
     message: "Actions",

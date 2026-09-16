@@ -35,6 +35,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | Component | Variable | Purpose (default → disabled/unset behavior) |
 | --- | --- | --- |
 | bex-api | `BEX_API_ADDR` `:8090`, `BEX_API_NAMESPACE`, `BEX_API_CORS_ORIGIN`, `BEX_API_PUBLIC_URL` | listen, watched ns, CORS allowlist, public API origin (deploy-hook URLs + agent `streamUrl` + the sandbox run connect-token `uri`, w7/m147; unset → relative/omitted) |
+| bex-api | `BEX_ROUTER_URL`, `BEX_ROUTER_ASSERTION_SECRET` | private Router GraphQL URL and ≥32-byte BIA signing key; unset → Router hidden; session-only beta for `tea-d98210cbbpdc73dcrkvg` |
 | bex-api | `BEX_REGION` | placement name on Service/DB/KV metadata (e.g. `fsn1`); unset → omitted |
 | bex-api | `BEX_SSH_HOST` | public SSH hostname `ssh.bex.co` for `serviceDetails.sshAddress` + `agentSession.sshAddress` |
 | bex-api | `BEX_SHELL_TICKET_SECRET`, `BEX_SHELL_WS_URL` | browser Web Shell HMAC key + gateway `wss://…/shell` origin; either unset → shell 503 |

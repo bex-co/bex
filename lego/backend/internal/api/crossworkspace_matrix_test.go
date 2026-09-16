@@ -122,6 +122,8 @@ func callVerbResult(cv reflect.Value, m reflect.Method, ctx context.Context, nam
 // empirically (a verb that succeeds here and is NOT justified fails the sweep),
 // so a newly-added leak cannot hide as a silent exclusion.
 var callerScopedVerbs = map[string]bool{
+	"router.Service.Available": true, // current workspace configuration capability; no resource argument
+
 	// Global compute/plan catalogs — the same ladder for every workspace, no
 	// resource and no workspace in the signature (Authorize(can_view/can_create)
 	// against the caller's own workspace, then a static tier list).
@@ -137,8 +139,8 @@ var callerScopedVerbs = map[string]bool{
 	"apps.Service.NameAvailable": true,
 	// Capability probe — returns only whether the caller's server has a push
 	// transport; it accepts no resource/workspace argument.
-	"notifications.Service.IsPushAvailable":     true,
-	"notifications.Service.IsWebPushAvailable":  true,
+	"notifications.Service.IsPushAvailable":       true,
+	"notifications.Service.IsWebPushAvailable":    true,
 	"notifications.Service.WebPushVAPIDPublicKey": true,
 	// Durable push inbox verbs derive tenant + subject from the authenticated
 	// caller; an exact event id is constrained inside that same scope.
