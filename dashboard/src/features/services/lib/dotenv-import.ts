@@ -39,6 +39,20 @@ export class DotenvParseError extends Error {
  * Parse dotenv text as data only. There is no shell expansion, interpolation,
  * command substitution, or execution. Duplicate keys are deterministic: the
  * last assignment wins and carries its source line in the returned entry.
+ *
+ * ## Escape contract (the inverse of `formatEnvExport`)
+ *
+ * Inside **double quotes** this parser accepts the full JSON string escape set —
+ * `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t` and `\uXXXX` (surrogate pairs
+ * included) — which is exactly what `env-export.ts` emits via `JSON.stringify`.
+ * That makes `parseDotenv(formatEnvExport(x))` equal `x` for any string, the
+ * property `__tests__/env-round-trip.test.ts` pins. Any other escape keeps the
+ * previous behavior and yields the escaped character itself (`\q` → `q`).
+ *
+ * This is a deliberate superset of common dotenv parsers: a literal `\uXXXX`
+ * a user typed into their own `.env` **is** expanded here, inside double
+ * quotes only. Single-quoted and unquoted values are taken verbatim, which is
+ * the escape hatch for anyone who means the backslash literally.
  */
 export function parseDotenv(text: string): DotenvEntry[] {
   const entries = new Map<string, DotenvEntry>();
@@ -72,24 +86,15 @@ function parseValue(source: string, line: number): string {
   if (quote !== '"' && quote !== "'") return stripInlineComment(input);
 
   let value = "";
-  let escaped = false;
   let close = -1;
-  for (let index = 1; index < input.length; index += 1) {
+  let index = 1;
+  while (index < input.length) {
     const character = input[index];
-    if (quote === '"' && escaped) {
-      value +=
-        character === "n"
-          ? "\n"
-          : character === "r"
-            ? "\r"
-            : character === "t"
-              ? "\t"
-              : character;
-      escaped = false;
-      continue;
-    }
     if (quote === '"' && character === "\\") {
-      escaped = true;
+      const escape = decodeEscape(input, index);
+      if (!escape) throw new DotenvParseError(line, "quote");
+      value += escape.text;
+      index = escape.next;
       continue;
     }
     if (character === quote) {
@@ -97,13 +102,56 @@ function parseValue(source: string, line: number): string {
       break;
     }
     value += character;
+    index += 1;
   }
-  if (close < 0 || escaped) throw new DotenvParseError(line, "quote");
+  if (close < 0) throw new DotenvParseError(line, "quote");
   const trailing = input.slice(close + 1).trim();
   if (trailing && !trailing.startsWith("#")) {
     throw new DotenvParseError(line, "trailing");
   }
   return value;
+}
+
+/** The JSON single-character escapes, plus `"` `\` `/` which stand for themselves. */
+const SHORT_ESCAPES: Readonly<Record<string, string>> = {
+  b: "\b",
+  f: "\f",
+  n: "\n",
+  r: "\r",
+  t: "\t",
+};
+
+const HEX_QUAD = /^[0-9a-fA-F]{4}$/;
+
+/**
+ * Decode the escape sequence starting at the backslash `input[start]`.
+ * Returns the decoded text and the index just past the sequence, or `null` when
+ * the backslash is the last character (an unterminated escape).
+ *
+ * `\uXXXX` decodes one UTF-16 code unit, so a surrogate pair written as two
+ * consecutive escapes reassembles into its astral character, and a lone
+ * surrogate survives as itself — which is what `JSON.stringify` emits for one.
+ * A malformed `\u` (fewer than four hex digits) is left as the literal `u`,
+ * preserving the pre-existing "unknown escape yields its character" behavior.
+ */
+function decodeEscape(
+  input: string,
+  start: number,
+): { text: string; next: number } | null {
+  const marker = input[start + 1];
+  if (marker === undefined) return null;
+  const short = SHORT_ESCAPES[marker];
+  if (short !== undefined) return { text: short, next: start + 2 };
+  if (marker === "u") {
+    const hex = input.slice(start + 2, start + 6);
+    if (HEX_QUAD.test(hex)) {
+      return {
+        text: String.fromCharCode(Number.parseInt(hex, 16)),
+        next: start + 6,
+      };
+    }
+  }
+  return { text: marker, next: start + 2 };
 }
 
 function stripInlineComment(value: string): string {

@@ -306,9 +306,9 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	env := make(map[string]string, len(vars))
 	for _, v := range vars {
 		key := strings.TrimSpace(v.Key)
-		if !core.ValidEnvKey(key) {
+		if err := core.CheckEnvKey(key); err != nil {
 			// Names only in the error — never the value (docs/ADR013-secrets.md, t005).
-			return nil, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+			return nil, err
 		}
 		value, err := resolveValue(key, v.Value, v.Generate)
 		if err != nil {
@@ -353,8 +353,8 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 		return EnvVarView{}, err
 	}
 	key = strings.TrimSpace(key)
-	if !core.ValidEnvKey(key) {
-		return EnvVarView{}, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+	if err := core.CheckEnvKey(key); err != nil {
+		return EnvVarView{}, err
 	}
 	value, err := resolveValue(key, write.Value, write.GenerateValue)
 	if err != nil {
@@ -427,8 +427,8 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 	changed := false
 	seed := func(key, value string, generate bool) error {
 		key = strings.TrimSpace(key)
-		if !core.ValidEnvKey(key) {
-			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		if err := core.CheckEnvKey(key); err != nil {
+			return err
 		}
 		if _, ok := env[key]; ok {
 			return nil // seed-once: an already-set key keeps its live value

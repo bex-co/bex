@@ -718,6 +718,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Environment value placeholder while server generation is selected",
   },
+  "services.envReservedKey": {
+    message: "{key} 由 bex 依据服务端口设置，请改为修改服务端口。",
+    description:
+      "Environment validation message for a key bex reserves (PORT)",
+  },
   "services.envInvalidKey": {
     message: "只能使用字母、数字和下划线，且不能以数字开头。",
     description:

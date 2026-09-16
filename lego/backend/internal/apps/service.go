@@ -1847,6 +1847,13 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		return AppView{}, core.NewConflictError("CONFLICT", fmt.Sprintf("name %q is already in use", req.Name), nil)
 	}
 
+	// Refuse a reserved key at create for the same reason every other write
+	// path does: the operator injects its own PORT and would silently drop
+	// this one, so storing it would be a lie (w2/m95 t003).
+	if err := checkReservedSpecEnv(desired.Env); err != nil {
+		return AppView{}, err
+	}
+
 	a := &appv1alpha1.App{}
 	a.Name = req.Name
 	if tenantID != "" {
@@ -1880,6 +1887,19 @@ type createSeed struct {
 }
 
 func (s createSeed) empty() bool { return len(s.files) == 0 && len(s.env) == 0 }
+
+// checkReservedSpecEnv refuses a create whose spec carries a literal
+// environment variable bex owns (core.ReservedEnvKeys — today PORT). A
+// ValueFrom entry is skipped: it is a Secret key reference the operator
+// resolves, not a name the user is claiming.
+func checkReservedSpecEnv(env []appv1alpha1.EnvVar) error {
+	for _, item := range env {
+		if item.ValueFrom == nil && core.IsReservedEnvKey(item.Name) {
+			return core.ReservedEnvKeyError(item.Name)
+		}
+	}
+	return nil
+}
 
 // takeCreateEnvLiterals removes a newborn spec's literal env vars from spec.Env
 // and returns them as the map the create-time seeder writes into the mutable

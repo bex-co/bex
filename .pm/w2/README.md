@@ -16,7 +16,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [ ] **m94** — [Linked environment groups: precedence, auto-deploy, and quota parity](m94/README.md) (9 tasks; ~3h implementation, ~4h30m total) ← `/pm-brainstorm for w1` 2026-09-15 #1, absorbing w1/091, w1/092, w1/095, w1/100.
-- [ ] **m95** — [Environment values mean what the user typed: round-trip escapes, multi-line values, and `PORT`](m95/README.md) (7 tasks; ~1h35m implementation, ~2h45m total) ← `/pm-brainstorm for w1` 2026-09-15 #2, absorbing w1/099, w1/096; `PORT` decided as option (a).
+- [ ] **m95** — [Environment values mean what the user typed: round-trip escapes, multi-line values, and `PORT`](m95/README.md) (7 tasks; ~1h35m implementation, ~2h45m total) — **t001–t006 DONE 2026-09-15**; t007 closeout **BLOCKED (needs a working production credential — refresh `QA_PASSWORD` in `.env` or run `render login`)** ← `/pm-brainstorm for w1` 2026-09-15 #2, absorbing w1/099, w1/096; `PORT` decided as option (a).
 - [ ] **m96** — [Charges and webhook deliveries name their resource, even after deletion](m96/README.md) (8 tasks; ~2h10m implementation, ~3h20m total) ← `/pm-brainstorm for w1` 2026-09-15 #3, absorbing w1/088, w1/090.
 - [ ] **m97** — [Blueprint preview names the reason a fetch failed](m97/README.md) (7 tasks; ~1h30m implementation, ~2h40m total) ← `/pm-brainstorm for w1` 2026-09-15 #4, absorbing w1/097.
 - [ ] **m98** — [A suspended web service answers with a bex response](m98/README.md) (7 tasks; ~1h15m implementation, ~2h25m total) ← `/pm-brainstorm for w1` 2026-09-15 #5, absorbing w1/094.
@@ -110,6 +110,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- **036** — Three dashboard env components are dead in the product, kept alive only by their own tests ← from w2/m95 t002; candidate for `routine-dead-code`
 - **035** — Phase 4: drop dual-read + delete legacy registry/static blobs (ADR055 F2/F3 close) ← from w2/m92 t005; STOP + window-gated until evidenced clean window (calendar lower bound **2026-09-22**; continuous evidence start pending Loki/shipper roll — see note)
 
 _(2026-09-08: `034` resolved — keep disk $0.175 / Render×0.70; ADR082+ADR030 margin figures updated to measured Hetzner $0.0767 (~56.2%); moved to `done/034.md`.)_

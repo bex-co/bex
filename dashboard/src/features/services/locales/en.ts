@@ -731,6 +731,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Environment value placeholder while server generation is selected",
   },
+  "services.envReservedKey": {
+    message:
+      "{key} is set by bex from the service port. Change the service port instead.",
+    description:
+      "Environment validation message for a key bex reserves (PORT)",
+  },
   "services.envInvalidKey": {
     message: "Use letters, digits and underscores; can't start with a digit.",
     description:

@@ -12,6 +12,8 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Checkbox } from "@/common/components/ui/checkbox";
 import { Input } from "@/common/components/ui/input";
+import { AutoTextarea } from "@/common/components/ui/auto-textarea";
+import { isReservedEnvKey } from "@/features/services/lib/environment-draft";
 import { Label } from "@/common/components/ui/label";
 import { Textarea } from "@/common/components/ui/textarea";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -237,17 +239,27 @@ export function NewEnvGroupDialog({
                     );
                     setInvalid(false);
                   }}
-                  aria-invalid={invalid && !isValidEnvVarKey(variable.key)}
+                  aria-invalid={
+                    isReservedEnvKey(variable.key.trim()) ||
+                    (invalid && !isValidEnvVarKey(variable.key))
+                  }
                   placeholder={t("envGroups.varKeyPlaceholder")}
                 />
+                {/* bex owns PORT and refuses it server-side (w2/m95 t003) —
+                    said the moment it is typed, not only on submit. */}
+                {isReservedEnvKey(variable.key.trim()) ? (
+                  <p className="text-destructive text-xs" role="alert">
+                    {t("envGroups.reservedKey", { key: variable.key.trim() })}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1">
                 <Label htmlFor={`env-group-var-value-${variable.id}`}>
                   {t("envGroups.varValueLabel")}
                 </Label>
-                <Input
+                <AutoTextarea
                   id={`env-group-var-value-${variable.id}`}
-                  type="password"
+                  masked
                   value={variable.value}
                   disabled={variable.generateValue}
                   onChange={(event) => {

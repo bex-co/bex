@@ -2,6 +2,7 @@ import { isValidGitUrl } from "@/common/lib/utils/git-url";
 import { isValidCron } from "@/features/services/lib/cron";
 import {
   VALID_ENV_KEY,
+  isReservedEnvKey,
   isValidSecretFileName,
 } from "@/features/services/lib/environment-draft";
 import type { ServiceType } from "@/features/services/lib/create-context";
@@ -124,8 +125,10 @@ export function isSubmittable(form: NewServiceForm): boolean {
   return (
     sourceValid &&
     nativeCommandsValid &&
-    submittableEnvVars(form.envVars).every((row) =>
-      VALID_ENV_KEY.test(row.key),
+    submittableEnvVars(form.envVars).every(
+      // A reserved key is refused by bex-api at create (w2/m95 t003), so the
+      // form blocks it rather than letting Submit fail.
+      (row) => VALID_ENV_KEY.test(row.key) && !isReservedEnvKey(row.key.trim()),
     ) &&
     submittableSecretFiles(form.secretFiles).every((file) =>
       isValidSecretFileName(file.name),

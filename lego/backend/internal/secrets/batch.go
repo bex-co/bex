@@ -321,6 +321,9 @@ func validateCASPatch(patch EnvironmentPatch) (string, error) {
 			nil,
 		)
 	}
+	if core.IsReservedEnvKey(key) {
+		return "", core.ReservedEnvKeyError(key)
+	}
 	if strings.TrimSpace(write.FromKey) != "" || write.Delete || write.GenerateValue {
 		return "", core.NewBadRequestError(
 			"INVALID_ENVIRONMENT_CAS_PATCH",

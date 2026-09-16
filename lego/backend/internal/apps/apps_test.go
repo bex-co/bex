@@ -1882,7 +1882,7 @@ func TestGraphQLCreateServiceEnvVars(t *testing.T) {
 				name: "svc-with-env"
 				image: "ghcr.io/org/app:latest"
 				envVars: [
-					{key: "PORT", value: "8080"}
+					{key: "APP_PORT", value: "8080"}
 					{key: "LOG_LEVEL", value: "debug"}
 					{key: "SESSION_SECRET", generateValue: true}
 				]
@@ -1894,7 +1894,8 @@ func TestGraphQLCreateServiceEnvVars(t *testing.T) {
 	}
 
 	a := getApp(t, cl, "svc-with-env")
-	want := []appv1alpha1.EnvVar{{Name: "PORT", Value: "8080"}, {Name: "LOG_LEVEL", Value: "debug"}}
+	// APP_PORT, not PORT: PORT is reserved and refused at create (w2/m95 t003).
+	want := []appv1alpha1.EnvVar{{Name: "APP_PORT", Value: "8080"}, {Name: "LOG_LEVEL", Value: "debug"}}
 	if len(a.Spec.Env) != len(want)+1 {
 		t.Fatalf("spec.Env len = %d, want %d", len(a.Spec.Env), len(want)+1)
 	}

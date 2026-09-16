@@ -318,9 +318,9 @@ func (s *Service) prepareCreateEnvVars(ctx context.Context, service string, a *a
 	}
 	ctx, service = scopeApp(ctx, a, service)
 	for _, key := range core.SortedKeys(env) {
-		if !core.ValidEnvKey(key) {
+		if err := core.CheckEnvKey(key); err != nil {
 			// Names only in the error — never the value (docs/ADR013-secrets.md).
-			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+			return err
 		}
 	}
 	if err := envMapWithinQuota(env); err != nil {

@@ -2,8 +2,12 @@ import { Plus, Trash2, Sparkles } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
+import { AutoTextarea } from "@/common/components/ui/auto-textarea";
 import { Label } from "@/common/components/ui/label";
-import { VALID_ENV_KEY } from "@/features/services/lib/environment-draft";
+import {
+  VALID_ENV_KEY,
+  isReservedEnvKey,
+} from "@/features/services/lib/environment-draft";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { removeRow, updateRow } from "@/features/services/lib/row-editor";
 import type { EnvVarEntry } from "@/features/services/hooks/use-create-service";
@@ -49,6 +53,9 @@ export function CreateEnvVarEditor({
           </div>
           {rows.map((row, i) => {
             const keyInvalid = row.key !== "" && !VALID_ENV_KEY.test(row.key);
+            // bex owns PORT and refuses it server-side (w2/m95 t003); say so
+            // as it is typed rather than at submit.
+            const keyReserved = isReservedEnvKey(row.key.trim());
             return (
               <div key={i} className="space-y-1">
                 <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2">
@@ -57,10 +64,10 @@ export function CreateEnvVarEditor({
                     onChange={(e) => patchRow(i, { key: e.target.value })}
                     placeholder={t("services.createFieldEnvVarsKeyPlaceholder")}
                     aria-label={t("services.createFieldEnvVarsKey")}
-                    aria-invalid={keyInvalid}
+                    aria-invalid={keyInvalid || keyReserved}
                     className="font-mono text-sm"
                   />
-                  <Input
+                  <AutoTextarea
                     value={row.value}
                     onChange={(e) => patchRow(i, { value: e.target.value })}
                     placeholder={t(
@@ -91,6 +98,11 @@ export function CreateEnvVarEditor({
                 {keyInvalid && (
                   <p className="text-xs text-destructive">
                     {t("services.createFieldEnvVarsKeyError")}
+                  </p>
+                )}
+                {!keyInvalid && keyReserved && (
+                  <p className="text-xs text-destructive" role="alert">
+                    {t("services.envReservedKey", { key: row.key.trim() })}
                   </p>
                 )}
               </div>
