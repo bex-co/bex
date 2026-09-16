@@ -116,7 +116,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `--limit <count>`
   - [x] `--text <query>` — filter genuinely applied (empty result on no match)
   - [x] `--level <levels>` — durable-logs supplement: a planted JSON `error` line is isolated exactly; an unmatched level is an honest empty. (The CLI's own `--level` enum has no `unknown`, so bex's honest plaintext bucket is reachable over REST only — upstream flag shape, not a bex gap.) Dev-9 (no Loki) answers `503`
-  - [x] `--type <types>` — `app` works live even without the store; durable-logs supplement proved the `app`/`request` split clean in both directions
+  - [x] `--type <types>` — closed enum `app`/`request`/`build` (client rejects bex-only `predeploy`); `app` works live without the store; durable supplement proved `app`/`request`; **`build` also carries pre-deploy Job stdout once shipped (w5/m100)** so `pre_deploy_failed` is diagnosable without a type the CLI cannot send
   - [x] `--host <hosts>` — durable-logs supplement: matches only the probe host; an absent host is an honest empty. Dev-9 (no Loki) answers `503`
   - [x] `--status-code <codes>` — durable-logs supplement: exact `404`/`200` exclude each other's probe lines, and the `4xx` class shorthand matches. Dev-9 (no Loki) answers `503`
   - [x] `--method <methods>` — durable-logs supplement: the GET probes match; a never-sent method is an honest empty. Dev-9 (no Loki) answers `503`

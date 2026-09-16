@@ -354,3 +354,32 @@ func TestShipperRegexRejectsNonTenantServices(t *testing.T) {
 		}
 	}
 }
+
+// TestShipperBuildPodsKeepPredeploy pins w5/m100: the Alloy build_pods pipeline
+// must keep component=predeploy as well as component=build so migration stdout
+// lands in Loki as type=build (Render-compatible CLI reachability). Reading the
+// live ConfigMap source prevents the keep regex from silently narrowing again.
+func TestShipperBuildPodsKeepPredeploy(t *testing.T) {
+	path := findRepoFile(t, filepath.Join("deploy", "gitops", "base", "log-shipper.yaml"))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	body := string(data)
+	idx := strings.Index(body, `discovery.relabel "build_pods"`)
+	if idx < 0 {
+		t.Fatal(`missing discovery.relabel "build_pods" in log-shipper.yaml`)
+	}
+	// Bound the block loosely to the next discovery.relabel so we assert the
+	// keep rule that belongs to build_pods, not a later pipeline.
+	rest := body[idx:]
+	if next := strings.Index(rest[1:], `discovery.relabel "`); next >= 0 {
+		rest = rest[:next+1]
+	}
+	if !strings.Contains(rest, `regex         = "build|predeploy"`) {
+		t.Fatalf("build_pods keep regex must be build|predeploy (w5/m100); block:\n%s", rest)
+	}
+	if !strings.Contains(rest, `__meta_kubernetes_pod_label_app_bex_co_predeploy`) {
+		t.Fatal("build_pods must derive app from app.bex.co/predeploy when build label is absent")
+	}
+}
