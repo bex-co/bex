@@ -12,7 +12,6 @@ export const ANDROID_FINGERPRINTS_ENV =
 export const IOS_BUNDLE_ID = "co.bex.mobile";
 export const ANDROID_PACKAGE = "co.bex.mobile";
 export const INVITE_PATH = "/invite";
-export const OAUTH_REDIRECT_PATH = "/oauth2redirect";
 export const WELL_KNOWN_DIR = new URL(
   "../public/.well-known/",
   import.meta.url,
@@ -63,14 +62,18 @@ export function buildAssociations({
         ? [
             {
               appID: `${teamId}.${IOS_BUNDLE_ID}`,
+              // Exactly one claimed path. The OAuth callback is deliberately
+              // NOT claimed here: ADR012 records that the mobile redirect is a
+              // private-use custom scheme, that an https universal link does
+              // not return from inside ASWebAuthenticationSession/Custom Tabs,
+              // and that there is no dashboard /oauth2redirect route to land
+              // on. Claiming it would hand iOS a path that dead-ends at the
+              // SPA 404 — the exact regression 9081fbdb caused and that was
+              // reverted. Do not re-add it without ADR012's (a)/(b)/(c).
               components: [
                 {
                   "/": INVITE_PATH,
                   comment: "Open only bex workspace invitation links.",
-                },
-                {
-                  "/": OAUTH_REDIRECT_PATH,
-                  comment: "Open only the OAuth authorization callback.",
                 },
               ],
             },
