@@ -143,15 +143,22 @@ func TestLifecycleVerbs(t *testing.T) {
 
 	if v, err := svc.Suspend(ctx, "life-db"); err != nil || v.Suspended != core.RenderSuspended {
 		t.Fatalf("suspend => %v suspended=%q", err, v.Suspended)
+	} else if v.Status != "suspended" {
+		t.Fatalf("suspend status = %q, want suspended (Render databaseStatus / CLI Status)", v.Status)
 	}
 	var got appv1alpha1.Database
 	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "life-db"}, &got)
 	if !got.Spec.Suspended {
 		t.Fatal("suspend did not set spec.suspended")
 	}
+	if v, err := svc.GetPostgres(ctx, "life-db"); err != nil || v.Status != "suspended" {
+		t.Fatalf("GetPostgres after suspend => %v status=%q", err, v.Status)
+	}
 
 	if v, err := svc.Resume(ctx, "life-db"); err != nil || v.Suspended != core.RenderNotSuspended {
 		t.Fatalf("resume => %v suspended=%q", err, v.Suspended)
+	} else if v.Status == "suspended" {
+		t.Fatalf("resume must clear status suspended, got %q", v.Status)
 	}
 	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "life-db"}, &got)
 	if got.Spec.Suspended {
