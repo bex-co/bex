@@ -238,7 +238,7 @@ func TestSteadyTrafficKeepsAFreeServiceAwakeThenItSleepsWhenQuiet(t *testing.T) 
 	}
 }
 
-func TestPrometheusAppActivityReaderQueriesBothSignals(t *testing.T) {
+func TestPrometheusAppActivityReaderQueriesEverySignal(t *testing.T) {
 	now := time.Now()
 	requestAt := now.Add(-2 * time.Minute).Truncate(time.Second)
 	frameAt := now.Add(-40 * time.Second).Truncate(time.Second)
@@ -261,12 +261,15 @@ func TestPrometheusAppActivityReaderQueriesBothSignals(t *testing.T) {
 		t.Fatalf("activity = %v, want the latest sample %v", got, frameAt)
 	}
 	if len(queries) != 1 {
-		t.Fatalf("queries = %q, want one round trip for both signals", queries)
+		t.Fatalf("queries = %q, want one round trip for every signal", queries)
 	}
 	q := queries[0]
 	for _, want := range []string{
 		`traefik_service_requests_total{service="tea-ws-web-3000@kubernetes"}`,
 		`bex_websocket_egress_bytes_total{app_id="srv-activity"}`,
+		// Client→server frames count too: a WebSocket the client alone feeds
+		// used to keep nothing awake (w1/m161, from w1/102).
+		`bex_websocket_ingress_bytes_total{app_id="srv-activity"}`,
 		" or ",
 		"[915s:15s])", // the 15-minute window plus one step, not three days
 	} {

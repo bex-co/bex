@@ -68,7 +68,8 @@ var errActivityUnavailable = errors.New("service activity unavailable: a recent 
 // NewPrometheusAppActivityReader returns a reader over two series Prometheus
 // already scrapes: Traefik's per-service request counter (every request,
 // whatever its status — Render counts inbound traffic, not successes) and the
-// websocketegress plugin's per-App frame counter. No new scrape or RBAC.
+// websocketegress plugin's per-App frame counters, in both directions. No new
+// scrape or RBAC.
 func NewPrometheusAppActivityReader(base string, hc *http.Client) AppActivityReader {
 	if hc == nil {
 		hc = boundedhttp.Shared
@@ -109,9 +110,16 @@ func NewPrometheusAppActivityReader(base string, hc *http.Client) AppActivityRea
 func activityQuery(app *appv1alpha1.App, lookback time.Duration) string {
 	rose := func(series string) string { return "(sum(increase(" + series + "[1m])) > 0)" }
 	service := traefikServiceLabel(app.Namespace, app.Name, app.Spec.EffectivePort())
-	return fmt.Sprintf("max_over_time(timestamp(%s or %s)[%ds:%ds])",
+	// Both WebSocket directions count as traffic: a connection the client alone
+	// feeds (telemetry, a log shipper) kept no service awake while only the
+	// egress counter was read, so a free service slept under real use (w1/m161,
+	// from w1/102). `or` over a series Prometheus does not have yet contributes
+	// nothing, so an operator ahead of the plugin roll behaves exactly as before.
+	appID := strconv.Quote(appIDOrName(app))
+	return fmt.Sprintf("max_over_time(timestamp(%s or %s or %s)[%ds:%ds])",
 		rose("traefik_service_requests_total{service="+strconv.Quote(service)+"}"),
-		rose("bex_websocket_egress_bytes_total{app_id="+strconv.Quote(appIDOrName(app))+"}"),
+		rose("bex_websocket_egress_bytes_total{app_id="+appID+"}"),
+		rose("bex_websocket_ingress_bytes_total{app_id="+appID+"}"),
 		int(math.Ceil(max(lookback, time.Minute).Seconds())), int(activityStep.Seconds()))
 }
 
