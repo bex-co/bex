@@ -1,0 +1,4 @@
+interface:
+  display_name: "Loopx"
+  short_description: "Triage and drain a PM workstream item by item"
+  default_prompt: "Use $loopx to triage and drain a PM workstream to completion."
