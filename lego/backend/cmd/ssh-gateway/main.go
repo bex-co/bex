@@ -272,6 +272,10 @@ func main() {
 		Revalidator:    &agentsessions.AttachRevalidator{Base: base, Store: st},
 		DriverPort:     intEnv("BEX_AGENT_SESSION_DRIVER_PORT", 8787),
 		AllowedOrigins: splitCSV(os.Getenv("BEX_API_CORS_ORIGIN")),
+		// Same trusted peers the web shell uses: this endpoint is HTTP behind
+		// the same Traefik pod network, so without it every attach session's
+		// audit row records Traefik's pod IP instead of the client (w1/107).
+		TrustedProxies: core.TrustedProxies(trustedProxies),
 		Metrics:        metrics,
 		Limits:         limits,
 		Nonces:         nonces,
