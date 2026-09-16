@@ -639,7 +639,9 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 	if app.Status.ObservedGeneration != app.Generation {
 		recordBuildOutcome(buildOutcomeCanceled)
 	}
-	if app.Status.Image != "" {
+	// Only a release that served can be reverted to; otherwise there is simply
+	// no release yet and the Canceled branch below is the truth (w1/m160).
+	if releaseHasServed(app) {
 		return r.dispatchRuntime(ctx, app, app.Status.Image, port)
 	}
 	// Canceled, not Failed: the Condition below has always said "BuildCanceled",
@@ -2680,6 +2682,12 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	}
 
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
+	// End a scaling transition the way the web path does. Without this a
+	// worker's transition stayed Started forever, and applyAutoscaling keeps
+	// returning the recorded ToReplicas without reading metrics while one is
+	// Started — so an autoscaled worker scaled once and never again
+	// (w1/m160, from w1/105).
+	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
 	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
 		// Port 0 — a worker has no HTTP endpoint, so the $PORT hint is omitted (w9/011).
 		return r.reportRolloutProgress(ctx, app, dep, replicas, 0,
@@ -2763,7 +2771,7 @@ func deploymentProgressDeadlineExceeded(dep *appsv1.Deployment) bool {
 // served ⇒ PhaseFailed. ActiveRevision set ⇒ prior release still describes what
 // is (or was) serving ⇒ Running / Hibernated, deploy fact only.
 func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (ctrl.Result, error) {
-	if app.Status.ActiveRevision != "" {
+	if releaseHasServed(app) {
 		r.settleFailureOverPriorRelease(ctx, app, "the latest rollout failed")
 		return ctrl.Result{}, nil
 	}
@@ -4368,7 +4376,9 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 		// the rule PhaseCanceled documents and the cancel path already applies
 		// (w6/m52); w6/m124 extends it to the failure path. The Build condition
 		// above stays the durable verdict bex-api closes the deploy row from.
-		if app.Status.Image != "" {
+		// Only over a release that actually served; otherwise this is a plain
+		// failure, not a deploy fact on top of a running service (w1/m160).
+		if releaseHasServed(app) {
 			r.settleFailureOverPriorRelease(ctx, app, "the latest build failed")
 			return ctrl.Result{}, err
 		}
@@ -4614,7 +4624,7 @@ func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App,
 	// ActiveRevision, not status.image: markRunning sets it only once a release
 	// actually served, while status.image can outlive a first release that
 	// crash-looped and never did (settleFailedRollout keys on it the same way).
-	if app.Status.ActiveRevision != "" {
+	if releaseHasServed(app) {
 		r.settleFailureOverPriorRelease(ctx, app, "the latest pre-deploy command failed")
 		return ctrl.Result{}, true, err
 	}
@@ -4798,7 +4808,7 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 // there is none to hold: nothing has served yet, or its Deployment, or a web or
 // private service's Service, is gone.
 func (r *AppReconciler) servingPriorRelease(ctx context.Context, app *appv1alpha1.App) (*priorRelease, error) {
-	if app.Status.ActiveRevision == "" {
+	if !releaseHasServed(app) {
 		return nil, nil
 	}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
