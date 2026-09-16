@@ -547,6 +547,41 @@ func TestRenderCLIImageOwnerContractThroughComposedServer(t *testing.T) {
 // real server while GraphQL and MCP serve it — found by the w5/m90 t008 live
 // walkthrough. An unknown app must 404 (gate passed, store miss), while a
 // genuinely unknown parameter must still 400.
+
+// TestKeyValueSuspendedQueryThroughComposedServer admits bex's list-key-value
+// ?suspended= extension past the Render-query gate (w5/060). Bare keyvalue
+// handler tests never see the gate, so production 400'd while unit tests
+// passed. Unknown values must reach the handler's named enum 400.
+func TestKeyValueSuspendedQueryThroughComposedServer(t *testing.T) {
+	cl := fakeClient()
+	base := &core.Base{
+		Client:    cl,
+		Namespace: "default",
+		Workspace: fakeWorkspace{"client-1": "tea-cli"},
+	}
+	h, _ := serverWith(t, base, Deps{APIKeys: newFakeKeyStore()})
+
+	w := do(t, h, http.MethodGet, "/v1/key-value?ownerId=tea-cli&suspended=suspended", testToken, "")
+	if w.Code == http.StatusBadRequest && strings.Contains(w.Body.String(), "unsupported query parameter") {
+		t.Fatalf("suspended extension still blocked at the gate: %s", w.Body.String())
+	}
+	if w.Code != http.StatusOK {
+		t.Fatalf("suspended=suspended = %d, want 200 after gate: %s", w.Code, w.Body.String())
+	}
+
+	w = do(t, h, http.MethodGet, "/v1/key-value?ownerId=tea-cli&suspended=bogus", testToken, "")
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("suspended=bogus = %d, want 400: %s", w.Code, w.Body.String())
+	}
+	body := w.Body.String()
+	if strings.Contains(body, "unsupported query parameter") {
+		t.Fatalf("bogus value must reach handler enum check, not the gate: %s", body)
+	}
+	if !strings.Contains(body, "suspended") || !strings.Contains(body, "not_suspended") {
+		t.Fatalf("bogus value must name accepted enum values: %s", body)
+	}
+}
+
 func TestMetricsPercentageQueryThroughComposedServer(t *testing.T) {
 	cl := fakeClient()
 	base := &core.Base{
