@@ -56,6 +56,34 @@ B  PROXY v1 header, then HTTP    → HTTP/1.1 503, served; access log client 203
 
 The whole-cluster kind/CAPD harness was deliberately not used: the behavior in question belongs to Traefik's entrypoint, not to bex, and that harness has OOM-ed this machine in past sessions.
 
+**t002 must never be committed by this worker (found 2026-09-16).** `.github/workflows/infra.yml` runs on `push: branches: [main]`, and its credentialed Terraform job applies with `terraform apply -auto-approve` gated on `if: github.event_name == 'push'`. So committing the listener change _is_ applying it, immediately, to the real Hetzner load balancer — before t001's Traefik trust has rolled. That is precisely the inverted order the two-step plan exists to prevent, and it would drop every tenant's HTTP(S) at the moment of the push.
+
+t002 therefore ships as a **patch that is deliberately not committed**, handed over with its apply steps, to be run only after t001 has rolled and a live probe confirms the edge still serves. The earlier wording in § Decisions — "a prepared and reviewed change" — is corrected by this: prepared means _uncommitted_, because in this repo a commit to `infra/` is an apply.
+
+**A constraint t002 must carry (found 2026-09-16).** `scripts/gitops-validate.sh:171-176` asserts that every Terraform edge listener sets `proxyprotocol = false`, with `postgres` and `valkey` as the only exceptions — it fails with `Terraform edge listener <name> must set proxyprotocol=<expected>`. Flipping the `http`/`https` listeners without updating that expectation in the same change fails the repo's own gate. So t002 ships three things together: the Terraform listener change, the validator's expected value for those two listeners, and the live probe that confirms the edge still serves.
+
+## t002 handover (2026-09-16): the exact change, and when to apply it
+
+The change is two lines of Terraform plus the validator expectation that guards them:
+
+| File | Now | After |
+| --- | --- | --- |
+| `infra/terraform/main.tf`, `hcloud_load_balancer_service "http"` (:80 → NodePort 31218) | `proxyprotocol = false` | `proxyprotocol = true` |
+| `infra/terraform/main.tf`, `hcloud_load_balancer_service "https"` (:443 → NodePort 31976) | `proxyprotocol = false` | `proxyprotocol = true` |
+| `scripts/gitops-validate.sh:171-174` | `postgres \| valkey) expected_proxyprotocol=true` | add `http \| https` to that case |
+
+**Order, and why it is not negotiable.** Both listeners health-check with plain TCP on their NodePorts and send no PROXY header. Traefik v3.7.5 serves a headerless connection from a trusted peer (verified, § The gate on t001), so t001 can roll on its own safely. The reverse is not true: flipping the listeners while Traefik does not yet expect PROXY makes every tenant request malformed. `scripts/gitops-validate.sh` already states this rule for the datastore front doors — "Enabling PROXY protocol before header-capable proxy pods are Ready breaks both datastore front doors."
+
+**Apply procedure** (yours to run, after t001 has rolled and the edge is confirmed serving):
+
+1. Confirm t001 is live: Traefik's pods carry `proxyProtocol.trustedIPs: ["10.10.0.7/32"]` on `web` and `websecure`, and a plain request to any tenant URL still returns normally.
+2. Apply the patch in `scratchpad/m150-t002.patch` (or re-make the two edits above).
+3. Push — in this repo that _is_ the apply: `infra.yml` runs on push to `main` and its credentialed job runs `terraform apply -auto-approve`.
+4. Immediately probe from outside the cluster: a tenant URL returns `200`, and `GET /v1/logs?resource=<srv>&type=request` starts showing the caller's real address instead of `10.10.0.7`.
+5. If the edge misbehaves, revert the two `proxyprotocol` lines and push again — the same automation applies the revert.
+
+The patch is deliberately **not committed**: this worker cannot push it without applying it.
+
 ## Tasks (in order)
 
 | id | title | est | depends_on |

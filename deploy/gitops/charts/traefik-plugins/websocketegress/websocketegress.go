@@ -54,8 +54,8 @@ var processState = struct {
 	ready    atomic.Bool
 	count    atomic.Int64
 	counters sync.Map // string app id -> *atomic.Uint64, server→client bytes
-	// ingress mirrors counters' keys with client→server bytes. Kept in its own
-	// map so the egress counter — which bills — keeps its exact meaning.
+	// ingress mirrors counters' keys with client→server bytes (w1/m161). Kept in
+	// its own map so the egress counter — which bills — keeps its exact meaning.
 	ingress sync.Map // string app id -> *atomic.Uint64
 	// handshakeOverflow counts connections whose 101 response header block
 	// exceeded maxHandshakeBytes (codex-security 2026-08 F4). It is a
@@ -176,10 +176,9 @@ func (c *downstreamConn) CloseWrite() error {
 // idle check has to see it or a free service sleeps under real use (w1/m161,
 // from w1/102). No handshake accounting is needed here: net/http consumed the
 // upgrade request before Hijack, so everything read after it is frame bytes.
-// A nil counter means a caller that only exercises egress.
 func (c *downstreamConn) Read(payload []byte) (int, error) {
 	read, err := c.Conn.Read(payload)
-	if read > 0 && c.ingress != nil {
+	if read > 0 {
 		c.ingress.Add(uint64(read))
 	}
 	return read, err

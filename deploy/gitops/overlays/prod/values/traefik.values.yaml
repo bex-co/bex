@@ -43,9 +43,29 @@ ports:
   web:
     port: 8000 # exposedPort defaults to 80 -> LB listens :80, forwards to :8000
     nodePort: 31218
+    # w1/m150 t001: accept PROXY protocol ONLY from the Hetzner load balancer's
+    # private address, so the allow-list middleware and the request log see the
+    # real client instead of 10.10.0.7. Verified on Traefik v3.7.5 (the build the
+    # pinned chart ships): trustedIPs is TRUST, not a requirement — a trusted
+    # peer that sends no header is still served, so the load balancer's plain-TCP
+    # health checks keep passing while its listeners still send no header. The
+    # listener flip itself is t002 and is applied separately, after this rolls.
+    proxyProtocol:
+      trustedIPs:
+        - 10.10.0.7/32
   websecure:
     port: 8443 # exposedPort defaults to 443 -> LB listens :443
     nodePort: 31976
+    # w1/m150 t001: accept PROXY protocol ONLY from the Hetzner load balancer's
+    # private address, so the allow-list middleware and the request log see the
+    # real client instead of 10.10.0.7. Verified on Traefik v3.7.5 (the build the
+    # pinned chart ships): trustedIPs is TRUST, not a requirement — a trusted
+    # peer that sends no header is still served, so the load balancer's plain-TCP
+    # health checks keep passing while its listeners still send no header. The
+    # listener flip itself is t002 and is applied separately, after this rolls.
+    proxyProtocol:
+      trustedIPs:
+        - 10.10.0.7/32
   ssh:
     port: 2222 # exposedPort 22 -> LB listens :22 without root in the pod
     exposedPort: 22

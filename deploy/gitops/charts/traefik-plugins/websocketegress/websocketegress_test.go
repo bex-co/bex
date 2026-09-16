@@ -31,7 +31,7 @@ import (
 func TestDownstreamCountsFramesButNotHandshake(t *testing.T) {
 	server, client := net.Pipe()
 	counter := &atomic.Uint64{}
-	wrapped := &downstreamConn{Conn: server, counter: counter}
+	wrapped := &downstreamConn{Conn: server, counter: counter, ingress: &atomic.Uint64{}}
 	done := make(chan struct{})
 	go func() {
 		_, _ = io.Copy(io.Discard, client)
@@ -53,7 +53,7 @@ func TestDownstreamCountsFramesButNotHandshake(t *testing.T) {
 func TestDownstreamCountsFrameWhenHandshakeAlreadyFlushed(t *testing.T) {
 	buffer := &recordingConn{}
 	counter := &atomic.Uint64{}
-	wrapped := &downstreamConn{Conn: buffer, counter: counter}
+	wrapped := &downstreamConn{Conn: buffer, counter: counter, ingress: &atomic.Uint64{}}
 	frame := []byte{0x82, 0x03, 1, 2, 3}
 	if _, err := wrapped.Write(frame); err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestDownstreamCountsFrameWhenHandshakeAlreadyFlushed(t *testing.T) {
 func TestDownstreamDoesNotCountClientReads(t *testing.T) {
 	server, client := net.Pipe()
 	counter := &atomic.Uint64{}
-	wrapped := &downstreamConn{Conn: server, counter: counter}
+	wrapped := &downstreamConn{Conn: server, counter: counter, ingress: &atomic.Uint64{}}
 	want := []byte("client-to-server")
 	go func() { _, _ = client.Write(want) }()
 	got := make([]byte, len(want))
@@ -120,7 +120,7 @@ func TestDownstreamCountsOnlySuccessfullyWrittenBytes(t *testing.T) {
 	wantErr := errors.New("short write")
 	conn := &shortWriteConn{limit: 3, err: wantErr}
 	counter := &atomic.Uint64{}
-	wrapped := &downstreamConn{Conn: conn, counter: counter, decided: true}
+	wrapped := &downstreamConn{Conn: conn, counter: counter, ingress: &atomic.Uint64{}, decided: true}
 	written, err := wrapped.Write([]byte("abcdef"))
 	if written != 3 || !errors.Is(err, wantErr) {
 		t.Fatalf("Write = (%d, %v), want (3, %v)", written, err, wantErr)
@@ -190,7 +190,7 @@ func TestFailedHijackDoesNotCount(t *testing.T) {
 func TestAbruptCloseLeavesCompleteFrameCountDeterministic(t *testing.T) {
 	conn := &recordingConn{}
 	counter := &atomic.Uint64{}
-	wrapped := &downstreamConn{Conn: conn, counter: counter}
+	wrapped := &downstreamConn{Conn: conn, counter: counter, ingress: &atomic.Uint64{}}
 	handshake := []byte("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n")
 	frame := []byte{0x82, 0x04, 1, 2, 3, 4}
 	if _, err := wrapped.Write(append(handshake, frame...)); err != nil {
@@ -219,7 +219,7 @@ func TestOversizedHandshakeStaysPerConnection(t *testing.T) {
 
 	conn := &recordingConn{}
 	counter := &atomic.Uint64{}
-	wrapped := &downstreamConn{Conn: conn, counter: counter}
+	wrapped := &downstreamConn{Conn: conn, counter: counter, ingress: &atomic.Uint64{}}
 
 	// A header block past the cap with no terminator in sight.
 	header := append([]byte("HTTP/1.1 101 Switching Protocols\r\nX-Pad: "), bytes.Repeat([]byte("a"), maxHandshakeBytes)...)
@@ -259,7 +259,7 @@ func TestOversizedHandshakeStaysPerConnection(t *testing.T) {
 
 	// A second, ordinary connection must be entirely unaffected: it parses its
 	// handshake, excludes it, and counts only frames.
-	other := &downstreamConn{Conn: &recordingConn{}, counter: counter}
+	other := &downstreamConn{Conn: &recordingConn{}, counter: counter, ingress: &atomic.Uint64{}}
 	handshake := []byte("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n")
 	otherFrame := []byte{0x81, 0x02, 'o', 'k'}
 	before = counter.Load()
