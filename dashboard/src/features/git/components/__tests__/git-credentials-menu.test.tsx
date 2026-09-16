@@ -116,7 +116,7 @@ describe("GitCredentialsMenu", () => {
     expect(puncsky).toHaveAttribute("href", "https://github.com/puncsky");
     // Repo counts, grouped by accountLogin.
     expect(screen.getByText("3 repos")).toBeInTheDocument();
-    expect(screen.getByText("1 repos")).toBeInTheDocument();
+    expect(screen.getByText("1 repo")).toBeInTheDocument();
     // Configure-in-GitHub links carry each installation's grants URL.
     const configure = screen.getAllByLabelText("Configure in GitHub");
     expect(configure).toHaveLength(2);

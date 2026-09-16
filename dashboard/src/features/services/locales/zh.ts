@@ -2903,7 +2903,7 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法创建 {name}，请重试。",
     description: "Toast shown after createService fails",
   },
-  "services.scaleSuccess": {
+  "services.scaleSuccess_other": {
     message: "正在缩放至 {count} 个实例…",
     description:
       "Toast acknowledging that scaleService accepted the desired count; convergence is still asynchronous",

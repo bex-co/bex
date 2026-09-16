@@ -27,10 +27,13 @@ beforeEach(() => {
 
 describe("useScaleService", () => {
   it("keeps English and Chinese acknowledgements in asynchronous tense", () => {
-    expect(enServices["services.scaleSuccess"].message).toBe(
-      "Scaling to {count} instance(s)…",
+    expect(enServices["services.scaleSuccess_one"].message).toBe(
+      "Scaling to {count} instance…",
     );
-    expect(zhServices["services.scaleSuccess"].message).toBe(
+    expect(enServices["services.scaleSuccess_other"].message).toBe(
+      "Scaling to {count} instances…",
+    );
+    expect(zhServices["services.scaleSuccess_other"].message).toBe(
       "正在缩放至 {count} 个实例…",
     );
   });
@@ -47,7 +50,7 @@ describe("useScaleService", () => {
     expect(mutate).toHaveBeenCalledWith({
       variables: { id: "srv-web", numInstances: 2 },
     });
-    expect(toastSuccess).toHaveBeenCalledWith("Scaling to 2 instance(s)…");
+    expect(toastSuccess).toHaveBeenCalledWith("Scaling to 2 instances…");
     expect(toastSuccess).not.toHaveBeenCalledWith(
       expect.stringMatching(/^Scaled/),
     );

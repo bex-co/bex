@@ -146,15 +146,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "创建一个组，即使尚未关联服务，也可以先管理共享配置。",
     description: "Workspace env-groups empty-state body",
   },
-  "envGroups.varCount": {
-    message: "{count} 个变量",
-    description: "Env-group variable count",
-  },
-  "envGroups.fileCount": {
-    message: "{count} 个密钥文件",
-    description: "Env-group secret-file count",
-  },
-  "envGroups.serviceCount": {
+  "envGroups.serviceCount_other": {
     message: "{count} 个关联服务",
     description: "Env-group linked-service count",
   },

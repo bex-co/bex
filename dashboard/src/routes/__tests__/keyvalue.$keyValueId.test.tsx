@@ -74,7 +74,15 @@ vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
 // useUpdateKeyValuePlan (Apollo) — same pattern as DatastoreMetricsPanel above.
 vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
   useKeyValueInstanceTypes: () => ({
-    instanceTypes: [],
+    instanceTypes: [
+      {
+        id: "starter",
+        name: "Starter",
+        cpu: "0.5",
+        memory: "512 MB",
+        storageGB: 1,
+      },
+    ],
     loading: false,
     error: undefined,
   }),
@@ -196,7 +204,9 @@ describe("KeyValueDetailPage", () => {
     expect(
       await screen.findByRole("heading", { name: "sessions-cache" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Available")).toBeInTheDocument();
+    // Header badge and Details row, which used to print the raw
+    // wire value beside it (w1/m159).
+    expect(screen.getAllByText("Available")).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: "Suspend Key Value Instance" }),
     ).toBeInTheDocument();
@@ -223,11 +233,25 @@ describe("KeyValueDetailPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("reads the suspended status and the plan's name in the Details card (w1/m159)", async () => {
+    // A suspended store still reports status "available" on the wire, so the
+    // Details card used to contradict the badge beside it (w1/085).
+    keyValueState.keyValue = kv({ suspended: true, plan: "starter" });
+    renderPage();
+
+    expect(
+      (await screen.findAllByText("Suspended")).length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("available")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Starter").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("starter")).not.toBeInTheDocument();
+  });
+
   it("renders a creating store without connection credentials revealed", async () => {
     keyValueState.keyValue = kv({ status: "creating", plan: "free" });
     renderPage();
 
-    expect(await screen.findByText("Creating")).toBeInTheDocument();
+    expect(await screen.findAllByText("Creating")).toHaveLength(2);
     // The Reveal control is present, but nothing sensitive is ever pre-rendered.
     expect(
       screen.getByRole("button", { name: "Reveal connection info" }),

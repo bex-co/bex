@@ -1,17 +1,17 @@
 # w1 · m159 — Dashboard truth: a datastore's own Status row, the landing after "Move to project", and seven count strings
 
-**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** todo
+**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** todo (t001, t002, t003, t005 and t006 done; t004 parity and the live DoD wait on the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | The Key Value and Postgres Details cards translate status and plan instead of printing wire values | 40m | — |
-| t002 | "Move to project" lands on the environment the resource is actually in | 45m | — |
-| t003 | Seven `{count}` strings get native plurals, and the locale test fails when a count message has none | 40m | — |
+| t001 | The Key Value and Postgres Details cards translate status and plan instead of printing wire values — **DONE** | 40m | — |
+| t002 | "Move to project" lands on the environment the resource is actually in — **DONE** | 45m | — |
+| t003 | Seven `{count}` strings get native plurals, and the locale test fails when a count message has none — **DONE** | 40m | — |
 | t004 | Render parity | 20m | t001, t002, t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 40m | t004 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 40m | t004 |
 | t007 | Closeout | 10m | t006 |
 
 ## Definition of done
@@ -22,6 +22,47 @@ Each bullet is observable on `https://dashboard.bex.co` with throwaway `qa-<yyyy
 - **A moved resource is visible where it landed.** "Move to project" on an ungrouped resource row, then open the project: the environment picker selects the environment that holds the resource (Unassigned when that is where it landed), and the resource is on screen. At filing time the page opened on an empty environment while the resource sat under Unassigned.
 - **Counts read correctly at one.** `/blueprints/new` with `examples/hello-go/render.yaml` reads "1 resource to sync" (control: `examples/stack-demo/render.yaml` reads "3 resources to sync"), and no user-visible string carries `(s)`.
 - **The rule is enforced from now on.** `dashboard/yarn test` fails when an `en` message containing `{count}` has no `_one`/`_other` form.
+
+## Implementation (2026-09-15)
+
+**The datastore Details cards (t001).** Both detail routes rendered the wire value beside a badge that had already interpreted it.
+
+- `dashboard/src/routes/keyvalue.$keyValueId.tsx` and `databases.$databaseId.tsx`: the Status row now renders `t(STATUS_LABEL[deriveStatus(resource).key])` — the exact derivation `KeyValueStatusBadge` / `DatabaseStatusBadge` use, where suspension wins over the `status` enum. A suspended store reports `status: "available"` on the wire, which is why the row and the badge disagreed.
+- The Plan row resolves the plan id through the instance-type catalog (`useKeyValueInstanceTypes` / `useDatabaseInstanceTypes`) and falls back to the raw id while the cache-first query is empty, so the row never renders blank.
+
+**The move-to-project landing (t002).** `environments-panel.tsx` defaulted to `environments[0]` whenever the URL requested nothing. A row-level move joins the Project with no Environment, so the resource lands under Unassigned and the page opened empty. The default now falls to Unassigned **only when every Environment is empty**; a project whose Environments hold resources still opens on the first one, which the existing "renders only the selected environment" test pins.
+
+The create form's hint was the other half of the contradiction: it read "A resource joins a Project only through an Environment", which both the row-level move and the selector's own "No environment" option disprove. It now says the resource sits under Unassigned in that case, keeping the "create one from the Project's page first" sentence that `w6/042`'s test pins.
+
+**The count strings (t003).** Five live keys became `_one`/`_other` pairs in `en` (and `_other` only in `zh`, which has no `one` category): `blueprints.previewValid`, `agentSessions.showEarlierMessages`, `git.repoCount`, `envGroups.serviceCount`, `services.scaleSuccess`. Every call site already passed `count`, so none changed. `envGroups.varCount` and `envGroups.fileCount` had no call site anywhere in `dashboard/src` and were deleted rather than pluralized.
+
+**Tests (t006).**
+
+| Test | Pins | Fails under |
+| --- | --- | --- |
+| `keyvalue.$keyValueId.test.tsx` — "reads the suspended status and the plan's name in the Details card" | A suspended store shows Suspended in both the badge and the Details row, never the wire word `available`, and the plan reads its catalog name | The pre-fix rows: the raw `status` renders `available` under a Suspended badge |
+| `keyvalue.$keyValueId.test.tsx` — the available and creating cases | The status word now appears exactly twice (badge + row) | A row that prints the wire value instead of the label |
+| `databases.$databaseId.metadata.test.tsx` (new) | The Postgres card's Status row reads Suspended for a suspended instance and the Plan row reads the catalog name, not `basic-1gb` | The same pre-fix rows |
+| `environments-panel.test.tsx` — "lands on Unassigned when every Environment is empty" | A project whose only Environment is empty opens on Unassigned with the moved resource listed | `environments[0]` as the unconditional fallback |
+| `locale-parity.test.ts` — "count messages are pluralized" | Any `en` message interpolating `{count}` must have `_one`/`_other`, with label-only counts listed as explicit exemptions | The seven keys this milestone fixed, and any future un-pluralized `{count}` string |
+
+**Simplify (t005).** Three reviewers (reuse, quality, efficiency) over the milestone diff.
+
+- **Applied:**
+  - each feature's `labels.ts` gained a `statusLabel()` that composes `deriveStatus` + `STATUS_LABEL` once, and the badge and the Details row now both call it, so the two cannot drift;
+  - both `MetadataCard`s moved out of their route files into `features/keyvalue/components/key-value-metadata-card.tsx` and `features/databases/components/database-metadata-card.tsx`, where every one of their siblings already lives — this removed the `export` that existed only so a test could render the card, and let both cards get the same unit test instead of one route-render test and one unit test;
+  - `environmentsAllEmpty` is memoized on `[environments]`, matching the `unassignedRows` derivation directly above it;
+  - the Unassigned branches collapsed into one named `landOnUnassigned` condition, dropping a level of ternary nesting;
+  - formatting redone with the dashboard's own pinned Prettier (3.8.1) rather than the repo's Markdown pin (3.4.2), which wraps `description:` strings differently.
+- **Declined:**
+  - **Rendering the status badge component as the Details row's value.** It removes the same two lines `statusLabel()` now removes, but puts a colored pill inside a definition list — a visual change this milestone has no way to verify, next to a header that already shows that badge.
+  - **Lifting `useDatabaseInstanceTypes` to the databases page.** It would not remove the query from the cold-load path: the plan section is lazy behind `DeferredMount`, so there is nothing to dedupe against on first paint, and Apollo's cache already serves it when that section mounts. The op rides the initial `BatchHttpLink` batch and never blocks paint, which is the cost of showing a plan's name instead of its id.
+  - **A `byID` accessor on both instance-type hooks** (services' `useInstanceTypes` has one). Four `.find` call sites across two features would change; it is a real cleanup but outside a three-bug milestone.
+
+**Suites.**
+
+- **`dashboard/yarn test`**: 3219 tests pass. Four route-tree files fail to _collect_ in the scratch worktree only — Vite denies an absolute path outside the project root because `node_modules` is symlinked there; all four pass (76 tests) in a checkout with real dependencies, at `origin/main` as well as with this diff.
+- **`yarn typecheck`**, **`yarn eslint .`** and **`yarn lint:unused`** (knip) are clean.
 
 ## Blast radius
 
