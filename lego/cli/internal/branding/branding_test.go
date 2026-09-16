@@ -136,6 +136,39 @@ func TestHelpFuncRebrandsLateAddedCommands(t *testing.T) {
 	}
 }
 
+func TestUsageFuncRebrandsLateAddedCommands(t *testing.T) {
+	root := &cobra.Command{Use: "render", Short: "on Render"}
+	root.SetHelpTemplate(cmd.CustomHelpTemplate)
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	Apply(root, "9.9.9")
+
+	late := &cobra.Command{
+		Use:     "services",
+		Short:   "Manage Render services",
+		Example: "  render services update my-service --name my-new-name",
+	}
+	update := &cobra.Command{
+		Use:     "update",
+		Short:   "Update a service on Render",
+		Example: "  render services update my-service --name my-new-name\n  render services update srv-abc123 --plan 2c-4g",
+	}
+	update.Flags().String("workspace", "", "set via 'render workspace set'")
+	late.AddCommand(update)
+	root.AddCommand(late)
+
+	usage := update.UsageString()
+	if strings.Contains(usage, "render ") {
+		t.Fatalf("usage still contains unbranded render command:\n%s", usage)
+	}
+	if !strings.Contains(usage, "bex services update") {
+		t.Fatalf("usage missing bex-branded examples:\n%s", usage)
+	}
+	if got := update.Flags().Lookup("workspace").Usage; got != "set via 'bex workspace set'" {
+		t.Fatalf("flag usage = %q", got)
+	}
+}
+
 func TestBrandTreeFlagHelpIsIdempotent(t *testing.T) {
 	root := &cobra.Command{Use: "bex"}
 	root.PersistentFlags().String("workspace", "", "Set via 'render workspace set'")
