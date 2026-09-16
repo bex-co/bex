@@ -90,22 +90,22 @@ const enDeploys: Record<string, TranslationEntry> = {
   "deploys.deployedAt": {
     message: "Deployed {timestamp}",
     description:
-      "Deploy row: when a live/deactivated deploy went live (its finish time; createdAt fallback)",
+      'Deploy row: how long ago a live/deactivated deploy went live — {timestamp} is elapsed text like "2 hours ago" (its finish time; createdAt fallback)',
   },
   "deploys.createdAt": {
     message: "Created {timestamp}",
     description:
-      "Deploy row: creation time for a deploy that hasn't finished (created/queued/in-progress)",
+      'Deploy row: how long ago a deploy that hasn\'t finished (created/queued/in-progress) was created — {timestamp} is elapsed text like "2 minutes ago"',
   },
   "deploys.canceledAt": {
     message: "Canceled {timestamp}",
     description:
-      "Deploy row: when a canceled deploy was canceled (its finish time; createdAt fallback)",
+      'Deploy row: how long ago a canceled deploy was canceled — {timestamp} is elapsed text like "3 days ago" (its finish time; createdAt fallback)',
   },
   "deploys.failedAt": {
     message: "Failed {timestamp}",
     description:
-      "Deploy row: when a build/pre-deploy/update failure landed (its finish time; createdAt fallback)",
+      'Deploy row: how long ago a build/pre-deploy/update failure landed — {timestamp} is elapsed text like "3 days ago" (its finish time; createdAt fallback)',
   },
   "deploys.notYet": {
     message: "—",

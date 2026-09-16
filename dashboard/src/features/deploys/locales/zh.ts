@@ -88,24 +88,24 @@ const zhDeploys: Record<string, TranslationEntry> = {
       "Deploys tab Duration column: bare running-elapsed marker (the column header supplies the label)",
   },
   "deploys.deployedAt": {
-    message: "部署于 {timestamp}",
+    message: "{timestamp}部署",
     description:
-      "Deploy row: when a live/deactivated deploy went live (its finish time; createdAt fallback)",
+      'Deploy row: how long ago a live/deactivated deploy went live — {timestamp} is elapsed text like "2 hours ago" (its finish time; createdAt fallback)',
   },
   "deploys.createdAt": {
-    message: "创建于 {timestamp}",
+    message: "{timestamp}创建",
     description:
-      "Deploy row: creation time for a deploy that hasn't finished (created/queued/in-progress)",
+      'Deploy row: how long ago a deploy that hasn\'t finished (created/queued/in-progress) was created — {timestamp} is elapsed text like "2 minutes ago"',
   },
   "deploys.canceledAt": {
-    message: "取消于 {timestamp}",
+    message: "{timestamp}取消",
     description:
-      "Deploy row: when a canceled deploy was canceled (its finish time; createdAt fallback)",
+      'Deploy row: how long ago a canceled deploy was canceled — {timestamp} is elapsed text like "3 days ago" (its finish time; createdAt fallback)',
   },
   "deploys.failedAt": {
-    message: "失败于 {timestamp}",
+    message: "{timestamp}失败",
     description:
-      "Deploy row: when a build/pre-deploy/update failure landed (its finish time; createdAt fallback)",
+      'Deploy row: how long ago a build/pre-deploy/update failure landed — {timestamp} is elapsed text like "3 days ago" (its finish time; createdAt fallback)',
   },
   "deploys.notYet": {
     message: "—",
