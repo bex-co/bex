@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -41,6 +42,10 @@ type ProjectStore interface {
 	ListProjects(ctx context.Context, tenantID string) ([]store.Project, error)
 	RenameProject(ctx context.Context, id, name string) error
 	DeleteProject(ctx context.Context, id string) error
+	// TouchProject advances projects.updated_at without renaming — used by the
+	// Database/KeyValue link verbs, which re-label CRs rather than updating the
+	// project row themselves (w4/m109).
+	TouchProject(ctx context.Context, id string) error
 	// SetProjectServices returns the per-service placement diff (w6/m134).
 	// Service.SetServices records move events from it, and derives the w4/m32
 	// environment-layer clear list: a change with EnvironmentFrom set and
@@ -102,6 +107,10 @@ type Service struct {
 	Databases    DatabaseIndex
 	KeyValues    KeyValueIndex
 	Environments EnvironmentIndex
+	// Owners resolves workspace identity for the REST owner object — the same
+	// resourcemeta.OwnerResolver apps/postgres/keyvalue already use (w4/m109).
+	// Nil => owner is omitted (never an id-as-name placeholder).
+	Owners resourcemeta.OwnerResolver
 	// MaxGroupings is the workspace's durable grouping quota
 	// (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000) — the same abuse bound the
 	// Blueprint apply loop enforces, applied to DIRECT project creates too
@@ -158,6 +167,7 @@ type ProjectView struct {
 	Name        string    `json:"name"`
 	OwnerID     string    `json:"ownerId"`
 	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 	ServiceIDs  []string  `json:"serviceIds"`
 	DatabaseIDs []string  `json:"databaseIds"`
 	KeyValueIDs []string  `json:"keyValueIds"`
@@ -455,7 +465,12 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	if err := s.Store.RenameProject(ctx, id, name); err != nil {
 		return ProjectView{}, store.MapError(err)
 	}
-	p.Name = name
+	// Re-read so UpdatedAt reflects the store's now() stamp — the pre-rename
+	// row still carries the old timestamp (w4/m109).
+	p, err = s.Store.GetProject(ctx, id)
+	if err != nil {
+		return ProjectView{}, store.MapError(err)
+	}
 	return s.view(ctx, p)
 }
 
@@ -516,6 +531,12 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 			return ProjectView{}, err
 		}
 	}
+	// SetProjectServices stamps projects.updated_at in the same transaction;
+	// re-read so the response carries the advanced timestamp.
+	p, err = s.Store.GetProject(ctx, p.ID)
+	if err != nil {
+		return ProjectView{}, store.MapError(err)
+	}
 	return s.view(ctx, p)
 }
 
@@ -569,6 +590,13 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 			}
 		}
 	}
+	if err := s.Store.TouchProject(ctx, p.ID); err != nil {
+		return ProjectView{}, store.MapError(err)
+	}
+	p, err = s.Store.GetProject(ctx, p.ID)
+	if err != nil {
+		return ProjectView{}, store.MapError(err)
+	}
 	return s.view(ctx, p)
 }
 
@@ -587,8 +615,19 @@ func toView(p store.Project, serviceIDs, databaseIDs, keyValueIDs []string) Proj
 		Name:        p.Name,
 		OwnerID:     p.TenantID,
 		CreatedAt:   p.CreatedAt,
+		UpdatedAt:   projectUpdatedAt(p),
 		ServiceIDs:  serviceIDs,
 		DatabaseIDs: databaseIDs,
 		KeyValueIDs: keyValueIDs,
 	}
+}
+
+// projectUpdatedAt prefers the store column; a zero value (legacy/fake rows
+// that never recorded a modification) falls back to created_at rather than
+// inventing a distinct time.
+func projectUpdatedAt(p store.Project) time.Time {
+	if p.UpdatedAt.IsZero() {
+		return p.CreatedAt
+	}
+	return p.UpdatedAt
 }

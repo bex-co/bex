@@ -31,6 +31,7 @@ var projectGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"name":        gqlutil.StrField(func(p ProjectView) any { return p.Name }),
 		"ownerId":     gqlutil.StrField(func(p ProjectView) any { return p.OwnerID }),
 		"createdAt":   gqlutil.StrField(func(p ProjectView) any { return p.CreatedAt }),
+		"updatedAt":   gqlutil.StrField(func(p ProjectView) any { return p.UpdatedAt }),
 		"serviceIds":  gqlutil.StrsField(func(p ProjectView) any { return p.ServiceIDs }),
 		"databaseIds": gqlutil.StrsField(func(p ProjectView) any { return p.DatabaseIDs }),
 		"keyValueIds": gqlutil.StrsField(func(p ProjectView) any { return p.KeyValueIDs }),

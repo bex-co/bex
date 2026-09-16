@@ -900,6 +900,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Databases:    pg,
 			KeyValues:    kv,
 			Environments: &environments.ProjectMemberClearer{Service: environmentsSvc},
+			Owners:       workspaceSvc,
 			// The direct-create grouping quota shares the Blueprint bound
 			// (codex-security round 12, finding 5).
 			MaxGroupings: d.MaxBlueprintGroupings,

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 )
 
 // rest.go is the projects REST fragment (bex extension matching Render's project
@@ -33,17 +34,17 @@ import (
 type renderOwner struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
-	Email string `json:"email"`
+	Email string `json:"email,omitempty"`
 	Type  string `json:"type"`
 }
 
 type renderProject struct {
-	ID             string      `json:"id"`
-	Name           string      `json:"name"`
-	Owner          renderOwner `json:"owner"`
-	EnvironmentIDs []string    `json:"environmentIds"`
-	CreatedAt      time.Time   `json:"createdAt"`
-	UpdatedAt      time.Time   `json:"updatedAt"`
+	ID             string       `json:"id"`
+	Name           string       `json:"name"`
+	Owner          *renderOwner `json:"owner,omitempty"`
+	EnvironmentIDs []string     `json:"environmentIds"`
+	CreatedAt      time.Time    `json:"createdAt"`
+	UpdatedAt      time.Time    `json:"updatedAt"`
 }
 
 type renderProjectWithCursor struct {
@@ -51,17 +52,31 @@ type renderProjectWithCursor struct {
 	Cursor  string        `json:"cursor"`
 }
 
-func toRenderProject(p ProjectView, environmentIDs []string) renderProject {
+func ownerToRender(owner resourcemeta.Owner) *renderOwner {
+	// Same omission contract as apps/postgres/keyvalue: unavailable or
+	// invisible owners are omitted entirely — never an id-as-name placeholder
+	// (resourcemeta.OwnerResolver docs; w4/m109).
+	if !owner.Available() {
+		return nil
+	}
+	return &renderOwner{ID: owner.ID, Name: owner.Name, Email: owner.Email, Type: owner.Type}
+}
+
+func toRenderProject(p ProjectView, environmentIDs []string, owner resourcemeta.Owner) renderProject {
 	if environmentIDs == nil {
 		environmentIDs = []string{}
+	}
+	updated := p.UpdatedAt
+	if updated.IsZero() {
+		updated = p.CreatedAt
 	}
 	return renderProject{
 		ID:             p.ID,
 		Name:           p.Name,
-		Owner:          renderOwner{ID: p.OwnerID, Type: "team"},
+		Owner:          ownerToRender(owner),
 		EnvironmentIDs: environmentIDs,
 		CreatedAt:      p.CreatedAt,
-		UpdatedAt:      p.CreatedAt,
+		UpdatedAt:      updated,
 	}
 }
 
@@ -70,7 +85,27 @@ func (s *Service) renderProject(ctx context.Context, p ProjectView) (renderProje
 	if err != nil {
 		return renderProject{}, err
 	}
-	return toRenderProject(p, ids), nil
+	owners := resourcemeta.ResolveOwners(ctx, s.Owners, []string{p.OwnerID})
+	return toRenderProject(p, ids, owners[p.OwnerID]), nil
+}
+
+// renderProjects enriches a page through one owner batch lookup (at most one
+// ResolveResourceOwners call per request), matching apps/postgres/keyvalue.
+func (s *Service) renderProjects(ctx context.Context, ps []ProjectView) ([]renderProject, error) {
+	ownerIDs := make([]string, 0, len(ps))
+	for _, p := range ps {
+		ownerIDs = append(ownerIDs, p.OwnerID)
+	}
+	owners := resourcemeta.ResolveOwners(ctx, s.Owners, ownerIDs)
+	out := make([]renderProject, 0, len(ps))
+	for _, p := range ps {
+		ids, err := s.environmentIDs(ctx, p.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, toRenderProject(p, ids, owners[p.OwnerID]))
+	}
+	return out, nil
 }
 
 // RegisterREST mounts the project CRUD endpoints. Every handler that returns a
@@ -96,13 +131,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		after, limit := core.PageParams(r.URL.Query())
 		ps = core.StablePage(ps, after, limit, true, func(p ProjectView) string { return p.ID })
+		rendered, err := s.renderProjects(r.Context(), ps)
+		if err != nil {
+			return nil, err
+		}
 		out := make([]renderProjectWithCursor, 0, len(ps))
-		for _, p := range ps {
-			rendered, err := s.renderProject(r.Context(), p)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, renderProjectWithCursor{Project: rendered, Cursor: p.ID})
+		for i, p := range ps {
+			out = append(out, renderProjectWithCursor{Project: rendered[i], Cursor: p.ID})
 		}
 		return out, nil
 	}))

@@ -714,11 +714,12 @@ func (s *Service) ListOwners(ctx context.Context, f OwnerFilter) ([]OwnerView, e
 	return out, nil
 }
 
-// ResolveResourceOwners implements resourcemeta.OwnerResolver for the three
-// resource REST adapters. One membership-scoped workspace query resolves every
-// unique id in a list response; an id absent from that result is omitted, so a
-// resource adapter can never use this seam to reveal another workspace. Email
-// remains best-effort and is looked up once per unique workspace, not once per
+// ResolveResourceOwners implements resourcemeta.OwnerResolver for the four
+// resource REST adapters (apps, postgres, keyvalue, projects). One
+// membership-scoped workspace query resolves every unique id in a list
+// response; an id absent from that result is omitted, so a resource adapter
+// can never use this seam to reveal another workspace. Email remains
+// best-effort and is looked up once per unique workspace, not once per
 // resource.
 func (s *Service) ResolveResourceOwners(ctx context.Context, ownerIDs []string) map[string]resourcemeta.Owner {
 	if s.Store == nil || len(ownerIDs) == 0 {
