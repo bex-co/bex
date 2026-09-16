@@ -1,0 +1,56 @@
+query RouterAvailable($ownerId: String!) {
+  routerAvailable(ownerId: $ownerId)
+}
+
+query RouterOverview($ownerId: String!) {
+  routerOverview(ownerId: $ownerId) {
+    quota {
+      observedAt
+      windows {
+        kind
+        utilizationBps
+        resetsAt
+      }
+    }
+    keys {
+      id
+      name
+      accessKey
+      createdAt
+      options {
+        allowOrigin
+        allowMethods
+        allowHeaders
+        allowCredentials
+      }
+    }
+  }
+}
+
+mutation CreateRouterKey($ownerId: String!, $name: String!) {
+  createRouterKey(ownerId: $ownerId, name: $name)
+}
+
+mutation UpdateRouterKey(
+  $ownerId: String!
+  $id: String!
+  $name: String!
+  $allowOrigin: String!
+  $allowMethods: String!
+  $allowHeaders: String!
+  $allowCredentials: Boolean!
+) {
+  updateRouterKey(
+    ownerId: $ownerId
+    id: $id
+    name: $name
+    allowOrigin: $allowOrigin
+    allowMethods: $allowMethods
+    allowHeaders: $allowHeaders
+    allowCredentials: $allowCredentials
+  )
+}
+
+mutation DeleteRouterKey($ownerId: String!, $id: String!) {
+  deleteRouterKey(ownerId: $ownerId, id: $id)
+}

@@ -2,6 +2,7 @@ import { Link, useParams, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
   Bot,
+  Network,
   Boxes,
   ChevronDown,
   ChevronRight,
@@ -338,6 +339,11 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
     match: (path) => path.startsWith("/webhook") || path === "/webhooks",
     labelKey: "common.navWebhooks",
     icon: Webhook,
+  },
+  {
+    match: (path) => path === "/router",
+    labelKey: "common.navRouter",
+    icon: Network,
   },
   {
     match: (path) => path.startsWith("/agents"),

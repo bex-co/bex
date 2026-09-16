@@ -15,6 +15,7 @@ import { agentSessionView } from "@/test/mocks/agent-session";
 
 vi.mock("@/config/use-growthbook", () => ({
   useAgentsFeatureEnabled: () => true,
+  useRouterFeatureEnabled: () => false,
 }));
 
 const sessionsState: { sessions: AgentSessionView[]; loading: boolean } = {

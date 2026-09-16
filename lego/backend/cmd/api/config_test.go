@@ -413,3 +413,21 @@ func TestModelProxyPort(t *testing.T) {
 		}
 	}
 }
+
+func TestRouterConfiguration(t *testing.T) {
+	for _, endpoint := range []string{"https://router.example/graphql", "http://router.internal/graphql"} {
+		cfg, _, err := loadFor(t, map[string]string{"BEX_ROUTER_URL": endpoint, "BEX_ROUTER_ASSERTION_SECRET": strings.Repeat("s", 32)})
+		if err != nil || cfg.RouterURL != endpoint {
+			t.Fatalf("valid Router configuration rejected: %v", err)
+		}
+	}
+	for _, env := range []map[string]string{
+		{"BEX_ROUTER_URL": "https://router.example/graphql"},
+		{"BEX_ROUTER_URL": "file:///private/router", "BEX_ROUTER_ASSERTION_SECRET": strings.Repeat("s", 32)},
+		{"BEX_ROUTER_URL": "https://user:password@router.example/graphql", "BEX_ROUTER_ASSERTION_SECRET": strings.Repeat("s", 32)},
+	} {
+		if _, _, err := loadFor(t, env); err == nil {
+			t.Fatal("invalid Router configuration accepted")
+		}
+	}
+}

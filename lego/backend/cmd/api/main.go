@@ -200,6 +200,8 @@ func main() {
 	ready := &serve.Readiness{}
 
 	deps := api.Deps{
+		RouterURL:        cfg.RouterURL,
+		RouterSecret:     cfg.RouterSecret,
 		PushAvailable:    mobilePush != nil,
 		WebPushAvailable: webPush != nil,
 		WebhookMetrics:   webhookMetrics,
@@ -685,6 +687,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.Store = st // single writer of intent: suspend/resume write the row first
 	deps.OAuthRevocations = st
 	deps.AccountStore = st
+	deps.RouterMembers = st
 	deps.SSHKeysStore = st // identity-scoped SSH public-key registry
 	deps.DeployStore = st  // deploy history (w2/m5): list/get/trigger read+write the same rows
 	// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build

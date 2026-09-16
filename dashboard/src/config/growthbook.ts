@@ -21,7 +21,18 @@ export type GrowthBookFeatures = Record<string, GrowthBookFeatureDefinition>;
 /** Workspace that may use dashboard agent sessions during the private beta. */
 export const AGENTS_DASHBOARD_BETA_WORKSPACE_ID = "tea-d98210cbbpdc73dcrkvg";
 
+export const ROUTER_DASHBOARD_BETA_WORKSPACE_ID = "tea-d98210cbbpdc73dcrkvg";
+
 export const growthbookFeatures = {
+  "dashboard-router": {
+    defaultValue: false,
+    rules: [
+      {
+        condition: { workspaceId: ROUTER_DASHBOARD_BETA_WORKSPACE_ID },
+        force: true,
+      },
+    ],
+  },
   "dashboard-agents": {
     defaultValue: false,
     rules: [
@@ -37,6 +48,7 @@ export const growthbookFeatures = {
 
 export const GROWTHBOOK_FEATURE_KEYS = {
   agents: "dashboard-agents",
+  router: "dashboard-router",
 } as const;
 
 export type GrowthBookFeatureKey =
@@ -78,6 +90,14 @@ export function isAgentsDashboardEnabled(
   workspaceId: string | null | undefined,
 ): boolean {
   return isGrowthBookFeatureEnabled(GROWTHBOOK_FEATURE_KEYS.agents, {
+    workspaceId,
+  });
+}
+
+export function isRouterDashboardEnabled(
+  workspaceId: string | null | undefined,
+): boolean {
+  return isGrowthBookFeatureEnabled(GROWTHBOOK_FEATURE_KEYS.router, {
     workspaceId,
   });
 }

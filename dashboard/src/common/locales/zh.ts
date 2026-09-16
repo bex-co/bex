@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhCommon: Record<string, TranslationEntry> = {
+  "common.navRouter": {
+    message: "Router",
+    description: "Router navigation item",
+  },
   "common.protectedConfirmationTitle": {
     message: "需要受保护环境确认",
     description:
@@ -18,11 +22,13 @@ const zhCommon: Record<string, TranslationEntry> = {
   },
   "common.confirmPhrasePrompt": {
     message: "若要继续，请输入 {phrase}",
-    description: "Label above the typed-confirmation input in a phrase-gated confirm dialog.",
+    description:
+      "Label above the typed-confirmation input in a phrase-gated confirm dialog.",
   },
   "common.cancel": {
     message: "取消",
-    description: "Generic Cancel button — dismisses a dialog or an inline form without saving.",
+    description:
+      "Generic Cancel button — dismisses a dialog or an inline form without saving.",
   },
   "common.pricePerMonth": {
     message: "${price}/月",
@@ -296,7 +302,8 @@ const zhCommon: Record<string, TranslationEntry> = {
   },
   "common.signIn": {
     message: "登录",
-    description: "Button label that sends an expired session back to the login page",
+    description:
+      "Button label that sends an expired session back to the login page",
   },
   "common.colActions": {
     message: "操作",

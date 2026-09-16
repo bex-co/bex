@@ -1,3 +1,6 @@
+import { useQuery } from "@apollo/client/react";
+import { RouterAvailableDocument } from "@/graphql/definitions";
+import { useWorkspace } from "@/features/workspaces/context";
 import { lazy, Suspense, useCallback, useMemo } from "react";
 import { useParams, useRouterState } from "@tanstack/react-router";
 import {
@@ -9,13 +12,17 @@ import {
   Layers,
   Settings,
   Webhook,
+  Network,
 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
 } from "@/common/components/ui/sidebar.tsx";
-import { useAgentsFeatureEnabled } from "@/config/use-growthbook";
+import {
+  useAgentsFeatureEnabled,
+  useRouterFeatureEnabled,
+} from "@/config/use-growthbook";
 import { isNavItemActive } from "./nav-active";
 import { SidebarBrand } from "./sidebar-brand";
 import { SidebarNavGroups, type SidebarNavGroup } from "./sidebar-nav-groups";
@@ -58,6 +65,7 @@ const NAV_GROUPS: SidebarNavGroup[] = [
     items: [
       { labelKey: "common.navProjects", to: "/", icon: FolderKanban },
       { labelKey: "common.navBlueprints", to: "/blueprints", icon: Layers },
+      { labelKey: "common.navRouter", to: "/router", icon: Network },
       { labelKey: "common.navAgents", to: "/agents", icon: Bot },
       { labelKey: "common.navEnvGroups", to: "/env-groups", icon: Boxes },
     ],
@@ -86,15 +94,18 @@ export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { projectId, serviceId } = useParams({ strict: false });
   const agentsEnabled = useAgentsFeatureEnabled();
+  const routerEnabled = useRouterFeatureEnabled();
   const navGroups = useMemo(
     () =>
       NAV_GROUPS.map((group) => ({
         ...group,
         items: group.items.filter(
-          (item) => item.to !== "/agents" || agentsEnabled,
+          (item) =>
+            (item.to !== "/agents" || agentsEnabled) &&
+            (item.to !== "/router" || routerEnabled),
         ),
       })).filter((group) => group.items.length > 0),
-    [agentsEnabled],
+    [agentsEnabled, routerEnabled],
   );
   const isItemActive = useCallback(
     (to: string) => isNavItemActive(pathname, to),
@@ -122,7 +133,11 @@ export function DashboardSidebar() {
         <SidebarBrand />
       </SidebarHeader>
       <SidebarContent className="gap-0">
-        <SidebarNavGroups groups={navGroups} isItemActive={isItemActive} />
+        {routerEnabled ? (
+          <RouterNavGroups groups={navGroups} isItemActive={isItemActive} />
+        ) : (
+          <SidebarNavGroups groups={navGroups} isItemActive={isItemActive} />
+        )}
         {/* The contextual list slot (w5/m64). Unlike ProjectSidebar and
             ServiceSidebar above — which REPLACE the rail for a deep hierarchy
             and offer a back link — an agents-context section AUGMENTS the nav,
@@ -148,5 +163,33 @@ function SidebarShell() {
       </SidebarHeader>
       <SidebarContent className="gap-0" />
     </Sidebar>
+  );
+}
+
+/** Only targeted workspaces probe the optional companion service. */
+function RouterNavGroups({
+  groups,
+  isItemActive,
+}: {
+  groups: SidebarNavGroup[];
+  isItemActive: (to: string) => boolean;
+}) {
+  const { currentWorkspaceId } = useWorkspace();
+  const { data } = useQuery(RouterAvailableDocument, {
+    variables: { ownerId: currentWorkspaceId ?? "" },
+  });
+  const available = data?.routerAvailable === true;
+  return (
+    <SidebarNavGroups
+      groups={
+        available
+          ? groups
+          : groups.map((group) => ({
+              ...group,
+              items: group.items.filter((item) => item.to !== "/router"),
+            }))
+      }
+      isItemActive={isItemActive}
+    />
   );
 }

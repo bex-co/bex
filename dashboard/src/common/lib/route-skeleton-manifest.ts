@@ -50,6 +50,12 @@ export const ROUTE_SKELETON_MANIFEST = {
     regions: ["page-header", "projects", "resources"],
   },
   "/$": { kind: "not-found", owner: "routes/$.tsx" },
+  "/router": {
+    kind: "render",
+    owner: "routes/router.tsx",
+    shape: "router",
+    regions: ["usage windows", "API key actions", "API key table"],
+  },
   "/agents": {
     kind: "render",
     owner: "routes/agents.tsx",
