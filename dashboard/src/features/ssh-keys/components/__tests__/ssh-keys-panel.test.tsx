@@ -133,7 +133,9 @@ describe("SSHKeysPanel", () => {
     render(<SSHKeysPanel />);
 
     expect(screen.getByText("SHA256:example")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(
+      screen.getByRole("button", { name: "Delete SSH key workstation" }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(remove).toHaveBeenCalledWith(

@@ -98,7 +98,9 @@ describe("ApiKeyRow — revoke with confirmation (w4/m8/t002)", () => {
       </table>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    await user.click(
+      screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    );
     expect(onRevoke).not.toHaveBeenCalled();
     expect(await screen.findByText("Revoke deploy-agent?")).toBeInTheDocument();
   });
@@ -114,7 +116,9 @@ describe("ApiKeyRow — revoke with confirmation (w4/m8/t002)", () => {
       </table>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    await user.click(
+      screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(
       within(dialog).getAllByRole("button", { name: "Revoke" })[0],
@@ -134,7 +138,9 @@ describe("ApiKeyRow — revoke with confirmation (w4/m8/t002)", () => {
       </table>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    await user.click(
+      screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    );
     await screen.findByRole("alertdialog");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -150,6 +156,21 @@ describe("ApiKeyRow — revoke with confirmation (w4/m8/t002)", () => {
         </tbody>
       </table>,
     );
-    expect(screen.getByRole("button", { name: "Revoke" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    ).toBeDisabled();
+  });
+
+  it("names the revoke control after the key (w4/084)", () => {
+    render(
+      <table>
+        <tbody>
+          <ApiKeyRow entry={entry} onRevoke={vi.fn()} revoking={false} />
+        </tbody>
+      </table>,
+    );
+    expect(
+      screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    ).toBeInTheDocument();
   });
 });

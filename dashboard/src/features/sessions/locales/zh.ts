@@ -67,7 +67,12 @@ const zh: Record<string, TranslationEntry> = {
   },
   "activeSessions.revoke": {
     message: "退出登录",
-    description: "Active Sessions row revoke button label",
+    description: "Active Sessions row revoke confirmation button",
+  },
+  "activeSessions.revokeNamed": {
+    message: "退出登录 {device}，{location}，最近活动 {lastActive}",
+    description:
+      "Active Sessions row revoke button aria-label identifying the session",
   },
   "activeSessions.revokeConfirmTitle": {
     message: "退出此会话？",
