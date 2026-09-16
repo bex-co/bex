@@ -393,15 +393,29 @@ func (q LogQuery) keepPod(pod string) bool {
 // capToLimit keeps q.Limit entries from the end the direction asks for: the
 // newest (backward, the default) or the oldest (forward). entries are oldest-first
 // and stay that way — direction chooses which lines, not how they're ordered.
+//
+// When the cut lands inside a shared-timestamp group (fan-out across instances),
+// the group is kept whole so page cursors (which are timestamps) cannot drop a
+// sibling that shares the boundary instant (w4/m107).
 func (q LogQuery) capToLimit(entries []LogEntry) []LogEntry {
 	lim := lokiLimit(q)
 	if int64(len(entries)) <= lim {
 		return entries
 	}
 	if q.Direction == DirectionForward {
-		return entries[:lim]
+		end := lim
+		t := entries[end-1].Timestamp
+		for end < int64(len(entries)) && entries[end].Timestamp == t {
+			end++
+		}
+		return entries[:end]
 	}
-	return entries[int64(len(entries))-lim:]
+	start := int64(len(entries)) - lim
+	t := entries[start].Timestamp
+	for start > 0 && entries[start-1].Timestamp == t {
+		start--
+	}
+	return entries[start:]
 }
 
 // NormalizeTypes maps Render's repeatable `type` filter onto the canonical set

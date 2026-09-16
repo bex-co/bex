@@ -44,7 +44,7 @@ export function usePostgresLogs(
     errorPolicy: "all",
   });
 
-  const lines = useMemo(() => toLogLines(data?.logs), [data]);
+  const lines = useMemo(() => toLogLines(data?.logs?.logs), [data]);
   const message = error?.message.toLowerCase() ?? "";
   return {
     lines,

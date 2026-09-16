@@ -99,7 +99,7 @@ func TestInvalidQueryRangesAcrossSurfaces(t *testing.T) {
 			window := `start: "` + start + `", end: "` + end + `"`
 			assertQueryError(t, h, `{ metrics(query: {name: "MEMORY", filters: [{field: "RESOURCE", values: ["web"]}], `+window+`}) { unit } }`, message)
 			assertQueryError(t, h, `{ datastoreMetrics(query: {resource: "pg", name: "DISK", `+window+`}) { unit } }`, message)
-			assertQueryError(t, h, `{ logs(resource: "web", startTime: "`+start+`", endTime: "`+end+`") { timestamp } }`, message)
+			assertQueryError(t, h, `{ logs(resource: "web", startTime: "`+start+`", endTime: "`+end+`") { logs { timestamp } } }`, message)
 			// w4/056: logLabelValues (+ datastore log siblings) share LogQuery.validate —
 			// an inverted range must never reach Loki as "internal error".
 			assertQueryError(t, h, `{ logLabelValues(resource: "web", label: "level", startTime: "`+start+`", endTime: "`+end+`") }`, message)
@@ -162,7 +162,7 @@ func TestQueryUpstreamFailuresRemainRedacted(t *testing.T) {
 	for _, query := range []string{
 		`{ metrics(query: {name: "MEMORY", filters: [{field: "RESOURCE", values: ["web"]}]}) { unit } }`,
 		`{ datastoreMetrics(query: {resource: "pg", name: "DISK"}) { unit } }`,
-		`{ logs(resource: "web") { timestamp } }`,
+		`{ logs(resource: "web") { logs { timestamp } } }`,
 	} {
 		assertQueryError(t, h, query, "internal error")
 	}
@@ -190,7 +190,7 @@ func TestMalformedServiceIDsAcrossSurfaces(t *testing.T) {
 				}
 			}
 			assertQueryError(t, h, `{ service(id: "`+name+`") { id } }`, "not found")
-			assertQueryError(t, h, `{ logs(resource: "`+name+`") { timestamp } }`, "not found")
+			assertQueryError(t, h, `{ logs(resource: "`+name+`") { logs { timestamp } } }`, "not found")
 			result, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_service", Arguments: map[string]any{"serviceId": name}})
 			if err != nil {
 				t.Fatal(err)

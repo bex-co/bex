@@ -125,7 +125,7 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 		sort.SliceStable(all, func(i, j int) bool { return all[i].Timestamp < all[j].Timestamp })
 		all = merged.capToLimit(all) // the limit is a total across resources, not per-App
 	}
-	core.WriteJSON(w, http.StatusOK, toRenderLogList(all, merged.Limit, merged.Since, merged.End))
+	core.WriteJSON(w, http.StatusOK, toRenderLogList(all, merged.Limit, merged.Since, merged.End, merged.Direction))
 }
 
 // logsSubscribe serves GET /v1/logs/subscribe — a live tail, following one

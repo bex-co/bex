@@ -191,13 +191,27 @@ export function LogViewer({
   } else {
     body = (
       <div className="space-y-2">
+        {history.hasMore ? (
+          <p
+            role="status"
+            className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground"
+          >
+            {t("logs.truncatedNotice")}
+          </p>
+        ) : null}
         {live && liveSupported && stream.status === "error" ? (
           <div className="flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
             <WifiOff className="h-4 w-4" />
             {t("logs.disconnected")}
           </div>
         ) : null}
-        <LogLineList lines={lines} onInstanceFilter={onInstanceFilter} />
+        <LogLineList
+          lines={lines}
+          onInstanceFilter={onInstanceFilter}
+          hasMore={history.hasMore}
+          loadingOlder={history.loadingOlder}
+          onLoadOlder={history.loadOlder}
+        />
         <StreamStatus
           live={live && liveSupported}
           liveSupported={liveSupported}

@@ -57,7 +57,9 @@ function makeLogLine(
   };
 }
 
-type GraphQLLogEntry = NonNullable<NonNullable<LogsQuery["logs"]>[number]>;
+type GraphQLLogEntry = NonNullable<
+  NonNullable<NonNullable<LogsQuery["logs"]>["logs"]>[number]
+>;
 
 // toLogLine maps one GraphQL LogEntry row onto a LogLine.
 export function toLogLine(e: GraphQLLogEntry): LogLine {
@@ -74,8 +76,10 @@ export function toLogLine(e: GraphQLLogEntry): LogLine {
   );
 }
 
-// toLogLines maps a full GraphQL `logs` result, dropping the nullable holes.
-export function toLogLines(entries: LogsQuery["logs"] | undefined): LogLine[] {
+// toLogLines maps the GraphQL envelope's `logs` array, dropping nullable holes.
+export function toLogLines(
+  entries: NonNullable<LogsQuery["logs"]>["logs"] | undefined,
+): LogLine[] {
   return (entries ?? [])
     .filter((e): e is GraphQLLogEntry => e != null)
     .map(toLogLine);

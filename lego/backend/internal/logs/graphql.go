@@ -41,6 +41,19 @@ var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// logListGQLType is Render's logs envelope ({hasMore, nextStartTime,
+// nextEndTime, logs}) — the same shape REST returns, so GraphQL callers can
+// page and tell a capped result from a complete one (w4/m107).
+var logListGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "LogList",
+	Fields: graphql.Fields{
+		"hasMore":       &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean)},
+		"nextStartTime": &graphql.Field{Type: graphql.NewNonNull(graphql.String)},
+		"nextEndTime":   &graphql.Field{Type: graphql.NewNonNull(graphql.String)},
+		"logs":          &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(logGQLType))},
+	},
+})
+
 // logFilterArgs are the filter arguments logs() and logLabelValues() share — the
 // same vocabulary as REST/MCP. `resource` may name an App or managed Postgres;
 // the datastore path accepts its documented range/text/instance subset and
@@ -81,7 +94,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 
 	return graphql.Fields{
 		"logs": &graphql.Field{
-			Type: graphql.NewList(logGQLType),
+			Type: logListGQLType,
 			Args: logsArgs,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				q, err := logQueryFromArgs(p.Args)
@@ -94,7 +107,18 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err := s.checkWindow(q); err != nil {
 					return nil, err
 				}
-				return s.QueryLogs(p.Context, q)
+				entries, err := s.QueryLogs(p.Context, q)
+				if err != nil {
+					return nil, err
+				}
+				n := q.normalized()
+				hasMore, nextStart, nextEnd := pageCursors(entries, n.Limit, n.Since, n.End, n.Direction)
+				return map[string]any{
+					"hasMore":       hasMore,
+					"nextStartTime": nextStart,
+					"nextEndTime":   nextEnd,
+					"logs":          entries,
+				}, nil
 			},
 		},
 		// The dashboard's filter dropdowns (and any GraphQL client) discover real

@@ -80,7 +80,10 @@ type listLogLabelValuesArgs struct {
 }
 
 type listLogsResult struct {
-	Logs []LogEntry `json:"logs"`
+	HasMore       bool       `json:"hasMore"`
+	NextStartTime string     `json:"nextStartTime"`
+	NextEndTime   string     `json:"nextEndTime"`
+	Logs          []LogEntry `json:"logs"`
 }
 
 // listLogLabelValuesResult carries the discovered values. Render's tool returns a
@@ -132,7 +135,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_logs",
 		Description: "List log lines for one or more services or managed Postgres databases (Render's `resource` array), filtered by text, time range, and instance; service logs also support type, level, host, statusCode, method, and path. " +
-			"Timestamp-sorted and aggregated across instances. Use list_log_label_values to discover which filter values exist for a resource.",
+			"Timestamp-sorted and aggregated across instances. Returns Render's paging envelope: hasMore, nextStartTime, nextEndTime, and logs. " +
+			"When hasMore is true, call again with startTime=nextStartTime and endTime=nextEndTime (same direction) to fetch the next page — the result is capped at 100 lines. " +
+			"Use list_log_label_values to discover which filter values exist for a resource.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogsArgs) (*mcp.CallToolResult, listLogsResult, error) {
 		resources, err := boundedResources(in.Resource)
 		if err != nil {
@@ -163,7 +168,15 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		// (QueryLogs already applied the per-App cap), and the direction decides
 		// which end of the window survives the cap.
 		sort.SliceStable(all, func(i, j int) bool { return all[i].Timestamp < all[j].Timestamp })
-		return nil, listLogsResult{Logs: q.normalized().capToLimit(all)}, nil
+		n := q.normalized()
+		all = n.capToLimit(all)
+		hasMore, nextStart, nextEnd := pageCursors(all, n.Limit, n.Since, n.End, n.Direction)
+		return nil, listLogsResult{
+			HasMore:       hasMore,
+			NextStartTime: nextStart,
+			NextEndTime:   nextEnd,
+			Logs:          all,
+		}, nil
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{

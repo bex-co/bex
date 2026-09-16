@@ -113,6 +113,15 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "正在加载日志……",
     description: "Shown while the first historical page is loading",
   },
+  "logs.loadingOlder": {
+    message: "正在加载更早的日志……",
+    description: "Shown at the top of the pane while a page-back request is in flight",
+  },
+  "logs.truncatedNotice": {
+    message: "正在显示此范围内最新的 100 条匹配日志——向上滚动可查看更早的历史。",
+    description:
+      "Banner when hasMore is true: the selected range holds more than the 100-line page, so the view is truncated until the user pages back",
+  },
   "logs.streaming": {
     message: "实时——正在接收新日志",
     description: "Status under the log list when the SSE tail is connected",

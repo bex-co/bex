@@ -115,6 +115,16 @@ const enLogs: Record<string, TranslationEntry> = {
     message: "Loading logs…",
     description: "Shown while the first historical page is loading",
   },
+  "logs.loadingOlder": {
+    message: "Loading older logs…",
+    description: "Shown at the top of the pane while a page-back request is in flight",
+  },
+  "logs.truncatedNotice": {
+    message:
+      "Showing the newest 100 matching lines in this range — scroll up for older history.",
+    description:
+      "Banner when hasMore is true: the selected range holds more than the 100-line page, so the view is truncated until the user pages back",
+  },
   "logs.streaming": {
     message: "Live — streaming new lines",
     description: "Status under the log list when the SSE tail is connected",
