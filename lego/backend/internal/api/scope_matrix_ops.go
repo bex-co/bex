@@ -446,6 +446,7 @@ var classifiedOps = map[string]string{
 	"MCP restart_service":                                              core.OpClassWrite,
 	"MCP restore_disk_snapshot":                                        core.OpClassWrite,
 	"MCP resume_agent_session":                                         core.OpClassWrite,
+	"MCP resume_keyvalue":                                              core.OpClassWrite,
 	"MCP resume_postgres":                                              core.OpClassWrite,
 	"MCP resume_service":                                               core.OpClassWrite,
 	"MCP revoke_api_key":                                               core.OpClassWrite,
