@@ -478,6 +478,9 @@ func safeRenderValidationMessage(err error) string {
 	var requestError *openapi3filter.RequestError
 	if errors.As(err, &requestError) {
 		if requestError.Parameter != nil {
+			if msg := parameterConstraintMessage(requestError); msg != "" {
+				return msg
+			}
 			return fmt.Sprintf("invalid %s parameter %q", requestError.Parameter.In, requestError.Parameter.Name)
 		}
 		if requestError.RequestBody != nil {
@@ -491,4 +494,73 @@ func safeRenderValidationMessage(err error) string {
 		}
 	}
 	return "request does not match the Render API schema"
+}
+
+// parameterConstraintMessage turns a kin-openapi parameter SchemaError into a
+// bex-shaped constraint message (w5/063): name the bound or enum from the
+// schema so REST matches the actionable vocabulary ParseEnum/ParseDirection
+// already use on GraphQL/MCP, instead of bare `invalid query parameter "x"`.
+func parameterConstraintMessage(requestError *openapi3filter.RequestError) string {
+	var schemaError *openapi3.SchemaError
+	if !errors.As(requestError.Err, &schemaError) && !errors.As(requestError, &schemaError) {
+		return ""
+	}
+	name := requestError.Parameter.Name
+	schema := schemaError.Schema
+	if schema == nil && requestError.Parameter.Schema != nil {
+		schema = requestError.Parameter.Schema.Value
+	}
+	switch schemaError.SchemaField {
+	case "enum":
+		allowed := enumValues(schema)
+		if len(allowed) == 0 && schema != nil && schema.Items != nil {
+			allowed = enumValues(schema.Items.Value)
+		}
+		if len(allowed) == 0 {
+			return ""
+		}
+		return fmt.Sprintf("%s must be one of %s", name, strings.Join(allowed, "|"))
+	case "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "type":
+		if schema == nil {
+			return ""
+		}
+		// Array query params (e.g. postgres ?suspended=) validate the item schema.
+		boundSchema := schema
+		if schema.Items != nil && schema.Items.Value != nil && (schema.Min == nil || schema.Max == nil) {
+			if schema.Items.Value.Min != nil && schema.Items.Value.Max != nil {
+				boundSchema = schema.Items.Value
+			}
+		}
+		min, max, ok := numericBounds(boundSchema)
+		if !ok {
+			if schemaError.SchemaField == "type" && boundSchema.Type != nil && boundSchema.Type.Is("integer") {
+				return fmt.Sprintf("%s must be an integer", name)
+			}
+			return ""
+		}
+		if boundSchema.Type != nil && boundSchema.Type.Is("integer") {
+			return fmt.Sprintf("%s must be an integer between %g and %g", name, min, max)
+		}
+		return fmt.Sprintf("%s must be between %g and %g", name, min, max)
+	default:
+		return ""
+	}
+}
+
+func enumValues(schema *openapi3.Schema) []string {
+	if schema == nil || len(schema.Enum) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(schema.Enum))
+	for _, v := range schema.Enum {
+		out = append(out, fmt.Sprint(v))
+	}
+	return out
+}
+
+func numericBounds(schema *openapi3.Schema) (min, max float64, ok bool) {
+	if schema == nil || schema.Min == nil || schema.Max == nil {
+		return 0, 0, false
+	}
+	return *schema.Min, *schema.Max, true
 }
