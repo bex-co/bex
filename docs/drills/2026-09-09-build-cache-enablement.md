@@ -144,16 +144,28 @@ The push p95 baseline for the trial's stop rule is therefore ~27 s; the rule's f
 
 **Go/no-go:** admission passes on the expected footprint, so t004 may start — with the observer and the independently verified 72-hour rollback the procedure requires, and with the understanding that the 3× worst case relies on the 70% stop rule rather than on the 65% reserve. The switch remains **off** at the time of writing.
 
-## Closeout state — 2026-09-15: held, gate off
+## Closeout state — 2026-09-16: guardrail built, gate still off
 
-Global enablement remains **off**, and `w7/m89` closes on the hold branch of its definition of done rather than on a completed trial.
+Global enablement remains **off**, but the reason it stayed off has changed, and the change is the point of this update.
 
-Both start conditions the milestone owned are met. The corrected image is live (the manager runs a digest built from `1cb1f2d27dda`, containing `1343b7f17070` and `3aea3310212f`), and the capacity re-check above passes the admission budget on the expected footprint: 41.49% used, 44.62% retained peak, 20.03 GiB of reserve above that peak to the 65% ceiling, against an expected 6–9 GiB of cache growth. The projection is analytic, not measured — `BEX_BUILD_CACHE` is a manager-wide flag, so there is no per-App switch with which to measure one production shape in isolation — and the label matters for the worst case: at 3× for every App (~17.9 GiB) the fit depends on the 70%-for-10-minutes stop rule rather than on the 65% reserve.
+`w7/m89` closed on the hold branch because the trial's stop rules lived only in this document: starting the clock meant a named human watching a dashboard for three days and running `kubectl set env` at the right moment. That is a promise, not a guardrail, and it is why the trial never started. The stop rules are now enforced by the operator itself.
 
-**The one remaining start condition is human.** The procedure in this drill requires a named observer across the 48–72 hour window and an independently verified rollback armed at 72 hours; an unattended agent session can be neither, so the switch was not flipped. Nothing technical is outstanding.
+**What the operator does on its own** (`lego/operator/internal/controller/build_cache_trial.go`):
 
-To start, when an observer is available: add `BEX_BUILD_CACHE=registry` to the `controller-manager` JSON patch in `lego/operator/config/prod/kustomization.yaml`, ship, wait for the manager rollout, trigger one build (a disposable QA App suffices) and confirm the Job carries the `cache-restore`/`cache-save` phases, then record the start, 48-hour and 72-hour times and the rollback owner here before observation begins. The stop rules and the emergency `set env` rollback are unchanged from the sections above; the push p95 baseline measured for them is ~27 s, so the rule's 60-second floor governs. Carried on the board as [`w7/047`](../../.pm/w7/047.md).
+| Stop rule | Enforced by | Effect |
+| --- | --- | --- |
+| 72h hard stop | `BEX_BUILD_CACHE_TRIAL_DEADLINE` (absolute RFC3339) | cache phases stop being dispatched, regardless of `BEX_BUILD_CACHE` |
+| push p95 > 60s, ≥5 samples in 15m | in-process, from the same `PushSeconds` that feeds `bex_build_push_seconds` | cache withdrawn, `reason="push_latency"` |
+| ≥3 push failures in 15m | same | cache withdrawn, `reason="push_errors"` |
+| Zot PVC > 70% for 10m | `ZotRegistryFillingUp` (pre-existing) | pages; **not** auto-actioned — see below |
 
-Both live correctness drills and the full operator `make test` passed, and fixture retirement is verified.
+The deadline is absolute rather than a duration from process start, because a duration restarts on every manager rollout: three restarts would run a 72-hour trial for nine days, which is the exact failure a hard stop exists to prevent. A withdrawal happens _behind_ an unchanged env var — Argo owns the overlay, so an operator removing its own `BEX_BUILD_CACHE` would be reverted on the next sync — which means a tripped trial is invisible from Git alone. `bex_build_cache_enabled` (1/0) and `bex_build_cache_withdrawals_total{reason}` are what make it visible, with `BuildCacheTrialWithdrawn` alerting on the trip and the new `BuildPushTimeHigh` alerting on the latency rule the estate previously had no alert for. The breaker never re-arms: re-enabling is a deploy, because a breaker that recovered on its own would oscillate the cache across a trial and make its measurements unreadable.
 
-The repository-wide `make lint` gate is **not green**: its local Go 1.26-built tools cannot analyze the Go 1.27 CLI. Rebuilding the pinned tools with Go 1.27 still hits the pinned linter's unsupported export-data format, and whole-program deadcode reports the existing backend `Service.collectDatabasePodLogs` and `Service.collectKeyValuePodLogs` functions. Those failures are outside this test-harness change; no linter was disabled or unrelated backend code removed to mask them.
+**What still needs a person, honestly.** Two things, and neither is a three-day vigil:
+
+1. **Starting it** — adding `BEX_BUILD_CACHE=registry` and a `BEX_BUILD_CACHE_TRIAL_DEADLINE` 72 hours out to the `controller-manager` patch in `lego/operator/config/prod/kustomization.yaml`, shipping, and confirming one build carries the `cache-restore`/`cache-save` phases.
+2. **Reading the result** — the retain-or-rollback decision, which is a judgement about measured benefit and deliberately not something the breaker makes. If nobody reads it, the deadline ends the trial anyway and the estate returns to today's behavior on its own. That asymmetry is the design: the failure mode of inattention is "no cache", not "unbounded cache".
+
+The **PVC rule is the one stop condition still not auto-actioned**: the operator does not observe Zot's filesystem, and reaching for Prometheus from a DB-free mechanism-layer manager to get it would be a worse trade than the alert that already pages. The push-failure rule is a partial backstop — a registry that fills starts failing pushes, and three of those inside the window withdraw the cache — but it is a backstop, not a substitute, and `ZotRegistryFillingUp` remains the primary signal there.
+
+Both live correctness drills and the full operator `make test` passed, and fixture retirement is verified. `make lint` is now green across all four modules, including the whole-program dead-code analysis; the Go 1.26/1.27 tooling split recorded here previously has been resolved elsewhere in the tree.

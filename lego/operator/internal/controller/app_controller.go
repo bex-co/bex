@@ -349,6 +349,12 @@ type AppReconciler struct {
 	// (BEX_BUILD_CACHE=registry, docs/ADR060 D3). False => the build Job spec is
 	// byte-identical to before the feature existed.
 	BuildCache bool
+	// cacheTrial bounds BuildCache for a production trial: a hard deadline plus
+	// push-latency and push-failure stop rules the operator enforces itself
+	// (.pm/w7/047). Nil means unbounded, which is what every test and every
+	// development cluster wants — see buildCacheTrial.allow. Armed through
+	// EnableBuildCacheTrial.
+	cacheTrial *buildCacheTrial
 	// PerAppRegistry, when non-nil, enables per-App Zot pull credentials (w7/m36,
 	// docs/ADR022-tenant-isolation.md §Read policy). Each App gets its own
 	// "app-<name>" htpasswd user scoped to its image repository, replacing the
@@ -885,7 +891,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		PushSecret:        r.buildJobPushSecret(app),
 		PullSecret:        buildRegistryPullSecret,
 		RegistryConfig:    usesBuildRegistryConfig(app, builder),
-		BuildCache:        r.BuildCache,
+		BuildCache:        r.buildCacheAllowed(),
 		SkipCacheImport:   skipCacheImport,
 		Client:            buildClient,
 	})
@@ -1115,6 +1121,38 @@ func (r *AppReconciler) meterBuildSignals(ctx context.Context, app *appv1alpha1.
 		return
 	}
 	recordBuildSignals(sig)
+	// Same once-per-build gate as the histogram above, which is what keeps a
+	// re-reconcile of an already-finished build from counting one slow push
+	// twice toward the trial's latency rule.
+	if r.BuildCache {
+		before := r.cacheTrial.stopReason()
+		r.cacheTrial.observePush(time.Now(), sig.PushSeconds, sig.PushFailed)
+		if after := r.cacheTrial.stopReason(); after != "" && before == "" {
+			logf.FromContext(ctx).Info("build cache withdrawn by the trial breaker; builds dispatched from now on carry no cache phases",
+				"reason", after, "app", app.Name, "pushSeconds", sig.PushSeconds, "pushFailed", sig.PushFailed)
+		}
+	}
+}
+
+// EnableBuildCacheTrial arms the trial breaker that bounds BEX_BUILD_CACHE
+// (docs/ADR060 D3, .pm/w7/047). A zero deadline leaves only the push-latency and
+// push-failure stop rules armed. Called once at manager start; a reconciler left
+// without it caches without bounds, which is the development-cluster shape.
+func (r *AppReconciler) EnableBuildCacheTrial(deadline time.Time) {
+	r.cacheTrial = newBuildCacheTrial(deadline)
+}
+
+// buildCacheAllowed reports whether a build dispatched now carries cache phases:
+// the configured gate AND the trial breaker still holding. Consulted at dispatch
+// rather than cached on the reconciler because the breaker can trip between two
+// builds of the same App.
+func (r *AppReconciler) buildCacheAllowed() bool {
+	if !r.BuildCache {
+		return false
+	}
+	allowed := r.cacheTrial.allow(time.Now())
+	publishBuildCacheEnabled(allowed)
+	return allowed
 }
 
 // buildCap is one admission scope: how many concurrent builds it allows, how to
@@ -4983,6 +5021,10 @@ func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Publish the cache gate from setup rather than from the first dispatch, so
+	// an idle fleet still reports it: an absent series and a disabled cache are
+	// different things, and a dashboard cannot tell them apart after the fact.
+	publishBuildCacheEnabled(r.BuildCache)
 	// Config propagation on restart: operator-level settings (cluster issuer, base
 	// domain, tier ladder) come from env, so a config change always arrives as an
 	// operator restart — and reaches every running App because informer replay

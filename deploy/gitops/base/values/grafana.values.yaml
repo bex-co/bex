@@ -4462,6 +4462,70 @@ dashboards:
                  "legendFormat": "pin age"
                 }
               ]
+            },
+            {
+             "id": 9,
+             "type": "timeseries",
+             "title": "Image push duration",
+             "description": "The push phase is platform-owned end to end (skopeo, our credential, our registry), so a regression here is never a tenant's Dockerfile. BuildPushTimeHigh fires above a 60s p95 (red line), a floor set far above the ~27s production baseline. With the registry build cache on, every build also carries a cache-save push, so this is where a cache regression surfaces first.",
+             "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "s",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 60 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "histogram_quantile(0.95, sum by (le) (rate(bex_build_push_seconds_bucket[15m]))) or vector(0)",
+                 "legendFormat": "p95"
+                },
+                {
+                 "refId": "B",
+                 "expr": "histogram_quantile(0.50, sum by (le) (rate(bex_build_push_seconds_bucket[15m]))) or vector(0)",
+                 "legendFormat": "p50"
+                },
+                {
+                 "refId": "C",
+                 "expr": "sum(rate(bex_build_push_errors_total[15m]))",
+                 "legendFormat": "errors/s"
+                }
+              ]
+            },
+            {
+             "id": 10,
+             "type": "timeseries",
+             "title": "Build cache gate (trial)",
+             "description": "What builds are ACTUALLY getting, which is not what the overlay says: the operator's trial breaker withdraws the cache behind an unchanged BEX_BUILD_CACHE (Argo owns the overlay, so the operator cannot edit its own env without being reverted). enabled dropping to 0 with no deploy means a stop rule tripped — withdrawals shows which one. reason=deadline is the 72h hard stop working as designed; push_latency / push_errors mean a rule fired. The gate never re-arms itself: re-enabling is a deploy. Context: docs/ADR060 D3, .pm/w7/047.",
+             "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "short", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "max(bex_build_cache_enabled) or vector(0)",
+                 "legendFormat": "enabled"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum by (reason) (increase(bex_build_cache_withdrawals_total[1h]))",
+                 "legendFormat": "withdrawn: {{reason}}"
+                }
+              ]
             }
           ]
         }
