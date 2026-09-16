@@ -93,8 +93,14 @@ func TestReadReplicaView(t *testing.T) {
 		t.Fatalf("readReplicas = %d, want 2", len(v.ReadReplicas))
 	}
 	r0 := v.ReadReplicas[0]
+	if r0.ID != "rr-db-ro-reader-1" {
+		t.Errorf("replica[0] id = %q, want rr-db-ro-reader-1 (w5/066)", r0.ID)
+	}
 	if r0.Name != "reader-1" || r0.ConnectionInfo == nil {
 		t.Errorf("replica[0] = %+v", r0)
+	}
+	if again := pgView(db); again.ReadReplicas[0].ID != r0.ID {
+		t.Errorf("read replica id must be stable across reads: %q vs %q", again.ReadReplicas[0].ID, r0.ID)
 	}
 	if r0.ConnectionInfo.InternalHost != "rr-db-ro.default.svc" {
 		t.Errorf("replica[0] internalHost = %q", r0.ConnectionInfo.InternalHost)

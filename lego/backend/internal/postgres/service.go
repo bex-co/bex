@@ -172,11 +172,19 @@ type PostgresView struct {
 }
 
 // ReadReplicaView is one named read replica as returned in the Render-shaped
-// postgres object. Maps to Render's readReplicas[{name, connectionInfo}].
-// Passwords are not included; use PostgresConnectionInfo for credentials.
+// postgres object. Render's readReplica schema requires id + name; connectionInfo
+// is a bex extension (hosts without passwords — use PostgresConnectionInfo for
+// credentials). Id is a stable derived identifier `<primary>-ro-<name>` (w5/066),
+// not a separately minted dpg- resource.
 type ReadReplicaView struct {
+	ID             string                     `json:"id"`
 	Name           string                     `json:"name"`
 	ConnectionInfo *ReadReplicaConnectionInfo `json:"connectionInfo,omitempty"`
+}
+
+// ReadReplicaID is the stable public id for a named replica of primaryID.
+func ReadReplicaID(primaryID, name string) string {
+	return primaryID + "-ro-" + name
 }
 
 // ReadReplicaConnectionInfo holds the internal (and optionally external)
@@ -386,7 +394,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	dbUser := d.Spec.EffectiveDatabaseUser(d.Name)
 	replicas := make([]ReadReplicaView, 0, len(d.Status.ReadReplicaStatuses))
 	for _, rs := range d.Status.ReadReplicaStatuses {
-		rv := ReadReplicaView{Name: rs.Name}
+		rv := ReadReplicaView{ID: ReadReplicaID(d.Name, rs.Name), Name: rs.Name}
 		if rs.InternalHost != "" || rs.ExternalHost != "" {
 			rv.ConnectionInfo = &ReadReplicaConnectionInfo{
 				InternalHost: rs.InternalHost,
