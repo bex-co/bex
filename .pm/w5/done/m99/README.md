@@ -1,6 +1,6 @@
 # w5 · m99 — No sandbox outlives its owner: bound lifetimes and reconcile the live inventory
 
-**Worker:** worker5 **Goal:** every sandbox on the platform is reachable by something that will eventually stop it, so a failed teardown costs minutes of compute instead of running forever. **Status:** todo
+**Worker:** worker5 **Goal:** every sandbox on the platform is reachable by something that will eventually stop it, so a failed teardown costs minutes of compute instead of running forever. **Status:** done
 
 ## Live evidence (production, 2026-09-15)
 
@@ -30,6 +30,13 @@ The cost is real and ongoing. `GET /v1/usage?ownerId=tea-…&period=2026-09` att
 
 That is **$77.55 of the $77.85** of all sandbox spend this period, and ~31% of the workspace's `billing.currentCost.amountUsd` of `$247.72` (currently absorbed by a $1000 credit grant, so no cash has left yet — the grant is masking it). The meter itself is correct: 866.53 vCPU-hr over ~357 hours of September is what a continuously-running `starter` sandbox accrues.
 
+## Reclaim (t006, 2026-09-15)
+
+User approved stop. Terminated via `POST /v1/sandboxes/271ec9ce-…/terminate` (QA session cookie) → **204**. Confirmed:
+
+- `GET /v1/sandboxes?ownerId=…` returns **0** sandboxes in `tea-d98210cbbpdc73dcrkvg` (bex), `tea-da2isimlm39c739m4ofg` (tian-personal), and `tea-daif693dqjvc73e7as3g` (bex-canary).
+- Final accrued cost for that `serviceId` (usage `estimatedCost.resources`): **Aug $9.89** (110.55 vCPU-hr) + **Sep $78.61** (878.28 vCPU-hr) = **$88.50** total. September rose from the earlier $77.55 snapshot while the orphan kept running until stop.
+
 ## Root cause — three independent gaps, each sufficient on its own
 
 1. **Cancel is a no-op when the row forgot the sandbox.** `Service.Cancel` (`lego/backend/internal/agentsessions/service.go:1169-1173`) terminates only `if record.SandboxID != ""`. A steer/redispatch blanks that column (`internal/store/agentsessions.go:212` — `SET sandbox_id='', phase=$2, …`) and hands the old id to a **best-effort, log-only** teardown (`service.go:1476-1479`, "teardown of previous sandbox failed … %v" then continue). Once that log line is written the row no longer references the sandbox, and a later cancel silently reclaims nothing.
@@ -40,18 +47,18 @@ That is **$77.55 of the $77.85** of all sandbox spend this period, and ~31% of t
 
 ## Tasks (in order)
 
-| id   | title                                                                             | est | depends_on             |
-| ---- | --------------------------------------------------------------------------------- | --- | ---------------------- |
-| t001 | Enforce a bounded sandbox lifetime and reconcile `timeoutSeconds: 0` with the pin | 60m | —                      |
-| t002 | Reap by age from the row, not from a window anchored to `now`                     | 45m | —                      |
-| t003 | Reconcile the live sandbox inventory against session rows                         | 75m | t002                   |
-| t004 | Make the steer/redispatch previous-sandbox teardown durable                       | 45m | t003                   |
-| t005 | Surface orphans: an over-age-sandbox metric and an alert                          | 45m | t003                   |
-| t006 | Reclaim the production orphan and record its cost (needs explicit user approval)  | 20m | t003                   |
-| t007 | Render parity across REST/GraphQL/MCP and the dashboard                           | 30m | t001, t004, t005, t006 |
-| t008 | Simplify                                                                          | 20m | t007                   |
-| t009 | Test coverage                                                                     | 45m | t007                   |
-| t010 | Closeout                                                                          | 10m | t009                   |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| [t001](done/t001.md) — **DONE** | Enforce a bounded sandbox lifetime and reconcile `timeoutSeconds: 0` with the pin | 60m | — |
+| [t002](done/t002.md) — **DONE** | Reap by age from the row, not from a window anchored to `now` | 45m | — |
+| [t003](done/t003.md) — **DONE** | Reconcile the live sandbox inventory against session rows | 75m | t002 |
+| [t004](done/t004.md) — **DONE** | Make the steer/redispatch previous-sandbox teardown durable | 45m | t003 |
+| [t005](done/t005.md) — **DONE** | Surface orphans: an over-age-sandbox metric and an alert | 45m | t003 |
+| [t006](done/t006.md) — **DONE** | Reclaim the production orphan and record its cost (needs explicit user approval) | 20m | t003 |
+| [t007](done/t007.md) — **DONE** | Render parity across REST/GraphQL/MCP and the dashboard | 30m | t001, t004, t005, t006 |
+| [t008](done/t008.md) — **DONE** | Simplify | 20m | t007 |
+| [t009](done/t009.md) — **DONE** | Test coverage | 45m | t007 |
+| [t010](done/t010.md) — **DONE** | Closeout | 10m | t009 |
 
 ## Definition of done
 

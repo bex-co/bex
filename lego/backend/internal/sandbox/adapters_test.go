@@ -18,11 +18,13 @@ package sandbox
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -225,5 +227,116 @@ func TestMCPNetworkPolicyNamedRefusal(t *testing.T) {
 	}
 	if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "SANDBOX_NETWORK_POLICY_UNSUPPORTED") {
 		t.Fatalf("MCP policy refusal = %#v", res)
+	}
+}
+
+func TestTimeoutSecondsZeroAgreesAcrossRESTGraphQLMCP(t *testing.T) {
+	var gotTimeout int
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			return
+		}
+		var body struct {
+			Timeout  int               `json:"timeout"`
+			Metadata map[string]string `json:"metadata"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		gotTimeout = body.Timeout
+		meta := body.Metadata
+		if meta == nil {
+			meta = map[string]string{}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id":       "sbx-timeout",
+			"metadata": meta,
+			"status":   map[string]string{"state": "Running"},
+			"created":  time.Now().UTC().Format(time.RFC3339Nano),
+			"image":    map[string]string{"uri": "node:20"},
+		})
+	}))
+	t.Cleanup(upstream.Close)
+	svc := &Service{
+		Base:            &core.Base{Namespace: "default"},
+		Client:          NewClient(upstream.URL),
+		Templates:       map[string]Template{"node": {Image: "node:20"}},
+		DefaultTemplate: "node",
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(`{"timeoutSeconds":0}`)).WithContext(callerCtx())
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("REST create = %d %s", rec.Code, rec.Body.String())
+	}
+	var rest Sandbox
+	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
+		t.Fatalf("REST decode: %v", err)
+	}
+	if gotTimeout != maxSandboxTimeout || rest.TimeoutSeconds != maxSandboxTimeout {
+		t.Fatalf("REST effective timeout = upstream %d body %d, want %d", gotTimeout, rest.TimeoutSeconds, maxSandboxTimeout)
+	}
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotTimeout = 0
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { createSandbox(timeoutSeconds: 0) { timeoutSeconds } }`,
+		Context:       callerCtx(),
+	})
+	if len(res.Errors) != 0 {
+		t.Fatalf("GraphQL errors = %#v", res.Errors)
+	}
+	gql := res.Data.(map[string]any)["createSandbox"].(map[string]any)
+	gqlTimeout, ok := gql["timeoutSeconds"].(int)
+	if !ok {
+		t.Fatalf("GraphQL timeoutSeconds type %T = %#v", gql["timeoutSeconds"], gql["timeoutSeconds"])
+	}
+	if gotTimeout != maxSandboxTimeout || gqlTimeout != maxSandboxTimeout {
+		t.Fatalf("GraphQL effective timeout = upstream %d body %d, want %d", gotTimeout, gqlTimeout, maxSandboxTimeout)
+	}
+
+	server := mcp.NewServer(&mcp.Implementation{Name: "sandbox-test", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := callerCtx()
+	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	client, err := mcp.NewClient(&mcp.Implementation{Name: "sandbox-test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	gotTimeout = 0
+	toolRes, err := client.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "spawn_sandbox",
+		Arguments: map[string]any{"timeoutSeconds": 0},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if toolRes.IsError {
+		t.Fatalf("MCP spawn error = %#v", toolRes)
+	}
+	raw, err := json.Marshal(toolRes.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mcpSB Sandbox
+	if err := json.Unmarshal(raw, &mcpSB); err != nil {
+		t.Fatalf("MCP decode: %v (%s)", err, raw)
+	}
+	if gotTimeout != maxSandboxTimeout || mcpSB.TimeoutSeconds != maxSandboxTimeout {
+		t.Fatalf("MCP effective timeout = upstream %d body %d, want %d", gotTimeout, mcpSB.TimeoutSeconds, maxSandboxTimeout)
 	}
 }

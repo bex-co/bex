@@ -390,7 +390,14 @@ func main() {
 	// they share a runtime, but only this series answers whether the sandbox API
 	// itself is healthy — the gap ADR088's coverage table left unfiled (w5/m95).
 	if srv.Sandbox != nil {
-		srv.Sandbox.Metrics = sandbox.NewMetrics(metricRegistry)
+		m := sandbox.NewMetrics(metricRegistry)
+		srv.Sandbox.Metrics = m
+		if srv.AgentSessionCompleter != nil {
+			srv.AgentSessionCompleter.SandboxMetrics = m
+		}
+		if srv.AgentSessions != nil {
+			srv.AgentSessions.SandboxMetrics = m
+		}
 	}
 	// codex round-8 #9: the signed git webhook durably claims each processed
 	// delivery body so a captured (body, signature) pair cannot be replayed into

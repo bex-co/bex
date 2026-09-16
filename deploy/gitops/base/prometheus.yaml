@@ -1352,6 +1352,30 @@ spec:
                       summary: "{{ $value | humanizePercentage }} of /v1/sandboxes creations are failing"
                       description: "More than a quarter of sandbox creations through the public API failed or timed out waiting for the pod to become ready in the last hour, so agents calling /v1/sandboxes cannot get an execution environment. Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_SANDBOX_IMAGE. bex_sandbox_create_total{outcome} separates a capacity timeout from an unexplained failure, and bex_sandbox_create_seconds shows whether creates are merely slow. Agent-session sandboxes report separately (AgentSessionProvisionFailing); both firing points at the shared substrate rather than either API. Runbook: docs/ADR014-sandboxes.md"
 
+                  # w5/m99 — a live sandbox with no live owning session must not
+                  # run for days. Inventory reconcile publishes the divergence;
+                  # fire when any orphan class stays non-empty past one Completer
+                  # interval (15s tick, 2m for: covers a couple of missed ticks).
+                  - alert: SandboxOrphansPresent
+                    expr: |
+                      sum(bex_sandbox_live{class=~"terminal_orphan|no_row_orphan"}) > 0
+                    for: 2m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "{{ $value }} orphaned live sandbox(es) still running"
+                      description: "Inventory reconcile found sandboxes whose agent session is terminal or absent. Check bex_sandbox_live{class} and Completer logs for terminate failures (bex_sandbox_teardown_failures_total). Prefer the reconcile reclaiming them; a stuck substrate may need kubectl -n <ws>-sandbox. Runbook: docs/ADR014-sandboxes.md"
+
+                  - alert: SandboxOldestOverBound
+                    expr: |
+                      max(bex_sandbox_oldest_age_seconds) > 86400
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Oldest live sandbox is {{ $value | humanizeDuration }} old (past the 24h lifetime bound)"
+                      description: "A sandbox has outlived the enforced timeoutSeconds maximum (86400). Lifetime enforcement and inventory reconcile should have stopped it; check OpenSandbox terminate health and bex_sandbox_teardown_failures_total. Runbook: docs/ADR014-sandboxes.md"
+
                   - alert: BillingExportBacklog
                     expr: |
                       bex_billing_enabled == 1

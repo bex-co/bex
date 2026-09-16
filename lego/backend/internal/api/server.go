@@ -873,9 +873,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
 			GitHub: d.GitHubClient, Connections: d.GitHubStore, APIPublicURL: d.DeployHookBaseURL,
-			IdleTTL:      d.AgentSandboxIdleTTL,
-			Snapshots:    d.AgentSnapshotStore,
-			RetentionTTL: d.AgentSnapshotRetentionTTL,
+			IdleTTL:           d.AgentSandboxIdleTTL,
+			Snapshots:         d.AgentSnapshotStore,
+			RetentionTTL:      d.AgentSnapshotRetentionTTL,
+			InventoryInterval: time.Minute,
 		},
 		Postgres:      pg,
 		KeyValue:      kv,

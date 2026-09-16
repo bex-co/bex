@@ -71,7 +71,9 @@ type Sandbox struct {
 	Plan           Plan           `json:"plan"`
 	Status         Status         `json:"status"`
 	Region         string         `json:"region,omitempty"`
-	TimeoutSeconds int            `json:"timeoutSeconds,omitempty"`
+	// TimeoutSeconds is the effective lifetime bound in seconds. 0 is never
+	// returned — omitted/legacy "no expiry" is normalized to 86400 (w5/m99).
+	TimeoutSeconds int `json:"timeoutSeconds"`
 	NetworkPolicy  *NetworkPolicy `json:"networkPolicy,omitempty"`
 	Owner          string         `json:"owner,omitempty"`
 	Workspace      string         `json:"workspace,omitempty"`

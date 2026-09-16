@@ -4113,6 +4113,89 @@ dashboards:
                  "legendFormat": "{{outcome}}"
                 }
               ]
+            },
+            {
+             "id": 22,
+             "type": "timeseries",
+             "title": "Sandbox inventory by class",
+             "description": "Live sandboxes classified by the Completer inventory reconcile (w5/m99). terminal_orphan / no_row_orphan must stay at zero — SandboxOrphansPresent warns after 2m. claimed is healthy ownership; timed is an EA sandbox inside its lifetime bound; inconclusive is a conservative skip.",
+             "gridPos": {
+               "h": 9,
+               "w": 12,
+               "x": 0,
+               "y": 98
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (class) (bex_sandbox_live)",
+                 "legendFormat": "{{class}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum by (reason) (increase(bex_sandbox_teardown_failures_total[1h]))",
+                 "legendFormat": "teardown fail ({{reason}})"
+                }
+              ]
+            },
+            {
+             "id": 23,
+             "type": "timeseries",
+             "title": "Oldest sandbox age by class",
+             "description": "Age of the oldest live sandbox in each inventory class. SandboxOldestOverBound warns when any class exceeds the 86400s lifetime maximum for 15m.",
+             "gridPos": {
+               "h": 9,
+               "w": 12,
+               "x": 12,
+               "y": 98
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "s",
+                 "min": 0,
+                 "custom": {
+                   "thresholdsStyle": {
+                     "mode": "line"
+                    }
+                  },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      {
+                       "color": "green",
+                       "value": null
+                      },
+                      {
+                       "color": "red",
+                       "value": 86400
+                      }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "max by (class) (bex_sandbox_oldest_age_seconds)",
+                 "legendFormat": "{{class}}"
+                }
+              ]
             }
           ]
         }
