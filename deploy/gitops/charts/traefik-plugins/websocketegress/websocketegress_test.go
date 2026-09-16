@@ -80,6 +80,42 @@ func TestDownstreamDoesNotCountClientReads(t *testing.T) {
 	_ = client.Close()
 }
 
+func TestDownstreamCountsClientReadsAsIngressOnly(t *testing.T) {
+	server, client := net.Pipe()
+	egress, ingress := &atomic.Uint64{}, &atomic.Uint64{}
+	wrapped := &downstreamConn{Conn: server, counter: egress, ingress: ingress}
+	want := []byte("client-to-server")
+	go func() { _, _ = client.Write(want) }()
+	got := make([]byte, len(want))
+	if _, err := io.ReadFull(wrapped, got); err != nil {
+		t.Fatal(err)
+	}
+	if ingress.Load() != uint64(len(want)) {
+		t.Fatalf("ingress = %d, want %d — a client-only WebSocket must be visible to the idle check", ingress.Load(), len(want))
+	}
+	// The egress counter bills; it must stay blind to reads (w1/m161).
+	if egress.Load() != 0 {
+		t.Fatalf("egress = %d, want 0 — client bytes are not billable egress", egress.Load())
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatal("client bytes were not forwarded unchanged")
+	}
+	_ = wrapped.Close()
+	_ = client.Close()
+}
+
+func TestMetricsExposeBothDirections(t *testing.T) {
+	body := metricsBody()
+	for _, want := range []string{
+		"# TYPE bex_websocket_egress_bytes_total counter",
+		"# TYPE bex_websocket_ingress_bytes_total counter",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("metrics body missing %q:\n%s", want, body)
+		}
+	}
+}
+
 func TestDownstreamCountsOnlySuccessfullyWrittenBytes(t *testing.T) {
 	wantErr := errors.New("short write")
 	conn := &shortWriteConn{limit: 3, err: wantErr}
