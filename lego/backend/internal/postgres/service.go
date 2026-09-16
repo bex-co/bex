@@ -398,6 +398,12 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		version = d.Spec.Version
 	}
 	status := dbStatus(d.Status.Phase)
+	// Suspension outranks readiness so status matches Render's databaseStatus
+	// enum (the pinned CLI prints Status and omits Suspended in text mode —
+	// w5/061). Deleting still wins.
+	if d.Spec.Suspended {
+		status = "suspended"
+	}
 	if !d.DeletionTimestamp.IsZero() {
 		status = "deleting"
 	}

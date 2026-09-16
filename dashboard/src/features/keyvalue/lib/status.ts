@@ -6,12 +6,14 @@ import type {
   KeyValueStats,
 } from "@/features/keyvalue/types";
 
-// Render's keyValueStatus enum (backend/internal/keyvalue/service.go kvStatus):
+// Render's keyValueStatus enum (backend/internal/keyvalue/service.go kvView):
 // "available" once the Valkey StatefulSet is ready, "creating" while
-// provisioning, "unavailable" on failure.
+// provisioning, "unavailable" on failure, "suspended" when Spec.Suspended
+// (Render's databaseStatus vocabulary, reused by Key Value — w5/061).
 export const AVAILABLE = "available";
 export const CREATING = "creating";
 export const UNAVAILABLE = "unavailable";
+export const SUSPENDED = "suspended";
 
 /** A single item as it comes off the `keyValues` query (fields nullable). */
 type KeyValueNode = NonNullable<
@@ -61,6 +63,7 @@ const STATUS_MAP: Record<string, KeyValueStatus> = {
   available: { key: "available", variant: "default" },
   creating: { key: "creating", variant: "outline" },
   unavailable: { key: "unavailable", variant: "destructive" },
+  suspended: { key: "suspended", variant: "secondary" },
 };
 
 function fromStatus(status: string): KeyValueStatus {
@@ -70,11 +73,9 @@ function fromStatus(status: string): KeyValueStatus {
 }
 
 /**
- * Resolve a Key Value store's display status. Suspension wins over the status
- * enum — a suspended store still reports status "available" (Render keeps
- * `status` and `suspended` as separate fields), but "suspended" is the state
- * the user asked for and acts on, so it's what the badge shows (mirrors
- * services' and databases' deriveStatus).
+ * Resolve a Key Value store's display status. Suspension wins over readiness —
+ * either via the dedicated `suspended` enum or via `status: "suspended"` on the
+ * wire (Render's databaseStatus vocabulary, matched by bex since w5/061).
  */
 export function deriveStatus(d: {
   status: string;

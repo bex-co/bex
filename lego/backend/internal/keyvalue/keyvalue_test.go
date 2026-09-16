@@ -884,10 +884,22 @@ func TestRESTKeyValueSuspendResume(t *testing.T) {
 	if v.Suspended != core.RenderSuspended {
 		t.Errorf("suspended enum = %q, want %q", v.Suspended, core.RenderSuspended)
 	}
+	if v.Status != "suspended" {
+		t.Errorf("suspend status = %q, want suspended (Render databaseStatus / CLI Status)", v.Status)
+	}
 	var got appv1alpha1.KeyValue
 	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "life"}, &got)
 	if !got.Spec.Suspended {
 		t.Error("suspend must set spec.suspended on the CR")
+	}
+	// GET must agree with the suspend response — the CLI reads Status here.
+	get := serveREST(svc, "GET", "/v1/key-value/life", "")
+	if get.Code != 200 {
+		t.Fatalf("GET after suspend => 200, got %d", get.Code)
+	}
+	_ = json.Unmarshal(get.Body.Bytes(), &v)
+	if v.Status != "suspended" || v.Suspended != core.RenderSuspended {
+		t.Errorf("GET after suspend status=%q suspended=%q", v.Status, v.Suspended)
 	}
 
 	w = serveREST(svc, "POST", "/v1/key-value/life/resume", "")
@@ -897,6 +909,9 @@ func TestRESTKeyValueSuspendResume(t *testing.T) {
 	_ = json.Unmarshal(w.Body.Bytes(), &v)
 	if v.Suspended != core.RenderNotSuspended {
 		t.Errorf("resumed enum = %q, want %q", v.Suspended, core.RenderNotSuspended)
+	}
+	if v.Status == "suspended" {
+		t.Errorf("resume must clear status suspended, got %q", v.Status)
 	}
 	// unknown store => 404.
 	if serveREST(svc, "POST", "/v1/key-value/nope/suspend", "").Code != 404 {
@@ -940,11 +955,18 @@ func TestGraphQLKeyValue(t *testing.T) {
 		t.Fatalf("createKeyValue did not create the CR with plan: %v %+v", err, made.Spec)
 	}
 	svc.Workspace = nil
-	// suspend/resume mutations flip spec.suspended.
-	run(`mutation { suspendKeyValue(id:"gql-kv") { suspended } }`)
+	// suspend/resume mutations flip spec.suspended and surface status=suspended
+	// so the CLI (which drops the suspended field) still sees the hibernation.
+	susp := run(`mutation { suspendKeyValue(id:"gql-kv") { status suspended } }`)["suspendKeyValue"].(map[string]any)
+	if susp["status"] != "suspended" || susp["suspended"] != core.RenderSuspended {
+		t.Fatalf("suspendKeyValue = %+v, want status=suspended", susp)
+	}
 	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-kv"}, &made)
 	if !made.Spec.Suspended {
 		t.Error("suspendKeyValue must set spec.suspended")
+	}
+	if got := run(`{ keyValue(id:"gql-kv") { status suspended } }`)["keyValue"].(map[string]any); got["status"] != "suspended" {
+		t.Fatalf("keyValue after suspend = %+v", got)
 	}
 	run(`mutation { resumeKeyValue(id:"gql-kv") { suspended } }`)
 	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-kv"}, &made)
@@ -1023,6 +1045,12 @@ func TestMCPKeyValue(t *testing.T) {
 	}
 	if got := call("get_key_value", map[string]any{"keyValueId": "mcp-kv"}); got["id"] != "mcp-kv" {
 		t.Fatalf("get_key_value id = %v", got["id"])
+	}
+	if got := call("suspend_keyvalue", map[string]any{"keyValueId": "mcp-kv"}); got["status"] != "suspended" {
+		t.Fatalf("suspend_keyvalue status = %v, want suspended", got["status"])
+	}
+	if got := call("get_key_value", map[string]any{"keyValueId": "mcp-kv"}); got["status"] != "suspended" {
+		t.Fatalf("get_key_value after suspend status = %v, want suspended", got["status"])
 	}
 	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
 	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}

@@ -93,6 +93,7 @@ const STATUS_MAP: Record<string, DatabaseStatus> = {
   creating: { key: "creating", variant: "outline" },
   upgrading: { key: "upgrading", variant: "secondary" },
   unavailable: { key: "unavailable", variant: "destructive" },
+  suspended: { key: "suspended", variant: "secondary" },
 };
 
 function fromStatus(status: string): DatabaseStatus {
@@ -102,11 +103,9 @@ function fromStatus(status: string): DatabaseStatus {
 }
 
 /**
- * Resolve a database's display status. Suspension wins over the status enum —
- * a suspended Postgres still reports status "available" (Render keeps `status`
- * and `suspended` as separate fields; the operator holds phase Ready while
- * hibernated), but "suspended" is the state the user asked for and acts on, so
- * it's what the badge shows (mirrors services' deriveStatus).
+ * Resolve a database's display status. Suspension wins over readiness — either
+ * via the dedicated `suspended` enum or via `status: "suspended"` on the wire
+ * (Render's databaseStatus vocabulary, matched by bex since w5/061).
  */
 export function deriveStatus(d: {
   status: string;

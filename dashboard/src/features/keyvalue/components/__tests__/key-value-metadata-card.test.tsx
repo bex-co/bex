@@ -49,9 +49,9 @@ function renderCard(keyValue: KeyValueView) {
 }
 
 describe("KeyValueMetadataCard", () => {
-  it("reads the suspended status, not the wire value (w1/m159)", () => {
-    // A suspended store still reports status "available" on the wire, so this
-    // row used to read "available" under a Suspended header badge.
+  it("reads the suspended status, not a stale ready label (w1/m159)", () => {
+    // deriveStatus prefers the suspended flag; with w5/061 the wire status is
+    // also "suspended", so either input must keep this row aligned with the badge.
     renderCard(kv({ suspended: true }));
 
     expect(screen.getByText("Suspended")).toBeInTheDocument();

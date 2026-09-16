@@ -184,9 +184,15 @@ describe("deriveStatus", () => {
     });
   });
 
-  it("lets suspension win over the status enum — a suspended database still reports status available", () => {
+  it("lets suspension win over the status enum — via suspended flag or wire status", () => {
     expect(
       deriveStatus({ status: "available", suspended: "suspended" }),
+    ).toEqual({
+      key: "suspended",
+      variant: "secondary",
+    });
+    expect(
+      deriveStatus({ status: "suspended", suspended: "not_suspended" }),
     ).toEqual({
       key: "suspended",
       variant: "secondary",
