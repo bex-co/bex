@@ -268,9 +268,9 @@ func TestMCPParityInventory(t *testing.T) {
 		mcpParity1to1:      10,
 		mcpParitySuperset:  3,   // +get_metrics (w2/m91 Render arg names)
 		mcpParityDivergent: 6,   // -get_metrics (w2/m91)
-		mcpParityExtension: 167, // +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133)
+		mcpParityExtension: 168, // +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133); +resume_keyvalue (w4/083)
 	}
-	const wantTotal = 186
+	const wantTotal = 187
 
 	if len(tools) != wantTotal {
 		t.Errorf("bex registers %d MCP tools, expected %d — update this test AND ADR018's MCP inventory together",

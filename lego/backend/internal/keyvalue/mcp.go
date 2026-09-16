@@ -27,13 +27,14 @@ import (
 
 // mcp.go is the MCP fragment for managed key-value. Tool names track Render's
 // official MCP server (render-oss/render-mcp-server): list_key_value /
-// get_key_value / create_key_value, keyed on Render's `keyValueId`. The former
-// Render's MCP server exposes no delete/suspend/resume KV tools. bex keeps
-// delete absent, but exposes suspend_keyvalue as a deliberate lifecycle
-// extension so agents can use the same protected-environment safety gate as
-// REST, GraphQL, and the dashboard. rename_key_value is likewise a bex
-// extension, the sibling of rename_postgres. Every tool delegates to the same
-// Service method REST and GraphQL call, so the surfaces can't drift.
+// get_key_value / create_key_value, keyed on Render's `keyValueId`. Render's
+// MCP server exposes no delete/suspend/resume KV tools. bex keeps delete
+// absent, but exposes suspend_keyvalue / resume_keyvalue as a deliberate
+// lifecycle extension so agents can use the same protected-environment safety
+// gate (and restore path) as REST, GraphQL, and the dashboard. update_key_value
+// carries rename + plan changes (w1/m74 retired the standalone rename tools).
+// Every tool delegates to the same Service method REST and GraphQL call, so
+// the surfaces can't drift.
 
 // keyValueArgs is the shared single-instance argument. Render's tools key on
 // `keyValueId`; bex round-trips the immutable red-... id returned by
@@ -150,6 +151,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Suspend a managed key-value store (stop compute while preserving its data volume). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in suspendKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		v, err := s.Suspend(core.WithConfirm(ctx, in.Confirm), in.KeyValueID)
+		return nil, v, err
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "resume_keyvalue",
+		Description: "Resume a suspended managed key-value store (restart compute; the data volume, password and endpoint are unchanged). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in keyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+		v, err := s.Resume(ctx, in.KeyValueID)
 		return nil, v, err
 	})
 

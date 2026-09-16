@@ -1052,6 +1052,9 @@ func TestMCPKeyValue(t *testing.T) {
 	if got := call("get_key_value", map[string]any{"keyValueId": "mcp-kv"}); got["status"] != "suspended" {
 		t.Fatalf("get_key_value after suspend status = %v, want suspended", got["status"])
 	}
+	if got := call("resume_keyvalue", map[string]any{"keyValueId": "mcp-kv"}); got["status"] == "suspended" {
+		t.Fatalf("resume_keyvalue status = %v, want not suspended", got["status"])
+	}
 	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
 	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
 	created := call("create_key_value", map[string]any{"name": "mcp-new", "plan": "standard", "environmentId": "env-staging"})
