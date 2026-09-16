@@ -1,4 +1,5 @@
 import type { en } from "@/i18n";
+import { deriveStatus } from "@/features/databases/lib/status";
 import type { DatabaseStatusKey } from "@/features/databases/types";
 
 /**
@@ -14,3 +15,15 @@ export const STATUS_LABEL: Record<DatabaseStatusKey, keyof typeof en> = {
   suspended: "databases.statusSuspended",
   unknown: "databases.statusUnknown",
 };
+
+/**
+ * The i18n label for a database's displayed status — one composition shared by
+ * the badge and the detail page's Details row, so a suspended instance can
+ * never read "Suspended" in one and the raw "available" in the other (w1/m159).
+ */
+export function statusLabel(d: {
+  status: string;
+  suspended: string;
+}): keyof typeof en {
+  return STATUS_LABEL[deriveStatus(d).key];
+}

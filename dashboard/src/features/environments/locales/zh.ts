@@ -317,7 +317,7 @@ const zhEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.assignmentHint": {
     message:
-      "资源只能通过环境加入项目。仅选择项目只会缩小下方环境列表的范围——需要选择一个环境，才能真正将此资源加入项目。如果该项目还没有环境，请先在项目页面创建一个。",
+      "仅选择项目只会缩小下方的环境列表。选择一个环境即可将此资源放入其中；也可以保持“无环境”，此时该资源会归入该项目的“未分配”。如果该项目还没有环境，请先在项目页面创建一个。",
     description: "Shared create-form Environment-assignment hint",
   },
 };

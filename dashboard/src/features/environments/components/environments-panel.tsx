@@ -93,9 +93,29 @@ export function EnvironmentsPanel({
   // `?env=unassigned` URL to the first Environment before its rows arrive.
   const canShowUnassigned =
     unassignedRows.length > 0 || requestedId === UNASSIGNED_ENVIRONMENT;
+  // A row-level "Move to project" joins the Project without an Environment, so
+  // the moved resource lands under Unassigned. When every Environment is empty,
+  // defaulting to environments[0] opened a blank page right after the success
+  // toast (w1/m159, from w1/086) — land on the bucket that actually holds it.
+  // A project whose Environments do hold resources still opens on the first
+  // one, unchanged.
+  const environmentsAllEmpty = useMemo(
+    () =>
+      environments.every(
+        (env) =>
+          env.serviceIds.length +
+            env.databaseIds.length +
+            env.keyValueIds.length ===
+          0,
+      ),
+    [environments],
+  );
+  const landOnUnassigned =
+    (requestedId === UNASSIGNED_ENVIRONMENT || environmentsAllEmpty) &&
+    canShowUnassigned;
   const selectedId = requestedEnvironment
     ? requestedEnvironment.id
-    : requestedId === UNASSIGNED_ENVIRONMENT && canShowUnassigned
+    : landOnUnassigned
       ? UNASSIGNED_ENVIRONMENT
       : (environments[0]?.id ??
         (canShowUnassigned ? UNASSIGNED_ENVIRONMENT : null));

@@ -134,7 +134,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section error title when the fetched manifest fails validation",
   },
-  "blueprints.previewValid": {
+  "blueprints.previewValid_other": {
     message: "蓝图文件解析成功 — 将同步 {count} 个资源。",
     description:
       "Review section success line, with the plan's total resource count",

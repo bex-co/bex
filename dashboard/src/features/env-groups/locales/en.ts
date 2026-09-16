@@ -149,17 +149,13 @@ const enEnvGroups: Record<string, TranslationEntry> = {
       "Create a group to manage shared configuration before linking it to a service.",
     description: "Workspace env-groups empty-state body",
   },
-  "envGroups.varCount": {
-    message: "{count} variable(s)",
-    description: "Env-group variable count",
+  "envGroups.serviceCount_one": {
+    message: "{count} linked service",
+    description: "Env-group linked-service count (singular)",
   },
-  "envGroups.fileCount": {
-    message: "{count} secret file(s)",
-    description: "Env-group secret-file count",
-  },
-  "envGroups.serviceCount": {
-    message: "{count} linked service(s)",
-    description: "Env-group linked-service count",
+  "envGroups.serviceCount_other": {
+    message: "{count} linked services",
+    description: "Env-group linked-service count (plural)",
   },
   "envGroups.metadataTitle": {
     message: "Group Metadata",

@@ -18,10 +18,9 @@ import {
   useNotFoundRedirect,
 } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { MetadataList } from "@/common/components/metadata-list";
+import { KeyValueMetadataCard } from "@/features/keyvalue/components/key-value-metadata-card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
-import { RelativeAge } from "@/common/components/relative-time";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
 import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-status-badge";
 import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
@@ -30,7 +29,6 @@ import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-valu
 import { KeyValuePlanSection } from "@/features/keyvalue/components/key-value-plan-section";
 import { KeyValueMaxmemoryPolicySection } from "@/features/keyvalue/components/key-value-maxmemory-policy-section";
 import { KeyValuePersistenceModeSection } from "@/features/keyvalue/components/key-value-persistence-mode-section";
-import { KeyValueNameRow } from "@/features/keyvalue/components/key-value-name-row";
 import { KeyValueDetailNavigation } from "@/features/keyvalue/components/key-value-detail-navigation";
 import { KeyValueLogViewer } from "@/features/keyvalue/components/key-value-log-viewer";
 import { DEFAULT_DATASTORE_LOG_RANGE } from "@/features/logs/lib/datastore-log-range";
@@ -41,7 +39,6 @@ import {
   type RangeSearch,
 } from "@/features/metrics/lib/range";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
-import type { KeyValueView } from "@/features/keyvalue/types";
 import { KeyValueDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
@@ -223,7 +220,7 @@ export function KeyValueDetailPage() {
 
               <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
                 <section id="metadata" className="scroll-mt-6">
-                  <MetadataCard
+                  <KeyValueMetadataCard
                     keyValue={keyValue}
                     onRenamed={() => void router.invalidate()}
                   />
@@ -268,63 +265,5 @@ export function KeyValueDetailPage() {
         </div>
       </div>
     </DashboardLayout>
-  );
-}
-
-function MetadataCard({
-  keyValue,
-  onRenamed,
-}: {
-  keyValue: KeyValueView;
-  onRenamed: () => void;
-}) {
-  const { t } = useTranslations();
-  return (
-    <MetadataList
-      title={t("keyvalue.metaTitle")}
-      lead={<KeyValueNameRow keyValue={keyValue} onRenamed={onRenamed} />}
-      rows={[
-        {
-          label: t("keyvalue.metaId"),
-          value: (
-            <code className="font-mono text-xs break-all">{keyValue.id}</code>
-          ),
-        },
-        { label: t("keyvalue.metaStatus"), value: keyValue.status || "—" },
-        { label: t("keyvalue.metaPlan"), value: keyValue.plan ?? "—" },
-        {
-          label: t("keyvalue.metaVersion"),
-          value: keyValue.version ? `Valkey ${keyValue.version}` : "—",
-        },
-        {
-          label: t("keyvalue.metaPublic"),
-          value: keyValue.public ? t("keyvalue.yes") : t("keyvalue.no"),
-        },
-        // Render shows external connection details only when public access is
-        // on; the backend sends "" (not null) for a private store (w6/052), so
-        // gate on truthiness and omit the row entirely — the region-row
-        // pattern below.
-        ...(keyValue.externalHost
-          ? [
-              {
-                label: t("keyvalue.metaExternalHost"),
-                value: keyValue.externalHost,
-              },
-            ]
-          : []),
-        ...(keyValue.region
-          ? [
-              {
-                label: t("keyvalue.metaRegion"),
-                value: keyValue.region,
-              },
-            ]
-          : []),
-        {
-          label: t("keyvalue.metaCreated"),
-          value: <RelativeAge value={keyValue.createdAt} />,
-        },
-      ]}
-    />
   );
 }

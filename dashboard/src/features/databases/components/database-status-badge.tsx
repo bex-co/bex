@@ -1,7 +1,7 @@
 import { Badge } from "@/common/components/ui/badge.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { deriveStatus } from "@/features/databases/lib/status";
-import { STATUS_LABEL } from "@/features/databases/lib/labels";
+import { statusLabel } from "@/features/databases/lib/labels";
 
 /**
  * A database's status as a labeled badge: derive the status key (suspension
@@ -19,7 +19,5 @@ export function DatabaseStatusBadge({
 }) {
   const { t } = useTranslations();
   const derived = deriveStatus(database);
-  return (
-    <Badge variant={derived.variant}>{t(STATUS_LABEL[derived.key])}</Badge>
-  );
+  return <Badge variant={derived.variant}>{t(statusLabel(database))}</Badge>;
 }

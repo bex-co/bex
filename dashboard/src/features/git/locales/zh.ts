@@ -139,7 +139,7 @@ const zhGit: Record<string, TranslationEntry> = {
     description:
       "Heading above the connected-account list in the credentials menu",
   },
-  "git.repoCount": {
+  "git.repoCount_other": {
     message: "{count} 个仓库",
     description: "Repo count shown next to a connected GitHub account",
   },

@@ -641,10 +641,15 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Terminal session — transcript unavailable rather than live stream degraded",
   },
-  "agentSessions.showEarlierMessages": {
+  "agentSessions.showEarlierMessages_one": {
+    message: "Show {count} earlier message",
+    description:
+      "Button revealing older transcript messages hidden by the render window (singular)",
+  },
+  "agentSessions.showEarlierMessages_other": {
     message: "Show {count} earlier messages",
     description:
-      "Button revealing older transcript messages hidden by the render window",
+      "Button revealing older transcript messages hidden by the render window (plural)",
   },
   "agentSessions.groupThought": {
     message: "Thought",

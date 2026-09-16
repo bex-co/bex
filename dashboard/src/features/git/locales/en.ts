@@ -139,11 +139,17 @@ const enGit: Record<string, TranslationEntry> = {
   },
   "git.credentialsAccountsHeading": {
     message: "Accounts & orgs",
-    description: "Heading above the connected-account list in the credentials menu",
+    description:
+      "Heading above the connected-account list in the credentials menu",
   },
-  "git.repoCount": {
+  "git.repoCount_one": {
+    message: "{count} repo",
+    description:
+      "Repo count shown next to a connected GitHub account (singular)",
+  },
+  "git.repoCount_other": {
     message: "{count} repos",
-    description: "Repo count shown next to a connected GitHub account",
+    description: "Repo count shown next to a connected GitHub account (plural)",
   },
   "git.openInGitHub": {
     message: "Open in GitHub",

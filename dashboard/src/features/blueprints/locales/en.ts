@@ -136,10 +136,15 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section error title when the fetched manifest fails validation",
   },
-  "blueprints.previewValid": {
+  "blueprints.previewValid_one": {
+    message: "Blueprint file parsed successfully — {count} resource to sync.",
+    description:
+      "Review section success line, with the plan's total resource count (singular)",
+  },
+  "blueprints.previewValid_other": {
     message: "Blueprint file parsed successfully — {count} resources to sync.",
     description:
-      "Review section success line, with the plan's total resource count",
+      "Review section success line, with the plan's total resource count (plural)",
   },
   "blueprints.previewServices": {
     message: "Services",

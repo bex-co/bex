@@ -256,6 +256,46 @@ describe("EnvironmentsPanel", () => {
     );
   });
 
+  it("lands on Unassigned when every Environment is empty (w1/m159)", () => {
+    // A row-level "Move to project" joins the Project without an Environment.
+    // Defaulting to environments[0] then opened an empty page while the moved
+    // resource sat under Unassigned, seconds after a success toast (w1/086).
+    environmentsState.environments = [
+      {
+        id: "env-1",
+        projectId: "prj-1",
+        name: "qa-e4",
+        ownerId: "tea-1",
+        createdAt: null,
+        serviceIds: [],
+        databaseIds: [],
+        keyValueIds: [],
+        envGroupIds: [],
+        protectedStatus: "unprotected",
+        networkIsolationEnabled: false,
+        ipAllowListEntries: [],
+      },
+    ];
+    renderPanel({
+      projectRows: [
+        {
+          kind: "keyvalue",
+          id: "red-moved",
+          name: "qa-20260914-kv4",
+          status: "available",
+          href: "/keyvalue/red-moved",
+        } as never,
+      ],
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Unassigned" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("resource-table").textContent).toContain(
+      "qa-20260914-kv4",
+    );
+  });
+
   it("keeps project-only resources reachable through Unassigned", () => {
     environmentsState.environments = [];
     renderPanel({
