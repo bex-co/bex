@@ -32,6 +32,12 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	schema2 "k8s.io/apimachinery/pkg/runtime/schema"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -2169,5 +2175,268 @@ func TestCreateHostSetPerWorkspaceQuota(t *testing.T) {
 	// Workspace count is now 4 (2 other + 2 own), cap 4: projected = 4 - 2 + 2 = 4.
 	if err := svc.ensureHostsClaimable(context.Background(), newApp); err != nil {
 		t.Fatalf("re-apply of the App's own hosts must not be double-counted: %v", err)
+	}
+}
+
+// --- Certificate reason (w3/m85) ---
+
+// acmeScheme registers the cert-manager kinds as unstructured so the fake
+// client can serve them. The real backend never registers them either — it
+// reads them unstructured through the discovery-backed RESTMapper — so this
+// only teaches the FAKE client the kinds a real cluster would already know.
+func acmeScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	for _, gvk := range []schema2.GroupVersionKind{acmeChallengeGVK, acmeOrderGVK, certManagerCertificateGVK} {
+		list := gvk
+		list.Kind += "List"
+		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+		scheme.AddKnownTypeWithName(list, &unstructured.UnstructuredList{})
+	}
+	return scheme
+}
+
+func acmeObject(gvk schema2.GroupVersionKind, namespace, name string, spec, status map[string]any) *unstructured.Unstructured {
+	obj := &unstructured.Unstructured{Object: map[string]any{"spec": spec, "status": status}}
+	obj.SetGroupVersionKind(gvk)
+	obj.SetNamespace(namespace)
+	obj.SetName(name)
+	return obj
+}
+
+// acmeService builds a Service whose fake client knows the cert-manager kinds
+// and holds objs, alongside the given Apps.
+func acmeService(apps []*appv1alpha1.App, objs ...client.Object) *Service {
+	all := make([]client.Object, 0, len(apps)+len(objs))
+	for _, a := range apps {
+		all = append(all, a)
+	}
+	all = append(all, objs...)
+	cl := fake.NewClientBuilder().WithScheme(acmeScheme()).WithObjects(all...).Build()
+	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}, DomainOwnership: allowDomainOwnership{}}
+}
+
+// The motivating case (w3/037): a Cloudflare-proxied apex whose HTTP-01 solver
+// answers 404. cert-manager records the reason on the Challenge; before m85 the
+// tenant saw only "pending" and could not self-diagnose for 25 days.
+func TestPendingDomainProjectsChallengeReason(t *testing.T) {
+	const reason = "Waiting for HTTP-01 challenge propagation: wrong status code '404'"
+	app := appWithHosts("web", "blockeden.xyz")
+	svc := acmeService([]*appv1alpha1.App{app},
+		acmeObject(acmeChallengeGVK, "default", "web-tls-1-2-3",
+			map[string]any{"dnsName": "blockeden.xyz"},
+			map[string]any{"state": "pending", "reason": reason}))
+
+	domains, err := svc.ListDomains(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("ListDomains: %v", err)
+	}
+	if len(domains) != 1 {
+		t.Fatalf("want 1 domain, got %d", len(domains))
+	}
+	if domains[0].VerificationStatus != "pending" {
+		t.Fatalf("no TLS Secret => pending, got %q", domains[0].VerificationStatus)
+	}
+	if domains[0].CertificateReason != reason {
+		t.Errorf("CertificateReason = %q, want %q", domains[0].CertificateReason, reason)
+	}
+}
+
+// A Challenge for a DIFFERENT host on the same App must not be borrowed: each
+// custom domain gets its own certificate and its own diagnosis.
+func TestCertificateReasonMatchesOnlyItsOwnHost(t *testing.T) {
+	app := appWithHosts("web", "a.example.com", "b.example.com")
+	svc := acmeService([]*appv1alpha1.App{app},
+		acmeObject(acmeChallengeGVK, "default", "chal-a",
+			map[string]any{"dnsName": "a.example.com"},
+			map[string]any{"reason": "only A is broken"}))
+
+	domains, err := svc.ListDomains(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("ListDomains: %v", err)
+	}
+	byHost := map[string]string{}
+	for _, d := range domains {
+		byHost[d.Name] = d.CertificateReason
+	}
+	if byHost["a.example.com"] != "only A is broken" {
+		t.Errorf("a.example.com reason = %q", byHost["a.example.com"])
+	}
+	if byHost["b.example.com"] != "" {
+		t.Errorf("b.example.com borrowed a sibling's reason: %q", byHost["b.example.com"])
+	}
+}
+
+// An issued certificate has nothing to explain — the reason must be absent even
+// when a stale Challenge object is still lying around.
+func TestVerifiedDomainCarriesNoCertificateReason(t *testing.T) {
+	app := appWithHosts("web", "good.example.com")
+	svc := acmeService([]*appv1alpha1.App{app},
+		tlsSecret("default", tlsSecretForHost(app, "good.example.com")),
+		acmeObject(acmeChallengeGVK, "default", "stale",
+			map[string]any{"dnsName": "good.example.com"},
+			map[string]any{"reason": "stale reason from a previous attempt"}))
+
+	domains, err := svc.ListDomains(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("ListDomains: %v", err)
+	}
+	if domains[0].VerificationStatus != "verified" {
+		t.Fatalf("TLS Secret present => verified, got %q", domains[0].VerificationStatus)
+	}
+	if domains[0].CertificateReason != "" {
+		t.Errorf("verified domain must carry no reason, got %q", domains[0].CertificateReason)
+	}
+}
+
+// Precedence: with no Challenge, a FAILED Order explains the stall. A valid or
+// still-pending Order is not a diagnosis and must be ignored.
+func TestCertificateReasonFallsBackToFailedOrder(t *testing.T) {
+	app := appWithHosts("web", "ordered.example.com")
+	svc := acmeService([]*appv1alpha1.App{app},
+		acmeObject(acmeOrderGVK, "default", "order-1",
+			map[string]any{"dnsNames": []any{"ordered.example.com"}},
+			map[string]any{"state": "invalid", "reason": "authorization failed"}))
+
+	domains, err := svc.ListDomains(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("ListDomains: %v", err)
+	}
+	if domains[0].CertificateReason != "authorization failed" {
+		t.Errorf("CertificateReason = %q, want the failed Order's reason", domains[0].CertificateReason)
+	}
+
+	pending := acmeService([]*appv1alpha1.App{appWithHosts("web", "ordered.example.com")},
+		acmeObject(acmeOrderGVK, "default", "order-1",
+			map[string]any{"dnsNames": []any{"ordered.example.com"}},
+			map[string]any{"state": "pending", "reason": "still working"}))
+	domains, err = pending.ListDomains(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("ListDomains: %v", err)
+	}
+	if domains[0].CertificateReason != "" {
+		t.Errorf("a pending Order is not a diagnosis, got %q", domains[0].CertificateReason)
+	}
+}
+
+// Last fallback: the Certificate's own not-Ready condition message, for stalls
+// that never produced a Challenge or Order (issuer misconfig, rate limiting).
+func TestCertificateReasonFallsBackToCertificateCondition(t *testing.T) {
+	app := appWithHosts("web", "issuer.example.com")
+	svc := acmeService([]*appv1alpha1.App{app},
+		acmeObject(certManagerCertificateGVK, "default", tlsSecretForHost(app, "issuer.example.com"),
+			map[string]any{"dnsNames": []any{"issuer.example.com"}},
+			map[string]any{"conditions": []any{
+				map[string]any{"type": "Ready", "status": "False", "message": "issuer letsencrypt-prod not found"},
+			}}))
+
+	domains, err := svc.ListDomains(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("ListDomains: %v", err)
+	}
+	if domains[0].CertificateReason != "issuer letsencrypt-prod not found" {
+		t.Errorf("CertificateReason = %q, want the Certificate condition message", domains[0].CertificateReason)
+	}
+}
+
+// The reason is a hint layered over the authoritative Secret-based status. A
+// cluster with no cert-manager CRDs — or a bex-api without the m85 RBAC — must
+// degrade to exactly the pre-m85 behavior: an empty reason, never a failed read.
+func TestCertificateReasonDegradesWhenACMEUnreadable(t *testing.T) {
+	svc, _ := newService(nil, appWithHosts("web", "unknown.example.com"))
+	domains, err := svc.ListDomains(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("an unreadable ACME source must not fail the domain read: %v", err)
+	}
+	if domains[0].CertificateReason != "" {
+		t.Errorf("want no reason, got %q", domains[0].CertificateReason)
+	}
+	if domains[0].VerificationStatus != "pending" {
+		t.Errorf("status must be unchanged, got %q", domains[0].VerificationStatus)
+	}
+}
+
+// REST, GraphQL, and MCP must report the SAME reason — the three-surface
+// contract that keeps the vocabulary from drifting.
+func TestCertificateReasonSurfaceParity(t *testing.T) {
+	const reason = "Waiting for HTTP-01 challenge propagation: wrong status code '404'"
+	app := appWithHosts("web", "blockeden.xyz")
+	svc := acmeService([]*appv1alpha1.App{app},
+		acmeObject(acmeChallengeGVK, "default", "chal",
+			map[string]any{"dnsName": "blockeden.xyz"},
+			map[string]any{"reason": reason}))
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/blockeden.xyz", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("REST get = %d: %s", rec.Code, rec.Body)
+	}
+	var rest renderCustomDomain
+	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
+		t.Fatal(err)
+	}
+	if rest.CertificateReason != reason {
+		t.Errorf("REST certificateReason = %q", rest.CertificateReason)
+	}
+
+	gqlSchema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gql := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(), RequestString: `{
+		customDomain(id: "web", name: "blockeden.xyz") { certificateReason }
+	}`})
+	if len(gql.Errors) != 0 {
+		t.Fatalf("GraphQL get: %v", gql.Errors)
+	}
+	gqlDomain := gql.Data.(map[string]any)["customDomain"].(map[string]any)
+	if gqlDomain["certificateReason"] != reason {
+		t.Errorf("GraphQL certificateReason = %v", gqlDomain["certificateReason"])
+	}
+
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+	mcpDomain := call("get_custom_domain", map[string]any{"serviceId": "web", "name": "blockeden.xyz"})
+	if mcpDomain["certificateReason"] != reason {
+		t.Errorf("MCP certificateReason = %v", mcpDomain["certificateReason"])
+	}
+}
+
+// An issued certificate must keep the pre-m85 wire shape byte-for-byte: the
+// REST field is omitted entirely and GraphQL resolves it to null.
+func TestCertificateReasonAbsentWhenIssued(t *testing.T) {
+	app := appWithHosts("web", "good.example.com")
+	svc := acmeService([]*appv1alpha1.App{app}, tlsSecret("default", tlsSecretForHost(app, "good.example.com")))
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/good.example.com", nil))
+	if strings.Contains(rec.Body.String(), "certificateReason") {
+		t.Errorf("issued domain must omit certificateReason: %s", rec.Body)
+	}
+
+	gqlSchema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gql := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(), RequestString: `{
+		customDomain(id: "web", name: "good.example.com") { certificateReason }
+	}`})
+	if len(gql.Errors) != 0 {
+		t.Fatalf("GraphQL get: %v", gql.Errors)
+	}
+	gqlDomain := gql.Data.(map[string]any)["customDomain"].(map[string]any)
+	if gqlDomain["certificateReason"] != nil {
+		t.Errorf("GraphQL certificateReason = %v, want null", gqlDomain["certificateReason"])
 	}
 }

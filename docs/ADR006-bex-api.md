@@ -420,7 +420,7 @@ Every workspace-scoped row below also accepts optional `workspaceId`; it is omit
 | `scale_service` | `{serviceId, numInstances}` | `Scale` | updated `service` |
 | `get_autoscaling` (bex extension) | `{serviceId}` | `GetAutoscaling` | `autoscaling` |
 | `disable_autoscaling` | `{serviceId}` | `DeleteAutoscaling` | `{deleted: true}` |
-| `list_custom_domains` | `{serviceId}` | `ListDomains` | `{customDomains: [customDomain, ...]}` |
+| `list_custom_domains` | `{serviceId}` | `ListDomains` | `{customDomains: [customDomain, ...]}` — every `customDomain` carries the nullable bex extension `certificateReason` (w3/m85): cert-manager's own explanation of a stalled TLS issuance, omitted once the certificate is issued and whenever the ACME state is unreadable |
 | `get_custom_domain` | `{serviceId, name}` | `GetDomain` | `customDomain` |
 | `add_custom_domain` | `{serviceId, name}` | `AddDomain` | created `customDomain` |
 | `delete_custom_domain` | `{serviceId, name}` | `DeleteDomain` | `{deleted: true}` |

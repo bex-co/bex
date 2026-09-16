@@ -361,6 +361,12 @@ export interface CustomDomainView {
   active: boolean;
   /** Canonical host when this auto-paired sibling redirects; null when served directly. */
   redirectForName: string | null;
+  /**
+   * cert-manager's own explanation of why TLS issuance is stuck — e.g. an HTTP-01
+   * challenge answering 404 behind a proxied apex. Null once the certificate is
+   * issued, and null whenever the platform cannot read the ACME state.
+   */
+  certificateReason: string | null;
   /** The DNS record to create; null if the backend couldn't derive the target. */
   dnsRecord: DnsRecordView | null;
   /** Exact TXT proof while ownership is pending; null after atomic promotion. */

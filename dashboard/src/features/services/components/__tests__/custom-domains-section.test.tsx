@@ -57,6 +57,7 @@ const verifiedDomain: CustomDomainView = {
   verified: true,
   active: true,
   redirectForName: null,
+  certificateReason: null,
   dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
   ownershipDnsRecord: null,
 };
@@ -68,6 +69,7 @@ const pendingDomain: CustomDomainView = {
   verified: false,
   active: false,
   redirectForName: null,
+  certificateReason: null,
   dnsRecord: { type: "CNAME", name: "api", value: "web.onbex.co" },
   ownershipDnsRecord: {
     type: "TXT",
@@ -85,6 +87,7 @@ const apexDomain: CustomDomainView = {
   verified: false,
   active: false,
   redirectForName: null,
+  certificateReason: null,
   dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
   ownershipDnsRecord: {
     type: "TXT",
@@ -100,6 +103,7 @@ const wwwSiblingDomain: CustomDomainView = {
   verified: false,
   active: false,
   redirectForName: "foo.com",
+  certificateReason: null,
   dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
   ownershipDnsRecord: {
     type: "TXT",
@@ -327,6 +331,7 @@ describe("CustomDomainsSection", () => {
           verified: false,
           active: false,
           redirectForName: null,
+          certificateReason: null,
           dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
           ownershipDnsRecord: {
             type: "TXT",
@@ -520,5 +525,44 @@ describe("CustomDomainsSection", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent("The service stops serving this domain.");
     expect(dialog).not.toHaveTextContent("automatically added redirect");
+  });
+  // w3/m85: a stalled certificate explains itself. Before this, a tenant whose
+  // proxied apex failed the HTTP-01 challenge saw only a clock icon — the
+  // blockeden.xyz case that sat "Pending" for 25 days (w3/037).
+  it("shows cert-manager's reason and the fix-it hint on a blocked certificate", () => {
+    const reason =
+      "Waiting for HTTP-01 challenge propagation: wrong status code '404'";
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([
+        {
+          ...verifiedDomain,
+          name: "blockeden.xyz",
+          domainType: "apex",
+          verified: false,
+          active: false,
+          certificateReason: reason,
+        },
+      ]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+
+    expect(screen.getByText(reason, { exact: false })).toBeInTheDocument();
+    expect(screen.getByText(/must be DNS-only/)).toBeInTheDocument();
+  });
+
+  it("leaves a pending domain with no reason exactly as before", () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
+    render(<CustomDomainsSection serviceId="web" />);
+
+    expect(screen.queryByText(/Certificate blocked/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/must be DNS-only/)).not.toBeInTheDocument();
+  });
+
+  it("shows no certificate hint once the certificate is issued", () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([verifiedDomain]));
+    render(<CustomDomainsSection serviceId="web" />);
+
+    expect(screen.queryByText(/Certificate blocked/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/must be DNS-only/)).not.toBeInTheDocument();
   });
 });

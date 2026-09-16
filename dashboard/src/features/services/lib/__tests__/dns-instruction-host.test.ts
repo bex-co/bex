@@ -13,6 +13,7 @@ const base: CustomDomainView = {
   verified: false,
   active: false,
   redirectForName: null,
+  certificateReason: null,
   dnsRecord: { type: "CNAME", name: "api", value: "web.onbex.co" },
   ownershipDnsRecord: {
     type: "TXT",

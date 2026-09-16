@@ -25,6 +25,8 @@ After ownership verifies, bex projects the traffic record into the App and cert-
 - ownership verified, certificate pending, server pending;
 - ownership verified, certificate verified, server active.
 
+The middle state is the one that can stall indefinitely, and until `w3/m85` it was mute: cert-manager knew exactly why issuance was blocked, but the tenant saw only "pending". A domain read now carries a nullable `certificateReason` — cert-manager's own words, read from the host's `Challenge` (`status.reason`, the field that says `Waiting for HTTP-01 challenge propagation: wrong status code '404'` for a proxied apex), then a failed `Order`, then the `Certificate`'s not-Ready condition. It is populated only while the certificate is pending, is read-only and namespace-scoped (the `bex-tenant-api` grant), and is a hint layered over the authoritative Secret-based status: a cluster without cert-manager, or without the grant, reports an empty reason rather than failing the read. The dashboard renders it on the domain row together with the fix-it text — the record must be DNS-only, not proxied, pointing at the service's `<name>.onbex.co` host.
+
 An already-verified Verify is idempotent but still freshly authorized. Failed verification records only bounded attempt metadata; the challenge never enters paths, query strings, logs, metrics, Kubernetes Secrets, or operator state. It is returned only on authorized domain reads/mutations because the dashboard must be able to recover the durable instruction after the add dialog closes.
 
 ## Persistence and rollout
