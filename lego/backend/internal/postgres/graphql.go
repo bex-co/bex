@@ -76,10 +76,11 @@ var readReplicaConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 })
 
 // readReplicaViewGQLType is one named read replica entry in a postgres object.
-// Render's readReplicas: [{name, connectionInfo}].
+// Render requires id + name; connectionInfo is a bex host-only extension (w5/066).
 var readReplicaViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ReadReplicaView",
 	Fields: graphql.Fields{
+		"id":             gqlutil.StrField(func(v ReadReplicaView) any { return v.ID }),
 		"name":           gqlutil.StrField(func(v ReadReplicaView) any { return v.Name }),
 		"connectionInfo": gqlutil.Typed(readReplicaConnectionInfoGQLType, func(v ReadReplicaView) any { return v.ConnectionInfo }),
 	},

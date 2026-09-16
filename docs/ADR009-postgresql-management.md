@@ -249,7 +249,7 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 ### Named read replicas
 
 - `spec.readReplicas: [{name}]` (Render's `readReplicas` create field) declares named read-only replica endpoints. The proxy resolves each exact `<id>-ro-<name>.<BEX_DB_DOMAIN>` hostname to the CNPG `-ro` service (which load-balances across standbys); the internal host is that same shared service.
-- `status.readReplicaStatuses: [{name, internalHost, externalHost}]` tracks the resolved hosts. The proxy rebuilds its exact route table from current CR intent; the operator removes any pre-m15 Traefik routes during reconciliation.
+- `status.readReplicaStatuses: [{name, internalHost, externalHost}]` tracks the resolved hosts. API `readReplicas[].id` is the stable derived id `<primary>-ro-<name>` (w5/066) — not a separately minted `dpg-` resource; `connectionInfo` on the view is a bex host-only extension beside Render's required `id`/`name`. The proxy rebuilds its exact route table from current CR intent; the operator removes any pre-m15 Traefik routes during reconciliation.
 - Connection strings (with password) are in `connection-info` as `readReplicaConnectionStrings: [{name, internalConnectionString, externalConnectionString}]` — host-only info (without password) is also in the view.
 
 ## SQL console error mapping (w4/071)
