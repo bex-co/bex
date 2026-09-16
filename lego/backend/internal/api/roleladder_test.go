@@ -168,17 +168,16 @@ func (c *recordingChecker) Check(_ context.Context, _, relation, _ string) (bool
 // sweepVerbsQualified is sweepEveryVerb keyed by the PACKAGE-qualified service
 // type (ct.String() = "*apps.Service") rather than the bare struct name — every
 // feature package names its service Service, so the bare name collides. Reuses
-// the shared isVerbMethod/callVerb/baseMethodNames reflection helpers.
+// the shared isVerbMethod/callVerb reflection helpers.
 func sweepVerbsQualified(t *testing.T, ctx context.Context, services []any, fn func(qualified, method string, err error)) int {
 	t.Helper()
-	baseMethods := baseMethodNames()
 	swept := 0
 	for _, svc := range services {
 		cv := reflect.ValueOf(svc)
 		ct := cv.Type()
 		for i := 0; i < ct.NumMethod(); i++ {
 			m := ct.Method(i)
-			if !isVerbMethod(baseMethods, m) {
+			if !isVerbMethod(ct, m) {
 				continue
 			}
 			swept++
@@ -204,9 +203,7 @@ func captureVerbRelations(t *testing.T, ctx context.Context) map[string][]string
 		out[qualified] = distinct(rec.relations)
 		rec.relations = rec.relations[:0]
 	})
-	if swept < wantMinSweptVerbs {
-		t.Fatalf("recording sweep found only %d verbs — reflection filter broke?", swept)
-	}
+	assertSweptVerbCount(t, swept)
 	return out
 }
 

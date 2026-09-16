@@ -160,7 +160,6 @@ func TestCrossWorkspaceServiceVerbMatrix(t *testing.T) {
 	// caller is NOT a member of.
 	fixture := func() []any { return sweepableServices(crossWorkspaceBase()) }
 
-	baseMethods := baseMethodNames()
 	swept, denied := 0, 0
 	seen := map[string]bool{}
 	inventory := fixture()
@@ -168,7 +167,7 @@ func TestCrossWorkspaceServiceVerbMatrix(t *testing.T) {
 		ct := reflect.TypeOf(inventory[si])
 		for i := 0; i < ct.NumMethod(); i++ {
 			m := ct.Method(i)
-			if !isVerbMethod(baseMethods, m) {
+			if !isVerbMethod(ct, m) {
 				continue
 			}
 			swept++
@@ -188,9 +187,7 @@ func TestCrossWorkspaceServiceVerbMatrix(t *testing.T) {
 			denied++
 		}
 	}
-	if swept < wantMinSweptVerbs {
-		t.Fatalf("sweep found only %d verbs — reflection filter broke?", swept)
-	}
+	assertSweptVerbCount(t, swept)
 	assertNoStaleExclusions(t, "callerScopedVerbs", callerScopedVerbs, seen)
 	t.Logf("%d/%d swept verbs deny a non-member cross-workspace caller; %d caller-scoped exclusions", denied, swept, len(callerScopedVerbs))
 }
