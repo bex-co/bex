@@ -89,6 +89,51 @@ func TestApplyNeverOverridesExplicitRenderConfiguration(t *testing.T) {
 	}
 }
 
+func TestApplyLeavesRenderConfigDirUnsetSoUpstreamHonorsIt(t *testing.T) {
+	env := map[string]string{
+		renderConfigDir: "/tmp/rdir",
+		bexConfigDir:    "/tmp/bex-config",
+	}
+	if err := apply(lookupFrom(env), setInto(env), func() (string, error) {
+		t.Fatal("home lookup must not happen when RENDER_CLI_CONFIG_DIR is set")
+		return "", nil
+	}); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got, exists := env[renderConfigPath]; exists {
+		t.Errorf("%s = %q, want unset so upstream reads %s", renderConfigPath, got, renderConfigDir)
+	}
+	if got := env[renderConfigDir]; got != "/tmp/rdir" {
+		t.Errorf("%s = %q, want /tmp/rdir", renderConfigDir, got)
+	}
+}
+
+func TestApplyRenderConfigDirAloneDoesNotPinDefaultBexPath(t *testing.T) {
+	env := map[string]string{renderConfigDir: "/tmp/rdir"}
+	if err := apply(lookupFrom(env), setInto(env), func() (string, error) {
+		t.Fatal("home lookup must not happen when RENDER_CLI_CONFIG_DIR is set")
+		return "", nil
+	}); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got, exists := env[renderConfigPath]; exists {
+		t.Errorf("%s = %q, want unset (would otherwise write $HOME/.bex/cli.yaml)", renderConfigPath, got)
+	}
+}
+
+func TestApplyBlankRenderConfigDirIsUnset(t *testing.T) {
+	env := map[string]string{renderConfigDir: "", bexConfigDir: "/tmp/bex-config"}
+	if err := apply(lookupFrom(env), setInto(env), func() (string, error) {
+		t.Fatal("home lookup must not happen for BEX_CLI_CONFIG_DIR")
+		return "", nil
+	}); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got, want := env[renderConfigPath], "/tmp/bex-config/cli.yaml"; got != want {
+		t.Errorf("config path = %q, want %q", got, want)
+	}
+}
+
 func TestApplyTreatsBlankRenderVariablesAsUnset(t *testing.T) {
 	env := map[string]string{
 		renderConfigPath: "",

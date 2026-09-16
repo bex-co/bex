@@ -280,6 +280,60 @@ func TestBexBinaryDeviceLoginRefreshAndLogoutStayInBexConfig(t *testing.T) {
 	}
 }
 
+func TestBexBinaryHonorsRenderConfigDirWithoutTouchingHomeBex(t *testing.T) {
+	var seen []string
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v1/owners", "/v1/owners/tea-bex":
+			if r.URL.Path == "/v1/owners/tea-bex" {
+				_, _ = w.Write([]byte(`{"id":"tea-bex","name":"Bex","email":"bex@example.test","type":"team"}`))
+				return
+			}
+			_, _ = w.Write([]byte(`[{"owner":{"id":"tea-bex","name":"Bex","email":"bex@example.test","type":"team"}}]`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(api.Close)
+
+	binary := buildBex()
+	home := t.TempDir()
+	bexConfig := filepath.Join(home, ".bex", "cli.yaml")
+	if err := os.MkdirAll(filepath.Dir(bexConfig), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	const sentinel = "version: 1\nworkspace: tea-sentinel\nworkspace_name: Must Not Change\napi:\n  key: stored-bex-token\n"
+	if err := os.WriteFile(bexConfig, []byte(sentinel), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	renderDir := t.TempDir()
+
+	command := exec.Command(binary, "workspace", "set", "tea-bex")
+	command.Env = append(withoutRenderEnv(os.Environ()),
+		"HOME="+home,
+		"BEX_HOST="+api.URL+"/v1/",
+		"BEX_ACCESS_TOKEN=test-access-token",
+		"RENDER_CLI_CONFIG_DIR="+renderDir,
+		"BEX_NO_UPDATE_NOTIFIER=1",
+	)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bex workspace set: %v\npaths=%v\n%s", err, seen, output)
+	}
+	if got, err := os.ReadFile(bexConfig); err != nil || string(got) != sentinel {
+		t.Errorf("HOME/.bex/cli.yaml changed: content=%q err=%v", got, err)
+	}
+	written, err := os.ReadFile(filepath.Join(renderDir, "cli.yaml"))
+	if err != nil {
+		t.Fatalf("expected write under RENDER_CLI_CONFIG_DIR: %v\n%s", err, output)
+	}
+	if !strings.Contains(string(written), "tea-bex") {
+		t.Errorf("isolated config missing workspace: %s", written)
+	}
+}
+
 func withoutRenderEnv(environment []string) []string {
 	filtered := make([]string, 0, len(environment))
 	for _, item := range environment {
@@ -802,7 +856,7 @@ func TestBexNestedHelp(t *testing.T) {
 		want    []string
 		absent  []string
 	}{
-		{"workspace set", []string{"$HOME/.bex/cli.yaml", "BEX_CLI_CONFIG_DIR", "BEX_CLI_CONFIG_PATH", "takes precedence over BEX_CLI_CONFIG_DIR", "RENDER_CLI_CONFIG_PATH overrides both Bex inputs"}, []string{"$HOME/.render", "RENDER_CLI_CONFIG_DIR"}},
+		{"workspace set", []string{"$HOME/.bex/cli.yaml", "BEX_CLI_CONFIG_DIR", "BEX_CLI_CONFIG_PATH", "takes precedence over BEX_CLI_CONFIG_DIR", "RENDER_CLI_CONFIG_PATH overrides both Bex inputs", "RENDER_CLI_CONFIG_DIR"}, []string{"$HOME/.render"}},
 		{"blueprints validate", []string{"render.yaml", "bex blueprints validate"}, []string{"bex.yaml"}},
 		// w7/045: double-quoted command references and "your Render workspace"
 		// in the ea sandbox family, and the render.com job-plan link.
