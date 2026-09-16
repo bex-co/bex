@@ -878,9 +878,19 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			).Scan(&a.CreatedAt); err != nil {
 				return err
 			}
-			_, err := tx.Exec(ctx,
+			if _, err := tx.Exec(ctx,
 				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status, triggered_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-				deployID, a.ID, TriggerCreate, a.Image, FirstDeployGeneration, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated, core.SubjectFrom(ctx))
+				deployID, a.ID, TriggerCreate, a.Image, FirstDeployGeneration, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated, core.SubjectFrom(ctx)); err != nil {
+				return err
+			}
+			// Retain the name now, in the same transaction, so the service's
+			// charges can still name it after it is deleted (w2/m96 t001).
+			_, err := tx.Exec(ctx,
+				`INSERT INTO resource_display_names (tenant_id, resource_kind, resource_id, display_name)
+				 VALUES ($1, $2, $3, $4)
+				 ON CONFLICT (tenant_id, resource_kind, resource_id)
+				 DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()`,
+				a.TenantID, ResourceKindService, a.ID, a.Name)
 			return err
 		})
 		if err == nil {
@@ -1714,6 +1724,11 @@ func (s *PGStore) SetAppIdleTTL(ctx context.Context, id string, seconds int32) e
 
 // SetAppDisplayName mirrors spec.displayName onto the row. Empty means never
 // renamed, and readers fall back to apps.name.
+//
+// It also moves the retained display name forward (w2/m96 t001) so the service
+// bills under its current name, and keeps that name after deletion. The
+// retained value follows the same "empty means fall back to apps.name" rule,
+// resolved here rather than left for every reader.
 func (s *PGStore) SetAppDisplayName(ctx context.Context, id string, displayName string) error {
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE apps SET display_name = $2, updated_at = now() WHERE id = $1`,
@@ -1723,6 +1738,15 @@ func (s *PGStore) SetAppDisplayName(ctx context.Context, id string, displayName 
 	}
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	if _, err := s.Pool.Exec(ctx,
+		`INSERT INTO resource_display_names (tenant_id, resource_kind, resource_id, display_name)
+		 SELECT a.tenant_id, $2, a.id, COALESCE(NULLIF(a.display_name, ''), a.name)
+		 FROM apps a WHERE a.id = $1
+		 ON CONFLICT (tenant_id, resource_kind, resource_id)
+		 DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()`,
+		id, ResourceKindService); err != nil {
+		return classify("app", err)
 	}
 	return nil
 }

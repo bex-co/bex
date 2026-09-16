@@ -304,6 +304,11 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Service",
     description: "Delivery-history table column header",
   },
+  "webhooks.serviceDeleted": {
+    message: "(deleted)",
+    description:
+      "Marker beside a delivery's recorded service name when that service no longer exists, so the name cannot be linked",
+  },
   "webhooks.colStatus": {
     message: "Status",
     description: "Delivery-history table column header",

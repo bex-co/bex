@@ -46,6 +46,9 @@ fragment WebhookDeliveryFields on WebhookDelivery {
   eventId
   eventType
   serviceId
+  # The subject's name as this attempt recorded it in its own payload — it
+  # survives a rename, and it is all that remains once the service is deleted.
+  serviceName
   status
   attemptNumber
   statusCode

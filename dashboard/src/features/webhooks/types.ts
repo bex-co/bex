@@ -40,6 +40,14 @@ export interface WebhookDeliveryView {
   eventId: string;
   eventType: string;
   serviceId: string;
+  /**
+   * The subject's display name as this attempt recorded it in its own
+   * delivered payload — parsed server-side, never here, so REST and GraphQL
+   * agree. It survives a rename and outlives the service itself; "" when the
+   * stored payload recorded no name (an older event shape, or a body the
+   * server could not parse).
+   */
+  serviceName: string;
   status: WebhookDeliveryStatus;
   /** One-based send number within the logical endpoint notification. */
   attemptNumber: number;

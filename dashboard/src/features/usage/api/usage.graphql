@@ -34,6 +34,10 @@ query Usage($period: String, $ownerId: String) {
       resources {
         serviceId
         serviceName
+        # deleted: the resource is gone but bex retained the name its charges
+        # accrued under (w2/m96). serviceName empty + deleted false is a
+        # pre-retention row that has no name at all.
+        deleted
         resourceKind
         costUsd
         charges {

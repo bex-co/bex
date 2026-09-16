@@ -705,3 +705,107 @@ func TestAdapterConsistency(t *testing.T) {
 		t.Errorf("services count: REST=%d GraphQL=%d", len(restResp.Services), len(gqlServices))
 	}
 }
+
+// TestRetainedNamesAgreeAcrossAdapters is w2/m96's cross-surface contract: the
+// resolved name and the deleted flag must be identical on REST, GraphQL and
+// MCP, because all three funnel through monthToDateAt and a client that reads
+// one should recognise the other.
+func TestRetainedNamesAgreeAcrossAdapters(t *testing.T) {
+	const tenant = "tea-names"
+	st := meteredStore(t, tenant, []store.ResourceDisplayName{
+		{Kind: store.ResourceKindService, ID: "srv-gone"},
+		{Kind: store.ResourceKindSandbox, ID: "sbx-gone"},
+	})
+	st.retained = map[string]map[string]string{tenant: {
+		store.ResourceDisplayNameKey(store.ResourceKindService, "srv-gone"): "checkout-api",
+		store.ResourceDisplayNameKey(store.ResourceKindSandbox, "sbx-gone"): "bex-co/bex (main)",
+	}}
+	svc := svcWithTenant(st, tenant)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
+
+	// REST
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest("GET", "/v1/usage", nil).WithContext(ctx))
+	if w.Code != http.StatusOK {
+		t.Fatalf("REST: status %d: %s", w.Code, w.Body.String())
+	}
+	var restResp usageResponse
+	if err := json.NewDecoder(w.Body).Decode(&restResp); err != nil {
+		t.Fatalf("REST decode: %v", err)
+	}
+	type named struct {
+		name    string
+		deleted bool
+	}
+	restNamed := map[string]named{}
+	for _, e := range restResp.Services {
+		restNamed[e.ResourceKind+"/"+e.ServiceID] = named{e.ServiceName, e.Deleted}
+	}
+	want := map[string]named{
+		store.ResourceKindService + "/srv-gone": {"checkout-api", true},
+		store.ResourceKindSandbox + "/sbx-gone": {"bex-co/bex (main)", true},
+	}
+	if !reflect.DeepEqual(restNamed, want) {
+		t.Fatalf("REST = %+v, want %+v", restNamed, want)
+	}
+
+	// GraphQL
+	schema, err := buildTestSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	gql := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `{ usage { services { serviceId serviceName deleted resourceKind } } }`,
+		Context:       ctx,
+	})
+	if len(gql.Errors) > 0 {
+		t.Fatalf("GraphQL errors: %v", gql.Errors)
+	}
+	gqlNamed := map[string]named{}
+	for _, raw := range gql.Data.(map[string]any)["usage"].(map[string]any)["services"].([]any) {
+		s := raw.(map[string]any)
+		sid, _ := s["serviceId"].(string)
+		rk, _ := s["resourceKind"].(string)
+		sname, _ := s["serviceName"].(string)
+		del, _ := s["deleted"].(bool)
+		gqlNamed[rk+"/"+sid] = named{sname, del}
+	}
+	if !reflect.DeepEqual(gqlNamed, restNamed) {
+		t.Errorf("GraphQL differs from REST:\nREST: %+v\nGraphQL: %+v", restNamed, gqlNamed)
+	}
+
+	// MCP
+	srv := mcp.NewServer(&mcp.Implementation{Name: "usage-test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("MCP server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "usage-test-client", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("MCP client connect: %v", err)
+	}
+	defer cs.Close()
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_usage"})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP get_usage: err=%v result=%+v", err, result)
+	}
+	rawMCP, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatalf("MCP marshal: %v", err)
+	}
+	var mcpResp usageResponse
+	if err := json.Unmarshal(rawMCP, &mcpResp); err != nil {
+		t.Fatalf("MCP decode: %v (%s)", err, rawMCP)
+	}
+	mcpNamed := map[string]named{}
+	for _, e := range mcpResp.Services {
+		mcpNamed[e.ResourceKind+"/"+e.ServiceID] = named{e.ServiceName, e.Deleted}
+	}
+	if !reflect.DeepEqual(mcpNamed, restNamed) {
+		t.Errorf("MCP differs from REST:\nREST: %+v\nMCP: %+v", restNamed, mcpNamed)
+	}
+}
