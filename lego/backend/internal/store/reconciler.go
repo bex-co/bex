@@ -638,7 +638,7 @@ func (r *Reconciler) settleAbandonedDeploys(ctx context.Context, d DesiredApp, o
 		}
 		status := timedOutDeployStatus(deploy)
 		reason := abandonedDeployReason(status)
-		ok, err := r.Store.TransitionDeploy(ctx, deploy.ID, status, "", reason, "", nil)
+		ok, err := r.Store.TransitionDeploy(ctx, deploy.ID, status, "", reason, "", "", nil)
 		if err != nil {
 			log.Printf("controlplane: settle abandoned deploy %s to %s: %v", deploy.ID, status, err)
 			continue
@@ -701,6 +701,12 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		// the build lifecycle, but the current release's pre-deploy/image evidence
 		// must not be copied onto it.
 		for _, fact := range buildLifecycleFacts(open, status, buildRunStart(cur, open)) {
+			// w4/089: mark the build_ended fact so the events feed can tell a
+			// supersede cancel apart from a user cancel (which uses
+			// CanceledBuildLifecycleFacts and leaves reason_code empty).
+			if status == DeployCanceled && fact.Type == EventFactBuildEnded {
+				fact.ReasonCode = EventReasonSuperseded
+			}
 			if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
 				log.Printf("controlplane: record lifecycle fact %s: %v", fact.SourceKey, err)
 			}
@@ -721,6 +727,14 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// w9/011: a failing close carries its actionable cause rather than an opaque
 	// terminal state; deployCloseFailureReason owns the sourcing order.
 	failureReason, failureCode := deployCloseFailureReason(cur, open, status, matchesObservedRelease)
+	// w4/089: a reconciler cancel is always a supersede-class close (user cancel
+	// goes through deploys.Cancel / CloseDeploy and never reaches here). Stamp a
+	// neutral cancel_reason — never failure_reason — naming the superseding
+	// deploy when we can resolve it.
+	cancelReason := ""
+	if status == DeployCanceled {
+		cancelReason = r.supersededCancelReason(ctx, open, cur)
+	}
 	// w6/m123: a build_failed close reached by a phase skip stamps started_at
 	// from the operator's recorded build window (generation-attributed, so it
 	// is this row's own even when the release has moved past it) — never from
@@ -729,7 +743,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	if status == DeployBuildFailed {
 		startedAt = buildRunStart(cur, open)
 	}
-	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode, startedAt)
+	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode, cancelReason, startedAt)
 	if err != nil {
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
 		return
@@ -1155,6 +1169,23 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 		return ""
 	}
 	return timedOutDeployStatus(open)
+}
+
+// supersededCancelReason is the neutral cause stamped on a reconciler cancel
+// (w4/089). Prefer naming the deploy that owns the CR's current release
+// generation when that generation is ahead of this row; otherwise fall back to
+// a generation-agnostic line (orphaned/timed-out rows whose release gen is
+// behind, or the superseding row not yet projected).
+func (r *Reconciler) supersededCancelReason(ctx context.Context, open Deploy, app *appv1alpha1.App) string {
+	const fallback = "Superseded by a newer release"
+	if app == nil || app.Status.ReleaseGeneration <= open.Generation {
+		return fallback
+	}
+	id, err := r.Store.DeployIDByGeneration(ctx, open.AppID, app.Status.ReleaseGeneration)
+	if err != nil || id == "" {
+		return fallback
+	}
+	return "Superseded by " + id
 }
 
 // supersededDeployStatus decides the open row's fate when the CR's release

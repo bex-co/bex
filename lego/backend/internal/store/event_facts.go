@@ -106,6 +106,10 @@ const (
 	EventReasonRootDirectory    = "root_directory"
 	EventReasonBuildFilter      = "build_filter"
 	EventReasonSkipPhrase       = "skip_phrase"
+	// EventReasonSuperseded is a deploy canceled because a newer release
+	// replaced it (w4/089) — distinct from a user-initiated cancel, which
+	// carries no reason code.
+	EventReasonSuperseded = "superseded"
 )
 
 var serviceEventReasonCodes = map[string]bool{
@@ -115,6 +119,7 @@ var serviceEventReasonCodes = map[string]bool{
 	EventReasonRootDirectory:    true,
 	EventReasonBuildFilter:      true,
 	EventReasonSkipPhrase:       true,
+	EventReasonSuperseded:       true,
 }
 
 // ServiceEventFact is a closed, non-secret event record. SourceKey is a stable

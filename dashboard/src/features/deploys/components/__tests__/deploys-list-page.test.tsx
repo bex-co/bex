@@ -57,6 +57,7 @@ function row(overrides: Partial<DeployRow> = {}): DeployRow {
     finishedAt: "2026-07-16T00:01:30Z",
     preDeployStatus: "succeeded",
     failureReason: "",
+    cancelReason: "",
     ...overrides,
   };
 }

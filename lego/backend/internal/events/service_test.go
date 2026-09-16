@@ -129,10 +129,22 @@ func TestViewMapsEverySource(t *testing.T) {
 		wantType:    TypeDeployEnded,
 		wantDetails: Details{DeployID: "dep-6", DeployStatus: "failed", FullDeployStatus: store.DeployPreDeployFailed, PreDeployStatus: store.PreDeployFailed, FailureReason: "migration exited 1"},
 	}, {
-		name:        "canceled deploy carries no extras (w1/m138)",
+		name:        "canceled deploy carries no extras (w1/m138 / w6/m52 user cancel)",
 		row:         store.ServiceEventRow{Key: "dep-7:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-7", Status: store.DeployCanceled},
 		wantType:    TypeDeployEnded,
 		wantDetails: Details{DeployID: "dep-7", DeployStatus: "canceled"},
+	}, {
+		name:        "superseded cancel carries cancelReason + reasonCode (w4/089)",
+		row: store.ServiceEventRow{
+			Key: "dep-8:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded,
+			DeployID: "dep-8", Status: store.DeployCanceled,
+			CancelReason: "Superseded by dep-9", ReasonCode: store.EventReasonSuperseded,
+		},
+		wantType: TypeDeployEnded,
+		wantDetails: Details{
+			DeployID: "dep-8", DeployStatus: "canceled",
+			CancelReason: "Superseded by dep-9", ReasonCode: store.EventReasonSuperseded,
+		},
 	}, {
 		name:        "deploy failed on its pre-deploy step carries preDeployStatus (w1/m33)",
 		row:         store.ServiceEventRow{Key: "dep-4:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-4", Status: store.DeployUpdateFailed, PreDeployStatus: store.PreDeployFailed},
@@ -242,6 +254,7 @@ func TestViewMapsEverySource(t *testing.T) {
 				got.Details.PreDeployStatus != tc.wantDetails.PreDeployStatus ||
 				got.Details.FullDeployStatus != tc.wantDetails.FullDeployStatus ||
 				got.Details.FailureReason != tc.wantDetails.FailureReason ||
+				got.Details.CancelReason != tc.wantDetails.CancelReason ||
 				got.Details.Actor != tc.wantDetails.Actor ||
 				got.Details.TriggeredByUser != tc.wantDetails.TriggeredByUser ||
 				got.Details.Image != tc.wantDetails.Image ||

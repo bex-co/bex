@@ -114,8 +114,13 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
 
         {/* Actionable cause of a failed deploy (w9/011) — the operator's
             diagnosis (crash loop with the $PORT hint, image-pull failure,
-            build error) or a health-gate-timeout line. */}
+            build error) or a health-gate-timeout line. A supersede cancel
+            (w4/089) uses cancelReason with a neutral tone instead. */}
         <DeployFailureReason reason={deploy.failureReason} />
+        <DeployFailureReason
+          reason={deploy.cancelReason}
+          tone="neutral"
+        />
 
         {preDeploy && (
           <p

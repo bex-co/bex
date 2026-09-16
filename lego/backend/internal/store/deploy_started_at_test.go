@@ -83,7 +83,7 @@ func TestTransitionDeployFailureSkipStartedAt(t *testing.T) {
 
 func mustTransition(t *testing.T, s Store, id, status string, startedAt *time.Time) {
 	t.Helper()
-	won, err := s.TransitionDeploy(context.Background(), id, status, "", "", "", startedAt)
+	won, err := s.TransitionDeploy(context.Background(), id, status, "", "", "", "", startedAt)
 	if err != nil || !won {
 		t.Fatalf("transition %s -> %s: won=%v err=%v", id, status, won, err)
 	}

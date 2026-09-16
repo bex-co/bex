@@ -25,6 +25,8 @@ export interface DeployRow {
   preDeployStatus: string;
   /** Actionable cause of a failed deploy (w1/m138); "" unless it failed. */
   failureReason: string;
+  /** Neutral cause of a non-user cancel (w4/089); "" unless superseded. */
+  cancelReason: string;
 }
 
 type RawDeploy = NonNullable<DeploysQuery["deploys"]>[number];
@@ -47,6 +49,7 @@ function toRows(raw: DeploysQuery["deploys"] | undefined): DeployRow[] {
       finishedAt: d.finishedAt ?? null,
       preDeployStatus: d.preDeployStatus ?? "",
       failureReason: d.failureReason ?? "",
+      cancelReason: d.cancelReason ?? "",
     }));
 }
 

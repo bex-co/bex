@@ -823,7 +823,7 @@ func (m *memStore) ListOpenDeploys(_ context.Context) ([]Deploy, error) {
 	return out, nil
 }
 
-func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage, failureReason, _ string, startedAt *time.Time) (bool, error) {
+func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage, failureReason, _, cancelReason string, startedAt *time.Time) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.deploys[id]
@@ -849,6 +849,9 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage
 	}
 	if failureReason != "" {
 		d.FailureReason = failureReason
+	}
+	if cancelReason != "" {
+		d.CancelReason = cancelReason
 	}
 	if d.StartedAt == nil {
 		switch {
@@ -880,7 +883,27 @@ func (m *memStore) CloseDeploy(ctx context.Context, id, status, resolvedImage st
 	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
 		return false, nil
 	}
-	return m.TransitionDeploy(ctx, id, status, resolvedImage, "", "", nil)
+	return m.TransitionDeploy(ctx, id, status, resolvedImage, "", "", "", nil)
+}
+
+func (m *memStore) DeployIDByGeneration(_ context.Context, appID string, generation int64) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var best Deploy
+	found := false
+	for _, d := range m.deploys {
+		if d.AppID != appID || d.Generation != generation {
+			continue
+		}
+		if !found || d.CreatedAt.After(best.CreatedAt) || (d.CreatedAt.Equal(best.CreatedAt) && d.ID > best.ID) {
+			best = d
+			found = true
+		}
+	}
+	if !found {
+		return "", nil
+	}
+	return best.ID, nil
 }
 
 func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string) (bool, error) {

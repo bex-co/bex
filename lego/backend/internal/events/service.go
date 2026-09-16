@@ -456,6 +456,11 @@ type Details struct {
 	// deploy_ended only; empty on non-failed deploys. A bex extra — Render's
 	// deploy_ended details carry no failure reason.
 	FailureReason string
+	// CancelReason is the neutral cause of a non-user cancel (w4/089) —
+	// "Superseded by dep-…" on deploy_ended / build_ended when a newer release
+	// replaced the deploy. Empty for user cancels. Distinct from FailureReason
+	// so clients can render it without error treatment.
+	CancelReason string
 	// Status is a lifecycle-step fact's terminal outcome (w7/m66): build_ended /
 	// pre_deploy_ended / job_run_ended carry succeeded|failed|canceled; empty for
 	// the started/observed kinds and every other type.
@@ -735,6 +740,13 @@ func view(r store.ServiceEventRow, service string) Event {
 				ev.Details.FullDeployStatus = r.Status
 				ev.Details.FailureReason = r.FailureReason
 			}
+			// w4/089: a supersede cancel carries a neutral cancelReason (+
+			// reasonCode) so the events feed can tell it apart from a user
+			// cancel, which leaves both empty.
+			if r.CancelReason != "" {
+				ev.Details.CancelReason = r.CancelReason
+				ev.Details.ReasonCode = r.ReasonCode
+			}
 		}
 	case store.EventSourceAudit:
 		ev.Type = eventTypes[r.Verb]
@@ -787,6 +799,7 @@ func view(r store.ServiceEventRow, service string) Event {
 		ev.Details.Image = r.Image
 		ev.Details.CommitID = r.CommitID
 		ev.Details.ReasonCode = r.ReasonCode
+		ev.Details.CancelReason = r.CancelReason
 		ev.Details.InstanceID = r.InstanceID
 		ev.Details.FromCount = r.FromCount
 		ev.Details.ToCount = r.ToCount

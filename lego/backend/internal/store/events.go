@@ -88,6 +88,10 @@ type ServiceEventRow struct {
 	// closes the deploy failed (w1/m138); the ended phase only. Empty on
 	// non-failed deploys — the deploys table stores it that way.
 	FailureReason string
+	// CancelReason is the neutral cause of a non-user cancel (w4/089) — today
+	// "Superseded by dep-…" on deploy_ended and on lifecycle facts joined to
+	// that deploy. Empty for user cancels and non-canceled rows.
+	CancelReason string
 	// Deployed image URI; empty for non-deploy rows. (w1/m47)
 	Image string
 	// Commit ID (git revision); empty for non-deploy rows. (w1/m47)
@@ -239,6 +243,7 @@ WITH feed AS (
            ''::text                            AS status,
            ''::text                            AS pre_deploy_status,
            ''::text                            AS failure_reason,
+           ''::text                            AS cancel_reason,
            ''::text                            AS verb,
            d.triggered_by                      AS caller,
            NULL::text                          AS plan_from,
@@ -285,6 +290,7 @@ WITH feed AS (
            d.status,
            d.pre_deploy_status,
            d.failure_reason,
+           d.cancel_reason,
            ''::text,
            d.triggered_by,
            NULL::text,
@@ -311,7 +317,7 @@ WITH feed AS (
            d.started_at,
            d.finished_at,
            ''::text,
-           ''::text,
+           CASE WHEN d.cancel_reason <> '' THEN '` + EventReasonSuperseded + `' ELSE '' END,
            ''::text,
            NULL::integer,
            NULL::integer,
@@ -325,6 +331,7 @@ WITH feed AS (
     SELECT a.id || ':',
            a.at,
            '` + EventSourceAudit + `'::text,
+           ''::text,
            ''::text,
            ''::text,
            ''::text,
@@ -384,6 +391,7 @@ WITH feed AS (
            ''::text,
            ''::text,
            ''::text,
+           COALESCE(dc.cancel_reason, ''),
            ''::text,
            ''::text,
            NULL::text,
@@ -419,9 +427,10 @@ WITH feed AS (
            f.commit_url,
            f.status
     FROM service_event_facts f
+    LEFT JOIN deploys dc ON dc.id = f.deploy_id AND f.deploy_id <> ''
     WHERE f.app_id = $1 AND f.fact_type = ANY($12)
 )
-SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, failure_reason, verb, caller,
+SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, failure_reason, cancel_reason, verb, caller,
        plan_from, plan_to, instance_count_from, instance_count_to,
        autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to,
        auto_deploy_enabled, project_from, project_to, environment_from, environment_to,
@@ -525,6 +534,11 @@ SELECT h.event_key AS key,
            WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseEnded + `' THEN d.failure_reason
            ELSE ''
        END AS failure_reason,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseEnded + `' THEN d.cancel_reason
+           WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(fd.cancel_reason, '')
+           ELSE ''
+       END AS cancel_reason,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.verb ELSE '' END AS verb,
        CASE
            WHEN h.source = '` + EventSourceAudit + `' THEN a.caller
@@ -563,7 +577,11 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceDeploy + `' THEN d.started_at END AS started_at,
        CASE WHEN h.source = '` + EventSourceDeploy + `' THEN d.finished_at END AS finished_at,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.fact_type, df.fact_type, '') ELSE '' END AS fact_type,
-       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.reason_code, df.reason_code, '') ELSE '' END AS reason_code,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseEnded + `' AND d.cancel_reason <> '' THEN '` + EventReasonSuperseded + `'
+           WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.reason_code, df.reason_code, '')
+           ELSE ''
+       END AS reason_code,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.instance_id, '') ELSE '' END AS instance_id,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.from_count END AS fact_from_count,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.to_count END AS fact_to_count,
@@ -581,6 +599,8 @@ LEFT JOIN service_event_facts f
   ON h.source = '` + EventSourceFact + `' AND f.source_key = h.source_row_id
 LEFT JOIN datastore_event_facts df
   ON h.source = '` + EventSourceFact + `' AND df.source_key = h.source_row_id
+LEFT JOIN deploys fd
+  ON h.source = '` + EventSourceFact + `' AND fd.id = COALESCE(f.deploy_id, '') AND COALESCE(f.deploy_id, '') <> ''
 WHERE (h.source = '` + EventSourceDeploy + `' AND d.id IS NOT NULL
        AND (h.phase = '` + EventPhaseStarted + `'
             OR (h.phase = '` + EventPhaseEnded + `' AND d.finished_at IS NOT NULL)))
@@ -630,7 +650,7 @@ func scanServiceEventRow(row pgx.Row) (ServiceEventRow, error) {
 
 func serviceEventScanDestinations(r *ServiceEventRow, trailing ...any) []any {
 	destinations := []any{
-		&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.FailureReason, &r.Verb, &r.Caller,
+		&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.FailureReason, &r.CancelReason, &r.Verb, &r.Caller,
 		&r.PlanFrom, &r.PlanTo, &r.InstanceCountFrom, &r.InstanceCountTo,
 		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
 		&r.AutoDeployEnabled, &r.ProjectFrom, &r.ProjectTo, &r.EnvironmentFrom, &r.EnvironmentTo,

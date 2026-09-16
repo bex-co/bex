@@ -612,6 +612,7 @@ export type DatastoreMetricsQueryInput = {
 
 export type Deploy = {
   __typename: 'Deploy';
+  cancelReason: Maybe<Scalars['String']['output']>;
   commitCreatedAt: Maybe<Scalars['String']['output']>;
   commitId: Maybe<Scalars['String']['output']>;
   commitMessage: Maybe<Scalars['String']['output']>;
@@ -3474,6 +3475,7 @@ export type ServiceEventDetails = {
   autoscalingMinTo: Maybe<Scalars['Int']['output']>;
   branchFrom: Maybe<Scalars['String']['output']>;
   branchTo: Maybe<Scalars['String']['output']>;
+  cancelReason: Maybe<Scalars['String']['output']>;
   commitId: Maybe<Scalars['String']['output']>;
   commitMessage: Maybe<Scalars['String']['output']>;
   commitUrl: Maybe<Scalars['String']['output']>;

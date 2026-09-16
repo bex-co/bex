@@ -82,6 +82,9 @@ type renderDeploy struct {
 	// missing object — w7/m79 — or a build error) or a health-gate-timeout line.
 	// Omitted unless the deploy failed.
 	FailureReason string `json:"failureReason,omitempty"`
+	// CancelReason is the neutral cause of a non-user cancel (bex extra, w4/089).
+	// Omitted unless the cancel was a supersede.
+	CancelReason string `json:"cancelReason,omitempty"`
 }
 
 func formatTime(t time.Time) string {
@@ -114,6 +117,7 @@ func toRenderDeploy(d DeployView) renderDeploy {
 		FinishedAt:      formatTimePtr(d.FinishedAt),
 		PreDeployStatus: d.PreDeployStatus,
 		FailureReason:   d.FailureReason,
+		CancelReason:    d.CancelReason,
 	}
 	if d.Image != "" {
 		out.Image = &renderDeployImage{Ref: d.Image}

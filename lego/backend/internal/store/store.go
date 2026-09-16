@@ -271,6 +271,12 @@ type Deploy struct {
 	// extension beyond Render's deploy shape, like RollbackOf and
 	// PreDeployStatus.
 	FailureReason string `json:"failureReason,omitempty"`
+	// CancelReason is the neutral cause of a canceled deploy when the cancel
+	// was not user-initiated (w4/089) — today "Superseded by dep-…" when a
+	// newer release replaced this row. Empty for deploys.Cancel (w6/m52) and
+	// for every non-canceled status. Distinct from FailureReason so the
+	// dashboard can render it without text-destructive treatment.
+	CancelReason string `json:"cancelReason,omitempty"`
 	// TriggeredBy is core.Identity.Subject for the caller that opened this row
 	// (w4/072) — same form as audit_events.caller. Empty for unattributed
 	// triggers (git push, deploy hook). Not a Render deploy field — kept off
@@ -558,7 +564,14 @@ type Store interface {
 	// carries none — a terminal-failure skip otherwise leaves started_at
 	// honestly null rather than fabricating one; pass nil without evidence.
 	// A stale/repeated/invalid transition returns false without changing data.
-	TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason, failureCode string, startedAt *time.Time) (bool, error)
+	// cancelReason (w4/089) is stored with the same transition when non-empty —
+	// pass it only alongside DeployCanceled from the reconciler supersede path;
+	// deploys.Cancel / CloseDeploy leave it empty.
+	TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error)
+	// DeployIDByGeneration returns the deploy id for appID at generation, or
+	// "" when none exists (w4/089 supersede naming). Newest wins if somehow
+	// multiple rows share a generation.
+	DeployIDByGeneration(ctx context.Context, appID string, generation int64) (string, error)
 	// CloseDeploy is the terminal-transition compatibility seam used by the
 	// deploy service's Cancel path. It delegates to TransitionDeploy.
 	CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error)
@@ -2007,11 +2020,11 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason`
+const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason)
 	return d, err
 }
 
@@ -2091,7 +2104,18 @@ func (s *PGStore) ListOpenDeploys(ctx context.Context) ([]Deploy, error) {
 	return out, rows.Err()
 }
 
-func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason, failureCode string, startedAt *time.Time) (bool, error) {
+func (s *PGStore) DeployIDByGeneration(ctx context.Context, appID string, generation int64) (string, error) {
+	var id string
+	err := s.Pool.QueryRow(ctx,
+		`SELECT id FROM deploys WHERE app_id = $1 AND generation = $2
+		 ORDER BY created_at DESC, id DESC LIMIT 1`, appID, generation).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	return id, err
+}
+
+func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error) {
 	transitioned := false
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var appID, current string
@@ -2122,7 +2146,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 
 		// started_at: an in-progress/live transition IS the dispatch moment, so
 		// it may stamp the clock; a terminal-failure skip may only apply the
-		// caller's observed evidence ($8) or leave the column null (w6/m123 —
+		// caller's observed evidence ($9) or leave the column null (w6/m123 —
 		// stamping the clock there collapsed a real build into a microsecond).
 		stampNow := DeployStatusStampsDispatch(status)
 		terminal := IsTerminalDeployStatus(status)
@@ -2132,12 +2156,13 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			     overlap_pending = CASE WHEN $2 = $7 THEN overlap_pending ELSE false END,
 			     resolved_image = COALESCE(NULLIF($3, ''), resolved_image),
 			     failure_reason = COALESCE(NULLIF($6, ''), failure_reason),
+			     cancel_reason = COALESCE(NULLIF($8, ''), cancel_reason),
 			     started_at = CASE WHEN $4 THEN COALESCE(started_at, clock_timestamp())
-			                       ELSE COALESCE(started_at, $8) END,
+			                       ELSE COALESCE(started_at, $9) END,
 			     finished_at = CASE WHEN $5 THEN COALESCE(finished_at, clock_timestamp()) ELSE finished_at END,
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1`,
-			id, status, resolvedImage, stampNow, terminal, failureReason, DeployQueued, startedAt); err != nil {
+			id, status, resolvedImage, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt); err != nil {
 			return err
 		}
 		if status == DeployLive {
@@ -2173,7 +2198,7 @@ func (s *PGStore) CloseDeploy(ctx context.Context, id, status, resolvedImage str
 	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
 		return false, nil
 	}
-	return s.TransitionDeploy(ctx, id, status, resolvedImage, "", "", nil)
+	return s.TransitionDeploy(ctx, id, status, resolvedImage, "", "", "", nil)
 }
 
 // SetDeployPreDeployStatus records the pre-deploy step's outcome on a deploy

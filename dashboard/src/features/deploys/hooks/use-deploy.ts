@@ -26,6 +26,8 @@ export interface DeployView {
   preDeployStatus: string;
   /** Actionable cause of a failed deploy (w9/011); "" unless it failed. */
   failureReason: string;
+  /** Neutral cause of a non-user cancel (w4/089); "" unless superseded. */
+  cancelReason: string;
 }
 
 export interface UseDeployResult {
@@ -92,5 +94,6 @@ function toDeployView(
     finishedAt: d.finishedAt ?? null,
     preDeployStatus: d.preDeployStatus ?? "",
     failureReason: d.failureReason ?? "",
+    cancelReason: d.cancelReason ?? "",
   };
 }

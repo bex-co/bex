@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { DeployFailureReason } from "@/features/deploys/components/deploy-failure-reason";
 
 describe("DeployFailureReason", () => {
-  it("renders the reason with the destructive treatment", () => {
+  it("renders the reason with the destructive treatment by default", () => {
     const { container } = render(
       <DeployFailureReason reason="image pull failed: not found" />,
     );
@@ -12,6 +12,19 @@ describe("DeployFailureReason", () => {
     expect(el.tagName).toBe("P");
     expect(el.className).toContain("text-destructive");
     expect(container.querySelector("p[title]")).toBeNull();
+  });
+
+  it("renders a supersede cancel with the neutral treatment", () => {
+    render(
+      <DeployFailureReason
+        reason="Superseded by dep-abc"
+        tone="neutral"
+      />,
+    );
+
+    const el = screen.getByText("Superseded by dep-abc");
+    expect(el.className).toContain("text-muted-foreground");
+    expect(el.className).not.toContain("text-destructive");
   });
 
   it("renders nothing without a reason", () => {
