@@ -68,7 +68,7 @@ type groupingQuerier interface {
 
 func listProjects(ctx context.Context, q groupingQuerier, tenantID string) ([]Project, error) {
 	rows, err := q.Query(ctx,
-		`SELECT id, tenant_id, name, created_at FROM projects WHERE tenant_id = $1 ORDER BY created_at`, tenantID)
+		`SELECT id, tenant_id, name, created_at, updated_at FROM projects WHERE tenant_id = $1 ORDER BY created_at`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func listProjects(ctx context.Context, q groupingQuerier, tenantID string) ([]Pr
 	var out []Project
 	for rows.Next() {
 		var p Project
-		if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -87,9 +87,9 @@ func listProjects(ctx context.Context, q groupingQuerier, tenantID string) ([]Pr
 func createProject(ctx context.Context, q groupingQuerier, tenantID, name string) (Project, error) {
 	p := Project{ID: ids.New(ids.Project), TenantID: tenantID, Name: name}
 	err := q.QueryRow(ctx,
-		`INSERT INTO projects (id, tenant_id, name) VALUES ($1, $2, $3) RETURNING created_at`,
+		`INSERT INTO projects (id, tenant_id, name) VALUES ($1, $2, $3) RETURNING created_at, updated_at`,
 		p.ID, tenantID, name,
-	).Scan(&p.CreatedAt)
+	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return Project{}, classify("project", err)
 	}

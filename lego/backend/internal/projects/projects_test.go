@@ -26,6 +26,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -68,7 +69,8 @@ func (f *fakeProjectStore) CreateProject(_ context.Context, tenantID, name strin
 			return store.Project{}, fmt.Errorf("project: %w", store.ErrConflict)
 		}
 	}
-	p := store.Project{ID: "prj-created", TenantID: tenantID, Name: name}
+	now := time.Now().UTC()
+	p := store.Project{ID: "prj-created", TenantID: tenantID, Name: name, CreatedAt: now, UpdatedAt: now}
 	f.projects[p.ID] = p
 	return p, nil
 }
@@ -97,8 +99,30 @@ func (f *fakeProjectStore) RenameProject(_ context.Context, projectID, name stri
 		return fmt.Errorf("project: %w", store.ErrNotFound)
 	}
 	p.Name = name
+	p.UpdatedAt = advanceProjectTime(p)
 	f.projects[projectID] = p
 	return nil
+}
+
+func (f *fakeProjectStore) TouchProject(_ context.Context, projectID string) error {
+	p, ok := f.projects[projectID]
+	if !ok {
+		return fmt.Errorf("project: %w", store.ErrNotFound)
+	}
+	p.UpdatedAt = advanceProjectTime(p)
+	f.projects[projectID] = p
+	return nil
+}
+
+func advanceProjectTime(p store.Project) time.Time {
+	base := p.UpdatedAt
+	if base.IsZero() {
+		base = p.CreatedAt
+	}
+	if base.IsZero() {
+		return time.Now().UTC()
+	}
+	return base.Add(time.Second)
 }
 
 func (f *fakeProjectStore) DeleteProject(_ context.Context, projectID string) error {
@@ -138,6 +162,9 @@ func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ st
 		}
 	}
 	f.services[projectID] = append([]string(nil), serviceNames...)
+	p := f.projects[projectID]
+	p.UpdatedAt = advanceProjectTime(p)
+	f.projects[projectID] = p
 	return changes, nil
 }
 
