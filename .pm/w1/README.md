@@ -15,11 +15,14 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+<<<<<<< Updated upstream
 - [x] **m158** — [A background worker whose newest release is held (a pre-deploy step or a build) ignores suspend, resume and scale](done/m158/README.md) (7 tasks; ~1h30m implementation, ~4h10m total) ← `w1/103`, promoted 2026-09-15.
   - **Live.** On the pre-fix operator a resumed worker was still parked 124 s later while a `pre_deploy_failed` verdict stood; after the fix the same resume converged unattended, a scale landed 1 → 2 instances in 15.7 s with the verdict still standing, and a suspend/resume over a `build_failed` deploy took 0.4 s and 0.9 s. The live check ran on one `starter` worker the user approved, deleted at 23:44:30Z.
 - [x] **m157** — [A service whose newest build failed or is still building cannot wake, resume, sleep or scale its serving release](done/m157/README.md) (7 tasks; ~2h15m implementation, ~4h45m total) ← `w1/104`, promoted 2026-09-15; reproduced live in `w1/m156` t003.
   - **Symptom.** After a suspend and resume over two `build_failed` deploys, `qa-20260915-m156b` answered `503 service hibernated` to 112 of 113 requests over 180 s and was still `503` 4.5 minutes later, while the phase read Running. A healthy service resumed in 11.5 s.
   - **Cause.** `Reconcile` returns on `resolveDeployImage`'s build halt (`app_controller.go:591-596`, `:692-696`) before `reconcileKubernetes`, so replicas, routing and the idle check never converge while a newer release has no image.
+=======
+>>>>>>> Stashed changes
 - [x] **m156** — [A hibernated free service whose latest deploy failed never wakes: the failed-release gate halts the reconcile before replicas and routing](m156/README.md) (7 tasks; ~2h25m implementation, ~3h50m total) ← live verification of w1/m146–m155, 2026-09-15.
   - **Symptom.** On a free web service whose latest deploy read `pre_deploy_failed`, every request for more than 15 minutes after `service_woken` got the activator's `503 service hibernated`: 188 of 188 samples over 07:30–07:35Z, and three more at 07:41Z. Meanwhile the API read `phase: Running` and the dashboard header "Service Running". A sibling free service with a live latest deploy woke in 12 s.
   - **Cause.** `Reconcile` runs the pre-deploy gate once an App stops auto-hibernating, and a stored failed verdict halts the pass before the Deployment write and `ingressBackend` (`app_controller.go:2051-2055`, `:4395-4400`). Replicas stay 0 and the route stays on the activator until a new release. The gate predates w1/m149; the build gate (`:755-756`) is the traced analogue.

@@ -2012,8 +2012,28 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return res, nil
 	}
 
+<<<<<<< Updated upstream
 	if err := r.convergeSharedChildren(ctx, app, port); err != nil {
 		return r.failStep(ctx, app, err)
+=======
+	// The slug-named Service converges bidirectionally for every type BEFORE the
+	// per-type dispatch: an addressable App (web/private) gets the alias, a
+	// non-addressable type (cron/static/worker — including one hand-edited away
+	// from web/private) gets it removed. One seam owns both halves, so no type
+	// path can forget the delete (docs/ADR041-service-addresses.md D2).
+	if err := r.reconcileSlugService(ctx, app, port); err != nil {
+		return r.fail(ctx, app, "ServiceFailed", err)
+	}
+	// A command can be removed while the App is suspended or while its type is
+	// changing, both of which bypass reconcilePreDeploy below. Converge the
+	// cross-namespace execution policy here as well so the old grant is removed
+	// on that first ordinary reconcile.
+	preDeployRequired := hasPreDeployStep(app)
+	if !preDeployRequired {
+		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
+			return r.fail(ctx, app, "NetworkPolicyFailed", err)
+		}
+>>>>>>> Stashed changes
 	}
 
 	// A cron_job diverges entirely: a batch/v1 CronJob, no Deployment/Service/Ingress.
@@ -2042,10 +2062,17 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// the new revision's image before rolling the Deployment to it; a non-zero
 	// exit fails the deploy. While a prior release serves, holdUnpassedRelease keeps
 	// the template on it until the step passes and keeps its replicas and routing
+<<<<<<< Updated upstream
 	// converging (w1/m156; a worker's replicas alone, w1/m158). For a first release
 	// the gate below halts the pass, and
 	// it is skipped while suspended or auto-hibernating, where nothing rolls.
 	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, plan); held {
+=======
+	// converging (w1/m156). For a first release the gate below halts the pass, and
+	// it is skipped while suspended or auto-hibernating, where nothing rolls.
+	plan := replicaPlan{replicas: replicas, autoscaleRequeue: autoscaleRequeue, autoHibernating: autoHibernating, hibernateHold: hibernateHold}
+	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, worker, plan); held {
+>>>>>>> Stashed changes
 		return res, err
 	}
 	if !app.Spec.Suspended && !autoHibernating {
@@ -4632,7 +4659,12 @@ func preDeployNotStarted(err error) string {
 // hasPreDeployStep reports whether spec.preDeployCommand gates this App's
 // rollouts. Cron jobs and static sites run no pre-deploy step.
 func hasPreDeployStep(app *appv1alpha1.App) bool {
+<<<<<<< Updated upstream
 	return strings.TrimSpace(app.Spec.PreDeployCommand) != "" && scalableRuntime(app)
+=======
+	return strings.TrimSpace(app.Spec.PreDeployCommand) != "" &&
+		app.Spec.Type != appv1alpha1.TypeCronJob && app.Spec.Type != appv1alpha1.TypeStaticSite
+>>>>>>> Stashed changes
 }
 
 // preDeployPassed reports whether the current release may reach the pod
@@ -4646,13 +4678,18 @@ func preDeployPassed(app *appv1alpha1.App) bool {
 	return pd != nil && pd.Generation == releaseGeneration(app) && pd.Status == appv1alpha1.PreDeploySucceeded
 }
 
+<<<<<<< Updated upstream
 // replicaPlan is what planReplicas resolved for this pass's replicas. poll marks
 // a held pass that comes back within seconds on a step's or build's own poll.
+=======
+// replicaPlan is what reconcileKubernetes resolved for this pass's replicas.
+>>>>>>> Stashed changes
 type replicaPlan struct {
 	replicas         int32
 	autoscaleRequeue bool
 	autoHibernating  bool
 	hibernateHold    bool
+<<<<<<< Updated upstream
 	poll             bool
 }
 
@@ -4661,12 +4698,15 @@ type replicaPlan struct {
 type priorRelease struct {
 	dep  *appsv1.Deployment
 	port int
+=======
+>>>>>>> Stashed changes
 }
 
 func (p replicaPlan) parked(app *appv1alpha1.App) bool {
 	return app.Spec.Suspended || p.autoHibernating
 }
 
+<<<<<<< Updated upstream
 // scalableRuntime reports whether the App runs as a Deployment a held release
 // can scale: web and private services and background workers. Cron jobs and
 // static sites have none.
@@ -4674,6 +4714,8 @@ func scalableRuntime(app *appv1alpha1.App) bool {
 	return app.Spec.Type != appv1alpha1.TypeCronJob && app.Spec.Type != appv1alpha1.TypeStaticSite
 }
 
+=======
+>>>>>>> Stashed changes
 // wakeReadyPoll is how soon a held release's pass comes back while a woken free
 // service waits for its first ready pod, so the public route leaves the
 // activator promptly. The Deployment watch usually gets there first.
@@ -4681,6 +4723,7 @@ const wakeReadyPoll = 5 * time.Second
 
 // holdUnpassedRelease keeps a newer release whose pre-deploy step has not passed
 // off the pod template while a prior release serves, and keeps that prior
+<<<<<<< Updated upstream
 // release's replicas and routing following the App (w1/m156; for a background
 // worker, its replicas alone, w1/m158). Parked passes are held too: the gate
 // does not run while parked, so a parking pass would otherwise write the
@@ -4707,6 +4750,44 @@ func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha
 	}
 	var gate ctrl.Result
 	if failed == "" && !plan.parked(app) {
+=======
+// release's replicas and routing following the App (w1/m156). Parked passes are
+// held too: the gate does not run while parked, so a parking pass would otherwise
+// write the unmigrated release onto the parked Deployment for the next wake to
+// start. held=false hands the pass to the normal path: a worker, no prior
+// release, no prior Deployment or Service, or a step that has passed, including
+// one that passes on this pass.
+func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha1.App, image string, port int, worker bool, plan replicaPlan) (bool, ctrl.Result, error) {
+	if worker || app.Status.ActiveRevision == "" || preDeployPassed(app) {
+		return false, ctrl.Result{}, nil
+	}
+	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
+	dep := &appsv1.Deployment{}
+	if err := r.Get(ctx, key, dep); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, ctrl.Result{}, nil
+		}
+		return true, ctrl.Result{}, err
+	}
+	var svc corev1.Service
+	if err := r.Get(ctx, key, &svc); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, ctrl.Result{}, nil
+		}
+		return true, ctrl.Result{}, err
+	}
+	if len(svc.Spec.Ports) == 0 {
+		return false, ctrl.Result{}, nil
+	}
+	// Route to the port the prior release's Service exposes: the held release may
+	// have changed spec.port, and its pods are not the ones serving.
+	servingPort := int(svc.Spec.Ports[0].Port)
+
+	pd := app.Status.PreDeploy
+	failed := pd != nil && pd.Generation == releaseGeneration(app) && pd.Status == appv1alpha1.PreDeployFailed
+	var gate ctrl.Result
+	if !failed && !plan.parked(app) {
+>>>>>>> Stashed changes
 		res, halt, err := r.reconcilePreDeploy(ctx, app, image, port)
 		if err != nil {
 			return true, res, err
@@ -4716,6 +4797,7 @@ func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha
 		}
 		gate = res
 	}
+<<<<<<< Updated upstream
 	plan.poll = gate.RequeueAfter > 0
 	res, err := r.settleHeldRuntime(ctx, app, prior, plan, failed, gate.RequeueAfter)
 	if err != nil {
@@ -4854,6 +4936,62 @@ func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1al
 		return r.parkKubernetes(ctx, app, app.Status.Image, hosts, plan.autoHibernating, plan.hibernateHold)
 	}
 	completeAutoscalingTransition(app, prior.dep.Status.Replicas, prior.dep.Status.ReadyReplicas, time.Now())
+=======
+	res, err := r.convergeServingRuntime(ctx, app, dep, servingPort, plan)
+	if err != nil || plan.parked(app) {
+		return true, res, err
+	}
+	if failed {
+		// Settle from the scale this pass wrote: on the wake pass the cached
+		// Deployment can still show the parked count.
+		r.settlePriorRelease(ctx, app, "the latest pre-deploy command failed", plan.replicas == 0)
+	} else {
+		r.updateStatusRetrying(ctx, app, "preDeployHeld")
+	}
+	res.RequeueAfter = soonerRequeue(res.RequeueAfter, gate.RequeueAfter)
+	return true, res, nil
+}
+
+// convergeServingRuntime moves a serving prior release's replicas and public
+// routing to what the App wants without touching the Deployment's template. The
+// Ingress is rewritten only when the scale changed or the live route differs:
+// its middleware reconcile reads uncached, and a held pass can come back every
+// few seconds while a step runs.
+func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, servingPort int, plan replicaPlan) (ctrl.Result, error) {
+	scaled := dep.Spec.Replicas == nil || *dep.Spec.Replicas != plan.replicas
+	if scaled {
+		base := dep.DeepCopy()
+		dep.Spec.Replicas = &plan.replicas
+		if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	hosts := effectiveHosts(app, r.BaseDomain)
+	if !app.Spec.PubliclyRoutable() {
+		hosts = nil
+	}
+	r.setPublicRoutingCondition(app, hosts)
+	serving := dep.Status.ReadyReplicas > 0
+	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, servingPort, plan.autoHibernating, serving)
+	if err != nil {
+		return r.fail(ctx, app, "MaintenanceRoutingFailed", err)
+	}
+	routed, err := r.ingressRoutes(ctx, app, hosts, ingressSvc, ingressPort)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if scaled || !routed {
+		if reason, err := r.reconcileIngressWithMiddlewares(ctx, app, hosts, ingressSvc, ingressPort); err != nil {
+			return r.fail(ctx, app, reason, err)
+		}
+	}
+
+	if plan.parked(app) {
+		return r.parkKubernetes(ctx, app, app.Status.Image, hosts, plan.autoHibernating, plan.hibernateHold)
+	}
+	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
+>>>>>>> Stashed changes
 	res, err := r.runningRequeue(ctx, app, plan.autoscaleRequeue)
 	if err != nil {
 		return res, err
@@ -4864,6 +5002,7 @@ func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1al
 	return res, nil
 }
 
+<<<<<<< Updated upstream
 // convergeServingRoute scales the prior release's Deployment and routes its
 // public Ingress without touching the pod template, and reports the hosts routed
 // and whether a pod is ready. A background worker returns right after the scale,
@@ -4910,6 +5049,8 @@ func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alph
 	return hosts, serving, nil
 }
 
+=======
+>>>>>>> Stashed changes
 // ingressRoutes reports whether the App's Ingress already has exactly one rule
 // per host and sends every path to svc:port. With no hosts, a missing Ingress is
 // already right.

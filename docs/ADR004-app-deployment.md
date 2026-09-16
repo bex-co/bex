@@ -219,6 +219,7 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
   - a parking pass baked the unmigrated release into the template, so the next wake would have started it.
 - **Unchanged:**
   - a first release (nothing serves yet);
+<<<<<<< Updated upstream
   - a fresh step failure, which still returns its reconcile error.
 
 **Background workers are held the same way (w1/m158).** A worker has no Service, Ingress or auto-sleep, but its replicas follow resume, manual scale and autoscale.
@@ -241,6 +242,12 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
   - cron jobs and static sites;
   - a build failure recorded only in the legacy Ready marker (written before w6/m100). It stays on the halt, so no status write can erase the marker and dispatch the build again.
 
+=======
+  - a release still waiting for its image: a queued, running or failed build still halts the pass before the runtime (`w1/104`);
+  - background workers (`w1/103`);
+  - a fresh step failure, which still returns its reconcile error.
+
+>>>>>>> Stashed changes
 ## Control-plane deploy lifecycle
 
 For store-managed Apps, bex-api projects the operator's current-release facts into Render's deploy vocabulary without adding an operator-to-database dependency. A deploy row begins `created`; `BuildQueued` and `Building` evidence yield `queued` and `build_in_progress`; a release-generation-scoped pre-deploy Job yields `pre_deploy_in_progress`; rollout reconciliation yields `update_in_progress`; and the corresponding failure or convergence facts yield `build_failed`, `pre_deploy_failed`, `update_failed`, or `live`. A later operational metadata generation does not detach the open row: the projector matches it to `status.releaseGeneration` and the active `rev-<release-generation>`. A row whose own release generation carries a terminal `status.conditions[Build]` verdict closes `build_failed` with that verdict's message even once the release has advanced past it — otherwise the deploy that actually failed would report the `canceled` a bare generation comparison infers (w6/m100). Fast phases may be skipped when the polling control plane never observes them. Invalid regressions are rejected.

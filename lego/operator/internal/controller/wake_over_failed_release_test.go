@@ -89,6 +89,7 @@ func deploymentTemplateRevision(t *testing.T, cl client.Client, nn types.Namespa
 	return dep.Spec.Template.Labels[labelRevision]
 }
 
+<<<<<<< Updated upstream
 // serveReleaseOne reconciles the fixture's prebuilt release until it is the
 // active release, and returns its pod template revision and image.
 func serveReleaseOne(t *testing.T, r *AppReconciler, cl client.Client, nn types.NamespacedName) (string, string) {
@@ -165,6 +166,8 @@ func setSuspendedAt(t *testing.T, cl client.Client, nn types.NamespacedName, sus
 	}
 }
 
+=======
+>>>>>>> Stashed changes
 func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 	scheme := wakeScheme()
 	app := activeApp("tea-m156")
@@ -175,11 +178,43 @@ func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	// Release 1 serves.
+<<<<<<< Updated upstream
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
 
 	// A config change adds a failing pre-deploy command as release 2, and the
 	// step's failed verdict is stored against that release.
 	storeFailedPreDeploy(t, cl, nn)
+=======
+	reconcileTwice(t, r, nn)
+	markDeploymentRolledOut(t, cl, nn)
+	reconcileTwice(t, r, nn)
+	var live appv1alpha1.App
+	if err := cl.Get(ctx, nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	if live.Status.ActiveRevision == "" || live.Status.Phase != appv1alpha1.PhaseRunning {
+		t.Fatalf("setup: release 1 never became active (phase %q, activeRevision %q)", live.Status.Phase, live.Status.ActiveRevision)
+	}
+	priorRevision := deploymentTemplateRevision(t, cl, nn)
+
+	// A config change adds a failing pre-deploy command as release 2, and the
+	// step's failed verdict is stored against that release.
+	live.Spec.PreDeployCommand = "exit 3"
+	live.Generation = 2
+	live.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "2"
+	if err := cl.Update(ctx, &live); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	live.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
+		Job: predeploy.JobName(app.Name, appv1alpha1.BuildRevision(2)), Generation: 2, Status: appv1alpha1.PreDeployFailed, Message: exitThree,
+	}
+	if err := cl.Status().Update(ctx, &live); err != nil {
+		t.Fatal(err)
+	}
+>>>>>>> Stashed changes
 	reconcileTwice(t, r, nn)
 
 	// It goes idle: the route moves to the activator, then the pods drain. The
@@ -218,10 +253,20 @@ func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
 		t.Fatalf("pod template revision = %q, want the prior release's %q — the failed release must not roll", got, priorRevision)
 	}
+<<<<<<< Updated upstream
 	if jobs := jobsIn(t, cl, app.Namespace); len(jobs) != 0 {
 		t.Fatalf("jobs = %d, want none — a stored verdict must not re-run the pre-deploy command", len(jobs))
 	}
 	var live appv1alpha1.App
+=======
+	var jobs batchv1.JobList
+	if err := cl.List(ctx, &jobs, client.InNamespace(app.Namespace)); err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs.Items) != 0 {
+		t.Fatalf("jobs = %d, want none — a stored verdict must not re-run the pre-deploy command", len(jobs.Items))
+	}
+>>>>>>> Stashed changes
 	if err := cl.Get(ctx, nn, &live); err != nil {
 		t.Fatal(err)
 	}
@@ -244,9 +289,26 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 	r := wakeReconciler(cl, scheme)
 	ctx := context.Background()
 	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+<<<<<<< Updated upstream
 
 	// Release 1 serves, then goes idle and parks.
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
+=======
+	listJobs := func() []batchv1.Job {
+		t.Helper()
+		var jobs batchv1.JobList
+		if err := cl.List(ctx, &jobs, client.InNamespace(app.Namespace)); err != nil {
+			t.Fatal(err)
+		}
+		return jobs.Items
+	}
+
+	// Release 1 serves, then goes idle and parks.
+	reconcileTwice(t, r, nn)
+	markDeploymentRolledOut(t, cl, nn)
+	reconcileTwice(t, r, nn)
+	priorRevision := deploymentTemplateRevision(t, cl, nn)
+>>>>>>> Stashed changes
 	stampLastActiveAt(t, cl, nn, time.Now().Add(-time.Hour))
 	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
 		t.Fatalf("reconcile: %v", err)
@@ -271,7 +333,11 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
 		t.Fatalf("parked template revision = %q, want the prior release's %q — an unmigrated release must not be parked into the template", got, priorRevision)
 	}
+<<<<<<< Updated upstream
 	if jobs := jobsIn(t, cl, app.Namespace); len(jobs) != 0 {
+=======
+	if jobs := listJobs(); len(jobs) != 0 {
+>>>>>>> Stashed changes
 		t.Fatalf("jobs = %d, want none while parked", len(jobs))
 	}
 
@@ -281,7 +347,11 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 	if got := deploymentReplicas(t, cl, nn); got != 1 {
 		t.Fatalf("woken replicas = %d, want 1 while the pre-deploy step runs", got)
 	}
+<<<<<<< Updated upstream
 	jobs := jobsIn(t, cl, app.Namespace)
+=======
+	jobs := listJobs()
+>>>>>>> Stashed changes
 	if len(jobs) != 1 {
 		t.Fatalf("jobs = %d, want the release 2 pre-deploy Job", len(jobs))
 	}
@@ -323,6 +393,7 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
 		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
 	r := wakeReconciler(cl, scheme)
+<<<<<<< Updated upstream
 	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	// Release 1 serves; release 2's pre-deploy step failed.
@@ -332,6 +403,51 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 
 	// Suspend: scaled to 0 on the prior release's template.
 	setSuspendedAt(t, cl, nn, true, 3)
+=======
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	setSuspended := func(suspended bool, generation int64) {
+		t.Helper()
+		var live appv1alpha1.App
+		if err := cl.Get(ctx, nn, &live); err != nil {
+			t.Fatal(err)
+		}
+		live.Spec.Suspended = suspended
+		live.Generation = generation
+		if err := cl.Update(ctx, &live); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Release 1 serves; release 2's pre-deploy step failed.
+	reconcileTwice(t, r, nn)
+	markDeploymentRolledOut(t, cl, nn)
+	reconcileTwice(t, r, nn)
+	priorRevision := deploymentTemplateRevision(t, cl, nn)
+	var live appv1alpha1.App
+	if err := cl.Get(ctx, nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	live.Spec.PreDeployCommand = "exit 3"
+	live.Generation = 2
+	live.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "2"
+	if err := cl.Update(ctx, &live); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, nn, &live); err != nil {
+		t.Fatal(err)
+	}
+	live.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
+		Job: predeploy.JobName(app.Name, appv1alpha1.BuildRevision(2)), Generation: 2, Status: appv1alpha1.PreDeployFailed, Message: exitThree,
+	}
+	if err := cl.Status().Update(ctx, &live); err != nil {
+		t.Fatal(err)
+	}
+	reconcileTwice(t, r, nn)
+
+	// Suspend: scaled to 0 on the prior release's template.
+	setSuspended(true, 3)
+>>>>>>> Stashed changes
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 0 {
 		t.Fatalf("suspended replicas = %d, want 0", got)
@@ -341,7 +457,11 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 	}
 
 	// Resume: replicas come back, and the route follows once a pod is ready.
+<<<<<<< Updated upstream
 	setSuspendedAt(t, cl, nn, false, 4)
+=======
+	setSuspended(false, 4)
+>>>>>>> Stashed changes
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 1 {
 		t.Fatalf("resumed replicas = %d, want 1: a failed pre-deploy verdict must not block resume", got)
@@ -354,6 +474,7 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
 		t.Fatalf("resumed template revision = %q, want the prior release's %q", got, priorRevision)
 	}
+<<<<<<< Updated upstream
 	if jobs := jobsIn(t, cl, app.Namespace); len(jobs) != 0 {
 		t.Fatalf("jobs = %d, want none — resume must not re-run a failed step", len(jobs))
 	}
@@ -462,5 +583,13 @@ func TestWorkerScaleWhilePreDeployRunsTakesEffect(t *testing.T) {
 	}
 	if got := deploymentReplicas(t, cl, nn); got != 2 {
 		t.Fatalf("worker replicas after the rollout = %d, want 2", got)
+=======
+	var jobs batchv1.JobList
+	if err := cl.List(ctx, &jobs, client.InNamespace(app.Namespace)); err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs.Items) != 0 {
+		t.Fatalf("jobs = %d, want none — resume must not re-run a failed step", len(jobs.Items))
+>>>>>>> Stashed changes
 	}
 }
