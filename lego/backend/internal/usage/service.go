@@ -64,6 +64,12 @@ type UsageStore interface {
 	LatestUsageWindowForKind(ctx context.Context, kind string) (time.Time, bool, error)
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error)
 	CompactUsage(ctx context.Context, before time.Time) (store.UsageCompaction, error)
+	// The retained-name record (w2/m96): billing lines outlive their resources,
+	// so names are read from here when the resource is gone and written back
+	// here while it is still alive.
+	ResourceDisplayNames(ctx context.Context, tenantID string, refs []store.ResourceDisplayName) (map[string]string, error)
+	RecordResourceDisplayNames(ctx context.Context, tenantID string, records []store.ResourceDisplayName) error
+	SandboxLabels(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]string, error)
 }
 
 // Service is the usage feature. Base carries the Kubernetes client, namespace,
@@ -158,11 +164,17 @@ type Coverage struct {
 // totals, broken out by kind (and tier for instance_seconds).
 type ServiceUsage struct {
 	ServiceID string
-	// ServiceName is the user-facing display name, resolved best-effort from
-	// the store (Apps) or the CR spec (datastores). Empty when the resource no
-	// longer exists — presenters fall back to ServiceID.
-	ServiceName  string
-	ResourceKind string // store.ResourceKind* — "service", "postgres", "key_value"
+	// ServiceName is the user-facing display name. It is resolved from the live
+	// resource when one exists, and otherwise from the retained-name record
+	// (w2/m96) — so a charge keeps naming its resource after deletion. Empty
+	// only when bex never recorded a name for the id at all, in which case
+	// presenters fall back to ServiceID.
+	ServiceName string
+	// Deleted reports that the id resolved to a retained name but no live
+	// resource: the thing being billed for is gone. False for a live resource
+	// and false for a nameless pre-retention row.
+	Deleted      bool
+	ResourceKind string // store.ResourceKind* — "service", "postgres", "key_value", "sandbox"
 	Rows         []store.UsageSummaryRow
 }
 
@@ -194,7 +206,7 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 		return Summary{}, fmt.Errorf("usage: %w", err)
 	}
 	sum := summarise(tenantID, rows)
-	s.resolveServiceNames(ctx, sum.Services)
+	s.resolveServiceNames(ctx, tenantID, sum.Services)
 	sum.Period = now.Format(periodLayout)
 	sum.EstimatedCost = pricing.Default.Estimate(rows)
 	nameResourceEstimates(&sum.EstimatedCost, sum.Services)
@@ -283,32 +295,95 @@ func (s *Service) readBilling(ctx context.Context, tenantID string, now time.Tim
 	return b
 }
 
-// resolveServiceNames fills each ServiceUsage's display name from the store
-// (Apps) and the Database/KeyValue CRs (datastores). Best-effort: a lookup
-// failure or a since-deleted resource leaves ServiceName empty and the summary
-// otherwise intact. Keys pair ResourceKind with the id because different kinds
-// may legally share a service_id.
-func (s *Service) resolveServiceNames(ctx context.Context, svcs []ServiceUsage) {
+// resolveServiceNames fills each ServiceUsage's display name and its Deleted
+// flag.
+//
+// A billing line outlives the resource it bills for, so names cannot come from
+// live resources alone — that is exactly why a deleted service used to collapse
+// to a bare `srv-…` id and a sandbox, which has no name at all, was always a
+// bare UUID (w1/088). Resolution is therefore two-sided:
+//
+//  1. Live resources — Apps from the store, Database/KeyValue from their CRs,
+//     sandboxes labelled from the agent session that owns (or owned) them.
+//     A live name always wins, so a renamed resource bills under its new name.
+//  2. The retained record — the last name bex knew for the id. Used when the
+//     resource is gone, which is what sets Deleted.
+//
+// It also writes step 1's names back into the retained record. This read is by
+// construction the one place every *metered* resource is enumerated, so
+// capturing here cannot miss a create path the way hooking four packages'
+// create verbs could — and "the name it had while the usage accrued" is
+// precisely the value the charge line wants. The write is best-effort: a
+// failure is logged and never fails the usage read.
+//
+// Keys pair ResourceKind with the id because different kinds may legally share
+// an id.
+func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs []ServiceUsage) {
 	if len(svcs) == 0 {
 		return
 	}
-	names := map[string]string{}
+	live := map[string]string{}
 	if apps, err := s.Store.ListApps(ctx); err != nil {
 		log.Printf("usage: resolve names: list apps: %v", err)
 	} else {
 		for _, app := range apps {
-			names[store.ResourceKindService+"/"+app.ID] = app.Name
+			live[store.ResourceDisplayNameKey(store.ResourceKindService, app.ID)] = app.Name
 		}
 	}
 	if datastores, err := s.listDatastores(ctx); err != nil {
 		log.Printf("usage: resolve names: list datastores: %v", err)
 	} else {
 		for _, ds := range datastores {
-			names[ds.Kind+"/"+ds.ID] = ds.Display
+			live[store.ResourceDisplayNameKey(ds.Kind, ds.ID)] = ds.Display
 		}
 	}
+
+	refs := make([]store.ResourceDisplayName, 0, len(svcs))
+	var sandboxIDs []string
+	for _, svc := range svcs {
+		refs = append(refs, store.ResourceDisplayName{Kind: svc.ResourceKind, ID: svc.ServiceID})
+		if svc.ResourceKind == store.ResourceKindSandbox {
+			sandboxIDs = append(sandboxIDs, svc.ServiceID)
+		}
+	}
+	if len(sandboxIDs) > 0 {
+		if labels, err := s.Store.SandboxLabels(ctx, tenantID, sandboxIDs); err != nil {
+			log.Printf("usage: resolve names: sandbox labels: %v", err)
+		} else {
+			for id, label := range labels {
+				live[store.ResourceDisplayNameKey(store.ResourceKindSandbox, id)] = label
+			}
+		}
+	}
+
+	retained, err := s.Store.ResourceDisplayNames(ctx, tenantID, refs)
+	if err != nil {
+		log.Printf("usage: resolve names: retained names: %v", err)
+	}
+
+	capture := make([]store.ResourceDisplayName, 0, len(svcs))
 	for i := range svcs {
-		svcs[i].ServiceName = names[svcs[i].ResourceKind+"/"+svcs[i].ServiceID]
+		key := store.ResourceDisplayNameKey(svcs[i].ResourceKind, svcs[i].ServiceID)
+		if name, ok := live[key]; ok && name != "" {
+			svcs[i].ServiceName = name
+			if retained[key] != name {
+				capture = append(capture, store.ResourceDisplayName{
+					Kind: svcs[i].ResourceKind, ID: svcs[i].ServiceID, Name: name,
+				})
+			}
+			continue
+		}
+		// No live resource: the retained name is what the charge is for, and
+		// its presence is what distinguishes "deleted" from "never named".
+		if name := retained[key]; name != "" {
+			svcs[i].ServiceName = name
+			svcs[i].Deleted = true
+		}
+	}
+	if len(capture) > 0 {
+		if err := s.Store.RecordResourceDisplayNames(ctx, tenantID, capture); err != nil {
+			log.Printf("usage: retain names: %v", err)
+		}
 	}
 }
 
@@ -321,13 +396,19 @@ func nameResourceEstimates(est *pricing.EstimatedCost, svcs []ServiceUsage) {
 	if len(est.Resources) == 0 || len(svcs) == 0 {
 		return
 	}
-	names := make(map[string]string, len(svcs))
+	type resolved struct {
+		name    string
+		deleted bool
+	}
+	names := make(map[string]resolved, len(svcs))
 	for _, svc := range svcs {
-		names[svc.ResourceKind+"/"+svc.ServiceID] = svc.ServiceName
+		names[store.ResourceDisplayNameKey(svc.ResourceKind, svc.ServiceID)] = resolved{svc.ServiceName, svc.Deleted}
 	}
 	for i := range est.Resources {
 		r := &est.Resources[i]
-		r.ServiceName = names[r.ResourceKind+"/"+r.ServiceID]
+		got := names[store.ResourceDisplayNameKey(r.ResourceKind, r.ServiceID)]
+		r.ServiceName = got.name
+		r.Deleted = got.deleted
 	}
 }
 

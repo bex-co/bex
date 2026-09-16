@@ -40,8 +40,11 @@ type usageRow struct {
 
 // usageServiceEntry is one service's contribution in the REST/MCP response.
 type usageServiceEntry struct {
-	ServiceID    string     `json:"serviceId"`
-	ServiceName  string     `json:"serviceName,omitempty"`
+	ServiceID   string `json:"serviceId"`
+	ServiceName string `json:"serviceName,omitempty"`
+	// Deleted: the resource is gone but bex retained the name its usage
+	// accrued under (w2/m96). Omitted for a live resource.
+	Deleted      bool       `json:"deleted,omitempty"`
 	ResourceKind string     `json:"resourceKind,omitempty"`
 	Rows         []usageRow `json:"rows"`
 }
@@ -95,7 +98,7 @@ func toUsageResponse(sum Summary) usageResponse {
 		for _, r := range svc.Rows {
 			rows = append(rows, usageRow{Kind: r.Kind, Tier: r.Tier, Total: r.Total})
 		}
-		svcs = append(svcs, usageServiceEntry{ServiceID: svc.ServiceID, ServiceName: svc.ServiceName, ResourceKind: svc.ResourceKind, Rows: rows})
+		svcs = append(svcs, usageServiceEntry{ServiceID: svc.ServiceID, ServiceName: svc.ServiceName, Deleted: svc.Deleted, ResourceKind: svc.ResourceKind, Rows: rows})
 	}
 	coverage := usageCoverage{State: sum.Coverage.State, DegradedSources: append([]string(nil), sum.Coverage.DegradedSources...)}
 	if coverage.State == "" {

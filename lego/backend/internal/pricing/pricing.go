@@ -139,6 +139,11 @@ type ResourceEstimate struct {
 	ServiceName string `json:"serviceName,omitempty"`
 	// ResourceKind is "service", "postgres", "key_value", or "sandbox".
 	ResourceKind string `json:"resourceKind,omitempty"`
+	// Deleted reports that the resource no longer exists but bex retained the
+	// name it had while the usage accrued (w2/m96). False for a live resource
+	// and false for a pre-retention row that has no name at all — a presenter
+	// distinguishes those two by ServiceName being empty.
+	Deleted bool `json:"deleted,omitempty"`
 	// CostUSD is this resource's estimated dollars, formatted to cents.
 	CostUSD string `json:"costUsd"`
 	// Charges are the meter lines behind CostUSD, in first-seen order.

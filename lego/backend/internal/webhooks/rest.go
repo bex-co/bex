@@ -75,11 +75,16 @@ func toWireList(views []EndpointView) []endpointWire {
 }
 
 // webhookEventWire is Render's public delivery-history item. Rich bex retry
-// state remains on GraphQL/MCP; REST uses Render's exact supported fields.
+// state remains on GraphQL/MCP; REST uses Render's exact supported fields,
+// plus serviceName — the one labeled bex extension here, added so a REST
+// consumer reads the same recorded subject name GraphQL reports (w2/m96/t004)
+// without re-parsing the delivered payload itself. Always present, "" when the
+// stored payload recorded no name.
 type webhookEventWire struct {
 	ID           string `json:"id"`
 	EventID      string `json:"eventId"`
 	EventType    string `json:"eventType"`
+	ServiceName  string `json:"serviceName"`
 	SentAt       string `json:"sentAt"`
 	StatusCode   int    `json:"statusCode,omitempty"`
 	ResponseBody string `json:"responseBody,omitempty"`
@@ -93,7 +98,8 @@ type webhookEventWithCursor struct {
 
 func toWebhookEventWire(v DeliveryView) webhookEventWire {
 	w := webhookEventWire{
-		ID: v.ID, EventID: v.EventID, EventType: v.EventType, SentAt: v.SentAt,
+		ID: v.ID, EventID: v.EventID, EventType: v.EventType,
+		ServiceName: v.ServiceName, SentAt: v.SentAt,
 		StatusCode: v.StatusCode, ResponseBody: v.ResponseBody,
 	}
 	// Render's `error` is for failures without an HTTP response. A non-2xx

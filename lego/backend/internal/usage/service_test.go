@@ -59,6 +59,54 @@ type memUsageStore struct {
 	// diskRows is the provisioned-disk meter's source: GB-seconds per window
 	// start, so a test can assert exactly which windows got metered.
 	diskRows map[time.Time][]store.DiskUsageRow
+	// retained is the w2/m96 retained-name record, keyed tenant -> kind/id.
+	// recorded captures what the usage read wrote back, so a test can assert
+	// the capture happens (and happens only for changed names).
+	retained map[string]map[string]string
+	recorded []store.ResourceDisplayName
+	// sandboxLabels stands in for the agent-session join.
+	sandboxLabels map[string]string
+}
+
+func (m *memUsageStore) ResourceDisplayNames(_ context.Context, tenantID string, refs []store.ResourceDisplayName) (map[string]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := map[string]string{}
+	for _, r := range refs {
+		key := store.ResourceDisplayNameKey(r.Kind, r.ID)
+		if name := m.retained[tenantID][key]; name != "" {
+			out[key] = name
+		}
+	}
+	return out, nil
+}
+
+func (m *memUsageStore) RecordResourceDisplayNames(_ context.Context, tenantID string, records []store.ResourceDisplayName) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.retained == nil {
+		m.retained = map[string]map[string]string{}
+	}
+	if m.retained[tenantID] == nil {
+		m.retained[tenantID] = map[string]string{}
+	}
+	for _, r := range records {
+		m.retained[tenantID][store.ResourceDisplayNameKey(r.Kind, r.ID)] = r.Name
+		m.recorded = append(m.recorded, r)
+	}
+	return nil
+}
+
+func (m *memUsageStore) SandboxLabels(_ context.Context, _ string, sandboxIDs []string) (map[string]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := map[string]string{}
+	for _, id := range sandboxIDs {
+		if label := m.sandboxLabels[id]; label != "" {
+			out[id] = label
+		}
+	}
+	return out, nil
 }
 
 // DiskUsageForWindow / LatestUsageWindowForKind back the store-derived disk

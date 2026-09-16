@@ -1,4 +1,5 @@
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDown,
   ChevronUp,
@@ -43,10 +44,26 @@ import { useResendWebhookDelivery } from "@/features/webhooks/hooks/use-resend-w
 import { eventLabelKey } from "@/features/webhooks/event-catalog";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useServices } from "@/features/services/hooks/use-services";
+import { serviceBaseForType } from "@/features/services/lib/service-base";
+import type { ServiceView } from "@/features/services/types";
 import type {
   WebhookDeliveryStatus,
   WebhookDeliveryView,
 } from "@/features/webhooks/types";
+
+/**
+ * Resolves a delivery's subject against the workspace's live services, so the
+ * table can link a name that still exists and mark one that no longer does.
+ *
+ * `ready` is the fail-open guard: while the service list is loading or errored
+ * nothing is called deleted, because "absent from a list we don't have" is not
+ * evidence of a deletion.
+ */
+interface ServiceIndex {
+  byID: Map<string, ServiceView>;
+  ready: boolean;
+}
 
 type DeliveryFilter = "all" | "successful" | "failed";
 
@@ -89,6 +106,21 @@ export function WebhookDeliveriesCard({
     sentBefore: toAPITime(sentBefore),
   });
   const { resend, resendingAttemptId } = useResendWebhookDelivery();
+  // Secondary consumer of the workspace's service list: it only decides how to
+  // render a delivery's recorded subject, so it must not add a second poll
+  // timer beside whichever page is already polling it.
+  const {
+    services,
+    loading: servicesLoading,
+    error: servicesError,
+  } = useServices({ poll: false });
+  const serviceIndex = useMemo<ServiceIndex>(
+    () => ({
+      byID: new Map(services.map((service) => [service.id, service])),
+      ready: !servicesLoading && servicesError === undefined,
+    }),
+    [services, servicesError, servicesLoading],
+  );
 
   async function handleResend(attemptId: string) {
     const queued = await resend(endpointId, attemptId);
@@ -186,6 +218,7 @@ export function WebhookDeliveriesCard({
                   <DeliveryRow
                     key={d.id}
                     delivery={d}
+                    serviceIndex={serviceIndex}
                     ownerId={currentWorkspaceId}
                     canResend={canResend}
                     resending={resendingAttemptId === d.id}
@@ -225,14 +258,92 @@ function statusVariant(
   }
 }
 
+/**
+ * A delivery's subject: the name this very attempt recorded, linked to the
+ * service when it still exists.
+ *
+ * The name comes from the server (parsed out of the delivered payload), never
+ * from a live lookup — that is what keeps a renamed service's older attempts
+ * honest about what the receiver was actually told, and what leaves a deleted
+ * service with a name at all. The live service list is consulted only to
+ * decide whether the row can still be linked, and only a `srv-` subject can
+ * be: a datastore subject (`dpg-…`, …) is never in that list, so it renders
+ * plainly rather than being mislabeled deleted.
+ */
+function DeliveryServiceCell({
+  delivery,
+  serviceIndex,
+}: {
+  delivery: WebhookDeliveryView;
+  serviceIndex: ServiceIndex;
+}) {
+  const { t } = useTranslations();
+  const service = delivery.serviceId
+    ? serviceIndex.byID.get(delivery.serviceId)
+    : undefined;
+  const name = delivery.serviceName || service?.name || "";
+  const deleted =
+    serviceIndex.ready &&
+    service === undefined &&
+    delivery.serviceId.startsWith("srv-");
+
+  if (!name && !delivery.serviceId) return <>—</>;
+
+  const id = delivery.serviceId ? (
+    <span className="text-muted-foreground block truncate font-mono text-xs">
+      {delivery.serviceId}
+    </span>
+  ) : null;
+
+  if (!name) {
+    // No recorded name (an attempt from before the payload carried one): the
+    // id is the only label there is, so it is the primary text.
+    return (
+      <span className="block truncate font-mono text-sm">
+        {delivery.serviceId}
+      </span>
+    );
+  }
+
+  return (
+    <span className="block" title={delivery.serviceId || undefined}>
+      {service ? (
+        <Link
+          to={
+            serviceBaseForType(service.type) === "/static"
+              ? "/static/$serviceId"
+              : "/services/$serviceId"
+          }
+          params={{ serviceId: delivery.serviceId }}
+          className="block truncate underline-offset-2 hover:underline"
+        >
+          {name}
+        </Link>
+      ) : (
+        <span className="block truncate">
+          {name}
+          {deleted ? (
+            <span className="text-muted-foreground ml-1 text-xs">
+              {t("webhooks.serviceDeleted")}
+            </span>
+          ) : null}
+        </span>
+      )}
+      {id}
+    </span>
+  );
+}
+
 function DeliveryRow({
   delivery,
+  serviceIndex,
   ownerId,
   canResend,
   resending,
   onResend,
 }: {
   delivery: WebhookDeliveryView;
+  serviceIndex: ServiceIndex;
   ownerId: string | null;
   canResend: boolean;
   resending: boolean;
@@ -285,8 +396,11 @@ function DeliveryRow({
             eventLabel
           )}
         </TableCell>
-        <TableCell className="max-w-[10rem] truncate font-mono text-sm">
-          {delivery.serviceId || "—"}
+        <TableCell className="max-w-[10rem] text-sm">
+          <DeliveryServiceCell
+            delivery={delivery}
+            serviceIndex={serviceIndex}
+          />
         </TableCell>
         <TableCell>
           <Badge variant={statusVariant(delivery.status)}>

@@ -5,6 +5,7 @@ import { config } from "@/config/config";
 import { formatDateTime } from "@/common/lib/format";
 import { WebhookDeliveriesCard } from "@/features/webhooks/components/webhook-deliveries-card";
 import type { WebhookDeliveryView } from "@/features/webhooks/types";
+import type { ServiceView } from "@/features/services/types";
 import { hydrateAcrossBoundary } from "@/test/hydration";
 
 const deliveries: WebhookDeliveryView[] = [
@@ -13,6 +14,7 @@ const deliveries: WebhookDeliveryView[] = [
     eventId: "evt-success",
     eventType: "deploy_started",
     serviceId: "srv-api",
+    serviceName: "api",
     status: "delivered",
     attemptNumber: 1,
     statusCode: 204,
@@ -29,6 +31,9 @@ const deliveries: WebhookDeliveryView[] = [
     eventId: "evt-failed",
     eventType: "build_ended",
     serviceId: "srv-worker",
+    // Recorded at send time; this service has since been deleted, so it is
+    // absent from the live service list below.
+    serviceName: "worker",
     status: "failed",
     attemptNumber: 2,
     statusCode: 502,
@@ -42,6 +47,16 @@ const deliveries: WebhookDeliveryView[] = [
   },
 ];
 
+// The workspace's live services: srv-api still exists, srv-worker was deleted
+// after its delivery was sent.
+const liveService = {
+  id: "srv-api",
+  name: "api",
+  type: "web_service",
+} as unknown as ServiceView;
+let liveServices: ServiceView[] = [liveService];
+let servicesLoading = false;
+
 const loadMore = vi.fn();
 const refresh = vi.fn();
 const resend = vi.fn();
@@ -54,6 +69,38 @@ const { useWebhookDeliveries } = vi.hoisted(() => ({
 
 vi.mock("@/features/webhooks/hooks/use-webhook-deliveries", () => ({
   useWebhookDeliveries,
+}));
+// Keeps the rendered href assertable — the shared Link stub in other suites
+// drops `to`/`params`, which is exactly what this suite needs to check.
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    to,
+    params,
+    children,
+    ...rest
+  }: {
+    to: string;
+    params: Record<string, string>;
+    children: React.ReactNode;
+  }) => (
+    <a
+      href={Object.entries(params).reduce(
+        (path, [key, value]) => path.replace(`$${key}`, value),
+        to,
+      )}
+      {...rest}
+    >
+      {children}
+    </a>
+  ),
+}));
+vi.mock("@/features/services/hooks/use-services", () => ({
+  useServices: () => ({
+    services: liveServices,
+    loading: servicesLoading,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/webhooks/hooks/use-resend-webhook-delivery", () => ({
   useResendWebhookDelivery: () => ({
@@ -75,6 +122,8 @@ describe("WebhookDeliveriesCard", () => {
   beforeEach(() => {
     currentRole = "admin";
     currentWorkspaceId = "tea-1";
+    liveServices = [liveService];
+    servicesLoading = false;
     hasMore = false;
     loadMore.mockReset();
     refresh.mockReset();
@@ -117,6 +166,58 @@ describe("WebhookDeliveriesCard", () => {
     expect(screen.getByText("upstream unavailable")).toBeInTheDocument();
     expect(screen.getByText("endpoint answered 502")).toBeInTheDocument();
     expect(screen.getByText(/Next automatic attempt:/)).toBeInTheDocument();
+  });
+
+  // w2/m96/t004: the Service column used to be a bare truncated `srv-…`, which
+  // reads as an opaque token. The recorded name is the label; the id stays on
+  // screen (and selectable, so it is still copyable) as secondary text.
+  it("links a delivery's recorded service name and keeps the id visible", () => {
+    render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
+
+    expect(screen.getByRole("link", { name: "api" })).toHaveAttribute(
+      "href",
+      "/services/srv-api",
+    );
+    expect(screen.getByText("srv-api")).toBeInTheDocument();
+  });
+
+  it("keeps the recorded name of a since-deleted service, unlinked", () => {
+    render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
+
+    // srv-worker is absent from the live service list — deleted since this
+    // attempt was delivered. Its recorded name survives in the payload.
+    expect(screen.getByText("worker")).toBeInTheDocument();
+    expect(screen.getByText("(deleted)")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /worker/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("srv-worker")).toBeInTheDocument();
+  });
+
+  // Fail-open: "absent from a list we have not loaded" is not a deletion.
+  it("does not call a service deleted while the service list is still loading", () => {
+    servicesLoading = true;
+    liveServices = [];
+    render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
+
+    expect(screen.getByText("api")).toBeInTheDocument();
+    expect(screen.queryByText("(deleted)")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the id when an older attempt recorded no name", () => {
+    useWebhookDeliveries.mockReturnValue({
+      deliveries: [{ ...deliveries[0], serviceName: "" }],
+      loading: false,
+      loadingMore: false,
+      error: undefined,
+      hasMore: false,
+      loadMore,
+      refresh,
+    });
+    render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
+
+    expect(screen.getByText("srv-api")).toBeInTheDocument();
+    expect(screen.queryByText("(deleted)")).not.toBeInTheDocument();
   });
 
   it("encodes the selected workspace in source-event links", () => {

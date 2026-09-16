@@ -105,13 +105,18 @@ export function useLogHistory(
   // Drop prepended pages whenever the first-page query's inputs change.
   useEffect(() => {
     pageGen.current += 1;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting paging state when the query inputs change; the bumped generation is what discards an in-flight older page
     setOlder([]);
     setLoadingOlder(false);
   }, [variables]);
 
+  // Seed the paging cursor from the first page. It cannot be derived with
+  // useMemo: loadOlder advances the same cursor and hasMore as it walks
+  // backwards, so this is a seed for mutable state, not a mirror of the query.
   useEffect(() => {
     const env = data?.logs;
     if (!env) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above: seeding state that loadOlder then owns
     setHasMore(env.hasMore);
     setCursor({
       startTime: env.nextStartTime,

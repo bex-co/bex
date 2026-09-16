@@ -3288,6 +3288,7 @@ export type ResourceEstimate = {
   __typename: 'ResourceEstimate';
   charges: Maybe<Array<Maybe<ChargeLine>>>;
   costUsd: Maybe<Scalars['String']['output']>;
+  deleted: Maybe<Scalars['Boolean']['output']>;
   resourceKind: Maybe<Scalars['String']['output']>;
   serviceId: Maybe<Scalars['String']['output']>;
   serviceName: Maybe<Scalars['String']['output']>;
@@ -3509,6 +3510,7 @@ export type ServiceInstance = {
 
 export type ServiceUsage = {
   __typename: 'ServiceUsage';
+  deleted: Maybe<Scalars['Boolean']['output']>;
   resourceKind: Maybe<Scalars['String']['output']>;
   rows: Maybe<Array<Maybe<UsageRow>>>;
   serviceId: Maybe<Scalars['String']['output']>;
@@ -3617,6 +3619,7 @@ export type WebhookDelivery = {
   responseBody: Maybe<Scalars['String']['output']>;
   sentAt: Maybe<Scalars['String']['output']>;
   serviceId: Maybe<Scalars['String']['output']>;
+  serviceName: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   statusCode: Maybe<Scalars['Int']['output']>;
   transportError: Maybe<Scalars['String']['output']>;

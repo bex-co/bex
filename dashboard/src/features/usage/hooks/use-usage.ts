@@ -37,8 +37,14 @@ export interface ChargeLine {
 /** One resource's estimated cost for the period, with its charge lines. */
 export interface ResourceEstimate {
   serviceId: string;
-  /** User-facing display name; empty when the resource no longer exists — fall back to serviceId. */
+  /**
+   * User-facing display name. Retained across the resource's deletion (w2/m96),
+   * so it is empty only when bex never recorded a name for the id — fall back
+   * to serviceId then.
+   */
   serviceName: string;
+  /** The named resource no longer exists; the charge is for something deleted. */
+  deleted: boolean;
   resourceKind: string;
   costUsd: string;
   charges: ChargeLine[];
@@ -178,6 +184,7 @@ export function useUsage(period?: string): UseUsageResult {
                     .map((r) => ({
                       serviceId: r!.serviceId ?? "",
                       serviceName: r!.serviceName ?? "",
+                      deleted: r!.deleted ?? false,
                       resourceKind: r!.resourceKind ?? "service",
                       costUsd: r!.costUsd ?? "0.00",
                       charges: (r!.charges ?? []).filter(Boolean).map((c) => ({

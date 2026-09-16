@@ -52,10 +52,14 @@ var endpointGQLType = graphql.NewObject(graphql.ObjectConfig{
 var deliveryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WebhookDelivery",
 	Fields: graphql.Fields{
-		"id":             gqlutil.StrField(func(v DeliveryView) any { return v.ID }),
-		"eventId":        gqlutil.StrField(func(v DeliveryView) any { return v.EventID }),
-		"eventType":      gqlutil.StrField(func(v DeliveryView) any { return v.EventType }),
-		"serviceId":      gqlutil.StrField(func(v DeliveryView) any { return v.ServiceID }),
+		"id":        gqlutil.StrField(func(v DeliveryView) any { return v.ID }),
+		"eventId":   gqlutil.StrField(func(v DeliveryView) any { return v.EventID }),
+		"eventType": gqlutil.StrField(func(v DeliveryView) any { return v.EventType }),
+		"serviceId": gqlutil.StrField(func(v DeliveryView) any { return v.ServiceID }),
+		// The subject name this very attempt recorded in its payload — not a
+		// live read, so a renamed or since-deleted service still reports the
+		// name the receiver actually got (w2/m96/t004).
+		"serviceName":    gqlutil.StrField(func(v DeliveryView) any { return v.ServiceName }),
 		"status":         gqlutil.StrField(func(v DeliveryView) any { return v.Status }),
 		"attemptNumber":  gqlutil.IntField(func(v DeliveryView) any { return v.AttemptNumber }),
 		"statusCode":     gqlutil.IntField(func(v DeliveryView) any { return v.StatusCode }),

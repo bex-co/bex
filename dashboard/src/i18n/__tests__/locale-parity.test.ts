@@ -49,6 +49,13 @@ const LABEL_ONLY_COUNTS = new Set<string>([
   "services.envGroupsAvailableCount",
   "webhooks.showMore",
   "usage.resourceCapsFinishingDeletion",
+  // Compact duration abbreviations ("3d", "5h", "12m"): the unit letter has no
+  // singular form, so "1d" is already correct and a plural pair would be two
+  // identical strings. Added 2026-09-15 — f6604b5e1 landed them without an
+  // exemption and broke this suite on main.
+  "router.day",
+  "router.hour",
+  "router.minute",
 ]);
 
 describe("locale key parity", () => {
