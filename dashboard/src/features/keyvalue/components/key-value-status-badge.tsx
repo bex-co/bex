@@ -1,7 +1,7 @@
 import { Badge } from "@/common/components/ui/badge.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { deriveStatus } from "@/features/keyvalue/lib/status";
-import { STATUS_LABEL } from "@/features/keyvalue/lib/labels";
+import { statusLabel } from "@/features/keyvalue/lib/labels";
 
 /**
  * A Key Value store's status as a labeled badge: derive the status key
@@ -19,7 +19,5 @@ export function KeyValueStatusBadge({
 }) {
   const { t } = useTranslations();
   const derived = deriveStatus(keyValue);
-  return (
-    <Badge variant={derived.variant}>{t(STATUS_LABEL[derived.key])}</Badge>
-  );
+  return <Badge variant={derived.variant}>{t(statusLabel(keyValue))}</Badge>;
 }

@@ -18,19 +18,16 @@ import {
   useNotFoundRedirect,
 } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { MetadataList } from "@/common/components/metadata-list";
+import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
-import { RelativeAge } from "@/common/components/relative-time";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
 import { DatabaseDangerActions } from "@/features/databases/components/database-danger-actions";
 import { ConnectionInfoPanel } from "@/features/databases/components/connection-info-panel";
-import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
-import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
 import { DatabaseDetailNavigation } from "@/features/databases/components/database-detail-navigation";
 import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
 import { PostgresLogViewer } from "@/features/databases/components/postgres-log-viewer";
@@ -41,7 +38,6 @@ import {
   rangeToSearch,
   type RangeSearch,
 } from "@/features/metrics/lib/range";
-import type { DatabaseDetailView } from "@/features/databases/types";
 import { DatabaseDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
@@ -252,7 +248,7 @@ function DatabaseDetailPage() {
 
               <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
                 <section id="metadata" className="scroll-mt-6">
-                  <MetadataCard
+                  <DatabaseMetadataCard
                     database={database}
                     onVersionChanged={() => void refetch()}
                     onRenamed={() => void router.invalidate()}
@@ -342,82 +338,5 @@ function DatabaseDetailPage() {
         </div>
       </div>
     </DashboardLayout>
-  );
-}
-
-function MetadataCard({
-  database,
-  onVersionChanged,
-  onRenamed,
-}: {
-  database: DatabaseDetailView;
-  onVersionChanged: () => void;
-  onRenamed: () => void;
-}) {
-  const { t } = useTranslations();
-  return (
-    <MetadataList
-      title={t("databases.metaTitle")}
-      lead={<DatabaseNameRow database={database} onRenamed={onRenamed} />}
-      rows={[
-        { label: t("databases.metaStatus"), value: database.status || "—" },
-        { label: t("databases.metaPlan"), value: database.plan ?? "—" },
-        {
-          label: t("databases.metaVersion"),
-          value: (
-            <DatabaseVersionControl
-              database={database}
-              onChanged={onVersionChanged}
-            />
-          ),
-        },
-        {
-          label: t("databases.metaDatabaseName"),
-          value: database.databaseName ?? "—",
-        },
-        {
-          label: t("databases.metaDatabaseUser"),
-          value: database.databaseUser ?? "—",
-        },
-        {
-          label: t("databases.metaStorage"),
-          value: database.diskSizeGB ? `${database.diskSizeGB} GB` : "—",
-        },
-        {
-          label: t("databases.metaHighAvailability"),
-          value: database.highAvailabilityEnabled
-            ? t("databases.yes")
-            : t("databases.no"),
-        },
-        {
-          label: t("databases.metaPublic"),
-          value: database.public ? t("databases.yes") : t("databases.no"),
-        },
-        // Render shows external connection details only when public access is
-        // on; the backend sends "" (not null) for a private database (w6/052),
-        // so gate on truthiness and omit the row entirely — the region-row
-        // pattern below.
-        ...(database.externalHost
-          ? [
-              {
-                label: t("databases.metaExternalHost"),
-                value: database.externalHost,
-              },
-            ]
-          : []),
-        ...(database.region
-          ? [
-              {
-                label: t("databases.metaRegion"),
-                value: database.region,
-              },
-            ]
-          : []),
-        {
-          label: t("databases.metaCreated"),
-          value: <RelativeAge value={database.createdAt} />,
-        },
-      ]}
-    />
   );
 }

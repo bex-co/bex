@@ -328,7 +328,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.assignmentHint": {
     message:
-      "A resource joins a Project only through an Environment. Selecting a Project alone narrows the list below — select an Environment to actually add this resource to it. If the Project has none yet, create one from the Project's page first.",
+      "Selecting a Project alone narrows the Environment list below. Choose an Environment to place this resource in it, or leave it on No environment — the resource then sits in the Project under Unassigned. If the Project has no Environment yet, create one from the Project's page first.",
     description: "Shared create-form Environment-assignment hint",
   },
 };

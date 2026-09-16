@@ -37,6 +37,20 @@ const NAMESPACES = Object.values(byDir).sort((a, b) =>
 const ALLOW_ONLY_EN = new Set<string>([]);
 const ALLOW_ONLY_ZH = new Set<string>([]);
 
+// Keys that interpolate {count} but need no plural form: the count is a label
+// or a badge, with no noun agreeing with it ("Selected: {count}"). Everything
+// else that carries {count} must use _one/_other (w6/062's rule, re-enforced by
+// w1/m159 after "1 resources to sync" shipped).
+const LABEL_ONLY_COUNTS = new Set<string>([
+  "git.credentialsTrigger",
+  "projects.selectedCount",
+  "services.eventsFilterSelected",
+  "services.envGroupsLinkedCount",
+  "services.envGroupsAvailableCount",
+  "webhooks.showMore",
+  "usage.resourceCapsFinishingDeletion",
+]);
+
 describe("locale key parity", () => {
   it("discovers every locale pair (glob is not silently empty)", () => {
     // A broken glob would generate zero it.each cases and vacuously "pass"; this
@@ -87,6 +101,25 @@ describe("locale key parity", () => {
       .filter((k) => k.endsWith("_one"))
       .sort();
     expect(zhOnes, "zh must carry only the _other plural form").toEqual([]);
+  });
+
+  it.each(NAMESPACES)("$name: count messages are pluralized", ({ en }) => {
+    // A message that interpolates {count} must select a plural form, or it
+    // reads "1 resources to sync" at one — which is exactly how w1/098 was
+    // found live. The _one/_other entries are the forms themselves, and
+    // LABEL_ONLY_COUNTS carries the deliberate exemptions.
+    const offenders = Object.entries(en ?? {})
+      .filter(([key]) => !key.endsWith("_one") && !key.endsWith("_other"))
+      .filter(
+        ([key, entry]) =>
+          entry.message.includes("{count}") && !LABEL_ONLY_COUNTS.has(key),
+      )
+      .map(([key]) => key)
+      .sort();
+    expect(
+      offenders,
+      "keys interpolating {count} without _one/_other forms",
+    ).toEqual([]);
   });
 
   it.each(NAMESPACES)("$name: keys share one consistent prefix", ({ en }) => {

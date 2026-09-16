@@ -624,7 +624,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Terminal session — transcript unavailable rather than live stream degraded",
   },
-  "agentSessions.showEarlierMessages": {
+  "agentSessions.showEarlierMessages_other": {
     message: "显示更早的 {count} 条消息",
     description:
       "Button revealing older transcript messages hidden by the render window",

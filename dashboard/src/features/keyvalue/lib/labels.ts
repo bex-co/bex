@@ -1,4 +1,5 @@
 import type { en } from "@/i18n";
+import { deriveStatus } from "@/features/keyvalue/lib/status";
 import type { KeyValueStatusKey } from "@/features/keyvalue/types";
 
 /**
@@ -13,6 +14,18 @@ export const STATUS_LABEL: Record<KeyValueStatusKey, keyof typeof en> = {
   suspended: "keyvalue.statusSuspended",
   unknown: "keyvalue.statusUnknown",
 };
+
+/**
+ * The i18n label for a store's displayed status — one composition shared by the
+ * badge and the detail page's Details row, so a suspended store can never read
+ * "Suspended" in one and the raw "available" in the other (w1/m159).
+ */
+export function statusLabel(d: {
+  status: string;
+  suspended: boolean;
+}): keyof typeof en {
+  return STATUS_LABEL[deriveStatus(d).key];
+}
 
 // Maxmemory (eviction) policies bex offers, matching the KeyValue CRD's enum
 // (lego/types/v1alpha1/keyvalue_types.go) and Render's Key Value form
