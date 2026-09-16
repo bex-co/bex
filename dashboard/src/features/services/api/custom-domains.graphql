@@ -5,6 +5,8 @@
 # is "active"/"pending" (cert issued and not suspended). `domainType` is
 # "apex"/"subdomain"; `dnsRecord` is the record the tenant must create to point the
 # domain at the service (CNAME/ALIAS -> the app's platform host, w5/m10).
+# `certificateReason` is cert-manager's own explanation of a stalled TLS
+# issuance (w3/m85) — null once the certificate is issued.
 # Mutations are Render-dashboard-shaped: addCustomDomain returns the new domain;
 # deleteCustomDomain returns a success boolean; verifyCustomDomain re-checks the
 # domain's DNS/cert state now and returns its fresh status.
@@ -17,6 +19,7 @@ fragment CustomDomainFields on CustomDomain {
   verificationStatus
   serverStatus
   redirectForName
+  certificateReason
   dnsRecord {
     type
     name

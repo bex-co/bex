@@ -1355,6 +1355,17 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Custom-domains status badge: certificate issued and serving traffic",
   },
+  "services.domainCertBlockedLabel": {
+    message: "Certificate blocked:",
+    description:
+      "Label before cert-manager's verbatim reason a custom domain's TLS certificate has not been issued",
+  },
+  "services.domainCertBlockedHint": {
+    message:
+      "The DNS record must be DNS-only (not proxied) and point at your service's bex hostname, or the certificate check cannot reach it.",
+    description:
+      "Fix-it guidance shown with a blocked-certificate reason: proxied records (e.g. Cloudflare's orange cloud) break the ACME HTTP-01 challenge",
+  },
   "services.domainPending": {
     message: "Pending",
     description:

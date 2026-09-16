@@ -73,6 +73,18 @@ rules:
     resources: ["objectstores"]
     resourceNames: ["bex-tenant-postgres"]
     verbs: ["get"]
+  # Read-only ACME state for the custom-domain certificateReason hint (w3/m85):
+  # a stalled custom domain's ONLY tenant-visible explanation lives on the
+  # Challenge (`wrong status code '404'` for a Cloudflare-proxied apex), with the
+  # failed Order and the Certificate's Ready condition as fallbacks. cert-manager
+  # owns all three lifecycles; bex-api only reads status. Absent or denied, the
+  # domain read degrades to an empty reason rather than failing.
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates"]
+    verbs: ["list"]
+  - apiGroups: ["acme.cert-manager.io"]
+    resources: ["challenges", "orders"]
+    verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
