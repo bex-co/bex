@@ -135,6 +135,10 @@ type DeployView struct {
 	// build error) or a health-gate-timeout line. Empty unless Status is a
 	// failure. A bex extra beyond Render's deploy shape, like RollbackOf.
 	FailureReason string
+	// CancelReason is the neutral cause of a non-user cancel (w4/089) — today
+	// "Superseded by dep-…" when a newer release replaced this row. Empty for
+	// deploys.Cancel and every non-canceled status.
+	CancelReason string
 }
 
 func view(d store.Deploy) DeployView {
@@ -154,6 +158,7 @@ func view(d store.Deploy) DeployView {
 		FinishedAt:      d.FinishedAt,
 		PreDeployStatus: d.PreDeployStatus,
 		FailureReason:   d.FailureReason,
+		CancelReason:    d.CancelReason,
 	}
 }
 

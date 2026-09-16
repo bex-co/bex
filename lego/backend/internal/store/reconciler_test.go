@@ -1150,6 +1150,9 @@ func TestRecordDeployCancelsSupersededRow(t *testing.T) {
 	if deploys[0].FailureReason != "" {
 		t.Errorf("failure_reason = %q, want empty — canceled is not a failure", deploys[0].FailureReason)
 	}
+	if deploys[0].CancelReason == "" {
+		t.Error("cancel_reason empty on a supersede cancel, want a neutral superseded cause")
+	}
 }
 
 // TestRecordDeploySupersededMidBuildEmitsBuildEndedCanceled is w6/m128's other
@@ -1207,6 +1210,13 @@ func TestRecordDeploySupersededMidBuildEmitsBuildEndedCanceled(t *testing.T) {
 	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployCanceled {
 		t.Fatalf("deploys after supersede = %+v (err %v), want one canceled", deploys, err)
 	}
+	if deploys[0].FailureReason != "" {
+		t.Errorf("failure_reason = %q, want empty on supersede cancel", deploys[0].FailureReason)
+	}
+	if deploys[0].CancelReason != "Superseded by a newer release" {
+		// No deploy row yet at generation 3 — fallback line, not a blank.
+		t.Errorf("cancel_reason = %q, want the supersede fallback", deploys[0].CancelReason)
+	}
 
 	st.mu.Lock()
 	defer st.mu.Unlock()
@@ -1217,6 +1227,62 @@ func TestRecordDeploySupersededMidBuildEmitsBuildEndedCanceled(t *testing.T) {
 	ended, ok := st.eventFacts["deploy:"+deployID+":build_ended"]
 	if !ok || ended.Type != EventFactBuildEnded || ended.Status != EventStatusCanceled {
 		t.Fatalf("build_ended = %+v, ok=%v, want present with status canceled", ended, ok)
+	}
+	if ended.ReasonCode != EventReasonSuperseded {
+		t.Errorf("build_ended reason_code = %q, want %q", ended.ReasonCode, EventReasonSuperseded)
+	}
+}
+
+// TestRecordDeploySupersedeNamesSuccessor pins w4/089's preferred cancel_reason
+// shape: when the superseding deploy row already exists at the CR's release
+// generation, the canceled row names that deploy id.
+func TestRecordDeploySupersedeNamesSuccessor(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	first, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
+	if err != nil || len(first) != 1 {
+		t.Fatalf("first deploys = %+v (err %v)", first, err)
+	}
+
+	// Open a second deploy at generation 3 (the eventual superseding release).
+	second, err := store.CreateDeploy(ctx, row.ID, TriggerAPI, "img:2", 3, CommitInfo{}, "")
+	if err != nil {
+		t.Fatalf("create successor deploy: %v", err)
+	}
+
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseBuilding
+	app.Status.ReleaseGeneration = 3
+	app.Status.Conditions = []metav1.Condition{{
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: "Building",
+		ObservedGeneration: 3,
+	}}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile supersede: %v", err)
+	}
+
+	got, err := store.GetDeploy(ctx, row.ID, first[0].ID)
+	if err != nil {
+		t.Fatalf("get first: %v", err)
+	}
+	if got.Status != DeployCanceled {
+		t.Fatalf("first status = %q, want canceled", got.Status)
+	}
+	want := "Superseded by " + second.ID
+	if got.CancelReason != want {
+		t.Errorf("cancel_reason = %q, want %q", got.CancelReason, want)
+	}
+	if got.FailureReason != "" {
+		t.Errorf("failure_reason = %q, want empty", got.FailureReason)
 	}
 }
 
@@ -1315,7 +1381,7 @@ func TestRecordDeploySupersededRollbackEmitsNoBuildFacts(t *testing.T) {
 	if len(deploys) != 1 {
 		t.Fatalf("deploys after create = %+v, want one", deploys)
 	}
-	if _, err := st.TransitionDeploy(ctx, deploys[0].ID, DeployCanceled, "", "", "", nil); err != nil {
+	if _, err := st.TransitionDeploy(ctx, deploys[0].ID, DeployCanceled, "", "", "", "", nil); err != nil {
 		t.Fatalf("clear the create row: %v", err)
 	}
 

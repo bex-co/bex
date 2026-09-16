@@ -56,6 +56,10 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// (crash loop with the $PORT hint, image-pull failure, build error) or a
 		// health-gate-timeout line. Empty unless the deploy failed.
 		"failureReason": gqlutil.StrField(func(d DeployView) any { return d.FailureReason }),
+		// Neutral cause of a non-user cancel (w4/089): "Superseded by dep-…".
+		// Empty for user cancels. Distinct from failureReason so the dashboard
+		// can render it without text-destructive treatment.
+		"cancelReason": gqlutil.StrField(func(d DeployView) any { return d.CancelReason }),
 	},
 })
 

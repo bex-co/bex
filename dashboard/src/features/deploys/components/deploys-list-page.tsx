@@ -197,9 +197,16 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                         {d.id}
                       </span>
                     </div>
-                    {/* Absent on non-failed rows, so their height is unchanged. */}
+                    {/* Absent on non-failed / non-superseded rows, so their
+                        height is unchanged. */}
                     <DeployFailureReason
                       reason={d.failureReason}
+                      truncate
+                      className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
+                    />
+                    <DeployFailureReason
+                      reason={d.cancelReason}
+                      tone="neutral"
                       truncate
                       className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
                     />

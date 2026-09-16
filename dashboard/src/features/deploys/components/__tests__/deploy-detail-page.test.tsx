@@ -32,6 +32,7 @@ const deployState: {
     finishedAt: "2026-07-14T00:01:00Z",
     preDeployStatus: "",
     failureReason: "",
+    cancelReason: "",
   },
   loading: false,
   error: undefined as Error | undefined,
