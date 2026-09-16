@@ -76,6 +76,10 @@ const zhSSHKeys: Record<string, TranslationEntry> = {
     description: "Duplicate SSH key toast",
   },
   "sshKeys.delete": { message: "删除", description: "Delete SSH key action" },
+  "sshKeys.deleteNamed": {
+    message: "删除 SSH 密钥 {name}",
+    description: "Row delete button aria-label identifying the SSH key",
+  },
   "sshKeys.deleteTitle": {
     message: "删除 {name}？",
     description: "Delete SSH key confirmation title",

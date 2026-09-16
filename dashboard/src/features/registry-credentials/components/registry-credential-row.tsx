@@ -46,7 +46,7 @@ export function RegistryCredentialRow({
       <TableCell className="text-right whitespace-nowrap">
         <EditRegistryCredentialDialog entry={entry} />
         <RevokeIconButton
-          label={t("registryCredentials.delete")}
+          label={t("registryCredentials.deleteNamed", { name: entry.name })}
           confirmTitle={t("registryCredentials.deleteConfirmTitle", {
             name: entry.name,
           })}

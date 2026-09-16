@@ -151,6 +151,10 @@ const enApiKeys: Record<string, TranslationEntry> = {
     message: "Revoke",
     description: "Row action / confirmation button to revoke a key",
   },
+  "apiKeys.revokeNamed": {
+    message: "Revoke API key {name}",
+    description: "Row revoke button aria-label identifying the API key",
+  },
   "apiKeys.revokeConfirmTitle": {
     message: "Revoke {name}?",
     description: "Revoke-confirmation dialog title",

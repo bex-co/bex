@@ -40,7 +40,12 @@ const en: Record<string, TranslationEntry> = {
   },
   "connectedAgents.revoke": {
     message: "Revoke",
-    description: "Connected Agents row revoke button label",
+    description: "Connected Agents row revoke confirmation button",
+  },
+  "connectedAgents.revokeNamed": {
+    message: "Revoke connected agent {name}",
+    description:
+      "Connected Agents row revoke button aria-label identifying the client",
   },
   "connectedAgents.revokeConfirmTitle": {
     message: 'Revoke access for "{name}"?',

@@ -108,6 +108,11 @@ const zhRegistryCredentials: Record<string, TranslationEntry> = {
     message: "删除",
     description: "Row action / confirmation button to delete a credential",
   },
+  "registryCredentials.deleteNamed": {
+    message: "删除镜像仓库凭据 {name}",
+    description:
+      "Row delete button aria-label identifying the registry credential",
+  },
   "registryCredentials.edit": {
     message: "编辑",
     description: "Row action to open the edit-credential dialog",

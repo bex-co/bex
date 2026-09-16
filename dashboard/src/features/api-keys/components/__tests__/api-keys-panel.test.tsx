@@ -102,7 +102,9 @@ describe("ApiKeysPanel", () => {
     const user = userEvent.setup();
     render(<ApiKeysPanel />);
 
-    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    await user.click(
+      screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(
       within(dialog).getAllByRole("button", { name: "Revoke" })[0],
@@ -127,7 +129,9 @@ describe("ApiKeysPanel", () => {
     const user = userEvent.setup();
     render(<ApiKeysPanel />);
 
-    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    await user.click(
+      screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(
       within(dialog).getAllByRole("button", { name: "Revoke" })[0],

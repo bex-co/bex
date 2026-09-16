@@ -197,7 +197,7 @@ export function SSHKeysPanel() {
                   </TableCell>
                   <TableCell className="text-right">
                     <RevokeIconButton
-                      label={t("sshKeys.delete")}
+                      label={t("sshKeys.deleteNamed", { name: key.name })}
                       confirmTitle={t("sshKeys.deleteTitle", {
                         name: key.name,
                       })}

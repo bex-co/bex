@@ -40,7 +40,12 @@ const zh: Record<string, TranslationEntry> = {
   },
   "connectedAgents.revoke": {
     message: "撤销",
-    description: "Connected Agents row revoke button label",
+    description: "Connected Agents row revoke confirmation button",
+  },
+  "connectedAgents.revokeNamed": {
+    message: "撤销已连接的代理 {name}",
+    description:
+      "Connected Agents row revoke button aria-label identifying the client",
   },
   "connectedAgents.revokeConfirmTitle": {
     message: "撤销「{name}」的访问权限？",

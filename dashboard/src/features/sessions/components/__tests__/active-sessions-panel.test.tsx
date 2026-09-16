@@ -145,12 +145,52 @@ describe("ActiveSessionsPanel", () => {
     const user = userEvent.setup();
     render(<ActiveSessionsPanel />);
 
-    await user.click(screen.getByRole("button", { name: "Sign out" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Sign out Safari on iOS, —, last active —",
+      }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(
       within(dialog).getAllByRole("button", { name: "Sign out" })[0],
     );
 
     expect(revoke).toHaveBeenCalledWith("session-other");
+  });
+
+  it("names the row sign-out control after device, location, and last active (w4/084)", () => {
+    sessionsState.sessions = [
+      {
+        id: "session-current",
+        current: true,
+        userAgent: "Chrome on macOS",
+        authenticatedAt: null,
+      },
+      {
+        id: "session-other",
+        current: false,
+        userAgent: "curl/8.7.1",
+        location: "US",
+        authenticatedAt: "2026-07-08T00:00:00Z",
+      },
+      {
+        id: "session-unknown",
+        current: false,
+        authenticatedAt: null,
+      },
+    ];
+    vi.setSystemTime(new Date("2026-07-08T00:18:00Z"));
+    render(<ActiveSessionsPanel />);
+
+    expect(
+      screen.getByRole("button", {
+        name: "Sign out curl/8.7.1, US, last active 18m",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Sign out Unknown device, —, last active —",
+      }),
+    ).toBeInTheDocument();
   });
 });

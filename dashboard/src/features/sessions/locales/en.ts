@@ -68,7 +68,12 @@ const en: Record<string, TranslationEntry> = {
   },
   "activeSessions.revoke": {
     message: "Sign out",
-    description: "Active Sessions row revoke button label",
+    description: "Active Sessions row revoke confirmation button",
+  },
+  "activeSessions.revokeNamed": {
+    message: "Sign out {device}, {location}, last active {lastActive}",
+    description:
+      "Active Sessions row revoke button aria-label identifying the session",
   },
   "activeSessions.revokeConfirmTitle": {
     message: "Sign out this session?",
