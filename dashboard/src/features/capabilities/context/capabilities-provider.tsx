@@ -300,11 +300,7 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
 
   const flags = booleansFrom(
     eligibility.current.generation === generation
-      ? eligibility.current.state.status === "ready" &&
-        snapshotIsFresh(eligibility.current.state.snapshot, clock) &&
-        eligibility.current.state.snapshot.workspaceId === workspaceId
-        ? eligibility.current.state
-        : checkingCapabilities
+      ? eligibility.current.state
       : checkingCapabilities,
     workspaceId,
     clock,

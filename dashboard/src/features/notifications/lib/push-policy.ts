@@ -2,6 +2,7 @@ import {
   PushNotificationEvent,
   PushNotificationUrgency,
   PushNotificationWeekday,
+  type PushNotificationServiceOverrideInput,
   type PushNotificationSettingsInput,
 } from "@/graphql/definitions";
 
@@ -44,6 +45,14 @@ export const pushWeekdays = [
 
 const clockPattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const servicePattern = /^srv-[0-9a-v]{20}$/;
+const knownEvents = new Set<string>(pushEvents);
+
+function hasValidEvents(events: PushNotificationEvent[]): boolean {
+  return (
+    events.length <= pushEvents.length &&
+    events.every((event) => knownEvents.has(event))
+  );
+}
 
 export function validatePushSettings(
   settings: PushNotificationSettingsInput,
@@ -67,11 +76,7 @@ export function validatePushSettings(
   ) {
     return "notifications.pushInvalidDeferral";
   }
-  const knownEvents = new Set<string>(pushEvents);
-  if (
-    settings.events.length > pushEvents.length ||
-    settings.events.some((event) => !knownEvents.has(event))
-  ) {
+  if (!hasValidEvents(settings.events)) {
     return "notifications.pushInvalidEvents";
   }
   if (!pushUrgencies.includes(settings.minimumUrgency)) {
@@ -95,8 +100,14 @@ export function validatePushSettings(
   ) {
     return "notifications.pushTooManyRules";
   }
+  return validateServiceOverrides(settings.serviceOverrides);
+}
+
+function validateServiceOverrides(
+  overrides: PushNotificationServiceOverrideInput[],
+): string | null {
   const serviceIds = new Set<string>();
-  for (const override of settings.serviceOverrides) {
+  for (const override of overrides) {
     if (
       !servicePattern.test(override.serviceId) ||
       serviceIds.has(override.serviceId)
@@ -111,11 +122,7 @@ export function validatePushSettings(
     ) {
       return "notifications.pushEmptyOverride";
     }
-    if (
-      override.events &&
-      (override.events.length > pushEvents.length ||
-        override.events.some((event) => !knownEvents.has(event)))
-    ) {
+    if (override.events && !hasValidEvents(override.events)) {
       return "notifications.pushInvalidEvents";
     }
     if (

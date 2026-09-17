@@ -4,7 +4,6 @@ import {
   MAX_ENVIRONMENT_MAP_BYTES,
   createEnvironmentDraft,
   environmentDraftPatch,
-  isEnvironmentDraftDirty,
   isDraftValid,
   validateEnvironmentDraft,
   type EnvironmentDraft,
@@ -68,7 +67,90 @@ describe("environment draft", () => {
       ],
       secretFiles: [{ name: "drop.pem", delete: true }],
     });
-    expect(isEnvironmentDraftDirty(draft)).toBe(true);
+  });
+
+  it.each([
+    {
+      description: "renames a revealed value without rewriting it",
+      changes: { key: " AFTER ", value: "revealed" },
+      expected: [{ key: "AFTER", fromKey: "BEFORE" }],
+    },
+    {
+      description: "deletes the old key before renaming with a replacement",
+      changes: { key: "AFTER", value: "replacement", valueChanged: true },
+      expected: [
+        { key: "BEFORE", delete: true },
+        { key: "AFTER", value: "replacement" },
+      ],
+    },
+    {
+      description: "keeps an explicit empty replacement on rename",
+      changes: { key: "AFTER", valueChanged: true },
+      expected: [
+        { key: "BEFORE", delete: true },
+        { key: "AFTER", value: "" },
+      ],
+    },
+    {
+      description: "regenerates under the same key without sending its value",
+      changes: { value: "revealed", generateValue: true },
+      expected: [{ key: "BEFORE", generateValue: true }],
+    },
+    {
+      description: "deletes the old key before renaming with generation",
+      changes: { key: "AFTER", value: "replacement", generateValue: true },
+      expected: [
+        { key: "BEFORE", delete: true },
+        { key: "AFTER", generateValue: true },
+      ],
+    },
+    {
+      description: "deletes the original key despite later draft edits",
+      changes: { key: "AFTER", generateValue: true, deleted: true },
+      expected: [{ key: "BEFORE", delete: true }],
+    },
+    {
+      description: "omits a new row deleted before saving",
+      changes: { originalKey: null, deleted: true },
+      expected: [],
+    },
+    {
+      description: "creates a generated row without sending its value",
+      changes: { originalKey: null, value: "ignored", generateValue: true },
+      expected: [{ key: "BEFORE", generateValue: true }],
+    },
+    {
+      description: "treats an empty original key as a new row",
+      changes: { originalKey: "", value: "new" },
+      expected: [{ key: "BEFORE", value: "new" }],
+    },
+  ])("$description", ({ changes, expected }) => {
+    const draft = createEnvironmentDraft(["BEFORE"], []);
+    Object.assign(draft.envVars[0], changes);
+    expect(environmentDraftPatch(draft)).toEqual({
+      envVars: expected,
+      secretFiles: [],
+    });
+  });
+
+  it("preserves secret-file rename, replacement, and draft-deletion order", () => {
+    const draft = createEnvironmentDraft([], ["opaque.pem", "replace.pem"]);
+    draft.secretFiles[0].name = " moved.pem ";
+    draft.secretFiles[0].content = "revealed";
+    draft.secretFiles[1].name = "renamed.pem";
+    draft.secretFiles[1].contentChanged = true;
+    addFile(draft, "removed.pem", "temporary");
+    draft.secretFiles[2].deleted = true;
+    addFile(draft, "added.pem", "new");
+    expect(environmentDraftPatch(draft)).toEqual({
+      envVars: [],
+      secretFiles: [
+        { name: "moved.pem", fromName: "opaque.pem" },
+        { name: "replace.pem", delete: true },
+        { name: "renamed.pem", content: "" },
+        { name: "added.pem", content: "new" },
+      ],
+    });
   });
 
   it("blocks invalid and duplicate names", () => {

@@ -80,6 +80,115 @@ beforeEach(() => {
 });
 
 describe("EnvironmentsPanel", () => {
+  it.each([
+    {
+      label: "keeps an explicit empty environment",
+      requestedId: "env-2",
+      memberKind: null,
+      expectedId: "env-2",
+    },
+    {
+      label: "uses Unassigned for a missing selection and empty environments",
+      requestedId: "env-deleted",
+      memberKind: null,
+      expectedId: "unassigned",
+    },
+    {
+      label: "uses the first environment when a service is assigned elsewhere",
+      requestedId: null,
+      memberKind: "serviceIds",
+      expectedId: "env-1",
+    },
+    {
+      label: "uses the first environment when a database is assigned elsewhere",
+      requestedId: null,
+      memberKind: "databaseIds",
+      expectedId: "env-1",
+    },
+    {
+      label:
+        "uses the first environment when a key value is assigned elsewhere",
+      requestedId: null,
+      memberKind: "keyValueIds",
+      expectedId: "env-1",
+    },
+    {
+      label: "does not count environment groups as running resources",
+      requestedId: null,
+      memberKind: "envGroupIds",
+      expectedId: "unassigned",
+    },
+    {
+      label: "honors explicit Unassigned with populated environments",
+      requestedId: "unassigned",
+      memberKind: "serviceIds",
+      expectedId: "unassigned",
+    },
+  ] as const)("$label", ({ requestedId, memberKind, expectedId }) => {
+    const empty: EnvironmentView = {
+      id: "env-1",
+      projectId: "prj-1",
+      name: "staging",
+      ownerId: "tea-1",
+      createdAt: null,
+      serviceIds: [],
+      databaseIds: [],
+      keyValueIds: [],
+      envGroupIds: [],
+      protectedStatus: "unprotected",
+      networkIsolationEnabled: false,
+      ipAllowListEntries: [],
+    };
+    environmentsState.environments = [
+      empty,
+      {
+        ...empty,
+        id: "env-2",
+        name: "production",
+        ...(memberKind ? { [memberKind]: ["assigned-resource"] } : {}),
+      },
+    ];
+    const onResourceFilterChange = vi.fn();
+    renderPanel({
+      projectRows: [
+        {
+          kind: "service",
+          id: "srv-unassigned",
+          name: "Unassigned API",
+          createdAt: null,
+          updatedAt: null,
+          runtime: null,
+          region: null,
+        },
+      ],
+      resourceFilter: {
+        environmentId: requestedId,
+        query: "api",
+        kind: "services",
+      },
+      onResourceFilterChange,
+    });
+
+    if (expectedId === "unassigned") {
+      expect(
+        screen.getByRole("heading", { name: "Unassigned" }),
+      ).toBeInTheDocument();
+    } else {
+      expect(screen.getByTestId("env-card")).toHaveTextContent(
+        expectedId === "env-1" ? "staging" : "production",
+      );
+    }
+    if (requestedId === expectedId) {
+      expect(onResourceFilterChange).not.toHaveBeenCalled();
+    } else {
+      expect(onResourceFilterChange).toHaveBeenCalledWith({
+        environmentId: expectedId,
+        query: "api",
+        kind: "services",
+      });
+    }
+  });
+
   it("shows the empty state when the project has no environments", () => {
     renderPanel();
     expect(screen.getByText(/No environments yet/)).toBeInTheDocument();

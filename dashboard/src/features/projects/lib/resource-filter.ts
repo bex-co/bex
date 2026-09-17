@@ -9,6 +9,16 @@ export const PROJECT_RESOURCE_KINDS = [
 ] as const;
 export type ProjectResourceKind = (typeof PROJECT_RESOURCE_KINDS)[number];
 
+const FILTER_KIND_BY_RESOURCE: Record<
+  ResourceRow["kind"],
+  Exclude<ProjectResourceKind, "all">
+> = {
+  service: "services",
+  database: "databases",
+  keyvalue: "keyvalues",
+  envgroup: "envgroups",
+};
+
 export interface ProjectResourceFilterState {
   environmentId: string | null;
   query: string;
@@ -48,18 +58,18 @@ export function filterProjectResources(
   filter: Pick<ProjectResourceFilterState, "query" | "kind">,
 ): ResourceRow[] {
   const query = filter.query.trim().toLocaleLowerCase();
-  const matches = (name: string, id: string) =>
-    !query ||
-    name.toLocaleLowerCase().includes(query) ||
-    id.toLocaleLowerCase().includes(query);
-  const rowsForKind = rows.filter((row) => {
-    if (filter.kind === "services") return row.kind === "service";
-    if (filter.kind === "databases") return row.kind === "database";
-    if (filter.kind === "keyvalues") return row.kind === "keyvalue";
-    if (filter.kind === "envgroups") return row.kind === "envgroup";
-    return filter.kind === "all";
+  return rows.filter((row) => {
+    if (
+      filter.kind !== "all" &&
+      FILTER_KIND_BY_RESOURCE[row.kind] !== filter.kind
+    )
+      return false;
+    return (
+      !query ||
+      row.name.toLocaleLowerCase().includes(query) ||
+      row.id.toLocaleLowerCase().includes(query)
+    );
   });
-  return rowsForKind.filter((row) => matches(row.name, row.id));
 }
 
 export interface ProjectResourceCounts {
@@ -82,10 +92,7 @@ export function countProjectResources(
     envgroups: 0,
   };
   for (const row of rows) {
-    if (row.kind === "service") counts.services += 1;
-    if (row.kind === "database") counts.databases += 1;
-    if (row.kind === "keyvalue") counts.keyvalues += 1;
-    if (row.kind === "envgroup") counts.envgroups += 1;
+    counts[FILTER_KIND_BY_RESOURCE[row.kind]] += 1;
   }
   return counts;
 }
