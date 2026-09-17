@@ -357,11 +357,16 @@ require "cert-manager availability" \
 # (no --kubelet-insecure-tls). Pin to the control-plane node for the same
 # OrbStack+Calico apiserver-reachability reason as coredns/cert-manager above;
 # the platform-pool nodeSelector from the GitOps Application is a prod concern.
+# The address-types commas are BACKSLASH-ESCAPED: helm treats a comma in
+# --set as a list separator, so the bare form parsed as three keys and helm
+# refused with `key "Hostname" has no value`, aborting every bring-up here.
+# t003 is what surfaced it — before, the run carried on to its success
+# banner regardless of what failed.
 KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install metrics-server \
   metrics-server --repo https://kubernetes-sigs.github.io/metrics-server/ \
   --version 3.12.2 \
   -n kube-system \
-  --set 'args[0]=--kubelet-preferred-address-types=InternalIP,Hostname,ExternalIP' \
+  --set 'args[0]=--kubelet-preferred-address-types=InternalIP\,Hostname\,ExternalIP' \
   --set 'args[1]=--kubelet-certificate-authority=/etc/kubernetes/pki/kubelet-ca/ca.crt' \
   --set 'extraVolumes[0].name=kubelet-ca' \
   --set 'extraVolumes[0].configMap.name=kube-root-ca.crt' \
