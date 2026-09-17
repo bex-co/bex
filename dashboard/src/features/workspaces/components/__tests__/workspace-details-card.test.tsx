@@ -91,3 +91,63 @@ describe("WorkspaceDetailsCard", () => {
     expect(onChangePlanOpenChange).toHaveBeenCalledWith(true);
   });
 });
+
+// w5/059: the switcher swaps this card's workspace prop without remounting it,
+// so a draft seeded once at mount kept the PREVIOUS workspace's name in the
+// input while Plan/ID/Created updated around it. Save sits beside that input,
+// so pressing it would have renamed the newly selected workspace to the old
+// one's name.
+describe("WorkspaceDetailsCard — switching workspaces (w5/059)", () => {
+  const other: WorkspaceView = {
+    id: "tea-2",
+    name: "beta",
+    plan: "pro",
+    role: "admin",
+    createdAt: null,
+  };
+
+  it("re-seeds the name input when pointed at a different workspace", () => {
+    const { rerender } = render(
+      <WorkspaceDetailsCard
+        workspace={workspace}
+        changePlanOpen={false}
+        onChangePlanOpenChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByDisplayValue("acme")).toBeInTheDocument();
+
+    rerender(
+      <WorkspaceDetailsCard
+        workspace={other}
+        changePlanOpen={false}
+        onChangePlanOpenChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByDisplayValue("beta")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("acme")).not.toBeInTheDocument();
+  });
+
+  it("does not clobber an in-progress edit of the same workspace", async () => {
+    // The rename flow refetches on success, which re-renders this card with the
+    // same workspace — a name-keyed reset would wipe whatever is being typed.
+    const { rerender } = render(
+      <WorkspaceDetailsCard
+        workspace={workspace}
+        changePlanOpen={false}
+        onChangePlanOpenChange={vi.fn()}
+      />,
+    );
+    const input = screen.getByDisplayValue("acme");
+    await userEvent.clear(input);
+    await userEvent.type(input, "acme-renamed");
+
+    rerender(
+      <WorkspaceDetailsCard
+        workspace={workspace}
+        changePlanOpen={false}
+        onChangePlanOpenChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByDisplayValue("acme-renamed")).toBeInTheDocument();
+  });
+});

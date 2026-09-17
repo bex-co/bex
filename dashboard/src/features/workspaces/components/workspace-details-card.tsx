@@ -54,7 +54,20 @@ export function WorkspaceDetailsCard({
   const { rename, busy, error } = useRenameWorkspace();
   const { refetch } = useWorkspace();
 
+  // Re-seed the draft when the card is pointed at a DIFFERENT workspace
+  // (w5/059). The switcher swaps the prop without remounting this component, so
+  // a useState initializer alone kept the previous workspace's name in the
+  // input while Plan/ID/Created updated around it — and Save sits right next to
+  // it, so pressing it would have renamed the newly selected workspace to the
+  // previous one's name. Keyed on the id, not the name, so an in-flight edit of
+  // the SAME workspace is never clobbered (including by the refetch that
+  // follows a successful rename).
   const [name, setName] = useState(workspace.name);
+  const [seededFor, setSeededFor] = useState(workspace.id);
+  if (seededFor !== workspace.id) {
+    setSeededFor(workspace.id);
+    setName(workspace.name);
+  }
 
   const nameValid = WORKSPACE_NAME_RE.test(name);
   const showNameError = name.length > 0 && !nameValid;
