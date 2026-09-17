@@ -59,6 +59,13 @@ jobs:
         run: bash scripts/github-actions-validate.sh
       - name: GitHub Actions guard self-test
         run: bash scripts/github-actions-validate.test.sh
+      # The daily CI-red-streak job is the thing that would have caught
+      # `gitops (render)` shipping broken and staying red for five days. Its
+      # arithmetic has one edge case that decides whether it reports anything at
+      # all — a workflow with NO success in the window — so the detector is
+      # proven here on every push, not only when the daily job happens to run.
+      - name: CI red-streak detector self-test
+        run: bash scripts/ci-red-streak.test.sh
       # w7/m85. Six security rounds re-reported the same unpinned-image finding
       # because an inventory sweep is only true on the day it is done; this
       # re-derives the inventory every run and fails closed on anything it

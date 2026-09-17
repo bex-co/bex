@@ -1,0 +1,80 @@
+name: CI red streak
+
+# A workflow that fails on main every single time stops being a signal. The
+# `gitops (render)` check shipped broken in d82cc98cd and failed on every push
+# for five days before anyone noticed, because nothing depends on it:
+# deploy.yml's build job gates on the test suites, secret-scan and supersession,
+# not on gitops, so red costs nothing and is easy to stop reading.
+#
+# This deliberately does NOT gate anything. Making a static renderer a required
+# check binds production releases to it, so any flake there stops shipping —
+# a worse trade than the problem. Instead it runs daily, and a standing red
+# becomes an open issue with the commit that started it already named.
+
+on:
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: "Consecutive failures before reporting"
+        required: false
+        default: "3"
+  schedule:
+    - cron: "17 8 * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  streak:
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BEX_CI_STREAK_THRESHOLD: ${{ inputs.threshold || '3' }}
+      # Wide enough that a low-frequency workflow still has several runs in
+      # view, since a streak of 3 out of 3 is exactly the "shipped broken" case.
+      BEX_CI_RUN_LIMIT: "100"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Self-test the streak arithmetic
+        # The detector's own edge cases (never-passed, cancelled runs mid-streak)
+        # are exactly where a naive implementation reports nothing. Prove it
+        # before trusting what it says about the repo.
+        run: bash scripts/ci-red-streak.test.sh
+      - name: Check for persistently red workflows
+        id: check
+        run: |
+          if bash scripts/ci-red-streak.sh > streak.txt 2>&1; then
+            echo "red=false" >> "$GITHUB_OUTPUT"
+          else
+            rc=$?
+            if [ "$rc" -eq 2 ]; then
+              cat streak.txt
+              exit 2 # unusable: an operator problem, never a silent pass
+            fi
+            echo "red=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat streak.txt
+      - name: Open or update the tracking issue
+        if: steps.check.outputs.red == 'true'
+        run: |
+          gh label create ci-red-streak --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "A workflow has been failing on main for N runs in a row" --force
+          body="$(cat streak.txt)"
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-red-streak --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "A workflow is persistently red on main" \
+              --label ci-red-streak \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once every workflow recovers
+        if: steps.check.outputs.red == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-red-streak --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "No workflow is failing persistently on main any more."
+          fi
