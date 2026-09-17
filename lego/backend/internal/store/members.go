@@ -106,15 +106,45 @@ func hashInviteToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// MarkMachineMemberships reclassifies the tenant_members rows of known API-key
+// client ids as kind='machine' — the one-time reconcile for bindings written
+// before w5/m103 added the column (they defaulted to 'user', since Hydra is the
+// only registry that knows which subjects are clients and SQL cannot consult
+// it). bex-api runs this at startup against the live client list, the same
+// shape as the deploy-hook digest backfill.
+//
+// It is idempotent, and deliberately one-directional: it never demotes a row
+// back to 'user'. A client id that no longer exists in Hydra is not evidence
+// that a human appeared under the same subject — it is a revoked key whose
+// binding UnbindClient should have removed.
+//
+// Returns how many rows it changed, so a startup that fixes nothing is
+// distinguishable from one that quietly did work.
+func (s *PGStore) MarkMachineMemberships(ctx context.Context, clientIDs []string) (int64, error) {
+	if len(clientIDs) == 0 {
+		return 0, nil
+	}
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE tenant_members SET kind = 'machine'
+		 WHERE subject = ANY($1) AND kind <> 'machine'`, clientIDs)
+	if err != nil {
+		return 0, classify("tenant_member", err)
+	}
+	return tag.RowsAffected(), nil
+}
+
 // GetTenantMember reads one membership row (ErrNotFound when the subject is not
 // a member) — the read the role/remove verbs consult to learn the current role
 // (the last-admin guard) before mutating.
 func (s *PGStore) GetTenantMember(ctx context.Context, tenantID, subject string) (TenantMember, error) {
 	var m TenantMember
+	// Deliberately unfiltered by kind (w5/m103): this read answers "is this
+	// subject bound here, and as what", which a machine binding legitimately is.
+	// The member VERBS refuse a machine target; the read must still see it.
 	err := s.Pool.QueryRow(ctx,
-		`SELECT tenant_id, subject, role, created_at FROM tenant_members
+		`SELECT tenant_id, subject, role, created_at, kind FROM tenant_members
 		 WHERE tenant_id = $1 AND subject = $2`, tenantID, subject,
-	).Scan(&m.TenantID, &m.Subject, &m.Role, &m.CreatedAt)
+	).Scan(&m.TenantID, &m.Subject, &m.Role, &m.CreatedAt, &m.Kind)
 	if err != nil {
 		return TenantMember{}, classify("tenant_member", err)
 	}
@@ -127,7 +157,7 @@ func (s *PGStore) GetTenantMember(ctx context.Context, tenantID, subject string)
 func (s *PGStore) CountTenantAdmins(ctx context.Context, tenantID string) (int, error) {
 	var n int
 	err := s.Pool.QueryRow(ctx,
-		`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin'`,
+		`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin' AND kind = 'user'`,
 		tenantID).Scan(&n)
 	return n, err
 }
@@ -142,7 +172,8 @@ func (s *PGStore) CountTenantAdmins(ctx context.Context, tenantID string) (int, 
 func (s *PGStore) SubjectIsWorkspaceAdmin(ctx context.Context, tenantID, subject string) (bool, error) {
 	var exists bool
 	err := s.Pool.QueryRow(ctx,
-		`SELECT EXISTS (SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND subject = $2 AND role = 'admin')`,
+		`SELECT EXISTS (SELECT 1 FROM tenant_members
+		   WHERE tenant_id = $1 AND subject = $2 AND role = 'admin' AND kind = 'user')`,
 		tenantID, subject,
 	).Scan(&exists)
 	if err != nil {
@@ -187,7 +218,7 @@ func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role 
 		if currentRole == "admin" && role != "admin" {
 			var admins int
 			if err := tx.QueryRow(ctx,
-				`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin'`,
+				`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin' AND kind = 'user'`,
 				tenantID).Scan(&admins); err != nil {
 				return err
 			}
@@ -251,7 +282,7 @@ func (s *PGStore) RemoveMember(ctx context.Context, tenantID, subject string) er
 		if currentRole == "admin" {
 			var admins int
 			if err := tx.QueryRow(ctx,
-				`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin'`,
+				`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin' AND kind = 'user'`,
 				tenantID).Scan(&admins); err != nil {
 				return err
 			}
