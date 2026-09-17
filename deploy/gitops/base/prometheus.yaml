@@ -1025,8 +1025,11 @@ spec:
                   # "registry" in the production overlay after a trip, so
                   # without this the only evidence that the trial ended is
                   # builds quietly getting slower.
+                  # A reason's counter first appears at 1, so increase() misses
+                  # that first trip. The breaker stays tripped for the process's
+                  # lifetime; keep the alert active for the same duration.
                   - alert: BuildCacheTrialWithdrawn
-                    expr: increase(bex_build_cache_withdrawals_total[1h]) > 0
+                    expr: bex_build_cache_withdrawals_total > 0
                     labels:
                       severity: warning
                     annotations:

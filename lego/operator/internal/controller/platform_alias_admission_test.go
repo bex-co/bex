@@ -35,10 +35,22 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
 
 var _ = Describe("Platform alias admission", func() {
 	It("admits actual bounded constructors and denies routing escapes on create and update", func() {
+		// These production bindings also cover default, which sibling specs use.
+		// Policy deletion is asynchronous from admission's compiled cache, so
+		// deleting them during cleanup cannot isolate the next randomized spec.
+		// Give this spec its own API server and keep the production manifest intact.
+		admissionEnv := &envtest.Environment{BinaryAssetsDirectory: getFirstFoundEnvTestBinaryDir()}
+		DeferCleanup(admissionEnv.Stop)
+		admissionConfig, err := admissionEnv.Start()
+		Expect(err).NotTo(HaveOccurred())
+		admin, err := client.New(admissionConfig, client.Options{Scheme: k8sClient.Scheme()})
+		Expect(err).NotTo(HaveOccurred())
+
 		data, err := os.ReadFile("../../../../deploy/gitops/base/operator-alias-admission.yaml")
 		Expect(err).NotTo(HaveOccurred())
 		decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
@@ -49,8 +61,8 @@ var _ = Describe("Platform alias admission", func() {
 				break
 			}
 			Expect(err).NotTo(HaveOccurred())
-			Expect(k8sClient.Create(ctx, object)).To(Succeed())
-			DeferCleanup(func() { Expect(k8sClient.Delete(ctx, object)).To(Succeed()) })
+			Expect(admin.Create(ctx, object)).To(Succeed())
+			DeferCleanup(func() { Expect(admin.Delete(ctx, object)).To(Succeed()) })
 		}
 
 		operatorName := "system:serviceaccount:bex-system:bex-controller-manager"
@@ -59,12 +71,12 @@ var _ = Describe("Platform alias admission", func() {
 		binding := &rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{GenerateName: "alias-test-"},
 			RoleRef:  rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: "cluster-admin"},
 			Subjects: []rbacv1.Subject{{Kind: "User", APIGroup: "rbac.authorization.k8s.io", Name: operatorName}, {Kind: "User", APIGroup: "rbac.authorization.k8s.io", Name: otherName}}}
-		Expect(k8sClient.Create(ctx, binding)).To(Succeed())
-		DeferCleanup(func() { Expect(k8sClient.Delete(ctx, binding)).To(Succeed()) })
+		Expect(admin.Create(ctx, binding)).To(Succeed())
+		DeferCleanup(func() { Expect(admin.Delete(ctx, binding)).To(Succeed()) })
 		asUser := func(name string) client.Client {
-			conf := rest.CopyConfig(cfg)
+			conf := rest.CopyConfig(admissionConfig)
 			conf.Impersonate.UserName = name
-			c, err := client.New(conf, client.Options{Scheme: k8sClient.Scheme()})
+			c, err := client.New(conf, client.Options{Scheme: admin.Scheme()})
 			Expect(err).NotTo(HaveOccurred())
 			return c
 		}
@@ -74,8 +86,8 @@ var _ = Describe("Platform alias admission", func() {
 			"app.kubernetes.io/managed-by": "bex-controlplane", "app.kubernetes.io/part-of": "bex",
 			"app.bex.co/regime": "hosting", "app.bex.co/workspace": "tea-alias-test",
 		}}}
-		Expect(k8sClient.Create(ctx, ns)).To(Succeed())
-		DeferCleanup(func() { Expect(k8sClient.Delete(ctx, ns)).To(Succeed()) })
+		Expect(admin.Create(ctx, ns)).To(Succeed())
+		DeferCleanup(func() { Expect(admin.Delete(ctx, ns)).To(Succeed()) })
 		for _, namespace := range []string{"default", ns.Name} {
 			// Await each binding's activation without persisting a forbidden object.
 			sentinel := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "alias-probe", Namespace: namespace}, Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeExternalName, ExternalName: "example.com"}}
@@ -83,7 +95,7 @@ var _ = Describe("Platform alias admission", func() {
 				err := other.Create(ctx, sentinel.DeepCopy(), client.DryRunAll)
 				return err != nil && strings.Contains(err.Error(), "bex-operator-platform-aliases")
 			}, 20*time.Second, 100*time.Millisecond).Should(BeTrue())
-			r := &AppReconciler{Client: operator, Scheme: k8sClient.Scheme(), StaticServerService: "bex-static-server", ActivatorService: "bex-activator", ActivatorPort: 8888}
+			r := &AppReconciler{Client: operator, Scheme: admin.Scheme(), StaticServerService: "bex-static-server", ActivatorService: "bex-activator", ActivatorPort: 8888}
 			for _, family := range []struct {
 				prefix    string
 				reconcile func(*appv1alpha1.App) (string, error)
@@ -100,7 +112,7 @@ var _ = Describe("Platform alias admission", func() {
 					alias := &corev1.Service{}
 					Expect(operator.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, alias)).To(Succeed())
 					// Cleanup Service explicitly: envtest has no garbage collector.
-					DeferCleanup(func() { Expect(k8sClient.Delete(ctx, alias)).To(Succeed()) })
+					DeferCleanup(func() { Expect(admin.Delete(ctx, alias)).To(Succeed()) })
 					Expect(name).To(Equal(platformAliasName(family.prefix, appName)))
 					update := alias.DeepCopy()
 					update.Annotations = map[string]string{"test": "valid-update"}
