@@ -13,6 +13,14 @@ allowed-tools: Read, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(rg:*), Bash(git
 
 The board conventions — hierarchy, sizing rule, milestone quality gate, standing closing tasks, templates — live **canonically** in [`.claude/skills/pm/SKILL.md`](../pm/SKILL.md). Read that file and apply its rules; do not restate or diverge from them here.
 
+## Proposal count
+
+Propose **five distinct, meaningful items** per run unless the user explicitly requests a different count. An item is a milestone or an inbox note, not an implementation task or a standing closing task. Each item must have concrete evidence, project-goal linkage, an observable outcome, and a why-now rationale.
+
+Do not stop after restating the target workstream's existing inbox. Research enough candidates to select five that survive the anti-goal, deduplication, and quality gates. For a workstream-only request such as `w4`, look across the project for work that can be scheduled there; for a specific topic, stay within that topic. Existing board work may be reused or reshaped with explicit references, but must not be presented as a new discovery or filed twice.
+
+Do not pad the count by splitting one outcome into artificial items, inflating sub-hour fixes into milestones, inventing gaps, or reopening deferred decisions. If substantive research still yields fewer than five eligible items, explain the specific evidence or scope constraints and the candidates rejected; never count rejected or speculative filler as meaningful proposals.
+
 ## Steps
 
 1. **Load the canon and the anti-goals.** Read `.claude/skills/pm/SKILL.md` (conventions) and `.pm/DO_NOT_DO.md` (hard constraint). If a proposed item conflicts with an anti-goal, reject it explicitly and explain why.
