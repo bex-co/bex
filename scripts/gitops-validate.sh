@@ -15,6 +15,32 @@ cd "$(dirname "$0")/.."
 
 fail=0
 
+# scalar NAME VALUE — a yq capture compared as a scalar must BE one, or the
+# comparison it feeds is meaningless.
+#
+# This file reads multi-document manifests, and several yq operators
+# re-materialize for the documents `select` already filtered out — the
+# alternative operator `//` and bracket collectors used outside `ea` both do.
+# The capture then holds one line PER DOCUMENT ("0\n0"), which compares equal to
+# nothing, so the invariant it guards fails permanently regardless of the
+# manifest. That is not hypothetical: the tenant-headroom build-only check
+# shipped that way in d82cc98cd and failed on every single push from 2026-09-12
+# onward without ever having passed once. A permanently-red check is worse than
+# no check — it guards nothing and it trains people to ignore the workflow.
+#
+# Wrap any capture whose value is compared with = or -lt. The failure names the
+# variable and shows what came back, so the next person debugs the expression
+# instead of the manifest.
+scalar() {
+  local name="$1" value="$2"
+  if [ "$(printf '%s' "$value" | wc -l | tr -d ' ')" != 0 ]; then
+    printf 'FAIL: %s captured %s lines, not a scalar — the yq expression re-materializes across documents (use `ea` with the collector outside `select`); got: %s\n' \
+      "$name" "$(printf '%s\n' "$value" | wc -l | tr -d ' ')" "$(printf '%s' "$value" | tr '\n' '|')" >&2
+    return 1
+  fi
+  return 0
+}
+
 echo "==> Helm artifact download recovery and checksum enforcement"
 bash scripts/helm-artifact.test.sh
 
@@ -2622,10 +2648,21 @@ headroom_pod="select(.kind==\"Deployment\" and .metadata.name==\"tenant-headroom
 headroom_class="$(yq -N "$headroom_pod | .priorityClassName" "$headroom_yaml")"
 headroom_grace="$(yq -N "$headroom_pod | .terminationGracePeriodSeconds" "$headroom_yaml")"
 headroom_pool="$(yq -N "$headroom_pod | .nodeSelector.\"bex.co/pool\"" "$headroom_yaml")"
-# `(.tolerations // []) | map(...)` and not `[.tolerations[]? | ...]`: the array
-# collector materializes even for the documents `select` filtered out, so the
-# bracket form answers "0" once per document in the file and never compares equal.
-headroom_build_tol="$(yq -N "$headroom_pod | (.tolerations // []) | map(select(.key==\"bex.co/build-only\")) | length" "$headroom_yaml")"
+# Counted with `ea` (eval-all) and the collector OUTSIDE the select, which is the
+# only form that yields exactly one number on both yq 4.44.6 (what CI pins) and
+# 4.5x (what a developer is likely to have locally). Two shapes that look right
+# and are not, both verified broken on the pinned version:
+#   `select(...) | (.tolerations // []) | map(...) | length`  -> "0\n0"
+#   `select(...) | [.tolerations[]? | ...] | length`          -> "0\n0"
+# In each, the operator re-materializes for the document `select` filtered out, so
+# the result is one line PER DOCUMENT and never compares equal to "0". The first
+# shape shipped in d82cc98cd and made this check fail on every push from
+# 2026-09-12 onward -- it never passed once. Keep the `ea` form, and if you change
+# it, test against BOTH yq versions before trusting a local green.
+headroom_build_tol="$(yq -N ea "[$headroom_pod | .tolerations[]? | select(.key==\"bex.co/build-only\")] | length" "$headroom_yaml")"
+for captured in headroom_priority headroom_preemption headroom_class headroom_grace headroom_pool headroom_build_tol; do
+  scalar "$captured" "${!captured}" || fail=1
+done
 if [ "$headroom_class" != bex-tenant-headroom ]; then
   echo "FAIL: tenant-headroom Pods run at priorityClassName '$headroom_class' (want bex-tenant-headroom, or they are unpreemptible priority-0 Pods squatting on the serving pool)" >&2
   fail=1
