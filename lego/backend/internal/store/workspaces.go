@@ -34,7 +34,18 @@ type TenantMember struct {
 	Subject   string    `json:"subject"`
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"createdAt"`
+	// Kind is MemberKindUser for a person and MemberKindMachine for an API
+	// key's binding (w5/m103). Both rows authorize; only people are members.
+	Kind string `json:"kind"`
 }
+
+// The two kinds of tenant_members row. A machine row is what makes a bound API
+// key resolve to its workspace and authorize there — it is not a member of the
+// workspace in any sense the Team surface or the seat cap should mean.
+const (
+	MemberKindUser    = "user"
+	MemberKindMachine = "machine"
+)
 
 // CreateWorkspace inserts a tenant row and the owner's `admin` membership in one
 // transaction — the atomic create the workspaces feature writes through, so a
@@ -220,18 +231,26 @@ func (s *PGStore) CountTenantMembers(ctx context.Context, tenantID string) (int,
 	return countTenantMembers(ctx, s.Pool, tenantID)
 }
 
+// countTenantMembers counts PEOPLE (w5/m103) — the seat cap charges for
+// teammates, not for the workspace's own API keys, and this count is both what
+// SeatUsage displays and what CanAddMember refuses on, so the two cannot
+// disagree.
 func countTenantMembers(ctx context.Context, q queryRower, tenantID string) (int, error) {
 	var n int
 	err := q.QueryRow(ctx,
-		`SELECT count(*) FROM tenant_members WHERE tenant_id = $1`, tenantID).Scan(&n)
+		`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND kind = 'user'`, tenantID).Scan(&n)
 	return n, err
 }
 
-// ListTenantMembers returns a workspace's members, oldest first.
+// ListTenantMembers returns a workspace's PEOPLE, oldest first (w5/m103):
+// machine bindings are excluded, because every consumer of this read — the Team
+// page, the Render owners members API, seat usage — is answering "who belongs
+// to this workspace", and an API key is not a who. The key's own row still
+// exists and still authorizes; it is listed on the API-keys surface instead.
 func (s *PGStore) ListTenantMembers(ctx context.Context, tenantID string) ([]TenantMember, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT tenant_id, subject, role, created_at FROM tenant_members
-		 WHERE tenant_id = $1 ORDER BY created_at`, tenantID)
+		`SELECT tenant_id, subject, role, created_at, kind FROM tenant_members
+		 WHERE tenant_id = $1 AND kind = 'user' ORDER BY created_at`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +258,7 @@ func (s *PGStore) ListTenantMembers(ctx context.Context, tenantID string) ([]Ten
 	var out []TenantMember
 	for rows.Next() {
 		var m TenantMember
-		if err := rows.Scan(&m.TenantID, &m.Subject, &m.Role, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.TenantID, &m.Subject, &m.Role, &m.CreatedAt, &m.Kind); err != nil {
 			return nil, err
 		}
 		out = append(out, m)

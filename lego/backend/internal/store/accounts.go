@@ -86,7 +86,8 @@ func accountDispositionWithoutMachines(ctx context.Context, q interface {
 		        WHERE all_m.tenant_id = t.id
 		          AND NOT (all_m.subject = ANY(COALESCE($2::text[], '{}')))),
 		       (SELECT count(*) FROM tenant_members admins
-		        WHERE admins.tenant_id = t.id AND admins.role = 'admin' AND admins.subject != $1
+		        WHERE admins.tenant_id = t.id AND admins.role = 'admin' AND admins.kind = 'user'
+		          AND admins.subject != $1
 		          AND NOT (admins.subject = ANY(COALESCE($2::text[], '{}'))))
 		FROM tenants t
 		JOIN tenant_members mine ON mine.tenant_id = t.id
@@ -352,7 +353,11 @@ func (s *PGStore) RemoveAccountMember(ctx context.Context, tenantID, subject str
 			return err
 		}
 		var otherAdmins int
-		if err := tx.QueryRow(ctx, `SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin' AND subject != $2`, tenantID, subject).Scan(&otherAdmins); err != nil {
+		// "another admin" means another PERSON (w5/m103): a machine binding must
+		// never be what lets an account deletion proceed, leaving a workspace
+		// administered only by an API key.
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM tenant_members
+			WHERE tenant_id = $1 AND role = 'admin' AND kind = 'user' AND subject != $2`, tenantID, subject).Scan(&otherAdmins); err != nil {
 			return err
 		}
 		if otherAdmins == 0 {

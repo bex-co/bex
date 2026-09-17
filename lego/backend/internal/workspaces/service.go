@@ -166,6 +166,10 @@ type WorkspaceStore interface {
 	DeleteTenant(ctx context.Context, id string) error
 	ListTenantsForSubject(ctx context.Context, subject string) ([]store.Tenant, error)
 	ListTenantMembers(ctx context.Context, tenantID string) ([]store.TenantMember, error)
+	// TenantOwnerSubject is the workspace's onboarding owner binding, "" when
+	// unset — what ownerEmail resolves before falling back to the oldest admin
+	// (w5/m103).
+	TenantOwnerSubject(ctx context.Context, tenantID string) (string, error)
 	// ListInvites returns a workspace's OUTSTANDING invites (unaccepted,
 	// unexpired) — the seats ChangePlan's downgrade guards must count alongside
 	// the members, since each one becomes a member on its recipient's next login.
@@ -754,12 +758,33 @@ func (s *Service) ResolveResourceOwners(ctx context.Context, ownerIDs []string) 
 	return out
 }
 
-// ownerEmail resolves the workspace's contact email — the earliest-admin
-// member's email via Identities. Best-effort: "" when Identities is nil, the
-// membership list can't be read, or the lookup misses (honest subset, matching
-// IdentityReader's documented omit-on-miss contract).
+// ownerEmail resolves the workspace's contact email.
+//
+// It follows the OWNER BINDING first (w5/m103): tenants.owner_identity_id is
+// the subject onboarding minted the workspace for, and it is the only thing in
+// the model that means "whose workspace this is". Before this it asked only
+// "who is the oldest admin", so removing a founding admin silently reassigned
+// who the workspace appeared to belong to — an attribution change nobody
+// performed, on a field billing and support read.
+//
+// The oldest-admin answer remains, as an explicit FALLBACK for workspaces that
+// have no binding at all (anything created through CreateWorkspace rather than
+// first-login onboarding). That is a contact address, not a claim of ownership,
+// and it is the only case where one is guessed.
+//
+// Best-effort throughout: "" when Identities is nil, the reads fail, or the
+// lookup misses (the honest subset IdentityReader documents).
 func (s *Service) ownerEmail(ctx context.Context, tenantID string) string {
 	if s.Identities == nil || s.Store == nil {
+		return ""
+	}
+	if owner, err := s.Store.TenantOwnerSubject(ctx, tenantID); err == nil && owner != "" {
+		if attrs, ok := s.Identities.Lookup(ctx, owner); ok {
+			return attrs.Email
+		}
+		// The workspace HAS an owner whose identity did not resolve. Falling
+		// through to the oldest admin here would name somebody who is not the
+		// owner as if they were — exactly the substitution this fixes.
 		return ""
 	}
 	members, err := s.Store.ListTenantMembers(ctx, tenantID)

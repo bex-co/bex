@@ -694,9 +694,12 @@ func (s *PGStore) ClaimBillingNotifications(ctx context.Context, now time.Time, 
 	return out, rows.Err()
 }
 
+// ListBillingOwnerSubjects returns the PEOPLE to contact about a workspace's
+// billing (w5/m103): admins, excluding machine bindings — an API key is not
+// somebody who can act on a failed payment.
 func (s *PGStore) ListBillingOwnerSubjects(ctx context.Context, workspaceID string) ([]string, error) {
 	rows, err := s.Pool.Query(ctx, `SELECT subject FROM tenant_members
-		WHERE tenant_id=$1 AND role='admin' ORDER BY created_at,subject`, workspaceID)
+		WHERE tenant_id=$1 AND role='admin' AND kind='user' ORDER BY created_at,subject`, workspaceID)
 	if err != nil {
 		return nil, err
 	}

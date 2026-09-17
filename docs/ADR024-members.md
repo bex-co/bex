@@ -149,6 +149,23 @@ Leaving also evicts **two** caches, not one: the caller's workspace resolution (
 | Last admin | refused | refused on demotion | refused |
 | Ordinary member | allowed (admin only) | allowed (admin only) | allowed (self only) |
 
+**A member is a person (w5/m103).** `BindClient` gives every API key a `tenant_members` row keyed by its Hydra client id, at role `developer` — that row is what makes the key resolve to its workspace and authorize there. Nothing distinguished it from a human's, so a bound key was listed on the Team surface, counted against the plan's seat cap, and — verified live on dev-5, 2026-09-17 — could be **promoted to admin through the member verbs**, which wrote a real `workspace:admin` tuple for the machine subject. Removing one through the same surface returned 204 and left the Hydra client alive but unbound: a key still listed on the API-keys page, silently authorizing nothing.
+
+The discriminator is an explicit `tenant_members.kind` column (`user` | `machine`, migration 0129), written at bind time. It cannot be inferred from the subject: a Kratos identity id and a Hydra client id are both UUIDs, so any shape test would be a guess. Reads split by **intent**, not by table:
+
+| Read | Filters `kind = 'user'`? | Why |
+| --- | --- | --- |
+| `ListTenantMembers`, `CountTenantMembers`, `CountTenantAdmins`, the in-transaction last-admin rechecks, `SubjectIsWorkspaceAdmin`, ADR086's "another admin remains" preflight | **yes** | each answers "who are the people here" — the Team list, the seat the plan charges for, the human who must remain able to administer or be notified |
+| `GetTenantMember`, `IsMember`, `TenantForIdentity`, `TenantForKey` | **no** | each answers "may this subject act here", and a machine binding legitimately may — filtering these would break every API key |
+
+`ChangeRole`, `Remove` and `LeaveWorkspace` refuse a machine target with `MEMBER_IS_MACHINE` (409) naming the API-keys surface. Seat usage and `CanAddMember` now count the same set, so the displayed "X of Y seats" and the invite refusal cannot disagree — the invariant this ADR already claimed.
+
+`identityResolved: false` keeps its w4/070 meaning exactly: **a human whose Kratos identity did not resolve**. Those members stay listed, mutable and removable; they were the only thing a machine row was previously distinguishable from, and conflating the two is the regression to watch for.
+
+Bindings written before the migration default to `user` — Hydra is the only registry of client ids, so SQL cannot classify them. bex-api reconciles them once at startup against the live client list (`store.MarkMachineMemberships`, `backfillMachineMemberships` in `cmd/api/main.go`), logged and never fatal: a failure degrades to the pre-m103 behavior rather than to a broken API.
+
+**The workspace's owner is the owner (w5/m103).** `ownerEmail` resolves `tenants.owner_identity_id` first. It previously returned the **oldest remaining admin**, so removing a founding admin silently reassigned who a workspace appeared to belong to — on a field billing and support read. The oldest-admin answer survives only as an explicit fallback for workspaces with no binding at all (anything created through `CreateWorkspace` rather than first-login onboarding), and a workspace whose bound owner is unresolvable answers `""` rather than naming somebody else as if they owned it.
+
 **Adding a member-mutating verb.** `TestMemberMutatingVerbsRunTheGuards` (`internal/members/owner_self_guards_test.go`) reads `service.go`'s AST and fails if a verb writes `RemoveMember`/`UpdateMemberRole` without the guards its shape calls for: a verb that takes a `subject` parameter must run `guardSelf` + `guardOwner`; a self-only verb (no `subject` parameter, like `LeaveWorkspace`) must run `guardOwnerLeaving`. A self-only verb that later grew a subject parameter falls into the first branch and fails until it is guarded like one — that escalation is the thing being pinned shut. `TestEveryMembershipEndingVerbDisposesKeys` separately enumerates the exits that owe API-key disposal. Extend this matrix along with either.
 
 ## Enforcement (the definition of done)
