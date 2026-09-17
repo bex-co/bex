@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m110** — [Settings config changes roll the stale image; instance counts, rollback dialog, and build narration mislead](m110/README.md) (4 tasks, ~6h 15m) ← live `/qa-find-bugs` 2026-09-17 (w4-targeted run, `muse.env` credentials); build/start command edits open config-change deploys that go live on the previous image (no build events, pods run the old baked CMD) while hook/manual deploys of the same spec rebuild; INSTANCES counts terminated pods via the 5m lookback (headline 4 decaying to 1 with zero changes); the rollback dialog never got m108/t004's commit naming; the deploy log narrates builds that never ran
+
 - [x] **m109** — [Projects `updatedAt` + `owner` value fix](done/m109/README.md) (7 tasks) — REST reads real `projects.updated_at`, batch-resolves owner via `resourcemeta.OwnerResolver` like apps/postgres/kv; value-level conformance guards both; live prod probe awaits deploy
 
 - [x] **m108** — [Make deploy provenance and request metrics honest: public-repo commits, rate-vs-count charts, rollback label](done/m108/README.md) (9 tasks, ~6h 25m) ← live `/qa-find-bugs` 2026-09-15/16 (w4-targeted run); `http_requests` is `sum(rate(…))` on both sources but declared `unit: "count"`, so the Metrics page reads 0 for a service that just served 12 requests and under-reports a busy one by a factor of the resolution; a service created from **Public Git URL** never records a commit on any deploy because resolution requires a GitHub App installation; and a rollback's trigger label title-cases the deploy id it names (`Rollback To Dep-Dal3f2…`), the second member of the class `w4/036` fixed
