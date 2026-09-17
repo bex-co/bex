@@ -1,12 +1,12 @@
 # w7 · m150 — Sandbox file copy through the pinned CLI
 
-**Worker:** worker7 **Goal:** The distributed CLI can exchange files with an authorized sandbox using bounded, single-use transfers. **Status:** todo
+**Worker:** worker7 **Goal:** The distributed CLI can exchange files with an authorized sandbox using bounded, single-use transfers. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Pin the file-transfer contract and limits | 40m | — |
+| t001 | Pin the file-transfer contract and limits — **DONE** | 40m | — |
 | t002 | Mint and redeem authorized file-connect tokens | 50m | w7/m150/t001 |
 | t003 | Stream bounded uploads through the sandbox gateway | 55m | w7/m150/t002 |
 | t004 | Stream bounded downloads and propagate failures | 55m | w7/m150/t002 |
@@ -18,9 +18,9 @@
 
 ## Definition of done
 
-- [ ] Contract fixtures match the actual pinned client rather than help output alone.
-- [ ] Supported paths, archive/link behavior, limits and partial-transfer outcome are explicit.
-- [ ] Sandbox groups are recorded as a deliberate non-goal; App SSH restrictions stay unchanged.
+- [x] Contract fixtures match the actual pinned client rather than help output alone.
+- [x] Supported paths, archive/link behavior, limits and partial-transfer outcome are explicit.
+- [x] Sandbox groups are recorded as a deliberate non-goal; App SSH restrictions stay unchanged.
 - [ ] Tokens bind caller, workspace, sandbox, operation and destination/source path.
 - [ ] Expired, replayed, foreign and wrong-operation tokens are refused across replicas.
 - [ ] OAuth and connect-token routes preserve their intended authentication boundaries.

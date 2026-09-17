@@ -1,0 +1,71 @@
+{
+  "_comment": "Shared contract between the pinned Render CLI's sandbox FILE transport (lego/cli/sandbox_contract_test.go drives the real pkg/sandbox.Repo against this) and bex-api's handlers, which must be proven to emit exactly these bytes. Sibling of sandbox-exec-contract.json; w7/m150 t001. Update both sides together. Every value here was read from the pinned client at v1.1.3-0.20260909214233-a764810a7682 (pkg/sandbox/files.go, pkg/sandbox/repo.go, pkg/client/client_gen.go), not from help output.",
+  "workspace": "tea-a",
+  "sandboxId": "os-1",
+  "remotePath": "/workspace/out.txt",
+  "connect": {
+    "_comment": "NewConnectSandboxFilesRequest (client_gen.go:20018-20046): POST, no request body, ownerId and path as form-style query params. operation is a path segment, not a body field.",
+    "method": "POST",
+    "pathTemplate": "/v1/sandboxes/{sandboxId}/files/{operation}/token",
+    "operations": [
+      "upload",
+      "download"
+    ],
+    "query": "ownerId=tea-a&path=%2Fworkspace%2Fout.txt",
+    "requestBody": null,
+    "status": 201,
+    "fields": [
+      "executionId",
+      "expiresAt",
+      "method",
+      "token",
+      "uri"
+    ],
+    "responseMethodIsAuthoritative": "the client issues the transfer with the `method` value bex returns in the connect response (repo.go:165,198), so bex chooses it; the fixture exercises PUT for upload and GET for download."
+  },
+  "upload": {
+    "_comment": "Repo.UploadFile (repo.go:159-190). The body is streamed: a directory is tarred and gzipped on the fly with contentLength -1, so bex must not require Content-Length and must not buffer the whole file.",
+    "headers": {
+      "Authorization": "Bearer {token}",
+      "Content-Type": "{contentType}"
+    },
+    "directoryContentType": "application/x-tar",
+    "directoryContentEncoding": "gzip",
+    "streamedContentLength": -1,
+    "successStatuses": "2xx",
+    "singleFileBody": "raw bytes, not tarred \u2014 measured by TestPinnedSandboxFileTransportMatchesBexContract, whose uploaded body is byte-identical to the source file. Only a DIRECTORY is tarred and gzipped."
+  },
+  "download": {
+    "_comment": "Repo.DownloadFile (repo.go:192-220). No request body. The local filename may come from Content-Disposition; a directory arrives as a tar stream.",
+    "headers": {
+      "Authorization": "Bearer {token}"
+    },
+    "requestBody": null,
+    "successStatuses": "2xx",
+    "filenameFrom": "Content-Disposition",
+    "directoryContentType": "application/x-tar"
+  },
+  "archivePolicy": {
+    "_comment": "pkg/sandbox/files.go. These are the client's own rules; bex must not rely on the client to enforce them, but must not break them either.",
+    "traversalRejected": [
+      ".",
+      "..",
+      "/",
+      ""
+    ],
+    "escapingSymlinkRejected": true,
+    "skipsNonRegularNonSymlink": "sockets and devices are skipped rather than aborting the archive",
+    "entryTypesHandled": [
+      "dir",
+      "regular",
+      "symlink",
+      "hardlink"
+    ],
+    "truncationDetected": "a truncated archive must not read as success; archive/tar stops at the end-of-archive marker, so the client wraps the body in a terminatedReader and a gzip trailer check catches a short body"
+  },
+  "nonGoals": {
+    "_comment": "Recorded so a later reader does not re-litigate them.",
+    "sandboxGroups": "deliberate non-goal (approved w7 brainstorm item 3); sandbox-groups commands stay ungraded",
+    "appSsh": "App SSH restrictions are unchanged by this work"
+  }
+}
