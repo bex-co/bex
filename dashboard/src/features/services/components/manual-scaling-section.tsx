@@ -82,7 +82,10 @@ export function ManualScalingSection({
             value={value}
             min={INSTANCE_MIN}
             max={maxInstances}
-            disabled={busy}
+            // Free caps at one instance, so there is nothing to choose: leave
+            // the count visible but inert rather than accepting an edit the
+            // plan will refuse.
+            disabled={busy || isFree}
             onChange={setDraft}
           />
           <Button

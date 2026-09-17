@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import {
   RouterProvider,
   createRouter,
@@ -130,6 +130,10 @@ beforeEach(() => {
   serverState.service = svc();
   autoscalingState.enabled = false;
   autoscalingState.loading = false;
+  autoscalingState.minInstances = 1;
+  autoscalingState.maxInstances = 3;
+  autoscalingState.targetCPUPercent = null;
+  autoscalingState.targetMemoryPercent = null;
   autoscalingState.save.mockClear();
   autoscalingState.disable.mockClear();
   scaleService.mockClear();
@@ -138,6 +142,67 @@ beforeEach(() => {
 });
 
 describe("ServiceScalingPage (w7/m43)", () => {
+  it.each(["web_service", "private_service"] as const)(
+    "explains and disables autoscaling for a free %s before any mutation",
+    async (type) => {
+      serverState.service = svc({ type, plan: "free", replicas: 1 });
+      renderScaling();
+
+      const toggle = await screen.findByRole("switch", {
+        name: "Autoscaling off",
+      });
+      expect(toggle).toBeDisabled();
+      expect(
+        screen.getByText("Autoscaling is available on paid plans. Upgrade to enable it."),
+      ).toBeInTheDocument();
+      fireEvent.click(toggle);
+      expect(screen.queryByRole("spinbutton", { name: "Maximum instances" })).not.toBeInTheDocument();
+      expect(screen.getByRole("spinbutton", { name: "Instances" })).toHaveAttribute("max", "1");
+      expect(screen.getByRole("spinbutton", { name: "Instances" })).toBeDisabled();
+      expect(screen.queryByRole("slider", { name: "Instances" })).not.toBeInTheDocument();
+      expect(autoscalingState.save).not.toHaveBeenCalled();
+      expect(autoscalingState.disable).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps a free service's fixed instance count visible with a stored singleton autoscaling config", async () => {
+    serverState.service = svc({ plan: "free", replicas: 1 });
+    autoscalingState.enabled = true;
+    autoscalingState.maxInstances = 1;
+    autoscalingState.targetCPUPercent = 60;
+    renderScaling();
+
+    expect(await screen.findByRole("switch", { name: "Autoscaling off" })).toBeDisabled();
+    expect(screen.getByRole("spinbutton", { name: "Instances" })).toHaveValue(1);
+    expect(screen.queryByRole("spinbutton", { name: "Maximum instances" })).not.toBeInTheDocument();
+    expect(autoscalingState.save).not.toHaveBeenCalled();
+    expect(autoscalingState.disable).not.toHaveBeenCalled();
+  });
+
+  it.each(["web_service", "private_service", "background_worker"] as const)(
+    "preserves the paid %s editor and its 1–100 instance range",
+    async (type) => {
+      serverState.service = svc({ type, plan: "starter" });
+      renderScaling();
+
+      fireEvent.click(await screen.findByRole("switch", { name: "Autoscaling off" }));
+      const maximum = screen.getByRole("spinbutton", { name: "Maximum instances" });
+      expect(maximum).toHaveAttribute("max", "100");
+      expect(screen.getByRole("slider", { name: "Minimum" })).toHaveAttribute("aria-valuemin", "1");
+      expect(screen.getByRole("slider", { name: "Maximum" })).toHaveAttribute("aria-valuemax", "100");
+      fireEvent.change(maximum, { target: { value: "100" } });
+      fireEvent.click(screen.getByRole("switch", { name: "Target CPU Utilization" }));
+      const card = screen.getByText("Autoscaling").closest('[data-slot="card"]') as HTMLElement;
+      fireEvent.click(within(card).getByRole("button", { name: "Save Changes" }));
+      await waitFor(() => expect(autoscalingState.save).toHaveBeenCalledWith({
+        minInstances: 1,
+        maxInstances: 100,
+        targetCPUPercent: 60,
+        targetMemoryPercent: null,
+      }));
+    },
+  );
+
   it("shows Autoscaling + Manual Scaling + Recent Metrics when autoscaling is off", async () => {
     renderScaling();
 
