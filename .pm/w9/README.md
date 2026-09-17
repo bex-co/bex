@@ -58,7 +58,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w9/dev-9/` keeps onl
 ## Approved queue (priority order, 2026-09-08)
 
 - [x] **[059 — Reject blank project names across API surfaces](done/059.md)** — fixed with w4/058 on 2026-09-08; shared service validation and REST/GraphQL/MCP regression coverage.
-1. **[060 — Repair name-conflict E2E Hydra compatibility](060.md)** (40–60m; transferred from w5/052). Requires Docker for the full run; inbox-sized.
+- [ ] **060** — **BLOCKED (needs a healthy local mock cluster — App CRD installed and a host-reachable `infra/local/bex.kubeconfig`, with no other session mid-rebuild)** — [Repair name-conflict E2E Hydra compatibility](blocked/060.md) (transferred from w5/052). **The fix is done:** `scripts/name-conflict-e2e.sh` now pins `oryd/hydra:v26.2.0`, matching the sibling harness that proved it. **The verification run is not** — the note requires the complete scenario with dated results, and the local CAPD app cluster was unusable (`bex-lb` had been down two days; a reprovision timed out; another session's rebuild was then observed in flight and left alone). Dispositioned 2026-09-16 by `/loopx w9`.
 
 `m93` closed 2026-09-08: live `image-healthcheck` + `web-builder-roundtrip` on dev-9 with CLI pin `fe8a6188119e` / API HEAD `9024a9672`; moved to `done/m93/`. The two inbox notes preserve their original evidence and replace their source queue entries. No new milestone or duplicated closing tasks are needed.
 

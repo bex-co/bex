@@ -104,12 +104,21 @@ docker info >/dev/null 2>&1 || fail "docker is not running"
 
 echo "==> throwaway Hydra (in-memory) + control-plane Postgres (docker)"
 docker rm -f "$HYDRA_CONTAINER" >/dev/null 2>&1 || true
+# v26, not v2.2.0: this script runs auth-bootstrap-client.sh below, which
+# asserts the per-client device-grant lifespan round-trips on the stored
+# client. Neither v2.2.0 nor v2.3.0 stores
+# device_authorization_grant_access_token_lifespan (only the refresh-token
+# one), so the assertion exits "hydra too old" and the bootstrap step fails
+# before any name-conflict assertion runs. v26.2.0 round-trips both and is the
+# production line — same pin and same reason as scripts/auth-obs-e2e.sh:150.
+# The sibling v2.2.0 pins in auth-oauth21-e2e.sh and webhooks-verify.sh are
+# unaffected: neither runs the bootstrap script.
 docker run -d --name "$HYDRA_CONTAINER" \
   -p "${HYDRA_PUBLIC##*:}:4444" -p "${HYDRA_ADMIN##*:}:4445" \
   -e DSN=memory \
   -e URLS_SELF_ISSUER="http://$HYDRA_PUBLIC" \
   -e SECRETS_SYSTEM=e2e-only-system-secret-32-chars-x \
-  oryd/hydra:v2.2.0 serve all --dev >/dev/null \
+  oryd/hydra:v26.2.0 serve all --dev >/dev/null \
   || fail "could not start throwaway Hydra"
 docker run --rm -d --name "$DB_CONTAINER" -e POSTGRES_PASSWORD=pw -p "$DB_PORT:5432" postgres:17 >/dev/null \
   || fail "could not start throwaway Postgres"
