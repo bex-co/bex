@@ -99,6 +99,8 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+**Approved execution order** (`$pm all for w7`): **054 → 053 → 055**, approximately **2h05m** total. Each was scoped under an hour with no dependency on the others. Remote main has since completed 054 and 053 and moved 055 to blocked after investigation; their approved scopes are preserved at those current paths.
+
 - [x] **044** — [Reject empty registry tokens before saving metadata](done/044.md) (45m) ← transferred from `w4/061`; `/pm-brainstorm for w7 for top 3 customer-impactfully work` 2026-09-09 #3. **DONE 2026-09-15:** whole-request validation precedes the metadata write; refusal leaves row, `updatedAt`, and token untouched (regression test with mutation check).
 - [x] **045** — [Brand the remaining Render command references and docs link in supported nested help](done/045.md) (40m) ← continuous `/qa-find-bugs-cli` for w7, 2026-09-14; `ea sandboxes*` help's double-quoted `"render …"` references + "your Render workspace", and `jobs create`'s `render.com/docs` link — the remainder `w4/done/063` did not reach. **DONE 2026-09-15:** double-quoted `"render …"` and `your Render` rewrites + a narrow `jobs create` example override; fresh-process help assertions for the sandbox family and `jobs create`.
 - [ ] **046** — **BLOCKED (needs the user to choose sandbox file-copy support or explicit non-goals)** — [Decide the pinned CLI sandbox gaps](blocked/046.md). Current routes and ledger verified 2026-09-16; no implementation is authorized until the scope choice is made.
