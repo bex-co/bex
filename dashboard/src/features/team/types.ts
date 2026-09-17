@@ -28,6 +28,13 @@ export interface MemberView {
   mfaEnabled: boolean;
   /** False when Kratos lookup misses; true when resolved or identity reader is unwired (w4/070). */
   identityResolved: boolean;
+  /** True on the row named by the workspace's owner binding — the member the
+   *  server refuses to remove or demote (w5/m101, OWNER_CANNOT_BE_REMOVED). */
+  isOwner: boolean;
+  /** True on the caller's own row — the server refuses self-removal and self
+   *  role change (CANNOT_REMOVE_SELF / CANNOT_CHANGE_OWN_ROLE). Server-derived
+   *  so the UI never has to match subjects against session data itself. */
+  isSelf: boolean;
 }
 
 /** A pending (unaccepted) invite — Render's pendingInvites shape. */

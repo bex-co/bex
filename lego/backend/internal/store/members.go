@@ -33,6 +33,35 @@ import (
 // workspace with zero administrators (codex round-16 #3).
 var ErrLastAdmin = fmt.Errorf("%w: cannot remove or demote the last admin of a workspace", ErrInvalid)
 
+// ErrOwnerMember / ErrOwnerRole are the in-transaction backstops for the
+// workspace owner binding (w5/m101), the same shape ErrLastAdmin has: the
+// members service refuses these cases up front with a coded error, and the
+// store rechecks under the membership advisory lock so a second adapter or a
+// race cannot slip past the service gate.
+//
+// Only the member verbs are guarded. RemoveAccountMember (ADR086 offboarding)
+// deliberately removes an owner — it clears the binding in the same
+// transaction, so the workspace never keeps a dangling owner.
+var (
+	ErrOwnerMember = fmt.Errorf("%w: cannot remove the workspace owner", ErrConflict)
+	ErrOwnerRole   = fmt.Errorf("%w: the workspace owner must remain an admin", ErrConflict)
+)
+
+// tenantOwnerIs reports whether subject is the workspace's onboarding owner,
+// read inside an open transaction (the advisory lock is already held).
+func tenantOwnerIs(ctx context.Context, tx pgx.Tx, tenantID, subject string) (bool, error) {
+	var owner *string
+	if err := tx.QueryRow(ctx,
+		`SELECT owner_identity_id FROM tenants WHERE id = $1`, tenantID,
+	).Scan(&owner); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return owner != nil && *owner == subject, nil
+}
+
 // Stable direct-invite redemption causes. Each wraps ErrConflict so existing
 // REST/MCP status semantics remain unchanged while callers can classify the
 // refusal without parsing human prose.
@@ -146,6 +175,15 @@ func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role 
 			}
 			return err
 		}
+		if role != "admin" {
+			owner, err := tenantOwnerIs(ctx, tx, tenantID, subject)
+			if err != nil {
+				return err
+			}
+			if owner {
+				return ErrOwnerRole
+			}
+		}
 		if currentRole == "admin" && role != "admin" {
 			var admins int
 			if err := tx.QueryRow(ctx,
@@ -170,7 +208,7 @@ func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role 
 		return enqueueRoleReconciliation(ctx, tx, tenantID, subject, role)
 	})
 	if err != nil {
-		if errors.Is(err, ErrLastAdmin) {
+		if errors.Is(err, ErrLastAdmin) || errors.Is(err, ErrOwnerMember) || errors.Is(err, ErrOwnerRole) {
 			return err
 		}
 		return classify("tenant_member", err)
@@ -203,6 +241,13 @@ func (s *PGStore) RemoveMember(ctx context.Context, tenantID, subject string) er
 			}
 			return err
 		}
+		owner, err := tenantOwnerIs(ctx, tx, tenantID, subject)
+		if err != nil {
+			return err
+		}
+		if owner {
+			return ErrOwnerMember
+		}
 		if currentRole == "admin" {
 			var admins int
 			if err := tx.QueryRow(ctx,
@@ -224,7 +269,7 @@ func (s *PGStore) RemoveMember(ctx context.Context, tenantID, subject string) er
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, ErrLastAdmin) {
+		if errors.Is(err, ErrLastAdmin) || errors.Is(err, ErrOwnerMember) || errors.Is(err, ErrOwnerRole) {
 			return err
 		}
 		return classify("tenant_member", err)

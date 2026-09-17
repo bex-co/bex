@@ -103,6 +103,7 @@ Regression coverage includes authenticated preview/error/member-role semantics, 
 - **Seat cap** — accepted members + outstanding invites both consume a seat, so a single-member (Hobby) workspace can't invite a second person until upgraded (`store.CanAddMember`).
 - **Plan-gated roles** — invite/change-role reject a role the workspace's plan doesn't offer (`store.RoleAllowedOnPlan`, `guardPlanRole`); see "Roles are plan-gated" above.
 - **Last-admin refusal** — the only admin cannot be demoted or removed, so a workspace is never left with no one who can administer it (`CountTenantAdmins`, `guardLastAdmin`).
+- **Owner and self refusals** — the workspace owner cannot be removed or demoted, and nobody acts on their own membership through the manage-members verbs (`guardOwner`, `guardSelf`, plus in-transaction rechecks). See "The membership-invariant matrix" below for the full actor→target table, the coded refusals, and why account-deletion offboarding is exempt.
 - **Atomic membership** — the `tenant_members` row is the source of truth; its OpenFGA tuple is kept in step (grant on accept/upgrade, revoke on remove/downgrade). Postgres and OpenFGA aren't one transaction, so tuple writes are best-effort and idempotent (check-before-grant, delete-tolerates-absent).
 - **Ending a membership ends its delegated credentials (w2/m163).** Removing a member revokes the **API keys that member created in that workspace** — unbind, then delete the Hydra client, the same fail-closed order and the same `apikeys.AccountTeardown` code path [ADR086](ADR086-account-deletion.md) already uses for account deletion, narrowed by workspace.
 
@@ -111,6 +112,31 @@ Regression coverage includes authenticated preview/error/member-role semantics, 
   Scope is exactly (created by that subject) ∩ (bound to that workspace): a subject's keys in **other** workspaces are never touched, because leaving one workspace says nothing about the others. Account deletion stays global by subject, which is correct for that path. Ordering inside `Remove` is key disposal → tuple revoke → row delete, so a failure at any step leaves a retryable state with the membership still intact rather than the hole itself (membership gone, key live). A disposal failure **fails the removal** — reporting a clean removal over a credential that still authorizes is the precise lie being fixed — and the success audit row carries `revokedKeyCount` so a destructive side effect is visible afterwards. The dashboard's remove dialog states it before the admin confirms.
 
   **Accepted cost, recorded deliberately:** this introduces member-departure breakage — a departing engineer's key may be what a CI pipeline authenticates with. That is not in tension with [ADR078 §1](ADR078-github-workspace-connections.md)'s praise for bex _avoiding_ that failure in the git-connection model; the distinction is what the resource depends on. A git connection is bound by an admin proving they administer an installation, and no member's continued membership is part of what authorizes it — so nothing breaks when they leave. An API key **is** a delegation of one subject's authority, and `CreatedBy` is that authorizing relationship. bex avoids departure breakage wherever the resource never depended on the member, and accepts it exactly where it did. The remedy for the CI case is a key minted by a remaining admin, not a credential that outlives its authorization. (Render reaches the same end state from the other direction: its keys are user-owned and leave with the user.)
+
+### The membership-invariant matrix (w5/m101, 2026-09-16)
+
+Who may act on whom through the manage-members verbs (`members.Service.ChangeRole` / `Remove` — REST `PATCH`/`DELETE /v1/workspaces/{id}/members/{subject}`, the matching GraphQL mutations, the MCP tools). Every refusal is a `core.CodedError` wrapping `ErrConflict`: REST 409, the code in GraphQL's `extensions`, and prefixed onto the MCP message. 409 rather than 403 is deliberate — the caller _is_ an authorized admin; it is the **target's** state that forbids the write.
+
+| Target | Remove | Change role |
+| --- | --- | --- |
+| The workspace owner (`tenants.owner_identity_id`) | `OWNER_CANNOT_BE_REMOVED` | `OWNER_ROLE_CANNOT_CHANGE` below admin; re-asserting `admin` is allowed |
+| Yourself (the caller's subject, human or machine) | `CANNOT_REMOVE_SELF` | `CANNOT_CHANGE_OWN_ROLE`, in both directions |
+| The last admin | refused (`ErrLastAdmin`, 400) | refused when demoting (`ErrLastAdmin`, 400) |
+| An ordinary member | allowed | allowed, subject to the plan role gate |
+| A machine binding (`tenant_members` row keyed by a Hydra client id) | allowed — a client id is an ordinary subject | allowed |
+
+**Why the owner rule exists — the onboarding coupling.** `tenantService.EnsureTenant` (`lego/backend/internal/api/tenancy.go`) runs on **every session request** through the auth gate (`internal/api/auth.go`). It resolves the caller's personal workspace by the owner binding (`PGStore.TenantForOwner`, `internal/store/workspaces.go`) and then calls `ensureGranted`, which re-writes the workspace-admin tuple whenever the check says it is missing. So removing or demoting the owner through the members surface has no correct outcome:
+
+- **Ignore it and the removal never sticks** — the owner's admin tuple is resurrected on their very next request, while the `tenant_members` row stays deleted. An authorization change that a background path silently undoes is the worst shape an authz bug takes.
+- **Honor it and the account is bricked** — `TenantForOwner` keeps finding the workspace, so `CreateTenantWithMember` never re-mints one; the account is left with no personal workspace, permanently.
+
+Refusing is the only answer that is correct in both directions. The owner's exit is **ownership transfer**, still deferred in [`.pm/FUTURE-MAYBE.md`](../.pm/FUTURE-MAYBE.md); every **non-owner** member's exit is the dedicated Leave verb (`w5/m102`), which is also what `CANNOT_REMOVE_SELF` points at.
+
+**Guarded twice, like the last-admin rule.** A friendly service-level refusal (`guardSelf` / `guardOwner`, `internal/members/service.go`) plus a hard recheck inside the store transaction that already holds the membership advisory lock (`store.ErrOwnerMember` / `ErrOwnerRole` in `PGStore.RemoveMember` / `UpdateMemberRole`), so a second adapter or a race cannot bypass the gate. A workspace minted through `CreateWorkspace` has a NULL binding, so the owner guards are inert there and the last-admin rule remains the only floor.
+
+**Why ADR086 offboarding may remove an owner and the member verbs may not.** `PGStore.RemoveAccountMember` (the [account-deletion](ADR086-account-deletion.md) path) clears `owner_identity_id` in the **same transaction** that deletes the row, so it never leaves a workspace whose owner binding names a non-member — the exact state the member verbs would create. It is also not an authenticated self-service action: `members.AccountOffboarder` is a separate type with no caller identity, so `guardSelf` does not apply to it either.
+
+**Adding a member-mutating verb.** `TestMemberMutatingVerbsRunTheGuards` (`internal/members/owner_self_guards_test.go`) reads `service.go`'s AST and fails if a verb writes `RemoveMember`/`UpdateMemberRole` without running both guards — the same durable-rule shape the contributor boundary uses. Extend this matrix along with it.
 
 ## Enforcement (the definition of done)
 

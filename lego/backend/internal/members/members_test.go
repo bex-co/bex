@@ -43,6 +43,9 @@ type fakeStore struct {
 	nextInv  int
 	ownerIDs map[string]string // subject -> own- id, mint-on-first-sight
 	ownIDErr error             // when set, OwnerIDForSubject fails every call
+	// ownerSubject mirrors tenants.owner_identity_id — "" is the unbound
+	// workspace (CreateWorkspace), a subject is the onboarding owner (w5/m101).
+	ownerSubject string
 }
 
 // queuedFakeStore mirrors the production transaction by writing the accepted
@@ -172,6 +175,12 @@ func (f *fakeStore) CountTenantMembers(_ context.Context, _ string) (int, error)
 
 func (f *fakeStore) CountInvites(_ context.Context, _ string) (int, error) {
 	return len(f.invites), nil
+}
+
+// ownerSubject is the workspace's onboarding owner binding ("" = unset, the
+// CreateWorkspace shape). Tests set it to exercise the w5/m101 owner guards.
+func (f *fakeStore) TenantOwnerSubject(_ context.Context, _ string) (string, error) {
+	return f.ownerSubject, nil
 }
 
 func (f *fakeStore) CountTenantAdmins(_ context.Context, _ string) (int, error) {
@@ -963,8 +972,12 @@ func TestChangeRoleSameRoleIsNoop(t *testing.T) {
 func TestChangeRoleRefusesDemotingLastAdmin(t *testing.T) {
 	st := newFakeStore(store.PlanPro)
 	st.seedMember("admin-1", "admin") // the only admin
+	// The caller is a different subject: since w5/m101 a self role change is
+	// refused before the last-admin rule is ever consulted, so exercising that
+	// rule needs a target that is not the caller.
+	st.seedMember("dev-1", "developer")
 	s := svc(st, newFakeGranter(), nil, nil)
-	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "admin-1", "developer"); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := s.ChangeRole(ctxWith("dev-1"), "tea-1", "admin-1", "developer"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("demote last admin: want ErrBadRequest, got %v", err)
 	}
 	if st.members["admin-1"].Role != "admin" {
@@ -1002,8 +1015,11 @@ func TestRemoveDropsRowAndRevokes(t *testing.T) {
 func TestRemoveRefusesLastAdmin(t *testing.T) {
 	st := newFakeStore(store.PlanPro)
 	st.seedMember("admin-1", "admin")
+	// Target ≠ caller: the self guard (w5/m101) now short-circuits the
+	// self-removal shape, so the last-admin rule is proven on a teammate.
+	st.seedMember("dev-1", "developer")
 	s := svc(st, newFakeGranter(), nil, nil)
-	if err := s.Remove(ctxWith("admin-1"), "tea-1", "admin-1"); !errors.Is(err, core.ErrBadRequest) {
+	if err := s.Remove(ctxWith("dev-1"), "tea-1", "admin-1"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("remove last admin: want ErrBadRequest, got %v", err)
 	}
 	if _, ok := st.members["admin-1"]; !ok {
