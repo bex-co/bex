@@ -191,3 +191,163 @@ func TestPinnedSandboxExecSurfacesBexErrorEvents(t *testing.T) {
 		t.Fatalf("terminated-target error = %v, want %q — the pinned decoder no longer reads bex's {status,message}", err, c.Expected.TerminatedError)
 	}
 }
+
+// sandboxFileContract mirrors lego/cli/testdata/sandbox-file-contract.json.
+// Same purpose as the exec contract above, for the file transport w7/m150
+// implements: drive the PINNED pkg/sandbox.Repo and fail if a pin bump moves
+// the connect route, the query shape, the bearer handshake, or the streamed
+// body — before bex-api is built against a contract that has already changed.
+type sandboxFileContract struct {
+	Workspace  string `json:"workspace"`
+	SandboxID  string `json:"sandboxId"`
+	RemotePath string `json:"remotePath"`
+	Connect    struct {
+		Method       string   `json:"method"`
+		PathTemplate string   `json:"pathTemplate"`
+		Operations   []string `json:"operations"`
+		Query        string   `json:"query"`
+		Status       int      `json:"status"`
+		Fields       []string `json:"fields"`
+	} `json:"connect"`
+	Upload struct {
+		DirectoryContentType     string `json:"directoryContentType"`
+		DirectoryContentEncoding string `json:"directoryContentEncoding"`
+	} `json:"upload"`
+}
+
+func loadSandboxFileContract(t *testing.T) sandboxFileContract {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("testdata", "sandbox-file-contract.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c sandboxFileContract
+	if err := json.Unmarshal(raw, &c); err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+// fileContractServer answers the file connect mint, then serves the transfer
+// at the uri it returned — the same two-step handshake bex-api must implement.
+func fileContractServer(t *testing.T, c sandboxFileContract, operation string, payload []byte) (*httptest.Server, *sync.Map) {
+	t.Helper()
+	var seen sync.Map
+	const token = "file-connect-token-fixture"
+	const executionID = "exe-file-fixture"
+	transferPath := "/v1/sandboxes/" + c.SandboxID + "/files/" + operation + "/" + executionID
+	connectPath := strings.NewReplacer(
+		"{sandboxId}", c.SandboxID, "{operation}", operation,
+	).Replace(c.Connect.PathTemplate)
+
+	var base string
+	mux := http.NewServeMux()
+	record := func(name string, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		seen.Store(name, recordedRequest{method: r.Method, path: r.URL.Path, query: r.URL.RawQuery, body: string(body), header: r.Header.Clone()})
+	}
+	mux.HandleFunc(connectPath, func(w http.ResponseWriter, r *http.Request) {
+		record("connect", r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(c.Connect.Status)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"executionId": executionID,
+			"expiresAt":   time.Now().Add(time.Minute).UTC().Format(time.RFC3339),
+			"method":      map[string]string{"upload": http.MethodPut, "download": http.MethodGet}[operation],
+			"token":       token,
+			"uri":         base + transferPath,
+		})
+	})
+	mux.HandleFunc(transferPath, func(w http.ResponseWriter, r *http.Request) {
+		record("transfer", r)
+		if r.Header.Get("Authorization") != "Bearer "+token {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if operation == "download" {
+			_, _ = w.Write(payload)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	srv := httptest.NewServer(mux)
+	base = srv.URL
+	t.Cleanup(srv.Close)
+	return srv, &seen
+}
+
+func TestPinnedSandboxFileTransportMatchesBexContract(t *testing.T) {
+	c := loadSandboxFileContract(t)
+	t.Setenv("RENDER_WORKSPACE", c.Workspace)
+
+	local := filepath.Join(t.TempDir(), "payload.txt")
+	want := []byte("contract payload\n")
+	if err := os.WriteFile(local, want, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("upload mints at the contract route and streams under the bearer", func(t *testing.T) {
+		srv, seen := fileContractServer(t, c, "upload", nil)
+		api, err := client.NewClientWithResponses(srv.URL + "/v1/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		svc := sandbox.NewService(sandbox.NewRepo(api))
+		if err := svc.Upload(context.Background(), c.SandboxID, local, c.RemotePath); err != nil {
+			t.Fatalf("Upload: %v", err)
+		}
+
+		got, ok := seen.Load("connect")
+		if !ok {
+			t.Fatal("the pinned client never called the file connect route the contract names")
+		}
+		connect := got.(recordedRequest)
+		wantPath := strings.NewReplacer("{sandboxId}", c.SandboxID, "{operation}", "upload").Replace(c.Connect.PathTemplate)
+		if connect.method != c.Connect.Method || connect.path != wantPath {
+			t.Errorf("connect = %s %s, want %s %s", connect.method, connect.path, c.Connect.Method, wantPath)
+		}
+		// ownerId and path ride as query parameters, not as a body: the mint
+		// carries no request body at all, which is what bex-api must accept.
+		if !strings.Contains(connect.query, "ownerId="+c.Workspace) || !strings.Contains(connect.query, "path=") {
+			t.Errorf("connect query = %q, want ownerId and path form parameters", connect.query)
+		}
+		if connect.body != "" {
+			t.Errorf("connect body = %q, want empty — the pinned client sends none", connect.body)
+		}
+
+		got, ok = seen.Load("transfer")
+		if !ok {
+			t.Fatal("the pinned client never redeemed the file connect token at the returned uri")
+		}
+		transfer := got.(recordedRequest)
+		if transfer.header.Get("Authorization") != "Bearer file-connect-token-fixture" {
+			t.Errorf("transfer Authorization = %q, want the minted connect token as a bearer", transfer.header.Get("Authorization"))
+		}
+		if transfer.body != string(want) {
+			t.Errorf("uploaded body = %q, want %q", transfer.body, want)
+		}
+	})
+
+	t.Run("download redeems the token and writes the returned bytes", func(t *testing.T) {
+		srv, seen := fileContractServer(t, c, "download", want)
+		api, err := client.NewClientWithResponses(srv.URL + "/v1/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		dest := filepath.Join(t.TempDir(), "downloaded.txt")
+		svc := sandbox.NewService(sandbox.NewRepo(api))
+		if _, err := svc.Download(context.Background(), c.SandboxID, c.RemotePath, dest); err != nil {
+			t.Fatalf("Download: %v", err)
+		}
+		gotBytes, err := os.ReadFile(dest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(gotBytes) != string(want) {
+			t.Errorf("downloaded = %q, want %q — byte-identical round trip is the contract", gotBytes, want)
+		}
+		if _, ok := seen.Load("transfer"); !ok {
+			t.Fatal("the pinned client never redeemed the download token")
+		}
+	})
+}
