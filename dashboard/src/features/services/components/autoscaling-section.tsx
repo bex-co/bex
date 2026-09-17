@@ -71,22 +71,34 @@ export function SliderInput({
   disabled: boolean;
   onChange: (v: number) => void;
 }) {
+  // A single-point range (min === max — the free plan's 1-instance cap) has no
+  // span to drag, and the track fill computes (value - min) / (max - min):
+  // 0/0 -> NaN -> `calc(NaN% + 0px)`. Browsers drop that declaration silently;
+  // jsdom's CSS parser throws outright. Either way a one-position slider is
+  // not a control, so render the capped numeric input alone.
+  const fixed = min >= max;
   return (
     <div className="flex items-center gap-3">
-      <span className="w-6 shrink-0 text-right text-xs text-muted-foreground">
-        {min}
-      </span>
-      <Slider
-        thumbLabels={[label]}
-        min={min}
-        max={max}
-        step={1}
-        value={[value]}
-        disabled={disabled}
-        onValueChange={([v]) => onChange(clamp(v, min, max))}
-        className="flex-1"
-      />
-      <span className="w-6 shrink-0 text-xs text-muted-foreground">{max}</span>
+      {!fixed && (
+        <>
+          <span className="w-6 shrink-0 text-right text-xs text-muted-foreground">
+            {min}
+          </span>
+          <Slider
+            thumbLabels={[label]}
+            min={min}
+            max={max}
+            step={1}
+            value={[value]}
+            disabled={disabled}
+            onValueChange={([v]) => onChange(clamp(v, min, max))}
+            className="flex-1"
+          />
+          <span className="w-6 shrink-0 text-xs text-muted-foreground">
+            {max}
+          </span>
+        </>
+      )}
       <Input
         id={id}
         aria-label={label}
@@ -177,8 +189,11 @@ function RangeSliderInput({
 // instance would carry its own (divergent) `saving` state (w7/m43 simplify).
 export function AutoscalingSection({
   autoscaling: as,
+  plan,
 }: {
   autoscaling: UseAutoscalingResult;
+  /** Render offers autoscaling on paid plans only; free caps at one instance. */
+  plan?: string | null;
 }) {
   const { t } = useTranslations();
 
@@ -216,7 +231,14 @@ export function AutoscalingSection({
     ],
   );
 
-  const enabled = draft != null || as.enabled;
+  // Autoscaling is paid-only: tiers.yaml gives compute `free` maxInstances: 1
+  // and setAutoscaling refuses a free service server-side, so offering the
+  // editor only to fail the save is a promise the plan cannot keep (w7/048).
+  // Gated the way maintenance-mode-section.tsx gates its toggle. A free
+  // service carrying a stored config still reads Off — showing its range
+  // would advertise an autoscaler that cannot run.
+  const eligible = plan !== "free";
+  const enabled = eligible && (draft != null || as.enabled);
   const form = draft ?? serverForm;
 
   function patch(partial: Partial<FormState>) {
@@ -290,7 +312,7 @@ export function AutoscalingSection({
             <Switch
               id="autoscaling-enabled"
               checked={enabled}
-              disabled={as.saving}
+              disabled={as.saving || !eligible}
               onCheckedChange={handleMainToggle}
             />
             <Label htmlFor="autoscaling-enabled" className="text-sm">
@@ -299,6 +321,14 @@ export function AutoscalingSection({
           </div>
         </div>
       </CardHeader>
+
+      {!eligible && (
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            {t("services.scalingPaidOnly")}
+          </p>
+        </CardContent>
+      )}
 
       {enabled && (
         <CardContent>

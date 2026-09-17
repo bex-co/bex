@@ -495,6 +495,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "自动伸缩已开启",
     description: "Autoscaling main toggle label when enabled",
   },
+  "services.scalingPaidOnly": {
+    message: "自动伸缩仅适用于付费套餐。升级后即可启用。",
+    description: "Autoscaling card explanation for a free service",
+  },
   "services.scalingOff": {
     message: "自动伸缩已关闭",
     description: "Autoscaling main toggle label when disabled",
