@@ -130,7 +130,7 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Delete Database" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     const confirm = within(dialog).getByRole("button", {
       name: "Delete database",
     });

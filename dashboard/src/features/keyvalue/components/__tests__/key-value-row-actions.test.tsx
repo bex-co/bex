@@ -76,7 +76,7 @@ describe("KeyValueRowActions", () => {
     await user.click(screen.getByRole("button", { name: "Open actions menu" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     const confirm = within(dialog).getByRole("button", {
       name: "Delete Key Value Instance",
     });
@@ -108,7 +108,7 @@ describe("KeyValueRowActions", () => {
 
     await user.click(screen.getByRole("button", { name: "Open actions menu" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-    const localDialog = await screen.findByRole("dialog");
+    const localDialog = await screen.findByRole("alertdialog");
     await user.type(
       within(localDialog).getByRole("textbox"),
       "sudo delete key value sessions-cache",
