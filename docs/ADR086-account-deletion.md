@@ -72,6 +72,7 @@ The opaque deleted marker is `deleted:<own-id>`. It retains event correlation bu
 | `ssh_keys.subject` | hard-delete before identity deletion | bearer access credential |
 | `ssh_sessions.subject` | anonymize | operational history, not active credential |
 | `github_connect_transactions.subject` | hard-delete | transient authorization transaction |
+| `github_claim_selections.subject` | hard-delete | the same class ([ADR078](ADR078-github-workspace-connections.md) §3a, w2/m162): a short-lived, single-use, subject-bound memo of a completed proof. Anonymizing would leave a selection nobody may complete but the row still names a workspace; the table also CASCADEs on its workspace, because expiry alone is not retention — its sweep is piggybacked on writes |
 | `cli_telemetry_events.subject` | hard-delete | usage telemetry, not security history; the row's stable `installation_id` would re-link an anonymized subject |
 | `product_activity_events.actor_id` | clear identifier and set actor type to unknown; workspace cascade on workspace deletion | retain bounded resource-adoption facts without a creator identity; recorder checks the deletion tombstone under the subject lock |
 | `oauth_revocations.subject` | replace with deleted marker and retain | retain fail-closed revocation history without an active subject |

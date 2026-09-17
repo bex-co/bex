@@ -33,22 +33,35 @@ func seedGitTenant(t *testing.T, st *PGStore, id string) {
 	}
 }
 
-// TestPGGitConnectionsMultiPerWorkspace exercises the ADR075 N-per-workspace
-// shape end to end against real Postgres: a workspace holds several connections,
-// an installation belongs to at most one workspace, owner resolution is exact,
-// count backs the quota, and per-installation delete is scoped.
-func TestPGGitConnectionsMultiPerWorkspace(t *testing.T) {
+// TestPGGitConnectionsManyToMany exercises the ADR078 §2 N:N shape end to end
+// against real Postgres: a workspace holds several connections, ONE installation
+// may serve several workspaces (w2/m162 — the reversal of the old unique
+// binding), the same pair is idempotent, owner resolution is exact, count backs
+// the quota, the reverse lookup returns the full binding set, and
+// per-installation delete stays workspace-scoped.
+func TestPGGitConnectionsManyToMany(t *testing.T) {
 	st := newReplayTestStore(t)
 	ctx := context.Background()
 	seedGitTenant(t, st, "tea-ws1")
 	seedGitTenant(t, st, "tea-ws2")
+	t.Cleanup(func() {
+		_, _ = st.Pool.Exec(context.Background(), `DELETE FROM git_connections WHERE workspace_id IN ('tea-ws1','tea-ws2')`)
+		_, _ = st.Pool.Exec(context.Background(), `DELETE FROM tenants WHERE id IN ('tea-ws1','tea-ws2')`)
+	})
 
-	// Two installations under one workspace — the shape the old PK forbade.
-	if _, err := st.UpsertGitConnection(ctx, GitConnection{WorkspaceID: "tea-ws1", InstallationID: 101, AccountLogin: "octo"}); err != nil {
-		t.Fatalf("upsert 101: %v", err)
+	bind := func(ws string, installation int64, login string) error {
+		_, err := st.BindGitConnection(ctx, GitConnection{
+			WorkspaceID: ws, InstallationID: installation, AccountLogin: login,
+		}, 0, 0)
+		return err
 	}
-	if _, err := st.UpsertGitConnection(ctx, GitConnection{WorkspaceID: "tea-ws1", InstallationID: 102, AccountLogin: "Personal"}); err != nil {
-		t.Fatalf("upsert 102: %v", err)
+
+	// Two installations under one workspace (the m74 shape).
+	if err := bind("tea-ws1", 101, "octo"); err != nil {
+		t.Fatalf("bind 101: %v", err)
+	}
+	if err := bind("tea-ws1", 102, "Personal"); err != nil {
+		t.Fatalf("bind 102: %v", err)
 	}
 
 	list, err := st.ListGitConnections(ctx, "tea-ws1")
@@ -68,32 +81,54 @@ func TestPGGitConnectionsMultiPerWorkspace(t *testing.T) {
 		t.Fatalf("unknown owner err = %v, want ErrNotFound", err)
 	}
 
-	// One-workspace-per-installation: re-binding 101 to another workspace is a
-	// conflict (finding-4); the store must not silently transfer the installation.
-	if _, err := st.UpsertGitConnection(ctx, GitConnection{WorkspaceID: "tea-ws2", InstallationID: 101, AccountLogin: "octo"}); !errors.Is(err, ErrConflict) {
-		t.Fatalf("cross-workspace rebind 101 err = %v, want ErrConflict", err)
+	// THE REVERSAL (ADR078 §2): binding 101 into a SECOND workspace now succeeds.
+	// Before w2/m162 this was ErrConflict, which is what made a personal GitHub
+	// account unable to back more than one workspace at all.
+	if err := bind("tea-ws2", 101, "octo"); err != nil {
+		t.Fatalf("second workspace binding installation 101: %v, want success", err)
 	}
+	bindings, err := st.GitConnectionsByInstallation(ctx, 101)
+	if err != nil || len(bindings) != 2 {
+		t.Fatalf("GitConnectionsByInstallation(101) = %+v (err %v), want 2 bindings", bindings, err)
+	}
+	seen := map[string]bool{}
+	for _, b := range bindings {
+		seen[b.WorkspaceID] = true
+	}
+	if !seen["tea-ws1"] || !seen["tea-ws2"] {
+		t.Fatalf("bindings = %+v, want both tea-ws1 and tea-ws2", bindings)
+	}
+	// ws1 gained nothing: its own set is unchanged by another workspace binding.
 	if n, _ := st.CountGitConnections(ctx, "tea-ws1"); n != 2 {
-		t.Fatalf("after rejected rebind, ws1 count = %d, want 2", n)
-	}
-	owner, err := st.GitConnectionByInstallation(ctx, 101)
-	if err != nil || owner.WorkspaceID != "tea-ws1" {
-		t.Fatalf("GitConnectionByInstallation(101) = %+v (err %v), want ws1", owner, err)
-	}
-	// Same-workspace reconnect remains idempotent and updates the login.
-	if _, err := st.UpsertGitConnection(ctx, GitConnection{WorkspaceID: "tea-ws1", InstallationID: 101, AccountLogin: "octo-updated"}); err != nil {
-		t.Fatalf("same-workspace re-upsert 101: %v", err)
-	}
-	owner, err = st.GitConnectionByInstallation(ctx, 101)
-	if err != nil || owner.AccountLogin != "octo-updated" {
-		t.Fatalf("after same-workspace update, account = %q (err %v), want octo-updated", owner.AccountLogin, err)
+		t.Fatalf("after ws2 bound 101, ws1 count = %d, want 2", n)
 	}
 
-	// Per-installation delete is workspace-scoped: ws2 cannot delete ws1's 101
-	// (101 remained in ws1 after the rejected cross-workspace rebind).
-	if err := st.DeleteGitConnection(ctx, "tea-ws2", 101); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("cross-workspace delete err = %v, want ErrNotFound", err)
+	// The same PAIR stays idempotent — one row, refreshed login (so a GitHub
+	// account rename converges) rather than a duplicate.
+	if err := bind("tea-ws1", 101, "octo-updated"); err != nil {
+		t.Fatalf("same-pair rebind: %v", err)
 	}
+	if n, _ := st.CountGitConnections(ctx, "tea-ws1"); n != 2 {
+		t.Fatalf("after same-pair rebind, ws1 count = %d, want 2 (no duplicate row)", n)
+	}
+	refreshed, err := st.GetGitConnectionByOwner(ctx, "tea-ws1", "octo-updated")
+	if err != nil || refreshed.InstallationID != 101 {
+		t.Fatalf("after same-pair rebind, owner lookup = %+v (err %v), want 101", refreshed, err)
+	}
+
+	// Per-installation delete stays workspace-scoped, and removing one binding
+	// leaves the other workspace's binding intact.
+	if err := st.DeleteGitConnection(ctx, "tea-ws2", 102); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("deleting an installation ws2 never bound = %v, want ErrNotFound", err)
+	}
+	if err := st.DeleteGitConnection(ctx, "tea-ws2", 101); err != nil {
+		t.Fatalf("ws2 disconnecting its own binding of 101: %v", err)
+	}
+	remaining, err := st.GitConnectionsByInstallation(ctx, 101)
+	if err != nil || len(remaining) != 1 || remaining[0].WorkspaceID != "tea-ws1" {
+		t.Fatalf("after ws2 disconnect, bindings = %+v (err %v), want ws1 only", remaining, err)
+	}
+
 	if err := st.DeleteGitConnection(ctx, "tea-ws1", 102); err != nil {
 		t.Fatalf("delete own connection 102: %v", err)
 	}
@@ -103,10 +138,9 @@ func TestPGGitConnectionsMultiPerWorkspace(t *testing.T) {
 	if n, _ := st.CountGitConnections(ctx, "tea-ws1"); n != 0 {
 		t.Fatalf("after delete, ws1 count = %d, want 0", n)
 	}
-
-	// Cleanup so a rerun on the same DB starts clean.
-	_, _ = st.Pool.Exec(ctx, `DELETE FROM git_connections WHERE workspace_id IN ('tea-ws1','tea-ws2')`)
-	_, _ = st.Pool.Exec(ctx, `DELETE FROM tenants WHERE id IN ('tea-ws1','tea-ws2')`)
+	if gone, err := st.GitConnectionsByInstallation(ctx, 101); err != nil || len(gone) != 0 {
+		t.Fatalf("GitConnectionsByInstallation(101) after deletes = %+v (err %v), want empty", gone, err)
+	}
 }
 
 // Two stores model callbacks landing on different API replicas. The workspace
@@ -123,7 +157,7 @@ func TestBindGitConnectionQuotaIsAtomicAcrossPools(t *testing.T) {
 	})
 	if _, err := storeA.BindGitConnection(ctx, GitConnection{
 		WorkspaceID: workspaceID, InstallationID: 7001, AccountLogin: "first",
-	}, 2); err != nil {
+	}, 2, 0); err != nil {
 		t.Fatalf("seed connection: %v", err)
 	}
 
@@ -135,7 +169,7 @@ func TestBindGitConnectionQuotaIsAtomicAcrossPools(t *testing.T) {
 			<-start
 			_, err := candidate.BindGitConnection(ctx, GitConnection{
 				WorkspaceID: workspaceID, InstallationID: installationID, AccountLogin: "candidate",
-			}, 2)
+			}, 2, 0)
 			results <- err
 		}()
 	}
@@ -170,14 +204,14 @@ func TestBindGitConnectionQuotaIsAtomicAcrossPools(t *testing.T) {
 		<-start
 		_, err := storeA.BindGitConnection(ctx, GitConnection{
 			WorkspaceID: workspaceID, InstallationID: 7001, AccountLogin: "refreshed",
-		}, 2)
+		}, 2, 0)
 		reconnect <- err
 	}()
 	go func() {
 		<-start
 		_, err := storeB.BindGitConnection(ctx, GitConnection{
 			WorkspaceID: workspaceID, InstallationID: 7004, AccountLogin: "new",
-		}, 2)
+		}, 2, 0)
 		newBinding <- err
 	}()
 	close(start)
@@ -190,15 +224,87 @@ func TestBindGitConnectionQuotaIsAtomicAcrossPools(t *testing.T) {
 	}
 }
 
+// The N:N mirror cap (ADR078 §2): how many WORKSPACES one installation may
+// serve. It bounds the push webhook's fan-out (§4a), so like its sibling it must
+// be admitted inside the insert's transaction — a standalone count would let two
+// concurrent callbacks at limit-1 both pass.
+func TestBindGitConnectionInstallationWorkspaceQuotaIsAtomicAcrossPools(t *testing.T) {
+	storeA := newReplayTestStore(t)
+	storeB := newReplayTestStore(t)
+	ctx := context.Background()
+	workspaces := []string{"tea-fanout-1", "tea-fanout-2", "tea-fanout-3"}
+	const installationID = int64(7101)
+	for _, ws := range workspaces {
+		_, _ = storeA.Pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, ws)
+		seedGitTenant(t, storeA, ws)
+	}
+	t.Cleanup(func() {
+		for _, ws := range workspaces {
+			_, _ = storeA.Pool.Exec(context.Background(), `DELETE FROM tenants WHERE id = $1`, ws)
+		}
+	})
+
+	// One binding already exists; the cap is 2, so exactly one of the two racing
+	// workspaces may still bind the same installation.
+	if _, err := storeA.BindGitConnection(ctx, GitConnection{
+		WorkspaceID: workspaces[0], InstallationID: installationID, AccountLogin: "shared",
+	}, 0, 2); err != nil {
+		t.Fatalf("seed binding: %v", err)
+	}
+
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	for i, candidate := range []*PGStore{storeA, storeB} {
+		ws := workspaces[i+1]
+		go func() {
+			<-start
+			_, err := candidate.BindGitConnection(ctx, GitConnection{
+				WorkspaceID: ws, InstallationID: installationID, AccountLogin: "shared",
+			}, 0, 2)
+			results <- err
+		}()
+	}
+	close(start)
+	successes, limits := 0, 0
+	for range 2 {
+		err := <-results
+		if err == nil {
+			successes++
+			continue
+		}
+		var limit *GitInstallationWorkspaceLimitError
+		if errors.As(err, &limit) {
+			limits++
+			continue
+		}
+		t.Fatalf("unexpected bind result: %v", err)
+	}
+	if successes != 1 || limits != 1 {
+		t.Fatalf("race results: successes=%d limits=%d", successes, limits)
+	}
+	bindings, err := storeA.GitConnectionsByInstallation(ctx, installationID)
+	if err != nil || len(bindings) != 2 {
+		t.Fatalf("bindings = %+v (err %v); want hard limit 2", bindings, err)
+	}
+
+	// A workspace that already holds the binding still refreshes at the limit —
+	// the row count does not change, so neither cap applies.
+	if _, err := storeA.BindGitConnection(ctx, GitConnection{
+		WorkspaceID: workspaces[0], InstallationID: installationID, AccountLogin: "renamed",
+	}, 0, 2); err != nil {
+		t.Fatalf("same-pair refresh at the installation limit: %v", err)
+	}
+}
+
 func TestDeleteTenantCascadesGitConnections(t *testing.T) {
 	st := newReplayTestStore(t)
 	ctx := context.Background()
 	const workspaceID = "tea-git-cascade"
 	seedGitTenant(t, st, workspaceID)
-	if _, err := st.UpsertGitConnection(ctx, GitConnection{
+	if _, err := st.BindGitConnection(ctx, GitConnection{
 		WorkspaceID: workspaceID, InstallationID: 909301, AccountLogin: "cascade-test",
-	}); err != nil {
-		t.Fatalf("UpsertGitConnection: %v", err)
+	}, 0, 0); err != nil {
+		t.Fatalf("BindGitConnection: %v", err)
 	}
 
 	if err := st.DeleteTenant(ctx, workspaceID); err != nil {

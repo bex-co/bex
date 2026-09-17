@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -26,11 +27,13 @@ import (
 )
 
 // GitConnection is a row of `git_connections`: a GitHub App installation a
-// workspace has connected (docs/ADR026-github-integration.md, ADR075). Since
-// w5/m74 the installation id is the primary key, so a workspace may hold many
-// connections (one per GitHub account/org it has installed the App on) while an
-// installation still belongs to at most one workspace. A re-connect of the same
-// installation upserts; a different installation adds a row.
+// workspace has connected (docs/ADR026-github-integration.md, ADR078). Since
+// w2/m162 the key is composite (workspace_id, installation_id) — the model is
+// N:N. A workspace holds many connections (one per GitHub account/org it has
+// installed the App on), and an installation may serve many workspaces, each
+// binding carrying its own complete three-proof sequence (ADR078 §2). A
+// re-connect of the same (workspace, installation) pair upserts; anything else
+// adds a row.
 type GitConnection struct {
 	WorkspaceID    string    `json:"workspaceId"`
 	InstallationID int64     `json:"installationId"`
@@ -38,9 +41,10 @@ type GitConnection struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
-// GitConnectionLimitError reports an atomic quota refusal. It is typed so the
-// GitHub service can preserve its public GIT_CONNECTION_LIMIT dialect without
-// making this storage package depend on API errors.
+// GitConnectionLimitError reports an atomic refusal of the per-workspace quota
+// (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE). It is typed so the GitHub service can
+// preserve its public GIT_CONNECTION_LIMIT dialect without making this storage
+// package depend on API errors.
 type GitConnectionLimitError struct {
 	Count int
 	Limit int
@@ -50,30 +54,52 @@ func (e *GitConnectionLimitError) Error() string {
 	return fmt.Sprintf("git connection limit reached: %d of %d", e.Count, e.Limit)
 }
 
-// BindGitConnection serializes admission for one workspace and performs the
-// ownership check, quota check, and write in one transaction. The transaction-
-// scoped advisory lock works across API replicas and distinct pool connections;
-// same-workspace reconnects are detected before counting and remain exempt.
-func (s *PGStore) BindGitConnection(ctx context.Context, c GitConnection, maxConnections int) (GitConnection, error) {
+// GitInstallationWorkspaceLimitError is GitConnectionLimitError's mirror: an
+// atomic refusal of the per-installation quota
+// (BEX_MAX_WORKSPACES_PER_GIT_INSTALLATION, ADR078 §2). It bounds how many
+// workspaces one installation may serve, and therefore how wide a single push
+// delivery can fan out (ADR078 §4a).
+type GitInstallationWorkspaceLimitError struct {
+	Count int
+	Limit int
+}
+
+func (e *GitInstallationWorkspaceLimitError) Error() string {
+	return fmt.Sprintf("git installation workspace limit reached: %d of %d", e.Count, e.Limit)
+}
+
+// BindGitConnection performs the same-pair check, both quota checks, and the
+// write in one transaction. The transaction-scoped advisory locks work across API
+// replicas and distinct pool connections.
+//
+// SECURITY: the counts and the insert MUST share this transaction. A standalone
+// count beforehand lets two concurrent callbacks at limit-1 both pass. Two locks
+// are taken because N:N has two independent caps — the workspace's fan-in and the
+// installation's fan-out — and they are always acquired workspace-first so
+// concurrent binds cannot deadlock on opposite orders. A same-pair reconnect is
+// detected before either count and remains exempt from both.
+func (s *PGStore) BindGitConnection(ctx context.Context, c GitConnection, maxConnections, maxWorkspaces int) (GitConnection, error) {
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		// Consistent lock order: workspace, then installation. Never reverse it.
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, c.WorkspaceID); err != nil {
 			return err
 		}
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, c.InstallationID); err != nil {
+			return err
+		}
 
-		var owner string
+		// Idempotent reconnect of a pair this workspace already holds: refresh the
+		// account login (so a GitHub account rename converges) and stop. Neither
+		// quota applies — the row count does not change.
 		err := tx.QueryRow(ctx,
-			`SELECT workspace_id FROM git_connections WHERE installation_id = $1 FOR UPDATE`,
-			c.InstallationID,
-		).Scan(&owner)
+			`UPDATE git_connections SET account_login = $3, created_at = now()
+			  WHERE workspace_id = $1 AND installation_id = $2
+			  RETURNING created_at`,
+			c.WorkspaceID, c.InstallationID, c.AccountLogin,
+		).Scan(&c.CreatedAt)
 		switch {
-		case err == nil && owner != c.WorkspaceID:
-			return ErrConflict
 		case err == nil:
-			return tx.QueryRow(ctx,
-				`UPDATE git_connections SET account_login = $2, created_at = now()
-				  WHERE installation_id = $1 RETURNING created_at`,
-				c.InstallationID, c.AccountLogin,
-			).Scan(&c.CreatedAt)
+			return nil
 		case !errors.Is(err, pgx.ErrNoRows):
 			return err
 		}
@@ -90,79 +116,70 @@ func (s *PGStore) BindGitConnection(ctx context.Context, c GitConnection, maxCon
 			}
 		}
 
-		err = tx.QueryRow(ctx,
+		if maxWorkspaces > 0 {
+			var count int
+			if err := tx.QueryRow(ctx,
+				`SELECT count(*) FROM git_connections WHERE installation_id = $1`, c.InstallationID,
+			).Scan(&count); err != nil {
+				return err
+			}
+			if count >= maxWorkspaces {
+				return &GitInstallationWorkspaceLimitError{Count: count, Limit: maxWorkspaces}
+			}
+		}
+
+		return tx.QueryRow(ctx,
 			`INSERT INTO git_connections (workspace_id, installation_id, account_login)
 			 VALUES ($1, $2, $3)
-			 ON CONFLICT (installation_id) DO UPDATE
+			 ON CONFLICT (workspace_id, installation_id) DO UPDATE
 			   SET account_login = EXCLUDED.account_login, created_at = now()
-			   WHERE git_connections.workspace_id = EXCLUDED.workspace_id
 			 RETURNING created_at`,
 			c.WorkspaceID, c.InstallationID, c.AccountLogin,
 		).Scan(&c.CreatedAt)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrConflict
-		}
-		return err
 	})
 	if err != nil {
-		var limit *GitConnectionLimitError
-		if errors.As(err, &limit) {
-			return GitConnection{}, limit
+		var connLimit *GitConnectionLimitError
+		if errors.As(err, &connLimit) {
+			return GitConnection{}, connLimit
+		}
+		var wsLimit *GitInstallationWorkspaceLimitError
+		if errors.As(err, &wsLimit) {
+			return GitConnection{}, wsLimit
 		}
 		return GitConnection{}, classify("git connection", err)
 	}
 	return c, nil
 }
 
-// UpsertGitConnection records a connection, keyed by installation (ADR075). A
-// re-connect of the same installation refreshes its workspace binding and
-// account login; a new installation adds a row to the workspace's set. The
-// This low-level helper retains the one-workspace-per-installation invariant,
-// but deliberately has no quota parameter. Production callback admission uses
-// BindGitConnection; direct callers use this only where no quota is required.
-// SECURITY (finding-4): the ON CONFLICT update is conditional on workspace_id
-// matching so concurrent claims by two workspaces cannot silently transfer the
-// installation. A cross-workspace conflict returns ErrConflict instead of
-// overwriting the row.
-func (s *PGStore) UpsertGitConnection(ctx context.Context, c GitConnection) (GitConnection, error) {
-	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO git_connections (workspace_id, installation_id, account_login)
-		 VALUES ($1, $2, $3)
-		 ON CONFLICT (installation_id) DO UPDATE
-		   SET account_login = EXCLUDED.account_login,
-		       created_at = now()
-		   WHERE git_connections.workspace_id = EXCLUDED.workspace_id
-		 RETURNING created_at`,
-		c.WorkspaceID, c.InstallationID, c.AccountLogin,
-	).Scan(&c.CreatedAt)
+// GitConnectionsByInstallation returns every workspace binding for
+// installationID, oldest first (an empty slice when none — not ErrNotFound).
+//
+// It is the reverse lookup, and the ONLY direction in which an installation
+// resolves to workspaces: every other consumer goes workspace -> connections.
+// The push webhook reads it to confine an app-signed delivery to the proved
+// binding set (ADR078 §4a), where an EMPTY result must mean "act on nothing" —
+// never a widening to a global match.
+func (s *PGStore) GitConnectionsByInstallation(ctx context.Context, installationID int64) ([]GitConnection, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT workspace_id, account_login, created_at FROM git_connections
+		  WHERE installation_id = $1 ORDER BY created_at, workspace_id`,
+		installationID)
 	if err != nil {
-		// Conditional UPDATE returning 0 rows means a cross-workspace conflict,
-		// not a missing row. classify would map pgx.ErrNoRows to ErrNotFound;
-		// this path must be ErrConflict to preserve the invariant.
-		if errors.Is(err, pgx.ErrNoRows) {
-			return GitConnection{}, fmt.Errorf("git connection: %w", ErrConflict)
+		return nil, classify("git connection", err)
+	}
+	defer rows.Close()
+	out := []GitConnection{}
+	for rows.Next() {
+		c := GitConnection{InstallationID: installationID}
+		if err := rows.Scan(&c.WorkspaceID, &c.AccountLogin, &c.CreatedAt); err != nil {
+			return nil, classify("git connection", err)
 		}
-		return GitConnection{}, classify("git connection", err)
+		out = append(out, c)
 	}
-	return c, nil
-}
-
-// GitConnectionByInstallation returns the connection bound to installationID, or
-// ErrNotFound when no workspace has connected it. It backs the unique
-// installation->workspace binding (w1/m65 F2): because the App JWT can look up
-// EVERY installation of itself, a GetInstallation success is existence proof
-// only — this lookup is what lets the service reject a second workspace trying to
-// claim an installation another already owns.
-func (s *PGStore) GitConnectionByInstallation(ctx context.Context, installationID int64) (GitConnection, error) {
-	c := GitConnection{InstallationID: installationID}
-	err := s.Pool.QueryRow(ctx,
-		`SELECT workspace_id, account_login, created_at FROM git_connections WHERE installation_id = $1`,
-		installationID,
-	).Scan(&c.WorkspaceID, &c.AccountLogin, &c.CreatedAt)
-	if err != nil {
-		return GitConnection{}, classify("git connection", err)
+	if err := rows.Err(); err != nil {
+		return nil, classify("git connection", err)
 	}
-	return c, nil
+	return out, nil
 }
 
 // GetGitConnection returns a workspace's oldest connection, or ErrNotFound. Since
@@ -263,10 +280,16 @@ func (s *PGStore) CountGitConnections(ctx context.Context, workspaceID string) (
 // record the flow could only ever prove that SOMEONE authorized SOME workspace —
 // never that the human completing the installation is the one who asked.
 type GitHubConnectTransaction struct {
-	Nonce     string
-	TenantID  string
-	Subject   string
-	ExpiresAt time.Time
+	Nonce    string
+	TenantID string
+	Subject  string
+	// InstallationID is the claim flow's optional start-time selector (ADR078
+	// §3a): 0 = unspecified. When set it NARROWS the server-proved candidate set
+	// at the callback; it can never add to it, because an installation the OAuth
+	// user does not administer is not a candidate regardless of what was named
+	// here. Unused by the install flow, which gets its id from GitHub.
+	InstallationID int64
+	ExpiresAt      time.Time
 }
 
 // CreateGitHubConnectTransaction records a connect attempt. Expired rows are
@@ -277,10 +300,14 @@ func (s *PGStore) CreateGitHubConnectTransaction(ctx context.Context, t GitHubCo
 	if _, err := s.Pool.Exec(ctx, `DELETE FROM github_connect_transactions WHERE expires_at < now()`); err != nil {
 		return err
 	}
+	var installation *int64
+	if t.InstallationID > 0 {
+		installation = &t.InstallationID
+	}
 	_, err := s.Pool.Exec(ctx,
-		`INSERT INTO github_connect_transactions (nonce, tenant_id, subject, expires_at)
-		 VALUES ($1, $2, $3, $4)`,
-		t.Nonce, t.TenantID, t.Subject, t.ExpiresAt)
+		`INSERT INTO github_connect_transactions (nonce, tenant_id, subject, installation_id, expires_at)
+		 VALUES ($1, $2, $3, $4, $5)`,
+		t.Nonce, t.TenantID, t.Subject, installation, t.ExpiresAt)
 	if err != nil {
 		return classify("github connect transaction", err)
 	}
@@ -294,13 +321,99 @@ func (s *PGStore) CreateGitHubConnectTransaction(ctx context.Context, t GitHubCo
 // caller cannot distinguish them (and neither can an attacker probing).
 func (s *PGStore) ConsumeGitHubConnectTransaction(ctx context.Context, nonce string) (GitHubConnectTransaction, error) {
 	var t GitHubConnectTransaction
+	var installation *int64
 	err := s.Pool.QueryRow(ctx,
 		`DELETE FROM github_connect_transactions
 		  WHERE nonce = $1 AND expires_at > now()
-		  RETURNING nonce, tenant_id, subject, expires_at`, nonce,
-	).Scan(&t.Nonce, &t.TenantID, &t.Subject, &t.ExpiresAt)
+		  RETURNING nonce, tenant_id, subject, installation_id, expires_at`, nonce,
+	).Scan(&t.Nonce, &t.TenantID, &t.Subject, &installation, &t.ExpiresAt)
 	if err != nil {
 		return GitHubConnectTransaction{}, classify("github connect transaction", err)
 	}
+	if installation != nil {
+		t.InstallationID = *installation
+	}
 	return t, nil
+}
+
+// GitHubClaimCandidate is one proved member of a claim selection: an
+// installation the authorizing user was shown to administer.
+type GitHubClaimCandidate struct {
+	InstallationID int64  `json:"installationId"`
+	AccountLogin   string `json:"accountLogin"`
+}
+
+// GitHubClaimSelection is an ambiguous claim's deferred choice (ADR078 §3a): the
+// candidate set the callback ALREADY proved, held for the few minutes the human
+// needs to pick one. Subject- and workspace-bound, single-use, and closed — the
+// selection can only ever resolve to a member of Candidates.
+type GitHubClaimSelection struct {
+	ID          string
+	WorkspaceID string
+	Subject     string
+	Candidates  []GitHubClaimCandidate
+	ExpiresAt   time.Time
+}
+
+// CreateGitHubClaimSelection records a proved candidate set. Expired rows are
+// pruned here rather than by a janitor, matching the connect transaction: the
+// flow is human-driven and rare, so the piggybacked DELETE keeps the table at
+// "selections offered in the last few minutes" for free.
+func (s *PGStore) CreateGitHubClaimSelection(ctx context.Context, sel GitHubClaimSelection) error {
+	if _, err := s.Pool.Exec(ctx, `DELETE FROM github_claim_selections WHERE expires_at < now()`); err != nil {
+		return err
+	}
+	candidates, err := json.Marshal(sel.Candidates)
+	if err != nil {
+		return err
+	}
+	if _, err := s.Pool.Exec(ctx,
+		`INSERT INTO github_claim_selections (id, workspace_id, subject, candidates, expires_at)
+		 VALUES ($1, $2, $3, $4, $5)`,
+		sel.ID, sel.WorkspaceID, sel.Subject, candidates, sel.ExpiresAt,
+	); err != nil {
+		return classify("github claim selection", err)
+	}
+	return nil
+}
+
+// GetGitHubClaimSelection reads an unexpired selection WITHOUT consuming it — the
+// picker's render. ErrNotFound covers unknown, already-consumed, and expired
+// alike, so a caller cannot distinguish them (and neither can an attacker
+// probing). Subject matching is the service's job, on the fresh caller identity.
+func (s *PGStore) GetGitHubClaimSelection(ctx context.Context, id string) (GitHubClaimSelection, error) {
+	sel := GitHubClaimSelection{ID: id}
+	var candidates []byte
+	err := s.Pool.QueryRow(ctx,
+		`SELECT workspace_id, subject, candidates, expires_at FROM github_claim_selections
+		  WHERE id = $1 AND expires_at > now()`, id,
+	).Scan(&sel.WorkspaceID, &sel.Subject, &candidates, &sel.ExpiresAt)
+	if err != nil {
+		return GitHubClaimSelection{}, classify("github claim selection", err)
+	}
+	if err := json.Unmarshal(candidates, &sel.Candidates); err != nil {
+		return GitHubClaimSelection{}, err
+	}
+	return sel, nil
+}
+
+// ConsumeGitHubClaimSelection atomically claims an unexpired selection and
+// returns it. Single-use by construction: the row is DELETEd in the same
+// statement that reads it, so a replayed selection — on any replica — finds
+// nothing.
+func (s *PGStore) ConsumeGitHubClaimSelection(ctx context.Context, id string) (GitHubClaimSelection, error) {
+	sel := GitHubClaimSelection{ID: id}
+	var candidates []byte
+	err := s.Pool.QueryRow(ctx,
+		`DELETE FROM github_claim_selections
+		  WHERE id = $1 AND expires_at > now()
+		  RETURNING workspace_id, subject, candidates, expires_at`, id,
+	).Scan(&sel.WorkspaceID, &sel.Subject, &candidates, &sel.ExpiresAt)
+	if err != nil {
+		return GitHubClaimSelection{}, classify("github claim selection", err)
+	}
+	if err := json.Unmarshal(candidates, &sel.Candidates); err != nil {
+		return GitHubClaimSelection{}, err
+	}
+	return sel, nil
 }

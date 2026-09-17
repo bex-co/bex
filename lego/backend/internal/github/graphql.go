@@ -93,6 +93,23 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return connection, nil
 			},
 		},
+		// gitClaimSelection renders an ambiguous claim's proved options so the
+		// dashboard can offer a picker (ADR078 §3a). Subject-matched: the id names
+		// a pending choice, it is not a capability.
+		"gitClaimSelection": &graphql.Field{
+			Type: gitClaimSelectionGQLType,
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				"id":      gqlutil.Arg(graphql.NewNonNull(graphql.String)),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				sel, err := s.GetClaimSelection(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "id"))
+				if err != nil {
+					return nil, err
+				}
+				return sel, nil
+			},
+		},
 		"repos": &graphql.Field{
 			Type: graphql.NewList(repoGQLType),
 			Args: ownerIDArg,
@@ -157,6 +174,31 @@ var gitClaimGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// gitClaimCandidateGQLType is one proved option of a pending claim (ADR078 §3a).
+var gitClaimCandidateGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "GitClaimCandidate",
+	Fields: graphql.Fields{
+		"installationId": &graphql.Field{
+			Type:    graphql.Float,
+			Resolve: func(p graphql.ResolveParams) (any, error) { return p.Source.(ClaimCandidate).InstallationID, nil },
+		},
+		"accountLogin": gqlutil.StrField(func(c ClaimCandidate) any { return c.AccountLogin }),
+	},
+})
+
+// gitClaimSelectionGQLType mirrors the REST ClaimSelection object.
+var gitClaimSelectionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "GitClaimSelection",
+	Fields: graphql.Fields{
+		"id":        gqlutil.StrField(func(s ClaimSelection) any { return s.ID }),
+		"expiresAt": gqlutil.StrField(func(s ClaimSelection) any { return s.ExpiresAt }),
+		"candidates": &graphql.Field{
+			Type:    graphql.NewList(gitClaimCandidateGQLType),
+			Resolve: func(p graphql.ResolveParams) (any, error) { return p.Source.(ClaimSelection).Candidates, nil },
+		},
+	},
+})
+
 // GraphQLMutation returns connectGit (returns the connection + install URL),
 // claimGit (the ADR078 §3a claim flow for already-installed accounts), and
 // disconnectGit.
@@ -178,13 +220,46 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// flow — see ADR078 §3a. Browser-only ceremony; deliberately not on MCP.
 		"claimGit": &graphql.Field{
 			Type: gitClaimGQLType,
-			Args: ownerIDArg,
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				// installationId (optional) narrows the candidate set the callback
+				// proves (ADR078 §3a). It cannot widen it: an installation the
+				// authorizing GitHub user does not administer is never a candidate.
+				"installationId": gqlutil.Arg(graphql.Float),
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				claim, err := s.StartClaim(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				var installationID int64
+				if v, ok := p.Args["installationId"].(float64); ok {
+					installationID = int64(v)
+				}
+				claim, err := s.StartClaim(p.Context, gqlutil.Str(p.Args, "ownerId"), installationID)
 				if err != nil {
 					return nil, err
 				}
 				return claim, nil
+			},
+		},
+		// selectGitClaim completes an ambiguous claim by binding ONE option the
+		// callback already proved (ADR078 §3a). Single-use, subject-matched, and
+		// closed to ids outside the stored set — it grants nothing the callback had
+		// not established. Browser-only ceremony; deliberately not on MCP.
+		"selectGitClaim": &graphql.Field{
+			Type: gitConnectionGQLType,
+			Args: graphql.FieldConfigArgument{
+				"ownerId":        gqlutil.Arg(graphql.String),
+				"selectionId":    gqlutil.Arg(graphql.NewNonNull(graphql.String)),
+				"installationId": gqlutil.Arg(graphql.NewNonNull(graphql.Float)),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				var installationID int64
+				if v, ok := p.Args["installationId"].(float64); ok {
+					installationID = int64(v)
+				}
+				conn, err := s.SelectClaim(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "selectionId"), installationID)
+				if err != nil {
+					return nil, err
+				}
+				return conn, nil
 			},
 		},
 		"disconnectGit": &graphql.Field{

@@ -91,10 +91,14 @@ type WebhookReplayGuard interface {
 	ReleaseGitWebhookDelivery(ctx context.Context, claim store.GitWebhookReplayClaim) error
 }
 
-// InstallationResolver maps a GitHub App installation id to the workspace that
-// owns it. Implemented in the composition root over the git-connection store.
+// InstallationResolver maps a GitHub App installation id to every workspace that
+// has PROVED a binding for it (ADR078 §2 — the model is N:N since w2/m162).
+// Implemented in the composition root over the git-connection store.
+//
+// An empty slice means no workspace has bound the installation. It never means
+// "unscoped" — see scopesFor.
 type InstallationResolver interface {
-	WorkspaceForInstallation(ctx context.Context, installationID int64) (workspaceID string, ok bool, err error)
+	WorkspacesForInstallation(ctx context.Context, installationID int64) (workspaceIDs []string, err error)
 }
 
 // configured reports whether at least one HMAC key is set.
@@ -128,17 +132,31 @@ func (h *GitWebhook) verifyKey(sig string, body []byte) verifiedKey {
 	}
 }
 
-// scopeFor returns the workspace an accepted delivery is confined to ("" = an
-// unconfined/global match) and whether to act at all. Only the GitHub App key is
-// confined: its payload carries a verifiable installation id bound to exactly one
-// workspace, so a forged app-signed event can reach only that workspace's Apps.
-// proceed=false means the delivery is validly signed but its installation maps to
-// no workspace (or the lookup failed) — act on nothing rather than fall back to a
-// global match (codex #7). In multitenant operation the same fail-closed rule
-// covers a missing resolver or missing installation id (round-6 #9).
-func (h *GitWebhook) scopeFor(ctx context.Context, key verifiedKey, installationID int64) (scope string, proceed bool) {
+// scopesFor returns the workspaces an accepted delivery is confined to, and
+// whether to act at all. Only the GitHub App key is confined: its payload carries
+// a verifiable installation id, and the delivery may reach only workspaces that
+// PROVED a binding for that installation.
+//
+// THE FAIL-CLOSED INVARIANT (codex #7, ADR057 round-6 #9, restated for N:N in
+// ADR078 §4a). The property those reviews bought is NOT "the lookup returns one
+// workspace" — that was a function signature. It is:
+//
+//   - an app-signed delivery reaches only proved workspaces, and
+//   - an unresolvable one acts on NOTHING rather than degrading into the manual
+//     key's deliberately global scope.
+//
+// So proceed=false (never an empty scope list with proceed=true) is how every
+// unresolvable case exits in multitenant operation: unknown or unbound
+// installation, absent installation id, unwired resolver, and lookup error
+// alike. N:N changes only how many non-empty scopes there can be.
+//
+// A returned []string{""} would be a global match and must never occur: empty
+// workspace ids are dropped by the resolver, and a wholly empty result fails
+// closed here.
+func (h *GitWebhook) scopesFor(ctx context.Context, key verifiedKey, installationID int64) (scopes []string, proceed bool) {
 	if key != keyGitHubApp {
-		return "", true // manual key → global (multitenant already rejects it at verify)
+		// Manual key → one global scope (multitenant already rejects it at verify).
+		return []string{""}, true
 	}
 	if h.Installations == nil || installationID == 0 {
 		// Resolver unwired or the payload carries no installation id. Global
@@ -148,15 +166,24 @@ func (h *GitWebhook) scopeFor(ctx context.Context, key verifiedKey, installation
 		// no GitHub service) must fail closed, not fall back to the manual
 		// key's intentionally global scope (codex-security round-6 #9).
 		if h.Multitenant {
-			return "", false
+			return nil, false
 		}
-		return "", true
+		return []string{""}, true
 	}
-	ws, ok, err := h.Installations.WorkspaceForInstallation(ctx, installationID)
-	if err != nil || !ok || ws == "" {
-		return "", false // fail closed: an unknown/unbound installation acts on nothing
+	workspaces, err := h.Installations.WorkspacesForInstallation(ctx, installationID)
+	if err != nil {
+		return nil, false // fail closed: a lookup error acts on nothing
 	}
-	return ws, true
+	scopes = make([]string, 0, len(workspaces))
+	for _, ws := range workspaces {
+		if ws != "" { // an empty id here would silently mean "global"
+			scopes = append(scopes, ws)
+		}
+	}
+	if len(scopes) == 0 {
+		return nil, false // fail closed: an unknown/unbound installation acts on nothing
+	}
+	return scopes, true
 }
 
 // pushEvent is the slice of a GitHub/Gitea push payload the webhook needs: which
@@ -310,63 +337,95 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ev.DeliveryKey = deliveryKey(r, body)
 	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
-	// codex #7: confine a GitHub-App-signed delivery to its installation's
-	// workspace. proceed=false ⇒ signed but bound to no workspace ⇒ act on nothing.
-	scope, proceed := h.scopeFor(r.Context(), key, ev.Installation.ID)
+	// codex #7 / ADR078 §4a: confine a GitHub-App-signed delivery to the
+	// workspaces that PROVED a binding for its installation. proceed=false ⇒
+	// validly signed but unresolvable ⇒ act on nothing, never a global match.
+	scopes, proceed := h.scopesFor(r.Context(), key, ev.Installation.ID)
 	if !proceed {
 		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
 		return
 	}
 	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
-	candidates, err := h.repoCandidates(r.Context(), urls, scope)
-	if err != nil {
-		core.WriteErr(w, err)
-		return
-	}
 	// Branch-delete carries no commit — Apps only (disable auto-deploy). Skip
 	// Blueprint discovery/enqueue entirely (w8/m38).
-	if ev.Deleted || isZeroSHA(ev.After) {
-		candidates = branchCandidates(candidates, branch)
-		if len(candidates) == 0 {
-			core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
+	branchDeleted := ev.Deleted || isZeroSHA(ev.After)
+
+	claims := &deliveryClaims{h: h}
+	redeployed, deleted := []string{}, []string{}
+	anyFresh, anyWork := false, false
+
+	for _, scope := range scopes {
+		candidates, err := h.repoCandidates(r.Context(), urls, scope)
+		if err != nil {
+			claims.release(r.Context())
+			core.WriteErr(w, err)
 			return
 		}
-		w, finishClaim, ok := h.claimReplay(r.Context(), w, key, replayScope(key, scope, ev.Installation.ID), body)
-		if !ok {
+
+		var blueprintTargets []store.Blueprint
+		if branchDeleted {
+			candidates = branchCandidates(candidates, branch)
+		} else {
+			blueprintTargets, err = h.blueprintAutoSyncTargets(r.Context(), branch, scope, urls, ev.changedPaths())
+			if err != nil {
+				claims.release(r.Context())
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		// A valid delivery for a repository/branch this workspace does not track
+		// must not allocate a permanent replay row: there is no mutation to
+		// deduplicate, and a later App/Blueprint creation should still be allowed
+		// to consume a redelivery.
+		if len(candidates) == 0 && len(blueprintTargets) == 0 {
+			continue
+		}
+		anyWork = true
+
+		// codex round-8 #9: claim the exact signed bytes for THIS scope before its
+		// mutation branch. A scope that already processed them is skipped, not an
+		// abort — another workspace's delivery still has work to do.
+		fresh, err := claims.claim(r.Context(), key, replayScope(key, scope, ev.Installation.ID), body)
+		if err != nil {
+			claims.release(r.Context())
+			writeClaimErr(w, err)
 			return
 		}
-		defer finishClaim()
-		h.writeBranchDeletedCandidates(r.Context(), w, candidates, branch, ev.DeliveryKey)
+		if !fresh {
+			continue
+		}
+		anyFresh = true
+
+		if branchDeleted {
+			deleted = append(deleted, h.recordBranchDeletedCandidates(r.Context(), candidates, branch, ev.DeliveryKey)...)
+			continue
+		}
+		// Durable Blueprint intents before acknowledgment (w8/m38): enqueue first
+		// so a failure returns 5xx (claims released → GitHub retries) without
+		// having already mutated Apps. Successful inserts survive an API restart.
+		if err := h.enqueueBlueprintAutoSyncIntents(r.Context(), key, body, ev.After, blueprintTargets); err != nil {
+			claims.release(r.Context())
+			core.WriteErrStatus(w, http.StatusInternalServerError, "failed to persist blueprint auto-sync intent")
+			return
+		}
+		scopeRedeployed, _ := h.redeployCandidates(r.Context(), ev, branch, candidates)
+		redeployed = append(redeployed, scopeRedeployed...)
+	}
+
+	if branchDeleted {
+		if anyWork && !anyFresh {
+			core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}, "replayed": true})
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": deleted})
 		return
 	}
-	blueprintTargets, err := h.blueprintAutoSyncTargets(r.Context(), branch, scope, urls, ev.changedPaths())
-	if err != nil {
-		core.WriteErr(w, err)
+	// `replayed` stays exactly as it was for one scope: every scope that had work
+	// had already processed these bytes, so nothing fresh happened.
+	if anyWork && !anyFresh {
+		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}, "replayed": true})
 		return
 	}
-	// A valid delivery for a repository/branch bex does not track must not
-	// allocate a permanent replay row. There is no mutation to deduplicate, and
-	// a later App/Blueprint creation should still be allowed to consume a redelivery.
-	if len(candidates) == 0 && len(blueprintTargets) == 0 {
-		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
-		return
-	}
-	// codex round-8 #9: claim the exact signed bytes before either mutation
-	// branch. Everything below may mutate Apps (redeploy) or persist Blueprint
-	// intents; without the claim a captured delivery replays.
-	w, finishClaim, ok := h.claimReplay(r.Context(), w, key, replayScope(key, scope, ev.Installation.ID), body)
-	if !ok {
-		return
-	}
-	defer finishClaim()
-	// Durable Blueprint intents before acknowledgment (w8/m38): enqueue first so
-	// a failure returns 5xx (claim released → GitHub retries) without having
-	// already mutated Apps. Successful inserts survive an API restart.
-	if err := h.enqueueBlueprintAutoSyncIntents(r.Context(), key, body, ev.After, blueprintTargets); err != nil {
-		core.WriteErrStatus(w, http.StatusInternalServerError, "failed to persist blueprint auto-sync intent")
-		return
-	}
-	redeployed, _ := h.redeployCandidates(r.Context(), ev, branch, candidates)
 	core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": redeployed})
 }
 
@@ -386,8 +445,9 @@ func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []
 		core.WriteJSON(w, http.StatusOK, map[string]string{"ignored": "delete " + ev.RefType})
 		return
 	}
-	// codex #7: confine an app-signed delete to its installation's workspace.
-	scope, proceed := h.scopeFor(r.Context(), key, ev.Installation.ID)
+	// codex #7 / ADR078 §4a: confine an app-signed delete to the workspaces that
+	// proved a binding for its installation.
+	scopes, proceed := h.scopesFor(r.Context(), key, ev.Installation.ID)
 	if !proceed {
 		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
 		return
@@ -398,28 +458,39 @@ func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []
 		return
 	}
 	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
-	candidates, err := h.repoCandidates(r.Context(), urls, scope)
-	if err != nil {
-		core.WriteErr(w, err)
+	claims := &deliveryClaims{h: h}
+	deleted := []string{}
+	anyFresh, anyWork := false, false
+	for _, scope := range scopes {
+		candidates, err := h.repoCandidates(r.Context(), urls, scope)
+		if err != nil {
+			claims.release(r.Context())
+			core.WriteErr(w, err)
+			return
+		}
+		candidates = branchCandidates(candidates, branch)
+		if len(candidates) == 0 {
+			continue
+		}
+		anyWork = true
+		// codex round-8 #9: branch-delete handling mutates Apps (facts +
+		// autoDeploy-off patches), so it claims the delivery like the push path.
+		fresh, err := claims.claim(r.Context(), key, replayScope(key, scope, ev.Installation.ID), body)
+		if err != nil {
+			claims.release(r.Context())
+			writeClaimErr(w, err)
+			return
+		}
+		if !fresh {
+			continue
+		}
+		anyFresh = true
+		deleted = append(deleted, h.recordBranchDeletedCandidates(r.Context(), candidates, branch, deliveryKey(r, body))...)
+	}
+	if anyWork && !anyFresh {
+		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}, "replayed": true})
 		return
 	}
-	candidates = branchCandidates(candidates, branch)
-	if len(candidates) == 0 {
-		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
-		return
-	}
-	// codex round-8 #9: branch-delete handling mutates Apps (facts +
-	// autoDeploy-off patches), so it claims the delivery like the push path.
-	w, finishClaim, ok := h.claimReplay(r.Context(), w, key, replayScope(key, scope, ev.Installation.ID), body)
-	if !ok {
-		return
-	}
-	defer finishClaim()
-	h.writeBranchDeletedCandidates(r.Context(), w, candidates, branch, deliveryKey(r, body))
-}
-
-func (h *GitWebhook) writeBranchDeletedCandidates(ctx context.Context, w http.ResponseWriter, candidates []appv1alpha1.App, branch, deliveryKey string) {
-	deleted := h.recordBranchDeletedCandidates(ctx, candidates, branch, deliveryKey)
 	core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": deleted})
 }
 
@@ -476,54 +547,56 @@ func (h *GitWebhook) replayClaim(key verifiedKey, scope string, body []byte) sto
 	}
 }
 
-// claimReplay durably claims the signed body before a mutation branch runs
-// (codex round-8 #9). ok=false means the response is already written (the claim
-// errored, or the body was already processed — a replay — answered 200 so the
-// git host stops retrying); the caller returns. On ok=true the caller writes
-// through the returned recorder and MUST call finish after the branch: finish
-// releases the claim when the branch answered 5xx (the host will redeliver, and
-// that retry must not be swallowed by a claim whose work never happened). A
-// delivery that completed — even with per-app failures, which this handler
-// deliberately 200-swallows — keeps its claim: that IS the processed state.
-func (h *GitWebhook) claimReplay(ctx context.Context, w http.ResponseWriter, key verifiedKey, scope string, body []byte) (http.ResponseWriter, func(), bool) {
-	if h.Replays == nil {
-		return w, func() {}, true
-	}
-	claim := h.replayClaim(key, scope, body)
-	fresh, err := h.Replays.ClaimGitWebhookDelivery(ctx, claim)
-	if err != nil {
-		if errors.Is(err, store.ErrGitWebhookReplayCapacity) || errors.Is(err, store.ErrGitWebhookReplayEpochRetired) {
-			core.WriteErrStatus(w, http.StatusServiceUnavailable, err.Error())
-			return w, func() {}, false
-		}
-		core.WriteErr(w, err)
-		return w, func() {}, false
-	}
-	if !fresh {
-		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}, "replayed": true})
-		return w, func() {}, false
-	}
-	rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-	return rec, func() {
-		if rec.status >= http.StatusInternalServerError {
-			releaseCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
-			defer cancel()
-			_ = h.Replays.ReleaseGitWebhookDelivery(releaseCtx, claim)
-		}
-	}, true
+// deliveryClaims tracks the replay claims one delivery took across its fan-out
+// (ADR078 §4a). Each workspace scope claims independently — the claim key already
+// includes the scope — so one workspace's processing can neither swallow nor be
+// swallowed by another's, and a redelivery is still refused per workspace.
+//
+// release() returns EVERY claim taken, and is called only when the delivery
+// answers 5xx: the git host will redeliver, and that retry must not be swallowed
+// by claims whose work never happened (codex round-8 #9). A delivery that
+// completed — even with per-app failures, which this handler deliberately
+// 200-swallows — keeps its claims: that IS the processed state.
+type deliveryClaims struct {
+	h     *GitWebhook
+	taken []store.GitWebhookReplayClaim
 }
 
-// statusRecorder observes the status a mutation branch wrote so claimReplay can
-// release on hard failure. A plain success (2xx) or the handler's deliberate
-// 200-with-partial-list answers all leave the claim in place.
-type statusRecorder struct {
-	http.ResponseWriter
-	status int
+// claim durably claims the signed body for one scope before that scope's
+// mutation branch runs. fresh=false means these exact bytes were already
+// processed for this scope; the caller skips it rather than aborting the others.
+func (d *deliveryClaims) claim(ctx context.Context, key verifiedKey, scope string, body []byte) (fresh bool, err error) {
+	if d.h.Replays == nil {
+		return true, nil
+	}
+	c := d.h.replayClaim(key, scope, body)
+	fresh, err = d.h.Replays.ClaimGitWebhookDelivery(ctx, c)
+	if err != nil || !fresh {
+		return fresh, err
+	}
+	d.taken = append(d.taken, c)
+	return true, nil
 }
 
-func (r *statusRecorder) WriteHeader(code int) {
-	r.status = code
-	r.ResponseWriter.WriteHeader(code)
+func (d *deliveryClaims) release(ctx context.Context) {
+	if d.h.Replays == nil || len(d.taken) == 0 {
+		return
+	}
+	releaseCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+	defer cancel()
+	for _, c := range d.taken {
+		_ = d.h.Replays.ReleaseGitWebhookDelivery(releaseCtx, c)
+	}
+}
+
+// writeClaimErr maps a claim failure onto its response: capacity and retired
+// epochs are 503 (retryable), anything else the error's own status.
+func writeClaimErr(w http.ResponseWriter, err error) {
+	if errors.Is(err, store.ErrGitWebhookReplayCapacity) || errors.Is(err, store.ErrGitWebhookReplayEpochRetired) {
+		core.WriteErrStatus(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
+	core.WriteErr(w, err)
 }
 
 // isZeroSHA reports whether sha is git's all-zero object id, which a push

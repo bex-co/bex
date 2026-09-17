@@ -58,7 +58,7 @@ func doAs(t *testing.T, m *http.ServeMux, method, path, subject string) *httptes
 
 func callbackPath(t *testing.T, s *Service, installationID, workspaceID string) string {
 	t.Helper()
-	state, err := s.mintConnectState(testCallerCtx(), workspaceID, testCallerSubject)
+	state, err := s.mintConnectState(testCallerCtx(), workspaceID, testCallerSubject, 0)
 	if err != nil {
 		t.Fatalf("mint callback state: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestRESTHappyPath(t *testing.T) {
 func TestRESTCallbackBadInstallationID(t *testing.T) {
 	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore(), StateSecret: []byte("test-only-high-entropy-state-secret")}
 	m := mux(svc)
-	state, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject)
+	state, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestRESTCallbackStateFailuresRedirectToDashboard(t *testing.T) {
 		StateSecret:  []byte("test-only-high-entropy-state-secret"),
 		DashboardURL: "https://dash.bex.co",
 	}
-	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject)
+	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +258,7 @@ func TestRESTCallbackStateFailuresReturnClearJSONWithoutDashboard(t *testing.T) 
 		Store:       newFakeStore(),
 		StateSecret: []byte("test-only-high-entropy-state-secret"),
 	}
-	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject)
+	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

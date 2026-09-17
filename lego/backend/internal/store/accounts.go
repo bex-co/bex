@@ -377,6 +377,11 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			`DELETE FROM notification_settings WHERE subject = $1`,
 			`DELETE FROM ssh_keys WHERE subject = $1`,
 			`DELETE FROM github_connect_transactions WHERE subject = $1`,
+			// The claim selector's pending choices (ADR078 §3a) are the same
+			// class as the connect transaction above: in-flight, subject-bound
+			// browser state that authorizes a binding. Delete rather than
+			// anonymize — an orphaned selection must never be completable.
+			`DELETE FROM github_claim_selections WHERE subject = $1`,
 			// CLI telemetry rows are the reporter's own diagnostics (w5/m92):
 			// delete, don't anonymize — the stable installation_id would
 			// keep anonymized rows linkable, so a marker swap is incomplete.

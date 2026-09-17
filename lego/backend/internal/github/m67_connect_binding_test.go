@@ -145,7 +145,7 @@ func TestCallbackRouteRefusesAnotherUsersLink(t *testing.T) {
 
 	token, err := svc.mintConnectState(
 		core.WithIdentity(context.Background(), core.Identity{Subject: attackerSubject}),
-		attackerWorkspce, attackerSubject)
+		attackerWorkspce, attackerSubject, 0)
 	if err != nil {
 		t.Fatalf("mint state: %v", err)
 	}

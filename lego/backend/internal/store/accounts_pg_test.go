@@ -306,6 +306,7 @@ func assertAccountDeletionInventory(t *testing.T, ctx context.Context, pool *pgx
 		"audit_events.caller",
 		"cli_telemetry_events.subject",
 		"device_push_subscriptions.subject",
+		"github_claim_selections.subject",
 		"github_connect_transactions.subject",
 		"membership_role_reconciliations.subject",
 		"notification_settings.subject",

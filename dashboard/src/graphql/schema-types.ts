@@ -813,6 +813,19 @@ export type GitClaim = {
   claimUrl: Maybe<Scalars['String']['output']>;
 };
 
+export type GitClaimCandidate = {
+  __typename: 'GitClaimCandidate';
+  accountLogin: Maybe<Scalars['String']['output']>;
+  installationId: Maybe<Scalars['Float']['output']>;
+};
+
+export type GitClaimSelection = {
+  __typename: 'GitClaimSelection';
+  candidates: Maybe<Array<Maybe<GitClaimCandidate>>>;
+  expiresAt: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+};
+
 export type GitConnection = {
   __typename: 'GitConnection';
   accountLogin: Maybe<Scalars['String']['output']>;
@@ -1123,6 +1136,7 @@ export type Mutation = {
   rollbackService: Maybe<Deploy>;
   runCronJob: Maybe<CronRun>;
   scaleService: Maybe<Service>;
+  selectGitClaim: Maybe<GitConnection>;
   setAutoDeploy: Maybe<Service>;
   setAutoscaling: Maybe<Autoscaling>;
   setBranch: Maybe<Service>;
@@ -1268,6 +1282,7 @@ export type MutationChangeWorkspacePlanArgs = {
 
 
 export type MutationClaimGitArgs = {
+  installationId?: InputMaybe<Scalars['Float']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -1845,6 +1860,13 @@ export type MutationScaleServiceArgs = {
 };
 
 
+export type MutationSelectGitClaimArgs = {
+  installationId: Scalars['Float']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  selectionId: Scalars['String']['input'];
+};
+
+
 export type MutationSetAutoDeployArgs = {
   enabled: Scalars['Boolean']['input'];
   id: Scalars['String']['input'];
@@ -2380,6 +2402,7 @@ export type Project = {
   name: Maybe<Scalars['String']['output']>;
   ownerId: Maybe<Scalars['String']['output']>;
   serviceIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  updatedAt: Maybe<Scalars['String']['output']>;
 };
 
 export type PushNotification = {
@@ -2535,6 +2558,7 @@ export type Query = {
   environment: Maybe<Environment>;
   environments: Maybe<Array<Maybe<Environment>>>;
   generateBlueprint: Maybe<GeneratedBlueprint>;
+  gitClaimSelection: Maybe<GitClaimSelection>;
   /** @deprecated A workspace can hold several GitHub connections (ADR078); use gitConnections. This returns the oldest connection only. */
   gitConnection: Maybe<GitConnection>;
   gitConnections: Maybe<Array<Maybe<GitConnection>>>;
@@ -2889,6 +2913,12 @@ export type QueryGenerateBlueprintArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   postgresIds?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   serviceIds?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
+
+export type QueryGitClaimSelectionArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

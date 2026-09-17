@@ -35,7 +35,7 @@ const zhGit: Record<string, TranslationEntry> = {
   },
   "git.claimHint": {
     message:
-      "已经直接在 GitHub 上安装了 bex GitHub App？请使用认领——安装流程只适用于尚未安装该应用的账户。",
+      "该账户已经安装了 bex GitHub App？请改用“认领”。对已安装的账户，GitHub 显示的是“Configure”而不是“Install”，那条路不会回到 bex。",
     description:
       "Hint under the connect/claim buttons explaining when to use claim",
   },
@@ -109,13 +109,35 @@ const zhGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorNoClaimable": {
     message:
-      "未找到你管理的、尚未连接的 GitHub 账户。请先在该账户上安装 bex GitHub App，或确认授权了正确的 GitHub 用户。",
-    description: "Claim-callback failure: zero claimable installations",
+      "未找到你管理的 GitHub 账户。请确认授权了正确的 GitHub 用户，或先在该账户上安装 bex GitHub App。",
+    description:
+      "Claim-callback failure: zero candidates. Rewritten in w2/m162 — under ADR078 N:N an account connected to another workspace is claimable, so this no longer covers that case and must not imply it",
   },
   "git.callbackErrorAmbiguous": {
     message:
-      "找到了多个你管理的、尚未连接的 GitHub 账户。认领一次只绑定一个——请先在各自的工作区连接其他账户，然后再认领。",
-    description: "Claim-callback failure: more than one claimable installation",
+      "找到了多个你管理的 GitHub 账户，但未能记录你的选择。请点击“认领已安装账户”重新开始。",
+    description:
+      "Claim-callback failure: ambiguity the picker could not be offered for (the selection failed to persist). The ordinary ambiguous case now renders the account picker instead",
+  },
+  "git.claimSelectionTitle": {
+    message: "选择要连接的 GitHub 账户",
+    description: "Heading of the deferred claim account picker (ADR078 §3a)",
+  },
+  "git.claimSelectionBody": {
+    message: "你管理多个 GitHub 账户，请选择要连接到当前工作区的那一个。",
+    description: "Body of the deferred claim account picker",
+  },
+  "git.claimSelectionGoneTitle": {
+    message: "此选择已过期",
+    description: "Claim selection unknown, expired, or already used",
+  },
+  "git.claimSelectionGoneBody": {
+    message: "请点击下方的“认领已安装账户”重新开始。",
+    description: "Recovery for an expired or spent claim selection",
+  },
+  "git.selectClaimError": {
+    message: "无法连接该 GitHub 账户。",
+    description: "Toast when completing a claim selection fails",
   },
   "git.callbackErrorGeneric": {
     message: "GitHub 无法完成连接。请选择“连接 GitHub”重试。",

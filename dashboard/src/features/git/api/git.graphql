@@ -71,12 +71,45 @@ mutation ConnectGit($ownerId: String) {
   }
 }
 
-# The ADR075 §3a claim flow: bind an installation that ALREADY exists on GitHub
+# The ADR078 §3a claim flow: bind an installation that ALREADY exists on GitHub
 # (where the install URL strips the signed state) via the OAuth authorize round
-# trip that always preserves it.
-mutation ClaimGit($ownerId: String) {
-  claimGit(ownerId: $ownerId) {
+# trip that always preserves it. $installationId (optional) narrows the candidate
+# set the callback proves; it can never widen it.
+mutation ClaimGit($ownerId: String, $installationId: Float) {
+  claimGit(ownerId: $ownerId, installationId: $installationId) {
     claimUrl
+  }
+}
+
+# An ambiguous claim's already-proved options (ADR078 §3a). The callback could not
+# pick for the user — it administers several GitHub accounts — so it recorded what
+# it proved and sent the browser back with this id to render a picker.
+query GitClaimSelection($ownerId: String, $id: String!) {
+  gitClaimSelection(ownerId: $ownerId, id: $id) {
+    id
+    expiresAt
+    candidates {
+      installationId
+      accountLogin
+    }
+  }
+}
+
+# Completes the claim by binding ONE option the callback already proved.
+# Single-use: a replay binds nothing.
+mutation SelectGitClaim(
+  $ownerId: String
+  $selectionId: String!
+  $installationId: Float!
+) {
+  selectGitClaim(
+    ownerId: $ownerId
+    selectionId: $selectionId
+    installationId: $installationId
+  ) {
+    connected
+    accountLogin
+    installationId
   }
 }
 

@@ -35,7 +35,7 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 - [ADR024-members.md](ADR024-members.md) — workspace members & roles, OpenFGA tuples
 - [ADR086-account-deletion.md](ADR086-account-deletion.md) — durable self-delete, workspace offboarding, credential cleanup
 - [ADR026-github-integration.md](ADR026-github-integration.md) — self-hosted GitHub App, deploy keys
-- [ADR078-github-workspace-connections.md](ADR078-github-workspace-connections.md) — N installations per workspace
+- [ADR078-github-workspace-connections.md](ADR078-github-workspace-connections.md) — workspace↔installation is N:N, each binding separately proved; why per-user credentials stay rejected
 - [ADR025-connect-an-agent.md](ADR025-connect-an-agent.md) — Claude/Cursor → `/mcp` over OAuth 2.1
 
 ### App lifecycle & hosting types

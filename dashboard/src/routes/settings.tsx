@@ -21,18 +21,27 @@ export const Route = createFileRoute("/settings")({
   ): {
     flow?: string;
     git_error?: string;
+    git_claim_selection?: string;
     returnTo?: string;
     addKey?: boolean;
   } => {
     const validated: {
       flow?: string;
       git_error?: string;
+      git_claim_selection?: string;
       returnTo?: string;
       addKey?: boolean;
     } = {};
     if (typeof search.flow === "string") validated.flow = search.flow;
     if (typeof search.git_error === "string") {
       validated.git_error = search.git_error;
+    }
+    // git_claim_selection (ADR078 §3a) is the SUCCESS continuation of an
+    // ambiguous claim, not a failure: it names a pending, single-use account
+    // choice the callback already proved. Opaque id, rendered only as a lookup
+    // key — never interpolated into markup or a navigation target.
+    if (typeof search.git_claim_selection === "string") {
+      validated.git_claim_selection = search.git_claim_selection;
     }
     if (typeof search.returnTo === "string") {
       validated.returnTo = search.returnTo;

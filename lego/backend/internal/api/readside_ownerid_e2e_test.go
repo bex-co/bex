@@ -117,14 +117,14 @@ func TestReadSideOwnerIDTargetingE2E(t *testing.T) {
 	}
 
 	// GitHub: one connection per workspace, distinct account logins.
-	if _, err := st.UpsertGitConnection(ctx, store.GitConnection{
+	if _, err := st.BindGitConnection(ctx, store.GitConnection{
 		WorkspaceID: wsA.ID, InstallationID: 111, AccountLogin: "alpha-org",
-	}); err != nil {
+	}, 0, 0); err != nil {
 		t.Fatalf("seed alpha git connection: %v", err)
 	}
-	if _, err := st.UpsertGitConnection(ctx, store.GitConnection{
+	if _, err := st.BindGitConnection(ctx, store.GitConnection{
 		WorkspaceID: wsB.ID, InstallationID: 222, AccountLogin: "bravo-org",
-	}); err != nil {
+	}, 0, 0); err != nil {
 		t.Fatalf("seed bravo git connection: %v", err)
 	}
 

@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -28,12 +29,20 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// fakeInstallations is a test InstallationResolver: a static installation→workspace map.
-type fakeInstallations map[int64]string
+// fakeInstallations is a test InstallationResolver: a static
+// installation→workspaces map (ADR078 §2 — one installation may serve several).
+type fakeInstallations map[int64][]string
 
-func (f fakeInstallations) WorkspaceForInstallation(_ context.Context, id int64) (string, bool, error) {
-	ws, ok := f[id]
-	return ws, ok, nil
+func (f fakeInstallations) WorkspacesForInstallation(_ context.Context, id int64) ([]string, error) {
+	return f[id], nil
+}
+
+// erroringInstallations models a resolver whose lookup fails (store down). The
+// fail-closed rule treats it exactly like an unknown installation.
+type erroringInstallations struct{}
+
+func (erroringInstallations) WorkspacesForInstallation(_ context.Context, _ int64) ([]string, error) {
+	return nil, errors.New("control-plane store unavailable")
 }
 
 // TestVerifyKeyIdentifiesTheMatchingKey pins codex #7's precondition: verification
@@ -53,46 +62,78 @@ func TestVerifyKeyIdentifiesTheMatchingKey(t *testing.T) {
 	}
 }
 
-// TestScopeForConfinesGitHubAppDelivery pins the confinement decision (codex #7):
-// only an app-signed delivery with a bound installation is scoped to a workspace;
-// an unbound installation acts on nothing; the manual key and the unwired-resolver
-// case stay global.
-func TestScopeForConfinesGitHubAppDelivery(t *testing.T) {
-	h := &GitWebhook{Installations: fakeInstallations{7: "tea-a"}}
-	if scope, proceed := h.scopeFor(context.Background(), keyGitHubApp, 7); !proceed || scope != "tea-a" {
-		t.Errorf("bound app delivery => (%q,%v), want (tea-a,true)", scope, proceed)
+// TestScopesForConfinesGitHubAppDelivery pins the confinement decision (codex
+// #7, restated for N:N in ADR078 §4a): an app-signed delivery is scoped to every
+// workspace that PROVED a binding; an unbound installation acts on nothing; the
+// manual key and the unwired-resolver single-tenant case stay global.
+func TestScopesForConfinesGitHubAppDelivery(t *testing.T) {
+	h := &GitWebhook{Installations: fakeInstallations{7: {"tea-a"}}}
+	if scopes, proceed := h.scopesFor(context.Background(), keyGitHubApp, 7); !proceed || len(scopes) != 1 || scopes[0] != "tea-a" {
+		t.Errorf("bound app delivery => (%v,%v), want ([tea-a],true)", scopes, proceed)
 	}
-	if scope, proceed := h.scopeFor(context.Background(), keyGitHubApp, 99); proceed || scope != "" {
-		t.Errorf(`unbound app delivery => (%q,%v), want ("",false)`, scope, proceed)
+	if scopes, proceed := h.scopesFor(context.Background(), keyGitHubApp, 99); proceed || len(scopes) != 0 {
+		t.Errorf("unbound app delivery => (%v,%v), want (nil,false)", scopes, proceed)
 	}
-	if scope, proceed := h.scopeFor(context.Background(), keyManual, 7); !proceed || scope != "" {
-		t.Errorf(`manual delivery => (%q,%v), want ("",true)`, scope, proceed)
+	if scopes, proceed := h.scopesFor(context.Background(), keyManual, 7); !proceed || len(scopes) != 1 || scopes[0] != "" {
+		t.Errorf(`manual delivery => (%v,%v), want ([""],true)`, scopes, proceed)
 	}
 	bare := &GitWebhook{} // resolver unwired, single-tenant => pre-#7 global behavior
-	if scope, proceed := bare.scopeFor(context.Background(), keyGitHubApp, 7); !proceed || scope != "" {
-		t.Errorf(`app delivery without resolver => (%q,%v), want ("",true)`, scope, proceed)
+	if scopes, proceed := bare.scopesFor(context.Background(), keyGitHubApp, 7); !proceed || len(scopes) != 1 || scopes[0] != "" {
+		t.Errorf(`app delivery without resolver => (%v,%v), want ([""],true)`, scopes, proceed)
 	}
 }
 
-// TestScopeForFailsClosedInMultitenantPartialConfig pins codex-security
+// TestScopesForFansOutToEveryProvedBinding is the N:N half (ADR078 §2/§4a): one
+// installation bound by two workspaces yields BOTH scopes, and an empty workspace
+// id is never emitted — that would silently mean "global".
+func TestScopesForFansOutToEveryProvedBinding(t *testing.T) {
+	h := &GitWebhook{Multitenant: true, Installations: fakeInstallations{7: {"tea-a", "tea-b"}}}
+	scopes, proceed := h.scopesFor(context.Background(), keyGitHubApp, 7)
+	if !proceed || len(scopes) != 2 {
+		t.Fatalf("shared installation => (%v,%v), want both bindings", scopes, proceed)
+	}
+	for _, s := range scopes {
+		if s == "" {
+			t.Fatal("an empty scope would be a GLOBAL match; it must never be emitted")
+		}
+	}
+
+	// A resolver that returns only empty ids must fail closed, not emit a global.
+	empty := &GitWebhook{Multitenant: true, Installations: fakeInstallations{7: {""}}}
+	if scopes, proceed := empty.scopesFor(context.Background(), keyGitHubApp, 7); proceed || len(scopes) != 0 {
+		t.Fatalf("empty-id binding => (%v,%v), want (nil,false)", scopes, proceed)
+	}
+}
+
+// TestScopesForFailsClosedInMultitenantPartialConfig pins codex-security
 // round-6 #9: in multitenant operation an app-signed delivery must NEVER fall
-// back to the manual key's global scope — a partial configuration (GitHub
-// webhook secret + store, no GitHub service) or a payload with no installation
-// id acts on nothing instead of scanning and mutating every workspace's Apps.
-func TestScopeForFailsClosedInMultitenantPartialConfig(t *testing.T) {
+// back to the manual key's global scope. Every unresolvable case — partial
+// configuration, missing installation id, unknown installation, lookup error —
+// exits with proceed=false. N:N changes how many non-empty scopes there can be,
+// never what an unresolvable one means.
+func TestScopesForFailsClosedInMultitenantPartialConfig(t *testing.T) {
 	// Resolver unwired (the partial deployment configuration).
 	unwired := &GitWebhook{Multitenant: true}
-	if scope, proceed := unwired.scopeFor(context.Background(), keyGitHubApp, 7); proceed || scope != "" {
-		t.Errorf(`multitenant app delivery without resolver => (%q,%v), want ("",false)`, scope, proceed)
+	if scopes, proceed := unwired.scopesFor(context.Background(), keyGitHubApp, 7); proceed || len(scopes) != 0 {
+		t.Errorf("multitenant app delivery without resolver => (%v,%v), want (nil,false)", scopes, proceed)
 	}
 	// Resolver wired but the signed payload carries no installation id.
-	wired := &GitWebhook{Multitenant: true, Installations: fakeInstallations{7: "tea-a"}}
-	if scope, proceed := wired.scopeFor(context.Background(), keyGitHubApp, 0); proceed || scope != "" {
-		t.Errorf(`multitenant app delivery without installation id => (%q,%v), want ("",false)`, scope, proceed)
+	wired := &GitWebhook{Multitenant: true, Installations: fakeInstallations{7: {"tea-a"}}}
+	if scopes, proceed := wired.scopesFor(context.Background(), keyGitHubApp, 0); proceed || len(scopes) != 0 {
+		t.Errorf("multitenant app delivery without installation id => (%v,%v), want (nil,false)", scopes, proceed)
+	}
+	// Unknown installation.
+	if scopes, proceed := wired.scopesFor(context.Background(), keyGitHubApp, 99); proceed || len(scopes) != 0 {
+		t.Errorf("unknown installation => (%v,%v), want (nil,false)", scopes, proceed)
+	}
+	// Lookup error — indistinguishable from unknown, by design.
+	broken := &GitWebhook{Multitenant: true, Installations: erroringInstallations{}}
+	if scopes, proceed := broken.scopesFor(context.Background(), keyGitHubApp, 7); proceed || len(scopes) != 0 {
+		t.Errorf("resolver error => (%v,%v), want (nil,false)", scopes, proceed)
 	}
 	// The confined path still works.
-	if scope, proceed := wired.scopeFor(context.Background(), keyGitHubApp, 7); !proceed || scope != "tea-a" {
-		t.Errorf("multitenant bound app delivery => (%q,%v), want (tea-a,true)", scope, proceed)
+	if scopes, proceed := wired.scopesFor(context.Background(), keyGitHubApp, 7); !proceed || len(scopes) != 1 || scopes[0] != "tea-a" {
+		t.Errorf("multitenant bound app delivery => (%v,%v), want ([tea-a],true)", scopes, proceed)
 	}
 }
 
@@ -147,7 +188,7 @@ func TestServeHTTPConfinesGitHubAppPush(t *testing.T) {
 	appB.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: true}
 
 	svc, cl := newService(nil, appA, appB)
-	h := &GitWebhook{Svc: svc, GitHubSecret: secret, Installations: fakeInstallations{7: "tea-a"}}
+	h := &GitWebhook{Svc: svc, GitHubSecret: secret, Installations: fakeInstallations{7: {"tea-a"}}}
 
 	ev := newPush(repo, []string{"main.go"})
 	ev.After = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

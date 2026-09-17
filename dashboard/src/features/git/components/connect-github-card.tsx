@@ -25,14 +25,20 @@ import {
 } from "@/features/git/hooks/use-git-connection";
 import { useConnectGit } from "@/features/git/hooks/use-connect-git";
 import { useClaimGit } from "@/features/git/hooks/use-claim-git";
+import { useClaimSelection } from "@/features/git/hooks/use-claim-selection";
 import { useDisconnectGit } from "@/features/git/hooks/use-disconnect-git";
 import { isGitHubUnavailable } from "@/features/git/lib/errors";
 
 // The bounded git_error codes the callback redirects with (backend
 // internal/github/rest.go). missing_state is the direct-github.com-install case;
-// GitHub strips the state for already-installed accounts (ADR075 §3a), so its
+// GitHub strips the state for already-installed accounts (ADR078 §3a), so its
 // recovery — and the claim flow's own bounded failures — point at the CLAIM
 // action, never at retrying the install URL.
+//
+// w2/m162: no message here may tell a user to install an App they have installed
+// or to uninstall one. Under N:N (ADR078 §2) an account bound to another
+// workspace is claimable, and ambiguity is resolved by the picker below, so both
+// of those old instructions described states that no longer exist.
 function callbackErrorMessage(t: (k: string) => string, code: string): string {
   switch (code) {
     case "expired_state":
@@ -66,8 +72,10 @@ function claimRecovers(code: string | undefined): boolean {
  */
 export function ConnectGithubCard({
   callbackError,
+  claimSelectionId,
 }: {
   callbackError?: string;
+  claimSelectionId?: string;
 }) {
   const { t } = useTranslations();
   const { connections, connected, loading, error, refetch } =
@@ -75,6 +83,7 @@ export function ConnectGithubCard({
   const { connect, busy: connecting } = useConnectGit();
   const { claim, busy: claiming } = useClaimGit();
   const { disconnect, busy: disconnecting } = useDisconnectGit();
+  const selection = useClaimSelection(claimSelectionId);
 
   // Refetch when the tab regains focus — the GitHub callback redirects here.
   useEffect(() => {
@@ -106,6 +115,17 @@ export function ConnectGithubCard({
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        {claimSelectionId && !unavailable && (
+          <ClaimAccountPicker
+            candidates={selection.candidates}
+            loading={selection.loading}
+            gone={selection.gone}
+            selecting={selection.selecting}
+            onSelect={async (installationId) => {
+              if (await selection.select(installationId)) await refetch();
+            }}
+          />
+        )}
         {callbackError && !unavailable && (
           <Alert variant="destructive">
             <AlertTriangle />
@@ -245,6 +265,15 @@ function ConnectedList({
           {t("git.claimButton")}
         </Button>
       </div>
+      {/*
+        The install-URL dead end (ADR078 §3a): for an account that already has
+        the App, GitHub shows Configure instead of Install, strips the signed
+        state, and never calls back — the browser just stops on a settings page
+        with no feedback. This hint is the exit, and it belongs here as much as
+        on the disconnected state: adding a SECOND account is exactly when a
+        user hits it.
+      */}
+      <p className="text-xs text-muted-foreground">{t("git.claimHint")}</p>
     </div>
   );
 }
@@ -298,6 +327,75 @@ function ConnectionRow({
           }}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * The account picker an ambiguous claim lands on (ADR078 §3a).
+ *
+ * The user administers several GitHub accounts, so the callback proved all of
+ * them and deferred the choice here rather than reporting an unresolvable
+ * `ambiguous_installation`. Choosing spends the selection; a stale or already
+ * used one degrades to "start the claim again", never a silent dead end.
+ */
+function ClaimAccountPicker({
+  candidates,
+  loading,
+  gone,
+  selecting,
+  onSelect,
+}: {
+  candidates: { installationId: number; accountLogin: string }[];
+  loading: boolean;
+  gone: boolean;
+  selecting: boolean;
+  onSelect: (installationId: number) => void;
+}) {
+  const { t } = useTranslations();
+  if (loading) {
+    // Structural preview of the ready state below: same bordered panel, same
+    // title line, one row per option at the row's own height.
+    return (
+      <div className="space-y-3 rounded-md border p-4">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+      </div>
+    );
+  }
+  if (gone) {
+    return (
+      <Alert>
+        <AlertTriangle />
+        <AlertTitle>{t("git.claimSelectionGoneTitle")}</AlertTitle>
+        <AlertDescription>{t("git.claimSelectionGoneBody")}</AlertDescription>
+      </Alert>
+    );
+  }
+  return (
+    <div className="space-y-3 rounded-md border p-4">
+      <div>
+        <p className="text-sm font-medium">{t("git.claimSelectionTitle")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t("git.claimSelectionBody")}
+        </p>
+      </div>
+      <ul className="space-y-2">
+        {candidates.map((c) => (
+          <li key={c.installationId}>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              disabled={selecting}
+              onClick={() => onSelect(c.installationId)}
+            >
+              <Github className="size-4" />
+              {c.accountLogin}
+            </Button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
