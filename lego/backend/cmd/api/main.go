@@ -463,6 +463,17 @@ func main() {
 		log.Fatalf("bex-api: deploy-hook token index backfill: %v", err)
 	}
 
+	// API-key bindings written before w5/m103 added tenant_members.kind default
+	// to 'user', so they still look like members. Hydra is the only registry of
+	// client ids, so the reclassification cannot live in the SQL migration —
+	// reconcile once here, against the live client list.
+	//
+	// Deliberately NOT fatal: the failure mode is cosmetic (a key keeps
+	// appearing on the Team surface and holding a seat, exactly as it did
+	// before), and refusing to serve the API because Hydra was briefly
+	// unreachable would be a far worse trade. It retries on the next start.
+	backfillMachineMemberships(ctx, st, deps.APIKeys)
+
 	configureRateLimiters(srv, cfg)
 
 	srv.MaxBodyBytes = cfg.MaxBodyBytes
@@ -1392,4 +1403,44 @@ func nonceStoreOrNil(st *store.PGStore) sshgateway.NonceStore {
 		return nil
 	}
 	return st
+}
+
+// machineMembershipStore is the slice of the control-plane store the
+// machine-binding reconcile needs (w5/m103). *store.PGStore satisfies it; a
+// DB-less run leaves it nil and the reconcile is skipped.
+type machineMembershipStore interface {
+	MarkMachineMemberships(ctx context.Context, clientIDs []string) (int64, error)
+}
+
+// backfillMachineMemberships reclassifies the tenant_members rows of existing
+// API keys as kind='machine' — the one-time reconcile w5/m103's migration
+// cannot do in SQL, because Hydra is the only registry that knows which
+// subjects are client ids.
+//
+// Best-effort by design: without it a pre-existing key keeps appearing on the
+// Team surface and holding a seat, which is precisely the pre-m103 behavior, so
+// a failure here degrades to the status quo rather than to anything broken. It
+// is logged, never fatal, and retried on the next start.
+func backfillMachineMemberships(ctx context.Context, st any, keys apikeys.APIKeyStore) {
+	marker, ok := st.(machineMembershipStore)
+	if !ok || keys == nil {
+		return
+	}
+	list, err := keys.List(ctx)
+	if err != nil {
+		log.Printf("bex-api: machine-membership backfill: list API keys: %v (retrying next start)", err)
+		return
+	}
+	ids := make([]string, 0, len(list))
+	for _, k := range list {
+		ids = append(ids, k.ID)
+	}
+	n, err := marker.MarkMachineMemberships(ctx, ids)
+	if err != nil {
+		log.Printf("bex-api: machine-membership backfill: %v (retrying next start)", err)
+		return
+	}
+	if n > 0 {
+		log.Printf("bex-api: machine-membership backfill: reclassified %d API-key binding(s) as machine", n)
+	}
 }

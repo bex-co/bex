@@ -112,7 +112,9 @@ func (s *PGStore) UpsertNotificationPushPolicy(ctx context.Context, tenantID, su
 	return n, nil
 }
 
-// ListNotifyRecipients returns every member of tenantID with their resolved
+// ListNotifyRecipients returns every PERSON in tenantID (w5/m103 — an API
+// key's binding has no mailbox; before the kind filter, every deploy failure
+// tried to notify bound client ids) with their resolved
 // deploy-notification preferences: an explicit row's values via the LEFT
 // JOIN, or the failure-only default via COALESCE for a member who never
 // customized them. One query serves the notification fan-out on every deploy
@@ -125,7 +127,7 @@ func (s *PGStore) ListNotifyRecipients(ctx context.Context, tenantID string) ([]
 		       COALESCE(n.deploy_failed, true)
 		FROM tenant_members m
 		LEFT JOIN notification_settings n ON n.tenant_id = m.tenant_id AND n.subject = m.subject
-		WHERE m.tenant_id = $1`, tenantID)
+		WHERE m.tenant_id = $1 AND m.kind = 'user'`, tenantID)
 	if err != nil {
 		return nil, err
 	}

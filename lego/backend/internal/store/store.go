@@ -775,9 +775,11 @@ func (s *PGStore) CreateTenantWithMember(ctx context.Context, identityID, plan s
 	return t, nil
 }
 
-// AddMember records a subject's membership in a tenant. Used both by the
-// platform tenant-create path (store/api.go, an explicit Admin) and by
-// BindClient (a minted API key is "membership" too — same table, same shape).
+// AddMember records a PERSON's membership in a tenant (kind defaults to
+// 'user') — the platform tenant-create path (store/api.go, an explicit Admin)
+// and the invite-acceptance paths. API-key bindings do NOT come through here:
+// BindClient writes its own row marked kind='machine' (w5/m103), because the
+// two are the same table and shape but not the same thing.
 func (s *PGStore) AddMember(ctx context.Context, subject, tenantID, role string) error {
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if err := lockSubjectMembership(ctx, tx, subject); err != nil {
@@ -809,9 +811,11 @@ func (s *PGStore) BindClient(ctx context.Context, clientID, tenantID string) err
 		if _, err := tx.Exec(ctx, `DELETE FROM tenant_members WHERE subject = $1`, clientID); err != nil {
 			return err
 		}
+		// kind='machine' (w5/m103) is what keeps this row off the Team surface
+		// and out of the seat count while still authorizing the key.
 		_, err := tx.Exec(ctx, `
-			INSERT INTO tenant_members (tenant_id, subject, role)
-			VALUES ($1, $2, 'developer')`, tenantID, clientID)
+			INSERT INTO tenant_members (tenant_id, subject, role, kind)
+			VALUES ($1, $2, 'developer', 'machine')`, tenantID, clientID)
 		return err
 	})
 	if err != nil {

@@ -49,9 +49,17 @@ type fakeWSStore struct {
 	members  map[string][]store.TenantMember
 	invites  map[string][]store.Invite // tenantID -> outstanding invites
 	ownerIDs map[string]string         // subject -> own- id (lazy)
+	// ownerSubjects mirrors tenants.owner_identity_id (w5/m103); empty = the
+	// unbound shape these fixtures use.
+	ownerSubjects map[string]string
 }
 
-func newFakeWSStore() *fakeWSStore { return &fakeWSStore{members: map[string][]store.TenantMember{}} }
+func newFakeWSStore() *fakeWSStore {
+	return &fakeWSStore{
+		members:       map[string][]store.TenantMember{},
+		ownerSubjects: map[string]string{},
+	}
+}
 
 func (f *fakeWSStore) CreateWorkspace(_ context.Context, name, plan, owner string) (store.Tenant, error) {
 	f.mu.Lock()
@@ -92,6 +100,14 @@ func (f *fakeWSStore) ListTenantsForSubject(_ context.Context, subject string) (
 		}
 	}
 	return out, nil
+}
+// TenantOwnerSubject: these fixtures predate the owner binding (w5/m103), so
+// they are all unbound — ownerEmail falls back to the oldest admin, which is
+// what they already assert.
+func (f *fakeWSStore) TenantOwnerSubject(_ context.Context, id string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.ownerSubjects[id], nil
 }
 func (f *fakeWSStore) ListTenantMembers(_ context.Context, id string) ([]store.TenantMember, error) {
 	f.mu.Lock()

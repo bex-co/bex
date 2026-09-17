@@ -103,6 +103,12 @@ const (
 	// owner, because leaving would strand the owner binding exactly as a removal
 	// would. Ownership transfer is the owner's exit and remains deferred.
 	ErrorOwnerCannotLeave = "OWNER_CANNOT_LEAVE"
+	// ErrorMemberIsMachine refuses a member verb aimed at an API key's binding
+	// (w5/m103). Such a row exists so the key resolves to its workspace and
+	// authorizes there; it is not a teammate. Before this, promoting one to
+	// ADMIN through the Team surface succeeded and wrote a real workspace:admin
+	// tuple for the machine subject (verified live on dev-5, 2026-09-17).
+	ErrorMemberIsMachine = "MEMBER_IS_MACHINE"
 )
 
 // Service holds the membership logic once. It embeds *core.Base for the
@@ -900,6 +906,9 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	if err != nil {
 		return MemberView{}, mapStoreErr(err)
 	}
+	if err := guardMachine(m); err != nil {
+		return MemberView{}, err
+	}
 	// After the membership read, so a subject who is not a member at all still
 	// answers 404 rather than an owner refusal.
 	if err := s.guardOwner(ctx, workspaceID, subject, role); err != nil {
@@ -1068,6 +1077,9 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if err != nil {
 		return mapStoreErr(err)
 	}
+	if err := guardMachine(m); err != nil {
+		return err
+	}
 	if err := s.guardOwner(ctx, workspaceID, subject, ""); err != nil {
 		return err
 	}
@@ -1157,6 +1169,11 @@ func (s *Service) LeaveWorkspace(ctx context.Context, workspaceID string) error 
 	m, err := s.Store.GetTenantMember(ctx, workspaceID, id.Subject)
 	if err != nil {
 		return mapStoreErr(err)
+	}
+	// An API key calling this with its own credential would unbind itself
+	// outside the surface that owns key lifecycle — revoke the key instead.
+	if err := guardMachine(m); err != nil {
+		return err
 	}
 	if err := s.guardOwnerLeaving(ctx, workspaceID, id.Subject); err != nil {
 		return err
@@ -1322,6 +1339,17 @@ func guardPlanRole(plan, role string) error {
 		fmt.Sprintf("the %s plan only allows roles %s", plan, strings.Join(lim.AllowedRoles, "|")),
 		plan, 0,
 	)
+}
+
+// guardMachine refuses a member verb aimed at an API key's binding. The key is
+// managed where it was minted — the API-keys surface — so the refusal says so
+// rather than leaving the caller to guess why a row they can see will not move.
+func guardMachine(m store.TenantMember) error {
+	if m.Kind != store.MemberKindMachine {
+		return nil
+	}
+	return core.NewConflictError(ErrorMemberIsMachine,
+		"that is an API key's workspace binding, not a member; manage it on the API keys page", nil)
 }
 
 // guardSelf refuses a member verb aimed at the caller's own subject. The two
