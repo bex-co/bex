@@ -43,6 +43,7 @@
 #          BEX_CANARY_URL           its public host (https://…onbex.co)
 #          BEX_CANARY_WAKE_BUDGET   seconds for stage 1 (default 60)
 #          BEX_CANARY_LOG_BUDGET    seconds for stage 2 (default 180)
+#          BEX_CANARY_METRIC_BUDGET seconds for stage 3 (default 120)
 #          BEX_CANARY_EVENT_WINDOW  seconds an event may be older than (default 3600)
 #          BEX_CANARY_REQUIRE_NONCE 1 (default) = stage 2 must find THIS run's
 #                       request line. The nonce rides in the URL PATH, never in a
@@ -69,6 +70,13 @@ SERVICE_ID="${BEX_CANARY_SERVICE_ID:-}"
 CANARY_URL="${BEX_CANARY_URL:-}"
 WAKE_BUDGET="${BEX_CANARY_WAKE_BUDGET:-60}"
 LOG_BUDGET="${BEX_CANARY_LOG_BUDGET:-180}"
+# Must exceed TWO cAdvisor scrape intervals (15s each, deploy/gitops/base/
+# prometheus.yaml), because cpu is a rate: bex-api asks Prometheus for
+# rate(container_cpu_usage_seconds_total[60s]) and a rate needs two samples
+# inside its lookback before it yields any point at all. A just-woken pod has
+# 0-1. Memory is a plain gauge and needs only one. 120s leaves room for a slow
+# first scrape; anything under 30s cannot work no matter how it is spelled.
+METRIC_BUDGET="${BEX_CANARY_METRIC_BUDGET:-120}"
 EVENT_WINDOW="${BEX_CANARY_EVENT_WINDOW:-3600}"
 REQUIRE_NONCE="${BEX_CANARY_REQUIRE_NONCE:-1}"
 
@@ -188,26 +196,62 @@ fi
 echo "  ok: this run's request line and the app stream are both readable through /v1/logs"
 
 # --- Stage 3: the metrics pipeline has samples for the same service -----------
-# Defaulted window is the last hour (metrics service default), which a service
-# that just served a request always populates.
-echo "==> 3/4 metrics: cpu + memory must have at least one sample in the last hour"
-for metric in cpu memory; do
-  if ! acurl -o "$TMP_DIR/$metric.json" --get "$API/v1/metrics/$metric" \
-    --data-urlencode "resource=$SERVICE_ID" \
-    --data-urlencode "resolutionSeconds=60" 2>/dev/null; then
-    echo "FAIL(3/4 metrics): GET /v1/metrics/$metric failed for $SERVICE_ID"
-    exit 5
-  fi
-  if ! jq -e '[.[]? | .values[]?] | length > 0' "$TMP_DIR/$metric.json" >/dev/null 2>&1; then
-    echo "FAIL(3/4 metrics): /v1/metrics/$metric returned no samples for a service that is serving."
+# Budgeted, unlike the single-shot assert this used to be. The fixture is a free
+# service that hibernates between six-hourly runs, so every run measures a pod
+# that is seconds old — and cpu cannot answer yet even when everything is
+# healthy (see METRIC_BUDGET above). Asserting once made the canary open
+# "Tenant view is broken" issues for a scrape that had simply not landed.
+#
+# cpu and memory are polled INDEPENDENTLY and both reported, because the two
+# answers mean different things: cpu empty while memory has samples is a cold
+# rate, and cpu empty WITH memory empty is the w6/m110 class — an empty series
+# behind a 200. The old loop exited on cpu first, so it never asked memory and
+# both failures printed the same line.
+echo "==> 3/4 metrics: cpu + memory must carry a sample (budget ${METRIC_BUDGET}s)"
+waited=0
+cpu_hit=""
+mem_hit=""
+while [ "$waited" -lt "$METRIC_BUDGET" ]; do
+  for metric in cpu memory; do
+    case "$metric" in
+      cpu) [ -n "$cpu_hit" ] && continue ;;
+      memory) [ -n "$mem_hit" ] && continue ;;
+    esac
+    if acurl -o "$TMP_DIR/$metric.json" --get "$API/v1/metrics/$metric" \
+      --data-urlencode "resource=$SERVICE_ID" \
+      --data-urlencode "startTime=$WINDOW_START" \
+      --data-urlencode "resolutionSeconds=60" 2>/dev/null; then
+      if jq -e '[.[]? | .values[]?] | length > 0' "$TMP_DIR/$metric.json" >/dev/null 2>&1; then
+        case "$metric" in
+          cpu) cpu_hit=1 ;;
+          memory) mem_hit=1 ;;
+        esac
+      fi
+    fi
+  done
+  [ -n "$cpu_hit" ] && [ -n "$mem_hit" ] && break
+  sleep 5
+  waited=$((waited + 5))
+done
+if [ -z "$cpu_hit" ] || [ -z "$mem_hit" ]; then
+  echo "FAIL(3/4 metrics): after ${waited}s a serving service still has no samples."
+  echo "      cpu:    ${cpu_hit:+present}${cpu_hit:-EMPTY}"
+  echo "      memory: ${mem_hit:+present}${mem_hit:-EMPTY}"
+  echo
+  if [ -z "$cpu_hit" ] && [ -n "$mem_hit" ]; then
+    echo "      Only cpu is empty. cpu is a rate over a 60s lookback and memory is"
+    echo "      a gauge, so this shape means the scrape is landing but the rate"
+    echo "      still has under two points — raise BEX_CANARY_METRIC_BUDGET before"
+    echo "      suspecting bex-api."
+  else
     echo "      Empty series with a 200 is exactly the w6/m110 failure: the data"
     echo "      exists in Prometheus and bex-api's query names it wrong. Check the"
     echo "      cadvisor selector in lego/backend/internal/metrics against what"
     echo "      the scrape config actually produces before suspecting the scrape."
-    exit 5
   fi
-done
-echo "  ok: cpu and memory both carry samples"
+  exit 5
+fi
+echo "  ok: cpu and memory both carry samples (after ${waited}s)"
 
 # --- Stage 4: the events feed advanced -----------------------------------------
 echo "==> 4/4 events: the newest event must be within ${EVENT_WINDOW}s"
