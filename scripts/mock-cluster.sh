@@ -9,8 +9,123 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export CLUSTER_TOPOLOGY=true                 # CAPD's flavor uses ClusterClass/topology
-MGMT=kind-bex-mgmt
+MGMT="kind-bex-mgmt"
 WL_KUBECONFIG=infra/local/bex.kubeconfig
+
+# --- Single-writer lock (w7/m148 t001) ---------------------------------------
+# Bring-up and scale are read-modify-write against ONE shared mgmt cluster:
+# `kind create`, `clusterctl init` and the ClusterClass apply all mutate it.
+# Two runs interleaving produced half-built clusters that still printed success.
+# mkdir is the portable atomic primitive here — flock is not present on macOS —
+# and the directory carries its owner pid so a crashed run can be reclaimed
+# without ever breaking a live one.
+LOCK_DIR=infra/local/.mock-cluster.lock
+LOCK_HELD=
+
+release_lock() {
+  # Only the process that took the lock may drop it, so an interrupted run
+  # cannot release a lock another session now owns.
+  [ -n "$LOCK_HELD" ] || return 0
+  rm -rf "$LOCK_DIR"
+  LOCK_HELD=
+}
+trap release_lock EXIT INT TERM
+
+# --- Required-stage failures are fatal (w7/m148 t003) ------------------------
+# These waits used to end in `|| true`, so a cluster that never became ready
+# carried on through CNI, storage and cert-manager and still printed its
+# success banner. A required stage that fails now stops the stages that depend
+# on it. Recovery is re-running this script: every step is idempotent, and it
+# only ever touches the local kind/CAPD cluster.
+require() {
+  local stage=$1; shift
+  if ! "$@"; then
+    echo >&2
+    echo "error: $stage did not succeed — stopping before the stages that depend on it." >&2
+    echo "       Re-run: bash scripts/mock-cluster.sh   (idempotent)" >&2
+    echo "       Scope: the local kind/CAPD cluster only. This never touches" >&2
+    echo "       production or another workstream's resources." >&2
+    exit 1
+  fi
+}
+
+acquire_lock() {
+  mkdir -p infra/local
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    printf '%s\n' "$$" >"$LOCK_DIR/pid"
+    LOCK_HELD=1
+    return 0
+  fi
+  local owner
+  owner=$(cat "$LOCK_DIR/pid" 2>/dev/null || true)
+  if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
+    echo "error: mock-cluster run (pid $owner) already owns $LOCK_DIR" >&2
+    echo "       That process is alive. Wait for it rather than racing it —" >&2
+    echo "       two runs provisioning one mgmt cluster is how a cluster ends" >&2
+    echo "       up half-built while still reporting success." >&2
+    exit 1
+  fi
+  # Stale: the owner is gone. Recovery is removing a directory this script
+  # created; it touches no cluster state and no other workstream's resources.
+  echo "==> reclaiming stale lock from pid ${owner:-unknown} (no such process)"
+  rm -rf "$LOCK_DIR"
+  mkdir "$LOCK_DIR" || { echo "error: could not take $LOCK_DIR" >&2; exit 1; }
+  printf '%s\n' "$$" >"$LOCK_DIR/pid"
+  LOCK_HELD=1
+}
+
+# Generated privately, validated, and only then published over the shared path.
+# `clusterctl get kubeconfig bex > "$WL_KUBECONFIG"` truncated the shared file
+# BEFORE clusterctl produced a byte, so any failure here destroyed the working
+# config of every other session pointing at it (w7/m148 t002).
+publish_kubeconfig() {
+  local tmp lbport
+  tmp=$(mktemp "${TMPDIR:-/tmp}/bex-kubeconfig.XXXXXX")
+  chmod 600 "$tmp"
+
+  # Every refusal has the same two obligations: drop the half-built file, and
+  # say that the shared config was left alone. Saying it in one place is what
+  # keeps the promise true if another refusal is added later.
+  refuse() {
+    rm -f "$tmp"
+    echo "error: $1" >&2
+    echo "       $WL_KUBECONFIG is unchanged." >&2
+  }
+
+  if ! clusterctl get kubeconfig bex >"$tmp" 2>/dev/null; then
+    refuse "clusterctl could not produce a kubeconfig for cluster 'bex'"
+    return 1
+  fi
+
+  # CAPD's internal API IP is not reachable from the host; rewrite to the lb's
+  # published port. Portable rewrite — BSD and GNU sed disagree on -i.
+  if ! lbport=$(docker port bex-lb 6443/tcp 2>/dev/null | head -1 | sed 's/.*://') \
+     || [ -z "$lbport" ]; then
+    refuse "container bex-lb publishes no 6443 port — is the cluster up?"
+    return 1
+  fi
+  sed "s#server: https://[0-9.]*:6443#server: https://127.0.0.1:$lbport#" \
+    "$tmp" >"$tmp.rewritten" && mv "$tmp.rewritten" "$tmp"
+
+  # Refuse to publish a config that skips TLS verification: a kubeconfig that
+  # trusts anything is worse than none, because nothing downstream will notice.
+  if grep -q 'insecure-skip-tls-verify: *true' "$tmp"; then
+    refuse "generated kubeconfig disables TLS verification; refusing to publish"
+    return 1
+  fi
+
+  # Prove it reaches the intended cluster before it becomes the shared file.
+  # Output is discarded: this file holds a client credential and must never be
+  # echoed into a log.
+  if ! KUBECONFIG="$tmp" kubectl --request-timeout=30s get --raw /readyz >/dev/null 2>&1; then
+    refuse "generated kubeconfig does not reach a ready apiserver at 127.0.0.1:$lbport"
+    return 1
+  fi
+
+  # Atomic within the same filesystem, so a concurrent reader sees either the
+  # old config or the new one — never a partial write.
+  mv "$tmp" "$WL_KUBECONFIG"
+}
 
 # The cluster-autoscaler (w1/m3) owns the worker count, so `scale N` raises the
 # tenant pool's min-size floor to N (and max if N exceeds it) instead of setting
@@ -24,7 +139,67 @@ scale() {
   echo "tenant worker floor -> $n machine(s) (min-size $n / max-size $max; platform stays at 1)"
   echo "watch: docker ps --format '{{.Names}}' | grep bex-tenant-0"
 }
-if [ "${1:-}" = scale ]; then scale "${2:?usage: scale N}"; exit 0; fi
+# --- Verify before claiming success (w7/m148 t004) ---------------------------
+# The banner below used to print unconditionally, so a cluster missing its CNI,
+# storage class or metrics still read as "up" — and the next script to fail got
+# the blame. Each check covers a component THIS script installs. Nothing here
+# waits: the waits already happened above, so this is a read of the end state.
+verify_substrate() {
+  local failures=0
+  # Run a command against the workload cluster without exporting KUBECONFIG,
+  # which would break the mgmt-context check below.
+  wl() { KUBECONFIG="$WL_KUBECONFIG" "$@"; }
+
+  check() {
+    local what=$1; shift
+    if "$@" >/dev/null 2>&1; then
+      printf '  ok    %s\n' "$what"
+    else
+      printf '  FAIL  %s\n' "$what"
+      failures=$((failures + 1))
+    fi
+  }
+
+  # Every node Ready — and at least one node. `! kubectl get nodes | grep -qv
+  # Ready` alone passes when kubectl fails and prints nothing, which reported a
+  # dead cluster as healthy; an empty node list is not "all ready".
+  nodes_ready() {
+    local out
+    out=$(wl kubectl --request-timeout=20s get nodes --no-headers 2>/dev/null) || return 1
+    [ -n "$out" ] || return 1
+    ! printf '%s\n' "$out" | grep -qv ' Ready'
+  }
+
+  default_storageclass() {
+    wl kubectl get storageclass -o jsonpath='{.items[*].metadata.annotations.storageclass\.kubernetes\.io/is-default-class}' 2>/dev/null \
+      | grep -q true
+  }
+
+  echo
+  echo "verifying the substrate this script installed:"
+  check "apiserver reachable (TLS verified)" wl kubectl --request-timeout=20s get --raw /readyz
+  check "every node Ready (and at least one)" nodes_ready
+  check "CNI (calico-node) rolled out" wl kubectl -n kube-system rollout status ds/calico-node --timeout=15s
+  check "a default StorageClass exists" default_storageclass
+  check "cert-manager Available" wl kubectl -n cert-manager wait deploy --all --for=condition=Available --timeout=15s
+  check "metrics API serving (metrics.k8s.io)" wl kubectl get --raw /apis/metrics.k8s.io/v1beta1
+  check "cluster-autoscaler Available (mgmt)" kubectl --context "$MGMT" -n kube-system wait deploy --all --for=condition=Available --timeout=15s
+
+  if [ "$failures" -ne 0 ]; then
+    echo >&2
+    echo "error: $failures required check(s) failed — NOT reporting the cluster as up." >&2
+    echo "       Re-run: bash scripts/mock-cluster.sh   (idempotent)" >&2
+    return 1
+  fi
+}
+
+# Definitions end here. scripts/mock-cluster.test.sh sources this file to
+# exercise the lock and publication contracts without provisioning anything.
+if [ -n "${BEX_MOCK_CLUSTER_LIB:-}" ]; then return 0 2>/dev/null || exit 0; fi
+
+if [ "${1:-}" = scale ]; then acquire_lock; scale "${2:?usage: scale N}"; exit 0; fi
+
+acquire_lock
 
 # 1. infra cluster (kind) with the docker socket mounted (CAPD needs it)
 kind get clusters 2>/dev/null | grep -qx bex-mgmt || kind create cluster --config infra/local/kind-mgmt.yaml
@@ -67,18 +242,29 @@ fi
 
 echo "waiting for the app cluster to provision..."
 kubectl --context "$MGMT" wait --for=condition=Available cluster/bex --timeout=600s || true
-for i in $(seq 1 60); do
+for _ in $(seq 1 60); do
   [ "$(kubectl --context "$MGMT" get machines --no-headers 2>/dev/null | grep -c Running)" -ge 2 ] && break; sleep 8
 done
+# Required: clusterctl cannot produce a usable kubeconfig for a cluster whose
+# machines never came up, and every stage below depends on that kubeconfig.
+machines_running=$(kubectl --context "$MGMT" get machines --no-headers 2>/dev/null | grep -c Running || true)
+if [ "${machines_running:-0}" -lt 2 ]; then
+  echo >&2
+  echo "error: only ${machines_running:-0} CAPI machine(s) reached Running within 8m (need 2)." >&2
+  echo "       Inspect: kubectl --context $MGMT get machines" >&2
+  echo "       Re-run: bash scripts/mock-cluster.sh   (idempotent)" >&2
+  exit 1
+fi
 
 # 4. app-cluster kubeconfig — rewrite the server to the lb's host-published port
 #    (CAPD's internal API IP isn't reachable from the host), then install a CNI.
-clusterctl get kubeconfig bex > "$WL_KUBECONFIG"
-LBPORT=$(docker port bex-lb 6443/tcp | head -1 | sed 's/.*://')
-sed -i '' "s#server: https://[0-9.]*:6443#server: https://127.0.0.1:$LBPORT#" "$WL_KUBECONFIG"
+publish_kubeconfig
 KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \
   https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml >/dev/null
-KUBECONFIG="$WL_KUBECONFIG" kubectl wait --for=condition=Ready node --all --timeout=300s || true
+# Required, and deliberately ordered after the Calico apply above: nodes cannot
+# go Ready until a CNI is installed, so this must not move earlier (t003).
+require "node readiness (post-CNI)" \
+  env KUBECONFIG="$WL_KUBECONFIG" kubectl wait --for=condition=Ready node --all --timeout=300s
 # The fixed platform worker joins with bex.co/pool=platform; the scalable tenant
 # pool joins with bex.co/pool=tenant. The split mirrors production and lets live
 # isolation checks prove tenant execution cannot land on the platform pool.
@@ -142,6 +328,8 @@ KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install kubelet-csr-approver \
   --set 'tolerations[0].effect=NoSchedule' >/dev/null
 # Certificates requested before the approver was running stay Pending forever —
 # approve that startup backlog once so the cluster is usable immediately.
+# Genuinely best-effort, unlike the waits above: there may be no backlog at all,
+# and the approver installed above handles everything from here on.
 KUBECONFIG="$WL_KUBECONFIG" kubectl get csr -o name 2>/dev/null \
   | xargs -r env KUBECONFIG="$WL_KUBECONFIG" kubectl certificate approve >/dev/null 2>&1 || true
 
@@ -157,7 +345,9 @@ for d in cert-manager cert-manager-cainjector cert-manager-webhook; do
     '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
      "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}' >/dev/null
 done
-KUBECONFIG="$WL_KUBECONFIG" kubectl -n cert-manager wait deploy --all --for=condition=Available --timeout=300s >/dev/null || true
+require "cert-manager availability" \
+  env KUBECONFIG="$WL_KUBECONFIG" kubectl -n cert-manager wait deploy --all \
+  --for=condition=Available --timeout=300s
 
 # metrics-server — resource metrics (metrics.k8s.io) for bex-api's CPU/memory
 # fallback and `kubectl top` (w5/057). Without it, Metrics-page walks on every
@@ -182,15 +372,22 @@ KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install metrics-server \
   --set-string 'nodeSelector.node-role\.kubernetes\.io/control-plane=' \
   --set 'tolerations[0].key=node-role.kubernetes.io/control-plane' \
   --set 'tolerations[0].effect=NoSchedule' >/dev/null
-KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system wait deploy/metrics-server \
-  --for=condition=Available --timeout=180s >/dev/null || true
+require "metrics-server availability" \
+  env KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system wait deploy/metrics-server \
+  --for=condition=Available --timeout=180s
 
 # 5. cluster-autoscaler beside CAPI (w1/m3) — same installer as prod CI.
 #    Why on the mgmt cluster: infra/clusterapi/autoscaler-values.yaml.
 bash scripts/install-autoscaler.sh "$MGMT"
 
+verify_substrate
+
 echo
 echo "app cluster 'bex' up. kubeconfig: $WL_KUBECONFIG"
+# Scope, stated plainly: this script publishes a substrate. It does NOT install
+# the bex operator or the App CRD — that stays `make deploy` from lego/operator.
+echo "  note:         substrate only — the bex operator and App CRD are a"
+echo "                separate step (make -C lego/operator deploy)"
 echo "  nodes:        KUBECONFIG=$WL_KUBECONFIG kubectl get nodes"
 echo "  add machine:  bash scripts/mock-cluster.sh scale 3"
 echo "  remove:       bash scripts/mock-cluster.sh scale 1"

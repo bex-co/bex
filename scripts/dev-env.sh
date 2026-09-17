@@ -334,12 +334,24 @@ refresh_kubeconfig() {
       sed -i -E "s#server: https://[0-9.]+:[0-9]+#server: https://127.0.0.1:$lbport#" \
         "$KUBECONFIG_FILE"
     # Repair the shared file too, so the next harness (and mock-cluster.sh's own
-    # consumers) do not each rediscover the same drift.
+    # consumers) do not each rediscover the same drift — but atomically, and
+    # never while a bring-up owns it (w7/m148 t002). An in-place `sed -i` on a
+    # file other sessions are reading can be observed half-written, and racing
+    # mock-cluster.sh would fight its own publication.
     if [ -f infra/local/bex.kubeconfig ]; then
-      sed -i '' -E "s#server: https://[0-9.]+:[0-9]+#server: https://127.0.0.1:$lbport#" \
-        infra/local/bex.kubeconfig 2>/dev/null ||
-        sed -i -E "s#server: https://[0-9.]+:[0-9]+#server: https://127.0.0.1:$lbport#" \
-          infra/local/bex.kubeconfig
+      if [ -d infra/local/.mock-cluster.lock ]; then
+        echo "  shared kubeconfig: skipped (a mock-cluster run owns it)"
+      else
+        local shared_tmp
+        shared_tmp=$(mktemp "${TMPDIR:-/tmp}/bex-shared-kubeconfig.XXXXXX")
+        chmod 600 "$shared_tmp"
+        if sed -E "s#server: https://[0-9.]+:[0-9]+#server: https://127.0.0.1:$lbport#" \
+          infra/local/bex.kubeconfig >"$shared_tmp"; then
+          mv "$shared_tmp" infra/local/bex.kubeconfig
+        else
+          rm -f "$shared_tmp"
+        fi
+      fi
     fi
   fi
   # kind/CAPD sometimes emit a 0.0.0.0 server address; the apiserver cert covers

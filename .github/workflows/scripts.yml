@@ -131,6 +131,7 @@ jobs:
           scripts/adr-registry-validate.sh scripts/adr-registry-validate.test.sh
           scripts/render-mcp-drift.sh scripts/render-mcp-drift.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
+          scripts/mock-cluster.sh scripts/mock-cluster.test.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
           scripts/image-pin-validate.sh scripts/image-pin-validate.test.sh
           scripts/terraform-install.sh scripts/terraform-install.test.sh
@@ -140,6 +141,8 @@ jobs:
           scripts/lib/canary-api.sh scripts/tenant-view-liveness.sh
           scripts/deploy-canary.sh
           scripts/funnel-counters.sh
+      - name: Local cluster lock and kubeconfig publication contracts
+        run: bash scripts/mock-cluster.test.sh
       - name: Restore script hermetic safety tests
         run: bash scripts/restore.test.sh
       # ADR082 D5: the disk-snapshot provisioner's refusals — a shared bucket, a

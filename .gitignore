@@ -12,6 +12,8 @@ deploy/opensandbox/sandbox.example.toml
 
 # CAPD workload cluster kubeconfig (credential)
 infra/local/*.kubeconfig
+# Runtime bring-up lock (w7/m148 t001) — ownership state, never source.
+infra/local/.mock-cluster.lock/
 infra/local/stripe-billing-*-fixtures.json
 
 projects-to-deploy
