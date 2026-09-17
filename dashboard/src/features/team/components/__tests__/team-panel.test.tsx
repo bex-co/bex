@@ -481,6 +481,8 @@ describe("remove-member dialog discloses key revocation", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
       {
         subject: "id-bob",
@@ -490,6 +492,8 @@ describe("remove-member dialog discloses key revocation", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     render(<TeamPanel />);
