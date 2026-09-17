@@ -1148,6 +1148,7 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	deps.MaxEnvGroupsPerWorkspace = cfg.MaxEnvGroupsPerWorkspace
 	// ADR075 §2: per-workspace GitHub-connection quota (default 10; 0 disables).
 	deps.MaxGitConnectionsPerWorkspace = cfg.MaxGitConnectionsPerWorkspace
+	deps.MaxWorkspacesPerGitInstallation = cfg.MaxWorkspacesPerGitInstallation
 	// codex-security geyRc8 F1: per-workspace registry-credential quota.
 	deps.MaxRegistryCredentialsPerWorkspace = cfg.MaxRegistryCredentialsPerWorkspace
 	// codex-security round 18: custom-domain cardinality quotas (default 100

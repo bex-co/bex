@@ -119,12 +119,16 @@ var (
 	// SandboxExecution is Render's `exe-` executionId on a sandbox run connect
 	// token (w7/m147): one minted handshake for one command in one sandbox.
 	SandboxExecution = Kind{prefix: "exe", desc: "sandbox run execution (connect-token handshake)"}
+	// GitClaimSelection is an opaque, short-lived handle for one ambiguous GitHub
+	// claim's already-proved candidate set (ADR078 §3a). It names a pending choice,
+	// never a connection, and is spent the moment one is made.
+	GitClaimSelection = Kind{prefix: "gcs", desc: "github claim selection (pending account choice)"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

@@ -18,6 +18,7 @@ package github
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -45,14 +46,48 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	// POST /v1/git/claim — start the ADR078 §3a claim flow: bind an installation
 	// that already exists on GitHub (where the install URL strips the state) via
-	// the OAuth user-authorization round trip. Returns {claimUrl}.
+	// the OAuth user-authorization round trip. Returns {claimUrl}. The optional
+	// ?installationId= narrows the candidate set the callback proves.
 	mux.HandleFunc("POST /v1/git/claim", func(w http.ResponseWriter, r *http.Request) {
-		claim, err := s.StartClaim(r.Context(), r.URL.Query().Get("ownerId"))
+		installationID, err := optionalInstallationID(r.URL.Query().Get("installationId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		claim, err := s.StartClaim(r.Context(), r.URL.Query().Get("ownerId"), installationID)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, claim)
+	})
+
+	// GET /v1/git/claim/selections/{id} — render an ambiguous claim's proved
+	// options (ADR078 §3a). Authenticated and subject-matched: the id names a
+	// pending choice, it is not a capability.
+	mux.HandleFunc("GET /v1/git/claim/selections/{id}", func(w http.ResponseWriter, r *http.Request) {
+		sel, err := s.GetClaimSelection(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, sel)
+	})
+
+	// POST /v1/git/claim/selections/{id} — complete the claim by binding one
+	// option the callback already proved. Single-use; can_manage re-checked now.
+	mux.HandleFunc("POST /v1/git/claim/selections/{id}", func(w http.ResponseWriter, r *http.Request) {
+		installationID, err := optionalInstallationID(r.URL.Query().Get("installationId"))
+		if err != nil || installationID == 0 {
+			core.WriteErr(w, fmt.Errorf("%w: installationId is required", core.ErrBadRequest))
+			return
+		}
+		conn, err := s.SelectClaim(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"), installationID)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, conn)
 	})
 
 	mux.HandleFunc("GET /v1/git/callback", func(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +136,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// but malformed id stays invalid_installation below — only true absence
 			// selects the claim branch.
 			if _, err := s.claimFromCallback(r.Context(), nonce, caller, r.URL.Query().Get("code")); err != nil {
+				// Ambiguity is no longer a dead end (ADR078 §3a): the callback proved
+				// several installations, so it hands the human the choice instead of
+				// discarding the work. Not a failure — a deferred success.
+				var pending *claimSelectionRequiredError
+				if errors.As(err, &pending) {
+					if location := s.callbackRedirectWith("git_claim_selection", pending.SelectionID); location != "" {
+						redirectCallback(w, r, location)
+						return
+					}
+					core.WriteJSON(w, http.StatusOK, map[string]string{
+						"status":      "selection_required",
+						"selectionId": pending.SelectionID,
+					})
+					return
+				}
 				s.writeCallbackFailure(w, r, callbackConnectErrorCode(err), err)
 				return
 			}
@@ -231,6 +281,15 @@ func redirectCallback(w http.ResponseWriter, r *http.Request, location string) {
 }
 
 func (s *Service) callbackRedirect(errorCode string) string {
+	return s.callbackRedirectWith("git_error", errorCode)
+}
+
+// callbackRedirectWith builds the dashboard return URL carrying one bounded
+// query parameter. Two are used: `git_error` for a fixed failure code, and
+// `git_claim_selection` for a pending account choice (ADR078 §3a) — which is a
+// SUCCESS continuation, not a failure, and deliberately does not reuse the error
+// channel the dashboard renders as an alert.
+func (s *Service) callbackRedirectWith(key, value string) string {
 	if s.DashboardURL == "" {
 		return ""
 	}
@@ -238,10 +297,26 @@ func (s *Service) callbackRedirect(errorCode string) string {
 	if err != nil {
 		return ""
 	}
-	if errorCode != "" {
+	if value != "" {
 		q := u.Query()
-		q.Set("git_error", errorCode)
+		q.Set(key, value)
 		u.RawQuery = q.Encode()
 	}
 	return u.String()
+}
+
+// optionalInstallationID parses a GitHub installation id from a query value.
+// Empty is 0 (unspecified), never an error; anything present must be a positive
+// integer — a malformed id is a bad request rather than a silent "unspecified",
+// which would quietly widen a claim the caller meant to narrow.
+func optionalInstallationID(raw string) (int64, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, nil
+	}
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || v <= 0 {
+		return 0, fmt.Errorf("%w: installationId must be a positive integer", core.ErrBadRequest)
+	}
+	return v, nil
 }

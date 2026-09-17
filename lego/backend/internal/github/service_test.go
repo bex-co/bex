@@ -39,29 +39,35 @@ type fakeStore struct {
 	// txns is the subject-bound connect-transaction table (w1/m67 F3), keyed by
 	// nonce. Consumption deletes, mirroring the store's single-statement claim.
 	txns map[string]store.GitHubConnectTransaction
+	// selections is the deferred claim-selection table (ADR078 §3a), keyed by
+	// selection id. Consumption deletes, same single-use shape as txns.
+	selections map[string]store.GitHubClaimSelection
 }
 
-func (f *fakeStore) BindGitConnection(_ context.Context, c store.GitConnection, maxConnections int) (store.GitConnection, error) {
+func (f *fakeStore) BindGitConnection(_ context.Context, c store.GitConnection, maxConnections, maxWorkspaces int) (store.GitConnection, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	// Same PAIR => idempotent refresh; neither quota applies (ADR078 §2, N:N).
 	for i := range f.conns {
-		if f.conns[i].InstallationID != c.InstallationID {
-			continue
+		if f.conns[i].InstallationID == c.InstallationID && f.conns[i].WorkspaceID == c.WorkspaceID {
+			f.conns[i] = c
+			return c, nil
 		}
-		if f.conns[i].WorkspaceID != c.WorkspaceID {
-			return store.GitConnection{}, store.ErrConflict
-		}
-		f.conns[i] = c
-		return c, nil
 	}
-	count := 0
+	perWorkspace, perInstallation := 0, 0
 	for _, existing := range f.conns {
 		if existing.WorkspaceID == c.WorkspaceID {
-			count++
+			perWorkspace++
+		}
+		if existing.InstallationID == c.InstallationID {
+			perInstallation++
 		}
 	}
-	if maxConnections > 0 && count >= maxConnections {
-		return store.GitConnection{}, &store.GitConnectionLimitError{Count: count, Limit: maxConnections}
+	if maxConnections > 0 && perWorkspace >= maxConnections {
+		return store.GitConnection{}, &store.GitConnectionLimitError{Count: perWorkspace, Limit: maxConnections}
+	}
+	if maxWorkspaces > 0 && perInstallation >= maxWorkspaces {
+		return store.GitConnection{}, &store.GitInstallationWorkspaceLimitError{Count: perInstallation, Limit: maxWorkspaces}
 	}
 	f.conns = append(f.conns, c)
 	return c, nil
@@ -100,6 +106,18 @@ func seedConnectTxn(t *testing.T, svc *Service, workspaceID, subject string) str
 		Nonce: nonce, TenantID: workspaceID, Subject: subject,
 		ExpiresAt: time.Now().Add(time.Hour),
 	}
+	return nonce
+}
+
+// seedConnectTxnFor is seedConnectTxn carrying the claim flow's optional
+// start-time installation selector (ADR078 §3a).
+func seedConnectTxnFor(t *testing.T, svc *Service, workspaceID, subject string, installationID int64) string {
+	t.Helper()
+	nonce := seedConnectTxn(t, svc, workspaceID, subject)
+	f := svc.Store.(*fakeStore)
+	txn := f.txns[nonce]
+	txn.InstallationID = installationID
+	f.txns[nonce] = txn
 	return nonce
 }
 
@@ -170,13 +188,59 @@ func (f *fakeStore) CountGitConnections(_ context.Context, workspaceID string) (
 	return n, nil
 }
 
-func (f *fakeStore) GitConnectionByInstallation(_ context.Context, installationID int64) (store.GitConnection, error) {
+func (f *fakeStore) GitConnectionsByInstallation(_ context.Context, installationID int64) ([]store.GitConnection, error) {
+	out := []store.GitConnection{}
 	for _, c := range f.conns {
 		if c.InstallationID == installationID {
-			return c, nil
+			out = append(out, c)
 		}
 	}
-	return store.GitConnection{}, store.ErrNotFound
+	return out, nil
+}
+
+// workspacesFor is the test-side reverse lookup: which workspaces hold a binding
+// for this installation (ADR078 §2 — there may be several).
+func (f *fakeStore) workspacesFor(installationID int64) []string {
+	out := []string{}
+	for _, c := range f.conns {
+		if c.InstallationID == installationID {
+			out = append(out, c.WorkspaceID)
+		}
+	}
+	return out
+}
+
+func (f *fakeStore) CreateGitHubClaimSelection(_ context.Context, sel store.GitHubClaimSelection) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.selections == nil {
+		f.selections = map[string]store.GitHubClaimSelection{}
+	}
+	f.selections[sel.ID] = sel
+	return nil
+}
+
+func (f *fakeStore) GetGitHubClaimSelection(_ context.Context, id string) (store.GitHubClaimSelection, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	sel, ok := f.selections[id]
+	if !ok {
+		return store.GitHubClaimSelection{}, store.ErrNotFound
+	}
+	return sel, nil
+}
+
+// ConsumeGitHubClaimSelection mirrors the store's DELETE .. RETURNING: reading it
+// spends it, so a replay finds nothing.
+func (f *fakeStore) ConsumeGitHubClaimSelection(_ context.Context, id string) (store.GitHubClaimSelection, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	sel, ok := f.selections[id]
+	if !ok {
+		return store.GitHubClaimSelection{}, store.ErrNotFound
+	}
+	delete(f.selections, id)
+	return sel, nil
 }
 
 func (f *fakeStore) DeleteGitConnection(_ context.Context, workspaceID string, installationID int64) error {
@@ -641,12 +705,22 @@ func TestCloneTokenRequiresGitHubOrigin(t *testing.T) {
 	}
 }
 
-// TestConnectRejectsForeignInstallation pins w1/m65 F2: an installation already
-// bound to one workspace cannot be claimed by a DIFFERENT workspace (the App JWT
-// can look up every installation, so GetInstallation success is not ownership
-// proof). The second claim is refused with ErrConflict and does not mutate the
-// second workspace's connection.
-func TestConnectRejectsForeignInstallation(t *testing.T) {
+// TestConnectBindsASecondWorkspaceOnItsOwnProof pins the ADR078 §2 reversal
+// (w2/m162) and what survives of w1/m65 F2.
+//
+// F2 guarded the UNPROVED attach: the App JWT can look up every installation of
+// itself, so GetInstallation success is existence proof, never authority. That
+// guard is intact — connectWithWorkspace is deliberately unexported and reachable
+// only after the callback's full proof sequence (signed nonce-only state,
+// single-use transaction, initiator match, fresh can_manage, and an OAuth proof
+// that the human administers this exact installation), which the claim/connect
+// tests cover and TestAuthzGuardsEveryVerb keeps unexported.
+//
+// What changed is the CONCLUSION drawn once those proofs pass: a second workspace
+// whose admin proved the same things binds the same installation instead of being
+// refused. GitHub allows one installation of an App per account, so the old
+// refusal made a personal account unable to back two workspaces at all.
+func TestConnectBindsASecondWorkspaceOnItsOwnProof(t *testing.T) {
 	svc := &Service{
 		Base:   &core.Base{Namespace: "default"},
 		GitHub: &fakeClient{login: "octo"},
@@ -658,20 +732,58 @@ func TestConnectRejectsForeignInstallation(t *testing.T) {
 	if _, err := svc.connectWithWorkspace(ctx, "tea-a", 42); err != nil {
 		t.Fatalf("first connect: %v", err)
 	}
-	// Workspace B tries to claim the same installation — refused.
-	if _, err := svc.connectWithWorkspace(ctx, "tea-b", 42); !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("foreign claim err = %v, want ErrConflict", err)
+	// Workspace B, having proved the same things, binds the same installation.
+	if _, err := svc.connectWithWorkspace(ctx, "tea-b", 42); err != nil {
+		t.Fatalf("second workspace binding installation 42 = %v, want success", err)
 	}
 	fs := svc.Store.(*fakeStore)
-	if _, ok := fs.firstFor("tea-b"); ok {
-		t.Error("foreign installation claim must not persist a connection for workspace B")
+	if b, ok := fs.firstFor("tea-b"); !ok || b.InstallationID != 42 {
+		t.Errorf("workspace B connection = %+v (ok=%v), want installation 42", b, ok)
 	}
+	// A's binding is shared, never transferred.
 	if a, _ := fs.firstFor("tea-a"); a.InstallationID != 42 {
 		t.Errorf("workspace A connection disturbed: %+v", a)
+	}
+	if got := fs.workspacesFor(42); len(got) != 2 {
+		t.Errorf("bindings for 42 = %v, want both workspaces", got)
 	}
 	// Re-connecting the SAME workspace to the SAME installation stays idempotent.
 	if _, err := svc.connectWithWorkspace(ctx, "tea-a", 42); err != nil {
 		t.Fatalf("idempotent re-connect: %v", err)
+	}
+	if got := fs.workspacesFor(42); len(got) != 2 {
+		t.Errorf("after idempotent re-connect, bindings = %v, want still 2", got)
+	}
+}
+
+// The mirror quota (ADR078 §2) refuses a THIRD workspace with its own coded
+// conflict, so the push webhook's fan-out stays bounded (§4a).
+func TestConnectRefusesOverTheInstallationWorkspaceQuota(t *testing.T) {
+	svc := &Service{
+		Base:                         &core.Base{Namespace: "default"},
+		GitHub:                       &fakeClient{login: "octo"},
+		Store:                        newFakeStore(),
+		MaxWorkspacesPerInstallation: 2,
+	}
+	ctx := context.Background()
+	for _, ws := range []string{"tea-a", "tea-b"} {
+		if _, err := svc.connectWithWorkspace(ctx, ws, 42); err != nil {
+			t.Fatalf("binding %s: %v", ws, err)
+		}
+	}
+	_, err := svc.connectWithWorkspace(ctx, "tea-c", 42)
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("third workspace = %v, want a conflict", err)
+	}
+	if !strings.Contains(err.Error(), "3") && !strings.Contains(err.Error(), "limit 2") {
+		t.Logf("quota message: %v", err)
+	}
+	if got := svc.Store.(*fakeStore).workspacesFor(42); len(got) != 2 {
+		t.Fatalf("bindings = %v, want the cap to hold at 2", got)
+	}
+	// A workspace that already holds it still refreshes at the cap.
+	if _, err := svc.connectWithWorkspace(ctx, "tea-a", 42); err != nil {
+		t.Fatalf("same-pair refresh at the cap: %v", err)
 	}
 }
 

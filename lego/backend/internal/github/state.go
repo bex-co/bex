@@ -65,7 +65,9 @@ type connectState struct {
 // path described by ADR026. The HMAC is now a cheap pre-check in front of the
 // durable row, not the authorization itself.
 func (s *Service) statefulInstallURL(ctx context.Context, workspaceID, subject string) (string, error) {
-	token, err := s.mintConnectState(ctx, workspaceID, subject)
+	// The install flow gets its installation id from GitHub's redirect, so it
+	// never carries a start-time selector (that is the claim flow's, ADR078 §3a).
+	token, err := s.mintConnectState(ctx, workspaceID, subject, 0)
 	if err != nil {
 		return "", err
 	}
@@ -79,7 +81,12 @@ func (s *Service) statefulInstallURL(ctx context.Context, workspaceID, subject s
 	return u.String(), nil
 }
 
-func (s *Service) mintConnectState(ctx context.Context, workspaceID, subject string) (string, error) {
+// installationID (0 = none) is the claim flow's optional start-time selector. It
+// lives on the server-side transaction row, NOT in the signed state: the state
+// stays a nonce that authorizes nothing (w1/m67 F3), and a selector the browser
+// could edit would be worthless anyway — it only narrows a set the callback
+// proves independently.
+func (s *Service) mintConnectState(ctx context.Context, workspaceID, subject string, installationID int64) (string, error) {
 	if len(s.StateSecret) == 0 {
 		return "", core.ErrGitHubUnavailable
 	}
@@ -94,7 +101,8 @@ func (s *Service) mintConnectState(ctx context.Context, workspaceID, subject str
 	// The durable record is what the callback authorizes against; the signed state
 	// merely carries its name.
 	if err := s.Store.CreateGitHubConnectTransaction(ctx, store.GitHubConnectTransaction{
-		Nonce: nonce, TenantID: workspaceID, Subject: subject, ExpiresAt: expiresAt,
+		Nonce: nonce, TenantID: workspaceID, Subject: subject,
+		InstallationID: installationID, ExpiresAt: expiresAt,
 	}); err != nil {
 		return "", err
 	}

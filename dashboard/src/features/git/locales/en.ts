@@ -35,7 +35,7 @@ const enGit: Record<string, TranslationEntry> = {
   },
   "git.claimHint": {
     message:
-      "Already installed the bex GitHub App directly on GitHub? Claim it instead — the install flow only works for accounts without the app.",
+      "Already installed the bex GitHub App on that account? Use Claim instead. GitHub shows Configure rather than Install for an account that has it, and that path never returns to bex.",
     description:
       "Hint under the connect/claim buttons explaining when to use claim",
   },
@@ -111,13 +111,36 @@ const enGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorNoClaimable": {
     message:
-      "No unconnected GitHub account you administer was found. Install the bex GitHub App on the account first, or check that you authorized the right GitHub user.",
-    description: "Claim-callback failure: zero claimable installations",
+      "No GitHub account you administer was found. Check that you authorized the right GitHub user, or install the bex GitHub App on the account first.",
+    description:
+      "Claim-callback failure: zero candidates. Rewritten in w2/m162 — under ADR078 N:N an account connected to another workspace is claimable, so this no longer covers that case and must not imply it",
   },
   "git.callbackErrorAmbiguous": {
     message:
-      "Several unconnected GitHub accounts you administer were found. Claiming binds exactly one — connect the others from their own workspaces first, then claim again.",
-    description: "Claim-callback failure: more than one claimable installation",
+      "Several GitHub accounts you administer were found and the choice couldn't be recorded. Select Claim installed account to start again.",
+    description:
+      "Claim-callback failure: ambiguity the picker could not be offered for (the selection failed to persist). The ordinary ambiguous case now renders the account picker instead",
+  },
+  "git.claimSelectionTitle": {
+    message: "Choose a GitHub account to connect",
+    description: "Heading of the deferred claim account picker (ADR078 §3a)",
+  },
+  "git.claimSelectionBody": {
+    message:
+      "You administer more than one GitHub account. Pick the one to connect to this workspace.",
+    description: "Body of the deferred claim account picker",
+  },
+  "git.claimSelectionGoneTitle": {
+    message: "This choice has expired",
+    description: "Claim selection unknown, expired, or already used",
+  },
+  "git.claimSelectionGoneBody": {
+    message: "Select Claim installed account below to start again.",
+    description: "Recovery for an expired or spent claim selection",
+  },
+  "git.selectClaimError": {
+    message: "Could not connect that GitHub account.",
+    description: "Toast when completing a claim selection fails",
   },
   "git.callbackErrorGeneric": {
     message:

@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"golang.org/x/sync/singleflight"
 )
@@ -37,9 +38,10 @@ import (
 // nil => the control-plane store is off (BEX_CP_DB_URI unset) and every verb
 // reports core.ErrGitHubUnavailable.
 type ConnectionStore interface {
-	// BindGitConnection atomically enforces installation ownership and the
-	// workspace connection quota while inserting or refreshing one binding.
-	BindGitConnection(ctx context.Context, c store.GitConnection, maxConnections int) (store.GitConnection, error)
+	// BindGitConnection atomically enforces BOTH quotas — the workspace's
+	// connection fan-in and the installation's workspace fan-out (ADR078 §2) —
+	// while inserting or refreshing one binding.
+	BindGitConnection(ctx context.Context, c store.GitConnection, maxConnections, maxWorkspaces int) (store.GitConnection, error)
 	GetGitConnection(ctx context.Context, workspaceID string) (store.GitConnection, error)
 	// ListGitConnections returns a workspace's full connection set, oldest first
 	// (ADR078) — the multi-account aggregate the repo picker and list surface read.
@@ -47,9 +49,10 @@ type ConnectionStore interface {
 	// GetGitConnectionByOwner resolves the connection whose account login matches a
 	// repo's owner — the exact installation to mint that repo's token from (ADR078 §4).
 	GetGitConnectionByOwner(ctx context.Context, workspaceID, accountLogin string) (store.GitConnection, error)
-	// GitConnectionByInstallation resolves which workspace (if any) already owns
-	// an installation — the unique-binding gate (w1/m65 F2).
-	GitConnectionByInstallation(ctx context.Context, installationID int64) (store.GitConnection, error)
+	// GitConnectionsByInstallation resolves every workspace that has proved a
+	// binding for an installation (ADR078 §2, N:N). The push webhook's reverse
+	// lookup; empty means act on nothing (§4a).
+	GitConnectionsByInstallation(ctx context.Context, installationID int64) ([]store.GitConnection, error)
 	// CountGitConnections backs the per-workspace connection quota (ADR078 §2).
 	CountGitConnections(ctx context.Context, workspaceID string) (int, error)
 	DeleteGitConnection(ctx context.Context, workspaceID string, installationID int64) error
@@ -57,6 +60,11 @@ type ConnectionStore interface {
 	// that ties "who started this flow" to "who came back from GitHub".
 	CreateGitHubConnectTransaction(ctx context.Context, t store.GitHubConnectTransaction) error
 	ConsumeGitHubConnectTransaction(ctx context.Context, nonce string) (store.GitHubConnectTransaction, error)
+	// The deferred claim selector (ADR078 §3a): an ambiguous claim's already-proved
+	// candidate set, held single-use for the few minutes the human needs to choose.
+	CreateGitHubClaimSelection(ctx context.Context, sel store.GitHubClaimSelection) error
+	GetGitHubClaimSelection(ctx context.Context, id string) (store.GitHubClaimSelection, error)
+	ConsumeGitHubClaimSelection(ctx context.Context, id string) (store.GitHubClaimSelection, error)
 }
 
 // APIClient is the GitHub REST surface the Service uses — *Client in production,
@@ -111,12 +119,17 @@ type Service struct {
 	DashboardURL string
 	// MaxConnections caps how many GitHub installations ONE workspace may connect
 	// (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR078 §2; default 10, 0 disables).
-	// Bounds one tenant's connection fan-out — and therefore the per-connection
+	// Bounds one tenant's connection fan-in — and therefore the per-connection
 	// GitHub round trips ListRepos makes.
-	MaxConnections         int
-	runtimeDetectionOnce   sync.Once
-	runtimeDetectionCache  *core.TTLCache[RuntimeDetection]
-	runtimeDetectionFlight singleflight.Group
+	MaxConnections int
+	// MaxWorkspacesPerInstallation is MaxConnections' mirror under N:N
+	// (BEX_MAX_WORKSPACES_PER_GIT_INSTALLATION, ADR078 §2; default 10, 0
+	// disables): how many workspaces ONE installation may serve, which is also
+	// how wide a single push delivery can fan out (§4a).
+	MaxWorkspacesPerInstallation int
+	runtimeDetectionOnce         sync.Once
+	runtimeDetectionCache        *core.TTLCache[RuntimeDetection]
+	runtimeDetectionFlight       singleflight.Group
 	// Public-repo commit resolve (w4/m108 t004): unauthenticated GitHub
 	// GET /commits/{ref} when no App installation exists for the owner.
 	// Cached aggressively — GitHub's anonymous limit is 60 req/h/IP.
@@ -303,12 +316,34 @@ type Claim struct {
 	ClaimURL string `json:"claimUrl"`
 }
 
+// claimSelectionTTL bounds how long an ambiguous claim's proved candidate set
+// stays offered. Short: the human is mid-flow, sitting in front of the picker.
+const claimSelectionTTL = 5 * time.Minute
+
 // Bounded claim-callback failures (ADR078 §3a) — mapped to fixed git_error codes
 // in rest.go; the messages are safe for the JSON (no-dashboard) mode.
+//
+// Both messages were rewritten for N:N (w2/m162). The old no-claimable copy said
+// "install the bex GitHub App on the account first", which after §2 is advice for
+// a state that can no longer arise from being bound elsewhere — the App is
+// installed; the claim just found nothing this user administers. The old
+// ambiguity copy told the user to uninstall the extras; the remedy is now to pick
+// one, and errAmbiguousClaim survives only for the case where the selection could
+// not be recorded at all.
 var (
-	errNoClaimableInstallation = fmt.Errorf("%w: no unconnected GitHub installation you administer was found; install the bex GitHub App on the account first", core.ErrBadRequest)
-	errAmbiguousClaim          = fmt.Errorf("%w: several unconnected GitHub installations you administer were found; claiming requires exactly one", core.ErrBadRequest)
+	errNoClaimableInstallation = fmt.Errorf("%w: no GitHub account you administer was found; check that you authorized the right GitHub user, or install the bex GitHub App on the account first", core.ErrBadRequest)
+	errAmbiguousClaim          = fmt.Errorf("%w: several GitHub accounts you administer were found and the choice could not be recorded; start the claim again", core.ErrBadRequest)
+	errClaimSelectionGone      = fmt.Errorf("%w: this GitHub account choice has expired or was already used; start the claim again", core.ErrForbidden)
 )
+
+// claimSelectionRequiredError is not a failure — it is the ambiguous branch
+// SUCCEEDING into a deferred choice. It carries the selection id so the callback
+// can redirect the browser to the picker instead of a dead-end error code.
+type claimSelectionRequiredError struct{ SelectionID string }
+
+func (e *claimSelectionRequiredError) Error() string {
+	return "github claim: several administered installations; selection " + e.SelectionID + " is pending"
+}
 
 // verifierPreflight is ADR078 §7: connect/claim starts refuse immediately when
 // the installation-admin verifier is unconfigured, because the callback would
@@ -327,7 +362,12 @@ func (s *Service) verifierPreflight() error {
 // flow instead — the one flow that always preserves state — and the callback
 // resolves the installation server-side from the authorizing user's admin set.
 // Admin-only, same transaction record as StartConnect (w1/m67 F3).
-func (s *Service) StartClaim(ctx context.Context, ownerID string) (Claim, error) {
+//
+// installationID (0 = unspecified) is the optional start-time selector: it
+// NARROWS the candidate set the callback proves. It is not trusted as an input —
+// an installation the authorizing GitHub user does not administer never becomes a
+// candidate no matter what is named here.
+func (s *Service) StartClaim(ctx context.Context, ownerID string, installationID int64) (Claim, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return Claim{}, err
@@ -346,7 +386,7 @@ func (s *Service) StartClaim(ctx context.Context, ownerID string) (Claim, error)
 	if subject == "" {
 		return Claim{}, core.ErrForbidden
 	}
-	token, err := s.mintConnectState(ctx, workspaceID, subject)
+	token, err := s.mintConnectState(ctx, workspaceID, subject, installationID)
 	if err != nil {
 		return Claim{}, err
 	}
@@ -357,11 +397,20 @@ func (s *Service) StartClaim(ctx context.Context, ownerID string) (Claim, error)
 // state and NO installation_id (that absence is what selects this branch), runs
 // the identical proof sequence as connectFromCallback — consume the single-use
 // nonce, match the initiator, fresh can_manage — and then resolves the
-// installation server-side: of this app's installations the code's user
-// ADMINISTERS, exactly one must be unbound (or already bound to this same
-// workspace — idempotent). Zero or several are bounded failures, never a guess;
-// an installation bound to a DIFFERENT workspace is never a candidate. No
-// client-supplied installation id exists on this path at all.
+// installation server-side from this app's installations the code's user
+// ADMINISTERS.
+//
+// ADR078 §3a (2026-09-16): the old "and not already bound to ANY workspace"
+// filter is GONE. Under N:N (§2) being bound elsewhere no longer disqualifies an
+// installation, because this callback carries a full, independent proof that the
+// human administers it — so the previous behaviour (drop it, then report
+// "install the App first") was both wrong and actively misleading. What survives
+// is scoped to this transaction's own workspace: a binding this workspace
+// already holds stays a candidate, making a repeated claim idempotent.
+//
+// A start-time installation id NARROWS the proved set and can never add to it.
+// Ambiguity is no longer a dead end: the proved set is handed to the human as a
+// single-use selection (errClaimSelectionRequired) rather than discarded.
 func (s *Service) claimFromCallback(ctx context.Context, nonce, caller, code string) (Connection, error) {
 	txn, err := s.consumeCallbackProofs(ctx, nonce, caller, code)
 	if err != nil {
@@ -371,20 +420,14 @@ func (s *Service) claimFromCallback(ctx context.Context, nonce, caller, code str
 	if err != nil {
 		return Connection{}, mapGitHubErr(err)
 	}
-	// Keep only installations not bound to a DIFFERENT workspace: unbound ones
-	// are claimable, and one already bound to THIS workspace stays a candidate so
-	// a repeated claim is idempotent rather than a confusing "nothing to claim".
 	candidates := make([]Installation, 0, len(admined))
 	for _, inst := range admined {
-		existing, lookupErr := s.Store.GitConnectionByInstallation(ctx, inst.ID)
-		switch {
-		case errors.Is(lookupErr, store.ErrNotFound):
-			candidates = append(candidates, inst)
-		case lookupErr != nil:
-			return Connection{}, lookupErr
-		case existing.WorkspaceID == txn.TenantID:
-			candidates = append(candidates, inst)
+		// The client-supplied id intersects the server-proved set; it is never a
+		// source of candidates, only a filter over them.
+		if txn.InstallationID > 0 && inst.ID != txn.InstallationID {
+			continue
 		}
+		candidates = append(candidates, inst)
 	}
 	switch len(candidates) {
 	case 0:
@@ -392,8 +435,135 @@ func (s *Service) claimFromCallback(ctx context.Context, nonce, caller, code str
 	case 1:
 		return s.connectWithWorkspace(ctx, txn.TenantID, candidates[0].ID)
 	default:
-		return Connection{}, errAmbiguousClaim
+		return Connection{}, s.offerClaimSelection(ctx, txn, candidates)
 	}
+}
+
+// offerClaimSelection persists an ambiguous claim's ALREADY-PROVED candidate set
+// and returns the sentinel that routes the browser to the picker (ADR078 §3a).
+//
+// The dashboard cannot know any installation id before the OAuth round trip — the
+// set is only discoverable with the user token minted from the single-use code —
+// so discarding it here is what made ambiguity unresolvable. Every proof has
+// already run for every member: state, nonce, initiator, fresh can_manage, and
+// VerifyInstallationAdmin. The row is a memo of that, not a substitute for it:
+// subject-bound, workspace-bound, single-use, short-lived, and closed to ids
+// outside the set. The OAuth code is spent and deliberately not stored.
+//
+// A failure to persist degrades to the ordinary bounded ambiguity error rather
+// than inventing a binding.
+func (s *Service) offerClaimSelection(ctx context.Context, txn store.GitHubConnectTransaction, candidates []Installation) error {
+	selectionID := id.New(id.GitClaimSelection)
+	rows := make([]store.GitHubClaimCandidate, 0, len(candidates))
+	for _, inst := range candidates {
+		rows = append(rows, store.GitHubClaimCandidate{InstallationID: inst.ID, AccountLogin: inst.AccountLogin})
+	}
+	if err := s.Store.CreateGitHubClaimSelection(ctx, store.GitHubClaimSelection{
+		ID:          selectionID,
+		WorkspaceID: txn.TenantID,
+		Subject:     txn.Subject,
+		Candidates:  rows,
+		ExpiresAt:   s.Now().Add(claimSelectionTTL),
+	}); err != nil {
+		log.Printf("github claim: could not record selection for workspace %s: %v", txn.TenantID, err)
+		return errAmbiguousClaim
+	}
+	return &claimSelectionRequiredError{SelectionID: selectionID}
+}
+
+// ClaimCandidate is one option the picker renders.
+type ClaimCandidate struct {
+	InstallationID int64  `json:"installationId"`
+	AccountLogin   string `json:"accountLogin"`
+}
+
+// ClaimSelection is the picker's view of an outstanding ambiguous claim.
+type ClaimSelection struct {
+	ID         string           `json:"id"`
+	Candidates []ClaimCandidate `json:"candidates"`
+	ExpiresAt  string           `json:"expiresAt"`
+}
+
+// GetClaimSelection renders an outstanding selection for the picker WITHOUT
+// consuming it. Admin-gated on ownerID's workspace ("" => the caller's default,
+// ADR078 §6) and subject-matched on top: a selection id is a name, not a
+// capability, so it reveals its candidates only to the bex user who started the
+// claim, inside the workspace that claim was for. Unknown, expired, foreign-
+// workspace and foreign-subject selections are all refused identically.
+func (s *Service) GetClaimSelection(ctx context.Context, ownerID, selectionID string) (ClaimSelection, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+		return ClaimSelection{}, err
+	}
+	sel, err := s.loadSelection(ctx, selectionID, false)
+	if err != nil {
+		return ClaimSelection{}, err
+	}
+	out := ClaimSelection{ID: sel.ID, ExpiresAt: sel.ExpiresAt.UTC().Format(time.RFC3339)}
+	for _, c := range sel.Candidates {
+		out.Candidates = append(out.Candidates, ClaimCandidate{InstallationID: c.InstallationID, AccountLogin: c.AccountLogin})
+	}
+	return out, nil
+}
+
+// SelectClaim completes an ambiguous claim by binding one installation the
+// callback already proved. Admin-gated on ownerID's workspace.
+//
+// SECURITY: this grants nothing the callback had not established. The selection
+// is consumed atomically (so a replay finds nothing), can_manage is re-checked
+// NOW rather than inherited from the callback (a demotion inside the selection
+// window must not still bind), the presenting subject must equal the initiator,
+// the selection's workspace must be the authorized one, and the installation must
+// be a member of the stored set — so the client chooses among proved options and
+// can never introduce a new one.
+func (s *Service) SelectClaim(ctx context.Context, ownerID, selectionID string, installationID int64) (Connection, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+		return Connection{}, err
+	}
+	sel, err := s.loadSelection(ctx, selectionID, true)
+	if err != nil {
+		return Connection{}, err
+	}
+	for _, c := range sel.Candidates {
+		if c.InstallationID == installationID {
+			return s.connectWithWorkspace(ctx, sel.WorkspaceID, c.InstallationID)
+		}
+	}
+	return Connection{}, fmt.Errorf("%w: that GitHub account is not one of this claim's options", core.ErrBadRequest)
+}
+
+// loadSelection is the shared guard of both selection verbs — one copy so the
+// read and the write cannot drift on who may see a pending choice. consume
+// distinguishes them: peek (render the picker) vs spend it (bind). Unknown,
+// expired, foreign-subject and foreign-workspace all collapse to one
+// indistinguishable refusal, so a selection id cannot be probed.
+func (s *Service) loadSelection(ctx context.Context, selectionID string, consume bool) (store.GitHubClaimSelection, error) {
+	if !s.configured() {
+		return store.GitHubClaimSelection{}, core.ErrGitHubUnavailable
+	}
+	caller := ""
+	if ident, ok := core.IdentityFrom(ctx); ok {
+		caller = ident.Subject
+	}
+	if caller == "" {
+		return store.GitHubClaimSelection{}, core.ErrForbidden
+	}
+	load := s.Store.GetGitHubClaimSelection
+	if consume {
+		load = s.Store.ConsumeGitHubClaimSelection
+	}
+	sel, err := load(ctx, selectionID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return store.GitHubClaimSelection{}, errClaimSelectionGone
+		}
+		return store.GitHubClaimSelection{}, err
+	}
+	if sel.Subject != caller || sel.WorkspaceID != s.WorkspaceOrDefault(ctx) {
+		return store.GitHubClaimSelection{}, errClaimSelectionGone
+	}
+	return sel, nil
 }
 
 // connectWithWorkspace records a connection for the workspace authenticated by
@@ -411,14 +581,14 @@ func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, 
 	if err != nil {
 		return Connection{}, mapGitHubErr(err)
 	}
-	// SECURITY: ownership, same-workspace reconnect exemption, quota admission,
-	// and insert are one store transaction. A standalone count here lets two
-	// callbacks at limit-1 both pass and exceed the configured bound.
+	// SECURITY: the same-pair reconnect exemption, BOTH quota admissions, and the
+	// insert are one store transaction. A standalone count here lets two callbacks
+	// at limit-1 both pass and exceed the configured bound.
 	row, err := s.Store.BindGitConnection(ctx, store.GitConnection{
 		WorkspaceID:    workspaceID,
 		InstallationID: installationID,
 		AccountLogin:   inst.AccountLogin,
-	}, s.MaxConnections)
+	}, s.MaxConnections, s.MaxWorkspacesPerInstallation)
 	if err != nil {
 		var limit *store.GitConnectionLimitError
 		if errors.As(err, &limit) {
@@ -426,8 +596,13 @@ func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, 
 				fmt.Sprintf("workspace already has %d connected GitHub installations (limit %d); disconnect one or raise the limit", limit.Count, limit.Limit),
 				map[string]any{"count": limit.Count, "limit": limit.Limit})
 		}
-		if errors.Is(err, store.ErrConflict) {
-			return Connection{}, fmt.Errorf("%w: this GitHub installation is already connected to another workspace", core.ErrConflict)
+		// The mirror cap (ADR078 §2): how many workspaces one installation serves,
+		// which is also how wide a single push delivery can fan out (§4a).
+		var wsLimit *store.GitInstallationWorkspaceLimitError
+		if errors.As(err, &wsLimit) {
+			return Connection{}, core.NewConflictError("GIT_INSTALLATION_WORKSPACE_LIMIT",
+				fmt.Sprintf("this GitHub account already serves %d workspaces (limit %d); disconnect it from one or raise the limit", wsLimit.Count, wsLimit.Limit),
+				map[string]any{"count": wsLimit.Count, "limit": wsLimit.Limit})
 		}
 		return Connection{}, err
 	}
@@ -779,23 +954,34 @@ func githubOwnerRepo(repoURL string) (owner, repo string, ok bool) {
 // TestAuthzGuardsEveryVerb. The adapter keeps that trust boundary explicit.
 type installationResolver struct{ s *Service }
 
-// WorkspaceForInstallation resolves the workspace bound to a GitHub App
-// installation id so the git push webhook can CONFINE an app-signed delivery to
-// its installation's workspace (codex #7). ok=false (no error) when no connection
-// owns the installation or the control-plane store is off — the webhook then acts
-// on nothing rather than falling back to a cross-tenant global match.
-func (r installationResolver) WorkspaceForInstallation(ctx context.Context, installationID int64) (string, bool, error) {
+// WorkspacesForInstallation resolves every workspace that has PROVED a binding
+// for a GitHub App installation id, so the git push webhook can confine an
+// app-signed delivery to exactly that set (codex #7, ADR057 round-6 #9, restated
+// for N:N in ADR078 §4a).
+//
+// An EMPTY result — no bindings, or the control-plane store is off — means the
+// webhook acts on nothing. It must never be read as "unscoped": that is the
+// fail-closed property, and it is unchanged by N:N, which alters only how many
+// non-empty scopes there can be.
+//
+// This is the ONLY place an installation resolves to workspaces. Every other
+// consumer runs the opposite direction (workspace → its connections), which is
+// why the N:N blast radius is this function and its one caller.
+func (r installationResolver) WorkspacesForInstallation(ctx context.Context, installationID int64) ([]string, error) {
 	if r.s.Store == nil {
-		return "", false, nil
+		return nil, nil
 	}
-	conn, err := r.s.Store.GitConnectionByInstallation(ctx, installationID)
-	if errors.Is(err, store.ErrNotFound) {
-		return "", false, nil
-	}
+	conns, err := r.s.Store.GitConnectionsByInstallation(ctx, installationID)
 	if err != nil {
-		return "", false, err
+		return nil, err
 	}
-	return conn.WorkspaceID, true, nil
+	out := make([]string, 0, len(conns))
+	for _, c := range conns {
+		if c.WorkspaceID != "" {
+			out = append(out, c.WorkspaceID)
+		}
+	}
+	return out, nil
 }
 
 // InstallationResolver returns the webhook's installation→workspace seam (wired
