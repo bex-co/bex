@@ -149,6 +149,55 @@ describe("invitation redemption", () => {
     expect(result.current.errorKey).toBe("invites.retryError");
     expect(mocks.select).not.toHaveBeenCalled();
   });
+  it.each([
+    null,
+    { workspaceId: "tea-target", alreadyMember: false },
+    { workspaceId: null, alreadyMember: true },
+  ])(
+    "keeps a used invitation closed without confirmed membership: %j",
+    async (membership) => {
+      mocks.mutate.mockRejectedValueOnce(
+        new CombinedGraphQLErrors({
+          errors: [
+            {
+              message: "used",
+              extensions: { code: "INVITE_ALREADY_ACCEPTED" },
+            },
+          ],
+        }),
+      );
+      mocks.previewRefetch.mockResolvedValueOnce({
+        data: { workspaceInvitePreview: membership },
+      });
+      const opened = vi.fn();
+      const { result } = renderHook(() => useInviteRedemption(TOKEN, opened));
+      await act(() => result.current.accept());
+      expect(result.current.errorKey).toBe("invites.used");
+      expect(result.current.details).toBeNull();
+      expect(result.current.retryable).toBe(false);
+      expect(result.current.busy).toBe(false);
+      expect(mocks.query).not.toHaveBeenCalled();
+      expect(mocks.select).not.toHaveBeenCalled();
+      expect(opened).not.toHaveBeenCalled();
+    },
+  );
+  it("does not commit a missing acceptance result and permits a later retry", async () => {
+    mocks.mutate.mockResolvedValueOnce({
+      data: { acceptWorkspaceInvite: null },
+    });
+    const opened = vi.fn();
+    const { result } = renderHook(() => useInviteRedemption(TOKEN, opened));
+    await act(() => result.current.accept());
+    expect(result.current.errorKey).toBe("invites.retryError");
+    expect(result.current.joined).toBe(false);
+    expect(result.current.busy).toBe(false);
+    expect(mocks.query).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBe(TOKEN);
+
+    await act(() => result.current.accept());
+    expect(mocks.mutate).toHaveBeenCalledTimes(2);
+    expect(opened).toHaveBeenCalledOnce();
+  });
   it("waits for effective authorization after membership commits", async () => {
     mocks.query.mockResolvedValueOnce({
       data: { workspaces: [{ id: "tea-target" }] },

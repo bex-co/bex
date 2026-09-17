@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import type { ReactNode } from "react";
 
@@ -20,6 +20,7 @@ import {
   bumpAccessGeneration,
   resetAccessGenerationForTests,
 } from "@/features/capabilities/lib/access-generation";
+import { CAPABILITY_FRESHNESS_MS } from "@/features/capabilities/lib/capability-policy";
 
 const allowedGrants = [
   "can_view",
@@ -45,6 +46,10 @@ describe("useCapabilities (fail-closed + freshness)", () => {
       configurable: true,
       get: () => false,
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("never grants while the answer is unknown", async () => {
@@ -103,6 +108,85 @@ describe("useCapabilities (fail-closed + freshness)", () => {
     );
   });
 
+  it("expires granted flags while the next poll remains unresolved", async () => {
+    vi.useFakeTimers();
+    mockQuery
+      .mockResolvedValueOnce({
+        data: { viewerCapabilities: { role: "ADMIN", grants: allowedGrants } },
+      })
+      .mockReturnValue(new Promise(() => undefined));
+    const { result } = renderHook(() => useCapabilities(), { wrapper });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.canCreate).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(CAPABILITY_FRESHNESS_MS);
+    });
+    expect(result.current).toMatchObject({
+      canView: false,
+      canViewLogs: false,
+      canOperate: false,
+      canCreate: false,
+      canViewSensitive: false,
+      canManageKeys: false,
+      canManage: false,
+      canManageBilling: false,
+      loaded: false,
+      stale: true,
+    });
+    expect(result.current.allows("can_create")).toBe(false);
+  });
+
+  it.each([null, "tea-2"])(
+    "drops previously granted flags when the workspace becomes %s",
+    async (nextWorkspace) => {
+      mockQuery
+        .mockResolvedValueOnce({
+          data: {
+            viewerCapabilities: { role: "ADMIN", grants: allowedGrants },
+          },
+        })
+        .mockReturnValue(new Promise(() => undefined));
+      const { result, rerender } = renderHook(() => useCapabilities(), {
+        wrapper,
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(result.current.canCreate).toBe(true);
+
+      workspaceId = nextWorkspace;
+      rerender();
+      expect(result.current.canCreate).toBe(false);
+      expect(result.current.canViewSensitive).toBe(false);
+      expect(result.current.loaded).toBe(false);
+      expect(result.current.allows("can_create")).toBe(false);
+    },
+  );
+
+  it("drops granted flags during an access-generation refresh", async () => {
+    mockQuery
+      .mockResolvedValueOnce({
+        data: { viewerCapabilities: { role: "ADMIN", grants: allowedGrants } },
+      })
+      .mockReturnValue(new Promise(() => undefined));
+    const { result } = renderHook(() => useCapabilities(), { wrapper });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.canCreate).toBe(true);
+
+    act(() => {
+      bumpAccessGeneration();
+    });
+    expect(result.current.canCreate).toBe(false);
+    expect(result.current.canViewSensitive).toBe(false);
+    expect(result.current.loaded).toBe(false);
+    expect(result.current.allows("can_create")).toBe(false);
+  });
+
   it("scopes fresh queries to the active workspace", async () => {
     mockQuery.mockResolvedValue({
       data: {
@@ -146,9 +230,7 @@ describe("useCapabilities (fail-closed + freshness)", () => {
           role: "VIEWER",
           fresh: true,
           grants: allowedGrants.map((g) =>
-            g.action === "can_create"
-              ? { ...g, outcome: "allowed" }
-              : g,
+            g.action === "can_create" ? { ...g, outcome: "allowed" } : g,
           ),
         },
       },

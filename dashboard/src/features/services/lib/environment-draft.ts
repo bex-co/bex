@@ -270,31 +270,24 @@ function patchRows<R extends { deleted: boolean }>(
     const generateValue = lens.generated(row);
     if (row.deleted) {
       if (original) patch.push({ name: original, delete: true });
-    } else if (!original) {
-      patch.push({
-        name,
-        ...(generateValue ? { generateValue: true } : { value }),
-      });
-    } else if (name !== original) {
-      // A rename with no new value moves the opaque value server-side; a rename
-      // that also sets one cannot, so it becomes delete + create.
-      if (!lens.changed(row) && !generateValue) {
-        patch.push({ name, from: original });
-      } else {
-        patch.push(
-          { name: original, delete: true },
-          {
-            name,
-            ...(generateValue ? { generateValue: true } : { value }),
-          },
-        );
-      }
-    } else if (lens.changed(row) || generateValue) {
-      patch.push({
-        name,
-        ...(generateValue ? { generateValue: true } : { value }),
-      });
+      continue;
     }
+
+    // Keep an existing value opaque, moving it server-side only on rename.
+    if (original && !lens.changed(row) && !generateValue) {
+      if (name !== original) patch.push({ name, from: original });
+      continue;
+    }
+
+    // New values, replacements, and generated values all write the same
+    // shape. Replacing a renamed row must remove its old name first.
+    if (original && name !== original) {
+      patch.push({ name: original, delete: true });
+    }
+    patch.push({
+      name,
+      ...(generateValue ? { generateValue: true } : { value }),
+    });
   }
   return patch;
 }
@@ -321,11 +314,6 @@ export function environmentDraftPatch(
       }),
     ),
   };
-}
-
-export function isEnvironmentDraftDirty(draft: EnvironmentDraft): boolean {
-  const patch = environmentDraftPatch(draft);
-  return patch.envVars.length > 0 || patch.secretFiles.length > 0;
 }
 
 export function isValidSecretFileName(name: string): boolean {

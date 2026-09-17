@@ -102,6 +102,50 @@ describe("parseAnsi SGR", () => {
     expect(spans[0].style?.textDecorationLine).toBe("underline line-through");
   });
 
+  it.each([
+    ["1;2", "21", ["font-semibold", "opacity-70"]],
+    ["1;2", "22", ["font-semibold", "opacity-70"]],
+    ["3", "23", ["italic"]],
+    ["4", "24", ["underline"]],
+    ["9", "29", ["line-through"]],
+  ])(
+    "resets attributes %s with %s without clearing colors",
+    (on, off, classes) => {
+      const spans = parseAnsi(`${ESC}[31;44;${on}mbefore${ESC}[${off}mafter`);
+      for (const name of classes) {
+        expect(classOf(spans, "before")).toContain(name);
+        expect(classOf(spans, "after")).not.toContain(name);
+      }
+      expect(classOf(spans, "after")).toContain("text-red-700");
+      expect(spans[1].style?.backgroundColor).toBe("rgb(0, 0, 238)");
+    },
+  );
+
+  it("resets foreground and background independently of other attributes", () => {
+    const spans = parseAnsi(
+      `${ESC}[1;97;104mboth${ESC}[39mbackground${ESC}[49mplain`,
+    );
+    expect(spans[0].className).toContain("text-neutral-900");
+    expect(spans[0].style?.backgroundColor).toBe("rgb(92, 92, 255)");
+    expect(spans[1].className).toBe("font-semibold");
+    expect(spans[1].style?.backgroundColor).toBe("rgb(92, 92, 255)");
+    expect(spans[2]).toEqual({ text: "plain", className: "font-semibold" });
+  });
+
+  it("preserves extended-color parameter consumption and later attributes", () => {
+    const spans = parseAnsi(
+      `${ESC}[31;38;5;999;3mforeground${ESC}[48;5;196;4mbackground`,
+    );
+    // An invalid palette value keeps the current color and consumes that
+    // value; later attribute codes still apply to both extended-color forms.
+    expect(spans[0].className).toBe("italic text-red-700 dark:text-red-400");
+    expect(spans[1].className).toContain("underline");
+    expect(spans[1].style?.backgroundColor).toBe("rgb(255, 0, 0)");
+    expect(parseAnsi(`${ESC}[38;9;1mtext`)[0].className).toBe(
+      "font-semibold line-through",
+    );
+  });
+
   it("coalesces a run into one span per style change", () => {
     const spans = parseAnsi(`plain ${ESC}[31mred text${ESC}[39m plain`);
     expect(spans.map((s) => s.text)).toEqual(["plain ", "red text", " plain"]);

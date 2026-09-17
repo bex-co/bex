@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { mergeDeployPages, useDeploys, type DeployRow } from "../use-deploys";
 
 const useQuery = vi.fn();
@@ -31,9 +31,7 @@ function row(partial: Partial<DeployRow> & { id: string }): DeployRow {
   };
 }
 
-function mockDeploys(
-  deploys: Array<{ id: string; status: string }> | null,
-) {
+function mockDeploys(deploys: Array<{ id: string; status: string }> | null) {
   useQuery.mockReturnValue({
     data: deploys
       ? {
@@ -94,6 +92,61 @@ describe("useDeploys", () => {
     expect(result.current.deploys).toEqual([
       expect.objectContaining({ id: "dep-a", status: "live" }),
     ]);
+  });
+
+  it("drops appended history and its paging state when a poll overlaps it", async () => {
+    const firstPage = Array.from({ length: 20 }, (_, i) =>
+      row({ id: `dep-${i}` }),
+    );
+    mockDeploys(firstPage);
+    query.mockResolvedValue({
+      data: { deploys: [row({ id: "dep-tail" })] },
+      error: new Error("partial page"),
+    });
+    const { result, rerender } = renderHook(() => useDeploys("srv-1", []));
+
+    act(() => result.current.loadMore());
+    await waitFor(() => expect(result.current.deploys).toHaveLength(21));
+    expect(result.current.hasMore).toBe(false);
+    expect(result.current.error?.message).toBe("partial page");
+
+    const refreshed = [row({ id: "dep-tail" }), ...firstPage.slice(0, 19)];
+    mockDeploys(refreshed);
+    rerender();
+
+    expect(result.current.deploys.map((deploy) => deploy.id)).toEqual(
+      refreshed.map((deploy) => deploy.id),
+    );
+    expect(result.current.hasMore).toBe(true);
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it("drops appended history and its error when the status filter changes", async () => {
+    const firstPage = Array.from({ length: 20 }, (_, i) =>
+      row({ id: `dep-${i}` }),
+    );
+    mockDeploys(firstPage);
+    query.mockResolvedValue({
+      data: { deploys: [row({ id: "dep-tail" })] },
+      error: new Error("old filter error"),
+    });
+    const { result, rerender } = renderHook(
+      ({ statuses }) => useDeploys("srv-1", statuses),
+      { initialProps: { statuses: [] as string[] } },
+    );
+
+    act(() => result.current.loadMore());
+    await waitFor(() => expect(result.current.deploys).toHaveLength(21));
+    expect(result.current.error?.message).toBe("old filter error");
+
+    mockDeploys([row({ id: "dep-failed", status: "build_failed" })]);
+    rerender({ statuses: ["build_failed"] });
+
+    expect(result.current.deploys.map((deploy) => deploy.id)).toEqual([
+      "dep-failed",
+    ]);
+    expect(result.current.hasMore).toBe(false);
+    expect(result.current.error).toBeUndefined();
   });
 
   // w4/073 — mirror of useLatestDeploy / w6/m46 t005. Settled history still
