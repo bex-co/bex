@@ -126,6 +126,12 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "{identity} 将立即失去对此工作区的访问权限。",
     description: "Remove-member confirmation dialog body",
   },
+  "team.removeRevokesKeys": {
+    message:
+      "同时会吊销 {identity} 在此工作区创建的所有 API 密钥，依赖这些密钥的自动化流程可能因此中断。",
+    description:
+      "Remove-member dialog warning (w2/m163): removal disposes of the member's machine credentials, so an admin must see the cost before confirming rather than discovering it as an outage",
+  },
   "team.removeCancel": {
     message: "取消",
     description: "Remove-member confirmation cancel button",
@@ -196,8 +202,7 @@ const zhTeam: Record<string, TranslationEntry> = {
       "Badge on a member row whose Kratos identity lookup missed (w4/070)",
   },
   "team.identityUnresolvedTooltip": {
-    message:
-      "无法查找此成员的账户。在管理员移除之前，他们仍占用一个席位。",
+    message: "无法查找此成员的账户。在管理员移除之前，他们仍占用一个席位。",
     description: "Tooltip for the unresolved-identity member badge",
   },
   "team.inviteAccepted": {

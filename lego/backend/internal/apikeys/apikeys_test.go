@@ -1048,3 +1048,126 @@ func srvURL(r *http.Request) string {
 	}
 	return scheme + "://" + r.Host
 }
+
+// --- w2/m163: workspace-scoped teardown on membership exit -------------------
+
+// seedBoundKey mints a key attributed to `createdBy` and binds it to `tenantID`
+// ("" leaves it unbound), the shape CreateAPIKey produces in production.
+func seedBoundKey(t *testing.T, ks *fakeKeyStore, b *fakeBinder, id, createdBy, tenantID string) {
+	t.Helper()
+	ks.keys[id] = APIKey{ID: id, Name: id, CreatedBy: createdBy}
+	if tenantID != "" {
+		if err := b.BindKey(context.Background(), id, tenantID); err != nil {
+			t.Fatalf("bind %s: %v", id, err)
+		}
+	}
+}
+
+// CleanupSubjectInWorkspace revokes exactly the keys the departing subject
+// created in THAT workspace — the w2/m163 disposition. Scope is the whole point:
+// leaving one workspace says nothing about the subject's keys elsewhere, and
+// says nothing at all about anybody else's.
+func TestCleanupSubjectInWorkspaceScopesToThatWorkspace(t *testing.T) {
+	ks := newFakeKeyStore()
+	b := newFakeBinder()
+	seedBoundKey(t, ks, b, "key-target-1", "bob", "tea-1")
+	seedBoundKey(t, ks, b, "key-target-2", "bob", "tea-1")
+	seedBoundKey(t, ks, b, "key-other-ws", "bob", "tea-2")
+	seedBoundKey(t, ks, b, "key-unbound", "bob", "")
+	seedBoundKey(t, ks, b, "key-someone-else", "alice", "tea-1")
+
+	td := AccountTeardown{Store: ks, Binding: b}
+	revoked, err := td.CleanupSubjectInWorkspace(context.Background(), "bob", "tea-1")
+	if err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	if len(revoked) != 2 {
+		t.Fatalf("revoked = %v, want the two keys bob created in tea-1", revoked)
+	}
+	for _, id := range []string{"key-target-1", "key-target-2"} {
+		if _, live := ks.keys[id]; live {
+			t.Errorf("%s survived in Hydra", id)
+		}
+		if _, bound := b.TenantForKey(context.Background(), id); bound {
+			t.Errorf("%s is still bound — it would keep authorizing", id)
+		}
+	}
+	for _, id := range []string{"key-other-ws", "key-unbound", "key-someone-else"} {
+		if _, live := ks.keys[id]; !live {
+			t.Errorf("%s was revoked but is out of scope", id)
+		}
+	}
+	// The one that matters most for the reported gap: after disposal the key
+	// resolves to NO workspace, so a token bearing it can no longer authorize
+	// anywhere — the binding, not the Hydra client, is what granted developer.
+	if tenant, bound := b.TenantForKey(context.Background(), "key-target-1"); bound {
+		t.Errorf("disposed key still resolves to workspace %q", tenant)
+	}
+	// And the other workspace's binding is intact, not collateral damage.
+	if tenant, bound := b.TenantForKey(context.Background(), "key-other-ws"); !bound || tenant != "tea-2" {
+		t.Errorf("key-other-ws binding = %q,%v; want tea-2,true", tenant, bound)
+	}
+}
+
+// A failed unbind must abort BEFORE the Hydra delete and surface (codex
+// round-16 #13). The binding is what still authorizes, so deleting the client
+// first would leave a bound-but-clientless row that reports success.
+func TestCleanupSubjectInWorkspaceFailsClosedOnUnbind(t *testing.T) {
+	ks := newFakeKeyStore()
+	b := newFakeBinder()
+	seedBoundKey(t, ks, b, "key-1", "bob", "tea-1")
+	b.failUnbind = true
+
+	td := AccountTeardown{Store: ks, Binding: b}
+	revoked, err := td.CleanupSubjectInWorkspace(context.Background(), "bob", "tea-1")
+	if err == nil {
+		t.Fatal("cleanup reported success over a failed unbind")
+	}
+	if len(revoked) != 0 {
+		t.Errorf("revoked = %v, want nothing reported revoked", revoked)
+	}
+	if _, live := ks.keys["key-1"]; !live {
+		t.Error("Hydra client deleted despite the failed unbind — the retry can no longer unbind it")
+	}
+}
+
+// An empty workspace must be refused, not treated as "all workspaces": that
+// would silently widen a per-workspace removal into the global account-deletion
+// teardown and revoke the subject's keys everywhere.
+func TestCleanupSubjectInWorkspaceRefusesAnEmptyWorkspace(t *testing.T) {
+	ks := newFakeKeyStore()
+	b := newFakeBinder()
+	seedBoundKey(t, ks, b, "key-1", "bob", "tea-1")
+
+	td := AccountTeardown{Store: ks, Binding: b}
+	if _, err := td.CleanupSubjectInWorkspace(context.Background(), "bob", ""); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("empty workspace = %v, want ErrBadRequest", err)
+	}
+	if _, live := ks.keys["key-1"]; !live {
+		t.Error("an empty-workspace call revoked keys anyway")
+	}
+}
+
+// The account-deletion path stays GLOBAL by subject — narrowing it would leave
+// a deleted account's keys alive in every workspace but one.
+func TestCleanupSubjectStaysGlobal(t *testing.T) {
+	ks := newFakeKeyStore()
+	b := newFakeBinder()
+	seedBoundKey(t, ks, b, "key-1", "bob", "tea-1")
+	seedBoundKey(t, ks, b, "key-2", "bob", "tea-2")
+	seedBoundKey(t, ks, b, "key-3", "bob", "")
+	seedBoundKey(t, ks, b, "key-alice", "alice", "tea-1")
+
+	td := AccountTeardown{Store: ks, Binding: b}
+	if err := td.CleanupSubject(context.Background(), "bob"); err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	for _, id := range []string{"key-1", "key-2", "key-3"} {
+		if _, live := ks.keys[id]; live {
+			t.Errorf("%s survived account deletion", id)
+		}
+	}
+	if _, live := ks.keys["key-alice"]; !live {
+		t.Error("another subject's key was deleted")
+	}
+}
