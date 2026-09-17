@@ -33,6 +33,8 @@ If the queue is empty, go to **Exit**.
 
 For each item, announce which one you picked and a one-line plan before doing work.
 
+**Never stop to flag an item, and never ask which verdict it should get.** An unusual shape — a record-only note, one you withdrew earlier in this same session, a duplicate, an empty stub, a note whose premise a teammate already fixed — is a _triage outcome_, not a question for the user. Give it a verdict from the tables below, land it on disk, and move to the next item in the same turn. Announcing "these need flagging before I continue" and then waiting is a failure of this skill: the user invoked a drain, so the queue drains. The run pauses only for the **Exit** conditions, which are about the repository being unshippable — never about an item being unusual.
+
 ### 1. Triage
 
 Read the item in full — for a milestone, `.pm/<wN>/mN/README.md` plus every task file `tNNN.md` not already in `done/`; for an inbox note, the note itself. Then check its premise against the current codebase (the note may be weeks old and the bug already fixed). Pick exactly one verdict:
@@ -49,6 +51,18 @@ Rules for triage:
 - **Evidence, not vibes.** "Already met" and "invalid" both require a concrete pointer — `file.go:123`, a passing test, the surviving duplicate's id, the `DO_NOT_DO` line.
 - **When torn between blocked and invalid, choose blocked.** Deleting is the only outcome that destroys information.
 - **Size check on inbox notes.** If a note turns out to be > ~1h across more than one task, run `/pm promote <wN/NNN>` to materialize it as a milestone, then work that milestone in this same iteration.
+- **Non-implementation notes have preset verdicts — apply them without asking.** Many inbox notes are not "build this"; they are records, withdrawals, or debris. Route them by shape, in this order (first match wins):
+
+  | Shape | Verdict | Landing |
+  | --- | --- | --- |
+  | **Blank or stub** — no `Why:` line and no substantive body, or a placeholder never filled in | **invalid** | `git rm`, drop its README line |
+  | **Duplicate with no unique content** — the surviving item covers it entirely and this note adds no findings of its own | **invalid** | `git rm`, cite the survivor's id |
+  | **Duplicate or withdrawal that carries its own findings/history** — including a note you withdrew earlier in this run | **done** | `done/`, append the survivor's id + date; never `git rm` history |
+  | **Record-only** — a coverage record, sweep log, or audit trail documenting work already performed, with nothing left to implement | **done** | `done/`, append one line dating the closure |
+  | **Already fixed by someone else** — the premise held when filed but a commit since resolved it | **done** | `done/`, append the fixing commit SHA |
+
+  These are the common cases a drain hits; none of them is a reason to pause. If a note matches none of the shapes and none of the four verdicts, prefer **blocked** with the ambiguity named — parking is always available and never destroys information.
+
 - **Never split a milestone's verdict.** If some tasks are implementable and one is gated, the milestone is **blocked** — finish every implementable task first, then park it (this is the `w11` pattern: implemented tasks done, the gated task named).
 
 ### 2. Implement it (Work verdict only)
@@ -63,7 +77,7 @@ Do the actual engineering, task by task, in the order the item implies:
 
 ### 3. Land the outcome
 
-Every item ends in exactly one of these on-disk states. Leave **no tombstone, stub, or redirect** at an item's old path.
+Every item ends in exactly one of these on-disk states, applied **automatically as soon as the verdict is reached** — no confirmation, no "should I move this?". Leave **no tombstone, stub, or redirect** at an item's old path.
 
 **done** — the work is real and verified.
 
@@ -105,6 +119,8 @@ Stop and give a final summary when any of these holds:
 - **Drained:** no open items remain in `<wN>`. Report every item and its outcome, grouped: shipped, closed as already met, parked in `blocked/` (with each gate), deleted (with each reason).
 - **Run-level block:** a ship failure you can't resolve, or the tree is in a state you shouldn't push. Per-item blocks do **not** stop the run — they get parked and the loop continues.
 - **Budget/interrupt:** the user interrupts, or you've run long enough that a checkpoint is warranted — report progress (done, in-flight, remaining) so the run resumes cleanly.
+
+**Not exit conditions**, and never a reason to pause mid-drain: an item that is a record rather than a task; an item you yourself withdrew or filed earlier; a duplicate; an empty note; an item already fixed upstream; a verdict that feels unusual. Each of those has a row in the triage tables — apply it and keep going.
 
 ## Guardrails
 
