@@ -15,7 +15,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m148** — [Reliable local cluster bring-up](m148/README.md) (7 tasks) ← approved five-item brainstorm
+- [ ] **m148** — **BLOCKED (needs a healthy CAPD environment: the local cluster has rotted — machines 20d old, backing containers gone, `bex-lb` publishes no 6443 port. Recover with `kubectl --context kind-bex-mgmt delete cluster bex --wait=false && bash scripts/mock-cluster.sh`, then run t007)** — [Reliable local cluster bring-up](blocked/m148/README.md) (7 tasks; **t001-t006 done**, t007 closeout held) ← approved five-item brainstorm
 - [ ] **m149** — [Correct cold deep-link initialization](m149/README.md) (8 tasks) ← promotes 049
 - [ ] **m150** — [Sandbox file copy through the pinned CLI](m150/README.md) (9 tasks) ← promotes 046
 
