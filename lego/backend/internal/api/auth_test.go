@@ -234,6 +234,8 @@ type callbackGitHubStore struct {
 	// The subject-bound connect transactions w1/m67 F3 added; this fake only has
 	// to satisfy the interface — the gate test is about routing, not binding.
 	txns map[string]store.GitHubConnectTransaction
+	// The deferred claim selections ADR078 §3a added, same interface-only role.
+	selections map[string]store.GitHubClaimSelection
 }
 
 func (s *callbackGitHubStore) CreateGitHubConnectTransaction(_ context.Context, t store.GitHubConnectTransaction) error {
@@ -253,20 +255,22 @@ func (s *callbackGitHubStore) ConsumeGitHubConnectTransaction(_ context.Context,
 	return t, nil
 }
 
-func (s *callbackGitHubStore) UpsertGitConnection(_ context.Context, conn store.GitConnection) (store.GitConnection, error) {
-	s.connections[conn.WorkspaceID] = conn
-	return conn, nil
-}
-
-func (s *callbackGitHubStore) BindGitConnection(_ context.Context, conn store.GitConnection, maxConnections int) (store.GitConnection, error) {
-	for workspaceID, existing := range s.connections {
-		if existing.InstallationID == conn.InstallationID && workspaceID != conn.WorkspaceID {
-			return store.GitConnection{}, store.ErrConflict
-		}
-	}
+// BindGitConnection models the ADR078 §2 N:N store: a workspace holds at most one
+// connection in this simplified fake, but an installation another workspace holds
+// is no longer a conflict.
+func (s *callbackGitHubStore) BindGitConnection(_ context.Context, conn store.GitConnection, maxConnections, maxWorkspaces int) (store.GitConnection, error) {
 	if existing, ok := s.connections[conn.WorkspaceID]; !ok || existing.InstallationID != conn.InstallationID {
 		if maxConnections > 0 && len(s.connections) >= maxConnections {
 			return store.GitConnection{}, &store.GitConnectionLimitError{Count: len(s.connections), Limit: maxConnections}
+		}
+		bound := 0
+		for _, existing := range s.connections {
+			if existing.InstallationID == conn.InstallationID {
+				bound++
+			}
+		}
+		if maxWorkspaces > 0 && bound >= maxWorkspaces {
+			return store.GitConnection{}, &store.GitInstallationWorkspaceLimitError{Count: bound, Limit: maxWorkspaces}
 		}
 	}
 	s.connections[conn.WorkspaceID] = conn
@@ -302,13 +306,39 @@ func (s *callbackGitHubStore) CountGitConnections(_ context.Context, workspaceID
 	return 0, nil
 }
 
-func (s *callbackGitHubStore) GitConnectionByInstallation(_ context.Context, installationID int64) (store.GitConnection, error) {
+func (s *callbackGitHubStore) GitConnectionsByInstallation(_ context.Context, installationID int64) ([]store.GitConnection, error) {
+	out := []store.GitConnection{}
 	for _, c := range s.connections {
 		if c.InstallationID == installationID {
-			return c, nil
+			out = append(out, c)
 		}
 	}
-	return store.GitConnection{}, store.ErrNotFound
+	return out, nil
+}
+
+func (s *callbackGitHubStore) CreateGitHubClaimSelection(_ context.Context, sel store.GitHubClaimSelection) error {
+	if s.selections == nil {
+		s.selections = map[string]store.GitHubClaimSelection{}
+	}
+	s.selections[sel.ID] = sel
+	return nil
+}
+
+func (s *callbackGitHubStore) GetGitHubClaimSelection(_ context.Context, id string) (store.GitHubClaimSelection, error) {
+	sel, ok := s.selections[id]
+	if !ok {
+		return store.GitHubClaimSelection{}, store.ErrNotFound
+	}
+	return sel, nil
+}
+
+func (s *callbackGitHubStore) ConsumeGitHubClaimSelection(_ context.Context, id string) (store.GitHubClaimSelection, error) {
+	sel, ok := s.selections[id]
+	if !ok {
+		return store.GitHubClaimSelection{}, store.ErrNotFound
+	}
+	delete(s.selections, id)
+	return sel, nil
 }
 
 func (s *callbackGitHubStore) DeleteGitConnection(_ context.Context, workspaceID string, _ int64) error {

@@ -47,7 +47,7 @@ func TestConnectStateRoundTripAndTamperCheck(t *testing.T) {
 		Store:       st,
 		StateSecret: []byte("test-only-high-entropy-state-secret"),
 	}
-	token, err := svc.mintConnectState(testCallerCtx(), "tea-workspace", testCallerSubject)
+	token, err := svc.mintConnectState(testCallerCtx(), "tea-workspace", testCallerSubject, 0)
 	if err != nil {
 		t.Fatalf("mintConnectState: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestConnectStateMissingAndExpired(t *testing.T) {
 	if _, err := svc.verifyConnectState(""); !errors.Is(err, errConnectStateMissing) {
 		t.Fatalf("missing state error = %v, want errConnectStateMissing", err)
 	}
-	token, err := svc.mintConnectState(testCallerCtx(), "tea-workspace", testCallerSubject)
+	token, err := svc.mintConnectState(testCallerCtx(), "tea-workspace", testCallerSubject, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

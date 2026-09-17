@@ -33,9 +33,11 @@ import (
 // freshness. These tests hold the replay ledger contract: the exact signed
 // body — however it is resent — mutates exactly once.
 
-// fakeReplayGuard is the in-memory WebhookReplayGuard: claims are a set, so a
-// second claim of the same digest reports !fresh exactly like the ON CONFLICT
-// DO NOTHING insert.
+// fakeReplayGuard is the in-memory WebhookReplayGuard: claims are a set keyed
+// like the real row — SCOPE plus digest — so a second claim of the same bytes in
+// the same scope reports !fresh exactly like the ON CONFLICT DO NOTHING insert,
+// while the same bytes in ANOTHER workspace's scope remain fresh work (ADR078
+// §4a fan-out).
 type fakeReplayGuard struct {
 	mu       sync.Mutex
 	claims   map[string]bool
@@ -55,7 +57,7 @@ func (f *fakeReplayGuard) ClaimGitWebhookDelivery(_ context.Context, claim store
 	if f.claims == nil {
 		f.claims = map[string]bool{}
 	}
-	key := claim.Digest
+	key := claim.Scope + "|" + claim.Digest
 	if f.claims[key] {
 		return false, nil
 	}
@@ -66,7 +68,7 @@ func (f *fakeReplayGuard) ClaimGitWebhookDelivery(_ context.Context, claim store
 func (f *fakeReplayGuard) ReleaseGitWebhookDelivery(_ context.Context, claim store.GitWebhookReplayClaim) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	key := claim.Digest
+	key := claim.Scope + "|" + claim.Digest
 	delete(f.claims, key)
 	return nil
 }
@@ -213,36 +215,63 @@ func TestWebhookReplayClaimFailureFailsClosed(t *testing.T) {
 	}
 }
 
-// claimReplay releases the claim when the mutation branch answered 5xx (the git
-// host will redeliver; that retry must not be swallowed) and keeps it on a
-// completed 2xx answer.
+// deliveryClaims releases every claim it took when the delivery answered 5xx
+// (the git host will redeliver; that retry must not be swallowed) and keeps them
+// on a completed 2xx answer. Under N:N one delivery may hold several claims — one
+// per proved workspace — and a hard failure must release all of them, not just
+// the last (ADR078 §4a).
 func TestWebhookReplayClaimReleasedOnHardFailure(t *testing.T) {
-	replays := &fakeReplayGuard{}
-	h := &GitWebhook{Replays: replays}
 	body := []byte(`{"ref":"refs/heads/main"}`)
 
-	// 2xx: the claim stays — a completed delivery IS the processed state.
-	w, finish, ok := h.claimReplay(context.Background(), httptest.NewRecorder(), keyManual, "manual:single-tenant", body)
-	if !ok {
-		t.Fatal("first claim must succeed")
+	// Completed delivery: the claims stay — that IS the processed state.
+	replays := &fakeReplayGuard{}
+	h := &GitWebhook{Replays: replays}
+	claims := &deliveryClaims{h: h}
+	for _, scope := range []string{"workspace:tea-a", "workspace:tea-b"} {
+		fresh, err := claims.claim(context.Background(), keyGitHubApp, scope, body)
+		if err != nil || !fresh {
+			t.Fatalf("claim %s = fresh %v, err %v", scope, fresh, err)
+		}
 	}
-	w.WriteHeader(http.StatusOK)
-	finish()
-	if n := replays.claimed(); n != 1 {
-		t.Fatalf("claims after 200 = %d, want 1", n)
+	if n := replays.claimed(); n != 2 {
+		t.Fatalf("claims after a fan-out delivery = %d, want 2", n)
 	}
 
-	// 5xx: the claim is released so the host's retry can process.
+	// Hard failure: EVERY claim taken is released, so the host's retry can redo
+	// the whole fan-out.
 	replays2 := &fakeReplayGuard{}
 	h2 := &GitWebhook{Replays: replays2}
-	w2, finish2, ok2 := h2.claimReplay(context.Background(), httptest.NewRecorder(), keyManual, "manual:single-tenant", body)
-	if !ok2 {
-		t.Fatal("second claim must succeed (fresh guard)")
+	claims2 := &deliveryClaims{h: h2}
+	for _, scope := range []string{"workspace:tea-a", "workspace:tea-b"} {
+		if _, err := claims2.claim(context.Background(), keyGitHubApp, scope, body); err != nil {
+			t.Fatalf("claim %s: %v", scope, err)
+		}
 	}
-	w2.WriteHeader(http.StatusBadGateway)
-	finish2()
+	claims2.release(context.Background())
 	if n := replays2.claimed(); n != 0 {
-		t.Fatalf("claims after 502 = %d, want 0 (released for the retry)", n)
+		t.Fatalf("claims after release = %d, want 0 (released for the retry)", n)
+	}
+}
+
+// Each scope claims independently, so a redelivery is refused PER workspace: one
+// workspace having already processed the bytes never suppresses another's.
+func TestWebhookReplayClaimsArePerScope(t *testing.T) {
+	body := []byte(`{"ref":"refs/heads/main"}`)
+	replays := &fakeReplayGuard{}
+	h := &GitWebhook{Replays: replays}
+
+	first := &deliveryClaims{h: h}
+	if fresh, err := first.claim(context.Background(), keyGitHubApp, "workspace:tea-a", body); err != nil || !fresh {
+		t.Fatalf("tea-a first claim = %v, %v", fresh, err)
+	}
+	// Same bytes, DIFFERENT scope: still fresh work.
+	if fresh, err := first.claim(context.Background(), keyGitHubApp, "workspace:tea-b", body); err != nil || !fresh {
+		t.Fatalf("tea-b claim of the same bytes = %v, %v; want fresh", fresh, err)
+	}
+	// Same bytes, SAME scope: a replay.
+	second := &deliveryClaims{h: h}
+	if fresh, err := second.claim(context.Background(), keyGitHubApp, "workspace:tea-a", body); err != nil || fresh {
+		t.Fatalf("tea-a redelivery = fresh %v, err %v; want not fresh", fresh, err)
 	}
 }
 

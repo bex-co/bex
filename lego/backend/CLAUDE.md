@@ -74,6 +74,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_PROM_URL` | Prometheus (Traefik/cAdvisor); unset → request 503, metrics fallback |
 | bex-api | `BEX_USAGE_RETENTION_MONTHS` `3`, `BEX_AUDIT_RETENTION_DAYS` `90` | usage hot window + audit purge intervals |
 | bex-api | `BEX_MAX_BLUEPRINT_GROUPINGS` `1000`, `…_ENV_GROUPS…` `100`, `…_GIT_CONNECTIONS…` `10`, `…_REGISTRY_CREDS…` `50` | per-workspace caps (coded `*_LIMIT` 409) |
+| bex-api | `BEX_MAX_WORKSPACES_PER_GIT_INSTALLATION` `10` | the N:N mirror of the git-connection cap (ADR078 §2): how many workspaces one GitHub App installation may serve, which also bounds the push webhook's fan-out (§4a); `0` disables, over it → 409 `GIT_INSTALLATION_WORKSPACE_LIMIT` |
 | bex-api | `BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE` `100` / `…_WORKSPACE` `500` | custom-domain quotas (409 `CUSTOM_DOMAIN_LIMIT`) |
 | bex-api | `BEX_STRIPE_SECRET_KEY`, `BEX_STRIPE_PUBLISHABLE_KEY` | restricted server key plus same-mode Stripe.js key for workspace creation; secret unset → no Stripe client/emitter/webhook, estimate-only |
 | bex-api | `BEX_REQUIRE_PAYMENT_METHOD` `1`/`all` | paid-intent gate (needs Stripe+store); `all` includes free + agent-sessions and drives the dashboard's sign-up wall via readiness `paymentMethodOnboardingRequired` |

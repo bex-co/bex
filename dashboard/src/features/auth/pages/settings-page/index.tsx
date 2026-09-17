@@ -30,6 +30,7 @@ export default function SettingsPage() {
   const search = useSearch({ strict: false }) as {
     flow?: string;
     git_error?: string;
+    git_claim_selection?: string;
   };
   const flow = useOryFlow("settings", search.flow);
   const { t } = useTranslations();
@@ -79,7 +80,10 @@ export default function SettingsPage() {
                 title={t("auth.integrationsSection")}
                 description={t("auth.integrationsSectionSubtitle")}
               >
-                <ConnectGithubCard callbackError={search.git_error} />
+                <ConnectGithubCard
+                  callbackError={search.git_error}
+                  claimSelectionId={search.git_claim_selection}
+                />
                 <RegistryCredentialsPanel />
               </SettingsSection>
 

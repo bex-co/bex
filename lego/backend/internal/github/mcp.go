@@ -27,7 +27,16 @@ import (
 
 // mcp.go is the GitHub-connect MCP fragment: list_repos ("which repos can I
 // deploy?") and get_git_connection ("is GitHub connected, and if not how does
-// the human connect?"). Both are bex extensions — Render's MCP has no repo
+// the human connect?").
+//
+// DELIBERATELY ABSENT, and not an oversight: connect, claim, and — since
+// w2/m162 — the two claim-SELECTION verbs (gitClaimSelection / selectGitClaim,
+// ADR078 §3a). All of them are halves of one browser ceremony an agent cannot
+// complete: they only mean anything after a GitHub OAuth redirect has landed in
+// a real browser carrying a single-use code. A selection in particular names a
+// pending choice the callback proved for one human subject; exposing it to an
+// agent surface would offer a handle no agent can legitimately hold. Both are
+// bex extensions — Render's MCP has no repo
 // tools; naming follows Render's list_*/get_* convention.
 
 type listReposResult struct {

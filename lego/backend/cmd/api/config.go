@@ -212,6 +212,7 @@ type Config struct {
 	MaxBlueprintGroupings              int
 	MaxEnvGroupsPerWorkspace           int
 	MaxGitConnectionsPerWorkspace      int
+	MaxWorkspacesPerGitInstallation    int
 	MaxRegistryCredentialsPerWorkspace int
 	MaxCustomDomainsPerService         int
 	MaxCustomDomainsPerWorkspace       int
@@ -525,6 +526,9 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	// Round-11 #3, ADR075 §2, codex-security geyRc8 F1 + round 18 quotas.
 	cfg.MaxEnvGroupsPerWorkspace = p.zeroableInt("BEX_MAX_ENV_GROUPS_PER_WORKSPACE", 100)
 	cfg.MaxGitConnectionsPerWorkspace = p.zeroableInt("BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE", 10)
+	// ADR078 §2 (N:N): the mirror of the cap above — how many workspaces ONE
+	// installation may serve, and therefore how wide one push delivery fans out.
+	cfg.MaxWorkspacesPerGitInstallation = p.zeroableInt("BEX_MAX_WORKSPACES_PER_GIT_INSTALLATION", 10)
 	cfg.MaxRegistryCredentialsPerWorkspace = p.zeroableInt("BEX_MAX_REGISTRY_CREDS_PER_WORKSPACE", 50)
 	cfg.MaxCustomDomainsPerService = p.zeroableInt("BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE", 100)
 	cfg.MaxCustomDomainsPerWorkspace = p.zeroableInt("BEX_MAX_CUSTOM_DOMAINS_PER_WORKSPACE", 500)
