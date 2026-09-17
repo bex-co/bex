@@ -137,7 +137,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **059** — [Workspace settings: the Name field keeps the previous workspace's name after a switch](059.md) ← incidental finding from the `w5/m102` closeout walk 2026-09-17: switching workspaces updates Plan/ID/Created but not the editable Name input, and Save sits next to it — a wrong-target rename hazard. Not caused by m102.
+- [x] **059** — [Workspace settings: the Name field keeps the previous workspace's name after a switch](done/059.md) ← incidental finding from the `w5/m102` closeout walk 2026-09-17: switching workspaces updates Plan/ID/Created but not the editable Name input, and Save sits next to it — a wrong-target rename hazard. Not caused by m102. — **DONE 2026-09-17**: the name draft re-seeds on a workspace-id change (id-keyed, so an in-progress rename of the same workspace is never clobbered); both behaviors tested, the first mutation-checked.
 
 - [x] **058** — [Grafana Argo sync stalls: dashboard ConfigMap annotations exceed 262144 bytes](done/058.md) — **DONE 2026-09-14**: `ServerSideApply=true` on the `grafana` Application; annotation cleared; app `Synced`; m95 sandbox panels published.
 
