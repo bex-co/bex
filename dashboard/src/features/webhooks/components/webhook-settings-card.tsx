@@ -296,7 +296,11 @@ export function WebhookSettingsCard({
 
 /**
  * Render's "sudo command" delete confirmation: the destructive button stays
- * disabled until the literal `delete webhook <name>` is typed.
+ * disabled until the literal `sudo delete webhook <name>` is typed —
+ * the same `sudo delete <type> <name>` shape every other destructive
+ * confirmation in the dashboard uses (w7/057). It read `delete webhook
+ * <name>` before, so the muscle memory built on services, env groups,
+ * Postgres and key value did not transfer here.
  */
 function DeleteWebhookConfirm({
   name,
@@ -308,7 +312,7 @@ function DeleteWebhookConfirm({
   onConfirm: () => void;
 }) {
   const { t } = useTranslations();
-  const command = `delete webhook ${name}`;
+  const command = `sudo delete webhook ${name}`;
 
   return (
     <ConfirmDialog
