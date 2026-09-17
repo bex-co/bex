@@ -129,6 +129,12 @@ const enTeam: Record<string, TranslationEntry> = {
     message: "{identity} will lose access to this workspace immediately.",
     description: "Remove-member confirmation dialog body",
   },
+  "team.removeRevokesKeys": {
+    message:
+      "This also revokes any API keys {identity} created here, which may break automation that authenticates with them.",
+    description:
+      "Remove-member dialog warning (w2/m163): removal disposes of the member's machine credentials, so an admin must see the cost before confirming rather than discovering it as an outage",
+  },
   "team.removeCancel": {
     message: "Cancel",
     description: "Remove-member confirmation cancel button",

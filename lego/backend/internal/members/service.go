@@ -107,6 +107,23 @@ type Service struct {
 	// Nil (BEX_KRATOS_ADMIN_URL unset) => Email/MFAEnabled omitted (honest
 	// subset); List still succeeds.
 	Identities IdentityLookup
+	// Keys disposes of the machine credentials a departing member created in
+	// this workspace (w2/m163). Ending a membership while leaving that member's
+	// API keys live means the removal only APPEARS to have happened: a key
+	// carries its own tenant_members row at role developer, so it keeps
+	// authorizing after its creator's row and tuple are gone.
+	//
+	// Nil is the honest "no key registry configured" case (no Hydra ⇒ no keys to
+	// dispose), NOT a silent skip: when it is wired, its error is surfaced and
+	// the removal fails rather than reporting a clean exit.
+	Keys MemberKeyDisposer
+}
+
+// MemberKeyDisposer is the members service's seam to machine-credential
+// teardown, satisfied by apikeys.AccountTeardown. It returns the revoked key
+// ids so the removal can audit exactly what it killed.
+type MemberKeyDisposer interface {
+	CleanupSubjectInWorkspace(ctx context.Context, subject, workspaceID string) ([]string, error)
 }
 
 // MembersStore is the slice of the source of truth this feature writes through —
@@ -954,6 +971,12 @@ func (s *Service) RunRoleReconciler(ctx context.Context) {
 // Admin-only. Refuses removing the last admin. The revoke is best-effort (an
 // already-gone tuple is not an error), so a retried remove completes.
 func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error {
+	// Deferred allowed-write recording (w2/m163): the success row carries how
+	// many API keys the removal revoked, which is not known until the disposal
+	// has actually run. A refused or failed removal must leave only the
+	// denial/attempt trail — never a row claiming it revoked credentials it did
+	// not touch. Denials still record immediately, with the member target.
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.MemberTarget(subject)); err != nil {
 		return err
 	}
@@ -978,6 +1001,16 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, ""); err != nil {
 		return err
 	}
+	// Dispose of the member's machine credentials FIRST (w2/m163). Ordering is
+	// fail-closed the same way the tuple-before-row rule below is: if key
+	// teardown fails, nothing else has happened yet, the member is still a
+	// member, and a retry re-runs the whole removal. The reverse order would
+	// strand exactly the hole this milestone closes — membership gone, key still
+	// authorizing — and the retry could no longer find the member to fix it.
+	revokedKeys, err := s.disposeMemberKeys(ctx, workspaceID, subject)
+	if err != nil {
+		return err
+	}
 	// Revoke the member's role tuple BEFORE deleting the row (F7). Two reasons: the
 	// model ORs roles, so leaving the tuple keeps the removed member authorized;
 	// and revoking first leaves a fail-closed intermediate on partial failure (row
@@ -991,6 +1024,7 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if err := s.Store.RemoveMember(ctx, workspaceID, subject); err != nil {
 		return mapStoreErr(err)
 	}
+	s.RecordMemberRemoved(ctx, workspaceID, subject, len(revokedKeys))
 	return nil
 }
 
@@ -1002,9 +1036,35 @@ type AccountMemberStore interface {
 	RemoveAccountMember(context.Context, string, string) error
 }
 
+// disposeMemberKeys revokes the machine credentials `subject` created in
+// `workspaceID` — the w2/m163 rule, applied by every path that ends a
+// membership. It returns the revoked key ids for the audit row.
+//
+// Nil Keys means no key registry is configured (no Hydra ⇒ no keys can exist),
+// which is the one case where doing nothing is the truth. Anything else — a
+// listing failure, a failed unbind, a failed Hydra delete — is SURFACED, so a
+// removal never reports success over a credential it did not manage to kill.
+func (s *Service) disposeMemberKeys(ctx context.Context, workspaceID, subject string) ([]string, error) {
+	if s.Keys == nil {
+		return nil, nil
+	}
+	revoked, err := s.Keys.CleanupSubjectInWorkspace(ctx, subject, workspaceID)
+	if err != nil {
+		return revoked, fmt.Errorf("revoke %s's API keys in workspace %s: %w", subject, workspaceID, err)
+	}
+	return revoked, nil
+}
+
 // AccountOffboarder is the trusted accounts-worker adapter. It preserves the
 // public Remove verb's fail-closed order (OpenFGA first, row second) without
 // pretending a background worker is an authenticated workspace admin.
+//
+// It deliberately does NOT dispose of keys (w2/m163 t003): the account worker
+// has already run apikeys CleanupSubject globally by subject before it reaches
+// per-workspace offboarding (accounts.Service.process), so repeating it here
+// would be a second pass over an empty set — harmless but misleading about
+// where the rule lives. The enumeration test in members_test.go pins that all
+// three exits converge on the same end state by different routes.
 type AccountOffboarder struct {
 	Store     AccountMemberStore
 	Revoker   RoleRevoker

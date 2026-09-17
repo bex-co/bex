@@ -74,8 +74,11 @@ type Event struct {
 	MaintenanceModeTo *bool
 	// RoleFrom/RoleTo are the team-membership verbs' typed role detail
 	// (w1/m33, migration 0040) — nil for every other verb.
-	RoleFrom *string
-	RoleTo   *string
+	// RevokedKeyCount is how many API keys a membership removal revoked
+	// (w2/m163); nil for every other verb.
+	RevokedKeyCount *int32
+	RoleFrom        *string
+	RoleTo          *string
 	// Relation is the RelCan… the decision was made against. Empty on typed
 	// system events and pre-0088 rows.
 	Relation string
@@ -98,6 +101,7 @@ func view(r store.AuditRow) Event {
 		Outcome:           r.Outcome,
 		At:                r.At,
 		MaintenanceModeTo: r.MaintenanceModeTo,
+		RevokedKeyCount:   r.RevokedKeyCount,
 		RoleFrom:          r.RoleFrom,
 		RoleTo:            r.RoleTo,
 		Relation:          r.Relation,

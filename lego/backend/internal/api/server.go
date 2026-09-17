@@ -824,18 +824,28 @@ func NewServer(base *core.Base, d Deps) *Server {
 		}
 	}
 	apiKeysSvc := &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, CreationLimiter: apikeys.NewCreationRateLimiter()}
+	// One machine-credential teardown adapter, shared by the account worker and
+	// the membership-exit path (w2/m163) so the fail-closed unbind-before-delete
+	// order cannot drift between them. Nil when no key registry is wired.
+	var keyTeardown *apikeys.AccountTeardown
+	if d.APIKeys != nil && d.KeyBinder != nil {
+		keyTeardown = &apikeys.AccountTeardown{Store: d.APIKeys, Binding: d.KeyBinder}
+	}
 	membersSvc := &members.Service{
 		Base: base, Store: d.MembersStore, Granter: d.MembersGranter,
 		Revoker: d.MembersRevoker, Mailer: d.Mailer, InviteBaseURL: d.InviteBaseURL,
 		Identities: identityEmailLookup{d.Identities},
+	}
+	if keyTeardown != nil {
+		membersSvc.Keys = keyTeardown
 	}
 	var workspaceResolver core.WorkspaceResolver
 	if base != nil {
 		workspaceResolver = base.Workspace
 	}
 	var accountKeys accounts.MachineCredentials
-	if d.APIKeys != nil && d.KeyBinder != nil {
-		accountKeys = apikeys.AccountTeardown{Store: d.APIKeys, Binding: d.KeyBinder}
+	if keyTeardown != nil {
+		accountKeys = *keyTeardown
 	}
 	accountSvc := &accounts.Service{
 		Base: base, Store: d.AccountStore,

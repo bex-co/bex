@@ -118,7 +118,14 @@ export function MemberRow({
               </Button>
             }
             title={t("team.removeTitle")}
-            description={t("team.removeConfirm", { identity })}
+            // Two sentences, deliberately: losing access is expected, but
+            // revoking the member's API keys is a destructive side effect that
+            // can break automation (w2/m163). An admin has to see that cost
+            // before confirming, not discover it as an outage afterwards.
+            description={`${t("team.removeConfirm", { identity })} ${t(
+              "team.removeRevokesKeys",
+              { identity },
+            )}`}
             cancelLabel={t("team.removeCancel")}
             confirmLabel={t("team.remove")}
             onConfirm={() => {

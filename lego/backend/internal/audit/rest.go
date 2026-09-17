@@ -110,6 +110,13 @@ func renderMetadata(e Event) map[string]string {
 	if e.RoleTo != nil {
 		md["roleTo"] = *e.RoleTo
 	}
+	// How many machine credentials a membership removal revoked (w2/m163). A
+	// removal disposes of the departing member's API keys in that workspace,
+	// which can break automation — so the number is part of the record. Emitted
+	// even when zero: "revoked none" is a finding, not an absence.
+	if e.RevokedKeyCount != nil {
+		md["revokedKeyCount"] = strconv.FormatInt(int64(*e.RevokedKeyCount), 10)
+	}
 	if e.Relation != "" {
 		md["relation"] = e.Relation
 	}

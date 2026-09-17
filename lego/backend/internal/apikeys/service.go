@@ -94,6 +94,10 @@ type AccountDeletionReader interface {
 
 type accountKeyBinding interface {
 	UnbindKey(context.Context, string) error
+	// TenantForKey scopes the membership-exit teardown to one workspace's keys
+	// (w2/m163). The account-deletion path does not need it — that one is
+	// deliberately global by subject — but both share this adapter.
+	TenantForKey(ctx context.Context, clientID string) (tenantID string, ok bool)
 }
 
 // AccountTeardown is the trusted account-worker adapter for machine
@@ -112,25 +116,72 @@ func (a AccountTeardown) List(ctx context.Context) ([]APIKey, error) {
 }
 
 func (a AccountTeardown) CleanupSubject(ctx context.Context, subject string) error {
+	_, err := a.cleanup(ctx, subject, "")
+	return err
+}
+
+// CleanupSubjectInWorkspace is CleanupSubject narrowed to ONE workspace: it
+// revokes the keys `subject` created that are bound to `workspaceID`, and
+// returns their ids so the caller can audit what it just killed.
+//
+// This is the membership-exit disposition (w2/m163, decided in that milestone's
+// t001): an API key is a delegation of one subject's authority, so when the
+// authorizing membership ends the credential has no basis left. It is the same
+// rule ADR086 already applies to account deletion — the difference is only
+// scope, because leaving one workspace says nothing about the subject's keys
+// elsewhere.
+//
+// It is deliberately the SAME code path as the account-deletion cleanup rather
+// than a second implementation, so the fail-closed unbind-before-delete order
+// (codex round-16 #13) cannot drift between them.
+func (a AccountTeardown) CleanupSubjectInWorkspace(ctx context.Context, subject, workspaceID string) ([]string, error) {
+	if workspaceID == "" {
+		// Guard, not a convenience: an empty workspace would silently widen a
+		// per-workspace removal into the global account-deletion teardown.
+		return nil, fmt.Errorf("%w: workspace is required to scope key teardown", core.ErrBadRequest)
+	}
+	return a.cleanup(ctx, subject, workspaceID)
+}
+
+// cleanup is the one teardown body. workspaceID == "" means every key the
+// subject created (account deletion); otherwise only those bound to it.
+func (a AccountTeardown) cleanup(ctx context.Context, subject, workspaceID string) ([]string, error) {
 	if a.Store == nil || a.Binding == nil {
-		return core.ErrAPIKeysUnavailable
+		return nil, core.ErrAPIKeysUnavailable
 	}
 	keys, err := a.Store.List(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	var revoked []string
 	for _, key := range keys {
 		if key.CreatedBy != subject {
 			continue
 		}
+		if workspaceID != "" {
+			owner, bound := a.Binding.TenantForKey(ctx, key.ID)
+			// An unbound key authorizes nothing in this workspace, and a key
+			// bound elsewhere is another workspace's business — leaving one
+			// workspace must never reach into the subject's keys in another.
+			if !bound || owner != workspaceID {
+				continue
+			}
+		}
+		// SECURITY (codex round-16 #13): unbind BEFORE the Hydra delete, and
+		// never discard the unbind error. The binding + FGA tuple are what still
+		// authorize an already-minted token, so reporting success after a failed
+		// unbind would leave residual authority behind a completed-looking
+		// revocation. This order leaves a retryable unbound-but-live client
+		// instead.
 		if err := a.Binding.UnbindKey(ctx, key.ID); err != nil {
-			return fmt.Errorf("unbind API key %s: %w", key.ID, err)
+			return revoked, fmt.Errorf("unbind API key %s: %w", key.ID, err)
 		}
 		if err := a.Store.Delete(ctx, key.ID); err != nil && !errors.Is(err, core.ErrNotFound) {
-			return fmt.Errorf("delete API key %s: %w", key.ID, err)
+			return revoked, fmt.Errorf("delete API key %s: %w", key.ID, err)
 		}
+		revoked = append(revoked, key.ID)
 	}
-	return nil
+	return revoked, nil
 }
 
 // Service manages machine credentials over the injected APIKeyStore.

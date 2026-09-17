@@ -66,6 +66,7 @@ The opaque deleted marker is `deleted:<own-id>`. It retains event correlation bu
 | store / field | disposition | rationale |
 | --- | --- | --- |
 | `tenant_members.subject` | remove through member/workspace teardown | authorization source; dependent reconciliation and push rows cascade |
+| API keys (`CreatedBy`) | hard-delete: unbind, then delete the Hydra client | a key is a delegation of the subject's authority, so it cannot outlive the subject. **No longer deletion-only (w2/m163):** the same `apikeys.AccountTeardown` path now runs on every membership exit, narrowed to the workspace being left ([ADR024](ADR024-members.md) § Guardrails). Account deletion stays **global by subject** — narrowing it here would leave a deleted account's keys alive in every workspace but one |
 | `tenants.owner_identity_id` | null on surviving workspace; workspace cascade otherwise | prevent remint binding without ownership transfer |
 | `owner_ids.subject` | replace with deleted marker and retain `own-*` mapping | keep public provenance stable without active subject |
 | `notification_settings.subject` | hard-delete | personal preference; no FK cascade |
