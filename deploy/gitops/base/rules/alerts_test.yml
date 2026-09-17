@@ -133,7 +133,11 @@ tests:
         values: "0 0 0 0 0 1 1 1 1 1 2 2 2 2 2 3 3 3 3 3 4 4 4 4 4 5 5 5 5 5 6 6 6 6 6 7 7 7 7 7 8"
     alert_rule_test:
       - { eval_time: 30m, alertname: BillingWebhookDrift, exp_alerts: [] }
-      - { eval_time: 30m, alertname: BillingWebhookSignatureRejects, exp_alerts: [] }
+      - {
+          eval_time: 30m,
+          alertname: BillingWebhookSignatureRejects,
+          exp_alerts: [],
+        }
 
   - name: a burst of webhook signature rejects is a warning, not a page
     interval: 1m
@@ -188,7 +192,11 @@ tests:
           exp_alerts: [],
         }
       - { eval_time: 20m, alertname: BillingWebhookDrift, exp_alerts: [] }
-      - { eval_time: 20m, alertname: BillingWebhookSignatureRejects, exp_alerts: [] }
+      - {
+          eval_time: 20m,
+          alertname: BillingWebhookSignatureRejects,
+          exp_alerts: [],
+        }
       - {
           eval_time: 20m,
           alertname: BillingProvisioningFailure,
@@ -1049,15 +1057,33 @@ tests:
       - eval_time: 20m
         alertname: CertificateNotReady
         exp_alerts:
-          - exp_labels: { severity: warning, condition: "True", namespace: bex-system, name: bex-api-tls }
+          - exp_labels:
+              {
+                severity: warning,
+                condition: "True",
+                namespace: bex-system,
+                name: bex-api-tls,
+              }
             exp_annotations:
               summary: "Certificate bex-system/bex-api-tls is not Ready"
               description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n bex-system describe certificate bex-api-tls; kubectl -n bex-system get certificaterequest,order,challenge"
-          - exp_labels: { severity: warning, condition: "True", namespace: tea-abc, name: tea-abc-web-tls }
+          - exp_labels:
+              {
+                severity: warning,
+                condition: "True",
+                namespace: tea-abc,
+                name: tea-abc-web-tls,
+              }
             exp_annotations:
               summary: "Certificate tea-abc/tea-abc-web-tls is not Ready"
               description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls; kubectl -n tea-abc get certificaterequest,order,challenge"
-          - exp_labels: { severity: warning, condition: "True", namespace: tea-abc, name: tea-abc-web-tls-web.onbex.co }
+          - exp_labels:
+              {
+                severity: warning,
+                condition: "True",
+                namespace: tea-abc,
+                name: tea-abc-web-tls-web.onbex.co,
+              }
             exp_annotations:
               summary: "Certificate tea-abc/tea-abc-web-tls-web.onbex.co is not Ready"
               description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls-web.onbex.co; kubectl -n tea-abc get certificaterequest,order,challenge"
@@ -1066,22 +1092,46 @@ tests:
       - eval_time: 75m
         alertname: TenantCustomDomainCertNotReady
         exp_alerts:
-          - exp_labels: { severity: info, condition: "True", namespace: tea-abc, name: tea-abc-web-tls-blockeden.xyz }
+          - exp_labels:
+              {
+                severity: info,
+                condition: "True",
+                namespace: tea-abc,
+                name: tea-abc-web-tls-blockeden.xyz,
+              }
             exp_annotations:
               summary: "Tenant custom-domain certificate tea-abc/tea-abc-web-tls-blockeden.xyz is not Ready (customer DNS)"
               description: "A tenant custom-domain TLS cert has been not-Ready for >1h — almost always customer-side DNS, not a platform fault (so this is surfaced to the tenant, not paged). The domain must resolve to bex: point the apex via ALIAS/ANAME/CNAME-flattening at the app's <name>.onbex.co and keep it DNS-only — a Cloudflare-proxied record makes the ACME HTTP-01 challenge return 404 and the cert never issues. Confirm: kubectl -n tea-abc describe certificate tea-abc-web-tls-blockeden.xyz; kubectl -n tea-abc get order,challenge. Runbook: docs/ADR005-custom-domain.md"
       - eval_time: 75m
         alertname: CertificateNotReady
         exp_alerts:
-          - exp_labels: { severity: warning, condition: "True", namespace: bex-system, name: bex-api-tls }
+          - exp_labels:
+              {
+                severity: warning,
+                condition: "True",
+                namespace: bex-system,
+                name: bex-api-tls,
+              }
             exp_annotations:
               summary: "Certificate bex-system/bex-api-tls is not Ready"
               description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n bex-system describe certificate bex-api-tls; kubectl -n bex-system get certificaterequest,order,challenge"
-          - exp_labels: { severity: warning, condition: "True", namespace: tea-abc, name: tea-abc-web-tls }
+          - exp_labels:
+              {
+                severity: warning,
+                condition: "True",
+                namespace: tea-abc,
+                name: tea-abc-web-tls,
+              }
             exp_annotations:
               summary: "Certificate tea-abc/tea-abc-web-tls is not Ready"
               description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls; kubectl -n tea-abc get certificaterequest,order,challenge"
-          - exp_labels: { severity: warning, condition: "True", namespace: tea-abc, name: tea-abc-web-tls-web.onbex.co }
+          - exp_labels:
+              {
+                severity: warning,
+                condition: "True",
+                namespace: tea-abc,
+                name: tea-abc-web-tls-web.onbex.co,
+              }
             exp_annotations:
               summary: "Certificate tea-abc/tea-abc-web-tls-web.onbex.co is not Ready"
               description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls-web.onbex.co; kubectl -n tea-abc get certificaterequest,order,challenge"
@@ -1143,22 +1193,34 @@ tests:
       - eval_time: 65m
         alertname: CertificateExpiringSoon
         exp_alerts:
-          - exp_labels: { severity: warning, namespace: bex-system, name: bex-api-tls }
+          - exp_labels:
+              { severity: warning, namespace: bex-system, name: bex-api-tls }
             exp_annotations:
               summary: "Certificate bex-system/bex-api-tls expires in <14d"
               description: "An issued cert-manager Certificate expires in under 14 days and has not renewed (renewal normally completes at 30 days out). Debug: kubectl -n bex-system describe certificate bex-api-tls; kubectl -n bex-system get certificaterequest,order,challenge"
-          - exp_labels: { severity: warning, namespace: tea-abc, name: tea-abc-web-tls }
+          - exp_labels:
+              { severity: warning, namespace: tea-abc, name: tea-abc-web-tls }
             exp_annotations:
               summary: "Certificate tea-abc/tea-abc-web-tls expires in <14d"
               description: "An issued cert-manager Certificate expires in under 14 days and has not renewed (renewal normally completes at 30 days out). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls; kubectl -n tea-abc get certificaterequest,order,challenge"
-          - exp_labels: { severity: warning, namespace: tea-abc, name: tea-abc-web-tls-web.onbex.co }
+          - exp_labels:
+              {
+                severity: warning,
+                namespace: tea-abc,
+                name: tea-abc-web-tls-web.onbex.co,
+              }
             exp_annotations:
               summary: "Certificate tea-abc/tea-abc-web-tls-web.onbex.co expires in <14d"
               description: "An issued cert-manager Certificate expires in under 14 days and has not renewed (renewal normally completes at 30 days out). Debug: kubectl -n tea-abc describe certificate tea-abc-web-tls-web.onbex.co; kubectl -n tea-abc get certificaterequest,order,challenge"
       - eval_time: 65m
         alertname: TenantCustomDomainCertExpiringSoon
         exp_alerts:
-          - exp_labels: { severity: info, namespace: tea-abc, name: tea-abc-web-tls-shop.example.com }
+          - exp_labels:
+              {
+                severity: info,
+                namespace: tea-abc,
+                name: tea-abc-web-tls-shop.example.com,
+              }
             exp_annotations:
               summary: "Tenant custom-domain certificate tea-abc/tea-abc-web-tls-shop.example.com expires in <14d and is not renewing (customer DNS)"
               description: "A tenant custom-domain TLS cert was issued but has not renewed with under 14 days left — almost always the domain's DNS moved after issuance (proxied through Cloudflare, or pointed away from bex), so the ACME HTTP-01 challenge no longer reaches bex. Not a platform fault; surfaced to the tenant, not paged. Confirm: kubectl -n tea-abc describe certificate tea-abc-web-tls-shop.example.com; kubectl -n tea-abc get order,challenge. Runbook: docs/ADR005-custom-domain.md"
@@ -1631,24 +1693,36 @@ tests:
   # BuildCacheTrialWithdrawn: the breaker tripping must reach the fleet, and the
   # reason label must survive so the alert distinguishes the 72h hard stop
   # (expected, go record the decision) from a stop rule firing (investigate).
-  - name: BuildCacheTrialWithdrawn carries the stop reason
+  - name: BuildCacheTrialWithdrawn reports the first trip until the manager resets
     interval: 1m
     input_series:
       - series: 'bex_build_cache_withdrawals_total{reason="deadline"}'
-        values: "0x10 1x30"
+        # The reason is created only when the breaker trips: its first sample
+        # is 1, not 0. Keep reporting it after the old one-hour window, then
+        # clear when the manager restarts and the old series becomes stale.
+        values: "_x10 1x120 stale _x10 0x10"
     alert_rule_test:
       - eval_time: 5m
         alertname: BuildCacheTrialWithdrawn
         exp_alerts: [] # nothing has tripped yet
-      - eval_time: 20m
+      - eval_time: 11m
         alertname: BuildCacheTrialWithdrawn
-        exp_alerts:
+        exp_alerts: &cache_withdrawal_alerts
           - exp_labels:
               severity: warning
               reason: deadline
             exp_annotations:
               summary: "The build-cache trial withdrew itself (deadline)"
               description: "The operator's trial breaker stopped dispatching registry cache phases. reason=deadline is the 72h hard stop firing as designed — record the retain-or-rollback decision and remove BEX_BUILD_CACHE_TRIAL_DEADLINE or the gate itself. reason=push_latency or push_errors means a stop rule tripped: the cache is already off, so investigate rather than scramble. The gate stays withdrawn until the manager is redeployed, which is deliberate — re-enabling is a decision a person makes. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
+      - eval_time: 120m
+        alertname: BuildCacheTrialWithdrawn
+        exp_alerts: *cache_withdrawal_alerts
+      - eval_time: 133m
+        alertname: BuildCacheTrialWithdrawn
+        exp_alerts: []
+      - eval_time: 150m
+        alertname: BuildCacheTrialWithdrawn
+        exp_alerts: []
 
   # A dropped Stripe webhook is invisible without these: checkout.session.completed
   # is the only writer of payment_method_bound_at, so losing one locks a paying
