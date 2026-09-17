@@ -1649,3 +1649,58 @@ tests:
             exp_annotations:
               summary: "The build-cache trial withdrew itself (deadline)"
               description: "The operator's trial breaker stopped dispatching registry cache phases. reason=deadline is the 72h hard stop firing as designed — record the retain-or-rollback decision and remove BEX_BUILD_CACHE_TRIAL_DEADLINE or the gate itself. reason=push_latency or push_errors means a stop rule tripped: the cache is already off, so investigate rather than scramble. The gate stays withdrawn until the manager is redeployed, which is deliberate — re-enabling is a decision a person makes. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
+
+  # A dropped Stripe webhook is invisible without these: checkout.session.completed
+  # is the only writer of payment_method_bound_at, so losing one locks a paying
+  # customer out of the product with nothing in the logs (w3/m162).
+  - name: a rejected or failed Stripe webhook pages, and a version mismatch does not
+    interval: 1m
+    input_series:
+      - series: 'bex_billing_enabled{job="bex-api",instance="prod"}'
+        values: "1x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="webhook_handler",result="error"}'
+        values: "0x10 1x20"
+      # A version mismatch is recorded but no longer rejects the delivery, so it
+      # must NOT page on its own — the counter rises while nothing is lost.
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="webhook_version",result="error"}'
+        values: "0+1x30"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BillingWebhookRejected
+        exp_alerts: [] # nothing has failed yet
+      - eval_time: 20m
+        alertname: BillingWebhookRejected
+        exp_alerts:
+          - exp_labels: { severity: critical, job: bex-api, instance: prod }
+            exp_annotations:
+              summary: "bex rejected or failed a Stripe webhook delivery"
+              description: "checkout.session.completed is the only writer of payment_method_bound_at, which alone decides whether a workspace may create anything — so a dropped delivery locks a real customer out with no trace. A signature or livemode rejection is a permanent loss (Stripe never retries a 4xx); a handler error returns 503 and Stripe retries for up to three days, and persistent failure gets the endpoint disabled. Check the bex-api log for the matching 'billing: ...' line, which names the event id. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+  # The series run at 1m to match this file's evaluation_interval — coarser
+  # samples go stale between evaluations and `for:` never accumulates — and run
+  # long enough to clear 72h, since promtool's clock starts at 0.
+  - name: webhook silence fires only past the observed delivery gap, never on a fresh pod
+    interval: 1m
+    input_series:
+      - series: 'bex_billing_enabled{job="bex-api",instance="prod"}'
+        values: "1x4800"
+      # Last success pinned at t=1s while the clock runs on, so by the late
+      # evaluations time() - value is well past 72h.
+      - series: 'bex_billing_webhook_last_success_timestamp_seconds{job="bex-api",instance="prod"}'
+        values: "1x4800"
+      # A replica that has never received one publishes 0 — that is not silence,
+      # and the `> 0` filter inside max() must keep it from being read as the
+      # fleet's freshest success.
+      - series: 'bex_billing_webhook_last_success_timestamp_seconds{job="bex-api",instance="fresh"}'
+        values: "0x4800"
+    alert_rule_test:
+      - eval_time: 48h
+        alertname: BillingWebhookSilent
+        exp_alerts: [] # still inside the observed-gap headroom
+      - eval_time: 80h
+        alertname: BillingWebhookSilent
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "No Stripe webhook has succeeded in over 72h"
+              description: "Either Stripe stopped delivering (endpoint disabled or misconfigured) or nothing is happening. 72h comes from the observed delivery gaps on 2026-09-16: over a 6.7-day sample the largest real gap was 45.7h and p95 was 35.6h, so this clears the quiet periods with headroom. Volume is low, so treat this as a prompt to check the endpoint rather than as a page: bash scripts/stripe-webhook-drift.sh. The '> 0' filter inside max() drops replicas that have never received a webhook — a freshly restarted pod publishes 0, which is not silence — so the alert reads the freshest success across the fleet, not a restarted pod's zero. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"

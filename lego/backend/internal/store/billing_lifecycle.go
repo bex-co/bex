@@ -18,11 +18,13 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -289,6 +291,11 @@ func (e StripeBillingEvent) normalized(grace time.Duration) (StripeBillingEvent,
 	return e, nil
 }
 
+// billingProviderMappingWorkspaceFK is the constraint that ties a provider
+// mapping to a live tenant row. Named explicitly so the deleted-workspace race
+// below is recognized by identity rather than by a bare SQLSTATE.
+const billingProviderMappingWorkspaceFK = "billing_provider_mappings_workspace_id_fkey"
+
 // verifyBillingProviderMapping binds or verifies the event's workspace mapping.
 // The immutable Subscription metadata names the workspace. Bind or verify
 // the mapping in the same transaction before accepting its event: the
@@ -307,6 +314,19 @@ func verifyBillingProviderMapping(ctx context.Context, tx pgx.Tx, e StripeBillin
 		  AND billing_provider_mappings.subscription_id = EXCLUDED.subscription_id
 		  AND billing_provider_mappings.livemode = EXCLUDED.livemode`, e.WorkspaceID, e.CustomerID, e.SubscriptionID, e.Livemode)
 	if err != nil {
+		// Deleting a workspace cancels its Stripe subscription BEFORE dropping the
+		// tenant row (PreCascadePurgers run ahead of DeleteTenant), and cancelling
+		// is exactly what makes Stripe emit customer.subscription.deleted. The
+		// final lifecycle event therefore always races the cascade that removes
+		// this row's FK target. Losing that race is the expected outcome, not a
+		// failure: report the workspace as gone so the caller acknowledges the
+		// event instead of returning 5xx and having Stripe retry for three days.
+		// Matched by constraint name, not by SQLSTATE alone, so an unrelated FK
+		// violation still surfaces as a real error.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" && pgErr.ConstraintName == billingProviderMappingWorkspaceFK {
+			return fmt.Errorf("billing provider mapping for %s: %w", e.WorkspaceID, ErrWorkspaceGone)
+		}
 		return fmt.Errorf("verify billing mapping: %w", err)
 	}
 	if mapping.RowsAffected() != 1 {

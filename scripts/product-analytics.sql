@@ -68,7 +68,12 @@ SELECT started_at, inventory_started_at, events_retained_from,
 FROM public.product_analytics_collection;
 
 CREATE OR REPLACE VIEW product_analytics.inventory_batches AS
-SELECT source, bucket, observed_at, complete
+SELECT source, bucket, observed_at, complete,
+       -- Appended, not inserted (CREATE OR REPLACE VIEW can only add at the end,
+       -- w5/m94). False means the batch's resource counts are trustworthy but its
+       -- per-state breakdown is not: the Kubernetes list failed and every state
+       -- defaulted to 'unknown'.
+       states_observed
 FROM public.product_inventory_batches;
 
 CREATE OR REPLACE VIEW product_analytics.inventory AS

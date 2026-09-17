@@ -54,6 +54,15 @@ const workspaceMetadataKey = "bex_workspace"
 const (
 	subscriptionMetadataKey = "bex_billing_contract"
 	defaultCompCouponID     = "bex-comp-100"
+	// deletedAtMetadataKey marks a Customer whose workspace has been deleted and
+	// whose payment instruments and personal data have been retired. The object
+	// survives for invoice retention; this says it is a tombstone, not a blank.
+	deletedAtMetadataKey = "bex_deleted_at"
+	// pendingSetupMetadataKey marks a Subscription minted ahead of the payment
+	// page. EnsureContract runs before Checkout, so a live subscription proves
+	// only that checkout was opened — never that a card was bound. Cleared once
+	// the binding is recorded.
+	pendingSetupMetadataKey = "bex_pending_setup"
 )
 
 var billableMeterNames = func() map[string]struct{} {
@@ -111,6 +120,7 @@ type BillingStateStore interface {
 	UpsertBillingProviderMapping(context.Context, store.BillingProviderMapping) error
 	EnsureBillingLifecycle(context.Context, string) (store.BillingLifecycle, error)
 	SetPaymentMethodBound(context.Context, string, time.Time) error
+	MarkCheckoutStarted(context.Context, string, time.Time) error
 }
 
 // compile-time check: the Stripe sink satisfies the emitter's Ingester seam,

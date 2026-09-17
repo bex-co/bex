@@ -1453,6 +1453,31 @@ spec:
                       summary: "Stripe billing export has an old ambiguous provider outcome"
                       description: "An attempted event exceeded Stripe's 24h identifier window without a local stamp and automatic replay stopped. Reconcile provider summaries, then explicitly mark repaired or acknowledge; never blind-retry. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
 
+                  - alert: BillingWebhookRejected
+                    expr: |
+                      sum by (job, instance) (
+                        increase(bex_billing_operations_total{operation=~"webhook_signature|webhook_mode|webhook_handler",result="error"}[15m])
+                      ) > 0
+                      and on (job, instance) bex_billing_enabled == 1
+                    for: 1m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "bex rejected or failed a Stripe webhook delivery"
+                      description: "checkout.session.completed is the only writer of payment_method_bound_at, which alone decides whether a workspace may create anything — so a dropped delivery locks a real customer out with no trace. A signature or livemode rejection is a permanent loss (Stripe never retries a 4xx); a handler error returns 503 and Stripe retries for up to three days, and persistent failure gets the endpoint disabled. Check the bex-api log for the matching 'billing: ...' line, which names the event id. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+                  - alert: BillingWebhookSilent
+                    expr: |
+                      max(bex_billing_enabled) == 1
+                      and on()
+                      (time() - max(bex_billing_webhook_last_success_timestamp_seconds > 0)) > (72 * 3600)
+                    for: 30m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "No Stripe webhook has succeeded in over 72h"
+                      description: "Either Stripe stopped delivering (endpoint disabled or misconfigured) or nothing is happening. 72h comes from the observed delivery gaps on 2026-09-16: over a 6.7-day sample the largest real gap was 45.7h and p95 was 35.6h, so this clears the quiet periods with headroom. Volume is low, so treat this as a prompt to check the endpoint rather than as a page: bash scripts/stripe-webhook-drift.sh. The '> 0' filter inside max() drops replicas that have never received a webhook — a freshly restarted pod publishes 0, which is not silence — so the alert reads the freshest success across the fleet, not a restarted pod's zero. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
                   - alert: BillingLocalStampFailure
                     expr: |
                       sum by (job, instance) (

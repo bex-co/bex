@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	stripe "github.com/stripe/stripe-go/v86"
@@ -74,6 +75,12 @@ func (l *Lifecycle) HandleStripeEvent(ctx context.Context, event *stripe.Event) 
 		return err
 	}
 	_, _, _, err = l.Store.RecordStripeBillingEvent(ctx, normalized, l.GracePeriod)
+	// The workspace was deleted out from under the event — its own deletion is
+	// what emitted this event. Nothing is left to record, so acknowledge it. Any
+	// other store failure still propagates, and Stripe retries.
+	if errors.Is(err, store.ErrWorkspaceGone) {
+		return nil
+	}
 	return err
 }
 
@@ -173,15 +180,33 @@ func subscriptionOutcome(status stripe.SubscriptionStatus) (string, string) {
 	}
 }
 
+// lifecycleEventTypes is the one list of dunning events this handler reduces.
+// HandledStripeEventTypes derives the full endpoint contract from it, so adding
+// a type here is the single edit that keeps code, the Stripe endpoint's
+// enabled_events, and the drift check in agreement.
+var lifecycleEventTypes = []stripe.EventType{
+	stripe.EventTypeInvoicePaymentFailed, stripe.EventTypeInvoicePaymentActionRequired,
+	stripe.EventTypeInvoicePaymentSucceeded, stripe.EventTypeInvoicePaid,
+	stripe.EventTypeCustomerSubscriptionCreated, stripe.EventTypeCustomerSubscriptionUpdated,
+	stripe.EventTypeCustomerSubscriptionDeleted, stripe.EventTypeCustomerSubscriptionPaused,
+	stripe.EventTypeCustomerSubscriptionResumed,
+}
+
 func isLifecycleEvent(eventType stripe.EventType) bool {
-	switch eventType {
-	case stripe.EventTypeInvoicePaymentFailed, stripe.EventTypeInvoicePaymentActionRequired,
-		stripe.EventTypeInvoicePaymentSucceeded, stripe.EventTypeInvoicePaid,
-		stripe.EventTypeCustomerSubscriptionCreated, stripe.EventTypeCustomerSubscriptionUpdated,
-		stripe.EventTypeCustomerSubscriptionDeleted, stripe.EventTypeCustomerSubscriptionPaused,
-		stripe.EventTypeCustomerSubscriptionResumed:
-		return true
-	default:
-		return false
+	return slices.Contains(lifecycleEventTypes, eventType)
+}
+
+// HandledStripeEventTypes is every event bex's webhook receiver acts on. The
+// Stripe endpoint must subscribe to exactly these: a type bex handles but Stripe
+// does not send never arrives, and nothing reports it — the same silent class of
+// failure as a rejected delivery. scripts/stripe-webhook-drift.sh checks the live
+// endpoint against this set.
+func HandledStripeEventTypes() []string {
+	out := make([]string, 0, len(lifecycleEventTypes)+1)
+	for _, t := range lifecycleEventTypes {
+		out = append(out, string(t))
 	}
+	out = append(out, string(stripe.EventTypeCheckoutSessionCompleted))
+	slices.Sort(out)
+	return out
 }

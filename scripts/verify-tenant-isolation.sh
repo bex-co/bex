@@ -211,17 +211,30 @@ delete_disposable_tenants() {
   fi
 }
 
+# purge runs one cleanup deletion, reporting failure instead of swallowing it.
+# A silent cleanup is how three verify-iso-* Apps sat in production tenant
+# namespaces from 2026-09-14 to 2026-09-16: they carry no bex.co/tenant label, so
+# analytics correctly skips them and nothing else was ever going to notice.
+purge() {
+  local what="$1"
+  shift
+  local out
+  if ! out=$(kubectl delete "$@" 2>&1); then
+    log "WARNING: cleanup of $what failed — remove it by hand: $out"
+  fi
+}
+
 cleanup() {
   local rc=$?
   set +e
   log "cleaning up test resources..."
   if [ -n "$WS_A" ]; then
-    kubectl delete pod probe-a pss-hostile-test -n "$WS_A" --ignore-not-found &>/dev/null
-    kubectl delete app "$APP_A" "$APP_EG" -n "$WS_A" --ignore-not-found --timeout=90s &>/dev/null
+    purge "probe pods in $WS_A" pod probe-a pss-hostile-test -n "$WS_A" --ignore-not-found
+    purge "apps $APP_A/$APP_EG in $WS_A" app "$APP_A" "$APP_EG" -n "$WS_A" --ignore-not-found --timeout=90s
   fi
   if [ -n "$WS_B" ]; then
-    kubectl delete pod probe-b -n "$WS_B" --ignore-not-found &>/dev/null
-    kubectl delete app "$APP_B" -n "$WS_B" --ignore-not-found --timeout=90s &>/dev/null
+    purge "probe pod in $WS_B" pod probe-b -n "$WS_B" --ignore-not-found
+    purge "app $APP_B in $WS_B" app "$APP_B" -n "$WS_B" --ignore-not-found --timeout=90s
   fi
   delete_disposable_tenants
   if [ -n "$forward_pid" ]; then
@@ -234,7 +247,15 @@ cleanup() {
   rmdir "$work_dir" 2>/dev/null
   return "$rc"
 }
+# EXIT alone is not enough: an interrupted or killed run (Ctrl-C, a harness
+# timeout, a terminated CI step) never reaches it, which is exactly how the
+# 2026-09-14 fixtures leaked — their Apps had no deletionTimestamp at all, so
+# cleanup had never been attempted. Trapping the signals runs cleanup and then
+# exits, and EXIT stays for the ordinary paths.
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 log "opening a private forward to the control-plane internal API..."
 kubectl -n "$BEX_API_NAMESPACE" get deploy bex-api >/dev/null \

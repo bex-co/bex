@@ -34,13 +34,36 @@ const en: Record<string, TranslationEntry> = {
   },
   "onboarding.paymentSetupSelfHostHint": {
     message:
-      "Prefer not to add a card? bex is open source — run it on your own infrastructure for free.",
+      "Prefer not to add a card? bex is open source — run it on your own infrastructure, free and unlimited.",
     description:
       "Lead-in to the self-host exit on the payment wall (ADR075 § Positioning)",
   },
   "onboarding.paymentSetupSelfHost": {
-    message: "Self-host bex instead",
-    description: "Link to the GitHub repository from the payment wall",
+    message: "Delete this account and self-host",
+    description:
+      "Opens the confirmation dialog for the self-host exit on the payment wall",
+  },
+  "onboarding.paymentSetupSelfHostConfirmTitle": {
+    message: "Delete this account and self-host?",
+    description: "Title of the self-host exit confirmation dialog",
+  },
+  "onboarding.paymentSetupSelfHostConfirmBody": {
+    message:
+      "This permanently deletes your bex account and workspace. You were never charged, and nothing is kept. We'll send you to the self-hosting guide — bex runs free on your own infrastructure, with no limits.",
+    description: "Body of the self-host exit confirmation dialog",
+  },
+  "onboarding.paymentSetupSelfHostConfirmAction": {
+    message: "Delete account and continue",
+    description: "Destructive confirm button in the self-host exit dialog",
+  },
+  "onboarding.paymentSetupSelfHostConfirmCancel": {
+    message: "Keep my account",
+    description: "Dismisses the self-host exit dialog without deleting anything",
+  },
+  "onboarding.paymentSetupSelfHostError": {
+    message: "The account could not be deleted. Nothing was changed.",
+    description:
+      "Shown when the self-host exit's deletion fails; the wall stays put rather than forwarding",
   },
   "onboarding.paymentSetupSignOut": {
     message: "Sign out",

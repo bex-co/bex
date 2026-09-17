@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -167,6 +168,14 @@ func (c *StripeClient) CreateCheckoutSession(ctx context.Context, workspaceID st
 	}
 	if session.URL == "" || session.ID == "" || !c.expectedLivemode(session.Livemode) {
 		return HostedSession{}, fmt.Errorf("stripe: Checkout Session returned an invalid mode or empty id/url")
+	}
+	// Record the intent separately from the binding. Best-effort on purpose: this
+	// is analytics-grade provenance, and failing the checkout the user is standing
+	// in front of to preserve it would be the wrong trade.
+	if c.state != nil {
+		if err := c.state.MarkCheckoutStarted(ctx, workspaceID, time.Now().UTC()); err != nil {
+			log.Printf("billing: record checkout start for %s: %v", workspaceID, err)
+		}
 	}
 	return HostedSession{URL: session.URL, ExpiresAt: time.Unix(session.ExpiresAt, 0).UTC().Format(time.RFC3339)}, nil
 }
@@ -328,6 +337,10 @@ func (c *StripeClient) bindDefaultPaymentMethod(ctx context.Context, checkout ve
 		DefaultPaymentMethod: stripe.String(paymentMethodID),
 		ProrationBehavior:    stripe.String("none"),
 	}
+	// The card is now bound, so the subscription is no longer merely "checkout was
+	// opened". Clearing the marker here keeps the Stripe side agreeing with
+	// payment_method_bound_at, which stays the only authority.
+	subscriptionUpdate.AddMetadata(pendingSetupMetadataKey, "")
 	if tax := c.taxReadiness(ctx, checkout.subscription); tax.Configured {
 		subscriptionUpdate.AutomaticTax = &stripe.SubscriptionAutomaticTaxParams{Enabled: stripe.Bool(true)}
 	}

@@ -1138,7 +1138,10 @@ export function AccountDeletedRouteSkeleton() {
 
 /** `/setup/payment` — the sign-up payment wall: hero + one card (title row,
  *  description, the workspace line, the Checkout button, the hosted note, and
- *  the self-host/sign-out footer), matching PaymentSetupPage's ready state. */
+ *  the self-host/sign-out footer), matching PaymentSetupPage's ready state. The
+ *  footer's first item previews "Delete this account and self-host" — a link-
+ *  styled button at text height, so the row's geometry is unchanged from when it
+ *  was an anchor (w3/m163). */
 export function PaymentSetupRouteSkeleton() {
   return (
     <AuthRouteSkeleton route="payment-setup">
@@ -1158,7 +1161,7 @@ export function PaymentSetupRouteSkeleton() {
             <div className="space-y-2 border-t pt-4">
               <Skeleton className="h-4 w-full" />
               <div className="flex gap-4">
-                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-4 w-52" />
                 <Skeleton className="h-4 w-16" />
               </div>
             </div>

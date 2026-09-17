@@ -19,6 +19,8 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -123,5 +125,48 @@ func TestLifecycleLiveModeRecordsLiveAndRejectsTestEvents(t *testing.T) {
 	}
 	if len(capture.events) != 1 {
 		t.Fatalf("test event persisted against live lifecycle: %+v", capture.events)
+	}
+}
+
+// failingLifecycleStore returns a fixed error so the handler's disposition of
+// store failures can be asserted directly.
+type failingLifecycleStore struct{ err error }
+
+func (f *failingLifecycleStore) RecordStripeBillingEvent(_ context.Context, e store.StripeBillingEvent, _ time.Duration) (store.BillingLifecycle, bool, bool, error) {
+	return store.BillingLifecycle{WorkspaceID: e.WorkspaceID}, false, false, f.err
+}
+
+// A workspace's own deletion emits its last subscription event, so the event
+// outlives the tenant row it references. Acknowledge it: returning an error here
+// makes the webhook answer 503 and Stripe retry the same doomed write for three
+// days, and persistent failures get endpoints disabled — which would silently
+// drop checkout.session.completed, the sole writer of payment_method_bound_at.
+func TestLifecycleAcknowledgesEventsForDeletedWorkspaces(t *testing.T) {
+	h := &Lifecycle{
+		Store:       &failingLifecycleStore{err: fmt.Errorf("billing provider mapping for tea-a: %w", store.ErrWorkspaceGone)},
+		GracePeriod: 7 * 24 * time.Hour,
+	}
+	subscription := `{"id":"sub_1","object":"subscription","livemode":false,"customer":"cus_1","status":"canceled","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}`
+
+	err := h.HandleStripeEvent(context.Background(), lifecycleEvent("evt_gone", stripe.EventTypeCustomerSubscriptionDeleted, subscription))
+
+	if err != nil {
+		t.Fatalf("deleted-workspace event = %v, want nil so the webhook answers 204", err)
+	}
+}
+
+// Only the gone-workspace case is benign. Every other store failure must still
+// surface so Stripe retries rather than dropping a real billing transition.
+func TestLifecyclePropagatesOtherStoreFailures(t *testing.T) {
+	h := &Lifecycle{
+		Store:       &failingLifecycleStore{err: errors.New("connection refused")},
+		GracePeriod: 7 * 24 * time.Hour,
+	}
+	subscription := `{"id":"sub_1","object":"subscription","livemode":false,"customer":"cus_1","status":"canceled","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}`
+
+	err := h.HandleStripeEvent(context.Background(), lifecycleEvent("evt_down", stripe.EventTypeCustomerSubscriptionDeleted, subscription))
+
+	if err == nil {
+		t.Fatal("store outage = nil, want an error so Stripe retries")
 	}
 }

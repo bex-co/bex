@@ -14,7 +14,7 @@
 
 import { useEffect } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { CreditCard, Github, Loader2, TriangleAlert } from "lucide-react";
+import { CreditCard, Loader2, TriangleAlert } from "lucide-react";
 import { Alert, AlertDescription } from "@/common/components/ui/alert";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
@@ -32,11 +32,8 @@ import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useBillingOnboarding } from "@/features/usage/hooks/use-billing-onboarding";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import {
-  paymentSetupPath,
-  paymentSetupState,
-  SELF_HOST_URL,
-} from "../../lib/payment-setup";
+import { paymentSetupPath, paymentSetupState } from "../../lib/payment-setup";
+import { SelfHostExit } from "./self-host-exit";
 
 /**
  * The sign-up payment wall (`/setup/payment`, ADR075 D7 revised 2026-08-29):
@@ -50,7 +47,8 @@ import {
  * wall then polls readiness at the dialog's 2s cadence until the signed
  * webhook commits the marker (Stripe's success redirect alone is not proof),
  * and continues to the guarded `next` the moment the server says the gate is
- * open. Exits that are not a dead end: self-hosting (the free path) and sign
+ * open. Exits that are not a dead end: self-hosting (the free path, which
+ * deletes the account behind a typed confirmation — see SelfHostExit) and sign
  * out. A caller who cannot bind a card here (not a billing manager) or a
  * workspace that no longer needs one is forwarded straight through.
  */
@@ -185,15 +183,7 @@ export default function PaymentSetupPage() {
               {t("onboarding.paymentSetupSelfHostHint")}
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <a
-                href={SELF_HOST_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline"
-              >
-                <Github aria-hidden="true" className="size-4" />
-                {t("onboarding.paymentSetupSelfHost")}
-              </a>
+              <SelfHostExit />
               <Link
                 to="/auth/logout"
                 className="text-muted-foreground underline-offset-4 hover:underline"

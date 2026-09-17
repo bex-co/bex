@@ -202,7 +202,7 @@ func TestPGProductInventoryCompleteSnapshots(t *testing.T) {
 	item := productInventoryResource{ID: resource, Workspace: tenant.ID, Kind: "postgres", State: "failed", CreatedAt: at.Add(-time.Minute)}
 	record := func(source string, when time.Time, items []productInventoryResource) {
 		t.Helper()
-		if err := st.recordProductInventory(ctx, source, when, items); err != nil {
+		if err := st.recordProductInventory(ctx, source, when, items, true); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -231,7 +231,7 @@ func TestPGProductInventoryCompleteSnapshots(t *testing.T) {
 		t.Fatal("old sample deleted resource or reset first readiness")
 	}
 	item.State = "invalid-state"
-	if err := st.recordProductInventory(ctx, "postgres", at.Add(15*time.Minute), []productInventoryResource{item}); err == nil {
+	if err := st.recordProductInventory(ctx, "postgres", at.Add(15*time.Minute), []productInventoryResource{item}, true); err == nil {
 		t.Fatal("invalid sample accepted")
 	}
 	if n := scalar("SELECT count(*) FROM product_inventory_batches WHERE source='postgres' AND bucket=$1", at.Add(15*time.Minute)); n != 0 {
@@ -321,5 +321,52 @@ func TestPGProductInventoryCompleteSnapshots(t *testing.T) {
 	}
 	if n := scalar("SELECT count(*) FROM product_inventory_lifecycle WHERE workspace_id=$1", tenant.ID); n != 0 {
 		t.Fatal("workspace privacy left lifecycle")
+	}
+}
+
+// A failed Kubernetes list still yields a truthful services count — existence
+// comes from Postgres — but every state defaults to unknown. The batch must say
+// so, or a collector outage is indistinguishable from a platform-wide one.
+func TestProductInventoryMarksStatesUnobservedWhenTheListFails(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	at := time.Now().UTC().Add(-2 * time.Hour).Truncate(5 * time.Minute)
+	appID := ids.New(ids.Service)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(ctx, "DELETE FROM product_inventory_batches WHERE bucket>=$1", at)
+		_, _ = pool.Exec(ctx, "DELETE FROM apps WHERE id=$1", appID)
+	})
+	if _, err := pool.Exec(ctx, `INSERT INTO apps (id, tenant_id, name, slug, type, image)
+        VALUES ($1,$2,$3,$3,'web_service','docker.io/library/busybox:1.36.1')`,
+		appID, tenant.ID, "inventory-states-"+appID); err != nil {
+		t.Fatalf("seed app: %v", err)
+	}
+
+	// statesObserved=false is what collectSource passes when the CR list errored.
+	if err := st.recordProductInventory(ctx, "services", at, nil, false); err != nil {
+		t.Fatalf("record failed-list batch: %v", err)
+	}
+
+	var complete, statesObserved bool
+	if err := pool.QueryRow(ctx, `SELECT complete, states_observed FROM product_inventory_batches
+        WHERE source='services' AND bucket>=$1 ORDER BY bucket DESC LIMIT 1`, at).Scan(&complete, &statesObserved); err != nil {
+		t.Fatalf("read batch: %v", err)
+	}
+	if !complete {
+		t.Error("count dimension must stay complete — existence comes from Postgres, not Kubernetes")
+	}
+	if statesObserved {
+		t.Error("states_observed = true after a failed list, want false")
+	}
+
+	// The count is still right, and its state is the honest 'unknown'.
+	var resources int
+	var state string
+	if err := pool.QueryRow(ctx, `SELECT sum(resources)::int, min(state) FROM product_inventory_counts
+        WHERE source='services' AND bucket>=$1`, at).Scan(&resources, &state); err != nil {
+		t.Fatalf("read counts: %v", err)
+	}
+	if resources != 1 || state != "unknown" {
+		t.Fatalf("counts = %d resources in state %q, want 1 in \"unknown\"", resources, state)
 	}
 }

@@ -59,6 +59,13 @@ var (
 	// ErrAccountDeletionPending is returned by membership writers after they
 	// serialize with a newly committed account-deletion intent.
 	ErrAccountDeletionPending = errors.New("account deletion pending")
+	// ErrWorkspaceGone reports that a write lost a race with the workspace's own
+	// deletion: the row it would have referenced is already gone. It is narrower
+	// than ErrNotFound on purpose — callers acknowledge it as a no-op instead of
+	// retrying, so only the writes that can genuinely lose that race may return
+	// it. Today that is the Stripe lifecycle path, whose events are emitted by
+	// the deletion itself (see verifyBillingProviderMapping).
+	ErrWorkspaceGone = errors.New("workspace no longer exists")
 )
 
 // MapError translates this taxonomy into core's, so a feature service can
