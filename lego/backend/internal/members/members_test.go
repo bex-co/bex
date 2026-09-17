@@ -1359,13 +1359,15 @@ func (a accountStoreOver) RemoveAccountMember(ctx context.Context, tenantID, sub
 
 // Every path that ENDS a membership must dispose of the member's keys. This
 // enumerates the service's membership-ending verbs so a fourth one cannot ship
-// without the rule: when w5/m102's Leave verb lands, this fails until it is
-// added to the list and wired to disposeMemberKeys.
+// without the rule. w5/m102's LeaveWorkspace is the second entry: a member
+// leaving of their own accord owes the same disposal an admin removal does —
+// the credential a member created in a workspace must not outlive the
+// membership that justified it, whichever exit was taken.
 func TestEveryMembershipEndingVerbDisposesKeys(t *testing.T) {
 	// The verbs that end a membership today, and therefore owe key disposal.
 	// RevokeInvite is absent on purpose: an unredeemed invite never became a
 	// membership, so there is no delegated credential to revoke.
-	wantEnding := map[string]bool{"Remove": true}
+	wantEnding := map[string]bool{"Remove": true, "LeaveWorkspace": true}
 
 	svcType := reflect.TypeOf(&Service{})
 	found := map[string]bool{}

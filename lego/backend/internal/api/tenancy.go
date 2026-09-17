@@ -415,6 +415,21 @@ func (t *tenantService) InvalidateTenant(subject string) {
 	t.cache.Delete(cacheKey(methodOAuth2, subject))
 }
 
+// InvalidateMembership evicts subject's cached POSITIVE membership in one
+// workspace — the second cache, which InvalidateTenant does not touch (w5/m102).
+// IsMember caches only positives for core.PositiveTTL, so after a member leaves,
+// a request that explicitly NAMES the workspace they just left would keep
+// resolving into it for the rest of that window. OpenFGA is still the
+// authorization gate (the role tuple is revoked, so every verb 403s), which is
+// why this was never an access bypass — but resolving into a workspace the
+// caller no longer belongs to produces exactly the m13 class of symptom, so the
+// leave path evicts it. Both methods, for the same reason InvalidateTenant
+// evicts both.
+func (t *tenantService) InvalidateMembership(subject, tenantID string) {
+	t.members.Delete(cacheKey(methodSession, subject) + ":" + tenantID)
+	t.members.Delete(cacheKey(methodOAuth2, subject) + ":" + tenantID)
+}
+
 // BindKey implements apikeys.KeyBinder: records the client's tenant_members
 // row (role "developer") + writes the key's FGA developer membership. A failed
 // FGA write rolls the binding back so no half-bound key lingers (the api-keys

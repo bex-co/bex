@@ -185,6 +185,11 @@ const (
 	AuditVerbMemberRoleChanged = "members.ChangeRole"
 	AuditVerbMemberRemoved     = "members.Remove"
 	AuditVerbInviteAccepted    = "members.AcceptInvite"
+	// AuditVerbMemberLeft is a member leaving of their own accord (w5/m102).
+	// Deliberately distinct from members.Remove: the events feed must be able to
+	// say whether somebody left or was removed by an admin — the caller and the
+	// target are the same subject here, which is exactly what Remove refuses.
+	AuditVerbMemberLeft = "members.Leave"
 	// AuditVerbBillingExclusionChanged records an admin toggling a workspace's
 	// Stripe billing exclusion (docs/ADR040-billing-metronome.md §7). It is
 	// written directly by the control-plane internal API (not via a Base
@@ -525,6 +530,17 @@ func (b *Base) RecordMemberRoleChanged(ctx context.Context, workspaceID, subject
 // must not claim it revoked anything.
 func (b *Base) RecordMemberRemoved(ctx context.Context, workspaceID, subject string, revokedKeys int) {
 	ev := b.verbAuditEvent(ctx, AuditVerbMemberRemoved, WorkspaceObject(workspaceID), MemberTarget(subject))
+	count := int32(revokedKeys)
+	ev.RevokedKeyCount = &count
+	b.recordAudit(ctx, ev)
+}
+
+// RecordMemberLeft records a member leaving a workspace themselves, with how
+// many of their own API keys in that workspace the leave revoked (the same
+// disposal Remove performs). Paired with WithDeferredAllowedWriteAudit for the
+// same reason: the count is not known until the disposal has run.
+func (b *Base) RecordMemberLeft(ctx context.Context, workspaceID, subject string, revokedKeys int) {
+	ev := b.verbAuditEvent(ctx, AuditVerbMemberLeft, WorkspaceObject(workspaceID), MemberTarget(subject))
 	count := int32(revokedKeys)
 	ev.RevokedKeyCount = &count
 	b.recordAudit(ctx, ev)

@@ -73,6 +73,13 @@ mutation RemoveWorkspaceMember($workspaceId: String!, $subject: String!) {
   removeWorkspaceMember(workspaceId: $workspaceId, subject: $subject)
 }
 
+# Leave a workspace yourself (w5/m102) — the deliberate exit that replaces the
+# accidental self-removal w5/m101 now refuses. It takes no subject: the server
+# acts on the calling identity, so this mutation cannot remove anyone else.
+mutation LeaveWorkspace($workspaceId: String!) {
+  leaveWorkspace(workspaceId: $workspaceId)
+}
+
 mutation RevokeWorkspaceInvite($workspaceId: String!, $inviteId: String!) {
   revokeWorkspaceInvite(workspaceId: $workspaceId, inviteId: $inviteId)
 }

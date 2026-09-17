@@ -198,6 +198,18 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.Invite(p.Context, p.Args["workspaceId"].(string), p.Args["email"].(string), p.Args["role"].(string))
 			},
 		},
+		// leaveWorkspace acts on the caller only — it takes no subject argument
+		// by design (w5/m102), so it cannot be turned into a member removal.
+		"leaveWorkspace": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: workspaceIDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				if err := s.LeaveWorkspace(p.Context, p.Args["workspaceId"].(string)); err != nil {
+					return nil, err
+				}
+				return true, nil
+			},
+		},
 		"changeWorkspaceMemberRole": &graphql.Field{
 			Type: memberGQLType,
 			Args: graphql.FieldConfigArgument{
