@@ -1,6 +1,6 @@
 # w7 · m149 — Correct cold deep-link initialization
 
-**Worker:** worker7 **Goal:** Direct service and agents URLs settle from initial workspace and capability results instead of waiting for the periodic poll. **Status:** blocked (gated on w7/m148/t007 and a live measurement)
+**Worker:** worker7 **Goal:** Direct service and agents URLs settle from initial workspace and capability results instead of waiting for the periodic poll. **Status:** todo (unblocked 2026-09-17)
 
 ## Tasks (in order)
 
@@ -41,7 +41,13 @@
 
 - **Dependency:** t001 follows w7/m148/t007 so the live diagnosis starts on a verified local substrate. Coordinate evidence with w6/074; do not claim its whole walkthrough complete.
 
-## BLOCKED 2026-09-17 — gated upstream, and on a measurement the DoD requires
+## UNBLOCKED 2026-09-17 — the upstream gate cleared the same day
+
+`w7/m148/t007` is **done**: the rotted local CAPD cluster was reprovisioned and a healthy bring-up recorded, so t001's dependency is satisfied and this milestone is workable.
+
+What has **not** changed is t001's nature: it is still a measurement task, and the DoD still forbids substituting reasoning for it — _"do not infer the cause from timing alone."_ The source findings below remain the aim for that measurement, not a replacement for it.
+
+### Original block (kept for the diagnosis it carries)
 
 Nothing here is implementable yet, and that is the milestone's own design rather than a judgement call:
 
