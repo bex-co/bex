@@ -64,4 +64,4 @@ implementation serves every workstream since `w1/m72`; `.pm/w9/dev-9/` keeps onl
 
 ## Cron preview follow-up
 
-- [ ] **[061 — Truthful cron schedule previews](061.md)** (45–60m; transferred from w4/099). Includes oversized and non-divisor steps across Create and Settings; worker9, no dependencies. Inbox-sized; existing 060 remains queued.
+- [x] **[061 — Truthful cron schedule previews](done/061.md)** (transferred from w4/099) — **DONE 2026-09-16** by `/loopx w9`. A new `stepShape` helper in `cron.ts` bounds both step branches against the existing `FIELDS` specs: divisor steps keep their "Every N minutes/hours" preview, a step wider than its field collapses to what actually runs (`*/70` → "Every hour", `0 */30` → "Every day at 00:00"), and an in-range non-divisor (`*/40` minutes, `0 */5` hours) falls through to the generic help text rather than naming an interval cron never runs. Red-tested (3 new cases fail pre-fix); both consumers share the helper, so Create and Settings agree; `yarn typecheck`/`lint`/`test` (3481 tests) green; backend vectors and REST/GraphQL/MCP acceptance untouched.

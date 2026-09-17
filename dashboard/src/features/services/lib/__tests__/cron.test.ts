@@ -47,6 +47,53 @@ describe("describeCron", () => {
     expect(describeCron("0 0 * * 1-5")).toBeNull();
   });
 
+  // w9/061: both step branches interpolated the captured step into "Every N
+  // minutes/hours" without bounding it against the field, so a schedule the
+  // backend accepts was previewed as an interval cron never runs. The step only
+  // names a uniform interval when it divides the field's width.
+  it("does not promise a uniform interval for a non-divisor step", () => {
+    // Minutes: fires at :00 and :40, so the gaps alternate 40 and 20.
+    expect(describeCron("*/40 * * * *")).toBeNull();
+    expect(describeCron("*/7 * * * *")).toBeNull();
+    // Hours: fires at 0,5,10,15,20 — a four-hour gap across midnight.
+    expect(describeCron("0 */5 * * *")).toBeNull();
+    expect(describeCron("0 */7 * * *")).toBeNull();
+  });
+
+  it("collapses a step wider than its field to the unit it actually runs", () => {
+    // Previously "Every 70 minutes" / "Every 100 minutes": only minute 0 fires.
+    expect(describeCron("*/70 * * * *")).toBe("Every hour");
+    expect(describeCron("*/100 * * * *")).toBe("Every hour");
+    // Previously "Every 30 hours" — an interval cron cannot express at all.
+    expect(describeCron("0 */30 * * *")).toBe("Every day at 00:00");
+    expect(describeCron("15 */30 * * *")).toBe("Every day at 00:15");
+  });
+
+  it("keeps the exact-fit boundaries truthful", () => {
+    // Both fire only at the field's start, and both intervals are exact.
+    expect(describeCron("*/60 * * * *")).toBe("Every hour");
+    expect(describeCron("0 */24 * * *")).toBe("Every day at 00:00");
+    // Ordinary divisors keep their useful preview.
+    expect(describeCron("*/30 * * * *")).toBe("Every 30 minutes");
+    expect(describeCron("*/15 * * * *")).toBe("Every 15 minutes");
+    expect(describeCron("0 */12 * * *")).toBe("Every 12 hours");
+    expect(describeCron("0 */6 * * *")).toBe("Every 6 hours");
+  });
+
+  // The preview must never disagree with what the server accepts: every
+  // schedule above stays valid, so the form still submits each one.
+  it("still accepts every schedule it declines to describe", () => {
+    for (const s of [
+      "*/40 * * * *",
+      "*/70 * * * *",
+      "*/100 * * * *",
+      "0 */5 * * *",
+      "0 */30 * * *",
+    ]) {
+      expect(isValidCron(s)).toBe(true);
+    }
+  });
+
   // w6/048: describeCron re-parsed fields with /^\d+$/-only checks, so a named
   // weekday/month that isValidCron happily accepted fell through every phrase
   // branch to null. Named tokens must describe identically to their numeric
