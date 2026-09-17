@@ -9,6 +9,7 @@ import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace
 import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-workspace-card";
 import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/workspace-settings-navigation";
 import { TeamPanel } from "@/features/team/components/team-panel";
+import { LeaveWorkspaceCard } from "@/features/team/components/leave-workspace-card";
 import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
 import { SECTION_NAVIGATION_STICKY_CLASS } from "@/common/components/section-navigation";
 
@@ -62,7 +63,7 @@ function WorkspaceSettingsPage() {
           {/* Same right-rail quick nav as the service settings page. */}
           <WorkspaceSettingsNavigation
             className={SECTION_NAVIGATION_STICKY_CLASS}
-            showDangerZone={hasMultipleWorkspaces}
+            showDangerZone
           />
 
           <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
@@ -82,11 +83,10 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="team">
                   <CardSkeleton rows={5} />
                 </section>
-                {hasMultipleWorkspaces ? (
-                  <section data-skeleton-region="danger-zone">
-                    <CardSkeleton rows={2} />
-                  </section>
-                ) : null}
+                <section data-skeleton-region="danger-zone">
+                  <CardSkeleton rows={2} />
+                  {hasMultipleWorkspaces ? <CardSkeleton rows={2} /> : null}
+                </section>
               </>
             ) : !currentWorkspace ? (
               <p className="text-muted-foreground text-sm">
@@ -107,11 +107,16 @@ function WorkspaceSettingsPage() {
                 <section id="team" className="scroll-mt-6">
                   <TeamPanel />
                 </section>
-                {hasMultipleWorkspaces ? (
-                  <section id="danger-zone" className="scroll-mt-6">
+                {/* The danger zone is now always present: Leave workspace
+                    (w5/m102) lives here for every member, while Delete stays
+                    gated on having somewhere else to land. The Leave card
+                    renders nothing when the caller has no membership row. */}
+                <section id="danger-zone" className="scroll-mt-6 space-y-6">
+                  <LeaveWorkspaceCard workspace={currentWorkspace} />
+                  {hasMultipleWorkspaces ? (
                     <DeleteWorkspaceCard workspace={currentWorkspace} />
-                  </section>
-                ) : null}
+                  ) : null}
+                </section>
               </>
             )}
           </div>

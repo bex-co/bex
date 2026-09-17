@@ -83,3 +83,20 @@ query usersAndPendingForTeam($ownerId: String!) {
 # created by tenants.owner_identity_id, not a parity gap. Should a live capture
 # ever show Render permitting one of the other three, that is drift to file —
 # it has not been observed either way.
+
+# --- Leave workspace (w5/m102, 2026-09-17) --------------------------------------
+# bex ships a dedicated exit verb: REST DELETE /v1/workspaces/{id}/members/me,
+# GraphQL leaveWorkspace(workspaceId:), MCP leave_workspace. None of them takes
+# a subject — the caller's identity is the subject — so the exit cannot be
+# turned into a member removal. Refused for the workspace owner
+# (OWNER_CANNOT_LEAVE) and the last admin.
+#
+# EVIDENCE LIMIT — Render's own leave-team mutation is NOT captured here. The
+# capture above is the Team Members read query only. Render's dashboard does
+# separate "leave team" from "remove member" (which is why bex spells them as
+# two verbs rather than overloading removal with subject=me), but the exact
+# mutation name, arguments and refusal set are not observable from this tier,
+# and the captured workspace's single membership cannot exercise a leave
+# without destroying a real team. bex's REST route in particular is a
+# deliberate bex extension: Render manages members only through its dashboard
+# GraphQL, so there is no REST shape to mirror.

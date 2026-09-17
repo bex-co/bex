@@ -1103,6 +1103,7 @@ export type Mutation = {
   failoverDatabase: Maybe<Scalars['Boolean']['output']>;
   finalizeWorkspaceCreation: Maybe<Workspace>;
   inviteWorkspaceMember: Maybe<WorkspaceInvite>;
+  leaveWorkspace: Maybe<Scalars['Boolean']['output']>;
   linkEnvGroup: Maybe<Scalars['Boolean']['output']>;
   markPushNotificationRead: Scalars['Boolean']['output'];
   moveEnvGroup: Maybe<EnvGroup>;
@@ -1646,6 +1647,11 @@ export type MutationFinalizeWorkspaceCreationArgs = {
 export type MutationInviteWorkspaceMemberArgs = {
   email: Scalars['String']['input'];
   role: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationLeaveWorkspaceArgs = {
   workspaceId: Scalars['String']['input'];
 };
 

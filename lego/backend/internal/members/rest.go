@@ -91,6 +91,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+	// Leave the workspace yourself (w5/m102). A bex extension, like
+	// POST /v1/invites/accept — Render manages members only through its
+	// dashboard GraphQL, so there is no Render REST shape to mirror. The literal
+	// "me" path segment is the point: this route cannot name another subject,
+	// which is what separates it from the admin DELETE above.
+	mux.HandleFunc("DELETE /v1/workspaces/{workspaceId}/members/me", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.LeaveWorkspace(r.Context(), r.PathValue("workspaceId")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 	mux.HandleFunc("GET /v1/workspaces/{workspaceId}/invites", func(w http.ResponseWriter, r *http.Request) {
 		invs, err := s.ListInvites(r.Context(), r.PathValue("workspaceId"))
 		if err != nil {

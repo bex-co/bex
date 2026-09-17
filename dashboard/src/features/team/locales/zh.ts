@@ -201,6 +201,49 @@ const zhTeam: Record<string, TranslationEntry> = {
     description:
       "Badge on a member row whose Kratos identity lookup missed (w4/070)",
   },
+  "team.leaveTitle": {
+    message: "离开工作区",
+    description: "Title of the leave-workspace card in workspace settings",
+  },
+  "team.leaveDescription": {
+    message:
+      "放弃你在 {workspace} 的成员身份。你将失去对其服务和数据的访问权限，你在此创建的 API 密钥也会失效。管理员可以再次邀请你。",
+    description: "Description of the leave-workspace card",
+  },
+  "team.leaveAction": {
+    message: "离开工作区",
+    description: "Label of the leave-workspace button",
+  },
+  "team.leaveConfirmTitle": {
+    message: "确定要离开此工作区吗？",
+    description: "Title of the leave-workspace confirmation dialog",
+  },
+  "team.leaveConfirm": {
+    message:
+      "你将失去对 {workspace} 的访问权限，并且你在其中创建的 API 密钥将被吊销。只有管理员再次邀请你才能重新加入。",
+    description: "Body of the leave-workspace confirmation dialog",
+  },
+  "team.leaveCancel": {
+    message: "取消",
+    description: "Cancel label in the leave-workspace confirmation dialog",
+  },
+  "team.leaveErrorTitle": {
+    message: "无法离开工作区",
+    description: "Title of the inline error when leaving is refused",
+  },
+  "team.leaveError": {
+    message: "离开工作区失败，请重试。",
+    description: "Fallback message when leaving fails without a server reason",
+  },
+  "team.leaveOwnerReason": {
+    message: "你拥有此工作区，因此不能离开。转移所有权功能尚未提供。",
+    description: "Reason the Leave action is disabled for the workspace owner",
+  },
+  "team.leaveLastAdminReason": {
+    message:
+      "你是最后一名管理员。请先将他人设为管理员，以确保工作区仍有管理员。",
+    description: "Reason the Leave action is disabled for the last admin",
+  },
   "team.you": {
     message: "你",
     description: "Badge marking the caller's own row in the members table",

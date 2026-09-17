@@ -98,6 +98,11 @@ const (
 	// ErrorCannotChangeOwnRole refuses self-promotion and self-demotion alike —
 	// a role change is something another admin does to you.
 	ErrorCannotChangeOwnRole = "CANNOT_CHANGE_OWN_ROLE"
+	// ErrorOwnerCannotLeave is the owner rule seen from the other side (w5/m102):
+	// the exit that replaces self-removal is still closed to the workspace
+	// owner, because leaving would strand the owner binding exactly as a removal
+	// would. Ownership transfer is the owner's exit and remains deferred.
+	ErrorOwnerCannotLeave = "OWNER_CANNOT_LEAVE"
 )
 
 // Service holds the membership logic once. It embeds *core.Base for the
@@ -1069,31 +1074,152 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, ""); err != nil {
 		return err
 	}
-	// Dispose of the member's machine credentials FIRST (w2/m163). Ordering is
-	// fail-closed the same way the tuple-before-row rule below is: if key
-	// teardown fails, nothing else has happened yet, the member is still a
-	// member, and a retry re-runs the whole removal. The reverse order would
-	// strand exactly the hole this milestone closes — membership gone, key still
-	// authorizing — and the retry could no longer find the member to fix it.
-	revokedKeys, err := s.disposeMemberKeys(ctx, workspaceID, subject)
+	revokedKeys, err := s.endMembership(ctx, workspaceID, subject, m.Role, mapStoreErr)
 	if err != nil {
 		return err
 	}
-	// Revoke the member's role tuple BEFORE deleting the row (F7). Two reasons: the
-	// model ORs roles, so leaving the tuple keeps the removed member authorized;
-	// and revoking first leaves a fail-closed intermediate on partial failure (row
-	// present, no privilege) that a retry converges — whereas deleting the row
-	// first would strand the stale tuple a Remove retry can no longer reach (the
-	// member is gone, GetTenantMember 404s). The revoke error is now SURFACED, not
-	// discarded, so the caller can retry to convergence.
-	if err := s.revokeRoleErr(ctx, workspaceID, "user:"+subject, m.Role); err != nil {
-		return err
+	s.RecordMemberRemoved(ctx, workspaceID, subject, revokedKeys)
+	return nil
+}
+
+// endMembership is the teardown both exits share — an admin removing a member
+// (Remove) and a member leaving (LeaveWorkspace). Only the authorization and
+// the guards differ between those two; the teardown must not, so it lives once.
+// It returns how many API keys it revoked, for the audit row.
+//
+// The ORDER is the load-bearing part, and it is fail-closed at every step:
+//
+//  1. Dispose the member's machine credentials FIRST (w2/m163). If key teardown
+//     fails, nothing else has happened yet, the member is still a member, and a
+//     retry re-runs the whole thing. The reverse order strands exactly the hole
+//     that milestone closed — membership gone, key still authorizing — and the
+//     retry could no longer find the member to fix it.
+//  2. Revoke the role tuple BEFORE deleting the row (F7). The model ORs roles,
+//     so a surviving tuple keeps the departed member authorized; and revoking
+//     first leaves a fail-closed intermediate on partial failure (row present,
+//     no privilege) that a retry converges — whereas deleting the row first
+//     would strand a stale tuple the retry can no longer reach (the member is
+//     gone, GetTenantMember 404s). The revoke error is SURFACED, not discarded.
+//  3. Delete the row last. storeErr lets each verb map the store's refusals
+//     into its own vocabulary (removal vs leaving speak differently about the
+//     owner).
+func (s *Service) endMembership(
+	ctx context.Context, workspaceID, subject, role string,
+	storeErr func(error) error,
+) (int, error) {
+	revokedKeys, err := s.disposeMemberKeys(ctx, workspaceID, subject)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.revokeRoleErr(ctx, workspaceID, "user:"+subject, role); err != nil {
+		return 0, err
 	}
 	if err := s.Store.RemoveMember(ctx, workspaceID, subject); err != nil {
+		return 0, storeErr(err)
+	}
+	return len(revokedKeys), nil
+}
+
+// LeaveWorkspace removes the CALLER's own membership from a workspace — the
+// deliberate exit that w5/m101's CANNOT_REMOVE_SELF refusal points at. It takes
+// no subject argument at all: the subject is the caller's identity, so there is
+// no shape of this call that can remove somebody else.
+//
+// Authorization is self-scoped rather than can_manage (the AcceptInvite
+// precedent): leaving is not managing a teammate, so any member of the
+// workspace may do it — can_view is what every role holds, and the membership
+// row fetch below is what actually proves membership. The refusals are the
+// membership floors m101 established, seen from the other side: the owner
+// cannot leave (the binding would be stranded, and ownership transfer is
+// deferred), and the last admin cannot leave (nobody could administer the
+// workspace afterwards).
+//
+// The end state is Remove's, reached the same fail-closed way: dispose the
+// caller's API keys in this workspace (w2/m163 — a credential must not outlive
+// the membership that justified it, whichever exit was taken), then revoke the
+// role tuple, then delete the row, then evict the caller's cached workspace
+// resolution so their very next request does not answer from a membership that
+// no longer exists.
+func (s *Service) LeaveWorkspace(ctx context.Context, workspaceID string) error {
+	// Deferred allowed-write recording, like Remove: the success row carries the
+	// revoked-key count, which is not known until the disposal has run.
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	id, ok := core.IdentityFrom(ctx)
+	if !ok || id.Subject == "" {
+		return core.ErrForbidden
+	}
+	if err := s.AuthorizeOnTarget(ctx, core.RelCanView, core.WorkspaceObject(workspaceID), core.MemberTarget(id.Subject)); err != nil {
+		return err
+	}
+	if s.Store == nil {
+		return ErrMembersUnavailable
+	}
+	m, err := s.Store.GetTenantMember(ctx, workspaceID, id.Subject)
+	if err != nil {
 		return mapStoreErr(err)
 	}
-	s.RecordMemberRemoved(ctx, workspaceID, subject, len(revokedKeys))
+	if err := s.guardOwnerLeaving(ctx, workspaceID, id.Subject); err != nil {
+		return err
+	}
+	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, ""); err != nil {
+		return err
+	}
+	revokedKeys, err := s.endMembership(ctx, workspaceID, id.Subject, m.Role, leaveStoreErr)
+	if err != nil {
+		return err
+	}
+	s.invalidateResolution(id.Subject, workspaceID)
+	s.RecordMemberLeft(ctx, workspaceID, id.Subject, revokedKeys)
 	return nil
+}
+
+// guardOwnerLeaving is guardOwner's removal rule with the leaving caller's own
+// vocabulary — same condition, a code that names what the caller was trying to
+// do.
+func (s *Service) guardOwnerLeaving(ctx context.Context, workspaceID, subject string) error {
+	owner, err := s.Store.TenantOwnerSubject(ctx, workspaceID)
+	if err != nil {
+		return mapStoreErr(err)
+	}
+	if owner == "" || owner != subject {
+		return nil
+	}
+	return errOwnerCannotLeave()
+}
+
+func errOwnerCannotLeave() error {
+	return core.NewConflictError(ErrorOwnerCannotLeave,
+		"you own this workspace and cannot leave it; transferring ownership is not available yet", nil)
+}
+
+// leaveStoreErr is mapStoreErr plus the leaving caller's owner vocabulary: the
+// store backstop speaks in removal terms (ErrOwnerMember), which is right for
+// Remove and wrong here.
+func leaveStoreErr(err error) error {
+	if errors.Is(err, store.ErrOwnerMember) {
+		return errOwnerCannotLeave()
+	}
+	return mapStoreErr(err)
+}
+
+// invalidateResolution evicts the caller's cached workspace resolution and
+// their cached membership in the workspace they just left, so the next request
+// re-resolves instead of riding a positive for the rest of core.PositiveTTL.
+// The m13 finding is the failure this avoids: after a self-delete the
+// dashboard's workspace switcher went blank for up to 30s because the stale
+// entry still resolved to a workspace the caller no longer belonged to.
+// OpenFGA remains the authorization gate either way — the revoked tuple denies
+// the verbs; this is about resolving to the RIGHT workspace promptly.
+func (s *Service) invalidateResolution(subject, workspaceID string) {
+	if s.Base == nil || s.Base.Workspace == nil {
+		return
+	}
+	if inv, ok := s.Base.Workspace.(interface{ InvalidateTenant(string) }); ok {
+		inv.InvalidateTenant(subject)
+	}
+	if inv, ok := s.Base.Workspace.(interface{ InvalidateMembership(string, string) }); ok {
+		inv.InvalidateMembership(subject, workspaceID)
+	}
 }
 
 // AccountMemberStore is the deletion-specific store operation that rechecks

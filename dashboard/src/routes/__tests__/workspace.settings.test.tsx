@@ -43,6 +43,14 @@ vi.mock("@/features/team/components/team-panel", () => ({
   TeamPanel: () => <div>Team panel</div>,
 }));
 
+// The danger zone gained a permanent resident in w5/m102: Leave workspace is
+// available to every member, so the section now exists regardless of how many
+// workspaces the caller has — only the DELETE card stays gated on having
+// somewhere else to land.
+vi.mock("@/features/team/components/leave-workspace-card", () => ({
+  LeaveWorkspaceCard: () => <div>Leave workspace card</div>,
+}));
+
 const primaryWorkspace: WorkspaceView = {
   id: "tea-primary",
   name: "primary",
@@ -83,16 +91,20 @@ beforeEach(() => {
 });
 
 describe("WorkspaceSettingsPage", () => {
-  it("hides the delete section and navigation link for the user's only workspace", async () => {
+  it("hides the delete card for the user's only workspace but keeps Leave", async () => {
     await renderPage();
 
     expect(
       screen.getByRole("heading", { name: "Workspace settings" }),
     ).toBeInTheDocument();
+    // Nowhere else to land, so deleting is unavailable — but a member of a
+    // workspace they do not own must still be able to leave it (w5/m102).
     expect(screen.queryByText("Delete workspace card")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Danger Zone" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Leave workspace card")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Danger Zone" })).toHaveAttribute(
+      "href",
+      "#danger-zone",
+    );
   });
 
   it("shows the delete section and navigation link when another workspace exists", async () => {
@@ -104,6 +116,7 @@ describe("WorkspaceSettingsPage", () => {
     await renderPage();
 
     expect(screen.getByText("Delete workspace card")).toBeInTheDocument();
+    expect(screen.getByText("Leave workspace card")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Danger Zone" })).toHaveAttribute(
       "href",
       "#danger-zone",
