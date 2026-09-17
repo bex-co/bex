@@ -1,6 +1,6 @@
 # w7 · m148 — Reliable local cluster bring-up
 
-**Worker:** worker7 **Goal:** Publish a usable local substrate without concurrent provisioning or misleading success. **Status:** blocked (t001-t006 done; t007 closeout held on a healthy local run)
+**Worker:** worker7 **Goal:** Publish a usable local substrate without concurrent provisioning or misleading success. **Status:** done (2026-09-17)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Verify the installed substrate before reporting success — **DONE** | 45m | w7/m148/t003 |
 | t005 | Simplify — **DONE** | 25m | w7/m148/t001, w7/m148/t002, w7/m148/t003, w7/m148/t004 |
 | t006 | Test coverage — **DONE** | 45m | w7/m148/t001, w7/m148/t002, w7/m148/t003, w7/m148/t004 |
-| t007 | Closeout | 15m | w7/m148/t005, w7/m148/t006 |
+| t007 | Closeout — **DONE** | 15m | w7/m148/t005, w7/m148/t006 |
 
 ## Definition of done
 
@@ -25,8 +25,8 @@
 - [x] Healthy bootstrap still reaches CNI installation and later readiness checks in the correct order.
 - [x] No recovery touches production or silently destroys another workstream's resources.
 - [x] The script never prints its successful up message after a required check fails.
-- [ ] A healthy local run and controlled failed prerequisite have recorded results.
-- [ ] Report any local environment rebuilt; do not claim the script installs the bex operator or App CRD if that remains a separate workflow.
+- [x] A healthy local run and controlled failed prerequisite have recorded results.
+- [x] Report any local environment rebuilt; do not claim the script installs the bex operator or App CRD if that remains a separate workflow.
 
 ## Source + Goal linkage
 
@@ -37,7 +37,11 @@
 - **Render parity:** Omitted: local infrastructure and harness behavior only; no REST/GraphQL/MCP/UI contract change.
 - **Sizing:** 180m implementation; 265m including standing closing tasks, 7 tasks.
 
-## BLOCKED 2026-09-17 — needs a healthy CAPD environment
+## UNBLOCKED and closed 2026-09-17 — the environment was rebuilt
+
+> The block below is kept as the record of why this milestone paused. It cleared the same day: the rotted cluster was reprovisioned (a stuck machine finalizer had to be cleared by hand), the rebuild surfaced and fixed a pre-existing helm `--set` comma bug that had been aborting every bring-up at metrics-server, and a healthy run then passed all seven verification checks. See `done/t007.md`.
+
+### Original block
 
 Every implementable task (t001-t006) is done, verified, and CI-gated. One acceptance line cannot be satisfied here: **"A healthy local run ... recorded"**. The controlled-failure half *is* recorded, and it is strong evidence — a real bring-up refused to publish and left the shared kubeconfig byte-identical.
 
