@@ -1,6 +1,6 @@
 # w3 · m163 — Payment wall: turn the self-host exit into a deliberate delete-and-self-host
 
-**Worker:** worker3 **Goal:** The payment wall's self-host escape hatch stops being a bare outbound link and becomes an explicit, confirmed "delete this account and self-host" — so someone who does not want to add a card leaves cleanly instead of leaving an abandoned workspace behind. **Status:** todo (t001–t003 done; t004–t007 open)
+**Worker:** worker3 **Goal:** The payment wall's self-host escape hatch stops being a bare outbound link and becomes an explicit, confirmed "delete this account and self-host" — so someone who does not want to add a card leaves cleanly instead of leaving an abandoned workspace behind. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | Rewrite the payment-wall exit copy (en + zh) — **DONE**                     | 30m | —            |
 | t002 | Add the typed-confirmation dialog and wire account deletion — **DONE**      | 1h  | t001         |
 | t003 | Update ADR075 § Positioning to match the new exit semantics — **DONE**      | 20m | t002         |
-| t004 | Render parity check for the changed surface                      | 30m | t002         |
-| t005 | `/simplify` over the milestone's changes                         | 20m | t004         |
-| t006 | Test coverage for the new exit                                   | 45m | t004         |
-| t007 | Closeout                                                         | 15m | t006         |
+| t004 | Render parity check for the changed surface — **DONE** | 30m | t002         |
+| t005 | `/simplify` over the milestone's changes — **DONE** | 20m | t004         |
+| t006 | Test coverage for the new exit — **DONE** | 45m | t004         |
+| t007 | Closeout — **DONE** | 15m | t006         |
 
 ## Definition of done
 

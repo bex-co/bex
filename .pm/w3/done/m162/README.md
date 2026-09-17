@@ -1,6 +1,6 @@
 # w3 · m162 — Billing webhook, account-deletion, and analytics-pipeline correctness
 
-**Worker:** worker3 **Goal:** Close every correctness defect found in the 2026-09-16 "why is web services stuck at 7" investigation, so a bound payment method is never silently lost, a deleted account leaves nothing behind in Stripe, and the analytics pipeline never labels a failed collection as authoritative. **Status:** todo (t001–t006, t008, t009 done; t007 code + production CR cleanup landed, disposable workspaces still to remove; t010–t012 open)
+**Worker:** worker3 **Goal:** Close every correctness defect found in the 2026-09-16 "why is web services stuck at 7" investigation, so a bound payment method is never silently lost, a deleted account leaves nothing behind in Stripe, and the analytics pipeline never labels a failed collection as authoritative. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,12 +12,12 @@
 | t004 | Alert on webhook liveness using the existing last-success metric — **DONE**             | 30m | w3/m162/t003          |
 | t005 | Guard against Stripe endpoint ↔ code drift (enabled_events + api_version) — **DONE**    | 45m | w3/m162/t003          |
 | t006 | Disambiguate "opened checkout" from "bound a card" in the data model — **DONE**         | 45m | —                     |
-| t007 | Fix verify-tenant-isolation.sh resource leak and clear the leaked App CRs    | 30m | —                     |
+| t007 | Fix verify-tenant-isolation.sh resource leak and clear the leaked App CRs — **DONE** | 30m | —                     |
 | t008 | Populate the product-analytics audience dimension and guard it — **DONE**               | 30m | —                     |
 | t009 | Never mark a failed services inventory collection as complete — **DONE**                | 30m | —                     |
-| t010 | `/simplify` over the milestone's changes                                     | 30m | t001–t009             |
-| t011 | Test coverage for the shipped behavior                                       | 1h  | t010                  |
-| t012 | Closeout                                                                     | 15m | w3/m162/t011          |
+| t010 | `/simplify` over the milestone's changes — **DONE** | 30m | t001–t009             |
+| t011 | Test coverage for the shipped behavior — **DONE** | 1h  | t010                  |
+| t012 | Closeout — **DONE** | 15m | w3/m162/t011          |
 
 ## Definition of done
 
