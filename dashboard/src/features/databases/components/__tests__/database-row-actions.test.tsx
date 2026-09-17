@@ -105,7 +105,7 @@ describe("DatabaseRowActions", () => {
     await user.click(screen.getByRole("button", { name: "Open actions menu" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     const confirm = within(dialog).getByRole("button", {
       name: "Delete database",
     });
@@ -137,7 +137,7 @@ describe("DatabaseRowActions", () => {
 
     await user.click(screen.getByRole("button", { name: "Open actions menu" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-    const localDialog = await screen.findByRole("dialog");
+    const localDialog = await screen.findByRole("alertdialog");
     await user.type(
       within(localDialog).getByRole("textbox"),
       "sudo delete postgres shop-db",

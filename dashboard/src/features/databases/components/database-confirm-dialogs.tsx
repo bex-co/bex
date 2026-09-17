@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/common/components/ui/dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { DatabaseLifecycleAction } from "@/features/databases/hooks/use-database-lifecycle";
@@ -45,42 +46,35 @@ export function DeleteDatabaseDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {t("databases.deleteConfirmTitle", { name: database.name })}
-          </DialogTitle>
-          <DialogDescription>
-            {t("databases.deleteConfirmBody")}
-          </DialogDescription>
-        </DialogHeader>
-        <SudoCommandField
-          id="db-delete-confirm"
-          promptKey="databases.deleteConfirmPrompt"
-          phrase={confirmPhrase}
-          value={typed}
-          onValueChange={setTyped}
-        />
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={busy}
-          >
-            {t("databases.deleteCancel")}
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => void onConfirm()}
-            disabled={!canDelete}
-          >
-            {busy ? <Loader2 className="animate-spin" /> : null}
-            {t("databases.deleteConfirm")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    // AlertDialog via ConfirmDialog (w7/053): a typed-phrase delete announces
+    // as `alertdialog` so assistive tech reads the description as an alert,
+    // and Radix refuses outside-click dismissal so a stray click cannot
+    // discard a half-typed sudo phrase. The gate stays the caller's shared
+    // SudoCommandField, riding confirmDisabled.
+    <ConfirmDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={t("databases.deleteConfirmTitle", { name: database.name })}
+      description={t("databases.deleteConfirmBody")}
+      cancelLabel={t("databases.deleteCancel")}
+      confirmLabel={
+        <>
+          {busy ? <Loader2 className="animate-spin" /> : null}
+          {t("databases.deleteConfirm")}
+        </>
+      }
+      confirmDisabled={!canDelete}
+      pending={busy}
+      onConfirm={() => void onConfirm()}
+    >
+      <SudoCommandField
+        id="db-delete-confirm"
+        promptKey="databases.deleteConfirmPrompt"
+        phrase={confirmPhrase}
+        value={typed}
+        onValueChange={setTyped}
+      />
+    </ConfirmDialog>
   );
 }
 

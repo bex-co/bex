@@ -84,6 +84,16 @@ export interface ConfirmDialogProps {
   confirmDisabled?: boolean;
   /** Extra classes on the dialog surface, e.g. a scroll cap for tall content. */
   contentClassName?: string;
+  /**
+   * Keep the dialog open after confirm. Radix closes on AlertDialogAction by
+   * default, which is right for an action that either succeeds or reports
+   * elsewhere — but wrong for one whose failure re-prompts *in this dialog*.
+   * The service delete is that case: a protected environment answers
+   * `confirmation_required` with a server-issued phrase the user must then
+   * type here, so closing would discard the prompt it just asked for. A caller
+   * passing false owns closing (usually by navigating away on success).
+   */
+  closeOnConfirm?: boolean;
 }
 
 export function ConfirmDialog({
@@ -102,6 +112,7 @@ export function ConfirmDialog({
   children,
   confirmDisabled = false,
   contentClassName,
+  closeOnConfirm = true,
 }: ConfirmDialogProps) {
   const { t } = useTranslations();
   const [typed, setTyped] = useState("");
@@ -149,9 +160,12 @@ export function ConfirmDialog({
             destructive &&
               "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20",
           )}
-          onClick={() => {
+          onClick={(event) => {
+            // preventDefault stops Radix's close-on-action so a re-prompting
+            // caller keeps its dialog; the default path is unchanged.
+            if (!closeOnConfirm) event.preventDefault();
             onConfirm();
-            setTyped("");
+            if (closeOnConfirm) setTyped("");
           }}
         >
           {confirmLabel}

@@ -127,7 +127,7 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
       screen.getByRole("button", { name: "Delete Key Value Instance" }),
     );
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByRole("heading", {
         name: "Delete Key Value Instance",

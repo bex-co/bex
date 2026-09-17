@@ -8,15 +8,8 @@ import {
   CardDescription,
   CardContent,
 } from "@/common/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/common/components/ui/dialog";
 import { Button } from "@/common/components/ui/button";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteService } from "@/features/services/hooks/use-delete-service";
@@ -101,52 +94,49 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
         </Button>
       </CardContent>
 
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {t("services.deleteConfirmTitle", { name: service.name })}
-            </DialogTitle>
-            <DialogDescription>
-              {requiredConfirmation
-                ? t("services.protectedConfirmationBody", {
-                    name: service.name,
-                  })
-                : t("services.deleteConfirmBody", {
-                    type: sudoServiceTypeWords(service),
-                  })}
-            </DialogDescription>
-          </DialogHeader>
-          <SudoCommandField
-            id="service-delete-confirm"
-            promptKey={
-              requiredConfirmation
-                ? "services.protectedConfirmationPrompt"
-                : "services.deleteConfirmPrompt"
-            }
-            phrase={expectedConfirmation}
-            value={confirmation}
-            onValueChange={setConfirmation}
-          />
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={deleting}
-            >
-              {t("services.deleteCancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleDelete()}
-              disabled={!matches || deleting}
-            >
-              {deleting ? <Loader2 className="animate-spin" /> : null}
-              {t("services.deleteConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* AlertDialog via ConfirmDialog (w7/053). Deleting a service destroys
+          data and leaves no second signal that it happened, so it must
+          announce as `alertdialog` and refuse outside-click dismissal — a
+          stray click should not discard a half-typed sudo phrase. The gate
+          stays this card's own SudoCommandField, riding confirmDisabled. */}
+      <ConfirmDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        title={t("services.deleteConfirmTitle", { name: service.name })}
+        description={
+          requiredConfirmation
+            ? t("services.protectedConfirmationBody", { name: service.name })
+            : t("services.deleteConfirmBody", {
+                type: sudoServiceTypeWords(service),
+              })
+        }
+        cancelLabel={t("services.deleteCancel")}
+        confirmLabel={
+          <>
+            {deleting ? <Loader2 className="animate-spin" /> : null}
+            {t("services.deleteConfirm")}
+          </>
+        }
+        confirmDisabled={!matches}
+        pending={deleting}
+        // A protected environment answers confirmation_required with a phrase
+        // the user must type in this same dialog, so it must survive a confirm
+        // that did not delete anything. Success navigates away.
+        closeOnConfirm={false}
+        onConfirm={() => void handleDelete()}
+      >
+        <SudoCommandField
+          id="service-delete-confirm"
+          promptKey={
+            requiredConfirmation
+              ? "services.protectedConfirmationPrompt"
+              : "services.deleteConfirmPrompt"
+          }
+          phrase={expectedConfirmation}
+          value={confirmation}
+          onValueChange={setConfirmation}
+        />
+      </ConfirmDialog>
     </Card>
   );
 }
