@@ -61,3 +61,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w9/dev-9/` keeps onl
 1. **[060 — Repair name-conflict E2E Hydra compatibility](060.md)** (40–60m; transferred from w5/052). Requires Docker for the full run; inbox-sized.
 
 `m93` closed 2026-09-08: live `image-healthcheck` + `web-builder-roundtrip` on dev-9 with CLI pin `fe8a6188119e` / API HEAD `9024a9672`; moved to `done/m93/`. The two inbox notes preserve their original evidence and replace their source queue entries. No new milestone or duplicated closing tasks are needed.
+
+## Cron preview follow-up
+
+- [ ] **[061 — Truthful cron schedule previews](061.md)** (45–60m; transferred from w4/099). Includes oversized and non-divisor steps across Create and Settings; worker9, no dependencies. Inbox-sized; existing 060 remains queued.
