@@ -182,9 +182,14 @@ describe("WebhookSettingsCard (w1/m49/t005)", () => {
     expect(confirm).toBeDisabled();
 
     const input = within(dialog).getByPlaceholderText(
-      "delete webhook slack-bot",
+      "sudo delete webhook slack-bot",
     );
-    await user.type(input, "delete webhook slack-bo"); // near miss
+    // The old, sudo-less phrase must no longer submit: it is a near miss now.
+    await user.type(input, "delete webhook slack-bot");
+    expect(confirm).toBeDisabled();
+    await user.clear(input);
+
+    await user.type(input, "sudo delete webhook slack-bo"); // near miss
     expect(confirm).toBeDisabled();
 
     await user.type(input, "t"); // completes the exact command

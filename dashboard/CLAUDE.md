@@ -47,6 +47,34 @@ Add new non-auth feature code under `src/features/<name>/`, following a self-con
 - Tests live in `__tests__` directories adjacent to the code they test, e.g. `src/common/hooks/__tests__/use-mobile.test.ts`.
 - Don't hand-roll auth forms — `@ory/elements-react`'s flow components already track whatever methods/fields Kratos's config actually enables; hardcoding form shapes would drift out of sync with it.
 
+## Destructive confirmations (w7/053, w7/057)
+
+Anything that destroys data and leaves no second signal that it happened is
+gated the same way, so the muscle memory a user builds on one surface
+transfers to every other:
+
+- **Phrase:** `sudo <verb> <type> <name>` — `sudo delete web service api`,
+  `sudo delete env group shared`, `sudo delete webhook slack-bot`,
+  `sudo restore disk /data`. Build it in one place per feature and show it to
+  the user; never ask for a phrase the dialog does not display.
+- **`restore` is destructive and takes the same gate.** A disk restore
+  discards every write made after the snapshot, so it carries the sudo phrase
+  _and_ a warning that says so. Do not treat a non-`delete` verb as safe.
+- **Primitive:** render through `ConfirmDialog`
+  (`common/components/confirm-dialog.tsx`), which is Radix `AlertDialog` —
+  assistive tech announces the description as an alert, and an outside click
+  cannot discard a half-typed phrase. A plain `Dialog` is for ordinary forms
+  (rename, move, clone), not for confirmations that destroy.
+- **Composition:** keep the shared `SudoCommandField` as `children` and drive
+  `confirmDisabled`, or pass `ConfirmDialog`'s own `phrase` prop. Both are in
+  use; the first keeps the house look.
+- **`closeOnConfirm={false}`** when a failed confirm must re-prompt in the same
+  dialog. The service delete needs it: a protected environment answers
+  `confirmation_required` with a server-issued phrase the user then types
+  there, and Radix would otherwise close on the action.
+- **`ProtectedConfirmationDialog` stays separate.** Its phrase is issued by
+  bex-api as part of an API handshake, not a local are-you-sure.
+
 ## GraphQL (bex-api, not auth)
 
 `codegen.ts` generates typed queries/mutations from `src/**/*.graphql` into `src/graphql/definitions.ts`, introspecting bex-api's `/graphql` (`VITE_API_URL`). Every bex-api route requires a real credential (`docs/ADR012-auth.md`) — introspection too — so `yarn codegen` needs `CODEGEN_SESSION_TOKEN` (an Ory session token) set in the environment; without it, codegen falls back to an unauthenticated request that bex-api will reject. This is unrelated to Kratos as a runtime dependency — bex-api and Kratos are separate services (`docs/ADR002-architecture.md`, `docs/ADR012-auth.md`) — the token is just how codegen authenticates _to_ bex-api.
