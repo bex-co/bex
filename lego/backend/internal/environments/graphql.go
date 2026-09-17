@@ -35,7 +35,7 @@ var environmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"projectId":               gqlutil.StrField(func(e EnvironmentView) any { return e.ProjectID }),
 		"name":                    gqlutil.StrField(func(e EnvironmentView) any { return e.Name }),
 		"ownerId":                 gqlutil.StrField(func(e EnvironmentView) any { return e.OwnerID }),
-		"createdAt":               gqlutil.StrField(func(e EnvironmentView) any { return e.CreatedAt }),
+		"createdAt":               gqlutil.TimeField(func(e EnvironmentView) any { return e.CreatedAt }),
 		"serviceIds":              gqlutil.StrsField(func(e EnvironmentView) any { return e.ServiceIDs }),
 		"databaseIds":             gqlutil.StrsField(func(e EnvironmentView) any { return e.DatabaseIDs }),
 		"keyValueIds":             gqlutil.StrsField(func(e EnvironmentView) any { return e.KeyValueIDs }),

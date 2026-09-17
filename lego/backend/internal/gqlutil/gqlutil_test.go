@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 
@@ -236,5 +237,53 @@ func TestIntReadsAnOptionalArgument(t *testing.T) {
 				t.Fatalf("Int = %d, want %d", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestTimeField pins the wire shape w7/052 was filed about: GraphQL must emit
+// the same RFC3339 instant REST does, not Go's default time.String() layout.
+// The regression it guards is subtle — handing a time.Time to StrField still
+// "works" (graphql-go coerces it to a string), it just produces
+// "2026-07-18 04:56:00.96433 +0000 UTC", which no strict parser accepts.
+func TestTimeField(t *testing.T) {
+	type view struct {
+		At    time.Time
+		AtPtr *time.Time
+	}
+	instant := time.Date(2026, 7, 18, 4, 56, 0, 964330000, time.UTC)
+
+	resolve := func(f *graphql.Field, v view) any {
+		out, err := f.Resolve(graphql.ResolveParams{Source: v})
+		if err != nil {
+			t.Fatalf("resolve: %v", err)
+		}
+		return out
+	}
+
+	value := TimeField(func(v view) any { return v.At })
+	if got := resolve(value, view{At: instant}); got != "2026-07-18T04:56:00Z" {
+		t.Errorf("time.Time: got %v, want RFC3339 2026-07-18T04:56:00Z", got)
+	}
+
+	// A zero time means "never". Emitting 0001-01-01T00:00:00Z would hand a
+	// consumer a real-looking timestamp for a thing that never happened.
+	if got := resolve(value, view{}); got != nil {
+		t.Errorf("zero time: got %v, want nil", got)
+	}
+
+	ptr := TimeField(func(v view) any { return v.AtPtr })
+	if got := resolve(ptr, view{AtPtr: &instant}); got != "2026-07-18T04:56:00Z" {
+		t.Errorf("*time.Time: got %v, want RFC3339", got)
+	}
+	if got := resolve(ptr, view{AtPtr: nil}); got != nil {
+		t.Errorf("nil *time.Time: got %v, want nil", got)
+	}
+
+	// Non-UTC input must still emit UTC, or the same instant would read
+	// differently depending on the server's zone.
+	zoned := time.FixedZone("UTC+8", 8*3600)
+	shifted := TimeField(func(v view) any { return v.At })
+	if got := resolve(shifted, view{At: instant.In(zoned)}); got != "2026-07-18T04:56:00Z" {
+		t.Errorf("zoned time: got %v, want UTC RFC3339", got)
 	}
 }
