@@ -87,6 +87,13 @@ type AuditEvent struct {
 	// never free-form.
 	RoleFrom *string
 	RoleTo   *string
+	// RevokedKeyCount is how many API keys a membership removal revoked
+	// (w2/m163). A removal disposes of the machine credentials the departing
+	// member created in that workspace, which can break automation the workspace
+	// still depends on — so the count is part of the record, not a side effect
+	// nobody can see afterwards. Nil for every verb that revokes no keys; 0
+	// means "checked, the member had none", which is different from nil.
+	RevokedKeyCount *int32
 	// BillingExcludedTo is the value a billing-exclusion toggle was set TO
 	// (docs/ADR040-billing-metronome.md §7): true = comped/exempt out of
 	// Stripe, false = billable again. Nil for every other verb. Admin-only,
@@ -176,6 +183,7 @@ const (
 	// write-relation authorize for the joined workspace.
 	AuditVerbMemberInvited     = "members.Invite"
 	AuditVerbMemberRoleChanged = "members.ChangeRole"
+	AuditVerbMemberRemoved     = "members.Remove"
 	AuditVerbInviteAccepted    = "members.AcceptInvite"
 	// AuditVerbBillingExclusionChanged records an admin toggling a workspace's
 	// Stripe billing exclusion (docs/ADR040-billing-metronome.md §7). It is
@@ -507,6 +515,18 @@ func (b *Base) RecordMemberRoleChanged(ctx context.Context, workspaceID, subject
 	ev := b.verbAuditEvent(ctx, AuditVerbMemberRoleChanged, WorkspaceObject(workspaceID), MemberTarget(subject))
 	ev.RoleFrom = &fromRole
 	ev.RoleTo = &toRole
+	b.recordAudit(ctx, ev)
+}
+
+// RecordMemberRemoved records a successful removal together with how many of
+// the member's API keys it revoked (w2/m163). Paired with
+// WithDeferredAllowedWriteAudit on the verb's authorize, because the count is
+// not known until the disposal has actually run — a refused or failed removal
+// must not claim it revoked anything.
+func (b *Base) RecordMemberRemoved(ctx context.Context, workspaceID, subject string, revokedKeys int) {
+	ev := b.verbAuditEvent(ctx, AuditVerbMemberRemoved, WorkspaceObject(workspaceID), MemberTarget(subject))
+	count := int32(revokedKeys)
+	ev.RevokedKeyCount = &count
 	b.recordAudit(ctx, ev)
 }
 

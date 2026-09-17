@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -1185,6 +1186,274 @@ func TestPreviewInvite(t *testing.T) {
 	for _, invalid := range []string{"", "bad", token, strings.ToUpper(token)} {
 		if _, err := s.PreviewInvite(ctxWith("bob"), invalid); err == nil {
 			t.Fatal("unknown/malformed token accepted")
+		}
+	}
+}
+
+// --- w2/m163: a removed member's machine credentials ------------------------
+
+// fakeKeyDisposer records what the members service asked it to revoke, and can
+// fail on demand. It models apikeys.AccountTeardown's workspace-scoped verb.
+type fakeKeyDisposer struct {
+	// keys[workspaceID][subject] = key ids created by that subject there.
+	keys  map[string]map[string][]string
+	calls []string // "workspace/subject" per invocation, in order
+	err   error
+}
+
+func newFakeKeyDisposer() *fakeKeyDisposer {
+	return &fakeKeyDisposer{keys: map[string]map[string][]string{}}
+}
+
+func (f *fakeKeyDisposer) seed(workspaceID, subject string, ids ...string) {
+	if f.keys[workspaceID] == nil {
+		f.keys[workspaceID] = map[string][]string{}
+	}
+	f.keys[workspaceID][subject] = append(f.keys[workspaceID][subject], ids...)
+}
+
+func (f *fakeKeyDisposer) CleanupSubjectInWorkspace(_ context.Context, subject, workspaceID string) ([]string, error) {
+	f.calls = append(f.calls, workspaceID+"/"+subject)
+	if f.err != nil {
+		return nil, f.err
+	}
+	revoked := f.keys[workspaceID][subject]
+	delete(f.keys[workspaceID], subject)
+	return revoked, nil
+}
+
+func (f *fakeKeyDisposer) live(workspaceID, subject string) []string {
+	return f.keys[workspaceID][subject]
+}
+
+// Removing a member revokes the API keys they created in THAT workspace — the
+// w2/m163 gap: a key carries its own tenant_members row at role developer, so
+// before this it kept authorizing after its creator's row and tuple were gone.
+func TestRemoveRevokesTheMembersKeysInThatWorkspace(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "developer")
+	keys := newFakeKeyDisposer()
+	keys.seed("tea-1", "bob", "key-bob-1", "key-bob-2")
+	keys.seed("tea-1", "admin-1", "key-admin")
+	keys.seed("tea-other", "bob", "key-bob-elsewhere")
+
+	s := svc(st, newFakeGranter(), nil, nil)
+	s.Keys = keys
+
+	if err := s.Remove(ctxWith("admin-1"), "tea-1", "bob"); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if got := keys.live("tea-1", "bob"); len(got) != 0 {
+		t.Errorf("bob's keys in tea-1 survived the removal: %v", got)
+	}
+	// Scope, both ways: a remaining member's keys and the same subject's keys in
+	// another workspace are untouched. Leaving one workspace says nothing about
+	// the subject's credentials elsewhere.
+	if got := keys.live("tea-1", "admin-1"); len(got) != 1 {
+		t.Errorf("a remaining member's keys were disposed: %v", got)
+	}
+	if got := keys.live("tea-other", "bob"); len(got) != 1 {
+		t.Errorf("bob's keys in another workspace were disposed: %v", got)
+	}
+	if len(keys.calls) != 1 || keys.calls[0] != "tea-1/bob" {
+		t.Errorf("disposer calls = %v, want exactly [tea-1/bob]", keys.calls)
+	}
+}
+
+// A failed key revocation must fail the removal. Reporting a clean removal over
+// a credential that is still live is the exact lie this milestone exists to
+// stop, and the member row must survive so a retry can converge.
+func TestRemoveSurfacesKeyDisposalFailureAndStaysRetryable(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "developer")
+	keys := newFakeKeyDisposer()
+	keys.err = errors.New("hydra unavailable")
+	g := newFakeGranter()
+
+	s := svc(st, g, nil, nil)
+	s.Keys = keys
+
+	err := s.Remove(ctxWith("admin-1"), "tea-1", "bob")
+	if err == nil {
+		t.Fatal("removal reported success over a failed key revocation")
+	}
+	if !strings.Contains(err.Error(), "API keys") {
+		t.Errorf("error does not name the cause: %v", err)
+	}
+	// Retryable state: nothing else happened.
+	if _, ok := st.members["bob"]; !ok {
+		t.Error("member row deleted despite the failure — a retry can no longer reach it")
+	}
+	if len(g.revoked) != 0 {
+		t.Errorf("tuple revoked despite the failure: %v", g.revoked)
+	}
+}
+
+// No key registry configured (no Hydra) is the one case where doing nothing is
+// the truth — there are no keys to dispose. It must not be confused with a
+// silent skip while a registry IS wired.
+func TestRemoveWithoutAKeyRegistryStillRemoves(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "developer")
+	s := svc(st, newFakeGranter(), nil, nil) // s.Keys stays nil
+	if err := s.Remove(ctxWith("admin-1"), "tea-1", "bob"); err != nil {
+		t.Fatalf("remove without a key registry: %v", err)
+	}
+	if _, ok := st.members["bob"]; ok {
+		t.Error("member row not deleted")
+	}
+}
+
+// The account-deletion path must not double-dispose: the account worker already
+// ran the global CleanupSubject before per-workspace offboarding, so
+// AccountOffboarder deliberately carries no key teardown of its own.
+func TestAccountOffboarderDoesNotDisposeKeys(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "developer")
+	g := newFakeGranter()
+
+	off := AccountOffboarder{Store: accountStoreOver{st}, Revoker: g}
+	if err := off.Remove(context.Background(), "tea-1", "bob"); err != nil {
+		t.Fatalf("offboarder remove: %v", err)
+	}
+	if _, ok := st.members["bob"]; ok {
+		t.Error("member row not deleted")
+	}
+	// The assertion that matters is structural: AccountOffboarder has no key
+	// seam to call, so it cannot double-dispose. If someone adds one, this test
+	// is where they must justify it.
+	if reflect.ValueOf(off).NumField() != 3 {
+		t.Errorf("AccountOffboarder gained a field — if it is a key disposer, the "+
+			"account worker would run teardown twice (w2/m163 t003); fields = %d",
+			reflect.ValueOf(off).NumField())
+	}
+}
+
+// accountStoreOver adapts the members fake to AccountMemberStore, the
+// deletion-path store seam.
+type accountStoreOver struct{ *fakeStore }
+
+func (a accountStoreOver) RemoveAccountMember(ctx context.Context, tenantID, subject string) error {
+	return a.fakeStore.RemoveMember(ctx, tenantID, subject)
+}
+
+// Every path that ENDS a membership must dispose of the member's keys. This
+// enumerates the service's membership-ending verbs so a fourth one cannot ship
+// without the rule: when w5/m102's Leave verb lands, this fails until it is
+// added to the list and wired to disposeMemberKeys.
+func TestEveryMembershipEndingVerbDisposesKeys(t *testing.T) {
+	// The verbs that end a membership today, and therefore owe key disposal.
+	// RevokeInvite is absent on purpose: an unredeemed invite never became a
+	// membership, so there is no delegated credential to revoke.
+	wantEnding := map[string]bool{"Remove": true}
+
+	svcType := reflect.TypeOf(&Service{})
+	found := map[string]bool{}
+	for i := 0; i < svcType.NumMethod(); i++ {
+		name := svcType.Method(i).Name
+		switch {
+		case name == "RevokeInvite", name == "ResendInvite":
+			continue // invite lifecycle, not membership end
+		case strings.HasPrefix(name, "Remove"),
+			strings.HasPrefix(name, "Leave"),
+			strings.HasPrefix(name, "Offboard"),
+			strings.HasPrefix(name, "Depart"):
+			found[name] = true
+		}
+	}
+	for name := range found {
+		if !wantEnding[name] {
+			t.Errorf("%s looks like a membership-ending verb but is not in the "+
+				"w2/m163 disposal list — wire it to disposeMemberKeys and add it here", name)
+		}
+	}
+	for name := range wantEnding {
+		if !found[name] {
+			t.Errorf("%s was expected on Service but is gone — did the disposal rule move?", name)
+		}
+	}
+}
+
+// recordingAuditSink captures every audit event the service emits.
+type recordingAuditSink struct{ events []core.AuditEvent }
+
+func (r *recordingAuditSink) Record(_ context.Context, ev core.AuditEvent) error {
+	r.events = append(r.events, ev)
+	return nil
+}
+
+// The removal's audit row carries how many keys it revoked (w2/m163 t004).
+// Revoking a member's credentials can break automation the workspace still
+// depends on, so it must be visible afterwards — and the count must be the real
+// one, recorded only after the disposal actually ran.
+func TestRemoveAuditsTheRevokedKeyCount(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		seed []string
+		want int32
+	}{
+		{name: "two keys", seed: []string{"key-1", "key-2"}, want: 2},
+		// Zero is recorded, not omitted: "checked, the member had none" is a
+		// different statement from "this verb does not revoke keys".
+		{name: "no keys", seed: nil, want: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore(store.PlanPro)
+			st.seedMember("admin-1", "admin")
+			st.seedMember("bob", "developer")
+			keys := newFakeKeyDisposer()
+			if len(tc.seed) > 0 {
+				keys.seed("tea-1", "bob", tc.seed...)
+			}
+			sink := &recordingAuditSink{}
+			s := svc(st, newFakeGranter(), nil, nil)
+			s.Keys = keys
+			s.Audit = sink
+
+			if err := s.Remove(ctxWith("admin-1"), "tea-1", "bob"); err != nil {
+				t.Fatalf("remove: %v", err)
+			}
+			var found *core.AuditEvent
+			for i := range sink.events {
+				if sink.events[i].Verb == core.AuditVerbMemberRemoved {
+					found = &sink.events[i]
+				}
+			}
+			if found == nil {
+				t.Fatalf("no members.Remove audit row; got %d events", len(sink.events))
+			}
+			if found.RevokedKeyCount == nil {
+				t.Fatal("removal audit row omitted the revoked key count")
+			}
+			if *found.RevokedKeyCount != tc.want {
+				t.Errorf("revokedKeyCount = %d, want %d", *found.RevokedKeyCount, tc.want)
+			}
+		})
+	}
+}
+
+// A failed removal must not leave an audit row claiming it revoked credentials.
+func TestFailedRemovalRecordsNoRevocationClaim(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "developer")
+	keys := newFakeKeyDisposer()
+	keys.err = errors.New("hydra unavailable")
+	sink := &recordingAuditSink{}
+	s := svc(st, newFakeGranter(), nil, nil)
+	s.Keys = keys
+	s.Audit = sink
+
+	if err := s.Remove(ctxWith("admin-1"), "tea-1", "bob"); err == nil {
+		t.Fatal("removal reported success over a failed key revocation")
+	}
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbMemberRemoved && ev.Outcome == core.AuditAllowed {
+			t.Fatalf("a failed removal wrote an allowed members.Remove row: %+v", ev)
 		}
 	}
 }

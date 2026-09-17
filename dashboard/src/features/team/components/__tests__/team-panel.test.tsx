@@ -439,3 +439,43 @@ describe("TeamPanel", () => {
     });
   });
 });
+
+// w2/m163: removing a member also revokes the API keys they created here, which
+// can break automation. The dialog has to say so BEFORE the admin confirms —
+// discovering it as a broken pipeline afterwards is the failure this prevents.
+describe("remove-member dialog discloses key revocation", () => {
+  it("warns that the member's API keys are revoked too", async () => {
+    const user = userEvent.setup();
+    teamState.members = [
+      {
+        subject: "id-admin",
+        userId: "own-1",
+        email: "admin@example.com",
+        role: "ADMIN",
+        createdAt: null,
+        mfaEnabled: false,
+        identityResolved: true,
+      },
+      {
+        subject: "id-bob",
+        userId: "own-2",
+        email: "bob@example.com",
+        role: "DEVELOPER",
+        createdAt: null,
+        mfaEnabled: false,
+        identityResolved: true,
+      },
+    ];
+    render(<TeamPanel />);
+
+    const removeButtons = await screen.findAllByRole("button", {
+      name: "Remove",
+    });
+    await user.click(removeButtons[removeButtons.length - 1]);
+
+    expect(
+      await screen.findByText(/also revokes any API keys/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/may break automation/i)).toBeInTheDocument();
+  });
+});

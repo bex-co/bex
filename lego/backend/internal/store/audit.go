@@ -60,8 +60,11 @@ type AuditRow struct {
 	// RoleFrom/RoleTo are the team-membership verbs' typed role detail
 	// (w1/m33, migration 0040): ChangeRole records old→new, Invite/AcceptInvite
 	// record RoleTo alone. Nil for every other verb and for pre-0040 rows.
-	RoleFrom *string
-	RoleTo   *string
+	// RevokedKeyCount is how many API keys a membership removal revoked
+	// (w2/m163). Nil for every other verb; 0 means the member had none.
+	RevokedKeyCount *int32
+	RoleFrom        *string
+	RoleTo          *string
 	// Relation is the RelCan… the decision was made against. Empty on typed
 	// system events and pre-0088 rows.
 	Relation string
@@ -110,18 +113,18 @@ func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 		INSERT INTO audit_events (id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at,
 		    maintenance_mode_to, plan_from, plan_to, instance_count_from, instance_count_to,
 		    autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to, auto_deploy_enabled,
-		    role_from, role_to, billing_excluded_to,
+		    role_from, role_to, billing_excluded_to, revoked_key_count,
 		    relation, oauth_client_id, oauth_audience, oauth_scopes,
 		    project_from, project_to, environment_from, environment_to,
 		    high_availability_enabled, connection_pool_enabled, disk_size_gb, maxmemory_policy, persistence_mode)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)`,
 		ids.New(ids.Audit), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, ev.TargetName, string(ev.Outcome), ev.At,
 		ev.MaintenanceModeTo,
 		ev.PlanFrom, ev.PlanTo,
 		ev.InstanceCountFrom, ev.InstanceCountTo,
 		ev.AutoscalingMinFrom, ev.AutoscalingMaxFrom, ev.AutoscalingMinTo, ev.AutoscalingMaxTo,
 		ev.AutoDeployEnabled,
-		ev.RoleFrom, ev.RoleTo, ev.BillingExcludedTo,
+		ev.RoleFrom, ev.RoleTo, ev.BillingExcludedTo, ev.RevokedKeyCount,
 		nullIfEmpty(ev.Relation), nullIfEmpty(ev.OAuthClientID), nullIfEmpty(ev.OAuthAudience), nullIfEmptyScopes(ev.OAuthScopes),
 		ev.ProjectFrom, ev.ProjectTo, ev.EnvironmentFrom, ev.EnvironmentTo,
 		ev.HighAvailabilityEnabled, ev.ConnectionPoolEnabled, ev.DiskSizeGB, ev.MaxmemoryPolicy, ev.PersistenceMode)
@@ -142,12 +145,12 @@ func nullIfEmptyScopes(scopes []string) []string {
 	return scopes
 }
 
-const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at, maintenance_mode_to, role_from, role_to, relation, oauth_client_id, oauth_audience, oauth_scopes`
+const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at, maintenance_mode_to, role_from, role_to, revoked_key_count, relation, oauth_client_id, oauth_audience, oauth_scopes`
 
 func scanAuditRow(row pgx.Row) (AuditRow, error) {
 	var r AuditRow
 	var relation, oauthClientID, oauthAudience *string
-	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.TargetName, &r.Outcome, &r.At, &r.MaintenanceModeTo, &r.RoleFrom, &r.RoleTo, &relation, &oauthClientID, &oauthAudience, &r.OAuthScopes)
+	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.TargetName, &r.Outcome, &r.At, &r.MaintenanceModeTo, &r.RoleFrom, &r.RoleTo, &r.RevokedKeyCount, &relation, &oauthClientID, &oauthAudience, &r.OAuthScopes)
 	if err != nil {
 		return AuditRow{}, err
 	}
