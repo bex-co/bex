@@ -707,3 +707,166 @@ func TestListBillingProviderMappingsFiltersByLivemode(t *testing.T) {
 		t.Fatalf("test mappings = %+v err=%v, want only %s", test, err, testTen.ID)
 	}
 }
+
+// A workspace's deletion is what emits its final Stripe lifecycle event, so that
+// event always arrives after the tenant row is gone. Recording it must report
+// the workspace as gone — a plain error would make the webhook answer 5xx and
+// Stripe retry the same doomed write for three days.
+func TestPGStoreStripeBillingEventForDeletedWorkspaceReportsWorkspaceGone(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "deleted-mid-flight", "hobby")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	at := time.Date(2026, 9, 16, 23, 27, 33, 0, time.UTC)
+	event := StripeBillingEvent{
+		EventID: "evt_after_delete", EventType: "customer.subscription.deleted", WorkspaceID: tenant.ID,
+		CustomerID: "cus_after_delete", SubscriptionID: "sub_after_delete", ObjectID: "sub_after_delete",
+		ProviderCreatedAt: at, ReceivedAt: at.Add(time.Second),
+		Outcome: BillingOutcomeFailure, Reason: "subscription_canceled",
+	}
+	if err := s.DeleteTenant(ctx, tenant.ID); err != nil {
+		t.Fatalf("delete tenant: %v", err)
+	}
+
+	_, _, _, err = s.RecordStripeBillingEvent(ctx, event, time.Hour)
+	if !errors.Is(err, ErrWorkspaceGone) {
+		t.Fatalf("record for deleted workspace = %v, want ErrWorkspaceGone", err)
+	}
+}
+
+// The gone-workspace translation must not swallow a real conflict: a workspace
+// that still exists but whose event contradicts its recorded mapping is a
+// genuine failure Stripe should retry.
+func TestPGStoreStripeBillingEventConflictOnLiveWorkspaceStillFails(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "live-conflict", "hobby")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	at := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
+	event := func(id, customer, subscription string) StripeBillingEvent {
+		return StripeBillingEvent{
+			EventID: id, EventType: "invoice.payment_failed", WorkspaceID: tenant.ID,
+			CustomerID: customer, SubscriptionID: subscription, ObjectID: "in_conflict",
+			ProviderCreatedAt: at, ReceivedAt: at.Add(time.Second),
+			Outcome: BillingOutcomeFailure, Reason: "test",
+		}
+	}
+	if _, _, _, err := s.RecordStripeBillingEvent(ctx, event("evt_bind", "cus_a", "sub_a"), time.Hour); err != nil {
+		t.Fatalf("bind mapping: %v", err)
+	}
+
+	_, _, _, err = s.RecordStripeBillingEvent(ctx, event("evt_conflict", "cus_b", "sub_b"), time.Hour)
+	if err == nil {
+		t.Fatal("conflicting mapping on a live workspace = nil, want an error Stripe will retry")
+	}
+	if errors.Is(err, ErrWorkspaceGone) {
+		t.Fatalf("conflicting mapping misreported as a deleted workspace: %v", err)
+	}
+}
+
+// "Opened checkout" and "bound a card" must stay separable. EnsureContract mints
+// the Stripe Subscription before the payment page renders, so a mapping with a
+// live subscription_id proves only intent — reading it as payment state is what
+// made twelve cardless workspaces look bound on 2026-09-16.
+func TestPGStoreCheckoutStartIsRecordedSeparatelyFromBinding(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "checkout-intent", "hobby")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	if err := s.UpsertBillingProviderMapping(ctx, BillingProviderMapping{
+		WorkspaceID: tenant.ID, CustomerID: "cus_intent", SubscriptionID: "sub_intent", Livemode: true,
+	}); err != nil {
+		t.Fatalf("upsert mapping: %v", err)
+	}
+	first := time.Date(2026, 9, 16, 9, 28, 12, 0, time.UTC)
+
+	if err := s.MarkCheckoutStarted(ctx, tenant.ID, first); err != nil {
+		t.Fatalf("mark checkout started: %v", err)
+	}
+
+	// A subscription plus a started checkout is still NOT a bound payment method.
+	bound, err := s.PaymentMethodBound(ctx, tenant.ID)
+	if err != nil || bound {
+		t.Fatalf("PaymentMethodBound after checkout start = %v (err %v), want false", bound, err)
+	}
+	eligibility, err := s.PaymentEligibility(ctx, tenant.ID)
+	if err != nil || eligibility.AllowsPaidIntent() {
+		t.Fatalf("PaymentEligibility after checkout start = %+v (err %v), want not allowed", eligibility, err)
+	}
+
+	// Monotonic: a second checkout keeps the first attempt's timestamp.
+	if err := s.MarkCheckoutStarted(ctx, tenant.ID, first.Add(time.Hour)); err != nil {
+		t.Fatalf("mark checkout started again: %v", err)
+	}
+	var started time.Time
+	if err := s.Pool.QueryRow(ctx, `SELECT checkout_started_at FROM billing_provider_mappings WHERE workspace_id=$1`, tenant.ID).Scan(&started); err != nil {
+		t.Fatalf("read checkout_started_at: %v", err)
+	}
+	if !started.Equal(first) {
+		t.Fatalf("checkout_started_at = %s, want the first attempt %s", started, first)
+	}
+
+	// Binding is a separate fact and does not disturb the intent timestamp.
+	boundAt := first.Add(2 * time.Minute)
+	if err := s.SetPaymentMethodBound(ctx, tenant.ID, boundAt); err != nil {
+		t.Fatalf("set bound: %v", err)
+	}
+	bound, err = s.PaymentMethodBound(ctx, tenant.ID)
+	if err != nil || !bound {
+		t.Fatalf("PaymentMethodBound after binding = %v (err %v), want true", bound, err)
+	}
+	if err := s.Pool.QueryRow(ctx, `SELECT checkout_started_at FROM billing_provider_mappings WHERE workspace_id=$1`, tenant.ID).Scan(&started); err != nil {
+		t.Fatalf("re-read checkout_started_at: %v", err)
+	}
+	if !started.Equal(first) {
+		t.Fatalf("binding moved checkout_started_at to %s, want %s", started, first)
+	}
+}
+
+// Every workspace must land in the analytics audience dimension at birth. It was
+// an opt-in override nobody used — 1 of 31 workspaces classified on 2026-09-16 —
+// which made every audience-grouped read meaningless. The trigger is the guard:
+// tenants are created down three separate paths and a fourth must not reopen it.
+func TestPGStoreNewWorkspacesAreClassifiedForAnalytics(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "audience-default", "hobby")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+
+	var audience string
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT audience FROM product_analytics_audiences WHERE workspace_id=$1`, tenant.ID).Scan(&audience); err != nil {
+		t.Fatalf("new workspace has no audience row: %v", err)
+	}
+	if audience != "customer" {
+		t.Fatalf("default audience = %q, want customer", audience)
+	}
+
+	// Reclassification stays a plain update — the trigger only supplies a default.
+	if _, err := s.Pool.Exec(ctx,
+		`UPDATE product_analytics_audiences SET audience='qa' WHERE workspace_id=$1`, tenant.ID); err != nil {
+		t.Fatalf("reclassify: %v", err)
+	}
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT audience FROM product_analytics_audiences WHERE workspace_id=$1`, tenant.ID).Scan(&audience); err != nil {
+		t.Fatalf("re-read audience: %v", err)
+	}
+	if audience != "qa" {
+		t.Fatalf("reclassified audience = %q, want qa", audience)
+	}
+
+	// No workspace may be left out of the dimension.
+	var unclassified int
+	if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM tenants t
+        LEFT JOIN product_analytics_audiences a ON a.workspace_id=t.id
+        WHERE a.workspace_id IS NULL`).Scan(&unclassified); err != nil {
+		t.Fatalf("count unclassified: %v", err)
+	}
+	if unclassified != 0 {
+		t.Fatalf("%d workspaces have no audience row, want 0", unclassified)
+	}
+}

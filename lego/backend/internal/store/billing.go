@@ -56,6 +56,22 @@ func (s *PGStore) SetPaymentMethodBound(ctx context.Context, workspaceID string,
 	return nil
 }
 
+// MarkCheckoutStarted records that a hosted Checkout session was created for the
+// workspace. This is intent, NOT payment state: EnsureContract mints the Stripe
+// Customer and Subscription before the payment page renders, so without this
+// column the only trace of "reached checkout" is a subscription_id that reads
+// indistinguishably from a bound customer. Monotonic like the bind marker — the
+// first attempt is the one worth keeping — and silent for an absent mapping,
+// since a checkout that never got far enough to create one records nothing.
+func (s *PGStore) MarkCheckoutStarted(ctx context.Context, workspaceID string, at time.Time) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE billing_provider_mappings
+		SET checkout_started_at = COALESCE(checkout_started_at, $2),
+		    updated_at = now()
+		WHERE workspace_id = $1`, workspaceID, at.UTC())
+	return err
+}
+
 // PaymentMethodBound is the narrow marker accessor. An unknown or unstamped
 // workspace returns false rather than leaking whether a tenant exists.
 func (s *PGStore) PaymentMethodBound(ctx context.Context, workspaceID string) (bool, error) {

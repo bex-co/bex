@@ -65,6 +65,10 @@ func TestCancelContractCancelsLiveSubscription(t *testing.T) {
 			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		case method == http.MethodDelete && path == "/v1/subscriptions/sub_1":
 			return 200, `{"id":"sub_1","object":"subscription","status":"canceled"}`
+		case method == http.MethodGet && path == "/v1/payment_methods":
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/payment_methods"}`
+		case method == http.MethodPost && path == "/v1/customers/cus_1":
+			return 200, `{"id":"cus_1","object":"customer"}`
 		default:
 			return 500, `{"error":{"type":"api_error","message":"unexpected route ` + method + ` ` + path + `"}}`
 		}
@@ -120,23 +124,89 @@ func TestCancelContractNoCustomerIsNoop(t *testing.T) {
 	}
 }
 
-// TestCancelContractNoLiveSubscriptionIsNoop proves an already-cancelled or
-// missing subscription is a no-op (idempotent retry).
-func TestCancelContractNoLiveSubscriptionIsNoop(t *testing.T) {
+// TestCancelContractNoLiveSubscriptionStillRetiresTheCustomer proves that an
+// already-cancelled subscription issues no second cancel (idempotent retry) —
+// and that the Customer is still retired anyway. A workspace can hold a card
+// without a live subscription, so payment-instrument teardown must not hang off
+// the cancel path.
+func TestCancelContractNoLiveSubscriptionStillRetiresTheCustomer(t *testing.T) {
 	c, stub := newStripeTest(t, func(method, path string) (int, string) {
-		if method == http.MethodGet && path == "/v1/subscriptions" {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
 			// Only a cancelled subscription exists — findSubscriptionObject skips it.
 			return 200, `{"object":"list","data":[{"id":"sub_old","object":"subscription","status":"canceled","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodGet && path == "/v1/payment_methods":
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/payment_methods"}`
+		case method == http.MethodPost && path == "/v1/customers/cus_1":
+			return 200, `{"id":"cus_1","object":"customer"}`
 		}
 		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
 	})
 	c.storeCustomer("tea-a", "cus_1")
+
 	if err := c.CancelContract(context.Background(), "tea-a"); err != nil {
 		t.Fatalf("CancelContract already-cancelled: %v", err)
 	}
+
 	for _, hit := range stub.hits {
 		if strings.HasPrefix(hit, "/v1/subscriptions/") {
 			t.Errorf("no cancel should be issued for an already-cancelled subscription, saw %s", hit)
+		}
+	}
+	if got := stub.count("/v1/customers/cus_1"); got != 1 {
+		t.Fatalf("customer retire calls = %d, want 1 even without a live subscription", got)
+	}
+}
+
+// TestCancelContractRetiresPaymentInstrumentsAndPersonalData is the defect this
+// closes: deleting a workspace used to cancel the subscription and stop, leaving
+// the card attached and the customer's email readable in Stripe indefinitely
+// (observed on cus_VCV5qtrtlYh0N0 and cus_VGzT7XpXc4z57t).
+func TestCancelContractRetiresPaymentInstrumentsAndPersonalData(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_live","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodDelete && path == "/v1/subscriptions/sub_live":
+			return 200, `{"id":"sub_live","object":"subscription","status":"canceled"}`
+		case method == http.MethodGet && path == "/v1/payment_methods":
+			return 200, `{"object":"list","data":[{"id":"pm_1","object":"payment_method","type":"card"},{"id":"pm_2","object":"payment_method","type":"card"}],"has_more":false,"url":"/v1/payment_methods"}`
+		case method == http.MethodPost && strings.HasSuffix(path, "/detach"):
+			return 200, `{"id":"pm_x","object":"payment_method"}`
+		case method == http.MethodPost && path == "/v1/customers/cus_1":
+			return 200, `{"id":"cus_1","object":"customer"}`
+		}
+		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+	})
+	c.storeCustomer("tea-a", "cus_1")
+
+	if err := c.CancelContract(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("CancelContract: %v", err)
+	}
+
+	if got := stub.count("/detach"); got != 2 {
+		t.Errorf("detach calls = %d, want 2 (every attached payment method)", got)
+	}
+	retires := stub.requests("/v1/customers/cus_1")
+	if len(retires) != 1 {
+		t.Fatalf("customer retire calls = %d, want 1", len(retires))
+	}
+	body := retires[0].body
+	for _, want := range []string{"email=", "name=", "invoice_settings[default_payment_method]=", "metadata[bex_deleted_at]="} {
+		if !strings.Contains(body, want) {
+			t.Errorf("retire body missing %q: %s", want, body)
+		}
+	}
+	// Cleared, not rewritten: the values must be empty.
+	for _, cleared := range []string{"email=&", "name=&", "invoice_settings[default_payment_method]=&"} {
+		if !strings.Contains(body+"&", cleared) {
+			t.Errorf("retire body does not clear %q: %s", cleared, body)
+		}
+	}
+	// The Customer survives so its invoices stay linked.
+	for _, hit := range stub.hits {
+		if hit == "/v1/customers/cus_1" && retires[0].header.Get("X-Stripe-Mock-Delete") != "" {
+			t.Errorf("customer must never be deleted, saw %s", hit)
 		}
 	}
 }

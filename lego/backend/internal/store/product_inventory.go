@@ -84,11 +84,15 @@ func (c *ProductInventoryCollector) collectSource(ctx context.Context, source st
             ON CONFLICT(source,bucket) DO NOTHING`, source, at)
 		return errors.Join(listErr, err)
 	}
-	// Postgres owns App existence even when Kubernetes cannot report readiness.
+	// Postgres owns App existence even when Kubernetes cannot report readiness, so
+	// the batch still records a truthful count — but every state in it defaulted to
+	// unknown, which is NOT the same claim. statesObserved carries that distinction
+	// so a collector outage stays distinguishable from a platform-wide one.
+	statesObserved := listErr == nil
 	if listErr != nil {
 		items = nil
 	}
-	return errors.Join(listErr, c.Store.recordProductInventory(bounded, source, at, items))
+	return errors.Join(listErr, c.Store.recordProductInventory(bounded, source, at, items, statesObserved))
 }
 
 // Only opaque IDs, closed state/type names and timestamps cross into analytics.
@@ -223,7 +227,7 @@ func productInventoryState(obj client.Object, phase string, suspended bool, cond
 	return "unknown"
 }
 
-func (s *PGStore) recordProductInventory(ctx context.Context, source string, at time.Time, items []productInventoryResource) error {
+func (s *PGStore) recordProductInventory(ctx context.Context, source string, at time.Time, items []productInventoryResource, statesObserved bool) error {
 	if items == nil {
 		items = []productInventoryResource{}
 	}
@@ -251,8 +255,13 @@ func (s *PGStore) recordProductInventory(ctx context.Context, source string, at 
 			return err
 		}
 		bucket := at.Truncate(productInventoryInterval)
-		if _, err := tx.Exec(ctx, `INSERT INTO product_inventory_batches(source,bucket,observed_at,complete)
-            VALUES($1,$2,$3,true) ON CONFLICT(source,bucket) DO UPDATE SET observed_at=EXCLUDED.observed_at,complete=true`, source, bucket, at); err != nil {
+		// complete stays true — the resource list IS complete, sourced from Postgres.
+		// states_observed is the narrower claim, and a bucket that ever failed to
+		// sample states keeps that mark even if a later write in the same bucket
+		// succeeds, so the flag can never be laundered back to true.
+		if _, err := tx.Exec(ctx, `INSERT INTO product_inventory_batches(source,bucket,observed_at,complete,states_observed)
+            VALUES($1,$2,$3,true,$4) ON CONFLICT(source,bucket) DO UPDATE SET observed_at=EXCLUDED.observed_at,complete=true,
+                states_observed=product_inventory_batches.states_observed AND EXCLUDED.states_observed`, source, bucket, at, statesObserved); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, "DELETE FROM product_inventory_counts WHERE source=$1 AND bucket=$2", source, bucket); err != nil {

@@ -52,6 +52,13 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
   }),
 }));
 
+// The self-host exit mounts a delete-account mutation; the wall itself never
+// fires it, so a stub that records nothing is enough here. The exit's own
+// behavior is covered in self-host-exit.test.tsx.
+vi.mock("@apollo/client/react", () => ({
+  useMutation: () => [vi.fn(), { loading: false }],
+}));
+
 const permissiveCapabilities = mockCapabilities();
 
 function readiness(
@@ -162,9 +169,14 @@ describe("PaymentSetupPage", () => {
     );
     expect(billing.openCheckout).toHaveBeenCalledOnce();
 
+    // The self-host exit is a button, not a link: it deletes the account, so it
+    // must open a confirmation rather than navigate on a single click.
     expect(
-      screen.getByRole("link", { name: "Self-host bex instead" }),
-    ).toHaveAttribute("href", "https://github.com/bex-co/bex");
+      screen.getByRole("button", { name: "Delete this account and self-host" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /self-host/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign out" })).toHaveAttribute(
       "href",
       "/auth/logout",
