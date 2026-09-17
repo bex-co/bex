@@ -82,6 +82,28 @@ func (s *PGStore) TenantForOwner(ctx context.Context, identityID string) (Tenant
 	return t, nil
 }
 
+// TenantOwnerSubject returns the identity a workspace's onboarding binding
+// names (tenants.owner_identity_id), or "" when the binding is NULL — the shape
+// every workspace minted through CreateWorkspace has, since only onboarding's
+// CreateTenantWithMember sets it. ErrNotFound when the workspace doesn't exist.
+//
+// The membership guards read it (w5/m101): the owner binding is the key
+// EnsureTenant resolves the personal workspace by, so a removed or demoted
+// owner is either silently re-granted admin on their next request or left with
+// no workspace at all — both are refused instead.
+func (s *PGStore) TenantOwnerSubject(ctx context.Context, tenantID string) (string, error) {
+	var owner *string
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT owner_identity_id FROM tenants WHERE id = $1`, tenantID,
+	).Scan(&owner); err != nil {
+		return "", classify("workspace", err)
+	}
+	if owner == nil {
+		return "", nil
+	}
+	return *owner, nil
+}
+
 // GetTenant reads one tenant by id (ErrNotFound when absent).
 func (s *PGStore) GetTenant(ctx context.Context, id string) (Tenant, error) {
 	var t Tenant

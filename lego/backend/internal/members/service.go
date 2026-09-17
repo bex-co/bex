@@ -73,6 +73,33 @@ const (
 	InviteErrorAlreadyMember = "MEMBER_ALREADY_EXISTS"
 )
 
+// The membership-invariant refusals (w5/m101, docs/ADR024-members.md § The
+// membership-invariant matrix). Each wraps core.ErrConflict — the same class
+// MEMBER_ALREADY_EXISTS uses — so REST answers 409, GraphQL carries the code in
+// extensions, and MCP prefixes it onto the message. The caller is authorized to
+// manage members; it is the TARGET's state that forbids the write, which is
+// what 409 means here (403 would wrongly say "you are not an admin").
+const (
+	// ErrorOwnerCannotBeRemoved refuses removing the subject in
+	// tenants.owner_identity_id. Onboarding resolves the personal workspace by
+	// that binding and never re-mints one (internal/api/tenancy.go EnsureTenant),
+	// so honoring the removal would leave the account workspace-less while
+	// ignoring it would resurrect their admin tuple on the next request.
+	ErrorOwnerCannotBeRemoved = "OWNER_CANNOT_BE_REMOVED"
+	// ErrorOwnerRoleCannotChange refuses demoting that same subject below admin —
+	// the identical resurrection, through ChangeRole instead of Remove:
+	// ensureGranted re-writes the admin tuple on the owner's next request, so the
+	// demotion never sticks.
+	ErrorOwnerRoleCannotChange = "OWNER_ROLE_CANNOT_CHANGE"
+	// ErrorCannotRemoveSelf separates "manage a teammate" from "act on yourself":
+	// leaving is the deliberate verb (w5/m102), not a side effect of the admin
+	// surface.
+	ErrorCannotRemoveSelf = "CANNOT_REMOVE_SELF"
+	// ErrorCannotChangeOwnRole refuses self-promotion and self-demotion alike —
+	// a role change is something another admin does to you.
+	ErrorCannotChangeOwnRole = "CANNOT_CHANGE_OWN_ROLE"
+)
+
 // Service holds the membership logic once. It embeds *core.Base for the
 // authorization gate + caller Identity and writes through the Postgres source of
 // truth (Store) with OpenFGA membership kept in lockstep (Granter/Revoker). The
@@ -134,6 +161,10 @@ type MembersStore interface {
 	GetTenantMember(ctx context.Context, tenantID, subject string) (store.TenantMember, error)
 	CountTenantMembers(ctx context.Context, tenantID string) (int, error)
 	CountTenantAdmins(ctx context.Context, tenantID string) (int, error)
+	// TenantOwnerSubject is the workspace's onboarding owner binding, "" when
+	// unset (every workspace minted through CreateWorkspace rather than first
+	// login). The owner guards read it (w5/m101).
+	TenantOwnerSubject(ctx context.Context, tenantID string) (string, error)
 	CountInvites(ctx context.Context, tenantID string) (int, error)
 	UpdateMemberRole(ctx context.Context, tenantID, subject, role string) error
 	RemoveMember(ctx context.Context, tenantID, subject string) error
@@ -231,6 +262,12 @@ type MemberView struct {
 	CreatedAt        string `json:"createdAt"`
 	MFAEnabled       bool   `json:"mfaEnabled"`
 	IdentityResolved bool   `json:"identityResolved"`
+	// IsOwner marks the subject named by tenants.owner_identity_id, and IsSelf
+	// the caller's own row (w5/m101). Both are server-derived so the Team UI
+	// disables exactly the controls the API refuses, rather than guessing from
+	// session data it would have to keep in step with the owner binding.
+	IsOwner bool `json:"isOwner"`
+	IsSelf  bool `json:"isSelf"`
 }
 
 // InviteView is the neutral projection of a pending invite — Render's
@@ -436,9 +473,19 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 	if err != nil {
 		return nil, mapStoreErr(err)
 	}
+	// One owner-binding read for the whole list (w5/m101) — the Team UI disables
+	// the controls the API would refuse, so it needs to know which row is the
+	// owner's and which is the caller's own.
+	owner, err := s.Store.TenantOwnerSubject(ctx, workspaceID)
+	if err != nil {
+		return nil, mapStoreErr(err)
+	}
+	caller, _ := core.IdentityFrom(ctx)
 	out := make([]MemberView, 0, len(ms))
 	for _, m := range ms {
 		mv := memberView(m)
+		mv.IsOwner = owner != "" && m.Subject == owner
+		mv.IsSelf = caller.Subject != "" && m.Subject == caller.Subject
 		// Resolve the opaque own- id (minted on first sight) — the same
 		// enrichment workspaces.Service.ListMembers performs for the owners API.
 		// A store error surfaces to the caller (5xx) rather than a silent blank.
@@ -830,6 +877,13 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	if err := s.guardCallerRoleSettled(ctx, workspaceID); err != nil {
 		return MemberView{}, err
 	}
+	// w5/m101: refused before the role is even parsed — a self role change is
+	// not a validation question, and the refusal must not depend on whether the
+	// caller happened to name their current role.
+	if err := guardSelf(ctx, subject, ErrorCannotChangeOwnRole,
+		"you cannot change your own role; ask another admin to change it"); err != nil {
+		return MemberView{}, err
+	}
 	if s.Store == nil {
 		return MemberView{}, ErrMembersUnavailable
 	}
@@ -840,6 +894,11 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	m, err := s.Store.GetTenantMember(ctx, workspaceID, subject)
 	if err != nil {
 		return MemberView{}, mapStoreErr(err)
+	}
+	// After the membership read, so a subject who is not a member at all still
+	// answers 404 rather than an owner refusal.
+	if err := s.guardOwner(ctx, workspaceID, subject, role); err != nil {
+		return MemberView{}, err
 	}
 	if m.Role == role {
 		// Already at the target role in the row — but a prior partial failure may
@@ -991,12 +1050,21 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if err := s.guardCallerRoleSettled(ctx, workspaceID); err != nil {
 		return err
 	}
+	// w5/m101: acting on yourself is not managing a teammate. Checked before any
+	// store read — it needs only the caller's identity.
+	if err := guardSelf(ctx, subject, ErrorCannotRemoveSelf,
+		"you cannot remove yourself from a workspace; leave the workspace instead"); err != nil {
+		return err
+	}
 	if s.Store == nil {
 		return ErrMembersUnavailable
 	}
 	m, err := s.Store.GetTenantMember(ctx, workspaceID, subject)
 	if err != nil {
 		return mapStoreErr(err)
+	}
+	if err := s.guardOwner(ctx, workspaceID, subject, ""); err != nil {
+		return err
 	}
 	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, ""); err != nil {
 		return err
@@ -1128,6 +1196,59 @@ func guardPlanRole(plan, role string) error {
 		fmt.Sprintf("the %s plan only allows roles %s", plan, strings.Join(lim.AllowedRoles, "|")),
 		plan, 0,
 	)
+}
+
+// guardSelf refuses a member verb aimed at the caller's own subject. The two
+// verbs return distinct codes because their recovery paths differ: removal is
+// replaced by Leave workspace (w5/m102), a role change is something another
+// admin performs.
+//
+// Machine callers are subjects too (tenant_members holds Hydra client ids
+// alongside Kratos identity ids), so an API key cannot drop its own binding
+// through this surface either. The trusted background path —
+// AccountOffboarder.Remove (ADR086) — never reaches here: it is a separate
+// type with no caller identity on the context.
+func guardSelf(ctx context.Context, subject, code, msg string) error {
+	id, ok := core.IdentityFrom(ctx)
+	if !ok || id.Subject != subject {
+		return nil
+	}
+	return core.NewConflictError(code, msg, nil)
+}
+
+// guardOwner refuses severing the workspace's onboarding owner binding.
+// newRole is "" for a removal and the target role for a role change; keeping or
+// promoting the owner to admin is always allowed, so the guard skips the store
+// read in the common case. A workspace with no binding (CreateWorkspace, not
+// first login) has no owner to protect — the last-admin rule keeps covering it.
+func (s *Service) guardOwner(ctx context.Context, workspaceID, subject, newRole string) error {
+	if newRole == "admin" {
+		return nil
+	}
+	owner, err := s.Store.TenantOwnerSubject(ctx, workspaceID)
+	if err != nil {
+		return mapStoreErr(err)
+	}
+	if owner == "" || owner != subject {
+		return nil
+	}
+	if newRole == "" {
+		return errOwnerCannotBeRemoved()
+	}
+	return errOwnerRoleCannotChange()
+}
+
+// The owner refusals are minted in one place: the service guard and the store
+// backstop (mapStoreErr) must answer with byte-identical messages, or the same
+// refusal would read differently depending on which layer caught it.
+func errOwnerCannotBeRemoved() error {
+	return core.NewConflictError(ErrorOwnerCannotBeRemoved,
+		"the workspace owner cannot be removed; transferring ownership is not available yet", nil)
+}
+
+func errOwnerRoleCannotChange() error {
+	return core.NewConflictError(ErrorOwnerRoleCannotChange,
+		"the workspace owner must remain an admin", nil)
 }
 
 // guardLastAdmin refuses a change that would leave a workspace with zero admins:
@@ -1285,6 +1406,13 @@ func mapStoreErr(err error) error {
 	switch {
 	case errors.Is(err, store.ErrNotFound):
 		return fmt.Errorf("%w: %v", core.ErrNotFound, err)
+	// The owner backstops recheck inside the advisory-lock transaction, so a
+	// caller that reached the store past the service gate still gets the same
+	// coded refusal on every adapter (w5/m101).
+	case errors.Is(err, store.ErrOwnerMember):
+		return errOwnerCannotBeRemoved()
+	case errors.Is(err, store.ErrOwnerRole):
+		return errOwnerRoleCannotChange()
 	case errors.Is(err, store.ErrConflict), errors.Is(err, store.ErrInvalid):
 		return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 	default:

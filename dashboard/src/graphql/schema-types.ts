@@ -3744,6 +3744,8 @@ export type WorkspaceMember = {
   createdAt: Maybe<Scalars['String']['output']>;
   email: Maybe<Scalars['String']['output']>;
   identityResolved: Scalars['Boolean']['output'];
+  isOwner: Scalars['Boolean']['output'];
+  isSelf: Scalars['Boolean']['output'];
   mfaEnabled: Maybe<Scalars['Boolean']['output']>;
   role: Maybe<Scalars['String']['output']>;
   subject: Maybe<Scalars['String']['output']>;

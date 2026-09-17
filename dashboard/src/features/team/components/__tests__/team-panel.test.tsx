@@ -99,6 +99,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
       {
         subject: "id-bob",
@@ -108,6 +110,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     render(<TeamPanel />);
@@ -125,6 +129,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     render(<TeamPanel />);
@@ -143,6 +149,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     render(<TeamPanel />);
@@ -160,6 +168,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     render(<TeamPanel />);
@@ -176,6 +186,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     render(<TeamPanel />);
@@ -196,6 +208,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     render(<TeamPanel />);
@@ -266,6 +280,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: true,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
       {
         subject: "id-plain",
@@ -275,6 +291,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     render(<TeamPanel />);
@@ -294,6 +312,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
       {
         subject: "id-bob",
@@ -303,6 +323,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     teamState.invites = [
@@ -340,6 +362,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     rerender(<TeamPanel />);
@@ -363,6 +387,8 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
+        isOwner: false,
+        isSelf: false,
       },
     ];
     removeMember.mockResolvedValue(true);

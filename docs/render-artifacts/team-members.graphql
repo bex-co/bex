@@ -56,3 +56,30 @@ query usersAndPendingForTeam($ownerId: String!) {
 # "team" (GraphQL: owner.team, id prefix "tea-"), and "owner" (the resource
 # parent, = user | team). bex's model type `workspace` is that entity; its
 # five member roles + capability split match Render's exactly (docs/ADR012-auth.md).
+
+# --- Membership-invariant comparison (w5/m101, 2026-09-16) ----------------------
+# bex refuses four member mutations Render's surface also does not offer:
+# removing the workspace owner (OWNER_CANNOT_BE_REMOVED), demoting the owner
+# below admin (OWNER_ROLE_CANNOT_CHANGE), removing yourself
+# (CANNOT_REMOVE_SELF), and changing your own role (CANNOT_CHANGE_OWN_ROLE).
+# All four are 409 + a stable code on REST, GraphQL and MCP alike
+# (internal/members/membership_refusal_parity_test.go).
+#
+# EVIDENCE LIMIT — the Render side of this comparison is NOT captured. The
+# capture above is the Team Members *read* query only; Render's remove /
+# change-role mutations were never captured, and the captured workspace has a
+# single member, so neither a self-removal nor an owner removal can be
+# exercised against it without destroying a real team. The refusals below are
+# therefore recorded as bex's own membership invariants, grounded in bex's
+# onboarding coupling (docs/ADR024-members.md § The membership-invariant
+# matrix), NOT as a mirrored Render behavior. Render's documented shape is
+# consistent with them — team members leave a team through a separate "Leave
+# team" action rather than by removing themselves from the members list — but
+# that is documentation, not a capture from this workspace's tier.
+#
+# The one place bex has no Render counterpart at all is the OWNER binding:
+# Render's model has no per-team owner identity that onboarding re-resolves on
+# every request, so "the owner cannot be removed" is a bex-specific invariant
+# created by tenants.owner_identity_id, not a parity gap. Should a live capture
+# ever show Render permitting one of the other three, that is drift to file —
+# it has not been observed either way.
