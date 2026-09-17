@@ -127,6 +127,22 @@ function hhmm(hour: string, minute: string): string {
   return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
 }
 
+// A "*/step" field fires at min, min+step, min+2*step … up to max, then waits
+// for the field to wrap — so "every step" is only a truthful description when
+// the step divides the field's width. "*/40" minutes fires at :00 and :40,
+// alternating 40- and 20-minute gaps; "0 */5" fires at 0,5,10,15,20 with a
+// four-hour gap across midnight. Neither has a uniform interval to name.
+// A step wider than the field's span leaves only the start value firing, which
+// collapses the schedule to the next unit up (robfig still accepts it — "a step
+// wider than the range still names its start", per the shared vector table).
+function stepShape(
+  step: number,
+  spec: FieldSpec,
+): "uniform" | "start-only" | "uneven" {
+  if (step > spec.max - spec.min) return "start-only";
+  return (spec.max - spec.min + 1) % step === 0 ? "uniform" : "uneven";
+}
+
 // describeCron renders a valid 5-field expression as a short human-readable
 // phrase (Render shows one beside the schedule field), best-effort: it names the
 // common shapes and returns null for anything unusual or invalid so the caller
@@ -142,12 +158,31 @@ export function describeCron(s: string): string | null {
   if (minute === "*" && hour === "*" && allDates) return "Every minute";
 
   const stepMinute = /^\*\/(\d+)$/.exec(minute);
-  if (stepMinute && hour === "*" && allDates)
-    return `Every ${stepMinute[1]} minutes`;
+  if (stepMinute && hour === "*" && allDates) {
+    switch (stepShape(Number(stepMinute[1]), FIELDS[0])) {
+      case "uniform":
+        return `Every ${stepMinute[1]} minutes`;
+      // Wider than the minute field: only minute 0 ever fires, so it is hourly
+      // — the same schedule as "0 * * * *", and described the same way.
+      case "start-only":
+        return "Every hour";
+      default:
+        return null;
+    }
+  }
 
   const stepHour = /^\*\/(\d+)$/.exec(hour);
-  if (/^\d+$/.test(minute) && stepHour && allDates)
-    return `Every ${stepHour[1]} hours`;
+  if (/^\d+$/.test(minute) && stepHour && allDates) {
+    switch (stepShape(Number(stepHour[1]), FIELDS[1])) {
+      case "uniform":
+        return `Every ${stepHour[1]} hours`;
+      // Wider than the hour field: only hour 0 ever fires, so it is daily.
+      case "start-only":
+        return `Every day at ${hhmm("0", minute)}`;
+      default:
+        return null;
+    }
+  }
 
   if (/^\d+$/.test(minute) && hour === "*" && allDates) {
     return minute === "0" ? "Every hour" : `Every hour at minute ${minute}`;
