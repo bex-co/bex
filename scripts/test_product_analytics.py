@@ -11,10 +11,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 # Real schema dependencies, not copies of the analytics schema under test.
+# 0125 (the default-audience trigger) is deliberately absent: this suite seeds
+# product_analytics_audiences by hand, and the trigger would pre-insert a
+# 'customer' row for every tenant and collide with those fixtures. The trigger
+# has its own coverage in the Go store tests.
 MIGRATIONS = ["0001_core", "0005_deploys", "0035_domain_redirect_for_name",
               "0086_domain_claim_state", "0095_apps_service_type",
               "0114_product_analytics", "0115_product_inventory",
-              "0117_product_activity_surface"]
+              "0117_product_activity_surface",
+              "0124_inventory_states_observed"]
 
 
 # Each view's column list as previously released, in order. CREATE OR REPLACE
@@ -27,6 +32,8 @@ RELEASED_VIEW_COLUMNS = {
                "event_type", "at", "recorded_at", "actor_id", "actor_type", "provenance",
                "outcome", "duration_ms", "audience"],
     "collection": ["started_at", "inventory_started_at", "events_retained_from"],
+    # states_observed was appended in w3/m162; these four are the released prefix.
+    "inventory_batches": ["source", "bucket", "observed_at", "complete"],
 }
 
 
@@ -397,7 +404,7 @@ class ProductAnalyticsTest(unittest.TestCase):
             "hosting": "workspace_id resource_id resource_type day observed_at live was_live audience",
             "domains": "domain_id resource_id workspace_id resource_type created_at claim_state verified_at verification_attempts observed_at tls_ready first_tls_ready_at audience",
             "collection": "started_at inventory_started_at events_retained_from surface_started_at",
-            "inventory_batches": "source bucket observed_at complete",
+            "inventory_batches": "source bucket observed_at complete states_observed",
             "inventory": "source bucket workspace_id resource_type state resources audience",
             "provisioning": "resource_id workspace_id source resource_type created_at first_seen_at last_seen_at first_ready_at removed_at state audience",
         }
