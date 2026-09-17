@@ -447,7 +447,7 @@ describe("EnvGroupDetailPage", () => {
     );
     await user.click(screen.getByRole("button", { name: "Manage" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-    const deleteDialog = screen.getByRole("dialog");
+    const deleteDialog = screen.getByRole("alertdialog");
     const confirm = within(deleteDialog).getByLabelText("Sudo Command");
     expect(
       within(deleteDialog).getByRole("button", {

@@ -1,14 +1,5 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Button } from "@/common/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/common/components/ui/dialog";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -41,40 +32,36 @@ export function DeleteKeyValueDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("keyvalue.deleteConfirmTitle")}</DialogTitle>
-          <DialogDescription>
-            {t("keyvalue.deleteConfirmBody")}
-          </DialogDescription>
-        </DialogHeader>
-        <SudoCommandField
-          id="kv-delete-confirm"
-          promptKey="keyvalue.deleteConfirmPrompt"
-          phrase={confirmPhrase}
-          value={typed}
-          onValueChange={setTyped}
-        />
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={busy}
-          >
-            {t("keyvalue.deleteCancel")}
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => void onConfirm()}
-            disabled={!canDelete}
-          >
-            {busy ? <Loader2 className="animate-spin" /> : null}
-            {t("keyvalue.deleteConfirm")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    // AlertDialog via ConfirmDialog, matching SuspendKeyValueDialog below: a
+    // delete that destroys data must announce as `alertdialog` and refuse
+    // outside-click dismissal, so a stray click cannot discard a half-typed
+    // sudo phrase (w7/053). The gate stays the caller's — the shared
+    // SudoCommandField is the house sudo control — so it rides
+    // confirmDisabled rather than the primitive's own `phrase` prop.
+    <ConfirmDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={t("keyvalue.deleteConfirmTitle")}
+      description={t("keyvalue.deleteConfirmBody")}
+      cancelLabel={t("keyvalue.deleteCancel")}
+      confirmLabel={
+        <>
+          {busy ? <Loader2 className="animate-spin" /> : null}
+          {t("keyvalue.deleteConfirm")}
+        </>
+      }
+      confirmDisabled={!canDelete}
+      pending={busy}
+      onConfirm={() => void onConfirm()}
+    >
+      <SudoCommandField
+        id="kv-delete-confirm"
+        promptKey="keyvalue.deleteConfirmPrompt"
+        phrase={confirmPhrase}
+        value={typed}
+        onValueChange={setTyped}
+      />
+    </ConfirmDialog>
   );
 }
 

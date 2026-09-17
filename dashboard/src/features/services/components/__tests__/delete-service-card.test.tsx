@@ -79,7 +79,7 @@ describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () =
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     const confirm = within(dialog).getByRole("button", {
       name: "Delete Service",
     });
@@ -102,7 +102,7 @@ describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () =
     render(<DeleteServiceCard service={svc()} />);
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     await user.type(
       within(dialog).getByLabelText("Sudo Command"),
       `${PHRASE} `,
@@ -121,7 +121,7 @@ describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () =
     render(<DeleteServiceCard service={svc()} />);
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     await user.type(within(dialog).getByLabelText("Sudo Command"), PHRASE);
     await user.click(
       within(dialog).getByRole("button", { name: "Delete Service" }),
@@ -140,7 +140,7 @@ describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () =
     );
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     const input = within(dialog).getByLabelText("Sudo Command");
     const confirm = within(dialog).getByRole("button", {
       name: "Delete Service",
@@ -163,7 +163,7 @@ describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () =
     );
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText("sudo delete cron job reporter"),
     ).toBeInTheDocument();
@@ -175,7 +175,7 @@ describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () =
     render(<DeleteServiceCard service={svc()} />);
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     await user.type(within(dialog).getByLabelText("Sudo Command"), PHRASE);
     await user.click(
       within(dialog).getByRole("button", { name: "Delete Service" }),
@@ -196,7 +196,7 @@ describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () =
     render(<DeleteServiceCard service={svc()} />);
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     await user.type(within(dialog).getByLabelText("Sudo Command"), PHRASE);
     await user.click(
       within(dialog).getByRole("button", { name: "Delete Service" }),

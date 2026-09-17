@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspaceEnvironmentIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
@@ -286,39 +287,32 @@ export function EnvGroupActions({
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      {/* AlertDialog via ConfirmDialog (w7/053) — the delete only. The rename,
+          move and clone dialogs above stay plain `Dialog`s: they are ordinary
+          forms, not destroy-and-leave-no-trace confirmations. */}
+      <ConfirmDialog
         open={dialog === "delete"}
         onOpenChange={(isOpen) => !isOpen && setDialog(null)}
+        title={t("envGroups.deleteTitle", { name: group.name })}
+        description={t("envGroups.deleteDescription")}
+        confirmLabel={
+          <>
+            {busy ? <Loader2 className="animate-spin" /> : null}
+            {t("envGroups.deleteConfirm")}
+          </>
+        }
+        confirmDisabled={confirmation !== deletePhrase}
+        pending={busy}
+        onConfirm={() => void handleDelete()}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {t("envGroups.deleteTitle", { name: group.name })}
-            </DialogTitle>
-            <DialogDescription>
-              {t("envGroups.deleteDescription")}
-            </DialogDescription>
-          </DialogHeader>
-          <SudoCommandField
-            id="env-group-delete-confirm"
-            promptKey="envGroups.deletePrompt"
-            phrase={deletePhrase}
-            value={confirmation}
-            onValueChange={setConfirmation}
-          />
-          <DialogFooter>
-            <CancelButton busy={busy} onClick={() => setDialog(null)} />
-            <Button
-              variant="destructive"
-              onClick={() => void handleDelete()}
-              disabled={confirmation !== deletePhrase || busy}
-            >
-              {busy ? <Loader2 className="animate-spin" /> : null}
-              {t("envGroups.deleteConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <SudoCommandField
+          id="env-group-delete-confirm"
+          promptKey="envGroups.deletePrompt"
+          phrase={deletePhrase}
+          value={confirmation}
+          onValueChange={setConfirmation}
+        />
+      </ConfirmDialog>
     </>
   );
 }
