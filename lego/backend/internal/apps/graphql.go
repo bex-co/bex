@@ -826,8 +826,8 @@ var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"status":    gqlutil.StrField(func(b BlueprintView) any { return b.Status }),
 		"lastSync":  gqlutil.StrField(func(b BlueprintView) any { return b.LastSync }),
 		"resources": gqlutil.Typed(graphql.NewList(blueprintResourceGQLType), func(b BlueprintView) any { return b.Resources }),
-		"createdAt": gqlutil.StrField(func(b BlueprintView) any { return b.CreatedAt }),
-		"updatedAt": gqlutil.StrField(func(b BlueprintView) any { return b.UpdatedAt }),
+		"createdAt": gqlutil.TimeField(func(b BlueprintView) any { return b.CreatedAt }),
+		"updatedAt": gqlutil.TimeField(func(b BlueprintView) any { return b.UpdatedAt }),
 	},
 })
 

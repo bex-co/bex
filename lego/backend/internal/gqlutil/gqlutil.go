@@ -23,6 +23,7 @@ package gqlutil
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/graphql-go/graphql"
 
@@ -61,6 +62,38 @@ func StrField[T any](f func(T) any) *graphql.Field   { return Typed(graphql.Stri
 func IntField[T any](f func(T) any) *graphql.Field   { return Typed(graphql.Int, f) }
 func BoolField[T any](f func(T) any) *graphql.Field  { return Typed(graphql.Boolean, f) }
 func FloatField[T any](f func(T) any) *graphql.Field { return Typed(graphql.Float, f) }
+
+// TimeField is StrField for a `time.Time` view member, rendered as RFC3339 —
+// the same shape encoding/json gives REST and MCP for the identical field.
+// Handing a time.Time to StrField instead lets graphql-go coerce it with Go's
+// default String() layout ("2026-07-18 04:56:00.96433 +0000 UTC"), which no
+// strict parser accepts, so one instant reads two ways depending on which
+// adapter asked (w7/052 — ADR006 projects all three from one core).
+//
+// A zero time means "never" and resolves to nil rather than leaking
+// 0001-01-01T00:00:00Z as though it were data, matching how OptionalStrField
+// treats the empty string. Use this for every time.Time reaching GraphQL; a
+// field already holding a pre-formatted string stays on StrField.
+func TimeField[T any](f func(T) any) *graphql.Field {
+	return Typed(graphql.String, func(v T) any {
+		switch t := f(v).(type) {
+		case time.Time:
+			if t.IsZero() {
+				return nil
+			}
+			return t.UTC().Format(time.RFC3339)
+		case *time.Time:
+			if t == nil || t.IsZero() {
+				return nil
+			}
+			return t.UTC().Format(time.RFC3339)
+		default:
+			// Not a time at all: resolve null rather than fall back to the
+			// Go-format coercion this helper exists to prevent.
+			return nil
+		}
+	})
+}
 
 // OptionalStrField is StrField for a string whose Go zero value ("") means
 // "no relationship" (an optional foreign key: ProjectID, EnvironmentID, …) —
