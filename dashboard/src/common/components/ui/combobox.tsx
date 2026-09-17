@@ -116,7 +116,9 @@ export function Combobox({
       setOpen(false);
       setHighlightedIndex(-1);
       inputRef.current?.blur();
-    } else if (e.key === "Enter") {
+      return;
+    }
+    if (e.key === "Enter") {
       e.preventDefault();
       if (highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
         // Select the highlighted option
@@ -127,25 +129,23 @@ export function Combobox({
         setOpen(false);
         inputRef.current?.blur();
       }
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (!open) {
-        setOpen(true);
-        setHighlightedIndex(0);
-      } else {
-        setHighlightedIndex((prev) =>
-          prev < filteredOptions.length - 1 ? prev + 1 : prev,
-        );
-      }
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (!open) {
-        setOpen(true);
-        setHighlightedIndex(filteredOptions.length - 1);
-      } else {
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : 0));
-      }
+      return;
     }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+
+    e.preventDefault();
+    const movingDown = e.key === "ArrowDown";
+    if (!open) {
+      setOpen(true);
+      setHighlightedIndex(movingDown ? 0 : filteredOptions.length - 1);
+      return;
+    }
+    setHighlightedIndex((prev) => {
+      if (movingDown) {
+        return prev < filteredOptions.length - 1 ? prev + 1 : prev;
+      }
+      return prev > 0 ? prev - 1 : 0;
+    });
   };
 
   // Sync input value with prop value when it changes externally

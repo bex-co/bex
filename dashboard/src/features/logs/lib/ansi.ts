@@ -245,6 +245,21 @@ function writeCell(cells: Cell[], at: number, ch: string, sgr: Sgr): void {
   cells[at] = { ch, sgr };
 }
 
+const SGR_ATTRIBUTES: Partial<Record<number, Partial<Sgr>>> = {
+  1: { bold: true },
+  2: { dim: true },
+  3: { italic: true },
+  4: { underline: true },
+  9: { strike: true },
+  21: { bold: false, dim: false },
+  22: { bold: false, dim: false },
+  23: { italic: false },
+  24: { underline: false },
+  29: { strike: false },
+  39: { fg: undefined },
+  49: { bg: undefined },
+};
+
 function applySgr(base: Sgr, params: string): Sgr {
   if (params === "") return RESET; // bare `ESC[m` is a reset
   const codes = params
@@ -254,30 +269,23 @@ function applySgr(base: Sgr, params: string): Sgr {
   for (let i = 0; i < codes.length; i++) {
     const c = codes[i];
     if (!Number.isFinite(c)) continue; // private/experimental params
-    if (c === 0) out = { ...RESET };
-    else if (c === 1) out.bold = true;
-    else if (c === 2) out.dim = true;
-    else if (c === 3) out.italic = true;
-    else if (c === 4) out.underline = true;
-    else if (c === 9) out.strike = true;
-    else if (c === 21 || c === 22) {
-      out.bold = false;
-      out.dim = false;
-    } else if (c === 23) out.italic = false;
-    else if (c === 24) out.underline = false;
-    else if (c === 29) out.strike = false;
-    else if (c >= 30 && c <= 37) out.fg = { kind: "basic", index: c - 30 };
-    else if (c === 38) {
+    if (c === 0) {
+      out = { ...RESET };
+      continue;
+    }
+    const attributes = SGR_ATTRIBUTES[c];
+    if (attributes) {
+      Object.assign(out, attributes);
+      continue;
+    }
+    if (c === 38 || c === 48) {
       const ext = readExtended(codes, i);
-      if (ext.color) out.fg = ext.color;
+      if (ext.color) out[c === 38 ? "fg" : "bg"] = ext.color;
       i = ext.next;
-    } else if (c === 39) out.fg = undefined;
+      continue;
+    }
+    if (c >= 30 && c <= 37) out.fg = { kind: "basic", index: c - 30 };
     else if (c >= 40 && c <= 47) out.bg = { kind: "basic", index: c - 40 };
-    else if (c === 48) {
-      const ext = readExtended(codes, i);
-      if (ext.color) out.bg = ext.color;
-      i = ext.next;
-    } else if (c === 49) out.bg = undefined;
     else if (c >= 90 && c <= 97) out.fg = { kind: "basic", index: c - 90 + 8 };
     else if (c >= 100 && c <= 107)
       out.bg = { kind: "basic", index: c - 100 + 8 };

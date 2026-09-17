@@ -139,9 +139,9 @@ describe("ServiceEnvironmentEditor", () => {
     ).toBe(true);
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    expect(screen.getAllByRole("textbox", { name: /Value for / })).not.toHaveLength(
-      0,
-    );
+    expect(
+      screen.getAllByRole("textbox", { name: /Value for / }),
+    ).not.toHaveLength(0);
     expect(revealEnv).not.toHaveBeenCalled();
   });
 
@@ -176,7 +176,10 @@ describe("ServiceEnvironmentEditor", () => {
     // This last pre-revocation input event schedules the component render that
     // observes the freshly denied capability; all subsequent handlers are the
     // guarded versions.
-    await user.type(screen.getAllByRole("textbox", { name: /Value for / })[0], "x");
+    await user.type(
+      screen.getAllByRole("textbox", { name: /Value for / })[0],
+      "x",
+    );
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "Your role can’t make this change.",
@@ -226,6 +229,23 @@ describe("ServiceEnvironmentEditor", () => {
     expect(save).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
     expect(screen.queryByDisplayValue("changed")).not.toBeInTheDocument();
+  });
+
+  it("enables saving only while an opaque row has a pending rename", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const submit = screen.getByRole("button", { name: "Save and deploy" });
+    const key = screen.getByDisplayValue("ALPHA");
+    expect(submit).toBeDisabled();
+
+    await user.type(key, "_RENAMED");
+    expect(submit).toBeEnabled();
+    await user.clear(key);
+    await user.type(key, "ALPHA");
+    expect(submit).toBeDisabled();
+    expect(revealEnv).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
   });
 
   it("commits one combined patch through Save and deploy", async () => {
@@ -439,8 +459,12 @@ describe("ServiceEnvironmentEditor", () => {
     await user.click(
       await screen.findByRole("menuitem", { name: "Add variable" }),
     );
-    expect(screen.getByRole("textbox", { name: /^Value$/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Delete$/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /^Value$/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Delete$/ }),
+    ).toBeInTheDocument();
   });
 
   it("names the per-row copy button and toast after the one value copied (w6/044)", async () => {

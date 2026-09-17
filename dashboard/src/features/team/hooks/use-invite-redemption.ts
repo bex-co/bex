@@ -70,48 +70,51 @@ export function useInviteRedemption(token: string, onOpened: () => void) {
     onOpened();
   }, [readyToOpen, workspaces, setCurrentWorkspaceId, onOpened]);
 
+  async function acceptInvitation(): Promise<string | null> {
+    try {
+      const result = await acceptMut({ variables: { token } });
+      const workspaceId = result.data?.acceptWorkspaceInvite?.workspaceId;
+      if (!workspaceId) throw new Error("Missing invitation result");
+      setCommittedWorkspace(workspaceId);
+      toast.success(
+        t("team.inviteAccepted", { workspace: details?.workspaceName ?? "" }),
+      );
+      return workspaceId;
+    } catch (error) {
+      if (classifyInviteRedemptionError(error) !== "already-accepted") {
+        setActionError(invitationErrorKey(error));
+        return null;
+      }
+    }
+
+    // Authentication's email-match path or another tab may have joined since
+    // preview. Refresh authoritative membership before offering Open.
+    try {
+      const refreshed = await preview.refetch();
+      const membership = refreshed.data?.workspaceInvitePreview;
+      if (!membership?.alreadyMember || !membership.workspaceId) {
+        setActionError("invites.used");
+        return null;
+      }
+      setCommittedWorkspace(membership.workspaceId);
+      return membership.workspaceId;
+    } catch (error) {
+      setActionError(invitationErrorKey(error));
+      return null;
+    }
+  }
+
   async function accept() {
     if (locked.current || !details?.workspaceId) return;
     locked.current = true;
     setBusy(true);
     setActionError(null);
-    let destination =
-      committedWorkspace ??
-      (details.alreadyMember ? details.workspaceId : null);
     try {
-      if (!destination) {
-        try {
-          const result = await acceptMut({ variables: { token } });
-          destination = result.data?.acceptWorkspaceInvite?.workspaceId ?? null;
-          if (!destination) throw new Error("Missing invitation result");
-          setCommittedWorkspace(destination);
-          toast.success(
-            t("team.inviteAccepted", {
-              workspace: details.workspaceName ?? "",
-            }),
-          );
-        } catch (error) {
-          // Authentication's email-match path or another tab may have joined
-          // since preview. Refresh authoritative membership before offering Open.
-          if (classifyInviteRedemptionError(error) !== "already-accepted") {
-            setActionError(invitationErrorKey(error));
-            return;
-          }
-          try {
-            const refreshed = await preview.refetch();
-            const membership = refreshed.data?.workspaceInvitePreview;
-            if (!membership?.alreadyMember || !membership.workspaceId) {
-              setActionError("invites.used");
-              return;
-            }
-            destination = membership.workspaceId;
-            setCommittedWorkspace(destination);
-          } catch (refreshError) {
-            setActionError(invitationErrorKey(refreshError));
-            return;
-          }
-        }
-      }
+      let destination =
+        committedWorkspace ??
+        (details.alreadyMember ? details.workspaceId : null);
+      if (!destination) destination = await acceptInvitation();
+      if (!destination) return;
       try {
         await openWorkspace(destination);
       } catch {

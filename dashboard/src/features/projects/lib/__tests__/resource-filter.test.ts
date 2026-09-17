@@ -22,8 +22,56 @@ const envGroupRows = [
     name: envGroups[0].name,
   },
 ] as ResourceRow[];
+const allRows = [
+  ...rows,
+  { kind: "keyvalue", id: "red-cache", name: "Cache" } as ResourceRow,
+  ...envGroupRows,
+];
 
 describe("project resource filters", () => {
+  it.each([
+    {
+      kind: "all",
+      query: "",
+      ids: ["srv-api", "db-main", "red-cache", "eg-shared"],
+    },
+    { kind: "services", query: "  PUBLIC  ", ids: ["srv-api"] },
+    { kind: "databases", query: "DB-MAIN", ids: ["db-main"] },
+    { kind: "keyvalues", query: "cache", ids: ["red-cache"] },
+    { kind: "envgroups", query: "eg-shared", ids: ["eg-shared"] },
+    {
+      kind: "all",
+      query: "  A  ",
+      ids: ["srv-api", "db-main", "red-cache", "eg-shared"],
+    },
+    { kind: "services", query: "database", ids: [] },
+    { kind: "all", query: "missing", ids: [] },
+  ] as const)(
+    "filters $kind by '$query' in input order",
+    ({ kind, query, ids }) => {
+      expect(
+        filterProjectResources(allRows, { kind, query }).map((row) => row.id),
+      ).toEqual(ids);
+    },
+  );
+
+  it("counts repeated rows of every kind and empty input", () => {
+    expect(countProjectResources([...allRows, allRows[2]])).toEqual({
+      all: 5,
+      services: 1,
+      databases: 1,
+      keyvalues: 2,
+      envgroups: 1,
+    });
+    expect(countProjectResources([])).toEqual({
+      all: 0,
+      services: 0,
+      databases: 0,
+      keyvalues: 0,
+      envgroups: 0,
+    });
+  });
+
   it("parses only URL-supported kinds", () => {
     expect(parseProjectResourceKind("envgroups")).toBe("envgroups");
     expect(parseProjectResourceKind("workers")).toBe("all");

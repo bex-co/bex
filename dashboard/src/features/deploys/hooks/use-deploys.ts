@@ -141,17 +141,14 @@ export function useDeploys(
   const [appended, setAppended] = useState<AppendedPages>(NO_APPENDED);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const scoped = useMemo(() => {
-    if (appended.filterKey !== filterKey) return NO_APPENDED;
-    const firstIds = new Set(firstPage.map((d) => d.id));
-    if (appended.rows.some((d) => firstIds.has(d.id))) return NO_APPENDED;
-    return appended;
+  const { deploys, scoped } = useMemo(() => {
+    const pages = appended.filterKey === filterKey ? appended : NO_APPENDED;
+    const { rows, dropAppended } = mergeDeployPages(firstPage, pages.rows);
+    return {
+      deploys: rows,
+      scoped: dropAppended ? NO_APPENDED : pages,
+    };
   }, [appended, filterKey, firstPage]);
-
-  const deploys = useMemo(
-    () => mergeDeployPages(firstPage, scoped.rows).rows,
-    [firstPage, scoped.rows],
-  );
 
   // Not yet loaded counts as converging, matching useLatestDeploy.
   useConvergingPoll(

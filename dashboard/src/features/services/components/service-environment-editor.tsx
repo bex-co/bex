@@ -68,7 +68,6 @@ import {
   environmentDraftPatch,
   isDraftValid,
   type DraftValidation,
-  isEnvironmentDraftDirty,
   isNewDraftRow,
   isValidSecretFileName,
   MASKED_VALUE,
@@ -275,7 +274,7 @@ export function EnvironmentEditor({
       draft ? environmentDraftPatch(draft) : { envVars: [], secretFiles: [] },
     [draft],
   );
-  const dirty = draft ? isEnvironmentDraftDirty(draft) : false;
+  const dirty = patch.envVars.length > 0 || patch.secretFiles.length > 0;
   const busy = saving;
   const blocker = useBlocker({
     shouldBlockFn: () => dirty,

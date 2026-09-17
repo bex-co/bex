@@ -76,9 +76,7 @@ export function ApplicationMetricsCard({
   // the identical Metrics(CPU) document (w4/m100 t002).
   const resourceOpts: UseMetricsOptions = {
     ...window,
-    ...(selectedInstances.length > 0
-      ? { instances: selectedInstances }
-      : {}),
+    ...(selectedInstances.length > 0 ? { instances: selectedInstances } : {}),
     ...(aggregateMethod ? { aggregateMethod } : {}),
   };
   const shareInventoryWithAbsolute =
@@ -108,9 +106,7 @@ export function ApplicationMetricsCard({
   // "Limits vary". Scoped to the selection, like the usage queries.
   const limitOpts: UseMetricsOptions = {
     ...window,
-    ...(selectedInstances.length > 0
-      ? { instances: selectedInstances }
-      : {}),
+    ...(selectedInstances.length > 0 ? { instances: selectedInstances } : {}),
   };
   const cpuLimit = useMetrics(resource, "cpu_limit", limitOpts);
   const memoryLimit = useMetrics(resource, "memory_limit", limitOpts);
@@ -228,7 +224,9 @@ export function ApplicationMetricsCard({
               <TabsTrigger value="percentage">
                 {t("metrics.filterPercentage")}
               </TabsTrigger>
-              <TabsTrigger value="total">{t("metrics.filterTotal")}</TabsTrigger>
+              <TabsTrigger value="total">
+                {t("metrics.filterTotal")}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -361,17 +359,14 @@ function ResourceSection({
   const { t } = useTranslations();
 
   const hasTarget = target != null;
-  const absoluteHasData =
-    absolute.series.some((s) => s.points.length > 0) ||
-    result.series.some((s) => s.points.length > 0);
+  const absoluteHasData = absolute.series.some((s) => s.points.length > 0);
+  const resultHasData = result.series.some((s) => s.points.length > 0);
   // Percentage over observed usage but no percentage point survived: every
   // denominator was missing, zero, or otherwise untrustworthy (deleted pods,
   // predated limit retention, a mid-window rollout gap) — distinct from "no
   // usage samples" and from a source failure (both handled elsewhere).
   const percentagesUnavailable =
-    percentage &&
-    result.series.every((s) => s.points.length === 0) &&
-    absolute.series.some((s) => s.points.length > 0);
+    percentage && !resultHasData && absoluteHasData;
   // No limit configured at all (usage observed, but no percentage point
   // survived either): the division is undefined, so the chart honestly says
   // so instead of faking a flat line (same omit-don't-fake rule as bex-api).
@@ -381,11 +376,7 @@ function ResourceSection({
   // own-limit history — and every surviving point already passed the
   // server-side trustworthiness join, so hiding them would discard usable
   // history (w5/m90 t008 live walkthrough).
-  const noLimit =
-    percentage &&
-    limit.kind === "none" &&
-    absoluteHasData &&
-    result.series.every((s) => s.points.length === 0);
+  const noLimit = percentagesUnavailable && limit.kind === "none";
   const unit = percentage
     ? "percentage"
     : (result.series[0]?.unit ?? limitUnit);
@@ -404,7 +395,9 @@ function ResourceSection({
   // limit; mixed limits have no one applicable value, so the line is omitted
   // and the header says so.
   const referenceValue = percentage
-    ? (hasTarget ? target : undefined)
+    ? hasTarget
+      ? target
+      : undefined
     : limit.kind === "single"
       ? limit.value
       : undefined;
@@ -413,9 +406,7 @@ function ResourceSection({
     <MetricSection
       title={title}
       result={
-        percentage && absolute.loading
-          ? { ...result, loading: true }
-          : result
+        percentage && absolute.loading ? { ...result, loading: true } : result
       }
       headerExtra={
         <div className="flex items-baseline gap-2">

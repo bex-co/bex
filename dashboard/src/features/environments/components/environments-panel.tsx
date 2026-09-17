@@ -17,7 +17,10 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useEnvironments } from "@/features/environments/hooks/use-environments";
+import {
+  useEnvironments,
+  type EnvironmentView,
+} from "@/features/environments/hooks/use-environments";
 import { EnvironmentCard } from "@/features/environments/components/environment-card";
 import { NewEnvironmentDialog } from "@/features/environments/components/new-environment-dialog";
 import type { ServiceView } from "@/features/services/types";
@@ -38,6 +41,31 @@ import {
 } from "@/features/projects/lib/resource-filter";
 
 const UNASSIGNED_ENVIRONMENT = "unassigned";
+
+function selectEnvironmentId(
+  environments: EnvironmentView[],
+  requestedId: string | null,
+  hasUnassignedRows: boolean,
+): string | null {
+  const requestedEnvironment = environments.find(
+    (env) => env.id === requestedId,
+  );
+  if (requestedEnvironment) return requestedEnvironment.id;
+  // An explicit Unassigned URL stays stable while the resource lists load.
+  if (requestedId === UNASSIGNED_ENVIRONMENT) return UNASSIGNED_ENVIRONMENT;
+
+  // A project-only move lands in Unassigned when no Environment holds running
+  // resources (w1/m159). Env Groups deliberately do not affect this default.
+  const environmentsAllEmpty = environments.every(
+    (env) =>
+      env.serviceIds.length +
+        env.databaseIds.length +
+        env.keyValueIds.length ===
+      0,
+  );
+  if (hasUnassignedRows && environmentsAllEmpty) return UNASSIGNED_ENVIRONMENT;
+  return environments[0]?.id ?? null;
+}
 
 export interface EnvironmentsPanelProps {
   projectId: string;
@@ -84,41 +112,17 @@ export function EnvironmentsPanel({
   }, [environments, projectRows]);
 
   const requestedId = resourceFilter.environmentId;
-  const requestedEnvironment = environments.find(
-    (env) => env.id === requestedId,
-  );
   // Keep an explicitly requested Unassigned URL stable even if Environment
   // data wins the network race against the Project resource lists. Without
   // this, the transient empty `projectRows` canonicalizes a shareable
   // `?env=unassigned` URL to the first Environment before its rows arrive.
   const canShowUnassigned =
     unassignedRows.length > 0 || requestedId === UNASSIGNED_ENVIRONMENT;
-  // A row-level "Move to project" joins the Project without an Environment, so
-  // the moved resource lands under Unassigned. When every Environment is empty,
-  // defaulting to environments[0] opened a blank page right after the success
-  // toast (w1/m159, from w1/086) — land on the bucket that actually holds it.
-  // A project whose Environments do hold resources still opens on the first
-  // one, unchanged.
-  const environmentsAllEmpty = useMemo(
-    () =>
-      environments.every(
-        (env) =>
-          env.serviceIds.length +
-            env.databaseIds.length +
-            env.keyValueIds.length ===
-          0,
-      ),
-    [environments],
+  const selectedId = selectEnvironmentId(
+    environments,
+    requestedId,
+    unassignedRows.length > 0,
   );
-  const landOnUnassigned =
-    (requestedId === UNASSIGNED_ENVIRONMENT || environmentsAllEmpty) &&
-    canShowUnassigned;
-  const selectedId = requestedEnvironment
-    ? requestedEnvironment.id
-    : landOnUnassigned
-      ? UNASSIGNED_ENVIRONMENT
-      : (environments[0]?.id ??
-        (canShowUnassigned ? UNASSIGNED_ENVIRONMENT : null));
   const selectedEnvironment = environments.find((env) => env.id === selectedId);
 
   // Canonicalize missing/deleted ids once data arrives so copied URLs never
