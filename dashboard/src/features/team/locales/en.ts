@@ -201,6 +201,37 @@ const enTeam: Record<string, TranslationEntry> = {
     description:
       "Badge on a member row whose account has a second factor enrolled",
   },
+  "team.you": {
+    message: "You",
+    description: "Badge marking the caller's own row in the members table",
+  },
+  "team.owner": {
+    message: "Owner",
+    description: "Badge marking the workspace owner's row in the members table",
+  },
+  "team.ownerTooltip": {
+    message:
+      "This workspace belongs to this account. The owner cannot be removed or demoted.",
+    description: "Tooltip for the workspace-owner member badge",
+  },
+  "team.removeSelfReason": {
+    message: "You cannot remove yourself. Leave the workspace instead.",
+    description:
+      "Reason the Remove control is disabled on the caller's own row",
+  },
+  "team.removeOwnerReason": {
+    message:
+      "The workspace owner cannot be removed. Transferring ownership is not available yet.",
+    description: "Reason the Remove control is disabled on the owner's row",
+  },
+  "team.changeOwnRoleReason": {
+    message: "You cannot change your own role. Ask another admin to change it.",
+    description: "Reason the role picker is disabled on the caller's own row",
+  },
+  "team.changeOwnerRoleReason": {
+    message: "The workspace owner must remain an admin.",
+    description: "Reason the role picker is disabled on the owner's row",
+  },
   "team.mfaEnabledTooltip": {
     message: "Two-factor authentication enabled",
     description: "Tooltip for the member-row 2FA badge",
