@@ -44,3 +44,19 @@
 - **Sizing:** 240m implementation; 355m including standing closing tasks, 9 tasks.
 
 - **Approved scope decision:** sandbox file copy is in scope; sandbox groups are a deliberate non-goal. This narrowly extends sandbox transfer support and does not reopen App-instance SSH restrictions.
+
+## Triage 2026-09-17 (`/loopx w7`) — Work, not started
+
+Reached at the end of a drain that shipped w7/048, 052, 053, 054, 055, 056, 057 and parked m148/m149. Triaged rather than begun, because starting a 9-task feature with ~355m of work would have left half-work, which the drain forbids. **Not blocked** — nothing external gates the implementation half, and mislabelling it would hide available work.
+
+Two things the next run should know before picking it up:
+
+- **t001-t004 need no cluster.** t001 is reading the pinned upstream CLI's upload/download handshake and recording the contract; t002-t004 are token minting and bounded streaming in `lego/backend`. All of that is workable offline against `lego/cli/UPSTREAM_RENDER_CLI.md` and the pinned dependency.
+- **t005 and several DoD lines need a live sandbox**, and therefore a working local cluster — "The real pinned CLI uploads supported fixtures successfully", "Upload then download returns byte-identical data through the distributed CLI", and the dated compatibility-grading result. The local CAPD cluster is currently rotted (see `w7/blocked/m148`: machines 20d old, backing containers gone), so that half will need the documented reprovision first:
+
+  ```sh
+  kubectl --context kind-bex-mgmt delete cluster bex --wait=false
+  bash scripts/mock-cluster.sh
+  ```
+
+Sequencing suggestion: do t001 first regardless — the contract is the input to everything else, and pinning it against the real client rather than help output is explicitly what the first DoD line asks for.
