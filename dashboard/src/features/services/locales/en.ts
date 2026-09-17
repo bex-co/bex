@@ -502,6 +502,10 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Autoscaling on",
     description: "Autoscaling main toggle label when enabled",
   },
+  "services.scalingPaidOnly": {
+    message: "Autoscaling is available on paid plans. Upgrade to enable it.",
+    description: "Autoscaling card explanation for a free service",
+  },
   "services.scalingOff": {
     message: "Autoscaling off",
     description: "Autoscaling main toggle label when disabled",

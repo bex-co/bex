@@ -67,11 +67,13 @@ export function ServiceScalingPage({ serviceId }: { serviceId: string }) {
 
   return (
     <div className="space-y-6">
-      {scalable ? <AutoscalingSection autoscaling={autoscaling} /> : null}
+      {scalable ? (
+        <AutoscalingSection autoscaling={autoscaling} plan={service.plan} />
+      ) : null}
       {/* Reserve the manual-card slot while autoscaling state resolves so the
           card doesn't pop in and shift the layout (w9/m63 t003). */}
       {scalable && autoscaling.loading ? <CardSkeleton rows={2} /> : null}
-      {scalable && !autoscaling.loading && !autoscaling.enabled ? (
+      {scalable && !autoscaling.loading && (!autoscaling.enabled || service.plan === "free") ? (
         <ManualScalingSection
           serviceId={serviceId}
           replicas={service.replicas ?? 1}
