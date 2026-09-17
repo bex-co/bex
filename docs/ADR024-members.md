@@ -136,7 +136,20 @@ Refusing is the only answer that is correct in both directions. The owner's exit
 
 **Why ADR086 offboarding may remove an owner and the member verbs may not.** `PGStore.RemoveAccountMember` (the [account-deletion](ADR086-account-deletion.md) path) clears `owner_identity_id` in the **same transaction** that deletes the row, so it never leaves a workspace whose owner binding names a non-member — the exact state the member verbs would create. It is also not an authenticated self-service action: `members.AccountOffboarder` is a separate type with no caller identity, so `guardSelf` does not apply to it either.
 
-**Adding a member-mutating verb.** `TestMemberMutatingVerbsRunTheGuards` (`internal/members/owner_self_guards_test.go`) reads `service.go`'s AST and fails if a verb writes `RemoveMember`/`UpdateMemberRole` without running both guards — the same durable-rule shape the contributor boundary uses. Extend this matrix along with it.
+**Leaving is the exit (w5/m102).** `members.LeaveWorkspace` is the self-scoped counterpart to the refusals above: it takes **no subject argument at all** — the caller's identity is the subject — so no shape of the call can remove somebody else, which is what separates it from `Remove`. It is authorized as any member (`can_view` on the workspace, the `AcceptInvite` precedent) rather than `can_manage`: leaving is not managing a teammate. Its refusals are the same two floors seen from the other side — the workspace owner (`OWNER_CANNOT_LEAVE`, 409; the binding would be stranded exactly as a removal would strand it) and the last admin (the shared `ErrLastAdmin` rule, 400).
+
+It reaches `Remove`'s end state by `Remove`'s fail-closed route: dispose the leaver's API keys in that workspace (the w2/m163 rule — a credential must not outlive the membership that justified it, whichever exit was taken), revoke the role tuple, then delete the row. It is audited as its own verb, `members.Leave`, so the events feed can tell "left" from "was removed by an admin" — the caller and the target are the same subject, which is precisely the shape `Remove` refuses.
+
+Leaving also evicts **two** caches, not one: the caller's workspace resolution (`InvalidateTenant`) and their cached membership positive for the workspace they left (`InvalidateMembership`, added here). The second was a real gap — `IsMember` caches positives for `core.PositiveTTL`, so a request explicitly naming the workspace just left kept resolving into it for up to 30 s. It was never an access bypass (OpenFGA is the gate, and the role tuple is revoked), but it is the m13 blank-switcher symptom, so both are evicted.
+
+| Actor → target | Remove | Change role | Leave |
+| --- | --- | --- | --- |
+| Owner | `OWNER_CANNOT_BE_REMOVED` | `OWNER_ROLE_CANNOT_CHANGE` | `OWNER_CANNOT_LEAVE` |
+| Self | `CANNOT_REMOVE_SELF` → use Leave | `CANNOT_CHANGE_OWN_ROLE` | the verb's whole purpose |
+| Last admin | refused | refused on demotion | refused |
+| Ordinary member | allowed (admin only) | allowed (admin only) | allowed (self only) |
+
+**Adding a member-mutating verb.** `TestMemberMutatingVerbsRunTheGuards` (`internal/members/owner_self_guards_test.go`) reads `service.go`'s AST and fails if a verb writes `RemoveMember`/`UpdateMemberRole` without the guards its shape calls for: a verb that takes a `subject` parameter must run `guardSelf` + `guardOwner`; a self-only verb (no `subject` parameter, like `LeaveWorkspace`) must run `guardOwnerLeaving`. A self-only verb that later grew a subject parameter falls into the first branch and fails until it is guarded like one — that escalation is the thing being pinned shut. `TestEveryMembershipEndingVerbDisposesKeys` separately enumerates the exits that owe API-key disposal. Extend this matrix along with either.
 
 ## Enforcement (the definition of done)
 

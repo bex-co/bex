@@ -201,6 +201,50 @@ const enTeam: Record<string, TranslationEntry> = {
     description:
       "Badge on a member row whose account has a second factor enrolled",
   },
+  "team.leaveTitle": {
+    message: "Leave workspace",
+    description: "Title of the leave-workspace card in workspace settings",
+  },
+  "team.leaveDescription": {
+    message:
+      "Give up your membership of {workspace}. You will lose access to its services and data, and any API keys you created here stop working. An admin can invite you back.",
+    description: "Description of the leave-workspace card",
+  },
+  "team.leaveAction": {
+    message: "Leave workspace",
+    description: "Label of the leave-workspace button",
+  },
+  "team.leaveConfirmTitle": {
+    message: "Leave this workspace?",
+    description: "Title of the leave-workspace confirmation dialog",
+  },
+  "team.leaveConfirm": {
+    message:
+      "You will lose access to {workspace} and the API keys you created in it will be revoked. You can only rejoin if an admin invites you.",
+    description: "Body of the leave-workspace confirmation dialog",
+  },
+  "team.leaveCancel": {
+    message: "Cancel",
+    description: "Cancel label in the leave-workspace confirmation dialog",
+  },
+  "team.leaveErrorTitle": {
+    message: "Could not leave the workspace",
+    description: "Title of the inline error when leaving is refused",
+  },
+  "team.leaveError": {
+    message: "Leaving the workspace failed. Please try again.",
+    description: "Fallback message when leaving fails without a server reason",
+  },
+  "team.leaveOwnerReason": {
+    message:
+      "You own this workspace, so you cannot leave it. Transferring ownership is not available yet.",
+    description: "Reason the Leave action is disabled for the workspace owner",
+  },
+  "team.leaveLastAdminReason": {
+    message:
+      "You are the last admin. Make someone else an admin first, so the workspace still has one.",
+    description: "Reason the Leave action is disabled for the last admin",
+  },
   "team.you": {
     message: "You",
     description: "Badge marking the caller's own row in the members table",

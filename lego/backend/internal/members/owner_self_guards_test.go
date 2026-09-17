@@ -213,18 +213,36 @@ func TestListMarksTheOwnerAndTheCallersOwnRow(t *testing.T) {
 
 // TestMemberMutatingVerbsRunTheGuards is the durable form of the rule (the
 // ADR024 contributor-boundary precedent): a member-mutating verb added later
-// must run the self and owner guards, or this sweep fails naming it. It reads
-// service.go's AST rather than the behavior of two known verbs, so the failure
-// arrives with the NEW verb, not with a test nobody thought to extend.
+// must run the guards its shape calls for, or this sweep fails naming it. It
+// reads service.go's AST rather than the behavior of known verbs, so the
+// failure arrives with the NEW verb, not with a test nobody thought to extend.
+//
+// Two shapes are legal, distinguished by whether the verb names its target:
+//
+//   - TEAMMATE-TARGETED (takes a `subject` parameter, e.g. Remove/ChangeRole):
+//     must run guardSelf — acting on yourself is not managing a teammate — and
+//     guardOwner.
+//   - SELF-ONLY (no subject parameter, e.g. LeaveWorkspace): the subject comes
+//     from the caller's identity, so guardSelf is meaningless; it must instead
+//     run the leaving owner guard. A self-only verb that grew a subject
+//     parameter would fall into the first branch and fail until it is guarded
+//     like one, which is the escalation this pins shut.
 func TestMemberMutatingVerbsRunTheGuards(t *testing.T) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "service.go", nil, 0)
 	if err != nil {
 		t.Fatalf("parse service.go: %v", err)
 	}
-	// The two store writes that change who belongs to a workspace and with what
-	// power. A new one here should be added deliberately, with its guards.
-	mutators := map[string]bool{"RemoveMember": true, "UpdateMemberRole": true}
+	// The store writes that change who belongs to a workspace and with what
+	// power, plus the shared teardown they were factored into — a verb must not
+	// be able to shed its guards by calling the helper instead of the store
+	// directly (this sweep caught exactly that during the w5/m102 refactor).
+	// endMembership itself is unexported and is the teardown, not the gate: the
+	// loop below only demands guards of EXPORTED verbs, which is where the
+	// authorization decision belongs.
+	mutators := map[string]bool{
+		"RemoveMember": true, "UpdateMemberRole": true, "endMembership": true,
+	}
 
 	checked := 0
 	for _, decl := range file.Decls {
@@ -232,7 +250,7 @@ func TestMemberMutatingVerbsRunTheGuards(t *testing.T) {
 		if !ok || fn.Body == nil {
 			continue
 		}
-		var mutates, self, owner bool
+		var mutates, self, owner, ownerLeaving bool
 		ast.Inspect(fn.Body, func(n ast.Node) bool {
 			call, ok := n.(*ast.CallExpr)
 			if !ok {
@@ -243,8 +261,11 @@ func TestMemberMutatingVerbsRunTheGuards(t *testing.T) {
 				if mutators[f.Sel.Name] {
 					mutates = true
 				}
-				if f.Sel.Name == "guardOwner" {
+				switch f.Sel.Name {
+				case "guardOwner":
 					owner = true
+				case "guardOwnerLeaving":
+					ownerLeaving = true
 				}
 			case *ast.Ident:
 				if f.Name == "guardSelf" {
@@ -253,17 +274,36 @@ func TestMemberMutatingVerbsRunTheGuards(t *testing.T) {
 			}
 			return true
 		})
-		if !mutates {
+		if !mutates || !fn.Name.IsExported() {
 			continue
 		}
 		checked++
-		if !self || !owner {
-			t.Errorf("%s writes membership without the w5/m101 guards: guardSelf=%v guardOwner=%v",
-				fn.Name.Name, self, owner)
+		if namesASubject(fn) {
+			if !self || !owner {
+				t.Errorf("%s writes membership on a named subject without the w5/m101 guards: guardSelf=%v guardOwner=%v",
+					fn.Name.Name, self, owner)
+			}
+			continue
+		}
+		if !ownerLeaving {
+			t.Errorf("%s writes membership for the caller without the w5/m102 owner guard", fn.Name.Name)
 		}
 	}
-	if checked != 2 {
-		t.Fatalf("membership-mutating verbs found = %d, want 2 (Remove, ChangeRole) — "+
+	if checked != 3 {
+		t.Fatalf("membership-mutating verbs found = %d, want 3 (Remove, ChangeRole, LeaveWorkspace) — "+
 			"a verb was added or renamed; extend the matrix in docs/ADR024-members.md with it", checked)
 	}
+}
+
+// namesASubject reports whether the verb takes a caller-supplied subject — the
+// difference between "manage this teammate" and "act on myself".
+func namesASubject(fn *ast.FuncDecl) bool {
+	for _, param := range fn.Type.Params.List {
+		for _, name := range param.Names {
+			if name.Name == "subject" {
+				return true
+			}
+		}
+	}
+	return false
 }
