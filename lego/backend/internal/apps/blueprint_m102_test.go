@@ -21,6 +21,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,6 +33,14 @@ import (
 func TestShippedExampleBlueprintsValidate(t *testing.T) {
 	svc := newBlueprintValidator(t)
 	root := repoRoot(t)
+	// Only files git actually tracks. The walk used to cover the whole repo root
+	// and skip four directory names by hand, which swept up any gitignored
+	// sibling checkout a developer happened to keep there — on 2026-09-16 an
+	// unrelated project's bex.yml failed this test on a local machine while CI,
+	// with its clean checkout, stayed green. A false failure that only fires
+	// locally is the worst kind: it teaches people to ignore a red suite. The
+	// test's own name is the right scope — the blueprints *we ship*.
+	tracked := gitTrackedFiles(t, root)
 	var found int
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -48,13 +57,16 @@ func TestShippedExampleBlueprintsValidate(t *testing.T) {
 		if name != "render.yaml" && name != "bex.yml" {
 			return nil
 		}
+		rel, relErr := filepath.Rel(root, path)
+		if relErr != nil || !tracked[filepath.ToSlash(rel)] {
+			return nil // untracked or ignored — not ours to validate
+		}
 		found++
 		raw, readErr := os.ReadFile(path)
 		if readErr != nil {
 			t.Errorf("read %s: %v", path, readErr)
 			return nil
 		}
-		rel, _ := filepath.Rel(root, path)
 		_, problems := CompileBlueprintSource(string(raw))
 		if len(problems) > 0 {
 			t.Errorf("%s compiler problems = %+v", rel, problems)
@@ -390,6 +402,25 @@ func newBlueprintValidator(t *testing.T) *Service {
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	return filepath.Clean(filepath.Join("..", "..", "..", ".."))
+}
+
+// gitTrackedFiles is the set of repo-relative paths git tracks, used to keep the
+// shipped-blueprint walk from validating files that are not part of the repo.
+// A checkout without git is a hard failure rather than a silent pass: a walk that
+// quietly validated nothing would be worse than not having the test.
+func gitTrackedFiles(t *testing.T, root string) map[string]bool {
+	t.Helper()
+	out, err := exec.Command("git", "-C", root, "ls-files", "-z").Output()
+	if err != nil {
+		t.Fatalf("git ls-files in %s: %v", root, err)
+	}
+	tracked := make(map[string]bool)
+	for _, name := range strings.Split(string(out), "\x00") {
+		if name != "" {
+			tracked[name] = true
+		}
+	}
+	return tracked
 }
 
 func staticSiteManifest(extra string) string {

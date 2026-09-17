@@ -63,6 +63,11 @@ func (c *StripeClient) EnsureContract(ctx context.Context, tenantID string) erro
 		Metadata: map[string]string{
 			workspaceMetadataKey:    tenantID,
 			subscriptionMetadataKey: "true",
+			// Minted before the payment page, so it carries no card yet. Cleared by
+			// the checkout completion that actually binds one — without this a live
+			// subscription reads exactly like a paying customer, which is how twelve
+			// cardless workspaces came to look bound on 2026-09-16.
+			pendingSetupMetadataKey: "true",
 		},
 	}
 	params.Context = ctx
@@ -136,16 +141,62 @@ func (c *StripeClient) CancelContract(ctx context.Context, tenantID string) erro
 	if err != nil {
 		return err
 	}
-	if !found {
-		return nil // no live subscription ⇒ nothing to cancel
+	// A workspace can hold a card without a live subscription, so the payment
+	// instruments are retired unconditionally — not only on the cancel path.
+	if found {
+		params := &stripe.SubscriptionCancelParams{
+			InvoiceNow: stripe.Bool(true),  // bill already-exported metered usage one last time
+			Prorate:    stripe.Bool(false), // a metered plan has no prepaid time to credit
+		}
+		params.Context = ctx
+		if _, err := c.sc.Subscriptions.Cancel(subscriptionID, params); err != nil {
+			return fmt.Errorf("stripe: cancel subscription %s for %s: %w", subscriptionID, tenantID, err)
+		}
 	}
-	params := &stripe.SubscriptionCancelParams{
-		InvoiceNow: stripe.Bool(true),  // bill already-exported metered usage one last time
-		Prorate:    stripe.Bool(false), // a metered plan has no prepaid time to credit
+	return c.retireCustomer(ctx, tenantID, customerID)
+}
+
+// retireCustomer strips a deleted workspace's payment instruments and personal
+// data from its surviving Stripe Customer: every PaymentMethod is detached, the
+// invoice default is cleared, and email/name are emptied behind a bex_deleted_at
+// marker. Cancelling the subscription alone used to leave the card attached and
+// the customer's email readable indefinitely (observed on cus_VCV5qtrtlYh0N0 and
+// cus_VGzT7XpXc4z57t) — the tenant was gone from bex while Stripe still held a
+// live payment instrument for them.
+//
+// The Customer object itself is KEPT, deliberately: deleting it would orphan the
+// invoices retention requires. Every operation is idempotent, so the purger stays
+// safe to re-run, which Delete's retry contract requires.
+func (c *StripeClient) retireCustomer(ctx context.Context, tenantID, customerID string) error {
+	listParams := &stripe.PaymentMethodListParams{Customer: stripe.String(customerID)}
+	listParams.Context = ctx
+	listParams.Limit = stripe.Int64(100)
+	iter := c.sc.PaymentMethods.List(listParams)
+	var attached []string
+	for iter.Next() {
+		attached = append(attached, iter.PaymentMethod().ID)
 	}
-	params.Context = ctx
-	if _, err := c.sc.Subscriptions.Cancel(subscriptionID, params); err != nil {
-		return fmt.Errorf("stripe: cancel subscription %s for %s: %w", subscriptionID, tenantID, err)
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("stripe: list payment methods for %s: %w", tenantID, err)
+	}
+	for _, id := range attached {
+		detachParams := &stripe.PaymentMethodDetachParams{}
+		detachParams.Context = ctx
+		if _, err := c.sc.PaymentMethods.Detach(id, detachParams); err != nil {
+			return fmt.Errorf("stripe: detach payment method %s for %s: %w", id, tenantID, err)
+		}
+	}
+	// Empty strings clear the fields; the marker records when, so a Customer that
+	// is already retired is visibly so rather than merely blank.
+	update := &stripe.CustomerParams{
+		Email:           stripe.String(""),
+		Name:            stripe.String(""),
+		InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{DefaultPaymentMethod: stripe.String("")},
+	}
+	update.Context = ctx
+	update.AddMetadata(deletedAtMetadataKey, time.Now().UTC().Format(time.RFC3339))
+	if _, err := c.sc.Customers.Update(customerID, update); err != nil {
+		return fmt.Errorf("stripe: retire customer %s for %s: %w", customerID, tenantID, err)
 	}
 	return nil
 }

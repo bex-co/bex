@@ -57,19 +57,37 @@ func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "webhook body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
-	event, err := webhook.ConstructEvent(body, r.Header.Get("Stripe-Signature"), h.Secret)
+	// Stripe does not retry a 4xx, so every rejection below is permanent event
+	// loss. Each one therefore logs: a silent reject is indistinguishable from
+	// "nothing happened", and the only writer of payment_method_bound_at arrives
+	// through this handler. Never log the body or the signature header.
+	// IgnoreAPIVersionMismatch because the SDK's default ConstructEvent folds a
+	// version mismatch into the same error as a forged signature — which would
+	// both mislabel the failure in the log and reject a perfectly authentic
+	// event. Authenticity is what this call must decide; version is judged
+	// separately below.
+	event, err := webhook.ConstructEventWithOptions(body, r.Header.Get("Stripe-Signature"), h.Secret,
+		webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true})
 	if err != nil {
 		h.Metrics.Operation("webhook_signature", "error")
+		log.Printf("billing: rejected Stripe webhook with an invalid signature: %v", err)
 		http.Error(w, "invalid Stripe signature", http.StatusBadRequest)
 		return
 	}
+	// An unexpected API version is recorded but NOT rejected. Every handler below
+	// re-reads its objects from Stripe by id and never trusts this payload's
+	// shape (see verifiedCheckout), so a differently-versioned payload is
+	// harmless — whereas rejecting one would drop the event permanently and
+	// invisibly the moment the endpoint's pinned version drifts from the SDK's.
 	if event.APIVersion != stripe.APIVersion {
 		h.Metrics.Operation("webhook_version", "error")
-		http.Error(w, "incompatible Stripe API version", http.StatusBadRequest)
-		return
+		log.Printf("billing: Stripe webhook event=%s type=%s carries API version %q, expected %q — dispatching anyway",
+			event.ID, event.Type, event.APIVersion, stripe.APIVersion)
 	}
 	if event.Livemode != h.ExpectedLivemode {
 		h.Metrics.Operation("webhook_mode", "error")
+		log.Printf("billing: rejected Stripe webhook event=%s type=%s: livemode=%t, expected %t",
+			event.ID, event.Type, event.Livemode, h.ExpectedLivemode)
 		http.Error(w, "Stripe event mode mismatch", http.StatusBadRequest)
 		return
 	}

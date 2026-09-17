@@ -111,8 +111,15 @@ func newStripeTest(t *testing.T, route func(method, path string) (int, string)) 
 }
 
 type billingStateStoreFake struct {
-	boundWorkspaces []string
-	boundAt         []time.Time
+	boundWorkspaces    []string
+	boundAt            []time.Time
+	checkoutsStarted   []string
+	checkoutStartedErr error
+}
+
+func (f *billingStateStoreFake) MarkCheckoutStarted(_ context.Context, workspaceID string, _ time.Time) error {
+	f.checkoutsStarted = append(f.checkoutsStarted, workspaceID)
+	return f.checkoutStartedErr
 }
 
 func (f *billingStateStoreFake) UpsertBillingProviderMapping(context.Context, store.BillingProviderMapping) error {
@@ -684,26 +691,47 @@ func TestStripeWebhookVerifiesSignatureAndDispatchesPaymentFailure(t *testing.T)
 	}
 }
 
-func TestStripeWebhookRejectsIncompatibleVersionAndMode(t *testing.T) {
+func TestStripeWebhookRejectsIncompatibleMode(t *testing.T) {
 	secret := "whsec_test"
-	for _, tc := range []struct {
-		name, version string
-		livemode      bool
-	}{
-		{name: "version", version: "2025-01-01", livemode: false},
-		{name: "mode", version: stripe.APIVersion, livemode: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			payload := []byte(fmt.Sprintf(`{"id":"evt_guard","object":"event","api_version":%q,"created":1785196800,"livemode":%t,"type":"invoice.payment_failed","data":{"object":{}}}`, tc.version, tc.livemode))
-			signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: payload, Secret: secret, Timestamp: time.Now()})
-			req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", strings.NewReader(string(payload)))
-			req.Header.Set("Stripe-Signature", signed.Header)
-			w := httptest.NewRecorder()
-			(&StripeWebhook{Secret: secret, ExpectedLivemode: false}).ServeHTTP(w, req)
-			if w.Code != http.StatusBadRequest {
-				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
-			}
-		})
+	payload := []byte(fmt.Sprintf(`{"id":"evt_guard","object":"event","api_version":%q,"created":1785196800,"livemode":true,"type":"invoice.payment_failed","data":{"object":{}}}`, stripe.APIVersion))
+	signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: payload, Secret: secret, Timestamp: time.Now()})
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", strings.NewReader(string(payload)))
+	req.Header.Set("Stripe-Signature", signed.Header)
+	w := httptest.NewRecorder()
+
+	dispatched := false
+	(&StripeWebhook{Secret: secret, ExpectedLivemode: false, OnLifecycle: func(context.Context, *stripe.Event) error {
+		dispatched = true
+		return nil
+	}}).ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest || dispatched {
+		t.Fatalf("livemode mismatch status=%d dispatched=%v, want 400 and no dispatch", w.Code, dispatched)
+	}
+}
+
+// A mismatched API version must NOT be rejected. Stripe never retries a 4xx, so
+// rejecting would silently and permanently drop every event the moment the
+// endpoint's pinned version drifts from the SDK's — including the
+// checkout.session.completed that is the sole writer of payment_method_bound_at.
+// Dispatching is safe because the handlers re-read every object from Stripe by
+// id and never trust the delivered payload's shape.
+func TestStripeWebhookDispatchesDespiteApiVersionMismatch(t *testing.T) {
+	secret := "whsec_test"
+	payload := []byte(`{"id":"evt_old_version","object":"event","api_version":"2020-08-27","created":1785196800,"livemode":false,"type":"invoice.payment_failed","data":{"object":{"id":"in_1","object":"invoice","livemode":false,"customer":"cus_1","parent":{"type":"subscription_details","subscription_details":{"subscription":"sub_1","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}}}}}`)
+	signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: payload, Secret: secret, Timestamp: time.Now()})
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", strings.NewReader(string(payload)))
+	req.Header.Set("Stripe-Signature", signed.Header)
+	w := httptest.NewRecorder()
+
+	var got string
+	(&StripeWebhook{Secret: secret, ExpectedLivemode: false, OnLifecycle: func(_ context.Context, event *stripe.Event) error {
+		got = event.ID
+		return nil
+	}}).ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent || got != "evt_old_version" {
+		t.Fatalf("version mismatch status=%d dispatched=%q, want 204 and a dispatch", w.Code, got)
 	}
 }
 
