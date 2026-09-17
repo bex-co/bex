@@ -60,7 +60,8 @@ A full sweep of what a release's configuration actually consists of, so the snap
 | t003 | Truth surfaces: the canceled change stays saved and reads "not deployed"; the Live row is what actually runs | 45m | t002 |
 | t004 | Blast radius: every config source a `config_change` deploy carries, plus the m52/m104 controls | 45m | t002 |
 | t009 | Rollback restores the target deploy's configuration (env vars, start command), and a dashboard rollback turns auto-deploy off | 60m | t001 |
-| t005 | Render parity | 30m | t003, t004, t009 |
+| t010 | Live: canceling a health-gated rollout restores the probe-free template and settles Running | 30m | t003 |
+| t005 | Render parity | 30m | t003, t004, t009, t010 |
 | t006 | Simplify | 20m | t005 |
 | t007 | Test coverage | 45m | t005 |
 | t008 | Closeout | 10m | t007 |
@@ -72,6 +73,7 @@ Each bullet can be repeated on a throwaway free web service (`bex-co/bex` `examp
 - **The canceled change never reaches the running service.** `PUT /v1/services/<srv>/env-vars/MESSAGE {"value":"should-not-ship"}` opens a `config_change` deploy. While it is `build_in_progress`, `POST /v1/services/<srv>/deploys/<dep>/cancel`. For 5 minutes afterwards, `curl https://<svc>.onbex.co/` keeps returning `OK`, and `GET /v1/services/<srv>/instances` shows no instance created after the cancel. At filing time a new instance was created at **15:28:51Z**, 4 s after the cancel, and the service answered **`should-not-ship`** by 15:29:57.
 - **The saved value stays saved, and the next deploy ships it.** After the cancel, `GET /v1/services/<srv>/env-vars/MESSAGE` still returns `should-not-ship`; a later manual deploy serves it. The first half held at filing time and must be kept; the second half is the target.
 - **The deploy list tells the truth.** After the cancel, the row `GET /v1/services/<srv>/deploys` and `/services/<srv>/deploys` mark **Live** is the release whose image and config are actually running, and every pod rollout has a deploy row. At filing time the list read `Canceled · config_change` over `Live · First Deploy (324ab60)`, while the running pod carried the canceled config and no row or event recorded that rollout.
+- **Canceling a health-gated rollout restores the probe-free template and settles Running.** On a throwaway free web service: set Health Check Path to a 404ing path, wait for the `config_change` deploy to sit `update_in_progress` with its new pod listening-but-unready, cancel it — within 2 minutes the phase reads `Running` with exactly one serving pod, no pod carries the canceled probe, and the saved path still reads as not deployed. At extension time (t010, 2026-09-17) the revert pod carried the probe, the phase sat `Deploying` 8+ minutes with zero in-flight work, and only the pre-cancel pod served.
 
 ## Evidence (probes run 2026-09-14, production, workspace `bex` / `tea-d98210cbbpdc73dcrkvg`)
 
