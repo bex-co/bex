@@ -120,7 +120,7 @@ Two properties of this table are load-bearing:
 
 An alert rule fires on a series that moved. It cannot fire on a series that is **silently empty**, and that is the failure this platform has hit repeatedly: `type=request` dark for every tenant for a month (w6/m131), the SSH edge never completing a handshake (w6/m132), metrics series that existed while bex-api's query named them wrong (w6/m110). Each was a 200 with no rows — indistinguishable, to any threshold, from a quiet platform. So dashboards and alerts are only half the coverage; the other half is a probe that **generates** the signal it then demands to read back. Falsifiable green: a probe that cannot go red is not coverage.
 
-| probe | cadence | asks | red opens |
+| probe | nominal cadence | asks | red opens |
 | --- | --- | --- | --- |
 | `ssh-kexinit-probe.sh` | 6h | does `ssh.bex.co` complete a version exchange | `ssh-edge-down` |
 | `onbex-default-tls-verify.sh` | 6h | trusted wildcard TLS + the intentional 404 | `onbex-fallback-tls-down` |
@@ -130,6 +130,12 @@ An alert rule fires on a series that moved. It cannot fire on a series that is *
 | `deploy-canary.sh` | weekly | does a repo become a running HTTPS URL, and does deleting it converge on every read surface | `deploy-canary-down` |
 | `verify-tenant-isolation.sh` | weekly | ADR043 reachability matrix on the real substrate | `tenant-isolation-down` |
 | `verify-sandbox-isolation-live.sh` | weekly | ADR042 / w3/m35 sandbox boundary matrix | `sandbox-isolation-down` |
+
+**Cadence is configured, not guaranteed (w7/055, measured 2026-09-15..17).** The column above is the cron interval these workflows _request_; GitHub schedules are documented best-effort, and measurement says the difference is large. Across ten consecutive `event: schedule` runs of `ssh-edge-liveness.yml` (`cron: "37 */6 * * *"`) the run was created **3h04m-5h27m after its slot**, and consecutive gaps ran 4h25m-7h28m — four of eight gaps exceeding six hours.
+
+The delay is GitHub-side dispatch, not this fleet. Per-job timings show each job starting **~3s** after `run_started_at`, on three **distinct** runners per run, so nothing is queuing behind the single self-hosted host ([`DO_NOT_DO.md` `#RUNNER-HOSTS`](../.pm/DO_NOT_DO.md)). Adding runner capacity would change nothing.
+
+So: **six hours is the nominal configured cadence, not a detection bound.** Do not restate it as "a regression surfaces within six hours", and do not promote the observed 7h28m maximum into a replacement promise — it is one sample of one workflow, and the other scheduled probes need their own evidence rather than an inference from this one. **This item supplies no independent freshness monitor**; [`w3/042`](../.pm/w3/blocked/042.md) owns the advisory cadence checker, and the evidence-based input for it is a freshness-alert threshold of **12h without a successful run** for this workflow — comfortably above the measured 7h28m worst case, and labelled as an alerting threshold rather than a promised bound. Moving the trigger in-cluster stays deferred; worsening drift can reopen it.
 
 The first four are credential-free platform reads. The last four need a **canary fixture**: a first-party `bex-canary` workspace (`billing_excluded` per [ADR040](ADR040-billing-metronome.md) §7) holding one free web service built from `examples/hello-go`, plus one workspace-scoped API key. Free-tier hibernation is wanted rather than tolerated — the probe's own request wakes the service, which exercises the activator path and puts a `service_woken` event in the feed that the probe's last stage reads.
 

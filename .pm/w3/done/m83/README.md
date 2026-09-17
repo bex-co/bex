@@ -38,3 +38,13 @@ The production liveness workflows run on schedule against `api.bex.co` / the pro
 
 - `.pm/DO_NOT_DO.md` `#CI-RUNNERS` / `#RUNNER-HOSTS`: everything stays on the existing self-hosted pools; credentialed jobs use `bex-production`.
 - Canary secret: `BEX_CANARY_API_KEY` in `.env.example` + `scripts/gh-secrets.sh` + ADR019; fixture ids are repository variables (set in w5/m96).
+
+## Correction 2026-09-17 (w7/055) — the six-hour figure is a cadence, not a guarantee
+
+This milestone's goal sentence promises that a silent regression "surfaces as a GitHub issue **within six hours**". The probes and alerts it shipped are real and are retained; what does not hold is the detection bound, and it was never in this milestone's power to give. Recorded here rather than edited away, because the measurements below are the evidence.
+
+Measured over ten consecutive `event: schedule` runs of `.github/workflows/ssh-edge-liveness.yml` (`cron: "37 */6 * * *"`), 2026-09-15 to 2026-09-17: runs were created **3h04m-5h27m after their slot**, with consecutive gaps of 4h25m, 5h10m, 5h16m, 6h47m, 6h48m, 7h16m, 7h28m and 4h29m — **four of eight gaps over six hours**. A regression appearing just after a run therefore waits up to ~7.5 hours for its issue.
+
+**The cause is GitHub-side dispatch, and this was verified at job level rather than inferred.** Run-level `createdAt`/`startedAt` being equal does not by itself prove zero runner wait; per-job timings do. Each job starts **~3s** after `run_started_at`, on three distinct runners per run, so the single self-hosted host is not serializing anything and added capacity would not help.
+
+The wording in `docs/ADR088-platform-observability-ui.md` now says **nominal configured cadence**. The advisory cadence checker is `w3/042`'s, with a suggested freshness threshold of 12h without a successful run for this workflow — above the measured worst case and explicitly an alerting threshold, not a new promise. No independent freshness monitor is supplied by this correction.
