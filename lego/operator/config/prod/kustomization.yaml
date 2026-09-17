@@ -22,6 +22,18 @@ patches:
       kind: Deployment
       name: controller-manager
     patch: |-
+      # w7/047: bounded production cache trial. The absolute deadline survives
+      # manager restarts; retain-or-rollback review is due after 48 hours.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_BUILD_CACHE
+          value: registry
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_BUILD_CACHE_TRIAL_DEADLINE
+          value: "2026-09-20T02:34:30Z"
       - op: add
         path: /spec/template/spec/containers/0/env/-
         value:
