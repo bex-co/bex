@@ -18,7 +18,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 - [ ] **m151** — [Coherent datastore placement after moves and deletion](m151/README.md) (8 tasks, ~4h55m) ← approved additional w7 brainstorm
 - [ ] **m152** — [Validate grouping mutations before changing members](m152/README.md) (8 tasks, ~4h25m) ← approved additional w7 brainstorm
 
-- [ ] **m148** — **BLOCKED (needs a healthy CAPD environment: the local cluster has rotted — machines 20d old, backing containers gone, `bex-lb` publishes no 6443 port. Recover with `kubectl --context kind-bex-mgmt delete cluster bex --wait=false && bash scripts/mock-cluster.sh`, then run t007)** — [Reliable local cluster bring-up](blocked/m148/README.md) (7 tasks; **t001-t006 done**, t007 closeout held) ← approved five-item brainstorm
+- [x] **m148** — [Reliable local cluster bring-up](done/m148/README.md) (7 tasks) ← approved five-item brainstorm. Local CAPD cluster reprovisioned 2026-09-17; the rebuild also fixed a pre-existing helm `--set` comma bug that had been aborting every bring-up at metrics-server.
 - [ ] **m149** — **BLOCKED (t001 depends on w7/m148/t007, itself held on a healthy CAPD environment; and t001 is a live measurement the DoD forbids substituting reasoning for. Every task chains off t001)** — [Correct cold deep-link initialization](blocked/m149/README.md) (8 tasks) ← promotes 049
 - [ ] **m150** — [Sandbox file copy through the pinned CLI](m150/README.md) (9 tasks) ← promotes 046
 
