@@ -37,7 +37,7 @@ var sandboxNetworkPolicyInput = graphql.NewInputObject(graphql.InputObjectConfig
 })
 
 // sandboxGQLType is the GraphQL projection of a Sandbox, keeping the third
-// surface behavior-identical to REST/MCP (internal/api/CLAUDE.md three-adapter
+// surface behavior-identical to REST/MCP (internal/api/AGENTS.md three-adapter
 // parity). Extra fields (owner/workspace/image) are a safe superset over the
 // Render REST shape.
 var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{

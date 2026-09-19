@@ -345,7 +345,7 @@ function buildSecurityHeaders(
     // Tailwind and shadcn/Radix. connect-src https:/wss: covers the API, auth,
     // and Browser Web Shell origins without hard-coding their values here.
     // Outside production, also allow plain-http localhost: `yarn dev:local`
-    // (dashboard/CLAUDE.md's fast frontend loop) points VITE_API_URL straight at
+    // (dashboard/AGENTS.md's fast frontend loop) points VITE_API_URL straight at
     // local-bex.mjs's wide-open-CORS stub on a different port (:8099) rather than
     // through apiDevProxy's same-origin tunnel — without this the CSP silently
     // blocks that fetch and every page hangs on "Select a workspace".

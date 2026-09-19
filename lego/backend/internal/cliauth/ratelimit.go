@@ -27,7 +27,7 @@ import (
 // DeviceRateLimiter is an IP-keyed token-bucket limiter guarding the three
 // credential-less device-flow routes (w4/m31/t002) — every hit costs a full
 // Hydra round trip with no metering, and these routes mount outside the auth
-// gate by design (internal/api/CLAUDE.md's always-public inventory), so the
+// gate by design (internal/api/AGENTS.md's always-public inventory), so the
 // identity-keyed internal/api.RateLimiter never sees them and would key every
 // anonymous caller into one shared bucket even if it did. It wraps the shared
 // core.KeyedRateLimiter and stays IP-only (there is never an identity here) in

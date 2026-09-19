@@ -1237,7 +1237,7 @@ func TestLokiRequestMetricsSourceRoundTrip(t *testing.T) {
 
 // TestHostPathFilterCrossSurfaceParity: REST, GraphQL, and MCP must all route a
 // host+path filter to the SAME RequestLogMetrics source with identical Host/Path
-// values — no adapter drift (w5/m58, the parity rule in internal/api/CLAUDE.md).
+// values — no adapter drift (w5/m58, the parity rule in internal/api/AGENTS.md).
 func TestHostPathFilterCrossSurfaceParity(t *testing.T) {
 	newSurfaceSvc := func() (*Service, *[]RequestMetricsRequest) {
 		got := &[]RequestMetricsRequest{}

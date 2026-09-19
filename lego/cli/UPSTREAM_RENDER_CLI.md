@@ -8,7 +8,7 @@
 
 The upstream repository's v2 tags are not valid Go-module major-version tags because its module path has no `/v2` suffix. Go therefore records the exact release commit as a pseudo-version in `go.mod`.
 
-**Go toolchain:** v2.26.0 upgraded upstream to Go 1.27 (`85c8c2c`); v2.27.0 stays on Go 1.27, so `lego/cli/go.mod` and the shared `lego/go.work` remain at `go 1.27.0`. The three platform modules (`types`/`operator`/`backend`) and the shipped image stay on the 1.26 line (the Docker build has no workspace file). The CI jobs that build the workspace derive their Go version from `lego/cli/go.mod`, so they follow this bump automatically; `GOWORK=off` jobs (operator/backend/govulncheck) are unaffected. See [lego/CLAUDE.md](../CLAUDE.md).
+**Go toolchain:** v2.26.0 upgraded upstream to Go 1.27 (`85c8c2c`); v2.27.0 stays on Go 1.27, so `lego/cli/go.mod` and the shared `lego/go.work` remain at `go 1.27.0`. The three platform modules (`types`/`operator`/`backend`) and the shipped image stay on the 1.26 line (the Docker build has no workspace file). The CI jobs that build the workspace derive their Go version from `lego/cli/go.mod`, so they follow this bump automatically; `GOWORK=off` jobs (operator/backend/govulncheck) are unaffected. See [lego/AGENTS.md](../AGENTS.md).
 
 ## Updating the pin
 

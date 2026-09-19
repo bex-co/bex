@@ -49,7 +49,7 @@ graph TD
 
 [`.env`](../.env.example) is the local, gitignored file that holds every bootstrap credential above (same custody rule as `*.kubeconfig` — **never committed, never printed**). It exists precisely because these secrets must be available _before_ the in-cluster secret stores (OpenBao, sealed-secrets) are running, so they cannot themselves live in-cluster.
 
-One mirror tracks it, value-less, and is kept in sync by rule (see [CLAUDE.md](../CLAUDE.md) rules):
+One mirror tracks it, value-less, and is kept in sync by rule (see [AGENTS.md](../AGENTS.md) rules):
 
 - [`.env.example`](../.env.example) — the single checked-in mirror (`cp .env.example .env`), serving both the local runtime env and the CI-secrets source (`scripts/gh-secrets.sh` pushes the filled `.env` into GitHub Actions).
 

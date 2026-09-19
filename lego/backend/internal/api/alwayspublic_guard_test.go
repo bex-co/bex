@@ -107,7 +107,7 @@ func TestWebhookRateLimiterShedsBeforeHandler(t *testing.T) {
 // alwaysPublicInventory is the CI-enforced census (ADR045 Finding 8, w7/m60 t002)
 // of every route the composed rootMux mounts OUTSIDE the auth gate, each with its
 // credential + limiter classification. It mirrors the prose always-public
-// inventory in internal/api/CLAUDE.md. A new directly-mounted route absent here —
+// inventory in internal/api/AGENTS.md. A new directly-mounted route absent here —
 // or a stale entry no longer mounted — turns TestComposedMuxAlwaysPublicInventory
 // red, forcing a classification decision rather than a silent outside-gate mount.
 var alwaysPublicInventory = map[string]string{
@@ -189,7 +189,7 @@ func TestComposedMuxAlwaysPublicInventory(t *testing.T) {
 		}
 		if _, ok := alwaysPublicInventory[p]; !ok {
 			t.Errorf("directly-mounted route %q is not in the always-public inventory — classify it "+
-				"(credential + limiter) in alwaysPublicInventory and internal/api/CLAUDE.md, or gate it behind /v1/", p)
+				"(credential + limiter) in alwaysPublicInventory and internal/api/AGENTS.md, or gate it behind /v1/", p)
 		}
 	}
 	// Stale-entry direction: an inventory entry no longer mounted is a lie.

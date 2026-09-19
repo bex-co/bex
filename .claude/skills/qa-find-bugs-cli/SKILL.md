@@ -104,7 +104,7 @@ Preserve the exact method, path, query, non-secret body, status, response header
 
 ## 4 — Research a concrete fix and durable evidence
 
-Read applicable cascading guides and ADRs. Start with `lego/backend/internal/` for REST adapters/auth/serialization and shared domain services, `lego/operator/` for reconciliation/runtime, and `lego/cli/internal/bridge` or `branding` for proven launcher issues. Use `docs/CLAUDE.md` to locate the governing ADR.
+Read applicable cascading guides and ADRs. Start with `lego/backend/internal/` for REST adapters/auth/serialization and shared domain services, `lego/operator/` for reconciliation/runtime, and `lego/cli/internal/bridge` or `branding` for proven launcher issues. Use `docs/AGENTS.md` to locate the governing ADR.
 
 For every finding, read producer **and consumer**, generated types/serializers and pinned library paths. Specify the exact target status/body/behavior that satisfies the consumer, including forbidden/unauthenticated/not-found/timeout neighbors without introducing resource-existence leaks. Search all callers and aliases of shared code and enumerate affected resource types. Trace similar symptoms separately. Reconcile evidence that contradicts the proposed cause or deployed revision; label an unverified cause rather than inventing a file:line diagnosis.
 

@@ -123,4 +123,4 @@ The one generator gap this exposed is fixed: `dbBackupPurgeJob`'s container now 
 - Operator: `go build ./... && go test ./...` (lego/operator) green; the purge-Job hardening test pins the generator.
 - Agent driver: `npm run typecheck && npm test` — 31/31, including the three new encoded/binary leak-refusal tests.
 - Mobile: `yarn test:unit` — 318/318, including the stream-budget and parser-cap tests.
-- Docs: runbooks (ADR011/015/037), `CLAUDE.md` env table, and `.env.example` updated for the new gateway knobs; `.pm/FUTURE-MAYBE.md` w7/020 entry closed.
+- Docs: runbooks (ADR011/015/037), `AGENTS.md` env table, and `.env.example` updated for the new gateway knobs; `.pm/FUTURE-MAYBE.md` w7/020 entry closed.

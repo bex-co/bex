@@ -236,7 +236,7 @@ spec:
 
 ---
 # The dashboard's SSR fetches bex-api in-cluster (VITE_SSR_API_URL =
-# bex-api.bex-system.svc:8090, docs/ADR012-auth.md + dashboard/CLAUDE.md) and
+# bex-api.bex-system.svc:8090, docs/ADR012-auth.md + dashboard/AGENTS.md) and
 # the m52 readiness latch probes the same origin before a fresh pod takes
 # traffic. deny-tenant-ingress above only admits bex-system/traefik/monitoring,
 # which silently forced every prod SSR data fetch onto the error path until

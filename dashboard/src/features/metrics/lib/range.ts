@@ -55,7 +55,7 @@ export function isCustomRange(range: RangeSelection): range is CustomRange {
 }
 
 // The widest custom window bex offers by default — 30 days, matching
-// BEX_MAX_QUERY_HOURS' default (root CLAUDE.md). A window beyond the backend's
+// BEX_MAX_QUERY_HOURS' default (root AGENTS.md). A window beyond the backend's
 // actual cap still fails honestly with the over-window 400; this client guard
 // just keeps the common case from round-tripping a doomed query.
 export const MAX_CUSTOM_RANGE_HOURS = 720;
