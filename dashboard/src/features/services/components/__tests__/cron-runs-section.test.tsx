@@ -147,10 +147,37 @@ describe("CronRunsSection", () => {
     expect(trigger).toHaveBeenCalledOnce();
   });
 
-  it("disables Trigger Run while a run is active (ForbidConcurrent)", () => {
+  // w4/m114 t003: the button used to be disabled here with "A run is already
+  // in progress" while the server happily accepted runCronJob and preempted
+  // the active run — one surface forbidding what the other performs, and the
+  // only in-product way to recover a wedged run. It now offers the action and
+  // names the consequence.
+  it("offers Trigger Run during an active run and warns that it preempts", async () => {
     hasActiveRun = true;
+    const user = userEvent.setup();
     render(<CronRunsSection serviceId="nightly" />);
-    expect(screen.getByRole("button", { name: "Trigger Run" })).toBeDisabled();
+
+    const button = screen.getByRole("button", { name: "Trigger Run" });
+    expect(button).not.toBeDisabled();
+    await user.click(button);
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "A run is already in progress. Triggering now cancels it and starts a new run immediately, outside the schedule.",
+    );
+  });
+
+  it("keeps the plain confirm copy when no run is active", async () => {
+    hasActiveRun = false;
+    const user = userEvent.setup();
+    render(<CronRunsSection serviceId="nightly" />);
+
+    await user.click(screen.getByRole("button", { name: "Trigger Run" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "This runs the job's command immediately, outside its schedule.",
+    );
+    expect(dialog.textContent ?? "").not.toContain("cancels it");
   });
 
   it("shows the backend's trigger rejection inline, not a toast", () => {

@@ -1,17 +1,39 @@
 # w4 · m114 — Cron runs can't be trusted: resurrected cancels, twin pendings, 11-minute terminal delay
 
-**Worker:** worker4 **Goal:** every cron run converges exactly once to its true terminal state — a canceled run stays dead, a scheduled run never shares the active slot, and failure surfaces promptly with its reason. **Status:** todo
+**Worker:** worker4 **Goal:** every cron run converges exactly once to its true terminal state — a canceled run stays dead, a scheduled run never shares the active slot, and failure surfaces promptly with its reason. **Status:** BLOCKED — t001/t003/t004/t005 done 2026-09-18; t002 needs a live reproduction (see below)
 
 ## Tasks (in order)
 
 | id   | title                                                                             | est | depends_on |
 | ---- | --------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Canceled manual run resurrects when CancelRun is overwritten                      | 1h  | —          |
-| t002 | Twin pending: scheduled successor created while predecessor still active          | 1h  | —          |
-| t003 | Trigger Run disabled in UI while the server preempts by design                    | 30m | —          |
-| t004 | Render parity + docs (cron-runs.md single-execution guarantee)                    | 20m | t001–t003  |
-| t005 | Test coverage (controller-level resurrection + projection tests)                   | 45m | t004       |
-| t006 | Closeout (live re-probe with a failing cron)                                      | 15m | t005       |
+| t001 | Canceled manual run resurrects when CancelRun is overwritten                      | 1h  | —          | — **DONE** |
+| t002 | Twin pending: scheduled successor created while predecessor still active          | 1h  | —          | — **BLOCKED** (needs a live reproduction) |
+| t003 | Trigger Run disabled in UI while the server preempts by design                    | 30m | —          | — **DONE** |
+| t004 | Render parity + docs (cron-runs.md single-execution guarantee)                    | 20m | t001–t003  | — **DONE** (scoped to t001/t003) |
+| t005 | Test coverage (controller-level resurrection + projection tests)                   | 45m | t004       | — **DONE** (scoped to t001/t003) |
+| t006 | Closeout (live re-probe with a failing cron)                                      | 15m | t005       | — **BLOCKED** (rides t002) |
+## Blocked on
+
+**t002 needs a live reproduction that only the user can authorize** — and so
+does t006, which is the live re-probe.
+
+t002's own acceptance criterion is "root cause evidenced from cluster objects,
+not inferred", and the evidence no longer exists: the fixture
+`qa-20260917-p12-cron` was deleted at the end of the QA pass, its Jobs with
+it, and Kubernetes Events expire within the hour. Confirmed against the live
+app cluster 2026-09-18. What static reading could establish is recorded in
+`t002.md` as leads — notably that the 11-minute terminal delay is plausibly
+correct Kubernetes behavior (no `backoffLimit` is set, so the default 6 plus
+the default exponential backoff sums to ~10.5 minutes before `JobFailed`), in
+which case the DoD's "terminal within ~2 polls" bullet would have bex
+contradict the Job controller and mark live, retrying runs as failed. That is
+exactly why this must not be fixed on inference.
+
+**What is needed:** authorization to run one throwaway reproduction (an
+every-minute failing cron plus a manual trigger during an active run, watched
+for ~15 minutes with `kubectl`) on production, where it was observed and where
+the QA journey already exists — or a decision to stand up the full local
+`mock-cluster` + `dev-4` stack for it.
 
 ## Definition of done
 

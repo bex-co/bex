@@ -2534,10 +2534,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Triggering…",
     description: "Trigger Run button label while the run is being created",
   },
-  "services.cronTriggerActive": {
-    message: "A run is already in progress",
-    description: "Trigger Run disabled tooltip while a run is active",
-  },
   "services.cronTriggerSuccess": {
     message: "Cron run triggered.",
     description: "Toast after a manual cron run is accepted",
@@ -2554,6 +2550,12 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "This runs the job's command immediately, outside its schedule. Only one run can be active at a time.",
     description: "Trigger Run confirmation dialog body",
+  },
+  "services.cronTriggerConfirmBodyPreempt": {
+    message:
+      "A run is already in progress. Triggering now cancels it and starts a new run immediately, outside the schedule.",
+    description:
+      "Trigger Run confirmation dialog body when a run is already active",
   },
   "services.cronRunDetailToggle": {
     message: "Toggle run detail",

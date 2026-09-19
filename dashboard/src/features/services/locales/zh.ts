@@ -2486,10 +2486,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "正在触发…",
     description: "Trigger Run button label while the run is being created",
   },
-  "services.cronTriggerActive": {
-    message: "已有运行正在进行",
-    description: "Trigger Run disabled tooltip while a run is active",
-  },
   "services.cronTriggerSuccess": {
     message: "已触发定时任务运行。",
     description: "Toast after a manual cron run is accepted",
@@ -2505,6 +2501,11 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.cronTriggerConfirmBody": {
     message: "这将立即运行任务命令，不受计划限制。同一时间只能有一个运行。",
     description: "Trigger Run confirmation dialog body",
+  },
+  "services.cronTriggerConfirmBodyPreempt": {
+    message: "已有运行正在进行。现在触发会取消它，并立即在计划之外开始一次新的运行。",
+    description:
+      "Trigger Run confirmation dialog body when a run is already active",
   },
   "services.cronRunDetailToggle": {
     message: "展开运行详情",

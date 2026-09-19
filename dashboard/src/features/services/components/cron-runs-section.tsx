@@ -115,10 +115,16 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
         <CardHeader>
           <CardTitle>{t("services.cronRunsTitle")}</CardTitle>
           <CardAction>
+            {/* w4/m114 t003: Trigger Run stays enabled during an active run.
+                The server preempts by design — runCronJob cancels the active
+                Job and returns a new pending run — so disabling the button
+                here forbade what the API performs, and blocked the one
+                in-product recovery for a wedged run (the QA probe had to drop
+                to raw GraphQL). The confirm dialog below names the
+                preemption instead. */}
             <Button
               size="sm"
-              disabled={triggering || hasActiveRun}
-              title={hasActiveRun ? t("services.cronTriggerActive") : undefined}
+              disabled={triggering}
               onClick={() => {
                 clearTriggerError();
                 setConfirmTrigger(true);
@@ -251,7 +257,11 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
         open={confirmTrigger}
         onOpenChange={(open) => !open && setConfirmTrigger(false)}
         title={t("services.cronTriggerConfirmTitle")}
-        description={t("services.cronTriggerConfirmBody")}
+        description={
+          hasActiveRun
+            ? t("services.cronTriggerConfirmBodyPreempt")
+            : t("services.cronTriggerConfirmBody")
+        }
         cancelLabel={t("services.eventsConfirmCancel")}
         confirmLabel={t("services.cronTriggerRun")}
         // Triggering a run is not destructive — it is the primary action here.
