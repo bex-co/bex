@@ -86,6 +86,8 @@ export function DeployDetailPage({
               serviceId={serviceId}
               deployId={deploy.id}
               status={deploy.status}
+              commitId={deploy.commitId}
+              commitMessage={deploy.commitMessage}
             />
           ) : undefined
         }

@@ -836,6 +836,7 @@ func TestQueryLogsSynthesizesProgressLinesForExplicitBuildType(t *testing.T) {
 	}
 	failed := inFlightDeploy()
 	failed.Status = "build_failed"
+	failed.Built = true // a real build ran and failed — the Events tab has its build_started
 	failed.FailureReason = `clone: the publish directory "public" does not exist`
 	failed.FinishedAt = time.Date(2026, 7, 17, 20, 18, 46, 0, time.UTC)
 	svc.DeployProgress = func(_ context.Context, resource string, _ time.Time) ([]DeployProgress, error) {
@@ -1021,6 +1022,7 @@ func TestFollowBuildLogsEmitsTerminalLineOnce(t *testing.T) {
 	svc.BuildNamespace = "builds"
 	failed := inFlightDeploy()
 	failed.Status = "build_failed"
+	failed.Built = true // a real build ran and failed — the Events tab has its build_started
 	failed.FinishedAt = time.Date(2026, 7, 17, 20, 18, 46, 0, time.UTC)
 	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
 		return []DeployProgress{failed}, nil

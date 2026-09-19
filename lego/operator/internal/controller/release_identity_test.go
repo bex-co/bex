@@ -435,3 +435,81 @@ func TestClearCacheAppliesOnlyMatchingRelease(t *testing.T) {
 		t.Fatal("garbage clear-cache marker must not apply")
 	}
 }
+
+// TestSettingsCommandEditsDemandAFreshArtifact is w4/m110 t001's contract
+// pinned against a real production App.
+//
+// Live on 2026-09-17, a native-runtime web service created from a Public Git
+// URL took three Settings saves (env var, start command, build command). Each
+// opened a Config Change deploy that went live in 13-30s on the rev-1 image,
+// with no Build events and pods still running the previously baked command,
+// while a deploy-hook trigger of the same spec rebuilt and picked the edits up.
+//
+// The spec below is `qa-20260919-p13-web`'s, read verbatim from the Hetzner app
+// cluster (`tea-d98210cbbpdc73dcrkvg`) while it served. Its fingerprints below
+// are the ones that App's status carried, so this test also proves the operator
+// binary in production computes identity from exactly this code: if either
+// constant stops matching, the identity inputs moved and the deployed
+// fingerprints can no longer be reasoned about from this file.
+func TestSettingsCommandEditsDemandAFreshArtifact(t *testing.T) {
+	const (
+		liveArtifact = "artifact-v1:737b9bce64c8652cae5f0d19239c6f471a82f7ea5174a9f09e68c9a42476e5e0"
+		liveRelease  = "release-v1:f9698cfe48fa9c208d0ee5b80979ece4b59eb56c9388a7a48fcae9769964a6b0"
+		liveImage    = "zot.bex-registry.svc:5000/tea-d98210cbbpdc73dcrkvg/" +
+			"tea-d98210cbbpdc73dcrkvg-qa-20260919-p13-web:gen-1@sha256:8ec7ee9d98f2d1960abf21bafea50f1c8402978ca49ee92048b5002d0abcf73c"
+	)
+	live := appv1alpha1.AppSpec{
+		AutoDeploy: true, Branch: "main", BuildCommand: "npm install", Builder: "native",
+		Port: 3000, Repo: "https://github.com/render-examples/express-hello-world",
+		Runtime: "node", StartCommand: "npm start", Subdomain: "qa-20260919-p13-web",
+		Tier: "free", Type: "web_service",
+	}
+	if got := desiredAppReleaseIdentity(live); got.artifact != liveArtifact || got.release != liveRelease {
+		t.Fatalf("identity of the live prod spec = %+v, want the fingerprints that App's status carried", got)
+	}
+
+	// The two Settings edits, each applied to the live spec on its own.
+	for _, tc := range []struct {
+		name string
+		edit func(*appv1alpha1.AppSpec)
+	}{
+		{"start command", func(s *appv1alpha1.AppSpec) {
+			s.StartCommand = `sh -c "echo QAENV:$QA_TEST_VAR && npm start"`
+		}},
+		{"build command", func(s *appv1alpha1.AppSpec) {
+			s.BuildCommand = "npm install && echo QA_BUILD_MARKER"
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{Spec: *live.DeepCopy()}
+			app.Generation = 6
+			app.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "6"}
+			app.Status.ArtifactFingerprint = liveArtifact
+			app.Status.ReleaseFingerprint = liveRelease
+			app.Status.ArtifactImage = liveImage
+			app.Status.Image = liveImage
+			app.Status.ActiveRevision = "rev-1"
+			app.Status.ReleaseGeneration = 1
+			app.Status.ObservedGeneration = 1
+			app.Status.Phase = appv1alpha1.PhaseRunning
+			tc.edit(&app.Spec)
+
+			decision := prepareAppReleaseDecision(app)
+			if !decision.artifactChanged {
+				t.Fatalf("%s edit left the artifact unchanged — the deploy would roll the stale image", tc.name)
+			}
+			if !decision.releaseChanged {
+				t.Fatalf("%s edit left the release unchanged", tc.name)
+			}
+			// The reuse gate is what actually decides "build or roll the old
+			// image", so assert it directly rather than only the fingerprints.
+			if image, resolved := reusableArtifactImage(app, decision); resolved || image != "" {
+				t.Fatalf("%s edit reused %q (resolved=%v); a rebuild is owed", tc.name, image, resolved)
+			}
+			if app.Status.ReleaseGeneration != 6 {
+				t.Fatalf("releaseGeneration = %d, want the requested generation 6 (a fresh gen-N build tag)",
+					app.Status.ReleaseGeneration)
+			}
+		})
+	}
+}

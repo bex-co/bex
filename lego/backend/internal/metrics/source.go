@@ -254,6 +254,13 @@ func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRa
 // for every service whose object name crossed that threshold). Like the Traefik
 // service selector this is a reconstruction from names, but fully anchored, so
 // app "web" never matches a "web-api-…-…" pod.
+// instanceLivenessWindow is how recently a pod must have reported a cAdvisor
+// sample to count as a live instance. The kubernetes-cadvisor job scrapes every
+// 15s (deploy/gitops/base/prometheus.yaml), so 90s tolerates several missed
+// scrapes while keeping a terminated pod out of the count roughly 3.3x sooner
+// than Prometheus's 5m lookback did.
+const instanceLivenessWindow = "90s"
+
 func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
 	switch req.Metric {
@@ -275,7 +282,20 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 		// The inner `sum by (pod)` already reduces a pod's (possibly duplicated)
 		// container series to one series per pod, so counting pods is unaffected
 		// by the restart double-count above — no per-container max needed here.
-		return fmt.Sprintf(`count(sum by (pod) (container_memory_working_set_bytes{%s}))`, matchers)
+		//
+		// Count only pods that actually reported inside instanceLivenessWindow,
+		// never pods merely carried forward by Prometheus's 5m lookback (w4/m110
+		// t002). An instant selector at each range step resolves every series
+		// whose LAST sample is up to 5 minutes old, so for five minutes after any
+		// rollout the terminated pods were counted alongside the live one and a
+		// 1-replica service read 4 instances decaying to 1 with nothing changing.
+		// A range selector has no lookback: `count_over_time` over a window a few
+		// scrapes wide sees a terminated pod only until its last sample ages out.
+		// Unlike the per-pod cpu/memory gauges — where a stale point merely
+		// extends a line — staleness on a *count* invents instances, so this is
+		// the one query that must be liveness-gated.
+		return fmt.Sprintf(`count(sum by (pod) (count_over_time(container_memory_working_set_bytes{%s}[%s])) > 0)`,
+			matchers, instanceLivenessWindow)
 	default: // cpu
 		// Same cAdvisor restart double-count guard as memory: dedupe a container's
 		// overlapping instances before summing across containers (w4/050).

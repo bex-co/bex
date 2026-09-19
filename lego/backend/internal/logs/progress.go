@@ -56,7 +56,13 @@ type DeployProgress struct {
 	Image         string // image-backed deploys; "" for repo builds
 	Commit        string // resolved commit sha; "" when unresolved
 	FailureReason string // human-actionable cause on a failed deploy (w5/064); "" when none
-	CreatedAt     time.Time
+	// Built reports that a build actually ran for this deploy — the same
+	// evidence the Events tab shows as Build started/ended (a `build_started`
+	// service event fact). Deploys that run no build (rollbacks, and any
+	// rollout that reuses the active artifact) are false, and earn rollout
+	// narration instead of a build story (w4/m110 t004).
+	Built      bool
+	CreatedAt  time.Time
 	StartedAt     time.Time // zero until the deploy starts
 	FinishedAt    time.Time // zero until terminal
 }
@@ -216,7 +222,25 @@ func digitsOnly(s string) bool {
 // on change, never per tick" for free.
 func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 	repo := pc.repo
-	repoBacked := repo != ""
+	// A build story is owed only by a deploy that actually built (w4/m110
+	// t004). Every repo-backed deploy used to get one, so a rollback and a
+	// config-change rollout that reused the active artifact each read as a
+	// 14-30s build: `==> Build queued` / `==> Building from <repo>@<sha>` with
+	// no build steps between them and no Build events behind them. The lines
+	// were synthesized from the row's own timestamps, which are observed —
+	// but their WORDING asserted a build nobody ran.
+	//
+	// Absence of evidence counts only once the deploy is OVER: build_started is
+	// written by the reconciler as it observes the dispatch, so an in-flight
+	// row may legitimately have no fact yet (a still-queued deploy has none by
+	// design — there is no build to report until a slot opens). A terminal row
+	// with no build fact, though, is settled: nothing will arrive later, and a
+	// missing fact for a build that did run costs only the two synthetic lines
+	// — which is the safe direction to be wrong in.
+	built := repo != ""
+	if !d.FinishedAt.IsZero() {
+		built = built && d.Built
+	}
 	var out []LogEntry
 	add := func(t time.Time, msg string) {
 		out = append(out, LogEntry{
@@ -230,7 +254,7 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		})
 	}
 	if !d.CreatedAt.IsZero() {
-		if repoBacked {
+		if built {
 			add(d.CreatedAt, "==> Build queued")
 		} else {
 			add(d.CreatedAt, "==> Deploy queued")
@@ -242,7 +266,8 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		}
 	}
 	if !d.StartedAt.IsZero() {
-		if repoBacked {
+		switch {
+		case built:
 			ref := d.Commit
 			if len(ref) > 7 {
 				ref = ref[:7]
@@ -255,8 +280,14 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 			} else {
 				add(d.StartedAt, fmt.Sprintf("==> Building from %s", repo))
 			}
-		} else {
+		case d.Image != "":
+			// Image-backed service, or a rollback — the row carries the exact
+			// image it restores, so name it.
 			add(d.StartedAt, fmt.Sprintf("==> Deploying image %s", d.Image))
+		default:
+			// Repo-backed, but no build ran and the row names no image: a
+			// rollout of the artifact already active. Narrate the rollout.
+			add(d.StartedAt, "==> Rolling out the current release")
 		}
 	}
 	if !d.FinishedAt.IsZero() {

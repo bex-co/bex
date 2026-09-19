@@ -65,13 +65,22 @@ vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
   useServerActions: () => deployState,
 }));
 
-function renderActions(status: string) {
+function renderActions(
+  status: string,
+  commit?: { commitId?: string | null; commitMessage?: string | null },
+) {
   const root = createRootRoute();
   const route = createRoute({
     getParentRoute: () => root,
     path: "/services/$serviceId/deploys/$deployId",
     component: () => (
-      <DeployActions serviceId="web" deployId="dep-1" status={status} />
+      <DeployActions
+        serviceId="web"
+        deployId="dep-1"
+        status={status}
+        commitId={commit?.commitId}
+        commitMessage={commit?.commitMessage}
+      />
     ),
   });
   const router = createRouter({
@@ -246,5 +255,52 @@ describe("DeployActions", () => {
     const btn = await screen.findByRole("button", { name: "Cancel" });
     expect(btn).not.toBeDisabled();
     expect(btn).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  // w4/m110 t003: the last checkpoint before an irreversible rollout must
+  // answer "roll back to WHAT?". The row behind the dialog shows the commit;
+  // for months the dialog did not.
+  it("names the commit being restored in the rollback confirm dialog", async () => {
+    const user = userEvent.setup();
+    renderActions("deactivated", {
+      commitId: "039c3471ad2f6c9f2d8f5ab0c8d4e1f2a3b4c5d6",
+      commitMessage: "Add Render deployment configuration\n\nbody line",
+    });
+
+    await user.click(await screen.findByRole("button", { name: "Rollback" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("039c347 Add Render deployment configuration");
+    // The subject only — never the commit body.
+    expect(dialog).not.toHaveTextContent("body line");
+    // No raw interpolation placeholder leaked through.
+    expect(dialog.textContent ?? "").not.toContain("{commit}");
+  });
+
+  it("keeps the generic rollback body when the deploy has no commit", async () => {
+    const user = userEvent.setup();
+    renderActions("deactivated", { commitId: null, commitMessage: null });
+
+    await user.click(await screen.findByRole("button", { name: "Rollback" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "The service will redeploy from the image used in this deploy.",
+    );
+    expect(dialog.textContent ?? "").not.toContain("built from");
+  });
+
+  // The cancel dialog is untouched by the commit threading.
+  it("leaves the cancel confirm copy byte-identical", async () => {
+    const user = userEvent.setup();
+    renderActions("update_in_progress", {
+      commitId: "039c3471",
+      commitMessage: "Add Render deployment configuration",
+    });
+
+    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "The in-progress deploy will be stopped. The last successful deploy remains live.",
+    );
+    expect(dialog.textContent ?? "").not.toContain("039c347");
   });
 });

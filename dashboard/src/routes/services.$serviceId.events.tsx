@@ -283,6 +283,8 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                           serviceId={serviceId}
                           deployId={deployId}
                           status={status}
+                          commitId={details?.commitId}
+                          commitMessage={details?.commitMessage}
                           onChanged={() => void refetch()}
                         />
                       </div>

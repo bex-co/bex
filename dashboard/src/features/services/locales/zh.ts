@@ -3870,6 +3870,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务将从此次部署使用的镜像重新部署。",
     description: "Rollback confirm dialog body",
   },
+  "services.eventsRollbackConfirmBodyCommit": {
+    message: "服务将从此次部署使用的镜像重新部署，该镜像构建自 {commit}。",
+    description:
+      "Rollback confirm dialog body naming the commit being restored",
+  },
   "services.eventsConfirmProceed": {
     message: "继续",
     description: "Confirm dialog proceed button",

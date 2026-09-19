@@ -231,6 +231,42 @@ INSERT INTO service_event_facts (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 ON CONFLICT (source_key) DO NOTHING`
 
+// BuiltDeployIDs is the set of an App's deploys that actually ran a build —
+// the deploys the Events tab shows a Build started entry for. The deploy-log
+// narrator reads it so it cannot tell a build story for a deploy the Events
+// feed has no build record of (w4/m110 t004): a rollback and a rollout that
+// reuses the active artifact both open a deploy row with real timestamps, and
+// timestamps alone cannot distinguish them from a build.
+//
+// Scoped to one App and capped like every other feed read. An App with no
+// build facts yields an empty (non-nil) set, never an error.
+func (s *PGStore) BuiltDeployIDs(ctx context.Context, appID string, limit int) (map[string]bool, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := s.Pool.Query(ctx, builtDeployIDsSQL, appID, limit)
+	if err != nil {
+		return nil, classify("built deploy ids", err)
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, classify("built deploy ids", err)
+		}
+		out[id] = true
+	}
+	return out, classify("built deploy ids", rows.Err())
+}
+
+const builtDeployIDsSQL = `
+SELECT deploy_id
+FROM service_event_facts
+WHERE app_id = $1 AND fact_type = 'build_started' AND deploy_id <> ''
+ORDER BY at DESC
+LIMIT $2`
+
 // ObservedServiceState is the small level-triggered snapshot the control-plane
 // reconciler derives from typed App status. Availability is empty outside a
 // running service, healthy, or unhealthy.
