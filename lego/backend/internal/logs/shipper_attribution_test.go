@@ -196,6 +196,10 @@ func shipperPipelineTemplate(t *testing.T, name string) *template.Template {
 	sourceLine := regexp.MustCompile(`^source\s*=\s*"` + regexp.QuoteMeta(name) + `"$`)
 	lines := strings.Split(string(data), "\n")
 	var tmplLine string
+	// A source name is not unique across stage kinds — "app" is both this
+	// pipeline's stage.template source and a stage.drop source in the build
+	// pipeline — so keep scanning until a block with a template line is found
+	// rather than committing to the first match.
 	for i, line := range lines {
 		if !sourceLine.MatchString(strings.TrimSpace(line)) {
 			continue
@@ -210,7 +214,9 @@ func shipperPipelineTemplate(t *testing.T, name string) *template.Template {
 				break
 			}
 		}
-		break
+		if tmplLine != "" {
+			break
+		}
 	}
 	if tmplLine == "" {
 		t.Fatalf("could not find the stage.template block for source %q in log-shipper.yaml", name)
@@ -381,5 +387,92 @@ func TestShipperBuildPodsKeepPredeploy(t *testing.T) {
 	}
 	if !strings.Contains(rest, `__meta_kubernetes_pod_label_app_bex_co_predeploy`) {
 		t.Fatal("build_pods must derive app from app.bex.co/predeploy when build label is absent")
+	}
+}
+
+// --- w4/m113: a static site's request lines reach its own App ---
+//
+// The two JSON objects below are verbatim production Traefik access lines,
+// captured 2026-09-19 from the deployed traefik pods (fields trimmed to the
+// ones the pipeline reads). They are the ground truth the w6/m131 post-mortem
+// says this guard must be written against, for both shapes at once — the whole
+// class of bug here is a reconstruction that drifts from what Traefik actually
+// emits.
+//
+// Static: ADR029 points every static host's Ingress at the SHARED static
+// server through a per-App ExternalName alias named `bex-static-<app>`, so the
+// ServiceName regex recovers an app name no App has. `type=request` was
+// therefore empty for every static site while router-attributed bandwidth for
+// the same traffic was correct.
+const (
+	prodStaticServiceName  = "default-bex-static-hello-static-8080@kubernetes"
+	prodStaticIngressName  = "hello-static"
+	prodComputeServiceName = "tea-d98210cbbpdc73dcrkvg-tea-d98210cbbpdc73dcrkvg-eden-cms-v2-3000@kubernetes"
+	prodComputeIngressName = "tea-d98210cbbpdc73dcrkvg-eden-cms-v2"
+)
+
+// shipperAppLabel runs the real pipeline over a captured line: the ServiceName
+// regex, then the `app` stage.template that overrides it — exactly the two
+// stages in log-shipper.yaml, in order.
+func shipperAppLabel(t *testing.T, serviceName, ingressName string) (namespace, app string) {
+	t.Helper()
+	re := shipperServiceNameRegex(t)
+	appTmpl := shipperPipelineTemplate(t, "app")
+	namespace, regexApp, _ := attribute(re, serviceName)
+	return namespace, renderStage(t, appTmpl, map[string]string{
+		"Value": regexApp, "ingress_name": ingressName,
+	})
+}
+
+func TestShipperAttributesStaticSiteRequestLines(t *testing.T) {
+	ns, app := shipperAppLabel(t, prodStaticServiceName, prodStaticIngressName)
+	if ns != "default" {
+		t.Errorf("namespace = %q, want default (app.Namespace)", ns)
+	}
+	// The value bex-api's LogQL selector pins — app.Name, NOT the alias
+	// Service's `bex-static-` name.
+	if app != prodStaticIngressName {
+		t.Fatalf("app = %q, want %q — a static site's request lines would be labeled with a name no App has, so type=request stays empty for it", app, prodStaticIngressName)
+	}
+	// The control: the pre-fix pipeline (ServiceName regex alone) produced the
+	// wrong name, which is why this test fails against it.
+	re := shipperServiceNameRegex(t)
+	if _, legacy, _ := attribute(re, prodStaticServiceName); legacy != "bex-static-"+prodStaticIngressName {
+		t.Errorf("control: ServiceName regex alone = %q, want the bex-static-prefixed alias name", legacy)
+	}
+}
+
+func TestShipperComputeAttributionIsUnchanged(t *testing.T) {
+	ns, app := shipperAppLabel(t, prodComputeServiceName, prodComputeIngressName)
+	if ns != "tea-d98210cbbpdc73dcrkvg" || app != prodComputeIngressName {
+		t.Fatalf("compute attribution = (%q, %q), want (tea-d98210cbbpdc73dcrkvg, %q)", ns, app, prodComputeIngressName)
+	}
+	// On a compute line the two sources agree exactly, so the override is a
+	// no-op there — the property that makes it safe to apply unconditionally.
+	re := shipperServiceNameRegex(t)
+	if _, regexApp, _ := attribute(re, prodComputeServiceName); regexApp != prodComputeIngressName {
+		t.Errorf("ServiceName regex (%q) and KubernetesIngressName (%q) must agree for compute", regexApp, prodComputeIngressName)
+	}
+}
+
+// A platform edge line carries a KubernetesIngressName too. It must NOT become
+// an `app`: doing so would route the line down the tenant branch of the
+// namespace/platform_service templates and lose its fixed platform pair, which
+// is what the w4/m88 + w5/053 allowlist exists to preserve.
+func TestShipperIngressNameNeverAttributesAPlatformEdgeLine(t *testing.T) {
+	// bex-system is neither tea-<xid> nor default, so the regex misses and
+	// leaves `app` empty — the override's gate.
+	ns, app := shipperAppLabel(t, "bex-system-bex-api-80@kubernetes", "bex-api")
+	if ns != "" || app != "" {
+		t.Fatalf("platform edge attribution = (%q, %q), want both empty so the host allowlist owns the line", ns, app)
+	}
+}
+
+// A line with no Ingress fields at all (Traefik's own 404 at the edge, or a
+// non-Ingress router) falls back to the ServiceName regex unchanged.
+func TestShipperFallsBackToServiceNameWithoutAnIngressName(t *testing.T) {
+	_, app := shipperAppLabel(t, "default-web-8080@kubernetes", "")
+	if app != "web" {
+		t.Fatalf("app = %q, want web from the ServiceName regex fallback", app)
 	}
 }

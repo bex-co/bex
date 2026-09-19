@@ -407,11 +407,14 @@ func traefikServiceLabel(namespace, app string, port int32) string {
 // sample covers exactly one bucket. Widening or narrowing that window relative
 // to the step would double-count or drop traffic at the seams.
 func promQueryFor(req RequestMetricsRequest) string {
-	selector := fmt.Sprintf(`service=%q`, traefikServiceLabel(req.Namespace, req.App, req.Port))
 	if req.Metric == MetricBandwidth {
 		// Per-bucket bytes (increase over the step), matching month-to-date and
 		// usage metering — see docs/render-artifacts/metrics-page.md (w4/m108).
 		return egressquery.SumIncreases(egressquery.App(req.AppID, req.Routers, req.Direct), stepSeconds(req.Resolution))
+	}
+	counters, selector, ok := requestCounters(req)
+	if !ok {
+		return ""
 	}
 	sel := []string{selector}
 	if c := codeMatcher(req.StatusCode); c != "" {
@@ -428,10 +431,59 @@ func promQueryFor(req RequestMetricsRequest) string {
 		}
 		return fmt.Sprintf(`histogram_quantile(%s, %s)`,
 			strconv.FormatFloat(req.Quantile, 'g', -1, 64),
-			sumRate("traefik_service_request_duration_seconds_bucket", matchers, window, by))
+			sumRate(counters.duration, matchers, window, by))
 	default: // http_requests — per-bucket request count (unit: count), not req/s
-		return sumIncrease("traefik_service_requests_total", matchers, window, groupLabel(req.GroupBy))
+		return sumIncrease(counters.requests, matchers, window, groupLabel(req.GroupBy))
 	}
+}
+
+// traefikCounters names the Traefik counter pair a request read selects on.
+type traefikCounters struct{ requests, duration string }
+
+var (
+	// A compute service has its own Kubernetes Service, so Traefik's
+	// per-service counters are the tightest possible attribution.
+	serviceCounters = traefikCounters{
+		requests: "traefik_service_requests_total",
+		duration: "traefik_service_request_duration_seconds_bucket",
+	}
+	// A static site has none: ADR029 points every static host's Ingress at the
+	// SHARED static-server Service, so the per-service counters carry the
+	// platform Service's identity and a per-App selector over them matches
+	// nothing. Traefik's per-ROUTER counters carry the App's own Ingress router
+	// names, which is the attribution ADR018 row 84 already promises and the
+	// bandwidth read already uses. Both router series carry `code`, `method`
+	// and `le` exactly as the service series do (verified 2026-09-18 against
+	// the production Prometheus's /api/v1/series).
+	routerCounters = traefikCounters{
+		requests: "traefik_router_requests_total",
+		duration: "traefik_router_request_duration_seconds_bucket",
+	}
+)
+
+// requestCounters picks the counter pair and selector for this read, and
+// reports whether a query can be built at all.
+//
+// w4/m113: live on 2026-09-17 a static site that had just served ~25 requests
+// read "No data in range" on Total Requests and Response Times, and `[]` on
+// GraphQL/REST, while router-attributed bandwidth for the same service in the
+// same window showed five nonzero buckets — the selector was targeting a
+// Kubernetes Service static sites do not have.
+//
+// ok=false when a static site's routers could not be resolved. That MUST NOT
+// degrade into a router-less match: an empty router matcher would select every
+// router in the cluster and serve one tenant another tenant's request counts.
+// An empty query yields an empty series, which is the same answer the caller
+// got before — wrong, but not a leak.
+func requestCounters(req RequestMetricsRequest) (traefikCounters, string, bool) {
+	if !req.RouterScoped {
+		return serviceCounters, fmt.Sprintf(`service=%q`, traefikServiceLabel(req.Namespace, req.App, req.Port)), true
+	}
+	matcher := egressquery.RouterMatcher(req.Routers)
+	if matcher == "" {
+		return traefikCounters{}, "", false
+	}
+	return routerCounters, fmt.Sprintf(`router=~%q`, matcher), true
 }
 
 // sumIncrease builds sum(increase(counter[window])) — the per-bucket count for
@@ -690,6 +742,21 @@ func NewPrometheusReplicationLagSource(base string, hc *http.Client) Replication
 
 // --- Filter-value discovery: Prometheus's label-values API ---
 
+// filterValuesMatch is the series selector label-value discovery runs over —
+// the request-count counter for this App, chosen by the same rule the chart's
+// own query uses. Empty when no bounded selector exists (a static site whose
+// routers could not be resolved), which the caller turns into "no values".
+func filterValuesMatch(req MetricsFilterValuesRequest) string {
+	counters, selector, ok := requestCounters(RequestMetricsRequest{
+		Namespace: req.Namespace, App: req.App, Port: req.Port,
+		Routers: req.Routers, RouterScoped: req.RouterScoped,
+	})
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("%s{%s}", counters.requests, selector)
+}
+
 // NewPrometheusFilterValuesSource returns the production MetricsFilterValuesSource,
 // backed by Prometheus's /api/v1/label/<name>/values endpoint.
 func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilterValuesSource {
@@ -697,9 +764,19 @@ func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilter
 		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
-	return func(ctx context.Context, namespace, app string, port int32, label string) ([]string, error) {
-		match := fmt.Sprintf(`traefik_service_requests_total{service=%q}`, traefikServiceLabel(namespace, app, port))
-		u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(label), url.Values{"match[]": {match}}.Encode())
+	return func(ctx context.Context, req MetricsFilterValuesRequest) ([]string, error) {
+		// Discovery must read the SAME series the chart reads, or the dropdown
+		// and the graph disagree — which is exactly what a static site got: the
+		// per-service selector named a Service it does not have, so the Status
+		// Code filter offered nothing while the site served 200s, 301s and 404s
+		// (w4/m113). requestCounters owns the one rule both paths follow, and
+		// refuses an unbounded router match rather than leaking another
+		// tenant's codes.
+		match := filterValuesMatch(req)
+		if match == "" {
+			return []string{}, nil
+		}
+		u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(req.Label), url.Values{"match[]": {match}}.Encode())
 
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 		if err != nil {

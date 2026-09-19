@@ -235,16 +235,23 @@ type RequestMetricsRequest struct {
 	// (codex-security round-19 #6; see traefikServiceLabel in source.go).
 	Port   int32
 	Direct bool
-	// Routers are the exact Traefik router metric labels for bandwidth. The
-	// service resolves them from the authorized App's actual Ingress; request
-	// count and latency retain their existing service-level selector.
-	Routers    []string
-	Metric     string // http_requests | http_latency | bandwidth
-	Start, End time.Time
-	Resolution time.Duration
-	Quantile   float64
-	StatusCode string
-	GroupBy    string
+	// Routers are the exact Traefik router metric labels for this App,
+	// resolved by the service from the authorized App's actual Ingress. They
+	// carry bandwidth for every service type, and — since w4/m113 — request
+	// count, latency and status-code discovery for a static site, which has no
+	// per-App Kubernetes Service for the per-service counters to name.
+	Routers []string
+	// RouterScoped selects Traefik's per-ROUTER request counters instead of the
+	// per-service ones. True only for a static site: ADR029 points every static
+	// host's Ingress at the shared static-server Service, so the per-service
+	// selector names a platform Service and matches nothing for the App.
+	RouterScoped bool
+	Metric       string // http_requests | http_latency | bandwidth
+	Start, End   time.Time
+	Resolution   time.Duration
+	Quantile     float64
+	StatusCode   string
+	GroupBy      string
 	// Host/Path are the per-request filters served by the request-log backend
 	// (NewLokiRequestMetricsSource, w5/m58). The Prometheus source ignores them
 	// (a host/path read is never routed to it); the Loki source turns them into
@@ -272,7 +279,23 @@ type MonthToDateBandwidthSource func(ctx context.Context, appID string, routers 
 // MetricsFilterValuesSource discovers a Prometheus label's observed values (e.g.
 // the `code` label backing STATUS_CODE) for an App's request metrics. nil =>
 // that field's values come back empty rather than erroring.
-type MetricsFilterValuesSource func(ctx context.Context, namespace, app string, port int32, label string) ([]string, error)
+type MetricsFilterValuesSource func(ctx context.Context, req MetricsFilterValuesRequest) ([]string, error)
+
+// MetricsFilterValuesRequest names the series to discover a label's values
+// over. It mirrors RequestMetricsRequest's selector fields for the same
+// reason: discovery must read the SAME series the chart reads, or the Status
+// Code dropdown offers values the chart cannot plot (and, for a static site,
+// offered nothing at all — w4/m113).
+type MetricsFilterValuesRequest struct {
+	Namespace string
+	App       string
+	Port      int32
+	// Routers/RouterScoped carry a static site's per-router attribution, as in
+	// RequestMetricsRequest — see routerScopedRequests.
+	Routers      []string
+	RouterScoped bool
+	Label        string
+}
 
 // Service is the single metrics read every adapter calls, plus the dashboard's
 // month-to-date bandwidth and filter-population helpers.
@@ -972,8 +995,11 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 	if s.RequestMetrics == nil {
 		return nil, core.ErrMetricsUnavailable
 	}
+	// Router identities are needed for bandwidth on every service type, and —
+	// since w4/m113 — for a static site's request count and latency too, since
+	// it has no per-App Service for the per-service counters to name.
 	var routers []string
-	if q.Metric == MetricBandwidth {
+	if q.Metric == MetricBandwidth || routerScopedRequests(app) {
 		var err error
 		routers, err = s.TraefikRouterNames(ctx, app)
 		if err != nil {
@@ -981,6 +1007,19 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 		}
 	}
 	return s.readRequestSeries(ctx, s.RequestMetrics, q, app, routers)
+}
+
+// routerScopedRequests reports whether this App's request metrics must be read
+// from Traefik's per-ROUTER counters rather than its per-service ones.
+//
+// Only a static site. ADR029 gives it no Deployment and no Service of its own
+// — every static host's Ingress points at the shared static-server Service —
+// so the per-service selector `<ns>-<app>-<port>@kubernetes` names an object
+// that does not exist, and every request read came back empty while bandwidth
+// (already router-attributed) showed the same traffic (w4/m113, observed live
+// 2026-09-17). Compute services keep the tighter per-service selector.
+func routerScopedRequests(app *appv1alpha1.App) bool {
+	return app != nil && app.Spec.Type == appv1alpha1.TypeStaticSite
 }
 
 // readRequestSeries issues one request-metric read against the chosen backend
@@ -991,21 +1030,22 @@ func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSo
 	series, err := source(ctx, RequestMetricsRequest{
 		// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
 		// under ADR043; use it directly rather than the shared s.Namespace.
-		Namespace:  app.Namespace,
-		App:        app.Name,
-		AppID:      appResourceID(app, q.App),
-		Port:       app.Spec.EffectivePort(),
-		Direct:     app.Spec.Type != appv1alpha1.TypeStaticSite,
-		Routers:    routers,
-		Metric:     q.Metric,
-		Start:      q.Start,
-		End:        q.End,
-		Resolution: q.Resolution,
-		Quantile:   q.Quantile,
-		StatusCode: q.StatusCode,
-		GroupBy:    q.GroupBy,
-		Host:       q.Host,
-		Path:       q.Path,
+		Namespace:    app.Namespace,
+		App:          app.Name,
+		AppID:        appResourceID(app, q.App),
+		Port:         app.Spec.EffectivePort(),
+		Direct:       app.Spec.Type != appv1alpha1.TypeStaticSite,
+		Routers:      routers,
+		RouterScoped: routerScopedRequests(app),
+		Metric:       q.Metric,
+		Start:        q.Start,
+		End:          q.End,
+		Resolution:   q.Resolution,
+		Quantile:     q.Quantile,
+		StatusCode:   q.StatusCode,
+		GroupBy:      q.GroupBy,
+		Host:         q.Host,
+		Path:         q.Path,
 	})
 	if err != nil {
 		return nil, err
@@ -1186,6 +1226,9 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 			if err != nil {
 				return nil, err
 			}
+			// A static site has no pods, so this list is honestly empty — the
+			// w5/m48 type-gating already drops the instance UI for it. Do not
+			// "fix" that by inventing a router-derived instance (w4/m113).
 			instances := make([]string, 0, len(pods))
 			for _, p := range pods {
 				instances = append(instances, ids.ServiceInstanceID(q.App, p.Name))
@@ -1210,7 +1253,19 @@ func (s *Service) filterValuesOrEmpty(ctx context.Context, app *appv1alpha1.App,
 	}
 	// app.Namespace is the App's per-tenant `<ws>` namespace (ADR043), where
 	// its series live — never the shared s.Namespace.
-	values, err := s.MetricsFilterValuesSource(ctx, app.Namespace, app.Name, app.Spec.EffectivePort(), label)
+	req := MetricsFilterValuesRequest{
+		Namespace: app.Namespace, App: app.Name,
+		Port: app.Spec.EffectivePort(), Label: label,
+		RouterScoped: routerScopedRequests(app),
+	}
+	if req.RouterScoped {
+		routers, err := s.TraefikRouterNames(ctx, app)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", core.ErrMetricsUnavailable, err)
+		}
+		req.Routers = routers
+	}
+	values, err := s.MetricsFilterValuesSource(ctx, req)
 	if err == nil && values == nil {
 		values = []string{} // an empty discovery serializes as [], never null
 	}
