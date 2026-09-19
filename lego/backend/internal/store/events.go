@@ -92,6 +92,11 @@ type ServiceEventRow struct {
 	// "Superseded by dep-…" on deploy_ended and on lifecycle facts joined to
 	// that deploy. Empty for user cancels and non-canceled rows.
 	CancelReason string
+	// StallReason is why an OPEN deploy is not progressing (w4/m112) — the
+	// operator's live diagnosis of the current revision's pods. The STARTED
+	// phase only, and only while the deploy is open: the row's own column is
+	// cleared as it goes terminal. An observation, not a verdict.
+	StallReason string
 	// Deployed image URI; empty for non-deploy rows. (w1/m47)
 	Image string
 	// Commit ID (git revision); empty for non-deploy rows. (w1/m47)
@@ -430,7 +435,7 @@ WITH feed AS (
     LEFT JOIN deploys dc ON dc.id = f.deploy_id AND f.deploy_id <> ''
     WHERE f.app_id = $1 AND f.fact_type = ANY($12)
 )
-SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, failure_reason, cancel_reason, verb, caller,
+SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, failure_reason, cancel_reason, stall_reason, verb, caller,
        plan_from, plan_to, instance_count_from, instance_count_to,
        autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to,
        auto_deploy_enabled, project_from, project_to, environment_from, environment_to,
@@ -539,6 +544,14 @@ SELECT h.event_key AS key,
            WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(fd.cancel_reason, '')
            ELSE ''
        END AS cancel_reason,
+       -- w4/m112: why an OPEN deploy is not progressing. Only the STARTED
+       -- phase carries it — an ended row is terminal, where failure_reason
+       -- above owns the story — so the feed and the deploy detail page read
+       -- the same column and cannot disagree.
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.stall_reason
+           ELSE ''
+       END AS stall_reason,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.verb ELSE '' END AS verb,
        CASE
            WHEN h.source = '` + EventSourceAudit + `' THEN a.caller
@@ -650,7 +663,7 @@ func scanServiceEventRow(row pgx.Row) (ServiceEventRow, error) {
 
 func serviceEventScanDestinations(r *ServiceEventRow, trailing ...any) []any {
 	destinations := []any{
-		&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.FailureReason, &r.CancelReason, &r.Verb, &r.Caller,
+		&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.FailureReason, &r.CancelReason, &r.StallReason, &r.Verb, &r.Caller,
 		&r.PlanFrom, &r.PlanTo, &r.InstanceCountFrom, &r.InstanceCountTo,
 		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
 		&r.AutoDeployEnabled, &r.ProjectFrom, &r.ProjectTo, &r.EnvironmentFrom, &r.EnvironmentTo,

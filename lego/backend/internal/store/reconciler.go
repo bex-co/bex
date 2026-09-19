@@ -685,6 +685,17 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 				log.Printf("controlplane: set pre-deploy status %s: %v", open.ID, err)
 			}
 		}
+		// w4/m112: project the operator's own stall diagnosis onto the OPEN
+		// row, so the deploy page can say "the health check is failing on
+		// GET /qa-bogus-health" instead of a bare "In Progress" for the whole
+		// 900s budget. Deliberately NOT a service event fact: the w3/m78
+		// exclusion exists so an in-progress window mints no outage, and a
+		// stall must not page anyone, fire a server_failed webhook, or push a
+		// notification. It is an observation on the row, cleared by
+		// TransitionDeploy the moment the row goes terminal.
+		if err := r.Store.SetDeployStallReason(ctx, open.ID, deployStallReason(cur)); err != nil {
+			log.Printf("controlplane: set stall reason %s: %v", open.ID, err)
+		}
 		if fact, ok := observedImagePullFailure(open, cur); ok {
 			if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
 				log.Printf("controlplane: record image-pull failure %s: %v", open.ID, err)
@@ -1367,7 +1378,8 @@ func failureReasonFor(app *appv1alpha1.App, status string) (string, string) {
 		switch c.Reason {
 		case "ImagePullBackOff":
 			return c.Message, EventReasonImagePullBackoff
-		case "CrashLoopBackOff", "CreateContainerConfigError", "RolloutBlockedByQuota", appv1alpha1.ReasonPreDeployFailed:
+		case "CrashLoopBackOff", "CreateContainerConfigError", "RolloutBlockedByQuota",
+			"HealthCheckFailing", appv1alpha1.ReasonPreDeployFailed:
 			return c.Message, ""
 		case appv1alpha1.ReasonBuildQueued, appv1alpha1.ReasonRegistryCredsPending:
 			if c.Message != "" {
@@ -1383,6 +1395,43 @@ func failureReasonFor(app *appv1alpha1.App, status string) (string, string) {
 		}
 	}
 	return timedOutDeployReason(status), ""
+}
+
+// deployStallReason is the in-flight half of failureReasonFor: what the
+// operator's current Ready condition says is holding this rollout up, or "" if
+// nothing is (the rollout is progressing, or the condition predates this
+// generation and says nothing about it).
+//
+// Only diagnoses that name a concrete, user-actionable defect qualify.
+// "RolloutProgressing" and "RolloutSettling" are ordinary progress and must
+// stay silent — reporting them would turn every healthy deploy into a stall.
+func deployStallReason(app *appv1alpha1.App) string {
+	if app == nil {
+		return ""
+	}
+	for i := range app.Status.Conditions {
+		c := &app.Status.Conditions[i]
+		if c.Type != appv1alpha1.ConditionReady || c.ObservedGeneration != app.Generation {
+			continue
+		}
+		if c.Status != metav1.ConditionFalse || !stallDiagnosis(c.Reason) {
+			return ""
+		}
+		return c.Message
+	}
+	return ""
+}
+
+// stallDiagnosis lists the Ready=False reasons that explain a rollout rather
+// than merely describing it. Each is written by the operator's own pod/
+// ReplicaSet inspection and names something the user can act on.
+func stallDiagnosis(reason string) bool {
+	switch reason {
+	case "HealthCheckFailing", "CrashLoopBackOff", "ImagePullBackOff",
+		"CreateContainerConfigError", "RolloutBlockedByQuota":
+		return true
+	}
+	return false
 }
 
 // timedOutDeployReason names the budget that actually expired when nothing else

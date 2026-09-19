@@ -1,19 +1,18 @@
 # w4 · m112 — Health-gated rollouts stall silently: no UI signal names the failing probe
 
-**Worker:** worker4 **Goal:** when a rollout is gated on pods that never become ready because their health-check probe fails, the deploy detail page and events feed say so — naming the probe path and the observed failure — instead of a bare "In Progress" for up to 15 minutes. **Status:** todo
+**Worker:** worker4 **Goal:** when a rollout is gated on pods that never become ready because their health-check probe fails, the deploy detail page and events feed say so — naming the probe path and the observed failure — instead of a bare "In Progress" for up to 15 minutes. **Status:** done 2026-09-18 (live re-probe of the deployed fix deferred to the next QA pass)
 
 ## Tasks (in order)
 
 | id   | title                                                                                  | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Operator diagnoses probe-failing (Running-but-unready) pods in the stall message       | 1h  | —          |
-| t002 | Project the stall reason onto the in-progress deploy/events for UI consumption         | 1h  | t001       |
-| t003 | Dashboard renders the stall reason on the deploy detail page while In Progress         | 45m | t002       |
-| t004 | Render parity                                                                          | 20m | t003       |
-| t005 | Simplify                                                                               | 15m | t004       |
-| t006 | Test coverage                                                                          | 45m | t004       |
-| t007 | Closeout                                                                               | 10m | t006       |
-
+| t001 | Operator diagnoses probe-failing (Running-but-unready) pods in the stall message       | 1h  | —          | — **DONE** |
+| t002 | Project the stall reason onto the in-progress deploy/events for UI consumption         | 1h  | t001       | — **DONE** |
+| t003 | Dashboard renders the stall reason on the deploy detail page while In Progress         | 45m | t002       | — **DONE** |
+| t004 | Render parity                                                                          | 20m | t003       | — **DONE** |
+| t005 | Simplify                                                                               | 15m | t004       | — **DONE** |
+| t006 | Test coverage                                                                          | 45m | t004       | — **DONE** |
+| t007 | Closeout                                                                               | 10m | t006       | — **DONE** |
 ## Definition of done
 
 Each bullet is a click the next person can repeat on production and watch succeed.

@@ -461,6 +461,11 @@ type Details struct {
 	// replaced the deploy. Empty for user cancels. Distinct from FailureReason
 	// so clients can render it without error treatment.
 	CancelReason string
+	// StallReason is why an OPEN deploy is not progressing (w4/m112) — the
+	// operator's live diagnosis of the current revision's pods, carried on the
+	// deploy_started row while the deploy is in flight. An observation, not a
+	// verdict: a deploy carrying one may still go live.
+	StallReason string
 	// Status is a lifecycle-step fact's terminal outcome (w7/m66): build_ended /
 	// pre_deploy_ended / job_run_ended carry succeeded|failed|canceled; empty for
 	// the started/observed kinds and every other type.
@@ -727,6 +732,12 @@ func view(r store.ServiceEventRow, service string) Event {
 				Manual:     r.Trigger == store.TriggerAPI || r.Trigger == store.TriggerDeployHook,
 				Rollback:   r.Trigger == store.TriggerRollback,
 			}
+			// w4/m112: while this deploy is still open, say why it is not
+			// progressing — the same column the deploy detail page reads, so
+			// the two surfaces cannot disagree. The store clears it as the row
+			// goes terminal, at which point the ended row's failureReason
+			// above owns the story.
+			ev.Details.StallReason = r.StallReason
 		} else {
 			ev.Type = TypeDeployEnded
 			ev.Details.DeployStatus = store.RenderDeployStatus(r.Status)

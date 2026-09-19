@@ -2388,3 +2388,93 @@ func TestRecordedBuildRun(t *testing.T) {
 		t.Fatal("an unparsable window must read as absent")
 	}
 }
+
+// --- w4/m112: the open deploy says why it is stalled ---
+//
+// failure_reason and cancel_reason are terminal by contract, so a rollout
+// gated on a failing probe had nothing to say for itself. Live on 2026-09-17 a
+// 404ing Health Check Path held a deploy at update_in_progress for the full
+// 900s budget while the deploy page read a bare "In Progress".
+
+func TestDeployStallReasonOnlyForActionableDiagnoses(t *testing.T) {
+	appAt := func(reason, message string, status metav1.ConditionStatus, gen int64) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Generation: 5},
+			Status: appv1alpha1.AppStatus{
+				Conditions: []metav1.Condition{{
+					Type: "Ready", Status: status, Reason: reason,
+					Message: message, ObservedGeneration: gen,
+				}},
+			},
+		}
+	}
+	const probeMsg = "the container is running but its readiness health check has not succeeded, " +
+		"so the rollout is waiting: GET /qa-bogus-health on port 3000."
+
+	for _, tc := range []struct {
+		name string
+		app  *appv1alpha1.App
+		want string
+	}{
+		{"probe stall", appAt("HealthCheckFailing", probeMsg, metav1.ConditionFalse, 5), probeMsg},
+		{"crash loop", appAt("CrashLoopBackOff", "container exited", metav1.ConditionFalse, 5), "container exited"},
+		{"quota block", appAt("RolloutBlockedByQuota", "exceeded quota", metav1.ConditionFalse, 5), "exceeded quota"},
+		// Ordinary progress must stay silent, or every healthy deploy reads
+		// as stalled for its whole rollout.
+		{"progressing", appAt("RolloutProgressing", "waiting for pods", metav1.ConditionFalse, 5), ""},
+		{"settling", appAt("RolloutSettling", "converging", metav1.ConditionFalse, 5), ""},
+		{"ready", appAt("Deployed", "1/1 replicas ready", metav1.ConditionTrue, 5), ""},
+		// A condition about an older generation says nothing about this one.
+		{"stale generation", appAt("HealthCheckFailing", probeMsg, metav1.ConditionFalse, 4), ""},
+		{"no app", nil, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := deployStallReason(tc.app); got != tc.want {
+				t.Errorf("deployStallReason = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// The stall signal must not become an outage. w3/m78's exclusion exists so an
+// in-progress window mints no server_failed fact, page or push; a probe stall
+// is squarely inside such a window.
+func TestProbeStallIsNotAnOutageWhileTheDeployIsOpen(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: 5},
+		Status: appv1alpha1.AppStatus{
+			Phase:          appv1alpha1.PhaseDeploying,
+			ActiveRevision: "rev-3",
+			Conditions: []metav1.Condition{{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: "HealthCheckFailing",
+				Message:            "the container is running but its readiness health check has not succeeded",
+				ObservedGeneration: 5,
+			}},
+		},
+	}
+	if obs := observedServiceStateFor("srv-stall", app, true); obs.AvailabilityObserved {
+		t.Fatalf("probe stall with an open deploy = %+v, must not be an outage observation", obs)
+	}
+}
+
+// Once the rollout budget expires, the terminal row inherits the operator's
+// probe diagnosis instead of the generic health-gate line — the user gets the
+// same sentence whether they read the row before or after it closed.
+func TestFailedDeployInheritsTheProbeDiagnosis(t *testing.T) {
+	const probeMsg = "the container is running but its readiness health check has not succeeded, " +
+		"so the rollout is waiting: GET /qa-bogus-health on port 3000."
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: 5},
+		Status: appv1alpha1.AppStatus{
+			Phase: appv1alpha1.PhaseDeploying,
+			Conditions: []metav1.Condition{{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: "HealthCheckFailing",
+				Message: probeMsg, ObservedGeneration: 5,
+			}},
+		},
+	}
+	reason, _ := failureReasonFor(app, DeployUpdateFailed)
+	if reason != probeMsg {
+		t.Fatalf("failure reason = %q, want the probe diagnosis rather than the generic timeout line", reason)
+	}
+}

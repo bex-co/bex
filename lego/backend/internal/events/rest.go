@@ -83,6 +83,8 @@ type renderDetails struct {
 	FailureReason string `json:"failureReason,omitempty"`
 	// CancelReason is the neutral cause of a non-user cancel (w4/089). bex extra.
 	CancelReason string `json:"cancelReason,omitempty"`
+	// StallReason is why an OPEN deploy is not progressing (w4/m112). bex extra.
+	StallReason string `json:"stallReason,omitempty"`
 	// Status is the terminal outcome of a lifecycle-step event (w7/m66):
 	// build_ended / pre_deploy_ended / job_run_ended carry succeeded|failed|canceled.
 	Status  string         `json:"status,omitempty"`
@@ -143,6 +145,7 @@ func toRenderEvent(e Event) renderEvent {
 		FullDeployStatus: e.Details.FullDeployStatus,
 		FailureReason:    e.Details.FailureReason,
 		CancelReason:     e.Details.CancelReason,
+		StallReason:      e.Details.StallReason,
 		Status:           e.Details.Status,
 		Image:            e.Details.Image,
 		CommitID:         e.Details.CommitID,

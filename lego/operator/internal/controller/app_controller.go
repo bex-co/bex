@@ -4222,7 +4222,132 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 			}
 		}
 	}
+	// No container is Waiting, so nothing above fired. The remaining stall
+	// class is the one that used to fall through every layer: a container that
+	// is RUNNING and simply never becomes Ready because its health-check probe
+	// keeps failing (w4/m112). Diagnose it last, so a pod that is both
+	// crash-looping and unready still reports the crash — the stronger signal.
+	return probeStallMessage(pods.Items)
+}
+
+// probeStallMessage names the health-check probe a Running-but-unready pod is
+// stuck on.
+//
+// Live on 2026-09-17 a service whose Health Check Path was set to a 404ing
+// path sat `update_in_progress` for the full 900s rollout budget with the new
+// pod logging "Example app listening on port 3000!" and then nothing: the
+// deploy page read a bare "In Progress", the events feed was empty, and the
+// log stream simply stopped. stuckPodMessage saw no Waiting container — a
+// probe-failing pod is Running — so the App's Ready condition carried only the
+// generic "waiting for … pods to become ready", and a user could not tell a
+// 404ing probe path from a slow image pull until the budget expired.
+//
+// kubelet does not publish probe results in pod status (the HTTP status code
+// lives only in an expiring `Unhealthy` Event, which this controller does not
+// watch), so the diagnosis is derived from what status DOES carry, and says
+// only what that proves:
+//
+//   - `Started == false` — the startupProbe has not passed yet. Boot.
+//   - `Ready == false` with the startup probe passed — the readinessProbe is
+//     failing in steady state.
+//   - `RestartCount > 0` alongside either — the livenessProbe has already
+//     restarted the container, so the check is failing, not merely slow.
+//
+// The probe target comes from the pod's own spec (the three probes share one
+// handler by construction — see healthCheckHandler), so the message names the
+// exact path or port kubelet is checking rather than re-deriving it from the
+// App spec, which may already have moved on.
+//
+// Silent when every pod is ready, when a pod is too young to have completed a
+// probe period, or when no probe is configured — users act on this message, so
+// a rollout that is merely progressing must not be reported as stuck.
+func probeStallMessage(pods []corev1.Pod) (string, string) {
+	for i := range pods {
+		p := &pods[i]
+		if p.DeletionTimestamp != nil || p.Status.Phase != corev1.PodRunning {
+			continue // terminating or not yet running: not a probe stall
+		}
+		for _, cs := range p.Status.ContainerStatuses {
+			if cs.Ready || cs.State.Running == nil {
+				continue
+			}
+			probe, kind := stallingProbe(p, cs)
+			if probe == nil {
+				continue // no probe configured; the unreadiness is not a probe's doing
+			}
+			// One probe period plus its timeout must have elapsed since the
+			// container started, or no probe has even had the chance to fail.
+			if !probeHadTimeToFail(probe, cs.State.Running.StartedAt.Time) {
+				continue
+			}
+			msg := fmt.Sprintf(
+				"the container is running but its %s health check has not succeeded, so the rollout is waiting: %s.",
+				kind, probeTargetDescription(probe))
+			if cs.RestartCount > 0 {
+				msg += fmt.Sprintf(
+					" The liveness check has already restarted the container %d time(s), so the check is failing rather than merely slow.",
+					cs.RestartCount)
+			}
+			msg += " Check that the path returns a 2xx or 3xx status on the service's own port" +
+				" — an unset Health Check Path falls back to a TCP connect, which only asks whether the process is listening."
+			return reasonHealthCheckFailing, msg
+		}
+	}
 	return "", ""
+}
+
+// reasonHealthCheckFailing is probeStallMessage's Ready-condition reason. It
+// is also the wire value the control plane projects and the dashboard renders,
+// so it is a contract, not a log string.
+const reasonHealthCheckFailing = "HealthCheckFailing"
+
+// stallingProbe picks which of the container's probes is the one currently
+// gating readiness, and what to call it. kubelet suspends readiness (and
+// liveness) while a startupProbe runs, so an unstarted container is stuck on
+// startup and nothing else.
+func stallingProbe(p *corev1.Pod, cs corev1.ContainerStatus) (*corev1.Probe, string) {
+	var spec *corev1.Container
+	for i := range p.Spec.Containers {
+		if p.Spec.Containers[i].Name == cs.Name {
+			spec = &p.Spec.Containers[i]
+			break
+		}
+	}
+	if spec == nil {
+		return nil, ""
+	}
+	if spec.StartupProbe != nil && (cs.Started == nil || !*cs.Started) {
+		return spec.StartupProbe, "startup"
+	}
+	if spec.ReadinessProbe != nil {
+		return spec.ReadinessProbe, "readiness"
+	}
+	return nil, ""
+}
+
+// probeHadTimeToFail reports whether the container has been running long
+// enough for the probe to have run and failed at least once, so a pod that is
+// simply two seconds old is never reported as stuck.
+func probeHadTimeToFail(probe *corev1.Probe, startedAt time.Time) bool {
+	if startedAt.IsZero() {
+		return false
+	}
+	period := time.Duration(max(probe.PeriodSeconds, 1)) * time.Second
+	timeout := time.Duration(max(probe.TimeoutSeconds, 1)) * time.Second
+	delay := time.Duration(max(probe.InitialDelaySeconds, 0)) * time.Second
+	return time.Since(startedAt) > delay+period+timeout
+}
+
+// probeTargetDescription renders what the probe actually checks, in the shape
+// the Health Check Path setting is phrased in.
+func probeTargetDescription(probe *corev1.Probe) string {
+	if g := probe.HTTPGet; g != nil {
+		return fmt.Sprintf("GET %s on port %s", g.Path, g.Port.String())
+	}
+	if t := probe.TCPSocket; t != nil {
+		return fmt.Sprintf("a TCP connect to port %s", t.Port.String())
+	}
+	return "the configured health check"
 }
 
 // rolloutQuotaBlockMessage is the stuck-pod diagnosis for the rollout that has

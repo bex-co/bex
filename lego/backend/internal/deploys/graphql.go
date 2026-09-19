@@ -60,6 +60,9 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// Empty for user cancels. Distinct from failureReason so the dashboard
 		// can render it without text-destructive treatment.
 		"cancelReason": gqlutil.StrField(func(d DeployView) any { return d.CancelReason }),
+		// w4/m112: why an OPEN deploy is not progressing. Empty while a
+		// rollout is healthy; cleared when the deploy goes terminal.
+		"stallReason": gqlutil.StrField(func(d DeployView) any { return d.StallReason }),
 	},
 })
 

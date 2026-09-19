@@ -106,10 +106,17 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
             build error) or a health-gate-timeout line. A supersede cancel
             (w4/089) uses cancelReason with a neutral tone instead. */}
         <DeployFailureReason reason={deploy.failureReason} />
-        <DeployFailureReason
-          reason={deploy.cancelReason}
-          tone="neutral"
-        />
+        <DeployFailureReason reason={deploy.cancelReason} tone="neutral" />
+
+        {/* w4/m112: while the deploy is still open, say what the rollout is
+            waiting on. Live on 2026-09-17 a 404ing Health Check Path held a
+            rollout for the full 900s budget behind a bare "In Progress" —
+            the page named no probe, the events feed was empty, and the log
+            stream simply stopped. Neutral tone: a stall is an observation,
+            not a verdict; a deploy carrying one may still go live. The server
+            clears the field as the deploy goes terminal, so the terminal
+            states' copy above is untouched. */}
+        <DeployFailureReason reason={deploy.stallReason} tone="neutral" />
 
         {preDeploy && (
           <p

@@ -906,6 +906,20 @@ func (m *memStore) DeployIDByGeneration(_ context.Context, appID string, generat
 	return best.ID, nil
 }
 
+// SetDeployStallReason mirrors PGStore: open rows only, updated_at untouched
+// (it is an observation about the row, not a transition of it — w4/m112).
+func (m *memStore) SetDeployStallReason(_ context.Context, id, reason string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.deploys[id]
+	if !ok || d.FinishedAt != nil || d.StallReason == reason {
+		return nil
+	}
+	d.StallReason = reason
+	m.deploys[id] = d
+	return nil
+}
+
 func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

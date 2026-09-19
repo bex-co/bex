@@ -33,6 +33,7 @@ const deployState: {
     preDeployStatus: "",
     failureReason: "",
     cancelReason: "",
+    stallReason: "",
   },
   loading: false,
   error: undefined as Error | undefined,

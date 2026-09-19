@@ -27,6 +27,13 @@ export interface DeployRow {
   failureReason: string;
   /** Neutral cause of a non-user cancel (w4/089); "" unless superseded. */
   cancelReason: string;
+  /**
+   * Why an OPEN deploy is not progressing (w4/m112) — the operator's live
+   * diagnosis of the current revision's pods, e.g. a failing health check
+   * naming its path. "" while a rollout is healthy, and cleared by the server
+   * the moment the deploy goes terminal. An observation, not a verdict.
+   */
+  stallReason: string;
 }
 
 type RawDeploy = NonNullable<DeploysQuery["deploys"]>[number];
@@ -50,6 +57,7 @@ function toRows(raw: DeploysQuery["deploys"] | undefined): DeployRow[] {
       preDeployStatus: d.preDeployStatus ?? "",
       failureReason: d.failureReason ?? "",
       cancelReason: d.cancelReason ?? "",
+      stallReason: d.stallReason ?? "",
     }));
 }
 
