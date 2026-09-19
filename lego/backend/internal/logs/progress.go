@@ -63,8 +63,8 @@ type DeployProgress struct {
 	// narration instead of a build story (w4/m110 t004).
 	Built      bool
 	CreatedAt  time.Time
-	StartedAt     time.Time // zero until the deploy starts
-	FinishedAt    time.Time // zero until terminal
+	StartedAt  time.Time // zero until the deploy starts
+	FinishedAt time.Time // zero until terminal
 }
 
 // DeployProgressSource lists an App's deploy rows, newest-first, created

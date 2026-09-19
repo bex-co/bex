@@ -609,10 +609,11 @@ spec:
 
                 stage.json {
                   expressions = {
-                    service = "ServiceName",
-                    method  = "RequestMethod",
-                    status  = "DownstreamStatus",
-                    host    = "RequestHost",
+                    service      = "ServiceName",
+                    ingress_name = "KubernetesIngressName",
+                    method       = "RequestMethod",
+                    status       = "DownstreamStatus",
+                    host         = "RequestHost",
                   }
                 }
 
@@ -661,11 +662,37 @@ spec:
                 // templates below can emit is a closed vocabulary, `host`
                 // itself never becomes a label, and any unlisted host is still
                 // dropped — never guessed.
+                // w4/m113: a STATIC site's ServiceName names the per-App
+                // ExternalName alias the operator points at the shared static
+                // server, `<ns>-bex-static-<app>-<port>@kubernetes` (ground
+                // truth, production Traefik 2026-09-19:
+                // "ServiceName":"default-bex-static-hello-static-8080@kubernetes").
+                // The regex above therefore extracts app="bex-static-hello-static"
+                // — a name no App has — so the line shipped with a label
+                // bex-api's selector (app = the App CR name) can never match,
+                // and type=request was empty for every static site while
+                // bandwidth for the same traffic was fine.
+                //
+                // Traefik already puts the answer on the line:
+                // KubernetesIngressName IS the App CR name, and the operator
+                // names each App's Ingress after the App — for compute too
+                // (production 2026-09-19: ServiceName
+                // "tea-…-tea-…-eden-cms-v2-3000@kubernetes" alongside
+                // KubernetesIngressName "tea-…-eden-cms-v2", identical). So
+                // prefer it, and keep the ServiceName regex as the fallback.
+                //
+                // Gated on .Value (the regex-derived app) being non-empty on
+                // purpose: a platform edge line (api.bex.co et al.) has a
+                // KubernetesIngressName too, and letting it set `app` would
+                // route it down the tenant branch of the namespace/service
+                // templates below and lose its fixed platform pair. The regex
+                // misses those (their namespace is neither tea-<xid> nor
+                // default), so this override cannot reach them.
                 stage.template {
                   source   = "app"
                   // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
                   // note at the top of this file for why.
-                  template = "{{ "{{" }} if .Value {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} if and .Value .ingress_name {{ "}}" }}{{ "{{" }} .ingress_name {{ "}}" }}{{ "{{" }} else if .Value {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
                 }
                 stage.template {
                   source   = "should_drop"

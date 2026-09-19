@@ -166,6 +166,14 @@ func SumIncreases(specs []Spec, seconds int64) string {
 	return strings.Join(parts, " + ")
 }
 
+// RouterMatcher is routerMatcher exported for the request-metric builders
+// (w4/m113): a static site has no per-App Kubernetes Service, so its request
+// count, latency and status-code discovery must select Traefik's per-router
+// series by the same anchored, regex-escaped router identities the bandwidth
+// read already uses. Empty when there are no routers — callers MUST treat that
+// as "no query", never as an unbounded match.
+func RouterMatcher(routers []string) string { return routerMatcher(routers) }
+
 func routerMatcher(routers []string) string {
 	if len(routers) == 0 {
 		return ""
