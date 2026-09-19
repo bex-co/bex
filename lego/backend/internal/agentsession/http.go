@@ -60,7 +60,7 @@ func newNonce() string {
 // gateway→bex-api credential verb (the Git and model flavors). It verifies the
 // signed request, unmarshals Req, runs the flavor's mint, and maps the domain
 // error to a status — so the skew window, body cap, and status mapping live in
-// exactly one place (backend/CLAUDE.md's anti-drift rule). A nil mint (an unwired
+// exactly one place (backend/AGENTS.md's anti-drift rule). A nil mint (an unwired
 // Minter) reports the feature unavailable.
 func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secret []byte, now time.Time, claimer NonceClaimer, nonceOf func(Req) string, mint func(context.Context, Req) (Resp, error)) {
 	if r.Method != http.MethodPost {

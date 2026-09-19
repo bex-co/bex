@@ -147,7 +147,7 @@ func WorkspaceObject(tenantID string) string { return "workspace:" + tenantID }
 // must be decided from the REQUEST, before the single AuthorizeApp/
 // AuthorizeDatabase fetch, because a second authorization pass on an
 // already-fetched resource resolves a different workspace than the first (see
-// backend/CLAUDE.md) — so every such verb has to compute it the same way, up
+// backend/AGENTS.md) — so every such verb has to compute it the same way, up
 // front. Three verbs did that independently before this helper; the fourth
 // should not have to rediscover the shape.
 //
@@ -535,7 +535,7 @@ func (b *Base) Now() time.Time {
 // implicitly by never naming a workspace itself. This is also the audit
 // interception point (w4/m10, audit.go): the caller two frames up is the verb
 // itself (docs/... every verb calls Authorize/AuthorizeOn exactly once, per
-// CLAUDE.md), so it's resolved here rather than threaded through 80+ call
+// AGENTS.md), so it's resolved here rather than threaded through 80+ call
 // sites — a write-relation verb can't opt out of being recorded.
 // A caller who NAMES a workspace (core.WithWorkspace — REST/GraphQL ownerId, an
 // MCP's per-call workspaceId) is checked against THAT workspace instead of
@@ -952,7 +952,7 @@ func (b *Base) AuthorizeMintClass(ctx context.Context) error {
 // (no filter)" from "store on (filter, maybe empty)".
 //
 // A refused override cannot reach a verb's body: every verb calls Authorize
-// first (CLAUDE.md), which fails the request with the same ErrForbidden — so
+// first (AGENTS.md), which fails the request with the same ErrForbidden — so
 // ok=false here means "no workspace", never "a workspace you may not use".
 func (b *Base) Tenant(ctx context.Context) (string, bool) {
 	tenantID, err := b.resolveWorkspace(ctx)

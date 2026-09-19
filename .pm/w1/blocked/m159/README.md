@@ -127,7 +127,7 @@ The pre-fix evidence above was captured deliberately while that was still true, 
 ## Source + Goal linkage
 
 - **Source:** `w1/085`, `w1/086` and `w1/098` — live `/qa-find-bugs` passes 2, 4 and 26 (2026-09-14). Promoted 2026-09-15 during the w1 triage, grouped because each is sub-hour on its own and they share one review and one ship.
-- **Goal linkage:** `docs/ADR018-render-parity.md` (the dashboard is a parity surface) and `dashboard/CLAUDE.md` — a view must describe the state it is actually showing.
+- **Goal linkage:** `docs/ADR018-render-parity.md` (the dashboard is a parity surface) and `dashboard/AGENTS.md` — a view must describe the state it is actually showing.
 - **Expected outcome:** no dashboard row contradicts the resource it describes, and no count message reads "1 resources".
 - **Why now:** all three were found live and none needs a decision; they are the cheapest user-visible wins left in w1's inbox.
 - **Render parity is included** because all three are user-facing dashboard surfaces; `w6/done/062` set the plural rule this restores.

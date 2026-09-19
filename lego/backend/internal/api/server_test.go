@@ -903,7 +903,7 @@ func TestAPIKeys_SessionCaller(t *testing.T) {
 // TestAuthzGuardsEveryVerb sweeps every feature service's verbs (exported methods
 // that take a context and return an error) with a deny-all checker: each must
 // return ErrForbidden before doing anything else. A new verb that forgets its
-// Authorize guard fails this sweep automatically — the CLAUDE.md rule, enforced.
+// Authorize guard fails this sweep automatically — the AGENTS.md rule, enforced.
 // sweepableServices lists every feature service TestAuthzGuardsEveryVerb (and
 // w4/m10's audit-coverage sweep, which reuses it so the two inventories can't
 // drift) walks by reflection. One list, shared, so a new feature added here

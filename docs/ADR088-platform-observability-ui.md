@@ -185,7 +185,7 @@ Remaining, still recorded: per §1, whole-cluster outage detection stays with th
 
 ## Consequences
 
-- New env vars enter the cascading inventories: `BEX_OPS_WORKSPACE` + `BEX_OPS_ROLE_TOKEN` (backend, [lego/backend/CLAUDE.md](../lego/backend/CLAUDE.md)); `OAUTH_OPS_CLIENTS` + the role-verb URL/token (dashboard SSR, [dashboard/CLAUDE.md](../dashboard/CLAUDE.md)).
+- New env vars enter the cascading inventories: `BEX_OPS_WORKSPACE` + `BEX_OPS_ROLE_TOKEN` (backend, [lego/backend/AGENTS.md](../lego/backend/AGENTS.md)); `OAUTH_OPS_CLIENTS` + the role-verb URL/token (dashboard SSR, [dashboard/AGENTS.md](../dashboard/AGENTS.md)).
 - The consent acceptor acquires its first identity-conditional client class; every other client's behavior is byte-identical.
 - The dashboard SSR runtime gains a server-to-server call into bex-api — new coupling, kept to one internal verb.
 - Publishing the manifests exposes `obs.bex.co`'s existence and our dashboards' shape. Consistent with the repo's posture: alert rules and platform hostnames are already public, hostnames appear in CT logs regardless, and secrets never enter git.

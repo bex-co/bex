@@ -185,7 +185,7 @@ dashboard/       Render-style human UI (TanStack Start + Ory Kratos, docs/ADR012
 infra/           bex-infra: terraform/ clusterapi/{base,overlays/{local-capd,hetzner-caph}} local/
 deploy/          GitOps: gitops/{bootstrap,base,overlays/{local,staging,prod},charts,authz} + opensandbox/ server configs
 examples/        sample user apps (whoami-app.yaml, hello-go/)
-docs/            one file per topic — see the index in CLAUDE.md
+docs/            one file per topic — see the index in AGENTS.md
 scripts/         mock-cluster.sh, app-apply.sh, deploy-sample.sh, auth/bao helpers, up.sh + start-opensandbox*.sh (legacy)
 ```
 

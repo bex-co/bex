@@ -60,11 +60,11 @@ cd lego/cli && go build ./... && go test ./...
 
 > **Go version:** all four modules are on the `go 1.26` line (`go.work` declares `go 1.26.0`); `cli/` and its pinned upstream `render-oss/cli` set the floor, and the platform modules moved to 1.26 with the `golang.org/x/crypto` v0.56.0 bump (v0.56.0 requires Go 1.26; it fixes the reachable ssh-gateway DoS the govulncheck gate flagged). The shipped image compiles the platform modules per-module with `golang:1.26` — the Docker build copies no `go.work`, so it is unaffected by the workspace file.
 
-> **Codegen footgun:** the CRD types live in `types/`, not `operator/`. `make manifests generate` runs controller-gen against `../types/...`; the deepcopy lands in `types/v1alpha1/zz_generated.deepcopy.go` and the CRD YAML in `operator/config/crd/bases/`. Both are generated — never hand-edit. Details in [`operator/CLAUDE.md`](operator/CLAUDE.md).
+> **Codegen footgun:** the CRD types live in `types/`, not `operator/`. `make manifests generate` runs controller-gen against `../types/...`; the deepcopy lands in `types/v1alpha1/zz_generated.deepcopy.go` and the CRD YAML in `operator/config/crd/bases/`. Both are generated — never hand-edit. Details in [`operator/AGENTS.md`](operator/AGENTS.md).
 
 ## Where to read next
 
-- Per-module rules: [`operator/CLAUDE.md`](operator/CLAUDE.md) · [`backend/CLAUDE.md`](backend/CLAUDE.md) · [`backend/internal/api/CLAUDE.md`](backend/internal/api/CLAUDE.md).
+- Per-module rules: [`operator/AGENTS.md`](operator/AGENTS.md) · [`backend/AGENTS.md`](backend/AGENTS.md) · [`backend/internal/api/AGENTS.md`](backend/internal/api/AGENTS.md).
 - The Render-compatible API design — one Core, three adapters: [`../docs/ADR006-bex-api.md`](../docs/ADR006-bex-api.md).
 - The intent-vs-mechanism boundary (planned control plane): [`../docs/ADR003-control-plane.md`](../docs/ADR003-control-plane.md).
 - The whole-system map: [`../docs/ADR002-architecture.md`](../docs/ADR002-architecture.md).

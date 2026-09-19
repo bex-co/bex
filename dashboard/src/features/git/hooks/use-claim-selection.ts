@@ -88,7 +88,7 @@ export function useClaimSelection(
 
   return {
     candidates,
-    // Gate on "loading and no data yet" (dashboard/CLAUDE.md § Polling) so a
+    // Gate on "loading and no data yet" (dashboard/AGENTS.md § Polling) so a
     // refetch never unmounts a picker the user is already looking at.
     loading: loading && data === undefined,
     gone: Boolean(selectionId) && !loading && candidates.length === 0,

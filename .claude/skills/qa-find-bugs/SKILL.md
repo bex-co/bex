@@ -111,7 +111,7 @@ For every surviving bug, find the root cause in this repo and cite `file:line`. 
 - UI: `dashboard/src/routes/<route>.tsx`, `dashboard/src/features/<area>/` (`services`, `deploys`, `env-groups`, `databases`, `keyvalue`, `logs`, `metrics`, `projects`, `blueprints`, `usage`)
 - API: `lego/backend/internal/<area>/` — REST + GraphQL + MCP live together, so a fix in one is a fix in three ([docs/ADR006-bex-api.md](../../../docs/ADR006-bex-api.md))
 - Runtime/reconcile: `lego/operator/` (Deployment/Service/Ingress, build pipeline, activator)
-- Read the governing ADR before proposing anything — catalog in [docs/CLAUDE.md](../../../docs/CLAUDE.md); most relevant here are ADR004 (deploys), ADR005 (custom domains), ADR009 (Postgres), ADR021 (Key Value), ADR029 (static sites), ADR049 (`render.yaml` parity), ADR018 (parity ledger).
+- Read the governing ADR before proposing anything — catalog in [docs/AGENTS.md](../../../docs/AGENTS.md); most relevant here are ADR004 (deploys), ADR005 (custom domains), ADR009 (Postgres), ADR021 (Key Value), ADR029 (static sites), ADR049 (`render.yaml` parity), ADR018 (parity ledger).
 - Compare against render.com's behavior for the same surface; record deliberate divergence as divergence, not as a bug.
 
 ### Before you call a root cause found

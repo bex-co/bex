@@ -348,6 +348,6 @@ Landing with this ADR (same change):
 - [ADR018](ADR018-render-parity.md) Persistent-disks ledger row: non-goal note replaced with the reversal record; cells stay `—` until surfaces ship.
 - [DO_NOT_DO.md](../.pm/DO_NOT_DO.md): the persistent-disks bullet gains a re-open record (the `#18` precedent); the sibling non-goals are explicitly unaffected.
 - [ADR049](ADR049-render-yaml-parity.md): the disk-related rejected-alternative and D7 lines gain dated pointers here.
-- [docs/CLAUDE.md](CLAUDE.md) catalog entry.
+- [docs/AGENTS.md](AGENTS.md) catalog entry.
 
 Landing with implementation (not this change): `capabilities.json` flips, `render_openapi_test.go`, scope matrix, quota derivation, CLI checklist row, ADR018 cell updates.

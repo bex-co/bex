@@ -69,7 +69,7 @@ Rules for triage:
 
 Do the actual engineering, task by task, in the order the item implies:
 
-- Follow all `CLAUDE.md` rules (id minting, boilerplate headers, `.env.example` sync, prettier on markdown, skill layout, etc.).
+- Follow all `AGENTS.md` rules (id minting, boilerplate headers, `.env.example` sync, prettier on markdown, skill layout, etc.).
 - Milestones ship features **end to end** — include the frontend tasks alongside the backend ones; do not stop at the API.
 - Run the relevant test suites and make them pass before considering a task done — `make test` (from `lego/operator/`), `cd lego/backend && go test ./...`, dashboard `yarn test`, whichever the change touches. Never mark a task complete on unverified code.
 - You may delegate independent sub-tasks to subagents (Agent tool) to parallelize, but you own correctness.

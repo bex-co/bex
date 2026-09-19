@@ -30,4 +30,4 @@ The full local mock (kind infra cluster + Cluster API + Docker-container "machin
 - **Markdown:** CI checks formatting — fix with `npx prettier@3.4.2 --write "**/*.md"`.
 - **Docs:** product/design docs live in `docs/`; `.pm/` is internal maintainer notes, not documentation.
 
-This repo is agent-friendly — see [CLAUDE.md](CLAUDE.md). PRs authored with coding agents are welcome as long as tests pass and you've reviewed the diff yourself.
+This repo is agent-friendly — see [AGENTS.md](AGENTS.md). PRs authored with coding agents are welcome as long as tests pass and you've reviewed the diff yourself.

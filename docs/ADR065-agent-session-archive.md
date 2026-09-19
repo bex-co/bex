@@ -29,7 +29,7 @@ The mapping onto bex is clean because ADR059 already built Devin's other two sta
 - **Phases** (10, DB-CHECK-enforced, migration 0073): `creating running resuming redispatching completed failed canceling canceled hibernating hibernated` (`agentsessions/models.go:25-38`). No `archived` — and it should not become one (D1).
 - **The row keeps everything except the conversation's reachability**: `head_sha`/`pr_url`/`pr_number`/bounded `evidence`/`turns`/`failure_reason` + the m68 snapshot fields. The diff itself lives only in GitHub.
 - **Transcripts are effectively forever**: `PruneAgentSessionTranscripts` exists but is wired into no sweep — dead code called only by its own test (`store/agentsessions.go:602-613`, `store_pg_test.go:292-295`); the real bounds are the 64 MiB/session cap and session-row cascade.
-- **End-of-life today**: Cancel → `canceled` (row/transcript/PR pointers kept; snapshot blob best-effort deleted); hibernation-retention expiry → `canceled` with `failure_reason='hibernation retention window elapsed'` (`ExpireHibernatedAgentSession`, `store/agentsessions.go:400-418` — snapshot deleted, row + transcript kept; note the doc drift: CLAUDE.md's `BEX_AGENT_SNAPSHOT_RETENTION` entry says "snapshot **+ row**", the code keeps the row). Expiry being indistinguishable from user cancel by phase is a known wart this ADR partially absorbs (D5).
+- **End-of-life today**: Cancel → `canceled` (row/transcript/PR pointers kept; snapshot blob best-effort deleted); hibernation-retention expiry → `canceled` with `failure_reason='hibernation retention window elapsed'` (`ExpireHibernatedAgentSession`, `store/agentsessions.go:400-418` — snapshot deleted, row + transcript kept; note the doc drift: AGENTS.md's `BEX_AGENT_SNAPSHOT_RETENTION` entry says "snapshot **+ row**", the code keeps the row). Expiry being indistinguishable from user cancel by phase is a known wart this ADR partially absorbs (D5).
 - **Hibernated tier is env-gated OFF in prod** (m68; `BEX_AGENT_SNAPSHOT_S3_*` unprovisioned) — today every finished session converges to a terminal row with empty `sandbox_id`, which is exactly the population an archive organizes.
 
 ---
@@ -95,7 +95,7 @@ The one automatic archive edge: `ExpireHibernatedAgentSession` additionally stam
 - Every completed session's conversation becomes viewable again — including the backlog already sitting unreadable in `agent_session_transcripts` — with zero migration beyond the `archived_at` column: D2's replay ticket reads the rows ADR051 already wrote.
 - New surface: `archive`/`unarchive`/`delete` verbs ×3 surfaces, the transcript read ×3 surfaces, list filters+pagination ×3 surfaces, `AGENT_SESSION_ARCHIVED` 409, one migration, dashboard Archived section + filter controls. No new env vars, no new processes, no gateway listener changes (the replay path exists).
 - The list contract changes shape (pagination): the dashboard and any API consumers of the previously-unbounded list migrate in the same milestone.
-- CLAUDE.md's `BEX_AGENT_SNAPSHOT_RETENTION` description ("snapshot + row") is corrected to match the code (snapshot only; row and transcript kept) as part of implementation.
+- AGENTS.md's `BEX_AGENT_SNAPSHOT_RETENTION` description ("snapshot + row") is corrected to match the code (snapshot only; row and transcript kept) as part of implementation.
 
 ## Non-goals
 

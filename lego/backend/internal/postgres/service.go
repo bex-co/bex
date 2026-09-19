@@ -1242,7 +1242,7 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 	// resolved from the request before the single fetch (the t001 shape); the
 	// alternative — fetch, diff, then gate — needs a second authorization pass
 	// on an already-fetched resource, which this codebase forbids because the
-	// two gates resolve different workspaces (see backend/CLAUDE.md).
+	// two gates resolve different workspaces (see backend/AGENTS.md).
 	d, err := s.fetchDatabase(ctx, core.LifecycleOrCreate(
 		patch.ParameterOverrides != nil && setsSensitiveLoggingParameter(*patch.ParameterOverrides)), name)
 	if err != nil {

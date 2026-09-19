@@ -20,7 +20,7 @@ import { join } from "node:path";
  * authoring a `gql` template, or casting a value to a TypedDocumentNode.
  *
  * If this test fails on your new operation: add it to the feature's
- * `.graphql` file and regenerate (dashboard/CLAUDE.md § Offline codegen),
+ * `.graphql` file and regenerate (dashboard/AGENTS.md § Offline codegen),
  * then import the document from `@/graphql/definitions`.
  */
 const SRC_DIR = join(import.meta.dirname, "..", "..");

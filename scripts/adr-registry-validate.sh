@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ADR registry integrity (w6/m40). ADR numbers are bex's citation system: the
 # security-review lineage alone is a fourteen-document chain navigated by
-# number, and CLAUDE.md / DO_NOT_DO.md / every milestone README point at
+# number, and AGENTS.md / DO_NOT_DO.md / every milestone README point at
 # architectural decisions the same way.
 #
 # Three collisions had accumulated before this guard (ADR040, ADR049, ADR060),
@@ -12,7 +12,7 @@
 #
 # Checks (all fail closed):
 #   1. no two docs/ADR*.md files claim the same number
-#   2. every docs/ADR*.md appears in the docs catalog (docs/CLAUDE.md)
+#   2. every docs/ADR*.md appears in the docs catalog (docs/AGENTS.md)
 #   3. no ADRnnn-<slug>.md reference anywhere resolves to a missing file
 #
 # ADR_DIR, ADR_INDEX, and SCAN_ROOT are overridable so the self-test
@@ -22,10 +22,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 ADR_DIR="${ADR_DIR:-docs}"
-# The catalog moved out of the root CLAUDE.md into the cascading docs/CLAUDE.md
+# The catalog moved out of the root AGENTS.md into the cascading docs/AGENTS.md
 # when the agent docs were compacted; the root file now carries only key entry
 # points, so checking it would fail for every ADR outside that short list.
-ADR_INDEX="${ADR_INDEX:-docs/CLAUDE.md}"
+ADR_INDEX="${ADR_INDEX:-docs/AGENTS.md}"
 SCAN_ROOT="${SCAN_ROOT:-.}"
 fail=0
 

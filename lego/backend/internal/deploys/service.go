@@ -214,7 +214,7 @@ type Service struct {
 // buildJobName is the build Job identity the operator creates for this App's
 // generation. Both halves — the revision spelling and the name derivation —
 // live in the contract module because bex-api must never import the operator
-// (operator/backend layering, CLAUDE.md) yet must address the exact Job the
+// (operator/backend layering, AGENTS.md) yet must address the exact Job the
 // operator created.
 func buildJobName(name string, generation int64) string {
 	return appv1alpha1.BuildJobName(name, appv1alpha1.BuildRevision(generation))

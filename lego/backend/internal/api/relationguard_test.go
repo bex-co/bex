@@ -181,7 +181,7 @@ func TestFetchByNameUsesTheVerbsOwnRelation(t *testing.T) {
 				if !onOwn[rel] {
 					t.Errorf("%s.%s: fetched a resource in the caller's other workspace with %q, "+
 						"but the verb authorized %v — the fetch must be given the SAME relation the verb "+
-						"authorized, or a role in one workspace leaks into another (lego/backend/CLAUDE.md)",
+						"authorized, or a role in one workspace leaks into another (lego/backend/AGENTS.md)",
 						ct.Elem().Name(), m.Name, rel, keys(onOwn))
 				}
 			}
