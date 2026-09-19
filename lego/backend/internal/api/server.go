@@ -674,14 +674,31 @@ func NewServer(base *core.Base, d Deps) *Server {
 		// domain's own shape — newest-first, coarse created-before bound, page-
 		// capped; the logs service applies the exact window per line.
 		ds := d.DeployStore
+		// w4/m110 t004: the narrator must not claim a build the Events tab has
+		// no record of, and a deploy row's timestamps cannot tell a build from
+		// a reuse rollout. Optional capability — a store without it (tests,
+		// CR-only mode) simply narrates no builds rather than fabricating them.
+		builtIDs, _ := ds.(interface {
+			BuiltDeployIDs(ctx context.Context, appID string, limit int) (map[string]bool, error)
+		})
 		logSvc.DeployProgress = func(ctx context.Context, resource string, end time.Time) ([]logs.DeployProgress, error) {
 			rows, err := ds.ListDeploys(ctx, resource, store.DeployFilter{CreatedBefore: end, Limit: core.MaxPageLimit})
 			if err != nil {
 				return nil, err
 			}
+			built := map[string]bool{}
+			if builtIDs != nil {
+				if got, err := builtIDs.BuiltDeployIDs(ctx, resource, core.MaxPageLimit); err != nil {
+					// Provenance, not content: a failed lookup must not fail the
+					// log read. Narrate the rollout instead of inventing a build.
+					log.Printf("logs: build evidence for %s: %v", resource, err)
+				} else {
+					built = got
+				}
+			}
 			out := make([]logs.DeployProgress, 0, len(rows))
 			for _, r := range rows {
-				p := logs.DeployProgress{ID: r.ID, Status: r.Status, Image: r.Image, Commit: r.Commit, FailureReason: r.FailureReason, CreatedAt: r.CreatedAt}
+				p := logs.DeployProgress{ID: r.ID, Status: r.Status, Image: r.Image, Commit: r.Commit, FailureReason: r.FailureReason, CreatedAt: r.CreatedAt, Built: built[r.ID]}
 				if r.StartedAt != nil {
 					p.StartedAt = *r.StartedAt
 				}

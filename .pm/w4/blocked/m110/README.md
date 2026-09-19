@@ -1,15 +1,37 @@
 # w4 · m110 — Settings config changes roll the stale image; instance counts, rollback dialog, and build narration mislead
 
-**Worker:** worker4 **Goal:** a build/start command edit in Settings rebuilds instead of re-rolling the old image; Total Instances counts live pods, not terminated ones; the rollback dialog names the commit it restores; the deploy log stops narrating builds that never ran. **Status:** todo
+**Worker:** worker4 **Goal:** a build/start command edit in Settings rebuilds instead of re-rolling the old image; Total Instances counts live pods, not terminated ones; the rollback dialog names the commit it restores; the deploy log stops narrating builds that never ran. **Status:** BLOCKED — t002/t003/t004 done 2026-09-18; t001 needs a live reproduction (see below)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                    | est   | depends_on |
 | ---- | -------------------------------------------------------------------------------------------------------- | ----- | ---------- |
-| t001 | Settings build/start command edits must rebuild — config-change deploys roll the stale image              | 3h    | —          |
-| t002 | INSTANCES counts terminated pods — Total Instances over-reports for minutes after every rollout           | 1h30m | —          |
-| t003 | The rollback confirmation dialog names the commit being restored (m108/t004 acceptance gap)                | 45m   | —          |
-| t004 | The deploy log stops narrating phantom builds for deploys that perform no build                           | 1h    | —          |
+| t001 | Settings build/start command edits must rebuild — config-change deploys roll the stale image              | 3h    | —          | — **BLOCKED** (needs a live reproduction) |
+| t002 | INSTANCES counts terminated pods — Total Instances over-reports for minutes after every rollout           | 1h30m | —          | — **DONE** |
+| t003 | The rollback confirmation dialog names the commit being restored (m108/t004 acceptance gap)                | 45m   | —          | — **DONE** |
+| t004 | The deploy log stops narrating phantom builds for deploys that perform no build                           | 1h    | —          | — **DONE** |
+
+## Blocked on
+
+**t001 needs a live reproduction that only the user can authorize.** The
+investigation recorded in `t001.md` eliminates the fork's first branch with
+evidence: production runs the HEAD-pinned operator image and `git log` is empty
+across the whole identity path, and HEAD's `desiredAppReleaseIdentity`
+reproduces a live prod App's `status.artifactFingerprint`/`releaseFingerprint`
+byte-for-byte while both Settings edits flip the artifact (pinned as
+`TestSettingsCommandEditsDemandAFreshArtifact`). The dashboard's write path
+(`setStartCommand` → `SetCommands` → `rollout.Tracker.Patch`) stamps the
+release generation and never touches the one annotation that would pin the
+artifact. What remains is a runtime path invisible to static reading, and the
+QA service that exhibited it is deleted — so it must be reproduced.
+
+**What is needed:** authorization to run one throwaway reproduction on
+production (create a native web service from a Public Git URL under the QA
+credentials, edit its start command, capture the App CR + operator logs, then
+delete it) — or a decision to invest in a full local `mock-cluster` + `dev-4`
+stack with an in-cluster native build, which reproduces the code path but has
+never been shown to reproduce the behavior. The note's own guardrail forbids
+the only edit that could be made without that evidence.
 
 ## Definition of done
 

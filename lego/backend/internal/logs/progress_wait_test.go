@@ -369,3 +369,109 @@ func setWaitReason(t *testing.T, svc *Service, name, reason, message string) {
 		t.Errorf("update app condition: %v", err)
 	}
 }
+
+// --- w4/m110 t004: no build, no build narration ---
+//
+// Every repo-backed deploy used to be narrated as a build, because the two
+// lines were synthesized from the row's own timestamps. Live on 2026-09-17,
+// three config-change deploys that reused the active artifact (13-30s, no
+// build steps, no Build events, same image digest) each logged
+// `==> Build queued` / `==> Building from …@039c347` and read as builds. The
+// rollback told the same story about its intentional reuse.
+
+// buildLessRow is a terminal repo-backed deploy the Events tab has no
+// build_started fact for — the shape of a reuse rollout.
+func buildLessRow() DeployProgress {
+	d := inFlightDeploy()
+	d.Status = "live"
+	d.FinishedAt = d.StartedAt.Add(13 * time.Second)
+	d.Built = false
+	return d
+}
+
+func TestBuildlessDeployNarratesTheRolloutNotABuild(t *testing.T) {
+	app := sampleApp("web")
+	app.Spec.Repo = "https://github.com/x/y.git"
+	svc := newService(nil, app)
+	svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil }
+	row := buildLessRow()
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		return []DeployProgress{row}, nil
+	}
+
+	got := buildNarration(t, svc, "web")
+	for _, line := range got {
+		if strings.Contains(line, "Build queued") || strings.Contains(line, "Building from") {
+			t.Fatalf("buildless deploy claims a build: %v", got)
+		}
+	}
+	want := []string{"==> Deploy queued", "==> Rolling out the current release", "==> Your service is live 🎉"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("buildless narration = %v, want %v", got, want)
+	}
+}
+
+// A rollback carries the exact image it restores, so it names it rather than
+// claiming a build of the commit that image happens to hold.
+func TestRollbackNarratesTheRestoredImage(t *testing.T) {
+	app := sampleApp("web")
+	app.Spec.Repo = "https://github.com/x/y.git"
+	svc := newService(nil, app)
+	svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil }
+	row := buildLessRow()
+	row.Image = "zot.example/ws/web:gen-1@sha256:f825b7"
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		return []DeployProgress{row}, nil
+	}
+
+	want := []string{
+		"==> Deploy queued",
+		"==> Deploying image zot.example/ws/web:gen-1@sha256:f825b7",
+		"==> Your service is live 🎉",
+	}
+	if got := buildNarration(t, svc, "web"); !slices.Equal(got, want) {
+		t.Fatalf("rollback narration = %v, want %v", got, want)
+	}
+}
+
+// The control: a deploy that DID build keeps its lines byte-identical.
+func TestBuiltDeployKeepsItsBuildNarration(t *testing.T) {
+	app := sampleApp("web")
+	app.Spec.Repo = "https://github.com/x/y.git"
+	svc := newService(nil, app)
+	svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil }
+	row := buildLessRow()
+	row.Built = true
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		return []DeployProgress{row}, nil
+	}
+
+	want := []string{
+		"==> Build queued",
+		"==> Building from https://github.com/x/y.git@abc1234",
+		"==> Your service is live 🎉",
+	}
+	if got := buildNarration(t, svc, "web"); !slices.Equal(got, want) {
+		t.Fatalf("built narration = %v, want %v", got, want)
+	}
+}
+
+// An OPEN deploy keeps the build story: build_started is written as the
+// reconciler observes the dispatch, so a row still in flight may simply not
+// have its fact yet, and a still-queued row has none by design. Only a
+// terminal row with no fact is settled evidence that no build ran.
+func TestOpenDeployIsNotAccusedOfSkippingItsBuild(t *testing.T) {
+	app := sampleApp("web")
+	app.Spec.Repo = "https://github.com/x/y.git"
+	svc := newService(nil, app)
+	svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil }
+	row := inFlightDeploy() // no FinishedAt, Built false
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		return []DeployProgress{row}, nil
+	}
+
+	want := []string{"==> Build queued", "==> Building from https://github.com/x/y.git@abc1234"}
+	if got := buildNarration(t, svc, "web"); !slices.Equal(got, want) {
+		t.Fatalf("in-flight narration = %v, want %v", got, want)
+	}
+}

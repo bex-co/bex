@@ -16,6 +16,7 @@ import {
   isCancelableDeployStatus,
   isRollbackableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
+import { deployCommitLabel } from "@/features/deploys/lib/deploy-presentation";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
 import { useBoundActionConfirm } from "@/features/capabilities/hooks/use-bound-action-confirm";
@@ -34,6 +35,13 @@ export interface DeployActionsProps {
   serviceId: string;
   deployId: string;
   status: string;
+  /**
+   * The selected deploy's commit, when the caller has it. Present => the
+   * rollback confirm dialog names `<short-sha> <subject>`; absent or
+   * unresolvable => it keeps the generic body (w4/m110 t003).
+   */
+  commitId?: string | null;
+  commitMessage?: string | null;
   onChanged?: () => void;
 }
 
@@ -48,6 +56,8 @@ export function DeployActions({
   serviceId,
   deployId,
   status,
+  commitId,
+  commitMessage,
   onChanged,
 }: DeployActionsProps) {
   const { t } = useTranslations();
@@ -159,6 +169,13 @@ export function DeployActions({
 
   if (!statusCancel && !statusRollback) return null;
 
+  // Name the code the rollback restores; a commit-less deploy keeps the
+  // generic body rather than naming nothing (w4/m110 t003).
+  const commit = deployCommitLabel(commitId, commitMessage);
+  const rollbackBody = commit
+    ? t("services.eventsRollbackConfirmBodyCommit", { commit })
+    : t("services.eventsRollbackConfirmBody");
+
   return (
     <>
       <div className="flex shrink-0 gap-2">
@@ -201,7 +218,7 @@ export function DeployActions({
         description={
           confirm === "cancel"
             ? t("services.eventsCancelConfirmBody")
-            : t("services.eventsRollbackConfirmBody")
+            : rollbackBody
         }
         cancelLabel={t("services.eventsConfirmCancel")}
         confirmLabel={t("services.eventsConfirmProceed")}

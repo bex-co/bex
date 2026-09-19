@@ -3945,6 +3945,12 @@ const enServices: Record<string, TranslationEntry> = {
     message: "The service will redeploy from the image used in this deploy.",
     description: "Rollback confirm dialog body",
   },
+  "services.eventsRollbackConfirmBodyCommit": {
+    message:
+      "The service will redeploy from the image used in this deploy, built from {commit}.",
+    description:
+      "Rollback confirm dialog body naming the commit being restored",
+  },
   "services.eventsConfirmProceed": {
     message: "Proceed",
     description: "Confirm dialog proceed button",

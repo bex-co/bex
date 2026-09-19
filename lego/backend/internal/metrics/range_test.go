@@ -18,6 +18,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -26,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/common/model"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -183,11 +185,54 @@ func TestPromResourceQueryFor(t *testing.T) {
 	if got, want := promResourceQueryFor(req), `sum by (pod) (max by (pod, container) (container_memory_working_set_bytes{`+matchers+`}))`; got != want {
 		t.Errorf("memory query:\n got %q\nwant %q", got, want)
 	}
-	// Instance count is untouched: the inner `sum by (pod)` already collapses a
-	// pod's duplicated container series to one, so counting pods is correct.
+	// Instance count keeps the inner `sum by (pod)` (which already collapses a
+	// pod's duplicated container series to one) and adds the liveness gate: a
+	// range selector, so Prometheus's 5m lookback cannot resurrect pods that
+	// stopped reporting (w4/m110 t002).
 	req.Metric = MetricInstanceCount
-	if got, want := promResourceQueryFor(req), `count(sum by (pod) (container_memory_working_set_bytes{`+matchers+`}))`; got != want {
+	if got, want := promResourceQueryFor(req), `count(sum by (pod) (count_over_time(container_memory_working_set_bytes{`+matchers+`}[90s])) > 0)`; got != want {
 		t.Errorf("instance_count query:\n got %q\nwant %q", got, want)
+	}
+}
+
+// TestInstanceCountQueryIsLivenessGated is w4/m110 t002: after a rollout the
+// Metrics page's Total Instances headline read 4 for a 1-replica service and
+// decayed 4 → 3 → 2 → 1 over 15 minutes with nothing changing, because the old
+// instant selector resolved every terminated pod whose last sample was inside
+// Prometheus's 5m lookback. The property that fixes it is structural and is
+// what this test pins, since there is no PromQL engine in this module to
+// evaluate against: the counted selector must be a RANGE selector (range
+// vectors are exact windows — a pod whose last sample predates the window
+// contributes no samples, so `count_over_time` yields nothing for it and the
+// `> 0` filter drops it), and its window must be short enough that a pod which
+// stopped reporting minutes ago is already gone.
+func TestInstanceCountQueryIsLivenessGated(t *testing.T) {
+	req := ResourceMetricsRangeRequest{Namespace: "default", App: "web", Metric: MetricInstanceCount, Resolution: 5 * time.Minute}
+	q := promResourceQueryFor(req)
+
+	if !strings.Contains(q, "count_over_time(") || !strings.Contains(q, "["+instanceLivenessWindow+"]") {
+		t.Fatalf("instance_count must count over a bounded range selector, got %q", q)
+	}
+	if !strings.Contains(q, ") > 0)") {
+		t.Errorf("instance_count must drop pods with no samples in the window, got %q", q)
+	}
+	// The whole point is that the window is far below Prometheus's 5m lookback
+	// and does not scale with the caller's resolution: the production reading
+	// decayed over exactly one lookback, and a resolution-sized window would
+	// reintroduce it at resolution >= 5m (the Metrics page's own default).
+	window, err := model.ParseDuration(instanceLivenessWindow)
+	if err != nil {
+		t.Fatalf("instanceLivenessWindow: %v", err)
+	}
+	if time.Duration(window) >= 5*time.Minute {
+		t.Errorf("instanceLivenessWindow %s is not tighter than Prometheus's 5m lookback", instanceLivenessWindow)
+	}
+	// 15s cAdvisor scrapes: the window must still tolerate a couple of misses.
+	if time.Duration(window) < 45*time.Second {
+		t.Errorf("instanceLivenessWindow %s leaves no slack for missed 15s scrapes", instanceLivenessWindow)
+	}
+	if strings.Contains(q, fmt.Sprintf("[%ds]", stepSeconds(req.Resolution))) {
+		t.Errorf("instance_count window must not follow the caller's resolution, got %q", q)
 	}
 }
 
