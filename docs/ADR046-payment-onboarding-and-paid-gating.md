@@ -136,7 +136,7 @@ Registration touches only Kratos (no card); paid intent hits `PaymentGate`'s loc
 
 - **Backend:** migration `0058_payment_method_bound` (`0057` was already occupied) adds `payment_method_bound_at` to `billing_provider_mappings`; the webhook handler stamps it monotonically after both provider defaults bind. `core.PaymentGate` is wired in `cmd/api`; gate checks cover `apps` / `postgres` / `keyvalue` / hosted-sandbox create and both dedicated and REST-PATCH plan-change paths, including Blueprint deploy/sync before any grouping/resource write. Every sandbox shape is metered, so every sandbox create is paid intent. The emitter's store selection receives the same env flag; false retains the earlier query behavior.
 - **Dashboard:** paid-intent interception reusing `BillingOnboardingView`; readiness polling after checkout return.
-- **Docs:** CLAUDE.md env-table row; `docs/ADR018-render-parity.md` row for the 402 behavior; a `docs/render-artifacts/` capture of Render's own card-less paid-create response.
+- **Docs:** AGENTS.md env-table row; `docs/ADR018-render-parity.md` row for the 402 behavior; a `docs/render-artifacts/` capture of Render's own card-less paid-create response.
 - **Tests:** gate allows free / blocks paid / exempts Mode A+B; webhook stamps the marker; emitter withholds card-less rows and back-bills after binding; `TestAuthzGuardsEveryVerb`-style sweep that every paid-intent verb consults the gate.
 - **Unchanged / non-goals:** registration flow, lazy tenant creation, dunning state machine, `estimatedCost` (ADR030), free-tier _allowance pools_ for egress/build (Render's 100 GB / 500 min free-tier quotas enforced by throttling — a separate follow-up if free-tier egress abuse materializes).
 

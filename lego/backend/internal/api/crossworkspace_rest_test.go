@@ -119,7 +119,7 @@ func hasPathWildcard(path string) bool {
 
 // publicRoutes mount their own credential (or deliberately none) and carry no
 // workspace-member semantics — separately audit-verified 2026-07-30 (w7/m54) and
-// documented in internal/api/CLAUDE.md's always-public inventory. They are
+// documented in internal/api/AGENTS.md's always-public inventory. They are
 // enumerated for completeness but not asserted-denied: a member check is not the
 // gate that protects them.
 var publicRoutes = map[string]bool{

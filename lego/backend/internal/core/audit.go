@@ -824,7 +824,7 @@ var receiverRE = regexp.MustCompile(`\(\*?\w+\)\.`)
 // verbFrameSkip is the runtime.Caller depth from inside callerVerb up to the
 // verb method that called Authorize/AuthorizeTarget/AuthorizeOn: 0 is
 // callerVerb's own frame, 1 is the entry point (callerVerb's direct caller), 2
-// is the verb that called it — CLAUDE.md's "every verb starts with s.Authorize"
+// is the verb that called it — AGENTS.md's "every verb starts with s.Authorize"
 // invariant is what makes this constant, not a per-call guess.
 //
 // Named so every entry point in base.go cannot drift to different skip
