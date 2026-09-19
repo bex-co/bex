@@ -20,11 +20,13 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -118,6 +120,171 @@ func TestStuckPodMessage(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestProbeStallMessage is w4/m112: the one stall class stuckPodMessage used
+// to miss entirely. A pod whose health-check probe keeps failing is RUNNING,
+// never Waiting, so every case above `continue`d past it and the App's Ready
+// condition carried only the generic "waiting for … pods to become ready".
+// Live on 2026-09-17 that left a 404ing Health Check Path indistinguishable
+// from a slow image pull for the full 900s rollout budget.
+func TestProbeStallMessage(t *testing.T) {
+	httpProbe := &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{
+			Path: "/qa-bogus-health", Port: intstr.FromInt(3000),
+		}},
+		PeriodSeconds: 10, TimeoutSeconds: 5,
+	}
+	tcpProbe := &corev1.Probe{
+		ProbeHandler:  corev1.ProbeHandler{TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(3000)}},
+		PeriodSeconds: 10, TimeoutSeconds: 5,
+	}
+	// Old enough that a 10s-period / 5s-timeout probe has had its chance.
+	longAgo := metav1.NewTime(time.Now().Add(-5 * time.Minute))
+	justNow := metav1.NewTime(time.Now())
+
+	probePod := func(startup, readiness *corev1.Probe, cs corev1.ContainerStatus) corev1.Pod {
+		cs.Name = "app"
+		return corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-1", Namespace: "default"},
+			Spec: corev1.PodSpec{Containers: []corev1.Container{{
+				Name: "app", StartupProbe: startup, ReadinessProbe: readiness,
+			}}},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{cs}},
+		}
+	}
+	running := func(started *bool, ready bool, at metav1.Time, restarts int32) corev1.ContainerStatus {
+		return corev1.ContainerStatus{
+			Ready: ready, Started: started, RestartCount: restarts,
+			State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: at}},
+		}
+	}
+	yes, no := true, false
+
+	tests := []struct {
+		name       string
+		pod        corev1.Pod
+		wantReason string
+		wantIn     []string
+		wantNotIn  []string
+	}{
+		{
+			// The live case: startup probe still failing on a 404ing path.
+			name:       "startup probe failing names the path",
+			pod:        probePod(httpProbe, httpProbe, running(&no, false, longAgo, 0)),
+			wantReason: reasonHealthCheckFailing,
+			wantIn:     []string{"startup health check", "GET /qa-bogus-health on port 3000", "2xx or 3xx"},
+		},
+		{
+			// Boot succeeded, so kubelet has handed over to readiness.
+			name:       "readiness probe failing after startup passed",
+			pod:        probePod(httpProbe, httpProbe, running(&yes, false, longAgo, 0)),
+			wantReason: reasonHealthCheckFailing,
+			wantIn:     []string{"readiness health check", "GET /qa-bogus-health"},
+			wantNotIn:  []string{"startup health check"},
+		},
+		{
+			// Restarts prove the check is failing, not merely slow.
+			name:       "liveness restarts are reported",
+			pod:        probePod(httpProbe, httpProbe, running(&yes, false, longAgo, 3)),
+			wantReason: reasonHealthCheckFailing,
+			wantIn:     []string{"restarted the container 3 time(s)"},
+		},
+		{
+			// No Health Check Path set: kubelet only asks whether the process
+			// is listening, and the message must say so rather than invent a path.
+			name:       "tcp probe reports the port, not a path",
+			pod:        probePod(tcpProbe, tcpProbe, running(&no, false, longAgo, 0)),
+			wantReason: reasonHealthCheckFailing,
+			wantIn:     []string{"a TCP connect to port 3000"},
+			wantNotIn:  []string{"GET "},
+		},
+		{
+			// A pod two seconds old has not had a probe period yet. Users act
+			// on this message, so a progressing rollout must stay silent.
+			name: "too young to have failed a probe",
+			pod:  probePod(httpProbe, httpProbe, running(&no, false, justNow, 0)),
+		},
+		{
+			name: "ready container is not a stall",
+			pod:  probePod(httpProbe, httpProbe, running(&yes, true, longAgo, 0)),
+		},
+		{
+			name: "no probe configured says nothing",
+			pod:  probePod(nil, nil, running(nil, false, longAgo, 0)),
+		},
+		{
+			// A pod on its way out is not the rollout's problem.
+			name: "terminating pod is ignored",
+			pod: func() corev1.Pod {
+				p := probePod(httpProbe, httpProbe, running(&no, false, longAgo, 0))
+				now := metav1.NewTime(time.Now())
+				p.DeletionTimestamp = &now
+				return p
+			}(),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			reason, msg := probeStallMessage([]corev1.Pod{tc.pod})
+			if reason != tc.wantReason {
+				t.Fatalf("reason = %q, want %q (msg %q)", reason, tc.wantReason, msg)
+			}
+			if tc.wantReason == "" && msg != "" {
+				t.Fatalf("msg = %q, want silence", msg)
+			}
+			for _, want := range tc.wantIn {
+				if !strings.Contains(msg, want) {
+					t.Errorf("message %q missing %q", msg, want)
+				}
+			}
+			for _, unwanted := range tc.wantNotIn {
+				if strings.Contains(msg, unwanted) {
+					t.Errorf("message %q must not contain %q", msg, unwanted)
+				}
+			}
+		})
+	}
+}
+
+// A crash-looping container still reports the crash: it is the stronger
+// signal, and probeStallMessage runs only after every Waiting case misses.
+func TestCrashLoopWinsOverProbeStall(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "web"}},
+		},
+	}
+	probe := &corev1.Probe{
+		ProbeHandler:  corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/healthz", Port: intstr.FromInt(3000)}},
+		PeriodSeconds: 10, TimeoutSeconds: 5,
+	}
+	startedAt := metav1.NewTime(time.Now().Add(-5 * time.Minute))
+	pods := []*corev1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-unready", Namespace: "default", Labels: map[string]string{"app": "web"}},
+			Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", ReadinessProbe: probe}}},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "app", State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: startedAt}},
+			}}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-crashing", Namespace: "default", Labels: map[string]string{"app": "web"}},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{
+				Name:  "app",
+				State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+			}}},
+		},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(pods[0], pods[1]).Build()
+	r := &AppReconciler{Client: cl}
+	reason, _ := r.stuckPodMessage(context.Background(), dep, 3000)
+	if reason != "CrashLoopBackOff" {
+		t.Fatalf("reason = %q, want CrashLoopBackOff to win over the probe stall", reason)
 	}
 }
 

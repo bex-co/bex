@@ -627,6 +627,7 @@ export type Deploy = {
   preDeployStatus: Maybe<Scalars['String']['output']>;
   rollbackOf: Maybe<Scalars['String']['output']>;
   serviceId: Maybe<Scalars['String']['output']>;
+  stallReason: Maybe<Scalars['String']['output']>;
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   trigger: Maybe<Scalars['String']['output']>;
@@ -3536,6 +3537,7 @@ export type ServiceEventDetails = {
   projectFrom: Maybe<Scalars['String']['output']>;
   projectTo: Maybe<Scalars['String']['output']>;
   reasonCode: Maybe<Scalars['String']['output']>;
+  stallReason: Maybe<Scalars['String']['output']>;
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   toCount: Maybe<Scalars['Int']['output']>;

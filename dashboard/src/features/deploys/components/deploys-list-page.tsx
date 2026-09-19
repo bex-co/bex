@@ -222,6 +222,15 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                     truncate
                     className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
                   />
+                  {/* w4/m112: an open deploy's stall cause, cleared server-side
+                      the moment it goes terminal — so a settled row is
+                      unchanged. */}
+                  <DeployFailureReason
+                    reason={d.stallReason}
+                    tone="neutral"
+                    truncate
+                    className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
+                  />
                   {d.commitId ? (
                     <p className="mt-1 max-w-[16rem] truncate text-sm text-foreground sm:max-w-md lg:max-w-lg">
                       {/* Render's list links the short SHA to the commit's

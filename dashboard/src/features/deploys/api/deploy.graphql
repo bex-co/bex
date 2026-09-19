@@ -19,6 +19,7 @@ query Deploy($serviceId: String!, $deployId: String!) {
     preDeployStatus
     failureReason
     cancelReason
+    stallReason
   }
 }
 

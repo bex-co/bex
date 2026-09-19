@@ -85,6 +85,13 @@ type renderDeploy struct {
 	// CancelReason is the neutral cause of a non-user cancel (bex extra, w4/089).
 	// Omitted unless the cancel was a supersede.
 	CancelReason string `json:"cancelReason,omitempty"`
+	// StallReason is why an OPEN deploy is not progressing (bex extra,
+	// w4/m112): the operator's live diagnosis of the current revision's pods —
+	// a failing health check naming its path, a crash loop, an image pull, a
+	// quota block. Omitted while the rollout progresses, and cleared when the
+	// deploy goes terminal (failureReason takes over). An observation, not a
+	// verdict: a deploy carrying one may still go live.
+	StallReason string `json:"stallReason,omitempty"`
 }
 
 func formatTime(t time.Time) string {
@@ -118,6 +125,7 @@ func toRenderDeploy(d DeployView) renderDeploy {
 		PreDeployStatus: d.PreDeployStatus,
 		FailureReason:   d.FailureReason,
 		CancelReason:    d.CancelReason,
+		StallReason:     d.StallReason,
 	}
 	if d.Image != "" {
 		out.Image = &renderDeployImage{Ref: d.Image}

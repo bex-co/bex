@@ -139,6 +139,14 @@ type DeployView struct {
 	// "Superseded by dep-…" when a newer release replaced this row. Empty for
 	// deploys.Cancel and every non-canceled status.
 	CancelReason string
+	// StallReason is why an OPEN deploy is not progressing (w4/m112) — the
+	// operator's live diagnosis of the current revision's pods (a failing
+	// health check naming its path, a crash loop, an image pull, a quota
+	// block). Empty while a rollout progresses normally, and cleared the
+	// moment the deploy goes terminal, when FailureReason takes over. An
+	// observation, never a verdict: a deploy carrying one may still go live.
+	// A bex extra beyond Render's deploy shape, like FailureReason.
+	StallReason string
 }
 
 func view(d store.Deploy) DeployView {
@@ -159,6 +167,7 @@ func view(d store.Deploy) DeployView {
 		PreDeployStatus: d.PreDeployStatus,
 		FailureReason:   d.FailureReason,
 		CancelReason:    d.CancelReason,
+		StallReason:     d.StallReason,
 	}
 }
 

@@ -69,6 +69,7 @@ function row(overrides: Partial<DeployRow> = {}): DeployRow {
     preDeployStatus: "succeeded",
     failureReason: "",
     cancelReason: "",
+    stallReason: "",
     ...overrides,
   };
 }

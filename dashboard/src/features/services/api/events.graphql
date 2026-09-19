@@ -34,6 +34,8 @@ query ServiceEvents(
       fullDeployStatus
       failureReason
       cancelReason
+      # w4/m112: why an OPEN deploy is not progressing; deploy_started only.
+      stallReason
       # status is a lifecycle-step event's terminal outcome (w7/m66):
       # build_ended | pre_deploy_ended | job_run_ended → succeeded|failed|canceled.
       status
