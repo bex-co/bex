@@ -113,6 +113,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **100** — [Events feed calls a Settings-edit deploy "Environment updated" while the deploys list calls it "Config Change"](100.md) ← live `/qa-find-bugs` 2026-09-19 pass 20; same `config_change` deploy, two trigger labels — the backend maps every config write onto the `envUpdated` flag (`events/service.go:727-731`) and the events feed renders the flag literally
 - [x] **076** — [Pre-`w4/m105` API keys cannot request advertised scopes until reminted](done/076.md) ← residual from `w4/m105/t004`; keys minted before m105 have an empty Hydra `scope` and get `invalid_scope` if the caller passes `scope=`. Omitting `scope` still works; remint or admin-patch to get a scoped exchange
 > Inbox `099` transferred to [w9/061](../w9/061.md) by user direction; scope includes oversized and non-divisor cron steps.
 - [x] **098** — [Journey 10's cron half works end to end, and the one thing that looked broken was a modal I never confirmed](done/098.md) ← live `/qa-find-bugs` 2026-09-14 pass 46; a record, not work to do. Schedule validation, "Every 10 minutes · runs in UTC", confirm dialog, run `pending`→`successful` in 39s, and the job's own output in the logs. Scaling still offered on a cron job is `w4/m101` **deploy lag** (`de4945aec` postdates the build) — a fourth discriminator. **Carries a trap worth reading**: zero network requests after a click is not evidence the control is dead — check for an open modal first
