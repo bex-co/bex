@@ -132,8 +132,8 @@ func TestRESTLimitPathsAreServed(t *testing.T) {
 
 func TestRESTFilterPathsUseRenderShapes(t *testing.T) {
 	svc := newService(nil, nil, sampleApp("web"), podFor("web", webInst))
-	svc.MetricsFilterValuesSource = func(_ context.Context, _, _ string, _ int32, label string) ([]string, error) {
-		if label != "code" {
+	svc.MetricsFilterValuesSource = func(_ context.Context, req MetricsFilterValuesRequest) ([]string, error) {
+		if label := req.Label; label != "code" {
 			t.Errorf("filter values label = %q, want code", label)
 		}
 		return []string{"200", "404"}, nil

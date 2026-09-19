@@ -1,19 +1,18 @@
 # w4 · m113 — Static sites are dark on request observability: no request counts, latency, or request logs
 
-**Worker:** worker4 **Goal:** a static site that serves traffic shows it — Total Requests, Response Times, method/status discovery, and `type=request` log lines all work for `static_site` exactly as they do for compute services, on REST, GraphQL, MCP, and the dashboard. **Status:** todo
+**Worker:** worker4 **Goal:** a static site that serves traffic shows it — Total Requests, Response Times, method/status discovery, and `type=request` log lines all work for `static_site` exactly as they do for compute services, on REST, GraphQL, MCP, and the dashboard. **Status:** done 2026-09-18 (live re-probe of the deployed fix deferred to the next QA pass; the Prometheus series and both Traefik access-line shapes were verified read-only against production)
 
 ## Tasks (in order)
 
 | id   | title                                                                                    | est  | depends_on |
 | ---- | ---------------------------------------------------------------------------------------- | ---- | ---------- |
-| t001 | Router-attributed `http_requests` for static sites (Prometheus path)                     | 1h   | —          |
-| t002 | Router-attributed `http_latency` for static sites                                        | 45m  | t001       |
-| t003 | `metricsFilters` status/instance discovery for static sites                              | 30m  | t001       |
-| t004 | Static request lines into Loki: shipper attribution or static-server emission            | 1h30 | —          |
-| t005 | Render parity + docs                                                                     | 20m  | t003, t004 |
-| t006 | Test coverage                                                                            | 45m  | t005       |
-| t007 | Closeout                                                                                 | 10m  | t006       |
-
+| t001 | Router-attributed `http_requests` for static sites (Prometheus path)                     | 1h   | —          | — **DONE** |
+| t002 | Router-attributed `http_latency` for static sites                                        | 45m  | t001       | — **DONE** |
+| t003 | `metricsFilters` status/instance discovery for static sites                              | 30m  | t001       | — **DONE** |
+| t004 | Static request lines into Loki: shipper attribution or static-server emission            | 1h30 | —          | — **DONE** |
+| t005 | Render parity + docs                                                                     | 20m  | t003, t004 | — **DONE** |
+| t006 | Test coverage                                                                            | 45m  | t005       | — **DONE** |
+| t007 | Closeout                                                                                 | 10m  | t006       | — **DONE** |
 ## Definition of done
 
 Each bullet is a click the next person can repeat on production and watch succeed.

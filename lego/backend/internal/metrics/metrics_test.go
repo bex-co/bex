@@ -195,7 +195,8 @@ func newManagedMetricsService(t *testing.T) (*Service, *managedMetricsCalls) {
 			Points: []MetricPoint{{Timestamp: fixedClock().Format(time.RFC3339), Value: 7}},
 		}}, nil
 	}
-	svc.MetricsFilterValuesSource = func(_ context.Context, _, app string, _ int32, label string) ([]string, error) {
+	svc.MetricsFilterValuesSource = func(_ context.Context, req MetricsFilterValuesRequest) ([]string, error) {
+		app, label := req.App, req.Label
 		calls.filters = append(calls.filters, app)
 		if app != managedAppName {
 			return nil, fmt.Errorf("filter selector app = %q, want %q", app, managedAppName)
@@ -649,8 +650,8 @@ func TestMetricsSnapshotAndFilterDiscoveryUseAppNamespace(t *testing.T) {
 	svc := newService(rm, nil, app)
 
 	var filterNS string
-	svc.MetricsFilterValuesSource = func(_ context.Context, namespace, _ string, _ int32, _ string) ([]string, error) {
-		filterNS = namespace
+	svc.MetricsFilterValuesSource = func(_ context.Context, req MetricsFilterValuesRequest) ([]string, error) {
+		filterNS = req.Namespace
 		return []string{"200"}, nil
 	}
 
@@ -1082,7 +1083,7 @@ func TestPrometheusFilterValuesRoundTrip(t *testing.T) {
 		_, _ = w.Write([]byte(`{"status":"success","data":["200","404","500"]}`))
 	}))
 	defer ts.Close()
-	values, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), "default", "web", 80, "code")
+	values, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), MetricsFilterValuesRequest{Namespace: "default", App: "web", Port: 80, Label: "code"})
 	if err != nil || len(values) != 3 || values[0] != "200" {
 		t.Fatalf("filter values: %v %+v", err, values)
 	}
@@ -1118,7 +1119,7 @@ func TestPromQueryForAndFilterValuesAreNamespaceScoped(t *testing.T) {
 		_, _ = w.Write([]byte(`{"status":"success","data":[]}`))
 	}))
 	defer ts.Close()
-	if _, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), "tenant-a", "web", 80, "code"); err != nil {
+	if _, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), MetricsFilterValuesRequest{Namespace: "tenant-a", App: "web", Port: 80, Label: "code"}); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(gotMatch, "service=~") || !strings.Contains(gotMatch, `service="tenant-a-web-80@kubernetes"`) {
@@ -1276,5 +1277,150 @@ func TestHostPathFilterCrossSurfaceParity(t *testing.T) {
 		if len(*got) != 1 || (*got)[0].Host != host || (*got)[0].Path != path {
 			t.Errorf("%s routed %+v, want one call with host=%q path=%q", name, *got, host, path)
 		}
+	}
+}
+
+// --- w4/m113: static sites are not dark on request observability ---
+//
+// Live on 2026-09-17 a static site that had just served ~25 requests read "No
+// data in range" on Total Requests and Response Times, `[]` on GraphQL and
+// REST, and an empty Status Code dropdown — while router-attributed bandwidth
+// for the same service in the same window showed five nonzero buckets. The
+// PromQL selector named `<ns>-<app>-<port>@kubernetes`, a Kubernetes Service a
+// static site does not have: ADR029 points every static host's Ingress at the
+// SHARED static server.
+
+// staticSiteFixture is the shape the selector split turns on: a static_site
+// App with one Ingress, so TraefikRouterNames resolves a real router.
+func staticSiteFixture(t *testing.T, capture *RequestMetricsRequest) *Service {
+	t.Helper()
+	app := sampleApp("site")
+	app.Labels = map[string]string{core.LabelAppID: "srv-site"}
+	app.Spec.Type = appv1alpha1.TypeStaticSite
+	app.Spec.Host = "site.onbex.co"
+	return newService(nil, func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+		*capture = r
+		return []MetricSeries{}, nil
+	}, app, ingressFor("site", "shared-static-server", "site.onbex.co"))
+}
+
+func TestStaticSiteRequestMetricsSelectRouterSeries(t *testing.T) {
+	for _, metric := range []string{MetricHTTPRequests, MetricHTTPLatency} {
+		t.Run(metric, func(t *testing.T) {
+			var got RequestMetricsRequest
+			svc := staticSiteFixture(t, &got)
+			if _, err := svc.Metrics(context.Background(), MetricQuery{App: "site", Metric: metric, Quantile: 0.9}); err != nil {
+				t.Fatalf("%s: %v", metric, err)
+			}
+			// The service must resolve routers for a static request read, not
+			// only for bandwidth — without them the query cannot be built.
+			if len(got.Routers) != 1 || got.Routers[0] != "default-site-site-onbex-co@kubernetes" {
+				t.Fatalf("routers = %v, want the App's own Ingress router", got.Routers)
+			}
+			if !got.RouterScoped {
+				t.Fatal("a static site's request read must be router-scoped — it has no per-App Service")
+			}
+			query := promQueryFor(got)
+			if !strings.Contains(query, "traefik_router_") {
+				t.Errorf("query %q does not select Traefik's per-router counters", query)
+			}
+			if strings.Contains(query, "traefik_service_") {
+				t.Errorf("query %q still selects the per-App Service a static site does not have", query)
+			}
+			if !strings.Contains(query, `router=~"^(default-site-site-onbex-co@kubernetes)$"`) {
+				t.Errorf("query %q is not anchored to this App's own routers", query)
+			}
+		})
+	}
+}
+
+// The compute path is untouched: same counters, same selector, byte-identical.
+func TestComputeRequestMetricsKeepTheServiceSelector(t *testing.T) {
+	var got RequestMetricsRequest
+	app := sampleApp("web")
+	app.Labels = map[string]string{core.LabelAppID: "srv-web"}
+	app.Spec.Host = "web.onbex.co"
+	svc := newService(nil, func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+		got = r
+		return []MetricSeries{}, nil
+	}, app, ingressFor("web", "web", "web.onbex.co"))
+
+	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests}); err != nil {
+		t.Fatalf("http_requests: %v", err)
+	}
+	if got.RouterScoped {
+		t.Fatal("a compute service must keep the tighter per-service selector")
+	}
+	// Resolving routers for a compute request read would be a pointless extra
+	// Ingress list on every Metrics page load.
+	if got.Routers != nil {
+		t.Errorf("routers = %v, want none resolved for a compute request read", got.Routers)
+	}
+	if query := promQueryFor(got); !strings.Contains(query, `traefik_service_requests_total{service="default-web-3000@kubernetes"`) {
+		t.Errorf("compute query changed: %q", query)
+	}
+}
+
+// A static site whose routers cannot be resolved must produce NO query rather
+// than an unbounded router match — that would serve one tenant another
+// tenant's request counts.
+func TestStaticSiteWithoutRoutersBuildsNoQuery(t *testing.T) {
+	for _, metric := range []string{MetricHTTPRequests, MetricHTTPLatency} {
+		req := RequestMetricsRequest{
+			Namespace: "default", App: "site", Port: 80,
+			RouterScoped: true, Routers: nil, Metric: metric, Resolution: time.Minute,
+		}
+		if q := promQueryFor(req); q != "" {
+			t.Fatalf("%s with no routers built %q, want no query at all", metric, q)
+		}
+	}
+	if m := filterValuesMatch(MetricsFilterValuesRequest{
+		Namespace: "default", App: "site", Port: 80, RouterScoped: true, Label: "code",
+	}); m != "" {
+		t.Fatalf("filter discovery with no routers built %q, want no selector", m)
+	}
+}
+
+// Discovery must read the SAME series the chart reads, or the Status Code
+// dropdown and the graph disagree — for static it offered nothing at all.
+func TestStaticSiteStatusCodeDiscoveryUsesRouterSeries(t *testing.T) {
+	var got MetricsFilterValuesRequest
+	app := sampleApp("site")
+	app.Spec.Type = appv1alpha1.TypeStaticSite
+	app.Spec.Host = "site.onbex.co"
+	svc := newService(nil, nil, app, ingressFor("site", "shared-static-server", "site.onbex.co"))
+	svc.MetricsFilterValuesSource = func(_ context.Context, r MetricsFilterValuesRequest) ([]string, error) {
+		got = r
+		return []string{"200", "301", "404"}, nil
+	}
+
+	out, err := svc.MetricsFilters(context.Background(), MetricsFiltersQuery{
+		App: "site", OutputFilters: []string{filterFieldStatusCode, filterFieldInstance},
+	})
+	if err != nil {
+		t.Fatalf("metricsFilters: %v", err)
+	}
+	if !got.RouterScoped || len(got.Routers) != 1 {
+		t.Fatalf("discovery request = %+v, want router-scoped with the App's router", got)
+	}
+	match := filterValuesMatch(got)
+	if !strings.Contains(match, "traefik_router_requests_total") || strings.Contains(match, "traefik_service_") {
+		t.Errorf("discovery selector %q must read the same router series the chart does", match)
+	}
+	var codes, instances []string
+	for _, f := range out {
+		switch f.Field {
+		case filterFieldStatusCode:
+			codes = f.Values
+		case filterFieldInstance:
+			instances = f.Values
+		}
+	}
+	if len(codes) != 3 || codes[0] != "200" {
+		t.Errorf("status codes = %v, want the observed codes", codes)
+	}
+	// Honestly empty: a static site has no pods. Not a bug to "fix".
+	if len(instances) != 0 {
+		t.Errorf("instances = %v, want empty for a static site", instances)
 	}
 }

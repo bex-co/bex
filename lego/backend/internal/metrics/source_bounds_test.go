@@ -68,7 +68,7 @@ func TestPrometheusFilterValuesRejectsOversizedResponse(t *testing.T) {
 	defer srv.Close()
 
 	src := NewPrometheusFilterValuesSource(srv.URL, srv.Client())
-	_, err := src(context.Background(), "default", "web", 80, "pod")
+	_, err := src(context.Background(), MetricsFilterValuesRequest{Namespace: "default", App: "web", Port: 80, Label: "pod"})
 	if !errors.Is(err, core.ErrUpstreamResponseTooLarge) {
 		t.Fatalf("oversized label-values response => %v, want ErrUpstreamResponseTooLarge", err)
 	}

@@ -47,6 +47,21 @@ The three recorded drifts on the percentile + range controls were closed after a
 | "Last 30 days" range | ✅ Added as a relative preset on the shared range dropdown, **ungated** (Render plan-gates it). 30 days = `BEX_MAX_QUERY_HOURS`' default, the effective ceiling. |
 | "Custom" range | ✅ A "Custom…" dropdown option opens an absolute start/end picker (Metrics + Logs, via the shared control), bounded client-side by `MAX_CUSTOM_RANGE_HOURS` (30 days) and honestly by the backend's over-window 400 beyond it. Custom windows are URL-backed on the Logs tab. |
 
+## Which Traefik series back which service type (w4/m113, 2026-09-18)
+
+The request charts read one of two counter families, chosen by service type. The split is not a preference — it is which series exist.
+
+| Service type | Requests / latency selector | Why |
+| --- | --- | --- |
+| Compute (`web_service`, `private_service`, `background_worker`) | `traefik_service_requests_total` / `traefik_service_request_duration_seconds_bucket`, selected by `service="<ns>-<app>-<port>@kubernetes"` | The App owns a Kubernetes Service, so the per-service counters are the tightest possible attribution. |
+| `static_site` | `traefik_router_requests_total` / `traefik_router_request_duration_seconds_bucket`, selected by `router=~"^(<the App's Ingress routers>)$"` | ADR029 gives a static site no Deployment and no Service of its own — every static host's Ingress points at the shared static server, so the per-service selector names an object that does not exist and matches nothing. The per-router counters carry the App's own Ingress router names, which is also how bandwidth has always been attributed. |
+
+Both router series carry `code`, `method` and `le` exactly as the service series do (verified against the production Prometheus `/api/v1/series`, 2026-09-18), so the status-code matcher, `groupBy`, the `histogram_quantile` shape and the m108 per-bucket `sum(increase(…))` count semantics are identical across the two families. Status-code **discovery** (`metricsFilters` / `/v1/metrics/filters/http`) reads the same selector the chart reads, so the dropdown can never offer a value the graph cannot plot. `INSTANCE` is honestly empty for a static site — it has no pods.
+
+A static site whose Ingress routers cannot be resolved produces **no query** rather than a router-less match: an empty router matcher would select every router in the cluster and serve one tenant another tenant's request counts.
+
+Before this split, a static site read `[]` on requests, latency and status-code discovery while bandwidth for the same traffic was correct — the shape that made it look like a data-freshness problem rather than a dead selector.
+
 ## Closed by w5/m58 (2026-07-30)
 
 The last recorded Network-card drift — Host / Path filters — is closed. The t001 design probe refuted the earlier hypothesis that Host could ride Prometheus router labels: `traefik_service_requests_total` / `traefik_service_request_duration_seconds_bucket` carry `service`/`code`/`method`/`le` only, and `addRoutersLabels` adds a router **name**, not the matched `Host()`/`Path()`. So **both** filters are served from the request-log store (Loki), the one backend with a per-request host/path axis (Traefik's access log carries `RequestHost`/`RequestPath` per line, plus `Duration` ns for latency).
