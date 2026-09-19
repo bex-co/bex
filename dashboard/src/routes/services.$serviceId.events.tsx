@@ -426,6 +426,15 @@ function EventSummary({
           tone="neutral"
           className="mt-1"
         />
+        {/* w4/m112: the same stall_reason column the deploy detail page
+            reads, so the feed and that page cannot disagree about why an
+            open rollout is stuck. deploy_started rows only — the server
+            leaves it empty everywhere else. */}
+        <DeployFailureReason
+          reason={details?.stallReason}
+          tone="neutral"
+          className="mt-1"
+        />
         <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           {trigger ? (
             <span>{t(trigger as Parameters<typeof t>[0])}</span>

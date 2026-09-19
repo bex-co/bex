@@ -284,6 +284,14 @@ type Deploy struct {
 	// for every non-canceled status. Distinct from FailureReason so the
 	// dashboard can render it without text-destructive treatment.
 	CancelReason string `json:"cancelReason,omitempty"`
+	// StallReason is why an OPEN deploy is not progressing (w4/m112) — the
+	// operator's own Ready-condition diagnosis, projected onto the row each
+	// reconcile pass and cleared the moment the row goes terminal (from then
+	// on FailureReason/CancelReason own the story). Empty means "nothing to
+	// report": either the rollout is progressing normally or no diagnosis has
+	// been reached yet. Unlike FailureReason this is a live observation, not a
+	// verdict — it must never be read as "this deploy failed".
+	StallReason string `json:"stallReason,omitempty"`
 	// TriggeredBy is core.Identity.Subject for the caller that opened this row
 	// (w4/072) — same form as audit_events.caller. Empty for unattributed
 	// triggers (git push, deploy hook). Not a Render deploy field — kept off
@@ -587,6 +595,11 @@ type Store interface {
 	// the App CR's status.preDeploy by the reconciler. No-op when unchanged;
 	// returns whether a row was updated.
 	SetDeployPreDeployStatus(ctx context.Context, id, status string) (bool, error)
+	// SetDeployStallReason records why an OPEN deploy is not progressing, or
+	// clears it with "" (w4/m112). Projected from the App CR's Ready condition
+	// each pass; ignored once the row is terminal. Best-effort observation —
+	// never a verdict, and never a reason to fail reconciliation.
+	SetDeployStallReason(ctx context.Context, id, reason string) error
 	// RecordObservedServiceState persists level-triggered App status edges through
 	// a typed checkpoint; repeated reconciler observations are no-ops.
 	RecordObservedServiceState(ctx context.Context, obs ObservedServiceState) ([]ServiceEventFact, error)
@@ -2013,6 +2026,28 @@ func clampPageLimit(n int) int {
 // paging direction — the same cursor id resumes older rows newest-first and
 // newer rows oldest-first; an unknown cursor id matches no subquery row, so
 // the comparison is NULL (never true) — an invalid cursor yields an empty
+
+// SetDeployStallReason records (or clears) why an open deploy is not
+// progressing — w4/m112's in-flight sibling of the terminal failure_reason.
+//
+// Guarded three ways, because this runs on every reconcile pass over every
+// open deploy:
+//
+//   - `finished_at IS NULL` — a terminal row's story belongs to
+//     failure_reason/cancel_reason; a late pass must not reopen it.
+//   - `stall_reason IS DISTINCT FROM $2` — an unchanged observation writes
+//     nothing, so a stall that persists for 15 minutes costs one UPDATE.
+//   - `updated_at` is deliberately NOT touched. This is an observation about
+//     the row, not a transition of it; bumping the row's clock would churn
+//     every updated_at-keyed reader (the events feed, the deploy list's
+//     ordering) once per pass for as long as the stall lasts.
+func (s *PGStore) SetDeployStallReason(ctx context.Context, id, reason string) error {
+	_, err := s.Pool.Exec(ctx,
+		`UPDATE deploys SET stall_reason = $2
+		 WHERE id = $1 AND finished_at IS NULL AND stall_reason IS DISTINCT FROM $2`, id, reason)
+	return classify("deploy stall reason", err)
+}
+
 // page, not a crash or a leak of the unfiltered list.
 func pageKeyset(query string, args []any, table, sortCol, cursor string, limit int, oldestFirst bool) (string, []any) {
 	cmp, ord := "<", "DESC"
@@ -2031,11 +2066,11 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason`
+const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason)
 	return d, err
 }
 
@@ -2168,6 +2203,9 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			     resolved_image = COALESCE(NULLIF($3, ''), resolved_image),
 			     failure_reason = COALESCE(NULLIF($6, ''), failure_reason),
 			     cancel_reason = COALESCE(NULLIF($8, ''), cancel_reason),
+			     -- A terminal row's story is failure_reason/cancel_reason; the
+			     -- in-flight stall observation is over, so clear it (w4/m112).
+			     stall_reason = CASE WHEN $5 THEN '' ELSE stall_reason END,
 			     started_at = CASE WHEN $4 THEN COALESCE(started_at, clock_timestamp())
 			                       ELSE COALESCE(started_at, $9) END,
 			     finished_at = CASE WHEN $5 THEN COALESCE(finished_at, clock_timestamp()) ELSE finished_at END,

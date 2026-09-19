@@ -20,6 +20,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     preDeployStatus: "",
     failureReason: "",
     cancelReason: "",
+    stallReason: "",
     ...over,
   };
 }
@@ -155,5 +156,50 @@ describe("DeployHeader", () => {
     expect(screen.queryByText("Created:")).not.toBeInTheDocument();
     expect(screen.queryByText("Duration:")).not.toBeInTheDocument();
     expect(screen.queryByText("—")).not.toBeInTheDocument();
+  });
+
+  // w4/m112: a rollout gated on a failing health check used to show a bare
+  // "In Progress" for the full 900s budget — the page named no probe, and a
+  // user could not tell it from a slow image pull. Live on 2026-09-17 with
+  // Health Check Path /qa-bogus-health.
+  it("names what an in-progress rollout is waiting on", () => {
+    const stall =
+      "the container is running but its readiness health check has not " +
+      "succeeded, so the rollout is waiting: GET /qa-bogus-health on port 3000.";
+    render(
+      <DeployHeader
+        deploy={deploy({ status: "update_in_progress", stallReason: stall })}
+      />,
+    );
+
+    expect(screen.getByText(stall)).toBeInTheDocument();
+    expect(screen.getByText("In Progress")).toBeInTheDocument();
+  });
+
+  // Before the diagnosis arrives (~2 min) the page reads exactly as it did.
+  it("shows nothing extra while a rollout is progressing normally", () => {
+    const { container } = render(
+      <DeployHeader deploy={deploy({ status: "update_in_progress" })} />,
+    );
+    expect(container.textContent).not.toContain("health check");
+  });
+
+  // The server clears stall_reason as the row goes terminal, so the terminal
+  // states keep their own copy. Assert the component does not resurrect it.
+  it("keeps the failure copy for a terminal deploy", () => {
+    render(
+      <DeployHeader
+        deploy={deploy({
+          status: "update_failed",
+          failureReason: "the deploy did not become healthy within the health-gate window",
+          stallReason: "",
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "the deploy did not become healthy within the health-gate window",
+      ),
+    ).toBeInTheDocument();
   });
 });

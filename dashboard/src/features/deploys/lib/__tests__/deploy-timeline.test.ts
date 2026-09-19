@@ -20,6 +20,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     preDeployStatus: "",
     failureReason: "",
     cancelReason: "",
+    stallReason: "",
     ...over,
   };
 }

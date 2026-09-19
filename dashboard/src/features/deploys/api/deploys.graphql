@@ -43,5 +43,6 @@ query Deploys(
     preDeployStatus
     failureReason
     cancelReason
+    stallReason
   }
 }
