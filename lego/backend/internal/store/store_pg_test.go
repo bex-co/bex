@@ -1283,6 +1283,27 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	if inserted, err := s.InsertServiceEventFact(ctx, buildFact); err != nil || !inserted {
 		t.Fatalf("insert build_ended fact: %v", err)
 	}
+	// w4/m110 t004: the deploy-log narrator asks which deploys actually built,
+	// so it cannot tell a build story for a reuse rollout. Only build_started
+	// answers it — dep-1 above has a build_ended but never started here, and
+	// commit_ignored/cron facts must not leak in.
+	startedFact := ServiceEventFact{
+		SourceKey: "deploy:dep-2:build_started", AppID: app.ID,
+		Type: EventFactBuildStarted, At: base.Add(710 * time.Millisecond), DeployID: "dep-2",
+	}
+	if inserted, err := s.InsertServiceEventFact(ctx, startedFact); err != nil || !inserted {
+		t.Fatalf("insert build_started fact: %v", err)
+	}
+	builtIDs, err := s.BuiltDeployIDs(ctx, app.ID, 100)
+	if err != nil {
+		t.Fatalf("BuiltDeployIDs: %v", err)
+	}
+	if !builtIDs["dep-2"] || builtIDs["dep-1"] || len(builtIDs) != 1 {
+		t.Fatalf("BuiltDeployIDs = %v, want exactly {dep-2} (build_ended alone is not a build start)", builtIDs)
+	}
+	if other, err := s.BuiltDeployIDs(ctx, "app-nobody", 100); err != nil || len(other) != 0 {
+		t.Fatalf("BuiltDeployIDs for another app = (%v, %v), want an empty set", other, err)
+	}
 	cronFacts := []ServiceEventFact{
 		{SourceKey: "cron:" + app.ID + ":run-1:started", AppID: app.ID, Type: EventFactCronRunStarted, At: base.Add(800 * time.Millisecond)},
 		{SourceKey: "cron:" + app.ID + ":run-1:ended", AppID: app.ID, Type: EventFactCronRunEnded, At: base.Add(900 * time.Millisecond), Status: EventStatusSucceeded},
