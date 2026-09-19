@@ -30,6 +30,7 @@ import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-grou
 import { useEnvVarKeys } from "@/features/services/hooks/use-env-vars";
 import { useSecretFileNames } from "@/features/services/hooks/use-secret-files";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 
 /**
  * The service Environment tab's Environment Groups section (Render dashboard
@@ -67,6 +68,14 @@ export function EnvGroupsPanel({
     () => new Set(serviceFileNames.map((entry) => entry.name)),
     [serviceFileNames],
   );
+  // The service's own Environment decides which scope a new group must be
+  // minted in — a group and its linked services must share one scope, so a
+  // workspace-scoped create from an in-Environment service is refused by
+  // bex-api (w4/m111 t002). Same index the env-groups detail page filters on;
+  // no extra round trip, Apollo shares the query.
+  const scope = useEnvGroupScopeIndex();
+  const serviceEnvironmentId =
+    scope.serviceEnvironmentById.get(serviceId) ?? null;
   const [internalCreateOpen, setInternalCreateOpen] = useState(false);
   const createOpen = createOpenProp ?? internalCreateOpen;
   const setCreateOpen = onCreateOpenChange ?? setInternalCreateOpen;
@@ -216,6 +225,10 @@ export function EnvGroupsPanel({
         services={service ? [service] : []}
         servicesLoading={serviceLoading}
         initialServiceIds={[serviceId]}
+        environments={scope.environments}
+        serviceEnvironmentById={scope.serviceEnvironmentById}
+        initialEnvironmentId={serviceEnvironmentId}
+        scopeLoading={scope.loading}
       />
     </Card>
   );

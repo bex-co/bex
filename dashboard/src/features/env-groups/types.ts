@@ -26,4 +26,10 @@ export interface CreateEnvGroupInput {
   }>;
   secretFiles: Array<{ name: string; content: string }>;
   serviceIds: string[];
+  /**
+   * The Environment the group is minted in; `null`/omitted is workspace scope
+   * (the pre-w4/m111 behavior, and still the default). Every linked service
+   * must live in the same scope or bex-api refuses the create.
+   */
+  environmentId?: string | null;
 }

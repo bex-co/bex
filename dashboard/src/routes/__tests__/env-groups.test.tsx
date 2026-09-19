@@ -347,6 +347,7 @@ describe("EnvGroupsPage", () => {
       envVars: [],
       secretFiles: [],
       serviceIds: [],
+      environmentId: null,
     });
     expect(
       await screen.findByText("Environment group destination"),

@@ -1,18 +1,17 @@
 # w4 · m111 — Environment-group creation offers scope-incompatible links and cannot create in-env groups
 
-**Worker:** worker4 **Goal:** creating an environment group with service links stops failing on scope: the dialog only offers link candidates compatible with the group's scope, and both create paths can mint an in-environment group in one step. **Status:** todo
+**Worker:** worker4 **Goal:** creating an environment group with service links stops failing on scope: the dialog only offers link candidates compatible with the group's scope, and both create paths can mint an in-environment group in one step. **Status:** done 2026-09-18 (live re-probe of the deployed fix deferred to the next QA pass)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                  | est   | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------ | ----- | ---------- |
-| t001 | Scope picker + scope-filtered link candidates in the create dialog                                     | 1h30m | —          |
-| t002 | Service-page create path threads the service's environment through creation                            | 45m   | t001       |
-| t003 | Render parity                                                                                          | 30m   | t002       |
-| t004 | Simplify                                                                                               | 15m   | t003       |
-| t005 | Test coverage                                                                                          | 45m   | t003       |
-| t006 | Closeout                                                                                               | 10m   | t005       |
-
+| t001 | Scope picker + scope-filtered link candidates in the create dialog                                     | 1h30m | —          | — **DONE** |
+| t002 | Service-page create path threads the service's environment through creation                            | 45m   | t001       | — **DONE** |
+| t003 | Render parity                                                                                          | 30m   | t002       | — **DONE** |
+| t004 | Simplify                                                                                               | 15m   | t003       | — **DONE** |
+| t005 | Test coverage                                                                                          | 45m   | t003       | — **DONE** |
+| t006 | Closeout                                                                                               | 10m   | t005       | — **DONE** |
 ## Definition of done
 
 Each bullet is a click the next person can repeat on production and watch succeed.

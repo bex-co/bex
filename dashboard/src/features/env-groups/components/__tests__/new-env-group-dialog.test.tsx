@@ -38,6 +38,7 @@ describe("NewEnvGroupDialog", () => {
       envVars: [],
       secretFiles: [],
       serviceIds: [],
+      environmentId: null,
     });
     expect(onCreated).toHaveBeenCalledWith("eg-new");
   });
@@ -77,6 +78,7 @@ describe("NewEnvGroupDialog", () => {
       ],
       secretFiles: [{ name: "ca.pem", content: "CERT" }],
       serviceIds: ["srv-web"],
+      environmentId: null,
     });
   });
 
@@ -141,6 +143,7 @@ describe("NewEnvGroupDialog", () => {
       ],
       secretFiles: [],
       serviceIds: [],
+      environmentId: null,
     });
   });
 
@@ -166,6 +169,7 @@ describe("NewEnvGroupDialog", () => {
       ],
       secretFiles: [],
       serviceIds: [],
+      environmentId: null,
     });
   });
 
@@ -234,5 +238,115 @@ describe("NewEnvGroupDialog", () => {
     expect(onCreated).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("Group name")).toHaveValue("shared");
+  });
+
+  // --- w4/m111: scope-filtered link candidates ---
+  //
+  // Live on 2026-09-17 this dialog listed every workspace service with no
+  // scope control at all, so checking a service that lives in an Environment
+  // produced a create the backend deterministically refused:
+  // "linked services must have the same Environment scope as the environment
+  // group". The only way through was create-unlinked -> Move -> link.
+
+  const ENVIRONMENTS = [
+    { id: "evm-qa", name: "qa-env" },
+    { id: "evm-prod", name: "prod-env" },
+  ] as never;
+  const SERVICES = [
+    { id: "srv-ws", name: "workspace-svc" },
+    { id: "srv-qa", name: "qa-svc" },
+  ] as never;
+  const SERVICE_ENVIRONMENTS = new Map([["srv-qa", "evm-qa"]]);
+
+  function renderScoped(props: Record<string, unknown> = {}) {
+    return render(
+      <NewEnvGroupDialog
+        open
+        onCreated={vi.fn()}
+        services={SERVICES}
+        environments={ENVIRONMENTS}
+        serviceEnvironmentById={SERVICE_ENVIRONMENTS}
+        {...props}
+      />,
+    );
+  }
+
+  it("offers only workspace-scoped services under Workspace scope", () => {
+    renderScoped();
+
+    expect(screen.getByRole("checkbox", { name: /workspace-svc/ })).toBeTruthy();
+    // The in-Environment service is the one the backend would refuse.
+    expect(screen.queryByRole("checkbox", { name: /qa-svc/ })).toBeNull();
+  });
+
+  it("offers only that Environment's services once one is picked", async () => {
+    const user = userEvent.setup();
+    renderScoped();
+
+    await user.click(screen.getByRole("combobox", { name: "Environment" }));
+    await user.click(screen.getByRole("option", { name: "qa-env" }));
+
+    expect(screen.getByRole("checkbox", { name: /qa-svc/ })).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: /workspace-svc/ })).toBeNull();
+  });
+
+  it("creates in the picked Environment with its links attached", async () => {
+    const user = userEvent.setup();
+    renderScoped();
+
+    await user.type(screen.getByLabelText("Group name"), "qa-evg");
+    await user.click(screen.getByRole("combobox", { name: "Environment" }));
+    await user.click(screen.getByRole("option", { name: "qa-env" }));
+    await user.click(screen.getByRole("checkbox", { name: /qa-svc/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+
+    expect(createGroup).toHaveBeenCalledWith({
+      name: "qa-evg",
+      envVars: [],
+      secretFiles: [],
+      serviceIds: ["srv-qa"],
+      environmentId: "evm-qa",
+    });
+  });
+
+  it("drops checks the new scope has made incompatible", async () => {
+    const user = userEvent.setup();
+    renderScoped();
+
+    await user.type(screen.getByLabelText("Group name"), "qa-evg");
+    await user.click(screen.getByRole("checkbox", { name: /workspace-svc/ }));
+    await user.click(screen.getByRole("combobox", { name: "Environment" }));
+    await user.click(screen.getByRole("option", { name: "qa-env" }));
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+
+    // The workspace service must not ride along into the qa-env create.
+    expect(createGroup).toHaveBeenCalledWith(
+      expect.objectContaining({ serviceIds: [], environmentId: "evm-qa" }),
+    );
+  });
+
+  it("opens on the initial scope the service page hands it", () => {
+    renderScoped({ initialEnvironmentId: "evm-qa" });
+
+    expect(
+      screen.getByRole("combobox", { name: "Environment" }),
+    ).toHaveTextContent("qa-env");
+    expect(screen.getByRole("checkbox", { name: /qa-svc/ })).toBeTruthy();
+  });
+
+  it("says an Environment has no services rather than pretending none exist", async () => {
+    const user = userEvent.setup();
+    renderScoped();
+
+    await user.click(screen.getByRole("combobox", { name: "Environment" }));
+    await user.click(screen.getByRole("option", { name: "prod-env" }));
+
+    expect(
+      screen.getByText(/No services live in this Environment/),
+    ).toBeTruthy();
   });
 });

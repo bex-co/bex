@@ -96,3 +96,47 @@ func TestGraphQL_EnvironmentIDNullsWhenUnset(t *testing.T) {
 		}
 	})
 }
+
+// TestGraphQL_ExplicitNullEnvironmentIDIsWorkspaceScope is w4/m111 t003's
+// parity guard on the create direction. The dashboard's create dialog gained
+// an Environment scope picker and now always sends `$environmentId` — `null`
+// when the user leaves it on Workspace. That must be indistinguishable on the
+// wire from the pre-w4/m111 mutation, which declared no such variable at all:
+// a Workspace create is still a workspace-scoped group, byte-for-byte.
+func TestGraphQL_ExplicitNullEnvironmentIDIsWorkspaceScope(t *testing.T) {
+	const mutation = `mutation Create($name: String!, $environmentId: String) {
+		createEnvGroup(name: $name, environmentId: $environmentId) { id environmentId }
+	}`
+	const omitted = `mutation Create($name: String!) {
+		createEnvGroup(name: $name) { id environmentId }
+	}`
+
+	create := func(t *testing.T, query string, vars map[string]any) map[string]any {
+		t.Helper()
+		svc := newService(newFakeStore())
+		result := graphql.Do(graphql.Params{
+			Schema:         *envGroupSchema(t, svc),
+			RequestString:  query,
+			VariableValues: vars,
+			Context:        context.Background(),
+		})
+		if len(result.Errors) > 0 {
+			t.Fatalf("createEnvGroup: %v", result.Errors)
+		}
+		data, _ := result.Data.(map[string]any)
+		group, _ := data["createEnvGroup"].(map[string]any)
+		if group == nil {
+			t.Fatalf("createEnvGroup returned no group: %+v", result.Data)
+		}
+		return group
+	}
+
+	explicit := create(t, mutation, map[string]any{"name": "shared", "environmentId": nil})
+	if explicit["environmentId"] != nil {
+		t.Errorf("explicit null environmentId scoped the group to %v, want workspace scope", explicit["environmentId"])
+	}
+	absent := create(t, omitted, map[string]any{"name": "shared"})
+	if absent["environmentId"] != nil {
+		t.Errorf("omitted environmentId scoped the group to %v, want workspace scope", absent["environmentId"])
+	}
+}
