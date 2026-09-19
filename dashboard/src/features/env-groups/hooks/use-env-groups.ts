@@ -212,6 +212,9 @@ export function useEnvGroupMutations(
             envVars: input.envVars,
             secretFiles: input.secretFiles,
             serviceIds: input.serviceIds,
+            // Omitted/null is workspace scope — the wire shape the dialog sent
+            // before w4/m111, preserved byte-for-byte for a Workspace create.
+            environmentId: input.environmentId ?? null,
           },
         });
         const id = result.data?.createEnvGroup?.id ?? null;

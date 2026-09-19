@@ -35,13 +35,14 @@ import {
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { ScopeSelect } from "@/features/env-groups/components/scope-select";
+import { WORKSPACE_SCOPE } from "@/features/env-groups/lib/scope";
 import { useWorkspaceEnvironmentIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { isValidEnvGroupName } from "@/features/env-groups/lib/validation";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { EnvGroupView } from "@/features/env-groups/types";
 
-const WORKSPACE_SCOPE = "__workspace__";
 
 export function EnvGroupActions({
   group,
@@ -337,42 +338,6 @@ function NameField({
         aria-invalid={!isValidEnvGroupName(name)}
         autoComplete="off"
       />
-    </div>
-  );
-}
-
-function ScopeSelect({
-  id,
-  value,
-  environments,
-  loading = false,
-  onValueChange,
-}: {
-  id: string;
-  value: string;
-  environments: EnvironmentView[];
-  loading?: boolean;
-  onValueChange: (value: string) => void;
-}) {
-  const { t } = useTranslations();
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{t("envGroups.environmentLabel")}</Label>
-      <Select value={value} onValueChange={onValueChange} disabled={loading}>
-        <SelectTrigger id={id}>
-          <SelectValue placeholder={t("envGroups.environmentPlaceholder")} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={WORKSPACE_SCOPE}>
-            {t("envGroups.workspaceScope")}
-          </SelectItem>
-          {environments.map((environment) => (
-            <SelectItem key={environment.id} value={environment.id}>
-              {environment.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
     </div>
   );
 }

@@ -29,6 +29,23 @@ vi.mock("@/features/services/hooks/use-server", () => ({
   }),
 }));
 
+// The scope index the panel reads to learn which Environment the service lives
+// in, so a create from an in-Environment service opens the dialog in that
+// scope (w4/m111 t002). Mutable so a test can place the service in an env.
+const scopeState = {
+  projects: [],
+  environments: [] as Array<{ id: string; name: string }>,
+  byId: new Map<string, { id: string; name: string }>(),
+  serviceEnvironmentById: new Map<string, string>(),
+  loading: false,
+  error: undefined as Error | undefined,
+};
+
+vi.mock("@/features/env-groups/hooks/use-env-group-scope-index", () => ({
+  useEnvGroupScopeIndex: () => scopeState,
+  useWorkspaceEnvironmentIndex: () => scopeState,
+}));
+
 vi.mock("@/features/services/hooks/use-env-vars", () => ({
   useEnvVarKeys: (...a: unknown[]) => mockUseEnvVarKeys(...a),
 }));
@@ -207,7 +224,48 @@ describe("EnvGroupsPanel", () => {
       envVars: [],
       secretFiles: [],
       serviceIds: ["web"],
+      // A workspace-scoped service creates a workspace-scoped group, exactly
+      // as before w4/m111 — the scope is now explicit on the wire.
+      environmentId: null,
     });
+  });
+
+  // w4/m111 t002: from an in-Environment service, Create group used to
+  // pre-check the ONE link bex-api would refuse — the dialog defaulted to
+  // workspace scope while the only offered service lived in an Environment,
+  // so the create failed with ENV_GROUP_SERVICE_ENVIRONMENT_MISMATCH no matter
+  // what the user clicked. The dialog now opens in the service's own scope.
+  it("creates in the service's own Environment, keeping the pre-checked link", async () => {
+    scopeState.environments = [{ id: "evm-qa", name: "qa-env" }];
+    scopeState.serviceEnvironmentById = new Map([["web", "evm-qa"]]);
+    try {
+      mockUseEnvGroups.mockReturnValue(groupsResult([]));
+      mockCreateGroup.mockResolvedValue("evg-1");
+      const user = userEvent.setup();
+      render(<EnvGroupsPanel serviceId="web" />);
+
+      await user.click(screen.getByRole("button", { name: /Create group/ }));
+      await user.type(
+        screen.getByLabelText("Group name"),
+        "qa-20260917-p3-evg2",
+      );
+      // The service is still offered and still checked — it is compatible now.
+      expect(screen.getByRole("checkbox", { name: /web/ })).toBeChecked();
+      await user.click(
+        screen.getByRole("button", { name: "Create Environment Group" }),
+      );
+
+      expect(mockCreateGroup).toHaveBeenCalledWith({
+        name: "qa-20260917-p3-evg2",
+        envVars: [],
+        secretFiles: [],
+        serviceIds: ["web"],
+        environmentId: "evm-qa",
+      });
+    } finally {
+      scopeState.environments = [];
+      scopeState.serviceEnvironmentById = new Map();
+    }
   });
 
   it("marks a linked group's keys that the service's own variables override (w6/067)", () => {

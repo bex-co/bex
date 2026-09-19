@@ -236,6 +236,9 @@ describe("useEnvGroupMutations", () => {
         envVars: [{ key: "TOKEN", value: "secret" }],
         secretFiles: [{ name: "ca.pem", content: "CERT" }],
         serviceIds: ["web"],
+        // Omitting environmentId means workspace scope, which the hook sends
+        // explicitly as null (w4/m111 t001) — the same wire meaning as before.
+        environmentId: null,
       },
     });
     expect(refetch).toHaveBeenCalled();
@@ -257,6 +260,7 @@ describe("useEnvGroupMutations", () => {
         envVars: [],
         secretFiles: [],
         serviceIds: [],
+        environmentId: null,
       });
     });
 
@@ -543,5 +547,35 @@ describe("classifyEnvGroupError", () => {
     expect(isEnvGroupNotFound(new Error("env group not found"))).toBe(true);
     expect(isEnvGroupNotFound(new Error("boom"))).toBe(false);
     expect(classifyEnvGroupError(new Error("boom"))).toBe("generic");
+  });
+
+  // w4/m111 t001: an in-Environment create passes its scope through, so the
+  // group is minted in that Environment with its links attached — one
+  // mutation, instead of create-unlinked -> Move -> link.
+  it("sends the picked Environment scope through to the mutation", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { createEnvGroup: { id: "eg-scoped" } } });
+    mockUseMutation.mockImplementation(() => [mutate]);
+
+    const { result } = renderHook(() =>
+      useEnvGroupMutations(vi.fn().mockResolvedValue([])),
+    );
+    await act(async () => {
+      await result.current.createGroup({
+        name: "qa-evg",
+        envVars: [],
+        secretFiles: [],
+        serviceIds: ["srv-qa"],
+        environmentId: "evm-qa",
+      });
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: expect.objectContaining({
+        environmentId: "evm-qa",
+        serviceIds: ["srv-qa"],
+      }),
+    });
   });
 });

@@ -121,6 +121,11 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "This workspace has no services to link yet.",
     description: "Initial service links empty state",
   },
+  "envGroups.noServicesInScope": {
+    message:
+      "No services live in this Environment. Services can only be linked to a group in their own Environment.",
+    description: "Initial service links empty state for the picked scope",
+  },
   "envGroups.invalidInitialContents": {
     message:
       "Fix invalid variable keys or file names before creating the group.",

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { serviceMatchesGroupScope } from "@/features/env-groups/lib/scope";
 import { AlertTriangle, Link2Off, Loader2, Server } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -42,14 +43,11 @@ export function LinkedServicesCard({
   const { t } = useTranslations();
   const [selected, setSelected] = useState("");
   const byId = new Map(services.map((service) => [service.id, service]));
-  const isCompatible = (serviceId: string) => {
-    const serviceEnvironmentId = serviceEnvironmentById.get(serviceId) ?? null;
-    return serviceEnvironmentId === group.environmentId;
-  };
   const available = scopeReady
     ? services.filter(
         (service) =>
-          !group.serviceLinks.includes(service.id) && isCompatible(service.id),
+          !group.serviceLinks.includes(service.id) &&
+          serviceMatchesGroupScope(serviceEnvironmentById, service.id, group),
       )
     : [];
 
@@ -132,7 +130,11 @@ export function LinkedServicesCard({
                         {serviceId}
                       </p>
                     ) : null}
-                    {!isCompatible(serviceId) ? (
+                    {!serviceMatchesGroupScope(
+                      serviceEnvironmentById,
+                      serviceId,
+                      group,
+                    ) ? (
                       <p className="text-destructive text-xs">
                         {t("envGroups.incompatibleLink")}
                       </p>
