@@ -3553,7 +3553,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	// One-off run trigger (spec.runAt, from the API's cron run verb): materialize a
 	// single Job from the same template, named deterministically from runAt so a
 	// re-reconcile of the same value is a no-op. Skipped while suspended.
-	if app.Spec.RunAt != "" && !suspended && !cancelPending && !cancelsManualRun(app) {
+	if app.Spec.RunAt != "" && !suspended && !cancelPending && !manualRunSettled(app) {
 		if err := r.ensureManualRun(ctx, app, image, port, labels); err != nil {
 			return r.fail(ctx, app, "CronRunFailed", err)
 		}
@@ -3641,8 +3641,15 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 // ttlSecondsAfterFinished), so the NotFound branch cannot mean "finished and
 // swept". A suspended App has no schedule to pause, and a cancellation in flight
 // means no manual run will be running once it lands.
+//
+// The NotFound="about to be created" reading is only safe because
+// manualRunSettled short-circuits first: a canceled run's Job IS deleted, and
+// before w4/m114 t001 that combination (settled in history, Job gone, cancel
+// slot since overwritten) read as "active", pausing the schedule for a run
+// that would never come — the same stale-intent bug that let the run itself
+// be recreated.
 func (r *AppReconciler) manualCronRunActive(ctx context.Context, app *appv1alpha1.App, cancelPending bool) (bool, error) {
-	if app.Spec.RunAt == "" || app.Spec.Suspended || cancelPending || cancelsManualRun(app) {
+	if app.Spec.RunAt == "" || app.Spec.Suspended || cancelPending || manualRunSettled(app) {
 		return false, nil
 	}
 	job := &batchv1.Job{}
@@ -3669,12 +3676,52 @@ func jobSettled(job *batchv1.Job) bool {
 	return false
 }
 
-// cancelsManualRun prevents the stable spec.runAt value from recreating the
-// exact manual Job a cancellation just deleted. A later trigger changes runAt,
-// producing a different Job name, so the replacement is created normally.
-func cancelsManualRun(app *appv1alpha1.App) bool {
-	return app.Spec.CancelRun != nil &&
-		app.Spec.CancelRun.Name == appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
+// manualRunSettled reports whether the manual run named by the current
+// spec.runAt is over — so the stable runAt value must not recreate its Job.
+// A later trigger changes runAt, producing a different Job name, so a genuine
+// replacement is created normally.
+//
+// w4/m114 t001: this used to consult ONLY spec.cancelRun, which is a single
+// slot the backend overwrites on every cancel. Live on 2026-09-17 a user
+// canceled their manual run `…-run-2207ebf1`, then canceled an unrelated
+// scheduled run four minutes later — overwriting the slot — and the canceled
+// manual run came back `pending` and EXECUTED two fresh attempts. Three facts
+// composed: the slot moved off the manual job, nothing clears spec.runAt when
+// its job ends, and the job itself had been deleted by the cancel, so
+// ensureManualRun saw runAt set + job absent + guard false and recreated it.
+// (Suspend/resume only delayed the effect; the minimal repro needs no suspend
+// at all — trigger, cancel the manual run, cancel any other run.)
+//
+// The durable answer is terminal HISTORY rather than a mutable intent slot:
+// cronRuns deliberately retains terminal entries in status.runs across Job GC
+// and across the deletion a cancel performs, precisely so run ids stay stable.
+// A run recorded Succeeded/Failed/Canceled there is over, whatever the cancel
+// slot has since been reused for.
+//
+// Residual: status.runs is capped at maxCronRuns, so a manual run could in
+// principle age out of history while its runAt still stands. The cancel-slot
+// check is kept as the second term for exactly that window, and the operator
+// must not clear spec.runAt itself — spec is backend-owned, and writing it
+// here would bump the generation and open a spurious deploy row.
+func manualRunSettled(app *appv1alpha1.App) bool {
+	if app.Spec.RunAt == "" {
+		return false
+	}
+	name := appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
+	if app.Spec.CancelRun != nil && app.Spec.CancelRun.Name == name {
+		return true
+	}
+	for _, run := range app.Status.Runs {
+		if run.Name != name {
+			continue
+		}
+		switch run.Status {
+		case appv1alpha1.CronRunSucceeded, appv1alpha1.CronRunFailed, appv1alpha1.CronRunCanceled:
+			return true
+		}
+		return false
+	}
+	return false
 }
 
 // ensureManualRun creates the one-off Job for the current spec.runAt if it does
