@@ -120,6 +120,9 @@ export function EnvGroupsPage() {
           refetch={refetch}
           services={services}
           servicesLoading={servicesLoading}
+          environments={scope.environments}
+          serviceEnvironmentById={scope.serviceEnvironmentById}
+          scopeLoading={scope.loading}
           onCreated={(groupId) =>
             void navigate({
               to: "/env-groups/$groupId",

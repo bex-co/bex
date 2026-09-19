@@ -24,11 +24,20 @@ import {
   isValidSecretFileName,
 } from "@/features/env-groups/lib/validation";
 import type { ServiceView } from "@/features/services/types";
+import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
+import { ScopeSelect } from "@/features/env-groups/components/scope-select";
+import {
+  scopeEnvironmentId,
+  scopeValue,
+  serviceMatchesScope,
+} from "@/features/env-groups/lib/scope";
 import { EnvImportDialog } from "@/features/services/components/env-import-dialog";
 import {
   upsertDotenvEntries,
   type DotenvEntry,
 } from "@/features/services/lib/dotenv-import";
+
+const EMPTY_SERVICE_ENVIRONMENTS: ReadonlyMap<string, string> = new Map();
 
 interface EnvVarRow {
   id: number;
@@ -52,6 +61,21 @@ export interface NewEnvGroupDialogProps {
   onOpenChange?: (open: boolean) => void;
   /** Service ids checked each time the dialog opens (service-page create path). */
   initialServiceIds?: string[];
+  /**
+   * Environment scope options and each service's environment — the same index
+   * the detail page's link picker filters on. Omitted (empty) means the caller
+   * has no scope data yet, which keeps the picker on Workspace.
+   */
+  environments?: EnvironmentView[];
+  serviceEnvironmentById?: ReadonlyMap<string, string>;
+  /**
+   * The scope the picker opens on: `null` is Workspace. The service-page path
+   * passes the current service's environment so its pre-checked link is
+   * compatible by construction (w4/m111 t002).
+   */
+  initialEnvironmentId?: string | null;
+  /** The scope index is still loading — the picker waits rather than lying. */
+  scopeLoading?: boolean;
 }
 
 /** One-step workspace create: name, initial contents, and links share one mutation. */
@@ -63,6 +87,10 @@ export function NewEnvGroupDialog({
   open: openProp,
   onOpenChange: onOpenChangeProp,
   initialServiceIds = [],
+  environments = [],
+  serviceEnvironmentById = EMPTY_SERVICE_ENVIRONMENTS,
+  initialEnvironmentId = null,
+  scopeLoading = false,
 }: NewEnvGroupDialogProps) {
   const { t } = useTranslations();
   const { createGroup, busy } = useEnvGroupMutations(refetch);
@@ -73,6 +101,7 @@ export function NewEnvGroupDialog({
   const [envVars, setEnvVars] = useState<EnvVarRow[]>([]);
   const [secretFiles, setSecretFiles] = useState<SecretFileRow[]>([]);
   const [serviceIds, setServiceIds] = useState<string[]>(initialServiceIds);
+  const [scope, setScope] = useState(scopeValue(initialEnvironmentId));
   const [invalid, setInvalid] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const open = controlled ? openProp : openState;
@@ -86,6 +115,7 @@ export function NewEnvGroupDialog({
     setEnvVars([]);
     setSecretFiles([]);
     setServiceIds(initialServiceIds);
+    setScope(scopeValue(initialEnvironmentId));
     setInvalid(false);
     setImportOpen(false);
   }
@@ -94,7 +124,10 @@ export function NewEnvGroupDialog({
     if (controlled) onOpenChangeProp?.(next);
     else setOpenState(next);
     if (!next) reset();
-    else setServiceIds(initialServiceIds);
+    else {
+      setServiceIds(initialServiceIds);
+      setScope(scopeValue(initialEnvironmentId));
+    }
   }
 
   function addEnvVar() {
@@ -132,6 +165,27 @@ export function NewEnvGroupDialog({
     );
   }
 
+  const environmentId = scopeEnvironmentId(scope);
+  // bex-api refuses a link whose service lives in a different Environment than
+  // the group (ENV_GROUP_SERVICE_ENVIRONMENT_MISMATCH). Offer only the links it
+  // will accept rather than letting the user construct a create that cannot
+  // succeed — which is what this dialog did for every in-Environment service
+  // before w4/m111.
+  const linkable = services.filter((service) =>
+    serviceMatchesScope(serviceEnvironmentById, service.id, environmentId),
+  );
+
+  function changeScope(next: string) {
+    setScope(next);
+    // Never submit a selection the new scope has made incompatible.
+    const nextEnvironmentId = scopeEnvironmentId(next);
+    setServiceIds((current) =>
+      current.filter((id) =>
+        serviceMatchesScope(serviceEnvironmentById, id, nextEnvironmentId),
+      ),
+    );
+  }
+
   function toggleService(serviceId: string, checked: boolean) {
     setServiceIds((current) =>
       checked
@@ -159,6 +213,7 @@ export function NewEnvGroupDialog({
         content: file.content,
       })),
       serviceIds,
+      environmentId,
     });
     if (!id) return;
     handleOpenChange(false);
@@ -414,17 +469,26 @@ export function NewEnvGroupDialog({
               {t("envGroups.createServicesDescription")}
             </p>
           </div>
-          {servicesLoading ? (
+          <ScopeSelect
+            id="env-group-create-scope"
+            value={scope}
+            environments={environments}
+            loading={busy || scopeLoading}
+            onValueChange={changeScope}
+          />
+          {servicesLoading || scopeLoading ? (
             <p className="text-sm text-muted-foreground">
               {t("envGroups.servicesLoading")}
             </p>
-          ) : services.length === 0 ? (
+          ) : linkable.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {t("envGroups.noServicesToLink")}
+              {services.length === 0
+                ? t("envGroups.noServicesToLink")
+                : t("envGroups.noServicesInScope")}
             </p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {services.map((service) => {
+              {linkable.map((service) => {
                 const checkboxId = `env-group-service-${service.id}`;
                 return (
                   <div

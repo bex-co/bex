@@ -73,6 +73,7 @@ mutation CreateEnvGroup(
   $envVars: [EnvGroupVarInput!]
   $secretFiles: [EnvGroupSecretFileInput!]
   $serviceIds: [String!]
+  $environmentId: String
 ) {
   createEnvGroup(
     name: $name
@@ -80,6 +81,7 @@ mutation CreateEnvGroup(
     envVars: $envVars
     secretFiles: $secretFiles
     serviceIds: $serviceIds
+    environmentId: $environmentId
   ) {
     id
     name

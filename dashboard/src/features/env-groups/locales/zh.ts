@@ -119,6 +119,10 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "此工作区还没有可关联的服务。",
     description: "Initial service links empty state",
   },
+  "envGroups.noServicesInScope": {
+    message: "该环境中没有服务。服务只能关联到其所在环境中的环境变量组。",
+    description: "Initial service links empty state for the picked scope",
+  },
   "envGroups.invalidInitialContents": {
     message: "请先修正无效的变量键或文件名。",
     description: "Invalid initial env-group contents message",
