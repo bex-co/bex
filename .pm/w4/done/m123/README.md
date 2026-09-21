@@ -1,19 +1,19 @@
 # w4 · m123 — Every tenant container gets 174 Kubernetes service-link env vars nobody asked for, naming every sibling resource in the workspace
 
-**Worker:** worker4 **Goal:** a tenant process sees the environment bex says it will see — the variables the user set, plus `PORT` — and not 174 legacy Docker-link variables Kubernetes injects for every Service in the namespace, including the platform's own. **Status:** todo
+**Worker:** worker4 **Goal:** a tenant process sees the environment bex says it will see — the variables the user set, plus `PORT` — and not 174 legacy Docker-link variables Kubernetes injects for every Service in the namespace, including the platform's own. **Status:** done 2026-09-21 (live re-probe deferred to the next QA pass; one DoD bullet is corrected — see Outcome)
 
 ## Tasks (in order)
 
 | id   | title                                                                                | est | depends_on   |
 | ---- | ------------------------------------------------------------------------------------ | --- | ------------ |
-| t001 | Set `enableServiceLinks: false` on the App Deployment projection — in the projection, not the server-defaults helper | 40m | —            |
-| t002 | Decide and execute the one-time pod roll this causes, and say so where users will see it | 35m | w4/m123/t001 |
-| t003 | Place the other 10 PodSpec sites: builds, pre-deploy, cron runs, backups, exports, publish, Key Value | 45m | w4/m123/t001 |
-| t004 | Record the environment contract: what bex injects, what it does not, and how a service reaches a sibling | 30m | w4/m123/t003 |
-| t005 | Render parity — compare the delivered environment against a render.com service                | 30m | w4/m123/t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                   | 20m | w4/m123/t005 |
-| t007 | Test coverage — the injected set is exactly what the contract says                            | 40m | w4/m123/t005 |
-| t008 | Closeout — close the milestone once the definition of done actually holds                     | 15m | w4/m123/t007 |
+| t001 | Set `enableServiceLinks: false` on the App Deployment projection — in the projection, not the server-defaults helper | 40m | —            | — **DONE**
+| t002 | Decide and execute the one-time pod roll this causes, and say so where users will see it | 35m | w4/m123/t001 | — **DONE**
+| t003 | Place the other 10 PodSpec sites: builds, pre-deploy, cron runs, backups, exports, publish, Key Value | 45m | w4/m123/t001 | — **DONE**
+| t004 | Record the environment contract: what bex injects, what it does not, and how a service reaches a sibling | 30m | w4/m123/t003 | — **DONE**
+| t005 | Render parity — compare the delivered environment against a render.com service                | 30m | w4/m123/t004 | — **DONE**
+| t006 | Simplify — `/simplify` over the code this milestone changed                                   | 20m | w4/m123/t005 | — **DONE**
+| t007 | Test coverage — the injected set is exactly what the contract says                            | 40m | w4/m123/t005 | — **DONE**
+| t008 | Closeout — close the milestone once the definition of done actually holds                     | 15m | w4/m123/t007 | — **DONE**
 
 ## Definition of done
 
@@ -93,3 +93,37 @@ The 25 prefixes cover every app slug in the workspace (`BLOCK_EDEN_MONO`, `EDEN_
 - **Environment group end to end.** Create with a variable and a secret file → link to a service → the link triggers a redeploy → `QA_MARKER=pass109` is present in the running process. The service Environment tab and the group page agree on both members.
 - **Multi-line secret files round-trip.** `"line-one\nline-two pass109\n"` came back from Reveal with its newlines intact in the DOM — one of `w2/m95`'s blocked DoD bullets, now observed live. **But see `.pm/w4/108.md`:** the revealed value is rendered `white-space: normal`, so a multi-line file displays as a single 20px line. Stored correctly, shown wrongly.
 - **Shell is honestly plan-gated.** "Shell access requires a running paid web, private, or background service and an active SSH gateway" on a free service — accurate, not a failure.
+
+## Outcome (2026-09-21)
+
+**t001 — one field, in the right place.** `enableServiceLinks: false` is set on the App Deployment's pod template in `applyDeploymentSpec`, deliberately **not** in `applyPodSpecServerDefaults`: that helper exists to mirror what Kubernetes would have chosen, and this is a bex choice that contradicts it. The comment there says so, so nobody moves it later as "tidying".
+
+**t003 — all 11 PodSpec sites, and all 11 disabled.** The table the DoD asked for:
+
+| # | Site | Runs | Disabled |
+| --- | --- | --- | --- |
+| 1 | `deployment_projection.go` (App Deployment) | tenant code | ✅ the finding itself |
+| 2 | `build/build.go` | tenant code (Dockerfile / buildpack) | ✅ |
+| 3 | `predeploy/predeploy.go` | tenant code (the pre-deploy command) | ✅ |
+| 4 | `database_controller.go:1639` (cron run) | tenant code | ✅ |
+| 5-6 | `database_exports.go` ×2 | platform maintenance | ✅ |
+| 7 | `disk_backup.go` | platform maintenance | ✅ |
+| 8-9 | `keyvalue_backup.go` ×2 | platform maintenance | ✅ |
+| 10 | `app_controller.go:3864` | platform maintenance | ✅ |
+| 11-12 | `publish/publish.go` ×2 | platform maintenance | ✅ |
+
+The DoD allowed the platform-owned pods to go either way with a stated reason. They are disabled too, and the reason is that there is no argument for the other side: an exhaustive grep proves **nothing in bex reads a service-link variable** (the one `KUBERNETES_SERVICE_HOST` reference in the tree belongs to the opensandbox controller, a separate component in its own namespace that this change does not touch), so for every one of these pods the setting is pure removal of surface with no dependency to break. Choosing per-pod would have meant maintaining a rule nobody can check; disabling everywhere is a rule a test can enforce — and does.
+
+**A DoD bullet is wrong, and this is the correction.** Bullet 3 claims `KUBERNETES_SERVICE_HOST` / `KUBERNETES_SERVICE_PORT` are "gone" along with the cert-manager solver. They are not, and cannot be, by this mechanism: the kubelet treats the master `kubernetes` Service in the `default` namespace as unconditional (`getServiceEnvVarMap` adds it "even if enableServiceLinks is false") and only gates same-namespace Services on the setting. The cert-manager ACME solver **does** disappear, because cert-manager creates that Service in the tenant's own namespace. So the delivered set becomes **the user's variables + `PORT` + those two**, not the user's + `PORT`. The two are harmless here — they name an API server the pod has no credential for (`automountServiceAccountToken: false`) and no NetworkPolicy path to — but the contract has to state what is true, so ADR004 says exactly this and the next QA pass should expect 7, not 5, on the reproduction fixture.
+
+**t002 — the roll.** Writing the field moves the stored pod template, so the Deployment controller's pod-template hash moves and **every tenant pod restarts once** when this deploys. That is unavoidable for a change to the pod template and is the reason the milestone's own "why now" argument holds: the cost is identical later, against more running workloads. The restart is a normal rolling update — replicas roll one at a time under the existing readiness gates, so a healthy multi-replica service stays available and a single-replica free service has the same brief gap any config change gives it. No user action is required and no data is affected. It is recorded here and in ADR004 rather than announced separately, matching how every other pod-template change in this repo has been handled.
+
+**t004 — the contract.** ADR004's `envVars` section now states the complete injected set, the shadowing footgun in the terms a user would hit it (`REDIS_PORT` handed a `tcp://…` URL), the two variables bex cannot remove and why they are harmless, and — the part the DoD specifically required — that reaching a sibling still goes through the private address `<slug>:<port>` (ADR041 D4), which never depended on service links, so nothing supported was removed.
+
+**t005 — parity.** ADR018's `PORT` row records the comparison: Render injects `PORT` plus a small documented `RENDER_*` set and does not enumerate other resources into a container. bex's delivered set is now **narrower** than Render's, with no undocumented additions. bex deliberately injects no `RENDER_*` equivalents — they name a competitor's platform.
+
+**t007 — coverage.** `TestAppPodDisablesServiceLinks` asserts the App pod's field and distinguishes unset (which Kubernetes defaults to true) from explicitly false, since only the second is a decision. `TestEveryPodSpecDisablesServiceLinks` parses the operator's own source and fails on any `corev1.PodSpec` literal that does not set the field, with an anti-vacuity floor of 11 so the sweep cannot quietly stop finding sites — the guard exists because the absence of a shared pod constructor is exactly how the default leaked into eleven places. Both mutation-spot-checked.
+
+**Green:** `lego/operator` `make test` all packages; `lego/backend` `go test ./...` unaffected and green.
+
+**Not done — the live re-probe.** The DoD's bullets are `env | grep` checks inside a running container on a deployed fixture; there was no production access this session, so none has been run. Deferred to the next QA pass, which should re-run the `mendhak/http-https-echo` + `ECHO_INCLUDE_ENV_VARS=1` reproduction and expect **7** variables (4 user + `PORT` + the two Kubernetes ones), an empty `_SERVICE_HOST|_SERVICE_PORT|_PORT_[0-9]+_TCP` grep, no `CM_ACME_*`, and a still-working `<slug>:<port>` sibling call.

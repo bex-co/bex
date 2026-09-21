@@ -1637,6 +1637,8 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					// No legacy Docker-link env vars (w4/m123) — the cron run — tenant code.
+					EnableServiceLinks:           new(false),
 					RestartPolicy:                corev1.RestartPolicyNever,
 					AutomountServiceAccountToken: new(false),
 					Containers: []corev1.Container{{

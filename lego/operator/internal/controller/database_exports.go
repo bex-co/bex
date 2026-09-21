@@ -308,6 +308,8 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
+					// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
+					EnableServiceLinks:           new(false),
 					RestartPolicy:                corev1.RestartPolicyNever,
 					AutomountServiceAccountToken: new(false),
 					Volumes: []corev1.Volume{{Name: exportWorkVolume, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{
@@ -382,6 +384,8 @@ func exportCleanupJob(db *appv1alpha1.Database, status appv1alpha1.DatabaseExpor
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
+					// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
+					EnableServiceLinks:           new(false),
 					RestartPolicy:                corev1.RestartPolicyNever,
 					AutomountServiceAccountToken: new(false),
 					Containers: []corev1.Container{{
