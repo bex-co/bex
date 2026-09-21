@@ -306,30 +306,51 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 	users := []appv1alpha1.DatabaseUser{{Name: "reporting", SecretName: "d-user-reporting"}}
 	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", users: users})
 
-	roles := spec["managed"].(map[string]any)["roles"].([]any)
-	role := roles[0].(map[string]any)
-	if role["name"] != "reporting" || role["ensure"] != "present" || role["login"] != true {
+	roles := managedRoleIndex(t, spec)
+	role, ok := roles["reporting"]
+	if !ok {
+		t.Fatalf("reporting role missing: %v", roles)
+	}
+	if role["ensure"] != "present" || role["login"] != true {
 		t.Errorf("managed role = %v", role)
 	}
 	if role["passwordSecret"].(map[string]any)["name"] != "d-user-reporting" {
 		t.Errorf("passwordSecret = %v", role["passwordSecret"])
 	}
-	// No users => no managed block.
+
+	// The owner is always projected as a pg_monitor member so the Insights
+	// surface can read its own activity instead of 34 `<insufficient privilege>`
+	// cells (w4/m115). Declarative => it converges on existing databases too.
+	// No users at all still produces the owner's managed block.
 	bare := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user"})
-	if _, has := bare["managed"]; has {
-		t.Error("no users => no managed block")
+	for _, in := range []map[string]map[string]any{roles, managedRoleIndex(t, bare)} {
+		owner, has := in["d_user"]
+		if !has {
+			t.Fatalf("owner role missing from managed roles: %v", in)
+		}
+		if owner["ensure"] != "present" || owner["login"] != true {
+			t.Errorf("owner role = %v", owner)
+		}
+		if got := owner["inRoles"].([]any); len(got) != 1 || got[0] != "pg_monitor" {
+			t.Errorf("owner inRoles = %v, want [pg_monitor]", got)
+		}
+		// Naming a passwordSecret would make the projection depend on a Secret
+		// the recovery bootstrap does not always create; CNPG leaves an existing
+		// role's password alone when none is given.
+		if _, has := owner["passwordSecret"]; has {
+			t.Errorf("owner role must not carry a passwordSecret: %v", owner)
+		}
 	}
 
 	// A deleted user projects an ensure:absent tombstone so CNPG drops the live
 	// role from PostgreSQL (codex #8/#2) — even with no remaining present users,
 	// the managed block must still carry the drop.
 	dropped := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", deletedUsers: []string{"reporting"}})
-	dropRoles := dropped["managed"].(map[string]any)["roles"].([]any)
-	if len(dropRoles) != 1 {
-		t.Fatalf("deleted user => one absent role, got %v", dropRoles)
+	drop, ok := managedRoleIndex(t, dropped)["reporting"]
+	if !ok {
+		t.Fatalf("deleted user => absent role missing: %v", dropped["managed"])
 	}
-	drop := dropRoles[0].(map[string]any)
-	if drop["name"] != "reporting" || drop["ensure"] != "absent" {
+	if drop["ensure"] != "absent" {
 		t.Errorf("tombstone role = %v, want ensure:absent reporting", drop)
 	}
 	if _, has := drop["login"]; has {
@@ -342,9 +363,28 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 		users: users, deletedUsers: []string{"reporting"},
 	})
 	overlapRoles := overlap["managed"].(map[string]any)["roles"].([]any)
-	if len(overlapRoles) != 1 || overlapRoles[0].(map[string]any)["ensure"] != "present" {
+	if len(overlapRoles) != 2 {
+		t.Fatalf("owner + active role expected, got %v", overlapRoles)
+	}
+	if managedRoleIndex(t, overlap)["reporting"]["ensure"] != "present" {
 		t.Fatalf("active role did not override stale tombstone: %v", overlapRoles)
 	}
+}
+
+// managedRoleIndex keys a projected spec's managed roles by name so assertions
+// don't depend on slice position.
+func managedRoleIndex(t *testing.T, spec map[string]any) map[string]map[string]any {
+	t.Helper()
+	managed, ok := spec["managed"].(map[string]any)
+	if !ok {
+		t.Fatalf("spec has no managed block: %v", spec["managed"])
+	}
+	out := map[string]map[string]any{}
+	for _, r := range managed["roles"].([]any) {
+		role := r.(map[string]any)
+		out[role["name"].(string)] = role
+	}
+	return out
 }
 
 func TestScheduledBackupSpec(t *testing.T) {

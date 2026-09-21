@@ -323,18 +323,60 @@ func canonicalNamespace(objMeta *metav1.ObjectMeta) bool {
 	return ws != "" && objMeta.Namespace == ws
 }
 
-// managedRoles projects additional Database users onto CNPG spec.managed.roles —
-// login roles ensured present, each with its password read from the referenced
-// Secret (created by bex-api). DeletedUsers are projected as ensure:absent so CNPG
-// drops the live PostgreSQL role (codex #8). Returns nil for no roles (so
-// spec.managed is omitted).
-func managedRoles(users []appv1alpha1.DatabaseUser, deletedUsers []string) []any {
-	if len(users) == 0 && len(deletedUsers) == 0 {
+// insightsMonitorRole is the PostgreSQL predefined role that makes the database
+// owner able to read the activity the Insights surface is built to display.
+//
+// pg_stat_activity.query and pg_stat_statements.query are masked as
+// `<insufficient privilege>` for every backend owned by a DIFFERENT role unless
+// the caller holds pg_monitor (or is superuser). The insights path dials the
+// tenant database as the owner (insights.go runInsight → the `-app` Secret's
+// uri), so without this grant Active processes and Top queries render nothing
+// but mask literals — w4/m115, observed live 2026-09-19 as 34 masked cells.
+//
+// pg_monitor is read-only by construction: it is the union of pg_read_all_stats,
+// pg_read_all_settings and pg_read_all_data-adjacent *stat* visibility. It
+// confers no DDL/DML power, and the insights connection keeps its own read-only
+// envelope (read-only transaction + statement timeout) regardless.
+const insightsMonitorRole = "pg_monitor"
+
+// managedRoles projects the database owner plus any additional Database users
+// onto CNPG spec.managed.roles.
+//
+// The owner is always projected, ensure:present, as a member of pg_monitor —
+// declarative, so it converges on EXISTING databases at the next reconcile and
+// needs no separate backfill. It deliberately carries no passwordSecret: CNPG
+// only assigns a NULL password to roles it CREATES without one, and the owner
+// always already exists (bootstrap.initdb creates it, or a restored base backup
+// carries it), so the tenant's live credentials are left untouched. Naming the
+// CNPG-generated `-app` Secret here would instead make the projection depend on
+// a Secret the recovery bootstrap path does not always produce.
+//
+// Additional users are login roles ensured present, each with its password read
+// from the referenced Secret (created by bex-api). DeletedUsers are projected as
+// ensure:absent so CNPG drops the live PostgreSQL role (codex #8).
+//
+// Note: CNPG revokes memberships not listed in inRoles, so the owner's role
+// memberships are bex-owned from here on (ADR009). Returns nil only when there
+// is nothing at all to project.
+func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers []string) []any {
+	if owner == "" && len(users) == 0 && len(deletedUsers) == 0 {
 		return nil
 	}
-	roles := make([]any, 0, len(users)+len(deletedUsers))
-	present := make(map[string]struct{}, len(users))
+	roles := make([]any, 0, len(users)+len(deletedUsers)+1)
+	present := make(map[string]struct{}, len(users)+1)
+	if owner != "" {
+		present[owner] = struct{}{}
+		roles = append(roles, map[string]any{
+			"name":    owner,
+			"ensure":  "present",
+			"login":   true,
+			"inRoles": []any{insightsMonitorRole},
+		})
+	}
 	for _, u := range users {
+		if _, dup := present[u.Name]; dup {
+			continue
+		}
 		present[u.Name] = struct{}{}
 		role := map[string]any{"name": u.Name, "ensure": "present", "login": true}
 		if u.SecretName != "" {
@@ -476,7 +518,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	if p.plan.Backup && p.store != nil {
 		spec["plugins"] = []any{barmanCloudPlugin(p.backupServerName, true)}
 	}
-	if roles := managedRoles(p.users, p.deletedUsers); roles != nil {
+	if roles := managedRoles(p.owner, p.users, p.deletedUsers); roles != nil {
 		spec["managed"] = map[string]any{"roles": roles}
 	}
 	return spec

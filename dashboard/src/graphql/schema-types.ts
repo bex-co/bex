@@ -528,6 +528,7 @@ export type DatabaseProcess = {
   __typename: 'DatabaseProcess';
   applicationName: Maybe<Scalars['String']['output']>;
   durationSeconds: Maybe<Scalars['Int']['output']>;
+  masked: Maybe<Scalars['Boolean']['output']>;
   pid: Maybe<Scalars['Int']['output']>;
   query: Maybe<Scalars['String']['output']>;
   state: Maybe<Scalars['String']['output']>;
@@ -585,6 +586,7 @@ export type DatabaseTableScan = {
 export type DatabaseTopQuery = {
   __typename: 'DatabaseTopQuery';
   calls: Maybe<Scalars['Int']['output']>;
+  masked: Maybe<Scalars['Boolean']['output']>;
   meanTimeMs: Maybe<Scalars['Float']['output']>;
   query: Maybe<Scalars['String']['output']>;
   rows: Maybe<Scalars['Int']['output']>;

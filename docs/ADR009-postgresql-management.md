@@ -230,6 +230,16 @@ Every reconcile projects `pg_stat_statements.track=all` plus CNPG's dedicated `s
 
 Production-equivalent proof on 2026-07-16 used a disposable `dev-8-m16/m16-pgstat-proof` CNPG cluster created with the old spec: `pg_extension` initially returned zero `pg_stat_statements` rows. Creating the matching bex `Database` caused an ordinary reconcile to add `track=all` and the preload library; CNPG rolled the one instance, created the extension, returned the Database to `Ready`, and `pg_stat_statements` contained 30 query rows. The Database and proof namespace were then deleted successfully.
 
+### Insights visibility: the owner holds `pg_monitor` (w4/m115)
+
+Loading `pg_stat_statements` is not enough to make Insights readable. PostgreSQL masks `pg_stat_activity.query` and `pg_stat_statements.query` as the literal `<insufficient privilege>` for every backend owned by a _different_ role unless the reader holds `pg_monitor` (or is superuser). The insights path dials the tenant database as the database **owner** — the unprivileged app user from the CNPG `<cluster>-app` Secret's `uri` — so on 2026-09-19 a live database with recent SQL-console activity rendered 9 process rows and 25 top-query rows with all 34 Query cells masked, while Storage, Table scans and Parameters on the same page were fine.
+
+**Decision: the operator projects the database owner into CNPG `spec.managed.roles` as a member of `pg_monitor`.** `pg_monitor` is a read-only predefined role — it widens what the owner can _see_ in the statistics views and confers no DDL/DML power — and the insights connection keeps its own envelope regardless (`default_transaction_read_only=on` plus the statement timeout pinned at session startup, asserted by test). Because it is declarative and re-projected on every reconcile, it converges on **existing** databases with no separate backfill pass.
+
+Two deliberate details. The owner role carries **no `passwordSecret`**: CNPG only assigns a NULL password to roles it _creates_ without one, and the owner always already exists (`bootstrap.initdb` creates it, or a restored base backup carries it), so tenant credentials are untouched — whereas naming the `-app` Secret would make the projection depend on a Secret the recovery bootstrap does not always produce. And because CNPG revokes memberships not listed in `inRoles`, the owner's role memberships are bex-owned from here on; a membership granted out of band inside the database will be revoked at the next reconcile.
+
+Honest degradation is the second half. `<insufficient privilege>` is never republished as query text: the API blanks the field and sets `masked: true` on the process/top-query object (REST, GraphQL and MCP all carry it), and the dashboard renders a "Hidden" cell plus one per-section explanation, keeping unmasked rows and every real statistic beside them visible. The dashboard also still treats the bare literal as masked, so an older bex-api cannot leak it either.
+
 ## HA · failover · read replicas (w1/m22)
 
 Shipped 2026-07-12. All three Render fields verified against the live API ([render-artifacts/postgres-ha.md](render-artifacts/postgres-ha.md)):

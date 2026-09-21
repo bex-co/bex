@@ -19,10 +19,13 @@ package postgres
 import (
 	"context"
 	"errors"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/graphql-go/graphql"
 	"github.com/jackc/pgx/v5"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -495,5 +498,103 @@ func TestOperatorManagedParametersAreRefused(t *testing.T) {
 		"work_mem":                 "4MB",
 	}); err != nil {
 		t.Fatalf("shared_preload_libraries must still be dropped, not refused: %v", err)
+	}
+}
+
+// TestMaskedQueryTextNeverReachesASurface pins w4/m115's honest-degradation
+// half. PostgreSQL substitutes `<insufficient privilege>` for the query text of
+// backends owned by another role, and before this fix the placeholder was
+// carried through `strVal` untouched — the dashboard rendered it verbatim in 34
+// cells on 2026-09-19. The mapping must fold it into Masked with an empty Query
+// so no surface (REST/GraphQL/MCP/dashboard) can mistake it for SQL, while the
+// statistics beside it stay real.
+func TestMaskedQueryTextNeverReachesASurface(t *testing.T) {
+	procs := processViews([][]any{
+		{int32(11), "other_user", "psql", "active", pgInsufficientPrivilege, "", "", int32(4)},
+		{int32(12), "d_user", "bex", "active", "SELECT 1", "Client", "ClientRead", int32(0)},
+	})
+	if len(procs) != 2 {
+		t.Fatalf("processViews => %d rows, want 2", len(procs))
+	}
+	if !procs[0].Masked || procs[0].Query != "" {
+		t.Errorf("masked process = %+v, want Masked with empty Query", procs[0])
+	}
+	// The rest of a masked row is genuine and must survive.
+	if procs[0].PID != 11 || procs[0].UserName != "other_user" || procs[0].DurationSeconds != 4 {
+		t.Errorf("masked process lost its real columns: %+v", procs[0])
+	}
+	if procs[1].Masked || procs[1].Query != "SELECT 1" {
+		t.Errorf("visible process = %+v, want the real query unflagged", procs[1])
+	}
+
+	top := topQueryViews([][]any{
+		{pgInsufficientPrivilege, int64(7), 12.5, 1.75, int64(3), int64(9), int64(1)},
+		{"SELECT 2", int64(1), 1.0, 1.0, int64(1), int64(0), int64(0)},
+	})
+	if len(top) != 2 {
+		t.Fatalf("topQueryViews => %d rows, want 2", len(top))
+	}
+	if !top[0].Masked || top[0].Query != "" {
+		t.Errorf("masked top query = %+v, want Masked with empty Query", top[0])
+	}
+	if top[0].Calls != 7 || top[0].MeanTimeMs != 1.75 {
+		t.Errorf("masked top query lost its real statistics: %+v", top[0])
+	}
+	if top[1].Masked || top[1].Query != "SELECT 2" {
+		t.Errorf("visible top query = %+v, want the real query unflagged", top[1])
+	}
+
+	// A query that merely CONTAINS the placeholder is real SQL, not a mask.
+	embedded := topQueryViews([][]any{
+		{"SELECT '" + pgInsufficientPrivilege + "'", int64(1), 1.0, 1.0, int64(1), int64(0), int64(0)},
+	})
+	if embedded[0].Masked {
+		t.Errorf("embedded placeholder must not be treated as masked: %+v", embedded[0])
+	}
+}
+
+// TestInsightConnectionKeepsItsReadOnlyRails asserts the least-privilege half of
+// w4/m115: granting the owner pg_monitor widens what it can SEE, never what the
+// insights path can DO. The connection the insight verbs dial must still open
+// read-only with the insights statement timeout pinned at session startup.
+func TestInsightConnectionKeepsItsReadOnlyRails(t *testing.T) {
+	cfg, err := buildQueryConnConfig("postgres://u:p@localhost:5432/db?sslmode=disable",
+		queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap}, true)
+	if err != nil {
+		t.Fatalf("buildQueryConnConfig => %v", err)
+	}
+	if got := cfg.RuntimeParams["default_transaction_read_only"]; got != "on" {
+		t.Errorf("default_transaction_read_only = %q, want on", got)
+	}
+	want := strconv.FormatInt(queryStatementTimeout.Milliseconds(), 10)
+	if got := cfg.RuntimeParams["statement_timeout"]; got != want {
+		t.Errorf("statement_timeout = %q, want %q", got, want)
+	}
+}
+
+// TestMaskedIsCarriedByEveryInsightSurface pins the w4/m115 signal across the
+// three bex-api surfaces. REST and MCP serialize the view structs directly, so
+// their contract is the JSON tag; GraphQL needs its own registered field, which
+// is the one that can silently drift.
+func TestMaskedIsCarriedByEveryInsightSurface(t *testing.T) {
+	for name, typ := range map[string]reflect.Type{
+		"ProcessView":  reflect.TypeOf(ProcessView{}),
+		"TopQueryView": reflect.TypeOf(TopQueryView{}),
+	} {
+		f, ok := typ.FieldByName("Masked")
+		if !ok {
+			t.Fatalf("%s has no Masked field", name)
+		}
+		if got := f.Tag.Get("json"); got != "masked,omitempty" {
+			t.Errorf("%s.Masked json tag = %q, want masked,omitempty", name, got)
+		}
+	}
+	for name, obj := range map[string]*graphql.Object{
+		"DatabaseProcess":  processViewGQLType,
+		"DatabaseTopQuery": topQueryViewGQLType,
+	} {
+		if _, ok := obj.Fields()["masked"]; !ok {
+			t.Errorf("GraphQL %s is missing the masked field", name)
+		}
 	}
 }

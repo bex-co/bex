@@ -315,6 +315,7 @@ query DatabaseProcesses($id: String!) {
     applicationName
     state
     query
+    masked
     waitEventType
     waitEvent
     durationSeconds
@@ -324,6 +325,7 @@ query DatabaseProcesses($id: String!) {
 query DatabaseTopQueries($id: String!) {
   databaseTopQueries(id: $id) {
     query
+    masked
     calls
     totalTimeMs
     meanTimeMs

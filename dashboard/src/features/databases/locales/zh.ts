@@ -998,6 +998,17 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "暂无查询统计 — 此集群可能未启用 pg_stat_statements。",
     description: "Insights top-queries empty state",
   },
+  "databases.insightsQueryHidden": {
+    message: "已隐藏",
+    description:
+      "Insights — query cell for a row whose SQL PostgreSQL hides from the reading role",
+  },
+  "databases.insightsMaskedNote": {
+    message:
+      "部分记录属于其他数据库角色，PostgreSQL 不向此视图显示它们的 SQL。该行的其余信息均为真实数据。",
+    description:
+      "Insights — explanation shown when at least one process or top-query row has masked SQL",
+  },
   "databases.insightsTableScansTitle": {
     message: "表扫描",
     description: "Insights panel — pg_stat_user_tables sub-section heading",
