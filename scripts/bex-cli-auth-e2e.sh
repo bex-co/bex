@@ -64,7 +64,13 @@ create_identity() {
   if [ -n "$existing" ]; then
     curl -sf -X DELETE "$KRATOS_ADMIN_URL/admin/identities/$existing" >/dev/null
   fi
-  body="$(jq -nc --arg email "$CLI_USER_EMAIL" --arg password "$CLI_USER_PASSWORD" '{schema_id:"default",traits:{email:$email},credentials:{password:{config:{password:$password}}}}')"
+  # The address must be created VERIFIED. Kratos is configured to require a
+  # verified address before it issues a session, so an admin-created identity
+  # with an unverified address authenticates correctly and is then refused with
+  # `session_verified_address_required` — which the login UI renders as the
+  # generic "provided credentials are invalid", making it look like a wrong
+  # password rather than an unverified mailbox.
+  body="$(jq -nc --arg email "$CLI_USER_EMAIL" --arg password "$CLI_USER_PASSWORD" '{schema_id:"default",traits:{email:$email},credentials:{password:{config:{password:$password}}},verifiable_addresses:[{value:$email,verified:true,via:"email",status:"completed"}]}')"
   curl -sf -X POST -H 'Content-Type: application/json' -d "$body" \
     "$KRATOS_ADMIN_URL/admin/identities" | jq -e '.id' >/dev/null
 }
