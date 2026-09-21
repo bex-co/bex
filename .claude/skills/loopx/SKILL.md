@@ -12,7 +12,10 @@ Parse the target workstream from `$ARGUMENTS` (e.g. `w1`). If `$ARGUMENTS` is em
 ## Preconditions (verify once, up front)
 
 1. `git branch --show-current` is `main`. If not, STOP and ask (same rule as `/ship`).
-2. `git status` — note pre-existing uncommitted changes. Do not sweep unrelated changes into an item's ship; if the tree is dirty with work you didn't do, surface it and ask before starting.
+2. `git status` — note pre-existing uncommitted changes, then keep going. Do not sweep unrelated changes into an item's ship: stage files by name, never `git add -A`.
+   - **Uncommitted `.pm` board work is never a reason to stop.** Teammate sessions file milestones and notes into the same workstream continuously, often mid-run; that is a queue refresh, not a dirty tree. Pick the new items up in the next queue refresh and drain them like any other. If a teammate's filing is still uncommitted when you land your own outcome, commit it as its own `docs(pm): file <items>` commit first — separate from yours, so authorship stays legible — then ship your work. Never edit the content of an item you did not file except to record your own verdict on it.
+   - **You share one working tree with those sessions.** Before each board write, re-read the file you are about to edit (it may have changed since you last read it) and apply the smallest edit that lands your verdict. That is the whole mitigation — it does not require coordination, a pause, or a question.
+   - Only genuinely foreign **source** changes — uncommitted edits under `lego/`, `dashboard/`, `infra/`, `scripts/` that no one in this session made and no `.pm` item explains — are worth surfacing. Say what they are, leave them unstaged, and drain around them; stop only if they make the tree unshippable (see **Exit**).
 3. The workstream `.pm/<wN>/README.md` exists. If not, STOP and report.
 4. Read `.pm/DO_NOT_DO.md` once — it governs every triage verdict below.
 
@@ -110,7 +113,7 @@ Invoke **`/ship`**. Because you made the changes this session, `/ship` runs sess
 
 ### 5. Continue
 
-Refresh the queue (the board changed) and loop back to triage the next item.
+Refresh the queue (the board changed) and loop back to triage the next item. The refresh reads the board as it is **now**, so items a teammate filed since you started are simply part of the queue — triage them in the normal order alongside the ones you began with.
 
 ## Exit
 
@@ -121,6 +124,8 @@ Stop and give a final summary when any of these holds:
 - **Budget/interrupt:** the user interrupts, or you've run long enough that a checkpoint is warranted — report progress (done, in-flight, remaining) so the run resumes cleanly.
 
 **Not exit conditions**, and never a reason to pause mid-drain: an item that is a record rather than a task; an item you yourself withdrew or filed earlier; a duplicate; an empty note; an item already fixed upstream; a verdict that feels unusual. Each of those has a row in the triage tables — apply it and keep going.
+
+Also **never** a reason to pause: **new work arriving while you drain.** A teammate session filing fresh milestones or notes into `<wN>` — uncommitted, half-written, or landing seconds ago — is the queue doing its job, not a hazard. A peer session showing `busy` against the same workstream changes nothing either. Refresh the queue, take the new items in order, and drain them. A backlog that grows during the run means the run continues; it does not mean the run stops to ask about it.
 
 ## Guardrails
 
