@@ -518,6 +518,12 @@ func TestLegacyLabelLessAppNameMetricsCompatibility(t *testing.T) {
 // unavailable, and on a metric that has no per-request host/path axis it is a
 // named ErrBadRequest. It never silently returns whole-service Prometheus numbers
 // dressed up as host/path-scoped (w5/m58, retiring the w3/m12 blanket refusal).
+//
+// Since w4/m119 Loki also serves the UNFILTERED http_requests read, for
+// exactness rather than for the host/path axis — so the invariant this test
+// pins is no longer "Loki only with a filter" but the routing table in
+// TestUnfilteredRequestCountsComeFromTheAccessLog below. What stays true here:
+// http_latency without a filter, and bandwidth, never leave Prometheus.
 func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 	var promCalled, lokiCalled bool
 	prom := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
@@ -526,8 +532,8 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 	}
 	loki := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
 		lokiCalled = true
-		if r.Host == "" && r.Path == "" {
-			t.Errorf("loki source reached without a host/path filter: %+v", r)
+		if r.Host == "" && r.Path == "" && r.Metric != MetricHTTPRequests {
+			t.Errorf("loki source reached without a host/path filter on %s: %+v", r.Metric, r)
 		}
 		return []MetricSeries{{Points: []MetricPoint{{Value: 3}}}}, nil
 	}
@@ -572,9 +578,13 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 		t.Errorf("host filter with no Loki source: want ErrLogStoreUnavailable, got %v", err)
 	}
 
-	// The same queries without host/path still answer from Prometheus.
+	// The same queries without host/path still answer — http_requests from the
+	// access log (w4/m119), http_latency from Prometheus.
 	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCode: "5xx"}); err != nil {
 		t.Errorf("unfiltered http_requests should succeed, got %v", err)
+	}
+	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPLatency}); err != nil {
+		t.Errorf("unfiltered http_latency should succeed, got %v", err)
 	}
 	called := false
 	svc.RequestMetrics = func(context.Context, RequestMetricsRequest) ([]MetricSeries, error) {
@@ -1423,4 +1433,150 @@ func TestStaticSiteStatusCodeDiscoveryUsesRouterSeries(t *testing.T) {
 	if len(instances) != 0 {
 		t.Errorf("instances = %v, want empty for a static site", instances)
 	}
+}
+
+// TestUnfilteredRequestCountsComeFromTheAccessLog pins w4/m119.
+//
+// w4/m108 replaced sum(rate(…)) with sum(increase(…)) so http_requests would be
+// a count rather than a per-second rate. It is a count — but not an exact one:
+// Prometheus's increase() scales the first-to-last counter delta by
+// window/sampled-duration, so a burst occupying part of a bucket is
+// extrapolated by however the scrapes happen to land. Live on 2026-09-20, 25
+// curls read back 27.795666… in one query alignment and 6.666666… in another,
+// while GET /v1/logs?type=request returned exactly nlogs: 25. Neither value is
+// an integer; neither is within ±1 of the truth.
+//
+// There is no extrapolation-free counter-increase in PromQL, so the exact count
+// has to come from the access log: count_over_time over the same lines the Logs
+// tab shows. That primitive already existed for host/path-filtered reads; the
+// unfiltered read now uses it too. This test pins the whole routing table,
+// because getting one cell wrong is how the bug came back.
+func TestUnfilteredRequestCountsComeFromTheAccessLog(t *testing.T) {
+	const promValue, lokiValue = 27.795666666666666, 25.0
+
+	type call struct{ prom, loki *RequestMetricsRequest }
+	newRouted := func() (*call, *Service) {
+		seen := &call{}
+		prom := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+			seen.prom = &r
+			return []MetricSeries{{Points: []MetricPoint{{Value: promValue}}}}, nil
+		}
+		loki := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+			seen.loki = &r
+			return []MetricSeries{{Points: []MetricPoint{{Value: lokiValue}}}}, nil
+		}
+		svc := newService(nil, prom, sampleApp("web"), podFor("web", webInst))
+		svc.RequestLogMetrics = loki
+		return seen, svc
+	}
+
+	for _, tc := range []struct {
+		name     string
+		query    MetricQuery
+		wantLoki bool
+	}{
+		// The finding itself: an unfiltered count must be the log's count.
+		{"unfiltered http_requests", MetricQuery{App: "web", Metric: MetricHTTPRequests}, true},
+		// A status breakdown is the shape the 6.67 capture used; both sources
+		// speak the same group-by vocabulary, so routing must not depend on it.
+		{"http_requests grouped by status", MetricQuery{App: "web", Metric: MetricHTTPRequests, GroupBy: "status"}, true},
+		{"http_requests filtered by status", MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCode: "2xx"}, true},
+		// Percentiles come from Traefik's histogram; rate() is correct there and
+		// the access log's unwrapped latencies are the filtered path's answer,
+		// not a replacement for the histogram.
+		{"unfiltered http_latency", MetricQuery{App: "web", Metric: MetricHTTPLatency}, false},
+		// Bandwidth has no per-request line to count.
+		{"bandwidth", MetricQuery{App: "web", Metric: MetricBandwidth}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			seen, svc := newRouted()
+			series, err := svc.Metrics(context.Background(), tc.query)
+			if err != nil {
+				t.Fatalf("Metrics: %v", err)
+			}
+			if tc.wantLoki {
+				if seen.loki == nil {
+					t.Fatal("read did not reach the access-log source")
+				}
+				if seen.prom != nil {
+					t.Error("an exact count must not also hit the Traefik counter")
+				}
+				if got := series[0].Points[0].Value; got != lokiValue {
+					t.Errorf("value = %v, want the access log's %v", got, lokiValue)
+				}
+				return
+			}
+			if seen.loki != nil {
+				t.Fatalf("%s must not be served from the access log: %+v", tc.query.Metric, seen.loki)
+			}
+			if got := series[0].Points[0].Value; got != promValue {
+				t.Errorf("value = %v, want Prometheus's %v", got, promValue)
+			}
+		})
+	}
+
+	// A static site has no per-App Service for Traefik's per-service counters to
+	// name — w4/m113 worked around that with router-scoped selectors. The access
+	// log has no such problem (its lines carry the App), so the exact-count path
+	// must serve static sites too rather than falling back to the workaround.
+	t.Run("static site", func(t *testing.T) {
+		seen := &call{}
+		prom := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+			seen.prom = &r
+			return nil, nil
+		}
+		loki := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+			seen.loki = &r
+			return []MetricSeries{{Points: []MetricPoint{{Value: lokiValue}}}}, nil
+		}
+		app := sampleApp("site")
+		app.Spec.Type = appv1alpha1.TypeStaticSite
+		svc := newService(nil, prom, app)
+		svc.RequestLogMetrics = loki
+		if _, err := svc.Metrics(context.Background(), MetricQuery{App: "site", Metric: MetricHTTPRequests}); err != nil {
+			t.Fatalf("static-site request count: %v", err)
+		}
+		if seen.loki == nil || seen.prom != nil {
+			t.Errorf("static-site count routing: loki=%v prom=%v", seen.loki != nil, seen.prom != nil)
+		}
+	})
+
+	// Loki wired but failing must not blank a chart that works today: the
+	// counter's approximation IS the pre-w4/m119 behavior, so falling back is
+	// never worse than what it replaces. Unlike a host/path read, Prometheus
+	// can answer this one.
+	t.Run("access-log read fails", func(t *testing.T) {
+		promHit := false
+		prom := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+			promHit = true
+			return []MetricSeries{{Points: []MetricPoint{{Value: promValue}}}}, nil
+		}
+		svc := newService(nil, prom, sampleApp("web"), podFor("web", webInst))
+		svc.RequestLogMetrics = func(context.Context, RequestMetricsRequest) ([]MetricSeries, error) {
+			return nil, errors.New("loki unreachable")
+		}
+		series, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests})
+		if err != nil {
+			t.Fatalf("a failing access-log read must fall back, not error: %v", err)
+		}
+		if !promHit || series[0].Points[0].Value != promValue {
+			t.Errorf("fallback did not reach the counter: hit=%v series=%+v", promHit, series)
+		}
+	})
+
+	// Loki unwired at all (BEX_LOKI_URL unset) keeps the counter path.
+	t.Run("no access-log source", func(t *testing.T) {
+		promHit := false
+		prom := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+			promHit = true
+			return []MetricSeries{{Points: []MetricPoint{{Value: promValue}}}}, nil
+		}
+		svc := newService(nil, prom, sampleApp("web"), podFor("web", webInst))
+		if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests}); err != nil {
+			t.Fatalf("Metrics: %v", err)
+		}
+		if !promHit {
+			t.Error("with no access-log source the counter must still serve the count")
+		}
+	})
 }
