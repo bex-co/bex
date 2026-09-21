@@ -35,6 +35,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Monthly USD price shown on a resource plan card; price is an API-supplied decimal without the currency symbol",
   },
+  "common.protectedConfirmationRetry": {
+    message: "确认并保存",
+    description:
+      "Confirm button in the protected environment retry dialog raised by a settings save",
+  },
   "common.protectedConfirmationCancel": {
     message: "取消",
     description:

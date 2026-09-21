@@ -8,8 +8,14 @@ mutation SetImage(
   $id: String!
   $image: String!
   $registryCredentialId: String
+  $confirm: String
 ) {
-  setImage(id: $id, image: $image, registryCredentialId: $registryCredentialId) {
+  setImage(
+    id: $id
+    image: $image
+    registryCredentialId: $registryCredentialId
+    confirm: $confirm
+  ) {
     id
     repo
     branch

@@ -3,8 +3,13 @@
 mutation SetMaintenanceMode(
   $id: String!
   $maintenanceMode: MaintenanceModeInput!
+  $confirm: String
 ) {
-  setMaintenanceMode(id: $id, maintenanceMode: $maintenanceMode) {
+  setMaintenanceMode(
+    id: $id
+    maintenanceMode: $maintenanceMode
+    confirm: $confirm
+  ) {
     id
     maintenanceMode {
       enabled

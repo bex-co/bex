@@ -4,6 +4,11 @@ import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { useAskForProtectedConfirmation } from "@/common/providers/protected-retry-context";
+import {
+  ProtectedConfirmationDismissed,
+  withProtectedRetry,
+} from "@/features/services/lib/protected-confirmation";
 
 /**
  * The shape every single-field service setting shares: fire one mutation, toast
@@ -37,15 +42,26 @@ export function useFieldMutation<
   const { t } = useTranslations();
   const [mutate] = useMutation(document);
   const [busy, setBusy] = useState(false);
+  const askForConfirmation = useAskForProtectedConfirmation();
 
   const run = useCallback(
     async (...args: TArgs) => {
+      const variables = toVariables(...args);
       setBusy(true);
       try {
-        await mutate({ variables: toVariables(...args) });
+        // w4/m126: a protected environment now guards the settings that
+        // repoint a service or redefine how it is built and started, and it
+        // answers with the phrase that clears the refusal. withProtectedRetry
+        // asks for that exact phrase and retries once; the dashboard never
+        // rebuilds it (ADR032), so a verb-word change in bex-api cannot
+        // desynchronize the dialog.
+        await withProtectedRetry(askForConfirmation, (confirm) =>
+          mutate({ variables: { ...variables, confirm } }),
+        );
         toast.success(t(keys.success));
         return true;
       } catch (err) {
+        if (err instanceof ProtectedConfirmationDismissed) return false;
         toast.error(mutationErrorMessage(err, t(keys.error)));
         return false;
       } finally {
@@ -54,7 +70,7 @@ export function useFieldMutation<
     },
     // toVariables and keys are call-site literals, stable per hook instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mutate, t],
+    [mutate, t, askForConfirmation],
   );
 
   return { run, busy };

@@ -118,6 +118,7 @@ type updateServiceArgs struct {
 	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the inbound allowlist for a web service or static site with these {cidrBlock, description} entries; pass [] to clear it"`
 	IPAllowListCidrs        *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	Autoscaling             *autoscalingArg          `json:"autoscaling,omitempty" jsonschema:"enable or update autoscaling: the operator holds the target utilization by moving replicas within [minInstances, maxInstances]. Use disable_autoscaling to turn it off"`
+	Confirm                 string                   `json:"confirm,omitempty" jsonschema:"the confirmation phrase, required only when the service belongs to a protected environment and the change repoints its source, redefines how it is built or started, or takes it offline. Do not guess it: make the call without this argument first and copy the exact phrase back out of the refusal"`
 }
 
 // autoscalingArg is the autoscaling object update_service accepts. It is the
@@ -729,7 +730,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		Name:        "update_service",
 		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (repo, image, branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). Setting repo or image switches source kind without deploying; the next deploy uses the new source. rootDir and dockerfilePath trigger a fresh build. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to preview it (valid alone or with plan only). Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateServiceArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.applyServicePatch(ctx, in))
+		return renderServiceResult(s.applyServicePatch(core.WithConfirm(ctx, in.Confirm), in))
 	})
 
 }
