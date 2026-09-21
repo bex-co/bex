@@ -24,6 +24,7 @@ import { SuspendServiceCard } from "@/features/services/components/suspend-servi
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import { StaticSiteSection } from "@/features/services/components/static-site-section";
 import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
+import { ServicePortRow } from "@/features/services/components/service-port-row";
 import { ServiceNotificationsRow } from "@/features/services/components/service-notifications-row";
 import { DisplayNameRow } from "@/features/services/components/display-name-row";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
@@ -91,6 +92,15 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   // that may turn out not to apply beats a section that pops in late, and the
   // rows inside are disabled until the service arrives anyway (w6/027).
   const healthChecks = service ? servesHttp(service.type) : true;
+  // The port section (w4/m121/t003) is gated by the SAME predicate the backend
+  // uses for setPort — `servesHttp`, i.e. web_service/private_service only.
+  // background_worker, cron_job and static_site bind no port and bex-api
+  // refuses a write to theirs, so they get no control here.
+  //
+  // Unlike health checks this waits for the resolved type rather than defaulting
+  // to shown: a portless service must never flash a port card while loading,
+  // which is the whole point of the exclusion.
+  const showPort = service ? servesHttp(service.type) : false;
   // A Dockerfile build (docker runtime, or the legacy dockerfile builder) builds
   // from a Dockerfile, not a Build Command — Render shows Dockerfile Path there
   // instead. Every other repo-backed build is native and carries a Build Command.
@@ -113,6 +123,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   if (registryCredentialEligible)
     navigationSections.push("registry-credential");
   navigationSections.push("notifications");
+  if (showPort) navigationSections.push("port");
   if (healthChecks) navigationSections.push("health-checks");
   if (service && isWebService(service)) navigationSections.push("maintenance");
   if (cron || !service?.repo) navigationSections.push("deploy-hook");
@@ -354,6 +365,26 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             </CardContent>
           </Card>
         </section>
+
+        {/* Port (w4/m121/t003): the container port bex routes to and injects as
+            $PORT — the setting the reserved-PORT refusal names. It sits beside
+            Health Checks, the other routing-adjacent setting, and is gated by
+            the same web/private predicate. */}
+        {showPort && (
+          <section id="port" className="scroll-mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("services.settingsPortTitle")}</CardTitle>
+                <CardDescription>
+                  {t("services.settingsPortDescription")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ServicePortRow serviceId={serviceId} port={service?.port} />
+              </CardContent>
+            </Card>
+          </section>
+        )}
 
         {/* Health Checks (Render places this section after Notifications, w5/m52):
             the HTTP path bex polls before routing traffic. web_service /

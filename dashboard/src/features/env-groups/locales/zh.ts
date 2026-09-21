@@ -38,7 +38,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Initial environment variable key label",
   },
   "envGroups.reservedKey": {
-    message: "{key} 由 bex 依据服务端口设置，请改为修改服务端口。",
+    message: "{key} 由 bex 依据服务端口设置，请改为修改服务的端口字段。",
     description:
       "Initial environment variable validation message for a key bex reserves (PORT)",
   },

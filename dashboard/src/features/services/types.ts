@@ -181,6 +181,15 @@ export interface ServiceView {
    */
   healthCheckPath: string | null;
   /**
+   * The container port bex routes to and injects as `$PORT` (`spec.port`,
+   * w4/m121). Only web_service and private_service bind one — the backend
+   * reports 0/absent for background_worker, cron_job and static_site, and
+   * refuses a write to them — so this is null for those types and null when
+   * not selected (list query). Optional like `updatedAt`: the projection
+   * always sets it, but older list fixtures predate the field.
+   */
+  port?: number | null;
+  /**
    * Seconds Kubernetes waits after SIGTERM before SIGKILL (1-300; default 30).
    * Only web/private/background-worker services expose this setting.
    */

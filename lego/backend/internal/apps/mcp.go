@@ -107,6 +107,7 @@ type updateServiceArgs struct {
 	DockerfilePath          *string                  `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile relative to rootDir; empty restores Dockerfile. Triggers a fresh build"`
 	HealthCheckPath         *string                  `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness and liveness; must start with /. Empty CLEARS the path, switching the service to a TCP check that only verifies the process is listening — the right choice for a service with no cheap 2xx route. Probed every 10s, so point it at a cheap endpoint. No effect on cron_job or background_worker"`
 	PreDeployCommand        *string                  `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new revision's image before it serves traffic (typically a database migration); a non-zero exit fails the deploy and leaves the previous revision serving. Empty clears the step. No effect on cron_job or static_site"`
+	Port                    *int32                   `json:"port,omitempty" jsonschema:"the port the container listens on, which the platform injects as PORT and targets with the Service, Ingress and health probe (1-65535). Changing it rolls the pods. web_service and private_service only — a worker or cron job has no listener, and a static site is served on the platform's own port. This is the setting bex's reserved-PORT refusal points at: set the port here rather than as an environment variable"`
 	MaxShutdownDelaySeconds *int32                   `json:"maxShutdownDelaySeconds,omitempty" jsonschema:"seconds after SIGTERM before Kubernetes sends SIGKILL (1-300; default 30); web, private, and background-worker services"`
 	AutoDeploy              *bool                    `json:"autoDeploy,omitempty" jsonschema:"true = a signed git push to the tracked branch redeploys (Render's Auto-Deploy); false = only explicit deploys. Setting it does not itself redeploy"`
 	BuildFilter             *buildFilterArg          `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: repository-root-relative globs (paths/ignoredPaths) deciding whether a git push triggers an auto-deploy; ignored wins over included. Pass empty paths and ignoredPaths to clear the filter"`
@@ -823,6 +824,7 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 		BuildCommand:                   in.BuildCommand,
 		StartCommand:                   in.StartCommand,
 		DockerfilePath:                 in.DockerfilePath,
+		Port:                           in.Port,
 		NotifyOnFail:                   in.NotifyOnFail,
 		// MCP-only (divergence): notificationsToSend is an update_service
 		// argument Render's PATCH body has no spelling for; REST's

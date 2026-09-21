@@ -381,6 +381,12 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	details := map[string]any{
 		"numInstances": int(a.Replicas),
 	}
+	// The port is published for the types that have one, beside the
+	// internalAddress whose `<slug>:<port>` suffix used to be the only place a
+	// caller could read it (w4/m121).
+	if a.Port > 0 {
+		details["port"] = int(a.Port)
+	}
 	for _, field := range []struct{ key, value string }{
 		// internalAddress is a documented bex extension (ADR041 D4): Render's REST
 		// has no internal-address field — its consumers derive `<slug>:<port>` from

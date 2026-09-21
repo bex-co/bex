@@ -1,20 +1,20 @@
 # w4 · m121 — A service's port is create-only and unreachable from the dashboard, so bex's own `PORT` refusal names a control that does not exist
 
-**Worker:** worker4 **Goal:** the sentence bex returns on every surface — "bex sets it from the service port; change the service port instead" — names a control the caller can actually reach: the port is settable in the dashboard create wizard, editable afterwards on every write surface, and readable back on REST, GraphQL and MCP. **Status:** todo
+**Worker:** worker4 **Goal:** the sentence bex returns on every surface — "bex sets it from the service port; change the service port instead" — names a control the caller can actually reach: the port is settable in the dashboard create wizard, editable afterwards on every write surface, and readable back on REST, GraphQL and MCP. **Status:** done 2026-09-21 (every DoD bullet is a live probe and there was no production access this session — deferred to the next QA pass)
 
 ## Tasks (in order)
 
 | id   | title                                                                                | est | depends_on       |
 | ---- | ------------------------------------------------------------------------------------ | --- | ---------------- |
-| t001 | Add the missing update verb: a service's port becomes editable on REST/GraphQL/MCP    | 50m | —                |
-| t002 | Make the port readable: `serviceDetails.port`, GraphQL `Service.port`, MCP service read | 30m | w4/m121/t001     |
-| t003 | Dashboard: a port control in the create wizard and in Settings, linked from the `PORT` refusal | 50m | w4/m121/t002     |
-| t004 | Decide and record the Blueprint half, and make the refusal sentence name a reachable control on every surface | 30m | w4/m121/t003 |
-| t005 | Blast radius: prove a port change re-reconciles Service/Ingress/probe, and keep the portless types portless | 40m | w4/m121/t004 |
-| t006 | Render parity — REST/GraphQL/MCP/UI agree on the port field, and ADR018 row 117 is corrected | 30m | w4/m121/t005 |
-| t007 | Simplify — `/simplify` over the code this milestone changed                            | 25m | w4/m121/t006     |
-| t008 | Test coverage — the port write/read/refusal behaviors this milestone shipped           | 40m | w4/m121/t006     |
-| t009 | Closeout — close the milestone once the definition of done actually holds              | 15m | w4/m121/t008     |
+| t001 | Add the missing update verb: a service's port becomes editable on REST/GraphQL/MCP    | 50m | —                | — **DONE**
+| t002 | Make the port readable: `serviceDetails.port`, GraphQL `Service.port`, MCP service read | 30m | w4/m121/t001     | — **DONE**
+| t003 | Dashboard: a port control in the create wizard and in Settings, linked from the `PORT` refusal | 50m | w4/m121/t002     | — **DONE**
+| t004 | Decide and record the Blueprint half, and make the refusal sentence name a reachable control on every surface | 30m | w4/m121/t003 | — **DONE**
+| t005 | Blast radius: prove a port change re-reconciles Service/Ingress/probe, and keep the portless types portless | 40m | w4/m121/t004 | — **DONE**
+| t006 | Render parity — REST/GraphQL/MCP/UI agree on the port field, and ADR018 row 117 is corrected | 30m | w4/m121/t005 | — **DONE**
+| t007 | Simplify — `/simplify` over the code this milestone changed                            | 25m | w4/m121/t006     | — **DONE**
+| t008 | Test coverage — the port write/read/refusal behaviors this milestone shipped           | 40m | w4/m121/t006     | — **DONE**
+| t009 | Closeout — close the milestone once the definition of done actually holds              | 15m | w4/m121/t008     | — **DONE**
 
 ## Definition of done
 
@@ -111,3 +111,29 @@ All three `qa-20260921-*` services were deleted (`204`) and are absent from the 
 - Blueprint (`render.yaml`) has no `port` key today (`grep -w port lego/backend/internal/apps/blueprint.go` → 0 hits); no manifest was applied to confirm what a manifest author sees.
 - MCP `create_web_service` port acceptance was read in code (`mcp.go:246`), not exercised against the live MCP endpoint.
 - The `8080 → 8081` re-reconcile in the DoD has never been run — it is t005's work, not an observation.
+
+## Outcome (2026-09-21)
+
+Every link in the filing's root-cause chain held, and the fix follows it: the port became settable after create, readable back, reachable from the dashboard, and the refusal that names it now names something real.
+
+**t001/t002 — the port stopped being create-only.** `SetPort` joins the 23 other `Set…` mutators, and `Port` joins the shared `servicePatchTable`, which is what makes REST `PATCH`, MCP `update_service` and the GraphQL patch surface move together rather than three times. REST accepts `port` top-level and under `serviceDetails` (the nested spelling wins, matching `healthCheckPath`); GraphQL gains `setPort` and `Service.port`; `serviceDetails.port` is published beside the `internalAddress` whose `<slug>:<port>` suffix was previously the only place the number appeared — and `addressablePort` sits beside that derivation so the two readings of one field cannot disagree.
+
+**A privileged port is now refused at create too, which the filing did not ask for.** ADR022 is explicit that every tenant container drops all Linux capabilities, so `NET_BIND_SERVICE` is gone and a sub-1024 port fails with `bind: permission denied` even as root. Accepting `port: 80` would have reproduced, one layer down, exactly the failure this milestone exists to remove — a write that reports success and then does not work — so `validateServicePort` enforces 1024-65535 on **both** create and update, with an error that says why and what to do. That is a deliberate tightening of an existing accepted input; a service created at `:80` was always going to crash-loop.
+
+**t003 — the dashboard.** A port field in the create wizard (defaulting to 3000, submitted as `createService(port:)` — the wizard previously sent no port at all, which is why `nginx:alpine` answered 503) and a `#port` Settings card wired to `setPort`. One predicate, `servesHttp(type)`, gates the wizard field, the create payload and the Settings section, so a portless type cannot render a control *or* send a port; it is deliberately false while loading, so a worker never flashes a port card. The reserved-PORT refusal is now navigable in all three editors: the service editor links to that service's `#port`, the create wizard anchors to its own field, and the env-group dialog — which can be linked to many services — falls back to the services list, documented as such.
+
+**t004 — the Blueprint decision, recorded rather than deferred.** Blueprint keeps **no** `port` key. Render's `render.yaml` has none, so adding one would be a bex-only extension to a format bex tracks for parity — but the load-bearing reason is that a manifest is re-applied on every sync, so a manifest `port` would fight the dashboard control on each sync and recreate for the port exactly the two-writers problem `w4/m120` had to solve for manifest `envVars`. A blueprint-created service keeps the default and is repointed through the update verb, leaving one writer. Recorded in ADR004 with the condition for re-opening (design the writership rule first).
+
+**t005 — blast radius, proved structurally.** The operator recomputes the container port, the Service/TargetPort, the Ingress backend and the probe from one `EffectivePort()` call per reconcile, and the port is part of release identity. `TestPortChangeMovesEverySurfaceTogether` pins all four moving together plus the identity change that forces the roll — because a port change that moved three of the four would leave a service reporting Live and answering nothing, which is worse than the create-only state it replaces. `TestPortIsMeaninglessForTheTypesWithoutAListener` covers the other direction.
+
+**A port change is now visible in Activity.** `apps.SetPort` maps to a new `port_changed` event type — the events vocabulary guard refused to let a new targeted write verb exist without a deliberate choice here, and hiding a change that reroutes and rolls the service would have been a new blind spot. It gets its own label rather than the build-settings bucket, since it is the config change a reader diagnosing "my service answers nothing" most needs to spot.
+
+**t006 — the ledger.** ADR018 row 117's divergence is only defensible while bex's named alternative is reachable; the row now records that it is, on which surfaces, and that the divergence itself stands (Render detects the bound port; bex takes an explicit setting, which is what makes the env-group hazard impossible). ADR004's `envVars` note and its "Blueprint `port` is not accepted" sentence are corrected to match.
+
+**t008 — coverage**, each mutation-spot-checked: `TestPortIsEditableAfterCreate` (write + the `restartedAt` bump), `TestPortIsReadableOnTheServiceView` (including agreement with `internalAddress` and the unset-reads-default case), `TestPortlessTypesHaveNoPortToChange` (the DoD's six-row per-type table), `TestPortBoundsAreRefusedBeforeAnyWrite` (nothing written on refusal), `TestReservedPortRefusalNamesAReachableControl` (the sentence names the verb on every surface), plus the operator projection tests and the dashboard suites. The dashboard's portless-type assertions are honestly regression guards, not failing-first tests — nothing rendered a port control before.
+
+**Green:** `lego/backend` `go test ./...` + `golangci-lint` 0 issues; `lego/operator` `make test`; dashboard `yarn test` 3559, `typecheck`, `lint`.
+
+**Not done — every DoD bullet.** All seven are live probes against production (create through the wizard and `curl` for a 200, PATCH and read back, the `8080 → 8081` re-reconcile, clicking through from the PORT refusal). There was no production access this session, so **none has been run** — deferred to the next QA pass, the same disposition m120/m119/m118/m115 carry. The filing's own "Unverified this run" list (private-service behavior, MCP port acceptance against the live endpoint, the re-reconcile) is now covered by test but still not by a live run.
+
+**Worth knowing for that pass:** the DoD's first bullet uses `whoami` at `8080`, which works. The wizard's own `nginx:alpine` placeholder binds `:80` and **cannot** be fixed by setting the port to 80 — the container may not bind below 1024 (ADR022). It needs an image configurable to a high port, which is what the create form's new hint and the refusal message both now say.

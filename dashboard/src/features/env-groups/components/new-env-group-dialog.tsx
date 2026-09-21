@@ -32,6 +32,7 @@ import {
   serviceMatchesScope,
 } from "@/features/env-groups/lib/scope";
 import { EnvImportDialog } from "@/features/services/components/env-import-dialog";
+import { ReservedEnvKeyNotice } from "@/features/services/components/reserved-env-key-notice";
 import {
   upsertDotenvEntries,
   type DotenvEntry,
@@ -257,10 +258,7 @@ export function NewEnvGroupDialog({
             autoComplete="off"
           />
           {invalid && !isValidEnvGroupName(name) ? (
-            <p
-              id="env-group-name-invalid"
-              className="text-destructive text-sm"
-            >
+            <p id="env-group-name-invalid" className="text-destructive text-sm">
               {t("envGroups.invalidName")}
             </p>
           ) : null}
@@ -303,9 +301,13 @@ export function NewEnvGroupDialog({
                 {/* bex owns PORT and refuses it server-side (w2/m95 t003) —
                     said the moment it is typed, not only on submit. */}
                 {isReservedEnvKey(variable.key.trim()) ? (
-                  <p className="text-destructive text-xs" role="alert">
-                    {t("envGroups.reservedKey", { key: variable.key.trim() })}
-                  </p>
+                  // A group can be linked to many services (or none yet), so
+                  // there is no single port to send the reader at — the notice
+                  // falls back to the services list (w4/m121/t003).
+                  <ReservedEnvKeyNotice
+                    envKey={variable.key.trim()}
+                    messageKey="envGroups.reservedKey"
+                  />
                 ) : null}
               </div>
               <div className="space-y-1">

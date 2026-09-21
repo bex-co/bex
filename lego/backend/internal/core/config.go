@@ -102,8 +102,15 @@ func IsReservedEnvKey(k string) bool {
 // REST, GraphQL, MCP, Blueprint validation, and the dashboard's inline hint —
 // renders this exact string, so a caller who learns it on one surface
 // recognizes it on the next.
+//
+// It now names WHERE. Until w4/m121 it ended at "change the service port
+// instead", and the service port was create-only: no update verb on any
+// surface, no dashboard control, and unreadable even on GraphQL. The sentence
+// sent every caller to a setting that did not exist. The port field and its
+// verb are named explicitly so the instruction is followable from the text
+// alone, on a surface that renders strings rather than links.
 func ReservedEnvKeySentence(k string) string {
-	return fmt.Sprintf("environment variable %q is reserved: bex sets it from the service port; change the service port instead", k)
+	return fmt.Sprintf("environment variable %q is reserved: bex sets it from the service port; change the service's port field instead (REST PATCH /v1/services/{id} port, GraphQL setPort, MCP update_service port, or Settings in the dashboard)", k)
 }
 
 // ReservedEnvKeyError is the coded refusal every environment write path

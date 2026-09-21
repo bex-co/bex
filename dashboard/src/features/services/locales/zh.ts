@@ -734,9 +734,23 @@ const zhServices: Record<string, TranslationEntry> = {
       "Environment value placeholder while server generation is selected",
   },
   "services.envReservedKey": {
-    message: "{key} 由 bex 依据服务端口设置，请改为修改服务端口。",
+    message: "{key} 由 bex 依据服务端口设置，请改为修改服务的端口字段。",
+    description: "Environment validation message for a key bex reserves (PORT)",
+  },
+  "services.envReservedKeySettingsLink": {
+    message: "在“设置”中修改服务端口",
     description:
-      "Environment validation message for a key bex reserves (PORT)",
+      "Link from the reserved-PORT refusal to the service's Settings port control",
+  },
+  "services.envReservedKeyFieldLink": {
+    message: "在上方设置服务端口",
+    description:
+      "Link from the reserved-PORT refusal to the create wizard's own port field",
+  },
+  "services.envReservedKeyServicesLink": {
+    message: "打开某个服务的“设置”修改其端口",
+    description:
+      "Link from the reserved-PORT refusal when no single service owns the port (an env group can be linked to many)",
   },
   "services.envInvalidKey": {
     message: "只能使用字母、数字和下划线，且不能以数字开头。",
@@ -1189,6 +1203,41 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新健康检查路径。",
     description: "Toast after setHealthCheckPath fails",
   },
+  "services.settingsPortTitle": {
+    message: "端口",
+    description: "Settings tab: Port section card title",
+  },
+  "services.settingsPortDescription": {
+    message: "容器监听的端口。bex 将流量路由到该端口，并以 $PORT 注入。",
+    description: "Settings tab: Port section card description",
+  },
+  "services.settingsPort": {
+    message: "端口",
+    description: "Settings tab: service port row label",
+  },
+  "services.settingsPortHint": {
+    message:
+      "容器监听的端口（默认 {port}）。bex 将流量路由到该端口并以 $PORT 注入，因此拒绝把 PORT 作为环境变量。保存会触发一次新的部署并重启实例。",
+    description: "Settings tab: service port row hint text",
+  },
+  "services.settingsPortEdit": {
+    message: "编辑端口",
+    description:
+      "Settings tab: accessible label for the service port edit-pencil button",
+  },
+  "services.portRangeError": {
+    message: "请输入 {min} 到 {max} 之间的端口。",
+    description:
+      "Validation message for a port outside the range the container can bind",
+  },
+  "services.portSuccess": {
+    message: "端口已更新，正在进行新的部署。",
+    description: "Toast after setPort succeeds",
+  },
+  "services.portError": {
+    message: "无法更新端口。",
+    description: "Toast after setPort fails",
+  },
   "services.settingsNotificationsTitle": {
     message: "通知",
     description: "Settings tab: Notifications section card title",
@@ -1480,14 +1529,12 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.domainDnsSubdomainGuidance": {
     message:
       "请在 {zone} 区域于你的 DNS 服务商处创建以下记录，然后重新检查。主机名相对于该区域。记录生效后，bex 会自动签发 TLS 证书。",
-    description:
-      "子域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
+    description: "子域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
   },
   "services.domainDnsApexGuidance": {
     message:
       "顶级域名无法使用普通 CNAME —— 请在 {zone} 区域创建此记录（若你的服务商支持 ALIAS/ANAME 或 CNAME flattening），然后重新检查。主机名相对于该区域（@ 表示区域 apex）。解析生效后 bex 会自动签发 TLS 证书，并为你自动配置 www ↔ 顶级域名之间的重定向。",
-    description:
-      "顶级域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
+    description: "顶级域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
   },
   "services.domainRecordType": {
     message: "类型",
@@ -2514,7 +2561,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Trigger Run confirmation dialog body",
   },
   "services.cronTriggerConfirmBodyPreempt": {
-    message: "已有运行正在进行。现在触发会取消它，并立即在计划之外开始一次新的运行。",
+    message:
+      "已有运行正在进行。现在触发会取消它，并立即在计划之外开始一次新的运行。",
     description:
       "Trigger Run confirmation dialog body when a run is already active",
   },
@@ -2751,9 +2799,19 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Existing Image tab input placeholder",
   },
   "services.createImagePortHint": {
-    message: "容器必须监听 $PORT（默认 3000），且无法绑定 1024 以下的端口。",
+    message:
+      "容器必须监听下方设置的端口——bex 会以 $PORT 注入——且无法绑定 1024 以下的端口。",
     description:
       "Create-wizard Existing Image tab hint about bex's routed port and the no-privileged-ports hardening (w9/011)",
+  },
+  "services.createFieldPort": {
+    message: "端口",
+    description: "Create wizard: service port field label",
+  },
+  "services.createFieldPortHint": {
+    message:
+      "容器必须监听 {port} 端口——bex 会把流量路由到该端口并以 $PORT 注入。请改成与所部署镜像一致的端口。",
+    description: "Create wizard: service port field hint",
   },
   "services.createRegistryCredentialLabel": {
     message: "镜像仓库凭据",
@@ -3516,11 +3574,13 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsTriggerEnvUpdated": {
     // See the en copy — w4/100.
     message: "配置变更",
-    description: "Deploy event trigger: a config change (Settings, env var, secret file, or env-group edit)",
+    description:
+      "Deploy event trigger: a config change (Settings, env var, secret file, or env-group edit)",
   },
   "services.eventsTriggerDeployHook": {
     message: "部署钩子",
-    description: "Deploy event trigger: a POST to the service's secret deploy-hook URL",
+    description:
+      "Deploy event trigger: a POST to the service's secret deploy-hook URL",
   },
   "services.eventsTriggerClearCache": {
     message: "已清除缓存",
@@ -3797,6 +3857,10 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsTypeBuildSettingsChanged": {
     message: "构建和部署设置已更改",
     description: "Service activity type: build or deploy configuration changed",
+  },
+  "services.eventsTypePortChanged": {
+    message: "端口已更改",
+    description: "Service activity type: the service's listening port changed",
   },
   "services.eventsTypeServiceChanged": {
     message: "服务设置已更改",

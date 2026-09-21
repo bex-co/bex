@@ -8,6 +8,7 @@ import {
   HeartPulse,
   KeyRound,
   Network,
+  Plug,
   Rocket,
   Settings2,
   TriangleAlert,
@@ -27,6 +28,7 @@ export type ServiceSettingsSection =
   | "networking"
   | "registry-credential"
   | "notifications"
+  | "port"
   | "health-checks"
   | "maintenance"
   | "deploy-hook"
@@ -79,6 +81,11 @@ const SECTION_ITEMS = {
     href: "#notifications",
     labelKey: "services.settingsNotificationsTitle",
     icon: Bell,
+  },
+  port: {
+    href: "#port",
+    labelKey: "services.settingsPortTitle",
+    icon: Plug,
   },
   "health-checks": {
     href: "#health-checks",

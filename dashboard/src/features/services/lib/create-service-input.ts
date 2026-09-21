@@ -7,6 +7,7 @@ import {
 } from "@/features/services/lib/environment-draft";
 import type { ServiceType } from "@/features/services/lib/create-context";
 import { servesHttp } from "@/features/services/lib/service-type";
+import { parsePort } from "@/features/services/lib/port";
 import type { GitRuntime } from "@/features/services/lib/runtime";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
 import type { RepoView } from "@/features/services/hooks/use-repos";
@@ -36,6 +37,8 @@ export interface NewServiceForm {
   buildFilterPaths: string[];
   buildFilterIgnored: string[];
   plan: string;
+  /** Draft container port, as typed (w4/m121/t003); only read for `showPort` types. */
+  port: string;
   autoDeploy: boolean;
   schedule: string;
   command: string;
@@ -62,7 +65,13 @@ export interface BuildShape {
   usesRegistryCredential: boolean;
   showPlan: boolean;
   showNoUrlNote: boolean;
-  showPortHint: boolean;
+  /**
+   * The type binds a port (`servesHttp`): web_service and private_service.
+   * Gates BOTH the image tab's `$PORT` hint and the create form's port field
+   * (w4/m121/t003) — one predicate, so a worker/cron/static site can never
+   * render a port control or submit a `port`.
+   */
+  showPort: boolean;
 }
 
 export function buildShape(form: NewServiceForm): BuildShape {
@@ -89,7 +98,7 @@ export function buildShape(form: NewServiceForm): BuildShape {
     showNoUrlNote:
       form.serviceType === "private_service" ||
       form.serviceType === "background_worker",
-    showPortHint: servesHttp(form.serviceType),
+    showPort: servesHttp(form.serviceType),
   };
 }
 
@@ -133,6 +142,10 @@ export function isSubmittable(form: NewServiceForm): boolean {
     submittableSecretFiles(form.secretFiles).every((file) =>
       isValidSecretFileName(file.name),
     ) &&
+    // A port the backend would refuse never leaves the browser: the form blocks
+    // Submit exactly as it does for a reserved env key (w4/m121/t003). Types
+    // that bind no port never read the field at all.
+    (!shape.showPort || parsePort(form.port) !== null) &&
     (shape.isStaticType || form.plan !== "") &&
     (!shape.isCronType ||
       (form.schedule.trim() !== "" && isValidCron(form.schedule)))
@@ -195,6 +208,10 @@ export function buildCreateServiceInput(
     schedule: shape.isCronType ? set(form.schedule) : undefined,
     command: shape.isCronType ? set(form.command) : undefined,
     publishPath: shape.isStaticType ? set(form.publishPath) : undefined,
+    // The wizard used to send no port at all, so an image binding anything but
+    // 3000 (nginx:alpine binds :80) came up unroutable and answered 503
+    // (.pm/w4/m121 Evidence 1). Only the port-binding types send one.
+    port: shape.showPort ? (parsePort(form.port) ?? undefined) : undefined,
     envVars: submittableEnvVars(form.envVars),
     secretFiles: submittableSecretFiles(form.secretFiles),
   };

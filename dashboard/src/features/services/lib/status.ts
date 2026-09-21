@@ -86,6 +86,9 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
       "renderSubdomainPolicy" in s ? (s.renderSubdomainPolicy ?? null) : null,
     healthCheckPath:
       "healthCheckPath" in s ? (s.healthCheckPath ?? null) : null,
+    // 0 is the backend's "this type binds no port" reading, not a real port —
+    // project it to null so the Settings control never shows a bogus 0.
+    port: "port" in s ? s.port || null : null,
     maxShutdownDelaySeconds:
       "maxShutdownDelaySeconds" in s
         ? (s.maxShutdownDelaySeconds ?? null)

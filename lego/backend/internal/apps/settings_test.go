@@ -56,6 +56,7 @@ func TestServicePatchTableOrderIsRESTApplicationOrder(t *testing.T) {
 		{"PublishPath"},
 		{"BuildCommand", "StartCommand"},
 		{"DockerfilePath"},
+		{"Port"}, // w4/m121 — the port stopped being create-only
 		{"NotifyOnFail"},
 		{"NotificationsToSend"}, // MCP-only fill
 		{"RenderSubdomainPolicy"},

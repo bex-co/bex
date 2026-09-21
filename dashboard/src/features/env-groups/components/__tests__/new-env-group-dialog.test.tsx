@@ -1,4 +1,11 @@
 import { render, screen } from "@testing-library/react";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,6 +20,26 @@ import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-grou
 beforeEach(() => {
   createGroup.mockReset().mockResolvedValue("eg-new");
 });
+
+/**
+ * The reserved-PORT notice links to the services list (w4/m121/t003) — a group
+ * can be linked to many services, so there is no single port control to open —
+ * and a TanStack `Link` needs a router above it.
+ */
+function renderInRouter(ui: React.ReactNode) {
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => <>{ui}</>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+    context: { client: {} as never, session: null },
+  });
+  return render(<RouterProvider router={router} />);
+}
 
 describe("NewEnvGroupDialog", () => {
   it("blocks a blank name, then returns the created group id", async () => {
@@ -86,9 +113,14 @@ describe("NewEnvGroupDialog", () => {
   // linked service at once — so the dialog says so as the key is typed.
   it("flags a reserved key inline and refuses to create", async () => {
     const user = userEvent.setup();
-    render(<NewEnvGroupDialog open onCreated={vi.fn()} services={[]} />);
+    renderInRouter(
+      <NewEnvGroupDialog open onCreated={vi.fn()} services={[]} />,
+    );
 
-    await user.type(screen.getByLabelText("Group name"), "Shared production");
+    await user.type(
+      await screen.findByLabelText("Group name"),
+      "Shared production",
+    );
     await user.click(
       screen.getByRole("button", { name: "Add Environment Variable" }),
     );
@@ -96,7 +128,7 @@ describe("NewEnvGroupDialog", () => {
 
     expect(
       await screen.findByText(
-        "PORT is set by bex from the service port. Change the service port instead.",
+        "PORT is set by bex from the service port. Change the service's port field instead.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Key")).toHaveAttribute(
@@ -274,7 +306,9 @@ describe("NewEnvGroupDialog", () => {
   it("offers only workspace-scoped services under Workspace scope", () => {
     renderScoped();
 
-    expect(screen.getByRole("checkbox", { name: /workspace-svc/ })).toBeTruthy();
+    expect(
+      screen.getByRole("checkbox", { name: /workspace-svc/ }),
+    ).toBeTruthy();
     // The in-Environment service is the one the backend would refuse.
     expect(screen.queryByRole("checkbox", { name: /qa-svc/ })).toBeNull();
   });
@@ -287,7 +321,9 @@ describe("NewEnvGroupDialog", () => {
     await user.click(screen.getByRole("option", { name: "qa-env" }));
 
     expect(screen.getByRole("checkbox", { name: /qa-svc/ })).toBeTruthy();
-    expect(screen.queryByRole("checkbox", { name: /workspace-svc/ })).toBeNull();
+    expect(
+      screen.queryByRole("checkbox", { name: /workspace-svc/ }),
+    ).toBeNull();
   });
 
   it("creates in the picked Environment with its links attached", async () => {

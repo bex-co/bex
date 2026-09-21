@@ -59,6 +59,7 @@ limitations under the License.
 //	idle_timeout_changed        apps.SetIdleTTL                 (a bex-only feature: "sleep = free")
 //	root_directory_changed      apps.SetRootDir
 //	dockerfile_path_changed     apps.SetDockerfilePath
+//	port_changed                apps.SetPort                    (a bex-only field: Render detects the bound port)
 //	build_filter_changed        apps.SetBuildFilter
 //	commands_changed            apps.SetCommands
 //	source_changed              apps.SetSourceAndRegistryCredential / apps.SetRegistryCredential (legacy rows may still name apps.SetSource)
@@ -247,6 +248,7 @@ const (
 	TypeIdleTimeoutChanged      = "idle_timeout_changed"
 	TypeRootDirectoryChanged    = "root_directory_changed"
 	TypeDockerfilePathChanged   = "dockerfile_path_changed"
+	TypePortChanged             = "port_changed"
 	TypeBuildFilterChanged      = "build_filter_changed"
 	TypeCommandsChanged         = "commands_changed"
 	TypeSourceChanged           = "source_changed"
@@ -306,21 +308,25 @@ const (
 //     "who asked" record survives in the workspace audit log, exactly as it
 //     does for the deliberately-absent verbs above.
 var eventTypes = map[string]string{
-	"apps.Suspend":                          TypeSuspenderAdded,
-	"apps.Resume":                           TypeSuspenderRemoved,
-	"apps.Restart":                          TypeServerRestarted,
-	"apps.SetPlan":                          TypePlanChanged,
-	"apps.Scale":                            TypeInstanceCountChanged,
-	"apps.SetAutoscaling":                   TypeAutoscalingConfigChanged,
-	"apps.DeleteAutoscaling":                TypeAutoscalingConfigChanged,
-	"apps.SetAutoDeploy":                    TypeAutoDeployChanged,
-	"apps.SetNotifyOnFail":                  TypeNotifyOnFailChanged,
-	"apps.SetNotificationsToSend":           TypeNotifyOnFailChanged,
-	"apps.SetSubdomainPolicy":               TypeSubdomainPolicyChanged,
-	"apps.SetIPAllowList":                   TypeIPAllowListChanged,
-	"apps.SetIdleTTL":                       TypeIdleTimeoutChanged,
-	"apps.SetRootDir":                       TypeRootDirectoryChanged,
-	"apps.SetDockerfilePath":                TypeDockerfilePathChanged,
+	"apps.Suspend":                TypeSuspenderAdded,
+	"apps.Resume":                 TypeSuspenderRemoved,
+	"apps.Restart":                TypeServerRestarted,
+	"apps.SetPlan":                TypePlanChanged,
+	"apps.Scale":                  TypeInstanceCountChanged,
+	"apps.SetAutoscaling":         TypeAutoscalingConfigChanged,
+	"apps.DeleteAutoscaling":      TypeAutoscalingConfigChanged,
+	"apps.SetAutoDeploy":          TypeAutoDeployChanged,
+	"apps.SetNotifyOnFail":        TypeNotifyOnFailChanged,
+	"apps.SetNotificationsToSend": TypeNotifyOnFailChanged,
+	"apps.SetSubdomainPolicy":     TypeSubdomainPolicyChanged,
+	"apps.SetIPAllowList":         TypeIPAllowListChanged,
+	"apps.SetIdleTTL":             TypeIdleTimeoutChanged,
+	"apps.SetRootDir":             TypeRootDirectoryChanged,
+	"apps.SetDockerfilePath":      TypeDockerfilePathChanged,
+	// w4/m121: a port change rolls the pods and moves the Service, Ingress and
+	// probe with it — a config change the owner should be able to see in
+	// Activity, in the same class as the build-setting changes above.
+	"apps.SetPort":                          TypePortChanged,
 	"apps.SetBuildFilter":                   TypeBuildFilterChanged,
 	"apps.SetCommands":                      TypeCommandsChanged,
 	"apps.SetSource":                        TypeSourceChanged,

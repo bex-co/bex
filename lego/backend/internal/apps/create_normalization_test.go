@@ -347,13 +347,24 @@ func TestSpecFromCreateNormalizationErrors(t *testing.T) {
 			name:    "negative port",
 			svcType: appv1alpha1.TypeWebService,
 			req:     CreateRequest{Port: -1},
-			wantErr: "bad request: port must be 1-65535",
+			wantErr: "bad request: port must be 1024-65535 — a tenant container has no NET_BIND_SERVICE capability, so it cannot bind a port below 1024 even as root (a stock :80 image such as nginx must be pointed at a high port)",
 		},
 		{
 			name:    "port beyond 65535",
 			svcType: appv1alpha1.TypeWebService,
 			req:     CreateRequest{Port: 65536},
-			wantErr: "bad request: port must be 1-65535",
+			wantErr: "bad request: port must be 1024-65535 — a tenant container has no NET_BIND_SERVICE capability, so it cannot bind a port below 1024 even as root (a stock :80 image such as nginx must be pointed at a high port)",
+		},
+		{
+			// w4/m121: a privileged port is refused at CREATE too, not just on
+			// the new update verb. Every tenant container drops all Linux
+			// capabilities (ADR022), so :80 fails with `bind: permission
+			// denied` even as root — accepting it would hand back a service
+			// that reports created and then crash-loops.
+			name:    "privileged port the container could never bind",
+			svcType: appv1alpha1.TypeWebService,
+			req:     CreateRequest{Port: 80},
+			wantErr: "bad request: port must be 1024-65535 — a tenant container has no NET_BIND_SERVICE capability, so it cannot bind a port below 1024 even as root (a stock :80 image such as nginx must be pointed at a high port)",
 		},
 		{
 			name:    "negative replicas",

@@ -10,15 +10,24 @@ import {
 } from "@/features/services/lib/environment-draft";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { removeRow, updateRow } from "@/features/services/lib/row-editor";
+import { ReservedEnvKeyNotice } from "@/features/services/components/reserved-env-key-notice";
 import type { EnvVarEntry } from "@/features/services/hooks/use-create-service";
 
 /** Inline key-value editor for create-time env vars (Render parity, w5/m19). */
 export function CreateEnvVarEditor({
   rows,
   onChange,
+  portFieldId,
 }: {
   rows: EnvVarEntry[];
   onChange: (rows: EnvVarEntry[]) => void;
+  /**
+   * The wizard's own port field, when this service type has one (w4/m121/t003)
+   * — the reserved-PORT refusal points at it rather than at a service that does
+   * not exist yet. Omitted for a type that binds no port, which has no field to
+   * point at.
+   */
+  portFieldId?: string;
 }) {
   const { t } = useTranslations();
 
@@ -101,9 +110,10 @@ export function CreateEnvVarEditor({
                   </p>
                 )}
                 {!keyInvalid && keyReserved && (
-                  <p className="text-xs text-destructive" role="alert">
-                    {t("services.envReservedKey", { key: row.key.trim() })}
-                  </p>
+                  <ReservedEnvKeyNotice
+                    envKey={row.key.trim()}
+                    portFieldId={portFieldId}
+                  />
                 )}
               </div>
             );
