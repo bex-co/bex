@@ -32,6 +32,27 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
+// pgInsufficientPrivilege is PostgreSQL's own placeholder for a query text the
+// caller may not read. pg_stat_activity.query and pg_stat_statements.query
+// substitute it verbatim for backends owned by another role when the caller
+// holds neither pg_monitor nor superuser (PostgreSQL 9.6+, unchanged through
+// 18 — src/backend/utils/adt/pgstatfuncs.c). The operator now grants the
+// database owner pg_monitor (w4/m115), so this should be unreachable for an
+// owner-scoped read — but a role we do not control, or a future least-privilege
+// tightening, can still produce it, and it must never reach a surface as if it
+// were query text.
+const pgInsufficientPrivilege = "<insufficient privilege>"
+
+// maskedQuery reports whether PostgreSQL substituted its privilege placeholder
+// for the real query text, and returns the text to publish (empty when masked,
+// so no surface renders the placeholder as SQL).
+func maskedQuery(q string) (string, bool) {
+	if q == pgInsufficientPrivilege {
+		return "", true
+	}
+	return q, false
+}
+
 // ProcessView is one row from pg_stat_activity (live backend process).
 type ProcessView struct {
 	PID             int32  `json:"pid"`
@@ -39,6 +60,9 @@ type ProcessView struct {
 	ApplicationName string `json:"applicationName"`
 	State           string `json:"state"`
 	Query           string `json:"query,omitempty"`
+	// Masked is true when PostgreSQL hid this row's query text from the reading
+	// role. Query is empty in that case; consumers explain rather than render.
+	Masked          bool   `json:"masked,omitempty"`
 	WaitEventType   string `json:"waitEventType,omitempty"`
 	WaitEvent       string `json:"waitEvent,omitempty"`
 	DurationSeconds int32  `json:"durationSeconds"`
@@ -46,7 +70,10 @@ type ProcessView struct {
 
 // TopQueryView is one row from pg_stat_statements (aggregated by query text).
 type TopQueryView struct {
-	Query          string  `json:"query"`
+	Query string `json:"query"`
+	// Masked is true when PostgreSQL hid this row's query text from the reading
+	// role. Query is empty in that case; the statistics beside it stay real.
+	Masked         bool    `json:"masked,omitempty"`
 	Calls          int64   `json:"calls"`
 	TotalTimeMs    float64 `json:"totalTimeMs"`
 	MeanTimeMs     float64 `json:"meanTimeMs"`
@@ -261,23 +288,32 @@ func (s *Service) Processes(ctx context.Context, dbID string) ([]ProcessView, er
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ProcessView, 0, len(res.Rows))
-	for _, row := range res.Rows {
+	return processViews(res.Rows), nil
+}
+
+// processViews maps sqlProcesses rows onto ProcessView, folding PostgreSQL's
+// privilege placeholder into the Masked flag. Split out from Processes so the
+// mapping — masking included — is testable without a live database.
+func processViews(rows [][]any) []ProcessView {
+	out := make([]ProcessView, 0, len(rows))
+	for _, row := range rows {
 		if len(row) < 8 {
 			continue
 		}
+		query, masked := maskedQuery(strVal(row[4]))
 		out = append(out, ProcessView{
 			PID:             int32(intVal(row[0])),
 			UserName:        strVal(row[1]),
 			ApplicationName: strVal(row[2]),
 			State:           strVal(row[3]),
-			Query:           strVal(row[4]),
+			Query:           query,
+			Masked:          masked,
 			WaitEventType:   strVal(row[5]),
 			WaitEvent:       strVal(row[6]),
 			DurationSeconds: int32(intVal(row[7])),
 		})
 	}
-	return out, nil
+	return out
 }
 
 // TopQueries returns the top 25 queries by total execution time from
@@ -297,13 +333,22 @@ func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, 
 		}
 		return []TopQueryView{}, nil
 	}
-	out := make([]TopQueryView, 0, len(res.Rows))
-	for _, row := range res.Rows {
+	return topQueryViews(res.Rows), nil
+}
+
+// topQueryViews maps sqlTopQueries rows onto TopQueryView, folding PostgreSQL's
+// privilege placeholder into the Masked flag. The statistics beside a masked
+// query text are real and stay.
+func topQueryViews(rows [][]any) []TopQueryView {
+	out := make([]TopQueryView, 0, len(rows))
+	for _, row := range rows {
 		if len(row) < 7 {
 			continue
 		}
+		query, masked := maskedQuery(strVal(row[0]))
 		out = append(out, TopQueryView{
-			Query:          strVal(row[0]),
+			Query:          query,
+			Masked:         masked,
 			Calls:          intVal(row[1]),
 			TotalTimeMs:    floatVal(row[2]),
 			MeanTimeMs:     floatVal(row[3]),
@@ -312,7 +357,7 @@ func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, 
 			SharedReadBlks: intVal(row[6]),
 		})
 	}
-	return out, nil
+	return out
 }
 
 // Sizes returns the database size and per-table sizes via pg_database_size /
