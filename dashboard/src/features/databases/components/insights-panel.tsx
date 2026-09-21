@@ -164,13 +164,19 @@ export function InsightsPanel({ id }: { id: string }) {
                       {p?.durationSeconds}s
                     </td>
                     <td className="max-w-xs truncate py-1 font-mono text-muted-foreground">
-                      {p?.query || "—"}
+                      <QueryCell
+                        row={p ?? {}}
+                        hiddenLabel={t("databases.insightsQueryHidden")}
+                      />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+          {insights.processes.some((p) => isMasked(p ?? {})) ? (
+            <MaskedNote text={t("databases.insightsMaskedNote")} />
+          ) : null}
         </Section>
 
         {/* Top queries */}
@@ -209,7 +215,10 @@ export function InsightsPanel({ id }: { id: string }) {
                 {insights.topQueries.map((q, i) => (
                   <tr key={i} className="border-b last:border-0">
                     <td className="max-w-xs truncate py-1 pr-3 font-mono text-muted-foreground">
-                      {q?.query}
+                      <QueryCell
+                        row={q ?? {}}
+                        hiddenLabel={t("databases.insightsQueryHidden")}
+                      />
                     </td>
                     <td className="py-1 pr-3 text-right tabular-nums">
                       {q?.calls}
@@ -225,6 +234,9 @@ export function InsightsPanel({ id }: { id: string }) {
               </tbody>
             </table>
           )}
+          {insights.topQueries.some((q) => isMasked(q ?? {})) ? (
+            <MaskedNote text={t("databases.insightsMaskedNote")} />
+          ) : null}
         </Section>
 
         {/* Table scans */}
@@ -393,6 +405,44 @@ function Section({
       {children}
     </div>
   );
+}
+
+/**
+ * PostgreSQL's own placeholder for a query text the reading role may not see.
+ * The API blanks it and sets `masked` instead (w4/m115), but an older bex-api
+ * still sends the literal — matching it here keeps it out of the DOM either
+ * way. Stable across PostgreSQL 9.6–18 (pgstatfuncs.c).
+ */
+const PG_INSUFFICIENT_PRIVILEGE = "<insufficient privilege>";
+
+/** A row is hidden when the API says so, or when it still carries the literal. */
+function isMasked(row: {
+  masked?: boolean | null;
+  query?: string | null;
+}): boolean {
+  return Boolean(row.masked) || row.query === PG_INSUFFICIENT_PRIVILEGE;
+}
+
+/**
+ * The Query cell for a process or top-query row: real SQL, an honest "hidden"
+ * marker for a masked row, or an em dash when there is simply no query.
+ */
+function QueryCell({
+  row,
+  hiddenLabel,
+}: {
+  row: { masked?: boolean | null; query?: string | null };
+  hiddenLabel: string;
+}) {
+  if (isMasked(row)) {
+    return <span className="italic">{hiddenLabel}</span>;
+  }
+  return <>{row.query || "—"}</>;
+}
+
+/** Explains, once per sub-section, why some rows show no SQL. */
+function MaskedNote({ text }: { text: string }) {
+  return <p className="text-xs text-muted-foreground">{text}</p>;
 }
 
 function StateBadge({ state }: { state: string }) {

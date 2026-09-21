@@ -1017,6 +1017,17 @@ const enDatabases: Record<string, TranslationEntry> = {
       "No query stats yet — pg_stat_statements may not be enabled on this cluster.",
     description: "Insights top-queries empty state",
   },
+  "databases.insightsQueryHidden": {
+    message: "Hidden",
+    description:
+      "Insights — query cell for a row whose SQL PostgreSQL hides from the reading role",
+  },
+  "databases.insightsMaskedNote": {
+    message:
+      "Some rows belong to other database roles, so PostgreSQL hides their SQL from this view. Everything else on the row is real.",
+    description:
+      "Insights — explanation shown when at least one process or top-query row has masked SQL",
+  },
   "databases.insightsTableScansTitle": {
     message: "Table scans",
     description: "Insights panel — pg_stat_user_tables sub-section heading",

@@ -215,6 +215,7 @@ var processViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"applicationName": gqlutil.StrField(func(v ProcessView) any { return v.ApplicationName }),
 		"state":           gqlutil.StrField(func(v ProcessView) any { return v.State }),
 		"query":           gqlutil.StrField(func(v ProcessView) any { return v.Query }),
+		"masked":          gqlutil.BoolField(func(v ProcessView) any { return v.Masked }),
 		"waitEventType":   gqlutil.StrField(func(v ProcessView) any { return v.WaitEventType }),
 		"waitEvent":       gqlutil.StrField(func(v ProcessView) any { return v.WaitEvent }),
 		"durationSeconds": gqlutil.IntField(func(v ProcessView) any { return v.DurationSeconds }),
@@ -225,6 +226,7 @@ var topQueryViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseTopQuery",
 	Fields: graphql.Fields{
 		"query":          gqlutil.StrField(func(v TopQueryView) any { return v.Query }),
+		"masked":         gqlutil.BoolField(func(v TopQueryView) any { return v.Masked }),
 		"calls":          gqlutil.IntField(func(v TopQueryView) any { return v.Calls }),
 		"totalTimeMs":    gqlutil.FloatField(func(v TopQueryView) any { return v.TotalTimeMs }),
 		"meanTimeMs":     gqlutil.FloatField(func(v TopQueryView) any { return v.MeanTimeMs }),
