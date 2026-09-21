@@ -1020,7 +1020,9 @@ fi
 	mountRegistryCred(&pusher, "push-registry-cred", o.PushSecret)
 
 	podSpec := corev1.PodSpec{
-		RestartPolicy: corev1.RestartPolicyNever,
+		// No legacy Docker-link env vars (w4/m123) — the build — runs tenant Dockerfile/buildpack code.
+		EnableServiceLinks: new(false),
+		RestartPolicy:      corev1.RestartPolicyNever,
 		InitContainers: []corev1.Container{
 			clone,
 		},

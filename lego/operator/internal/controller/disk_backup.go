@@ -266,6 +266,8 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		SecurityContext: tenantSecCtx(),
 	}
 	podSpec := corev1.PodSpec{
+		// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
+		EnableServiceLinks:           new(false),
 		RestartPolicy:                corev1.RestartPolicyNever,
 		AutomountServiceAccountToken: new(false),
 	}

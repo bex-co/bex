@@ -286,6 +286,8 @@ test -s /backup/dump.rdb`},
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{Labels: labels},
 					Spec: corev1.PodSpec{
+						// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
+						EnableServiceLinks:           new(false),
 						RestartPolicy:                corev1.RestartPolicyNever,
 						AutomountServiceAccountToken: new(false),
 						InitContainers:               initContainers,
@@ -450,6 +452,8 @@ func (r *KeyValueReconciler) keyValueBackupPurgeJob(kv *appv1alpha1.KeyValue) *b
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
+					// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
+					EnableServiceLinks:           new(false),
 					RestartPolicy:                corev1.RestartPolicyNever,
 					AutomountServiceAccountToken: new(false),
 					Containers: []corev1.Container{{

@@ -3862,6 +3862,8 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 		container.Command = []string{shellBinary, "-c", command}
 	}
 	spec := corev1.PodSpec{
+		// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
+		EnableServiceLinks:           new(false),
 		RestartPolicy:                corev1.RestartPolicyNever,
 		AutomountServiceAccountToken: new(false),
 	}

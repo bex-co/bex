@@ -381,8 +381,10 @@ func PublishJob(o Options) *batchv1.Job {
 	podLabels := execution.PodLabels(o.AppID, o.AppUID, "publish", o.Workspace, appNamespace, verifyImage)
 	podLabels["app.bex.co/publish"] = o.AppID
 	podSpec := corev1.PodSpec{
-		RestartPolicy:    corev1.RestartPolicyNever,
-		ImagePullSecrets: pullSecrets,
+		// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
+		EnableServiceLinks: new(false),
+		RestartPolicy:      corev1.RestartPolicyNever,
+		ImagePullSecrets:   pullSecrets,
 		Volumes: []corev1.Volume{{
 			Name:         outVolume,
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(publishEmptyDirLimit)}},
@@ -630,8 +632,10 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:    corev1.RestartPolicyNever,
-					ImagePullSecrets: imagePullSecrets(pullSecret),
+					// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
+					EnableServiceLinks: new(false),
+					RestartPolicy:      corev1.RestartPolicyNever,
+					ImagePullSecrets:   imagePullSecrets(pullSecret),
 					// bex-build's ValidatingAdmissionPolicy bex-build-job-shape
 					// requires every Job in the namespace to declare at least one
 					// emptyDir/non-crown-Secret volume (deploy/gitops/base/
