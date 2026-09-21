@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Loader2, Pencil, X } from "lucide-react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
@@ -32,6 +32,7 @@ import { BlueprintDetailContentSkeleton } from "@/common/components/route-skelet
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
+import { blueprintResourceHref } from "@/features/blueprints/lib/resource-href";
 import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
@@ -464,16 +465,30 @@ export function BlueprintDetailPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {blueprint.resources.map((r) => (
-                          <TableRow key={r.id}>
-                            <TableCell className="font-medium">
-                              {r.name}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground capitalize">
-                              {r.type.replace(/_/g, " ")}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {blueprint.resources.map((r) => {
+                          const href = blueprintResourceHref(r.type, r.id);
+                          return (
+                            <TableRow key={r.id}>
+                              <TableCell className="font-medium">
+                                {/* Every other resource table in the product
+                                    links its names; this one dead-ended
+                                    (w4/101). A resource kind this build has no
+                                    page for still renders as plain text — a
+                                    broken href would be worse than none. */}
+                                {href ? (
+                                  <Link to={href} className="hover:underline">
+                                    {r.name}
+                                  </Link>
+                                ) : (
+                                  r.name
+                                )}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground capitalize">
+                                {r.type.replace(/_/g, " ")}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   ) : (

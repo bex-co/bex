@@ -3953,7 +3953,14 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsCancelConfirmBody": {
     message:
       "The in-progress deploy will be stopped. The last successful deploy remains live.",
-    description: "Cancel deploy confirm dialog body",
+    description:
+      "Cancel deploy confirm dialog body — a previous deploy is still serving",
+  },
+  "services.eventsCancelConfirmBodyFirstDeploy": {
+    message:
+      "The in-progress deploy will be stopped. This is the service's first deploy, so no version is live yet — canceling leaves the service with nothing serving.",
+    description:
+      "Cancel deploy confirm dialog body — the service's first deploy, nothing is serving yet (w4/103)",
   },
   "services.eventsRollback": {
     message: "Rollback",
