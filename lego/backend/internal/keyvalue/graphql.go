@@ -109,11 +109,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return gqlutil.Page(p, out, func(kv KeyValueView) string { return kv.ID }), nil
 			},
 		},
-		"keyValue":               gqlutil.IDVerb(keyValueGQLType, s.GetKeyValue),
+		"keyValue": gqlutil.IDVerb(keyValueGQLType, s.GetKeyValue),
 		// keyValueActions projects the lifecycle verbs' per-store decisions
 		// (ADR087, w6/m136): suspend/resume only — Key Value has no restart
 		// verb and the projection must not invent one. A bex extension.
-		"keyValueActions": gqlutil.IDVerb(gqlutil.ActionDecisionsOut, s.ActionCapabilities),
+		"keyValueActions":        gqlutil.IDVerb(gqlutil.ActionDecisionsOut, s.ActionCapabilities),
 		"keyValueConnectionInfo": gqlutil.IDVerb(keyValueConnectionInfoGQLType, s.KeyValueConnectionInfo),
 		"keyValueInstanceTypes": &graphql.Field{ // bex extension backing the create dialog's plan picker
 			Type:    graphql.NewList(keyValueInstanceTypeGQLType),

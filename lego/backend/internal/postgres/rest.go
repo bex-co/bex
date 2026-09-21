@@ -197,6 +197,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		pg, err := s.GetPostgres(r.Context(), r.PathValue("id"))
 		s.respondPostgres(w, r, http.StatusOK, pg, err)
 	})
+	// PATCH carries ?confirm= for the protected-environment phrase a rename or
+	// version upgrade needs (w4/m127); handleUpdatePostgres threads it.
 	mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdatePostgres)
 	mux.HandleFunc("DELETE "+base+"/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
@@ -207,11 +209,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			SQL         string `json:"sql"`
 			AllowWrites bool   `json:"allowWrites"`
+			// Confirm carries the protected-environment phrase for a WRITABLE
+			// query (w4/m127); a read-only query never needs one. Accepted in
+			// the body as well as the query string, since this route already
+			// takes a body and an SQL statement does not belong in a URL.
+			Confirm string `json:"confirm"`
 		}
 		if !decodeOr400(w, r, &req) {
 			return
 		}
-		result, err := s.ExecuteQuery(r.Context(), r.PathValue("id"), req.SQL, req.AllowWrites)
+		confirm := req.Confirm
+		if confirm == "" {
+			confirm = r.URL.Query().Get("confirm")
+		}
+		ctx := core.WithConfirm(r.Context(), confirm)
+		result, err := s.ExecuteQuery(ctx, r.PathValue("id"), req.SQL, req.AllowWrites)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -225,7 +237,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart))
 	// Render: failover => 202 Accepted, no response body.
 	mux.HandleFunc("POST "+base+"/{id}/failover", core.HandleNoBody(http.StatusAccepted, func(r *http.Request) error {
-		return s.Failover(r.Context(), r.PathValue("id"))
+		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+		return s.Failover(ctx, r.PathValue("id"))
 	}))
 
 	// --- recovery / exports (Render: recovery-info, recover, export) ---
@@ -384,11 +397,13 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		ParameterOverrides: req.ParameterOverrides,
 		Public:             req.Public,
 	}
+	// The protected-environment phrase for a rename or version upgrade (w4/m127).
+	ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
 	if core.DryRunRequested(r, req.DryRun) {
-		pg, err := s.PreviewUpdatePostgres(r.Context(), id, patch)
+		pg, err := s.PreviewUpdatePostgres(ctx, id, patch)
 		s.respondPostgres(w, r, http.StatusOK, pg, err)
 		return
 	}
-	pg, err := s.UpdatePostgres(r.Context(), id, patch)
+	pg, err := s.UpdatePostgres(ctx, id, patch)
 	s.respondPostgres(w, r, http.StatusOK, pg, err)
 }

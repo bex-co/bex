@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"github.com/bex-co/bex/lego/types/tiers"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // datastore.go is the managed-datastore (Database/KeyValue) sibling of the

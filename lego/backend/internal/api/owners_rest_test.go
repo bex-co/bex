@@ -101,6 +101,7 @@ func (f *fakeWSStore) ListTenantsForSubject(_ context.Context, subject string) (
 	}
 	return out, nil
 }
+
 // TenantOwnerSubject: these fixtures predate the owner binding (w5/m103), so
 // they are all unbound — ownerEmail falls back to the oldest admin, which is
 // what they already assert.

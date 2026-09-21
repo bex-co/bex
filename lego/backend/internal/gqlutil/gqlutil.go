@@ -226,11 +226,13 @@ func ArgMutation[T any](out graphql.Output, argName string,
 	set func(ctx context.Context, id, value string) (T, error)) *graphql.Field {
 	args := IDArg()
 	args[argName] = ReqArg(graphql.String)
+	args["confirm"] = Arg(graphql.String)
 	return &graphql.Field{
 		Type: out,
 		Args: args,
 		Resolve: func(p graphql.ResolveParams) (any, error) {
-			return set(p.Context, p.Args["id"].(string), p.Args[argName].(string))
+			ctx := core.WithConfirm(p.Context, Str(p.Args, "confirm"))
+			return set(ctx, p.Args["id"].(string), p.Args[argName].(string))
 		},
 	}
 }
@@ -255,15 +257,22 @@ func PatchMutation[P, T any](out graphql.Output, argName string, patch func(stri
 	args := IDArg()
 	args[argName] = ReqArg(graphql.String)
 	args["dryRun"] = Arg(graphql.Boolean)
+	// Optional everywhere, load-bearing only where the verb guards a member of
+	// a protected environment (w4/m127 — rename, version upgrade, durability,
+	// eviction). An unguarded verb ignores it; no verb gains a REQUIRED
+	// argument. Threaded here rather than per-mutation so a newly-guarded
+	// single-field setter cannot ship without a way to confirm it.
+	args["confirm"] = Arg(graphql.String)
 	return &graphql.Field{
 		Type: out,
 		Args: args,
 		Resolve: func(p graphql.ResolveParams) (any, error) {
 			id, value := p.Args["id"].(string), p.Args[argName].(string)
+			ctx := core.WithConfirm(p.Context, Str(p.Args, "confirm"))
 			if dryRun, _ := p.Args["dryRun"].(bool); dryRun {
-				return preview(p.Context, id, patch(value))
+				return preview(ctx, id, patch(value))
 			}
-			return apply(p.Context, id, patch(value))
+			return apply(ctx, id, patch(value))
 		},
 	}
 }

@@ -43,22 +43,23 @@ type postgresArgs struct {
 	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
 }
 
-// suspendPostgresArgs keeps the protected-environment confirmation field
-// scoped to suspend_postgres instead of advertising it on unrelated tools.
+// suspendPostgresArgs carries the protected-environment confirmation phrase. It
+// is shared by the tools whose verb a protected environment guards — suspend,
+// and since w4/m127 failover — rather than advertised on every tool.
 type suspendPostgresArgs struct {
 	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
-	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks suspend"`
+	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks this verb"`
 }
 
 // createPostgresArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createPostgresArgs struct {
-	EnvironmentID         string   `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
-	Name                  string   `json:"name" jsonschema:"the database name"`
-	DatabaseName          string   `json:"databaseName,omitempty" jsonschema:"optional physical PostgreSQL database name; lowercase letters, digits, and underscores"`
-	DatabaseUser          string   `json:"databaseUser,omitempty" jsonschema:"optional physical PostgreSQL owner role; lowercase letters, digits, and underscores"`
-	Plan                  string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
-	Version               string   `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
+	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	Name          string `json:"name" jsonschema:"the database name"`
+	DatabaseName  string `json:"databaseName,omitempty" jsonschema:"optional physical PostgreSQL database name; lowercase letters, digits, and underscores"`
+	DatabaseUser  string `json:"databaseUser,omitempty" jsonschema:"optional physical PostgreSQL owner role; lowercase letters, digits, and underscores"`
+	Plan          string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
+	Version       string `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
 	// DiskSizeGb is Render's MCP spelling. DiskSizeGB is the legacy bex alias
 	// (w2/m91); when both are set, DiskSizeGb wins.
 	DiskSizeGb            *int32   `json:"diskSizeGb,omitempty" jsonschema:"disk size in GB (omit for the plan default); Render's MCP spelling"`
@@ -209,11 +210,11 @@ func (s *Service) registerLogsMCP(srv *mcp.Server) {
 func (s *Service) registerLifecycleMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "failover_postgres",
-		Description: "Trigger a planned failover (CNPG switchover) on an HA-enabled managed Postgres database. Promotes a standby to primary. Mirrors Render's POST /postgres/{id}/failover.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, struct {
+		Description: "Trigger a planned failover (CNPG switchover) on an HA-enabled managed Postgres database. Promotes a standby to primary, dropping the current primary's connections. Mirrors Render's POST /postgres/{id}/failover. A database in a PROTECTED environment requires the exact confirmation phrase the refusal names.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in suspendPostgresArgs) (*mcp.CallToolResult, struct {
 		Accepted bool `json:"accepted"`
 	}, error) {
-		err := s.Failover(ctx, in.PostgresID)
+		err := s.Failover(core.WithConfirm(ctx, in.Confirm), in.PostgresID)
 		return nil, struct {
 			Accepted bool `json:"accepted"`
 		}{Accepted: err == nil}, err
@@ -316,8 +317,11 @@ type updatePostgresArgs struct {
 	IPAllowList           *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to open the endpoint to all source IPs"`
 	IPAllowListCidrs      *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	ParameterOverrides    *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. This REPLACES the declared set, so send every parameter you want to keep — read the current set with list_postgres_parameters first, NOT list_postgres_parameter_overrides (that one is the observed config and is mostly the platform's). Pass {} to clear every override. shared_preload_libraries is silently dropped, and platform-managed settings (WAL archive/restore commands, TLS paths, replication and logging) are refused"`
-	Public                *bool                    `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint. Unlike key-value stores, a Postgres allowlist write never changes this on its own — a private Postgres is an explicit choice at create, so publishing and withdrawing are both named acts"`
-	DryRun                bool                     `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
+	// Confirm is the protected-environment phrase a rename or a version upgrade
+	// needs on a member of a protected environment (w4/m127).
+	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks a rename or version upgrade"`
+	Public  *bool  `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint. Unlike key-value stores, a Postgres allowlist write never changes this on its own — a private Postgres is an explicit choice at create, so publishing and withdrawing are both named acts"`
+	DryRun  bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
 }
 
 type userArgs struct {
@@ -375,7 +379,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 			v, err := s.PreviewUpdatePostgres(ctx, in.PostgresID, patch)
 			return nil, v, err
 		}
-		v, err := s.UpdatePostgres(ctx, in.PostgresID, patch)
+		v, err := s.UpdatePostgres(core.WithConfirm(ctx, in.Confirm), in.PostgresID, patch)
 		return nil, v, err
 	})
 	mcputil.AddTool(srv, &mcp.Tool{

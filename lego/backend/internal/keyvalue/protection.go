@@ -29,6 +29,27 @@ func ProtectedConfirmation(verb, name string) string {
 	return "sudo " + verb + " key value " + name
 }
 
+// protectedKeyValuePatchVerb names the confirmation a PATCH needs on a member of
+// a protected environment, or "" when the patch changes nothing protection
+// covers. See postgres.protectedDatabasePatchVerb for the rule (w4/m127).
+func protectedKeyValuePatchVerb(patch KeyValuePatch) string {
+	switch {
+	case patch.PersistenceMode != nil:
+		// Turning persistence off makes every key in the store ephemeral — the
+		// one PATCH that can lose the data outright, and it was accepted on the
+		// same instance whose suspend was refused.
+		return "change durability of"
+	case patch.MaxmemoryPolicy != nil:
+		// An eviction policy decides which keys the server is allowed to throw
+		// away under memory pressure.
+		return "change eviction on"
+	case patch.Name != nil:
+		return "rename"
+	default:
+		return ""
+	}
+}
+
 func (s *Service) requireUnprotected(ctx context.Context, keyValue *appv1alpha1.KeyValue, verb string) error {
 	environmentID := keyValue.Labels[core.LabelEnvironment]
 	name := keyValue.Spec.Name
