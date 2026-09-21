@@ -2,6 +2,8 @@
 
 **Verified:** 2026-07-18 PDT **Target:** local CAPD app cluster, `dev-7` (non-production) **Clients:** checksum-verified, unmodified Render CLI v2.21.0 and PostgreSQL `psql` 18.4
 
+> **TLS mode superseded (w9/063, 2026-09-20).** Every `sslmode=require` reading below is accurate **as of 2026-07-18**. **w4/m95** has since moved a public database's external connection strings to `sslmode=verify-full`, which the pinned CLI passes to `psql` verbatim, so reproducing this run today additionally requires the connection-info CA (`PGSSLROOTCERT=/path/to/<id>-ca.pem`, downloadable from the dashboard Connections panel) — without it `psql` correctly refuses the private CNPG CA. See the `psql [id|name]` row in [the CLI compatibility checklist](../cli-compatibility-checklist.md) for the dated verify-full-era probe. The rows below are left unedited as the historical record.
+
 ## Result
 
 The official CLI's non-interactive `psql` command passed end to end against one disposable public bex Postgres by both immutable `dpg-…` id and exact display name. Both paths executed `SELECT 1 AS bex_psql_probe;` through the real local `psql` process and returned the probe column and value `1` through the external TLS/SNI route. The verifier also proved the CLI's client-side source-IP denial and deleted the Database and credential-bearing local state.
