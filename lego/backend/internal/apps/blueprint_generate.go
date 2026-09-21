@@ -466,12 +466,19 @@ func datastoreReference(key string, ref *appv1alpha1.SecretKeySelector, dbDispla
 }
 
 // appDomains is the primary custom domain plus the additional ones.
-func appDomains(a *appv1alpha1.App) []string {
-	var out []string
-	if a.Spec.Host != "" {
-		out = append(out, a.Spec.Host)
+func appDomains(a *appv1alpha1.App) []string { return blueprintDomainList(a.Spec) }
+
+// blueprintDomainList flattens a spec's two host fields into the one list a
+// manifest's `domains:` carries. The exporter writes it and the planner
+// compares against it, so the flattening lives in one place: an exporter and a
+// planner that disagree about this shape is precisely how an exported manifest
+// stopped describing its own source (w4/m124).
+func blueprintDomainList(spec appv1alpha1.AppSpec) []string {
+	out := make([]string, 0, len(spec.Hosts)+1)
+	if spec.Host != "" {
+		out = append(out, spec.Host)
 	}
-	return append(out, a.Spec.Hosts...)
+	return append(out, spec.Hosts...)
 }
 
 func generateDatabaseEntry(d *appv1alpha1.Database) map[string]any {

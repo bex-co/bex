@@ -1,19 +1,19 @@
 # w4 · m124 — A blueprint bex exported from a service never re-plans as a no-op, because `domains:` round-trips into the wrong spec field
 
-**Worker:** worker4 **Goal:** Generate Blueprint → validate is a closed loop: a manifest bex exported from live resources, re-planned against those same resources, reports `noop` for every one of them. **Status:** todo
+**Worker:** worker4 **Goal:** Generate Blueprint → validate is a closed loop: a manifest bex exported from live resources, re-planned against those same resources, reports `noop` for every one of them. **Status:** done 2026-09-21 (live re-probe deferred to the next QA pass; a third round-trip defect was found by this milestone's own guard — see Outcome)
 
 ## Tasks (in order)
 
 | id   | title                                                                                   | est | depends_on   |
 | ---- | --------------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Restore the `Host` / `Hosts` split when a manifest's `domains:` is applied                 | 45m | —            |
-| t002 | Trace the Key Value half — `ipAllowList: []` also never re-plans as a no-op, cause unverified | 40m | —            |
-| t003 | Make `changedFields` report the fields that changed, not the fields the manifest declares  | 40m | —            |
-| t004 | Close the loop with a round-trip guard over every exportable resource kind                 | 40m | w4/m124/t001, w4/m124/t002 |
-| t005 | Render parity — plan semantics across REST/GraphQL/MCP and the dashboard's plan summary    | 30m | w4/m124/t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                | 20m | w4/m124/t005 |
-| t007 | Test coverage — export → plan is `noop` for every kind, and a real change is named exactly  | 40m | w4/m124/t005 |
-| t008 | Closeout — close the milestone once the definition of done actually holds                  | 15m | w4/m124/t007 |
+| t001 | Restore the `Host` / `Hosts` split when a manifest's `domains:` is applied                 | 45m | —            | — **DONE**
+| t002 | Trace the Key Value half — `ipAllowList: []` also never re-plans as a no-op, cause unverified | 40m | —            | — **DONE**
+| t003 | Make `changedFields` report the fields that changed, not the fields the manifest declares  | 40m | —            | — **DONE**
+| t004 | Close the loop with a round-trip guard over every exportable resource kind                 | 40m | w4/m124/t001, w4/m124/t002 | — **DONE**
+| t005 | Render parity — plan semantics across REST/GraphQL/MCP and the dashboard's plan summary    | 30m | w4/m124/t004 | — **DONE**
+| t006 | Simplify — `/simplify` over the code this milestone changed                                | 20m | w4/m124/t005 | — **DONE**
+| t007 | Test coverage — export → plan is `noop` for every kind, and a real change is named exactly  | 40m | w4/m124/t005 | — **DONE**
+| t008 | Closeout — close the milestone once the definition of done actually holds                  | 15m | w4/m124/t007 | — **DONE**
 
 ## Definition of done
 
@@ -103,3 +103,27 @@ The same holds for `type: web`: manifests differing in both `healthCheckPath` an
 - **The generated manifest validates.** `valid: true`, `errors: []`, `errorDetails: []` — the `w4/m102` class (bex generating a manifest bex rejects) does not recur here.
 - **The planner detects real changes on the path that works.** `databases:` with `plan: basic-256mb` → `noop`; changed to `basic-1gb` → `update` naming `plan`.
 - **Secret handling in the export is sound.** The dialog states secrets are never exported and secret-backed variables appear as `sync: false`; the emitted manifest carried no values.
+
+## Outcome (2026-09-21)
+
+Three round-trip defects, not two — and all three are the same shape: **the exporter and the planner disagreeing about how one value is represented.** Self-validation (which this export already did) proves a manifest parses; it never proved it describes its own source.
+
+**t001 — `domains`.** A manifest declares one flat list; the spec keeps the primary host in `Spec.Host` and the rest in `Spec.Hosts`, and `CreateRequest` has no `Host` field at all — so the whole declared list arrived in `Hosts` and the applier moved the domain out of `Host` on every re-plan. The fix compares the **sets** rather than the fields: when the manifest describes the hosts the service already serves, the existing split is left untouched; only a genuine change rewrites it, into the canonical shape the exporter reads back. The flattening now lives in one function (`blueprintDomainList`) that both sides call, because an exporter and a planner that each flatten for themselves is exactly how this happened.
+
+Both host shapes are covered, and the second one matters: `AddDomain` appends to `Spec.Hosts` and never sets `Spec.Host`, so a service that gained its domains through the API has the mirror layout. A positional inversion alone would have fixed the reported case and broken that one — the set comparison is what makes both work, and the test fixture carries both (the mirror case sits on the static site, since a private service has no ingress and is refused domains outright).
+
+**t002 — the Key Value cause, traced rather than guessed.** The filing listed `ipAllowList: []` as a *candidate* it could not isolate, because the field is schema-required and so could not be removed the way `domains` was. It is the cause, and the mechanism is exact: `slices.Clone` of a declared empty non-nil slice returns an empty **non-nil** slice, the live CR reads back **nil** (Kubernetes drops empty slices on round-trip), and `reflect.DeepEqual(nil, []T{})` is false. Verified with a standalone program rather than asserted.
+
+That is the same class as the `domains` applier's own `Hosts` branch, whose comment had already written the reason down — so the fix generalizes it into one `canonicalSlice` helper applied to **every** list applier (`routes`, `headers`, both `ipAllowList`s, `readReplicas`, `hosts`), not just the one QA caught. The comment there names the whole family so the next list field is written correctly.
+
+**A third defect, found by t004's guard on its first run.** A cron job's command lives in `Spec.Command`, not `Spec.StartCommand` — `SetCommands` has always known that, and so does the exporter, which writes `Spec.Command` out as `startCommand` (or `dockerCommand` under a docker runtime). The two appliers did not: they wrote every declared command into `StartCommand`, so an exported cron gained a `StartCommand` it never had while keeping its `Command`, and re-planned as `update` forever. Nothing in the filing predicted this one; the guard caught it the first time it ran, which is the whole argument for having it.
+
+**t003 — `changedFields` is a diff now.** It listed every field the manifest *declared*, so two key-value manifests differing in `maxmemoryPolicy` produced byte-identical plans, and a `databases:` plan change reported `["name", "plan"]` — `name` being the key the resource was matched by, which cannot have changed. It is now computed by applying each declared field **alone** to a copy of the live spec and asking whether the spec moved. That deliberately derives the diff from the very appliers a real sync would run: a diff computed any other way can disagree with what apply does, which is the failure this whole milestone is about. Env groups keep the declared set and their always-`update` verdict, with the reason already in the code — the DoD said not to "fix" that into a no-op, and it is untouched.
+
+**t004/t007 — the loop is guarded.** `TestGeneratedBlueprintRePlansAsNoop` exports a fixture covering every exportable kind (web, private, worker, cron, static, Postgres, Key Value) and fails if any resource re-plans as anything but `noop`; it asserts up front that the exported manifest actually contains the domains, so it cannot pass for the wrong reason. `TestPlanNamesOnlyTheFieldThatChanged` is the other half — perturb exactly one field, get exactly that field back, and fail if nothing is detected at all, so the loop cannot be closed by a planner that went blind. Each of the four fixes was mutation-checked by reverting it individually; each is caught.
+
+**The DoD's remaining bullet, answered:** the filing asked whether a spurious `update` merely makes apply noisy or actually mutates. It is noisy, not destructive — the appliers are idempotent field copies and a `noop`-vs-`update` verdict only changes what the plan *reports*; the same `Apply*Spec` functions run either way and converge to the same spec. That said, the point of the fix is that a user should not have to know this: a plan that proposes to modify production resources it just described is unusable whether or not the write is harmless.
+
+**Green:** `lego/backend` `go test ./...` all packages + `golangci-lint` 0 issues.
+
+**Not done — the live re-probe and the dashboard check.** The DoD's bullets are `validateBlueprint` probes against real workspace resources; there was no production access this session, so none has been re-run. Also **not** checked live, as the filing flagged: whether `blueprint-plan-summary.tsx` renders `operation`/`changedFields` at all (`w6/m125` t004 recorded that it does not, only `views.ts` maps them). Since `changedFields` now carries different content, the next pass should open that panel — if it renders nothing today, this change is invisible there and that is itself worth knowing.
