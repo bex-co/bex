@@ -20,3 +20,13 @@ hydra:
         issuer: http://localhost:__HYDRA_PUBLIC_PORT__
       login: http://localhost:__DASHBOARD_PORT__/auth/login
       consent: http://localhost:__DASHBOARD_PORT__/auth/consent
+      # The device pages need the same treatment as login/consent, and for the
+      # same reason. Without them base/values/hydra.values.yaml wins and this
+      # dev stack sends `bex login` to https://dashboard.bex.co/auth/device —
+      # a local device flow then authenticates against PRODUCTION, where the
+      # local test identity does not exist, so it fails as "invalid
+      # credentials" with no hint that it left the machine. Mirrors
+      # deploy/gitops/overlays/local/values/hydra.values.yaml.
+      device:
+        verification: http://localhost:__DASHBOARD_PORT__/auth/device
+        success: http://localhost:__DASHBOARD_PORT__/auth/device/success
