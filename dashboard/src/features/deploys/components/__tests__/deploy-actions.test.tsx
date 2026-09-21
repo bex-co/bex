@@ -67,7 +67,11 @@ vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
 
 function renderActions(
   status: string,
-  commit?: { commitId?: string | null; commitMessage?: string | null },
+  commit?: {
+    commitId?: string | null;
+    commitMessage?: string | null;
+    trigger?: string | null;
+  },
 ) {
   const root = createRootRoute();
   const route = createRoute({
@@ -80,6 +84,7 @@ function renderActions(
         status={status}
         commitId={commit?.commitId}
         commitMessage={commit?.commitMessage}
+        trigger={commit?.trigger}
       />
     ),
   });
@@ -302,5 +307,56 @@ describe("DeployActions", () => {
       "The in-progress deploy will be stopped. The last successful deploy remains live.",
     );
     expect(dialog.textContent ?? "").not.toContain("039c347");
+  });
+});
+
+// The cancel dialog is read at the moment someone is deciding whether cancel
+// strands them, so its reassurance has to be true then. On a service's FIRST
+// deploy nothing has ever served, and the unconditional "the last successful
+// deploy remains live" was a promise the product could not keep — live on
+// 2026-09-19 the service read Canceled afterwards with no revision ever served
+// (w4/103).
+describe("DeployActions — the cancel dialog tells the truth about what stays live", () => {
+  it("warns that nothing is serving when canceling the first deploy", async () => {
+    const user = userEvent.setup();
+    renderActions("update_in_progress", { trigger: "create" });
+
+    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    const dialog = await screen.findByRole("alertdialog");
+
+    expect(
+      within(dialog).getByText(/no version is live yet/i),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText(/last successful deploy remains live/i),
+    ).not.toBeInTheDocument();
+  });
+
+  for (const trigger of ["api", "new_commit", "config_change", "deploy_hook"]) {
+    it(`keeps the remains-live reassurance for a ${trigger} deploy`, async () => {
+      const user = userEvent.setup();
+      renderActions("update_in_progress", { trigger });
+
+      await user.click(await screen.findByRole("button", { name: "Cancel" }));
+      const dialog = await screen.findByRole("alertdialog");
+
+      expect(
+        within(dialog).getByText(/last successful deploy remains live/i),
+      ).toBeInTheDocument();
+    });
+  }
+
+  // A caller that does not know the trigger must get the pre-existing body,
+  // not the scarier one — the fallback has to be the safe direction.
+  it("falls back to the generic body when the trigger is unknown", async () => {
+    const user = userEvent.setup();
+    renderActions("update_in_progress");
+
+    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    const dialog = await screen.findByRole("alertdialog");
+
+    expect(
+      within(dialog).getByText(/last successful deploy remains live/i),
+    ).toBeInTheDocument();
   });
 });

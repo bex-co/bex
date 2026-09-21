@@ -291,6 +291,13 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                           status={status}
                           commitId={details?.commitId}
                           commitMessage={details?.commitMessage}
+                          // The events feed carries the trigger as Render's
+                          // flag object rather than the deploys list's string;
+                          // firstBuild is the same cause as trigger "create"
+                          // (w4/103).
+                          trigger={
+                            details?.trigger?.firstBuild ? "create" : undefined
+                          }
                           onChanged={() => void refetch()}
                         />
                       </div>
