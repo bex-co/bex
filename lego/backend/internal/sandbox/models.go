@@ -67,13 +67,13 @@ const (
 // (docs/render-artifacts/ea-sandbox.md); bex fills what it knows and reflects the
 // rest so `render ea sandbox` renders a faithful record.
 type Sandbox struct {
-	ID             string         `json:"id"`
-	Plan           Plan           `json:"plan"`
-	Status         Status         `json:"status"`
-	Region         string         `json:"region,omitempty"`
+	ID     string `json:"id"`
+	Plan   Plan   `json:"plan"`
+	Status Status `json:"status"`
+	Region string `json:"region,omitempty"`
 	// TimeoutSeconds is the effective lifetime bound in seconds. 0 is never
 	// returned — omitted/legacy "no expiry" is normalized to 86400 (w5/m99).
-	TimeoutSeconds int `json:"timeoutSeconds"`
+	TimeoutSeconds int            `json:"timeoutSeconds"`
 	NetworkPolicy  *NetworkPolicy `json:"networkPolicy,omitempty"`
 	Owner          string         `json:"owner,omitempty"`
 	Workspace      string         `json:"workspace,omitempty"`

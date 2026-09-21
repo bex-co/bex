@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
@@ -135,7 +136,9 @@ func TestCreateUsesTemplateImageAndEchoesPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sb.ID != "os-1" || sb.Status != StatusCreating || sb.Plan != PlanStandard {
+	// The public id is bex's own `sbx-` id (w9/m94), never the substrate's
+	// "os-1" — the pinned CLI parses the prefix client-side.
+	if !strings.HasPrefix(sb.ID, "sbx-") || sb.Status != StatusCreating || sb.Plan != PlanStandard {
 		t.Errorf("sandbox = %+v", sb)
 	}
 	if sb.Image != "node:20" {
