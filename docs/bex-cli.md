@@ -142,16 +142,46 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 - **`bex docs`:** opens the Bex CLI guide on GitHub (`branding.DocsURL`), not `render.com/docs`.
 - **`bex -v`:** leads with `bex vX.Y.Z`, then a separate `compatible with Render CLI v…` line; update checks still hit this repo's `bex-cli/v*` releases.
 
-Safe rewrites preserve **`render.yaml`** (and the `bex.yml` filename alias). They do not rewrite upstream `RunE` bodies, so these residuals remain until an explicit upstream-hook or fork decision:
+Safe rewrites preserve **`render.yaml`** (and the `bex.yml` filename alias). They do not rewrite upstream `RunE` bodies, so the residuals below remain until an explicit upstream-hook or fork decision. That decision should be taken against the **whole** class, so this inventory is reproducible rather than a sample — regenerate it on every pin bump (step 4 of the re-diff) with:
+
+```bash
+MOD=$(cd lego/cli && go list -m -f '{{.Dir}}' github.com/render-oss/cli)
+grep -rnE '"[^"]*\brender [a-z]' "$MOD" --include='*.go' \
+  | grep -v '_test.go' | grep -vE 'Example|Short:|Long:|Use:|Deprecated:'
+```
+
+At the current pin (**v2.27.0**, `a764810a7682`) that yields the following. The first group is the one a user hits most often — mistyping a resource name — which the earlier version of this list omitted entirely (`w9/065`, live-verified 2026-09-21):
+
+**Resource-not-found, one per resource type** — each ends by telling a Bex user to run `render workspace set`:
+
+- `pkg/service/repo.go:233` — "No service named '\<x>' in workspace tea-…. To search another workspace, run `render workspace set <name|ID>`, or pass the service ID instead."
+- `pkg/postgres/resolve.go:186` — same shape, "No Postgres database named …"
+- `pkg/keyvalue/resolve.go:187` — same shape, "No Key Value named …"
+
+**Auth / workspace state:**
+
+- `pkg/config/config.go:27` (`ErrLogin`) — "run `render login` to authenticate", and the logout success strings (`cmd/logout.go:29,83`)
+- `pkg/config/config.go:26` (`ErrNoWorkspace`) — "no workspace set. Use `render workspace set` to set a workspace", on every list command with no active workspace (`w8/016`)
+- `pkg/command/wrapper.go:20` (`ErrTokenExpired`) — "your token is expired; run `render login` to get a new one"
+- `pkg/validate/workspace.go:17` — the cross-workspace mismatch, "Run `render workspace set <id>` to change contexts"
+- `cmd/blueprintvalidate.go:92` — `no workspace specified and no default workspace set. Use --workspace or run 'render workspace set'`
+
+**Usage / follow-up hints printed from `RunE`:**
+
+- `cmd/psql.go:96` — `Usage: render psql <postgresID> --command "SELECT ..." -o json` (non-interactive without `--command`)
+- `pkg/tui/views/pgcreate.go:797` — "Run `render pg get <id>` to check if it's ready yet."
+- `cmd/kvcreate.go:51` — the `--workspace` flag help citing `'render workspace set'`
+
+**Identity, storage and copy that branding deliberately leaves alone:**
 
 - login TUI / non-interactive copy saying “Render Dashboard”
-- `run \`render login\` to authenticate` (`config.ErrLogin`) and logout success strings
-- `no workspace set. Use \`render workspace set\` to set a workspace` (`config.ErrNoWorkspace`) on every list command with no active workspace — same residual class as `ErrLogin`; branding does not rewrite `RunE` bodies (`w8/016`)
 - User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
 - hard-coded OAuth public client id (Hydra bootstrap contract)
 - `~/.render/skills.yaml` + `render-oss/skills` for `bex skills`
 - login-view update banner via const `cfg.RepoURL` (mitigation: bump the pin; do not reopen the withdrawn upstream PR without an explicit decision)
 - one-time analytics notice copy (Render-branded disclosure + `render.com/docs` link + an invitation to re-enable Render telemetry — do not follow; see CLI usage telemetry above)
+
+Strings inside commands Bex does not serve (`render workflows …` deprecation notices, `render ea sandboxes snapshots …` help) are in the grep output but are not user-reachable residuals here — the underlying operations are non-goals in [`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md).
 
 The server-side compatibility ledger, including known Bex non-goals such as workflows, ephemeral SSH, and `ea` objects, is [`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md). The imported command can only work where Bex implements the corresponding API operation; it does not turn an unimplemented Bex feature into a supported one.
 
