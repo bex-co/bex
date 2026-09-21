@@ -50,6 +50,12 @@ export interface CreateServiceInput {
   schedule?: string;
   command?: string;
   publishPath?: string;
+  /**
+   * Container port bex routes to and injects as `$PORT` (w4/m121/t003). Only
+   * web_service and private_service carry one; omitted for every other type,
+   * which leaves the platform default in place.
+   */
+  port?: number;
   envVars?: EnvVarEntry[];
   secretFiles?: SecretFileEntry[];
 }

@@ -80,6 +80,10 @@ type ServicePatch struct {
 	BuildCommand                   *string
 	StartCommand                   *string
 	DockerfilePath                 *string
+	// Port is the listening port (w4/m121). Before it, the port was
+	// create-only on every surface, so bex's own PORT refusal — "change the
+	// service port instead" — named a setting no caller could reach.
+	Port *int32
 	NotifyOnFail                   *string
 	// NotificationsToSend: MCP-only today (divergence — see type comment).
 	NotificationsToSend   *string
@@ -243,6 +247,13 @@ var servicePatchTable = []servicePatchOp{
 		present: func(p ServicePatch) bool { return p.DockerfilePath != nil },
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetDockerfilePath(ctx, id, *p.DockerfilePath)
+		},
+	},
+	{
+		fields:  []string{"Port"},
+		present: func(p ServicePatch) bool { return p.Port != nil },
+		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
+			return s.SetPort(ctx, id, *p.Port)
 		},
 	},
 	{

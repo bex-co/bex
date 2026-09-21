@@ -90,6 +90,7 @@ import {
 } from "@/features/services/lib/dotenv-import";
 import { useSensitiveReveals } from "@/features/services/hooks/use-sensitive-reveals";
 import { EnvImportDialog } from "./env-import-dialog";
+import { ReservedEnvKeyNotice } from "./reserved-env-key-notice";
 import { SecretFileContentDialog } from "./secret-file-content-dialog";
 
 type SaveChoice = "only" | "deploy" | "rebuild";
@@ -120,6 +121,8 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   return (
     <EnvironmentEditor
       resourceId={serviceId}
+      // The reserved-PORT refusal links to THIS service's port control.
+      portSettingsServiceId={serviceId}
       envKeys={env.keys}
       // While the keys read is in flight the manifest flag may not have
       // arrived yet; the editor fails closed on any row missing it rather than
@@ -196,6 +199,13 @@ export interface EnvironmentEditorProps {
   generateOnServer?: boolean;
   /** Override section copy when the editor is hosted outside a service (w4/067). */
   copy?: EnvironmentEditorCopy;
+  /**
+   * The service whose Settings → Port control the reserved-PORT refusal should
+   * open (w4/m121/t003). Set by the service Environment tab; left unset by the
+   * env-group editor, whose group can be linked to many services at once, so
+   * its notice links to the services list instead.
+   */
+  portSettingsServiceId?: string;
 }
 
 /**
@@ -218,6 +228,7 @@ export function EnvironmentEditor({
   saving,
   generateOnServer = false,
   copy,
+  portSettingsServiceId,
 }: EnvironmentEditorProps) {
   const { t } = useTranslations();
   const envTitle = copy?.envTitle ?? t("services.envTitle");
@@ -738,6 +749,7 @@ export function EnvironmentEditor({
                 error={validation.env[row.id]}
                 disabled={createDenied}
                 permissionDescriptionID={writeReasonID}
+                portSettingsServiceId={portSettingsServiceId}
                 onChange={(update) => updateRow("envVars", row.id, update)}
               />
             ))
@@ -1186,12 +1198,15 @@ function EnvDraftItem({
   error,
   disabled,
   permissionDescriptionID,
+  portSettingsServiceId,
   onChange,
 }: {
   row: EnvDraftRow;
   error?: DraftValidation["env"][string];
   disabled: boolean;
   permissionDescriptionID?: string;
+  /** Service whose port control the reserved-key refusal links to (w4/m121). */
+  portSettingsServiceId?: string;
   onChange: (update: Partial<EnvDraftRow>) => void;
 }) {
   const { t } = useTranslations();
@@ -1242,7 +1257,13 @@ function EnvDraftItem({
           aria-invalid={Boolean(error)}
           placeholder={t("services.envKeyPlaceholder")}
         />
-        {error ? (
+        {error === "reserved" ? (
+          // The refusal that names the port control now reaches it (w4/m121).
+          <ReservedEnvKeyNotice
+            envKey={row.key.trim()}
+            serviceId={portSettingsServiceId}
+          />
+        ) : error ? (
           <p className="text-destructive text-xs" role="alert">
             {error === "duplicate"
               ? t("services.environmentDuplicateKey")
@@ -1250,9 +1271,7 @@ function EnvDraftItem({
                 ? t("services.environmentValueRequired")
                 : error === "limit"
                   ? t("services.environmentLimit")
-                  : error === "reserved"
-                    ? t("services.envReservedKey", { key: row.key.trim() })
-                    : t("services.envInvalidKey")}
+                  : t("services.envInvalidKey")}
           </p>
         ) : null}
       </div>

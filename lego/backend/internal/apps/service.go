@@ -440,8 +440,18 @@ type AppView struct {
 	// slug + port), so surfacing it is additive on the Render-compatible
 	// surfaces.
 	InternalAddress string `json:"internalAddress,omitempty"`
-	CreatedAt       string `json:"createdAt"`
-	UpdatedAt       string `json:"updatedAt,omitempty"`
+	// Port is the port the container listens on (spec.port), which the operator
+	// injects as PORT and targets with the Service, the Ingress backend and the
+	// health probe. Addressable types only (web/private); zero otherwise.
+	//
+	// A bex extension, like InternalAddress — Render has no port FIELD, it
+	// detects the bound port. It is readable because it is settable
+	// (w4/m121): before that the number existed only as the suffix of
+	// internalAddress, so a caller who had just set a port at create could not
+	// read it back, and GraphQL answered `Cannot query field "port"`.
+	Port      int32  `json:"port,omitempty"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
 	// DashboardURL is the control-plane detail route, in Render's
 	// `/{web|worker|pserv|static|cron}/{id}` shape (docs/render-artifacts/
 	// dashboard-routes.md). URL above remains the hosted data-plane endpoint;
@@ -943,6 +953,7 @@ func view(a *appv1alpha1.App) AppView {
 		// Service answers — surfaced string and resolvable hostname cannot
 		// drift (ADR041 D2/D4).
 		InternalAddress:      a.Spec.InternalAddress(a.Name),
+		Port:                 addressablePort(a.Spec),
 		URLs:                 urls,
 		Image:                a.Status.Image,
 		SourceImage:          a.Spec.Image,
@@ -2512,8 +2523,13 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 // resolves the fields with request-shape defaults: port (DefaultPort),
 // replicas (1), branch ("main" for a repo-backed service), and autoDeploy.
 func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch string, autoDeploy bool, err error) {
-	if req.Port < 0 || req.Port > 65535 {
-		return 0, 0, "", false, fmt.Errorf("%w: port must be 1-65535", core.ErrBadRequest)
+	// 0 is "unset" here (the default applies below); anything else must be a
+	// port the container can actually bind — the same rule SetPort enforces, so
+	// create cannot accept a configuration update would refuse.
+	if req.Port != 0 {
+		if err := validateServicePort(req.Port); err != nil {
+			return 0, 0, "", false, err
+		}
 	}
 	if req.Replicas < 0 || req.Replicas > store.MaxReplicas {
 		return 0, 0, "", false, fmt.Errorf("%w: replicas must be 0-%d", core.ErrBadRequest, store.MaxReplicas)
@@ -3809,6 +3825,81 @@ func (s *Service) SetMaxShutdownDelay(ctx context.Context, name string, seconds 
 		a.Spec.MaxShutdownDelaySeconds = clonePtr(&seconds)
 	})
 }
+
+// SetPort changes the port the container listens on (spec.port), which the
+// operator injects as PORT and targets with the Service, the Ingress backend
+// and the health probe.
+//
+// It exists because the port was CREATE-ONLY on every surface (w4/m121): 23
+// Set… mutators and no SetPort, no `port` on the PATCH body, and nothing in the
+// dashboard that reads or writes one. Meanwhile bex refuses a user-supplied
+// PORT env var with "bex sets it from the service port; change the service port
+// instead" — a sentence that, until this verb, named a setting nobody could
+// change. An off-the-shelf image binding anything other than 3000 was therefore
+// hostable through the API and not through the product.
+//
+// Only an internally-addressable type has a port to change: web_service
+// (including the empty-type default) and private_service. A worker or cron job
+// has no listener, and a static site is served by the shared static-server on
+// its own port — for those, a port is meaningless rather than merely unused, so
+// this refuses instead of writing a field the operator will ignore.
+//
+// restartedAt is bumped: the port is release identity. Changing it must roll the
+// pods, or the running container keeps the old PORT while the Service, Ingress
+// and probe have already moved to the new one — which is exactly the split-brain
+// this verb exists to make impossible.
+func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if !a.Spec.InternallyAddressable() {
+		return AppView{}, fmt.Errorf("%w: port only applies to a web_service or private_service; %q has no listening port",
+			core.ErrBadRequest, effectiveType(a.Spec.Type))
+	}
+	if err := validateServicePort(port); err != nil {
+		return AppView{}, err
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.Port = port
+		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
+}
+
+// addressablePort reports the port a read surface publishes: the effective
+// listening port for a type that has one, and zero for the types that do not.
+// Kept beside InternalAddress's derivation so the published number and the
+// `<slug>:<port>` string can never disagree — they are the same field, read
+// twice, and a reader who compares them is entitled to find them equal.
+func addressablePort(spec appv1alpha1.AppSpec) int32 {
+	if !spec.InternallyAddressable() {
+		return 0
+	}
+	return spec.EffectivePort()
+}
+
+// validateServicePort is the one port bounds check every surface shares, so a
+// create and an update can never disagree about what is acceptable. Unlike
+// create, an update has no "0 means default" case: an explicit zero here is a
+// caller asking for a port that cannot be bound, not an omission.
+func validateServicePort(port int32) error {
+	if port < minTenantPort || port > 65535 {
+		return fmt.Errorf("%w: port must be %d-65535 — a tenant container has no NET_BIND_SERVICE capability, so it cannot bind a port below %d even as root (a stock :80 image such as nginx must be pointed at a high port)",
+			core.ErrBadRequest, minTenantPort, minTenantPort)
+	}
+	return nil
+}
+
+// minTenantPort is the lowest port a tenant container can actually bind.
+//
+// Every tenant container is stamped with ALL Linux capabilities dropped
+// (ADR022 — tenantSecCtx()), so NET_BIND_SERVICE is gone and a privileged port
+// fails with `bind: permission denied` even as root. That is a deliberate
+// posture kept over Render parity, which makes a sub-1024 port a configuration
+// the platform KNOWS will crash-loop. Accepting it would reproduce, one layer
+// down, the failure w4/m121 exists to remove: a write that reports success and
+// then does not work.
+const minTenantPort = 1024
 
 // SetAutoDeploy flips whether a signed git push to the tracked branch redeploys
 // this App (spec.autoDeploy, Render's Auto-Deploy toggle). A direct CR patch,

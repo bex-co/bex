@@ -72,6 +72,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     notificationsToSend: null,
     renderSubdomainPolicy: null,
     healthCheckPath: null,
+    port: 3000,
     maxShutdownDelaySeconds: null,
     preDeployCommand: null,
     publishPath: null,
@@ -122,6 +123,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     notificationsToSend: null,
     renderSubdomainPolicy: null,
     healthCheckPath: null,
+    port: 3000,
     maxShutdownDelaySeconds: null,
     preDeployCommand: null,
     schedule: null,
@@ -198,6 +200,9 @@ describe("toServiceView", () => {
       renderSubdomainPolicy: null,
       notificationsToSend: null,
       healthCheckPath: null,
+      // The list node does not select the port, so the mapper reports null
+      // rather than inventing the platform default (w4/m121/t003).
+      port: null,
       maxShutdownDelaySeconds: null,
       preDeployCommand: null,
       publishPath: null,
@@ -205,7 +210,7 @@ describe("toServiceView", () => {
       headers: [],
       ipAllowList: null,
       ipAllowListEntries: null,
-    outboundIps: null,
+      outboundIps: null,
       maintenanceMode: null,
     });
   });

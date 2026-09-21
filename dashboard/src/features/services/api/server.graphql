@@ -91,6 +91,10 @@ query Server($id: String!) {
     # renderSubdomainPolicy controls whether the platform subdomain is active
     # (enabled|disabled, Render's renderSubdomainPolicy, w7/m31).
     renderSubdomainPolicy
+    # port is the container port bex routes to and injects as $PORT (w4/m121).
+    # 0/absent for the types that bind none (background_worker, cron_job,
+    # static_site); only web_service and private_service carry one.
+    port
     # healthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
     # empty means the default "/". Only applies to web_service/private_service.
     healthCheckPath

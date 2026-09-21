@@ -1,0 +1,11 @@
+# setPort changes the container port bex routes to and injects as $PORT
+# (w4/m121/t001). Only web_service and private_service accept it — the backend
+# refuses background_worker / cron_job / static_site with a 400, and the
+# dashboard hides the control for them rather than offering a call that can only
+# fail. A port change bumps restartedAt, so saving opens a deploy.
+mutation SetPort($id: String!, $port: Int!) {
+  setPort(id: $id, port: $port) {
+    id
+    port
+  }
+}

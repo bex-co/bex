@@ -1175,6 +1175,7 @@ export type Mutation = {
   setMaxShutdownDelay: Maybe<Service>;
   setNotificationsToSend: Maybe<Service>;
   setNotifyOnFail: Maybe<Service>;
+  setPort: Maybe<Service>;
   setPreDeployCommand: Maybe<Service>;
   setProjectDatabases: Maybe<Project>;
   setProjectKeyValues: Maybe<Project>;
@@ -2080,6 +2081,12 @@ export type MutationSetNotificationsToSendArgs = {
 export type MutationSetNotifyOnFailArgs = {
   id: Scalars['String']['input'];
   value: Scalars['String']['input'];
+};
+
+
+export type MutationSetPortArgs = {
+  id: Scalars['String']['input'];
+  port: Scalars['Int']['input'];
 };
 
 
@@ -3470,6 +3477,7 @@ export type Service = {
   ownerId: Maybe<Scalars['String']['output']>;
   phase: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
+  port: Maybe<Scalars['Int']['output']>;
   preDeployCommand: Maybe<Scalars['String']['output']>;
   projectId: Maybe<Scalars['String']['output']>;
   publicRoutingNotice: Maybe<Scalars['String']['output']>;

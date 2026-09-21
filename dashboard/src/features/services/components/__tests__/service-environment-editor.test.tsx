@@ -292,9 +292,16 @@ describe("ServiceEnvironmentEditor", () => {
 
     expect(
       await screen.findByText(
-        "PORT is set by bex from the service port. Change the service port instead.",
+        "PORT is set by bex from the service port. Change the service's port field instead.",
       ),
     ).toBeInTheDocument();
+    // w4/m121/t003: the sentence names the service's port field, so it links
+    // to the control that changes it instead of dead-ending.
+    expect(
+      screen.getByRole("link", {
+        name: "Change the service's port in Settings",
+      }),
+    ).toHaveAttribute("href", "/services/web/settings#port");
     expect(
       screen.getByRole("button", { name: "Save and deploy" }),
     ).toBeDisabled();
