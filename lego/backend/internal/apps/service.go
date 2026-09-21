@@ -1865,6 +1865,27 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		return AppView{}, err
 	}
 
+	// Refuse an inaccessible repository before anything is written (w4/105).
+	// SetSourceAndRegistryCredential had been ValidateRepo's ONLY production
+	// caller, so the edit path failed fast with an actionable 400 while create
+	// accepted the same URL, returned 201, and surfaced the problem minutes
+	// later as the clone step's `fatal: could not read Username for
+	// 'https://github.com'` — which reads as a platform auth fault rather than
+	// a bad URL, and repeats identically on every manual redeploy.
+	//
+	// Placed after the duplicate check so a name conflict still wins (it is
+	// the cheaper, more specific answer) and before the first write, so a
+	// refused create leaves nothing behind. ValidateRepo is a no-op when
+	// GitHub is unconfigured or the host is not github.com, so this cannot
+	// refuse a repo it has no opinion about — and the deliberate tradeoff it
+	// already carries on the edit path applies here too: a GitHub outage fails
+	// the create loudly instead of failing the build later.
+	if desired.Repo != "" && s.GitHub != nil {
+		if err := s.GitHub.ValidateRepo(ctx, tenantID, desired.Repo); err != nil {
+			return AppView{}, err
+		}
+	}
+
 	a := &appv1alpha1.App{}
 	a.Name = req.Name
 	if tenantID != "" {

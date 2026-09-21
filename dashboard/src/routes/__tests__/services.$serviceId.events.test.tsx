@@ -602,6 +602,16 @@ describe("ServiceEventsPage — a deploy's trigger is named the way the Deploys 
       trigger: { manual: true },
       want: "Manual deploy",
     },
+    {
+      // w4/106: the flag is called firstBuild because that is Render's field
+      // name, but an `image`-runtime service has no build stage at all, so the
+      // old "First build" label asserted a step that never ran — and the
+      // Deploys tab called the same deploy "First Deploy".
+      name: "a first deploy is a First Deploy, not a First build",
+      trigger: { firstBuild: true },
+      want: "First Deploy",
+      notWant: "First build",
+    },
   ];
 
   for (const tc of cases) {
