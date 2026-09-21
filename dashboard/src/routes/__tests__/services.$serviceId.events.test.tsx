@@ -566,3 +566,98 @@ describe("ServiceEventsPage — failed deploys badge their own status + reason (
     expect(container.querySelector("p.text-destructive")).toBeNull();
   });
 });
+
+// The events feed and the deploys list describe one deploy; naming its trigger
+// two different ways is a contradiction a reader has to resolve, and both of the
+// old events labels were also factually wrong (w4/100, w4/104 — both observed
+// live on 2026-09-19 against the same deploys the Deploys tab labelled
+// correctly).
+describe("ServiceEventsPage — a deploy's trigger is named the way the Deploys tab names it", () => {
+  const cases: Array<{
+    name: string;
+    trigger: Record<string, boolean>;
+    want: string;
+    notWant?: string;
+  }> = [
+    {
+      // A Settings edit — a start command, a schedule — rides Render's
+      // envUpdated flag because that is the nearest flag its vocabulary has.
+      // "Environment updated" then told the reader an environment value had
+      // changed when none had.
+      name: "a config change is a Config Change, not an environment update",
+      trigger: { envUpdated: true },
+      want: "Config Change",
+      notWant: "Environment updated",
+    },
+    {
+      // A CI system POSTing a secret URL. Nobody clicked anything.
+      name: "a deploy hook is a Deploy Hook, not a manual deploy",
+      trigger: { deployHook: true },
+      want: "Deploy Hook",
+      notWant: "Manual deploy",
+    },
+    {
+      // The regression target: an API/dashboard deploy really is manual.
+      name: "an API deploy is still a Manual deploy",
+      trigger: { manual: true },
+      want: "Manual deploy",
+    },
+  ];
+
+  for (const tc of cases) {
+    it(tc.name, async () => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          serviceEvents: [
+            deployEvent({
+              type: "deploy_started",
+              details: {
+                deployId: "dep-live-001",
+                deployStatus: "",
+                preDeployStatus: "",
+                trigger: tc.trigger,
+              },
+            }),
+          ],
+        },
+        loading: false,
+        refetch: vi.fn(),
+      });
+
+      renderEvents("app");
+
+      expect(await screen.findByText(tc.want)).toBeInTheDocument();
+      if (tc.notWant) {
+        expect(screen.queryByText(tc.notWant)).not.toBeInTheDocument();
+      }
+    });
+  }
+
+  // A server that has not shipped the new flag yet still sets `manual` for a
+  // hook deploy. Checking deployHook first means the correct label wins as soon
+  // as either side is deployed, in whichever order that happens.
+  it("prefers the hook label when a server sends both flags", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          deployEvent({
+            type: "deploy_started",
+            details: {
+              deployId: "dep-live-001",
+              deployStatus: "",
+              preDeployStatus: "",
+              trigger: { manual: true, deployHook: true },
+            },
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("Deploy Hook")).toBeInTheDocument();
+    expect(screen.queryByText("Manual deploy")).not.toBeInTheDocument();
+  });
+});

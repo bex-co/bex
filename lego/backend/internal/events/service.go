@@ -444,9 +444,8 @@ func pushDown(eventType string) (verbs, phases, factTypes []string, autoDeploy s
 const DefaultWindow = time.Hour
 
 // Trigger is Render's deploy trigger object (deploy_started.details.trigger) —
-// which of the mutually-exclusive causes started this rollout. bex fills the two
-// its deploys table records ("create" ⇒ FirstBuild, "api" ⇒ Manual) and leaves
-// the rest false rather than guessing.
+// which of the mutually-exclusive causes started this rollout. bex fills the
+// ones its deploys table records and leaves the rest false rather than guessing.
 type Trigger struct {
 	FirstBuild       bool
 	EnvUpdated       bool
@@ -454,6 +453,19 @@ type Trigger struct {
 	DeployedByRender bool
 	ClearCache       bool
 	Rollback         bool
+	// DeployHook is a bex extension: Render's trigger vocabulary has no hook
+	// flag, so a deploy-hook POST used to be reported as Manual — which reads
+	// "somebody clicked Deploy" for a rollout nobody touched, typically a CI
+	// system hitting a secret URL (w4/104, observed live 2026-09-19). bex's own
+	// deploys list has always distinguished the two ("Deploy Hook" vs "Manual
+	// Deploy"), so collapsing them here lost a distinction the product already
+	// made. It stays mutually exclusive with Manual, as the whole object is:
+	// setting both would just move the false statement rather than remove it,
+	// and a Render-only client reading `manual` would still be told a person
+	// pressed something. Render clients see every flag false for a hook
+	// deploy, which is this object's documented behavior for a cause Render's
+	// vocabulary cannot name.
+	DeployHook bool
 }
 
 // Details is the per-type payload, a closed struct rather than a free-form map:
@@ -759,7 +771,8 @@ func view(r store.ServiceEventRow, service string) Event {
 				// a Settings field, env var, secret file, or env-group link now
 				// opens (w6/m51). Manual stays false: nobody clicked Deploy.
 				EnvUpdated: r.Trigger == store.TriggerConfigChange,
-				Manual:     r.Trigger == store.TriggerAPI || r.Trigger == store.TriggerDeployHook,
+				Manual:     r.Trigger == store.TriggerAPI,
+				DeployHook: r.Trigger == store.TriggerDeployHook,
 				Rollback:   r.Trigger == store.TriggerRollback,
 			}
 			// w4/m112: while this deploy is still open, say why it is not
