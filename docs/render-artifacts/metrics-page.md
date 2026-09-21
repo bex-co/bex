@@ -120,3 +120,35 @@ Live QA on production (`srv-dal3f2rkmutc73d7q9l0`, `srv-d9bj8s3eg85c7390eb9g`) s
 **Bandwidth decision (evidenced).** The chart used `rate` while the "N used this month" footer and `usage/service.go` metering used `increase`. A 30-minute capture on `srv-d9bj8s3eg85c7390eb9g` returned ~1e6-scale points with `unit: "bytes"`; if those were B/s, sustained ≈1 MB/s implies ~1.3 TB over ~16 days of the month, against a footer of 164 GiB (~8.5× higher than the month's average rate — consistent with either a peak burst **or** a mislabelled rate). Mechanism check: for a counter sampled at step `S`, `rate(...[S]) * S ≈ increase(...[S])`. Converting the chart to `SumIncreases` over the same step makes Σ(chart points over a day) reconcile with that day's metered bytes and with the month-to-date `Increase` figure; the wire `unit` stays `"bytes"` (per-bucket bytes, not B/s). Render.com's Outbound Bandwidth chart is also a throughput-shaped series with a separate month-to-date total — bex deliberately aligns chart and footer on the **count** primitive so a reader can sum the chart without multiplying by step.
 
 Partial leading buckets: Prometheus `increase()` may return a fractional count when the window starts mid-scrape; bex accepts that (dashboard `Math.round` on the aggregate) rather than clamping — documented on `sumIncrease` in `lego/backend/internal/metrics/source.go`.
+
+## Corrected by w4/m119 (2026-09-21) — an exact count cannot come from a counter
+
+w4/m108's last paragraph above conceded that "Prometheus `increase()` may return a fractional count when the window starts mid-scrape; bex accepts that". Live QA on 2026-09-20 (`srv-dansb83s0ils73bgpaj0`, since deleted) showed that concession was far too generous. 25 `curl` GETs, confirmed as exactly 25 by `GET /v1/logs?type=request` (`nlogs: 25, hasMore: False`), read back:
+
+- `27.795666666666666` over one window alignment (`aggregateBy=statusCode`), and
+- `6.666666666666666` over another, shifted by ~35 s.
+
+Neither is an integer; they differ by a factor of four; neither is within ±1 of the truth. This is not a partial-leading-bucket rounding artifact — it is `increase()` doing what it is documented to do. `increase()` scales the first-to-last counter delta by `window / sampled-duration`, so a **burst** occupying part of a bucket is extrapolated by however the scrapes happened to land around it. Steady traffic hides this completely, which is why m108's own acceptance passed; bursty traffic is the free-tier norm.
+
+**There is no extrapolation-free counter-increase in PromQL.** `increase()`, `rate()` and `delta()` all extrapolate by design, and reconstructing a bucket from `max_over_time − min_over_time` loses counter resets and cross-boundary increments. So an exact count has to come from a source that counts _events_, not a counter — the access log.
+
+| Metric | w4/m108 | After (w4/m119) |
+| --- | --- | --- |
+| `http_requests`, unfiltered | Prometheus `sum(increase(traefik_service_requests_total[step]))` | request-log store `count_over_time(...[step])` — exact, and the same lines the Logs tab shows |
+| `http_requests`, host/path-filtered | already `count_over_time` | **unchanged** |
+| `http_requests`, no log store wired, or a failed log read | — | falls back to the Prometheus counter (see below) |
+| `http_latency` | `histogram_quantile` / `quantile_over_time` | **unchanged** — percentiles come from Traefik's histogram, where `rate()` is the correct primitive |
+| `bandwidth` chart | `egressquery.SumIncreases` | **unchanged** — see the decision below |
+| `bandwidth` month-to-date / usage metering | `Increase` over the billing window | **unchanged** |
+
+The count and the request log now reconcile by construction: they are the same records. A static site is served from the access log too — w4/m113's router-scoped Prometheus selectors were a workaround for a static site having no per-App Kubernetes Service, and the access log has no such problem since its lines carry the App.
+
+**The fallback is deliberate, and it is not the host/path branch's rule.** A host/path-filtered read _errors_ when the log store is unwired, because Prometheus carries no host/path axis and cannot answer at all. An unfiltered count can be answered, approximately, by the counter — so when the log store is unwired (`BEX_LOKI_URL` unset) or a log read fails, bex serves the counter and logs it rather than blanking a working chart. The approximation is exactly the pre-w4/m119 behavior, so the fallback is never worse than what it replaces, while a 503 would be strictly worse. A wired-but-silent pipeline still reads zero and is indistinguishable from a genuinely idle service at this vantage point — the same limitation the host/path read already dispositions, caught out of band by the scheduled request-logs-liveness probe.
+
+**Bandwidth decision (evidenced, deliberate divergence — w4/m119 t002).** The Outbound Bandwidth chart keeps `SumIncreases` and therefore keeps the same alignment sensitivity, for three reasons that are established in code rather than by measurement:
+
+1. **Money is not affected.** Billing metering calls `egressquery.Increase` directly over the **billing window**, not per chart step (`usage/service.go:1229`), and `SumIncreases` carries an explicit "do not route money through this helper" fence. `increase()`'s extrapolation error is bounded by roughly one scrape interval at each end of the range: across a month-long window that is under ~0.01%, while across a 60 s bucket with a 15 s scrape it is the error this milestone is about. Same function, opposite significance — the ratio of range to sample spacing is the whole story.
+2. **There is no exact substitute.** Bandwidth is a **composed** figure: Traefik router response bytes **plus** the WebSocket egress meter **plus** the node-level direct-egress meter (`egressquery.App`), the last of which carries its own counter-loss guard that rejects a window outright rather than misreading a restored counter. The access log carries only the HTTP half — rebuilding bandwidth from it would silently under-count every WebSocket and non-HTTP byte, trading a bounded alignment error for an unbounded omission.
+3. **The unit cannot be misread.** `requestUnit` returns `bytes` with the per-bucket meaning pinned in a comment (`"per-bucket bytes after w4/m108 (Increase), not B/s"`), the month-to-date footer reads the same `Increase` primitive, and the table above states it — so a reader cannot mistake the axis for a rate, which is the failure mode m108 actually fixed.
+
+What this leaves open, honestly: a short, bursty transfer can still read high or low on the bandwidth chart by query alignment, the same way requests did. It is a chart-accuracy issue confined to sub-scrape-interval bursts, it does not reach an invoice, and closing it would require a per-App byte-counting event stream that does not exist today. Re-open with a measurement if a user reports a bandwidth chart they cannot reconcile with their invoice.
