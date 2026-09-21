@@ -3640,8 +3640,13 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Deploy event trigger: rollback",
   },
   "services.eventsTriggerFirstBuild": {
-    message: "First build",
-    description: "Deploy event trigger: initial build",
+    // Matches deploys.triggerCreate word for word (w4/106). The flag is called
+    // firstBuild because that is Render's field name, but the LABEL has to be
+    // true for every runtime: an `image`-runtime service has no build stage at
+    // all, so "First build" asserted a step that never ran. "First Deploy" is
+    // correct either way.
+    message: "First Deploy",
+    description: "Deploy event trigger: the service's first deploy",
   },
   "services.eventsTriggerManual": {
     message: "Manual deploy",

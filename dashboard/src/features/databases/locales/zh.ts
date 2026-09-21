@@ -810,9 +810,12 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "显示连接池字符串",
     description: "Access panel button to fetch the pooled connection strings",
   },
-  "databases.accessPoolerDisabled": {
-    message: "该数据库未启用连接池。启用连接池以获取连接池字符串。",
-    description: "Access panel shown when no pooler is provisioned",
+    "databases.accessPoolerDisabled": {
+    // See the en copy — w4/107.
+    message:
+      "该数据库未启用连接池，因此没有连接池字符串。请通过 API 开启 —— PATCH /v1/postgres/{id}，请求体 {\"pooler\": true} —— 之后连接池字符串会显示在这里。",
+    description:
+      "Access panel shown when no pooler is provisioned; names the API that enables one, since the dashboard has no pooler control (w4/107)",
   },
   "databases.accessPoolerInternal": {
     message: "内部连接池连接",

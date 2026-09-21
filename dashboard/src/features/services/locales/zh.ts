@@ -3564,7 +3564,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Deploy event trigger: rollback",
   },
   "services.eventsTriggerFirstBuild": {
-    message: "首次构建",
+    // See the en copy — w4/106.
+    message: "首次部署",
     description: "Deploy event trigger: initial build",
   },
   "services.eventsTriggerManual": {

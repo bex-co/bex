@@ -825,9 +825,18 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Access panel button to fetch the pooled connection strings",
   },
   "databases.accessPoolerDisabled": {
+    // w4/107: the old copy told the reader to "enable a pooler" on a page with
+    // no pooler control — and there is none anywhere in the dashboard, because
+    // the pooler write lives on REST alone (w2/024 excluded it from GraphQL on
+    // parity grounds, which is sound on its own terms but left the dashboard,
+    // a GraphQL client, unable to carry out its own instruction). Until a
+    // pooler control exists, the honest copy names the surface that can
+    // actually do it — the same shape databases.recoveryDisabled uses for a
+    // feature this page cannot turn on.
     message:
-      "Connection pooling isn't enabled for this database. Enable a pooler to get pooled connection strings.",
-    description: "Access panel shown when no pooler is provisioned",
+      "Connection pooling isn't enabled for this database, so there are no pooled connection strings. Turn it on through the API — PATCH /v1/postgres/{id} with {\"pooler\": true} — and the pooled strings appear here.",
+    description:
+      "Access panel shown when no pooler is provisioned; names the API that enables one, since the dashboard has no pooler control (w4/107)",
   },
   "databases.accessPoolerInternal": {
     message: "Internal pooled connection",

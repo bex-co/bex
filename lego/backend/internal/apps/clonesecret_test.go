@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -263,4 +264,79 @@ func TestDeleteRemovesCloneSecret(t *testing.T) {
 	if _, ok := cloneSecretValue(t, cl, "web-clone"); ok {
 		t.Error("delete must remove the clone secret")
 	}
+}
+
+// TestCreateRefusesAnInaccessibleRepository is w4/105. `ValidateRepo`'s only
+// production caller was the source-EDIT path, so editing a service's repo to an
+// inaccessible URL failed fast with an actionable 400 while creating one with
+// the same URL returned 201 — and the problem surfaced minutes later as the
+// clone step's `fatal: could not read Username for 'https://github.com'`, which
+// reads as a platform auth fault rather than a bad URL, and repeated
+// identically on every manual redeploy. Live 2026-09-20, 2/2.
+//
+// REST, GraphQL and MCP creates share this verb, so one gate covers all three.
+func TestCreateRefusesAnInaccessibleRepository(t *testing.T) {
+	refusal := fmt.Errorf("%w: repository is not accessible", core.ErrBadRequest)
+	gh := &fakeCloneTokens{validateErr: refusal}
+	svc, cl := ghService(gh)
+
+	_, err := svc.create(context.Background(), CreateRequest{
+		Name: "web", Type: appv1alpha1.TypeWebService,
+		Repo: "https://github.com/render-oss/render-examples-go-gin",
+	})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("create with an inaccessible repo = %v, want the ValidateRepo refusal", err)
+	}
+	if gh.validateCalls != 1 {
+		t.Errorf("ValidateRepo called %d times, want exactly once", gh.validateCalls)
+	}
+	// A refused create must leave nothing behind — the whole point of failing
+	// before the write rather than during the build.
+	var made appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &made); !apierrors.IsNotFound(err) {
+		t.Errorf("a refused create left an App behind: %v", err)
+	}
+}
+
+// TestCreateStillAcceptsSourcesValidateRepoHasNoOpinionAbout is the regression
+// target. ValidateRepo is a no-op for a non-github.com host and when GitHub is
+// unconfigured, so the gate must not refuse a repo it cannot judge — and an
+// image-backed service must never reach it at all.
+func TestCreateStillAcceptsSourcesValidateRepoHasNoOpinionAbout(t *testing.T) {
+	t.Run("accessible repo", func(t *testing.T) {
+		gh := &fakeCloneTokens{}
+		svc, _ := ghService(gh)
+		if _, err := svc.create(context.Background(), CreateRequest{
+			Name: "web", Type: appv1alpha1.TypeWebService,
+			Repo: "https://github.com/render-examples/go-gin-web-server",
+		}); err != nil {
+			t.Fatalf("create with an accessible repo: %v", err)
+		}
+		if gh.validateCalls != 1 {
+			t.Errorf("ValidateRepo called %d times, want exactly once", gh.validateCalls)
+		}
+	})
+
+	t.Run("image-backed service never consults GitHub", func(t *testing.T) {
+		gh := &fakeCloneTokens{validateErr: fmt.Errorf("%w: should not be asked", core.ErrBadRequest)}
+		svc, _ := ghService(gh)
+		if _, err := svc.create(context.Background(), CreateRequest{
+			Name: "img", Type: appv1alpha1.TypeWebService, Image: "nginx:alpine",
+		}); err != nil {
+			t.Fatalf("image create: %v", err)
+		}
+		if gh.validateCalls != 0 {
+			t.Errorf("an image-backed create consulted GitHub %d times", gh.validateCalls)
+		}
+	})
+
+	t.Run("GitHub unconfigured", func(t *testing.T) {
+		svc, _ := newService(nil)
+		if _, err := svc.create(context.Background(), CreateRequest{
+			Name: "web", Type: appv1alpha1.TypeWebService,
+			Repo: "https://gitlab.example.com/acme/web",
+		}); err != nil {
+			t.Fatalf("create with GitHub unwired: %v", err)
+		}
+	})
 }
