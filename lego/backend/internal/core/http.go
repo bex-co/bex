@@ -231,11 +231,48 @@ func safeJSONDecodeError(err error) error {
 }
 
 // WriteJSON writes body as a JSON response with the given status.
+//
+// A nil slice is written as `[]`, never `null` — see emptyArray.
 func WriteJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
+	_ = json.NewEncoder(w).Encode(emptyArray(body))
 }
+
+// emptyArray substitutes an empty slice for a nil one so an empty list
+// response serializes as `[]` rather than encoding/json's `null`.
+//
+// Render's public API declares every list response as `type: array` with no
+// `nullable` (internal/api/openapi/render-public-api-1.json: list-services,
+// list-projects, listWorkflows, … all `{"type":"array"}`), so `null` is off
+// contract on every empty list. A Go list handler reaches that state by
+// accident: `var out []T` with nothing appended, a `store` read that returns
+// nil, or core.Page slicing a nil input — none of which look wrong at the call
+// site. Normalizing HERE, at the one serialization boundary every REST
+// fragment shares, is what stops the next list route from reintroducing it;
+// per-handler `make([]T, 0)` only fixes the routes someone remembered.
+//
+// Two deliberate exclusions, because for them `null` is the correct output and
+// `[]`/`""` would be a regression: a type with its own MarshalJSON
+// (json.RawMessage, which is a nil-able slice whose nil IS JSON null), and a
+// byte slice (encoding/json renders those as a base64 STRING, so an empty one
+// would answer `""`).
+func emptyArray(body any) any {
+	if body == nil {
+		return body
+	}
+	v := reflect.ValueOf(body)
+	if v.Kind() != reflect.Slice || !v.IsNil() {
+		return body
+	}
+	t := v.Type()
+	if t.Elem().Kind() == reflect.Uint8 || t.Implements(jsonMarshalerType) {
+		return body
+	}
+	return reflect.MakeSlice(t, 0, 0).Interface()
+}
+
+var jsonMarshalerType = reflect.TypeFor[json.Marshaler]()
 
 // WriteErr maps a domain error sentinel onto its HTTP status and writes the
 // body. The envelope carries BOTH bex's original {"error": msg} shape (kept

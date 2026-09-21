@@ -609,6 +609,12 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	}
 	caps := Capabilities{Enabled: s.enabled() && s.modelProxyEnabled() && s.ticketEnabled()}
 	if !caps.Enabled {
+		// An unwired deployment advertises NO profiles (the phone renders a
+		// configuration callout off Enabled:false) — but "none" is an empty
+		// array, not `null`. agents is a declared array on REST and already
+		// non-nullable on GraphQL, so the zero Capabilities was the one shape
+		// that disagreed with both (w4/m116/t006).
+		caps.Agents = []AgentProfile{}
 		return caps, nil
 	}
 	workspaceID, ok := s.Tenant(ctx)
@@ -616,6 +622,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 		return Capabilities{}, core.ErrForbidden
 	}
 	caps.Agents = agentProfiles()
+
 	var key string
 	var connection github.Connection
 	var group errgroup.Group

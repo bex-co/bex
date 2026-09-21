@@ -304,7 +304,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Connection-info field label (public rediss:// URL)",
   },
   "keyvalue.connExternalUnavailable": {
-    message: "Not public. Enable public access to get an external URL.",
+    message: "Not public. Add an inbound IP rule under Networking to enable external access.",
     description:
       "Shown instead of the external URL when the store isn't public",
   },

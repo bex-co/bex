@@ -582,7 +582,11 @@ const hydraClientMaxPages = 20
 // global page (codex-security round 12, finding 7). A server that returns no
 // Link header degrades to the old one-page behavior.
 func (h *hydraAPIKeys) List(ctx context.Context) ([]APIKey, error) {
-	var keys []APIKey
+	// Empty-but-non-nil: the unbound-store branch of Service.ListAPIKeys hands
+	// this slice straight to its callers, and MCP's list_api_keys nests it under
+	// a declared `apiKeys` array where core.WriteJSON's nil-slice guard cannot
+	// reach it (w4/m116/t006).
+	keys := []APIKey{}
 	next := fmt.Sprintf("/admin/clients?limit=%d", hydraClientPageSize)
 	for range hydraClientMaxPages {
 		var clients []hydraClient

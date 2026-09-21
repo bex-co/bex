@@ -499,7 +499,13 @@ func (s *Service) GetClaimSelection(ctx context.Context, ownerID, selectionID st
 	if err != nil {
 		return ClaimSelection{}, err
 	}
-	out := ClaimSelection{ID: sel.ID, ExpiresAt: sel.ExpiresAt.UTC().Format(time.RFC3339)}
+	out := ClaimSelection{
+		ID:        sel.ID,
+		ExpiresAt: sel.ExpiresAt.UTC().Format(time.RFC3339),
+		// Empty-but-non-nil: candidates is a declared array, and `append` onto a
+		// nil slice leaves it nil ⇒ `null` on the wire (w4/m116/t006).
+		Candidates: make([]ClaimCandidate, 0, len(sel.Candidates)),
+	}
 	for _, c := range sel.Candidates {
 		out.Candidates = append(out.Candidates, ClaimCandidate{InstallationID: c.InstallationID, AccountLogin: c.AccountLogin})
 	}
