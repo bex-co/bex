@@ -123,12 +123,17 @@ var (
 	// claim's already-proved candidate set (ADR078 §3a). It names a pending choice,
 	// never a connection, and is spent the moment one is made.
 	GitClaimSelection = Kind{prefix: "gcs", desc: "github claim selection (pending account choice)"}
+	// Sandbox is the tenant-facing id of a hosted agent sandbox. Render spells
+	// it `sbx-` and its CLI PARSES that prefix client-side (`ea sandboxes copy`
+	// rejects anything else), so the substrate's own UUID can never be the
+	// public identity (w9/m94).
+	Sandbox = Kind{prefix: "sbx", desc: "hosted agent sandbox"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

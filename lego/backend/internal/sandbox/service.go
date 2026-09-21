@@ -29,6 +29,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -44,9 +45,17 @@ const (
 	metadataTemplate      = "bex.co/template"
 	metadataRegime        = "app.bex.co/regime"
 	metadataSandboxRegime = "sandbox"
-	metadataAgentSession  = agentsession.LabelSession
-	minSandboxTimeout     = 60
-	maxSandboxTimeout     = 86400
+	// metadataPublicID carries the tenant-facing bex id (`sbx-<xid>`) of a
+	// sandbox the EA verbs minted. OpenSandbox mints its own opaque substrate id
+	// and accepts no client-supplied one, so the public identity rides the
+	// metadata bex already stamps (persisted by the server as a pod label) —
+	// which keeps OpenSandbox the single source of truth with no bex-side
+	// mapping table to drift (ADR042 D4). Absent ⇒ a legacy (pre-w9/m94) or
+	// agent-session sandbox, whose canonical id stays the substrate id.
+	metadataPublicID     = "bex.co/sandbox-id"
+	metadataAgentSession = agentsession.LabelSession
+	minSandboxTimeout    = 60
+	maxSandboxTimeout    = 86400
 )
 
 // KeyProvider mints/looks up a workspace's OpenSandbox tenant key (OSEP-0014):
@@ -290,12 +299,58 @@ func (s *Service) mayAccessSandbox(ctx context.Context, workspace string, raw os
 	return s.isWorkspaceAdmin(ctx, workspace)
 }
 
+// canonicalID is the tenant-facing id of a sandbox: the stamped public
+// `sbx-` id when the object carries one, else the substrate id it was minted
+// with. Every surface (REST/GraphQL/MCP, metering) reads an id through here, so
+// one sandbox has exactly one public identity everywhere.
+//
+// Agent-session sandboxes are deliberately NOT stamped: their identity is
+// load-bearing INSIDE the platform — the exec gateway derives the pod name as
+// `<id>-0` (internal/sandboxexec.Claims.PodName, internal/agentsession/mint.go)
+// and the usage display-name join matches `agent_sessions.sandbox_id` — so
+// their canonical id stays the substrate id the pod is actually named after.
+// They are addressed by session id on their own surfaces, never by `sbx-`.
+func canonicalID(raw osSandbox) string {
+	if public := raw.Metadata[metadataPublicID]; public != "" {
+		return public
+	}
+	return raw.ID
+}
+
+// isPublicSandboxID reports whether a caller-supplied id is a bex public
+// sandbox id (rather than a substrate id), which decides how it is resolved.
+func isPublicSandboxID(idStr string) bool {
+	return strings.HasPrefix(idStr, ids.Sandbox.Prefix()+"-")
+}
+
+// resolveSandbox fetches one OpenSandbox object by either id form (w9/m94
+// dual-accept). A substrate id is a direct Get; a public `sbx-` id is matched
+// against the tenant key's own list — the key scopes that list to the caller's
+// `<ws>-sandbox` namespace, so the scan is bounded by the workspace's live
+// sandbox capacity and can never see another tenant's object. It performs no
+// authorization; ownedSandbox owns the ownership boundary.
+func (s *Service) resolveSandbox(ctx context.Context, key, idStr string) (osSandbox, error) {
+	if !isPublicSandboxID(idStr) {
+		return s.Client.Get(ctx, key, idStr)
+	}
+	rows, err := s.Client.List(ctx, key)
+	if err != nil {
+		return osSandbox{}, err
+	}
+	for _, raw := range rows {
+		if raw.Metadata[metadataPublicID] == idStr {
+			return raw, nil
+		}
+	}
+	return osSandbox{}, errOpenSandboxNotFound
+}
+
 // ownedSandbox resolves one durable OpenSandbox object and applies the shared
 // owner/admin boundary used by reads, lifecycle verbs, and exec. Returning the
 // same named not-found for absent, foreign, legacy, or incompletely hardened
 // objects prevents every adapter from becoming an existence oracle.
 func (s *Service) ownedSandbox(ctx context.Context, key, workspace, id string) (osSandbox, error) {
-	raw, err := s.Client.Get(ctx, key, id)
+	raw, err := s.resolveSandbox(ctx, key, id)
 	if err != nil {
 		if errors.Is(err, errOpenSandboxNotFound) {
 			return osSandbox{}, sandboxNotFound(id)
@@ -320,7 +375,7 @@ func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 	}
 	timeout, _ := strconv.Atoi(raw.Metadata[metadataTimeout])
 	return Sandbox{
-		ID:             raw.ID,
+		ID:             canonicalID(raw),
 		Plan:           Plan(raw.Metadata[metadataPlan]),
 		Status:         mapOpenSandboxStatus(raw.Status.State),
 		Region:         raw.Metadata[metadataRegion],
@@ -376,7 +431,10 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 		return Sandbox{}, fmt.Errorf("%w: unknown template %q", core.ErrBadRequest, name)
 	}
 	ws := s.WorkspaceOrDefault(ctx)
-	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil, nil)
+	// Mint the tenant-facing id here: OpenSandbox accepts no client-supplied id,
+	// so bex stamps its own and carries it as durable metadata (metadataPublicID).
+	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil,
+		map[string]string{metadataPublicID: ids.New(ids.Sandbox)})
 }
 
 func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, env, extraMetadata map[string]string) (Sandbox, error) {
