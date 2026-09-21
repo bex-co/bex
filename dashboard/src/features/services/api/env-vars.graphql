@@ -11,6 +11,10 @@ query EnvVarKeys($serviceId: String!, $cursor: String, $limit: Int) {
     envVar {
       id
       key
+      # Rides the KEY list deliberately (w4/m120): the tab must know a row is
+      # manifest-owned *before* anyone reveals its value, so it never offers an
+      # edit the server will refuse. "" / null for an ordinary store-owned var.
+      managedBy
     }
     cursor
   }
@@ -23,6 +27,7 @@ query EnvVarValue($id: String!, $key: String!) {
       id
       key
       value
+      managedBy
     }
   }
 }

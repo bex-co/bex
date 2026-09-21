@@ -8,6 +8,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  FileCode2,
   FilePlus2,
   FileUp,
   Loader2,
@@ -78,6 +79,7 @@ import {
   type EnvironmentPatchInput,
 } from "@/features/services/lib/environment-draft";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
+import { isManifestManaged } from "@/features/services/types";
 import {
   downloadEnvFile,
   formatEnvExport,
@@ -119,6 +121,10 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
     <EnvironmentEditor
       resourceId={serviceId}
       envKeys={env.keys}
+      // While the keys read is in flight the manifest flag may not have
+      // arrived yet; the editor fails closed on any row missing it rather than
+      // flashing a manifest-owned variable as editable (w4/m120 t003).
+      envKeysPending={env.loading}
       secretFileNames={files.names}
       loading={
         (env.loading && env.keys.length === 0) ||
@@ -164,7 +170,14 @@ export interface EnvironmentEditorCopy {
 
 export interface EnvironmentEditorProps {
   resourceId: string;
-  envKeys: Array<{ id: string; key: string }>;
+  envKeys: Array<{ id: string; key: string; managedBy?: string | null }>;
+  /**
+   * The env-key read is still in flight, so `managedBy` may not have arrived on
+   * every row yet. Rows missing the flag are treated as read-only until it
+   * settles (w4/m120 t003) — a manifest variable must never appear editable,
+   * not even for one frame.
+   */
+  envKeysPending?: boolean;
   secretFileNames: Array<{ id: string; name: string }>;
   loading: boolean;
   errorKind: EnvVarErrorKind | null;
@@ -194,6 +207,7 @@ export interface EnvironmentEditorProps {
 export function EnvironmentEditor({
   resourceId,
   envKeys,
+  envKeysPending = false,
   secretFileNames,
   loading,
   errorKind,
@@ -218,6 +232,23 @@ export function EnvironmentEditor({
     copy?.secretFilesEmptyTitle ?? t("services.secretFilesEmptyTitle");
   const secretFilesEmptyBody =
     copy?.secretFilesEmptyBody ?? t("services.secretFilesEmptyBody");
+  // The keys the dashboard must not write. A manifest-owned variable is one
+  // (bex-api refuses every write to it with ENV_VAR_MANIFEST_MANAGED); so is a
+  // row whose flag has not arrived yet, because rendering it editable and
+  // taking it away a frame later is exactly the flash t003 forbids.
+  const readOnlyEnvKeys = useMemo(
+    () =>
+      new Set(
+        envKeys
+          .filter(
+            ({ managedBy }) =>
+              isManifestManaged(managedBy) ||
+              (managedBy === undefined && envKeysPending),
+          )
+          .map(({ key }) => key),
+      ),
+    [envKeys, envKeysPending],
+  );
   const capabilities = useCapabilities();
   const { canCreate, canViewSensitive } = capabilities;
   const createDenied = !canCreate;
@@ -307,6 +338,7 @@ export function EnvironmentEditor({
       createEnvironmentDraft(
         envKeys.map((entry) => entry.key),
         secretFileNames.map((entry) => entry.name),
+        readOnlyEnvKeys,
       ),
     );
     setSaveError(false);
@@ -329,7 +361,10 @@ export function EnvironmentEditor({
             [list]: (
               current[list] as Array<EnvironmentDraft[K][number]>
             ).flatMap((row) =>
-              row.id !== id
+              row.id !== id ||
+              // A read-only row ignores every update, whatever called this —
+              // a stale handler, a keyboard path, a future control.
+              ("readOnly" in row && row.readOnly === true)
                 ? [row]
                 : isNewDraftRow(row) && update.deleted
                   ? []
@@ -370,13 +405,16 @@ export function EnvironmentEditor({
 
   function importVariables(entries: DotenvEntry[]) {
     if (createDenied) return;
+    // A .env file naming a manifest-owned key must not smuggle in the write
+    // the row's missing controls refuse.
+    const writable = entries.filter((entry) => !readOnlyEnvKeys.has(entry.key));
     setDraft((current) => {
       if (!current) return current;
       return {
         ...current,
         envVars: upsertDotenvEntries(
           current.envVars,
-          entries,
+          writable,
           (row) => (row.deleted ? null : row.key),
           (row, entry) => ({
             ...row,
@@ -707,6 +745,7 @@ export function EnvironmentEditor({
               <SensitiveViewItem
                 key={id}
                 name={key}
+                readOnlyNote={readOnlyEnvKeys.has(key)}
                 value={sensitiveDenied ? undefined : reveals.value("env", key)}
                 loading={reveals.busy("env", key)}
                 revealDisabled={sensitiveDenied}
@@ -1011,12 +1050,34 @@ function EnvironmentSection({
   );
 }
 
+/**
+ * The badge + explanation that names the blueprint manifest as the owner of a
+ * value. Rendered wherever a manifest-owned row appears — read mode and the
+ * draft — so the reason a row has no controls is always stated, never implied
+ * by their absence.
+ */
+function ManifestManagedNote() {
+  const { t } = useTranslations();
+  return (
+    <>
+      <Badge variant="outline" className="gap-1">
+        <FileCode2 aria-hidden="true" className="size-3" />
+        {t("services.envManifestManaged")}
+      </Badge>
+      <p className="text-muted-foreground w-full text-xs">
+        {t("services.envManifestManagedBody")}
+      </p>
+    </>
+  );
+}
+
 function SensitiveViewItem({
   name,
   value,
   loading,
   revealDisabled,
   revealReason,
+  readOnlyNote = false,
   onToggle,
   onCopy,
 }: {
@@ -1025,6 +1086,8 @@ function SensitiveViewItem({
   loading: boolean;
   revealDisabled: boolean;
   revealReason?: string;
+  /** Name the blueprint manifest as this value's owner (w4/m120). */
+  readOnlyNote?: boolean;
   onToggle: () => void;
   onCopy: () => Promise<void>;
 }) {
@@ -1032,7 +1095,14 @@ function SensitiveViewItem({
   const visible = value !== undefined;
   return (
     <div className="grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
-      <code className="min-w-0 break-all text-sm font-medium">{name}</code>
+      {readOnlyNote ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <code className="min-w-0 break-all text-sm font-medium">{name}</code>
+          <ManifestManagedNote />
+        </div>
+      ) : (
+        <code className="min-w-0 break-all text-sm font-medium">{name}</code>
+      )}
       <code
         className="min-w-0 break-all text-sm"
         aria-label={visible ? value : t("services.environmentMaskedValue")}
@@ -1133,6 +1203,28 @@ function EnvDraftItem({
         permissionDescriptionID={permissionDescriptionID}
         onUndo={() => onChange({ deleted: false })}
       />
+    );
+  }
+  // A manifest-owned row has no key field, no value field and no delete — the
+  // draft carries it only so the user can see it is there and why it can't be
+  // changed here. `environmentDraftPatch` skips it too, so even a control
+  // reintroduced by mistake could not produce a write.
+  if (row.readOnly) {
+    return (
+      <div className="grid min-w-0 gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:items-start">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <code className="min-w-0 break-all text-sm font-medium">
+            {row.key}
+          </code>
+          <ManifestManagedNote />
+        </div>
+        <code
+          className="min-w-0 break-all text-sm"
+          aria-label={t("services.environmentMaskedValue")}
+        >
+          {MASKED_VALUE}
+        </code>
+      </div>
     );
   }
   return (

@@ -60,6 +60,8 @@ var envVarListValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":    gqlutil.StrField(func(v EnvVarView) any { return v.Key }),
 		"key":   gqlutil.StrField(func(v EnvVarView) any { return v.Key }),
 		"value": gqlutil.StrField(func(v EnvVarView) any { return v.Value }),
+		// See apps' envVarGQLType.managedBy (w4/m120).
+		"managedBy": gqlutil.StrField(func(v EnvVarView) any { return v.ManagedBy }),
 	},
 })
 

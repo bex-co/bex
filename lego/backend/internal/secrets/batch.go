@@ -82,6 +82,15 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
+	// A manifest-owned key refuses the whole patch before anything is written
+	// (w4/m120) — including the rename source, since a rename deletes it.
+	keys := make([]string, 0, len(patch.EnvVars)*2)
+	for _, v := range patch.EnvVars {
+		keys = append(keys, v.Key, v.FromKey)
+	}
+	if err := refuseManifestKeys(a, keys...); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
 	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy {
 		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy)
 	}

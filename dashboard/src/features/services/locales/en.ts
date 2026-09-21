@@ -626,6 +626,17 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Value",
     description: "Environment table column header (variable value)",
   },
+  "services.envManifestManaged": {
+    message: "Managed by blueprint",
+    description:
+      "Badge on an environment row whose value the service's render.yaml manifest owns",
+  },
+  "services.envManifestManagedBody": {
+    message:
+      "This variable is declared in the service's render.yaml manifest, which owns its value. Edit the manifest and sync the blueprint to change it, or declare it with `sync: false` so the dashboard owns it instead.",
+    description:
+      "Explanation under a manifest-managed environment row: why it cannot be edited here and what to do instead",
+  },
   "services.envShowSecret": {
     message: "Show value",
     description: "Environment row button to reveal a masked value",
