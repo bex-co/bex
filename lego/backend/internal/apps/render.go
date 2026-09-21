@@ -491,10 +491,33 @@ func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
 		return nil, false
 	}
 	if a.Runtime == "docker" {
+		// A cron stores its command in spec.Command, not spec.StartCommand
+		// (SetCommands folds it there), so projecting StartCommand reported an
+		// empty dockerCommand for every docker cron that had a perfectly good
+		// one — making `services update --cron-command` look like a no-op it
+		// had not performed, and `create --from` clone an empty command
+		// (w9/m165). The native branch below already folds the same way.
+		dockerCommand := a.StartCommand
+		if svcType == appv1alpha1.TypeCronJob {
+			dockerCommand = a.Command
+		}
 		docker := map[string]any{
-			"dockerCommand":  a.StartCommand,
+			"dockerCommand":  dockerCommand,
 			"dockerContext":  cmp.Or(a.DockerContext, a.RootDir),
 			"dockerfilePath": a.DockerfilePath,
+		}
+		if svcType == appv1alpha1.TypeCronJob {
+			// A cron's command is canonically runtime-independent on the wire:
+			// the pinned client writes it as envSpecificDetails.startCommand for
+			// EVERY runtime (its cron builder has no docker branch) and reads it
+			// back the same way — `create --from` resolves a cron's command
+			// through AsNativeEnvironmentDetails().StartCommand only
+			// (pkg/service/clone.go:143,328-334). Emitting the docker spelling
+			// alone therefore round-trips through bex's own surfaces but clones
+			// as empty through the client. Emit both: dockerCommand for the
+			// runtime-keyed readers (dashboard, blueprint generation), and
+			// startCommand for the client that actually re-sends it (w9/m165).
+			docker["startCommand"] = dockerCommand
 		}
 		if a.RegistryCredentialID != nil && *a.RegistryCredentialID != "" {
 			docker["registryCredentialId"] = *a.RegistryCredentialID
