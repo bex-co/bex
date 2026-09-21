@@ -321,11 +321,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// data source; a bex extension (docs/ADR041-service-addresses.md D4).
 		"internalAddress": gqlutil.StrField(func(a AppView) any { return a.InternalAddress }),
 		// See AppView.Port — readable because it is settable (w4/m121).
-		"port": gqlutil.IntField(func(a AppView) any { return a.Port }),
-		"createdAt":       gqlutil.StrField(func(a AppView) any { return a.CreatedAt }),
-		"updatedAt":       gqlutil.StrField(func(a AppView) any { return a.UpdatedAt }),
-		"region":          gqlutil.StrField(func(a AppView) any { return a.Region }),
-		"sshAddress":      gqlutil.StrField(func(a AppView) any { return a.SSHAddress }),
+		"port":       gqlutil.IntField(func(a AppView) any { return a.Port }),
+		"createdAt":  gqlutil.StrField(func(a AppView) any { return a.CreatedAt }),
+		"updatedAt":  gqlutil.StrField(func(a AppView) any { return a.UpdatedAt }),
+		"region":     gqlutil.StrField(func(a AppView) any { return a.Region }),
+		"sshAddress": gqlutil.StrField(func(a AppView) any { return a.SSHAddress }),
 		// bex-native extras.
 		"phase": gqlutil.StrField(func(a AppView) any { return a.Phase }),
 		// Why an exposed service has no public address (w7/m79). Empty when it

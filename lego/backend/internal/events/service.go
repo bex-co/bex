@@ -284,6 +284,58 @@ const (
 // filters audit rows to exactly these verbs (auditVerbs), so a verb absent here
 // is not an event and a page is never silently short.
 //
+// TWO RULES GOVERN WHAT BELONGS HERE. Both exist because every type in this map
+// is PAST TENSE: a row in the Activity feed asserts that the thing it names
+// happened. Placing a verb here without checking them produces a feed that
+// contradicts the resource it describes.
+//
+//  1. INTENT IS NOT AN EVENT (w4/m118). If the verb only *asks* for something,
+//     and a separate observation records what actually happened, map the
+//     observation and not the verb — otherwise the feed shows the request and
+//     misses, or double-counts, the outcome. The cron and deploy-trigger verbs
+//     below are excused under this rule.
+//
+//  2. AN ATTEMPT IS NOT AN ACCOMPLISHMENT (w4/m122). An audit row for a write
+//     relation is emitted inside the AUTHORIZE call (core/base.go), before the
+//     verb runs — so a verb that passes authorization and then fails, refuses,
+//     or no-ops still lands here as a completed fact. That is not theoretical:
+//     five Re-checks of a custom domain whose DNS had not propagated produced
+//     five "Custom domain verified" rows for a domain that never verified, and
+//     an add refused as a reserved platform hostname produced a
+//     "Custom domain added" row for a host that was never attached.
+//
+//     A verb that can routinely fail, refuse, or no-op AFTER authorization must
+//     therefore authorize under core.WithDeferredAllowedWriteAudit — which
+//     still records a denial, but records nothing for an allowed write — and
+//     record its own row after the mutation succeeds (core.RecordDomainEffect,
+//     RecordPlanChanged, RecordAutoDeployChanged, the maintenance-mode and
+//     service-moved effects are the existing shapes). "Routinely" is the test:
+//     a validation a caller hits only by hand-building a bad request is not
+//     routine; a wrong service type, an out-of-range value, a quota, a
+//     conflict, or an idempotent no-op is. The no-op case is the one an
+//     error-vs-success flag alone would miss, and it is common — re-verifying a
+//     verified domain, re-adding an existing host, scaling to the current
+//     replica count.
+//
+//     Verbs already gated this way: the three custom-domain verbs, apps.Scale,
+//     apps.SetPlan, apps.SetAutoDeploy, apps.SetAutoscaling,
+//     apps.DeleteAutoscaling, the disk verbs, the eleven apps.Set… config
+//     verbs, apps.Suspend/Resume, apps.SetSourceAndRegistryCredential, the five
+//     secrets environment verbs, the three env-group link verbs, and the two
+//     one-off job verbs. What remains unGATED is deliberate: a verb that
+//     validates BEFORE it authorizes (apps.SetIPAllowList, apps.SetNotifyOnFail,
+//     apps.SetNotificationsToSend), or that has no validation, type gate or
+//     no-op path at all (apps.SetIdleTTL, apps.SetDisplayName,
+//     deploys.RegenerateDeployHook — a rotation always rotates).
+//
+//     One mapping is live only in a degraded mode, and that is correct rather
+//     than dead: apps.Restart maps to server_restarted, but with a control-plane
+//     store wired it delegates to deploys.Restart, whose row IS the
+//     deploy_started event (that verb is excused below for the same reason
+//     deploys.Trigger is). server_restarted therefore fires only on the
+//     store-less CR-only path, where no deploys row exists and it is the only
+//     signal a restart happened.
+//
 // Deliberately absent:
 //   - apps.Create — its first deploy already appears as deploy_started with
 //     trigger.firstBuild, which is how Render itself shows a service's birth.
