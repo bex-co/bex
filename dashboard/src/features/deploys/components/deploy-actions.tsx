@@ -42,6 +42,15 @@ export interface DeployActionsProps {
    */
   commitId?: string | null;
   commitMessage?: string | null;
+  /**
+   * The selected deploy's trigger (`create`, `api`, `deploy_hook`, …). It is
+   * used for exactly one thing: a `create` deploy is the service's FIRST build,
+   * so canceling it leaves nothing serving — and the cancel confirm must say so
+   * instead of promising that "the last successful deploy remains live", which
+   * is false precisely when the user is deciding whether cancel strands them
+   * (w4/103). Absent => the generic body, which is the safe default.
+   */
+  trigger?: string | null;
   onChanged?: () => void;
 }
 
@@ -58,6 +67,7 @@ export function DeployActions({
   status,
   commitId,
   commitMessage,
+  trigger,
   onChanged,
 }: DeployActionsProps) {
   const { t } = useTranslations();
@@ -217,7 +227,11 @@ export function DeployActions({
         }
         description={
           confirm === "cancel"
-            ? t("services.eventsCancelConfirmBody")
+            ? t(
+                trigger === "create"
+                  ? "services.eventsCancelConfirmBodyFirstDeploy"
+                  : "services.eventsCancelConfirmBody",
+              )
             : rollbackBody
         }
         cancelLabel={t("services.eventsConfirmCancel")}

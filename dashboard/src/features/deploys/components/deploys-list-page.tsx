@@ -302,6 +302,7 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                         status={d.status}
                         commitId={d.commitId}
                         commitMessage={d.commitMessage}
+                        trigger={d.trigger}
                       />
                     </div>
                   ) : null}

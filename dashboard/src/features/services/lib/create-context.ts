@@ -69,13 +69,24 @@ export const SERVICE_TYPE_CREATE_COPY: Record<
   },
 };
 
-/** The wizard's heading + subtitle keys; an absent `?type=` resolves to the
- *  same default the form itself starts on, so the two cannot disagree. */
-export function serviceTypeCreateCopy(type: ServiceType | undefined): {
+/** The wizard's heading + subtitle keys. An absent OR unknown `?type=` resolves
+ *  to the same default the form itself starts on, so the two cannot disagree.
+ *
+ *  The parameter is a plain string on purpose (w4/102): this used to take
+ *  `ServiceType | undefined` and default only on nullish, which is sound only
+ *  while every caller passes validated search. The route's `head` resolver does
+ *  not — it reads the raw `match.search?.type` — so `/services/new?type=worker`
+ *  indexed the table to `undefined` and threw on `.titleKey`, taking the whole
+ *  create wizard to the error boundary. Making the function total means the
+ *  contract `parseNewServiceSearch` already documents ("unknown values
+ *  dropped") holds at every call site rather than at the lucky ones. */
+export function serviceTypeCreateCopy(type: string | undefined): {
   titleKey: string;
   descriptionKey: string;
 } {
-  return SERVICE_TYPE_CREATE_COPY[type ?? DEFAULT_SERVICE_TYPE];
+  return SERVICE_TYPE_CREATE_COPY[
+    isServiceType(type) ? type : DEFAULT_SERVICE_TYPE
+  ];
 }
 
 export interface NewServiceSearch {

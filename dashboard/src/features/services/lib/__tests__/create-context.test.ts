@@ -83,4 +83,23 @@ describe("serviceTypeCreateCopy", () => {
       serviceTypeCreateCopy(DEFAULT_SERVICE_TYPE),
     );
   });
+
+  // w4/102: the route's `head` resolver reads the RAW `match.search?.type`, not
+  // the validated search, so an unknown value reached this function. Defaulting
+  // only on nullish indexed the copy table to undefined and threw on
+  // `.titleKey` — a hand-edited or bookmarked `/services/new?type=worker` took
+  // the entire create wizard to the error boundary, where the validator two
+  // files over already promises "unknown values dropped".
+  it("resolves an unknown type to the default instead of throwing", () => {
+    const fallback = serviceTypeCreateCopy(DEFAULT_SERVICE_TYPE);
+    for (const unknown of [
+      "worker", // the real repro — the near-miss of background_worker
+      "bogus_value",
+      "",
+      "WEB_SERVICE", // case matters; this is not a member
+      "__proto__", // an object-prototype key is not a service type either
+    ]) {
+      expect(serviceTypeCreateCopy(unknown)).toEqual(fallback);
+    }
+  });
 });

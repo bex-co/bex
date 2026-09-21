@@ -3873,7 +3873,14 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.eventsCancelConfirmBody": {
     message: "正在进行的部署将被停止，最近成功的部署仍保持运行。",
-    description: "Cancel deploy confirm dialog body",
+    description:
+      "Cancel deploy confirm dialog body — a previous deploy is still serving",
+  },
+  "services.eventsCancelConfirmBodyFirstDeploy": {
+    message:
+      "正在进行的部署将被停止。这是该服务的首次部署，尚无任何版本上线——取消后服务将没有任何内容在运行。",
+    description:
+      "Cancel deploy confirm dialog body — the service's first deploy, nothing is serving yet (w4/103)",
   },
   "services.eventsRollback": {
     message: "回滚",
