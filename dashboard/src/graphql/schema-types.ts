@@ -345,6 +345,7 @@ export type BlueprintSync = {
   completedAt: Maybe<Scalars['String']['output']>;
   errorMessage: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  note: Maybe<Scalars['String']['output']>;
   startedAt: Maybe<Scalars['String']['output']>;
   state: Maybe<Scalars['String']['output']>;
 };
@@ -446,6 +447,7 @@ export type DnsRecord = {
 export type Database = {
   __typename: 'Database';
   backupsEnabled: Maybe<Scalars['Boolean']['output']>;
+  blueprintId: Maybe<Scalars['String']['output']>;
   connectionPool: Maybe<Scalars['String']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   dashboardUrl: Maybe<Scalars['String']['output']>;
@@ -875,6 +877,7 @@ export type Job = {
 
 export type KeyValue = {
   __typename: 'KeyValue';
+  blueprintId: Maybe<Scalars['String']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   dashboardUrl: Maybe<Scalars['String']['output']>;
   environmentId: Maybe<Scalars['String']['output']>;
@@ -2750,6 +2753,7 @@ export type QueryBlueprintArgs = {
 
 
 export type QueryBlueprintPreviewArgs = {
+  blueprintId?: InputMaybe<Scalars['String']['input']>;
   branch: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
   path?: InputMaybe<Scalars['String']['input']>;
@@ -3480,6 +3484,7 @@ export type Service = {
   autoDeploy: Maybe<Scalars['Boolean']['output']>;
   autoDeployTrigger: Maybe<Scalars['String']['output']>;
   autoscaling: Maybe<Autoscaling>;
+  blueprintId: Maybe<Scalars['String']['output']>;
   branch: Maybe<Scalars['String']['output']>;
   buildCommand: Maybe<Scalars['String']['output']>;
   buildFilter: Maybe<BuildFilter>;

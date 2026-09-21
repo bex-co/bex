@@ -169,6 +169,12 @@ type PostgresView struct {
 	// unassigned. Set via SetEnvironmentID; the environments feature is the
 	// only writer.
 	EnvironmentID string `json:"environmentId,omitempty"`
+
+	// BlueprintID names the Git-connected Blueprint that manages this database,
+	// or is absent when nothing does (w4/m125). Projected from the CR label,
+	// the claim table's mirror — see apps.AppView.BlueprintID for why that
+	// makes it affordable on lists as well as single reads.
+	BlueprintID string `json:"blueprintId,omitempty"`
 }
 
 // ReadReplicaView is one named read replica as returned in the Render-shaped
@@ -444,6 +450,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		OwnerID:                 d.Labels[core.LabelTenant],
 		ProjectID:               d.Labels[core.LabelProject],
 		EnvironmentID:           d.Labels[core.LabelEnvironment],
+		BlueprintID:             d.Labels[core.LabelBlueprint],
 	}
 }
 

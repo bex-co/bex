@@ -118,6 +118,12 @@ type KeyValueView struct {
 	// only writer.
 	EnvironmentID string `json:"environmentId,omitempty"`
 
+	// BlueprintID names the Git-connected Blueprint that manages this key value,
+	// or is absent when nothing does (w4/m125). Projected from the CR label,
+	// the claim table's mirror — see apps.AppView.BlueprintID for why that
+	// makes it affordable on lists as well as single reads.
+	BlueprintID string `json:"blueprintId,omitempty"`
+
 	// Region / DashboardURL mirror the Render fields on services; populated by
 	// the Service.view wrapper (not kvView) so they flow through GraphQL/MCP.
 	Region       string `json:"region,omitempty"`
@@ -261,6 +267,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		OwnerID:         kv.Labels[core.LabelTenant],
 		ProjectID:       kv.Labels[core.LabelProject],
 		EnvironmentID:   kv.Labels[core.LabelEnvironment],
+		BlueprintID:     kv.Labels[core.LabelBlueprint],
 	}
 }
 

@@ -95,19 +95,19 @@ type AbandonedBlueprintSync struct {
 const blueprintColumns = `id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 	last_sync_at, created_at, updated_at, execution_generation, COALESCE(active_run_id, '')`
 
-const blueprintSyncColumns = `id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, execution_generation`
+const blueprintSyncColumns = `id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, execution_generation, note`
 
 // insertAdmittedRun records the running run of an admission inside the claim
 // transaction, so claim and run always commit together.
 func insertAdmittedRun(ctx context.Context, tx pgx.Tx, run BlueprintSync) (BlueprintSync, error) {
 	var out BlueprintSync
 	err := tx.QueryRow(ctx, `
-		INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, execution_generation)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, execution_generation, note)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING `+blueprintSyncColumns,
-		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt, run.ExecutionGeneration,
+		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt, run.ExecutionGeneration, run.Note,
 	).Scan(&out.ID, &out.BlueprintID, &out.CommitID, &out.State,
-		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage, &out.ExecutionGeneration)
+		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage, &out.ExecutionGeneration, &out.Note)
 	if err != nil {
 		return BlueprintSync{}, err
 	}

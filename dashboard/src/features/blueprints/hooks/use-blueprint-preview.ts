@@ -26,6 +26,14 @@ export function useBlueprintPreview(
   repo: string,
   branch: string,
   path: string,
+  /**
+   * The blueprint this preview is on behalf of. The detail page's pre-sync
+   * dialog passes its own id so the server does not report the blueprint as
+   * conflicting with itself; `/blueprints/new` omits it, which is what makes
+   * "a live blueprint already tracks this repo+branch" visible before Deploy
+   * rather than at apply time (w4/m125).
+   */
+  forBlueprintId?: string,
 ): UseBlueprintPreviewResult {
   const { currentWorkspaceId } = useWorkspace();
 
@@ -45,6 +53,7 @@ export function useBlueprintPreview(
       branch: debounced.branch,
       path: debounced.path || null,
       ownerId: currentWorkspaceId,
+      blueprintId: forBlueprintId ?? null,
     },
     skip,
     fetchPolicy: "cache-and-network",

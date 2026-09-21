@@ -1324,11 +1324,15 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			Branch  string `json:"branch"`
 			Path    string `json:"path"`
 			OwnerID string `json:"ownerId"`
+			// blueprintId previews on behalf of an existing blueprint, so its
+			// own repo+branch is not reported as a connection conflict
+			// (w4/m125). Omitted by a pre-create preview.
+			BlueprintID string `json:"blueprintId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
 			return nil, core.ErrBadRequest
 		}
-		return s.PreviewBlueprint(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path)
+		return s.PreviewBlueprint(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path, body.BlueprintID)
 	}))
 	mux.HandleFunc("GET /v1/blueprints", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.ListBlueprints(r.Context(), r.URL.Query().Get("ownerId"))

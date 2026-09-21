@@ -50,6 +50,9 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"ownerId":            gqlutil.StrField(func(v KeyValueView) any { return v.OwnerID }),
 		"projectId":          gqlutil.OptionalStrField(func(v KeyValueView) any { return v.ProjectID }),
 		"environmentId":      gqlutil.OptionalStrField(func(v KeyValueView) any { return v.EnvironmentID }),
+		// blueprintId: the Blueprint managing this instance, null when nothing
+		// does (w4/m125, bex extension).
+		"blueprintId": gqlutil.OptionalStrField(func(v KeyValueView) any { return v.BlueprintID }),
 	},
 })
 

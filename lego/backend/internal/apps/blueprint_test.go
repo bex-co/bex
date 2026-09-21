@@ -75,6 +75,10 @@ type fakeBlueprintStore struct {
 	// the store-outage cases (w8/m36 t004, w8/m37 t002 admission/completion).
 	insertSyncErr error
 	updateSyncErr error
+	// getByRepoErr makes the repo+branch lookup fail, for the w4/m125 test that
+	// an unreadable blueprint table refuses the create instead of reading as
+	// "nothing is connected".
+	getByRepoErr error
 }
 
 func newFakeBlueprintStore(bs ...store.Blueprint) *fakeBlueprintStore {
@@ -130,6 +134,9 @@ func (f *fakeBlueprintStore) GetBlueprint(_ context.Context, id, tenantID string
 func (f *fakeBlueprintStore) GetBlueprintByRepo(_ context.Context, tenantID, repo, branch string) (store.Blueprint, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.getByRepoErr != nil {
+		return store.Blueprint{}, f.getByRepoErr
+	}
 	for _, b := range f.blueprints {
 		if b.TenantID == tenantID && b.Repo == repo && b.Branch == branch && b.Status != "disconnected" {
 			return b, nil
@@ -557,6 +564,15 @@ func (f *fakeBlueprintStore) ReleaseBlueprintResourceClaims(_ context.Context, t
 		if v == blueprintID && strings.HasPrefix(k, tenantID+"|") {
 			delete(f.claims, k)
 		}
+	}
+	return nil
+}
+
+func (f *fakeBlueprintStore) ReleaseBlueprintResourceClaim(_ context.Context, tenantID, kind, name, blueprintID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.claims[claimKey(tenantID, kind, name)] == blueprintID {
+		delete(f.claims, claimKey(tenantID, kind, name))
 	}
 	return nil
 }
@@ -1216,7 +1232,7 @@ func TestPreviewBlueprintFound(t *testing.T) {
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
 		GitFetcher: fakeBlueprintFetcher{contents: stackManifest, sha: "abc1234"},
 	}
-	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "")
+	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "", "")
 	if err != nil {
 		t.Fatalf("PreviewBlueprint: %v", err)
 	}
@@ -1306,7 +1322,7 @@ func TestPreviewBlueprintRequiresSensitiveRead(t *testing.T) {
 		GitFetcher: fakeBlueprintFetcher{contents: stackManifest, sha: "abc1234"},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "developer", Method: "session"})
-	if _, err := svc.PreviewBlueprint(ctx, "", "https://github.com/a/app", "main", ""); err != nil {
+	if _, err := svc.PreviewBlueprint(ctx, "", "https://github.com/a/app", "main", "", ""); err != nil {
 		t.Fatalf("sensitive preview: %v", err)
 	}
 	if len(checker.asked) != 2 || checker.asked[0] != core.RelCanViewSensitive || checker.asked[1] != core.RelCanViewSensitive {
@@ -1319,7 +1335,7 @@ func TestPreviewBlueprintWarnsOnImplicitLegacyFilenameFallback(t *testing.T) {
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
 		GitFetcher: blueprintFilesFetcher{LegacyBlueprintFilename: stackManifest},
 	}
-	preview, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "")
+	preview, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "", "")
 	if err != nil {
 		t.Fatalf("PreviewBlueprint: %v", err)
 	}
@@ -1333,7 +1349,7 @@ func TestPreviewBlueprintInvalidManifest(t *testing.T) {
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
 		GitFetcher: fakeBlueprintFetcher{path: LegacyBlueprintFilename, contents: "services:\n  - name: \"\"\n    type: web\n"},
 	}
-	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "bex.yml")
+	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "bex.yml", "")
 	if err != nil {
 		t.Fatalf("PreviewBlueprint(invalid): %v", err)
 	}
@@ -1426,7 +1442,7 @@ func TestPreviewBlueprintClassifiesEveryFetchFailure(t *testing.T) {
 				Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
 				GitFetcher: fakeBlueprintFetcher{err: tc.err},
 			}
-			p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", tc.path)
+			p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", tc.path, "")
 			if err != nil {
 				t.Fatalf("PreviewBlueprint: want a soft result, got %v", err)
 			}
@@ -1455,7 +1471,7 @@ func TestPreviewBlueprintClassifiesAnInvalidPath(t *testing.T) {
 			Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
 			GitFetcher: fakeBlueprintFetcher{},
 		}
-		p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", badPath)
+		p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", badPath, "")
 		if err != nil {
 			t.Fatalf("PreviewBlueprint(%q): %v", badPath, err)
 		}
@@ -1486,17 +1502,17 @@ func TestPreviewBlueprintRequiresRepoAndBranch(t *testing.T) {
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
 		GitFetcher: fakeBlueprintFetcher{},
 	}
-	if _, err := svc.PreviewBlueprint(context.Background(), "", "", "main", ""); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.PreviewBlueprint(context.Background(), "", "", "main", "", ""); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("missing repo: want ErrBadRequest, got %v", err)
 	}
-	if _, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "", ""); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "", "", ""); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("missing branch: want ErrBadRequest, got %v", err)
 	}
 }
 
 func TestPreviewBlueprintNoFetcher(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	if _, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", ""); !errors.Is(err, ErrBlueprintFetchUnavailable) {
+	if _, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "", ""); !errors.Is(err, ErrBlueprintFetchUnavailable) {
 		t.Errorf("nil fetcher: want ErrBlueprintFetchUnavailable, got %v", err)
 	}
 }
@@ -1748,7 +1764,7 @@ func TestBlueprintCoreEntrypointsRefuseUnsupportedManifestBeforeWrites(t *testin
 	if err != nil || validation.Valid || len(validation.Errors) != 1 || validation.Errors[0].Code != "BLUEPRINT_CAPABILITY_UNSUPPORTED" {
 		t.Fatalf("ValidateBlueprint unsupported = %+v, %v", validation, err)
 	}
-	preview, err := svc.PreviewBlueprint(ctx, "tea-a", "https://github.com/a/app", "main", "")
+	preview, err := svc.PreviewBlueprint(ctx, "tea-a", "https://github.com/a/app", "main", "", "")
 	if err != nil || !preview.Found || preview.Validation == nil || preview.Validation.Valid {
 		t.Fatalf("PreviewBlueprint unsupported = %+v, %v", preview, err)
 	}

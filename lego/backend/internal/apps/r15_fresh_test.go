@@ -60,7 +60,7 @@ func TestPreviewBlueprintFailsClosedOnFreshRevocation(t *testing.T) {
 		GitFetcher: fetcher,
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "developer", Method: "session"})
-	if _, err := svc.PreviewBlueprint(ctx, "", "https://github.com/a/app", "main", ""); !errors.Is(err, core.ErrForbidden) {
+	if _, err := svc.PreviewBlueprint(ctx, "", "https://github.com/a/app", "main", "", ""); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("stale-positive preview = %v, want ErrForbidden", err)
 	}
 	if fetcher.n != 0 {

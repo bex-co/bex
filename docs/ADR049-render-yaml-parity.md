@@ -186,6 +186,26 @@ Any temporary audit switch is removed at closeout. The end state has one grammar
 
 `anyOf` failures (service kinds and env-var forms) pick the branch the instance actually declared — `type`/`runtime` consts, or which env-var key is present — instead of the fewest leaf errors. A static service with a disallowed `plan` is told `plan` is extra, not that legal `staticPublishPath` is illegal. Create-validator messages that reach a Blueprint author use manifest keys (`staticPublishPath`); REST/MCP `POST` create still say `publishPath`. A `type` that matches no service kind lists the union `web`, `worker`, `pserv`, `cron`, `keyvalue`, `redis`. The schema pin and SHA are unchanged: static sites still have no per-instance `plan`.
 
+### One blueprint per repo+branch, and the product saying so (w4/m125, 2026-09-21)
+
+The storage key has been `UNIQUE (tenant_id, repo, branch)` since migration 0016, and `w8/m21` made **branch** the read-only identity key with name and path editable. One blueprint per repo+branch per workspace is therefore settled design. What was missing was the product saying it: `AdmitBlueprintCreate`'s conflict arm is a full overwrite of name, path, auto-sync and manifest, and `CreateBlueprint` called it without asking whether a row already existed. A second connect returned `{id: <the first blueprint's id>, name: <the second's>}` — a successful-looking create that destroyed a blueprint and orphaned its stack.
+
+**Decisions.**
+
+- **A create that would repoint a live blueprint at a different manifest is refused** with `BLUEPRINT_CONNECTION_CONFLICT`, deliberately the same shape `BLUEPRINT_RESOURCE_CONFLICT` uses one level down — the same guarantee applied to the row rather than to the resources. The phrase is `BlueprintTakeoverConfirmation(<existing id>)`, reusing the handshake, the coded-conflict class, the preview surfacing and the dashboard dialog that already exist.
+- **Path, not name, decides whether it is a replacement.** A create keeping the existing path re-connects the same manifest and proceeds, updating the name the way `updateBlueprint` already lets anyone do. This is not laxity: it is the retry path after a create whose apply failed. Admission precedes the resource preflight, so a failed create leaves its own row behind, and one `confirm` field cannot carry both a resource-takeover phrase and a connection-takeover phrase — refusing the identical retry would deadlock.
+- **A disconnected row is still not a conflict.** `w8/m37`'s deliberate re-establishment under a fresh generation is unchanged.
+- **A confirmed replacement is recorded**, on a new `blueprint_syncs.note` column (migration 0131). The row is reused, so the replaced blueprint leaves no trace in `blueprints` at all; sync history is the only blueprint-scoped trail, and its other columns cannot say "this run replaced a blueprint named X".
+- **Fail closed.** An unreadable blueprint table refuses the create rather than reading as "nothing is connected" — which is precisely the overwrite being guarded.
+
+### Claims may not outlive the management they record (w4/m125)
+
+`w8/m23` promised that a managed resource "records A as its managing blueprint, visible on the blueprint's `resources[]`". Only half held. `resources[]` is derived from the current manifest, while the durable claim was released in exactly one place — disconnect. So any resource a sync stopped declaring — a takeover, an ordinary IaC edit, a rename — became an orphan that was _also locked_: managed by nobody, adoptable by no other blueprint without a phrase naming a blueprint that disclaimed it. Live, one blueprint id answered both "I do not manage static-site" and "static-site is managed by me" at the same moment.
+
+A sync now diffs its claims against what the manifest still declares and releases the difference, inside the same fenced `(generation, runID)` window as the ownership stamps, so a retired worker cannot release claims a successor just took. The CR marker is cleared with the claim. **Only the claim is released** — the resource keeps running, which stays deliberate (`w4/119`: not deleting it is right).
+
+The claim is also now readable: `blueprintId` appears on every service, database and Key Value read, projected from the CR label — the claim's mirror, written and cleared in the same window — which is why it is affordable on list reads as well as single ones rather than becoming a per-resource query. A dashboard "Managed by Blueprint" cell was considered and deliberately deferred: the blueprint detail page's `resources[]` is the established direction of that link and is, as of this milestone, finally accurate.
+
 ## Consequences
 
 ### Positive
