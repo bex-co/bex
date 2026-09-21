@@ -31,6 +31,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# The PLATFORM namespace bex-api itself is configured with. App CRs no longer
+# land here: since ADR043 (per-tenant namespace isolation) a workspace's Apps
+# and their Ingresses live in the workspace's own namespace, which is the
+# workspace id verbatim (store.WorkspaceNamespace). Every CR read/delete below
+# is therefore scoped to the owning tenant, not to this value.
 APP_NS=default
 BASE_DOMAIN=e2e-m19.test
 
@@ -62,16 +67,17 @@ cleanup() {
   # Delete the App CRs FIRST, while the operator is still alive to clear its
   # finalizer (app.bex.co/finalizer) — reaping it first would make the delete
   # block forever on an unremovable finalizer.
+  # entries are "<namespace>/<name>" — the tenant namespace that owns the CR.
   for cr in "${CREATED_CRS[@]:-}"; do
-    [ -n "$cr" ] && kubectl -n "$APP_NS" delete app.app.bex.co "$cr" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+    [ -n "$cr" ] && kubectl -n "${cr%%/*}" delete app.app.bex.co "${cr##*/}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
   done
   sleep 2
   # Belt-and-suspenders: strip any finalizer still lingering (operator already
   # gone / raced) so nothing blocks, then reap and remove containers.
   for cr in "${CREATED_CRS[@]:-}"; do
     [ -n "$cr" ] || continue
-    kubectl -n "$APP_NS" get app.app.bex.co "$cr" >/dev/null 2>&1 \
-      && kubectl -n "$APP_NS" patch app.app.bex.co "$cr" --type=merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1 || true
+    kubectl -n "${cr%%/*}" get app.app.bex.co "${cr##*/}" >/dev/null 2>&1 \
+      && kubectl -n "${cr%%/*}" patch app.app.bex.co "${cr##*/}" --type=merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1 || true
   done
   reap "$API_PID"
   reap "$OP_PID"
@@ -84,11 +90,19 @@ pass() { printf '\033[32mPASS\033[0m %s\n' "$1"; }
 fail() { printf '\033[31mFAIL\033[0m %s\n' "$1"; exit 1; }
 info() { printf '\033[36m•\033[0m %s\n' "$1"; }
 
+# wait_http URL [logfile] — the optional log is tailed on timeout. Without it a
+# process that dies at startup reports only "did not become reachable" and the
+# log dies with $bindir in the EXIT trap, leaving nothing to diagnose.
 wait_http() {
   for _ in $(seq 1 60); do
     [ "$(curl -s -o /dev/null -w '%{http_code}' "$1" || true)" != "000" ] && return 0
     sleep 1
   done
+  if [ -n "${2:-}" ] && [ -s "${2:-}" ]; then
+    echo "--- last 40 lines of $(basename "$2") ---" >&2
+    tail -40 "$2" >&2
+    echo "--- end ---" >&2
+  fi
   fail "$1 did not become reachable"
 }
 
@@ -101,6 +115,26 @@ lsof -nP -iTCP:"$DB_PORT" -sTCP:LISTEN >/dev/null 2>&1 && fail "port $DB_PORT al
 kubectl get crd apps.app.bex.co >/dev/null 2>&1 \
   || fail "App CRD not installed — run 'make -C lego/operator install' (absolute KUBECONFIG)"
 docker info >/dev/null 2>&1 || fail "docker is not running"
+
+# Traefik's Middleware CRD is a hard prerequisite for reconciling ANY App that
+# has a host: reconcileIngressWithMiddlewares always upserts the websocket
+# egress-meter middleware when len(hosts) > 0, so without the CRD every App
+# fails with `no matches for kind "Middleware"` and no Ingress is ever created
+# — which is leg [5]. scripts/mock-cluster.sh does not install Traefik, so
+# install just the CRDs (not the proxy: this scenario asserts Ingress OBJECTS,
+# not served traffic) from the same chart version scripts/verify-egress-meter.sh
+# pins.
+if ! kubectl get crd middlewares.traefik.io >/dev/null 2>&1; then
+  echo "==> installing Traefik CRDs (chart 41.0.0, CRDs only — no proxy)"
+  helm repo add traefik https://traefik.github.io/charts >/dev/null 2>&1 || true
+  helm repo update traefik >/dev/null 2>&1 || fail "could not refresh the traefik helm repo"
+  crddir="$(mktemp -d)"
+  helm pull traefik/traefik --version 41.0.0 --untar -d "$crddir" >/dev/null 2>&1 \
+    || { rm -rf "$crddir"; fail "could not pull the traefik chart for its CRDs"; }
+  kubectl apply --server-side -f "$crddir/traefik/crds" >/dev/null \
+    || { rm -rf "$crddir"; fail "could not install the Traefik CRDs"; }
+  rm -rf "$crddir"
+fi
 
 echo "==> throwaway Hydra (in-memory) + control-plane Postgres (docker)"
 docker rm -f "$HYDRA_CONTAINER" >/dev/null 2>&1 || true
@@ -165,10 +199,15 @@ env "BEX_CP_DB_URI=$DB_URI" "BEX_CP_ADDR=:${CP##*:}" "BEX_CP_TOKEN=$CP_TOKEN" \
   "BEX_CP_APPS_NAMESPACE=$APP_NS" \
   "BEX_HYDRA_ADMIN_URL=http://$HYDRA_ADMIN" "BEX_API_ADDR=:${API##*:}" \
   "BEX_API_NAMESPACE=$APP_NS" "BEX_BASE_DOMAIN=$BASE_DOMAIN" \
+  `# bex-api refuses to start with the control-plane store on and no OpenFGA` \
+  `# (authorization would be fail-open). This harness deliberately runs without` \
+  `# OpenFGA and seeds tenant_members directly, so it takes the documented` \
+  `# local-dev override — the same one scripts/webhooks-verify.sh:291 uses.` \
+  "BEX_ALLOW_INSECURE_AUTHZ=1" \
   "$bindir/bex-api" >"$bindir/api.log" 2>&1 &
 API_PID=$!
-wait_http "http://$API/healthz"
-wait_http "http://$CP/healthz"
+wait_http "http://$API/healthz" "$bindir/api.log"
+wait_http "http://$CP/healthz" "$bindir/api.log"
 
 echo "==> creating two workspaces (tenants) + seeding membership"
 cp_post() { curl -s -X POST "http://$CP$1" -H "Authorization: Bearer $CP_TOKEN" -H 'Content-Type: application/json' -d "$2"; }
@@ -191,14 +230,19 @@ gql() { # TOKEN QUERY -> LAST_BODY
   local q; q="$(jq -n --arg q "$2" '{query:$q}')"
   LAST_BODY="$(curl -s -X POST "http://$API/graphql" -H "Authorization: Bearer $1" -H 'Content-Type: application/json' -d "$q")"
 }
-svc_body() { printf '{"name":"%s","image":{"imagePath":"traefik/whoami"},"port":80}' "$1"; }
+# `image.ownerId` is REQUIRED by Render's schema (the official CLI always
+# serializes it, empty when the top-level/existing owner applies), and bex
+# validates the request against that schema — omitting it is a 400 at
+# /image/ownerId, not a name-conflict signal. Same shape as the pinned-CLI
+# fixtures in lego/backend/internal/apps/cli_compat_test.go.
+svc_body() { printf '{"name":"%s","image":{"imagePath":"traefik/whoami","ownerId":""},"port":80}' "$1"; }
 
 # --- 1. Workspace A creates beancount-cms -> 201, bare slug ------------------
 echo "==> [1] workspace A creates $SVC_NAME"
 request "$TOKEN_A" POST /v1/services "$(svc_body "$SVC_NAME")"
 [ "$LAST_CODE" = "201" ] || fail "[1] create $SVC_NAME: got $LAST_CODE want 201 (body: $LAST_BODY)"
-CR_A="$TENANT_A-$SVC_NAME"; CREATED_CRS+=("$CR_A")
-SUBDOMAIN_A="$(kubectl -n "$APP_NS" get app.app.bex.co "$CR_A" -o jsonpath='{.spec.subdomain}')"
+CR_A="$TENANT_A-$SVC_NAME"; CREATED_CRS+=("$TENANT_A/$CR_A")
+SUBDOMAIN_A="$(kubectl -n "$TENANT_A" get app.app.bex.co "$CR_A" -o jsonpath='{.spec.subdomain}')"
 [ "$SUBDOMAIN_A" = "$SVC_NAME" ] || fail "[1] workspace A slug = '$SUBDOMAIN_A', want bare '$SVC_NAME'"
 pass "[1] workspace A: 201, CR $CR_A spec.subdomain=$SUBDOMAIN_A (bare, no suffix)"
 
@@ -261,7 +305,15 @@ func main() {
 
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "create_web_service",
-		Arguments: map[string]any{"name": name, "image": "traefik/whoami", "port": 80},
+		// runtime/buildCommand/startCommand are REQUIRED by the tool's generated
+		// schema (non-pointer fields, no omitempty) even when the service runs a
+		// prebuilt image — omitting them fails argument validation before the
+		// duplicate-name check this leg is about. "docker" + empty commands is
+		// the image shape; the commands are ignored for that runtime.
+		Arguments: map[string]any{
+			"name": name, "image": "traefik/whoami", "port": 80,
+			"runtime": "docker", "buildCommand": "", "startCommand": "",
+		},
 	})
 	// A duplicate must surface as a failure, never a silent success. The SDK
 	// maps a tool handler error onto either a transport error or an
@@ -304,7 +356,7 @@ pass "[3] workspace A availability: $AV_A"
 echo "==> [3b] creating the suggested name $SUGG -> 201"
 request "$TOKEN_A" POST /v1/services "$(svc_body "$SUGG")"
 [ "$LAST_CODE" = "201" ] || fail "[3b] create suggested $SUGG: got $LAST_CODE want 201 (body: $LAST_BODY)"
-CREATED_CRS+=("$TENANT_A-$SUGG")
+CREATED_CRS+=("$TENANT_A/$TENANT_A-$SUGG")
 pass "[3b] the suggested name $SUGG creates successfully (201)"
 
 # --- 4. Workspace B: no cross-tenant leak, then create ----------------------
@@ -318,8 +370,8 @@ pass "[4] workspace B availability: $AV_B (no leak of A's name)"
 echo "==> [4b] workspace B creates $SVC_NAME -> 201, globally-unique suffixed slug"
 request "$TOKEN_B" POST /v1/services "$(svc_body "$SVC_NAME")"
 [ "$LAST_CODE" = "201" ] || fail "[4b] workspace B create $SVC_NAME: got $LAST_CODE want 201 (body: $LAST_BODY)"
-CR_B="$TENANT_B-$SVC_NAME"; CREATED_CRS+=("$CR_B")
-SUBDOMAIN_B="$(kubectl -n "$APP_NS" get app.app.bex.co "$CR_B" -o jsonpath='{.spec.subdomain}')"
+CR_B="$TENANT_B-$SVC_NAME"; CREATED_CRS+=("$TENANT_B/$CR_B")
+SUBDOMAIN_B="$(kubectl -n "$TENANT_B" get app.app.bex.co "$CR_B" -o jsonpath='{.spec.subdomain}')"
 [ -n "$SUBDOMAIN_B" ] || fail "[4b] workspace B CR has no spec.subdomain"
 case "$SUBDOMAIN_B" in
   "$SVC_NAME"-????) : ;;
@@ -332,16 +384,24 @@ echo "==> [5] the two slugs are distinct + reconcile to distinct Ingress hosts"
 [ "$SUBDOMAIN_A" != "$SUBDOMAIN_B" ] || fail "[5] both CRs carry the same subdomain '$SUBDOMAIN_A' — collision!"
 info "A.subdomain=$SUBDOMAIN_A   B.subdomain=$SUBDOMAIN_B"
 
-wait_ingress() { # cr-name -> host on stdout (waits for the operator to reconcile)
+wait_ingress() { # namespace cr-name -> host on stdout (waits for the operator)
   for _ in $(seq 1 40); do
-    local h; h="$(kubectl -n "$APP_NS" get ingress "$1" -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || true)"
+    local h; h="$(kubectl -n "$1" get ingress "$2" -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || true)"
     [ -n "$h" ] && { echo "$h"; return 0; }
     sleep 1
   done
   return 1
 }
-HOST_A="$(wait_ingress "$CR_A")" || fail "[5] operator never reconciled an Ingress for $CR_A"
-HOST_B="$(wait_ingress "$CR_B")" || fail "[5] operator never reconciled an Ingress for $CR_B"
+# On a reconcile timeout the operator's own log is the only place the reason
+# exists, and it dies with $bindir in the EXIT trap — so dump it first.
+ingress_failed() { # cr-name
+  echo "--- last 40 lines of operator.log ---" >&2
+  tail -40 "$bindir/operator.log" >&2 2>/dev/null || true
+  echo "--- end ---" >&2
+  fail "[5] operator never reconciled an Ingress for $1"
+}
+HOST_A="$(wait_ingress "$TENANT_A" "$CR_A")" || ingress_failed "$CR_A"
+HOST_B="$(wait_ingress "$TENANT_B" "$CR_B")" || ingress_failed "$CR_B"
 [ "$HOST_A" = "$SUBDOMAIN_A.$BASE_DOMAIN" ] || fail "[5] Ingress A host '$HOST_A' != '$SUBDOMAIN_A.$BASE_DOMAIN'"
 [ "$HOST_B" = "$SUBDOMAIN_B.$BASE_DOMAIN" ] || fail "[5] Ingress B host '$HOST_B' != '$SUBDOMAIN_B.$BASE_DOMAIN'"
 [ "$HOST_A" != "$HOST_B" ] || fail "[5] the two Ingresses claim the SAME host '$HOST_A' — collision!"
@@ -351,7 +411,9 @@ pass "[5] distinct Ingress hosts: A=$HOST_A  B=$HOST_B (no collision)"
 # Deploying with no ingress controller / image pull in this sandbox — the
 # NAMING/HOST correctness above is the milestone's subject, not traffic serving.
 echo "==> reconcile snapshot (best-effort; serving infra is out of scope)"
-kubectl -n "$APP_NS" get app.app.bex.co "$CR_A" "$CR_B" \
+kubectl get app.app.bex.co -n "$TENANT_A" "$CR_A" \
+  -o custom-columns='NAME:.metadata.name,SUBDOMAIN:.spec.subdomain,PHASE:.status.phase,URL:.status.url' 2>/dev/null || true
+kubectl get app.app.bex.co -n "$TENANT_B" "$CR_B" \
   -o custom-columns='NAME:.metadata.name,SUBDOMAIN:.spec.subdomain,PHASE:.status.phase,URL:.status.url' 2>/dev/null || true
 
 echo
