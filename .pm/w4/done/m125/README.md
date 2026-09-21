@@ -1,18 +1,18 @@
 # w4 · m125 — Creating a second Blueprint for a repo+branch silently destroys the first one, and the resources it leaves behind stay claimed but invisible
 
-**Worker:** worker4 **Goal:** connecting a repo+branch that is already connected stops being a silent overwrite — it either refuses with the same coded takeover handshake `w8/m23` built for resources, or it is an explicit, named reconfiguration — and no resource is ever left holding a blueprint's claim while that blueprint's `resources[]` disclaims it. **Status:** todo
+**Worker:** worker4 **Goal:** connecting a repo+branch that is already connected stops being a silent overwrite — it either refuses with the same coded takeover handshake `w8/m23` built for resources, or it is an explicit, named reconfiguration — and no resource is ever left holding a blueprint's claim while that blueprint's `resources[]` disclaims it. **Status:** done 2026-09-21 (live re-probe of the deployed fix deferred to the next QA pass — no production access this session)
 
 ## Tasks (in order)
 
 | id   | title                                                                                      | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Stop `createBlueprint` from silently overwriting an already-connected repo+branch             | 45m | —          |
-| t002 | Release the claim when a blueprint stops managing a resource, so claims and `resources[]` agree | 45m | —          |
-| t003 | Make a resource's owning blueprint readable, so a conflict is discoverable before it fires    | 30m | t002       |
-| t004 | Render parity check (conflict shape across REST/GraphQL/MCP + dashboard; upstream comparison) | 30m | t001, t003 |
-| t005 | Simplify (`/simplify` over the changed code)                                                  | 30m | t004       |
-| t006 | Test coverage                                                                                 | 45m | t004       |
-| t007 | Closeout                                                                                      | 15m | t006       |
+| t001 | Stop `createBlueprint` from silently overwriting an already-connected repo+branch             | 45m | —          | — **DONE**
+| t002 | Release the claim when a blueprint stops managing a resource, so claims and `resources[]` agree | 45m | —          | — **DONE**
+| t003 | Make a resource's owning blueprint readable, so a conflict is discoverable before it fires    | 30m | t002       | — **DONE**
+| t004 | Render parity check (conflict shape across REST/GraphQL/MCP + dashboard; upstream comparison) | 30m | t001, t003 | — **DONE**
+| t005 | Simplify (`/simplify` over the changed code)                                                  | 30m | t004       | — **DONE**
+| t006 | Test coverage                                                                                 | 45m | t004       | — **DONE**
+| t007 | Closeout                                                                                      | 15m | t006       | — **DONE**
 
 ## Definition of done
 

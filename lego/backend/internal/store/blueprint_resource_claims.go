@@ -113,3 +113,19 @@ func (s *PGStore) GetBlueprintResourceOwner(ctx context.Context, tenantID, kind,
 	}
 	return owner, err
 }
+
+// ReleaseBlueprintResourceClaim drops one blueprint's claim on one resource —
+// what a sync does for a resource its manifest stopped declaring (w4/m125).
+//
+// The blueprint_id predicate is the whole point: between the list and this
+// delete another blueprint may have taken the resource over with an explicit
+// confirmation, and a release that ignored the current owner would silently
+// undo that takeover. A row already owned by someone else is a no-op, which is
+// the correct outcome — this blueprint no longer manages it either way.
+func (s *PGStore) ReleaseBlueprintResourceClaim(ctx context.Context, tenantID, kind, name, blueprintID string) error {
+	_, err := s.Pool.Exec(ctx,
+		`DELETE FROM blueprint_resource_claims
+		 WHERE tenant_id = $1 AND kind = $2 AND name = $3 AND blueprint_id = $4`,
+		tenantID, kind, name, blueprintID)
+	return err
+}
