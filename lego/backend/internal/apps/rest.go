@@ -477,7 +477,17 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 			startCommand = r.ServiceDetails.EnvSpecificDetails.StartCommand
 			nestedRegistryCredentialID = r.ServiceDetails.EnvSpecificDetails.RegistryCredentialID
 			if strings.EqualFold(runtime, "docker") {
-				startCommand = r.ServiceDetails.EnvSpecificDetails.DockerCommand
+				// A CRON's command arrives in the NATIVE spelling even on the
+				// docker runtime: the pinned CLI's cron builder emits
+				// envSpecificDetails.startCommand for every runtime, with no
+				// docker branch (pkg/service/create.go buildCronEnvSpecificDetails).
+				// Overwriting unconditionally discarded it and defeated the cron
+				// bridge below, so a docker cron was created with no command at
+				// all (w9/m165). Accept either spelling for a cron, dockerCommand
+				// first; every other docker service keeps the exact prior rule.
+				if cmd := r.ServiceDetails.EnvSpecificDetails.DockerCommand; cmd != "" || r.Type != appv1alpha1.TypeCronJob {
+					startCommand = cmd
+				}
 				dockerfilePath = r.ServiceDetails.EnvSpecificDetails.DockerfilePath
 				// dockerContext is its own spec field (repo-root-relative,
 				// independent of rootDir) — the pre-w8/m19 rootDir fold was a
