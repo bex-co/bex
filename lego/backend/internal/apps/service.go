@@ -3404,7 +3404,7 @@ func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (A
 // subtree BuildKit executes, so it is a can_create (developer) input like
 // Builder — not an operational can_operate one a contributor holds.
 func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3414,7 +3414,7 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	if !store.ValidRootDir(rootDir) {
 		return AppView{}, fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetRootDir, a, func(a *appv1alpha1.App) {
 		a.Spec.RootDir = rootDir
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
@@ -3430,7 +3430,7 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 // round-9 #8): the Dockerfile is the exact instruction set BuildKit executes,
 // so the verb requires can_create (developer) like Builder and SetRootDir.
 func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3446,7 +3446,7 @@ func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath st
 	if dockerfilePath != "" && !store.ValidRootDir(dockerfilePath) {
 		return AppView{}, fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetDockerfilePath, a, func(a *appv1alpha1.App) {
 		a.Spec.DockerfilePath = dockerfilePath
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
@@ -3461,7 +3461,7 @@ func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath st
 // does not itself rebuild the current revision. Rejected for an image-backed App
 // (no repo, so no push to filter).
 func (s *Service) SetBuildFilter(ctx context.Context, name string, filter *BuildFilterView) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3472,7 +3472,7 @@ func (s *Service) SetBuildFilter(ctx context.Context, name string, filter *Build
 	if err != nil {
 		return AppView{}, err
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetBuildFilter, a, func(a *appv1alpha1.App) {
 		a.Spec.BuildFilter = bf
 	})
 }
@@ -3490,14 +3490,14 @@ func (s *Service) SetPreDeployCommand(ctx context.Context, name, command string)
 	// the service executes with its runtime identity and secret projections, so
 	// it is create-like for exactly the reason SetCommands below is — gate on
 	// can_create (developer and up), not can_operate.
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
 	if a.Spec.Type == appv1alpha1.TypeCronJob || a.Spec.Type == appv1alpha1.TypeStaticSite {
 		return AppView{}, fmt.Errorf("%w: a pre-deploy command does not apply to a %s", core.ErrBadRequest, a.Spec.Type)
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetPreDeployCommand, a, func(a *appv1alpha1.App) {
 		a.Spec.PreDeployCommand = strings.TrimSpace(command)
 	})
 }
@@ -3510,14 +3510,14 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 	// SECURITY (codex #1): build/start commands are attacker-chosen code the
 	// service executes with its runtime identity, so this is create-like, not
 	// lifecycle — gate on can_create (developer and up), not can_operate.
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
 	if a.Spec.Type == appv1alpha1.TypeStaticSite && startCommand != nil {
 		return AppView{}, fmt.Errorf("%w: start command is not applicable to a static_site", core.ErrBadRequest)
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetCommands, a, func(a *appv1alpha1.App) {
 		if buildCommand != nil {
 			a.Spec.BuildCommand = strings.TrimSpace(*buildCommand)
 		}
@@ -3562,7 +3562,13 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	// SECURITY (codex #1): repointing a service at a new repo or image chooses the
 	// executable the operator runs with the service identity — create-like, so gate
 	// on can_create (developer and up), not the lifecycle-oriented can_operate.
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	//
+	// Deferred audit (w4/m122): this verb has the most post-authorization exits
+	// of any in the map — an owner mismatch, a malformed repo URL, an image on a
+	// static site, a bad branch, an unresolvable registry credential, an
+	// inaccessible repository — plus an explicit no-op return when the resolved
+	// source already matches. Every one of them used to report "Source changed".
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3646,6 +3652,9 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	if previousBranch != "" && previousBranch != next.branch {
 		s.recordBranchChangedFact(ctx, a, previousBranch, next.branch, updated.UpdatedAt)
 	}
+	// The source really moved: past the no-op return above, past every
+	// validation, and the CR patch landed.
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSourceAndRegistryCredential)
 	return updated, nil
 }
 
@@ -3835,14 +3844,14 @@ func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path stri
 // the control-plane row does not own this field. Kubernetes rolls the Deployment
 // when the pod template's terminationGracePeriodSeconds changes.
 func (s *Service) SetMaxShutdownDelay(ctx context.Context, name string, seconds int32) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
 	if err := validateMaxShutdownDelaySeconds(a.Spec.Type, &seconds); err != nil {
 		return AppView{}, err
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetMaxShutdownDelay, a, func(a *appv1alpha1.App) {
 		a.Spec.MaxShutdownDelaySeconds = clonePtr(&seconds)
 	})
 }
@@ -3870,7 +3879,7 @@ func (s *Service) SetMaxShutdownDelay(ctx context.Context, name string, seconds 
 // and probe have already moved to the new one — which is exactly the split-brain
 // this verb exists to make impossible.
 func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3881,7 +3890,7 @@ func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView
 	if err := validateServicePort(port); err != nil {
 		return AppView{}, err
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetPort, a, func(a *appv1alpha1.App) {
 		a.Spec.Port = port
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
@@ -3978,7 +3987,7 @@ func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (
 	if err != nil {
 		return AppView{}, err
 	}
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3996,7 +4005,7 @@ func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (
 			return AppView{}, fmt.Errorf("%w: renderSubdomainPolicy cannot be disabled without at least one custom domain", core.ErrBadRequest)
 		}
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetSubdomainPolicy, a, func(a *appv1alpha1.App) {
 		a.Spec.SubdomainPolicy = normalized
 	})
 }
@@ -4090,7 +4099,12 @@ func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) 
 // Environment is guarded (w6/m19, requireUnprotected) — resume is never
 // blocked, since it restores availability rather than taking it away.
 func (s *Service) setSuspended(ctx context.Context, name string, suspended bool) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// Deferred audit (w4/m122): both guards below run AFTER authorization, and
+	// both refuse in ordinary use — suspending a member of a protected
+	// environment without confirmation, and resuming into a delinquent
+	// workspace. Either used to put "Service suspended" / "Service resumed" in
+	// the feed for a service whose state never moved.
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -4101,9 +4115,18 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	} else if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return AppView{}, err
 	}
-	return s.writeThroughStoreFetched(ctx, a,
+	verb := core.AuditVerbResume
+	if suspended {
+		verb = core.AuditVerbSuspend
+	}
+	view, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppSuspended(ctx, id, suspended) },
 		func(a *appv1alpha1.App) { a.Spec.Suspended = suspended })
+	if err != nil {
+		return AppView{}, err
+	}
+	s.RecordAppConfigChanged(ctx, a, verb)
+	return view, nil
 }
 
 // writeThroughStoreFetched is the shared shape of every intent-field verb
@@ -4167,6 +4190,22 @@ func (s *Service) patch(ctx context.Context, relation, name string, mutate func(
 // path so Render's "next deploy uses it" contract remains true.
 func (s *Service) patchFetched(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) (AppView, error) {
 	return s.patchTracked(ctx, a, store.TriggerConfigChange, mutate)
+}
+
+// recordedPatch is patchFetched plus the deferred audit row its caller owes
+// (w4/m122). These verbs authorize under WithDeferredAllowedWriteAudit — a
+// denial still records, an allowed write records nothing yet — so the row is
+// written here, only once the patch has actually landed. A verb that refuses
+// after authorization (the wrong service type, a value out of range, a repo
+// requirement on an image-backed service) never reaches this function, and so
+// no longer tells the Activity feed it succeeded.
+func (s *Service) recordedPatch(ctx context.Context, verb string, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) (AppView, error) {
+	view, err := s.patchFetched(ctx, a, mutate)
+	if err != nil {
+		return AppView{}, err
+	}
+	s.RecordAppConfigChanged(ctx, a, verb)
+	return view, nil
 }
 
 // patchTracked is patchFetched with an explicit deploy-history trigger.
@@ -4420,7 +4459,7 @@ func (s *Service) SetRoutes(ctx context.Context, name string, routes []StaticRou
 	// round-5 finding 11: routes change what the public origin serves (redirects
 	// can be off-site), so this is a content/security mutation — can_create
 	// (developer), not the can_operate a lifecycle-only contributor holds.
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -4430,7 +4469,7 @@ func (s *Service) SetRoutes(ctx context.Context, name string, routes []StaticRou
 	if err := requireStaticSite(a, name); err != nil {
 		return AppView{}, err
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetRoutes, a, func(a *appv1alpha1.App) {
 		a.Spec.Routes = routesFromViews(routes)
 	})
 }
@@ -4458,7 +4497,7 @@ func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticH
 	// round-5 finding 11: response headers are a security control (CSP, HSTS,
 	// framing) the public server emits, so require can_create (developer), not
 	// the can_operate a lifecycle-only contributor holds.
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -4468,7 +4507,7 @@ func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticH
 	if err := requireStaticSite(a, name); err != nil {
 		return AppView{}, err
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetHeaders, a, func(a *appv1alpha1.App) {
 		a.Spec.Headers = headersFromViews(headers)
 	})
 }
@@ -4480,7 +4519,7 @@ func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticH
 func (s *Service) SetPublishPath(ctx context.Context, name, publishPath string) (AppView, error) {
 	// round-5 finding 11: the served output directory is content, not lifecycle —
 	// require can_create (developer), not the can_operate a contributor holds.
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -4490,7 +4529,7 @@ func (s *Service) SetPublishPath(ctx context.Context, name, publishPath string) 
 	if err := requireStaticSite(a, name); err != nil {
 		return AppView{}, err
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	return s.recordedPatch(ctx, core.AuditVerbSetPublishPath, a, func(a *appv1alpha1.App) {
 		a.Spec.PublishPath = strings.TrimSpace(publishPath)
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})

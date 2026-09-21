@@ -1,19 +1,19 @@
 # w4 · m122 — The events feed reports failed operations as accomplished facts: five "Custom domain verified" rows for a domain that never verified
 
-**Worker:** worker4 **Goal:** a row in the Activity feed means the thing it names actually happened — a verb that was authorized but then failed produces no event, and the domain lifecycle's real transitions (claim created, claim promoted to verified, claim removed) are what the feed reports. **Status:** todo
+**Worker:** worker4 **Goal:** a row in the Activity feed means the thing it names actually happened — a verb that was authorized but then failed produces no event, and the domain lifecycle's real transitions (claim created, claim promoted to verified, claim removed) are what the feed reports. **Status:** done 2026-09-21 (live re-probe of the deployed fix deferred to the next QA pass — no production access this session)
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est | depends_on   |
 | ---- | ----------------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Decide the mechanism: gate the audit→event projection on operation outcome, or excuse the intent verbs and record facts | 40m | —            |
-| t002 | Stop `apps.VerifyDomain` from minting `custom_domain_verified`, and emit the fact on actual promotion | 45m | w4/m122/t001 |
-| t003 | Do the same for `apps.AddDomain` / `apps.DeleteDomain`, which fire on refused calls today   | 35m | w4/m122/t002 |
-| t004 | Audit the remaining 45 `eventTypes` verbs for routine post-authorization failure and place each | 45m | w4/m122/t001 |
-| t005 | Render parity — the feed's event vocabulary and the domain rows across REST/GraphQL/MCP/UI  | 30m | w4/m122/t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                 | 25m | w4/m122/t005 |
-| t007 | Test coverage — a failed verb produces no event; a real transition produces exactly one     | 40m | w4/m122/t005 |
-| t008 | Closeout — close the milestone once the definition of done actually holds                   | 15m | w4/m122/t007 |
+| t001 | Decide the mechanism: gate the audit→event projection on operation outcome, or excuse the intent verbs and record facts | 40m | —            | — **DONE**
+| t002 | Stop `apps.VerifyDomain` from minting `custom_domain_verified`, and emit the fact on actual promotion | 45m | w4/m122/t001 | — **DONE**
+| t003 | Do the same for `apps.AddDomain` / `apps.DeleteDomain`, which fire on refused calls today   | 35m | w4/m122/t002 | — **DONE**
+| t004 | Audit the remaining 45 `eventTypes` verbs for routine post-authorization failure and place each | 45m | w4/m122/t001 | — **DONE**
+| t005 | Render parity — the feed's event vocabulary and the domain rows across REST/GraphQL/MCP/UI  | 30m | w4/m122/t004 | — **DONE**
+| t006 | Simplify — `/simplify` over the code this milestone changed                                 | 25m | w4/m122/t005 | — **DONE**
+| t007 | Test coverage — a failed verb produces no event; a real transition produces exactly one     | 40m | w4/m122/t005 | — **DONE**
+| t008 | Closeout — close the milestone once the definition of done actually holds                   | 15m | w4/m122/t007 | — **DONE**
 
 ## Definition of done
 
@@ -134,3 +134,39 @@ Recorded so the next pass does not re-walk them:
 - **Free-tier sleep and wake work.** With `idleTTLSeconds: 60`, `service_hibernated` fired, three requests over 7 s returned 503 and the fourth returned 200 — an ~11 s wake. The 503s are the activator's designed wake page with a JS auto-reload (`lego/operator/cmd/activator/main.go:18`), not a failure.
 - **`dashboardUrl`'s short routes resolve.** `/r/<red-…>` and `/web/<srv-…>` both redirect to the real routes.
 - **Key Value end to end.** Create → Available, connection info matches REST exactly, and the published `redis-cli --sni …` command answers `PONG` against the public TLS endpoint; 201 keys and 487 commands drove Disk/Memory/Connections charts and the Logs tab.
+
+## Outcome (2026-09-21)
+
+**t001 — the mechanism was already in the repo.** The filing offered two options: add an operation outcome to the audit row, or excuse the verbs and record facts. Neither was needed. `core.WithDeferredAllowedWriteAudit` already does exactly outcome-gating — a denial still records, an allowed write records nothing at authorize time, and the verb records its own row once the mutation lands — and `SetPlan`, `Scale`, the maintenance-mode effects and the service-moved effects already used it. `AuditVerbProjectServiceMoved`'s own comment had even written the rule down: "recorded only after the authoritative write succeeds, so a no-op or failed replacement records none." So this milestone applies an established pattern rather than inventing one: no new audit column, no migration, and no domain fact types (which the filing correctly noted would otherwise be required in the same change).
+
+That also answers the filing's four adjacent classes in one move: authorization denials stay out (already filtered), 4xx refusals and 5xx failures both produce nothing (the verb never reaches its recorder), and **no-ops are covered too** — which the filing flagged as the case an error-vs-success flag would miss.
+
+**t002/t003 — the three domain verbs.** `AddDomain` rides `addOne`'s existing `added` return, which is already "did this call write a new host" and is false for both refusals and the idempotent re-add; recording from a `defer` on that named return means no future success path can forget. `VerifyDomain` records at the single point a claim is actually promoted — the unmanaged passthrough, the already-verified no-op, the 409 and the stale-claim conflict all leave the feed untouched. `DeleteDomain` asks whether the claim exists before removing (the only way to tell a real removal from a delete of something that was never there, since `RemoveDomain` is idempotent and returns only an error) and keeps the remove itself unconditional, so cleanup semantics are unchanged.
+
+**t003 states it explicitly, as the DoD required: the add/delete pairing asymmetry is NOT changed.** An add can attach a `www.` sibling alongside the primary, and deleting the primary still takes the sibling with it in one call and one row. This milestone gates *whether* a row is written, never *how many*.
+
+**t002's open question, answered:** the row still does **not** name the hostname. `details: {}` was correct in the evidence, and naming the domain needs a new persisted detail column plus its migration. Left as a possible follow-up rather than smuggled in — an event that names the wrong thing is a different bug from an event that should not exist. On a multi-domain service this is worth doing; the harm while it waits is smaller than the one just fixed.
+
+**t004 — the audit found 24, not a handful.** The full 48-entry table was built by reading every verb's post-authorization exits. The result reframed the milestone: this was never a domain bug. This repo's contract is **authorize before validate**, so a type gate, a range check, a quota or an idempotent no-op sits after the audit row on nearly every verb.
+
+- **24 gated** — the 3 domain verbs; the 11 `apps.Set…` config verbs (subdomain policy, root dir, Dockerfile path, port, build filter, commands, pre-deploy command, max shutdown delay, publish path, routes, headers); suspend/resume; the source verb; the 5 `secrets` environment verbs; the 3 env-group link verbs; the 2 one-off job verbs.
+- **6 deliberately left alone** — `SetIPAllowList`, `SetNotifyOnFail` and `SetNotificationsToSend` validate *before* they authorize; `SetIdleTTL`, `SetDisplayName` and `RegenerateDeployHook` have no type gate, no post-auth validation and no refusal path (a rotation always rotates).
+- **Already gated or excused** — `SetPlan`, `Scale`, the autoscaling pair, `SetAutoDeploy`, maintenance mode, the service-moved effects, and the intent verbs `w4/m118` excused.
+- **`apps.SetSource` has no implementation at all** — a retired verb name kept in the map so pre-rename audit rows still project. Nothing to gate.
+
+The `apps.Set…` verbs share one write path, so the change is one new `recordedPatch` helper plus a two-line edit per verb, and the row cannot outlive a failed patch.
+
+**Two secondary defects found by that audit, both fixed here.**
+
+1. **The four disk verbs emitted nothing at all** — the exact mirror image of this milestone's bug. They had deferred their allowed-write audit since the feature landed (`869aaaf3e`, 2026-08-22) and **no recorder was ever written**, so `disk_created`, `disk_updated`, `disk_deleted` and `disk_restored` could never appear in any service's feed. Fixed with the same helper. Denials always recorded, so the workspace audit log was never affected.
+2. **`apps.Restart` maps to a type that is dead in production** — with a control-plane store wired it delegates to `deploys.Restart`, whose row *is* the `deploy_started` event (and which is already excused for the same reason `deploys.Trigger` is). That turns out to be **correct, not broken**: `server_restarted` fires only on the store-less CR-only path, where no deploys row exists and it is the only signal. Documented above `eventTypes` rather than changed, so nobody chases it again.
+
+**Scope stated honestly.** This closes the *failed/refused* half everywhere and the *no-op* half wherever the verb already knows what changed (the domain verbs, seed-once, the environment patch's unchanged-value and DeepEqual exits, plus the verbs that already compared before/after). An unchanged re-save of, say, a Dockerfile path still records: the verb ran, the write landed, and the resulting state does match what the event claims — a materially weaker inaccuracy than an event for an operation that was refused. Closing it for the rest means teaching each verb its own before/after comparison, which is per-verb work with its own risk of suppressing real events.
+
+**t005 — parity.** ADR018's Service-events row records the rule, the 48-entry classification summary, the disk fix and the scope note. The event vocabulary itself is unchanged, so REST/GraphQL/MCP/dashboard need no wire change — which is the point: the same rows, minus the false ones.
+
+**t007 — coverage**, all mutation-spot-checked by reverting the deferral (which reproduces the finding verbatim: "five failed re-checks recorded 5 verification events"): `TestFailedVerificationLeavesNoTraceInTheFeed` (5 failures → 0 rows, then 1 real verification → exactly 1, then a re-check of a verified domain → still 1), `TestRefusedAddLeavesNoTraceInTheFeed` (refusal → 0, real add → 1, idempotent re-add → still 1), `TestDeleteRecordsOnlyARealRemoval`, `TestDomainVerbsRecordNothingAtAuthorizeTime` (the structural guard), `TestRefusedConfigWritesLeaveNoTraceInTheFeed` (6 ordinary mistakes across 5 verbs — a port on a worker, a privileged port, a Dockerfile path and a root dir on an image-backed service, a publish path on a web service, a pre-deploy command on a cron job), and `TestAcceptedConfigWritesStillRecordExactlyOne` (the mirror-image guard the disk verbs failed for a year).
+
+**Green:** `lego/backend` `go test ./...` all packages + `golangci-lint` 0 issues; dashboard `yarn test` 3561 (no dashboard change was needed — the feed renders whatever the API returns).
+
+**Not done — the live DoD walk.** All six bullets are production probes (five Re-checks on an unverifiable domain, a refused add, a real verification). No production access this session, so none has been re-run against the deployed fix — deferred to the next QA pass, the disposition m121/m120/m119/m118 carry.

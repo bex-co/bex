@@ -1060,7 +1060,11 @@ func (s *Service) GetEnvGroupFile(ctx context.Context, gid, name string) (Secret
 // milestone closes; refused with ErrForbidden, never a silent cross-workspace
 // materialization.
 func (s *Service) LinkService(ctx context.Context, gid, service string) error {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	// Deferred audit (w4/m122): linking is idempotent, so a re-link wrote
+	// nothing and still reported "Env group linked" — and the environment-scope
+	// check below refuses after authorization. linkFetched records the row once
+	// the link is real.
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}
@@ -1120,6 +1124,9 @@ func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1
 		}
 		return err
 	}
+	// A link that actually happened: past the already-linked return, past the
+	// environment-scope check, and both the App patch and the meta commit stuck.
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbLinkService)
 	return nil
 }
 
@@ -1186,7 +1193,7 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	// makes. detach (DeleteEnvGroup's bulk-unlink path over every linked service,
 	// which authorizes once for the GROUP, not per service) still does its own
 	// bare GetApp: it must not fan out into one audit event per linked service.
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}
@@ -1211,9 +1218,14 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	})
 	if errors.Is(err, core.ErrNotFound) {
 		// Group already deleted — App detach is the durable outcome.
+		s.RecordAppConfigChanged(ctx, a, core.AuditVerbUnlinkService)
 		return nil
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbUnlinkService)
+	return nil
 }
 
 // detach removes the group's Secret refs from a service and rolls it, tolerating a
@@ -1451,7 +1463,10 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 // re-patched, so a stack re-apply neither churns the spec nor rolls the pod.
 // Manage scope (via LinkService's AuthorizeApp).
 func (s *Service) LinkEnvGroup(ctx context.Context, name, service string) error {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service) // authorize (+ audit) FIRST
+	// Deferred audit (w4/m122) — the comment this replaces said "authorize (+
+	// audit) FIRST", which is exactly the shape that reported an unknown group
+	// name as a completed link.
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}
