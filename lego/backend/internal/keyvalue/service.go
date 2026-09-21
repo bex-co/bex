@@ -815,6 +815,12 @@ func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValu
 	if err := patch.validate(); err != nil {
 		return KeyValueView{}, err
 	}
+	// Protection reaches durability, eviction and identity (w4/m127).
+	if verb := protectedKeyValuePatchVerb(patch); verb != "" {
+		if err := s.requireUnprotected(ctx, kv, verb); err != nil {
+			return KeyValueView{}, err
+		}
+	}
 	if patch.Plan != nil {
 		if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], tiers.Valkey.CanonicalID(*patch.Plan)); err != nil {
 			return KeyValueView{}, err

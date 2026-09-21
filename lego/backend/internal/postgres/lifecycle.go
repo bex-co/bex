@@ -91,7 +91,18 @@ func (s *Service) Restart(ctx context.Context, name string) (PostgresView, error
 // operator is a no-op if there is no ready standby. Mirrors Render's
 // POST /v1/postgres/{id}/failover → 202 (fire-and-forget intent write).
 func (s *Service) Failover(ctx context.Context, name string) error {
-	_, err := s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
+	// A failover promotes a standby and drops the current primary's connections
+	// — an availability interruption on a member the tenant marked protected
+	// (w4/m127). Fetched before the patch so the guard runs on the real
+	// environment label rather than on the mutate closure's copy.
+	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return err
+	}
+	if err := s.requireUnprotected(ctx, d, "fail over"); err != nil {
+		return err
+	}
+	_, err = s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
 		d.Spec.FailoverAt = s.Now().UTC().Format(time.RFC3339)
 	})
 	return err

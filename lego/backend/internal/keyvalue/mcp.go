@@ -86,8 +86,11 @@ type updateKeyValueArgs struct {
 	PersistenceMode  *string                  `json:"persistenceMode,omitempty" jsonschema:"the durability setting: journal-snapshot (AOF + RDB, durable), snapshot (RDB only), or off (in-memory cache, lost on restart); underscore or hyphen forms both accepted"`
 	IPAllowList      *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to clear it (open to all source IPs)"`
 	IPAllowListCidrs *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
-	Public           *bool                    `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint. Adding a nonempty ipAllowList already publishes the store; clearing the list does NOT withdraw it, so pass public:false to take the endpoint down explicitly"`
-	DryRun           bool                     `json:"dryRun,omitempty" jsonschema:"if true, validate and preview without any writes"`
+	// Confirm is the protected-environment phrase a durability, eviction or
+	// rename change needs on a member of a protected environment (w4/m127).
+	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks a durability, eviction or rename change"`
+	Public  *bool  `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint. Adding a nonempty ipAllowList already publishes the store; clearing the list does NOT withdraw it, so pass public:false to take the endpoint down explicitly"`
+	DryRun  bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview without any writes"`
 }
 
 // listKeyValueResult wraps the array — MCP tool outputs must be JSON objects.
@@ -176,7 +179,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			v, err := s.PreviewUpdateKeyValue(ctx, in.KeyValueID, patch)
 			return nil, v, err
 		}
-		v, err := s.UpdateKeyValue(ctx, in.KeyValueID, patch)
+		v, err := s.UpdateKeyValue(core.WithConfirm(ctx, in.Confirm), in.KeyValueID, patch)
 		return nil, v, err
 	})
 

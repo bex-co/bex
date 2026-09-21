@@ -30,7 +30,7 @@ func TestDatastoreBackupFactsEmitOncePerName(t *testing.T) {
 	base := ObservedDatastoreState{
 		DatastoreID: "dpg-backuptest000000001", WorkspaceID: "tea-ws",
 		Kind: DatastoreKindPostgres, At: time.Now().UTC(),
-		Phase: string(appv1alpha1.DBPhaseReady),
+		Phase:        string(appv1alpha1.DBPhaseReady),
 		Availability: "healthy", AvailabilityObserved: true,
 		ReadyTransitionAt: time.Now().UTC(),
 	}
@@ -77,7 +77,7 @@ func TestDatastoreRestoreAndUpgradeEdges(t *testing.T) {
 	baseline := ObservedDatastoreState{
 		DatastoreID: "dpg-restoretest00000001", WorkspaceID: "tea-ws",
 		Kind: DatastoreKindPostgres, At: time.Now().UTC(),
-		Phase: string(appv1alpha1.DBPhaseProvisioning),
+		Phase:      string(appv1alpha1.DBPhaseProvisioning),
 		Recovering: true,
 	}
 	if _, err := st.RecordObservedDatastoreState(ctx, baseline); err != nil {
@@ -101,10 +101,10 @@ func TestDatastoreRestoreAndUpgradeEdges(t *testing.T) {
 	upBase := ObservedDatastoreState{
 		DatastoreID: "dpg-upgradetest00000001", WorkspaceID: "tea-ws",
 		Kind: DatastoreKindPostgres, At: time.Now().UTC(),
-		Phase: string(appv1alpha1.DBPhaseReady),
+		Phase:        string(appv1alpha1.DBPhaseReady),
 		Availability: "healthy", AvailabilityObserved: true,
 		ReadyTransitionAt: time.Now().UTC(),
-		SpecVersion: "17", CurrentVersion: "16",
+		SpecVersion:       "17", CurrentVersion: "16",
 	}
 	if _, err := st2.RecordObservedDatastoreState(ctx, upBase); err != nil {
 		t.Fatal(err)
