@@ -26,9 +26,8 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions("app");
 });
 
@@ -120,6 +119,11 @@ vi.mock("@/features/services/hooks/use-scale-service", () => ({
 
 // Health Check Path row (w5/m21) calls setHealthCheckPath via Apollo; mock it
 // so section-presence assertions don't need an Apollo client.
+const setPort = vi.fn(async () => true);
+vi.mock("@/features/services/hooks/use-port", () => ({
+  usePort: () => ({ setPort, busy: false }),
+}));
+
 vi.mock("@/features/services/hooks/use-health-check-path", () => ({
   useHealthCheckPath: () => ({
     setHealthCheckPath: vi.fn(async () => true),
@@ -417,6 +421,9 @@ describe("ServiceSettingsPage", () => {
       "#domains",
       "#networking",
       "#notifications",
+      // The port section sits beside Health Checks, the other routing-adjacent
+      // setting, for the two types that bind a port (w4/m121/t003).
+      "#port",
       "#health-checks",
       "#maintenance",
       "#suspend",
@@ -485,6 +492,46 @@ describe("ServiceSettingsPage", () => {
     for (const href of hrefs) {
       expect(document.getElementById(href!.slice(1))).toBeInTheDocument();
     }
+  });
+
+  // w4/m121/t003: the port is the setting bex's own reserved-PORT refusal names,
+  // so it has to be here for the two types that bind one — and nowhere for the
+  // three that don't, whose setPort bex-api refuses outright.
+  describe("service port", () => {
+    it.each(["web_service", "private_service"])(
+      "offers a port control to a %s",
+      async (type) => {
+        serverState.service = svc({ type, port: 8080 });
+        renderSettings();
+
+        expect(
+          await screen.findByRole("spinbutton", { name: "Port" }),
+        ).toHaveValue(8080);
+        expect(await sectionHrefs()).toContain("#port");
+      },
+    );
+
+    it.each(["background_worker", "cron_job", "static_site"])(
+      "renders no port control for a %s, which binds none",
+      async (type) => {
+        serverState.service = svc({
+          type,
+          url: null,
+          repo: null,
+          port: null,
+          schedule: type === "cron_job" ? "*/15 * * * *" : null,
+        });
+        renderSettings();
+
+        // Wait for the resolved page rather than asserting on a blank frame.
+        await screen.findByText("Service Name");
+        expect(await sectionHrefs()).not.toContain("#port");
+        expect(document.getElementById("port")).toBeNull();
+        expect(
+          screen.queryByRole("spinbutton", { name: "Port" }),
+        ).not.toBeInTheDocument();
+      },
+    );
   });
 
   it("shows the mutable Service Name while making the immutable id explicit", async () => {

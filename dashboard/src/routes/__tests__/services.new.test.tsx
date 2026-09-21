@@ -1119,7 +1119,9 @@ describe("NewServicePage", () => {
   // service type, directly contradicting the "no public URL" note shown a few
   // fields below it on the same form for a worker/cron.
   describe("Existing Image port hint", () => {
-    const PORT_HINT = /must listen on \$PORT/i;
+    // w4/m121/t003 reworded the hint: the port is now a field on this form, so
+    // the hint names it instead of claiming a fixed default.
+    const PORT_HINT = /must listen on the port set below/i;
 
     async function selectTypeThenImageTab(label: RegExp) {
       const user = userEvent.setup();
@@ -1150,6 +1152,92 @@ describe("NewServicePage", () => {
     it("hides the hint for a cron job, which never gets a port either", async () => {
       await selectTypeThenImageTab(/Cron Job/i);
       expect(screen.queryByText(PORT_HINT)).not.toBeInTheDocument();
+    });
+  });
+
+  // w4/m121/t003: the wizard sent no port at all, so an existing image that
+  // binds anything but 3000 (nginx:alpine binds :80) came up unroutable — the
+  // live 2026-09-21 pass got a 503 from a service created exactly this way.
+  describe("service port", () => {
+    it.each([/Web Service/i, /Private Service/i])(
+      "defaults the port to 3000 for %s, the types that bind one",
+      async (label) => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findAllByRole("radiogroup");
+        await user.click(screen.getByRole("radio", { name: label }));
+
+        expect(screen.getByLabelText("Port")).toHaveValue("3000");
+        expect(
+          screen.getByText(/container must listen on port 3000/i),
+        ).toBeInTheDocument();
+      },
+    );
+
+    it.each([/Background Worker/i, /Cron Job/i, /Static Site/i])(
+      "renders no port field for %s, which binds none",
+      async (label) => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findAllByRole("radiogroup");
+        await user.click(screen.getByRole("radio", { name: label }));
+
+        expect(screen.queryByLabelText("Port")).not.toBeInTheDocument();
+      },
+    );
+
+    it("sends the edited port on create", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      const port = screen.getByLabelText("Port");
+      await user.clear(port);
+      await user.type(port, "8080");
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ port: 8080 }),
+      );
+    });
+
+    it("blocks submit on a port the container could never bind", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      const port = screen.getByLabelText("Port");
+      await user.clear(port);
+      await user.type(port, "80");
+
+      expect(
+        screen.getByText("Enter a port between 1024 and 65535."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Deploy Service/i }),
+      ).toBeDisabled();
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    // The refusal that names the port control must reach it: in the wizard the
+    // control is the field on this very form (w4/m121/t003).
+    it("points the reserved-PORT refusal at the wizard's own port field", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByRole("radiogroup");
+      await user.click(screen.getByRole("button", { name: "Add Variable" }));
+      await user.type(screen.getAllByLabelText("Key")[0], "PORT");
+
+      expect(
+        screen.getByText(
+          /PORT is set by bex from the service port\. Change the service's port field instead\./,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Set the service's port above" }),
+      ).toHaveAttribute("href", "#svc-port");
     });
   });
 

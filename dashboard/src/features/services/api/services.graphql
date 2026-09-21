@@ -60,7 +60,9 @@ mutation DeleteService($id: String!, $confirm: String) {
 # The create wizard's submit (w5/m15, extended in w5/m17): exactly one of repo
 # (build-from-git) or image must be set; branch/rootDir/autoDeploy apply to git
 # sources only. type selects the service kind (web_service default); schedule and
-# command are cron_job-only; publishPath is static_site-only.
+# command are cron_job-only; publishPath is static_site-only. `port` (w4/m121/t003)
+# is the container port bex routes to and injects as $PORT; only web_service and
+# private_service bind one, so the wizard omits it for every other type.
 # updateCronJob: change a cron_job's schedule and/or command (w5/m18).
 # schedule is required; command is optional (empty clears the entrypoint override).
 mutation UpdateCronJob($id: String!, $schedule: String!, $command: String) {
@@ -94,6 +96,7 @@ mutation CreateService(
   $schedule: String
   $command: String
   $publishPath: String
+  $port: Int
   $envVars: [EnvVarInput]
   $secretFiles: [SecretFileInput]
 ) {
@@ -117,6 +120,7 @@ mutation CreateService(
     schedule: $schedule
     command: $command
     publishPath: $publishPath
+    port: $port
     envVars: $envVars
     secretFiles: $secretFiles
   ) {

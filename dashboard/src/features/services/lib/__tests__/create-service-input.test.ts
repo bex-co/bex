@@ -25,6 +25,7 @@ function form(overrides: Partial<NewServiceForm> = {}): NewServiceForm {
     buildFilterPaths: [],
     buildFilterIgnored: [],
     plan: "starter",
+    port: "3000",
     autoDeploy: true,
     schedule: "",
     command: "",
@@ -199,5 +200,41 @@ describe("isSubmittable", () => {
     expect(
       isSubmittable(form({ secretFiles: [{ name: "../esc", content: "x" }] })),
     ).toBe(false);
+  });
+  // w4/m121/t003. The payload is the last gate on the portless types: they must
+  // never carry a port, which bex-api refuses for them anyway.
+  it("sends the port only for the types that bind one", () => {
+    expect(
+      buildCreateServiceInput(
+        form({ serviceType: "web_service", port: "8080" }),
+      ).port,
+    ).toBe(8080);
+    expect(
+      buildCreateServiceInput(
+        form({ serviceType: "private_service", port: "8080" }),
+      ).port,
+    ).toBe(8080);
+    for (const serviceType of [
+      "background_worker",
+      "cron_job",
+      "static_site",
+    ] as const) {
+      expect(
+        buildCreateServiceInput(form({ serviceType, port: "8080" })).port,
+      ).toBeUndefined();
+    }
+  });
+
+  it("refuses a port outside the range the container can bind", () => {
+    expect(isSubmittable(form({ port: "80" }))).toBe(false);
+    expect(isSubmittable(form({ port: "70000" }))).toBe(false);
+    expect(isSubmittable(form({ port: "" }))).toBe(false);
+    expect(isSubmittable(form({ port: "8080" }))).toBe(true);
+    // A portless type never reads the field, so a stale draft can't block it.
+    expect(
+      isSubmittable(
+        form({ serviceType: "background_worker", port: "nonsense" }),
+      ),
+    ).toBe(true);
   });
 });

@@ -11,6 +11,7 @@ import {
   type ServiceType,
 } from "@/features/services/lib/create-context";
 import type { NewServiceForm } from "@/features/services/lib/create-service-input";
+import { DEFAULT_SERVICE_PORT } from "@/features/services/lib/port";
 import type {
   EnvVarEntry,
   SecretFileEntry,
@@ -27,6 +28,7 @@ interface PlainFields {
   branch: string;
   rootDir: string;
   planOverride: string | null;
+  port: string;
   autoDeploy: boolean;
   schedule: string;
   command: string;
@@ -65,6 +67,10 @@ export function useNewServiceForm(search: {
     branch: "",
     rootDir: "",
     planOverride: null,
+    // The platform's own default (appv1alpha1.DefaultPort), pre-filled so the
+    // port is visible and editable before submit (w4/m121/t003) rather than
+    // silently chosen server-side. Ignored for the types that bind no port.
+    port: String(DEFAULT_SERVICE_PORT),
     autoDeploy: true,
     // Pre-fill a valid default when the wizard opens on a cron job (New → Cron
     // Job deep-links ?type=cron_job), matching Render's cron form. Harmless for

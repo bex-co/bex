@@ -748,9 +748,23 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.envReservedKey": {
     message:
-      "{key} is set by bex from the service port. Change the service port instead.",
+      "{key} is set by bex from the service port. Change the service's port field instead.",
+    description: "Environment validation message for a key bex reserves (PORT)",
+  },
+  "services.envReservedKeySettingsLink": {
+    message: "Change the service's port in Settings",
     description:
-      "Environment validation message for a key bex reserves (PORT)",
+      "Link from the reserved-PORT refusal to the service's Settings port control",
+  },
+  "services.envReservedKeyFieldLink": {
+    message: "Set the service's port above",
+    description:
+      "Link from the reserved-PORT refusal to the create wizard's own port field",
+  },
+  "services.envReservedKeyServicesLink": {
+    message: "Open a service's Settings to change its port",
+    description:
+      "Link from the reserved-PORT refusal when no single service owns the port (an env group can be linked to many)",
   },
   "services.envInvalidKey": {
     message: "Use letters, digits and underscores; can't start with a digit.",
@@ -1212,6 +1226,42 @@ const enServices: Record<string, TranslationEntry> = {
   "services.healthCheckPathError": {
     message: "Couldn't update the health check path.",
     description: "Toast after setHealthCheckPath fails",
+  },
+  "services.settingsPortTitle": {
+    message: "Port",
+    description: "Settings tab: Port section card title",
+  },
+  "services.settingsPortDescription": {
+    message:
+      "The port your container listens on. bex routes traffic to it and injects it as $PORT.",
+    description: "Settings tab: Port section card description",
+  },
+  "services.settingsPort": {
+    message: "Port",
+    description: "Settings tab: service port row label",
+  },
+  "services.settingsPortHint": {
+    message:
+      "The port your container listens on (default {port}). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.",
+    description: "Settings tab: service port row hint text",
+  },
+  "services.settingsPortEdit": {
+    message: "Edit Port",
+    description:
+      "Settings tab: accessible label for the service port edit-pencil button",
+  },
+  "services.portRangeError": {
+    message: "Enter a port between {min} and {max}.",
+    description:
+      "Validation message for a port outside the range the container can bind",
+  },
+  "services.portSuccess": {
+    message: "Port updated. A new deploy is rolling out.",
+    description: "Toast after setPort succeeds",
+  },
+  "services.portError": {
+    message: "Couldn't update the port.",
+    description: "Toast after setPort fails",
   },
   "services.settingsNotificationsTitle": {
     message: "Notifications",
@@ -2808,9 +2858,18 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createImagePortHint": {
     message:
-      "The container must listen on $PORT (default 3000) and cannot bind ports below 1024.",
+      "The container must listen on the port set below — bex injects it as $PORT — and cannot bind ports below 1024.",
     description:
       "Create-wizard Existing Image tab hint about bex's routed port and the no-privileged-ports hardening (w9/011)",
+  },
+  "services.createFieldPort": {
+    message: "Port",
+    description: "Create wizard: service port field label",
+  },
+  "services.createFieldPortHint": {
+    message:
+      "Your container must listen on port {port} — bex routes traffic there and injects it as $PORT. Change it to match the image you are deploying.",
+    description: "Create wizard: service port field hint",
   },
   "services.createRegistryCredentialLabel": {
     message: "Registry credential",
@@ -3595,11 +3654,13 @@ const enServices: Record<string, TranslationEntry> = {
     // told a reader who had just edited a start command that their environment
     // had changed. The deploys list had already settled the wording.
     message: "Config Change",
-    description: "Deploy event trigger: a config change (Settings, env var, secret file, or env-group edit)",
+    description:
+      "Deploy event trigger: a config change (Settings, env var, secret file, or env-group edit)",
   },
   "services.eventsTriggerDeployHook": {
     message: "Deploy Hook",
-    description: "Deploy event trigger: a POST to the service's secret deploy-hook URL",
+    description:
+      "Deploy event trigger: a POST to the service's secret deploy-hook URL",
   },
   "services.eventsTriggerClearCache": {
     message: "Cache cleared",
@@ -3876,6 +3937,10 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsTypeBuildSettingsChanged": {
     message: "Build and deploy settings changed",
     description: "Service activity type: build or deploy configuration changed",
+  },
+  "services.eventsTypePortChanged": {
+    message: "Port changed",
+    description: "Service activity type: the service's listening port changed",
   },
   "services.eventsTypeServiceChanged": {
     message: "Service settings changed",

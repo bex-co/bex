@@ -63,11 +63,23 @@ type patchServiceRequest struct {
 		// custom optional integer preserves omission for PATCH and returns a
 		// field-named 400 for strings, fractions, booleans, or null.
 		MaxShutdownDelaySeconds optionalInt32 `json:"maxShutdownDelaySeconds"`
+		// Port is a bex extra — Render detects the bound port rather than
+		// setting one (ADR018 row 117). Accepted here as well as at the top
+		// level because that is where create's sibling `internalAddress` and
+		// the rest of the per-type detail live, and a caller reading back a
+		// service finds the port under serviceDetails (w4/m121). The nested
+		// spelling wins when both are sent, matching healthCheckPath and
+		// preDeployCommand.
+		Port *int32 `json:"port"`
 	} `json:"serviceDetails"`
 	// Render calls the mutable human-facing label `name`; displayName remains a
 	// bex extension accepted for dashboard/backward compatibility.
 	Name *string `json:"name"`
 	Repo *string `json:"repo"`
+	// Port mirrors create's top-level `port` so a caller that set it at create
+	// can change it the same way (w4/m121). serviceDetails.port wins when both
+	// are sent.
+	Port *int32 `json:"port"`
 	// Image is present when the official CLI updates an image-backed service.
 	Image  *imageRef `json:"image"`
 	Branch *string   `json:"branch"`
@@ -779,6 +791,7 @@ type patchFields struct {
 	registryCredentialID                                    *string
 	ipAllowList                                             *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
 	autoDeploy                                              *bool
+	port                                                    *int32
 }
 
 // resolveFields decodes and coalesces the wire fields into patchFields.
@@ -793,6 +806,7 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 		schedule:              req.Schedule,
 		renderSubdomainPolicy: req.RenderSubdomainPolicy,
 		displayName:           req.DisplayName,
+		port:                  req.Port,
 	}
 	var nestedRegistryCredentialID json.RawMessage
 	if req.ServiceDetails != nil {
@@ -809,6 +823,9 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 		}
 		if req.ServiceDetails.RenderSubdomainPolicy != nil {
 			f.renderSubdomainPolicy = req.ServiceDetails.RenderSubdomainPolicy
+		}
+		if req.ServiceDetails.Port != nil {
+			f.port = req.ServiceDetails.Port
 		}
 		f.publishPath = req.ServiceDetails.PublishPath
 		f.buildCommand = req.ServiceDetails.BuildCommand
@@ -964,6 +981,7 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 		BuildCommand:                   f.buildCommand,
 		StartCommand:                   f.startCommand,
 		DockerfilePath:                 f.dockerfilePath,
+		Port:                           f.port,
 		NotifyOnFail:                   req.NotifyOnFail,
 		RenderSubdomainPolicy:          f.renderSubdomainPolicy,
 		IPAllowList:                    f.ipAllowList,

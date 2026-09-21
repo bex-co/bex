@@ -40,7 +40,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.reservedKey": {
     message:
-      "{key} is set by bex from the service port. Change the service port instead.",
+      "{key} is set by bex from the service port. Change the service's port field instead.",
     description:
       "Initial environment variable validation message for a key bex reserves (PORT)",
   },

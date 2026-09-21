@@ -320,6 +320,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// services (empty otherwise) — the dashboard's Service Address / Connect
 		// data source; a bex extension (docs/ADR041-service-addresses.md D4).
 		"internalAddress": gqlutil.StrField(func(a AppView) any { return a.InternalAddress }),
+		// See AppView.Port — readable because it is settable (w4/m121).
+		"port": gqlutil.IntField(func(a AppView) any { return a.Port }),
 		"createdAt":       gqlutil.StrField(func(a AppView) any { return a.CreatedAt }),
 		"updatedAt":       gqlutil.StrField(func(a AppView) any { return a.UpdatedAt }),
 		"region":          gqlutil.StrField(func(a AppView) any { return a.Region }),
@@ -1586,6 +1588,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetMaxShutdownDelay(p.Context, p.Args["id"].(string), int32(p.Args["seconds"].(int)))
+			},
+		},
+		// setPort changes the port the container listens on (w4/m121) — the
+		// setting bex's reserved-PORT refusal names. Web and private services
+		// only; the verb refuses the types that have no listener.
+		"setPort": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   gqlutil.ReqArg(graphql.String),
+				"port": gqlutil.ReqArg(graphql.Int),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetPort(p.Context, p.Args["id"].(string), int32(p.Args["port"].(int)))
 			},
 		},
 		// setPreDeployCommand: the Settings → Build & Deploy Pre-Deploy Command

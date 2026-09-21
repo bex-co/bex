@@ -39,6 +39,12 @@ import { ServiceTypePicker } from "@/features/services/components/service-type-p
 import { useNewServiceForm } from "@/features/services/hooks/use-new-service-form";
 import { RUNTIME_DEFS, type GitRuntime } from "@/features/services/lib/runtime";
 import { ServiceSourcePicker } from "@/features/services/components/service-source-picker";
+import {
+  DEFAULT_SERVICE_PORT,
+  MAX_SERVICE_PORT,
+  MIN_SERVICE_PORT,
+  parsePort,
+} from "@/features/services/lib/port";
 import { CreateEnvVarEditor } from "@/features/services/components/create-env-var-editor";
 import { CreateSecretFileEditor } from "@/features/services/components/create-secret-file-editor";
 import {
@@ -85,6 +91,9 @@ export function NewServicePage() {
   const scheduleDescription = shape.isCronType
     ? describeCron(form.schedule)
     : null;
+  // Only a port-binding type reads the field, so a stale draft under a worker
+  // never shows an error (or blocks Submit) for a value nothing will send.
+  const portError = shape.showPort && parsePort(form.port) === null;
   const showNameError = name.name.length > 0 && !name.nameValid;
   const showNameTaken = name.nameValid && (name.nameTaken || nameConflict);
   const canSubmit =
@@ -155,7 +164,7 @@ export function NewServicePage() {
                         registryCredentialId: form.registryCredentialId,
                         onRegistryCredentialChange: (registryCredentialId) =>
                           set({ registryCredentialId }),
-                        showPortHint: shape.showPortHint,
+                        showPortHint: shape.showPort,
                       }
                 }
               />
@@ -408,6 +417,33 @@ export function NewServicePage() {
                   </p>
                 ) : null}
 
+                {/* Port (w4/m121/t003): the container port bex routes to and
+                    injects as $PORT. Only the port-binding types (web/private)
+                    get the field — `shape.showPort` is the same predicate that
+                    gates the image tab's $PORT hint and the Settings section,
+                    so a worker, a cron job and a static site have no port
+                    control anywhere and submit no `port`. */}
+                {shape.showPort ? (
+                  <TextField
+                    id="svc-port"
+                    label={t("services.createFieldPort")}
+                    value={form.port}
+                    onChange={(port) => set({ port })}
+                    placeholder={String(DEFAULT_SERVICE_PORT)}
+                    hint={t("services.createFieldPortHint", {
+                      port: form.port.trim() || String(DEFAULT_SERVICE_PORT),
+                    })}
+                    error={
+                      portError
+                        ? t("services.portRangeError", {
+                            min: String(MIN_SERVICE_PORT),
+                            max: String(MAX_SERVICE_PORT),
+                          })
+                        : undefined
+                    }
+                  />
+                ) : null}
+
                 {shape.showPlan ? (
                   <div className="space-y-2">
                     <Label>{t("services.createFieldPlan")}</Label>
@@ -453,6 +489,10 @@ export function NewServicePage() {
                 <CreateEnvVarEditor
                   rows={form.envVars}
                   onChange={(envVars) => set({ envVars })}
+                  // PORT is refused here too; the sentence points at this
+                  // wizard's own port field, which only exists for the
+                  // port-binding types (w4/m121/t003).
+                  portFieldId={shape.showPort ? "svc-port" : undefined}
                 />
                 <CreateSecretFileEditor
                   rows={form.secretFiles}
